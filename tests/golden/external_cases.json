@@ -1,0 +1,1975 @@
+{
+  "schema": 1,
+  "author": "auditor A (independent golden cases; derived from the verified research files without reading src/ordnung/rules)",
+  "as_of": "2026-09-25",
+  "semantics": {
+    "due_date": "ComputationReceipt.due_date: last day by which the objection/payment/declaration must be received/made (after § 193-type shift where applicable).",
+    "bekanntgabe": "informational: deemed notification/service day used as the event day (not asserted by the test unless the engine exposes it).",
+    "current_term_end": "contract end date that the earliest still-reachable regular cancellation produces (the end of the current binding term if its deadline has not passed).",
+    "cancel_by": "last day the cancellation must be RECEIVED to reach current_term_end (never shifted, BGH III ZR 172/04).",
+    "safe_date": "last Mon–Fri business day (no holiday) on or before cancel_by.",
+    "earliest_exit": "end date if the cancellation is received on ctx.today (open-ended phases).",
+    "channel": "contract inputs carry channel='online_button' so that a cancellation counts as received on ctx.today (compute_contract's arrival model).",
+    "engine_mapping": "case.current_term_end is compared with ContractComputation.earliest_exit (the engine's own current_term_end is the running term even when its deadline has passed); price_increase: energy cancel_by/safe_date = due_date/safe_date; telecom window_end = due_date, cancel_by = the tkg_57 'never apply' step.",
+    "safe_acceptable": "earlier dates that are acceptable under SPEC §21 (earliest plausible date) although not the legal end.",
+    "unsure": "auditor is genuinely unsure about the legal answer; see unsure_note.",
+    "payer_region": "payment cases set ctx.recipient_region to the payer's Land: for money owed to a private creditor the place of performance is the debtor's home (§§ 269, 270 Abs. 4 BGB), so § 193 BGB uses the payer's holidays (judge's note, audit B3).",
+    "event_day_when_safe": "when the engine's due_date is one of safe_acceptable, the event-day fields (bekanntgabe/zustellung) are not asserted: the earlier date comes from an earlier, conservative event day."
+  },
+  "cases": [
+    {
+      "id": "ext-ao-01-posted-2024-12-30-three-day-rule",
+      "description": "Einkommensteuerbescheid (Finanzamt Köln-Mitte) mit Datum und Aufgabe zur Post Mo 30.12.2024; Empfänger in Köln. Letzter Posttag vor Inkrafttreten der 4-Tage-Regel.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2024-12-30",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 122 Abs. 2 Nr. 1 AO; § 355 Abs. 1 AO",
+          "text": "Einspruch ... innerhalb eines Monats nach Bekanntgabe dieses Bescheids"
+        },
+        "ctx": {
+          "today": "2025-01-03",
+          "region": "NW",
+          "document_date": "2024-12-30",
+          "delivery_scope": "ao",
+          "recipient_region": "NW"
+        },
+        "meta": {
+          "regime": "AO",
+          "authority": "Finanzamt Köln-Mitte",
+          "recipient_region": "NW",
+          "authority_region": "NW"
+        }
+      },
+      "expected": {
+        "due_date": "2025-02-03",
+        "bekanntgabe": "2025-01-02"
+      },
+      "reasoning": [
+        "Aufgabe zur Post 30.12.2024 liegt vor dem 01.01.2025 → alte 3-Tage-Fiktion (Art. 97 § 1 Abs. 15 EGAO).",
+        "30.12.2024 + 3 Tage = Do 02.01.2025, Werktag in NRW → Bekanntgabe 02.01.2025 (Neujahr im Fenster ist irrelevant).",
+        "Einspruchsfrist: 02.01.2025 + 1 Monat = So 02.02.2025 → § 108 Abs. 3 AO → Mo 03.02.2025."
+      ],
+      "sources": [
+        "§ 122 Abs. 2 Nr. 1 AO (4. Tag nach Aufgabe zur Post; PostModG, BGBl. 2024 I Nr. 236) — https://www.gesetze-im-internet.de/ao_1977/__122.html",
+        "Art. 97 § 1 Abs. 15 EGAO (4-Tage-Regel nur für nach dem 31.12.2024 zur Post gegebene VA) — https://www.gesetze-im-internet.de/aoeg_1977/art_97__1.html",
+        "§ 108 Abs. 1, 3 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/ao_1977/__108.html",
+        "§ 355 Abs. 1 AO (Einspruchsfrist 1 Monat nach Bekanntgabe)"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-ao-02-posted-2025-01-02-epiphany-bavaria",
+      "description": "Steuerbescheid (Finanzamt München) mit Aufgabe zur Post Do 02.01.2025 — erster Werktag der 4-Tage-Regel; 4. Tag ist Heilige Drei Könige (Feiertag in Bayern).",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2025-01-02",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 122 Abs. 2 Nr. 1 AO; § 355 Abs. 1 AO",
+          "text": "Gegen diesen Bescheid ist der Einspruch gegeben ... innerhalb eines Monats nach Bekanntgabe"
+        },
+        "ctx": {
+          "today": "2025-01-08",
+          "region": "BY",
+          "document_date": "2025-01-02",
+          "delivery_scope": "ao",
+          "recipient_region": "BY"
+        },
+        "meta": {
+          "regime": "AO",
+          "authority": "Finanzamt München",
+          "recipient_region": "BY",
+          "authority_region": "BY"
+        }
+      },
+      "expected": {
+        "due_date": "2025-02-07",
+        "bekanntgabe": "2025-01-07"
+      },
+      "reasoning": [
+        "Aufgabe 02.01.2025 → 4-Tage-Regel (nach dem 31.12.2024).",
+        "02.01.2025 + 4 = Mo 06.01.2025 = Heilige Drei Könige, gesetzlicher Feiertag in Bayern (Empfängerort) → § 108 Abs. 3 AO (BFH IX R 68/98) → Di 07.01.2025.",
+        "Einspruchsfrist: 07.01.2025 + 1 Monat = Fr 07.02.2025, Werktag → 07.02.2025.",
+        "Kontrast: in NRW wäre die Bekanntgabe Mo 06.01. und das Fristende Do 06.02.2025."
+      ],
+      "sources": [
+        "§ 122 Abs. 2 Nr. 1 AO (4. Tag nach Aufgabe zur Post; PostModG, BGBl. 2024 I Nr. 236) — https://www.gesetze-im-internet.de/ao_1977/__122.html",
+        "Art. 97 § 1 Abs. 15 EGAO (4-Tage-Regel nur für nach dem 31.12.2024 zur Post gegebene VA) — https://www.gesetze-im-internet.de/aoeg_1977/art_97__1.html",
+        "BFH 14.10.2003 IX R 68/98 (BStBl 2003 II 898): § 108 Abs. 3 AO verschiebt den Bekanntgabetag; AEAO zu § 108 Nr. 2 ('Viertage-Regelungen')",
+        "§ 108 Abs. 1, 3 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/ao_1977/__108.html",
+        "§ 355 Abs. 1 AO (Einspruchsfrist 1 Monat nach Bekanntgabe)"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-ao-03-recipient-NW-finanzamt-ST-epiphany",
+      "description": "Grundsteuermessbescheid des Lage-Finanzamts Halle (Sachsen-Anhalt) für ein Grundstück in Halle; Eigentümerin wohnt in Köln (NRW). Aufgabe zur Post Fr 02.01.2026; 4. Tag (Di 06.01.) ist nur am Sitz des Finanzamts Feiertag, nicht am Wohnort.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2026-01-02",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 122 Abs. 2 Nr. 1 AO; § 355 Abs. 1 AO",
+          "text": "Einspruch ... binnen eines Monats nach Bekanntgabe beim Finanzamt Halle"
+        },
+        "ctx": {
+          "today": "2026-01-08",
+          "region": "ST",
+          "document_date": "2026-01-02",
+          "delivery_scope": "ao",
+          "recipient_region": "NW"
+        },
+        "meta": {
+          "regime": "AO",
+          "authority": "Finanzamt Halle (Saale)",
+          "recipient_region": "NW",
+          "authority_region": "ST",
+          "note": "RuleContext has only one region; it is set to the place of performance (Finanzamt, ST). The recipient's region (NW) is not expressible."
+        }
+      },
+      "expected": {
+        "due_date": "2026-02-06",
+        "bekanntgabe": "2026-01-06"
+      },
+      "safe_acceptable": [],
+      "reasoning": [
+        "02.01.2026 + 4 = Di 06.01.2026. Heilige Drei Könige ist Feiertag in ST (Finanzamt), aber NICHT in NRW (Empfängerin).",
+        "Für die Verschiebung des Bekanntgabetags zählen die Feiertage am Wohnort des Empfängers (OFD Cottbus 2004) → keine Verschiebung; Bekanntgabe Di 06.01.2026.",
+        "Einspruchsfrist: 06.01.2026 + 1 Monat = Fr 06.02.2026; am Sitz des Finanzamts (ST) kein Feiertag → 06.02.2026.",
+        "Wer den ST-Feiertag auch auf den Bekanntgabetag anwendet, kommt auf Mi 07.01. → Sa 07.02. → Mo 09.02.2026 — drei Tage ZU SPÄT. Nach SPEC §21 (frühestes plausibles Datum) und der Forschung ('nur Feiertage, die an BEIDEN Orten gelten') ist 06.02.2026 die sichere und rechtlich richtige Antwort."
+      ],
+      "unsure": true,
+      "unsure_note": "The recipient-place rule rests on an OFD directive (2004), not a BFH headnote; but 2026-02-06 is the earliest plausible date either way, so any later engine answer is unsafe.",
+      "sources": [
+        "§ 122 Abs. 2 Nr. 1 AO (4. Tag nach Aufgabe zur Post; PostModG, BGBl. 2024 I Nr. 236) — https://www.gesetze-im-internet.de/ao_1977/__122.html",
+        "BFH 14.10.2003 IX R 68/98 (BStBl 2003 II 898): § 108 Abs. 3 AO verschiebt den Bekanntgabetag; AEAO zu § 108 Nr. 2 ('Viertage-Regelungen')",
+        "OFD Cottbus Vfg. 14.01.2004: Feiertage am Wohnort des Empfängers für den Bekanntgabetag, am Sitz des Finanzamts für das Fristende",
+        "§ 108 Abs. 1, 3 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/ao_1977/__108.html",
+        "§ 355 Abs. 1 AO (Einspruchsfrist 1 Monat nach Bekanntgabe)",
+        "docs/SPEC.md §21: bei Unsicherheit frühestes plausibles Datum; Kündigungsfristen nie nach § 193 verschieben; safe_date = vorheriger Geschäftstag"
+      ]
+    },
+    {
+      "id": "ext-ao-04-finanzamt-BY-fronleichnam-end-recipient-NI",
+      "description": "Grundsteuermessbescheid des Finanzamts München (Grundstück in München); Eigentümer wohnt in Hannover (NI). Aufgabe zur Post Do 30.04.2026. Fristende fällt auf Fronleichnam (Feiertag am Sitz des Finanzamts).",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2026-04-30",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 122 Abs. 2 Nr. 1 AO; § 355 Abs. 1 AO",
+          "text": "Einspruch ... innerhalb eines Monats nach Bekanntgabe beim Finanzamt München"
+        },
+        "ctx": {
+          "today": "2026-05-06",
+          "region": "BY",
+          "document_date": "2026-04-30",
+          "delivery_scope": "ao",
+          "recipient_region": "NI"
+        },
+        "meta": {
+          "regime": "AO",
+          "authority": "Finanzamt München",
+          "recipient_region": "NI",
+          "authority_region": "BY"
+        }
+      },
+      "expected": {
+        "due_date": "2026-06-05",
+        "bekanntgabe": "2026-05-04"
+      },
+      "reasoning": [
+        "30.04.2026 + 4 = Mo 04.05.2026 (1. Mai im Fenster irrelevant), Werktag in NI → Bekanntgabe 04.05.2026.",
+        "04.05.2026 + 1 Monat = Do 04.06.2026 = Fronleichnam, gesetzlicher Feiertag in Bayern (Sitz des Finanzamts, wo der Einspruch eingehen muss) → Fr 05.06.2026.",
+        "Für Niedersachsen allein wäre es Do 04.06.; maßgeblich für das Fristende ist aber der Ort der Behörde."
+      ],
+      "sources": [
+        "§ 122 Abs. 2 Nr. 1 AO (4. Tag nach Aufgabe zur Post; PostModG, BGBl. 2024 I Nr. 236) — https://www.gesetze-im-internet.de/ao_1977/__122.html",
+        "OFD Cottbus Vfg. 14.01.2004: Feiertage am Wohnort des Empfängers für den Bekanntgabetag, am Sitz des Finanzamts für das Fristende",
+        "§ 108 Abs. 1, 3 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/ao_1977/__108.html",
+        "§ 355 Abs. 1 AO (Einspruchsfrist 1 Monat nach Bekanntgabe)",
+        "BGH 10.01.2012 VI ZA 27/11; BAG 24.08.2011 8 AZN 808/11: Feiertag am Ort der Stelle, bei der die Frist zu wahren ist"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-ao-05-late-actual-receipt-stays-conservative",
+      "description": "Einkommensteuerbescheid datiert und zur Post gegeben Mo 03.08.2026 (Empfänger in NRW); Nutzerin trägt tatsächlichen Eingang Do 13.08.2026 ein (Umschlag ohne Poststempel).",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2026-08-03",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 122 Abs. 2 Nr. 1 AO; § 355 Abs. 1 AO",
+          "text": "Einspruch ... innerhalb eines Monats nach Bekanntgabe"
+        },
+        "ctx": {
+          "today": "2026-08-14",
+          "region": "NW",
+          "document_date": "2026-08-03",
+          "received_date": "2026-08-13",
+          "delivery_scope": "ao",
+          "recipient_region": "NW",
+          "received_confirmed": true
+        },
+        "meta": {
+          "regime": "AO",
+          "recipient_region": "NW",
+          "authority_region": "NW"
+        }
+      },
+      "expected": {
+        "due_date": "2026-09-07",
+        "bekanntgabe": "2026-08-07",
+        "alternative_if_late_receipt_proven": "2026-09-14"
+      },
+      "reasoning": [
+        "Fiktion: 03.08.2026 + 4 = Fr 07.08.2026 (Werktag).",
+        "Primäre (sichere) Frist: 07.08. + 1 Monat = Mo 07.09.2026.",
+        "Späterer Zugang am 13.08. verdrängt die Fiktion nur, wenn er nachgewiesen/glaubhaft ist (§ 122 Abs. 2 Hs. 2 AO; BFH VI R 18/22). Dann: 13.09. (So) → Mo 14.09.2026 — nur als Hinweis, nicht als Hauptdatum (SPEC §6)."
+      ],
+      "sources": [
+        "§ 122 Abs. 2 Nr. 1 AO (4. Tag nach Aufgabe zur Post; PostModG, BGBl. 2024 I Nr. 236) — https://www.gesetze-im-internet.de/ao_1977/__122.html",
+        "§ 122 Abs. 2 Hs. 2 AO; BFH IX B 95/25 / VI R 18/22: späterer Zugang nur bei Nachweis — SPEC §6/§21: konservative (frühere) Frist bleibt primär",
+        "§ 108 Abs. 1, 3 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/ao_1977/__108.html",
+        "§ 355 Abs. 1 AO (Einspruchsfrist 1 Monat nach Bekanntgabe)",
+        "docs/SPEC.md §21: bei Unsicherheit frühestes plausibles Datum; Kündigungsfristen nie nach § 193 verschieben; safe_date = vorheriger Geschäftstag"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-ao-06-posted-2026-01-02-bavaria-chain",
+      "description": "Steuerbescheid (Finanzamt Nürnberg) zur Post gegeben Fr 02.01.2026; Empfänger in Nürnberg. 4. Tag = Heilige Drei Könige; Fristende fällt auf Samstag.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2026-01-02",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 122 Abs. 2 Nr. 1 AO; § 355 Abs. 1 AO",
+          "text": "Einspruch ... innerhalb eines Monats nach Bekanntgabe"
+        },
+        "ctx": {
+          "today": "2026-01-09",
+          "region": "BY",
+          "document_date": "2026-01-02",
+          "delivery_scope": "ao",
+          "recipient_region": "BY"
+        },
+        "meta": {
+          "regime": "AO",
+          "recipient_region": "BY",
+          "authority_region": "BY"
+        }
+      },
+      "expected": {
+        "due_date": "2026-02-09",
+        "bekanntgabe": "2026-01-07"
+      },
+      "reasoning": [
+        "02.01.2026 + 4 = Di 06.01.2026 = Heilige Drei Könige (BY) → Mi 07.01.2026.",
+        "07.01. + 1 Monat = Sa 07.02.2026 → § 108 Abs. 3 AO → Mo 09.02.2026.",
+        "Gegenprobe zu ext-ao-03: gleiche Aufgabe, aber Empfänger in BY → Bekanntgabe verschiebt sich."
+      ],
+      "sources": [
+        "§ 122 Abs. 2 Nr. 1 AO (4. Tag nach Aufgabe zur Post; PostModG, BGBl. 2024 I Nr. 236) — https://www.gesetze-im-internet.de/ao_1977/__122.html",
+        "BFH 14.10.2003 IX R 68/98 (BStBl 2003 II 898): § 108 Abs. 3 AO verschiebt den Bekanntgabetag; AEAO zu § 108 Nr. 2 ('Viertage-Regelungen')",
+        "§ 108 Abs. 1, 3 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/ao_1977/__108.html",
+        "§ 355 Abs. 1 AO (Einspruchsfrist 1 Monat nach Bekanntgabe)"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-ao-07-fiction-on-31-jan-ends-28-feb",
+      "description": "Steuerbescheid zur Post gegeben Mo 27.01.2025 (NRW). Bekanntgabe am 31.01. → Monatsfrist endet am letzten Februartag.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2025-01-27",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 122 Abs. 2 Nr. 1 AO; § 355 Abs. 1 AO",
+          "text": "Einspruch ... innerhalb eines Monats nach Bekanntgabe"
+        },
+        "ctx": {
+          "today": "2025-02-01",
+          "region": "NW",
+          "document_date": "2025-01-27",
+          "delivery_scope": "ao",
+          "recipient_region": "NW"
+        },
+        "meta": {
+          "regime": "AO",
+          "recipient_region": "NW",
+          "authority_region": "NW"
+        }
+      },
+      "expected": {
+        "due_date": "2025-02-28",
+        "bekanntgabe": "2025-01-31"
+      },
+      "reasoning": [
+        "27.01.2025 + 4 = Fr 31.01.2025 (Werktag).",
+        "31.01. + 1 Monat: 31.02. existiert nicht → § 188 Abs. 3 BGB → Fr 28.02.2025 (Werktag, kein Feiertag) → 28.02.2025.",
+        "Nicht 03.03. (kein 'Überlauf'), nicht 27.02. (kein 'Vortag')."
+      ],
+      "sources": [
+        "§ 122 Abs. 2 Nr. 1 AO (4. Tag nach Aufgabe zur Post; PostModG, BGBl. 2024 I Nr. 236) — https://www.gesetze-im-internet.de/ao_1977/__122.html",
+        "§ 108 Abs. 1, 3 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/ao_1977/__108.html",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html",
+        "§ 355 Abs. 1 AO (Einspruchsfrist 1 Monat nach Bekanntgabe)"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-sgbx-01-jobcenter-sunday-fiction",
+      "description": "Bescheid des Jobcenters Berlin Mitte, zur Post gegeben Mi 25.02.2026. 4. Tag ist ein Sonntag.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2026-02-25",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 37 Abs. 2 SGB X; § 84 Abs. 1 SGG",
+          "text": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden"
+        },
+        "ctx": {
+          "today": "2026-03-02",
+          "region": "BE",
+          "document_date": "2026-02-25",
+          "delivery_scope": "sgbx"
+        },
+        "meta": {
+          "regime": "SGBX",
+          "authority": "Jobcenter Berlin Mitte",
+          "party_kind": "authority"
+        }
+      },
+      "expected": {
+        "due_date": "2026-04-01",
+        "bekanntgabe": "2026-03-01"
+      },
+      "reasoning": [
+        "25.02.2026 + 4 = So 01.03.2026. Im SGB X wird der fingierte Bekanntgabetag NICHT verschoben (BSG B 14 AS 12/09 R).",
+        "01.03. + 1 Monat = Mi 01.04.2026 (Werktag) → 01.04.2026.",
+        "Mit (falscher) AO-Verschiebung käme man auf Mo 02.03. → Do 02.04. — ein Tag zu spät."
+      ],
+      "sources": [
+        "§ 37 Abs. 2 SGB X (4. Tag, PostModG) — https://www.gesetze-im-internet.de/sgb_10/__37.html",
+        "BSG 06.05.2010 B 14 AS 12/09 R: keine Verschiebung des fingierten Bekanntgabetags (SGB X); DRV GRA zu § 37 SGB X",
+        "§ 84 Abs. 1 SGG (Widerspruch 1 Monat), § 64 Abs. 3 SGG (Fristende verschoben)",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-vwvfg-01-rlp-kreisverwaltung-allerheiligen",
+      "description": "Gebührenbescheid einer Kreisverwaltung in Rheinland-Pfalz (LVwVfG RP verweist auf VwVfG), zur Post gegeben Mi 28.10.2026. 4. Tag ist So 01.11. (Allerheiligen).",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2026-10-28",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 41 Abs. 2 VwVfG i.V.m. § 1 LVwVfG RP; § 70 VwGO",
+          "text": "Widerspruch ... innerhalb eines Monats nach Bekanntgabe"
+        },
+        "ctx": {
+          "today": "2026-11-03",
+          "region": "RP",
+          "document_date": "2026-10-28",
+          "delivery_scope": "vwvfg"
+        },
+        "meta": {
+          "regime": "VWVFG",
+          "authority": "Kreisverwaltung Mainz-Bingen",
+          "party_kind": "authority"
+        }
+      },
+      "expected": {
+        "due_date": "2026-12-01",
+        "bekanntgabe": "2026-11-01"
+      },
+      "reasoning": [
+        "28.10.2026 + 4 = So 01.11.2026 (auch Allerheiligen in RP). Keine Verschiebung des Bekanntgabetags nach VwVfG (OVG NRW 19 A 4216/99; Nds. OVG 7 PA 184/06).",
+        "01.11. + 1 Monat = Di 01.12.2026, Werktag → 01.12.2026.",
+        "Mit AO-artiger Verschiebung: Mo 02.11. → Mi 02.12. (zu spät)."
+      ],
+      "sources": [
+        "§ 41 Abs. 2 VwVfG / Land-VwVfG (4. Tag) — https://www.gesetze-im-internet.de/vwvfg/__41.html",
+        "OVG NRW 07.03.2001 19 A 4216/99; Nds. OVG 26.10.2006 7 PA 184/06; OVG Lüneburg 28.02.2011 4 LA 44/10: § 31 Abs. 3 VwVfG gilt nur für Fristende, nicht für den fingierten Bekanntgabetag",
+        "§ 70 Abs. 1, § 74 Abs. 1 VwGO; § 57 Abs. 2 VwGO i.V.m. § 222 Abs. 2 ZPO; § 31 Abs. 3 VwVfG",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-sgbx-02-krankenkasse-saturday-fiction-pfingstmontag-end",
+      "description": "Bescheid einer Krankenkasse (AOK Rheinland/Hamburg, Sitz Düsseldorf), zur Post gegeben Di 21.04.2026. 4. Tag ist ein Samstag; Fristende fällt auf Pfingstmontag.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2026-04-21",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 37 Abs. 2 SGB X; § 84 Abs. 1 SGG",
+          "text": "Widerspruch ... innerhalb eines Monats nach Bekanntgabe"
+        },
+        "ctx": {
+          "today": "2026-04-27",
+          "region": "NW",
+          "document_date": "2026-04-21",
+          "delivery_scope": "sgbx"
+        },
+        "meta": {
+          "regime": "SGBX",
+          "authority": "AOK Rheinland/Hamburg",
+          "party_kind": "health_insurer"
+        }
+      },
+      "expected": {
+        "due_date": "2026-05-26",
+        "bekanntgabe": "2026-04-25"
+      },
+      "reasoning": [
+        "21.04.2026 + 4 = Sa 25.04.2026, keine Verschiebung (SGB X, BSG B 14 AS 12/09 R).",
+        "25.04. + 1 Monat = Mo 25.05.2026 = Pfingstmontag → § 64 Abs. 3 SGG / § 26 Abs. 3 SGB X → Di 26.05.2026.",
+        "Mit (falscher) Fiktionsverschiebung: Mo 27.04. → Mi 27.05. — ein Tag zu spät."
+      ],
+      "sources": [
+        "§ 37 Abs. 2 SGB X (4. Tag, PostModG) — https://www.gesetze-im-internet.de/sgb_10/__37.html",
+        "BSG 06.05.2010 B 14 AS 12/09 R: keine Verschiebung des fingierten Bekanntgabetags (SGB X); DRV GRA zu § 37 SGB X",
+        "§ 84 Abs. 1 SGG (Widerspruch 1 Monat), § 64 Abs. 3 SGG (Fristende verschoben)",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-sgbx-03-drv-year-boundary-saturday",
+      "description": "Rentenbescheid der Deutschen Rentenversicherung Bund (Berlin), zur Post gegeben Di 30.12.2025. 4. Tag ist Sa 03.01.2026.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2025-12-30",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 37 Abs. 2 SGB X; § 84 Abs. 1 SGG",
+          "text": "Widerspruch ... innerhalb eines Monats nach Bekanntgabe"
+        },
+        "ctx": {
+          "today": "2026-01-05",
+          "region": "BE",
+          "document_date": "2025-12-30",
+          "delivery_scope": "sgbx"
+        },
+        "meta": {
+          "regime": "SGBX",
+          "authority": "Deutsche Rentenversicherung Bund",
+          "party_kind": "authority"
+        }
+      },
+      "expected": {
+        "due_date": "2026-02-03",
+        "bekanntgabe": "2026-01-03"
+      },
+      "reasoning": [
+        "30.12.2025 + 4 = Sa 03.01.2026 (Neujahr im Fenster irrelevant); keine Verschiebung im SGB X.",
+        "03.01. + 1 Monat = Di 03.02.2026 → 03.02.2026.",
+        "Mit Verschiebung: Mo 05.01. → Do 05.02. (zu spät)."
+      ],
+      "sources": [
+        "§ 37 Abs. 2 SGB X (4. Tag, PostModG) — https://www.gesetze-im-internet.de/sgb_10/__37.html",
+        "BSG 06.05.2010 B 14 AS 12/09 R: keine Verschiebung des fingierten Bekanntgabetags (SGB X); DRV GRA zu § 37 SGB X",
+        "§ 84 Abs. 1 SGG (Widerspruch 1 Monat), § 64 Abs. 3 SGG (Fristende verschoben)"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-ao-08-familienkasse-kindergeld-is-tax",
+      "description": "Aufhebungsbescheid der Familienkasse (Kindergeld nach §§ 62 ff. EStG → Abgabenordnung), zur Post gegeben Di 03.03.2026; Empfänger in Berlin.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2026-03-03",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 122 Abs. 2 Nr. 1 AO; § 355 Abs. 1 AO (Kindergeld, §§ 62 ff. EStG)",
+          "text": "Einspruch ... innerhalb eines Monats nach Bekanntgabe bei der Familienkasse"
+        },
+        "ctx": {
+          "today": "2026-03-09",
+          "region": "BE",
+          "document_date": "2026-03-03",
+          "delivery_scope": "ao",
+          "recipient_region": "BE"
+        },
+        "meta": {
+          "regime": "AO",
+          "authority": "Familienkasse Berlin-Brandenburg",
+          "party_kind": "tax_office"
+        }
+      },
+      "expected": {
+        "due_date": "2026-04-09",
+        "bekanntgabe": "2026-03-09"
+      },
+      "reasoning": [
+        "Kindergeld nach dem EStG ist Steuervergütung → AO (Einspruch).",
+        "03.03.2026 + 4 = Sa 07.03.2026 → § 108 Abs. 3 AO → Mo 09.03.2026 (So 08.03. Frauentag BE ist ohnehin Sonntag).",
+        "09.03. + 1 Monat = Do 09.04.2026 → 09.04.2026."
+      ],
+      "sources": [
+        "§ 122 Abs. 2 Nr. 1 AO (4. Tag nach Aufgabe zur Post; PostModG, BGBl. 2024 I Nr. 236) — https://www.gesetze-im-internet.de/ao_1977/__122.html",
+        "BFH 14.10.2003 IX R 68/98 (BStBl 2003 II 898): § 108 Abs. 3 AO verschiebt den Bekanntgabetag; AEAO zu § 108 Nr. 2 ('Viertage-Regelungen')",
+        "§ 108 Abs. 1, 3 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/ao_1977/__108.html",
+        "§ 1 AO, §§ 62 ff., 70 EStG (Kindergeld als Steuervergütung)"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-sgbx-04-familienkasse-kinderzuschlag-is-social",
+      "description": "Kinderzuschlag-Bescheid derselben Familienkasse (BKGG → SGB X), ebenfalls zur Post gegeben Di 03.03.2026 (Gegenstück zu ext-ao-08).",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2026-03-03",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 37 Abs. 2 SGB X; § 84 Abs. 1 SGG (Kinderzuschlag, § 6a BKGG)",
+          "text": "Widerspruch ... innerhalb eines Monats nach Bekanntgabe"
+        },
+        "ctx": {
+          "today": "2026-03-09",
+          "region": "BE",
+          "document_date": "2026-03-03",
+          "delivery_scope": "sgbx"
+        },
+        "meta": {
+          "regime": "SGBX",
+          "authority": "Familienkasse Berlin-Brandenburg",
+          "party_kind": "authority"
+        }
+      },
+      "expected": {
+        "due_date": "2026-04-07",
+        "bekanntgabe": "2026-03-07"
+      },
+      "reasoning": [
+        "Kinderzuschlag nach dem BKGG ist Sozialleistung (§ 68 SGB I) → SGB X, Widerspruch nach SGG.",
+        "03.03.2026 + 4 = Sa 07.03.2026, KEINE Verschiebung (BSG B 14 AS 12/09 R).",
+        "07.03. + 1 Monat = Di 07.04.2026 (Ostermontag ist 06.04.) → 07.04.2026.",
+        "Gleicher Absender, gleicher Tag wie ext-ao-08, aber zwei Tage früheres Fristende."
+      ],
+      "sources": [
+        "§ 37 Abs. 2 SGB X (4. Tag, PostModG) — https://www.gesetze-im-internet.de/sgb_10/__37.html",
+        "BSG 06.05.2010 B 14 AS 12/09 R: keine Verschiebung des fingierten Bekanntgabetags (SGB X); DRV GRA zu § 37 SGB X",
+        "§ 84 Abs. 1 SGG (Widerspruch 1 Monat), § 64 Abs. 3 SGG (Fristende verschoben)",
+        "§ 68 Nr. 9 SGB I (BKGG als besonderer Teil des SGB)"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-vwvfg-02-hessen-land-authority-day-count-uncertain",
+      "description": "Gebührenbescheid der Stadt Frankfurt am Main (Hessisches VwVfG), zur Post gegeben Mi 10.06.2026. Ob § 41 Abs. 2 HVwVfG schon auf 4 Tage umgestellt ist, ist nicht verifiziert.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2026-06-10",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 41 Abs. 2 HVwVfG; § 70 VwGO",
+          "text": "Widerspruch ... innerhalb eines Monats nach Bekanntgabe"
+        },
+        "ctx": {
+          "today": "2026-06-16",
+          "region": "HE",
+          "document_date": "2026-06-10",
+          "delivery_scope": "vwvfg"
+        },
+        "meta": {
+          "regime": "VWVFG",
+          "authority": "Stadt Frankfurt am Main (Land/Kommune Hessen)",
+          "party_kind": "authority"
+        }
+      },
+      "expected": {
+        "due_date": "2026-07-13",
+        "bekanntgabe": "2026-06-13"
+      },
+      "safe_acceptable": [],
+      "reasoning": [
+        "Hessen: Umstellung des § 41 Abs. 2 HVwVfG auf 4 Tage nicht verifiziert (Sekundärquellen zeigen 'dritten Tag', Stand 16.12.2025).",
+        "SPEC §21: für Landesbehörden ohne verifizierten Wert die frühere Zählung (3 Tage).",
+        "10.06.2026 + 3 = Sa 13.06.2026, keine Verschiebung (VwVfG) → + 1 Monat = Mo 13.07.2026.",
+        "Mit 4 Tagen: So 14.06. → Di 14.07.2026; mit 4 Tagen UND (falscher) Verschiebung: Mo 15.06. → Mi 15.07.2026."
+      ],
+      "unsure": true,
+      "unsure_note": "Hessian day count unverified; 2026-07-13 is the earliest plausible date (3-day count), 2026-07-14 if Hessen switched to 4 days. 2026-07-15 would be wrong in any reading.",
+      "sources": [
+        "§ 41 Abs. 2 VwVfG / Land-VwVfG (4. Tag) — https://www.gesetze-im-internet.de/vwvfg/__41.html",
+        "OVG NRW 07.03.2001 19 A 4216/99; Nds. OVG 26.10.2006 7 PA 184/06; OVG Lüneburg 28.02.2011 4 LA 44/10: § 31 Abs. 3 VwVfG gilt nur für Fristende, nicht für den fingierten Bekanntgabetag",
+        "§ 70 Abs. 1, § 74 Abs. 1 VwGO; § 57 Abs. 2 VwGO i.V.m. § 222 Abs. 2 ZPO; § 31 Abs. 3 VwVfG",
+        "docs/SPEC.md §21: bei Unsicherheit frühestes plausibles Datum; Kündigungsfristen nie nach § 193 verschieben; safe_date = vorheriger Geschäftstag"
+      ]
+    },
+    {
+      "id": "ext-elster-01-2026-provision-pfingstmontag",
+      "description": "Einkommensteuerbescheid 2025, in Mein ELSTER zum Abruf bereitgestellt Do 21.05.2026 (VA nach dem 31.12.2025 erlassen); Empfänger in NRW.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2026-05-21",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_electronic",
+          "nature": "objection",
+          "legal_basis": "§ 122a Abs. 4 AO; § 355 Abs. 1 AO",
+          "text": "Einspruch ... innerhalb eines Monats nach Bekanntgabe"
+        },
+        "ctx": {
+          "today": "2026-05-22",
+          "region": "NW",
+          "document_date": "2026-05-21",
+          "delivery_scope": "ao",
+          "recipient_region": "NW"
+        },
+        "meta": {
+          "regime": "AO",
+          "channel": "elster_abruf",
+          "provision_date": "2026-05-21"
+        }
+      },
+      "expected": {
+        "due_date": "2026-06-26",
+        "bekanntgabe": "2026-05-26"
+      },
+      "reasoning": [
+        "§ 122a Abs. 4 AO n.F. (für VA nach dem 31.12.2025): 4. Tag nach Bereitstellung: 21.05. + 4 = Mo 25.05.2026 = Pfingstmontag → § 108 Abs. 3 AO (AEAO zu § 108 Nr. 2 nennt § 122a Abs. 4) → Di 26.05.2026.",
+        "26.05. + 1 Monat = Fr 26.06.2026 → 26.06.2026."
+      ],
+      "sources": [
+        "§ 122a Abs. 4 AO n.F. (ab 01.01.2026: 4. Tag nach Bereitstellung), Art. 97 § 28 Abs. 2 EGAO — https://www.gesetze-im-internet.de/ao_1977/__122a.html",
+        "BFH 14.10.2003 IX R 68/98 (BStBl 2003 II 898): § 108 Abs. 3 AO verschiebt den Bekanntgabetag; AEAO zu § 108 Nr. 2 ('Viertage-Regelungen')",
+        "§ 108 Abs. 1, 3 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/ao_1977/__108.html",
+        "§ 355 Abs. 1 AO (Einspruchsfrist 1 Monat nach Bekanntgabe)"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-elster-02-2025-notification-german-unity",
+      "description": "Steuerbescheid 2024, in ELSTER bereitgestellt und Benachrichtigungs-E-Mail versandt Mo 29.09.2025 (altes Recht 2025); Empfänger in NRW.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2025-09-29",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "de_admin_electronic",
+          "nature": "objection",
+          "legal_basis": "§ 122a Abs. 4 AO a.F.; § 355 Abs. 1 AO",
+          "text": "Einspruch ... innerhalb eines Monats nach Bekanntgabe"
+        },
+        "ctx": {
+          "today": "2025-09-30",
+          "region": "NW",
+          "document_date": "2025-09-29",
+          "delivery_scope": "ao",
+          "recipient_region": "NW"
+        },
+        "meta": {
+          "regime": "AO",
+          "channel": "elster_abruf",
+          "notification_sent": "2025-09-29"
+        }
+      },
+      "expected": {
+        "due_date": "2025-11-06",
+        "bekanntgabe": "2025-10-06"
+      },
+      "reasoning": [
+        "2025: 4. Tag nach Absendung der Benachrichtigung: 29.09. + 4 = Fr 03.10.2025 (Tag der Deutschen Einheit) → Sa, So → Mo 06.10.2025.",
+        "06.10. + 1 Monat = Do 06.11.2025 → 06.11.2025."
+      ],
+      "sources": [
+        "§ 122a Abs. 4 AO a.F. (2025: 4. Tag nach Absendung der Benachrichtigung)",
+        "BFH 14.10.2003 IX R 68/98 (BStBl 2003 II 898): § 108 Abs. 3 AO verschiebt den Bekanntgabetag; AEAO zu § 108 Nr. 2 ('Viertage-Regelungen')",
+        "§ 108 Abs. 1, 3 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/ao_1977/__108.html",
+        "§ 355 Abs. 1 AO (Einspruchsfrist 1 Monat nach Bekanntgabe)"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-owig-01-pzu-saturday-insertion-pfingsten",
+      "description": "Bußgeldbescheid (Stadt Köln, Bußgeldstelle) durch Postzustellungsurkunde; Zusteller vermerkt Einlegen in den Briefkasten am Sa 09.05.2026.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "explicit_date",
+          "anchor_date": "2026-05-09",
+          "amount": 2,
+          "unit": "weeks",
+          "delivery_rule": "none",
+          "nature": "objection",
+          "legal_basis": "§ 67 Abs. 1 OWiG; §§ 3 VwZG, 180 ZPO",
+          "text": "Einspruch ... innerhalb von zwei Wochen nach Zustellung"
+        },
+        "ctx": {
+          "today": "2026-05-11",
+          "region": "NW",
+          "document_date": "2026-05-04"
+        },
+        "meta": {
+          "channel": "PZU",
+          "zustellung_date": "2026-05-09"
+        }
+      },
+      "expected": {
+        "due_date": "2026-05-26"
+      },
+      "reasoning": [
+        "PZU: Zustellung am auf dem Umschlag vermerkten Tag (§ 180 S. 2, 3 ZPO), Sa 09.05.2026; keine 4-Tage-Fiktion; Samstagszustellung ist wirksam.",
+        "§ 43 Abs. 1 StPO: 2 Wochen → Sa 23.05.2026 → § 43 Abs. 2 StPO: Sa, So 24.05., Mo 25.05. (Pfingstmontag) → Di 26.05.2026."
+      ],
+      "sources": [
+        "§ 67 Abs. 1 OWiG (2 Wochen nach Zustellung); § 46 Abs. 1 OWiG i.V.m. § 43 StPO — https://www.gesetze-im-internet.de/owig_1968/__67.html",
+        "§§ 3 VwZG, 180, 181 ZPO: Zustellung durch PZU am auf dem Umschlag vermerkten Tag",
+        "§ 43 Abs. 2 StPO"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-owig-02-uebergabe-einschreiben-holiday-fiction",
+      "description": "Bußgeldbescheid der Stadt Düsseldorf per Übergabe-Einschreiben, zur Post gegeben Mo 29.09.2025 (LZG NRW verweist auf VwZG). 4. Tag ist der 3. Oktober.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2025-09-29",
+          "amount": 2,
+          "unit": "weeks",
+          "delivery_rule": "de_admin_post",
+          "nature": "objection",
+          "legal_basis": "§ 67 Abs. 1 OWiG; § 4 Abs. 2 VwZG i.V.m. § 1 LZG NRW",
+          "text": "Einspruch ... innerhalb von zwei Wochen nach Zustellung"
+        },
+        "ctx": {
+          "today": "2025-10-06",
+          "region": "NW",
+          "document_date": "2025-09-29",
+          "delivery_scope": "vwvfg"
+        },
+        "meta": {
+          "channel": "einschreiben_uebergabe",
+          "regime": "VWVFG",
+          "note": "general (non-tax) administrative service law: § 4 Abs. 2 VwZG via LZG NRW"
+        }
+      },
+      "expected": {
+        "due_date": "2025-10-17",
+        "zustellung": "2025-10-03"
+      },
+      "reasoning": [
+        "§ 4 Abs. 2 S. 2 VwZG: Einschreiben gilt am 4. Tag nach Aufgabe als zugestellt: 29.09. + 4 = Fr 03.10.2025 (Feiertag).",
+        "Außerhalb des Steuerrechts keine Verschiebung des Zustellungstags (VGH BW 19.11.1991 3 S 2492/91; BSG 09.12.2008 B 8/9b SO 13/07 R).",
+        "2 Wochen: Fr 17.10.2025 (Werktag) → 17.10.2025.",
+        "Mit (steuerrechtlicher) Verschiebung: Mo 06.10. → Mo 20.10.2025 — drei Tage zu spät.",
+        "Judge's note (audit B observation, research correction owig_einspruch_bussgeldbescheid_2_wochen): a DateSpec cannot say that the fine came by Übergabe-Einschreiben rather than yellow envelope (PZU) or Einschreiben mit Rückschein, which are usually delivered before the 4th day. The engine therefore counts fines from the letter's date (Mo 29.09.2025 + 2 Wochen = Mo 13.10.2025, safe) and warns to enter the envelope date; 2025-10-17 stays the legal answer for the Einschreiben."
+      ],
+      "unsure": true,
+      "unsure_note": "No-shift for the § 4 Abs. 2 VwZG fiction outside tax law is prevailing case law decided under the 3-day text; 2025-10-17 is in any case the earliest plausible date.",
+      "sources": [
+        "§ 67 Abs. 1 OWiG (2 Wochen nach Zustellung); § 46 Abs. 1 OWiG i.V.m. § 43 StPO — https://www.gesetze-im-internet.de/owig_1968/__67.html",
+        "§ 4 Abs. 2 VwZG (Einschreiben: Rückschein-Datum bzw. 4. Tag nach Aufgabe) — https://www.gesetze-im-internet.de/vwzg_2005/__4.html",
+        "VGH BW 19.11.1991 3 S 2492/91; BSG 09.12.2008 B 8/9b SO 13/07 R (keine Verschiebung außerhalb AO)",
+        "docs/SPEC.md §21: bei Unsicherheit frühestes plausibles Datum; Kündigungsfristen nie nach § 193 verschieben; safe_date = vorheriger Geschäftstag"
+      ],
+      "safe_acceptable": [
+        "2025-10-13"
+      ]
+    },
+    {
+      "id": "ext-owig-03-rueckschein-silvester-no-shift",
+      "description": "Bußgeldbescheid (Polizeipräsident Berlin, Bußgeldstelle) per Einschreiben mit Rückschein; Betroffener unterschreibt Rückschein Do 17.12.2026.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "explicit_date",
+          "anchor_date": "2026-12-17",
+          "amount": 2,
+          "unit": "weeks",
+          "delivery_rule": "none",
+          "nature": "objection",
+          "legal_basis": "§ 67 Abs. 1 OWiG; § 4 Abs. 2 S. 1 VwZG (Rückschein)",
+          "text": "Einspruch ... innerhalb von zwei Wochen nach Zustellung"
+        },
+        "ctx": {
+          "today": "2026-12-18",
+          "region": "BE",
+          "document_date": "2026-12-14"
+        },
+        "meta": {
+          "channel": "einschreiben_rueckschein",
+          "zustellung_date": "2026-12-17"
+        }
+      },
+      "expected": {
+        "due_date": "2026-12-31"
+      },
+      "reasoning": [
+        "Rückschein-Datum ist der Zustellungstag (§ 4 Abs. 2 S. 1 VwZG): Do 17.12.2026.",
+        "2 Wochen: Do 31.12.2026. Silvester ist kein gesetzlicher Feiertag (BFH III B 135/17) → keine Verschiebung → 31.12.2026."
+      ],
+      "sources": [
+        "§ 67 Abs. 1 OWiG (2 Wochen nach Zustellung); § 46 Abs. 1 OWiG i.V.m. § 43 StPO — https://www.gesetze-im-internet.de/owig_1968/__67.html",
+        "§ 4 Abs. 2 VwZG (Einschreiben: Rückschein-Datum bzw. 4. Tag nach Aufgabe) — https://www.gesetze-im-internet.de/vwzg_2005/__4.html",
+        "BFH III B 135/17 (Silvester kein Feiertag)"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-month-01-pzu-31-jan-to-feb-end-saturday",
+      "description": "Widerspruchsbescheid der Bezirksregierung Köln durch PZU zugestellt Sa 31.01.2026; Klage beim VG binnen eines Monats nach Zustellung.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "explicit_date",
+          "anchor_date": "2026-01-31",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "none",
+          "nature": "objection",
+          "legal_basis": "§ 74 Abs. 1 VwGO",
+          "text": "Klage ... innerhalb eines Monats nach Zustellung"
+        },
+        "ctx": {
+          "today": "2026-02-02",
+          "region": "NW",
+          "document_date": "2026-01-28"
+        },
+        "meta": {
+          "channel": "PZU"
+        }
+      },
+      "expected": {
+        "due_date": "2026-03-02"
+      },
+      "reasoning": [
+        "Zustellung Sa 31.01.2026 (PZU, wirksam auch am Samstag).",
+        "31.01. + 1 Monat: 31.02. fehlt → § 188 Abs. 3 BGB → Sa 28.02.2026 → § 222 Abs. 2 ZPO i.V.m. § 57 Abs. 2 VwGO → Mo 02.03.2026."
+      ],
+      "sources": [
+        "§ 70 Abs. 1, § 74 Abs. 1 VwGO; § 57 Abs. 2 VwGO i.V.m. § 222 Abs. 2 ZPO; § 31 Abs. 3 VwVfG",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html",
+        "§§ 3 VwZG, 180, 181 ZPO: Zustellung durch PZU am auf dem Umschlag vermerkten Tag"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-month-02-pzu-30-june-no-month-end-rule",
+      "description": "Widerspruchsbescheid (Regierungspräsidium Darmstadt) durch PZU zugestellt Di 30.06.2026; Klagefrist ein Monat.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "explicit_date",
+          "anchor_date": "2026-06-30",
+          "amount": 1,
+          "unit": "months",
+          "delivery_rule": "none",
+          "nature": "objection",
+          "legal_basis": "§ 74 Abs. 1 VwGO",
+          "text": "Klage ... innerhalb eines Monats nach Zustellung"
+        },
+        "ctx": {
+          "today": "2026-07-01",
+          "region": "HE",
+          "document_date": "2026-06-26"
+        },
+        "meta": {
+          "channel": "PZU"
+        }
+      },
+      "expected": {
+        "due_date": "2026-07-30"
+      },
+      "reasoning": [
+        "Zustellung Di 30.06.2026.",
+        "§ 188 Abs. 2 BGB: gleiche Tageszahl im Folgemonat → Do 30.07.2026. Es gibt keine 'Monatsende-zu-Monatsende'-Regel: nicht 31.07.",
+        "Werktag in Hessen → 30.07.2026."
+      ],
+      "sources": [
+        "§ 70 Abs. 1, § 74 Abs. 1 VwGO; § 57 Abs. 2 VwGO i.V.m. § 222 Abs. 2 ZPO; § 31 Abs. 3 VwVfG",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-month-03-contract-started-29-feb-2024",
+      "description": "Fitnessstudio-Vertrag (Verbraucher, AGB), geschlossen und begonnen Do 29.02.2024, 24 Monate Erstlaufzeit, Kündigung 1 Monat vor Ablauf, danach unbefristet mit 1 Monat.",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "gym",
+          "party_kind": "gym",
+          "concluded_date": "2024-02-29",
+          "start_date": "2024-02-29",
+          "initial_term_months": 24,
+          "renewal_term_months": null,
+          "notice_value": 1,
+          "notice_unit": "months",
+          "notice_basis": "end_of_term",
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": false,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2026-01-10",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "bgb309_new",
+        "current_term_end": "2026-02-28",
+        "cancel_by": "2026-01-31",
+        "safe_date": "2026-01-30"
+      },
+      "reasoning": [
+        "Laufzeitbeginn am Tagesanfang 29.02.2024 (§ 187 Abs. 2 BGB).",
+        "Ende nach § 188 Abs. 2 Alt. 2 i.V.m. Abs. 3: 29.02.2026 existiert nicht → letzter Tag des Februars → Sa 28.02.2026 (naiv add_months−1 Tag = 27.02. ist falsch).",
+        "Kündigungszugang spätestens: letztes D mit D + 1 Monat ≤ 28.02.2026; Ende ist Monatsletzter → letzter Tag des Vormonats = Sa 31.01.2026.",
+        "Keine Verschiebung (BGH III ZR 172/04); sicheres Datum (vorheriger Geschäftstag) Fr 30.01.2026."
+      ],
+      "sources": [
+        "§ 309 Nr. 9 BGB n.F. (Gesetz für faire Verbraucherverträge; Art. 229 § 60 EGBGB: Verträge ab 01.03.2022)",
+        "§ 187 Abs. 1, 2 BGB — https://www.gesetze-im-internet.de/bgb/__187.html",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html",
+        "BGH 17.02.2005 III ZR 172/04 (NJW 2005, 1354): § 193 BGB auf Kündigungsfristen weder unmittelbar noch entsprechend anwendbar",
+        "docs/SPEC.md §21: bei Unsicherheit frühestes plausibles Datum; Kündigungsfristen nie nach § 193 verschieben; safe_date = vorheriger Geschäftstag"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-month-04-contract-ending-29-feb-2028",
+      "description": "Streaming-Abo (Verbraucher, online geschlossen) ab So 01.03.2026 mit 24 Monaten Mindestlaufzeit, Kündigungsfrist 1 Monat zum Laufzeitende.",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "streaming",
+          "party_kind": "company",
+          "concluded_date": "2026-03-01",
+          "start_date": "2026-03-01",
+          "initial_term_months": 24,
+          "renewal_term_months": null,
+          "notice_value": 1,
+          "notice_unit": "months",
+          "notice_basis": "end_of_term",
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": false,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2026-09-25",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "bgb309_new",
+        "current_term_end": "2028-02-29",
+        "cancel_by": "2028-01-31",
+        "safe_date": "2028-01-31"
+      },
+      "reasoning": [
+        "Beginn am Monatsersten 01.03.2026 → Ende am letzten Tag des 24. Monats: Di 29.02.2028 (Schaltjahr).",
+        "Letzter Zugang: Ende ist Monatsletzter → letzter Tag des Vormonats: Mo 31.01.2028 (naiv 29.02.−1 Monat = 29.01.2028 ist falsch, weil 29.01.+1 Monat = 29.02., aber schon 31.01.+1 Monat = 29.02. nach § 188 Abs. 3).",
+        "Mo 31.01.2028 ist Geschäftstag → safe_date = cancel_by."
+      ],
+      "sources": [
+        "§ 309 Nr. 9 BGB n.F. (Gesetz für faire Verbraucherverträge; Art. 229 § 60 EGBGB: Verträge ab 01.03.2022)",
+        "§ 187 Abs. 1, 2 BGB — https://www.gesetze-im-internet.de/bgb/__187.html",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html",
+        "BGH 17.02.2005 III ZR 172/04 (NJW 2005, 1354): § 193 BGB auf Kündigungsfristen weder unmittelbar noch entsprechend anwendbar"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-pay-01-14-days-invoice-date-neujahr",
+      "description": "Online-Kauf auf Rechnung; AGB beim Checkout: 'Zahlung innerhalb von 14 Tagen nach Rechnungsdatum'. Rechnung datiert Do 18.12.2025; Käufer in NRW.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "document_date",
+          "amount": 14,
+          "unit": "days",
+          "delivery_rule": "none",
+          "nature": "payment",
+          "legal_basis": "§ 286 Abs. 2 Nr. 2 BGB",
+          "text": "zahlbar innerhalb von 14 Tagen nach Rechnungsdatum"
+        },
+        "ctx": {
+          "today": "2025-12-20",
+          "region": "NW",
+          "document_date": "2025-12-18",
+          "recipient_region": "NW"
+        },
+        "meta": {
+          "term_source": "contract_agreed"
+        }
+      },
+      "expected": {
+        "due_date": "2026-01-02"
+      },
+      "reasoning": [
+        "Rechnungsdatum ist das Ereignis (§ 187 Abs. 1): Tag 1 = 19.12.2025, Tag 14 = Do 01.01.2026 (Neujahr).",
+        "§ 193 BGB → nächster Werktag Fr 02.01.2026.",
+        "Verzug (vereinbarte Frist, § 286 Abs. 2 Nr. 2) ab Sa 03.01.2026."
+      ],
+      "sources": [
+        "§ 286 Abs. 2 Nr. 2 BGB; BGH 25.10.2007 III ZR 91/07 (einseitiges Zahlungsziel = Stundung, § 271 Abs. 2)",
+        "§ 187 Abs. 1, 2 BGB — https://www.gesetze-im-internet.de/bgb/__187.html",
+        "§ 193 BGB — https://www.gesetze-im-internet.de/bgb/__193.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-pay-03-7-days-fronleichnam-debtor-bw",
+      "description": "Rechnung datiert Do 28.05.2026: 'zahlbar innerhalb von 7 Tagen nach Rechnungsdatum'; Schuldner wohnt in Stuttgart (BW).",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "document_date",
+          "amount": 7,
+          "unit": "days",
+          "delivery_rule": "none",
+          "nature": "payment",
+          "legal_basis": "§ 271 Abs. 2 BGB",
+          "text": "zahlbar innerhalb von 7 Tagen nach Rechnungsdatum"
+        },
+        "ctx": {
+          "today": "2026-05-29",
+          "region": "BW",
+          "document_date": "2026-05-28",
+          "recipient_region": "BW"
+        },
+        "meta": {
+          "place_of_performance": "Wohnsitz des Schuldners (BW)"
+        }
+      },
+      "expected": {
+        "due_date": "2026-06-05"
+      },
+      "reasoning": [
+        "28.05. + 7 = Do 04.06.2026 = Fronleichnam, gesetzlicher Feiertag in BW (Leistungsort für Geldschulden = Wohnsitz des Schuldners, §§ 269, 270 Abs. 4).",
+        "§ 193 BGB ('am Erklärungs- oder Leistungsort') → Fr 05.06.2026.",
+        "Ohne bekannte Region wäre 04.06. das sichere (frühere) Ergebnis; hier ist die Region bekannt."
+      ],
+      "sources": [
+        "§ 193 BGB — https://www.gesetze-im-internet.de/bgb/__193.html",
+        "§§ 269, 270 Abs. 4 BGB: Leistungsort für Geldschulden = Wohnsitz des Schuldners (Feiertagskalender)",
+        "§ 187 Abs. 1, 2 BGB — https://www.gesetze-im-internet.de/bgb/__187.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-pay-04-fixed-date-on-sunday",
+      "description": "Rechnung eines Energieversorgers: 'Bitte zahlen Sie bis zum 15.11.2026' (So); Kunde in NRW.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "fixed",
+          "date": "2026-11-15",
+          "nature": "payment",
+          "shift_rule": "auto",
+          "legal_basis": "§ 271 Abs. 2 BGB",
+          "text": "Bitte zahlen Sie bis zum 15.11.2026"
+        },
+        "ctx": {
+          "today": "2026-11-01",
+          "region": "NW",
+          "document_date": "2026-10-30",
+          "recipient_region": "NW"
+        },
+        "meta": {}
+      },
+      "expected": {
+        "due_date": "2026-11-16"
+      },
+      "safe_acceptable": [
+        "2026-11-15"
+      ],
+      "reasoning": [
+        "§ 193 BGB gilt auch, wenn 'an einem bestimmten Tage' zu leisten ist: So 15.11.2026 → Mo 16.11.2026.",
+        "SPEC §6 sagt 'fixed dates are returned as written'; das Ergebnis 15.11. ist früher und damit sicher, aber rechtlich nicht das Fristende."
+      ],
+      "sources": [
+        "§ 193 BGB — https://www.gesetze-im-internet.de/bgb/__193.html",
+        "docs/SPEC.md §21: bei Unsicherheit frühestes plausibles Datum; Kündigungsfristen nie nach § 193 verschieben; safe_date = vorheriger Geschäftstag"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-wt-01-7-werktage-includes-saturday",
+      "description": "Schreiben: 'zahlbar innerhalb von 7 Werktagen nach Zugang'; Zugang (bestätigt) Mo 21.09.2026, NRW.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "receipt",
+          "amount": 7,
+          "unit": "werktage",
+          "delivery_rule": "none",
+          "nature": "payment",
+          "text": "innerhalb von 7 Werktagen nach Zugang"
+        },
+        "ctx": {
+          "today": "2026-09-21",
+          "region": "NW",
+          "document_date": "2026-09-18",
+          "received_date": "2026-09-21",
+          "received_confirmed": true,
+          "recipient_region": "NW"
+        },
+        "meta": {}
+      },
+      "expected": {
+        "due_date": "2026-09-29"
+      },
+      "reasoning": [
+        "Werktage = Mo–Sa ohne Feiertage; Zugangstag zählt nicht (§ 187 Abs. 1).",
+        "Di 22 (1), Mi 23 (2), Do 24 (3), Fr 25 (4), Sa 26 (5), Mo 28 (6), Di 29 (7) → Di 29.09.2026."
+      ],
+      "sources": [
+        "§ 187 Abs. 1, 2 BGB — https://www.gesetze-im-internet.de/bgb/__187.html",
+        "BGH VIII ZR 206/04 (Samstag ist Werktag)",
+        "§ 193 BGB — https://www.gesetze-im-internet.de/bgb/__193.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-wt-02-7-arbeitstage-excludes-saturday",
+      "description": "Gleiches Schreiben, aber 'innerhalb von 7 Arbeitstagen' (Mo–Fr); Zugang Mo 21.09.2026, NRW.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "receipt",
+          "amount": 7,
+          "unit": "business_days",
+          "delivery_rule": "none",
+          "nature": "payment",
+          "text": "innerhalb von 7 Arbeitstagen nach Zugang"
+        },
+        "ctx": {
+          "today": "2026-09-21",
+          "region": "NW",
+          "document_date": "2026-09-18",
+          "received_date": "2026-09-21",
+          "received_confirmed": true,
+          "recipient_region": "NW"
+        },
+        "meta": {}
+      },
+      "expected": {
+        "due_date": "2026-09-30"
+      },
+      "reasoning": [
+        "Arbeitstage = Mo–Fr ohne Feiertage.",
+        "Di 22 (1), Mi 23 (2), Do 24 (3), Fr 25 (4), Mo 28 (5), Di 29 (6), Mi 30 (7) → Mi 30.09.2026 (ein Tag später als bei Werktagen)."
+      ],
+      "sources": [
+        "§ 187 Abs. 1, 2 BGB — https://www.gesetze-im-internet.de/bgb/__187.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-wt-03-rent-payment-third-business-day-may",
+      "description": "Miete für Mai 2026 (§ 556b BGB: spätestens bis zum 3. Werktag; Samstag zählt bei Zahlung nicht); Wohnung in NRW. Als relative Frist: 3 Geschäftstage nach dem 30.04.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "explicit_date",
+          "anchor_date": "2026-04-30",
+          "amount": 3,
+          "unit": "business_days",
+          "delivery_rule": "none",
+          "nature": "payment",
+          "legal_basis": "§ 556b Abs. 1 BGB",
+          "text": "Die Miete ist spätestens bis zum dritten Werktag des Monats zu zahlen"
+        },
+        "ctx": {
+          "today": "2026-04-25",
+          "region": "NW",
+          "recipient_region": "NW"
+        },
+        "meta": {}
+      },
+      "expected": {
+        "due_date": "2026-05-06"
+      },
+      "reasoning": [
+        "Fr 01.05. Feiertag, Sa 02.05. zählt für die Mietzahlung nicht (BGH VIII ZR 129/09), So 03.05. nein.",
+        "Mo 04 (1), Di 05 (2), Mi 06 (3) → Mi 06.05.2026.",
+        "Kontrast: für die KÜNDIGUNG nach § 573c zählt der Samstag → 3. Werktag wäre Di 05.05.2026."
+      ],
+      "sources": [
+        "§ 556b Abs. 1 BGB; BGH 13.07.2010 VIII ZR 129/09: Samstag ist bei der Mietzahlung kein Werktag"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-con-01-bgb309new-cancel-by-saturday",
+      "description": "Fitnessstudio (Verbraucher-AGB), geschlossen Sa 15.03.2025, Laufzeit ab 01.04.2025 für 12 Monate, Kündigung 1 Monat vor Ablauf. Heute 20.02.2026.",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "gym",
+          "party_kind": "gym",
+          "concluded_date": "2025-03-15",
+          "start_date": "2025-04-01",
+          "initial_term_months": 12,
+          "renewal_term_months": null,
+          "notice_value": 1,
+          "notice_unit": "months",
+          "notice_basis": "end_of_term",
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": false,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2026-02-20",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "bgb309_new",
+        "current_term_end": "2026-03-31",
+        "cancel_by": "2026-02-28",
+        "safe_date": "2026-02-27"
+      },
+      "reasoning": [
+        "Beginn 01.04.2025 (Monatserster) → Ende Di 31.03.2026.",
+        "Letzter Zugang: Monatsletzter → letzter Tag des Vormonats: Sa 28.02.2026 (nicht 'E − 1 Monat' = 28.02. zufällig gleich, aber Methode Monatsletzter).",
+        "Keine Verschiebung auf Mo 02.03. (BGH III ZR 172/04); sicheres Datum Fr 27.02.2026."
+      ],
+      "sources": [
+        "§ 309 Nr. 9 BGB n.F. (Gesetz für faire Verbraucherverträge; Art. 229 § 60 EGBGB: Verträge ab 01.03.2022)",
+        "BGH 17.02.2005 III ZR 172/04 (NJW 2005, 1354): § 193 BGB auf Kündigungsfristen weder unmittelbar noch entsprechend anwendbar",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html",
+        "docs/SPEC.md §21: bei Unsicherheit frühestes plausibles Datum; Kündigungsfristen nie nach § 193 verschieben; safe_date = vorheriger Geschäftstag"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-con-02-bgb309new-void-renewal-open-ended",
+      "description": "Streaming-/Dating-Abo (Verbraucher-AGB), geschlossen und begonnen Sa 10.06.2023, 12 Monate, AGB: 'verlängert sich um 12 Monate, Kündigungsfrist 3 Monate'. Kündigung geht heute (Fr 25.09.2026) zu.",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "streaming",
+          "party_kind": "company",
+          "concluded_date": "2023-06-10",
+          "start_date": "2023-06-10",
+          "initial_term_months": 12,
+          "renewal_term_months": 12,
+          "notice_value": 3,
+          "notice_unit": "months",
+          "notice_basis": "end_of_term",
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": false,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2026-09-25",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "bgb309_new",
+        "earliest_exit": "2026-10-25"
+      },
+      "reasoning": [
+        "Vertrag ab 01.03.2022 → § 309 Nr. 9 n.F.: 12-Monats-Verlängerung und 3-Monats-Frist sind unwirksam (lit. b, c).",
+        "Nach Ablauf der Erstlaufzeit (09.06.2024) läuft der Vertrag unbefristet, jederzeit mit höchstens 1 Monat kündbar.",
+        "Zugang Fr 25.09.2026 + 1 Monat = So 25.10.2026 (tagesgenau, kein Monatsende, keine Verschiebung).",
+        "FALSCH wäre: Ende 09.06.2027 mit Kündigung bis 09.03.2027 (schriftliche, aber unwirksame Klausel)."
+      ],
+      "sources": [
+        "§ 309 Nr. 9 BGB n.F. (Gesetz für faire Verbraucherverträge; Art. 229 § 60 EGBGB: Verträge ab 01.03.2022)",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html",
+        "BGH 17.02.2005 III ZR 172/04 (NJW 2005, 1354): § 193 BGB auf Kündigungsfristen weder unmittelbar noch entsprechend anwendbar"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-con-03-bgb309old-renewal-chain-month-end",
+      "description": "Pay-TV-Abo (Verbraucher), geschlossen 20.11.2020, Laufzeit ab 01.12.2020 für 24 Monate, verlängert sich um je 12 Monate, Kündigungsfrist 3 Monate zum Laufzeitende. Heute 15.06.2026.",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "streaming",
+          "party_kind": "company",
+          "concluded_date": "2020-11-20",
+          "start_date": "2020-12-01",
+          "initial_term_months": 24,
+          "renewal_term_months": 12,
+          "notice_value": 3,
+          "notice_unit": "months",
+          "notice_basis": "end_of_term",
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": false,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2026-06-15",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "bgb309_old",
+        "current_term_end": "2026-11-30",
+        "cancel_by": "2026-08-31",
+        "safe_date": "2026-08-31"
+      },
+      "reasoning": [
+        "Altvertrag (vor 01.03.2022) → § 309 Nr. 9 a.F.: 24 Monate Erstlaufzeit, 12-Monats-Verlängerung, 3 Monate Frist zulässig.",
+        "Erstlaufzeit 01.12.2020–30.11.2022; danach 01.12.–30.11.; laufende Periode endet Mo 30.11.2026.",
+        "Letzter Zugang: Ende ist Monatsletzter → letzter Tag des Monats 3 Monate vorher: Mo 31.08.2026 (naiv 30.11.−3 Monate = So 30.08. ist falsch).",
+        "31.08.2026 ist Geschäftstag."
+      ],
+      "sources": [
+        "§ 309 Nr. 9 BGB a.F. (bis 28.02.2022: Verlängerung ≤ 1 Jahr, Kündigungsfrist ≤ 3 Monate); Art. 229 § 60 S. 2 EGBGB",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html",
+        "BGH 17.02.2005 III ZR 172/04 (NJW 2005, 1354): § 193 BGB auf Kündigungsfristen weder unmittelbar noch entsprechend anwendbar"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-con-04-tkg56-after-min-term-31-march",
+      "description": "Mobilfunkvertrag, geschlossen und begonnen Mi 31.01.2024, 24 Monate, AGB: 1 Monat Kündigungsfrist, Verlängerung 12 Monate. Kündigung geht Di 31.03.2026 zu (nach Ende der Mindestlaufzeit).",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "mobile",
+          "party_kind": "telecom",
+          "concluded_date": "2024-01-31",
+          "start_date": "2024-01-31",
+          "initial_term_months": 24,
+          "renewal_term_months": 12,
+          "notice_value": 1,
+          "notice_unit": "months",
+          "notice_basis": "end_of_term",
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": false,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2026-03-31",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "tkg56",
+        "earliest_exit": "2026-04-30",
+        "initial_term_end": "2026-01-30"
+      },
+      "reasoning": [
+        "Mindestlaufzeit ab 31.01.2024: Ende 30.01.2026 (§ 188 Abs. 2 Alt. 2).",
+        "Danach § 56 Abs. 3 TKG: jederzeit mit 1 Monat kündbar.",
+        "Zugang Di 31.03.2026 + 1 Monat: 31.04. fehlt → § 188 Abs. 3 → Do 30.04.2026."
+      ],
+      "sources": [
+        "§ 56 Abs. 3 TKG (nach anfänglicher Laufzeit jederzeit mit 1 Monat kündbar) — https://www.gesetze-im-internet.de/tkg_2021/__56.html",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-con-05-vvg11-hausrat-feb-end",
+      "description": "Hausratversicherung, Beginn 01.03.2021, Versicherungsjahr 01.03.–28./29.02., verlängert sich jährlich, Kündigungsfrist 3 Monate zum Ablauf des Versicherungsjahres. Heute 01.10.2026.",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "insurance",
+          "party_kind": "insurer",
+          "concluded_date": "2021-02-15",
+          "start_date": "2021-03-01",
+          "initial_term_months": 12,
+          "renewal_term_months": 12,
+          "notice_value": 3,
+          "notice_unit": "months",
+          "notice_basis": "end_of_term",
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": false,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2026-10-01",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "vvg11",
+        "current_term_end": "2027-02-28",
+        "cancel_by": "2026-11-30",
+        "safe_date": "2026-11-30"
+      },
+      "reasoning": [
+        "Laufende Versicherungsperiode 01.03.2026–So 28.02.2027 (§ 11 Abs. 1 VVG: Verlängerung um 1 Jahr).",
+        "Kündigung 3 Monate vor Ablauf: Ende ist Monatsletzter → letzter Tag des Novembers: Mo 30.11.2026 (naiv 28.02.−3 Monate = Sa 28.11. wäre falsch/zu früh).",
+        "Keine § 193-Verschiebung; 30.11.2026 ist Geschäftstag."
+      ],
+      "sources": [
+        "§ 11 Abs. 1–3 VVG (stillschweigende Verlängerung ≤ 1 Jahr; Kündigungsfrist 1–3 Monate zum Ende der Versicherungsperiode) — https://www.gesetze-im-internet.de/vvg_2008/__11.html",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html",
+        "BGH 17.02.2005 III ZR 172/04 (NJW 2005, 1354): § 193 BGB auf Kündigungsfristen weder unmittelbar noch entsprechend anwendbar"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-con-06-sgbv175-lockin-cancel-by-saturday",
+      "description": "Gesetzliche Krankenkasse: Mitglied seit 01.01.2026, will so früh wie möglich wechseln (12 Monate Bindung). Heute 10.06.2026.",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "insurance",
+          "party_kind": "health_insurer",
+          "concluded_date": "2026-01-01",
+          "start_date": "2026-01-01",
+          "initial_term_months": 12,
+          "renewal_term_months": null,
+          "notice_value": 2,
+          "notice_unit": "months",
+          "notice_basis": "end_of_month",
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": false,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2026-06-10",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "sgbv175",
+        "current_term_end": "2026-12-31",
+        "cancel_by": "2026-10-31",
+        "safe_date": "2026-10-30"
+      },
+      "reasoning": [
+        "§ 175 Abs. 4 S. 1 SGB V: 12 Monate Bindung ab 01.01.2026 → frühestes Ende 31.12.2026.",
+        "S. 3: Kündigung zum Ablauf des übernächsten Kalendermonats, gerechnet vom Monat der Erklärung → Erklärung im Oktober 2026 wirkt zum 31.12.2026; Erklärung im November erst zum 31.01.2027.",
+        "Spätester Zugang (bei Wechsel: Zugang der Wahlerklärung bei der neuen Kasse, S. 4) Sa 31.10.2026; keine Verschiebung; sicheres Datum Fr 30.10.2026.",
+        "Eine sofortige Erklärung im Juni würde rechnerisch zum 31.08. wirken, scheitert aber an der Bindung."
+      ],
+      "unsure": true,
+      "unsure_note": "'Zum oder nach Ablauf' in § 175 Abs. 4 S. 3 is read (as by the Kassen) to allow declaring during the lock-in with effect at its end; if instead the declaration were only allowed after the lock-in, the exit would be later, never earlier. The cancel_by 2026-10-31 is the safe earliest.",
+      "sources": [
+        "§ 175 Abs. 4 SGB V (12 Monate Bindung; Kündigung zum Ablauf des übernächsten Kalendermonats, gerechnet vom Monat der Erklärung) — https://www.gesetze-im-internet.de/sgb_5/__175.html",
+        "BGH 17.02.2005 III ZR 172/04 (NJW 2005, 1354): § 193 BGB auf Kündigungsfristen weder unmittelbar noch entsprechend anwendbar",
+        "docs/SPEC.md §21: bei Unsicherheit frühestes plausibles Datum; Kündigungsfristen nie nach § 193 verschieben; safe_date = vorheriger Geschäftstag"
+      ]
+    },
+    {
+      "id": "ext-con-07-stromgvv20-two-weeks-year-boundary",
+      "description": "Strom-Grundversorgung; Kündigung (Textform) geht Di 22.12.2026 beim Grundversorger zu.",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "energy",
+          "party_kind": "utility",
+          "concluded_date": "2019-05-01",
+          "start_date": "2019-05-01",
+          "initial_term_months": null,
+          "renewal_term_months": null,
+          "notice_value": 2,
+          "notice_unit": "weeks",
+          "notice_basis": "any_time",
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": true,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2026-12-22",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "stromgvv20",
+        "earliest_exit": "2027-01-05"
+      },
+      "reasoning": [
+        "§ 20 Abs. 1 StromGVV: jederzeit mit 2 Wochen, nicht an Monatsende gebunden.",
+        "Zugang Di 22.12.2026 + 2 Wochen (§ 188 Abs. 2: gleicher Wochentag) = Di 05.01.2027; Feiertage im Lauf irrelevant, keine Verschiebung."
+      ],
+      "sources": [
+        "§ 20 Abs. 1 StromGVV/GasGVV (2 Wochen, jederzeit) — https://www.gesetze-im-internet.de/stromgvv/__20.html",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-con-08-rent573c-third-werktag-is-saturday",
+      "description": "Mieterin in Düsseldorf will kündigen; Oktober 2025: Mi 01 (1), Do 02 (2), Fr 03 Feiertag, Sa 04 (3). Heute 20.09.2025.",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "rent",
+          "party_kind": "landlord",
+          "concluded_date": "2019-04-10",
+          "start_date": "2019-05-01",
+          "initial_term_months": null,
+          "renewal_term_months": null,
+          "notice_value": null,
+          "notice_unit": null,
+          "notice_basis": null,
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": false,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2025-09-20",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "rent573c",
+        "current_term_end": "2025-12-31",
+        "cancel_by": "2025-10-04",
+        "safe_date": "2025-10-02"
+      },
+      "reasoning": [
+        "§ 573c Abs. 1: Zugang spätestens am 3. Werktag des Monats → Ende des übernächsten Monats.",
+        "Oktober 2025: Mi 01.10 (1), Do 02.10 (2), Fr 03.10 Tag der Deutschen Einheit (kein Werktag), Sa 04.10 (3) — Samstag zählt als Werktag (BGH VIII ZR 206/04).",
+        "Ob § 193 den Samstag auf Mo 06.10. verlängert, hat der BGH offen gelassen → sicher ist Sa 04.10.2025; Kündigung (§ 573c, Kündigungsfrist) nie verschieben.",
+        "safe_date = vorheriger Geschäftstag: Do 02.10.2025 (Fr 03.10. Feiertag).",
+        "Ende 31.12.2025."
+      ],
+      "sources": [
+        "§ 573c Abs. 1 S. 1 BGB — https://www.gesetze-im-internet.de/bgb/__573c.html",
+        "BGH 27.04.2005 VIII ZR 206/04: Samstag zählt als Werktag der Karenzzeit; ob § 193 bei Samstag als 3. Werktag verlängert, offen gelassen",
+        "BGH 17.02.2005 III ZR 172/04 (NJW 2005, 1354): § 193 BGB auf Kündigungsfristen weder unmittelbar noch entsprechend anwendbar",
+        "docs/SPEC.md §21: bei Unsicherheit frühestes plausibles Datum; Kündigungsfristen nie nach § 193 verschieben; safe_date = vorheriger Geschäftstag"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-con-09-rent573c-allerheiligen-regional",
+      "description": "Mieter in Köln (NRW) kündigt für November 2025: Sa 01.11. ist Allerheiligen (Feiertag in NRW, nicht bundesweit). Heute 20.10.2025.",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "rent",
+          "party_kind": "landlord",
+          "concluded_date": "2020-07-15",
+          "start_date": "2020-08-01",
+          "initial_term_months": null,
+          "renewal_term_months": null,
+          "notice_value": null,
+          "notice_unit": null,
+          "notice_basis": null,
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": false,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2025-10-20",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "rent573c",
+        "current_term_end": "2026-01-31",
+        "cancel_by": "2025-11-05"
+      },
+      "safe_acceptable": [
+        "2025-11-04"
+      ],
+      "reasoning": [
+        "Wir sind am 20.10. → der 3. Werktag im Oktober (Sa 04.10.) ist vorbei → nächster Termin November.",
+        "November 2025 in NRW: Sa 01.11. Allerheiligen (kein Werktag), So 02.11., Mo 03 (1), Di 04 (2), Mi 05 (3) → Mi 05.11.2025.",
+        "Ohne Landesfeiertag (z. B. NI) wäre Sa 01.11. der 1. Werktag → Di 04.11. — konservative Alternative.",
+        "Ende des übernächsten Monats: 31.01.2026."
+      ],
+      "sources": [
+        "§ 573c Abs. 1 S. 1 BGB — https://www.gesetze-im-internet.de/bgb/__573c.html",
+        "BGH 27.04.2005 VIII ZR 206/04: Samstag zählt als Werktag der Karenzzeit; ob § 193 bei Samstag als 3. Werktag verlängert, offen gelassen",
+        "§ 2 FeiertagsG NW (Allerheiligen)"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-con-10-employment-622-fifteenth",
+      "description": "Arbeitnehmer (seit 01.04.2022, Probezeit vorbei, gesetzliche Kündigungsfrist) will so früh wie möglich kündigen; heute Mo 16.11.2026.",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "employment",
+          "party_kind": "employer",
+          "concluded_date": "2022-03-01",
+          "start_date": "2022-04-01",
+          "initial_term_months": null,
+          "renewal_term_months": null,
+          "notice_value": null,
+          "notice_unit": null,
+          "notice_basis": null,
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": false,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2026-11-16",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "employment622",
+        "current_term_end": "2026-12-15",
+        "cancel_by": "2026-11-17",
+        "safe_date": "2026-11-17"
+      },
+      "reasoning": [
+        "§ 622 Abs. 1 BGB: 4 Wochen zum 15. oder zum Monatsende (verlängerte Fristen nach Abs. 2 gelten nur für den Arbeitgeber).",
+        "Zum 30.11.2026: Zugang bis Mo 02.11. — vorbei.",
+        "Zum 15.12.2026: letzter Zugang = 15.12. − 28 Tage = Di 17.11.2026 (Zugang 17.11. → Frist endet Di 15.12., § 188 Abs. 2) → möglich.",
+        "Wer nur Monatsenden kennt, käme auf 31.12.2026 mit Zugang bis 03.12. — 16 Tage späterer Ausstieg."
+      ],
+      "sources": [
+        "§ 622 Abs. 1 BGB (4 Wochen zum 15. oder zum Ende eines Kalendermonats); § 623 BGB (Schriftform) — https://www.gesetze-im-internet.de/bgb/__622.html",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html",
+        "BGH 17.02.2005 III ZR 172/04 (NJW 2005, 1354): § 193 BGB auf Kündigungsfristen weder unmittelbar noch entsprechend anwendbar"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-con-11-employment-month-end-sunday-and-may-day",
+      "description": "Arbeitsvertrag: 'Kündigungsfrist vier Wochen zum Monatsende'. Heute Mo 20.04.2026; frühestmögliches Ende gesucht.",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "employment",
+          "party_kind": "employer",
+          "concluded_date": "2023-01-10",
+          "start_date": "2023-02-01",
+          "initial_term_months": null,
+          "renewal_term_months": null,
+          "notice_value": 4,
+          "notice_unit": "weeks",
+          "notice_basis": "end_of_month",
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": false,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2026-04-20",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "employment622",
+        "current_term_end": "2026-05-31",
+        "cancel_by": "2026-05-03",
+        "safe_date": "2026-04-30"
+      },
+      "reasoning": [
+        "Zum 30.04.2026: Zugang bis 02.04. — vorbei.",
+        "Zum So 31.05.2026: 31.05. − 28 Tage = So 03.05.2026 → cancel_by 03.05.2026, keine Verschiebung (BGH III ZR 172/04).",
+        "safe_date (vorheriger Geschäftstag): Sa 02.05., Fr 01.05. (Tag der Arbeit) fallen weg → Do 30.04.2026.",
+        "Schriftform § 623 BGB (Original mit Unterschrift)."
+      ],
+      "sources": [
+        "§ 622 Abs. 1 BGB (4 Wochen zum 15. oder zum Ende eines Kalendermonats); § 623 BGB (Schriftform) — https://www.gesetze-im-internet.de/bgb/__622.html",
+        "BGH 17.02.2005 III ZR 172/04 (NJW 2005, 1354): § 193 BGB auf Kündigungsfristen weder unmittelbar noch entsprechend anwendbar",
+        "docs/SPEC.md §21: bei Unsicherheit frühestes plausibles Datum; Kündigungsfristen nie nach § 193 verschieben; safe_date = vorheriger Geschäftstag"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-price-01-energy-household-effective-june-1",
+      "description": "Haushaltskunde, Strom-Sondervertrag: Preiserhöhungsschreiben geht Do 30.04.2026 zu, neue Preise ab Mo 01.06.2026.",
+      "input": {
+        "kind": "price_increase",
+        "price_increase": {
+          "sector": "energy",
+          "customer": "household",
+          "is_basic_supply": false,
+          "notice_received": "2026-04-30",
+          "effective_date": "2026-06-01"
+        },
+        "ctx": {
+          "today": "2026-04-30",
+          "region": "NW"
+        }
+      },
+      "expected": {
+        "cancel_by": "2026-05-31",
+        "safe_date": "2026-05-29",
+        "contract_end": "2026-05-31",
+        "notice_timely": true
+      },
+      "reasoning": [
+        "§ 41 Abs. 5 S. 2 EnWG: Haushaltskunden mindestens 1 Monat vorher: letzter zulässiger Zugang = latest_zugang(31.05.2026, 1 Monat) = 30.04.2026 → rechtzeitig (gerade noch).",
+        "Sonderkündigung ohne Frist zum Wirksamwerden; BNetzA: Zugang vor dem Tag des neuen Preises → spätestens So 31.05.2026, Vertragsende 31.05.2026.",
+        "Kündigung → keine § 193-Verschiebung; sicheres Datum Fr 29.05.2026."
+      ],
+      "sources": [
+        "§ 41 Abs. 5 EnWG (Preisänderung: Haushaltskunden ≥ 1 Monat vorher; Kündigung ohne Frist zum Wirksamwerden); BNetzA: Zugang vor dem Tag des neuen Preises",
+        "BGH 17.02.2005 III ZR 172/04 (NJW 2005, 1354): § 193 BGB auf Kündigungsfristen weder unmittelbar noch entsprechend anwendbar",
+        "docs/SPEC.md §21: bei Unsicherheit frühestes plausibles Datum; Kündigungsfristen nie nach § 193 verschieben; safe_date = vorheriger Geschäftstag"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-price-02-telecom-notice-saturday-window-end-sunday",
+      "description": "Internetanbieter kündigt per E-Mail (Zugang Sa 31.10.2026) eine Preiserhöhung zum Di 01.12.2026 an und weist auf das Sonderkündigungsrecht hin.",
+      "input": {
+        "kind": "price_increase",
+        "price_increase": {
+          "sector": "telecom",
+          "customer": "consumer",
+          "notice_received": "2026-10-31",
+          "effective_date": "2026-12-01"
+        },
+        "ctx": {
+          "today": "2026-11-02",
+          "region": "NW"
+        }
+      },
+      "expected": {
+        "cancel_by": "2026-11-30",
+        "window_end": "2027-01-31",
+        "window_end_safe": "2027-01-29",
+        "notice_timely": true
+      },
+      "reasoning": [
+        "§ 57 Abs. 2 TKG: Mitteilung 1–2 Monate vor Änderung: zulässig von 01.10. bis latest_zugang(30.11., 1 Monat) = 31.10.2026 → rechtzeitig.",
+        "Sonderkündigung binnen 3 Monaten ab Zugang: 31.10.2026 + 3 Monate = So 31.01.2027 (unverschoben); ob § 193 auf Mo 01.02.2027 verlängert, ist ungeklärt → sicher Fr 29.01.2027.",
+        "Um den neuen Preis nie zu zahlen: Zugang bis Mo 30.11.2026 (Vertrag endet mit Wirksamwerden der Änderung)."
+      ],
+      "unsure": true,
+      "unsure_note": "window_end: § 193 applicability to the § 57 three-month window has no case law; unshifted Sun 2027-01-31, safe Fri 2027-01-29, arguable Mon 2027-02-01.",
+      "sources": [
+        "§ 57 Abs. 1, 2 TKG (Sonderkündigung binnen 3 Monaten ab Zugang der Mitteilung; Mitteilung 1–2 Monate vor Änderung) — https://www.gesetze-im-internet.de/tkg_2021/__57.html",
+        "§ 193 BGB — https://www.gesetze-im-internet.de/bgb/__193.html",
+        "docs/SPEC.md §21: bei Unsicherheit frühestes plausibles Datum; Kündigungsfristen nie nach § 193 verschieben; safe_date = vorheriger Geschäftstag"
+      ]
+    },
+    {
+      "id": "ext-con-12-bgb309new-cancel-by-easter-monday",
+      "description": "Online-Kurs-/Software-Abo (Verbraucher), geschlossen und begonnen Do 07.05.2025, 12 Monate, 1 Monat Kündigungsfrist zum Laufzeitende. Heute 20.03.2026.",
+      "input": {
+        "kind": "contract",
+        "terms": {
+          "category": "software",
+          "party_kind": "company",
+          "concluded_date": "2025-05-07",
+          "start_date": "2025-05-07",
+          "initial_term_months": 12,
+          "renewal_term_months": null,
+          "notice_value": 1,
+          "notice_unit": "months",
+          "notice_basis": "end_of_term",
+          "end_date": null,
+          "is_consumer": true,
+          "is_basic_supply": false,
+          "status": "active"
+        },
+        "ctx": {
+          "today": "2026-03-20",
+          "region": "NW"
+        },
+        "channel": "online_button"
+      },
+      "expected": {
+        "regime": "bgb309_new",
+        "current_term_end": "2026-05-06",
+        "cancel_by": "2026-04-06",
+        "safe_date": "2026-04-02"
+      },
+      "reasoning": [
+        "Beginn 07.05.2025 → Ende Mi 06.05.2026.",
+        "Letzter Zugang: D + 1 Monat ≤ 06.05. → Mo 06.04.2026 (Ostermontag); keine Verschiebung.",
+        "safe_date: vorheriger Geschäftstag vor Ostermontag: So 05., Sa 04., Fr 03.04. (Karfreitag) fallen weg → Do 02.04.2026."
+      ],
+      "sources": [
+        "§ 309 Nr. 9 BGB n.F. (Gesetz für faire Verbraucherverträge; Art. 229 § 60 EGBGB: Verträge ab 01.03.2022)",
+        "BGH 17.02.2005 III ZR 172/04 (NJW 2005, 1354): § 193 BGB auf Kündigungsfristen weder unmittelbar noch entsprechend anwendbar",
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html",
+        "docs/SPEC.md §21: bei Unsicherheit frühestes plausibles Datum; Kündigungsfristen nie nach § 193 verschieben; safe_date = vorheriger Geschäftstag"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-owig-04-pzu-buss-und-bettag-saxony",
+      "description": "Bußgeldbescheid der Landesdirektion Sachsen (Sitz Chemnitz) durch PZU zugestellt Mi 05.11.2025.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "explicit_date",
+          "anchor_date": "2025-11-05",
+          "amount": 2,
+          "unit": "weeks",
+          "delivery_rule": "none",
+          "nature": "objection",
+          "legal_basis": "§ 67 Abs. 1 OWiG",
+          "text": "Einspruch ... innerhalb von zwei Wochen nach Zustellung"
+        },
+        "ctx": {
+          "today": "2025-11-06",
+          "region": "SN",
+          "document_date": "2025-11-03"
+        },
+        "meta": {
+          "channel": "PZU"
+        }
+      },
+      "expected": {
+        "due_date": "2025-11-20"
+      },
+      "reasoning": [
+        "Mi 05.11.2025 + 2 Wochen = Mi 19.11.2025 = Buß- und Bettag (gesetzlicher Feiertag nur in Sachsen) → Do 20.11.2025 (Feiertag am Sitz der Bußgeldbehörde)."
+      ],
+      "sources": [
+        "§ 67 Abs. 1 OWiG (2 Wochen nach Zustellung); § 46 Abs. 1 OWiG i.V.m. § 43 StPO — https://www.gesetze-im-internet.de/owig_1968/__67.html",
+        "§ 43 Abs. 2 StPO",
+        "SächsSFG § 1 (Buß- und Bettag)"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "ext-month-05-two-months-from-30-dec",
+      "description": "Behörde (VwVfG) setzt Frist: 'Stellungnahme innerhalb von zwei Monaten nach Zugang dieses Schreibens'; Zugang (bestätigt) Mi 30.12.2026, NRW.",
+      "input": {
+        "kind": "date",
+        "spec": {
+          "type": "relative",
+          "anchor": "receipt",
+          "amount": 2,
+          "unit": "months",
+          "delivery_rule": "none",
+          "nature": "declaration",
+          "legal_basis": "§ 31 Abs. 2, 3 VwVfG",
+          "text": "innerhalb von zwei Monaten nach Zugang"
+        },
+        "ctx": {
+          "today": "2026-12-30",
+          "region": "NW",
+          "document_date": "2026-12-23",
+          "received_date": "2026-12-30",
+          "received_confirmed": true
+        },
+        "meta": {}
+      },
+      "expected": {
+        "due_date": "2027-03-01"
+      },
+      "reasoning": [
+        "30.12.2026 + 2 Monate: 30.02.2027 fehlt → § 188 Abs. 3 → So 28.02.2027 → § 31 Abs. 3 VwVfG → Mo 01.03.2027."
+      ],
+      "sources": [
+        "§ 188 Abs. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__188.html",
+        "§ 31 Abs. 2, 3 VwVfG"
+      ],
+      "unsure": false
+    }
+  ]
+}
