@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+/dist/
+/build/
+
+# Node
+node_modules/
+web/dist/
+web/test-results/
+web/playwright-report/
+web/e2e/.auth/
+web/.vite/
+
+# The built frontend in src/ordnung/web/dist is committed (installs from git need no Node);
+# CI checks it matches web/ (web/scripts/source-hash.mjs).
+
+# Local data
+.ordnung/
+*.db
+*.db-wal
+*.db-shm
+!src/ordnung/demo/demo_db/ordnung.db
+.env
+.DS_Store
+
+# Scratch scripts from local debugging
+*.tmp.mjs
+*.tmp.py
+web/e2e/.auth/
