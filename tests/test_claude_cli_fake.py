@@ -1,0 +1,418 @@
+"""``ClaudeCLIBackend`` end to end against a fake ``claude`` executable (``tests/fake_claude.py``).
+
+The fake is put on PATH and replays stream-json transcripts in the shape Claude Code 2.1 prints them
+(``tests/claude_cli_outputs/*.jsonl``; a real capture can be dropped in as it is). The tests check
+what the backend sends (flags on argv, the letter only on stdin), how it reads answers and errors
+(classified from the ``result`` event, not the exit code), that unreadable or oversized lines don't
+break it, and that a timeout or a cancelled call leaves no process behind (the CLI's process group,
+MCP servers included, is killed).
+"""
+
+from __future__ import annotations
+
+import asyncio
+import base64
+import json
+import os
+import stat
+import sys
+import time
+from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from ordnung.llm import claude_cli
+from ordnung.llm.base import (
+    Attachment,
+    ClaudeAuthError,
+    ClaudeBadOutput,
+    ClaudeNotInstalled,
+    ClaudeRateLimited,
+    ClaudeTimeout,
+    LLMError,
+    LLMRequest,
+    StreamEvent,
+)
+from ordnung.llm.claude_cli import ClaudeCLIBackend
+
+pytestmark = pytest.mark.skipif(os.name != "posix", reason="the fake CLI is started through /bin/sh")
+
+FAKE = Path(__file__).resolve().parent / "fake_claude.py"
+LETTER = (
+    "Rechnung Nr. 4711 vom 18.09.2026\nSam Rivera, Beispielweg 5, 12345 Musterstadt\n"
+    "Bitte überweisen Sie 94,99 EUR bis zum 02.10.2026 auf DE02 1203 0000 0000 2020 51."
+)
+SCHEMA = {
+    "type": "object",
+    "properties": {"title": {"type": "string"}, "amount": {"type": "number"}, "due_date": {"type": "string"}},
+    "required": ["title"],
+}
+ANSWER = {"title": "Invoice 4711", "amount": 94.99, "due_date": "2026-10-02"}
+
+
+@dataclass
+class FakeClaude:
+    """The fake ``claude`` on PATH: :meth:`play` sets what its calls do, :attr:`calls` what it got."""
+
+    path: Path
+    scenario: Path
+    log: Path
+
+    def play(self, *calls: dict[str, Any]) -> None:
+        self.scenario.write_text(json.dumps({"log": str(self.log), "calls": list(calls)}), encoding="utf-8")
+
+    @property
+    def calls(self) -> list[dict[str, Any]]:
+        if not self.log.exists():
+            return []
+        return [json.loads(line) for line in self.log.read_text(encoding="utf-8").splitlines()]
+
+
+@pytest.fixture
+def fake(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeClaude:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    claude = bin_dir / "claude"
+    claude.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{FAKE}" "$@"\n', encoding="utf-8")
+    claude.chmod(claude.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+    monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+    scenario = tmp_path / "scenario.json"
+    monkeypatch.setenv("FAKE_CLAUDE_SCENARIO", str(scenario))
+    return FakeClaude(path=claude, scenario=scenario, log=tmp_path / "calls.jsonl")
+
+
+@pytest.fixture
+def letter(tmp_path: Path) -> LLMRequest:
+    """A letter to read: the text plus a page photo and the PDF, as extraction sends them."""
+    photo = tmp_path / "page-1.jpg"
+    photo.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF fake page photo \xff\xd9")
+    pdf = tmp_path / "letter.pdf"
+    pdf.write_bytes(b"%PDF-1.7\n% fake letter\n%%EOF\n")
+    return LLMRequest(
+        purpose="extract",
+        prompt=LETTER,
+        system="You read letters and return the dates in them.",
+        schema=SCHEMA,
+        attachments=[
+            Attachment(path=photo, media_type="image/jpeg"),
+            Attachment(path=pdf, media_type="application/pdf"),
+        ],
+        timeout_s=20,
+    )
+
+
+def _alive(pid: int) -> bool:
+    """Whether ``pid`` still runs (a zombie waiting to be reaped counts as gone)."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    proc_stat = Path(f"/proc/{pid}/stat")
+    try:
+        state = proc_stat.read_text().rpartition(")")[2].split()[0]
+    except (OSError, IndexError):
+        return True
+    return state != "Z"
+
+
+async def _eventually(check: Callable[[], bool], within: float = 5.0) -> bool:
+    """Poll ``check``; the event loop keeps running meanwhile, so the backend can clean up."""
+    deadline = time.monotonic() + within
+    while not check():
+        if time.monotonic() > deadline:
+            return False
+        await asyncio.sleep(0.05)
+    return True
+
+
+async def _gone(*pids: int) -> bool:
+    return await _eventually(lambda: not any(_alive(pid) for pid in pids))
+
+
+# --------------------------------------------------------------------------------------------------
+# what is sent
+# --------------------------------------------------------------------------------------------------
+
+
+async def test_the_letter_goes_on_stdin_never_on_argv(fake: FakeClaude, letter: LLMRequest) -> None:
+    fake.play({"transcript": "extract_structured.jsonl"})
+    response = await ClaudeCLIBackend(max_retries=0).complete(letter)
+
+    (call,) = fake.calls
+    argv = call["argv"]
+    for secret in ("4711", "Sam Rivera", "Beispielweg", "94,99", "DE02"):
+        assert not any(secret in arg for arg in argv), secret
+    assert "--dangerously-skip-permissions" not in argv
+    assert argv[argv.index("--tools") + 1] == ""  # extraction may use no tool at all
+    assert argv[argv.index("--setting-sources") + 1] == ""
+    assert {"-p", "--strict-mcp-config", "--no-session-persistence"} <= set(argv)
+    assert argv[argv.index("--input-format") + 1] == argv[argv.index("--output-format") + 1] == "stream-json"
+    assert json.loads(argv[argv.index("--json-schema") + 1]) == SCHEMA
+    assert "--include-partial-messages" not in argv
+
+    (line,) = call["stdin"].splitlines()
+    message = json.loads(line)
+    assert message["type"] == "user" and message["message"]["role"] == "user"
+    text, photo, pdf = message["message"]["content"]
+    assert text == {"type": "text", "text": LETTER}
+    assert photo["type"] == "image" and photo["source"]["media_type"] == "image/jpeg"
+    assert base64.b64decode(photo["source"]["data"]) == letter.attachments[0].path.read_bytes()
+    assert pdf["type"] == "document" and pdf["source"]["media_type"] == "application/pdf"
+    assert base64.b64decode(pdf["source"]["data"]) == letter.attachments[1].path.read_bytes()
+
+    assert response.data == ANSWER
+    assert response.text == "Done."
+    assert response.model == "claude-sonnet-4-5-20250929"  # the model that answered, from modelUsage
+    assert response.backend == "claude"
+    usage = response.usage
+    assert (usage.input_tokens, usage.output_tokens, usage.cache_read_tokens) == (6, 70, 2311)
+    assert (usage.cost_usd, usage.duration_ms, usage.turns) == (0.01234, 5123, 2)
+
+
+async def test_an_explicit_binary_path_is_used(fake: FakeClaude, letter: LLMRequest) -> None:
+    fake.play({"transcript": "extract_structured.jsonl"})
+    backend = ClaudeCLIBackend(binary=str(fake.path), max_retries=0)
+    assert backend.binary == str(fake.path)
+    assert (await backend.complete(letter)).data == ANSWER
+
+
+async def test_no_claude_on_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, letter: LLMRequest) -> None:
+    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
+    monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+    with pytest.raises(ClaudeNotInstalled):
+        await ClaudeCLIBackend(max_retries=0).complete(letter)
+
+
+# --------------------------------------------------------------------------------------------------
+# answers
+# --------------------------------------------------------------------------------------------------
+
+
+async def test_ask_streams_text_tool_calls_and_results(fake: FakeClaude) -> None:
+    fake.play({"transcript": "ask_stream.jsonl"})
+    request = LLMRequest(
+        purpose="ask",
+        prompt="When is the parking fine due?",
+        system="Answer from the records.",
+        tools=["mcp__ordnung__search"],
+        allowed_tools=["mcp__ordnung__search"],
+        mcp_config={"mcpServers": {"ordnung": {"command": "ordnung", "args": ["mcp"]}}},
+        timeout_s=20,
+    )
+    events = [event async for event in ClaudeCLIBackend(max_retries=0).stream(request)]
+
+    argv = fake.calls[0]["argv"]
+    assert "--include-partial-messages" in argv
+    assert argv[argv.index("--tools") + 1] == "mcp__ordnung__search"
+    assert argv[argv.index("--allowedTools") + 1] == "mcp__ordnung__search"
+    assert json.loads(argv[argv.index("--mcp-config") + 1]) == request.mcp_config
+    assert [event.type for event in events] == ["tool_use", "tool_result", "text", "text", "done"]
+    assert (events[0].name, events[0].input) == ("mcp__ordnung__search", {"query": "parking"})
+    assert events[1].text == "itm_parking · Pay parking fine · 25.00 EUR · due 2026-09-29"
+    assert "".join(event.text or "" for event in events if event.type == "text") == (
+        "The parking fine is due on 29 September."
+    )
+    done = events[-1].response
+    assert done is not None and done.text == "The parking fine is due on 29 September." and done.data is None
+
+
+async def test_json_in_the_text_is_used_when_structured_output_is_missing(
+    fake: FakeClaude, letter: LLMRequest
+) -> None:
+    result = {
+        "type": "result",
+        "subtype": "success",
+        "is_error": False,
+        "result": f"Here it is:\n```json\n{json.dumps(ANSWER)}\n```",
+    }
+    fake.play({"lines": [json.dumps(result)]})
+    assert (await ClaudeCLIBackend(max_retries=0).complete(letter)).data == ANSWER
+
+
+async def test_an_answer_without_structured_output_is_retried_once(
+    fake: FakeClaude, letter: LLMRequest
+) -> None:
+    result = {
+        "type": "result",
+        "subtype": "success",
+        "is_error": False,
+        "result": "I can't read this letter.",
+    }
+    fake.play({"lines": [json.dumps(result)]})
+    with pytest.raises(ClaudeBadOutput):
+        await ClaudeCLIBackend(max_retries=0).complete(letter)
+    assert len(fake.calls) == 2
+
+
+# --------------------------------------------------------------------------------------------------
+# errors (classified from the result event, not the exit code)
+# --------------------------------------------------------------------------------------------------
+
+
+async def test_a_usage_limit_pauses_until_the_reset(fake: FakeClaude, letter: LLMRequest) -> None:
+    fake.play({"transcript": "usage_limit.jsonl", "exit": 1})
+    with pytest.raises(ClaudeRateLimited) as caught:
+        await ClaudeCLIBackend(max_retries=2).complete(letter)
+    assert caught.value.reset_at == "5pm (Europe/Berlin)"
+    assert len(fake.calls) == 1  # never hammered with retries
+
+
+async def test_an_overloaded_api_pauses_like_a_rate_limit(fake: FakeClaude, letter: LLMRequest) -> None:
+    fake.play({"transcript": "overloaded.jsonl", "exit": 1})
+    with pytest.raises(ClaudeRateLimited) as caught:
+        await ClaudeCLIBackend(max_retries=2).complete(letter)
+    assert caught.value.reset_at is None  # the worker then waits its default pause
+    assert len(fake.calls) == 1
+
+
+async def test_a_login_problem_is_an_auth_error(fake: FakeClaude, letter: LLMRequest) -> None:
+    fake.play({"transcript": "auth_error.jsonl", "exit": 1})
+    with pytest.raises(ClaudeAuthError, match="not signed in"):
+        await ClaudeCLIBackend(max_retries=2).complete(letter)
+    assert len(fake.calls) == 1
+
+
+async def test_a_server_error_is_retried(
+    fake: FakeClaude, letter: LLMRequest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sleep = asyncio.sleep
+    waits: list[float] = []
+
+    async def no_wait(seconds: float) -> None:
+        waits.append(seconds)
+        await sleep(0)
+
+    monkeypatch.setattr(claude_cli.asyncio, "sleep", no_wait)
+    fake.play({"transcript": "api_error_500.jsonl", "exit": 1}, {"transcript": "extract_structured.jsonl"})
+    response = await ClaudeCLIBackend(max_retries=2).complete(letter)
+    assert response.data == ANSWER
+    assert len(fake.calls) == 2 and waits == [2.0]
+
+
+@pytest.mark.parametrize(
+    ("subtype", "message"),
+    [
+        ("error_max_turns", "too many steps"),
+        ("error_max_budget_usd", "cost cap"),
+        ("error_during_execution", ""),
+    ],
+)
+async def test_a_stopped_run_is_an_error(
+    fake: FakeClaude, letter: LLMRequest, subtype: str, message: str
+) -> None:
+    result = {"type": "result", "subtype": subtype, "is_error": True, "num_turns": 9}
+    fake.play({"lines": [json.dumps(result)], "exit": 1})
+    with pytest.raises(LLMError, match=message or subtype) as caught:
+        await ClaudeCLIBackend(max_retries=2).complete(letter.model_copy(update={"max_budget_usd": 0.5}))
+    assert type(caught.value) is LLMError  # not retried, not a pause
+    argv = fake.calls[0]["argv"]
+    assert argv[argv.index("--max-budget-usd") + 1] == "0.50"
+    assert len(fake.calls) == 1
+
+
+async def test_a_crash_without_a_result_reports_stderr(fake: FakeClaude, letter: LLMRequest) -> None:
+    fake.play({"stderr": "error: unknown option '--no-session-persistence'\n", "exit": 1})
+    with pytest.raises(LLMError, match="unknown option"):
+        await ClaudeCLIBackend(max_retries=0).complete(letter)
+
+
+async def test_a_stream_reports_errors_as_an_event(fake: FakeClaude) -> None:
+    fake.play({"transcript": "auth_error.jsonl", "exit": 1})
+    request = LLMRequest(purpose="ask", prompt="Anything due?", system="Answer.", timeout_s=20)
+    events = [event async for event in ClaudeCLIBackend(max_retries=0).stream(request)]
+    assert [event.type for event in events] == ["error"]
+    assert "not signed in" in (events[0].error or "")
+
+
+async def test_the_doctor_probe(fake: FakeClaude) -> None:
+    result = {"type": "result", "subtype": "success", "is_error": False, "result": "OK"}
+    fake.play({"lines": [json.dumps(result)]})
+    assert await claude_cli.probe() == (True, "OK")
+    argv = fake.calls[0]["argv"]
+    assert argv[argv.index("--model") + 1] == "haiku" and "--json-schema" not in argv
+    fake.play({"transcript": "auth_error.jsonl", "exit": 1})
+    ok, message = await claude_cli.probe()
+    assert not ok and "not signed in" in message
+
+
+# --------------------------------------------------------------------------------------------------
+# lines the backend can't use
+# --------------------------------------------------------------------------------------------------
+
+
+async def test_unreadable_lines_are_skipped(fake: FakeClaude, letter: LLMRequest) -> None:
+    junk = ["Warning: something on stdout", "{not json", "[1, 2, 3]", "42", "null", ""]
+    fake.play({"lines": junk, "transcript": "extract_structured.jsonl"})
+    assert (await ClaudeCLIBackend(max_retries=0).complete(letter)).data == ANSWER
+
+
+async def test_an_oversized_line_is_skipped(
+    fake: FakeClaude, letter: LLMRequest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(claude_cli, "_STREAM_LIMIT", 64 * 1024)  # the real limit is 32 MiB
+    fake.play({"big_line": 300 * 1024, "transcript": "extract_structured.jsonl"})
+    assert (await ClaudeCLIBackend(max_retries=0).complete(letter)).data == ANSWER
+
+
+# --------------------------------------------------------------------------------------------------
+# no process is left behind
+# --------------------------------------------------------------------------------------------------
+
+
+async def test_the_mcp_server_does_not_outlive_an_answer(fake: FakeClaude, letter: LLMRequest) -> None:
+    fake.play({"child": True, "transcript": "extract_structured.jsonl"})
+    assert (await ClaudeCLIBackend(max_retries=0).complete(letter)).data == ANSWER
+    (call,) = fake.calls
+    assert await _gone(call["pid"], call["child_pid"])
+
+
+async def test_a_timeout_kills_the_whole_process_group(fake: FakeClaude, letter: LLMRequest) -> None:
+    fake.play({"child": True, "lines": ['{"type": "system", "subtype": "init"}'], "hang": True})
+    started = time.monotonic()
+    with pytest.raises(ClaudeTimeout, match="did not answer within 1 s"):
+        await ClaudeCLIBackend(max_retries=0).complete(letter.model_copy(update={"timeout_s": 1.0}))
+    assert time.monotonic() - started < 10
+    (call,) = fake.calls
+    assert await _gone(call["pid"], call["child_pid"])
+
+
+async def test_a_cli_that_never_reads_the_request_times_out(fake: FakeClaude, letter: LLMRequest) -> None:
+    big = letter.attachments[0].path.parent / "big-scan.png"
+    big.write_bytes(os.urandom(2 * 1024 * 1024))  # far more than a pipe holds
+    request = letter.model_copy(
+        update={"timeout_s": 1.0, "attachments": [Attachment(path=big, media_type="image/png")]}
+    )
+    fake.play({"read_stdin": False, "child": True})
+    with pytest.raises(ClaudeTimeout, match="did not read the request"):
+        await ClaudeCLIBackend(max_retries=0).complete(request)
+    (call,) = fake.calls
+    assert await _gone(call["pid"], call["child_pid"])
+
+
+async def test_cancelling_a_call_kills_the_whole_process_group(fake: FakeClaude, letter: LLMRequest) -> None:
+    fake.play({"child": True, "lines": ['{"type": "system", "subtype": "init"}'], "hang": True})
+    task = asyncio.create_task(ClaudeCLIBackend(max_retries=0).complete(letter))
+    assert await _eventually(lambda: bool(fake.calls), within=10), "the fake claude never started"
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    (call,) = fake.calls
+    assert await _gone(call["pid"], call["child_pid"])
+
+
+async def test_stopping_a_stream_early_kills_the_process_group(fake: FakeClaude) -> None:
+    """Ask's reader goes away (the browser closed the page) after the first event."""
+    fake.play({"child": True, "transcript": "ask_stream.jsonl", "hang": True})
+    request = LLMRequest(
+        purpose="ask", prompt="When is the parking fine due?", system="Answer.", timeout_s=20
+    )
+    stream = ClaudeCLIBackend(max_retries=0).stream(request)
+    first: StreamEvent = await anext(stream)
+    assert first.type == "tool_use"
+    await stream.aclose()
+    (call,) = fake.calls
+    assert await _gone(call["pid"], call["child_pid"])
