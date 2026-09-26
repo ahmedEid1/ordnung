@@ -306,7 +306,8 @@ async def test_all_four_conditions_end_to_end(tmp_path: Path) -> None:
     for request in tool_requests:  # the rules-only server, nothing else, pinned to the letter's today
         (server,) = request.mcp_config["mcpServers"].values()  # type: ignore[index]
         assert server["args"] == ["-m", "ordnung", "mcp", "--rules-only"]
-        assert server["env"] == {"ORDNUNG_TODAY": todays[request.doc_ids[0]]}
+        # pinned: the claude CLI tells the model the real date, which must not replace the letter's
+        assert server["env"] == {"ORDNUNG_TODAY": todays[request.doc_ids[0]], "ORDNUNG_PIN_TODAY": "1"}
         assert request.allowed_tools == ["mcp__ordnung_rules__*"] and request.tools == []
         assert request.max_budget_usd == 1.0
         assert "TOOLS: Ordnung's German deadline tools" in request.system

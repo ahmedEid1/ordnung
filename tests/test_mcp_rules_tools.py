@@ -100,12 +100,12 @@ def test_a_tax_assessment_gets_the_engines_date_with_its_receipt(tools: RulesToo
     assert all(step["citation"] for step in result["steps"])
     rules = {rule["id"]: rule for rule in result["rules"]}
     assert "§ 122 Abs. 2 Nr. 1 AO" in rules["ao_122_2_1"]["citation"] and rules["ao_122_2_1"]["url"]
-    assert result["assumed"] == {
+    assert compact(result["assumed"]) == {
         "today": "2026-09-20",
         "letter_date": "2026-09-15",
-        "received_date": None,
         "delivery_law": "tax law (§ 122 AO)",
         "holiday_calendar": "Germany (nationwide holidays only)",
+        "holidays_from": "region: the Land where the deadline is met (the sender's seat)",
     }
     assert result["disclaimer"] == DISCLAIMER and "not legal advice" in DISCLAIMER
     assert "Einspruchs" not in json.dumps(result, ensure_ascii=False)  # the letter's words are not echoed
@@ -223,7 +223,7 @@ def test_hints_never_ask_again_for_a_sender_that_was_given(tools: RulesTools) ->
         POSTED, document_date="2026-09-10", sender_kind="utility", sender_name="Stadtwerke Musterstadt"
     )
     assert not _hint(result, "Pass sender_kind") and not _hint(result, "Pass region")
-    assert result["hints"][0].startswith("No deemed-delivery rule applies to a sender of kind utility")
+    assert _hint(result, "If the letter is from an authority after all, pass its kind")
 
 
 RECEIPT = {"type": "relative", "anchor": "receipt", "amount": 2, "unit": "weeks", "nature": "objection"}
@@ -256,6 +256,191 @@ def test_an_arrival_day_weeks_after_the_letter_is_flagged(tools: RulesTools) -> 
         POSTED, document_date="2026-08-03", received_date="2026-09-18", sender_kind="tax_office"
     )
     assert not any("unusually late" in w for w in deemed["warnings"])
+
+
+def test_a_delivery_day_the_letter_states_is_checked_like_an_arrival_day(tools: RulesTools) -> None:
+    """With anchor receipt the engine counts from spec.anchor_date: the checks must look at that day."""
+    stated = {**RECEIPT, "anchor_date": "2027-08-01"}
+    with pytest.raises(
+        RulesToolError, match=r"spec.anchor_date \(2027-08-01\) is after today \(2026-09-20\)"
+    ):
+        tools.compute_deadline(stated, document_date="2026-09-01")
+    with pytest.raises(RulesToolError, match=r"spec\.anchor_date"):  # no letter date: still a future day
+        tools.compute_deadline(stated)
+
+    late = tools.compute_deadline({**RECEIPT, "anchor_date": "2026-09-19"}, document_date="2026-08-01")
+    assert late["due_date"] == "2026-10-05" and late["confidence"] == "medium"
+    assert any(
+        w.startswith("The delivery day in spec.anchor_date (Sat 19 Sep 2026) is 49 days after")
+        for w in late["warnings"]
+    )
+    # the hint must not claim the letter's date was used, and assumed names the day that was
+    assert late["hints"] == []
+    assert (late["assumed"]["received_date"], late["assumed"]["received_date_from"]) == (
+        "2026-09-19",
+        "spec.anchor_date: the delivery day the letter states",
+    )
+
+    usual = tools.compute_deadline({**RECEIPT, "anchor_date": "2026-09-17"}, document_date="2026-09-14")
+    assert usual["due_date"] == "2026-10-01" and usual["confidence"] == "high"
+    assert usual["warnings"] == [] and usual["hints"] == []
+
+
+def test_an_arrival_day_the_engine_did_not_use_is_named(tools: RulesTools) -> None:
+    both = tools.compute_deadline(
+        {**RECEIPT, "anchor_date": "2026-09-17"}, document_date="2026-09-14", received_date="2026-09-18"
+    )
+    assert both["due_date"] == "2026-10-01" and both["assumed"]["received_date"] == "2026-09-17"
+    assert any(w.startswith("received_date (Fri 18 Sep 2026) was not used") for w in both["warnings"])
+    # a stated day before the letter's date is no delivery day: the engine counts from the letter's date
+    before = tools.compute_deadline({**RECEIPT, "anchor_date": "2026-09-10"}, document_date="2026-09-14")
+    assert before["due_date"] == "2026-09-28"
+    assert any(
+        w.startswith("spec.anchor_date (Thu 10 Sep 2026) is before the letter's date")
+        and "the letter's date." in w
+        for w in before["warnings"]
+    )
+    assert _hint(before, "Pass received_date")
+    assert before["assumed"]["received_date_from"] == "document_date: assumed, the earliest plausible arrival"
+    given = tools.compute_deadline(
+        {**RECEIPT, "anchor_date": "2026-09-10"}, document_date="2026-09-14", received_date="2026-09-16"
+    )
+    assert given["due_date"] == "2026-09-30" and not _hint(given, "Pass received_date")
+    assert any("counted from the arrival day given (Wed 16 Sep 2026)" in w for w in given["warnings"])
+
+
+def test_a_letter_dated_after_today_is_flagged(tools: RulesTools) -> None:
+    month = {"type": "relative", "anchor": "document_date", "amount": 1, "unit": "months"}
+    future = tools.compute_deadline(month, document_date="2027-09-14")
+    assert future["due_date"] == "2027-10-14" and future["confidence"] == "medium"
+    assert any(
+        "is after today (Sun 20 Sep 2026)" in w and "the year above all" in w for w in future["warnings"]
+    )
+    assert tools.compute_deadline(month, document_date="2026-09-14")["confidence"] == "high"
+    # "today" in a letter dated later: the engine's own warning is enough
+    from_today = tools.compute_deadline({**month, "anchor": "today"}, document_date="2027-09-14")
+    assert not any("the year above all" in w for w in from_today["warnings"])
+
+
+def test_a_sender_without_deemed_delivery_counts_from_arrival(tools: RulesTools) -> None:
+    """A company's letter has no deemed delivery: 3 added days would make its date late."""
+    payment = {**POSTED, "amount": 14, "unit": "days", "nature": "payment"}
+    company = tools.compute_deadline(payment, document_date="2026-09-14", sender_kind="company")
+    assert company["due_date"] == "2026-09-28"  # not 1 Oct (letter + 3 days + 14)
+    assert not any("posting_day" == step["rule_id"] for step in company["steps"])
+    assert any(
+        w.startswith("Deemed delivery is a rule for German authorities, and a sender of kind company")
+        and "counted here from the letter's date (Mon 14 Sep 2026), the earliest plausible start" in w
+        for w in company["warnings"]
+    )
+    assert _hint(company, "Pass received_date") and _hint(company, "If the letter is from an authority")
+    arrived = tools.compute_deadline(
+        payment, document_date="2026-09-14", sender_kind="landlord", received_date="2026-09-16"
+    )
+    assert arrived["due_date"] == "2026-09-30" and arrived["confidence"] == "high"
+    # a delivery rule on a period counted from the letter's date is dropped too
+    dated = {**payment, "anchor": "document_date"}
+    assert tools.compute_deadline(dated, document_date="2026-09-14", sender_kind="company")["due_date"] == (
+        "2026-09-28"
+    )
+    # an unknown sender keeps the engine's deemed delivery and is asked for
+    unknown = tools.compute_deadline(payment, document_date="2026-09-14")
+    assert unknown["due_date"] == "2026-10-01" and _hint(unknown, "Pass sender_kind")
+    assert tools.compute_deadline(payment, document_date="2026-09-14", sender_kind="tax_office")[
+        "due_date"
+    ] == ("2026-10-02")
+
+
+def test_the_region_hint_names_the_argument_the_engine_reads(tools: RulesTools) -> None:
+    """A payment to a company is made where the payer lives (§ 270 BGB): region does not decide it."""
+    spec = {"type": "relative", "anchor": "document_date", "amount": 14, "unit": "days", "nature": "payment"}
+    args = {"document_date": "2027-10-18", "sender_kind": "company", "today": "2027-10-20"}
+    payer = tools.compute_deadline(spec, region="HH", **args)
+    assert payer["due_date"] == "2027-11-01" and payer["confidence"] == "medium"  # All Saints' Day elsewhere
+    assert _hint(payer, "Pass recipient_region — the Land where the payer lives") and not _hint(
+        payer, "Pass region"
+    )
+    assert payer["assumed"]["holidays_from"].startswith("recipient_region: a payment to a company or person")
+    home = tools.compute_deadline(spec, region="HH", recipient_region="NW", **args)
+    assert home["due_date"] == "2027-11-02" and home["hints"] == []
+    # an objection to an office: its seat decides
+    office = tools.compute_deadline(
+        {**spec, "nature": "objection"},
+        sender_kind="authority",
+        **{k: v for k, v in args.items() if k != "sender_kind"},
+    )
+    assert _hint(office, "Pass region — the Land of the office or company") and "recipient_region" not in (
+        " ".join(office["hints"])
+    )
+    # a tax letter delivered on a regional holiday (Epiphany, Tue 6 Jan 2026) depends on both places
+    tax = tools.compute_deadline(
+        POSTED, document_date="2026-01-02", sender_kind="tax_office", today="2026-01-05"
+    )
+    assert _hint(
+        tax, "Pass region — the Land of the office or company where the deadline is met, and recipient_region"
+    )
+
+
+def test_a_partial_holiday_before_the_deadline_is_flagged(tools: RulesTools) -> None:
+    """15 Aug is a holiday in most of Bavaria (Munich too) but not in all of it: a send-by date counted
+    back over it comes out a day late."""
+    spec = {"type": "fixed", "date": "2025-08-18", "nature": "payment"}
+    bavaria = tools.compute_deadline(
+        spec, sender_kind="company", region="BY", recipient_region="BY", today="2025-08-01"
+    )
+    assert (bavaria["due_date"], bavaria["send_by"]) == ("2025-08-18", "2025-08-15")
+    assert [w for w in bavaria["warnings"] if "Mariä Himmelfahrt" in w] == [
+        "Fri 15 Aug 2025 is Mariä Himmelfahrt, a public holiday only in parts of Bayern (Assumption Day "
+        "(15 August) in communities with a Catholic majority and the Augsburg Peace Festival (8 August) in "
+        "Augsburg), which is not counted here. Where it is a holiday, the due date may be a working day later, "
+        "but a send-by or safe date counted back over it comes out a day late: act a working day earlier to be "
+        "safe."
+    ]
+    hamburg = tools.compute_deadline(spec, sender_kind="company", recipient_region="HH", today="2025-08-01")
+    assert not any("Mariä Himmelfahrt" in w for w in hamburg["warnings"])
+    # Augsburg's own holiday, and Corpus Christi in parts of Saxony
+    augsburg = tools.compute_deadline(
+        {**spec, "date": "2025-08-11"}, sender_kind="company", recipient_region="BY", today="2025-08-01"
+    )
+    assert any(w.startswith("Fri 8 Aug 2025 is Augsburger Hohes Friedensfest") for w in augsburg["warnings"])
+    saxony = tools.compute_deadline(
+        {"type": "fixed", "date": "2026-06-04", "nature": "objection"}, region="SN", today="2026-05-01"
+    )
+    assert any(w.startswith("Thu 4 Jun 2026 is Fronleichnam") for w in saxony["warnings"])
+    # a partial holiday on a weekend moves nothing
+    assert rules_tools.partial_holidays("BY", date(2026, 8, 10), date(2026, 8, 20)) == []  # Sat 15 Aug
+    assert rules_tools.partial_holidays("NW", date(2026, 1, 1), date(2026, 12, 31)) == []
+
+
+def test_a_callers_today_far_from_the_servers_is_flagged(tools: RulesTools) -> None:
+    """A model's own idea of the date can be stale: a wrong today makes a live deadline look missed."""
+    spec = {"type": "fixed", "date": "2026-10-15", "nature": "objection"}
+    stale = tools.compute_deadline(spec, today="2026-11-02")
+    assert stale["send_by"] is None and any("has already passed" in w for w in stale["warnings"])
+    assert any(
+        w.startswith(
+            "The today given (Mon 2 Nov 2026) is 43 days after this server's today (Sun 20 Sep 2026)"
+        )
+        for w in stale["warnings"]
+    )
+    assert (stale["assumed"]["today"], stale["assumed"]["server_today"]) == ("2026-11-02", "2026-09-20")
+    a_zone_apart = tools.compute_deadline(spec, today="2026-09-21")
+    assert a_zone_apart["warnings"] == [] and a_zone_apart["assumed"]["server_today"] == "2026-09-20"
+    assert "server_today" not in compact(tools.compute_deadline(spec, today="2026-09-20"))["assumed"]
+
+
+def test_a_pinned_server_does_not_use_a_callers_today() -> None:
+    pinned = RulesTools(today=lambda: date(2026, 4, 14), pin_today=True)
+    spec = {"type": "fixed", "date": "2026-05-15", "nature": "objection"}
+    result = pinned.compute_deadline(spec, today="2026-09-26")
+    assert result["send_by"] == "2026-05-08" and not any("already passed" in w for w in result["warnings"])
+    assert result["warnings"] == [
+        "The today given (Sat 26 Sep 2026) was not used: this server counts from Tue 14 Apr 2026, the day it "
+        "is set to."
+    ]
+    assert (result["assumed"]["today"], result["assumed"]["today_given"]) == ("2026-04-14", "2026-09-26")
+    with pytest.raises(RulesToolError, match="is after today"):  # arrival days are checked against it too
+        pinned.compute_deadline(RECEIPT, received_date="2026-09-01", today="2026-09-26")
 
 
 def test_today_defaults_to_the_day_in_germany(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -301,6 +486,10 @@ def test_today_defaults_to_the_servers_day_and_can_be_given(tools: RulesTools) -
             {"type": "fixed", "date": 20260131},
             "spec.date: must be a date written YYYY-MM-DD, or null (got int)",
         ),
+        (
+            {"type": "relative", "anchor": "document_date", "amount": True, "unit": "months"},
+            "spec.amount: must be a whole number (got true)",
+        ),
     ],
 )
 def test_invalid_specs_are_refused_with_readable_errors(tools: RulesTools, spec: Any, message: str) -> None:
@@ -313,6 +502,10 @@ def test_invalid_specs_are_refused_with_readable_errors(tools: RulesTools, spec:
     ("arguments", "message"),
     [
         ({"document_date": "15.09.2026"}, "document_date must be a date written YYYY-MM-DD"),
+        # other ISO forms Python would read are refused as well: they are not what the argument says
+        ({"document_date": "20260901"}, "document_date must be a date written YYYY-MM-DD (got '20260901')"),
+        ({"document_date": "2026-W36-1"}, "document_date must be a date written YYYY-MM-DD"),
+        ({"received_date": "2026-09-01T10:00"}, "received_date must be a date written YYYY-MM-DD"),
         ({"received_date": "yesterday"}, "received_date must be a date"),
         ({"today": "2026-02-30"}, "today must be a date"),
         ({"region": "Narnia"}, "region must be a German Land: one of BB, BE, BW"),
@@ -532,6 +725,20 @@ async def test_tools_answer_through_an_mcp_client() -> None:
         assert "pydantic" not in kind.content[0].text and "type=" not in kind.content[0].text
         missing = await client.call_tool("add_working_days", {"days": 2})
         assert missing.content[0].text.endswith("invalid arguments — start: required")
+        # pydantic would read true as 1 before the tool's own check: refused on the way in
+        flag = await client.call_tool("add_working_days", {"start": "2026-09-20", "days": True})
+        assert flag.is_error is True
+        assert flag.content[0].text.endswith("invalid arguments — days: must be a whole number (got true)")
+        year = await client.call_tool("german_holidays", {"year": True})
+        assert year.is_error is True and "year: must be a whole number (got true)" in year.content[0].text
+        assert (
+            _json(
+                (await client.call_tool("add_working_days", {"start": "2026-09-20", "days": 5}))
+                .content[0]
+                .text
+            )["date"]
+            == "2026-09-25"
+        )
 
         iban = await client.call_tool("check_iban", {"iban": "GB29 NWBK 6016 1331 9268 19"})
         assert _json(iban.content[0].text)["branch_code"] == {"label": "Sort code", "value": "601613"}
@@ -591,6 +798,35 @@ async def test_rules_only_stdio_handshake_through_the_cli() -> None:
         spec = {"type": "relative", "anchor": "today", "amount": 1, "unit": "weeks", "nature": "payment"}
         result = await client.call_tool("compute_deadline", {"spec": spec})
         assert _json(result.content[0].text)["due_date"] == "2026-09-28"
+        unpinned = _json(
+            (await client.call_tool("compute_deadline", {"spec": spec, "today": "2026-10-01"}))
+            .content[0]
+            .text
+        )
+        assert (
+            unpinned["assumed"]["today"] == "2026-10-01"
+            and unpinned["assumed"]["server_today"] == "2026-09-20"
+        )
+
+
+async def test_the_benchmarks_rules_server_keeps_the_letters_today() -> None:
+    """The claude CLI tells the model the real date; the server it starts for a letter must not use it."""
+    config = rules_server_config(today="2026-04-14")["mcpServers"][SERVER_NAME]
+    params = StdioServerParameters(command=config["command"], args=config["args"], env=config["env"])
+    async with Client(params, mode="legacy") as client:
+        spec = {"type": "fixed", "date": "2026-05-15", "nature": "objection"}
+        result = _json(
+            (await client.call_tool("compute_deadline", {"spec": spec, "today": "2026-09-26"}))
+            .content[0]
+            .text
+        )
+        assert result["assumed"] == {
+            "today": "2026-04-14",
+            "today_given": "2026-09-26",
+            "holiday_calendar": "Germany (nationwide holidays only)",
+            "holidays_from": "region: the Land where the deadline is met (the sender's seat)",
+        }
+        assert result["send_by"] == "2026-05-08" and "was not used" in result["warnings"][0]
 
 
 def test_rules_server_config_and_print_config() -> None:
@@ -601,7 +837,8 @@ def test_rules_server_config_and_print_config() -> None:
         }
     }
     assert rules_server_config(today="2026-09-20")["mcpServers"][SERVER_NAME]["env"] == {
-        "ORDNUNG_TODAY": "2026-09-20"
+        "ORDNUNG_TODAY": "2026-09-20",
+        "ORDNUNG_PIN_TODAY": "1",
     }
     result = CliRunner().invoke(app, ["mcp", "--rules-only", "--print-config"])
     assert result.exit_code == 0 and json.loads(result.output) == config
