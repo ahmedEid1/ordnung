@@ -18,6 +18,9 @@ date. This benchmark checks the bet against two strong baselines with the *same*
 - **LLM + rules text** — the same, plus a verified summary of the relevant rules pasted into the
   prompt (4-day delivery fiction, §§ 187/188/193 BGB, holidays …).
 
+This page measures reading letters. How well *Ask* answers questions about them — with gold answers,
+injected letters and the answer check — is measured separately: [Ask benchmark](evals-ask.md).
+
 ## Headline
 
 | Condition | Due-date accuracy [95 % CI] | Exact | Dangerous late | Early | Missed | Cost / letter | Latency p50 / mean |

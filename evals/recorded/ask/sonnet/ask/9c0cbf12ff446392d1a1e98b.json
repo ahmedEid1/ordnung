@@ -1,0 +1,268 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "3+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"6d6cd53a1de67dd7779d855a0568f390d2649b88003fef5f9d133894d07bfa7a\",\"question\":\"What is the deadline to object to my child benefit (Kindergeld) notice?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhat is the deadline to object to my child benefit (Kindergeld) notice?\n"
+  },
+  "response": {
+    "text": "I couldn't find any letter, document, or to-do related to Kindergeld (child benefit) in your Ordnung records — searches for \"Kindergeld,\" \"child benefit,\" and \"Familienkasse\" all returned no results.\n\n- This means there's no Kindergeld notice currently stored in your records, so I can't confirm an objection deadline.\n- If you have the paper letter, please check it directly for the \"Einspruch\" deadline (usually one month from the date on the notice per § 355 AO), or add/upload it to Ordnung so it can be tracked properly.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 394,
+      "cache_read_tokens": 15102,
+      "cache_creation_tokens": 1925,
+      "cost_usd": 0.014672400000000002,
+      "duration_ms": 8362,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Kindergeld"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "child benefit"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Familienkasse"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>"
+    },
+    {
+      "type": "text",
+      "text": "I"
+    },
+    {
+      "type": "text",
+      "text": " cou"
+    },
+    {
+      "type": "text",
+      "text": "ldn't find any let"
+    },
+    {
+      "type": "text",
+      "text": "ter, document, or to"
+    },
+    {
+      "type": "text",
+      "text": "-do related to Kinderg"
+    },
+    {
+      "type": "text",
+      "text": "eld (child benefit)"
+    },
+    {
+      "type": "text",
+      "text": " in your Ordnung records"
+    },
+    {
+      "type": "text",
+      "text": " — sear"
+    },
+    {
+      "type": "text",
+      "text": "ches"
+    },
+    {
+      "type": "text",
+      "text": " for \"Kindergeld"
+    },
+    {
+      "type": "text",
+      "text": ",\" \"child benefit,\" and"
+    },
+    {
+      "type": "text",
+      "text": " \"Familienkasse\""
+    },
+    {
+      "type": "text",
+      "text": " all returned no results.\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " This"
+    },
+    {
+      "type": "text",
+      "text": " means there's no Kinderg"
+    },
+    {
+      "type": "text",
+      "text": "eld notice curr"
+    },
+    {
+      "type": "text",
+      "text": "ently stored in your records"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " so I can't conf"
+    },
+    {
+      "type": "text",
+      "text": "irm an objection deadline"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "text",
+      "text": "\n- If you"
+    },
+    {
+      "type": "text",
+      "text": " have the pa"
+    },
+    {
+      "type": "text",
+      "text": "per let"
+    },
+    {
+      "type": "text",
+      "text": "ter, please"
+    },
+    {
+      "type": "text",
+      "text": " check it"
+    },
+    {
+      "type": "text",
+      "text": " direct"
+    },
+    {
+      "type": "text",
+      "text": "ly for"
+    },
+    {
+      "type": "text",
+      "text": " the \""
+    },
+    {
+      "type": "text",
+      "text": "Einsp"
+    },
+    {
+      "type": "text",
+      "text": "ruch\" de"
+    },
+    {
+      "type": "text",
+      "text": "adline ("
+    },
+    {
+      "type": "text",
+      "text": "us"
+    },
+    {
+      "type": "text",
+      "text": "ually one month from the date"
+    },
+    {
+      "type": "text",
+      "text": " on"
+    },
+    {
+      "type": "text",
+      "text": " the notice per"
+    },
+    {
+      "type": "text",
+      "text": " §"
+    },
+    {
+      "type": "text",
+      "text": " 355"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "A"
+    },
+    {
+      "type": "text",
+      "text": "O),"
+    },
+    {
+      "type": "text",
+      "text": " or add/"
+    },
+    {
+      "type": "text",
+      "text": "upload it"
+    },
+    {
+      "type": "text",
+      "text": " to Ordnung so"
+    },
+    {
+      "type": "text",
+      "text": " it can"
+    },
+    {
+      "type": "text",
+      "text": " be tracked proper"
+    },
+    {
+      "type": "text",
+      "text": "ly."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find any letter, document, or to-do related to Kindergeld (child benefit) in your Ordnung records — searches for \"Kindergeld,\" \"child benefit,\" and \"Familienkasse\" all returned no results.\n\n- This means there's no Kindergeld notice currently stored in your records, so I can't confirm an objection deadline.\n- If you have the paper letter, please check it directly for the \"Einspruch\" deadline (usually one month from the date on the notice per § 355 AO), or add/upload it to Ordnung so it can be tracked properly.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 394,
+          "cache_read_tokens": 15102,
+          "cache_creation_tokens": 1925,
+          "cost_usd": 0.014672400000000002,
+          "duration_ms": 8362,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude"
+      }
+    }
+  ]
+}

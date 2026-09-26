@@ -1,0 +1,386 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "3+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"6d6cd53a1de67dd7779d855a0568f390d2649b88003fef5f9d133894d07bfa7a\",\"question\":\"When do I have to object to the 2025 service-charge statement?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen do I have to object to the 2025 service-charge statement?\n"
+  },
+  "response": {
+    "text": "You have until **Fri 10 Sep 2027** to raise objections to the 2025 service-charge (Betriebskosten) statement from Wohnbau Musterstadt eG [item:itm_rc1nagh2qjnc].\n\n- This is 12 months after you received the statement (10 Sep 2026), per § 556 Abs. 3 Satz 5 BGB as quoted in the letter, with the deadline computed under §§ 187/188/193 BGB [item:itm_rc1nagh2qjnc].\n- Ordnung recommends sending your written objection by **Sun 6 Sep 2027** to allow time for it to arrive [item:itm_rc1nagh2qjnc].\n- The task: notify the landlord in writing of any objections to the cost figures before the deadline [item:itm_rc1nagh2qjnc].\n- You can draft the letter in Ordnung (\"Draft letter\") when you're ready.",
+    "data": null,
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 802,
+      "cache_read_tokens": 25431,
+      "cache_creation_tokens": 7680,
+      "cost_usd": 0.0438422,
+      "duration_ms": 17651,
+      "turns": 7
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "service charge statement 2025 Nebenkostenabrechnung"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Nebenkosten"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_9mewc0kcj28v\",\"kind\":\"utility_bill\",\"date\":\"2026-09-08\",\"party_id\":\"pty_4by2mq3ac4sk\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_9mewc0kcj28v\":{\"title\":\"Operating and Heating Cost Statement 2025 (Betriebs- und Heizkostenabrechnung) – Wohnbau Musterstadt eG\",\"snippet\":\"…iebs- und Heizkostenabrechnung) – Wohnbau Musterstadt eG 13_nebenkostenabrechnung_2025.pdf\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"}}\n</untrusted_document>"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "service charge"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_hjxvf5t7dqnw\",\"kind\":\"dunning\",\"date\":\"2026-09-26\",\"party_id\":\"pty_dbn2zg2kxj4d\"},{\"id\":\"doc_v741dndev13d\",\"kind\":\"tax_assessment\",\"date\":\"2026-09-15\",\"party_id\":\"pty_mcq97yavgqjy\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_hjxvf5t7dqnw\":{\"title\":\"Suspicious \\\"Last Warning Before Seizure\\\" Letter Demanding Broadcasting Fee Payment (Likely Scam)\",\"snippet\":\"…Schmitt, Sachbearbeitung Vollstreckung Rundfunk-Beitragsservice Zahlungszentrale ist ein Service im Auftrag der Landesrundfunkanstalten.\"},\"pty_dbn2zg2kxj4d\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale\"},\"doc_v741dndev13d\":{\"title\":\"Income Tax Assessment 2025 (Einkommensteuerbescheid)\",\"snippet\":\"….2026, setting income tax at €1,234.00 and no solidarity surcharge. Since €1,546.45 was already withheld, a refund of €312.45…\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"}}\n</untrusted_document>"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Abrechnung"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_9mewc0kcj28v\",\"kind\":\"utility_bill\",\"date\":\"2026-09-08\",\"party_id\":\"pty_4by2mq3ac4sk\"},{\"id\":\"doc_gb7eaa9696z3\",\"kind\":\"payslip\",\"date\":\"2026-08-31\",\"party_id\":\"pty_h9easqrf81w1\"},{\"id\":\"doc_drnw4v8g9856\",\"kind\":\"rent_lease\",\"date\":\"2025-09-15\",\"party_id\":\"pty_4by2mq3ac4sk\"},{\"id\":\"doc_q6fqvndrg5rr\",\"kind\":\"employment\",\"date\":\"2026-03-20\",\"party_id\":\"pty_h9easqrf81w1\"},{\"id\":\"doc_v741dndev13d\",\"kind\":\"tax_assessment\",\"date\":\"2026-09-15\",\"party_id\":\"pty_mcq97yavgqjy\"},{\"id\":\"doc_d9hwr1mp3bsj\",\"kind\":\"residence_permit\",\"date\":\"2026-09-16\",\"party_id\":\"pty_7jmdemeegmw0\"},{\"id\":\"doc_wtjskffj1vfq\",\"kind\":\"contract\",\"date\":\"2024-11-12\",\"party_id\":\"pty_gjsv4q2d3ajw\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_9mewc0kcj28v\":{\"title\":\"Operating and Heating Cost Statement 2025 (Betriebs- und Heizkostenabrechnung) – Wohnbau Musterstadt eG\",\"snippet\":\"…MV-2025-0412 NK 2025 Anpassung Ihrer Vorauszahlungen Auf Grundlage dieser Abrechnung passen wir Ihre monatlichen…\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"},\"doc_gb7eaa9696z3\":{\"title\":\"Payslip (Verdienstabrechnung) for August 2026\",\"snippet\":\"…Bitte bewahren Sie diese Abrechnung auf; sie dient z. B. als Einkommensnachweis. Muster Tech GmbH Geschäftsführerin…\"},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"doc_drnw4v8g9856\":{\"title\":\"Rental Lease Agreement (Mietvertrag) with Wohnbau Musterstadt eG\",\"snippet\":\"…nach der Heizkostenverordnung verteilt. (3) Nach einer Abrechnung kann jede Vertragspartei durch Erklärung in Textform eine…\"},\"doc_q6fqvndrg5rr\":{\"title\":\"Fixed-term working student contract with Muster Tech GmbH (01.04.2026–31.03.2027)\",\"snippet\":\"…Die Abrechnung erfolgt monatlich nach den erfassten Stunden; die Vergütung wird spätestens am letzten Bankarbeitstag des…\"},\"doc_v741dndev13d\":{\"title\":\"Income Tax Assessment 2025 (Einkommensteuerbescheid)\",\"snippet\":\"…Einkommensteuer wird auf 1.234,00 € festgesetzt. Abrechnung (Stand: 15.09.2026) | Einkommensteuer | Solidaritätszuschlag Festgesetzt | 1…\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"doc_d9hwr1mp3bsj\":{\"title\":\"Invitation to Appointment – Extension of Residence Permit\",\"snippet\":\"…ndienzusage oder Arbeitsvertrag mit den letzten drei Gehaltsabrechnungen • einen Nachweis über ausreichenden Krankenversicherungss…\"},\"pty_7jmdemeegmw0\":{\"name\":\"Stadt Musterstadt – Ausländerbehörde\"},\"doc_wtjskffj1vfq\":{\"title\":\"FunkNetz Mobil – Mobile Contract Confirmation (Smart M)\",\"snippet\":\"…alle deutschen Netze, SMS-Flatrate, 20 GB Datenvolumen pro Abrechnungsmonat. Nach Verbrauch des Datenvolumens wird die Geschwindi…\"},\"pty_gjsv4q2d3ajw\":{\"name\":\"FunkNetz Mobil GmbH\"}}\n</untrusted_document>"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "deadline",
+        "status": "open"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_ccq7933hsa2p\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2025-10-05\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_fh8cf155ffm3\",\"doc_id\":\"doc_245408s5e3ga\",\"contract_id\":\"ctr_bbzemyapzvm5\"},{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_v0kx33tjwnwb\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"priority\":\"high\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_55pytq44yv9e\",\"contract_id\":\"ctr_myhhpjfkpydh\"},{\"id\":\"itm_ddxnhb06rr9h\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-21\",\"send_by\":\"2026-10-15\",\"date_source\":\"computed\",\"priority\":\"normal\",\"area\":\"tax\",\"party_id\":\"pty_mcq97yavgqjy\",\"doc_id\":\"doc_v741dndev13d\"},{\"id\":\"itm_9qzfwbhh5m74\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-11-30\",\"send_by\":\"2026-11-24\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"money\",\"party_id\":\"pty_ejzv2rmp31km\",\"doc_id\":\"doc_0b2t88kqsf2n\",\"contract_id\":\"ctr_611d1sk7v1cr\"},{\"id\":\"itm_zse7bv6ce3s1\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-12-15\",\"send_by\":\"2026-12-09\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"},{\"id\":\"itm_rc1nagh2qjnc\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2027-09-10\",\"send_by\":\"2027-09-06\",\"date_source\":\"computed\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_ccq7933hsa2p\":{\"title\":\"Submit meter reading at delivery start\",\"action\":\"Report the electricity meter reading online or via the enclosed card\"},\"pty_fh8cf155ffm3\":{\"name\":\"Stadtwerke Musterstadt GmbH\"},\"itm_ghq58jjdz149\":{\"title\":\"Return overdue library items\",\"action\":\"Return the two overdue items (Einführung in die Statistik mit R; Deutsch im Alltag B2 – Übungsbuch) to the library, e.g. via the return box or service desk.\",\"consequence\":\"Fees increase by 0,50 € per item per opening day after the deadline, and the account is blocked for further loans once fees reach 10,00 €.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_v0kx33tjwnwb\":{\"title\":\"Object to contribution notice (Widerspruch)\",\"action\":\"File a written, electronic (per § 36a Abs. 2 SGB I) or in-person objection (Widerspruch) with Muster BKK if you disagree with the contribution amount.\",\"consequence\":\"The contribution notice becomes final if no objection is filed in time; an objection does not suspend the duty to pay the assessed amount in the meantime.\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_ddxnhb06rr9h\":{\"title\":\"Objection deadline (Einspruchsfrist)\",\"action\":\"File an objection (Einspruch) with the Finanzamt Musterstadt in writing, electronically, or to record it in person, if you disagree with the assessment.\",\"consequence\":\"If no objection is filed within the deadline, the tax assessment becomes final and can no longer be challenged.\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"itm_9qzfwbhh5m74\":{\"title\":\"Give consent to the fee increase (Zustimmung erteilen)\",\"action\":\"Consent to the new price and terms either online under \\\"Postfach › Zustimmungen\\\" or by returning the signed reply form.\",\"consequence\":\"Without your consent, the bank may terminate the account relationship for this account with two months' notice.\"},\"pty_ejzv2rmp31km\":{\"name\":\"Musterbank eG\"},\"itm_zse7bv6ce3s1\":{\"title\":\"Submit first progress report\",\"action\":\"Submit the progress report (max. two pages, countersigned by your academic supervisor) through the scholarship portal.\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"},\"itm_rc1nagh2qjnc\":{\"title\":\"Objection to utility cost statement (Einwendungen gegen die Betriebskostenabrechnung)\",\"action\":\"Notify the landlord in writing of any objections to the cost figures before the deadline shown.\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"}}\n</untrusted_document>"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__explain_date",
+      "input": {
+        "item_or_contract_id": "itm_rc1nagh2qjnc"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"itm_rc1nagh2qjnc\",\"kind\":\"deadline\",\"due_date\":\"2027-09-10\",\"send_by\":\"2027-09-06\",\"doc_id\":\"doc_9mewc0kcj28v\",\"how\":\"Computed by Ordnung's date rules from what the letter says (see the receipt).\",\"grounding\":[\"verified\"],\"receipt\":{\"due_date\":\"2027-09-10\",\"send_by\":\"2027-09-06\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"summary\":\"12 months after the day you received it (Thu 10 Sep 2026) is Fri 10 Sep 2027.\",\"steps\":[{\"label\":\"Counting starts the day after Thu 10 Sep 2026\",\"date\":\"2026-09-10\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"12 months later: Fri 10 Sep 2027\",\"date\":\"2027-09-10\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Fri 10 Sep 2027 is a working day, so it stays\",\"date\":\"2027-09-10\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Mon 6 Sep 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-09-06\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"confidence\":\"high\"},\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"disclaimer\":\"Based on the law as of 2026-09-25. Not legal advice. Not reviewed by a lawyer.\"}\n</ordnung_record>\n<untrusted_document>\n{\"itm_rc1nagh2qjnc\":{\"title\":\"Objection to utility cost statement (Einwendungen gegen die Betriebskostenabrechnung)\",\"as_written\":\"innerhalb von zwölf Monaten nach Zugang dieser Abrechnung\",\"evidence\":[{\"doc_id\":\"doc_9mewc0kcj28v\",\"page\":1,\"quote\":\"Einwendungen gegen diese Abrechnung teilen Sie uns bitte innerhalb von zwölf Monaten nach Zugang dieser Abrechnung mit (§ 556 Abs. 3 Satz 5 BGB).\"}]}}\n</untrusted_document>"
+    },
+    {
+      "type": "text",
+      "text": "You"
+    },
+    {
+      "type": "text",
+      "text": " have until"
+    },
+    {
+      "type": "text",
+      "text": " **F"
+    },
+    {
+      "type": "text",
+      "text": "ri 10 Sep "
+    },
+    {
+      "type": "text",
+      "text": "2027** to ra"
+    },
+    {
+      "type": "text",
+      "text": "ise obj"
+    },
+    {
+      "type": "text",
+      "text": "ections to the 2025"
+    },
+    {
+      "type": "text",
+      "text": " service"
+    },
+    {
+      "type": "text",
+      "text": "-"
+    },
+    {
+      "type": "text",
+      "text": "charge ("
+    },
+    {
+      "type": "text",
+      "text": "Betriebskos"
+    },
+    {
+      "type": "text",
+      "text": "ten) statement from"
+    },
+    {
+      "type": "text",
+      "text": " W"
+    },
+    {
+      "type": "text",
+      "text": "ohnb"
+    },
+    {
+      "type": "text",
+      "text": "au Mus"
+    },
+    {
+      "type": "text",
+      "text": "ter"
+    },
+    {
+      "type": "text",
+      "text": "st"
+    },
+    {
+      "type": "text",
+      "text": "adt e"
+    },
+    {
+      "type": "text",
+      "text": "G [item"
+    },
+    {
+      "type": "text",
+      "text": ":it"
+    },
+    {
+      "type": "text",
+      "text": "m_rc1nagh"
+    },
+    {
+      "type": "text",
+      "text": "2qjnc].\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " This"
+    },
+    {
+      "type": "text",
+      "text": " is 12 months after you"
+    },
+    {
+      "type": "text",
+      "text": " received the statement ("
+    },
+    {
+      "type": "text",
+      "text": "10"
+    },
+    {
+      "type": "text",
+      "text": " Sep 2026),"
+    },
+    {
+      "type": "text",
+      "text": " per §"
+    },
+    {
+      "type": "text",
+      "text": " 556"
+    },
+    {
+      "type": "text",
+      "text": " Abs. 3 "
+    },
+    {
+      "type": "text",
+      "text": "Satz 5 BG"
+    },
+    {
+      "type": "text",
+      "text": "B as"
+    },
+    {
+      "type": "text",
+      "text": " qu"
+    },
+    {
+      "type": "text",
+      "text": "oted in"
+    },
+    {
+      "type": "text",
+      "text": " the letter,"
+    },
+    {
+      "type": "text",
+      "text": " with"
+    },
+    {
+      "type": "text",
+      "text": " the de"
+    },
+    {
+      "type": "text",
+      "text": "adline computed under"
+    },
+    {
+      "type": "text",
+      "text": " §"
+    },
+    {
+      "type": "text",
+      "text": "§ 187/188"
+    },
+    {
+      "type": "text",
+      "text": "/193 BGB [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_rc1n"
+    },
+    {
+      "type": "text",
+      "text": "agh2qjnc]."
+    },
+    {
+      "type": "text",
+      "text": "\n- Ordnung rec"
+    },
+    {
+      "type": "text",
+      "text": "ommends s"
+    },
+    {
+      "type": "text",
+      "text": "ending your written"
+    },
+    {
+      "type": "text",
+      "text": " objection"
+    },
+    {
+      "type": "text",
+      "text": " by"
+    },
+    {
+      "type": "text",
+      "text": " **S"
+    },
+    {
+      "type": "text",
+      "text": "un 6 Sep "
+    },
+    {
+      "type": "text",
+      "text": "2027** to allow time"
+    },
+    {
+      "type": "text",
+      "text": " for it"
+    },
+    {
+      "type": "text",
+      "text": " to arrive [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_rc1nagh"
+    },
+    {
+      "type": "text",
+      "text": "2qjnc].\n-"
+    },
+    {
+      "type": "text",
+      "text": " The task"
+    },
+    {
+      "type": "text",
+      "text": ": notify the landlord in"
+    },
+    {
+      "type": "text",
+      "text": " writing of"
+    },
+    {
+      "type": "text",
+      "text": " any obj"
+    },
+    {
+      "type": "text",
+      "text": "ections to the cost fig"
+    },
+    {
+      "type": "text",
+      "text": "ures before the deadline [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_rc1n"
+    },
+    {
+      "type": "text",
+      "text": "agh2qjnc]."
+    },
+    {
+      "type": "text",
+      "text": "\n- You can draft the"
+    },
+    {
+      "type": "text",
+      "text": " letter in Ordnung"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "(\"Draft letter\") when"
+    },
+    {
+      "type": "text",
+      "text": " you're ready."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "You have until **Fri 10 Sep 2027** to raise objections to the 2025 service-charge (Betriebskosten) statement from Wohnbau Musterstadt eG [item:itm_rc1nagh2qjnc].\n\n- This is 12 months after you received the statement (10 Sep 2026), per § 556 Abs. 3 Satz 5 BGB as quoted in the letter, with the deadline computed under §§ 187/188/193 BGB [item:itm_rc1nagh2qjnc].\n- Ordnung recommends sending your written objection by **Sun 6 Sep 2027** to allow time for it to arrive [item:itm_rc1nagh2qjnc].\n- The task: notify the landlord in writing of any objections to the cost figures before the deadline [item:itm_rc1nagh2qjnc].\n- You can draft the letter in Ordnung (\"Draft letter\") when you're ready.",
+        "usage": {
+          "input_tokens": 8,
+          "output_tokens": 802,
+          "cache_read_tokens": 25431,
+          "cache_creation_tokens": 7680,
+          "cost_usd": 0.0438422,
+          "duration_ms": 17651,
+          "turns": 7
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude"
+      }
+    }
+  ]
+}

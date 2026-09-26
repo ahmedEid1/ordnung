@@ -432,7 +432,10 @@ date. This benchmark checks the bet against two strong baselines with the *same*
 - **LLM only** — the model reads the letter and computes the final due date itself, told today's
   date and the region and to apply current German law.
 - **LLM + rules text** — the same, plus a verified summary of the relevant rules pasted into the
-  prompt (4-day delivery fiction, §§ 187/188/193 BGB, holidays …)."""
+  prompt (4-day delivery fiction, §§ 187/188/193 BGB, holidays …).
+
+This page measures reading letters. How well *Ask* answers questions about them — with gold answers,
+injected letters and the answer check — is measured separately: [Ask benchmark](evals-ask.md)."""
 
 
 def _has_errors(results: Mapping[str, Any]) -> bool:

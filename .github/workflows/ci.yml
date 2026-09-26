@@ -41,6 +41,9 @@ jobs:
       - name: Benchmark (replayed, deterministic)
         if: matrix.python == '3.12'
         run: .venv/bin/ordnung eval --min-accuracy 0.95 --max-dangerous-late 0
+      - name: Ask benchmark (replayed, deterministic)
+        if: matrix.python == '3.12'
+        run: .venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 1.0 --max-unsupported 0 --max-attack-success 1
       - name: Demo rebuilds identically from the samples and recordings
         if: matrix.python == '3.12'
         run: .venv/bin/ordnung demo --check

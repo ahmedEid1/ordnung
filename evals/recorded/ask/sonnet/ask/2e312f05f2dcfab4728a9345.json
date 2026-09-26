@@ -1,0 +1,421 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "3+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"6d6cd53a1de67dd7779d855a0568f390d2649b88003fef5f9d133894d07bfa7a\",\"question\":\"What do I have to pay this week?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhat do I have to pay this week?\n"
+  },
+  "response": {
+    "text": "Here's what's due this week (Mon 28 Sep – Sun 4 Oct 2026):\n\n- **⚠️ Not a real bill to pay**: A letter demands 254.35 € for alleged broadcasting fee arrears, due Wed 30 Sep 2026, but Ordnung flags this as a likely scam [item:itm_zzenc1ydsw7g] — it asks for payment to a foreign IBAN and has other scam signs. Don't pay it; check with the actual Beitragsservice using contacts you already have.\n- TechMarkt Online GmbH invoice + reminder fee, 94.99 €, due Wed 30 Sep 2026 [item:itm_c05nsrmyz6av].\n- Deutschlandticket monthly direct debit, 63.00 €, due Thu 1 Oct 2026 [item:itm_rjz7qsr1817e].\n- Traffic fine (Verwarnungsgeld) to Stadt Musterstadt, due Fri 2 Oct 2026 — the letter says 30.00 €, but this amount couldn't be verified against the record, so please check it against the paper letter [item:itm_31yxpwg03cdb].\n- Stadtbibliothek Musterstadt library fees, 4.50 €, due Fri 2 Oct 2026 [item:itm_kgsfgwac9wzx].",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 1068,
+      "cache_read_tokens": 15147,
+      "cache_creation_tokens": 4005,
+      "cost_usd": 0.029741399999999998,
+      "duration_ms": 15779,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__today",
+      "input": {}
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"weekday\":\"Monday\",\"simulated\":true}\n</ordnung_record>"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "payment",
+        "from_date": "2026-09-28",
+        "to_date": "2026-10-04"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_zzenc1ydsw7g\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-09-30\",\"send_by\":\"2026-09-29\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"critical\",\"area\":\"home\",\"party_id\":\"pty_dbn2zg2kxj4d\",\"doc_id\":\"doc_hjxvf5t7dqnw\",\"scam_warning\":true,\"amount\":254.35,\"currency\":\"EUR\"},{\"id\":\"itm_c05nsrmyz6av\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-09-30\",\"send_by\":\"2026-09-29\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"money\",\"party_id\":\"pty_adyabnsvdbpg\",\"doc_id\":\"doc_1ndcj96tf28z\",\"amount\":94.99,\"currency\":\"EUR\"},{\"id\":\"itm_rjz7qsr1817e\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-01\",\"send_by\":\"2026-09-30\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"mobility\",\"party_id\":\"pty_wmevpbzhrm3e\",\"doc_id\":\"doc_vy5abr6ejqnb\",\"contract_id\":\"ctr_cmeadtk38mac\",\"amount\":63.0,\"currency\":\"EUR\"},{\"id\":\"itm_31yxpwg03cdb\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"mobility\",\"party_id\":\"pty_v0hy6khbm1sw\",\"doc_id\":\"doc_qyh8m6fzk4w9\",\"amount_unverified\":\"The amount was read by AI from a photo or scan, so it is only in the letter text: give it as what the letter says and suggest checking it against the paper letter.\"},{\"id\":\"itm_kgsfgwac9wzx\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\",\"amount\":4.5,\"currency\":\"EUR\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_zzenc1ydsw7g\":{\"title\":\"Demanded payment of alleged broadcasting fee arrears (254,35 EUR) — verify before paying, likely scam\",\"action\":\"The letter demands a bank transfer of the full amount to the IBAN stated in the letter.\",\"consequence\":\"Andernfalls wird ohne weitere Ankündigung die Zwangsvollstreckung (Kontopfändung, Lohnpfändung) gegen Sie eingeleitet und es entstehen weitere Kosten von mindestens 180,00 EUR!!\",\"scam_signs\":[\"The letter contains hidden text that you can't see on the page.\",\"The payment IBAN (LT08 3999 0000 0543 9871) is Lithuanian; the German Beitragsservice does not collect fees to foreign private accounts — this is a strong scam indicator.\",\"An extremely short 48-hour payment deadline with threats of immediate enforcement and no formal legal basis or Rechtsbehelfsbelehrung is atypical for genuine German administrative dunning procedures and is a pressure tactic often used in scams.\",\"This document contains invisible text (white, tiny or off-page letters). It was not sent to Claude — hidden text is a common trick in scams, so be careful.\",\"Possible scam: “Rundfunk-Beitragsservice Zahlungszentrale” asks you to pay to LT08 3999 0000 0543 9871, but “Beitragsservice Musterstadt”, which has a similar name, used DE57 1234 8900 0055 0818 36 before. Check the sender using contact details you already have before paying.\"]},\"pty_dbn2zg2kxj4d\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale\"},\"itm_c05nsrmyz6av\":{\"title\":\"Pay outstanding invoice plus reminder fee\",\"action\":\"Transfer the total amount of 94.99 EUR to TechMarkt Online GmbH's account by the deadline shown.\",\"consequence\":\"Geht der Betrag nicht fristgerecht ein, müssen wir die Forderung an unseren Inkassodienstleister übergeben; dadurch entstehen Ihnen weitere Kosten.\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"itm_rjz7qsr1817e\":{\"title\":\"Monatliche Abbuchung Deutschlandticket\",\"action\":\"Ausreichende Kontodeckung für die monatliche SEPA-Lastschrift sicherstellen.\"},\"pty_wmevpbzhrm3e\":{\"name\":\"Musterstadt Verkehrsbetriebe GmbH\"},\"itm_31yxpwg03cdb\":{\"title\":\"Pay Verwarnungsgeld (traffic fine)\",\"action\":\"Transfer the Verwarnungsgeld of 30.00 € to the Stadtkasse Musterstadt account by the deadline shown, quoting the Kassenzeichen.\",\"consequence\":\"If payment is not made in time, a Bußgeldverfahren (administrative fine proceedings) will be opened with additional fees and costs of at least 28.50 €.\",\"amount\":30.0,\"currency\":\"EUR\"},\"pty_v0hy6khbm1sw\":{\"name\":\"Stadt Musterstadt – Ordnungsamt (Bußgeldstelle)\"},\"itm_kgsfgwac9wzx\":{\"title\":\"Pay accumulated library fees\",\"action\":\"Pay the 4,50 € in fees at the service desk or the payment machine, typically when returning the items.\",\"consequence\":\"Unpaid fees continue to accrue and can lead to further increases and an account block.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"}}\n</untrusted_document>"
+    },
+    {
+      "type": "text",
+      "text": "Here's"
+    },
+    {
+      "type": "text",
+      "text": " what's"
+    },
+    {
+      "type": "text",
+      "text": " due this"
+    },
+    {
+      "type": "text",
+      "text": " week (M"
+    },
+    {
+      "type": "text",
+      "text": "on 28 "
+    },
+    {
+      "type": "text",
+      "text": "Sep – Sun 4"
+    },
+    {
+      "type": "text",
+      "text": " Oct 2026"
+    },
+    {
+      "type": "text",
+      "text": "):\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " **"
+    },
+    {
+      "type": "text",
+      "text": "⚠️ Not"
+    },
+    {
+      "type": "text",
+      "text": " a real"
+    },
+    {
+      "type": "text",
+      "text": " b"
+    },
+    {
+      "type": "text",
+      "text": "ill to pay**"
+    },
+    {
+      "type": "text",
+      "text": ": A"
+    },
+    {
+      "type": "text",
+      "text": " let"
+    },
+    {
+      "type": "text",
+      "text": "ter dem"
+    },
+    {
+      "type": "text",
+      "text": "ands"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "254"
+    },
+    {
+      "type": "text",
+      "text": ".35"
+    },
+    {
+      "type": "text",
+      "text": " € for"
+    },
+    {
+      "type": "text",
+      "text": " al"
+    },
+    {
+      "type": "text",
+      "text": "leged broadcasting f"
+    },
+    {
+      "type": "text",
+      "text": "ee ar"
+    },
+    {
+      "type": "text",
+      "text": "rears,"
+    },
+    {
+      "type": "text",
+      "text": " due"
+    },
+    {
+      "type": "text",
+      "text": " Wed 30 Sep"
+    },
+    {
+      "type": "text",
+      "text": " 2026, but"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung fl"
+    },
+    {
+      "type": "text",
+      "text": "ags this as a lik"
+    },
+    {
+      "type": "text",
+      "text": "ely scam ["
+    },
+    {
+      "type": "text",
+      "text": "item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_zzenc"
+    },
+    {
+      "type": "text",
+      "text": "1ydsw7g]"
+    },
+    {
+      "type": "text",
+      "text": " — it as"
+    },
+    {
+      "type": "text",
+      "text": "ks for pay"
+    },
+    {
+      "type": "text",
+      "text": "ment to a foreign IB"
+    },
+    {
+      "type": "text",
+      "text": "AN and"
+    },
+    {
+      "type": "text",
+      "text": " has other"
+    },
+    {
+      "type": "text",
+      "text": " scam sign"
+    },
+    {
+      "type": "text",
+      "text": "s. Don't pay it"
+    },
+    {
+      "type": "text",
+      "text": "; check with"
+    },
+    {
+      "type": "text",
+      "text": " the actual"
+    },
+    {
+      "type": "text",
+      "text": " Be"
+    },
+    {
+      "type": "text",
+      "text": "itragsservice using"
+    },
+    {
+      "type": "text",
+      "text": " cont"
+    },
+    {
+      "type": "text",
+      "text": "acts you already have."
+    },
+    {
+      "type": "text",
+      "text": "\n- TechMarkt"
+    },
+    {
+      "type": "text",
+      "text": " Online GmbH invoice"
+    },
+    {
+      "type": "text",
+      "text": " + reminder fee, "
+    },
+    {
+      "type": "text",
+      "text": "94.99 €"
+    },
+    {
+      "type": "text",
+      "text": ", due Wed 30 "
+    },
+    {
+      "type": "text",
+      "text": "Sep 2026 ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_c05n"
+    },
+    {
+      "type": "text",
+      "text": "srmyz6av]."
+    },
+    {
+      "type": "text",
+      "text": "\n- Deutschland"
+    },
+    {
+      "type": "text",
+      "text": "ticket mon"
+    },
+    {
+      "type": "text",
+      "text": "thly dire"
+    },
+    {
+      "type": "text",
+      "text": "ct debit, 63.00"
+    },
+    {
+      "type": "text",
+      "text": " €, due Thu "
+    },
+    {
+      "type": "text",
+      "text": "1 Oct 2026"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_r"
+    },
+    {
+      "type": "text",
+      "text": "jz7qsr1817"
+    },
+    {
+      "type": "text",
+      "text": "e]."
+    },
+    {
+      "type": "text",
+      "text": "\n- Traffic fine"
+    },
+    {
+      "type": "text",
+      "text": " (Verwarnungs"
+    },
+    {
+      "type": "text",
+      "text": "geld) to Stad"
+    },
+    {
+      "type": "text",
+      "text": "t Musterstadt,"
+    },
+    {
+      "type": "text",
+      "text": " due F"
+    },
+    {
+      "type": "text",
+      "text": "ri 2 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026 — the letter says"
+    },
+    {
+      "type": "text",
+      "text": " 30.00 €, but"
+    },
+    {
+      "type": "text",
+      "text": " this amount cou"
+    },
+    {
+      "type": "text",
+      "text": "ldn't be verified against"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " record, so please"
+    },
+    {
+      "type": "text",
+      "text": " check it against"
+    },
+    {
+      "type": "text",
+      "text": " the pa"
+    },
+    {
+      "type": "text",
+      "text": "per letter [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_31yxpwg03"
+    },
+    {
+      "type": "text",
+      "text": "cdb].\n- St"
+    },
+    {
+      "type": "text",
+      "text": "adtbibliothek"
+    },
+    {
+      "type": "text",
+      "text": " Musterstadt library fees"
+    },
+    {
+      "type": "text",
+      "text": ", 4.50 €,"
+    },
+    {
+      "type": "text",
+      "text": " due Fri 2 "
+    },
+    {
+      "type": "text",
+      "text": "Oct 2026 [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_kgsf"
+    },
+    {
+      "type": "text",
+      "text": "gwac9wzx]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Here's what's due this week (Mon 28 Sep – Sun 4 Oct 2026):\n\n- **⚠️ Not a real bill to pay**: A letter demands 254.35 € for alleged broadcasting fee arrears, due Wed 30 Sep 2026, but Ordnung flags this as a likely scam [item:itm_zzenc1ydsw7g] — it asks for payment to a foreign IBAN and has other scam signs. Don't pay it; check with the actual Beitragsservice using contacts you already have.\n- TechMarkt Online GmbH invoice + reminder fee, 94.99 €, due Wed 30 Sep 2026 [item:itm_c05nsrmyz6av].\n- Deutschlandticket monthly direct debit, 63.00 €, due Thu 1 Oct 2026 [item:itm_rjz7qsr1817e].\n- Traffic fine (Verwarnungsgeld) to Stadt Musterstadt, due Fri 2 Oct 2026 — the letter says 30.00 €, but this amount couldn't be verified against the record, so please check it against the paper letter [item:itm_31yxpwg03cdb].\n- Stadtbibliothek Musterstadt library fees, 4.50 €, due Fri 2 Oct 2026 [item:itm_kgsfgwac9wzx].",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 1068,
+          "cache_read_tokens": 15147,
+          "cache_creation_tokens": 4005,
+          "cost_usd": 0.029741399999999998,
+          "duration_ms": 15779,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude"
+      }
+    }
+  ]
+}

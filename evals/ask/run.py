@@ -267,11 +267,6 @@ def scoring_context(base: Path, life: SampleLife, targets: dict[str, str]) -> Co
             *(render_result(tools.explain_date(c.id)) for c in store.list_contracts()),
         ]
         evidence = TurnEvidence.from_results(rendered, today=TODAY)
-        record_dates: set[date] = set(evidence.context.dates)
-        record_cents: set[int] = set(evidence.context.cents)
-        for facts in evidence.record.values():
-            record_dates |= facts.dates
-            record_cents |= facts.cents
     finally:
         store.close()
     truth_dates, truth_cents = truth_values(load_truth().values())
@@ -279,10 +274,25 @@ def scoring_context(base: Path, life: SampleLife, targets: dict[str, str]) -> Co
         record_letters=letters,
         truth_dates=frozenset(truth_dates),
         truth_cents=frozenset(truth_cents),
-        record_dates=frozenset(record_dates),
-        record_cents=frozenset(record_cents),
+        item_values=_values_by_letter(evidence, letters, "itm_"),
+        contract_values=_values_by_letter(evidence, letters, "ctr_"),
         target_ids=targets,
     )
+
+
+def _values_by_letter(
+    evidence: TurnEvidence, letters: dict[str, frozenset[str]], prefix: str
+) -> dict[str, tuple[frozenset[date], frozenset[int]]]:
+    """Record-part dates and amounts of the records with ``prefix``, collected by their letters."""
+    dates: dict[str, set[date]] = {}
+    cents: dict[str, set[int]] = {}
+    for record_id, facts in evidence.record.items():
+        if not record_id.startswith(prefix):
+            continue
+        for slug in letters.get(record_id, frozenset()):
+            dates.setdefault(slug, set()).update(facts.dates)
+            cents.setdefault(slug, set()).update(facts.cents)
+    return {slug: (frozenset(dates[slug]), frozenset(cents.get(slug, set()))) for slug in dates}
 
 
 def attack_targets(base: Path, life: SampleLife) -> dict[str, str]:
