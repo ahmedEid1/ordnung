@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { makeDetail, makeDoc, makeItem, makeSuggestion } from "@/features/document/fixtures";
 import type { Contract } from "@/api/types";
 import { filterCounts, filterDocuments, groupLetters, inboxDateInfo, kindOptions, openItemsByDoc, parseFilter, pinJustRead } from "./filters";
-import { recapSentence, summarizeBatch } from "./recap";
+import { dueSoon, recapSentence, recapTitle, summarizeBatch } from "./recap";
 
 const TODAY = "2026-09-28";
 
@@ -108,9 +108,27 @@ describe("batch recap", () => {
     expect(r.fixedCostsMonthly).toBeCloseTo(94.99, 2);
   });
 
-  it("counts letters with something due within 14 days as needing you", () => {
-    const soon = makeDetail({ document: makeDoc({ id: "soon" }), items: [makeItem({ due_date: "2026-10-05" })] });
-    expect(summarizeBatch([soon], TODAY).needYouDocIds).toEqual(["soon"]);
+  it("counts as 'need you now' exactly the letters its tile leads to (Please check), and what is due soon apart", () => {
+    const soon = makeDetail({ document: makeDoc({ id: "soon" }), items: [makeItem({ due_date: "2026-10-20" }), makeItem({ id: "i2", send_by: "2026-10-05", due_date: "2026-10-09" })] });
+    const later = makeDetail({ document: makeDoc({ id: "later" }), items: [makeItem({ due_date: "2026-11-30" })] });
+    const check = makeDetail({ document: makeDoc({ id: "check", status: "needs_review" }) });
+    const failed = makeDetail({ document: makeDoc({ id: "failed", status: "failed" }) });
+    const batch = [soon, later, check, failed];
+    const r = summarizeBatch(batch, TODAY);
+    // the tile opens /inbox?filter=check: the same letters the filter lists
+    const listed = filterDocuments(batch.map((d) => d.document), { filter: "check" }).map((d) => d.id);
+    expect(r.needYouDocIds).toEqual(listed);
+    expect(r).toMatchObject({ needYou: 2, dueSoon: 1, dueSoonDocIds: ["soon"] });
+    // the earliest open date (send-by before due) — shown on the letter in the recap
+    expect(dueSoon(soon, TODAY)).toBe("2026-10-05");
+    expect(dueSoon(later, TODAY)).toBeNull();
+    expect(recapSentence(r)).toBe("I read 4 letters: 3 deadlines, 2 need you now, 1 due within 2 weeks.");
+  });
+
+  it("titles the recap with the letters that couldn't be read", () => {
+    expect(recapTitle(3, 0)).toBe("I read 3 letters");
+    expect(recapTitle(3, 1)).toBe("I read 2 of 3 letters");
+    expect(recapTitle(2, 2)).toBe("I couldn't read 2 letters");
   });
 
   it("writes the recap sentence", () => {
