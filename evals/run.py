@@ -42,6 +42,7 @@ from pydantic import ValidationError
 
 from evals import __version__, report
 from evals.conditions import (
+    TOOLS_CONDITION,
     CallLog,
     MeteredBackend,
     PreparedDocument,
@@ -112,8 +113,9 @@ class RunConfig:
     run_date: str | None = None
     write_docs: bool | None = None  # None: only for a complete test-split run without errors
     allow_errors: bool = False
-    #: The CI gate checks Ordnung only: another condition whose recorded answers are missing on replay
-    #: (its prompt or tool definitions changed since it was recorded) is left out with a warning.
+    #: The CI gate checks Ordnung: the tool condition, whose recorded answers go missing on replay when
+    #: the rules tools' descriptions change in code, is then left out with a warning (see
+    #: :data:`GATE_MAY_LEAVE_OUT`); every other condition must still replay.
     gate_ordnung_only: bool = False
     seed: int = DEFAULT_SEED
     resamples: int = DEFAULT_RESAMPLES
@@ -576,19 +578,24 @@ async def run_benchmark(
 
 
 REPLAY_MISS = "no recorded response"
+#: The only condition a gated replay may leave out: its replay key includes the rules tools' Python
+#: docstrings and schemas, which change with the code. The published baselines' prompts are files
+#: that must not change unnoticed, so their misses still fail the gate.
+GATE_MAY_LEAVE_OUT = frozenset({TOOLS_CONDITION})
 
 
 def _leave_out_unrecorded(run: ModelRun, say: Progress) -> None:
-    """Drop from ``run`` every condition but Ordnung that misses recorded answers (a gated replay).
+    """Drop from ``run`` a :data:`GATE_MAY_LEAVE_OUT` condition that misses recorded answers (a gated replay).
 
-    The gate checks Ordnung's numbers only; a baseline whose prompt or tool definitions changed
-    since it was recorded (a tool's description, the ``DateSpec`` schema) misses every answer on
-    replay, and that must not fail the gate. It is named, loudly, instead. Ordnung's own misses and
-    every other error still fail the run.
+    The gate checks Ordnung's numbers; the tool condition misses every answer on replay once a tool
+    description or the ``DateSpec`` schema changed since it was recorded, and that must not fail the
+    gate. It is named, loudly, instead. Ordnung's own misses, the other baselines' misses (a changed
+    ``llm_only`` or rules-text prompt: their published numbers must keep replaying) and every other
+    error still fail the run.
     """
     missing: dict[str, int] = {}
     for prediction in run.errors:
-        if prediction.condition != "ordnung" and REPLAY_MISS in (prediction.error or ""):
+        if prediction.condition in GATE_MAY_LEAVE_OUT and REPLAY_MISS in (prediction.error or ""):
             missing[prediction.condition] = missing.get(prediction.condition, 0) + 1
     for condition, count in sorted(missing.items()):
         say(
@@ -709,8 +716,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--min-accuracy",
         type=float,
         metavar="RATE",
-        help="fail unless Ordnung's due-date accuracy is at least RATE (a gate on Ordnung: on replay, another "
-        "condition without recorded answers is left out with a warning)",
+        help="fail unless Ordnung's due-date accuracy is at least RATE (a gate on Ordnung: on replay, the "
+        "rules-tool condition without recorded answers is left out with a warning)",
     )
     parser.add_argument(
         "--max-dangerous-late",
@@ -763,7 +770,7 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
         parser.error(str(exc))
     if config.refresh and not config.live:
         parser.error("--refresh needs --live")
-    # With thresholds this is the CI gate, which checks Ordnung: other conditions may lack recordings.
+    # With thresholds this is the CI gate, which checks Ordnung: the tool condition may lack recordings.
     config.gate_ordnung_only = ns.min_accuracy is not None or ns.max_dangerous_late is not None
     progress: Progress = (lambda _message: None) if ns.quiet else _stderr
     try:

@@ -918,6 +918,34 @@ def test_the_ci_gate_leaves_out_a_baseline_without_recordings(
     assert "llm_rules_tool has no recorded answer for 2 letter(s)" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("condition", ["llm_only", "llm_rules_text"])
+def test_the_ci_gate_fails_when_a_published_baseline_no_longer_replays(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], condition: str
+) -> None:
+    """A changed llm_only prompt or rules text must fail CI: their published numbers must keep replaying.
+    Only the tool condition (whose replay key holds Python docstrings) may be left out."""
+    gate = [
+        "--split",
+        "dev",
+        "--ids",
+        "dev-tax_assessment-A1",
+        "--results-dir",
+        str(tmp_path / "results"),
+        "--date",
+        "2026-09-25",
+        "--resamples",
+        "50",
+        "--no-docs",
+        "--min-accuracy",
+        "0.95",
+        "--max-dangerous-late",
+        "0",
+    ]
+    assert eval_run.run_cli(gate, backend=MissingRecordings(condition)) == 1
+    err = capsys.readouterr().err
+    assert "left out" not in err and f"{condition} dev-tax_assessment-A1: " in err
+
+
 async def test_rescored_run_is_shown_next_to_the_held_out_one(tmp_path: Path) -> None:
     held_out = (
         (
@@ -1091,6 +1119,27 @@ async def test_a_condition_added_later_keeps_the_published_numbers(tmp_path: Pat
     again = report.add_condition(merged, later.results, "llm_rules_tool", note="Recorded again.")
     assert again["meta"]["added_conditions"]["llm_rules_tool"]["note"] == "Recorded again."
     assert again["metrics"]["ordnung"] == before["metrics"]["ordnung"]
+    # recording a condition again is never silent: the replaced recording's score stays next to the number
+    first = merged["metrics"]["llm_rules_tool"]["due_date_accuracy"]
+    (replaced,) = again["meta"]["added_conditions"]["llm_rules_tool"]["earlier_recordings"]
+    assert (replaced["date"], replaced["k"], replaced["n"]) == ("2026-09-26", first["k"], first["n"])
+    assert "earlier_recordings" not in merged["meta"]["added_conditions"]["llm_rules_tool"]
+    score = f"{first['value'] * 100:.1f}".removesuffix(".0")
+    page_again = report.render_markdown([again])
+    footnote = next(line for line in page_again.splitlines() if line.startswith("† LLM + rules tool"))
+    assert "This is the second recording of it on this split" in footnote and f"scored {score} %" in footnote
+    assert f"LLM + rules tool: second recording; earlier: {score} %" in report.svg_chart(again)
+    third = report.add_condition(again, later.results, "llm_rules_tool")
+    assert len(third["meta"]["added_conditions"]["llm_rules_tool"]["earlier_recordings"]) == 2
+    assert "This is the third recording" in report.render_markdown([third])
+    # the re-scored table does not put a condition recorded after the fix under "held-out"
+    rescored_section = report.render_markdown([again], rescored=again).split("## After the held-out run", 1)[
+        1
+    ]
+    row = next(line for line in rescored_section.splitlines() if line.startswith("| **LLM + rules tool**"))
+    assert "n/a (recorded after the fix)" in row
+    ordnung_row = next(line for line in rescored_section.splitlines() if line.startswith("| **Ordnung**"))
+    assert "n/a" not in ordnung_row
 
     # The same through the CLI, rewriting the published results file in place.
     later_path = tmp_path / "later.json"

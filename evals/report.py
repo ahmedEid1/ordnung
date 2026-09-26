@@ -184,7 +184,9 @@ def add_condition(
     (and ``note``, a finding written after looking at them) goes to ``meta.added_conditions``.
 
     A condition the run already had from the start is refused: its numbers are the published run's
-    and must stay as they were. Replacing a condition added earlier this way is allowed.
+    and must stay as they were. Replacing a condition added earlier this way is allowed, and never
+    silent: the replaced recording's date, commit and accuracy go to its ``earlier_recordings``,
+    which the headline's footnote and the chart show next to the number.
     """
     meta, source_meta = results["meta"], source["meta"]
     if condition in meta.get("conditions", []) and condition not in meta.get("added_conditions", {}):
@@ -204,6 +206,18 @@ def add_condition(
     if missing:
         raise ValueError(f"{condition} has no answer for {len(missing)} letter(s), e.g. {missing[0]}")
     merged: dict[str, Any] = json.loads(json.dumps(results))
+    replaced = (meta.get("added_conditions") or {}).get(condition)
+    earlier = list((replaced or {}).get("earlier_recordings") or [])
+    if replaced is not None and condition in results.get("metrics", {}):
+        accuracy = results["metrics"][condition]["due_date_accuracy"]
+        earlier.append(
+            {
+                **{key: replaced.get(key) for key in ("date", "commit", "run_id")},
+                "k": accuracy.get("k"),
+                "n": accuracy.get("n"),
+                "value": accuracy.get("value"),
+            }
+        )
     for row in merged["entries"]:
         row["conditions"][condition] = {"prediction": added[row["id"]], "score": None}
     merged_meta = merged["meta"]
@@ -217,8 +231,38 @@ def add_condition(
         "commit": source_meta.get("commit"),
         "run_id": source_meta.get("run_id"),
         "note": note,
+        **({"earlier_recordings": earlier} if earlier else {}),
     }
     return recompute_metrics(merged, manifest_path)
+
+
+def earlier_recordings_text(info: Mapping[str, Any], *, short: bool = False) -> str:
+    """How many times an added condition was recorded on this split, and what the earlier ones scored.
+
+    Empty for a first recording. The published number is the last recording; the earlier ones were
+    replaced after changes that looking at them motivated, so the number sits next to them.
+    """
+    earlier = info.get("earlier_recordings") or []
+    if not earlier:
+        return ""
+    ordinal = {2: "second", 3: "third", 4: "fourth"}.get(len(earlier) + 1, f"{len(earlier) + 1}th")
+    scores = [
+        f"{_num(r['value'] * 100 if r.get('value') is not None else 0)} %"
+        + (
+            ""
+            if short
+            else f" ({_num(r.get('k'))}/{_num(r.get('n'))}, {r.get('date')}, commit `{r.get('commit')}`)"
+        )
+        for r in earlier
+    ]
+    if short:
+        return f"{ordinal} recording; earlier: " + ", ".join(scores)
+    return (
+        f"This is the {ordinal} recording of it on this split, made after the tool descriptions, argument "
+        f"checks and hints were revised following a review of the earlier ones; they scored "
+        + "; ".join(scores)
+        + "."
+    )
 
 
 def write_json(path: Path, data: Mapping[str, Any]) -> Path:
@@ -604,10 +648,12 @@ def _headline(
                 + (" — see “An agent with a calculator”" if condition == TOOL_CONDITION else "")
                 + "."
             )
+        recordings = earlier_recordings_text(info)
         footnotes.append(
             f"† {_label(condition)} ran on {info.get('date')}, after the held-out run, against the code of "
             f"that day — including the engine fix described under “After the held-out run” — so it is not "
             f"held-out, and it is left out of the paired differences with Ordnung below.{fair}"
+            + (f" {recordings}" if recordings else "")
         )
     footnote = ("\n\n" + "\n\n".join(footnotes)) if footnotes else ""
     paired = (
@@ -634,6 +680,7 @@ API-equivalent price reported by the Claude CLI; latency is the model time per l
 
 def _rescored_section(held_out: Mapping[str, Any], rescored: Mapping[str, Any]) -> str:
     meta = rescored["meta"]
+    later = _later(held_out)
     rows = []
     for condition in _conditions(held_out):
         before = held_out["metrics"][condition]
@@ -642,8 +689,10 @@ def _rescored_section(held_out: Mapping[str, Any], rescored: Mapping[str, Any]) 
             continue
         rows.append(
             [
-                f"**{_label(condition)}**",
-                f"{rate(before['due_date_accuracy'])}; late {rate(before['dangerous_late_rate'], ci=False)}",
+                f"**{_label(condition)}**" + (" †" if condition in later else ""),
+                "n/a (recorded after the fix)"
+                if condition in later
+                else f"{rate(before['due_date_accuracy'])}; late {rate(before['dangerous_late_rate'], ci=False)}",
                 f"{rate(after['due_date_accuracy'])}; late {rate(after['dangerous_late_rate'], ci=False)}",
             ]
         )
@@ -1296,7 +1345,12 @@ def _chart_title(
         note = (
             f"{names} ran later ({dates}), with the code of that day — not comparable with the held-out run"
         )
-    return "Due-date accuracy on required items", subtitle, note
+    recordings = [
+        f"{_label(c)}: {text}"
+        for c, info in later.items()
+        if (text := earlier_recordings_text(info, short=True))
+    ]
+    return "Due-date accuracy on required items", subtitle, "\n".join([note, *recordings])
 
 
 def _legend_conditions(panels: Sequence[ChartPanel]) -> list[str]:
@@ -1321,8 +1375,8 @@ def _matplotlib_chart(
         (title, 12.0, "bold", TEXT_PRIMARY, 0.36),
         (subtitle, 8.5, "normal", TEXT_SECONDARY, 0.24),
     ]
-    if note:
-        header_lines.append((note, 8.5, "normal", TEXT_SECONDARY, 0.24))
+    for line in note.split("\n") if note else []:
+        header_lines.append((line, 8.5, "normal", TEXT_SECONDARY, 0.24))
     titled = any(panel.title for panel in panels)
     header = 0.14 + sum(line[4] for line in header_lines) + 0.34 + (0.3 if titled else 0)
     bar, gap = 0.17, 0.07
@@ -1403,7 +1457,8 @@ def svg_chart(results: Mapping[str, Any], *, rescored: Mapping[str, Any] | None 
     panels = chart_panels(results, rescored)
     groups = panels[0].groups
     title, subtitle, note = _chart_title(results, rescored)
-    shift = 17 if note else 0  # the note takes a line of its own above the legend
+    note_lines = note.split("\n") if note else []
+    shift = 17 * len(note_lines)  # each line of the note takes a line of its own above the legend
     titled = 20 if any(panel.title for panel in panels) else 0
     width, left, right, bar, gap, group_gap, gutter = 760, 130, 50, 16, 5, 22, 36
     plot = (width - left - right - gutter * (len(panels) - 1)) / len(panels)
@@ -1418,8 +1473,10 @@ def svg_chart(results: Mapping[str, Any], *, rescored: Mapping[str, Any] | None 
         f'<text x="12" y="24" font-size="16" font-weight="600" fill="{TEXT_PRIMARY}">{_esc(title)}</text>',
         f'<text x="12" y="43" font-size="11" fill="{TEXT_SECONDARY}">{_esc(subtitle)}</text>',
     ]
-    if note:
-        parts.append(f'<text x="12" y="60" font-size="11" fill="{TEXT_SECONDARY}">{_esc(note)}</text>')
+    for i, line in enumerate(note_lines):
+        parts.append(
+            f'<text x="12" y="{60 + 17 * i}" font-size="11" fill="{TEXT_SECONDARY}">{_esc(line)}</text>'
+        )
     x = 12.0
     for condition in _legend_conditions(panels):
         color = CONDITION_COLORS.get(condition, TEXT_SECONDARY)
