@@ -112,6 +112,9 @@ class RunConfig:
     run_date: str | None = None
     write_docs: bool | None = None  # None: only for a complete test-split run without errors
     allow_errors: bool = False
+    #: The CI gate checks Ordnung only: another condition whose recorded answers are missing on replay
+    #: (its prompt or tool definitions changed since it was recorded) is left out with a warning.
+    gate_ordnung_only: bool = False
     seed: int = DEFAULT_SEED
     resamples: int = DEFAULT_RESAMPLES
     manifest_path: Path = MANIFEST_PATH
@@ -148,6 +151,8 @@ class ModelRun:
     results_path: Path | None = None
     errors: list[Prediction] = field(default_factory=list)
     fatal: str | None = None
+    #: Conditions left out of a gated replay because their recorded answers are missing.
+    left_out: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -457,13 +462,21 @@ def _commit() -> str | None:
     return None
 
 
-def run_meta(config: RunConfig, model: str, entries: Sequence[Entry], backend_label: str) -> dict[str, Any]:
-    return {
+def run_meta(
+    config: RunConfig,
+    model: str,
+    entries: Sequence[Entry],
+    backend_label: str,
+    *,
+    left_out: Sequence[str] = (),
+) -> dict[str, Any]:
+    conditions = [condition for condition in config.conditions if condition not in left_out]
+    meta: dict[str, Any] = {
         "date": config.date,
         "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
         "model": model,
         "split": config.split,
-        "conditions": list(config.conditions),
+        "conditions": conditions,
         "backend": backend_label,
         "run_id": config.effective_run_id,
         "entries": len(entries),
@@ -476,10 +489,13 @@ def run_meta(config: RunConfig, model: str, entries: Sequence[Entry], backend_la
         "seed": config.seed,
         "resamples": config.resamples,
         "evals_version": __version__,
-        "fingerprints": {condition: fingerprint(condition, model) for condition in config.conditions},
+        "fingerprints": {condition: fingerprint(condition, model) for condition in conditions},
         "dataset": _manifest_info(config.manifest_path),
         "commit": _commit(),
     }
+    if left_out:
+        meta["left_out"] = {condition: "recorded answers missing on replay" for condition in left_out}
+    return meta
 
 
 async def run_benchmark(
@@ -522,12 +538,14 @@ async def run_benchmark(
         if run.fatal:
             say(f"{model}: stopped — {run.fatal}")
             continue
+        if config.gate_ordnung_only and not config.live:
+            _leave_out_unrecorded(run, say)
         if run.errors and not config.allow_errors:
             _report_errors(run, config, say)
             continue
         evaluation = evaluate(entries, run.predictions, seed=config.seed, resamples=config.resamples)
         run.results = report.build_results(
-            meta=run_meta(config, model, entries, label),
+            meta=run_meta(config, model, entries, label, left_out=run.left_out),
             entries=entries,
             predictions=run.predictions,
             evaluation=evaluation,
@@ -557,11 +575,37 @@ async def run_benchmark(
     return outcome
 
 
+REPLAY_MISS = "no recorded response"
+
+
+def _leave_out_unrecorded(run: ModelRun, say: Progress) -> None:
+    """Drop from ``run`` every condition but Ordnung that misses recorded answers (a gated replay).
+
+    The gate checks Ordnung's numbers only; a baseline whose prompt or tool definitions changed
+    since it was recorded (a tool's description, the ``DateSpec`` schema) misses every answer on
+    replay, and that must not fail the gate. It is named, loudly, instead. Ordnung's own misses and
+    every other error still fail the run.
+    """
+    missing: dict[str, int] = {}
+    for prediction in run.errors:
+        if prediction.condition != "ordnung" and REPLAY_MISS in (prediction.error or ""):
+            missing[prediction.condition] = missing.get(prediction.condition, 0) + 1
+    for condition, count in sorted(missing.items()):
+        say(
+            f"warning: {run.model}: {condition} has no recorded answer for {count} letter(s) — its prompt "
+            "or tool definitions changed since it was recorded. It is left out of this gated run (the gate "
+            f"checks Ordnung only); record it again with --live --conditions {condition}."
+        )
+        del run.predictions[condition]
+    run.left_out = sorted(missing)
+    run.errors = [prediction for prediction in run.errors if prediction.condition not in missing]
+
+
 def _report_errors(run: ModelRun, config: RunConfig, say: Progress) -> None:
     say(f"{run.model}: {len(run.errors)} prediction(s) failed to run — no results written:")
     for prediction in run.errors[:10]:
         say(f"  {prediction.condition} {prediction.entry_id}: {prediction.error}")
-    if any("no recorded response" in (p.error or "") for p in run.errors) and not config.live:
+    if any(REPLAY_MISS in (p.error or "") for p in run.errors) and not config.live:
         say(
             f"  Recorded outputs are missing in {config.recorded_dir / safe_name(run.model)} — "
             "record them with --live, or pass --allow-errors to score the missing ones as empty."
@@ -665,7 +709,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--min-accuracy",
         type=float,
         metavar="RATE",
-        help="fail unless Ordnung's due-date accuracy is at least RATE",
+        help="fail unless Ordnung's due-date accuracy is at least RATE (a gate on Ordnung: on replay, another "
+        "condition without recorded answers is left out with a warning)",
     )
     parser.add_argument(
         "--max-dangerous-late",
@@ -718,6 +763,8 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
         parser.error(str(exc))
     if config.refresh and not config.live:
         parser.error("--refresh needs --live")
+    # With thresholds this is the CI gate, which checks Ordnung: other conditions may lack recordings.
+    config.gate_ordnung_only = ns.min_accuracy is not None or ns.max_dangerous_late is not None
     progress: Progress = (lambda _message: None) if ns.quiet else _stderr
     try:
         outcome = asyncio.run(run_benchmark(config, backend=backend, progress=progress))
@@ -727,6 +774,13 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
     for line in summary_lines(outcome):
         _stderr(line)
     failures = gate_failures(outcome, min_accuracy=ns.min_accuracy, max_dangerous_late=ns.max_dangerous_late)
+    for run in outcome.runs:
+        if run.left_out:
+            names = " ".join(run.left_out)
+            _stderr(
+                f"warning: {run.model}: left out of the gate, recorded answers missing: {names} "
+                f"(record again with --live --conditions {names})"
+            )
     for line in failures:
         _stderr(f"threshold missed: {line}")
     return 0 if outcome.ok and not failures else 1

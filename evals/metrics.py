@@ -35,6 +35,9 @@ sentence — to an item whose final date it is. Every scored item the model date
 ``tool_date`` (its final date is one of its tool dates), ``overrode_tool`` (it has tool dates, the
 final date is none of them), ``other_obligation`` (it has none, but the letter's date tools answered
 about another of its obligations) or ``no_tool_date`` (no date tool answered on that letter).
+Also counted: ``compute_deadline`` calls that passed a ``today`` other than the letter's (the
+``claude`` CLI tells the model the real date; a later ``today`` makes the tool call a live deadline
+passed and drop its send-by date, which the scorer, checking due dates only, does not see).
 """
 
 from __future__ import annotations
@@ -1227,11 +1230,31 @@ def evaluate(
         condition: summarise_condition(scores[condition], seed=seed, resamples=resamples)
         for condition in ordered
     }
+    for condition in ordered:
+        use = metrics[condition].get("tool_use")
+        if use is not None:  # from the calls' arguments, which the per-letter scores do not keep
+            counts = [
+                other_today_calls(entry, predictions[condition][entry.id])
+                for entry in entries
+                if entry.id in predictions[condition]
+            ]
+            use["deadline_calls_with_other_today"] = sum(counts)
+            use["letters_with_other_today"] = sum(1 for count in counts if count)
     comparisons = compare_conditions(scores, seed=seed, resamples=resamples)
     # Does a calculator help the model? The tool condition against the two prompts it extends.
     peers = {c: scores[c] for c in (TOOL_CONDITION, *TOOL_PEERS) if c in scores}
     comparisons.update(compare_conditions(peers, baseline_of=TOOL_CONDITION, seed=seed, resamples=resamples))
     return Evaluation(scores=dict(scores), metrics=metrics, comparisons=comparisons)
+
+
+def other_today_calls(entry: Entry, pred: Prediction) -> int:
+    """``compute_deadline`` calls in ``pred`` that passed a ``today`` other than the letter's."""
+    count = 0
+    for use in pred.tools or []:
+        given = use.input.get("today") if use.name == "compute_deadline" else None
+        if isinstance(given, str) and given.strip() and given.strip() != entry.today:
+            count += 1
+    return count
 
 
 def scored_item_count(entries: Iterable[Entry]) -> int:
@@ -1256,6 +1279,7 @@ __all__ = [
     "effective_shift",
     "evaluate",
     "match_items",
+    "other_today_calls",
     "reading_differences",
     "score_document",
     "sender_matches",

@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evals import metrics  # noqa: E402
+from evals import metrics, report  # noqa: E402
 from evals.metrics import (  # noqa: E402
     INJECTION_RE,
     SCAM_RE,
@@ -810,6 +810,39 @@ def test_tool_use_summary() -> None:
     assert use["overrides_breaking_a_right_tool_date"] == 1 and use["overrides_fixing_a_wrong_tool_date"] == 1
     # The tool condition is also compared with the prompt it extends.
     assert evaluation.comparisons["llm_rules_tool-vs-llm_only"]["due_date_accuracy_diff"]["value"] == -0.25
+    assert (use["deadline_calls_with_other_today"], use["letters_with_other_today"]) == (0, 0)
+
+
+def test_calls_with_a_today_other_than_the_letters_are_counted() -> None:
+    """The claude CLI tells the model the real date; a call passing it is counted (the scorer checks
+    due dates only, which would hide a tool that called a live deadline passed)."""
+    entry = make_entry()
+    same = ToolUse(name="compute_deadline", input={"spec": {}, "today": entry.today}, due_date="2026-06-05")
+    other = ToolUse(name="compute_deadline", input={"spec": {}, "today": "2026-09-26"}, due_date="2026-06-05")
+    unset = ToolUse(name="compute_deadline", input={"spec": {}, "today": None}, due_date="2026-06-05")
+    counter = ToolUse(
+        name="add_working_days", input={"start": "2026-05-29", "days": 5, "today": "2026-09-26"}
+    )
+    tools = [same, other, other, unset, counter]
+    assert (
+        metrics.other_today_calls(entry, prediction(entry, [item()], condition="llm_rules_tool", tools=tools))
+        == 2
+    )
+    second = make_entry("test-tax-2")
+    predictions = {
+        "llm_rules_tool": {
+            entry.id: prediction(entry, [item()], condition="llm_rules_tool", tools=tools),
+            second.id: prediction(second, [item()], condition="llm_rules_tool", tools=[same]),
+        }
+    }
+    evaluation = evaluate([entry, second], predictions, resamples=50)
+    use = evaluation.metrics["llm_rules_tool"]["tool_use"]
+    assert (use["deadline_calls_with_other_today"], use["letters_with_other_today"]) == (2, 1)
+    page = report._tool_section({"meta": {}, "metrics": evaluation.metrics})
+    assert (
+        "| `compute_deadline` calls that passed a `today` other than the letter's | 2 (on 1 letter) |" in page
+    )
+    assert "In 2 `compute_deadline` calls the model passed a `today` other than the letter's" in page
 
 
 def test_the_working_day_calculator_counts_as_a_tool_date() -> None:

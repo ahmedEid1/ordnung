@@ -182,8 +182,16 @@ def add_condition(
     letter (a scored failure is fine, an infrastructure error is not). The other conditions'
     predictions are kept exactly; all metrics are recomputed. Where the added predictions came from
     (and ``note``, a finding written after looking at them) goes to ``meta.added_conditions``.
+
+    A condition the run already had from the start is refused: its numbers are the published run's
+    and must stay as they were. Replacing a condition added earlier this way is allowed.
     """
     meta, source_meta = results["meta"], source["meta"]
+    if condition in meta.get("conditions", []) and condition not in meta.get("added_conditions", {}):
+        raise ValueError(
+            f"{condition} is one of the run's own conditions: its predictions stay as published "
+            "(only a condition added later can be replaced)"
+        )
     for key in ("split", "model", "entries"):
         if meta.get(key) != source_meta.get(key):
             raise ValueError(f"the runs differ in {key}: {meta.get(key)!r} vs {source_meta.get(key)!r}")
@@ -760,6 +768,15 @@ def _tool_section(results: Mapping[str, Any], rescored: Mapping[str, Any] | None
         ["Tool calls, by tool", f"{use['calls']} ({calls})"],
         ["Calls the tool refused (invalid arguments)", str(use["refused_calls"])],
     ]
+    other_today = use.get("deadline_calls_with_other_today")
+    if other_today is not None:
+        letters = use.get("letters_with_other_today", 0)
+        rows.append(
+            [
+                "`compute_deadline` calls that passed a `today` other than the letter's",
+                f"{other_today} (on {letters} {'letter' if letters == 1 else 'letters'})",
+            ]
+        )
     labels = {
         "tool_date": "Final date = a date the tools returned for that obligation",
         "overrode_tool": "Final date ≠ the tools' dates for that obligation (the model overrode them)",
@@ -793,6 +810,15 @@ def _tool_section(results: Mapping[str, Any], rescored: Mapping[str, Any] | None
         "whose sentence the model passed it, and an `add_working_days` date (it gets no sentence) for an "
         "obligation whose final date it is.",
     ]
+    if other_today:
+        paragraphs.append(
+            f"In {other_today} `compute_deadline` calls the model passed a `today` other than the "
+            "letter's (the `claude` CLI tells it the real date). A rules server that uses it reports a "
+            "live deadline as passed and drops its send-by date, and the final answer can repeat that; "
+            "the scorer checks due dates only. The benchmark's rules server has since been pinned to "
+            "the letter's `today` (`ORDNUNG_PIN_TODAY`): a recording made after that ignores such a "
+            "`today` and says so in the tool's warnings."
+        )
     if differs.get("value") is None:
         paragraphs = ["The tool returned no dates on this run."]
     added = (results["meta"].get("added_conditions") or {}).get(TOOL_CONDITION)
@@ -1082,8 +1108,9 @@ prevailing case law and the earliest plausible date.
 visible text; for photos Ordnung transcribes while the baselines see the image), today's date, the
 region, the same security framing (`<untrusted_document>` tags) and one repair attempt for invalid
 output. None has tools, except *LLM + rules tool*: its only tools are Ordnung's rules engine
-(`ordnung mcp --rules-only`, no file, web or shell access, counting from the letter's "today"), with
-a cost cap of $1 per call so a looping agent would be stopped. The holiday Land comes from the
+(`ordnung mcp --rules-only`, no file, web or shell access), whose "today" is the letter's — a
+`today` the model passes is not used (in recordings made before that pin it was; the tool-use table
+counts those calls) — with a cost cap of $1 per call so a looping agent would be stopped. The holiday Land comes from the
 dataset for every condition (the letterhead's Land,
 else the person's): the baselines are told it in the prompt, Ordnung's rules engine receives it as
 the app would get it from the sender's address or the person's settings; none has to infer it. The baselines' prompts ask for step-by-step working before each date, tell the model to
@@ -1520,7 +1547,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         note = " ".join(args.note.read_text(encoding="utf-8").split()) if args.note else None
         source = load_results(Path(source_path))
         for path in targets:
-            write_json(path, add_condition(load_results(path), source, condition, note=note))
+            try:
+                merged = add_condition(load_results(path), source, condition, note=note)
+            except ValueError as exc:
+                parser.error(f"{path}: {exc}")
+            write_json(path, merged)
     if args.recompute:
         for path in targets:
             write_json(path, recompute_metrics(load_results(path)))

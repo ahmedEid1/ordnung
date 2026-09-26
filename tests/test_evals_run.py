@@ -34,6 +34,7 @@ from ordnung.llm.base import (  # noqa: E402
     LLMError,
     LLMRequest,
     LLMResponse,
+    ReplayMiss,
     StreamEvent,
     ToolCall,
     Usage,
@@ -862,6 +863,61 @@ def test_ci_gate_on_ordnung_accuracy_and_dangerous_late_rate() -> None:
     assert "accuracy 90.0 % < 95.0 %" in failures[0] and "dangerous-late rate 2.0 % > 0.0 %" in failures[1]
 
 
+class MissingRecordings(FakeBackend):
+    """A replay whose recordings for one condition are missing (its tool descriptions changed, say)."""
+
+    def __init__(self, missing: str) -> None:
+        super().__init__(Responder())
+        self.missing = missing
+
+    async def complete(self, req: LLMRequest) -> LLMResponse:
+        condition = req.prompt_version.split(".", 1)[0] if req.purpose == "eval_baseline" else "ordnung"
+        if condition == self.missing:
+            raise ReplayMiss(f"no recorded response for {req.purpose} ({req.cache_key})")
+        return await super().complete(req)
+
+
+def test_the_ci_gate_leaves_out_a_baseline_without_recordings(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The gate checks Ordnung: a changed tool description must not fail it until a live re-record."""
+    args = [
+        "--split",
+        "dev",
+        "--ids",
+        "dev-tax_assessment-A1",
+        "dev-invoice_relative-A1",
+        "--results-dir",
+        str(tmp_path / "results"),
+        "--date",
+        "2026-09-25",
+        "--resamples",
+        "50",
+        "--no-docs",
+        "--quiet",
+    ]
+    gate = [*args, "--min-accuracy", "0.95", "--max-dangerous-late", "0"]
+    assert eval_run.run_cli(gate, backend=MissingRecordings("llm_rules_tool")) == 0
+    err = capsys.readouterr().err
+    assert "left out of the gate, recorded answers missing: llm_rules_tool" in err
+    assert "(record again with --live --conditions llm_rules_tool)" in err
+    results = json.loads(
+        (tmp_path / "results" / "2026-09-25-sonnet-dev-partial.json").read_text(encoding="utf-8")
+    )
+    assert results["meta"]["conditions"] == ["ordnung", "llm_only", "llm_rules_text"]
+    assert set(results["metrics"]) == {"ordnung", "llm_only", "llm_rules_text"}
+    assert results["meta"]["left_out"] == {"llm_rules_tool": "recorded answers missing on replay"}
+    assert "llm_rules_tool" not in results["meta"]["fingerprints"]
+
+    # Ordnung's own recordings are what the gate is about; and without thresholds nothing is left out
+    assert eval_run.run_cli([*gate, "--no-resume"], backend=MissingRecordings("ordnung")) == 1
+    assert "left out" not in capsys.readouterr().err
+    assert eval_run.run_cli([*args, "--no-resume"], backend=MissingRecordings("llm_rules_tool")) == 1
+    loud = [arg for arg in gate if arg != "--quiet"]
+    assert eval_run.run_cli([*loud, "--no-resume"], backend=MissingRecordings("llm_rules_tool")) == 0
+    assert "llm_rules_tool has no recorded answer for 2 letter(s)" in capsys.readouterr().err
+
+
 async def test_rescored_run_is_shown_next_to_the_held_out_one(tmp_path: Path) -> None:
     held_out = (
         (
@@ -1026,6 +1082,15 @@ async def test_a_condition_added_later_keeps_the_published_numbers(tmp_path: Pat
     partial = {**later.results, "entries": later.results["entries"][1:]}
     with pytest.raises(ValueError, match="no answer for 1 letter"):
         report.add_condition(before, partial, "llm_rules_tool")
+    # the published conditions can't be swapped for another run's; a condition added later can
+    for original in ("ordnung", "llm_only", "llm_rules_text"):
+        with pytest.raises(ValueError, match=f"{original} is one of the run's own conditions"):
+            report.add_condition(before, published.results, original)
+        with pytest.raises(ValueError, match="one of the run's own conditions"):
+            report.add_condition(merged, published.results, original)
+    again = report.add_condition(merged, later.results, "llm_rules_tool", note="Recorded again.")
+    assert again["meta"]["added_conditions"]["llm_rules_tool"]["note"] == "Recorded again."
+    assert again["metrics"]["ordnung"] == before["metrics"]["ordnung"]
 
     # The same through the CLI, rewriting the published results file in place.
     later_path = tmp_path / "later.json"
@@ -1049,3 +1114,7 @@ async def test_a_condition_added_later_keeps_the_published_numbers(tmp_path: Pat
     assert "## An agent with a calculator" in docs.read_text(encoding="utf-8")
     with pytest.raises(SystemExit):
         report.main([str(published.results_path), "--add-condition", "llm_rules_tool"])
+    held_out = published.results_path.read_bytes()
+    with pytest.raises(SystemExit):  # a usage error, not a traceback, and the file is untouched
+        report.main([str(published.results_path), "--add-condition", f"ordnung={later_path}"])
+    assert published.results_path.read_bytes() == held_out
