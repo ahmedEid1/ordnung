@@ -51,15 +51,14 @@ from ordnung.ingest.plan import (
     compute_item,
     corrections,
     filed_kind,
-    is_statement,
-    late_statement_warning,
     law_deadlines,
     payment_details,
+    payment_note,
     remedy_warnings,
     rule_context,
     verify_extraction,
     with_corrections,
-    with_statement_warning,
+    with_payment_note,
     write_plan,
 )
 from ordnung.ingest.text import PageText, detect_injection_phrases, extract_pdf_pages, text_file_pages
@@ -439,12 +438,12 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
             filed_as=kind,
             pages=store.list_pages(document.id),
         )
-        late = late_statement_warning(is_statement(kind, reading), reading.title, full_text, ctx)
+        note = payment_note(kind, reading, reading.title, full_text, ctx)
         computed = [
-            with_statement_warning(
+            with_payment_note(
                 compute_item(verified, ctx, postal_buffer_days=data.postal_buffer_days),
-                verified.item.kind,
-                late,
+                verified.item,
+                note,
             )
             for verified in data.verification.items
         ]

@@ -24,12 +24,11 @@ from ordnung.ingest.plan import (
     compute_item,
     consistency_reasons,
     document_context,
-    is_statement,
-    late_statement_warning,
     law_deadlines,
     needs_check,
+    payment_note,
     sync_rule_items,
-    with_statement_warning,
+    with_payment_note,
 )
 from ordnung.ingest.verify import ground_evidence
 from ordnung.models import (
@@ -106,17 +105,16 @@ def recompute_document_items(
     buffer = postal_buffer(store.get_profile())
     pages = store.list_pages(document.id)
     extraction = store.get_extraction(document.id)
-    statement = is_statement(document.kind, extraction)
-    late = late_statement_warning(statement, document.title, store.get_document_text(document.id), ctx)
+    note = payment_note(document.kind, extraction, document.title, store.get_document_text(document.id), ctx)
     changed: list[Item] = []
     with store.tx():
         for item in store.list_items(doc_id=document.id):
             if not recomputable(item) or item.date_spec is None:
                 continue
-            result = with_statement_warning(
+            result = with_payment_note(
                 compute_item(_verified(item, item.date_spec, pages), ctx, postal_buffer_days=buffer),
-                item.kind,
-                late,
+                item,
+                note,
             )
             recomputed = item.model_copy(
                 update={

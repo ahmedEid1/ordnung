@@ -19,7 +19,9 @@ person counts (both: the earlier); otherwise the letter's date, the earliest pla
 confidence and the question "when did it arrive?". An end date the model read counts like a stated
 anchor only when the termination's own sentence writes it (``RuleContext.end_date_grounding``). When the letter also names its own date for one of these
 deadlines and it differs from the law's, the receipt says so; for the rent increase the law's date
-is shown (a landlord can't shorten it), for the others the earlier of the two. A withdrawal period
+is shown (a landlord can't shorten it), for the others the earlier of the two — and a letter's date
+later than the law's is a soft failure there (worth a second look: the end it counts from may be
+misread). A withdrawal period
 the letter states that isn't 14 days (a shop may grant 30) is shown next to the law's: the earlier
 date while it lasts, then the later one — never "passed" while either still runs. A passed objection
 date for a landlord's notice says when the tenant may still object (§ 574b Abs. 2 S. 2 BGB).
@@ -99,6 +101,15 @@ def _note_letter_date(trace: Trace, written: date, legal: date, *, keep: str) ->
     )
 
 
+def _later_letter_date(trace: Trace, written: date, legal: date) -> None:
+    """The letter names a later day than the law's for a deadline the law sets: the law's earlier date is
+    kept, and the difference is a soft failure — the end the law's date counts from may be misread."""
+    trace.soft(
+        f"The letter names {fmt_date(written)}, later than the law's date ({fmt_date(legal)}) — we show the "
+        "earlier. Check the letter: the date it counts from may be different."
+    )
+
+
 def _registration(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -> ComputationReceipt:
     end = parse_date(spec.anchor_date) if spec.anchor == "explicit_date" else None
     end = end or ctx.end_date
@@ -129,6 +140,8 @@ def _registration(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -
             f"The letter names {fmt_date(written)}, earlier than the law's date — we show the earlier."
         )
         due = written
+    elif written is not None and written > due:
+        _later_letter_date(trace, written, due)
     if not calendar_de.is_business_day(due, None):
         trace.warnings.append(
             f"{fmt_date(due)} is not a working day. The deadline may run to the next working day "
@@ -196,6 +209,8 @@ def _notice_objection(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: in
     if written is not None and written < due:
         _note_letter_date(trace, written, due, keep="we show the earlier")
         due = written
+    elif written is not None and written > due:
+        _later_letter_date(trace, written, due)
     safe = _safe_date(trace, due, region, backward=True)
     send_by = plan_send_by(trace, ctx.today, safe, region=region, buffer=buffer)
     if due < ctx.today:

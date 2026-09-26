@@ -1,4 +1,4 @@
-"""Which rules a high-stakes letter's dates follow (ADR 0002, ADR 0007).
+"""Which rules a high-stakes letter's dates follow (ADR 0002, ADR 0007, ADR 0008).
 
 The model reads, code decides. The extraction prompt and schema stay as they were recorded, so the
 model never names these letters itself; code recognises them from its reading with the three short
@@ -9,8 +9,10 @@ written policies below, and cases they do not decide are documented limitations,
 =========================  ============================================================================
 ``court_payment_order``    three signals, with no list of exceptions: (a) the sender is a court
 ``enforcement_order``      (:func:`is_court`: a kind of court by name, *Amtsgericht*, *des
-                           Arbeitsgerichts*, or its abbreviation before the place, *AG Hagen* — not a
-                           bailiff, *Gerichtsvollzieher bei dem Amtsgericht …*, or a court cashier);
+                           Arbeitsgerichts*, or its abbreviation before a place of a word or two, *AG
+                           Hagen*, from a sender read as an authority (or ``other``) — not a company,
+                           *LG Electronics Deutschland GmbH*, *OLG Immobilien*, a bailiff,
+                           *Gerichtsvollzieher bei dem Amtsgericht …*, or a court cashier);
                            (b) the letter asks the person to answer it as the respondent: it states a
                            *Widerspruch* or *Einspruch* remedy, or gives an objection date; (c) it names
                            the order: its title names a *Mahnbescheid* or *Vollstreckungsbescheid* (or an
@@ -31,10 +33,13 @@ written policies below, and cases they do not decide are documented limitations,
                            model name the order itself (a ``letter_kind`` field); until then (the
                            prompts and their recorded answers stay fixed) code decides as above.
 ``dismissal``              the reading reports a termination by the other side
-                           (``termination_by_provider``) about a job (kind ``employment``, sender
-                           ``employer`` or an employment contract)
-``landlord_notice``        a termination by the other side about a tenancy (kind ``rent_lease``,
-                           sender ``landlord`` or a rent contract)
+                           (``termination_by_provider``) about a job; what it ends is decided by the
+                           contract it names first (``employment``; any other category but ``other``, a
+                           job ticket, is neither), then the letter's kind (``employment``), and only
+                           then the sender's (``employer``)
+``landlord_notice``        a termination by the other side about a tenancy, in the same order (a
+                           ``rent`` contract, kind ``rent_lease``, sender ``landlord``): an employer
+                           ending the lease of a company flat gives a landlord's notice
 ``rent_increase``          a price increase about a tenancy whose *quoted* wording asks for consent
                            ("Zustimmung", "Vergleichsmiete", "Mietspiegel", § 558 BGB) — never from the
                            model's own prose — unless the increase's own quote or the reading's title
@@ -49,9 +54,13 @@ written policies below, and cases they do not decide are documented limitations,
 These are the letters whose *dates* depend on their kind, so the kind is filed with the letter. An
 operating-cost statement's dates don't (its objection period is an ordinary twelve months), so it
 is recognised on read for its card only (:func:`names_statement`: the reading names a Betriebs-, Heiz- or
-Nebenkostenabrechnung in its title, or with a tenancy or a billing period, and the sender is not a
-utility or a public body, which may ask for a statement without sending one); the person may still
-file a letter as ``operating_costs``.
+Nebenkostenabrechnung in its title, or with a tenancy or a billing period; the model didn't read it as a
+reminder (``dunning``), which quotes an old statement without being it; and the sender is not a utility
+or a public body, which may ask for a statement without sending one). A later letter about a statement
+that isn't a reminder (a reply to objections) may still be recognised: its card and its payments count
+from the statement's own date when the letter gives one ("Abrechnung … vom 15.11.2024",
+:func:`~ordnung.rules.advice.statement_arrival`), never from the later letter's date. The person may
+still file a letter as ``operating_costs``.
 
 "The reading names" means its title, summary, quotes, date wordings and legal bases, never the
 model's advice prose (``explanation``, ``warnings``), which may mention a Mahnbescheid as a threat.
@@ -77,11 +86,16 @@ declaration date was computed under that rule (:func:`computed_under`: routed to
 under it — not a date that merely mentions it, like a severance payment "if you don't sue", nor a court
 order's payment date, which would turn "pay or object" into "pay"). A landlord's notice
 without notice period (:func:`extraordinary_notice`: its own quote or the title says *fristlos*, not
-negated, not only reserved — the reservation must govern the notice, "eine fristlose Kündigung behalten
-wir uns vor" — and not "mit der gesetzlichen Frist", and the tenancy ends within two months) gets no
+negated ("nicht nur fristlos" is no negation), not only reserved — the reservation must govern the
+notice, "eine fristlose Kündigung behalten wir uns vor" — and not "mit der gesetzlichen Frist", and the
+tenancy ends within two months) gets no
 objection to-do: the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB) — unless its own
 quote or the title also gives notice with a notice period in the alternative (*hilfsweise fristgemäß*),
-which it applies to. The objection is for a home only (§§ 549, 574 BGB): its to-do and card say it
+which it applies to. Any *hilfsweise* in them counts, even one that only reserves the ordinary notice:
+offering an objection that may not be needed is the safe side of missing one (ADR 0008). An ordinary
+notice whose objection date had passed when it was written (it ends less than two months later) gets
+no to-do either; its card says so (§ 574b Abs. 2 S. 2 BGB, § 573c BGB). The objection is for a home only
+(§§ 549, 574 BGB): its to-do and card say it
 isn't for a garage, parking space or business premises let on their own (§ 578 BGB) — code doesn't try
 to tell those apart.
 """
@@ -106,10 +120,21 @@ _COURT_SENDER = re.compile(
     re.I,
 )
 #: … or its usual abbreviation before the place ("AG Hagen", "des ArbG Berlin"), at the start of the
-#: name or after an article — never a company's "… AG".
+#: name or after an article — never a company's "… AG" (the rest must name a place, :func:`_names_a_place`).
 _COURT_ABBREVIATION = re.compile(
-    r"(?:^|[(,;/]\s*|\b(?:des|dem|der|beim|vom|am)\s+)(?:AG|LG|OLG|ArbG|LAG|LSG|OVG|VGH|FG)\s+[A-ZÄÖÜ]"
+    r"(?:^|[(,;/]\s*|\b(?:des|dem|der|beim|vom|am)\s+)(?:AG|LG|OLG|ArbG|LAG|LSG|OVG|VGH|FG)\s+"
+    r"(?P<rest>[A-ZÄÖÜ].*)"
 )
+#: A company's legal form: "LG Electronics Deutschland GmbH", "FG Finanz-Service AG" are no courts.
+_LEGAL_FORM = re.compile(
+    r"\b(?:GmbH|mbH|AG|SE|KGaA|KG|OHG|UG|GbR|eG|e\.\s?V|Ltd|Inc|LLC|Corp|PLC|S\.?A|B\.?V|N\.?V)(?!\w)"
+)
+#: Words inside a place's name ("Frankfurt am Main", "Neustadt a. d. Weinstraße", "Berlin II").
+_PLACE_JOINER = re.compile(r"am|an|der|im|in|bei|ob|vor|a\.|d\.|i\.|[IVX]+", re.I)
+#: Sender kinds a court's abbreviation is read for: a court is a public authority in the model's reading
+#: (or of no particular kind); ``None`` when the kind is unknown (a recipient typed in: a court's sending
+#: rules are the safe side). Never a retailer, a landlord, a company …
+_COURT_KINDS = (None, "authority", "other")
 _LABOUR_COURT = re.compile(r"(?i:arbeitsgericht)|\b(?:ArbG|LAG)\s")
 #: Senders that name a court without being one: a bailiff ("Gerichtsvollzieher bei dem Amtsgericht …",
 #: "Obergerichtsvollzieherin …, Amtsgericht Köln") or a court cashier.
@@ -150,7 +175,8 @@ _NO_CONSENT_NEEDED = re.compile(
 )
 _OPERATING_COSTS = re.compile(
     r"(?:betriebs|neben|heiz(?:ungs)?)kosten-?\s?abrechnung|(?:betriebs|neben)-\s*und\s+heizkostenabrechnung|"
-    r"operating[- ]costs? statement|service[- ]charge statement",
+    r"(?:operating|service|ancillary|heating)(?:[- ]and[- ]heating)?[- ]costs?[- ]statement|"
+    r"service[- ]charge statement",
     re.I,
 )
 _BILLING_PERIOD = re.compile(r"abrechnungs(?:zeitraum|periode|jahr)|billing (?:period|year)", re.I)
@@ -174,7 +200,7 @@ _EXTRAORDINARY = re.compile(
 #: Kündigung vor", "… vor, fristlos zu kündigen") or right after it ("eine fristlose Kündigung bleibt
 #: vorbehalten") — never one of something else ("wir kündigen fristlos und behalten uns weitere
 #: Ansprüche vor").
-_NEGATED = re.compile(r"\b(?:nicht|kein\w*|not|no|never)\b[^.!?;\n]{0,30}$", re.I)
+_NEGATED = re.compile(r"\b(?:nicht|kein\w*|not|no|never)\b(?!\s+(?:nur|only)\b)[^.!?;\n]{0,30}$", re.I)
 _NOTICE = re.compile(r"\w*\s+(?:\S+\s+){0,3}?(?:kündigung|zu\s+kündigen)\b", re.I)
 _RESERVING = re.compile(r"vorbehalt|\bbehalten\s+(?:wir\s+|ich\s+)?(?:uns|mir)\b", re.I)
 _RESERVED_AFTER = re.compile(
@@ -214,8 +240,13 @@ _WITHDRAWAL = re.compile(
 #: Withdrawal rights of other laws, with their own periods (insurance: 14 or 30 days, § 8, § 152 VVG).
 _OTHER_WITHDRAWAL_LAW = re.compile(r"\b(?:VVG|FernUSG|KAGB|VermAnlG|WpPG)\b")
 
-_EMPLOYMENT = ("employment", "employer")
 _TENANCY = ("rent_lease", "landlord", "rent")
+#: What a termination by the other side ends, by the contract's category, the letter's or the sender's kind.
+_TERMINATED: dict[str, HighStakesKind] = {
+    "employment": "dismissal",
+    "employer": "dismissal",
+    **dict.fromkeys(_TENANCY, "landlord_notice"),
+}
 _DECLARING: tuple[DateNature, ...] = ("objection", "payment", "declaration")
 
 
@@ -296,37 +327,59 @@ def _court_order(extraction: DocumentExtraction) -> HighStakesKind | None:
     return _stated_remedy(extraction)
 
 
-def is_court(name: str) -> bool:
+def _names_a_place(rest: str) -> bool:
+    """Whether what follows a court's abbreviation is its place: a word or two before any separator
+    (" - ", ",", "(" …; joiners like "am" and a chamber's "II" don't count), and no company's legal form
+    anywhere after it ("LG Electronics Deutschland GmbH", "AG Wohnbau GmbH")."""
+    place = re.split(r"\s+[-–—]\s+|[,;/(]", rest, maxsplit=1)[0]
+    words = [word for word in place.split() if not _PLACE_JOINER.fullmatch(word)]
+    return 1 <= len(words) <= 2 and not _LEGAL_FORM.search(rest)
+
+
+def is_court(name: str, kind: str | None = None) -> bool:
     """Whether a sender's name is a court's (policy 1): it names a kind of court (*Amtsgericht*, also *des
-    Amtsgerichts*; *Zentrales Mahngericht*) or abbreviates one before its place (*AG Hagen*, *ArbG
-    Berlin*), and is no bailiff or court cashier. Not recognised: a court named only in English."""
-    court = _COURT_SENDER.search(name) or _COURT_ABBREVIATION.search(name.strip())
-    return court is not None and not _NOT_A_COURT.search(name)
+    Amtsgerichts*; *Zentrales Mahngericht*), or abbreviates one before its place (*AG Hagen*, *ArbG
+    Berlin*) when the sender's ``kind`` is an authority, ``other`` or unknown — a retailer "LG
+    Electronics", a landlord "OLG Immobilien" is no court — and is no bailiff or court cashier. Not
+    recognised: a court named only in English."""
+    if _NOT_A_COURT.search(name):
+        return False
+    if _COURT_SENDER.search(name):
+        return True
+    abbreviation = _COURT_ABBREVIATION.search(name.strip())
+    return kind in _COURT_KINDS and abbreviation is not None and _names_a_place(abbreviation.group("rest"))
 
 
-def is_labour_court(name: str) -> bool:
+def is_labour_court(name: str, kind: str | None = None) -> bool:
     """Whether a court is a labour court (Arbeitsgericht, Landesarbeitsgericht): its orders give one week,
     not two (§ 46a Abs. 3, § 59 ArbGG)."""
-    return is_court(name) and bool(_LABOUR_COURT.search(name))
+    return is_court(name, kind) and bool(_LABOUR_COURT.search(name))
 
 
 def classify_letter(extraction: DocumentExtraction) -> HighStakesKind | None:
     """The high-stakes kind of a letter from the model's reading, or ``None`` (policy 1 above)."""
     sender = extraction.sender
-    if sender is not None and is_court(sender.name):
+    if sender is not None and is_court(sender.name, sender.kind):
         court_order = _court_order(extraction)
         if court_order is not None:
             return court_order
     change = extraction.change.type if extraction.change else None
-    tenancy = _about(extraction, _TENANCY)
     if change == "termination_by_provider":
-        if _about(extraction, _EMPLOYMENT):
-            return "dismissal"
-        if tenancy:
-            return "landlord_notice"
-    if tenancy and change == "price_increase" and _consent_request(extraction):
+        return _terminated(extraction)
+    if change == "price_increase" and _about(extraction, _TENANCY) and _consent_request(extraction):
         return "rent_increase"
     return None
+
+
+def _terminated(extraction: DocumentExtraction) -> HighStakesKind | None:
+    """What a termination by the other side ends (policy 1): the contract it names decides first, then
+    the letter's own kind, and only then the sender's kind — an employer ending the lease of a company
+    flat (*Werkmietwohnung*) gives a landlord's notice, and one ending a job ticket neither."""
+    category = extraction.contract.category if extraction.contract else None
+    if category not in (None, "other"):
+        return _TERMINATED.get(category)  # another contract (a gym, a job ticket): neither
+    sender = extraction.sender.kind if extraction.sender else None
+    return _TERMINATED.get(extraction.kind) or _TERMINATED.get(sender or "")
 
 
 def _consent_request(extraction: DocumentExtraction) -> bool:
@@ -343,12 +396,17 @@ def _consent_request(extraction: DocumentExtraction) -> bool:
 
 
 def names_statement(extraction: DocumentExtraction) -> bool:
-    """Whether a reading is an operating-cost statement (its card is worked out on read): it names
-    one — in its title, or with a tenancy or a billing period — and doesn't come from a utility or a
-    public body (policy 1)."""
+    """Whether a reading is an operating-cost statement (its card is worked out on read, policy 1): it
+    names one — in its title, or with a tenancy or a billing period — isn't a reminder (a reminder about
+    an old statement's back-payment quotes the statement without being it) and doesn't come from a
+    utility or a public body."""
     text = _reading_text(extraction)
     sender = extraction.sender
-    if not _OPERATING_COSTS.search(text) or (sender is not None and sender.kind in _NOT_A_LANDLORD):
+    if (
+        extraction.kind == "dunning"
+        or not _OPERATING_COSTS.search(text)
+        or (sender is not None and sender.kind in _NOT_A_LANDLORD)
+    ):
         return False
     return (
         bool(_OPERATING_COSTS.search(extraction.title))

@@ -223,20 +223,28 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   one without notice period only when its own quote or the title says so, not negated, not only
   reserved (a reservation of the notice itself) or "mit der gesetzlichen Frist", and the tenancy ends
   within two months; then there is no hardship objection to-do, and the card and the composer offer no
-  objection letter (unless its own words give notice in the alternative). Without an objection to-do
-  (no notice period, or no end read) the landlord's card is urgent and the verdict says "get advice
-  now"; the objection is for a home only (not a garage or business premises, § 578 BGB). A rent increase is a
+  objection letter (unless its own words give notice in the alternative). Without a to-do computed under
+  § 574b (no notice period, no end read, or an ordinary notice whose objection date had passed when it was
+  written — the card then says so) the landlord's card is urgent and the verdict says "get advice
+  now"; once the person has closed every to-do of a high-stakes letter its card is no longer urgent and
+  the verdict says it is filed. The objection is for a home only (not a garage or business premises, § 578
+  BGB). A rent increase is a
   consent request unless its own quote or title names another kind of increase or a quote says consent
-  isn't needed. Rule to-dos are filed on read and when the person chooses the kind; a
+  isn't needed; its payment to-dos say the higher rent is only owed once the person agrees (§ 558b Abs. 1
+  BGB). What a termination ends is decided by its contract, then the letter's kind, then the sender's (an
+  employer's company flat is a landlord's notice); a court's abbreviation ("AG Hagen") counts only before a
+  place and from a sender read as an authority (not a retailer, landlord or company), and every court
+  letter's periods cite § 180 ZPO. Rule to-dos are filed on read and when the person chooses the kind; a
   changed region, postal buffer or arrival day only recomputes those left, so a deleted one stays
-  deleted. An operating-cost statement is recognised on read only; its card
+  deleted. An operating-cost statement is recognised on read only, never from a reminder about one, and
+  counts from the statement's own date when a later letter dates it ("Abrechnung … vom 15.11.2024"); its card
   checks the 12-month limit of § 556 Abs. 3 BGB from the latest billing period the letter names (in
   figures, words, ISO dates or months, or a billing year) and calls a statement late only when it
   certainly is: only a range the letter calls its billing period decides (any other range or a billing
   year: at most "probably"), and when the latest range found is the previous year's comparison nothing
-  is claimed. When it calls a statement (probably) late, the letter's payment to-dos carry a "may not be
-  owed — check before you pay" warning, the card is urgent and the verdict doesn't lead with Pay;
-  nothing is dismissed. The rent cap is compared exactly, in cents. The person can correct a letter's kind on its
+  is claimed. When it calls a statement (probably) late, the letter's one-off back-payments (never a
+  credit or the new monthly prepayment) carry a "may not be owed — check before you pay" warning, the card
+  is urgent and the verdict doesn't lead with Pay; nothing is dismissed. The rent cap is compared exactly, in cents. The person can correct a letter's kind on its
   page ("What kind of letter is this?"); a kind the person chose is kept when the letter is read again
   (the kind and its "kind chosen" entry are written together under the ledger lock, and a re-read reads
   the letter again inside it), a kind an older version filed — the model's, or a high-stakes kind the

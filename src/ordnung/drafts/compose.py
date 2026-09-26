@@ -718,8 +718,8 @@ def plan_letter(
         region=party.region if party else None,
         today=today,
         postal_buffer_days=postal_buffer(sources.profile),
-        court=is_court(recipient),
-        labour_court=is_labour_court(recipient),
+        court=is_court(recipient, party.kind if party else None),
+        labour_court=is_labour_court(recipient, party.kind if party else None),
     )
     return Plan(
         kind, language, letter, reference, translation, guidance, tuple(notes), private_values(sources, facts)

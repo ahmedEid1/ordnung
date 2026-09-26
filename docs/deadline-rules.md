@@ -340,16 +340,16 @@ Example: tax back payment on the hero letter — due Wed 21 Oct 2026, order the 
 Some letters are rare but catastrophic when missed, and several of them never state their most
 important deadline. The extraction prompt is unchanged (its recorded answers stay valid), so Ordnung
 recognises these letters **in code** from the model's ordinary reading (`rules/routing.py`, a short
-written policy per ADR 0007) and files them under their own kind:
+written policy per ADR 0007, and ADR 0008 for why code assigns these kinds) and files them under their own kind:
 
 | Kind | Recognised when the reading … | Its dates follow | Deadlines the law adds (filed as to-dos) | Card |
 |---|---|---|---|---|
-| `court_payment_order` (*Mahnbescheid*) | comes from a court (the sender's name is a kind of court — *Amtsgericht*, also *des Amtsgerichts*, *Zentrales Mahngericht* — or abbreviates one before its place, *AG Hagen*; never any word ending in "gericht", a bailiff — *Gerichtsvollzieher bei dem Amtsgericht …* — or a court cashier), asks the person to answer it as the respondent, and names the order (see below) | `zpo_692` (at a labour court `arbgg_46a`) | pay or object within two weeks (one week at a labour court) | get advice now |
+| `court_payment_order` (*Mahnbescheid*) | comes from a court (the sender's name is a kind of court — *Amtsgericht*, also *des Amtsgerichts*, *Zentrales Mahngericht* — or abbreviates one before a place of a word or two, *AG Hagen*, from a sender read as an authority (or of no particular kind); never any word ending in "gericht", a company whose name starts like one — *LG Electronics Deutschland GmbH*, *OLG Immobilien* —, a bailiff — *Gerichtsvollzieher bei dem Amtsgericht …* — or a court cashier), asks the person to answer it as the respondent, and names the order (see below) | `zpo_692` (at a labour court `arbgg_46a`) | pay or object within two weeks (one week at a labour court) | get advice now |
 | `enforcement_order` (*Vollstreckungsbescheid*) | comes from a court, names a Vollstreckungsbescheid, asks the person to answer it, and is one (see below) | `zpo_339` (at a labour court `arbgg_59`) | object within two weeks (one week at a labour court) | get advice now |
-| `dismissal` | reports a termination by the other side about a job | `kschg_4`, `sgb3_38` | court action within three weeks; register as job-seeking | get advice now |
-| `landlord_notice` | reports a termination by the other side about a tenancy | `bgb_574b` | the objection, when the end of the tenancy is stated and the notice has a notice period (or gives one in the alternative) | tenants' association |
+| `dismissal` | reports a termination by the other side about a job — what it ends is decided by the contract it names (an employment contract; any other category but "other", like a job ticket, is neither), then the letter's kind, and only then the sender's (an employer) | `kschg_4`, `sgb3_38` | court action within three weeks; register as job-seeking | get advice now |
+| `landlord_notice` | reports a termination by the other side about a tenancy, in the same order (a rent contract, a tenancy letter, a landlord): an employer ending the lease of a company flat gives a landlord's notice, not a dismissal | `bgb_574b` | the objection, when the end of the tenancy is stated, the objection date hadn't passed when the notice was written, and the notice has a notice period (or gives one in the alternative) | tenants' association |
 | `rent_increase` | reports a rent increase whose quoted German wording asks for consent (Zustimmung, Vergleichsmiete, Mietspiegel, § 558 BGB), unless the increase's own quote or the title names another kind of increase (graduated, index, modernisation, prepayments; §§ 557a, 557b, 559, 560 BGB) or a quote says consent isn't needed — what happens *without* consent ("Sollten Sie Ihre Zustimmung nicht erteilen …"), the prepayment in the new total and a Mietspiegel feature ("Bad modernisiert") never veto it | `bgb_558b` | decide on the consent | rent cap check |
-| `operating_costs` | names an operating-cost statement in its title, or with a tenancy or a billing period, and isn't from a utility or a public body — recognised on read only, because its dates don't depend on it | ordinary 12-month period | — | late-statement check |
+| `operating_costs` | names an operating-cost statement in its title, or with a tenancy or a billing period, isn't a reminder (a reminder about an old statement's back-payment quotes the statement without being it) and isn't from a utility or a public body — recognised on read only, because its dates don't depend on it | ordinary 12-month period | — | late-statement check |
 
 **Which court order a court's letter is.** A court writes many letters that name an order: to the
 claimant (the other side objected, the order was served, a cost invoice, a request to fix the
@@ -388,7 +388,9 @@ before Ordnung knew these kinds gets its high-stakes kind the next time it is re
 (a reading with no remedy), or it is another court letter (a *Versäumnisurteil*, a hearing) — its dates
 never get an authority's 4-day delivery fiction (they run from the letter's date, the earliest plausible
 start, or the delivery day the person entered) and are never `high`: each carries a note that a court's
-periods usually run from the date on the yellow envelope.
+periods usually run from the date on the yellow envelope, and every period that doesn't count from a day
+the letter names cites § 180 ZPO (`zpo_180`), so the letter's page asks "When was it delivered?" with no
+date filled in — never "When did it arrive?" with today.
 
 **Labour courts** (`arbgg_46a`, `arbgg_59`; § 46a Abs. 1, 3, § 59 ArbGG). A labour court's (*Arbeitsgericht*)
 Mahnbescheid gives **one week**, not two (§ 46a Abs. 3 ArbGG), and the objection to its enforcement order
@@ -458,7 +460,10 @@ months before" counts back from the last day (ends 30 Sep → by 30 Jun; ends 31
 guides say 1 Oct — the earlier day is used). The three days are not moved off a weekend: § 26 Abs. 3
 SGB X may extend them, but registering online or by phone works on any day, so Ordnung keeps the
 earlier date and says so. Without a known end date the three-day rule is used (the earlier of the two).
-No postal buffer: it counts the day you register. The end of the job is the termination's effective
+No postal buffer: it counts the day you register. A date the letter names that is earlier than the law's
+is used; a later one is noted in the receipt next to the law's (earlier) date, which is kept, and the
+date is no longer `high` — the end it counts from may be misread (the same holds for the objection to a
+landlord's notice). The end of the job is the termination's effective
 date as read ([Bundesagentur für Arbeit](https://www.arbeitsagentur.de/arbeitslos-arbeit-finden/arbeitslosengeld/ihre-schritte-wenn-sie-arbeitslos-werden/wie-sie-sich-arbeitsuchend-melden)).
 
 | Learned | Job ends | Register by |
@@ -481,8 +486,11 @@ ArbGG) it must hear a dispute before the labour court. Ordnung can't tell an app
 so the to-do and the card say so instead of dropping the registration.
 
 **Rent increase request** (`bgb_558b`, § 558b Abs. 1, 2 BGB). The tenant may decide until the end of
-the second calendar month after the request arrived; only with consent is the higher rent owed, from
-the start of the third month. Consent is a declaration within a period, so a last day on a weekend or
+the second calendar month after the month the request arrived (arrived 15 January → until 31 March); only
+with consent is the higher rent owed, from the start of the third month. So a payment to-do the model
+reads from the request (the new total, often recurring) says in its receipt that the higher rent is only
+owed once the tenant agrees and that paying it can count as agreeing (citing `bgb_558b`), and the verdict
+doesn't lead with "Pay" for it. Consent is a declaration within a period, so a last day on a weekend or
 holiday moves to the next working day (§ 193 BGB). A date the landlord names is shown next to the
 law's: an earlier one can't shorten the period, a later one is noted and the law's (earlier) date is
 kept. The card checks the **rent cap** (`bgb_558_3`, § 558 Abs. 3 BGB) from
@@ -520,8 +528,15 @@ the tenancy ends within two months of the letter (or no end is stated). When uns
 notice: the to-do stays, and the card says the objection doesn't apply to a notice without notice period. A notice without
 notice period that also gives notice with one in the alternative (*hilfsweise fristgemäß*, in its own
 quote or the title — never the model's summary) keeps the to-do and the letter: the objection applies to
-that notice. When no to-do carries the notice — one without notice period, or one whose end wasn't read —
-its card is urgent and comes first, and the verdict says "get advice now", never "nothing to do". **Only
+that notice. Whether a to-do carries the notice is read from the to-dos themselves: one computed under
+§ 574b BGB — the law's, or the letter's own objection date, even when the reading missed the end. When
+none does — a notice without notice period, one whose end wasn't read, or an ordinary notice ending less
+than two months after its date (the objection date had passed when it was written: no to-do is filed, and
+the card says so, that such a short notice may have the wrong notice period, § 573c Abs. 1 BGB, and that the
+objection may still be raised at the first hearing, § 574b Abs. 2 S. 2 BGB) — its card is urgent and comes
+first, and the verdict says "get advice now", never "nothing to do". Once the person has closed every to-do
+of a high-stakes letter (done or dismissed: objected, went to court, registered), its card is no longer
+urgent and the verdict says the letter is filed, without an objection to draft. **Only
 for a home**: a garage, parking space or business premises let on its own follows § 578 BGB, without the
 hardship objection; the to-do, the card and the catalog say so, as Ordnung can't tell them from the
 letter. **Not for every tenancy** (`bgb_549`, § 549
@@ -556,10 +571,15 @@ and the tenant may inspect the receipts. The card's check is written so that it 
   other range or a billing year alone it is at most "probably too late — check the billing period".
 * "On time" is only said without "probably" when the weekend/holiday shift (whose use here is disputed)
   and an unknown Land didn't decide it.
-* When the card says "too late" or "probably too late", the letter's payment to-dos carry the same warning
-  in their receipt ("may not be owed … check before you pay", citing `bgb_556_3`), the card is urgent and
-  comes first, and the verdict no longer leads with "Pay". Nothing is dismissed: the landlord may not be
-  responsible for the delay (ADR 0006).
+* **The arrival** is the day the person entered, else the letter's own date — unless the text dates the
+  statement before the letter's date ("aus unserer Betriebskostenabrechnung 2023 vom 15.11.2024"): then the
+  letter is a later one about it (a reminder, a reply to objections), and the statement's own date counts,
+  never confirmed. A reminder (read as `dunning`) is never recognised as a statement at all.
+* When the card says "too late" or "probably too late", the letter's back-payment to-dos carry the same
+  warning in their receipt ("may not be owed … check before you pay", citing `bgb_556_3`), the card is
+  urgent and comes first, and the verdict no longer leads with "Pay". Only money the person pays once:
+  never a credit (it stays the tenant's) nor the new monthly prepayment (it is owed). Nothing is dismissed:
+  the landlord may not be responsible for the delay (ADR 0006).
 
 | Billing period ends | Statement arrived | Deadline | Result | Source |
 |---|---|---|---|---|
@@ -797,7 +817,10 @@ enforces that every id used by the engine exists here).
 | `zpo_129a` | Objections for the record at any Amtsgericht; effect only on arrival at the issuing court | § 129a Abs. 1, 3 ZPO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/zpo/__129a.html) |
 | `zpo_692`, `zpo_339` | Court payment order; enforcement order (section 7) | § 692 Abs. 1 Nr. 3, § 694 ZPO; § 700 Abs. 1, § 339 Abs. 1 ZPO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/zpo/__692.html) |
 | `bgb_195` | Old claims may be time-barred | §§ 195, 199 Abs. 1, 214 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__199.html) |
+| `arbgg_46a` | A labour court's payment order: one week to object | § 46a Abs. 1, 3 ArbGG; § 692 Abs. 1 Nr. 3 ZPO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/arbgg/__46a.html) |
+| `arbgg_59` | A labour court's enforcement order: one-week Notfrist, objection for the record | § 59 ArbGG; § 700 Abs. 1 ZPO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/arbgg/__59.html) |
 | `kschg_4`, `sgb3_38` | Dismissal: court action; registering as job-seeking | § 4 S. 1, § 7 KSchG; § 38 Abs. 1, § 159 Abs. 1 S. 2 Nr. 9 SGB III | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/kschg/__4.html) |
+| `sgb3_141` | Registering as unemployed, at the latest on the first day without work | §§ 137, 141 SGB III | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/sgb_3/__141.html) |
 | `bgb_558b`, `bgb_558_3` | Rent increase request; rent cap | § 558b Abs. 1, 2 BGB; § 558 Abs. 1, 3 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__558b.html) |
 | `bgb_574b` | Objecting to a landlord's notice | §§ 574, 574b BGB | 2025-01-01 (text form) | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__574b.html) |
 | `bgb_549` | Short lets and furnished rooms in the landlord's flat: no hardship objection, no consent procedure | § 549 Abs. 2, 3 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__549.html) |

@@ -877,3 +877,24 @@ async def test_a_template_letter_to_someone_not_in_ordnung_yet(ctx: AppContext, 
         ctx, "data_access", party_id=ids["shop"], details=LetterDetails(recipient=recipient)
     )
     assert known.recipient_block.startswith("Technik Versand GmbH")
+
+
+@pytest.mark.parametrize(
+    ("name", "kind", "court"),
+    [
+        ("LG Electronics Deutschland GmbH", "retailer", False),
+        ("LG Display", "company", False),
+        ("AG Hagen", "authority", True),
+    ],
+)
+async def test_a_withdrawal_to_a_company_named_like_a_court_may_go_by_email(
+    ctx: AppContext, ids: dict[str, str], name: str, kind: str, court: bool
+) -> None:
+    """Final review 1: "LG Electronics" is a retailer, not a Landgericht: an e-mail withdrawal is valid, and
+    no court's Aktenzeichen is asked for."""
+    party = ctx.store.add_party(name=name, kind=kind, address="Postfach 1, 65760 Eschborn").id
+    details = LetterDetails(subject_matter="Fernseher", received_on="2026-09-24")
+    draft = await compose(ctx, "withdrawal", party_id=party, details=details)
+    assert draft.send_guidance is not None
+    [email] = [channel for channel in draft.send_guidance.channels if channel.channel == "email"]
+    assert email.allowed is not court

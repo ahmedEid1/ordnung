@@ -58,6 +58,7 @@ from ordnung.models import (
 from ordnung.rules.advice import letter_advice
 from ordnung.rules.deadlines import parse_date
 from ordnung.rules.routing import alternative_notice, announced_end, extraordinary_notice, is_labour_court
+from ordnung.rules.tenancy import notice_objection_deadline
 from ordnung.secretary.triggers import Ledger
 
 router = APIRouter(tags=["documents"])
@@ -191,9 +192,18 @@ def _with_reminder_notes(store: Store, items: list[Item], today: date) -> list[I
     ]
 
 
+#: A to-do still to act on (missed and snoozed ones are not closed).
+_OPEN_ITEM = ("open", "missed", "snoozed")
+
+
 def letter_card(store: Store, document: Document, today: date) -> LetterAdvice | None:
     """The "get advice" card of a high-stakes letter, worked out on read from its kind, its dates,
-    the amounts read from it and its text (:func:`ordnung.rules.advice.letter_advice`)."""
+    the amounts read from it, its text and its to-dos (:func:`ordnung.rules.advice.letter_advice`).
+
+    Whether a to-do carries a landlord's notice is read from the to-dos themselves: one computed under
+    § 574b BGB (the law's to-do or the letter's own objection date), whatever the reading's end date.
+    A letter is ``handled`` once the person closed every to-do it has (done or dismissed): its card is
+    then no longer urgent."""
     extraction = store.get_extraction(document.id)
     kind: str | None = document.kind
     if kind not in HIGH_STAKES_KINDS:
@@ -202,24 +212,35 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
     if kind is None:
         return None
     change = extraction.change if extraction is not None else None
-    arrived = parse_date(document.received_date) or parse_date(document.doc_date)
+    letter_date = parse_date(document.doc_date)
+    arrived = parse_date(document.received_date) or letter_date
     notice = extraction if kind == "landlord_notice" else None
+    end = announced_end(notice) if notice is not None else None
     party = store.get_party(document.party_id) if document.party_id else None
-    sender = party.name if party else (extraction.sender.name if extraction and extraction.sender else "")
+    sender = party or (extraction.sender if extraction else None)
+    items = store.list_items(doc_id=document.id)
     return letter_advice(
         kind,
         today=today,
         arrived=arrived,
         arrival_confirmed=document.received_date is not None,
+        letter_date=letter_date,
         region=store.get_profile().known_region,
         old_amount=change.old_amount if change is not None else None,
         new_amount=change.new_amount if change is not None else None,
         # the title may name the billing year ("Operating-cost statement 2025")
         text=f"{document.title or ''}\n{store.get_document_text(document.id)}",
-        extraordinary=notice is not None and extraordinary_notice(notice, parse_date(document.doc_date)),
+        extraordinary=notice is not None and extraordinary_notice(notice, letter_date),
         alternative=notice is not None and alternative_notice(notice),
-        labour_court=is_labour_court(sender),
-        end_unknown=notice is not None and announced_end(notice) is None,
+        labour_court=sender is not None and is_labour_court(sender.name, sender.kind),
+        objection_todo=any(
+            item.computation is not None and "bgb_574b" in item.computation.rule_ids for item in items
+        ),
+        end_unknown=notice is not None and end is None,
+        objection_passed=end is not None
+        and letter_date is not None
+        and notice_objection_deadline(end) < letter_date,
+        handled=bool(items) and not any(item.status in _OPEN_ITEM for item in items),
     )
 
 

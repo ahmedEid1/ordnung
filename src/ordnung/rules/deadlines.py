@@ -849,6 +849,10 @@ def _compute_relative(
         )
     if statute in _FORMAL_SERVICE:
         _formal_service_note(trace, spec, anchor, statute)
+    if ctx.court and spec.anchor != "explicit_date":
+        # any court's periods run from delivery (the envelope date, § 180 ZPO): cited, so the person is
+        # asked "when was it delivered?", never "when did it arrive?" with today filled in
+        trace.use("zpo_180")
     if statute == "klage_1_month":
         trace.soft(
             "This is the deadline for a court action (Klage). Ordnung can't draft or file court actions — "

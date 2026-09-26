@@ -31,7 +31,7 @@ from ordnung.ingest.plan import (
 )
 from ordnung.models import DocumentExtraction, Item
 from ordnung.rules import RuleContext
-from ordnung.rules.advice import LATE_STATEMENT_WARNING
+from ordnung.rules.advice import LATE_STATEMENT_WARNING, RENT_INCREASE_PAYMENT_WARNING
 from test_api_support import TODAY, Api, ApiRouter, api_for
 
 MB_QUOTE = "Sie können binnen zwei Wochen seit der Zustellung dieses Bescheids Widerspruch erheben."
@@ -386,8 +386,207 @@ MB_PAYMENT_ONLY = Letter(
     },
 )
 
+REMINDER_QUOTE = (
+    "aus unserer Betriebskostenabrechnung 2023 vom 15.11.2024 ist noch eine Nachzahlung von 312,40 EUR offen."
+)
+REMINDER_PAY = "Bitte überweisen Sie den Betrag bis zum 05.10.2026."
+#: Final review 1: a landlord's payment reminder about an old statement that arrived on time.
+REMINDER = Letter(
+    marker="Zahlungserinnerung Nachzahlung",
+    pages=(
+        (
+            "Hausverwaltung Muster GmbH",
+            "SPECIMEN",
+            "Zahlungserinnerung Nachzahlung",
+            REMINDER_QUOTE,
+            REMINDER_PAY,
+        ),
+    ),
+    payload={
+        "kind": "dunning",
+        "area": "home",
+        "title": "Payment reminder: back-payment from the operating-cost statement 2023",
+        "sender": {"name": "Hausverwaltung Muster GmbH", "kind": "landlord"},
+        "document_date": "2026-09-20",
+        "summary": "The Betriebskostenabrechnung 2023 of 15.11.2024 left a back-payment of 312.40 EUR unpaid.",
+        "explanation": "Pay it.",
+        "items": [
+            {
+                "kind": "payment",
+                "title": "Pay the back-payment",
+                "amount": 312.4,
+                "date": {
+                    "type": "fixed",
+                    "date": "2026-10-05",
+                    "nature": "payment",
+                    "text": "bis zum 05.10.2026",
+                },
+                "quote": REMINDER_PAY,
+            }
+        ],
+        "key_facts": [{"label": "Statement", "value": "2023, of 15.11.2024", "quote": REMINDER_QUOTE}],
+    },
+)
+
+MIXED_CREDIT = "Ihr Guthaben aus der Heizkostenabrechnung von 85,00 EUR überweisen wir bis zum 30.09.2026."
+MIXED_PREPAYMENT = "Vorauszahlung ab 01.10.2026 monatlich 210,00 EUR."
+#: Final review 1: a late 2024 statement with a back-payment, a credit and the new monthly prepayment.
+LATE_MIXED = Letter(
+    marker="Abrechnung 2024 mit Guthaben",
+    pages=(
+        (
+            "Wohnbau Muster GmbH",
+            "SPECIMEN",
+            "Abrechnung 2024 mit Guthaben",
+            LATE_PERIOD,
+            LATE_PAY,
+            MIXED_CREDIT,
+            MIXED_PREPAYMENT,
+        ),
+    ),
+    payload={
+        **LATE_STATEMENT.payload,
+        "items": [
+            *LATE_STATEMENT.payload["items"],
+            {
+                "kind": "payment",
+                "title": "Credit from the heating statement",
+                "amount": 85.0,
+                "direction": "in",
+                "date": {
+                    "type": "fixed",
+                    "date": "2026-09-30",
+                    "nature": "payment",
+                    "text": "bis zum 30.09.2026",
+                },
+                "quote": MIXED_CREDIT,
+            },
+            {
+                "kind": "payment",
+                "title": "New monthly prepayment",
+                "amount": 210.0,
+                "recurrence": {"interval": 1, "unit": "months"},
+                "date": {"type": "fixed", "date": "2026-10-01", "nature": "payment", "text": "ab 01.10.2026"},
+                "quote": MIXED_PREPAYMENT,
+            },
+        ],
+    },
+)
+
+INCREASE_QUOTE = "Wir bitten Sie um Zustimmung zur Erhöhung der Miete auf die ortsübliche Vergleichsmiete."
+INCREASE_PAY = "Neue monatliche Miete 670,00 EUR ab dem 01.12.2026."
+#: Final review 1: a § 558 request whose reading has the new total as a recurring payment.
+RENT_INCREASE = Letter(
+    marker="Mieterhoehungsverlangen Musterweg",
+    pages=(
+        (
+            "Hausverwaltung Muster GmbH",
+            "SPECIMEN",
+            "Mieterhoehungsverlangen Musterweg",
+            INCREASE_QUOTE,
+            INCREASE_PAY,
+        ),
+    ),
+    payload={
+        "kind": "rent_lease",
+        "area": "home",
+        "title": "Rent increase request",
+        "sender": {"name": "Hausverwaltung Muster GmbH", "kind": "landlord"},
+        "document_date": "2026-09-24",
+        "summary": "Your landlord asks you to agree to a rent of 670 EUR.",
+        "explanation": "Decide.",
+        "items": [
+            {
+                "kind": "payment",
+                "title": "New monthly rent",
+                "amount": 670.0,
+                "recurrence": {"interval": 1, "unit": "months"},
+                "date": {
+                    "type": "fixed",
+                    "date": "2026-12-01",
+                    "nature": "payment",
+                    "text": "ab dem 01.12.2026",
+                },
+                "quote": INCREASE_PAY,
+            }
+        ],
+        "change": {
+            "type": "price_increase",
+            "old_amount": 640.0,
+            "new_amount": 670.0,
+            "quote": INCREASE_QUOTE,
+        },
+    },
+)
+
+#: Final review 1: an ordinary notice ending the tenancy five weeks after its date — the objection date
+#: (31 Aug 2026) had passed when it was written.
+SHORT_NOTICE = _notice(
+    "Kuendigung zum Oktober",
+    "hiermit kündigen wir das Mietverhältnis fristgerecht zum 31.10.2026.",
+    end="2026-10-31",
+)
+OBJECTION_BY = "Ein Widerspruch muss uns bis spätestens 31.01.2027 in Textform zugehen."
+#: Final review 1: a notice whose end the reading missed, but whose own objection date it read.
+OBJECTION_DATE_ONLY = Letter(
+    marker="Kuendigung mit Widerspruchsfrist",
+    pages=(("Hausverwaltung Muster GmbH", "SPECIMEN", "Kuendigung mit Widerspruchsfrist", OBJECTION_BY),),
+    payload={
+        **_notice("x", "hiermit kündigen wir das Mietverhältnis fristgerecht.", end=None).payload,
+        "items": [
+            {
+                "kind": "deadline",
+                "title": "Object to the notice",
+                "date": {
+                    "type": "fixed",
+                    "date": "2027-01-31",
+                    "nature": "objection",
+                    "text": "bis spätestens 31.01.2027",
+                },
+                "quote": OBJECTION_BY,
+            }
+        ],
+    },
+)
+COURT_ASKS = "Sie erhalten Gelegenheit, binnen zwei Wochen nach Zustellung Stellung zu nehmen."
+#: Final review 1: a court's letter that isn't an order: its period still runs from delivery (§ 180 ZPO).
+COURT_REQUEST = Letter(
+    marker="Aufforderung zur Stellungnahme",
+    pages=(("Amtsgericht Musterstadt", "SPECIMEN", "Aufforderung zur Stellungnahme", COURT_ASKS),),
+    payload={
+        "kind": "authority_letter",
+        "area": "money",
+        "title": "Request for your comment",
+        "sender": {"name": "Amtsgericht Musterstadt", "kind": "authority"},
+        "document_date": "2026-09-21",
+        "summary": "The court asks for your comment.",
+        "explanation": "Answer in time.",
+        "items": [
+            {
+                "kind": "deadline",
+                "title": "Comment",
+                "date": {
+                    "type": "relative",
+                    "anchor": "receipt",
+                    "amount": 2,
+                    "unit": "weeks",
+                    "nature": "declaration",
+                    "text": "binnen zwei Wochen nach Zustellung",
+                },
+                "quote": COURT_ASKS,
+            }
+        ],
+    },
+)
+
 #: Routed by the first marker found: the letters that quote another's marker come first.
 LETTERS = (
+    REMINDER,
+    LATE_MIXED,
+    RENT_INCREASE,
+    SHORT_NOTICE,
+    OBJECTION_DATE_ONLY,
+    COURT_REQUEST,
     LATE_STATEMENT,
     MB_PAYMENT_ONLY,
     MISREAD_END,
@@ -845,3 +1044,125 @@ def test_a_kind_the_person_chose_is_a_correction() -> None:
     dunning = reading.model_copy(update={"kind": "dunning", "sender": None, "remedy": None})
     assert corrections(filed, dunning) == {}
     assert corrections(filed, dunning, chosen_kind="court_payment_order") == {"kind": "court_payment_order"}
+
+
+# ------------------------------------------------------------------------------------ final review 1
+
+
+async def test_a_reminder_about_an_old_statement_is_no_late_statement(data_dir: Path) -> None:
+    """Final review 1: a landlord's payment reminder dated 20 Sep 2026 names its 2023 statement of 15 Nov 2024.
+    It stays a reminder: no statement card, and its back-payment is never "may not be owed". Filed as a
+    statement by the person, the card counts from the statement's own date — on time."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, REMINDER)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "dunning" and detail["advice"] is None
+        [payment] = detail["items"]
+        assert LATE_STATEMENT_WARNING not in payment["computation"]["warnings"]
+        assert "bgb_556_3" not in payment["computation"]["rule_ids"]
+
+        await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "operating_costs"})
+        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-22"})
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        advice = detail["advice"]
+        assert advice["kind"] == "operating_costs" and not advice["urgent"]
+        assert advice["facts"][0]["title"] == "Probably on time"
+        [payment] = detail["items"]
+        assert LATE_STATEMENT_WARNING not in payment["computation"]["warnings"]
+
+
+async def test_only_the_back_payment_of_a_late_statement_may_not_be_owed(data_dir: Path) -> None:
+    """Final review 1: the credit comes back to the person and the new monthly prepayment is owed: neither
+    carries the late-statement warning; the one-off back-payment does."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, LATE_MIXED)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["advice"]["kind"] == "operating_costs" and detail["advice"]["urgent"]
+        by_title = {item["title"]: item["computation"] for item in detail["items"]}
+        assert LATE_STATEMENT_WARNING in by_title["Pay the back-payment"]["warnings"]
+        for title in ("Credit from the heating statement", "New monthly prepayment"):
+            assert LATE_STATEMENT_WARNING not in by_title[title]["warnings"]
+            assert "bgb_556_3" not in by_title[title]["rule_ids"]
+        # a recompute keeps it that way
+        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-12"})
+        for item in api.ctx.store.list_items(doc_id=doc_id):
+            assert item.computation is not None
+            warned = LATE_STATEMENT_WARNING in item.computation.warnings
+            assert warned is (item.title == "Pay the back-payment")
+
+
+async def test_a_rent_increases_new_rent_is_only_owed_once_agreed(data_dir: Path) -> None:
+    """Final review 1: the model reads the new total as a recurring payment; its to-do says the higher rent
+    is only owed after consent (§ 558b Abs. 1 BGB), next to the law's decision to-do."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, RENT_INCREASE)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "rent_increase"
+        by_origin = _by_origin(api, doc_id)
+        [payment] = by_origin["extracted"]
+        assert payment.computation is not None
+        assert RENT_INCREASE_PAYMENT_WARNING in payment.computation.warnings
+        assert "bgb_558b" in payment.computation.rule_ids
+        [decision] = by_origin["rule"]
+        assert decision.title.startswith("Decide whether to agree")
+        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-25"})
+        after = api.ctx.store.get_item(payment.id)
+        assert after is not None and after.computation is not None
+        assert after.computation.warnings.count(RENT_INCREASE_PAYMENT_WARNING) == 1
+
+
+async def test_a_notice_whose_objection_date_had_passed_is_urgent_and_says_why(data_dir: Path) -> None:
+    """Final review 1: "fristgerecht zum 31.10.2026" in a letter of 24 Sep 2026 — the objection date had
+    passed before it was written, so no to-do is filed; the card is urgent and explains it."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, SHORT_NOTICE)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "landlord_notice" and detail["items"] == []
+        advice = detail["advice"]
+        assert advice["urgent"]
+        assert advice["steps"][0].startswith("Your tenancy would end less than two months after this letter")
+
+
+async def test_the_letters_own_objection_date_carries_the_notice(data_dir: Path) -> None:
+    """Final review 1: the reading missed the end, but read the letter's own objection date: that to-do
+    carries the notice, so the card neither claims there is none nor is urgent."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, OBJECTION_DATE_ONLY)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "landlord_notice"
+        [objection] = detail["items"]
+        assert objection["due_date"] == "2027-01-31" and "bgb_574b" in objection["computation"]["rule_ids"]
+        advice = detail["advice"]
+        assert not advice["urgent"]
+        assert not any("there is no to-do" in step for step in advice["steps"])
+        # once the person marks it done, it is still the objection's to-do: the card stays calm
+        await api.client.patch(f"/api/items/{objection['id']}", json={"status": "done"})
+        assert not (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]["urgent"]
+
+
+@pytest.mark.parametrize("letter", [MAHNBESCHEID, DISMISSAL], ids=["mahnbescheid", "dismissal"])
+async def test_a_card_settles_once_the_person_closed_every_to_do(data_dir: Path, letter: Letter) -> None:
+    """Final review 1: after the person objected (or went to court and registered) and marked the to-dos
+    done, the card is no longer urgent; it comes back when a to-do is reopened."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, letter)
+        items = api.ctx.store.list_items(doc_id=doc_id)
+        assert items and (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]["urgent"]
+        for item in items:
+            response = await api.client.patch(f"/api/items/{item.id}", json={"status": "done"})
+            assert response.status_code == 200
+        assert not (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]["urgent"]
+        await api.client.patch(f"/api/items/{items[0].id}", json={"status": "open"})
+        assert (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]["urgent"]
+
+
+async def test_any_court_letter_asks_for_the_delivery_date(data_dir: Path) -> None:
+    """Final review 1: a court's letter that isn't an order runs from delivery too: its receipt cites
+    § 180 ZPO, so the page asks "when was it delivered?" with no date filled in."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, COURT_REQUEST)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "authority_letter"
+        [request] = detail["items"]
+        assert "zpo_180" in request["computation"]["rule_ids"]
+        assert request["computation"]["confidence"] == "low"

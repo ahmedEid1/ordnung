@@ -64,7 +64,12 @@ from ordnung.recurrence import (
     same_schedule,
 )
 from ordnung.rules import RuleContext, compute_due, scope_for_party_kind
-from ordnung.rules.advice import LATE_STATEMENT_WARNING, statement_late
+from ordnung.rules.advice import (
+    LATE_STATEMENT_WARNING,
+    RENT_INCREASE_PAYMENT_WARNING,
+    statement_arrival,
+    statement_late,
+)
 from ordnung.rules.deadlines import parse_date
 from ordnung.rules.routing import (
     DerivedDeadline,
@@ -336,8 +341,8 @@ def rule_context(
         letter_kind=filed_as or letter_kind(extraction),
         end_date=announced_end(extraction),
         end_date_grounding=end_date_grounding(extraction, pages),
-        court=is_court(name),
-        labour_court=is_labour_court(name),
+        court=is_court(name, kind),
+        labour_court=is_labour_court(name, kind),
     )
 
 
@@ -401,32 +406,67 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
 
 def is_statement(kind: str | None, extraction: DocumentExtraction | None) -> bool:
     """Whether a letter is an operating-cost statement: filed as one, or — as its dates don't depend on its
-    kind — recognised from its reading when it isn't filed as another high-stakes kind
-    (:func:`~ordnung.rules.routing.names_statement`)."""
+    kind — recognised from its reading when it isn't filed as another high-stakes kind or as a reminder
+    (:func:`~ordnung.rules.routing.names_statement`: only the statement itself, never a reminder about
+    an old statement's back-payment)."""
     if kind == "operating_costs":
         return True
-    return kind not in HIGH_STAKES_KINDS and extraction is not None and names_statement(extraction)
+    return (
+        kind not in (*HIGH_STAKES_KINDS, "dunning") and extraction is not None and names_statement(extraction)
+    )
 
 
 def late_statement_warning(statement: bool, title: str | None, text: str, ctx: RuleContext) -> str | None:
-    """The warning an operating-cost statement's payment to-dos carry when the letter's card calls it too
-    late (:func:`~ordnung.rules.advice.statement_late`, from the same arrival day, Land and text): its
-    back-payment may not be owed (§ 556 Abs. 3 S. 3 BGB). The to-do stays open — the landlord may not be
-    responsible for the delay, and nothing is ever dismissed for the person (ADR 0006)."""
+    """The warning an operating-cost statement's back-payment carries when the letter's card calls it too
+    late (:func:`~ordnung.rules.advice.statement_late`, from the same arrival day, Land and text — the
+    statement's own date when the text dates it before the letter, :func:`~ordnung.rules.advice.
+    statement_arrival`): it may not be owed (§ 556 Abs. 3 S. 3 BGB). The to-do stays open — the landlord
+    may not be responsible for the delay, and nothing is ever dismissed for the person (ADR 0006)."""
     if not statement:
         return None
-    arrived = ctx.received_date if ctx.received_confirmed and ctx.received_date else ctx.document_date
-    late = statement_late(f"{title or ''}\n{text}", arrived, ctx.received_confirmed, ctx.recipient_region)
+    body = f"{title or ''}\n{text}"
+    received = ctx.received_date if ctx.received_confirmed and ctx.received_date else ctx.document_date
+    arrived, confirmed = statement_arrival(body, received, ctx.received_confirmed, ctx.document_date)
+    late = statement_late(body, arrived, confirmed, ctx.recipient_region)
     return LATE_STATEMENT_WARNING if late else None
 
 
-def with_statement_warning(computed: ComputedDate, item_kind: str, warning: str | None) -> ComputedDate:
-    """A payment's receipt with the late-statement warning (:func:`late_statement_warning`) and its rule."""
+@dataclass(frozen=True)
+class PaymentNote:
+    """A warning a letter's outgoing payment to-dos carry in their receipt, with the rule it cites.
+    ``recurring``: recurring payments carry it too (a rent increase's new rent), not only one-off ones (a
+    late statement's back-payment — never the new monthly prepayment)."""
+
+    warning: str
+    rule_id: str
+    recurring: bool
+
+
+def payment_note(
+    kind: str | None, extraction: DocumentExtraction | None, title: str | None, text: str, ctx: RuleContext
+) -> PaymentNote | None:
+    """The note a letter's payments carry: a rent increase's new rent is only owed once the person
+    agrees (§ 558b Abs. 1 BGB); a late statement's back-payment may not be owed
+    (:func:`late_statement_warning`)."""
+    if kind == "rent_increase":
+        return PaymentNote(RENT_INCREASE_PAYMENT_WARNING, "bgb_558b", recurring=True)
+    warning = late_statement_warning(is_statement(kind, extraction), title, text, ctx)
+    return PaymentNote(warning, "bgb_556_3", recurring=False) if warning else None
+
+
+def with_payment_note(
+    computed: ComputedDate, item: ExtractedItem | Item, note: PaymentNote | None
+) -> ComputedDate:
+    """A payment's receipt with its letter's :class:`PaymentNote` and its rule. Only money the person
+    pays: never a credit or refund (``direction`` "in"), and a recurring payment only when the note says
+    so."""
     receipt = computed.receipt
-    if warning is None or item_kind != "payment" or receipt is None:
+    if note is None or receipt is None or item.kind != "payment" or item.direction == "in":
         return computed
-    rule_ids = receipt.rule_ids if "bgb_556_3" in receipt.rule_ids else [*receipt.rule_ids, "bgb_556_3"]
-    updated = receipt.model_copy(update={"warnings": [*receipt.warnings, warning], "rule_ids": rule_ids})
+    if item.recurrence is not None and not note.recurring:
+        return computed
+    rule_ids = receipt.rule_ids if note.rule_id in receipt.rule_ids else [*receipt.rule_ids, note.rule_id]
+    updated = receipt.model_copy(update={"warnings": [*receipt.warnings, note.warning], "rule_ids": rule_ids})
     return replace(computed, receipt=updated)
 
 
