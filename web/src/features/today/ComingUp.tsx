@@ -3,11 +3,11 @@ import { Link } from "react-router";
 import { motion } from "motion/react";
 import { ArrowRight } from "lucide-react";
 import type { Party } from "@/api/types";
+import { DateLeaf } from "@/components/ui/DateLeaf";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { Money } from "@/components/ui/Money";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { formatTime, formatTotals } from "@/lib/format";
-import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { fadeUp } from "./motion";
 import { groupByWeek, isOutgoingPayment, type TodayAction } from "./selection";
@@ -20,24 +20,6 @@ const ROLE_LABEL: Partial<Record<TodayAction["dateRole"], string>> = {
   decide_by: "Decide by",
   expires: "Expires",
 };
-
-/** Calendar-leaf date: "THU" over a big "8". */
-function DateLeaf({ date, overdue }: { date: string; overdue: boolean }) {
-  const d = parseISO(date);
-  return (
-    <time
-      dateTime={date}
-      className={cn(
-        "flex w-11 shrink-0 flex-col items-center rounded-lg border py-1 leading-none",
-        overdue ? "border-danger/30 bg-danger-soft text-danger-ink" : "border-line bg-surface-2/70 text-ink",
-      )}
-    >
-      <span className={cn("text-[10px] font-semibold uppercase tracking-[0.08em]", overdue ? "text-danger-ink" : "text-muted")}>{format(d, "EEE")}</span>
-      <span className="display mt-0.5 text-[18px] font-semibold tabular-nums">{format(d, "d")}</span>
-      <span className="sr-only">{format(d, "MMMM")}</span>
-    </time>
-  );
-}
 
 function Row({ action, party }: { action: TodayAction; party: Party | undefined }) {
   const role = ROLE_LABEL[action.dateRole];
@@ -52,8 +34,8 @@ function Row({ action, party }: { action: TodayAction; party: Party | undefined 
         to={actionHref(action)}
         className="group -mx-2 flex items-center gap-3 rounded-xl px-2 py-2 outline-none transition-colors hover:bg-surface-2/80 focus-visible:ring-2 focus-visible:ring-accent"
       >
-        <DateLeaf date={action.actionDate} overdue={action.daysLeft < 0} />
-        {action.kind === "contract" ? <KindIcon category={action.contract?.category ?? "other"} size="sm" /> : <KindIcon kind={action.kind} size="sm" />}
+        <DateLeaf date={action.actionDate} size="md" tone={action.daysLeft < 0 ? "danger" : "default"} />
+        {action.kind === "contract" ? <KindIcon category={action.contract?.category ?? "other"} size="sm" /> : <KindIcon kind={action.kind} direction={action.item?.direction} size="sm" />}
         <span className="min-w-0 flex-1">
           <span className="line-clamp-2 text-[14px] font-medium leading-snug text-ink sm:line-clamp-1">{action.title}</span>
           {meta.length ? <span className="block truncate text-[12.5px] text-muted">{meta.join(" · ")}</span> : null}

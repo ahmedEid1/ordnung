@@ -27,6 +27,7 @@ export default function DocumentPage() {
         q.error instanceof ApiError && q.error.status === 404 ? (
           <EmptyState
             className="mx-auto mt-8 max-w-xl"
+            headingLevel={1}
             illustration="search"
             title="This letter isn't here (anymore)"
             description="It may have been deleted. Everything else in your inbox is where you left it."
@@ -39,6 +40,7 @@ export default function DocumentPage() {
         ) : (
           <EmptyState
             className="mx-auto mt-8 max-w-xl"
+            headingLevel={1}
             illustration="error"
             title="Couldn't open this letter"
             description={q.error instanceof Error ? q.error.message : "Something went wrong."}

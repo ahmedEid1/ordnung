@@ -5,7 +5,6 @@ import { ArrowRight, Camera, FileText, X } from "lucide-react";
 import { useDocument } from "@/api/hooks";
 import { dismissJob, useEvents, type JobProgress } from "@/api/sse";
 import { JOB_STAGE_COPY, PIPELINE_STEPS, copyFor, stageToStep } from "@/lib/copy";
-import { useMediaQuery } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { Stepper } from "@/components/ui/Stepper";
 
@@ -22,8 +21,6 @@ function UploadRow({ job }: { job: JobProgress }) {
   const photo = doc?.text_mode === "vision" || doc?.mime?.startsWith("image/");
   const Icon = photo ? Camera : FileText;
   const stageLabel = failed ? job.error ?? "Couldn't read this letter" : done ? "Filed — everything is on your timeline" : copyFor(JOB_STAGE_COPY, job.stage ?? "intake").label + "…";
-  // narrow phones: the step names don't fit under the dots — the line above already names the stage
-  const roomForLabels = useMediaQuery("(min-width: 480px)");
 
   useEffect(() => {
     if (!done) return;
@@ -37,7 +34,7 @@ function UploadRow({ job }: { job: JobProgress }) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: 24, transition: { duration: 0.15 } }}
-      className="pointer-events-auto w-full rounded-xl border border-line bg-surface p-3.5 shadow-[var(--shadow-pop)] sm:w-[400px]"
+      className="pointer-events-auto w-full rounded-xl border border-line bg-surface p-3.5 shadow-[var(--shadow-pop)]"
     >
       <div className="flex items-start gap-3">
         <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg", done ? "bg-ok-soft text-ok" : failed ? "bg-danger-soft text-danger" : "bg-accent-soft text-accent")}>
@@ -59,7 +56,7 @@ function UploadRow({ job }: { job: JobProgress }) {
         </button>
       </div>
       <div className="mt-3 px-0.5">
-        <Stepper steps={PIPELINE_STEPS} current={step} status={failed ? "error" : "active"} size="sm" labels={roomForLabels ? "all" : "none"} live label={`Reading ${name}`} />
+        <Stepper steps={PIPELINE_STEPS} current={step} status={failed ? "error" : "active"} size="sm" labels="all" fallback="none" live label={`Reading ${name}`} />
       </div>
       {done && docId ? (
         <div className="-mb-1 mt-1 flex justify-end">

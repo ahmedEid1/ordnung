@@ -55,6 +55,7 @@ export function NotFound() {
     <Page title="Not found" width="narrow">
       <EmptyState
         className="mt-10"
+        headingLevel={1}
         illustration="search"
         title="This page doesn't exist"
         description="The link may be old, or the letter was deleted. Everything else is where you left it."

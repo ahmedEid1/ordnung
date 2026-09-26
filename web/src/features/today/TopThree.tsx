@@ -244,7 +244,7 @@ function ActionCard({ action, index, party }: { action: TodayAction; index: numb
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center gap-2">
-            {action.kind === "contract" ? <KindIcon category={action.contract?.category ?? "other"} size="sm" /> : <KindIcon kind={action.kind} size="sm" />}
+            {action.kind === "contract" ? <KindIcon category={action.contract?.category ?? "other"} size="sm" /> : <KindIcon kind={action.kind} direction={action.item?.direction} size="sm" />}
             <ActionCountdown action={action} />
             <span aria-hidden className="display ml-auto pl-2 text-[22px] font-semibold leading-none text-line-strong @xl:hidden">
               {index + 1}
@@ -315,6 +315,7 @@ export function TopThree({
         <EmptyState
           illustration="clear"
           size="sm"
+          headingLevel={3}
           title={allClearTitle(next?.actionDate, today)}
           description={
             next

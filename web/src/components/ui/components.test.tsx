@@ -423,8 +423,10 @@ describe("SegmentedControl", () => {
 describe("Glossary, EmptyState, Toast", () => {
   it("shows the German term with its translation and explains it on focus", async () => {
     renderWithProviders(<Glossary term="Einspruch" />);
-    const term = screen.getByText("Einspruch (objection)");
-    expect(term).toHaveAttribute("lang", "de");
+    // only the German word is marked German; "(objection)" is English
+    expect(screen.getByText("Einspruch")).toHaveAttribute("lang", "de");
+    const term = screen.getByText((_, el) => el?.getAttribute("tabindex") === "0" && el.textContent === "Einspruch (objection)");
+    expect(term).not.toHaveAttribute("lang");
     act(() => {
       term.focus();
       fireEvent.focus(term);

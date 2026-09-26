@@ -26,9 +26,11 @@ import {
   ConfidenceNote,
   Countdown,
   CountBadge,
+  DateLeaf,
   DateText,
   Dialog,
   Disclaimer,
+  ADVICE_LINKS,
   Drawer,
   EmptyState,
   Field,
@@ -38,11 +40,11 @@ import {
   Input,
   Kbd,
   KindBadge,
+  LoadError,
   KindIcon,
   Menu,
   Money,
   PartyChip,
-  Popover,
   ProgressRing,
   SectionHeader,
   SegmentedControl,
@@ -58,7 +60,8 @@ import {
   Tooltip,
   useToast,
 } from "@/components/ui";
-import { ITEM_KINDS, SUGGESTION_KINDS, type ComputationReceipt } from "@/api/types";
+import { ITEM_KINDS, SUGGESTION_KINDS } from "@/api/types";
+import { WhyThisDate } from "@/features/document/WhyThisDate";
 import { useDashboard, useItems } from "@/api/hooks";
 import { PIPELINE_STEPS } from "@/lib/copy";
 import { useToday } from "@/lib/today";
@@ -78,35 +81,6 @@ function Row({ children, label }: { children: ReactNode; label?: string }) {
     <div className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:gap-6">
       {label ? <div className="w-40 shrink-0 text-[13px] font-medium text-muted">{label}</div> : null}
       <div className="flex min-w-0 flex-wrap items-center gap-2.5">{children}</div>
-    </div>
-  );
-}
-
-/** The receipt popover content as the Document page will show it ("Why this date?"). */
-function ReceiptView({ receipt }: { receipt: ComputationReceipt }) {
-  const [showRules, setShowRules] = useState(false);
-  return (
-    <div className="space-y-3">
-      <p className="text-[13px] font-semibold uppercase tracking-wide text-muted">Why this date?</p>
-      <p className="text-base leading-relaxed text-ink">{receipt.summary}</p>
-      <ConfidenceNote confidence={receipt.confidence} warnings={receipt.warnings} />
-      <Button variant="link" size="sm" onClick={() => setShowRules((v) => !v)}>
-        {showRules ? "Hide the rules" : "Show the rules"}
-      </Button>
-      {showRules ? (
-        <ol className="space-y-2 border-l-2 border-line pl-3">
-          {receipt.steps.map((s) => (
-            <li key={s.label} className="text-[13px]">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-ink">{s.label}</span>
-                {s.date ? <DateText date={s.date} className="shrink-0 font-medium" /> : null}
-              </div>
-              {s.citation ? <div className="text-[12px] text-muted">{s.citation}</div> : null}
-            </li>
-          ))}
-        </ol>
-      ) : null}
-      <Disclaimer variant="block" />
     </div>
   );
 }
@@ -184,6 +158,18 @@ export default function UiGallery() {
             <KindBadge key={k} ideaKind={k} />
           ))}
         </Row>
+        <Row label="Money">
+          <KindBadge kind="payment" />
+          <KindBadge kind="payment" direction="in" />
+        </Row>
+        <Row label="Date leaves">
+          <DateLeaf date={d(1)} size="sm" />
+          <DateLeaf date={d(0)} size="sm" tone="today" />
+          <DateLeaf date={d(-3)} size="sm" tone="muted" />
+          <DateLeaf date={d(10)} size="md" />
+          <DateLeaf date={d(-1)} size="md" tone="danger" />
+          <DateLeaf date={d(10)} size="lg" tone="warn" />
+        </Row>
         <Row label="Icons">
           {ITEM_KINDS.map((k) => (
             <KindIcon key={k} kind={k} />
@@ -226,17 +212,11 @@ export default function UiGallery() {
         </Row>
         <Row label="Why this date?">
           {phone?.computation ? (
-            <Popover content={<ReceiptView receipt={phone.computation} />} className="w-[22rem]" label="Why this date?">
-              <Button variant="link">Why this date? (phone contract)</Button>
-            </Popover>
+            <WhyThisDate receipt={phone.computation} spec={phone.date_spec} area={phone.area} context="phone contract" />
           ) : (
             <Skeleton className="h-5 w-40" />
           )}
-          {parking?.computation ? (
-            <Popover content={<ReceiptView receipt={parking.computation} />} className="w-[22rem]" label="Why this date?">
-              <Button variant="link">Why this date? (parking fine)</Button>
-            </Popover>
-          ) : null}
+          {parking?.computation ? <WhyThisDate receipt={parking.computation} spec={parking.date_spec} area={parking.area} context="parking fine" /> : null}
         </Row>
         <Row label="Glossary">
           <p className="text-base text-ink">
@@ -245,7 +225,7 @@ export default function UiGallery() {
           </p>
         </Row>
         <Row label="Disclaimer">
-          <Disclaimer advice={[{ label: "Studierendenwerk advice", href: "https://www.studierendenwerke.de/" }]} />
+          <Disclaimer advice={ADVICE_LINKS.rent} />
         </Row>
       </Block>
 
@@ -414,11 +394,15 @@ export default function UiGallery() {
         <div className="grid gap-4 md:grid-cols-2">
           <EmptyState
             illustration="clear"
+            headingLevel={3}
             title="All clear until Friday"
             description="Nothing needs you this week. Enjoy it."
             action={<Button icon={FileText}>See the timeline</Button>}
           />
-          <EmptyState illustration="inbox" title="No letters yet" description="Drop a PDF or a phone photo anywhere to start." size="sm" />
+          <EmptyState illustration="inbox" headingLevel={3} title="No letters yet" description="Drop a PDF or a phone photo anywhere to start." size="sm" />
+          <EmptyState illustration="letter" headingLevel={3} title="No letters written yet" description="Cancel a contract or object to a decision." size="sm" />
+          <EmptyState illustration="contract" headingLevel={3} title="No contracts yet" description="Add a contract and Ordnung works out the notice." size="sm" />
+          <LoadError what="your letters" headingLevel={3} error={new Error("Failed to fetch")} onRetry={() => toast({ title: "Trying again…" })} className="md:col-span-2" />
           <SkeletonCard />
           <div className="space-y-3">
             <Skeleton className="h-6 w-1/2" />

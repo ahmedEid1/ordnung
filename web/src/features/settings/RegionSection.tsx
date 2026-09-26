@@ -71,7 +71,7 @@ export function RegionSection({ profile }: { profile: Profile }) {
               label="I live in Germany on a residence permit"
               description={
                 <>
-                  Ordnung then reminds you early to extend your <Glossary term="Aufenthaltstitel" /> and checks that your passport stays valid long enough.
+                  Ordnung then reminds you early to extend your <Glossary term="Aufenthaltstitel" plain /> and checks that your passport stays valid long enough.
                 </>
               }
             />

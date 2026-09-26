@@ -2,7 +2,7 @@
  * Internal helpers shared by overlay components (Popover, Tooltip, Menu, Dialog, Drawer).
  * Not part of the public design-system surface.
  */
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type Ref, type RefObject } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type Ref, type RefObject } from "react";
 
 export type Placement = "bottom-start" | "bottom-end" | "bottom" | "top-start" | "top-end" | "top" | "right" | "left";
 export type Side = "top" | "bottom" | "left" | "right";
@@ -228,7 +228,9 @@ export function useFloating(
       side.current = next.side;
       setPos((prev) => (samePosition(prev, next) ? prev : next));
       if (room) scrollToFit(next, size.height, room);
-      lastHeight.current = size.height;
+      // only a measurement records the height: a scroll or resize in between must not hide a
+      // change of content size from the next measurement (which makes room for it)
+      if (measure) lastHeight.current = size.height;
     },
     [anchor, floating, placement],
   );
@@ -383,6 +385,17 @@ function focusFirstOf(candidates: (HTMLElement | null | undefined)[]): void {
 
 let scrollLocks = 0;
 let savedOverflow = "";
+const modalListeners = new Set<() => void>();
+
+function subscribeModals(fn: () => void): () => void {
+  modalListeners.add(fn);
+  return () => modalListeners.delete(fn);
+}
+
+/** Is a modal (dialog, drawer, phone sheet) open? Toasts step behind it and wait. */
+export function useModalOpen(): boolean {
+  return useSyncExternalStore(subscribeModals, () => scrollLocks > 0, () => false);
+}
 
 export interface ModalOptions {
   /** Element to focus first (default: the container itself, announced by its label). */
@@ -427,6 +440,7 @@ export function useModal(open: boolean, containerRef: RefObject<HTMLElement | nu
     scrollLocks += 1;
     document.body.style.overflow = "hidden";
     root?.setAttribute("inert", "");
+    modalListeners.forEach((l) => l());
 
     const focusFirst = () => {
       const c = containerRef.current;
@@ -470,6 +484,7 @@ export function useModal(open: boolean, containerRef: RefObject<HTMLElement | nu
         document.body.style.overflow = savedOverflow;
         root?.removeAttribute("inert");
       }
+      modalListeners.forEach((l) => l());
       focusFirstOf([...openerRef.current, optsRef.current.returnFocus?.current, document.querySelector<HTMLElement>("main")]);
     };
   }, [open, containerRef]);

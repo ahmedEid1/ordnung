@@ -140,6 +140,7 @@ export function TimelineView() {
             <EmptyState
               size="sm"
               variant="plain"
+              headingLevel={3}
               illustration="calendar"
               title={areaLabel ? `Nothing for ${areaLabel} in this year` : "Your year is still empty"}
               description={areaLabel ? "Try another area — or show all." : "Add letters and Ordnung fills in permits, contracts and deadlines here."}
@@ -176,6 +177,7 @@ export function TimelineView() {
               <EmptyState
                 size="sm"
                 variant="plain"
+                headingLevel={3}
                 illustration="search"
                 title="No dates match these filters"
                 description="Try another kind or area, or show past dates."
@@ -189,6 +191,7 @@ export function TimelineView() {
               <EmptyState
                 size="sm"
                 variant="plain"
+                headingLevel={3}
                 illustration="calendar"
                 title="No dates yet"
                 description="Add letters and every deadline, payment and appointment shows up here, month by month."

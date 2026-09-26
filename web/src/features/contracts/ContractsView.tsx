@@ -162,7 +162,7 @@ export function ContractsView() {
 
       {!loading && !all.length ? (
         <EmptyState
-          illustration="letter"
+          illustration="contract"
           title="No contracts yet"
           description="When you add a contract, price change or cancellation letter, Ordnung works out notice periods and the dates to act by."
         />
@@ -211,6 +211,7 @@ export function ContractsView() {
                 <EmptyState
                   size="sm"
                   variant="plain"
+                  headingLevel={3}
                   illustration="search"
                   title={`No ${status === "all" ? "" : `${status} `}contracts`}
                   description="Try another filter."

@@ -51,7 +51,7 @@ function Spotlight({ rect, target }: { rect: SpotRect; target: string }) {
   );
 }
 
-/** Width of the toast column on tablets and up (toasts 380 px, upload cards 400 px) + its margin. */
+/** Width of the toast column on tablets and up (toasts and upload cards, 400 px) + its margin. */
 const TOAST_COLUMN = 400 + 20;
 
 /**

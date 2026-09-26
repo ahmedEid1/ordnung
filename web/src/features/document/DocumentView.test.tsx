@@ -62,9 +62,14 @@ describe("Document viewer — tax assessment (phone photo, Einspruch)", () => {
     const pop = await screen.findByRole("dialog", { name: "Why this date?" });
     expect(within(pop).getByText(/counts as delivered on Sat 19 Sep/)).toBeInTheDocument();
     expect(within(pop).getByText(/Medium confidence/)).toBeInTheDocument();
-    expect(within(pop).queryByText("§ 122 Abs. 2 Nr. 1 AO")).toBeNull();
-    await user.click(within(pop).getByRole("button", { name: "Show the rules" }));
-    expect(within(pop).getByText("§ 122 Abs. 2 Nr. 1 AO")).toBeInTheDocument();
+    // the rules are there for "Show the rules" to point at, but hidden until asked for
+    expect(within(pop).getByText("§ 122 Abs. 2 Nr. 1 AO")).not.toBeVisible();
+    const show = within(pop).getByRole("button", { name: "Show the rules" });
+    expect(show).toHaveAttribute("aria-expanded", "false");
+    await user.click(show);
+    expect(within(pop).getByText("§ 122 Abs. 2 Nr. 1 AO")).toBeVisible();
+    // the chevron turns with the state
+    expect(within(pop).getByRole("button", { name: "Hide the rules" }).className).toContain("[&_svg]:rotate-180");
     expect(within(pop).getByText(/Germany \+ North Rhine-Westphalia/)).toBeInTheDocument();
     expect(within(pop).getByText(/Not legal advice/)).toBeInTheDocument();
   });

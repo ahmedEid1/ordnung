@@ -8,7 +8,7 @@ import { Callout } from "@/components/ui/Callout";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
 import { Dialog } from "@/components/ui/Dialog";
-import { Disclaimer } from "@/components/ui/Disclaimer";
+import { AdviceLinks, Disclaimer } from "@/components/ui/Disclaimer";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { Glossary } from "@/components/ui/Glossary";
 import { KindIcon } from "@/components/ui/KindBadge";
@@ -29,13 +29,13 @@ interface KindOption {
 }
 
 const KIND_OPTIONS: KindOption[] = [
-  { kind: "cancellation", title: "Cancel a contract", description: <>End a contract — <Glossary term="Kündigung" translate={false} />: phone, gym, electricity…</>, icon: FileX },
+  { kind: "cancellation", title: "Cancel a contract", description: <>End a contract — <Glossary term="Kündigung" translate={false} plain />: phone, gym, electricity…</>, icon: FileX },
   {
     kind: "objection",
     title: "Object to a decision",
     description: (
       <>
-        <Glossary term="Einspruch" translate={false} /> or <Glossary term="Widerspruch" translate={false} /> against an official decision
+        <Glossary term="Einspruch" translate={false} plain /> or <Glossary term="Widerspruch" translate={false} plain /> against an official decision
       </>
     ),
     icon: Scale,
@@ -344,17 +344,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                 >
                     <p>{check.body}</p>
                     <p className="mt-1.5">
-                      Unsure? Ask{" "}
-                      {check.advice.map((a, i) => (
-                        <span key={a.href}>
-                          {i > 0 ? " or " : ""}
-                          <a href={a.href} target="_blank" rel="noreferrer noopener" className="font-medium text-accent underline-offset-2 hover:underline">
-                            {a.label}
-                            <span className="sr-only"> (opens in a new tab)</span>
-                          </a>
-                        </span>
-                      ))}
-                      .
+                      <AdviceLinks advice={check.advice} />
                     </p>
                   </Callout>
                 ) : null}

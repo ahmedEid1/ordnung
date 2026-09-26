@@ -7,6 +7,7 @@
  */
 import type { LucideIcon } from "lucide-react";
 import {
+  ArrowDownLeft,
   AlarmClock,
   Award,
   BadgeAlert,
@@ -272,6 +273,9 @@ export const ITEM_KIND_COPY: CopyMap<ItemKind> = {
   milestone: { label: "Milestone", icon: Milestone, tone: "milestone" },
 };
 
+/** A payment that comes to you (salary, stipend, a tax refund): money in, not a bill to pay. */
+export const MONEY_IN_COPY: EnumCopy = { label: "Money in", icon: ArrowDownLeft, tone: "ok" };
+
 export const ITEM_STATUS_COPY: CopyMap<ItemStatus> = {
   open: { label: "Open", icon: CircleDashed, tone: "neutral" },
   done: { label: "Done", icon: CircleCheck, tone: "ok" },
@@ -510,7 +514,7 @@ export const PIPELINE_STEPS = [
   { id: "reading", label: "Reading" },
   { id: "understanding", label: "Understanding" },
   { id: "checking", label: "Checking" },
-  { id: "computing", label: "Computing dates" },
+  { id: "computing", label: "Computing dates", short: "Dates" },
   { id: "filing", label: "Filing" },
 ] as const;
 export type PipelineStepId = (typeof PIPELINE_STEPS)[number]["id"];

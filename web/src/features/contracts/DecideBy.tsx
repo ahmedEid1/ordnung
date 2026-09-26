@@ -1,10 +1,10 @@
 /** "Decide by" callouts: contracts whose send-by date is within the next 60 days. */
 import { Link } from "react-router";
-import { format, parseISO } from "date-fns";
 import { FilePen, Hourglass } from "lucide-react";
 import type { Contract, Party } from "@/api/types";
 import { buttonVariants } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
+import { DateLeaf } from "@/components/ui/DateLeaf";
 import { Glossary } from "@/components/ui/Glossary";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { formatDate } from "@/lib/format";
@@ -12,23 +12,6 @@ import { cn } from "@/lib/utils";
 import { dayNumber } from "@/features/lanes/scale";
 import { ContractWhy } from "./ContractWhy";
 import { composerHrefFor, endingLetterLabel } from "./links";
-
-function BigLeaf({ date, urgent }: { date: string; urgent: boolean }) {
-  const d = parseISO(date);
-  return (
-    <time
-      dateTime={date}
-      className={cn(
-        "hidden w-16 shrink-0 flex-col items-center self-start rounded-xl border py-2 leading-none sm:flex",
-        urgent ? "border-danger/30 bg-danger-soft text-danger-ink" : "border-warn/30 bg-warn-soft text-warn-ink",
-      )}
-    >
-      <span className="text-[11px] font-semibold uppercase tracking-[0.08em]">{format(d, "EEE")}</span>
-      <span className="display mt-1 text-[28px] font-semibold tabular-nums">{format(d, "d")}</span>
-      <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.08em]">{format(d, "MMM")}</span>
-    </time>
-  );
-}
 
 function otherwise(c: Contract): string {
   switch (c.computed?.regime) {
@@ -51,7 +34,7 @@ function DecideCard({ contract: c, party, today }: { contract: Contract; party: 
   const d = (iso: string) => formatDate(iso, { style: "short", today });
   return (
     <li className={cn("card relative flex gap-4 overflow-hidden p-4 sm:p-5", "before:absolute before:inset-y-0 before:left-0 before:w-[3px]", urgent ? "before:bg-danger" : "before:bg-warn")}>
-      <BigLeaf date={sendBy} urgent={urgent} />
+      <DateLeaf date={sendBy} size="lg" tone={urgent ? "danger" : "warn"} decorative className="hidden self-start sm:flex" />
       <div className="min-w-0 flex-1">
         <Countdown date={sendBy} prefix="Decide by" variant="pill" />
         <h3 className="mt-2 text-[16px] font-semibold leading-snug text-ink">

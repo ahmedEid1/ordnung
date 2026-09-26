@@ -77,7 +77,7 @@ function ItemRow({ item }: { item: Item }) {
   const date = item.send_by ?? item.due_date;
   const inner = (
     <>
-      <KindIcon kind={item.kind} size="sm" />
+      <KindIcon kind={item.kind} direction={item.direction} size="sm" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13.5px] font-medium text-ink">{item.title}</span>
         <span className="mt-0.5 flex items-center gap-2 text-[12.5px] text-muted">
@@ -189,7 +189,7 @@ export function PartyDrawer() {
           <Skeleton className="h-24 w-full rounded-xl" />
         </div>
       ) : isError || !data || !party ? (
-        <EmptyState illustration="search" variant="plain" title="We couldn't find this contact" description="It may have been merged with another one or deleted." />
+        <EmptyState illustration="search" variant="plain" headingLevel={3} title="We couldn't find this contact" description="It may have been merged with another one or deleted." />
       ) : (
         <div>
           <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3">

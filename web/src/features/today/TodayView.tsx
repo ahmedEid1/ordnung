@@ -59,6 +59,7 @@ export function TodayView() {
     return (
       <EmptyState
         className="mt-6"
+        headingLevel={1}
         illustration="error"
         title="Couldn't load your day"
         description="Your letters and dates are safe — Ordnung just didn't answer. Try again in a moment."

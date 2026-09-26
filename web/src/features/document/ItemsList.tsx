@@ -85,7 +85,7 @@ function ItemRow({ item, docId }: { item: Item; docId: string }) {
           {item.amount != null ? <Money amount={item.amount} currency={item.currency} tone={item.direction === "in" ? "in" : "default"} className="text-[14px]" /> : null}
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[12.5px]">
-          <KindBadge kind={item.kind} />
+          <KindBadge kind={item.kind} direction={item.direction} />
           {!open ? (
             <StatusPill of="item" status={item.status} />
           ) : item.due_date ? (
@@ -110,7 +110,7 @@ function ItemRow({ item, docId }: { item: Item; docId: string }) {
         {item.description ? <p className="mt-1.5 text-[13px] leading-5 text-muted">{item.description}</p> : null}
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
           {ev ? <EvidenceChip grounding={item.grounding === "user" ? "user" : ev.grounding} page={ev.page} anchorId={anchorId} what={item.title} compact /> : null}
-          {item.computation ? <WhyThisDate receipt={item.computation} spec={item.date_spec} area={item.area} className="text-[12.5px]" /> : null}
+          {item.computation ? <WhyThisDate receipt={item.computation} spec={item.date_spec} area={item.area} context={item.title} /> : null}
           {item.due_date_source === "manual" ? <span className="text-[12px] text-muted">Date set by you</span> : null}
         </div>
         {editing ? (

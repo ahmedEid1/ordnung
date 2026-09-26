@@ -5,9 +5,9 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { format, parseISO } from "date-fns";
 import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react";
 import type { TimelineEntry } from "@/api/types";
+import { DateLeaf } from "@/components/ui/DateLeaf";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { Money } from "@/components/ui/Money";
 import { TONES } from "@/lib/copy";
@@ -32,22 +32,6 @@ export interface TimelineListProps {
 
 const HEADER_H = 44;
 
-function DateLeaf({ date, past, isToday }: { date: string; past: boolean; isToday: boolean }) {
-  const d = parseISO(date);
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "flex w-10 shrink-0 flex-col items-center rounded-lg border py-1 leading-none",
-        isToday ? "border-ink/70 bg-surface text-ink shadow-[inset_0_0_0_1px_var(--color-ink)]" : past ? "border-line bg-surface-2/60 text-muted" : "border-line bg-surface text-ink",
-      )}
-    >
-      <span className={cn("text-[9.5px] font-semibold uppercase tracking-[0.08em]", isToday ? "text-ink" : "text-muted")}>{format(d, "EEE")}</span>
-      <span className="display mt-0.5 text-[16px] font-semibold tabular-nums">{format(d, "d")}</span>
-    </span>
-  );
-}
-
 function Entry({ e, today, href, highlighted }: { e: TimelineEntry; today: string; href: string | null; highlighted: boolean }) {
   const past = isPastEntry(e, today);
   const status = entryStatus(e, today);
@@ -60,7 +44,7 @@ function Entry({ e, today, href, highlighted }: { e: TimelineEntry; today: strin
   ) : null;
   const inner = (
     <>
-      <DateLeaf date={e.date} past={past} isToday={e.date === today} />
+      <DateLeaf date={e.date} size="sm" tone={e.date === today ? "today" : past ? "muted" : "default"} decorative />
       <KindIcon kind={e.type} size="sm" className={cn(past && "opacity-60")} />
       <span className="min-w-0 flex-1">
         <span className={cn("line-clamp-2 text-[14px] font-medium leading-snug sm:line-clamp-1", past ? "text-ink/70" : "text-ink")}>{e.title}</span>

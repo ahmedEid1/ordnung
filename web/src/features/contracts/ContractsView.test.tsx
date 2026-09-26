@@ -33,7 +33,10 @@ describe("Contracts page", () => {
     expect(within(callouts[0]!).getByRole("heading", { name: /FunkNetz Allnet L/ })).toBeInTheDocument();
     // the countdown's parts are separate spans (so it can wrap between them)
     expect(within(callouts[0]!).getByText((_, el) => el?.tagName === "TIME" && /^Decide by Thu 8 Oct/.test(el.textContent ?? ""))).toBeInTheDocument();
-    expect(within(callouts[0]!).getByText("Kündigung (cancellation / notice)")).toBeInTheDocument();
+    // only the German word is marked German; the translation beside it is English
+    const term = within(callouts[0]!).getByText("Kündigung");
+    expect(term).toHaveAttribute("lang", "de");
+    expect(term.parentElement).toHaveTextContent(/^Kündigung \(cancellation \/ notice\)$/);
     expect(within(callouts[0]!).getByRole("link", { name: /Draft cancellation/ })).toHaveAttribute(
       "href",
       "/letters?kind=cancellation&contract=ctr_phone",

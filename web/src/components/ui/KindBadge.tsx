@@ -4,6 +4,7 @@ import {
   CONTRACT_CATEGORY_COPY,
   copyFor,
   DOCUMENT_KIND_COPY,
+  MONEY_IN_COPY,
   PARTY_KIND_COPY,
   SUGGESTION_KIND_COPY,
   TIMELINE_TYPE_COPY,
@@ -20,9 +21,12 @@ import type {
   TimelineType,
 } from "@/api/types";
 
-/** Which enum the value belongs to (exactly one). */
+/**
+ * Which enum the value belongs to (exactly one). A to-do `kind` may carry its money `direction`:
+ * a payment that comes in (salary, stipend, a refund) is "Money in", not an amber bill.
+ */
 export type KindSource =
-  | { kind: ItemKind | TimelineType; docKind?: never; category?: never; area?: never; ideaKind?: never; partyKind?: never }
+  | { kind: ItemKind | TimelineType; direction?: "in" | "out" | null; docKind?: never; category?: never; area?: never; ideaKind?: never; partyKind?: never }
   | { docKind: DocumentKind | null | undefined; kind?: never; category?: never; area?: never; ideaKind?: never; partyKind?: never }
   | { category: ContractCategory; kind?: never; docKind?: never; area?: never; ideaKind?: never; partyKind?: never }
   | { area: Area; kind?: never; docKind?: never; category?: never; ideaKind?: never; partyKind?: never }
@@ -31,7 +35,7 @@ export type KindSource =
 
 /** Resolve label/icon/tone for any kind-like enum value. */
 export function resolveKind(src: KindSource): EnumCopy {
-  if ("kind" in src && src.kind) return copyFor(TIMELINE_TYPE_COPY, src.kind);
+  if ("kind" in src && src.kind) return src.kind === "payment" && src.direction === "in" ? MONEY_IN_COPY : copyFor(TIMELINE_TYPE_COPY, src.kind);
   if ("docKind" in src && src.docKind !== undefined) return copyFor(DOCUMENT_KIND_COPY, src.docKind ?? "other");
   if ("category" in src && src.category) return copyFor(CONTRACT_CATEGORY_COPY, src.category);
   if ("area" in src && src.area) return copyFor(AREA_COPY, src.area);
@@ -50,10 +54,11 @@ export type KindBadgeProps = KindSource & {
 };
 
 /**
- * Colour-coded kind chip with icon: to-do kinds (`kind`), letter kinds (`docKind`), contract
- * categories (`category`), areas (`area`), Idea kinds (`ideaKind`) or party kinds (`partyKind`).
+ * Colour-coded kind chip with icon: to-do kinds (`kind`, with the payment `direction`), letter
+ * kinds (`docKind`), contract categories (`category`), areas (`area`), Idea kinds (`ideaKind`) or
+ * party kinds (`partyKind`).
  *
- * @example <KindBadge kind="deadline" /> · <KindBadge docKind="tax_assessment" />
+ * @example <KindBadge kind="deadline" /> · <KindBadge kind="payment" direction="in" /> · <KindBadge docKind="tax_assessment" />
  */
 export function KindBadge({ size = "sm", noIcon, label, className, ...src }: KindBadgeProps) {
   const c = resolveKind(src as KindSource);

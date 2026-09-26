@@ -172,7 +172,7 @@ export function PrivacySection() {
               ))}
             </div>
           ) : !u || !u.calls ? (
-            <EmptyState size="sm" variant="plain" illustration="clear" title="No calls to Claude yet" description="When Claude reads a letter or answers a question, you'll see it here." />
+            <EmptyState size="sm" variant="plain" headingLevel={4} illustration="clear" title="No calls to Claude yet" description="When Claude reads a letter or answers a question, you'll see it here." />
           ) : (
             <>
               <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
