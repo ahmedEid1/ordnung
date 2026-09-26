@@ -61,6 +61,8 @@ class Plan:
     entry: dict[str, Any]
     path: Path
     rules_only: bool
+    #: False when the person named the file (`--config`): then it is not "the app's" folder that is missing.
+    usual_path: bool = True
 
     @property
     def snippet(self) -> dict[str, Any]:
@@ -133,7 +135,9 @@ def plan_install(
         path = desktop_config_path(system=system, env=env, home=home)
     else:
         path = (cwd or Path.cwd()) / CODE_PROJECT_CONFIG_NAME
-    return Plan(client=client, name=name, entry=entry, path=path, rules_only=rules_only)
+    return Plan(
+        client=client, name=name, entry=entry, path=path, rules_only=rules_only, usual_path=config is None
+    )
 
 
 def claude_code_command(plan: Plan, *, system: str | None = None) -> str:
@@ -195,12 +199,12 @@ def write_config(plan: Plan, *, now: datetime | None = None) -> WriteResult:
     if path.exists() and not path.is_file():
         raise InstallError(f"{path} is not a file")
     if not path.parent.is_dir():
-        if plan.client == "claude-desktop":
+        if plan.client == "claude-desktop" and plan.usual_path:
             raise InstallError(
                 f"Claude Desktop's settings folder {path.parent} does not exist — is Claude Desktop "
                 "installed? Start it once, then run this again."
             )
-        raise InstallError(f"the folder {path.parent} does not exist")
+        raise InstallError(f"The folder {path.parent} does not exist.")
     existing = path.read_text(encoding="utf-8-sig") if path.exists() else None
     try:
         merged, status = merge_server(existing, plan.name, plan.entry)

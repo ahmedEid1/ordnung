@@ -237,6 +237,10 @@ def test_write_needs_claude_desktops_settings_folder(tmp_path: Path) -> None:
     assert not (tmp_path / ".config").exists()  # never creates an app's settings folder
     with pytest.raises(InstallError, match="does not exist"):
         write_config(plan_install("claude-code", rules_only=True, cwd=tmp_path / "missing"), now=NOW)
+    named = plan_install("claude-desktop", rules_only=True, config=tmp_path / "elsewhere" / "config.json")
+    with pytest.raises(InstallError) as raised:  # a file the person named: no talk of Claude Desktop
+        write_config(named, now=NOW)
+    assert str(raised.value) == f"The folder {tmp_path / 'elsewhere'} does not exist."
 
 
 def test_write_through_a_symlink_keeps_the_link(tmp_path: Path) -> None:
