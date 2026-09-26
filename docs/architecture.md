@@ -58,7 +58,7 @@ flowchart LR
 | Model → ledger | Schema validation, quote grounding with exact digits, `spec_consistency`, deterministic date computation, confidence rubric → "Please check" |
 | Model → user | Ideas and letters are suggestions; nothing is sent, paid, closed or deleted without a click; letters use fixed legal templates |
 | Agent → data | Ask only has read-only MCP tools on a `query_only` connection. Every tool result has two channels: Ordnung's record (`<ordnung_record>`: ids, statuses, due and send-by dates, rules-engine dates, verified amounts, totals, code-written receipts) and the letters' text by record id (`<untrusted_document>`: titles, summaries, names, quotes, page text, unverified amounts); `<` and `>` are escaped in both. A tool keeps each result within a size budget by leaving out rows, so the model and the check read the same whole result — the CLI backend never shortens the check's copy ([ADR 0008](decisions/0008-two-channels-and-claim-level-citations.md)) |
-| Agent → user | Citations must name records from a record part of the same turn. The answer is read as it will be shown; each date or amount must be in the record part of a record its sentence cites (or be the own value of a record the answer cites; overview totals only in a sentence without a citation of its own), or be a marked quote of a letter or of the person's own words (shown in quotation marks, with Ordnung's own value in the note); other values are left out (placeholder, or the sentence removed) and never shown, and a § nobody vouches for removes its sentence, with a note in the answer's language that only the check writes and that travels in its own field. The check fails closed: an answer it cannot read ends in an error, not as a checked answer. Measured by `python -m evals.ask` ([evals-ask](evals-ask.md)), whose replay — like `ordnung demo --check` — answers every recorded tool call again and fails when the tools' output changed |
+| Agent → user | Citations must name records from a record part of the same turn. The model's words are never streamed: the person sees the tool trace and a "writing" line until the check is done, and nothing of an answer that stops or fails before it. The answer is read as it will be shown; each date or amount must be in the record part of a record its sentence cites (or be the own value of a record the answer cites — the check then adds that record's citation; overview totals only in a sentence without a citation of its own); a cited record's unverified amount or the person's own words are shown quoted as unconfirmed; every other value is left out — a letter's as "[date only in the letter]", whatever the sentence's wording — and never shown, and a § nobody vouches for removes its sentence, with a note in the answer's language that only the check writes and that travels in its own field. Every date form the web formats inside an answer is read by the check (one shared list, tested on both sides), and a run of digit groups shaped like a date that is none is never supported. The check fails closed: an answer it cannot read ends in an error and is not shown. Measured by `python -m evals.ask` ([evals-ask](evals-ask.md)), whose replay — like `ordnung demo --check` — answers every recorded tool call again and fails when the tools' output changed |
 | Upload → machine | Checked before anything decodes it: PDF stream expansion, image pixels and text pages are capped; the data folder is private to the account (`0700`, files `0600`) |
 | Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs |
 | Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence` |
@@ -109,15 +109,16 @@ sequenceDiagram
     C->>M: search / get_document / list_contracts / explain_date
     M-->>C: <ordnung_record> ids, dates, verified amounts + <untrusted_document> letter text by id
   end
-  C-->>S: streamed answer with [contract:…] [doc:…] citations
+  S-->>U: tool trace, then "writing…" (no words of the answer yet)
+  C-->>S: answer with [contract:…] [doc:…] citations
   S->>S: citations: exist + in a record part of this turn, else stripped
-  S->>S: each date or amount: in a cited record's record part? else a marked quote (letter or person)? else left out
-  S-->>U: checked answer + note + tool trace + citation chips (SSE)
+  S->>S: each date or amount: in a cited record's record part? else unverified amount / person's words (quoted)? else left out
+  S-->>U: checked answer + note + citation chips (SSE)
 ```
 
 The check is a written policy (`assistant/support.py`): deterministic, linear in the answer and the
-tool results (a sentence's clause breaks and letter phrases are found once, and no pattern rescans a
-run of brackets or spaces; tests time one 88 KB sentence and 40,000-character bracket runs), run in
+tool results (each value is looked up in hash maps of the cited records, and no pattern rescans a
+run of brackets, digits or spaces; tests time one 88 KB sentence and 40,000-character bracket runs), run in
 a worker thread so a long answer never blocks the server, and re-run by the Ask benchmark over
 recorded answers.
 
