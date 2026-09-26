@@ -1,34 +1,31 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "./page-meta";
+import { PAGE_WIDTHS, SHELL_GUTTERS, type PageWidth } from "./layout";
 
 export interface PageProps {
   /** Sets the top-bar title and the browser tab title. */
   title?: string;
-  /** Breadcrumb parent in the top bar. */
+  /** Breadcrumb parent in the top bar (on phones: its back button). */
   parent?: { to: string; label: string };
-  /** Content width: narrow (reading), default, wide (tables/timelines), full. */
-  width?: "narrow" | "default" | "wide" | "full";
+  /**
+   * Content width: `default` (every section page — the shell column the top bar lines up with),
+   * `narrow` (a centred reading column) or `full`.
+   */
+  width?: PageWidth;
   className?: string;
   children: ReactNode;
 }
 
-const widths = {
-  narrow: "max-w-3xl",
-  default: "max-w-5xl",
-  wide: "max-w-7xl",
-  full: "max-w-none",
-};
-
 /**
- * Page container: consistent gutters (16 px on phones), max width and vertical rhythm.
+ * Page container: the shell's gutters (16 px on phones), max width and vertical rhythm.
  * Every page should render inside one.
  *
  * @example <Page title="Inbox"><PageHeader title="Inbox" description="…" /></Page>
  */
 export function Page({ title, parent, width = "default", className, children }: PageProps) {
-  usePageTitle(title, parent);
-  return <div className={cn("mx-auto w-full px-4 pb-16 pt-6 sm:px-6 md:pt-8 lg:px-10", widths[width], className)}>{children}</div>;
+  usePageTitle(title, parent, width);
+  return <div className={cn("mx-auto w-full pb-16 pt-6 md:pt-8", SHELL_GUTTERS, PAGE_WIDTHS[width], className)}>{children}</div>;
 }
 
 export interface PageHeaderProps {

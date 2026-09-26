@@ -44,7 +44,7 @@ export default function LetterPage() {
   const title = q.data ? draftTitle(q.data, party?.name) : "Letter draft";
 
   return (
-    <Page title={title} parent={PARENT} width="wide">
+    <Page title={title} parent={PARENT}>
       {q.isPending ? (
         <LetterSkeleton />
       ) : q.isError ? (

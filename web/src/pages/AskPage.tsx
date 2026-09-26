@@ -89,7 +89,7 @@ export default function AskPage() {
     : "";
 
   return (
-    <Page title="Ask" width="narrow" className="flex min-h-[calc(100dvh-3.5rem)] flex-col pb-0 md:pb-0">
+    <Page title="Ask" width="narrow" className="flex flex-1 flex-col pb-0 md:pb-0">
       <p className="sr-only" aria-live="polite" role="status">
         {announce}
       </p>

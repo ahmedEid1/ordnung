@@ -65,6 +65,22 @@ describe("scroll padding (focus and jumps stay clear of the fixed bars — WCAG 
   });
 });
 
+describe("room under the page for what floats over its bottom edge (<main> — the last buttons scroll clear)", () => {
+  const room = block(".room-for-overlays {");
+
+  it("on phones clears the tab bar, the home indicator and the taller of the tour bar and the toasts", () => {
+    expect(room).toMatch(
+      /padding-bottom:\s*calc\(\s*5rem \+ env\(safe-area-inset-bottom, 0px\) \+\s*max\(var\(--ordnung-tour-bar, 0px\), calc\(var\(--ordnung-toast-lift, 0px\) \+ var\(--ordnung-toast-space, 0px\)\)\)\s*\);/,
+    );
+  });
+
+  it("from tablets up clears the floating tour card and the (lifted) toast column", () => {
+    expect(room).toMatch(
+      /@variant md\s*{\s*padding-bottom:\s*max\(\s*1\.5rem,\s*var\(--ordnung-tour-clearance, 0px\),\s*calc\(1\.25rem \+ var\(--ordnung-toast-lift, 0px\) \+ var\(--ordnung-toast-space, 0px\)\)\s*\);/,
+    );
+  });
+});
+
 describe("base rules", () => {
   it("balances headings and avoids one-word last lines in running text, with longhands only", () => {
     expect(base).toMatch(/h1,\s*h2,\s*h3\s*{\s*text-wrap-style:\s*balance;/);

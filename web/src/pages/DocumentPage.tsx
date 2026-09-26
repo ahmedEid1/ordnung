@@ -3,21 +3,27 @@ import { RotateCw } from "lucide-react";
 import { useDocument } from "@/api/hooks";
 import { ApiError } from "@/api/client";
 import { Page } from "@/components/shell/Page";
+import { useOriginParent } from "@/components/shell/origin";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { LoadingLabel } from "@/components/ui/Skeleton";
 import { DocumentSkeleton, DocumentView } from "@/features/document/DocumentView";
 
-const PARENT = { to: "/inbox", label: "Inbox" };
+/** Every letter lives in the Inbox: its parent when it wasn't opened from another section. */
+const HOME = { to: "/inbox", label: "Inbox" };
 
-/** `/documents/:id` — the Document viewer (verdict, evidence on the page, why this date). */
+/**
+ * `/documents/:id` — the Document viewer (verdict, evidence on the page, why this date). Its
+ * breadcrumb and phone back button lead to where it was opened from (Today, Timeline, Ask…).
+ */
 export default function DocumentPage() {
   const { id } = useParams();
   const q = useDocument(id);
   const doc = q.data?.document;
+  const parent = useOriginParent(HOME);
 
   return (
-    <Page title={doc ? (doc.title ?? doc.filename) : "Letter"} parent={PARENT} width="wide" className="pt-4 md:pt-6">
+    <Page title={doc ? (doc.title ?? doc.filename) : "Letter"} parent={parent} className="pt-4 md:pt-6">
       {q.isPending ? (
         <>
           <LoadingLabel>Opening the letter…</LoadingLabel>

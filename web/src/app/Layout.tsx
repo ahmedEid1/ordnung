@@ -3,7 +3,6 @@ import { Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation } fr
 import { AnimatePresence, motion } from "motion/react";
 import { useHealth, useProfile } from "@/api/hooks";
 import { useEventsConnection } from "@/api/sse";
-import { ApiError } from "@/api/client";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
 import { MobileTabBar } from "@/components/shell/MobileTabBar";
@@ -13,10 +12,11 @@ import { PausedBanner } from "@/components/shell/PausedBanner";
 import { PartyDrawer } from "@/features/party/PartyDrawer";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { PageMetaProvider, useDocumentTitle } from "@/components/shell/page-meta";
+import { useRecordOrigin } from "@/components/shell/origin";
 import { Toaster } from "@/components/ui/Toast";
 import { DemoTour } from "@/features/tour/DemoTour";
 import { useBrowserNotifications } from "@/features/notifications/useBrowserNotifications";
-import { BootScreen, UnreachableScreen } from "./screens";
+import { BootScreen, HealthUnreachable } from "./screens";
 
 /** Thin progress line while a lazy route loads. */
 function NavigationProgress() {
@@ -35,6 +35,26 @@ function NavigationProgress() {
         />
       ) : null}
     </AnimatePresence>
+  );
+}
+
+/**
+ * "Skip to content": off screen until focused, then a pill over the top-left corner (moved with a
+ * transform, not `sr-only`, so it keeps its padding). It moves focus itself — the static demo's
+ * hash router would read `#main` as a page.
+ */
+function SkipLink() {
+  return (
+    <a
+      href="#main"
+      onClick={(e) => {
+        e.preventDefault();
+        document.getElementById("main")?.focus();
+      }}
+      className="fixed left-3 top-3 z-[100] -translate-y-[150%] whitespace-nowrap rounded-lg bg-accent px-3 py-2 text-base font-medium text-on-accent transition-transform focus:translate-y-0 focus:shadow-[var(--shadow-pop)] motion-reduce:transition-none"
+    >
+      Skip to content
+    </a>
   );
 }
 
@@ -70,12 +90,14 @@ function useOnboardingRedirect() {
 export function AppLayout() {
   useEventsConnection();
   useOnboardingRedirect();
+  useRecordOrigin();
   const health = useHealth();
 
-  if (health.isPending) return <BootScreen />;
-  if (health.isError && !health.data) {
-    const status = health.error instanceof ApiError ? health.error.status : undefined;
-    return <UnreachableScreen onRetry={() => void health.refetch()} retrying={health.isFetching} status={status} />;
+  // the splash only for the first load: a retry after a failure keeps the "isn't running" card
+  // (TanStack resets a query without data to `pending` while it refetches)
+  if (health.isPending && health.errorUpdateCount === 0) return <BootScreen />;
+  if (!health.data) {
+    return <HealthUnreachable error={health.error} retrying={health.isFetching} failures={health.errorUpdateCount} onRetry={() => void health.refetch()} />;
   }
 
   return (
@@ -83,19 +105,14 @@ export function AppLayout() {
       <AddLettersProvider>
         <DocumentTitleSync />
         <BrowserNotifications />
-        <a
-          href="#main"
-          className="sr-only z-[100] rounded-lg bg-accent px-3 py-2 text-base font-medium text-on-accent focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
-        >
-          Skip to content
-        </a>
+        <SkipLink />
         <NavigationProgress />
         <div className="flex min-h-dvh bg-canvas">
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar />
             <PausedBanner />
-            <main id="main" tabIndex={-1} className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] outline-none md:pb-0">
+            <main id="main" tabIndex={-1} className="room-for-overlays flex flex-1 flex-col outline-none">
               <Outlet />
             </main>
           </div>

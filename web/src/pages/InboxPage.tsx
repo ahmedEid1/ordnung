@@ -84,7 +84,7 @@ export default function InboxPage() {
   };
 
   return (
-    <Page title="Inbox" width="wide">
+    <Page title="Inbox">
       <PageHeader
         title="Inbox"
         description="Every letter you added — read, explained and filed, with the sentence behind every date."

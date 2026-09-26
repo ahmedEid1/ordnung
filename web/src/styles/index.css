@@ -288,4 +288,24 @@
       transparent 4px 8px
     );
   }
+  /*
+   * The shell's <main>: room under the page for what floats over its bottom edge, so the last
+   * buttons can always be scrolled clear of it. Phones: the tab bar (h-16 + home indicator), then
+   * the demo tour bar or the toast above it, whichever is taller. From md: the floating demo tour
+   * card (--ordnung-tour-clearance) or the toast column (1.25rem up, lifted above the tour card,
+   * --ordnung-toast-space tall). Mirrors `scroll-padding-bottom` on <html>.
+   */
+  .room-for-overlays {
+    padding-bottom: calc(
+      5rem + env(safe-area-inset-bottom, 0px) +
+        max(var(--ordnung-tour-bar, 0px), calc(var(--ordnung-toast-lift, 0px) + var(--ordnung-toast-space, 0px)))
+    );
+    @variant md {
+      padding-bottom: max(
+        1.5rem,
+        var(--ordnung-tour-clearance, 0px),
+        calc(1.25rem + var(--ordnung-toast-lift, 0px) + var(--ordnung-toast-space, 0px))
+      );
+    }
+  }
 }

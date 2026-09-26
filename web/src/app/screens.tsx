@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { isRouteErrorResponse, Link, useRouteError } from "react-router";
 import { RotateCw, Terminal } from "lucide-react";
+import { ApiError } from "@/api/client";
 import { LogoMark } from "@/components/shell/Logo";
 import { Button, buttonVariants } from "@/components/ui/Button";
+import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState, EmptyArt } from "@/components/ui/EmptyState";
 import { Page } from "@/components/shell/Page";
 
@@ -20,11 +23,25 @@ export function BootScreen() {
 /**
  * Shown when the local API cannot be used: not running (network error / 5xx), or this tab has no
  * session (401/403 — open the link printed by `ordnung serve`).
+ *
+ * "Try again" stays put while it runs (a spinner, focus kept on it — it is `aria-disabled`, not
+ * `disabled`, which would drop focus to the page), and a failed retry is said out loud.
  */
-export function UnreachableScreen({ onRetry, retrying, status }: { onRetry: () => void; retrying?: boolean; status?: number }) {
+export function UnreachableScreen({
+  onRetry,
+  retrying,
+  status,
+  stillFailing,
+}: {
+  onRetry: () => void;
+  retrying?: boolean;
+  status?: number;
+  /** A retry failed too: "Still can't reach Ordnung." */
+  stillFailing?: boolean;
+}) {
   const noSession = status === 401 || status === 403;
   return (
-    <div className="grid min-h-dvh place-items-center bg-canvas px-4">
+    <main className="grid min-h-dvh place-items-center bg-canvas px-4">
       <div className="card flex w-full max-w-md flex-col items-center px-6 py-10 text-center sm:px-10">
         <EmptyArt kind="error" />
         <h1 className="display mt-5 text-2xl font-semibold text-ink">{noSession ? "Please open Ordnung from its link" : "Ordnung isn't running"}</h1>
@@ -41,12 +58,36 @@ export function UnreachableScreen({ onRetry, retrying, status }: { onRetry: () =
             </code>
           ))}
         </div>
-        <Button variant="primary" icon={RotateCw} className="mt-6" onClick={onRetry} loading={retrying}>
-          Try again
+        <Button
+          variant="primary"
+          icon={retrying ? undefined : RotateCw}
+          className="mt-6"
+          aria-disabled={retrying || undefined}
+          aria-busy={retrying || undefined}
+          onClick={() => {
+            if (!retrying) onRetry();
+          }}
+        >
+          {retrying ? <Spinner className="size-4" /> : null}
+          <span>Try again</span>
         </Button>
+        <p role="status" className="mt-3 min-h-5 text-sm text-muted">
+          {retrying ? "Trying again…" : stillFailing ? (noSession ? "Still no access from this tab." : "Still can't reach Ordnung.") : ""}
+        </p>
       </div>
-    </div>
+    </main>
   );
+}
+
+/**
+ * The shell's "can't reach the API" state. TanStack clears the error while "Try again" refetches,
+ * so the last error's status is kept here: the card doesn't flip between its two messages.
+ */
+export function HealthUnreachable({ error, retrying, failures, onRetry }: { error: unknown; retrying: boolean; failures: number; onRetry: () => void }) {
+  const status = error instanceof ApiError ? error.status : undefined;
+  const [lastStatus, setLastStatus] = useState(status);
+  if (error && status !== lastStatus) setLastStatus(status);
+  return <UnreachableScreen onRetry={onRetry} retrying={retrying} status={error ? status : lastStatus} stillFailing={failures > 1} />;
 }
 
 /** 404 inside the shell. */

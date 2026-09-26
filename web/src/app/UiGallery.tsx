@@ -101,7 +101,7 @@ export default function UiGallery() {
   const parking = items?.find((i) => i.id === "itm_parking");
 
   return (
-    <Page title="Design system" width="wide">
+    <Page title="Design system">
       <PageHeader
         eyebrow="Ordnung · calm paper"
         title="Design system"

@@ -3,6 +3,7 @@ import { useBlocker, useSearchParams } from "react-router";
 import { RotateCw } from "lucide-react";
 import { useHealth, useProfile, useSettings } from "@/api/hooks";
 import { Page, PageHeader } from "@/components/shell/Page";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -19,6 +20,9 @@ import { RemindersSection } from "@/features/settings/RemindersSection";
 import { RulesSection } from "@/features/settings/RulesSection";
 import { SettingsDirtyProvider } from "@/features/settings/dirty";
 import { SettingsNav } from "@/features/settings/SettingsNav";
+
+/** Sections that fill the page column (tables); the others are forms at a readable width. */
+const WIDE_SECTIONS = new Set<SectionId>(["privacy"]);
 
 /** `/settings?section=…` — profile, region, reminders, calendar, AI, Claude, privacy, rules, data. */
 export default function SettingsPage() {
@@ -86,13 +90,14 @@ export default function SettingsPage() {
 
   return (
     <SettingsDirtyProvider value={reportDirty}>
-      <Page title="Settings" width="default">
+      <Page title="Settings">
         <PageHeader title="Settings" description="Your details, reminders, the AI you use — and exactly what leaves this computer." />
         <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10">
           <div className="min-w-0 lg:sticky lg:top-20 lg:self-start">
             <SettingsNav current={section} hrefFor={hrefFor} onNavigate={go} />
           </div>
-          <div ref={paneRef} className="min-w-0" key={section}>
+          {/* forms keep a readable width in the shell's wide column; the privacy log's table uses all of it */}
+          <div ref={paneRef} className={cn("min-w-0", !WIDE_SECTIONS.has(section) && "max-w-3xl")} key={section}>
             {loading ? (
               <div aria-busy="true">
                 <LoadingLabel>Loading your settings…</LoadingLabel>
