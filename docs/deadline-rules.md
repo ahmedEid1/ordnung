@@ -58,7 +58,8 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 | Implausible period (over 100 years) or a date at the end of the calendar | No date, `low` confidence, "please check" — never an error that stops the document. |
 | Arrival day of a letter needed but not confirmed | Uses the letter's date and asks when it really arrived (`low` confidence). |
 | Kind of sender (procedural law) unknown | 3rd/4th-day rule **without** the weekend shift; 3 days unless the Land is known to use 4 (portal: the day after it was made available). |
-| Letter from a company, landlord, bank or other private sender | No deemed delivery — it is a rule for authorities' letters: the period runs from the day the letter arrived (§ 130 Abs. 1 BGB), the letter's date until the person says when (`low`). A sender filed as private whose letter names an *Einspruch*, *Widerspruch* or *Klage* (or a remedy statute) keeps the deemed delivery, and so does an unknown sender (kind `other`). |
+| Letter from a company, landlord, bank, employer or other private sender | No deemed delivery — it is a rule for authorities' letters: the period runs from the day the letter arrived (§ 130 Abs. 1 BGB), the letter's date until the person says when (`low`). A sender filed as private whose letter names an *Einspruch* or a remedy statute keeps the deemed delivery, and so does one whose *Widerspruch* or *Klage* notice names an administrative route (a *Bescheid*, its *Bekanntgabe*, an administrative, social or finance court); a Kündigungsschutzklage (§ 4 KSchG) or a Widerspruch under the BGB or VVG does not. An unknown sender (kind `other`) keeps the deemed delivery. |
+| A date counted back over a holiday of only part of a Land (15 August in Bavaria, Augsburg's 8 August, Fronleichnam in parts of Saxony and Thuringia) | The calendar never counts it (the community is unknown), so where it holds a send-by or safe date is a working day late: the warning names the holiday and where it holds (confidence unchanged). |
 | Letter's period differs from the statute (e.g. "6 weeks" for a tax objection) | Computes both and uses the earlier date. |
 | Notice period missing from a contract | Assumes the longest notice the law allows (earliest deadline). |
 | Notice deadline on a weekend/holiday | No shift (BGH III ZR 172/04) + a `safe_date` on the working day before. |
@@ -90,9 +91,11 @@ failure → `low`. The reasons are listed in `warnings` in plain English.
   (`holidays.Germany(subdiv=…)`). The nine nationwide holidays always count. Regional ones (e.g.
   Fronleichnam, Allerheiligen, Reformationstag, Buß- und Bettag, Frauentag in Berlin) count **only
   when the region is known**. 24 and 31 December are **not** public holidays (BFH III B 135/17), nor
-  is Rosenmontag. Municipal holidays (Augsburg, Mariä Himmelfahrt in parts of Bavaria) are not used,
-  which can only make a date counted forward earlier; a date counted back over one can come out a day
-  late, so the rules tools name such a holiday where a send-by, safe or backward date passes it.
+  is Rosenmontag. Municipal holidays (Augsburg, Mariä Himmelfahrt in parts of Bavaria, Fronleichnam
+  in parts of Saxony and Thuringia) are not used, which can only make a date counted forward earlier;
+  a date counted back over one can come out a day late, so the engine names such a holiday where a
+  send-by, safe or backward date passes it (`check_partial_holidays`; the app and the rules tools
+  alike).
 - **Whose holidays?** Those at the place where the declaration must be received — the seat of the
   authority, court or company (BAG 8 AZN 808/11, BGH VI ZA 27/11), i.e. `Party.region`. A **payment**
   to a company or person is owed at the payer's home (§§ 269, 270 Abs. 4 BGB), so § 193 BGB uses the

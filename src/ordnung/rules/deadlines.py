@@ -50,11 +50,21 @@ MAX_PERIOD: Final[dict[PeriodUnit, int]] = {
 ASSUMED_RECEIPT_WARNING: Final = (
     "We assumed the letter arrived on the date printed on it — tell us when it actually arrived."
 )
+NEEDS_ARRIVAL_WARNING: Final = "We need the day the letter arrived — tell us when it actually arrived."
 PRIVATE_SENDER_WARNING: Final = (
     "No delivery days were added: the rule that a letter counts as delivered a few days after posting "
     "is only for authorities' letters, and this sender is not an authority. The period runs from the "
     "day the letter arrived."
 )
+#: The words that mark a warning's situation, shared with the rules tools, whose hints name the argument
+#: that would settle it (``ordnung.assistant.rules_tools.deadline_hints``): reword them here, not there.
+REGION_UNKNOWN: Final = "Holiday region unknown"
+REGION_EARLIER: Final = "where the deadline would be earlier"
+HOME_HOLIDAY: Final = "is a public holiday where you live"
+TAX_OFFICE_HOLIDAY: Final = "is a public holiday where the tax office is"
+#: Words for the app's person (who answers the app); the rules tools put them in their own voice.
+TOLD_ARRIVAL: Final = "You told us it arrived on"
+ENTER_ENVELOPE_DATE: Final = "enter the envelope date for the exact deadline"
 
 _SHIFTING_NATURES = ("objection", "payment", "declaration")
 _SEND_BY_NATURES = ("objection", "payment", "declaration", "notice")
@@ -247,13 +257,68 @@ def check_regional_holidays(trace: Trace, days: Iterable[date], *, later: bool =
             where = (
                 "where the deadline would be later"
                 if later
-                else "where the deadline would be earlier — act a working day before it to be safe"
+                else f"{REGION_EARLIER} — act a working day before it to be safe"
             )
             trace.soft(
-                f"Holiday region unknown — {fmt_date(d)} is a public holiday in some Länder (e.g. {names}), "
+                f"{REGION_UNKNOWN} — {fmt_date(d)} is a public holiday in some Länder (e.g. {names}), "
                 f"{where}. We used nationwide holidays only."
             )
             return
+
+
+def check_partial_holidays(
+    trace: Trace,
+    region: str | None,
+    due: date,
+    *,
+    send_by: date | None = None,
+    safe: date | None = None,
+    moves: bool = False,
+    counted_back_from: date | None = None,
+    werktage: bool = False,
+) -> None:
+    """Warn about each holiday of only part of ``region`` that could move a date shown.
+
+    The calendar does not count those holidays (:func:`ordnung.rules.calendar_de.partial_holidays`):
+    where one holds, a date counted back over it is a working day earlier — the date shown a day
+    late. That is a send-by or safe date counted back from ``due``, a period counted backwards in
+    working days from ``counted_back_from`` (``werktage`` for Werktage), and the safe date of a
+    deadline on one (it never moves). A due date on one that ``moves`` to the next working day is
+    only later there. Each warning names the holiday, where it holds and which date it moves; the
+    confidence stays, as the Land's calendar is the rule and the warning says how to be safe.
+    """
+    # the spans exclude ``due`` by filtering, not by date arithmetic, which fails at the calendar's ends
+    back = [day for day in (send_by, safe) if day is not None]
+    for day, name in calendar_de.partial_holidays(region, min(back, default=due), due):
+        if day < due:
+            _partial_holiday(trace, day, name, region, "the send-by or safe date, counted back over it, is")
+    if counted_back_from is not None:
+        for day, name in calendar_de.partial_holidays(region, due, counted_back_from, werktage=werktage):
+            if day > due:
+                _partial_holiday(trace, day, name, region, "this date, counted backwards over it, is")
+    for day, name in calendar_de.partial_holidays(region, due, due):
+        if safe is not None:
+            _partial_holiday(
+                trace, day, name, region, "this deadline does not move off it, so the safe date is"
+            )
+        elif moves:
+            _partial_holiday(trace, day, name, region, None)
+
+
+def _partial_holiday(trace: Trace, day: date, name: str, region: str | None, earlier: str | None) -> None:
+    """One partial-holiday warning: ``earlier`` names the date that is a working day earlier there,
+    ``None`` says the due date moves a working day later there."""
+    code = calendar_de.normalize_region(region) or ""
+    place = calendar_de.PARTIAL_HOLIDAY_PLACES[code][name]
+    start = f"{fmt_date(day)} is {name}, a public holiday only in {place}, which is not counted here. Where it holds, "
+    if earlier is None:
+        trace.warnings.append(
+            start + "the due date moves to the next working day; the date shown is the earlier one."
+        )
+    else:
+        trace.warnings.append(
+            start + f"{earlier} a working day earlier: act a working day before it to be safe."
+        )
 
 
 def place_region(spec: DateSpec, ctx: RuleContext) -> str | None:
@@ -404,7 +469,7 @@ def _compute_fixed(
     if written is None:
         return _no_date(trace, ctx, "The date in the letter could not be read.")
     trace.step(f"The date given is {fmt_date(written)}", written, "date_as_written")
-    due, safe = written, None
+    due, safe, moves = written, None, False
     if spec.nature == "notice":
         safe = _safe_date(trace, written, region)
         if region is None:
@@ -414,6 +479,7 @@ def _compute_fixed(
     elif spec.shift_rule == "next_business_day":
         due, steps = shift_to_business_day(written, region, _shift_rule_id(ctx, statute_rule(spec)))
         trace.extend(steps)
+        moves = True
         if region is None:
             check_regional_holidays(trace, [due])
     elif spec.nature in _SHIFTING_NATURES and not calendar_de.is_business_day(written, region):
@@ -429,6 +495,7 @@ def _compute_fixed(
         if spec.nature in _SEND_BY_NATURES
         else None
     )
+    check_partial_holidays(trace, region, due, send_by=send_by, safe=safe, moves=moves)
     if spec.nature == "notice":
         summary = f"The notice must arrive by {_end_clause(written, written, region, safe=safe)}."
     else:
@@ -464,7 +531,7 @@ def _resolve_anchor(spec: DateSpec, ctx: RuleContext, trace: Trace) -> _Anchor |
         if ctx.received_confirmed and ctx.received_date:
             return _Anchor(ctx.received_date, "receipt")
         if ctx.document_date is None:
-            trace.hard("We need the day the letter arrived — tell us when it actually arrived.")
+            trace.hard(NEEDS_ARRIVAL_WARNING)
             return None
         trace.hard(ASSUMED_RECEIPT_WARNING)
         return _Anchor(ctx.document_date, "document_date")
@@ -588,7 +655,7 @@ def _check_fiction_day(trace: Trace, day: date, region: str | None, recipient: s
     if recipient is not None:
         if calendar_de.is_holiday(day, recipient):
             trace.soft(
-                f"{fmt_date(day)} is a public holiday where you live ({calendar_de.REGION_NAMES[recipient]}); "
+                f"{fmt_date(day)} {HOME_HOLIDAY} ({calendar_de.REGION_NAMES[recipient]}); "
                 "tax offices may then count the letter as delivered a working day later, so the deadline may "
                 "be later too. We kept the earlier date."
             )
@@ -596,7 +663,7 @@ def _check_fiction_day(trace: Trace, day: date, region: str | None, recipient: s
         check_regional_holidays(trace, [day])
     elif calendar_de.is_holiday(day, region):
         trace.soft(
-            f"{fmt_date(day)} is a public holiday where the tax office is; if you live in the same Land, the "
+            f"{fmt_date(day)} {TAX_OFFICE_HOLIDAY}; if you live in the same Land, the "
             "letter counts as delivered a working day later and the deadline may be later too."
         )
 
@@ -616,7 +683,7 @@ def _late_receipt_note(
     if shift:
         alt = calendar_de.next_business_day(alt, region)
     trace.warnings.append(
-        f"You told us it arrived on {fmt_date(received)}, after the day it legally counts as delivered "
+        f"{TOLD_ARRIVAL} {fmt_date(received)}, after the day it legally counts as delivered "
         f"({fmt_date(event)}). If you can show that (keep the envelope), the deadline may be "
         f"{fmt_date(alt)} instead — we still show the earlier, safe date."
     )
@@ -630,7 +697,7 @@ def _formal_service_note(trace: Trace, spec: DateSpec, anchor: _Anchor) -> None:
     trace.soft(
         "The two weeks run from formal delivery: the date written on the yellow envelope, or for an "
         "Übergabe-Einschreiben the 4th day after posting (§ 4 Abs. 2 VwZG). We counted from "
-        f"{anchor.phrase}, which can only be earlier — enter the envelope date for the exact deadline."
+        f"{anchor.phrase}, which can only be earlier — {ENTER_ENVELOPE_DATE}."
     )
 
 
@@ -680,6 +747,7 @@ def _compute_relative(
         relation = f"after {anchor.phrase}"
 
     backward = amount < 0
+    counted_back_from: date | None = None
     if not backward:
         raw_end, steps = add_period(event, amount, unit, region=place)
         trace.step(f"Counting starts the day after {fmt_date(event)}", event, "bgb_187_1")
@@ -709,6 +777,8 @@ def _compute_relative(
     else:
         inclusive_end = event if spec.nature == "notice" else event - timedelta(days=1)
         raw_end = latest_receipt_for(inclusive_end, -amount, unit, place)
+        if unit in ("business_days", "werktage"):
+            counted_back_from = inclusive_end
         relation = f"before {anchor.phrase}"
         trace.step(
             capitalize_first(f"{period} before {fmt_date(event)}: it must arrive by {fmt_date(raw_end)}"),
@@ -756,6 +826,16 @@ def _compute_relative(
         _send_by(trace, ctx, due, spec.nature, place, postal_buffer_days)
         if spec.nature in _SEND_BY_NATURES
         else None
+    )
+    check_partial_holidays(
+        trace,
+        place,
+        due,
+        send_by=send_by,
+        safe=safe,
+        moves=shift and not backward,
+        counted_back_from=counted_back_from,
+        werktage=unit == "werktage",
     )
     end = _end_clause(raw_end, due, place, safe=safe, backward=backward and spec.nature != "notice")
     summary = due_sentence(lead, period, relation, end)

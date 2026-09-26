@@ -12,6 +12,9 @@ Two notions of a working day are used by German law and by Ordnung:
 Holidays: weekend and nationwide holidays always count. Regional (Land) holidays only count when the
 region of the place that matters is known; otherwise they are ignored, which can only make a computed
 deadline earlier, never later (safety policy, SPEC § 21). 24 and 31 December are *not* holidays.
+A holiday that holds in only part of a Land (Mariä Himmelfahrt in Bavaria's Catholic communities,
+Augsburg's Friedensfest, Fronleichnam in parts of Saxony and Thuringia) is not counted either:
+:func:`partial_holidays` lists them, and the deadline rules warn where one could move a date shown.
 """
 
 from __future__ import annotations
@@ -80,6 +83,22 @@ def holiday_calendar_label(region: str | None) -> str:
     return REGION_NAMES[code] if code else NATIONWIDE_LABEL
 
 
+#: Holidays that hold in only part of a Land, by Land and German name, with where they hold. The
+#: calendar leaves them out: the place (the community) is not known.
+PARTIAL_HOLIDAY_PLACES: dict[str, dict[str, str]] = {
+    "BY": {
+        "Mariä Himmelfahrt": "the communities of Bayern with a Catholic majority (Munich among them)",
+        "Augsburger Hohes Friedensfest": "the city of Augsburg (Bayern)",
+    },
+    "SN": {"Fronleichnam": "some communities of the Sorbian area of Sachsen"},
+    "TH": {"Fronleichnam": "some communities of Thüringen with a Catholic majority"},
+}
+#: Partial holidays the holiday library leaves out even from its extra categories: (month, day, name).
+_MORE_PARTIAL_HOLIDAYS: dict[str, tuple[tuple[int, int, str], ...]] = {
+    "BY": ((8, 8, "Augsburger Hohes Friedensfest"),),
+}
+
+
 @lru_cache(maxsize=512)
 def _holidays_for(code: str | None, year: int) -> dict[date, str]:
     # German names whatever the system locale (the library would translate them from LANG/LANGUAGE)
@@ -95,6 +114,34 @@ def holiday_name(d: date, region: str | None = None) -> str | None:
 def is_holiday(d: date, region: str | None = None) -> bool:
     """True if ``d`` is a public holiday in ``region`` (nationwide holidays only if unknown)."""
     return holiday_name(d, region) is not None
+
+
+@lru_cache(maxsize=256)
+def _partial_holidays_for(code: str, year: int) -> dict[date, str]:
+    found = dict(holidays.Germany(subdiv=code, years=year, categories=("catholic",), language="de"))
+    found.update({date(year, month, day): name for month, day, name in _MORE_PARTIAL_HOLIDAYS.get(code, ())})
+    return found
+
+
+def partial_holidays(
+    region: str | None, start: date, end: date, *, werktage: bool = False
+) -> list[tuple[date, str]]:
+    """Holidays of only part of ``region`` from ``start`` to ``end`` that fall on a counted day.
+
+    Those are the :data:`PARTIAL_HOLIDAY_PLACES`, which the calendar does not count; a counted day is a
+    business day, or a *Werktag* with ``werktage=True``. Empty for a Land without such holidays.
+    """
+    code = normalize_region(region)
+    if code not in PARTIAL_HOLIDAY_PLACES or end < start:
+        return []
+    counts = is_werktag if werktage else is_business_day
+    found = [
+        (day, name)
+        for year in range(start.year, end.year + 1)
+        for day, name in _partial_holidays_for(code, year).items()
+        if start <= day <= end and counts(day, code)
+    ]
+    return sorted(found)
 
 
 def regional_holiday_lands(d: date) -> list[str]:

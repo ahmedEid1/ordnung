@@ -118,9 +118,23 @@ PRIVATE_KINDS: frozenset[str] = frozenset(
     }
 )
 
-#: Remedies against an administrative act: a letter that names one is an authority's decision,
-#: whatever its sender was filed as (a statutory health insurer filed as ``insurer``).
-_ADMINISTRATIVE_REMEDIES = frozenset({"einspruch", "widerspruch", "klage"})
+#: *Einspruch* lies only against an authority's or a court's decision: a letter that names one is no
+#: private sender's, whatever its sender was filed as.
+_PUBLIC_REMEDIES = frozenset({"einspruch"})
+#: *Widerspruch* and *Klage* lie against an administrative act (a statutory health insurer filed as
+#: ``insurer``) but also in private law: a tenant's Widerspruch (§ 574 BGB), an insurance contract's
+#: (§ 5 VVG), the Kündigungsschutzklage against an employer (§ 4 KSchG). They show an authority's
+#: decision only with a remedy notice that says so (:data:`_ADMINISTRATIVE_ROUTE`).
+_ROUTE_REMEDIES = frozenset({"widerspruch", "klage"})
+#: A remedy notice that shows an administrative act: it names an administrative, social or finance
+#: court or the codes they apply, a *Bescheid* (not a court's Mahn- or Vollstreckungsbescheid), its
+#: *Bekanntgabe* or a *Verwaltungsakt*. Private law says *Zugang*, and its courts are the Amts-,
+#: Land- and Arbeitsgericht.
+_ADMINISTRATIVE_ROUTE = re.compile(
+    r"verwaltungsgericht|sozialgericht|finanzgericht|(?-i:\b(?:VwGO|SGG|FGO|AO|SGB|VwVfG)\b)|"
+    r"(?<!mahn)(?<!vollstreckungs)bescheid|bekanntgabe|bekanntgegeben|verwaltungsakt",
+    re.IGNORECASE,
+)
 
 
 def scope_for_party_kind(
@@ -150,18 +164,26 @@ def scope_for_party_kind(
 
 
 def is_private_sender(
-    kind: str | None, *, scope: DeliveryScope | None, remedy_type: str | None = None
+    kind: str | None,
+    *,
+    scope: DeliveryScope | None,
+    remedy_type: str | None = None,
+    remedy_text: str | None = None,
 ) -> bool:
     """Whether a letter's sender is known not to be a German authority, so no deemed delivery applies.
 
     Deemed delivery (§ 122 AO, § 41 VwVfG, § 37 SGB X) is a rule for authorities' letters; a letter
-    from a company, a landlord or a bank takes effect when it arrives (§ 130 Abs. 1 BGB). True only
-    for a :data:`PRIVATE_KINDS` sender that ``scope`` (:func:`scope_for_party_kind`, from its kind,
-    name and remedy notice) does not make an authority and whose letter names no administrative
-    remedy (*Einspruch*, *Widerspruch*, *Klage*). An unknown sender (``None``, ``other``) is not
-    known to be private: it keeps the earliest plausible deemed delivery.
+    from a company, a landlord, a bank or an employer takes effect when it arrives (§ 130 Abs. 1 BGB).
+    True only for a :data:`PRIVATE_KINDS` sender that ``scope`` (:func:`scope_for_party_kind`, from
+    its kind, name and remedy notice) does not make an authority and whose letter shows no
+    administrative act: it names no *Einspruch*, and a *Widerspruch* or *Klage* only without a remedy
+    notice (``remedy_text``) naming an administrative route — an employer's letter naming the
+    Kündigungsschutzklage stays private. An unknown sender (``None``, ``other``) is not known to be
+    private: it keeps the earliest plausible deemed delivery.
     """
-    return scope is None and kind in PRIVATE_KINDS and remedy_type not in _ADMINISTRATIVE_REMEDIES
+    if scope is not None or kind not in PRIVATE_KINDS or remedy_type in _PUBLIC_REMEDIES:
+        return False
+    return remedy_type not in _ROUTE_REMEDIES or not _ADMINISTRATIVE_ROUTE.search(remedy_text or "")
 
 
 def fiction_days(posted: date) -> int:

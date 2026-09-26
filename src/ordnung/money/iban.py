@@ -27,6 +27,10 @@ _LABEL = re.compile(r"^\s*IBAN\s*:?", re.IGNORECASE)
 _SHAPE = re.compile(r"^[A-Z]{2}[0-9]{2}[A-Z0-9]+$")
 MAX_LENGTH = 34
 MIN_LENGTH = 15
+#: What to do about an IBAN that is not well-formed (the app's scam warning and the check_iban tool).
+INVALID_IBAN_ADVICE = (
+    "It may be misprinted, misread or fake — compare it with the letter and ask the sender before paying."
+)
 
 
 @dataclass(frozen=True)

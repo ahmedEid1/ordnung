@@ -24,6 +24,7 @@ from ordnung.assistant import rules_tools
 from ordnung.assistant.mcp_server import build_server, server_config
 from ordnung.assistant.rules_tools import (
     DISCLAIMER_TEMPLATE,
+    FORMAL_SERVICE_HINT,
     FORMAL_SERVICE_WARNING,
     INSTRUCTIONS,
     SERVER_NAME,
@@ -39,8 +40,16 @@ from ordnung.cli import app
 from ordnung.db.store import Store
 from ordnung.ingest.extract import unwrap_untrusted
 from ordnung.models import DateSpec
-from ordnung.rules import LAST_CHECKED
-from ordnung.rules.deadlines import PRIVATE_SENDER_WARNING
+from ordnung.money.iban import INVALID_IBAN_ADVICE
+from ordnung.rules import LAST_CHECKED, calendar_de
+from ordnung.rules.deadlines import (
+    HOME_HOLIDAY,
+    PRIVATE_SENDER_WARNING,
+    REGION_EARLIER,
+    REGION_UNKNOWN,
+    TAX_OFFICE_HOLIDAY,
+)
+from ordnung.secretary.scam import invalid_iban_message
 
 RULES_TOOLS = {"compute_deadline", "german_holidays", "add_working_days", "check_iban"}
 LEDGER_TOOLS = {
@@ -97,8 +106,10 @@ def test_a_tax_assessment_gets_the_engines_date_with_its_receipt(tools: RulesToo
         "Wednesday",
         "2026-10-15",
     )
-    assert result["confidence"] == "high" and result["hints"] == []
-    assert result["warnings"] == [FORMAL_SERVICE_WARNING]  # a yellow envelope would count from its date
+    # a yellow envelope would count from its date: the warning says so, the hint says what to pass
+    assert result["confidence"] == "high" and result["hints"] == [FORMAL_SERVICE_HINT]
+    assert result["warnings"] == [FORMAL_SERVICE_WARNING]
+    assert "spec." not in FORMAL_SERVICE_WARNING and "spec.anchor receipt" in FORMAL_SERVICE_HINT
     assert "moved to Mon 21 Sep" in result["summary"]
     assert [step["rule_id"] for step in result["steps"]][:3] == [
         "posting_day",
@@ -209,10 +220,10 @@ def test_hints_name_the_authoritys_land_where_the_4_day_rule_is_unconfirmed(tool
     confirmed = tools.compute_deadline(
         POSTED, document_date="2026-09-10", sender_kind="immigration_office", region="NW"
     )
-    assert confirmed["due_date"] == "2026-10-14" and confirmed["hints"] == []
+    assert confirmed["due_date"] == "2026-10-14" and confirmed["hints"] == [FORMAL_SERVICE_HINT]
     # Hessen's own law is not confirmed: the region is given, so there is nothing to ask for
     hesse = tools.compute_deadline(POSTED, document_date="2026-09-10", sender_kind="authority", region="HE")
-    assert hesse["due_date"] == "2026-10-13" and hesse["hints"] == []
+    assert hesse["due_date"] == "2026-10-13" and hesse["hints"] == [FORMAL_SERVICE_HINT]
 
 
 def test_hints_for_a_tax_letter_name_the_other_place() -> None:
@@ -224,7 +235,7 @@ def test_hints_for_a_tax_letter_name_the_other_place() -> None:
     home_only = tools.compute_deadline(POSTED, recipient_region="BY", **tax)
     assert home_only["due_date"] == "2026-02-06" and _hint(home_only, "Pass region — the tax office's Land")
     both = tools.compute_deadline(POSTED, region="BY", recipient_region="BY", **tax)
-    assert both["due_date"] == "2026-02-09" and both["hints"] == []
+    assert both["due_date"] == "2026-02-09" and both["hints"] == [FORMAL_SERVICE_HINT]
 
 
 def test_hints_never_ask_again_for_a_sender_that_was_given(tools: RulesTools) -> None:
@@ -232,7 +243,7 @@ def test_hints_never_ask_again_for_a_sender_that_was_given(tools: RulesTools) ->
         POSTED, document_date="2026-09-10", sender_kind="utility", sender_name="Stadtwerke Musterstadt"
     )
     assert not _hint(result, "Pass sender_kind") and not _hint(result, "Pass region")
-    assert _hint(result, "If the letter is an authority's decision after all, pass its kind")
+    assert _hint(result, "If the letter is an authority's decision after all (a Bescheid), pass its kind")
 
 
 RECEIPT = {"type": "relative", "anchor": "receipt", "amount": 2, "unit": "weeks", "nature": "objection"}
@@ -407,6 +418,141 @@ def test_an_unknown_or_misfiled_sender_gets_the_apps_date_not_a_later_one() -> N
     assert company["due_date"] == "2026-04-07" and PRIVATE_SENDER_WARNING not in company["warnings"]
 
 
+def test_a_private_law_klage_or_widerspruch_keeps_a_private_sender_private() -> None:
+    """Reviewer repro: an employer's dismissal names the Kündigungsschutzklage (§ 4 KSchG, labour court).
+    Its three weeks run from the letter's arrival (§ 130 BGB) — deemed delivery would make them 3 days
+    late, and the loss of that deadline makes the dismissal effective (§ 7 KSchG)."""
+    tools = at("2026-09-26")
+    spec = {
+        **POSTED,
+        "amount": 3,
+        "unit": "weeks",
+        "legal_basis": "§ 4 KSchG",
+        "text": "Eine Klage muss innerhalb von drei Wochen nach Zugang der Kündigung erhoben werden.",
+    }
+    args = {"document_date": "2026-09-01", "sender_kind": "employer", "remedy_type": "klage"}
+    dismissal = tools.compute_deadline(spec, **args)
+    assert dismissal["due_date"] == "2026-09-22"  # not 25 Sep (the letter + 3 days + 3 weeks)
+    assert (
+        PRIVATE_SENDER_WARNING in dismissal["warnings"]
+        and FORMAL_SERVICE_WARNING not in dismissal["warnings"]
+    )
+    assert dismissal["steps"][0]["rule_id"] == "private_sender_arrival"
+    assert _hint(dismissal, "If the letter is an authority's decision after all (a Bescheid)")
+    assert "labour or civil court" in " ".join(dismissal["hints"])
+    assert dismissal == tools.compute_deadline(spec, **{**args, "sender_name": "Land Berlin"})
+    # an insurer's contract change (§ 5 VVG) is private too
+    policy = tools.compute_deadline(
+        {
+            **spec,
+            "legal_basis": "§ 5 VVG",
+            "text": "Sie können innerhalb eines Monats nach Zugang widersprechen.",
+        },
+        **{**args, "sender_kind": "insurer", "remedy_type": "widerspruch"},
+    )
+    assert PRIVATE_SENDER_WARNING in policy["warnings"]
+    # a Klage to the administrative court is an authority's decision (a civil servant's dismissal)
+    official = tools.compute_deadline(
+        {**spec, "legal_basis": "§ 74 VwGO", "text": "Klage beim Verwaltungsgericht Berlin"}, **args
+    )
+    assert PRIVATE_SENDER_WARNING not in official["warnings"]
+    assert any(step["rule_id"] == "posting_day" for step in official["steps"])
+
+
+def test_a_stated_posting_day_without_the_letters_date_is_not_trusted_blindly() -> None:
+    """Reviewer repro (benchmark letter test-tax_assessment-D1): the engine counts from the letter's date
+    when a stated posting day is later. Leaving the letter's date out must not lift that check silently:
+    the result says it could not check, asks for the date and is less confident."""
+    tools = at("2026-01-12")
+    spec = {**POSTED, "anchor_date": "2026-01-02", "legal_basis": "§ 355 AO"}
+    args = {"sender_kind": "tax_office", "region": "BY", "recipient_region": "BY"}
+    dated = tools.compute_deadline(spec, document_date="2025-12-31", **args)
+    assert dated["due_date"] == "2026-02-05" and not _hint(dated, "Pass document_date")
+    assert any("later than its date" in w for w in dated["warnings"])
+    undated = tools.compute_deadline(spec, **args)
+    assert undated["due_date"] == "2026-02-09" and undated["confidence"] == "medium"
+    assert undated["hints"][0] == rules_tools.UNCHECKED_DAY_HINT
+    assert any("posting day stated (Fri 2 Jan 2026) could not be checked" in w for w in undated["warnings"])
+    # a delivery day the letter states is checked against the letter's date too
+    served = {**RECEIPT, "anchor_date": "2026-01-05", "delivery_rule": "none"}
+    alone = tools.compute_deadline(served)
+    assert alone["confidence"] == "medium" and _hint(alone, "Pass document_date: the engine checks")
+    assert any("delivery day stated (Mon 5 Jan 2026)" in w for w in alone["warnings"])
+    assert tools.compute_deadline(served, document_date="2026-01-02")["confidence"] == "high"
+    # an explicit start day is no posting or delivery day: nothing to check
+    explicit = {**RECEIPT, "anchor": "explicit_date", "anchor_date": "2026-01-05"}
+    assert tools.compute_deadline(explicit)["hints"] == []
+
+
+def test_warnings_speak_to_the_person_and_hints_to_the_caller() -> None:
+    """The engine speaks to the app's person ("tell us", "enter the envelope date"); a model relays the
+    tools' warnings, and there is no app to tell. The facts stay, the argument to pass is a hint."""
+    tools = at("2026-09-26")
+    unknown_arrival = tools.compute_deadline(RECEIPT, document_date="2026-09-14")
+    missing = tools.compute_deadline(RECEIPT)
+    late = tools.compute_deadline(
+        POSTED, document_date="2026-09-01", sender_kind="authority", received_date="2026-09-15"
+    )
+    fine = {**RECEIPT, "anchor": "document_date", "legal_basis": "§ 67 OWiG", "nature": "objection"}
+    fined = tools.compute_deadline(fine, document_date="2026-09-14", sender_kind="authority")
+    results = (unknown_arrival, missing, late, fined)
+    for result in results:
+        text = " ".join(result["warnings"])
+        assert "tell us" not in text and "told us" not in text and "enter the" not in text, text
+        assert "spec." not in text and "pass " not in text.lower(), text
+    assert rules_tools.TOOL_VOICE["assumed_receipt"] in unknown_arrival["warnings"]
+    assert _hint(unknown_arrival, "Pass received_date")
+    assert rules_tools.TOOL_VOICE["needs_arrival"] in missing["warnings"]
+    assert _hint(missing, "Pass document_date") and _hint(missing, "Pass received_date")
+    assert any(w.startswith("The letter arrived on Tue 15 Sep 2026, after the day") for w in late["warnings"])
+    assert any("the envelope's date gives the exact deadline" in w for w in fined["warnings"])
+    # the app keeps its own words
+    assert rules_tools.tool_voice("Something else — tell us.") == "Something else — tell us."
+
+
+def test_the_hints_follow_the_engines_own_words_for_each_situation() -> None:
+    """The hints recognise a situation by words the engine shares (ordnung.rules.deadlines): each one is
+    in the engine's warning, so rewording it there cannot drop the hint silently."""
+    region_later = at("2026-05-01").compute_deadline(
+        {**RECEIPT, "anchor": "document_date", "amount": 3, "unit": "business_days"},
+        document_date="2026-06-01",
+    )
+    assert any(w.startswith(REGION_UNKNOWN) and REGION_EARLIER not in w for w in region_later["warnings"])
+    assert _hint(region_later, "Pass region") and region_later["hints"][-1].endswith("this date later.")
+    region_earlier = at("2025-10-01").compute_deadline(
+        {
+            **RECEIPT,
+            "anchor": "explicit_date",
+            "anchor_date": "2025-11-05",
+            "amount": -5,
+            "unit": "business_days",
+        }
+    )
+    assert any(REGION_EARLIER in w for w in region_earlier["warnings"])
+    assert region_earlier["hints"][-1].endswith("this date earlier.")
+    tax = {"document_date": "2026-01-02", "sender_kind": "tax_office"}
+    office = at("2026-01-05").compute_deadline(POSTED, region="BY", **tax)
+    assert any(TAX_OFFICE_HOLIDAY in w for w in office["warnings"]) and _hint(office, "Pass recipient_region")
+    home = at("2026-01-05").compute_deadline(POSTED, recipient_region="BY", **tax)
+    assert any(HOME_HOLIDAY in w for w in home["warnings"]) and _hint(
+        home, "Pass region — the tax office's Land"
+    )
+
+
+def test_a_date_at_the_end_of_the_calendar_is_answered_not_crashed() -> None:
+    """Reviewer repro: the partial-holiday check counted a day back from 1 Jan 1 (OverflowError)."""
+    for region in ("BY", "SN", "TH", None):
+        result = at("2026-09-26").compute_deadline(
+            {"type": "fixed", "date": "0001-01-01", "nature": "notice"}, region=region
+        )
+        assert result["due_date"] == "0001-01-01", region
+    backward = at("2026-09-26").compute_deadline(
+        {**RECEIPT, "anchor": "explicit_date", "anchor_date": "9999-12-31", "amount": -3, "unit": "werktage"},
+        region="BY",
+    )
+    assert backward["due_date"] == "9999-12-27"
+
+
 def test_the_region_hint_names_the_argument_the_engine_reads() -> None:
     """A payment to a company is made where the payer lives (§ 270 BGB): region does not decide it."""
     tools = at("2027-10-20")
@@ -505,8 +651,8 @@ def test_a_partial_holiday_between_the_due_date_and_a_later_event_is_flagged() -
     )
     assert not any("Mariä Himmelfahrt" in w for w in other["warnings"])
     # a partial holiday on a weekend moves nothing
-    assert rules_tools.partial_holidays("BY", date(2026, 8, 10), date(2026, 8, 20)) == []  # Sat 15 Aug
-    assert rules_tools.partial_holidays("NW", date(2026, 1, 1), date(2026, 12, 31)) == []
+    assert calendar_de.partial_holidays("BY", date(2026, 8, 10), date(2026, 8, 20)) == []  # Sat 15 Aug
+    assert calendar_de.partial_holidays("NW", date(2026, 1, 1), date(2026, 12, 31)) == []
 
 
 def test_a_backward_count_without_a_region_says_it_may_be_a_day_late() -> None:
@@ -810,6 +956,9 @@ def test_working_days_skip_weekends_and_holidays(tools: RulesTools) -> None:
     assert "can come out a day late" in tools.add_working_days("2026-08-20", -5, region="BY")["note"]
     long = tools.add_working_days("2026-01-01", 200)
     assert len(long["skipped"]) == rules_tools.MAX_LISTED_SKIPS and long["skipped_more"] > 0
+    # a count on the calendar, not a deadline computed from a letter's facts: its own disclaimer
+    assert result["disclaimer"] == rules_tools.calendar_disclaimer() and LAST_CHECKED in result["disclaimer"]
+    assert "from the facts given" not in result["disclaimer"] and "not legal advice" in result["disclaimer"]
 
 
 @pytest.mark.parametrize(
@@ -847,6 +996,9 @@ def test_check_iban(tools: RulesTools) -> None:
     bad = compact(tools.check_iban("DE89 3704 0044 0532 0130 01"))
     assert bad["valid"] is False and bad["checksum_ok"] is False and "bank_code" not in bad
     assert bad["problems"] == ["The check digits do not match: a character is wrong, missing or swapped."]
+    # the app's advice for an invalid IBAN, not the note on who owns a valid one
+    assert bad["note"] == INVALID_IBAN_ADVICE and "ask the sender before paying" in bad["note"]
+    assert INVALID_IBAN_ADVICE in invalid_iban_message("DE89 3704 0044 0532 0130 01")
     assert "if a letter or e-mail says the account has changed" in good["note"]
     foreign = tools.check_iban("BR15 0000 0000 0000 1093 2840 814P 2")
     assert foreign["valid"] is True and foreign["country"] == {"code": "BR", "name": "Brazil"}

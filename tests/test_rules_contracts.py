@@ -976,3 +976,35 @@ def test_energy_special_contract_mentions_section_310() -> None:
         terms(category="energy", concluded_date="2024-01-01", notice_value=1, notice_unit="months"), ctx()
     )
     assert any("§ 310 Abs. 2 BGB" in n for n in result.notes)
+
+
+def test_a_contract_notice_counted_back_over_a_partial_holiday_is_named() -> None:
+    """A gym contract in Bavaria: the letter must be posted by Fri 11 Aug 2028 to arrive by Thu 17 Aug, but
+    where Tue 15 Aug is a holiday (Munich) the post needs a working day more. A price-increase window on
+    that day itself never moves: its safe date is a working day earlier there."""
+    gym = terms(
+        category="gym",
+        party_kind="gym",
+        concluded_date="2027-09-10",
+        start_date="2027-09-18",
+        initial_term_months=12,
+        notice_value=1,
+        notice_unit="months",
+        notice_basis="end_of_term",
+    )
+    result = compute_contract(gym, ctx(today="2028-08-01", region="BY"))
+    assert (result.cancel_by, result.send_by, result.confidence) == ("2028-08-17", "2028-08-11", "high")
+    assert [w for w in result.warnings if "Mariä Himmelfahrt" in w] == [
+        "Tue 15 Aug 2028 is Mariä Himmelfahrt, a public holiday only in the communities of Bayern with a "
+        "Catholic majority (Munich among them), which is not counted here. Where it holds, the send-by or safe "
+        "date, counted back over it, is a working day earlier: act a working day before it to be safe."
+    ]
+    assert compute_contract(gym, ctx(today="2028-08-01", region="HH")).warnings == []
+    window = price_increase_window(
+        D("2025-08-16"), "energy", D("2025-07-01"), ctx(today="2025-07-10", region="BY")
+    )
+    assert (window.due_date, window.safe_date) == ("2025-08-15", "2025-08-15")
+    assert any(
+        "this deadline does not move off it, so the safe date is a working day earlier" in w
+        for w in window.warnings
+    )

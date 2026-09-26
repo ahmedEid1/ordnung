@@ -21,7 +21,7 @@ from rapidfuzz import fuzz, utils
 
 from ordnung.db.store import Store
 from ordnung.models import Party, PaymentDetails
-from ordnung.money.iban import inspect_iban
+from ordnung.money.iban import INVALID_IBAN_ADVICE, inspect_iban
 
 FindingKind = Literal["invalid_iban", "iban_changed", "similar_party_iban", "payee_changed"]
 
@@ -301,10 +301,7 @@ def invalid_iban_message(iban: str) -> str:
     check digits), so the app never blames the check digits for a length or country problem.
     """
     problems = " ".join(inspect_iban(normalize_iban(iban)).problems)
-    return (
-        f"The IBAN {format_iban(iban)} is not a valid account number. {problems} It may be misprinted, "
-        "misread or fake — compare it with the letter and ask the sender before paying."
-    )
+    return f"The IBAN {format_iban(iban)} is not a valid account number. {problems} {INVALID_IBAN_ADVICE}"
 
 
 def _invalid(party: Party, iban: str, payee: str | None) -> ScamFinding:

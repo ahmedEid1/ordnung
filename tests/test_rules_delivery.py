@@ -216,27 +216,60 @@ def test_schleswig_holstein_confirmed_from_june_2025() -> None:
     assert deemed_delivery(D("2026-09-29"), scope="vwvfg", region="SH")[0] == D("2026-10-03")
 
 
+#: A statutory health insurer's remedy notice (§ 37 SGB X, § 84 SGG): an administrative act.
+_BESCHEID = "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden."
+
+
 @pytest.mark.parametrize(
-    ("kind", "name", "remedy_type", "expected"),
+    ("kind", "name", "remedy_type", "notice", "expected"),
     [
-        ("company", None, None, True),
-        ("landlord", "Muster Wohnen GmbH", "none", True),
-        ("insurer", "Muster Haftpflicht AG", None, True),
+        ("company", None, None, None, True),
+        ("landlord", "Muster Wohnen GmbH", "none", None, True),
+        ("insurer", "Muster Haftpflicht AG", None, None, True),
         # "other" is the app's "don't know", not "no authority"; nor is a missing kind
-        ("other", "Stadt Musterstadt", None, False),
-        (None, None, None, False),
-        # an authority's decision whatever it was filed as: its remedy says so ...
-        ("insurer", "AOK Nordost", "widerspruch", False),
-        ("company", None, "einspruch", False),
-        ("employer", "Land Berlin", "klage", False),
+        ("other", "Stadt Musterstadt", None, None, False),
+        (None, None, None, None, False),
+        # an authority's decision whatever it was filed as: its remedy notice says so ...
+        ("insurer", "AOK Nordost", "widerspruch", _BESCHEID, False),
+        ("company", None, "einspruch", None, False),  # Einspruch has no private-law use
+        ("employer", "Land Berlin", "klage", "Klage beim Verwaltungsgericht Berlin (§ 74 VwGO)", False),
+        ("company", None, "klage", "Klage vor dem Finanzgericht", False),
+        ("company", None, "widerspruch", "nach Zustellung des Widerspruchsbescheids", False),
+        # ... but Widerspruch and Klage are private-law remedies too: a dismissal, a tenancy, an insurance
+        ("employer", "Land Berlin", "klage", None, True),
+        ("employer", "Muster GmbH", "klage", "Kündigungsschutzklage beim Arbeitsgericht (§ 4 KSchG)", True),
+        ("landlord", None, "widerspruch", "Widerspruch nach § 574 BGB bis zwei Monate vor Ende", True),
+        (
+            "insurer",
+            "Muster Leben AG",
+            "widerspruch",
+            "innerhalb eines Monats nach Zugang widersprechen (§ 5 VVG)",
+            True,
+        ),
+        # a court's Mahnbescheid is served formally: from its delivery, not a deemed one
+        (
+            "company",
+            "Inkasso GmbH",
+            "widerspruch",
+            "Widerspruch gegen den Mahnbescheid binnen zwei Wochen",
+            True,
+        ),
+        ("company", None, "widerspruch", "Widerspruch gegen den Vollstreckungsbescheid", True),
         # ... or its name makes it a social agency
-        ("insurer", "Deutsche Rentenversicherung Bund", None, False),
-        ("authority", None, None, False),
-        ("tax_office", None, None, False),
+        ("insurer", "Deutsche Rentenversicherung Bund", None, None, False),
+        ("authority", None, None, None, False),
+        ("tax_office", None, None, None, False),
     ],
 )
 def test_private_senders_have_no_deemed_delivery(
-    kind: str | None, name: str | None, remedy_type: str | None, expected: bool
+    kind: str | None, name: str | None, remedy_type: str | None, notice: str | None, expected: bool
 ) -> None:
-    scope = scope_for_party_kind(kind, name=name, remedy_type=remedy_type)
-    assert is_private_sender(kind, scope=scope, remedy_type=remedy_type) is expected
+    scope = scope_for_party_kind(kind, name=name, remedy_type=remedy_type, remedy_text=notice)
+    assert is_private_sender(kind, scope=scope, remedy_type=remedy_type, remedy_text=notice) is expected
+
+
+def test_the_administrative_route_needs_the_codes_written_as_codes() -> None:
+    """ "AO" is the Abgabenordnung only in capitals: the word "ao" in other text is no route."""
+    route = is_private_sender("company", scope=None, remedy_type="klage", remedy_text="Klage nach § 40 AO")
+    assert route is False
+    assert is_private_sender("company", scope=None, remedy_type="klage", remedy_text="ciao ao") is True

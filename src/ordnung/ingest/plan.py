@@ -264,19 +264,21 @@ def rule_context(
     for contracts). The delivery scope follows the sender's kind, name and remedy notice (tax office →
     AO, health insurer or social-benefits agency → SGB X, other authorities → VwVfG; see
     :func:`ordnung.rules.scope_for_party_kind`); a sender of a private kind (a company, a landlord, a
-    bank …) whose letter names no administrative remedy has no deemed delivery at all
-    (:func:`ordnung.rules.is_private_sender`). A received date on the document was entered by the person, so
+    bank, an employer …) whose letter shows no administrative act has no deemed delivery at all
+    (:func:`ordnung.rules.is_private_sender`: a Widerspruch or Klage counts only with a remedy notice
+    naming an administrative route). A received date on the document was entered by the person, so
     it counts as confirmed.
     """
     sender = extraction.sender
     kind = party.kind if party else (sender.kind if sender else None)
     remedy = extraction.remedy
     remedy_type = remedy.type if remedy else None
+    notice = remedy_text(remedy)
     scope = scope_for_party_kind(
         kind,
         name=party.name if party else (sender.name if sender else None),
         remedy_type=remedy_type,
-        remedy_text=remedy_text(remedy),
+        remedy_text=notice,
     )
     return RuleContext(
         today=today,
@@ -287,7 +289,7 @@ def rule_context(
         received_confirmed=document.received_date is not None,
         delivery_scope=scope,
         recipient_region=recipient_region,
-        private_sender=is_private_sender(kind, scope=scope, remedy_type=remedy_type),
+        private_sender=is_private_sender(kind, scope=scope, remedy_type=remedy_type, remedy_text=notice),
     )
 
 

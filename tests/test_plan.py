@@ -213,19 +213,36 @@ def test_rule_context_from_party_and_document(store: Store) -> None:
 def test_rule_context_marks_a_private_sender_but_not_an_unknown_one(store: Store) -> None:
     """A company's letter has no deemed delivery (the engine counts it from arrival); a party of kind
     ``other`` is the app's "don't know" and keeps the earliest plausible deemed delivery; a sender filed
-    as an insurer whose letter names a Widerspruch is an authority's decision."""
+    as an insurer whose remedy notice names a Widerspruch against a Bescheid is an authority's decision,
+    an employer's letter naming the Kündigungsschutzklage is not."""
     document = store.add_document(sha256="f" * 64, filename="x", mime="application/pdf", file_path="x")
     company = store.add_party(name="Muster GmbH", kind="company")
     assert rule_context(company, document, extraction([]), date(2026, 9, 25)).private_sender is True
     unknown = store.add_party(name="Stadt Musterstadt")  # kind "other" by default
     assert rule_context(unknown, document, extraction([]), date(2026, 9, 25)).private_sender is False
+    bescheid = {
+        "type": "widerspruch",
+        "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+    }
     misfiled = rule_context(
         None,
         document,
-        extraction([], sender={"name": "AOK Nordost", "kind": "insurer"}, remedy={"type": "widerspruch"}),
+        extraction([], sender={"name": "AOK Nordost", "kind": "insurer"}, remedy=bescheid),
         date(2026, 9, 25),
     )
     assert misfiled.private_sender is False and misfiled.delivery_scope is None
+    dismissal = {
+        "type": "klage",
+        "quote": "Eine Kündigungsschutzklage muss innerhalb von drei Wochen nach Zugang erhoben werden.",
+        "addressee": "Arbeitsgericht Berlin",
+    }
+    employer = rule_context(
+        None,
+        document,
+        extraction([], sender={"name": "Land Berlin", "kind": "employer"}, remedy=dismissal),
+        date(2026, 9, 25),
+    )
+    assert employer.private_sender is True and employer.delivery_scope is None
 
 
 def test_rule_context_recognises_social_law_senders_filed_as_authority(store: Store) -> None:

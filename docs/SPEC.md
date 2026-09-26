@@ -302,10 +302,15 @@ warning and one level less confidence. Whether the sender has deemed delivery at
 engine's rule, as in the app (a private sender's letter counts from its arrival; an unknown one,
 `other` included, keeps the earliest plausible deemed delivery). The spec help says how to pass a
 formally served letter (yellow envelope: `anchor: receipt`, the envelope's date), and a result that
-applied deemed delivery to a posted letter says it would not apply then. A holiday of only part of a
-Land (BY, SN, TH) that a date is counted back over — a send-by or safe date, a period counted
-backwards in working days, the safe date of a deadline on it — is named, with where it holds. `german_holidays(year, region?)`;
-`add_working_days(start, days, day_type, region?)`; `check_iban(iban)` (a printed `IBAN:` label and
+applied deemed delivery to a posted letter says it would not apply then (a warning) and what to pass
+if it was (a hint). A stated posting or delivery day (`spec.anchor_date`) can only be checked against
+the letter's date: without `document_date` the result says so, asks for it and has one level less
+confidence. Warnings say what the person should know, in the tools' voice (the engine's "tell us"
+and "enter the envelope date" are the app's); how to call again is a hint. Holidays of only part of
+a Land are the engine's warning, as in the app. `german_holidays(year, region?)`;
+`add_working_days(start, days, day_type, region?)` (its disclaimer says it is a calendar count, not
+a deadline); `check_iban(iban)` (an invalid one gets the app's advice: misprinted, misread or fake —
+ask the sender before paying; a printed `IBAN:` label and
 invisible characters ignored; country from the full SWIFT registry — any other two letters are not
 an IBAN — registered length, mod-97, bank code where the format shows it; pure code in
 `money/iban.py`). Unknown tool arguments are refused and argument errors are plain words. "Today" is
@@ -564,16 +569,26 @@ region of the place of performance is known: `Party.region` (user-set or from th
 when unambiguous) — otherwise they are ignored (earlier date). A date counted *back* over a regional
 holiday (a period before an event, the safe date of a deadline that never moves) could be earlier
 where it holds: with the region unknown that is flagged (`medium`, "act a working day before it").
+Holidays of only part of a Land (Mariä Himmelfahrt in Bavaria's Catholic communities, Augsburg's
+Friedensfest, Fronleichnam in parts of Saxony and Thuringia) are never counted, as the community is
+not known; where a send-by or safe date, a period counted backwards in working days (or Werktage),
+or the safe date of a deadline on one passes such a holiday, the engine names it and where it holds
+in a warning ("act a working day before it"; `rules.deadlines.check_partial_holidays`, for letters
+and contracts alike). Confidence stays: the Land's calendar is the rule.
 Receipts state which calendar was used.
 
 **Deemed delivery.** Day count by scope in `catalog.py` with `verified_on`: tax (AO § 122) and
 federal authorities (VwVfG § 41) and social law (SGB X § 37) = 4 days for items posted from
 2025-01-01; Land authorities (Land VwVfG) use the verified value per Land where known, otherwise the
 conservative earlier count (3 days) with `medium` confidence. It is a rule for authorities only: a
-sender of a private kind (company, landlord, bank, insurer …; `rules.is_private_sender`) whose letter
-names no *Einspruch*, *Widerspruch*, *Klage* or remedy statute gets none — its period runs from the
-day the letter arrived (§ 130 BGB; the letter's date until the person confirms the day, `low`). An
-unknown sender (kind `other`) keeps the earliest plausible deemed delivery.
+sender of a private kind (company, landlord, bank, insurer, employer …; `rules.is_private_sender`)
+whose letter shows no administrative act gets none — its period runs from the day the letter arrived
+(§ 130 BGB; the letter's date until the person confirms the day, `low`, and the app asks for it). A
+letter shows an administrative act when it names an *Einspruch* or a remedy statute, or a
+*Widerspruch* or *Klage* whose notice names an administrative route (a *Bescheid* or its
+*Bekanntgabe*, an administrative, social or finance court, VwGO/SGG/FGO/AO/SGB/VwVfG) — a
+Kündigungsschutzklage to the labour court (§ 4 KSchG) or a Widerspruch under the BGB or VVG does not.
+An unknown sender (kind `other`) keeps the earliest plausible deemed delivery.
 
 **Contracts — regimes.** `compute_contract` dispatches on `regime` derived by code from category,
 party kind and dates: `bgb309_new` (consumer, concluded ≥ 2022-03-01: min term ≤ 24 months; after

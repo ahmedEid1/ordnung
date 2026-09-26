@@ -1081,3 +1081,101 @@ def test_a_safe_date_on_a_regional_holiday_is_flagged_earlier() -> None:
     receipt = compute_due(backward, ctx(today=D("2025-10-01")))  # one month before: Fri 31 Oct
     assert receipt.due_date == "2025-10-31" and receipt.confidence == "medium"
     assert "where the deadline would be earlier" in receipt.warnings[0]
+
+
+# ------------------------------------------------------------------------------ partial holidays
+
+_MUNICH = (
+    "a public holiday only in the communities of Bayern with a Catholic majority (Munich among them), which "
+    "is not counted here. Where it holds, "
+)
+
+
+def _partial(receipt: Any, name: str) -> list[str]:
+    return [w for w in receipt.warnings if name in w]
+
+
+def test_a_partial_holiday_a_date_is_counted_back_over_is_named_in_the_app_too() -> None:
+    """Reviewer repro: a gym's notice deadline on Tue 15 Aug 2028 in Bavaria. The calendar counts only a
+    whole Land's holidays; in Munich that day is one, so the safe date there is a working day earlier.
+    The engine says so (the app and the rules tools alike); the Land's calendar stays the rule."""
+    notice = DateSpec(type="fixed", date="2028-08-15", nature="notice")
+    gym = compute_due(notice, ctx(today=D("2028-07-01"), region="BY", private_sender=True))
+    assert (gym.due_date, gym.safe_date, gym.confidence) == ("2028-08-15", "2028-08-15", "high")
+    assert _partial(gym, "Mariä Himmelfahrt") == [
+        f"Tue 15 Aug 2028 is Mariä Himmelfahrt, {_MUNICH}this deadline does not move off it, so the safe "
+        "date is a working day earlier: act a working day before it to be safe."
+    ]
+    assert compute_due(notice, ctx(today=D("2028-07-01"), region="NW")).warnings == []
+    # a payment to a company: the payer's Land decides, and its send-by date is counted back over it
+    payment = DateSpec(type="fixed", date="2025-08-18", nature="payment")
+    bavaria = compute_due(payment, ctx(today=D("2025-08-01"), recipient_region="BY", private_sender=True))
+    assert (bavaria.due_date, bavaria.send_by) == ("2025-08-18", "2025-08-15")
+    assert _partial(bavaria, "Mariä Himmelfahrt") == [
+        f"Fri 15 Aug 2025 is Mariä Himmelfahrt, {_MUNICH}the send-by or safe date, counted back over it, is "
+        "a working day earlier: act a working day before it to be safe."
+    ]
+    augsburg = compute_due(
+        payment.model_copy(update={"date": "2025-08-11"}), ctx(today=D("2025-08-01"), recipient_region="BY")
+    )
+    assert _partial(augsburg, "Friedensfest") == [
+        "Fri 8 Aug 2025 is Augsburger Hohes Friedensfest, a public holiday only in the city of Augsburg "
+        "(Bayern), which is not counted here. Where it holds, the send-by or safe date, counted back over it, "
+        "is a working day earlier: act a working day before it to be safe."
+    ]
+    # a due date on one that moves to the next working day is only later there
+    moving = DateSpec(type="fixed", date="2026-06-04", nature="objection", shift_rule="next_business_day")
+    saxony = compute_due(moving, ctx(today=D("2026-05-01"), region="SN"))
+    assert _partial(saxony, "Fronleichnam") == [
+        "Thu 4 Jun 2026 is Fronleichnam, a public holiday only in some communities of the Sorbian area of "
+        "Sachsen, which is not counted here. Where it holds, the due date moves to the next working day; the "
+        "date shown is the earlier one."
+    ]
+    thuringia = compute_due(
+        DateSpec(type="relative", anchor="document_date", amount=3, unit="days", nature="payment"),
+        ctx(today=D("2026-05-01"), region="TH", document_date="2026-06-01", delivery_scope="vwvfg"),
+    )
+    assert thuringia.due_date == "2026-06-04" and _partial(thuringia, "Fronleichnam")
+    # a date that neither moves nor has a safe date is not moved by it
+    other = DateSpec(type="fixed", date="2025-08-15", nature="other")
+    assert compute_due(other, ctx(today=D("2025-07-01"), region="BY")).warnings == []
+
+
+def test_a_period_counted_back_over_a_partial_holiday_is_named() -> None:
+    """5 working days before Wed 20 Aug 2025 is Tue 12 Aug, but Mon 11 Aug where 15 Aug is a holiday; 3
+    Werktage before Tue 18 Aug 2026 pass Saturday 15 Aug, which is a Werktag only where it is no holiday."""
+    spec = DateSpec(
+        type="relative",
+        anchor="explicit_date",
+        anchor_date="2025-08-20",
+        amount=-5,
+        unit="business_days",
+        nature="declaration",
+    )
+    receipt = compute_due(spec, ctx(today=D("2025-07-01"), region="BY"))
+    assert receipt.due_date == "2025-08-12"
+    assert _partial(receipt, "Mariä Himmelfahrt") == [
+        f"Fri 15 Aug 2025 is Mariä Himmelfahrt, {_MUNICH}this date, counted backwards over it, is a working "
+        "day earlier: act a working day before it to be safe."
+    ]
+    werktage = spec.model_copy(
+        update={"anchor_date": "2026-08-18", "amount": -3, "unit": "werktage", "nature": "other"}
+    )
+    saturday = compute_due(werktage, ctx(today=D("2026-07-01"), region="BY"))
+    assert saturday.due_date == "2026-08-13"
+    assert _partial(saturday, "Sat 15 Aug 2026 is Mariä Himmelfahrt")
+    # a count that ends on the holiday itself does not pass over it
+    ends_on_it = werktage.model_copy(update={"anchor_date": "2025-08-19", "amount": -2})
+    on_it = compute_due(ends_on_it, ctx(today=D("2025-07-01"), region="BY"))
+    assert on_it.due_date == "2025-08-15" and not _partial(on_it, "Mariä Himmelfahrt")
+    # counted back in months, no working day is skipped: nothing to name
+    months = spec.model_copy(update={"amount": -1, "unit": "months", "nature": "other"})
+    assert not _partial(compute_due(months, ctx(today=D("2025-06-01"), region="BY")), "Mariä Himmelfahrt")
+
+
+def test_the_partial_holiday_check_stays_inside_the_calendar() -> None:
+    """Reviewer repro: counting back from 1 Jan 1 raised OverflowError in the rules tools."""
+    first = compute_due(DateSpec(type="fixed", date="0001-01-01", nature="notice"), ctx(region="BY"))
+    assert first.due_date == "0001-01-01"
+    last = DateSpec(type="fixed", date="9999-12-31", nature="objection", shift_rule="next_business_day")
+    assert compute_due(last, ctx(region="SN")).due_date == "9999-12-31"

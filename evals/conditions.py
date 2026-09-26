@@ -328,11 +328,9 @@ def ordnung_rule_context(entry: Entry, extraction: DocumentExtraction) -> RuleCo
     remedy = extraction.remedy
     kind = sender.kind if sender else None
     remedy_type = remedy.type if remedy else None
+    notice = remedy_text(remedy)
     scope = scope_for_party_kind(
-        kind,
-        name=sender.name if sender else None,
-        remedy_type=remedy_type,
-        remedy_text=remedy_text(remedy),
+        kind, name=sender.name if sender else None, remedy_type=remedy_type, remedy_text=notice
     )
     return RuleContext(
         today=entry.today_date,
@@ -340,7 +338,7 @@ def ordnung_rule_context(entry: Entry, extraction: DocumentExtraction) -> RuleCo
         document_date=parse_iso(extraction.document_date),
         delivery_scope=scope,
         recipient_region=entry.recipient_region or PERSONA_REGION,
-        private_sender=is_private_sender(kind, scope=scope, remedy_type=remedy_type),
+        private_sender=is_private_sender(kind, scope=scope, remedy_type=remedy_type, remedy_text=notice),
     )
 
 
