@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStableId } from "./internal";
+import { SEGMENT_GAP, SEGMENT_ITEM, SEGMENT_THUMB, SEGMENT_TRACK } from "./segment";
 
 export interface SegmentOption<V extends string = string> {
   value: V;
@@ -66,7 +67,9 @@ export function SegmentedControl<V extends string>({ options, value, onChange, l
       onKeyDown={onKeyDown}
       className={cn(
         // w-fit: as a flex child it hugs its segments instead of stretching the track behind them
-        "inline-flex w-fit min-w-0 max-w-full items-center gap-0.5 rounded-lg bg-surface-3/70 p-0.5",
+        "inline-flex w-fit min-w-0 max-w-full items-center",
+        SEGMENT_TRACK,
+        SEGMENT_GAP,
         fill === true && "flex w-full",
         fill === "phone" && "max-sm:flex max-sm:w-full",
         className,
@@ -87,9 +90,10 @@ export function SegmentedControl<V extends string>({ options, value, onChange, l
             tabIndex={checked ? 0 : -1}
             onClick={() => onChange(o.value)}
             className={cn(
-              "relative inline-flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-medium transition-colors",
-              size === "sm" ? "h-7 px-2.5 text-xs" : "h-8 px-3 text-sm",
-              o.iconOnly && (size === "sm" ? "w-8 shrink-0 px-0" : "w-9 shrink-0 px-0"),
+              "relative inline-flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap font-medium transition-colors",
+              SEGMENT_ITEM,
+              size === "sm" ? "h-6 px-2.5 text-xs" : "h-7 px-3 text-sm",
+              o.iconOnly && (size === "sm" ? "w-7 shrink-0 px-0" : "w-8 shrink-0 px-0"),
               // segments grow from their natural widths, so a longer label keeps its room
               fill === true && "flex-auto",
               fill === "phone" && "max-sm:flex-auto",
@@ -100,7 +104,7 @@ export function SegmentedControl<V extends string>({ options, value, onChange, l
               <motion.span
                 layoutId={`${id}-thumb`}
                 transition={{ type: "spring", stiffness: 520, damping: 40 }}
-                className="absolute inset-0 rounded-md bg-surface shadow-[0_1px_2px_rgb(0_0_0/0.08)] ring-1 ring-line"
+                className={cn("absolute inset-0", SEGMENT_THUMB)}
                 aria-hidden
               />
             ) : null}

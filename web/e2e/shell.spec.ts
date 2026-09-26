@@ -3,9 +3,12 @@
  * screen; section pages share one left edge that the top-bar title and actions line up with;
  * a letter page on a phone has a back button to where it was opened from and Inbox as the
  * current tab; the tablet rail names its sections; the sidebar toggle keeps focus; the tab-bar
- * focus ring stays inside the bar; and "Try again" keeps the "isn't running" card.
+ * focus ring stays inside the bar; and "Try again" keeps the "isn't running" card. Then the
+ * overlays of the shell: the letter search's dropdown and phone sheet, the card of letters being
+ * read on a phone, and the opaque drop overlay.
  */
-import { apiGet, expect, open, setTour, test } from "./helpers";
+import type { Page, Route } from "@playwright/test";
+import { apiGet, expect, open, settle, setTour, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -156,5 +159,141 @@ test.describe("Ordnung isn't reachable", () => {
     await expect(retry).toBeFocused();
     await expect(page.getByRole("status")).toHaveText("Still can't reach Ordnung.", { timeout: 15_000 });
     await expect(retry).toBeFocused();
+  });
+});
+
+// ------------------------------------------------------------------------------------------------
+// Search, letters being read and the drop overlay (audit round 1, bucket "shell-b")
+// ------------------------------------------------------------------------------------------------
+
+const searchField = (page: Page) => page.getByRole("combobox", { name: "Search your letters" });
+
+for (const viewport of [
+  { width: 768, height: 1024 },
+  { width: 1280, height: 800 },
+]) {
+  test.describe(`${viewport.width} px: letter search`, () => {
+    test.use({ viewport });
+
+    test("the dropdown fits the screen: field-wide for a message, up to 30rem for results; the active option stays in view", async ({ page }) => {
+      await open(page, "/", /Sam/);
+      await page.keyboard.press("/");
+      const field = searchField(page);
+      await expect(field).toBeFocused();
+      // a clear focus ring (not just a 1 px border)
+      expect(await field.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe("none");
+      const panel = page.locator("[data-search-panel]");
+      await field.fill("M");
+      await expect(panel).toContainText("Keep typing");
+      const fieldBox = (await field.boundingBox())!;
+      let box = (await panel.boundingBox())!;
+      expect(Math.abs(box.width - fieldBox.width)).toBeLessThanOrEqual(1);
+
+      await field.fill("Muster");
+      const options = page.getByRole("listbox", { name: "Matching letters" }).getByRole("option");
+      await expect(options.first()).toBeVisible();
+      box = (await panel.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+      expect(box.width).toBeGreaterThanOrEqual(fieldBox.width - 1);
+      expect(box.width).toBeLessThanOrEqual(480);
+
+      const count = await options.count();
+      for (let i = 1; i < count; i++) await page.keyboard.press("ArrowDown");
+      const last = options.nth(count - 1);
+      await expect(last).toHaveAttribute("aria-selected", "true");
+      const list = (await page.getByRole("listbox", { name: "Matching letters" }).boundingBox())!;
+      const item = (await last.boundingBox())!;
+      expect(item.y).toBeGreaterThanOrEqual(list.y - 1);
+      expect(item.y + item.height).toBeLessThanOrEqual(list.y + list.height + 1);
+    });
+  });
+}
+
+test.describe("phone 320 px: the search sheet", () => {
+  test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
+
+  test("shows whole titles on two lines, lined up with the field, and Escape clears before it closes", async ({ page }) => {
+    await open(page, "/", /Sam/);
+    await page.getByRole("button", { name: "Search letters" }).click();
+    const sheet = page.getByRole("dialog", { name: "Search letters" });
+    await expect(sheet.getByRole("listbox", { name: "Recent letters" })).toBeVisible();
+    const field = sheet.getByRole("combobox", { name: "Search your letters" });
+    await field.fill("Muster");
+    const first = sheet.getByRole("listbox", { name: "Matching letters" }).getByRole("option").first();
+    await expect(first).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    // the list is flush with the field: the icon starts where the field starts
+    const icon = (await first.locator("span[aria-hidden], span[role=img]").first().boundingBox())!;
+    const fieldBox = (await field.boundingBox())!;
+    expect(Math.abs(icon.x - fieldBox.x)).toBeLessThanOrEqual(2);
+    // long titles take a second line instead of ending after a few characters
+    const titles = sheet.locator("[role=option] .line-clamp-2");
+    const heights = await titles.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
+    expect(Math.max(...heights)).toBeGreaterThan(1.5);
+
+    await page.keyboard.press("Escape");
+    await expect(field).toHaveValue("");
+    await expect(sheet).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+  });
+});
+
+/** Take over `/api/events` so the test can send job progress (as the UI audit does). */
+async function controlEvents(page: Page) {
+  const waiting: Route[] = [];
+  await page.route((url) => new URL(url.href).pathname === "/api/events", (route) => void waiting.push(route));
+  return async (events: { type: string; data: unknown }[]) => {
+    await expect.poll(() => waiting.length).toBeGreaterThan(0);
+    const body = ["retry: 3600000", "", ...events.flatMap((e) => [`event: ${e.type}`, `data: ${JSON.stringify(e.data)}`, ""])].join("\n") + "\n";
+    for (const r of waiting.splice(0)) await r.fulfill({ status: 200, headers: { "content-type": "text/event-stream" }, body });
+  };
+}
+
+test.describe("phone 320 px: letters being read", () => {
+  test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
+
+  test("several letters share one compact card that opens within 40% of the screen", async ({ page }) => {
+    const deliver = await controlEvents(page);
+    await open(page, "/", /Sam/);
+    const docs = await apiGet<{ id: string }[]>(page, "/api/documents");
+    const progress = (doc: string, stage: string, status: string, error: string | null = null) => ({
+      type: "job.progress",
+      data: { job_id: `job_${doc}`, doc_id: doc, stage, progress: 0.5, status, error },
+    });
+    await deliver([progress(docs[1]!.id, "verify", "running"), progress(docs[2]!.id, "done", "done"), progress(docs[3]!.id, "transcribe", "failed", "The file is damaged.")]);
+    const summary = page.getByRole("button", { name: /^Reading 1 letter/ });
+    await expect(summary).toBeVisible();
+    const card = page.locator("[data-upload-group]");
+    expect((await card.boundingBox())!.height).toBeLessThan(640 * 0.15);
+    await summary.click();
+    await expect(page.getByRole("list", { name: "Each letter" }).locator("[data-upload-row]")).toHaveCount(3);
+    await settle(page);
+    expect((await card.boundingBox())!.height).toBeLessThanOrEqual(640 * 0.4 + 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
+});
+
+test.describe("1920 px: drop overlay", () => {
+  test.use({ viewport: { width: 1920, height: 1080 } });
+
+  test("an opaque card: nothing on the page shows through its text", async ({ page }) => {
+    await open(page, "/", /Sam/);
+    await page.evaluate(() => {
+      const dt = new DataTransfer();
+      dt.items.add(new File(["%PDF"], "brief.pdf", { type: "application/pdf" }));
+      window.dispatchEvent(new DragEvent("dragenter", { dataTransfer: dt }));
+    });
+    const title = page.getByText("Drop to add letters");
+    await expect(title).toBeVisible();
+    await settle(page);
+    const alpha = await title.evaluate((el) => {
+      const bg = getComputedStyle(el.parentElement!).backgroundColor;
+      const m = /rgba?\(([^)]+)\)/.exec(bg);
+      const parts = m ? m[1]!.split(",").map((p) => p.trim()) : [];
+      return parts.length === 4 ? Number(parts[3]) : 1;
+    });
+    expect(alpha).toBe(1);
   });
 });

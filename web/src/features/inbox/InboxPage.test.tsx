@@ -62,6 +62,16 @@ describe("Inbox", () => {
     expect(await screen.findByRole("link", { name: "Parking fine (Verwarnungsgeld)" })).toBeInTheDocument();
   });
 
+  it("takes the words from the top-bar search's 'See all letters matching …' (?q=)", async () => {
+    const { router } = renderInbox("/inbox?q=Parking");
+    const field = await screen.findByRole("searchbox", { name: "Search letters" });
+    expect(field).toHaveValue("Parking");
+    expect(await screen.findByRole("link", { name: "Parking fine (Verwarnungsgeld)" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("link", { name: "Library: overdue books" })).toBeNull());
+    // the field is where the search lives now: the URL lets go of it
+    await waitFor(() => expect(router.state.location.search).toBe(""));
+  });
+
   it("opens a tray letter and files it", async () => {
     renderInbox();
     const tray = await screen.findByRole("region", { name: /New mail/ });

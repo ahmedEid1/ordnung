@@ -120,9 +120,29 @@ const MINUTE = 60_000;
 // System
 // ------------------------------------------------------------------------------------------------
 
-/** `GET /health` — version, demo flag, the app's today, Claude status, rules "law as of" date. */
+/** How long `/health` may take before it counts as "Ordnung isn't answering" (a hung server). */
+export const HEALTH_TIMEOUT_MS = 10_000;
+
+/** The query's own signal (cancel) plus a time limit, where the browser supports combining them. */
+function withTimeout(signal: AbortSignal | undefined, ms: number): AbortSignal | undefined {
+  if (typeof AbortSignal === "undefined" || typeof AbortSignal.timeout !== "function") return signal;
+  const timeout = AbortSignal.timeout(ms);
+  if (!signal) return timeout;
+  return typeof AbortSignal.any === "function" ? AbortSignal.any([signal, timeout]) : signal;
+}
+
+/**
+ * `GET /health` — version, demo flag, the app's today, Claude status, rules "law as of" date. A
+ * server that accepts the connection but never answers fails after {@link HEALTH_TIMEOUT_MS}, so
+ * the app shows "Ordnung isn't running" instead of the splash forever.
+ */
 export function useHealth() {
-  return useQuery({ queryKey: qk.health, queryFn: api.health, staleTime: 5 * MINUTE, retry: 1 });
+  return useQuery({
+    queryKey: qk.health,
+    queryFn: ({ signal }) => api.health(withTimeout(signal, HEALTH_TIMEOUT_MS)),
+    staleTime: 5 * MINUTE,
+    retry: 1,
+  });
 }
 
 /** "Run check" (`GET /health?probe=1`): the doctor's checks plus one tiny live call; the answer
@@ -131,6 +151,7 @@ export function useProbeHealth() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.probeHealth(),
+    meta: { errorTitle: "Couldn't run the check" },
     onSuccess: (health) => qc.setQueryData(qk.health, health),
   });
 }
@@ -148,6 +169,7 @@ export function useUpdateProfile() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (p: ProfilePatch) => api.updateProfile(p),
+    meta: { errorTitle: "Couldn't save your profile" },
     onSuccess: (profile) => {
       qc.setQueryData(qk.profile, profile);
       void invalidateLedger(qc); // region/postal buffer change recomputes dates
@@ -163,6 +185,7 @@ export function useUpdateSettings() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (s: SettingsPatch) => api.updateSettings(s),
+    meta: { errorTitle: "Couldn't save your settings" },
     onSuccess: (settings) => qc.setQueryData(qk.settings, settings),
   });
 }
@@ -184,6 +207,7 @@ export function useCompleteOnboarding() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: OnboardingRequest) => api.onboarding(body),
+    meta: { errorTitle: "Couldn't finish setting up" },
     onSuccess: (profile) => {
       qc.setQueryData(qk.profile, profile);
       void qc.invalidateQueries({ queryKey: qk.health });
@@ -205,10 +229,16 @@ export function useDocuments(params: DocumentListParams = {}, opts: { enabled?: 
   });
 }
 
-/** Full-text search over letters (`GET /documents?q=`). Disabled for queries < 2 chars. */
+/** How many matches the letter search lists before it links to all of them in the Inbox. */
+export const SEARCH_LIMIT = 8;
+
+/**
+ * Full-text search over letters (`GET /documents?q=`). Asks for one more than {@link SEARCH_LIMIT},
+ * so the search box knows whether there are more to show. Disabled for queries < 2 chars.
+ */
 export function useSearchDocuments(q: string) {
   const query = q.trim();
-  return useDocuments({ q: query, limit: 8 }, { enabled: query.length >= 2 });
+  return useDocuments({ q: query, limit: SEARCH_LIMIT + 1 }, { enabled: query.length >= 2 });
 }
 
 export function useDocument(id: string | undefined) {
@@ -224,6 +254,7 @@ export function useUpdateDocument() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: DocumentPatch }) => api.updateDocument(id, patch),
+    meta: { errorTitle: "Couldn't save the change to this letter" },
     onSuccess: () => invalidateLedger(qc),
   });
 }
@@ -234,6 +265,7 @@ export function useDeleteDocument() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.deleteDocument(id, { purge: true }),
+    meta: { errorTitle: "Couldn't delete the letter" },
     onSuccess: () => invalidateLedger(qc),
   });
 }
@@ -242,6 +274,7 @@ export function useReprocessDocument() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.reprocessDocument(id),
+    meta: { errorTitle: "Couldn't read the letter again" },
     onSuccess: () => invalidateLedger(qc),
   });
 }
@@ -250,6 +283,7 @@ export function useUploadDocuments() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ files, ...opts }: { files: File[] } & UploadOptions) => api.uploadDocuments(files, opts),
+    meta: { errorTitle: "Couldn't add your letters" },
     onSuccess: () => invalidateLedger(qc),
   });
 }
@@ -264,7 +298,7 @@ export function useItems(params: ItemListParams = {}) {
 
 export function useCreateItem() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (item: ItemCreate) => api.createItem(item), onSuccess: () => invalidateLedger(qc) });
+  return useMutation({ mutationFn: (item: ItemCreate) => api.createItem(item), meta: { errorTitle: "Couldn't add the to-do" }, onSuccess: () => invalidateLedger(qc) });
 }
 
 /** PATCH an item — mark done (`{status: "done"}`), snooze, move a date (becomes "manual"). */
@@ -272,19 +306,20 @@ export function useUpdateItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: ItemPatch }) => api.updateItem(id, patch),
+    meta: { errorTitle: "Couldn't update the to-do" },
     onSuccess: () => invalidateLedger(qc),
   });
 }
 
 export function useDeleteItem() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (id: string) => api.deleteItem(id), onSuccess: () => invalidateLedger(qc) });
+  return useMutation({ mutationFn: (id: string) => api.deleteItem(id), meta: { errorTitle: "Couldn't delete the to-do" }, onSuccess: () => invalidateLedger(qc) });
 }
 
 /** "Yes, that's right" on a "Please check" item. */
 export function useConfirmItem() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: (id: string) => api.confirmItem(id), onSuccess: () => invalidateLedger(qc) });
+  return useMutation({ mutationFn: (id: string) => api.confirmItem(id), meta: { errorTitle: "Couldn't confirm the date" }, onSuccess: () => invalidateLedger(qc) });
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -299,6 +334,7 @@ export function useUpdateContract() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: ContractPatch }) => api.updateContract(id, patch),
+    meta: { errorTitle: "Couldn't update the contract" },
     onSuccess: () => invalidateLedger(qc),
   });
 }
@@ -368,13 +404,14 @@ export function useUpdateSuggestion() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: SuggestionPatch }) => api.updateSuggestion(id, patch),
+    meta: { errorTitle: "Couldn't update the Idea" },
     onSuccess: () => invalidateLedger(qc),
   });
 }
 
 /** Start a review (202); its Ideas arrive later with the `suggestions.updated` event. */
 export function useRunReview() {
-  return useMutation({ mutationFn: () => api.runReview() });
+  return useMutation({ mutationFn: () => api.runReview(), meta: { errorTitle: "Couldn't start the review" } });
 }
 
 export function useBrief() {
@@ -385,6 +422,7 @@ export function useRegenerateBrief() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.regenerateBrief(),
+    meta: { errorTitle: "Couldn't write a new note" },
     onSuccess: (brief) => qc.setQueryData(qk.brief, brief),
   });
 }
@@ -545,6 +583,7 @@ export function useCreateDraft() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: DraftCreate) => api.createDraft(body),
+    meta: { errorTitle: "Couldn't draft the letter" },
     onSuccess: (draft) => {
       qc.setQueryData(qk.drafts.detail(draft.id), draft);
       void qc.invalidateQueries({ queryKey: qk.drafts.all });
@@ -557,6 +596,7 @@ export function useUpdateDraft() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: DraftPatch }) => api.updateDraft(id, patch),
+    meta: { errorTitle: "Couldn't save the letter" },
     onSuccess: (draft) => {
       qc.setQueryData(qk.drafts.detail(draft.id), draft);
       void qc.invalidateQueries({ queryKey: qk.drafts.list() });
@@ -581,6 +621,7 @@ export function useDeleteDraft() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.deleteDraft(id),
+    meta: { errorTitle: "Couldn't delete the letter" },
     onSuccess: () =>
       Promise.all([
         qc.invalidateQueries({ queryKey: qk.drafts.all }),
@@ -594,6 +635,7 @@ export function useMarkDraftSent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, ...body }: { id: string } & MarkSentRequest) => api.markDraftSent(id, body),
+    meta: { errorTitle: "Couldn't mark the letter as sent" },
     onSuccess: () => invalidateLedger(qc),
   });
 }
@@ -605,7 +647,7 @@ export function useMarkDraftSent() {
 /** Call after the user downloaded `calendar.ics` so the "new dates" Idea resets. */
 export function useMarkCalendarExported() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: () => api.calendarExported(), onSuccess: () => invalidateLedger(qc) });
+  return useMutation({ mutationFn: () => api.calendarExported(), meta: { errorTitle: "Couldn't note the calendar download" }, onSuccess: () => invalidateLedger(qc) });
 }
 
 export function useActivity(limit = 100) {
@@ -636,6 +678,7 @@ export function useUpdateTour() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (patch: TourPatch) => api.updateTour(patch),
+    meta: { errorTitle: "Couldn't update the tour" },
     onSuccess: (tour) => qc.setQueryData(qk.tour, tour),
   });
 }
@@ -654,6 +697,7 @@ export function useOpenMail() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.openMail(id),
+    meta: { errorTitle: "Couldn't open the letter" },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.mail });
       void invalidateLedger(qc);

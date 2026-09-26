@@ -101,7 +101,8 @@ export function loadingAndErrorStates({ docId, draftId, group = "shell-and-overl
     run: async (c) => {
       await failApi(c.page, { status: 500, only: ["/api/health"], except: [] });
       await c.goto("/", { heading: false, idle: false });
-      await c.page.getByRole("heading", { level: 1 }).waitFor({ timeout: 15_000 }).catch(() => c.note("no heading on the unreachable screen"));
+      // (the boot splash has an h1 too: wait for this screen's own)
+      await c.page.getByRole("heading", { level: 1, name: "Ordnung isn't running" }).waitFor({ timeout: 15_000 }).catch(() => c.note("no heading on the unreachable screen"));
       await settle(c.page);
     },
   });
@@ -114,7 +115,7 @@ export function loadingAndErrorStates({ docId, draftId, group = "shell-and-overl
     run: async (c) => {
       await failApi(c.page, { status: 401, only: ["/api/health"], except: [] });
       await c.goto("/", { heading: false, idle: false });
-      await c.page.getByRole("heading", { level: 1 }).waitFor({ timeout: 15_000 }).catch(() => c.note("no heading on the no-session screen"));
+      await c.page.getByRole("heading", { level: 1, name: "Please open Ordnung from its link" }).waitFor({ timeout: 15_000 }).catch(() => c.note("no heading on the no-session screen"));
       await settle(c.page);
     },
   });

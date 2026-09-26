@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { FileUp, Lock, Plus } from "lucide-react";
 import type { DocumentKind } from "@/api/types";
@@ -27,7 +27,22 @@ export default function InboxPage() {
   const [params, setParams] = useSearchParams();
   const filter = parseFilter(params.get("filter"));
   const kind = (params.get("kind") || null) as DocumentKind | null;
-  const [query, setQuery] = useState("");
+  // "See all letters matching …" in the top-bar search opens /inbox?q=…: the words move into the
+  // search field (and out of the URL, so the field stays the one place the search lives)
+  const urlQuery = params.get("q");
+  const [query, setQuery] = useState(urlQuery ?? "");
+  if (urlQuery !== null && urlQuery !== query) setQuery(urlQuery);
+  useEffect(() => {
+    if (urlQuery === null) return;
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("q");
+        return next;
+      },
+      { replace: true, preventScrollReset: true },
+    );
+  }, [urlQuery, setParams]);
   const q = useDebounced(query.trim(), 200);
   const searching = q.length >= 2;
 

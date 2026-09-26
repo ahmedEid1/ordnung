@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CountBadge } from "./Badge";
 import { useStableId } from "./internal";
+import { SEGMENT_GAP, SEGMENT_ITEM, SEGMENT_THUMB, SEGMENT_TRACK } from "./segment";
 
 export interface TabItem<V extends string = string> {
   value: V;
@@ -135,7 +136,7 @@ export function Tabs<V extends string>({
       className={cn(
         "min-w-0 max-w-full",
         // pill tabs hug their labels; underline tabs draw their baseline across the whole row
-        pill ? "w-fit rounded-xl bg-surface-2 p-1" : "w-full",
+        pill ? cn("w-fit", SEGMENT_TRACK) : "w-full",
         fill && "max-sm:w-full",
         className,
       )}
@@ -149,7 +150,7 @@ export function Tabs<V extends string>({
         style={maskStyle}
         className={cn(
           "relative flex items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          pill ? "gap-1" : "gap-2 shadow-[inset_0_-1px_0_var(--color-line)]",
+          pill ? SEGMENT_GAP : "gap-2 shadow-[inset_0_-1px_0_var(--color-line)]",
         )}
       >
         {items.map((t) => {
@@ -172,7 +173,7 @@ export function Tabs<V extends string>({
                 // inside the tab: a scrolling row would cut an outside ring off
                 "focus-visible:-outline-offset-2",
                 selected ? "text-ink" : "text-muted hover:text-ink",
-                pill ? "h-7 rounded-lg px-3 max-sm:px-2.5" : "h-10 rounded-md px-2",
+                pill ? cn("h-7 px-3 max-sm:px-2.5", SEGMENT_ITEM) : "h-10 rounded-md px-2",
                 fill && "max-sm:flex-auto",
               )}
             >
@@ -182,7 +183,7 @@ export function Tabs<V extends string>({
                   transition={{ type: "spring", stiffness: 500, damping: 40 }}
                   className={cn(
                     "absolute",
-                    pill ? "inset-0 rounded-lg bg-surface shadow-[var(--shadow-card)] ring-1 ring-line" : "inset-x-2 bottom-0 h-0.5 rounded-full bg-ink",
+                    pill ? cn("inset-0", SEGMENT_THUMB) : "inset-x-2 bottom-0 h-0.5 rounded-full bg-ink",
                   )}
                   aria-hidden
                 />

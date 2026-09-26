@@ -379,6 +379,32 @@ describe("Tabs", () => {
   });
 });
 
+describe("pill Tabs and SegmentedControl", () => {
+  it("share one track, thumb and item shape", async () => {
+    const { SEGMENT_THUMB, SEGMENT_TRACK } = await import("./segment");
+    const { container } = renderWithProviders(
+      <>
+        <Tabs label="Show letters" variant="pill" value="a" onChange={() => {}} items={[{ value: "a", label: "All" }, { value: "b", label: "Open" }]} />
+        <SegmentedControl label="View" value="a" onChange={() => {}} options={[{ value: "a", label: "Lanes" }, { value: "b", label: "List" }]} />
+      </>,
+    );
+    const track = container.firstElementChild!;
+    const group = screen.getByRole("radiogroup", { name: "View" });
+    for (const cls of SEGMENT_TRACK.split(" ")) {
+      expect(track).toHaveClass(cls);
+      expect(group).toHaveClass(cls);
+    }
+    const tabThumb = screen.getByRole("tab", { name: "All" }).querySelector("span[aria-hidden]")!;
+    const segThumb = screen.getByRole("radio", { name: "Lanes" }).querySelector("span[aria-hidden]")!;
+    for (const cls of SEGMENT_THUMB.split(" ")) {
+      expect(tabThumb).toHaveClass(cls);
+      expect(segThumb).toHaveClass(cls);
+    }
+    expect(screen.getByRole("tab", { name: "All" })).toHaveClass("h-7", "rounded-lg");
+    expect(screen.getByRole("radio", { name: "Lanes" })).toHaveClass("h-7", "rounded-lg", "focus-visible:-outline-offset-2");
+  });
+});
+
 describe("SegmentedControl", () => {
   it("keeps labels on one line, hugs its segments, and offers a short label on phones", () => {
     renderWithProviders(

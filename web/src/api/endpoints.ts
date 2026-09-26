@@ -88,7 +88,7 @@ export interface UploadOptions {
 
 export const api = {
   // -- system ------------------------------------------------------------------------------------
-  health: () => call("get", "/api/health").then(signedIn),
+  health: (signal?: AbortSignal) => call("get", "/api/health", { signal }).then(signedIn),
   /** "Run check": every `ordnung doctor` check plus one tiny live call (429 within a minute). */
   probeHealth: () => call("get", "/api/health", { query: { probe: true } }).then(signedIn),
   profile: () => call("get", "/api/profile"),

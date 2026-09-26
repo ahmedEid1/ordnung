@@ -372,7 +372,8 @@ describe("'isn't running' card", () => {
     const onRetry = vi.fn();
     const error = new ApiError(401, "no session");
     const { rerender } = render(<HealthUnreachable error={error} retrying={false} failures={1} onRetry={onRetry} />);
-    const button = screen.getByRole("button", { name: "Try again" });
+    // "Try again" can't help without the link: the button says what to do first
+    const button = screen.getByRole("button", { name: "I opened the link — check again" });
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Please open Ordnung from its link");
     button.focus();
 

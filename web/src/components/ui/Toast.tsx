@@ -165,7 +165,7 @@ function ToastItem({ t, paused }: { t: ToastRecord; paused: boolean }) {
         e.preventDefault();
         close();
       }}
-      className="pointer-events-auto flex w-full items-start gap-3 rounded-xl border border-line bg-surface p-3.5 pr-2.5 text-base shadow-[var(--shadow-pop)] outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="pointer-events-auto flex w-full items-start gap-3 rounded-xl border border-line bg-surface p-3.5 pr-2.5 text-base shadow-[var(--shadow-pop)] dark:border-line-strong outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       <Icon className={cn("mt-0.5 size-[18px] shrink-0", cls)} aria-hidden />
       <div className="min-w-0 flex-1">
