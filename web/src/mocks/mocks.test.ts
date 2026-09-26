@@ -104,12 +104,47 @@ describe("mock dataset", () => {
     const it0 = before.items.find((i) => i.id === "itm_gym_price")!;
     expect(it0.date_spec?.anchor).toBe("deemed_delivery");
     expect(needsArrivalDate(it0, before.document)).toBe(true);
+    expect(before.document.warnings.join(" ")).toMatch(/don't know when this letter arrived/);
     await s.handle("PATCH", "/documents/doc_gym_price", new URLSearchParams(), { received_date: "2026-09-16" });
     const after = await get<DocumentDetail>(s, "/documents/doc_gym_price");
     const it1 = after.items.find((i) => i.id === "itm_gym_price")!;
     expect(it1.due_date).toBe("2026-10-14");
+    expect(it1.send_by).toBe("2026-10-08");
     expect(it1.computation?.confidence).toBe("high");
     expect(needsArrivalDate(it1, after.document)).toBe(false);
+    // the page no longer says the arrival day is unknown, next to "Counting from Wed 16 Sep"
+    expect(after.document.warnings.join(" ")).not.toMatch(/arrived/);
+    expect(it1.computation?.warnings.join(" ")).not.toMatch(/We assumed the letter arrived/);
+  });
+
+  it("moves FitWell's deadline off a weekend like the app (§ 193 BGB), with a send-by date", async () => {
+    // arrival Sat 19 Sep: four weeks end on Sat 17 Oct, which moves to Mon 19 Oct
+    const s = srv();
+    await s.handle("PATCH", "/documents/doc_gym_price", new URLSearchParams(), { received_date: "2026-09-19" });
+    const it = (await get<DocumentDetail>(s, "/documents/doc_gym_price")).items.find((i) => i.id === "itm_gym_price")!;
+    expect(it.due_date).toBe("2026-10-19");
+    expect(it.computation?.send_by).toBe("2026-10-13");
+    expect(it.computation?.summary).toBe(
+      "Four weeks after the day you received it (Sat 19 Sep 2026) is Sat 17 Oct 2026, a Saturday, so the deadline moves to Mon 19 Oct 2026.",
+    );
+    const shift = it.computation?.steps.find((step) => step.rule_id === "bgb_193");
+    expect(shift?.label).toBe("Sat 17 Oct 2026 is a Saturday, so the deadline moves to Mon 19 Oct 2026");
+    // an end on a holiday moves too, named as the engine names it (an arrival on a later demo day)
+    const s2 = srv();
+    await s2.handle("PATCH", "/documents/doc_gym_price", new URLSearchParams(), { received_date: "2026-10-04" });
+    const it2 = (await get<DocumentDetail>(s2, "/documents/doc_gym_price")).items.find((i) => i.id === "itm_gym_price")!;
+    expect([it2.due_date, it2.send_by]).toEqual(["2026-11-02", "2026-10-27"]);
+    expect(it2.computation?.steps.find((step) => step.rule_id === "bgb_193")?.label).toBe(
+      "Sun 1 Nov 2026 is a public holiday, Allerheiligen, so the deadline moves to Mon 2 Nov 2026",
+    );
+  });
+
+  it("says what FitWell announces, not that silence makes the price rise binding", async () => {
+    const s = srv();
+    const detail = await get<DocumentDetail>(s, "/documents/doc_gym_price");
+    const it = detail.items.find((i) => i.id === "itm_gym_price")!;
+    expect(it.consequence).toBe("FitWell says it will charge 32,90 € from 1 Nov unless you object.");
+    expect([it.consequence, it.description, detail.document.summary].join(" ")).not.toMatch(/applies from|rises from|raises your/);
   });
 
   it("streams recorded Ask answers as SSE", async () => {

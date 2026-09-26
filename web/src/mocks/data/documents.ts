@@ -123,7 +123,7 @@ export const DOCUMENTS: Document[] = [
     party_id: "pty_fitwell",
     created_at: ts("2026-09-15", "19:02"),
     urgency: "normal",
-    summary: "FitWell raises your monthly fee from 29,90 € to 32,90 € from 1 Nov. You can object within four weeks of receiving the letter.",
+    summary: "FitWell wants to raise your monthly fee from 29,90 € to 32,90 € from 1 Nov. You can object within four weeks of receiving the letter.",
     explanation:
       "FitWell is a company, not an authority, so its four weeks start on the day the letter reached you — there are no extra delivery days. Tell us when it arrived; until then we count from the letter date (14 Sep), the earliest possible. You can also cancel the membership with one month's notice.",
     key_facts: [

@@ -386,24 +386,62 @@ function pick<T extends object>(src: unknown, keys: readonly string[]): Partial<
   return out as Partial<T>;
 }
 
-/** Like the API: FitWell's four weeks run from the arrival day the person confirmed (§ 130 BGB). */
+/** NW's public holidays the gym's four weeks can end on (the mock has no holiday calendar). */
+const NW_HOLIDAYS: Record<string, string> = {
+  "2026-10-03": "Tag der Deutschen Einheit",
+  "2026-11-01": "Allerheiligen",
+  "2026-12-25": "Erster Weihnachtstag",
+  "2026-12-26": "Zweiter Weihnachtstag",
+  "2027-01-01": "Neujahr",
+};
+
+/** Why `d` is no working day in NW, in the engine's words ("a Saturday", "a public holiday, …"), or null. */
+function notWorkingDay(d: Date): string | null {
+  const holiday = NW_HOLIDAYS[format(d, "yyyy-MM-dd")];
+  if (holiday) return `a public holiday, ${holiday}`;
+  if (d.getDay() === 6) return "a Saturday";
+  return d.getDay() === 0 ? "a Sunday" : null;
+}
+
+/**
+ * Like the API: FitWell's four weeks run from the arrival day the person confirmed (§ 130 BGB); an end
+ * on a weekend or holiday moves to the next working day (§ 193 BGB), and the send-by date leaves four
+ * working days for the post.
+ */
 function recomputeGymPrice(db: MockDb, receivedDate: string) {
   const it = db.state.items.find((i) => i.id === "itm_gym_price");
   if (!it?.computation) return;
-  const due = format(addDays(parseISO(receivedDate), 28), "yyyy-MM-dd");
-  const day = (d: string) => format(parseISO(d), "EEE d MMM yyyy");
-  it.due_date = due;
+  const day = (d: Date | string) => format(typeof d === "string" ? parseISO(d) : d, "EEE d MMM yyyy");
+  const iso = (d: Date) => format(d, "yyyy-MM-dd");
+  const end = addDays(parseISO(receivedDate), 28);
+  const why = notWorkingDay(end);
+  let due = end;
+  while (notWorkingDay(due)) due = addDays(due, 1);
+  let sendBy = due;
+  for (let left = 4; left > 0; ) {
+    sendBy = addDays(sendBy, -1);
+    if (!notWorkingDay(sendBy)) left -= 1;
+  }
+  const moved = why ? `${day(end)} is ${why}, so the deadline moves to ${day(due)}` : `${day(due)} is a working day, so it stays`;
+  it.due_date = iso(due);
+  it.send_by = iso(sendBy);
   it.grounding = "user";
   it.updated_at = nowTs();
   it.computation = {
     ...it.computation,
-    due_date: due,
-    summary: `Four weeks after the day you received it (${day(receivedDate)}) is ${day(due)}.`,
+    due_date: iso(due),
+    send_by: iso(sendBy),
+    summary: `Four weeks after the day you received it (${day(receivedDate)}) is ${why ? `${day(end)}, ${why}, so the deadline moves to ${day(due)}` : day(due)}.`,
     steps: [
       { label: `Not an authority's letter, so no delivery days: the period runs from the day you received it (${day(receivedDate)})`, date: receivedDate, rule_id: "private_sender_arrival", citation: "§ 130 Abs. 1 BGB" },
-      { label: `Four weeks later: ${day(due)}`, date: due, rule_id: "bgb_188_2", citation: "§ 188 Abs. 2 BGB" },
+      { label: `Counting starts the day after ${day(receivedDate)}`, date: receivedDate, rule_id: "bgb_187_1", citation: "§ 187 Abs. 1 BGB" },
+      { label: `Four weeks later: ${day(end)}`, date: iso(end), rule_id: "bgb_188_2", citation: "§ 188 Abs. 2 BGB" },
+      { label: moved, date: iso(due), rule_id: "bgb_193", citation: "§ 193 BGB" },
+      { label: `Send by ${day(sendBy)} to allow 4 business days for a letter to arrive`, date: iso(sendBy), rule_id: "postal_buffer", citation: null },
     ],
-    warnings: [],
+    rule_ids: ["private_sender_arrival", "bgb_187_1", "bgb_188_2", "bgb_193", "postal_buffer"],
+    // like the engine: the rule it applied stays said; the arrival day is no longer assumed
+    warnings: it.computation.warnings.filter((w) => w.startsWith("No delivery days were added")),
     confidence: "high",
   };
 }
@@ -576,7 +614,12 @@ const routes: [string, string, Handler][] = [
       const d = db.document(params.id!) ?? notFound();
       const patch = pick<Document>(body, DOC_PATCHABLE);
       Object.assign(d, patch, { updated_at: nowTs() });
-      if (patch.received_date && d.id === "doc_gym_price") recomputeGymPrice(db, patch.received_date);
+      if (patch.received_date && d.id === "doc_gym_price") {
+        recomputeGymPrice(db, patch.received_date);
+        d.warnings = []; // the arrival day is known now: no "we don't know when it arrived"
+        db.log("document.confirmed", "You confirmed when FitWell's letter arrived", "document", d.id);
+        emit("item.updated", {});
+      }
       if (patch.received_date && d.id === "doc_parking") {
         recomputeParking(db, patch.received_date);
         d.status = "processed";
