@@ -71,7 +71,7 @@ export function PayPanel({ item, doc, onPaid, close }: { item: Item; doc: Docume
       </p>
       <div className="mt-3 flex justify-end gap-2">
         {close ? (
-          <Button size="sm" variant="ghost" onClick={close}>
+          <Button size="sm" variant="ghost" onClick={close} className="in-sheet:hidden">
             Close
           </Button>
         ) : null}

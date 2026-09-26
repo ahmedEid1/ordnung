@@ -3,6 +3,8 @@
 @import "@fontsource-variable/fraunces";
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* inside a phone bottom sheet (Popover on phones) — e.g. `in-sheet:hidden` on a heading the sheet's title repeats */
+@custom-variant in-sheet (&:where([data-sheet] *));
 
 /*
  * Ordnung design tokens — "calm paper".
@@ -58,6 +60,9 @@
   --color-accent-strong: #0b4f49;
   --color-accent-soft: #e3f1ef;
   --color-on-accent: #ffffff;
+
+  /* behind dialogs, drawers and sheets: dims the page in both themes (never ink, which is light in dark mode) */
+  --color-scrim: rgb(20 18 14 / 0.4);
 
   --color-marker: #fde68a;       /* evidence highlighter */
   --color-marker-strong: #f59e0b;
@@ -134,6 +139,8 @@
   --color-accent-strong: #7fd6cc;
   --color-accent-soft: #15302d;
   --color-on-accent: #0b1f1d;
+
+  --color-scrim: rgb(0 0 0 / 0.6);
 
   --color-marker: #a16207;
   --color-marker-strong: #facc15;
@@ -258,6 +265,16 @@
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: var(--color-line-strong) transparent;
+  }
+  /* scroll shadows: a soft edge where a scroll area has more to show (the surface-coloured covers
+     scroll with the content and hide the shadow at either end) */
+  .scroll-shadow {
+    background:
+      linear-gradient(var(--color-surface) 30%, transparent) top / 100% 2.5rem no-repeat local,
+      linear-gradient(transparent, var(--color-surface) 70%) bottom / 100% 2.5rem no-repeat local,
+      radial-gradient(farthest-side at 50% 0, color-mix(in srgb, var(--color-ink) 16%, transparent), transparent) top / 100% 0.625rem no-repeat scroll,
+      radial-gradient(farthest-side at 50% 100%, color-mix(in srgb, var(--color-ink) 16%, transparent), transparent) bottom / 100% 0.625rem no-repeat scroll,
+      var(--color-surface);
   }
   .hatch {
     background-image: repeating-linear-gradient(

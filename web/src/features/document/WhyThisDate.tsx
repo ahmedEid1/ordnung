@@ -60,7 +60,7 @@ export function ReceiptView({ receipt, spec, area, defaultShowRules = false }: R
 
   return (
     <div className="space-y-3.5">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">Why this date?</p>
+      <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted in-sheet:hidden">Why this date?</p>
       <p className="text-[14px] leading-relaxed text-ink">{receipt.summary}</p>
 
       {receipt.due_date || receipt.send_by || receipt.safe_date ? (

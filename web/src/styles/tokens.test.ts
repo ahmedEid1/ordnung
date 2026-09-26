@@ -162,6 +162,19 @@ describe("colour tokens", () => {
     }
   });
 
+  it("the scrim behind dialogs, drawers and sheets dims the page in both themes", () => {
+    const alpha = (v: string) => Number(/\/\s*([\d.]+)\)/.exec(v)?.[1]);
+    const channels = (v: string) => (/rgb\((\d+) (\d+) (\d+)/.exec(v) ?? []).slice(1).map(Number);
+    for (const t of [light, dark]) {
+      expect(t["color-scrim"]).toMatch(/^rgb\(\d+ \d+ \d+ \/ [\d.]+\)$/);
+      // a dark tint (never ink, which turns light in dark mode and would lighten the page)
+      expect(Math.max(...channels(t["color-scrim"]!))).toBeLessThan(40);
+      expect(alpha(t["color-scrim"]!)).toBeGreaterThanOrEqual(0.35);
+    }
+    expect(dark["color-scrim"]).not.toBe(light["color-scrim"]);
+    expect(alpha(dark["color-scrim"]!)).toBeGreaterThan(alpha(light["color-scrim"]!));
+  });
+
   it("the browser-chrome colours match the canvas of each theme", async () => {
     const { THEME_COLORS } = await import("@/app/theme");
     expect(THEME_COLORS.light).toBe(light["color-canvas"]);

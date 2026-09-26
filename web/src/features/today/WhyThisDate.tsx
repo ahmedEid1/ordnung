@@ -20,7 +20,7 @@ export function ReceiptView({ receipt, title }: { receipt: ReceiptModel; title?:
   return (
     <div className="space-y-3.5">
       <div>
-        <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">Why this date?</p>
+        <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted in-sheet:hidden">Why this date?</p>
         {title ? <p className="mt-0.5 text-[13px] text-muted">{title}</p> : null}
       </div>
 
@@ -116,7 +116,7 @@ export function ReceiptView({ receipt, title }: { receipt: ReceiptModel; title?:
 export function WhyThisDate({ receipt, context, className }: { receipt: ReceiptModel | null; context: string; className?: string }) {
   if (!receipt) return null;
   return (
-    <Popover content={<ReceiptView receipt={receipt} title={context} />} className="w-[23rem]" label={`Why this date? ${context}`} placement="bottom-end">
+    <Popover content={<ReceiptView receipt={receipt} title={context} />} className="w-[23rem]" label={`Why this date? ${context}`} title="Why this date?" placement="bottom-end">
       <Button variant="link" size="sm" className={cn("text-[13px]", className)}>
         Why this date?<span className="sr-only"> ({context})</span>
       </Button>

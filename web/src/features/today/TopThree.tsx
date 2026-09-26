@@ -118,7 +118,7 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
 
   return (
     <div>
-      <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">Pay</p>
+      <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted in-sheet:hidden">Pay</p>
       <p className="mt-0.5 text-[13px] text-muted">{action.title}</p>
       {action.amount ? <Money amount={action.amount} currency={action.currency} className="display mt-2 block text-[28px] font-semibold leading-none" /> : null}
 
@@ -174,7 +174,7 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
 
   if (action.verb === "pay") {
     return (
-      <Popover content={(close) => <PayPanel action={action} close={close} />} className="w-[22rem]" label={label} placement="bottom-start">
+      <Popover content={(close) => <PayPanel action={action} close={close} />} className="w-[22rem]" label={label} title="Pay" placement="bottom-start">
         <Button variant={variant} size="sm" icon={verb.icon} aria-label={label}>
           {verb.label}
         </Button>

@@ -170,8 +170,8 @@ describe("Glossary, EmptyState, Toast", () => {
       fireEvent.focus(term);
     });
     // tooltip appears for keyboard focus (focus-visible) — jsdom may not match :focus-visible,
-    // so fall back to hover
-    fireEvent.mouseEnter(term);
+    // so fall back to hover (pointer events: a touch "mouseenter" must not open it)
+    fireEvent.pointerEnter(term);
     expect(await screen.findByRole("tooltip")).toHaveTextContent(/formal objection/);
   });
 

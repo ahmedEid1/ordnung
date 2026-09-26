@@ -45,7 +45,7 @@ export function ContractWhyView({ contract }: { contract: Contract }) {
   return (
     <div className="space-y-3.5">
       <div>
-        <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">Why these dates?</p>
+        <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted in-sheet:hidden">Why these dates?</p>
         <p className="mt-0.5 text-[13px] text-muted">{contract.name}</p>
       </div>
       <p className="text-[14px] leading-relaxed text-ink">{comp.summary}</p>
@@ -158,6 +158,7 @@ export function ContractWhy({ contract, className, label = "Why these dates?" }:
   return (
     <Popover
       label={`Why these dates? ${contract.name}`}
+      title="Why these dates?"
       placement="bottom-start"
       className="w-[24rem]"
       content={<ContractWhyView contract={contract} />}

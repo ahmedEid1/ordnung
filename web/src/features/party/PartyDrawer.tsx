@@ -156,12 +156,14 @@ export function PartyDrawer() {
     <Drawer
       open={Boolean(partyId)}
       onClose={close}
+      size="lg"
       eyebrow="People & organisations"
       title={party?.name ?? (isLoading ? "Loading…" : "Not found")}
       headerExtra={party ? <Header party={party} /> : null}
       footer={
         party ? (
-          <div className="flex gap-2">
+          // two buttons side by side; on the narrowest phones the second wraps below instead of overflowing
+          <div className="flex flex-wrap gap-2">
             <Link
               to={`/letters?kind=general_reply&to=${encodeURIComponent(party.id)}`}
               className={buttonVariants({ variant: "secondary", size: "md", className: "flex-1" })}

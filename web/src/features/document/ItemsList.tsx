@@ -136,6 +136,7 @@ function ItemRow({ item, docId }: { item: Item; docId: string }) {
       </div>
       <Menu
         label={`Actions for ${item.title}`}
+        heading={item.title}
         items={[
           ...(item.due_date ? [{ label: "Add to calendar", icon: CalendarPlus, onSelect: () => download(icsHref(item), icsFileName(item)) }] : []),
           { label: item.due_date ? "Change date" : "Set a date", icon: Pencil, onSelect: () => setEditing(true) },
