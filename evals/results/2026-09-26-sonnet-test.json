@@ -2,7 +2,7 @@
  "schema": 1,
  "meta": {
   "date": "2026-09-26",
-  "generated_at": "2026-09-26T20:23:40+00:00",
+  "generated_at": "2026-09-26T22:38:57+00:00",
   "model": "sonnet",
   "split": "test",
   "conditions": [
@@ -41,7 +41,7 @@
   "resamples": 2000,
   "evals_version": "1",
   "fingerprints": {
-   "ordnung": "bf4bd945270c7582",
+   "ordnung": "5eeea98a261a8fc3",
    "llm_only": "f9d3c1f7d5670ba3",
    "llm_rules_text": "1e4c0dc9e604af58"
   },
@@ -50,7 +50,7 @@
    "version": 1,
    "manifest_sha256": "82c0ca53d06b4f28d6e832817bdaa3c626ef5c3a0c8f150a34ccf61a81597ee5"
   },
-  "commit": "f332400"
+  "commit": "3ae3cd6"
  },
  "metrics": {
   "ordnung": {
@@ -1877,7 +1877,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-adversarial-conflicting_dates-1",
@@ -2353,12 +2353,12 @@
         "cache_creation_tokens": 1970,
         "cost_usd": 0.04480499999999999,
         "duration_ms": 30753,
-        "wall_ms": 0
+        "wall_ms": 2
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-adversarial-conflicting_dates-2",
@@ -2647,7 +2647,7 @@
         "cache_creation_tokens": 2069,
         "cost_usd": 0.058516,
         "duration_ms": 48597,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
@@ -2874,7 +2874,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-adversarial-hidden_text-1",
@@ -3440,12 +3440,12 @@
         "cache_creation_tokens": 1867,
         "cost_usd": 0.045693,
         "duration_ms": 31980,
-        "wall_ms": 0
+        "wall_ms": 14
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-adversarial-hidden_text-2",
@@ -3953,12 +3953,12 @@
         "cache_creation_tokens": 8024,
         "cost_usd": 0.11543300000000001,
         "duration_ms": 67334,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-adversarial-injection_visible-1",
@@ -4507,12 +4507,12 @@
         "cache_creation_tokens": 6947,
         "cost_usd": 0.0993928,
         "duration_ms": 59979,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-adversarial-injection_visible-2",
@@ -5076,12 +5076,12 @@
         "cache_creation_tokens": 2015,
         "cost_usd": 0.051754999999999995,
         "duration_ms": 41033,
-        "wall_ms": 0
+        "wall_ms": 2
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-adversarial-injection_visible-2-photo",
@@ -5590,12 +5590,12 @@
         "cache_creation_tokens": 1811,
         "cost_usd": 0.037599,
         "duration_ms": 26464,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-adversarial-missing_date-1",
@@ -6067,12 +6067,12 @@
         "cache_creation_tokens": 2034,
         "cost_usd": 0.04708099999999999,
         "duration_ms": 33836,
-        "wall_ms": 0
+        "wall_ms": 2
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-adversarial-missing_date-2",
@@ -6548,12 +6548,12 @@
         "cache_creation_tokens": 2113,
         "cost_usd": 0.07181699999999999,
         "duration_ms": 57907,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-adversarial-scam-1",
@@ -7048,7 +7048,7 @@
         "cache_creation_tokens": 4612,
         "cost_usd": 0.029922,
         "duration_ms": 12842,
-        "wall_ms": 0
+        "wall_ms": 66
        },
        {
         "purpose": "extract",
@@ -7061,12 +7061,12 @@
         "cache_creation_tokens": 2116,
         "cost_usd": 0.070619,
         "duration_ms": 58097,
-        "wall_ms": 1
+        "wall_ms": 8
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-adversarial-scam-1-photo",
@@ -7562,12 +7562,12 @@
         "cache_creation_tokens": 1956,
         "cost_usd": 0.072009,
         "duration_ms": 58866,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-adversarial-scam-2",
@@ -8074,12 +8074,12 @@
         "cache_creation_tokens": 5714,
         "cost_usd": 0.0853162,
         "duration_ms": 47510,
-        "wall_ms": 0
+        "wall_ms": 8
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-appointment-C1",
@@ -8562,12 +8562,12 @@
         "cache_creation_tokens": 1948,
         "cost_usd": 0.059747,
         "duration_ms": 47892,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-appointment-C2",
@@ -9075,12 +9075,12 @@
         "cache_creation_tokens": 1947,
         "cost_usd": 0.061522999999999994,
         "duration_ms": 50340,
-        "wall_ms": 1
+        "wall_ms": 2
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-appointment-C2-photo",
@@ -9610,12 +9610,12 @@
         "cache_creation_tokens": 1803,
         "cost_usd": 0.03422700000000001,
         "duration_ms": 24103,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-appointment-D1",
@@ -10079,12 +10079,12 @@
         "cache_creation_tokens": 5715,
         "cost_usd": 0.08499999999999999,
         "duration_ms": 47899,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-contract_confirmation-C1",
@@ -10482,12 +10482,12 @@
         "cache_creation_tokens": 5589,
         "cost_usd": 0.07840239999999998,
         "duration_ms": 43754,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-contract_confirmation-D1",
@@ -10902,12 +10902,12 @@
         "cache_creation_tokens": 1857,
         "cost_usd": 0.04155299999999999,
         "duration_ms": 30260,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-dunning_fixed-C1",
@@ -11399,7 +11399,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-dunning_fixed-C1-photo",
@@ -11879,7 +11879,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-dunning_fixed-C2",
@@ -12352,12 +12352,12 @@
         "cache_creation_tokens": 1874,
         "cost_usd": 0.060041,
         "duration_ms": 44558,
-        "wall_ms": 0
+        "wall_ms": 3
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-dunning_fixed-D1",
@@ -12826,12 +12826,12 @@
         "cache_creation_tokens": 1709,
         "cost_usd": 0.038961,
         "duration_ms": 30268,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-english_letter-C1",
@@ -13296,7 +13296,7 @@
         "cache_creation_tokens": 4614,
         "cost_usd": 0.02387,
         "duration_ms": 7065,
-        "wall_ms": 0
+        "wall_ms": 1
        },
        {
         "purpose": "extract",
@@ -13309,12 +13309,12 @@
         "cache_creation_tokens": 1706,
         "cost_usd": 0.036198999999999995,
         "duration_ms": 26841,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-english_letter-C1-photo",
@@ -13781,12 +13781,12 @@
         "cache_creation_tokens": 1743,
         "cost_usd": 0.030487,
         "duration_ms": 19020,
-        "wall_ms": 0
+        "wall_ms": 4
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-english_letter-C2",
@@ -14251,12 +14251,12 @@
         "cache_creation_tokens": 1678,
         "cost_usd": 0.025867,
         "duration_ms": 15104,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-english_letter-D1",
@@ -14722,12 +14722,12 @@
         "cache_creation_tokens": 1676,
         "cost_usd": 0.032549,
         "duration_ms": 26288,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-english_letter-D2",
@@ -15236,12 +15236,12 @@
         "cache_creation_tokens": 2651,
         "cost_usd": 0.11497900000000001,
         "duration_ms": 95713,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-fine_bussgeld-C1",
@@ -15850,12 +15850,12 @@
         "cache_creation_tokens": 2715,
         "cost_usd": 0.10937500000000001,
         "duration_ms": 91325,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-fine_bussgeld-C2",
@@ -16463,12 +16463,12 @@
         "cache_creation_tokens": 14860,
         "cost_usd": 0.21162640000000002,
         "duration_ms": 128761,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-fine_bussgeld-D1",
@@ -17072,12 +17072,12 @@
         "cache_creation_tokens": 14382,
         "cost_usd": 0.2021964,
         "duration_ms": 121634,
-        "wall_ms": 1
+        "wall_ms": 19
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-fine_bussgeld-D2",
@@ -17645,12 +17645,12 @@
         "cache_creation_tokens": 1903,
         "cost_usd": 0.042416999999999996,
         "duration_ms": 27447,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-invoice_relative-C1",
@@ -18123,7 +18123,7 @@
         "cache_creation_tokens": 4614,
         "cost_usd": 0.07314,
         "duration_ms": 51828,
-        "wall_ms": 0
+        "wall_ms": 1
        },
        {
         "purpose": "extract",
@@ -18141,7 +18141,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-invoice_relative-C1-photo",
@@ -18614,12 +18614,12 @@
         "cache_creation_tokens": 1904,
         "cost_usd": 0.05114099999999999,
         "duration_ms": 37983,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-invoice_relative-C2",
@@ -19091,12 +19091,12 @@
         "cache_creation_tokens": 1921,
         "cost_usd": 0.041169,
         "duration_ms": 29624,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-invoice_relative-D1",
@@ -19239,7 +19239,7 @@
         "cache_creation_tokens": 2018,
         "cost_usd": 0.0316804,
         "duration_ms": 22838,
-        "wall_ms": 1
+        "wall_ms": 0
        }
       ],
       "failed": null,
@@ -19569,7 +19569,7 @@
         "cache_creation_tokens": 4614,
         "cost_usd": 0.02922,
         "duration_ms": 14395,
-        "wall_ms": 0
+        "wall_ms": 1
        },
        {
         "purpose": "extract",
@@ -19587,7 +19587,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-invoice_relative-D1-photo",
@@ -20058,12 +20058,12 @@
         "cache_creation_tokens": 1889,
         "cost_usd": 0.042351,
         "duration_ms": 29733,
-        "wall_ms": 0
+        "wall_ms": 2
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-invoice_relative-D2",
@@ -20206,7 +20206,7 @@
         "cache_creation_tokens": 1988,
         "cost_usd": 0.0244304,
         "duration_ms": 15493,
-        "wall_ms": 0
+        "wall_ms": 2
        }
       ],
       "failed": null,
@@ -20563,12 +20563,12 @@
         "cache_creation_tokens": 8242,
         "cost_usd": 0.1203442,
         "duration_ms": 68422,
-        "wall_ms": 0
+        "wall_ms": 3
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-municipal_decision-C1",
@@ -21116,12 +21116,12 @@
         "cache_creation_tokens": 2085,
         "cost_usd": 0.05623499999999999,
         "duration_ms": 40211,
-        "wall_ms": 1
+        "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-municipal_decision-C1-photo",
@@ -21659,12 +21659,12 @@
         "cache_creation_tokens": 2042,
         "cost_usd": 0.051373,
         "duration_ms": 35494,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-municipal_decision-C2",
@@ -22159,12 +22159,12 @@
         "cache_creation_tokens": 2006,
         "cost_usd": 0.06484899999999999,
         "duration_ms": 47407,
-        "wall_ms": 7
+        "wall_ms": 10
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-municipal_decision-D1",
@@ -22451,7 +22451,7 @@
         "cache_creation_tokens": 4738,
         "cost_usd": 0.056292,
         "duration_ms": 32943,
-        "wall_ms": 0
+        "wall_ms": 3
        }
       ],
       "failed": null,
@@ -22673,12 +22673,12 @@
         "cache_creation_tokens": 2149,
         "cost_usd": 0.075791,
         "duration_ms": 58452,
-        "wall_ms": 0
+        "wall_ms": 13
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-municipal_decision-D2",
@@ -23210,12 +23210,12 @@
         "cache_creation_tokens": 5418,
         "cost_usd": 0.07626319999999999,
         "duration_ms": 44408,
-        "wall_ms": 0
+        "wall_ms": 2
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-price_increase-C1",
@@ -23665,12 +23665,12 @@
         "cache_creation_tokens": 1844,
         "cost_usd": 0.039621,
         "duration_ms": 27586,
-        "wall_ms": 0
+        "wall_ms": 2
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-price_increase-D1",
@@ -24177,12 +24177,12 @@
         "cache_creation_tokens": 1796,
         "cost_usd": 0.04792899999999999,
         "duration_ms": 35007,
-        "wall_ms": 0
+        "wall_ms": 2
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-relative_business_days-C1",
@@ -24676,12 +24676,12 @@
         "cache_creation_tokens": 1823,
         "cost_usd": 0.036517,
         "duration_ms": 26536,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-relative_business_days-C2",
@@ -25147,12 +25147,12 @@
         "cache_creation_tokens": 1846,
         "cost_usd": 0.041159,
         "duration_ms": 30952,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-relative_business_days-D1",
@@ -25621,7 +25621,7 @@
         "cache_creation_tokens": 4614,
         "cost_usd": 0.02512,
         "duration_ms": 8139,
-        "wall_ms": 0
+        "wall_ms": 1
        },
        {
         "purpose": "extract",
@@ -25634,12 +25634,12 @@
         "cache_creation_tokens": 5232,
         "cost_usd": 0.07277699999999998,
         "duration_ms": 41312,
-        "wall_ms": 1
+        "wall_ms": 26
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-relative_business_days-D1-photo",
@@ -26107,12 +26107,12 @@
         "cache_creation_tokens": 2006,
         "cost_usd": 0.045398999999999995,
         "duration_ms": 29936,
-        "wall_ms": 2
+        "wall_ms": 4
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-social_decision-C1",
@@ -26617,12 +26617,12 @@
         "cache_creation_tokens": 1980,
         "cost_usd": 0.106475,
         "duration_ms": 89310,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-social_decision-C2",
@@ -27202,7 +27202,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-social_decision-C2-photo",
@@ -27777,7 +27777,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-social_decision-D1",
@@ -28272,12 +28272,12 @@
         "cache_creation_tokens": 7639,
         "cost_usd": 0.1119568,
         "duration_ms": 65244,
-        "wall_ms": 0
+        "wall_ms": 5
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-social_decision-D2",
@@ -28779,12 +28779,12 @@
         "cache_creation_tokens": 2347,
         "cost_usd": 0.069783,
         "duration_ms": 54190,
-        "wall_ms": 0
+        "wall_ms": 7
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-tax_assessment-C1",
@@ -29326,12 +29326,12 @@
         "cache_creation_tokens": 2262,
         "cost_usd": 0.050172999999999995,
         "duration_ms": 35836,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-tax_assessment-C2",
@@ -29886,7 +29886,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-tax_assessment-D1",
@@ -30478,12 +30478,12 @@
         "cache_creation_tokens": 2267,
         "cost_usd": 0.068823,
         "duration_ms": 54819,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-tax_assessment-D2",
@@ -31011,12 +31011,12 @@
         "cache_creation_tokens": 1921,
         "cost_usd": 0.07521900000000001,
         "duration_ms": 56822,
-        "wall_ms": 0
+        "wall_ms": 2
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-year_boundary-C1",
@@ -31567,12 +31567,12 @@
         "cache_creation_tokens": 1880,
         "cost_usd": 0.08156500000000001,
         "duration_ms": 66178,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-year_boundary-C2",
@@ -32277,12 +32277,12 @@
         "cache_creation_tokens": 1919,
         "cost_usd": 0.07493100000000001,
         "duration_ms": 56118,
-        "wall_ms": 0
+        "wall_ms": 2
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-year_boundary-C3",
@@ -32843,12 +32843,12 @@
         "cache_creation_tokens": 1919,
         "cost_usd": 0.051630999999999996,
         "duration_ms": 37010,
-        "wall_ms": 0
+        "wall_ms": 9
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-year_boundary-D1",
@@ -33319,7 +33319,7 @@
         "cache_creation_tokens": 4614,
         "cost_usd": 0.02661,
         "duration_ms": 13223,
-        "wall_ms": 1
+        "wall_ms": 0
        },
        {
         "purpose": "extract",
@@ -33337,7 +33337,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-year_boundary-D1-photo",
@@ -33811,7 +33811,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "bf4bd945270c7582"
+      "fingerprint": "5eeea98a261a8fc3"
      },
      "score": {
       "entry_id": "test-year_boundary-D2",

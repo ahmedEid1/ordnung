@@ -10,12 +10,14 @@ to the sample life's today. The answer is read as it is shown: Markdown emphasis
 backslash escapes and invisible characters are dropped first, so ``31.**12**.2027`` is a date.
 
 Numbers count as amounts when a currency stands next to them or when they have exactly two decimals.
-A month with a year and no day (``December 2027``, ``Ende Dezember 2027``, ``end of 2027``) is a
-*month* mention. Citation markers (``[item:itm_…]``) are removed first, so ids never read as numbers.
+A month with a year and no day (``December 2027``) is a *month* mention; the end of a month, with or
+without a year (``Ende Dezember 2027``, ``end of January``, ``late October 2026``, ``end of 2027``), is
+a date: its last day. Citation markers (``[item:itm_…]``) are removed first, so ids never read as numbers.
 """
 
 from __future__ import annotations
 
+import calendar
 import re
 from dataclasses import dataclass
 from datetime import date
@@ -48,9 +50,11 @@ _DATE = re.compile(
     """,
     re.IGNORECASE | re.VERBOSE,
 )
+_END_OF = r"(?:(?:the\s+)?end\s+of\s+(?:the\s+)?|ende\s+|late\s+|monatsende\s+)"
 _MONTH_ONLY = re.compile(
-    rf"\b(?:(?:end\s+of\s+(?:the\s+)?|ende\s+)?(?P<m>{_MONTH})\b\.?,?\s+(?P<y>\d{{4}})\b"
-    rf"|(?:end\s+of\s+(?:the\s+)?|ende\s+|year-end\s+)(?P<ey>\d{{4}})\b)",
+    rf"\b(?:(?P<end>{_END_OF})?(?P<m>{_MONTH})\b\.?,?\s+(?P<y>\d{{4}})\b"
+    rf"|(?:end\s+of\s+(?:the\s+)?|ende\s+|year-end\s+)(?P<ey>\d{{4}})\b"
+    rf"|(?P<yend>{_END_OF})(?P<ym>{_MONTH})\b)",
     re.IGNORECASE,
 )
 _CURRENCY = r"(?:€|EUR\b|Euro\b|euros?\b)"
@@ -147,6 +151,12 @@ def mentions(text: str) -> list[Mention]:
         span = match.span()
         if any(start < span[1] and span[0] < end for start, end in taken):
             continue  # part of a full date
+        taken.append(span)
+        if match.group("ym"):  # the end of a month without a year: its last day, in the nearest year
+            month = _MONTHS[match.group("ym").lower()]
+            last = _year_near(calendar.monthrange(TODAY.year, month)[1], month) or TODAY
+            found.append((span[0], Mention("date", match.group(), quoted(*span), date=last)))
+            continue
         year, month = (
             (int(match.group("ey")), 12)
             if match.group("ey")
@@ -155,7 +165,10 @@ def mentions(text: str) -> list[Mention]:
                 _MONTHS[match.group("m").lower()],
             )
         )
-        taken.append(span)
+        if match.group("ey") or match.group("end"):
+            last = date(year, month, calendar.monthrange(year, month)[1])
+            found.append((span[0], Mention("date", match.group(), quoted(*span), date=last)))
+            continue
         found.append((span[0], Mention("month", match.group(), quoted(*span), date=date(year, month, 1))))
     for match in _AMOUNT.finditer(plain):
         span = match.span("num")
