@@ -1,24 +1,29 @@
 /**
  * "I read 3 letters: 1 deadline, 55 €/month fixed costs, 1 needs you now, 1 possible scam" —
- * the recap after several letters were read at once, with links to where each thing lives.
+ * the recap after several letters were read at once, with links to where each thing lives, and
+ * every letter of the batch (the ones that couldn't be read too: "I read 2 of 3 letters").
  */
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import { Link } from "react-router";
 import { useQueries } from "@tanstack/react-query";
-import { ArrowRight, Hourglass, Repeat, ShieldAlert, Signature, TriangleAlert, type LucideIcon } from "lucide-react";
+import { ArrowRight, CalendarClock, Hourglass, Repeat, ShieldAlert, Signature, TriangleAlert, type LucideIcon } from "lucide-react";
 import { api } from "@/api/endpoints";
 import { qk } from "@/api/hooks";
 import type { DocumentDetail } from "@/api/types";
-import { cn, plural } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { TONES, type Tone } from "@/lib/copy";
 import { Button } from "@/components/ui/Button";
+import { Countdown } from "@/components/ui/Countdown";
 import { Dialog } from "@/components/ui/Dialog";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusPill } from "@/components/ui/StatusPill";
-import { recapFindings, summarizeBatch } from "./recap";
+import { dueSoon, recapFindings, recapTitle, summarizeBatch } from "./recap";
+
+/** A lone tile in the last row of the two-column grid takes the whole row. */
+const TILE_GRID = "grid gap-2.5 sm:grid-cols-2 sm:[&>*:last-child:nth-child(odd)]:col-span-2";
 
 function Stat({ to, icon: Icon, tone, value, label, onNavigate }: { to: string; icon: LucideIcon; tone: Tone; value: ReactNode; label: string; onNavigate: () => void }) {
   const t = TONES[tone];
@@ -34,9 +39,12 @@ function Stat({ to, icon: Icon, tone, value, label, onNavigate }: { to: string; 
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[18px] font-semibold leading-tight tabular-nums text-ink">{value}</span>
-          <span className="block truncate text-[12.5px] text-muted">{label}</span>
+          <span className="block text-sm leading-5 text-muted">{label}</span>
         </span>
-        <ArrowRight className="size-4 shrink-0 text-muted opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
+        <ArrowRight
+          className="size-4 shrink-0 text-muted opacity-60 transition-[opacity,transform] group-hover:translate-x-0.5 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
+          aria-hidden
+        />
       </Link>
     </li>
   );
@@ -48,7 +56,20 @@ function findingsText(parts: string[]): string {
   return `Here's what I found: ${list}.`;
 }
 
-export function BatchRecapDialog({ docIds, onClose }: { docIds: string[] | null; onClose: () => void }) {
+export function BatchRecapDialog({
+  docIds,
+  failedIds = [],
+  onClose,
+  returnFocus,
+}: {
+  /** Every letter of the batch (null: closed). */
+  docIds: string[] | null;
+  /** The ones that couldn't be read. */
+  failedIds?: string[];
+  onClose: () => void;
+  /** Where focus goes on close — the tray and its buttons are gone by then. */
+  returnFocus?: RefObject<HTMLElement | null>;
+}) {
   const today = useTodayISO();
   const ids = docIds ?? [];
   const results = useQueries({
@@ -57,13 +78,15 @@ export function BatchRecapDialog({ docIds, onClose }: { docIds: string[] | null;
   const loading = results.some((r) => r.isPending);
   const details = results.map((r) => r.data).filter((d): d is DocumentDetail => Boolean(d));
   const recap = !loading ? summarizeBatch(details, today) : null;
+  const failed = failedIds.filter((id) => ids.includes(id)).length;
 
   return (
     <Dialog
       open={Boolean(docIds)}
       onClose={onClose}
       size="lg"
-      title={`I read ${plural(ids.length, "letter")}`}
+      returnFocus={returnFocus}
+      title={recapTitle(ids.length, failed)}
       description={recap ? findingsText(recapFindings(recap)) : "Putting it all together…"}
       footer={
         <Button variant="primary" onClick={onClose}>
@@ -72,14 +95,14 @@ export function BatchRecapDialog({ docIds, onClose }: { docIds: string[] | null;
       }
     >
       {!recap ? (
-        <div className="grid gap-2.5 sm:grid-cols-2" aria-hidden>
+        <div className={TILE_GRID} aria-hidden>
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-[62px] rounded-xl" />
           ))}
         </div>
       ) : (
         <div aria-live="polite">
-          <ul className="grid gap-2.5 sm:grid-cols-2">
+          <ul className={TILE_GRID}>
             {recap.scams ? (
               <Stat
                 to={recap.scamDocId ? `/documents/${recap.scamDocId}` : "/inbox?filter=check"}
@@ -92,6 +115,9 @@ export function BatchRecapDialog({ docIds, onClose }: { docIds: string[] | null;
             ) : null}
             {recap.needYou ? (
               <Stat to="/inbox?filter=check" icon={TriangleAlert} tone="warn" value={recap.needYou} label={recap.needYou === 1 ? "needs you now" : "need you now"} onNavigate={onClose} />
+            ) : null}
+            {recap.dueSoon ? (
+              <Stat to="/timeline" icon={CalendarClock} tone="deadline" value={recap.dueSoon} label="due within 2 weeks" onNavigate={onClose} />
             ) : null}
             {recap.deadlines ? (
               <Stat to="/timeline" icon={Hourglass} tone="deadline" value={recap.deadlines} label={recap.deadlines === 1 ? "deadline on your timeline" : "deadlines on your timeline"} onNavigate={onClose} />
@@ -110,17 +136,30 @@ export function BatchRecapDialog({ docIds, onClose }: { docIds: string[] | null;
               />
             ) : null}
           </ul>
-          <h3 className="mb-2 mt-5 text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">The letters</h3>
-          <ul className="divide-y divide-line rounded-xl border border-line">
-            {details.map((d) => (
-              <li key={d.document.id}>
-                <Link to={`/documents/${d.document.id}`} onClick={onClose} className="flex items-center gap-3 px-3.5 py-2.5 transition-colors hover:bg-surface-2/60">
-                  <KindIcon docKind={d.document.kind} size="sm" />
-                  <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-ink">{d.document.title ?? d.document.filename}</span>
-                  {d.document.status === "needs_review" || d.document.status === "failed" ? <StatusPill of="document" status={d.document.status} /> : null}
-                </Link>
-              </li>
-            ))}
+          <h3 className="eyebrow mb-2 mt-5">The letters</h3>
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+            {details.map((d) => {
+              const title = d.document.title ?? d.document.filename;
+              const check = d.document.status === "needs_review" || d.document.status === "failed";
+              const due = check ? null : dueSoon(d, today);
+              return (
+                <li key={d.document.id}>
+                  <Link
+                    to={`/documents/${d.document.id}`}
+                    onClick={onClose}
+                    // the list clips its corners: the focus ring goes inside the row
+                    className="flex items-center gap-3 px-3.5 py-2.5 transition-colors hover:bg-surface-2/60 focus-visible:-outline-offset-2"
+                  >
+                    <KindIcon docKind={d.document.kind} size="sm" />
+                    <span className="line-clamp-2 min-w-0 flex-1 text-pretty text-base font-medium leading-5 text-ink [overflow-wrap:anywhere]" title={title}>
+                      {title}
+                    </span>
+                    {check ? <StatusPill of="document" status={d.document.status} /> : null}
+                    {due ? <Countdown date={due} variant="pill" /> : null}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

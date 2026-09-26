@@ -9,6 +9,8 @@ import { SEGMENT_GAP, SEGMENT_ITEM, SEGMENT_THUMB, SEGMENT_TRACK } from "./segme
 export interface TabItem<V extends string = string> {
   value: V;
   label: string;
+  /** Shown instead of `label` on phones (below `sm`); `label` stays the tab's accessible name. */
+  shortLabel?: string;
   icon?: LucideIcon;
   count?: number;
   disabled?: boolean;
@@ -189,7 +191,16 @@ export function Tabs<V extends string>({
                 />
               ) : null}
               {Icon ? <Icon className="relative size-4" aria-hidden /> : null}
-              <span className="relative">{t.label}</span>
+              {t.shortLabel ? (
+                <>
+                  <span className="relative sm:hidden" aria-hidden>
+                    {t.shortLabel}
+                  </span>
+                  <span className="relative max-sm:sr-only">{t.label}</span>
+                </>
+              ) : (
+                <span className="relative">{t.label}</span>
+              )}
               {showCount ? <CountBadge count={t.count!} showZero className="relative" tone={selected ? "accent" : "neutral"} /> : null}
             </button>
           );
