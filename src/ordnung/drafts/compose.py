@@ -293,10 +293,13 @@ def _objection_recipient(remedy: Remedy | None, party: Party | None) -> list[str
     return lines
 
 
-def recipient_block(kind: str, sources: Sources) -> str:
-    """Name and address of the recipient; for objections the addressee named in the remedy."""
+def recipient_block(kind: str, sources: Sources, details: LetterDetails | None = None) -> str:
+    """Name and address of the recipient; for objections the addressee named in the remedy; for a
+    template letter to someone not in Ordnung yet, the name and address the person typed."""
     if kind == "objection":
         return "\n".join(_objection_recipient(sources.remedy, sources.party))
+    if sources.party is None and kind in TEMPLATES and details is not None and details.recipient:
+        return "\n".join(address_lines(details.recipient))
     return "\n".join(_party_lines(sources.party))
 
 
@@ -439,7 +442,7 @@ def template_input(
         iban=sources.profile.iban or None,
         person_name=_person_name(kind, party),
         tax_office=party is not None and party.kind == "tax_office",
-        schufa=party is not None and bool(_SCHUFA_RE.search(party.name)),
+        schufa=bool(_SCHUFA_RE.search(party.name if party else details.recipient or "")),
         deadline=parse_day(deadline.due_date) if deadline else None,
         amount=payment.amount if payment else None,
         period=billing_period_text(text) if text else None,
@@ -457,8 +460,8 @@ def _frame(
 ) -> LetterParts:
     person = _person_name(kind, sources.party)
     if kind in TEMPLATES:
-        if sources.party is None:
-            raise DraftError("Choose who the letter is for.")
+        if sources.party is None and not (template is not None and template.details.recipient):
+            raise DraftError("Choose who the letter is for, or type their name and address.")
         assert template is not None  # plan_letter builds it for template kinds
         try:
             return template_letter(cast(TemplateDraftKind, kind), language, template)
@@ -1026,7 +1029,7 @@ async def compose(
     plan = plan_letter(
         store, draft_kind, sources, letter_language, suspend_enforcement=suspend, today=today, details=details
     )
-    recipient = recipient_block(draft_kind, sources)
+    recipient = recipient_block(draft_kind, sources, details)
     written = await write_with_model(ctx, plan, sources, recipient, instructions)
     signer = sources.profile.name.strip()
     translation, fallback_used = _translation(plan, written, signer)

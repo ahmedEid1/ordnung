@@ -78,10 +78,17 @@ def test_a_withdrawal_ends_on_a_working_day_and_only_has_to_be_sent(start: date,
 
 
 @given(dates, regions, st.sampled_from(["court_payment_order", "enforcement_order"]))
-def test_court_orders_end_on_a_working_day_and_are_never_high(served: date, region: str | None, kind: str) -> None:
+def test_court_orders_end_on_a_working_day_and_are_never_high(
+    served: date, region: str | None, kind: str
+) -> None:
     spec = DateSpec(type="relative", anchor="receipt", amount=2, unit="weeks", nature="objection")
     ctx = RuleContext(
-        today=served, region=region, document_date=served, received_date=served, received_confirmed=True, letter_kind=kind
+        today=served,
+        region=region,
+        document_date=served,
+        received_date=served,
+        received_confirmed=True,
+        letter_kind=kind,
     )
     receipt = compute_due(spec, ctx)
     assert receipt.due_date is not None and receipt.confidence != "high"

@@ -283,6 +283,22 @@ export function formatIban(iban: string | null | undefined): string {
   return iban.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
 }
 
+/** "de89 3704-0044 …" → "DE89370400440532013000" (like the server: spaces, dashes and dots removed). */
+export function normalizeIban(iban: string): string {
+  return iban.replace(/[\s\-.]+/g, "").toUpperCase();
+}
+
+/** Shape and ISO 13616 mod-97 checksum of an IBAN (the server also checks each country's length). */
+export function ibanLooksValid(iban: string): boolean {
+  const v = normalizeIban(iban);
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(v)) return false;
+  let rest = 0;
+  for (const ch of v.slice(4) + v.slice(0, 4)) {
+    for (const digit of String(parseInt(ch, 36))) rest = (rest * 10 + Number(digit)) % 97;
+  }
+  return rest === 1;
+}
+
 // ------------------------------------------------------------------------------------------------
 // Values copied from letters
 // ------------------------------------------------------------------------------------------------

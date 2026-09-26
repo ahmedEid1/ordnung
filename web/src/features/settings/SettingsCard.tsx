@@ -39,19 +39,34 @@ export function SettingsCard({
 }
 
 /** Save row for a form card: "Unsaved changes" hint + Discard + Save. Reports unsaved edits to the page. */
-export function SaveBar({ dirty, saving, onSave, onDiscard, label = "Save changes" }: { dirty: boolean; saving?: boolean; onSave: () => void; onDiscard?: () => void; label?: string }) {
+export function SaveBar({
+  dirty,
+  saving,
+  onSave,
+  onDiscard,
+  label = "Save changes",
+  invalid = false,
+}: {
+  dirty: boolean;
+  saving?: boolean;
+  onSave: () => void;
+  onDiscard?: () => void;
+  label?: string;
+  /** a field has an error: saving waits until it is fixed */
+  invalid?: boolean;
+}) {
   useReportDirty(dirty);
   return (
     <>
       <span className={cn("mr-auto text-[12.5px]", dirty ? "text-warn-ink" : "text-muted")} role="status">
-        {dirty ? "Unsaved changes" : "All changes saved"}
+        {dirty ? (invalid ? "Fix the field marked above to save" : "Unsaved changes") : "All changes saved"}
       </span>
       {dirty && onDiscard ? (
         <Button variant="ghost" size="sm" onClick={onDiscard} disabled={saving}>
           Discard
         </Button>
       ) : null}
-      <Button variant={dirty ? "primary" : "secondary"} size="sm" icon={dirty ? Save : Check} onClick={onSave} disabled={!dirty} loading={saving}>
+      <Button variant={dirty ? "primary" : "secondary"} size="sm" icon={dirty ? Save : Check} onClick={onSave} disabled={!dirty || invalid} loading={saving}>
         {dirty ? label : "Saved"}
       </Button>
     </>

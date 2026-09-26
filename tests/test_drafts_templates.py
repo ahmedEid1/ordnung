@@ -639,3 +639,18 @@ async def test_the_model_never_sees_the_persons_address_or_iban(data_dir: Path) 
     finally:
         context.close()
         clock.set_today(None)
+
+
+async def test_a_template_letter_to_someone_not_in_ordnung_yet(ctx: AppContext, ids: dict[str, str]) -> None:
+    recipient = "SCHUFA Holding AG\nPrivatkunden ServiceCenter\nPostfach 10 34 41\n50474 Köln"
+    draft = await compose(ctx, "data_access", details=LetterDetails(recipient=recipient))
+    assert draft.recipient_block == recipient and draft.party_id is None
+    assert "Scorewerte" in draft.body  # recognised as SCHUFA from the typed name
+    assert _check(draft, "recipient_complete")
+    with pytest.raises(DraftError, match="or type their name and address"):
+        await compose(ctx, "data_access", details=LetterDetails())
+    # a known party wins over a typed recipient
+    known = await compose(
+        ctx, "data_access", party_id=ids["shop"], details=LetterDetails(recipient=recipient)
+    )
+    assert known.recipient_block.startswith("Technik Versand GmbH")

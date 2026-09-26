@@ -2417,6 +2417,11 @@ export interface components {
             old_address?: string | null;
             /** New Address */
             new_address?: string | null;
+            /**
+             * Recipient
+             * @description name and address of a recipient not in Ordnung yet
+             */
+            recipient?: string | null;
         };
         /**
          * MailOpenRequest

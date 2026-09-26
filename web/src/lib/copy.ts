@@ -9,6 +9,16 @@ import type { LucideIcon } from "lucide-react";
 import {
   AlarmClock,
   Award,
+  CalendarPlus,
+  DatabaseSearch,
+  FileSearch,
+  Gavel,
+  KeyRound,
+  MapPinHouse,
+  ReceiptEuro,
+  Undo2,
+  UserX,
+  Wrench,
   BadgeAlert,
   Banknote,
   Bell,
@@ -230,6 +240,12 @@ export const DOCUMENT_KIND_COPY: CopyMap<DocumentKind> = {
   certificate: { label: "Certificate", icon: Award, tone: "milestone" },
   personal: { label: "Personal", icon: User, tone: "document" },
   other: { label: "Other letter", icon: FileText, tone: "document" },
+  court_payment_order: { label: "Court payment order", icon: Gavel, tone: "deadline", hint: "Mahnbescheid: two weeks to pay or object." },
+  enforcement_order: { label: "Enforcement order", icon: Gavel, tone: "deadline", hint: "Vollstreckungsbescheid: two weeks to object." },
+  dismissal: { label: "Dismissal", icon: UserX, tone: "deadline", hint: "Kündigung by your employer: three weeks to go to court." },
+  landlord_notice: { label: "Notice from your landlord", icon: KeyRound, tone: "deadline", hint: "Kündigung of your flat." },
+  rent_increase: { label: "Rent increase request", icon: TrendingUp, tone: "payment", hint: "Mieterhöhungsverlangen: you decide whether to agree." },
+  operating_costs: { label: "Operating-cost statement", icon: ReceiptEuro, tone: "payment", hint: "Betriebskostenabrechnung." },
 };
 
 export const DOCUMENT_STATUS_COPY: CopyMap<DocumentStatus> = {
@@ -433,6 +449,14 @@ export const DRAFT_KIND_COPY: CopyMap<DraftKind> = {
   cancellation: { label: "Cancellation", icon: FileX, tone: "contract", hint: "End a contract (Kündigung)." },
   objection: { label: "Objection", icon: Scale, tone: "expiry", hint: "Object to an official decision (Einspruch / Widerspruch)." },
   general_reply: { label: "Reply", icon: Mail, tone: "appointment", hint: "Answer a letter, ask a question or send a document." },
+  withdrawal: { label: "Withdrawal", icon: Undo2, tone: "contract", hint: "Withdraw from an online, phone or doorstep contract (Widerruf)." },
+  extension_request: { label: "More time", icon: CalendarPlus, tone: "appointment", hint: "Ask for a deadline to be extended (Fristverlängerung)." },
+  payment_plan: { label: "Instalments", icon: HandCoins, tone: "payment", hint: "Offer to pay in instalments, or ask the tax office to defer (Stundung)." },
+  defect_notice: { label: "Defect notice", icon: Wrench, tone: "task", hint: "Report something broken in your flat (Mängelanzeige)." },
+  data_access: { label: "Data request", icon: DatabaseSearch, tone: "milestone", hint: "Ask what data they hold about you (Art. 15 GDPR)." },
+  receipts_inspection: { label: "Receipts request", icon: FileSearch, tone: "document", hint: "See the receipts behind an operating-cost statement (Belegeinsicht)." },
+  deposit_return: { label: "Deposit back", icon: KeyRound, tone: "contract", hint: "Ask your landlord to settle and return the deposit (Kaution)." },
+  address_change: { label: "New address", icon: MapPinHouse, tone: "appointment", hint: "Tell them your new address." },
 };
 
 export const DRAFT_STATUS_COPY: CopyMap<DraftStatus> = {

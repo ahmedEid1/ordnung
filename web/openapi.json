@@ -7435,6 +7435,19 @@
               }
             ],
             "title": "New Address"
+          },
+          "recipient": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient",
+            "description": "name and address of a recipient not in Ordnung yet"
           }
         },
         "type": "object",

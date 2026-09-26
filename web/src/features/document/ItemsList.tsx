@@ -1,5 +1,5 @@
 /** "To-dos & dates" from this letter: kind, date + countdown, amount, grounding, "Why this date?". */
-import { CalendarPlus, Check, Ellipsis, ListTodo, Pencil, Repeat, RotateCcw, X } from "lucide-react";
+import { CalendarPlus, Check, Ellipsis, ListTodo, Pencil, Repeat, RotateCcw, Scale, X } from "lucide-react";
 import { useState } from "react";
 import type { Item, Recurrence } from "@/api/types";
 import { cn } from "@/lib/utils";
@@ -110,6 +110,12 @@ function ItemRow({ item, docId }: { item: Item; docId: string }) {
         {item.description ? <p className="mt-1.5 text-[13px] leading-5 text-muted">{item.description}</p> : null}
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
           {ev ? <EvidenceChip grounding={item.grounding === "user" ? "user" : ev.grounding} page={ev.page} anchorId={anchorId} what={item.title} compact /> : null}
+          {!ev && item.origin === "rule" ? (
+            <span className="inline-flex items-center gap-1 text-[12px] font-medium text-muted" title="The letter doesn't state this date — the law sets it.">
+              <Scale className="size-3.5" aria-hidden />
+              Set by law
+            </span>
+          ) : null}
           {item.computation ? <WhyThisDate receipt={item.computation} spec={item.date_spec} area={item.area} className="text-[12.5px]" /> : null}
           {item.due_date_source === "manual" ? <span className="text-[12px] text-muted">Date set by you</span> : null}
         </div>

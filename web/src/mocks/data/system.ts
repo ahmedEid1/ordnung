@@ -40,6 +40,7 @@ export const PROFILE: Profile = {
   postal_buffer_days: 4,
   is_student_visa: true,
   onboarded: true,
+  iban: "",
 };
 
 export const SETTINGS: AppSettings = {

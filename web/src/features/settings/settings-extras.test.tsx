@@ -166,3 +166,23 @@ describe("Data → delete everything", () => {
     expect(screen.queryByRole("button", { name: "Delete everything…" })).not.toBeInTheDocument();
   });
 });
+
+describe("refund IBAN", () => {
+  it("checks the IBAN before saving and sends it without spaces", async () => {
+    const { calls } = useMockApi();
+    const user = userEvent.setup();
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    const iban = await screen.findByLabelText(/IBAN for refunds/);
+    await user.type(iban, "DE89 3704 0044 0532 0130 01");
+    expect(screen.getByText(/That IBAN isn't valid/)).toBeInTheDocument();
+    expect(iban).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    await user.clear(iban);
+    await user.type(iban, "de89 3704 0044 0532 0130 00");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.path === "/profile")).toBe(true));
+    expect(calls.find((c) => c.method === "PUT")?.body).toMatchObject({ iban: "DE89370400440532013000" });
+    expect(await screen.findByText("All changes saved")).toBeInTheDocument();
+    expect(iban).toHaveValue("DE89 3704 0044 0532 0130 00");
+  });
+});

@@ -1,6 +1,7 @@
 /**
  * Everything that needs the person's eyes, right under the verdict: the scam banner, the
- * hidden-text banner, "get advice" when the letter can only be challenged in court (or it is
+ * hidden-text banner, the "get advice" card of a high-stakes letter (a court order, a dismissal, a
+ * landlord's letter), "get advice" when the letter can only be challenged in court (or it is
  * unclear how), "Please check" to-dos, the "When did this letter arrive?" question and any other
  * warnings from reading the letter.
  */
@@ -22,6 +23,7 @@ import { toast } from "@/components/ui/Toast";
 import { needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
 import { useItemActions } from "./actions";
 import { useEvidence } from "./EvidenceContext";
+import { LetterAdviceCard } from "./LetterAdvice";
 
 export const SAFE_NOTE = "No warning does not mean it is safe.";
 
@@ -42,13 +44,19 @@ export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
   // the arrival question already explains the "we don't know when it arrived" warning
   const general = arrival.length ? warnings.filter((w) => !/arriv|received|zugang/i.test(w)) : warnings;
 
+  // a high-stakes letter's own card replaces the generic "get advice" one; urgent cards go first
+  const advice = detail.advice && !scam ? <LetterAdviceCard key="letter-advice" advice={detail.advice} doc={doc} /> : null;
+  const urgent = Boolean(detail.advice?.urgent);
+
   const blocks = [
     scam ? <ScamBanner key="scam" suggestion={scam} doc={doc} reasons={warnings} /> : null,
     doc.hidden_text ? <HiddenTextBanner key="hidden" /> : null,
-    remedy === "klage" || remedy === "unclear" ? <AdviceCard key="advice" type={remedy} addressee={doc.remedy?.addressee ?? null} /> : null,
+    urgent ? advice : null,
+    !detail.advice && (remedy === "klage" || remedy === "unclear") ? <AdviceCard key="advice" type={remedy} addressee={doc.remedy?.addressee ?? null} /> : null,
     arrival.length ? <ArrivalQuestion key="arrival" doc={doc} items={arrival} /> : null,
     ...checks.map((it) => <PleaseCheckItem key={it.id} item={it} />),
     !scam && general.length ? <GeneralWarnings key="general" warnings={general} /> : null,
+    urgent ? null : advice,
   ].filter(Boolean);
 
   if (!blocks.length) return null;
@@ -201,8 +209,12 @@ function AdviceCard({ type, addressee }: { type: "klage" | "unclear"; addressee:
   );
 }
 
+/** Court orders are served formally: the day counts from the date on the yellow envelope. */
+const SERVED = new Set<Document["kind"]>(["court_payment_order", "enforcement_order"]);
+
 function ArrivalQuestion({ doc, items }: { doc: Document; items: Item[] }) {
   const todayISO = useTodayISO();
+  const served = SERVED.has(doc.kind);
   const update = useUpdateDocument();
   const [date, setDate] = useState(doc.received_date ?? todayISO);
   const min = doc.doc_date ?? undefined;
@@ -227,11 +239,21 @@ function ArrivalQuestion({ doc, items }: { doc: Document; items: Item[] }) {
       <div className="flex gap-3">
         <CalendarCheck className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
         <div className="min-w-0 flex-1">
-          <h2 className="text-[15px] font-semibold text-warn-ink">When did this letter arrive?</h2>
+          <h2 className="text-[15px] font-semibold text-warn-ink">{served ? "When was it delivered?" : "When did this letter arrive?"}</h2>
           <p className="mt-1 text-[13.5px] leading-relaxed text-ink/85">
-            {items.length === 1 ? `“${items[0]!.title}” counts` : "These dates count"} from the day the letter reached you. Until you
-            tell us, we count from the letter date{doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""} — the
-            earliest possible, so you're never late.
+            {served ? (
+              <>
+                {items.length === 1 ? `“${items[0]!.title}” counts` : "These dates count"} from the day the court's letter was delivered —
+                the date is written on the yellow envelope (<span lang="de">Zustellungsurkunde</span>). Until you tell us, we count from
+                the letter date{doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""}, the earliest possible.
+              </>
+            ) : (
+              <>
+                {items.length === 1 ? `“${items[0]!.title}” counts` : "These dates count"} from the day the letter reached you. Until you
+                tell us, we count from the letter date{doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""} — the
+                earliest possible, so you're never late.
+              </>
+            )}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {quick.map((d, i) => (
@@ -249,7 +271,7 @@ function ArrivalQuestion({ doc, items }: { doc: Document; items: Item[] }) {
               </button>
             ))}
             <label className="sr-only" htmlFor="arrival-date">
-              Arrival date
+              {served ? "Delivery date" : "Arrival date"}
             </label>
             <Input
               id="arrival-date"

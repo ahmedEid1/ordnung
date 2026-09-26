@@ -61,7 +61,14 @@ export function parsePrefill(params: URLSearchParams): ComposerPrefill | null {
 // ------------------------------------------------------------------------------------------------
 
 export type ObjectionCheck =
-  | { ok: true; remedy: Remedy & { type: "einspruch" | "widerspruch" }; term: "Einspruch" | "Widerspruch" }
+  | {
+      ok: true;
+      /** the letter's own instructions, or `null` when the law gives the remedy (a court order, a landlord's notice) */
+      remedy: (Remedy & { type: "einspruch" | "widerspruch" }) | null;
+      term: "Einspruch" | "Widerspruch";
+      /** the remedy comes from the law, not the letter's instructions (§ 694, § 700 ZPO; § 574 BGB) */
+      statutory: boolean;
+    }
   | { ok: false; reason: "missing" | "klage" | "none" | "unclear"; title: string; body: string; advice: AdviceLink[] };
 
 export function adviceFor(area: Area | null | undefined): AdviceLink[] {
@@ -78,15 +85,31 @@ export function adviceFor(area: Area | null | undefined): AdviceLink[] {
   }
 }
 
+/**
+ * The remedy the law gives these letters, whatever their instructions were read as (mirrors
+ * `STATUTORY_REMEDIES` in `src/ordnung/drafts/templates.py`).
+ */
+export const STATUTORY_REMEDY: Partial<Record<NonNullable<Document["kind"]>, "Einspruch" | "Widerspruch">> = {
+  court_payment_order: "Widerspruch",
+  enforcement_order: "Einspruch",
+  landlord_notice: "Widerspruch",
+};
+
 /** Can Ordnung draft an objection against this letter? (SPEC §21 "Remedies & letters") */
-export function objectionCheck(doc: Pick<Document, "remedy" | "area"> | null | undefined): ObjectionCheck {
+export function objectionCheck(doc: (Pick<Document, "remedy" | "area"> & Partial<Pick<Document, "kind">>) | null | undefined): ObjectionCheck {
   const remedy = doc?.remedy ?? null;
   const advice = adviceFor(doc?.area);
+  const statutory = doc?.kind ? STATUTORY_REMEDY[doc.kind] : undefined;
+  if (statutory) {
+    const own = remedy && (remedy.type === "einspruch" || remedy.type === "widerspruch") ? (remedy as Remedy & { type: "einspruch" | "widerspruch" }) : null;
+    return { ok: true, remedy: own, term: statutory, statutory: true };
+  }
   if (remedy && (remedy.type === "einspruch" || remedy.type === "widerspruch")) {
     return {
       ok: true,
       remedy: remedy as Remedy & { type: "einspruch" | "widerspruch" },
       term: remedy.type === "einspruch" ? "Einspruch" : "Widerspruch",
+      statutory: false,
     };
   }
   if (!remedy) {
@@ -151,8 +174,12 @@ export function cancellableContracts(contracts: Contract[]): Contract[] {
 /** The follow-up to-do is created 21 days after sending (SPEC §11). */
 export const FOLLOW_UP_DAYS = 21;
 
-export function followUpDate(sentOn: string): string {
-  return toISODate(addDays(parseISO(sentOn.slice(0, 10)), FOLLOW_UP_DAYS));
+/** Kinds with a longer answer time: a data request gets a month (Art. 12(3) GDPR), so 35 days. */
+export const FOLLOW_UP_DAYS_BY_KIND: Partial<Record<DraftKind, number>> = { data_access: 35 };
+
+export function followUpDate(sentOn: string, kind?: DraftKind | null): string {
+  const days = (kind && FOLLOW_UP_DAYS_BY_KIND[kind]) || FOLLOW_UP_DAYS;
+  return toISODate(addDays(parseISO(sentOn.slice(0, 10)), days));
 }
 
 /** First line of an address block ("FunkNetz Mobil GmbH"). */
@@ -164,6 +191,29 @@ const KIND_TITLE: Record<DraftKind, string> = {
   cancellation: "Cancellation",
   objection: "Objection",
   general_reply: "Reply",
+  withdrawal: "Withdrawal",
+  extension_request: "Request for more time",
+  payment_plan: "Instalment request",
+  defect_notice: "Defect notice",
+  data_access: "Data request",
+  receipts_inspection: "Receipts request",
+  deposit_return: "Deposit request",
+  address_change: "New address",
+};
+
+/** German file-name stems of the PDF ("Kuendigung-FunkNetz-….pdf"). */
+const PDF_STEM: Record<DraftKind, string> = {
+  cancellation: "Kuendigung",
+  objection: "Einspruch",
+  general_reply: "Schreiben",
+  withdrawal: "Widerruf",
+  extension_request: "Fristverlaengerung",
+  payment_plan: "Ratenzahlung",
+  defect_notice: "Maengelanzeige",
+  data_access: "Auskunft-Art15-DSGVO",
+  receipts_inspection: "Belegeinsicht",
+  deposit_return: "Kaution",
+  address_change: "Adressaenderung",
 };
 
 /** English page title: "Cancellation to FunkNetz Mobil GmbH". */
@@ -174,7 +224,7 @@ export function draftTitle(d: Pick<Draft, "kind" | "recipient_block">, partyName
 
 /** A readable PDF file name: "Kuendigung-FunkNetz-Mobil-GmbH-2026-09-28.pdf". */
 export function pdfFileName(d: Pick<Draft, "kind" | "recipient_block" | "created_at">): string {
-  const kind = d.kind === "cancellation" ? "Kuendigung" : d.kind === "objection" ? "Einspruch" : "Schreiben";
+  const kind = PDF_STEM[d.kind];
   const to = firstLine(d.recipient_block)
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")

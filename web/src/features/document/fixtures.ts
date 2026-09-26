@@ -130,6 +130,7 @@ export function makeDetail(d: Partial<DocumentDetail> = {}): DocumentDetail {
   const document = d.document ?? makeDoc();
   return {
     document,
+    advice: null,
     pages: [{ page: 1, width: 1240, height: 1754, text_source: "text" }],
     items: [],
     contracts: [],

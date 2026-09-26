@@ -85,8 +85,26 @@ export const DOCUMENT_KINDS = [
   "certificate",
   "personal",
   "other",
+  // high-stakes letters: Ordnung's rules assign these from the reading (the person may too)
+  "court_payment_order",
+  "enforcement_order",
+  "dismissal",
+  "landlord_notice",
+  "rent_increase",
+  "operating_costs",
 ] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
+
+/** Letters whose deadlines the rules engine handles specially (they carry a "get advice" card). */
+export const HIGH_STAKES_KINDS = [
+  "court_payment_order",
+  "enforcement_order",
+  "dismissal",
+  "landlord_notice",
+  "rent_increase",
+  "operating_costs",
+] as const satisfies readonly DocumentKind[];
+export type HighStakesKind = (typeof HIGH_STAKES_KINDS)[number];
 
 export const DOCUMENT_STATUSES = ["queued", "processing", "processed", "needs_review", "failed"] as const;
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
@@ -158,8 +176,22 @@ export type SuggestionKind = (typeof SUGGESTION_KINDS)[number];
 export const SUGGESTION_STATUSES = ["new", "accepted", "dismissed", "snoozed", "done", "expired"] as const;
 export type SuggestionStatus = (typeof SUGGESTION_STATUSES)[number];
 
-export const DRAFT_KINDS = ["cancellation", "objection", "general_reply"] as const;
+export const DRAFT_KINDS = [
+  "cancellation",
+  "objection",
+  "general_reply",
+  "withdrawal",
+  "extension_request",
+  "payment_plan",
+  "defect_notice",
+  "data_access",
+  "receipts_inspection",
+  "deposit_return",
+  "address_change",
+] as const;
 export type DraftKind = (typeof DRAFT_KINDS)[number];
+/** Letters written entirely from fixed templates, filled with {@link LetterDetails}. */
+export type TemplateDraftKind = Exclude<DraftKind, "cancellation" | "objection" | "general_reply">;
 
 export const CONTRACT_CATEGORIES = [
   "mobile",
@@ -315,6 +347,7 @@ export type EnumContract = [
   Same<SuggestionKind, Schemas["Suggestion"]["kind"]>,
   Same<SuggestionStatus, Schemas["Suggestion"]["status"]>,
   Same<DraftKind, Schemas["Draft"]["kind"]>,
+  Same<HighStakesKind, Schemas["LetterAdvice"]["kind"]>,
   Same<ContractCategory, Schemas["Contract"]["category"]>,
   Same<CostInterval, NonNullable<Schemas["Contract"]["cost_interval"]>>,
   Same<NoticeUnit, NonNullable<Schemas["Contract"]["notice_unit"]>>,
@@ -382,6 +415,8 @@ export type Suggestion = Schemas["Suggestion"];
 export type SendChannel = Schemas["SendChannel"];
 export type SendGuidance = Schemas["SendGuidance"];
 export type DraftCheck = Schemas["DraftCheck"];
+/** The facts a template letter needs (`POST /api/drafts` `details`); every field is optional here. */
+export type LetterDetails = Schemas["LetterDetails"];
 /** A letter Ordnung drafted for the user ("Letters"). */
 export type Draft = Schemas["Draft"];
 export type Activity = Schemas["Activity"];
@@ -409,6 +444,10 @@ export type DashboardStats = Schemas["DashboardStats"];
 export type Dashboard = Schemas["Dashboard"];
 export type PageInfo = Schemas["PageInfo"];
 export type DocumentDetail = Schemas["DocumentDetail"];
+/** The "get advice" card of a high-stakes letter (court order, dismissal, tenancy …), worked out on read. */
+export type LetterAdvice = Schemas["LetterAdvice"];
+export type AdviceFact = Schemas["AdviceFact"];
+export type HelpLink = Schemas["HelpLink"];
 export type PartyDetail = Schemas["PartyDetail"];
 export type CaseDetail = Schemas["CaseDetail"];
 /** Model use for one purpose (calls, cache hits, errors, tokens, cost). */

@@ -38,6 +38,7 @@ import {
   dayCountdown,
   decisionSuggestion,
   incomingMoney,
+  isCourtOrder,
   isOpenItem,
   isOptionalObjection,
   leadsWithDecision,
@@ -105,7 +106,8 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
   const checkDate = open ? needsCheck(open) : false;
   const isAppointment = open?.kind === "appointment";
   const debit = open ? isDirectDebit(open) : false;
-  const optional = open ? isOptionalObjection(open) : false;
+  // a court order's deadline isn't optional: pay or object, or it is enforced
+  const optional = open ? isOptionalObjection(open) && !isCourtOrder(doc) : false;
   const refund = incomingMoney(detail.items);
   const refundText = refund?.amount != null ? `${formatMoney(refund.amount, { currency: refund.currency })} comes back to you` : null;
 

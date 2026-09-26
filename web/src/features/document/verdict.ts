@@ -120,6 +120,17 @@ export function needsArrivalDate(i: Item, doc: Pick<Document, "received_date">):
   return Boolean(i.computation?.rule_ids.some((r) => r.includes("fallback")));
 }
 
+/** The law gives these an objection whatever their instructions say (§ 694, § 700 ZPO). */
+const COURT_ORDERS = new Set<Document["kind"]>(["court_payment_order", "enforcement_order"]);
+
+/**
+ * A court order: its objection deadline is not "only if you disagree" — doing nothing lets the claim
+ * be enforced, so the person must pay or object.
+ */
+export function isCourtOrder(doc: Pick<Document, "kind">): boolean {
+  return COURT_ORDERS.has(doc.kind);
+}
+
 export type MainAction =
   | { type: "draft"; draftKind: Extract<DraftKind, "objection" | "cancellation">; label: string; item: Item | null }
   | { type: "pay"; item: Item }
@@ -143,7 +154,8 @@ export function chooseMainAction(detail: DocumentDetail, primary: Item | null): 
     return { type: "scam", realDocId: real?.id ?? null };
   }
   const remedy = detail.document.remedy?.type;
-  if ((remedy === "einspruch" || remedy === "widerspruch") && (!primary || isOpenItem(primary))) {
+  const courtOrder = isCourtOrder(detail.document);
+  if ((remedy === "einspruch" || remedy === "widerspruch" || courtOrder) && (!primary || isOpenItem(primary))) {
     return { type: "draft", draftKind: "objection", label: "Draft objection", item: primary };
   }
   if (!primary || !isOpenItem(primary)) return { type: "none" };

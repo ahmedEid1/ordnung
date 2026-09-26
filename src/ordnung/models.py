@@ -578,6 +578,9 @@ class LetterDetails(_Model):
     moved_on: str | None = Field(default=None, description="the day of the move")
     old_address: str | None = Field(default=None, max_length=300)
     new_address: str | None = Field(default=None, max_length=300)
+    recipient: str | None = Field(
+        default=None, max_length=300, description="name and address of a recipient not in Ordnung yet"
+    )
 
 
 class Note(_Model):
