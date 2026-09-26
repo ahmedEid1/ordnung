@@ -1,11 +1,10 @@
 import { useMemo } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Check, Copy, RotateCw, ShieldCheck, Square } from "lucide-react";
+import { Check, Copy, Info, RotateCw, ShieldAlert, Square } from "lucide-react";
 import { LogoMark } from "@/components/shell/Logo";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { useClipboard } from "@/features/today/clipboard";
-import { splitCheckNote } from "./checkNote";
 import { citationIndex, numberCitations, stripAllMarkers } from "./citations";
 import { CitationChip, CitationMarker } from "./CitationChip";
 import { Markdown } from "./Markdown";
@@ -41,8 +40,9 @@ function Thinking() {
 }
 
 /**
- * What Ordnung's answer check did (ADR 0008): sentences left out because their date or amount isn't
- * in the records they cite, and values shown in quotation marks because only a letter states them.
+ * What Ordnung's answer check did (ADR 0008): dates or amounts left out because the records their
+ * sentences cite don't hold them, and values shown in quotation marks as a letter's (or the
+ * person's) words. The text comes only from the `done` event's `note` field, never from the answer.
  */
 export function CheckNote({ text }: { text: string }) {
   return (
@@ -50,9 +50,22 @@ export function CheckNote({ text }: { text: string }) {
       role="note"
       className="mt-3 flex items-start gap-2 rounded-lg border border-line bg-surface-2/60 px-3 py-2 text-[13px] leading-5 text-muted"
     >
-      <ShieldCheck className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+      <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
       <span className="min-w-0">
         <span className="font-medium text-ink">Checked by Ordnung.</span> {text}
+      </span>
+    </p>
+  );
+}
+
+/** A partial answer that ended before the check ran (stopped, or failed): its values are unchecked. */
+function UncheckedNote({ stopped }: { stopped: boolean }) {
+  return (
+    <p role="note" className="mt-2 flex items-start gap-1.5 text-[13px] leading-5 text-muted">
+      <ShieldAlert className="mt-0.5 size-3.5 shrink-0 text-warn" aria-hidden />
+      <span className="min-w-0">
+        {stopped ? "Stopped before Ordnung checked it — " : "This partial answer was not checked — "}
+        its dates and amounts are unchecked and may be wrong.
       </span>
     </p>
   );
@@ -71,7 +84,10 @@ export interface AnswerViewProps {
 export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: AnswerViewProps) {
   const { copy, copied } = useClipboard();
   const live = answer.status === "streaming";
-  const { body, note } = useMemo(() => splitCheckNote(answer.text), [answer.text]);
+  const body = answer.text;
+  const note = answer.note;
+  // stopped or failed before the check ran: the streamed words stay, visibly unchecked
+  const unchecked = (answer.status === "stopped" || answer.status === "error") && Boolean(body.trim());
   const valid = useMemo(() => (live ? null : citationIndex(answer.citations)), [live, answer.citations]);
   const numbers = useMemo(() => (valid ? numberCitations(body, valid) : new Map<string, number>()), [valid, body]);
   const sources = useMemo(
@@ -91,7 +107,8 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
           <Markdown
             text={body}
             citations={valid}
-            streaming={live}
+            streaming={live || unchecked}
+            className={unchecked ? "text-muted" : undefined}
             renderCitation={(ref, key) => <CitationMarker key={key} info={resolve(ref)} n={numbers.get(ref.id) ?? 0} />}
           />
         ) : live ? (
@@ -104,9 +121,11 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
 
         {note && !live ? <CheckNote text={note} /> : null}
 
-        {answer.status === "stopped" ? (
+        {unchecked ? <UncheckedNote stopped={answer.status === "stopped"} /> : null}
+
+        {answer.status === "stopped" && !unchecked ? (
           <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-muted">
-            <Square className="size-3" aria-hidden /> Stopped — this answer may be incomplete.
+            <Square className="size-3" aria-hidden /> Stopped before an answer arrived.
           </p>
         ) : null}
 

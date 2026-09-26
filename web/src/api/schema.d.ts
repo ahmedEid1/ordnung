@@ -1140,28 +1140,6 @@ export interface components {
             /** Drafts */
             drafts: components["schemas"]["Draft"][];
         };
-        /** ChatMessage */
-        ChatMessage: {
-            /** Id */
-            id: string;
-            /** Thread Id */
-            thread_id: string;
-            /**
-             * Role
-             * @enum {string}
-             */
-            role: "user" | "assistant";
-            /** Content */
-            content: string;
-            /** Citations */
-            citations: components["schemas"]["SuggestionRef"][];
-            /** Tool Calls */
-            tool_calls: {
-                [key: string]: unknown;
-            }[];
-            /** Created At */
-            created_at: string;
-        };
         /**
          * CitationRef
          * @description A validated citation as sent to the UI with the final answer.
@@ -2787,6 +2765,11 @@ export interface components {
             /** Error */
             error?: string | null;
             /**
+             * Note
+             * @description what the answer check left out or quoted (done); shown apart from the text
+             */
+            note?: string | null;
+            /**
              * Citations
              * @description validated citations (done)
              */
@@ -2883,6 +2866,36 @@ export interface components {
             type: "document" | "item" | "contract" | "party" | "case" | "draft";
             /** Id */
             id: string;
+        };
+        /**
+         * ThreadMessage
+         * @description A stored question or answer; an answer's check note is split off its text into ``note``.
+         */
+        ThreadMessage: {
+            /** Id */
+            id: string;
+            /** Thread Id */
+            thread_id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Content */
+            content: string;
+            /** Citations */
+            citations: components["schemas"]["SuggestionRef"][];
+            /** Tool Calls */
+            tool_calls: {
+                [key: string]: unknown;
+            }[];
+            /** Created At */
+            created_at: string;
+            /**
+             * Note
+             * @description what the answer check left out or quoted; shown apart from the text
+             */
+            note: string | null;
         };
         /** TimelineEntry */
         TimelineEntry: {
@@ -4556,7 +4569,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChatMessage"][];
+                    "application/json": components["schemas"]["ThreadMessage"][];
                 };
             };
             /** @description Validation Error */

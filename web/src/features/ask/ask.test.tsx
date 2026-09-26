@@ -267,7 +267,7 @@ describe("citation targets", () => {
 describe("stored conversation", () => {
   it("pairs stored questions with their answers, keeping trace and citations", () => {
     const msgs: ChatMessage[] = [
-      { id: "m1", thread_id: "t", role: "user", content: "Q1", citations: [], tool_calls: [], created_at: "" },
+      { id: "m1", thread_id: "t", role: "user", content: "Q1", citations: [], tool_calls: [], created_at: "", note: null },
       {
         id: "m2",
         thread_id: "t",
@@ -276,8 +276,9 @@ describe("stored conversation", () => {
         citations: [{ type: "document", id: "doc_a" }],
         tool_calls: [{ name: "search", input: { query: "x" }, label: "Searched", result: "Found 1 letter" }],
         created_at: "",
+        note: null,
       },
-      { id: "m3", thread_id: "t", role: "user", content: "Q2", citations: [], tool_calls: [], created_at: "" },
+      { id: "m3", thread_id: "t", role: "user", content: "Q2", citations: [], tool_calls: [], created_at: "", note: null },
     ];
     const turns = turnsFromHistory(msgs);
     expect(turns).toHaveLength(1);

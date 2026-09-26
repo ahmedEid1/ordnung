@@ -3,8 +3,11 @@
  *
  * Event order: `tool_use` (the backend adds a human label in `text`) → `tool_result` (a short
  * summary in `text`; results arrive in call order) → `text` deltas → `done` (the **checked** answer
- * text, which replaces the streamed deltas, plus the validated citations and the stored ids) or
- * `error`. {@link accumulate} is a pure reducer so the whole flow is unit-testable.
+ * text, which replaces the streamed deltas, the check's `note`, the validated citations and the
+ * stored ids) or `error`. {@link accumulate} is a pure reducer so the whole flow is unit-testable.
+ *
+ * The note comes only from the `done` event's own field (or a stored message's `note`), never from
+ * the answer text: a model can write "Checked by Ordnung:" too (ADR 0008).
  */
 import type { StreamEvent } from "@/api/types";
 import type { CitationRef } from "./citations";
@@ -25,6 +28,8 @@ export interface ToolStep {
 export interface AnswerState {
   status: TurnStatus;
   text: string;
+  /** what Ordnung's answer check left out or quoted (`done`), shown under the answer */
+  note: string | null;
   tools: ToolStep[];
   citations: CitationRef[];
   messageId: string | null;
@@ -35,6 +40,7 @@ export interface AnswerState {
 export const EMPTY_ANSWER: AnswerState = {
   status: "streaming",
   text: "",
+  note: null,
   tools: [],
   citations: [],
   messageId: null,
@@ -78,6 +84,7 @@ export function accumulate(state: AnswerState, ev: StreamEvent): AnswerState {
         status: "done",
         // the checked answer replaces the streamed deltas (unsupported sentences removed)
         text: typeof ev.text === "string" && ev.text.trim() ? ev.text : state.text,
+        note: ev.note?.trim() || null,
         tools: state.tools.map((t) => (t.done ? t : { ...t, done: true })),
         citations: (ev.citations as CitationRef[] | undefined) ?? [],
         messageId: ev.message_id ?? state.messageId,

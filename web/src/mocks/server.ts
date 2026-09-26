@@ -334,7 +334,7 @@ function askStream(ctx: Ctx): Response {
   const q = question.toLowerCase();
   const rec = RECORDED.find((r) => r.question.toLowerCase() === q) ?? RECORDED.find((r) => r.match.some((group) => group.every((w) => q.includes(w))));
   const now = nowTs();
-  db.state.chat.push({ id: newId("msg"), thread_id: threadId, role: "user", content: question, citations: [], tool_calls: [], created_at: now });
+  db.state.chat.push({ id: newId("msg"), thread_id: threadId, role: "user", content: question, citations: [], tool_calls: [], created_at: now, note: null });
   const enc = new TextEncoder();
   const signal = ctx.signal;
   const speed = ctx.opts.latency ?? 1;
@@ -350,7 +350,7 @@ function askStream(ctx: Ctx): Response {
         controller.enqueue(enc.encode(": connected\n\n"));
         await sleep(250 * speed, signal);
         // like the real API: the model's words stream as they come (`raw`), then `done` carries the
-        // checked answer, which may leave a sentence out and add Ordnung's note
+        // checked answer, which may leave a sentence out, and Ordnung's note in its own field
         const text = rec?.text ?? FALLBACK_ANSWER;
         const streamed = rec?.raw ?? text;
         for (const t of rec?.tools ?? []) {
@@ -374,8 +374,9 @@ function askStream(ctx: Ctx): Response {
           citations: rec?.citations ?? [],
           tool_calls: (rec?.tools ?? []).map((t) => ({ name: t.name, input: t.input, result: t.result })),
           created_at: nowTs(),
+          note: rec?.note ?? null,
         } satisfies ChatMessage);
-        send({ type: "done", text, message_id: messageId, thread_id: threadId, citations: citationRefs(db, rec?.citations ?? []) });
+        send({ type: "done", text, note: rec?.note ?? null, message_id: messageId, thread_id: threadId, citations: citationRefs(db, rec?.citations ?? []) });
       } catch (err) {
         send({ type: "error", error: err instanceof Error ? err.message : "The answer was interrupted." });
       } finally {

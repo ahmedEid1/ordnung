@@ -115,13 +115,24 @@ describe("mock dataset", () => {
     const events = (await res.text())
       .split("\n\n")
       .filter((block) => block.startsWith("data: "))
-      .map((block) => JSON.parse(block.slice(6)) as { type: string; text?: string; citations?: { id: string; label: string | null }[] });
+      .map(
+        (block) =>
+          JSON.parse(block.slice(6)) as { type: string; text?: string; note?: string | null; citations?: { id: string; label: string | null }[] },
+      );
     const streamed = events.filter((e) => e.type === "text").map((e) => e.text).join("");
     const done = events.find((e) => e.type === "done")!;
-    expect(streamed).toContain("Post it by Thu 15 Oct to be safe.");
-    expect(done.text).not.toContain("Post it by");
+    // the model's own arithmetic is left out; the send-by date is the objection to-do's own
+    expect(streamed).toContain("you could ask for more time until 4 Nov.");
+    expect(done.text).not.toContain("4 Nov");
+    expect(done.text).toContain("post it by **Thu 15 Oct** to be safe.");
     expect(done.text).toContain("**“324,00 €”**");
-    expect(done.text).toMatch(/\n\nChecked by Ordnung: 1 sentence was left out/);
+    // the note travels in its own field, like the API's
+    expect(done.text).not.toContain("Checked by Ordnung");
+    expect(done.note).toMatch(/^1 sentence was left out: its date or amount is not in the record it cites\./);
+    const threadId = (done as { thread_id?: string }).thread_id;
+    const history = await s.handle("GET", `/chat/${threadId}`, new URLSearchParams(), undefined);
+    const thread = (await history.json()) as { role: string; note: string | null }[];
+    expect(thread.map((m) => m.note)).toEqual([null, done.note]);
     // the tax letter waits unopened in New mail: its records are labelled from the tray, never by id
     expect(done.citations!.map((c) => c.label)).toEqual([
       "Finanzamt Musterstadt",

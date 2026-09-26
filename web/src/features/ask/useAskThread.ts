@@ -54,6 +54,7 @@ export function turnsFromHistory(messages: ChatMessage[]): AskTurn[] {
       answer: {
         status: "done",
         text: m.content,
+        note: m.note ?? null,
         tools: toolStepsFromStored(m.tool_calls ?? []),
         citations: (m.citations ?? []) as CitationRef[],
         messageId: m.id,
