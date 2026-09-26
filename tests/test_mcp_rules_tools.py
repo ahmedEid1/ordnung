@@ -44,6 +44,7 @@ from ordnung.money.iban import INVALID_IBAN_ADVICE
 from ordnung.rules import LAST_CHECKED, calendar_de
 from ordnung.rules.deadlines import (
     HOME_HOLIDAY,
+    PRIVATE_SENDER_DATED_WARNING,
     PRIVATE_SENDER_WARNING,
     REGION_EARLIER,
     REGION_UNKNOWN,
@@ -365,11 +366,19 @@ def test_a_sender_without_deemed_delivery_counts_from_arrival(tools: RulesTools)
         payment, document_date="2026-09-14", sender_kind="landlord", received_date="2026-09-16"
     )
     assert arrived["due_date"] == "2026-09-30" and arrived["confidence"] == "high"
-    # a delivery rule on a period counted from the letter's date is dropped too
+    # a delivery rule on a period counted from the letter's date is dropped too — and that period keeps
+    # the letter's date: it never claims to run from arrival, and an arrival day given is not used
     dated = {**payment, "anchor": "document_date"}
-    assert tools.compute_deadline(dated, document_date="2026-09-14", sender_kind="company")["due_date"] == (
-        "2026-09-28"
-    )
+    for received in (None, "2026-09-16"):
+        invoice = tools.compute_deadline(
+            dated, document_date="2026-09-14", sender_kind="company", received_date=received
+        )
+        assert invoice["due_date"] == "2026-09-28"
+        assert PRIVATE_SENDER_DATED_WARNING in invoice["warnings"]
+        assert PRIVATE_SENDER_WARNING not in invoice["warnings"]
+        assert invoice["steps"][0]["rule_id"] == "private_sender_no_delivery"
+        assert invoice["assumed"]["received_date_not_used"] == received
+        assert not _hint(invoice, "Pass received_date")
     # an unknown sender keeps the engine's deemed delivery and is asked for — "other" is the app's
     # "don't know", not "no authority"
     unknown = tools.compute_deadline(payment, document_date="2026-09-14")
@@ -416,6 +425,43 @@ def test_an_unknown_or_misfiled_sender_gets_the_apps_date_not_a_later_one() -> N
     # a company named with an administrative remedy is an authority's decision too
     company = tools.compute_deadline(spec, sender_kind="company", **args)
     assert company["due_date"] == "2026-04-07" and PRIVATE_SENDER_WARNING not in company["warnings"]
+
+
+def test_a_firms_own_einspruch_window_counts_from_arrival() -> None:
+    """Reviewer repro: a parking firm filed as a company calls its complaint window an "Einspruch". Kind
+    and remedy word disagree; without a notice naming an administrative route the period runs from
+    arrival — the earlier start in either reading — not from a deemed delivery 3 days after the letter."""
+    tools = at("2026-09-20")
+    spec = {
+        **POSTED,
+        "amount": 14,
+        "unit": "days",
+        "text": "Gegen diese Vertragsstrafe können Sie innerhalb von 14 Tagen Einspruch einlegen.",
+    }
+    args = {
+        "document_date": "2026-09-14",
+        "sender_kind": "company",
+        "sender_name": "Park & Control GmbH",
+        "remedy_type": "einspruch",
+        "region": "NW",
+    }
+    fine = tools.compute_deadline(spec, **args)
+    assert fine["due_date"] == "2026-09-28"  # not Fri 2 Oct (the letter + 3 days + 14)
+    assert (
+        PRIVATE_SENDER_WARNING in fine["warnings"] and fine["steps"][0]["rule_id"] == "private_sender_arrival"
+    )
+    assert "a firm's own 'Einspruch' window" in " ".join(fine["hints"])
+    assert fine == tools.compute_deadline(spec, **{k: v for k, v in args.items() if k != "remedy_type"})
+    # an Einspruch whose notice names an administrative act keeps the deemed delivery
+    tax = tools.compute_deadline(
+        {
+            **spec,
+            "text": "Gegen diesen Bescheid ist der Einspruch innerhalb eines Monats nach Bekanntgabe gegeben.",
+        },
+        **args,
+    )
+    assert PRIVATE_SENDER_WARNING not in tax["warnings"]
+    assert any(step["rule_id"] == "posting_day" for step in tax["steps"])
 
 
 def test_a_private_law_klage_or_widerspruch_keeps_a_private_sender_private() -> None:
@@ -1002,6 +1048,29 @@ def test_check_iban(tools: RulesTools) -> None:
     assert "if a letter or e-mail says the account has changed" in good["note"]
     foreign = tools.check_iban("BR15 0000 0000 0000 1093 2840 814P 2")
     assert foreign["valid"] is True and foreign["country"] == {"code": "BR", "name": "Brazil"}
+    assert good["note"] == rules_tools.IBAN_NOTE and tools.check_iban("FR14 2004 1010 0505 0001 3M02 606")[
+        "note"
+    ] == (rules_tools.IBAN_NOTE)
+
+
+@pytest.mark.parametrize(
+    ("iban", "country"),
+    [
+        ("GB82 WEST 1234 5698 7654 32", "United Kingdom"),
+        ("AE07 0331 2345 6789 0123 456", "United Arab Emirates"),
+        ("CH93 0076 2011 6238 5295 7", "Switzerland"),
+        ("NO93 8601 1117 947", "Norway"),
+        ("BR15 0000 0000 0000 1093 2840 814P 2", "Brazil"),
+    ],
+)
+def test_check_iban_promises_no_name_check_outside_the_eu(tools: RulesTools, iban: str, country: str) -> None:
+    """Reviewer repro: the payee-name check (Empfängerüberprüfung) is EU law for EU accounts. For a UK or
+    UAE account — where scams often route money — the note must not suggest the bank will warn."""
+    result = tools.check_iban(iban)
+    assert result["valid"] is True and result["country"]["name"] == country
+    assert "the bank also checks" not in result["note"]
+    assert f"This IBAN is from a country outside the EU ({country})" in result["note"]
+    assert "may not happen" in result["note"] and "says nothing about who owns the account" in result["note"]
     # two letters that are no IBAN country are not "well-formed", however the checksum adds up
     for made_up in ("ZZ22 3704 0044 0532 0130 00", "US88 3704 0044 0532 0130 00"):
         result = compact(tools.check_iban(made_up))

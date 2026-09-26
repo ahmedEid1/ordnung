@@ -19,6 +19,7 @@ import pytest
 from ordnung.models import DateSpec
 from ordnung.rules.deadlines import (
     ASSUMED_RECEIPT_WARNING,
+    PRIVATE_SENDER_DATED_WARNING,
     PRIVATE_SENDER_WARNING,
     RuleContext,
     compute_due,
@@ -1000,8 +1001,46 @@ def test_a_private_senders_letter_counts_from_its_arrival() -> None:
 def test_a_private_sender_drops_a_delivery_rule_on_the_letters_date() -> None:
     spec = notice_spec(anchor="document_date", amount=14, unit="days", nature="payment")
     receipt = compute_due(spec, ctx(document_date="2026-09-01", private_sender=True))
-    assert receipt.due_date == "2026-09-15" and PRIVATE_SENDER_WARNING in receipt.warnings
+    assert receipt.due_date == "2026-09-15" and PRIVATE_SENDER_DATED_WARNING in receipt.warnings
     assert receipt.confidence == "high"  # the letter's own date, nothing assumed
+
+
+@pytest.mark.parametrize("received", [None, "2026-09-16"])
+def test_a_private_senders_period_from_a_date_it_gives_never_claims_to_count_from_arrival(
+    received: str | None,
+) -> None:
+    """Reviewer repro: "14 days from the invoice date" read with a delivery rule. The rule goes and the
+    invoice date stays, so the receipt must not say the period runs from arrival, nor carry the rule id
+    that makes the app ask for the arrival day — an answer it would then ignore."""
+    spec = DateSpec(
+        type="relative",
+        anchor="document_date",
+        amount=14,
+        unit="days",
+        delivery_rule="de_admin_post",
+        nature="payment",
+        text="Bitte zahlen Sie innerhalb von 14 Tagen ab Rechnungsdatum.",
+    )
+    arrival = {"received_date": received, "received_confirmed": True} if received else {}
+    receipt = compute_due(
+        spec, ctx(today="2026-09-20", document_date="2026-09-14", private_sender=True, **arrival)
+    )
+    assert receipt.due_date == "2026-09-28" and receipt.confidence == "high"
+    assert receipt.warnings == [PRIVATE_SENDER_DATED_WARNING]
+    assert (
+        "private_sender_no_delivery" in receipt.rule_ids and "private_sender_arrival" not in receipt.rule_ids
+    )
+    assert receipt.steps[0].label == (
+        "Not an authority's letter, so no delivery days: the period runs from the letter's date (Mon 14 Sep 2026)"
+    )
+    assert receipt.steps[0].citation == "§ 187 Abs. 1 BGB"
+    # a period from another date the letter names: that date, whenever the letter arrived
+    named = spec.model_copy(update={"anchor": "explicit_date", "anchor_date": "2026-09-10"})
+    other = compute_due(
+        named, ctx(today="2026-09-20", document_date="2026-09-14", private_sender=True, **arrival)
+    )
+    assert other.due_date == "2026-09-24" and other.warnings == [PRIVATE_SENDER_DATED_WARNING]
+    assert other.steps[0].rule_id == "private_sender_no_delivery"
 
 
 def test_a_remedy_statute_keeps_deemed_delivery_for_a_sender_filed_as_private() -> None:

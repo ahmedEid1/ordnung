@@ -56,6 +56,13 @@ PRIVATE_SENDER_WARNING: Final = (
     "is only for authorities' letters, and this sender is not an authority. The period runs from the "
     "day the letter arrived."
 )
+#: A private sender's period counted from the letter's own date or another date it names, read with a
+#: delivery rule: the rule goes, the date stays — the arrival day plays no part, so it is not asked for.
+PRIVATE_SENDER_DATED_WARNING: Final = (
+    "No delivery days were added: the rule that a letter counts as delivered a few days after posting "
+    "is only for authorities' letters, and this sender is not an authority. The period runs from the "
+    "date the letter gives, not from the day it arrived."
+)
 #: The words that mark a warning's situation, shared with the rules tools, whose hints name the argument
 #: that would settle it (``ordnung.assistant.rules_tools.deadline_hints``): reword them here, not there.
 REGION_UNKNOWN: Final = "Holiday region unknown"
@@ -114,7 +121,8 @@ class RuleContext:
     debtor's home (§§ 269, 270 Abs. 4, 193 BGB; research ``bgb_271_286_2_zahlungsziel_rechnung``).
     ``private_sender`` says the sender is known not to be an authority
     (:func:`ordnung.rules.delivery.is_private_sender`): its letter has no deemed delivery, so a period
-    from delivery runs from the day it arrived (:func:`from_arrival`).
+    from delivery runs from the day it arrived, and one from a date the letter gives runs from that
+    date (:func:`from_arrival`).
     """
 
     today: date
@@ -557,9 +565,11 @@ def from_arrival(spec: DateSpec, ctx: RuleContext) -> DateSpec:
     For ``ctx.private_sender`` (and a relative period whose letter names none of the remedy
     statutes, which only authorities' decisions have), ``anchor: deemed_delivery`` becomes
     ``receipt`` — a posting day in ``anchor_date`` is no arrival day, so it is dropped — and a
-    delivery rule on a period from the letter's or another date is dropped. Without a confirmed
-    arrival day the period then runs from the letter's date, never later than with deemed delivery.
-    Anything else is returned unchanged (the same object), so callers can tell whether it applied.
+    delivery rule on a period from the letter's or another date is dropped: that period keeps its
+    date (the letter says it runs from there), so its arrival day is never asked for. Without a
+    confirmed arrival day a period from arrival runs from the letter's date, never later than with
+    deemed delivery. Anything else is returned unchanged (the same object), so callers can tell
+    whether it applied (and by the anchor, which of the two).
     """
     if not ctx.private_sender or spec.type != "relative" or _statute(spec) is not None:
         return spec
@@ -713,9 +723,11 @@ def _compute_relative(
     if abs(amount) > MAX_PERIOD[unit]:
         return _no_date(trace, ctx, f"A period of {period} can't be right — please check the letter.")
     counted = from_arrival(spec, ctx)
-    arrival_only, spec = counted is not spec, counted
-    if arrival_only:
-        trace.warnings.append(PRIVATE_SENDER_WARNING)
+    no_delivery, spec = counted is not spec, counted
+    # a period from delivery now runs from arrival (the app asks for that day); one from a date stays there
+    from_receipt = no_delivery and spec.anchor == "receipt"
+    if no_delivery:
+        trace.warnings.append(PRIVATE_SENDER_WARNING if from_receipt else PRIVATE_SENDER_DATED_WARNING)
     anchor = _resolve_anchor(spec, ctx, trace)
     if anchor is None:
         return _receipt(
@@ -725,11 +737,11 @@ def _compute_relative(
             summary="No date could be computed: the start date is missing.",
             region=place,
         )
-    if arrival_only:
+    if no_delivery:
         trace.step(
             f"Not an authority's letter, so no delivery days: the period runs from {anchor.phrase}",
             anchor.day,
-            "private_sender_arrival",
+            "private_sender_arrival" if from_receipt else "private_sender_no_delivery",
         )
     statute, statutory_periods = _statute(spec) or (None, ())
     # Fines and penal orders run from formal service (yellow envelope, § 4 VwZG), never from the

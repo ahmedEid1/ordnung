@@ -145,6 +145,18 @@ IBAN_COUNTRIES: dict[str, IbanCountry] = {
     "YE": IbanCountry("Yemen", 30),
 }
 
+#: The EU member states' IBAN country codes. The payee-name check before a euro transfer
+#: (Empfängerüberprüfung, Art. 5c Reg. (EU) No 260/2012 as amended by Reg. (EU) 2024/886, from
+#: 9 October 2025) is EU law for accounts at payment service providers in the Union; an account
+#: elsewhere — the EEA's EFTA states, Switzerland, the UK or further away — may get none.
+#: Territories using a member's IBAN (the French overseas departments: FR; Åland: FI) count as it.
+EU_IBAN_COUNTRIES: frozenset[str] = frozenset(
+    {
+        "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GR", "HR", "HU",
+        "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK",
+    }
+)  # fmt: skip
+
 
 @dataclass(frozen=True)
 class IbanCheck:

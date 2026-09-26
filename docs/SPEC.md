@@ -310,7 +310,9 @@ and "enter the envelope date" are the app's); how to call again is a hint. Holid
 a Land are the engine's warning, as in the app. `german_holidays(year, region?)`;
 `add_working_days(start, days, day_type, region?)` (its disclaimer says it is a calendar count, not
 a deadline); `check_iban(iban)` (an invalid one gets the app's advice: misprinted, misread or fake —
-ask the sender before paying; a printed `IBAN:` label and
+ask the sender before paying; a valid one says it tells nothing about the owner, and mentions the
+bank's payee-name check before a euro transfer only for an EU account — elsewhere it says there may
+be none (Reg. (EU) 2024/886); a printed `IBAN:` label and
 invisible characters ignored; country from the full SWIFT registry — any other two letters are not
 an IBAN — registered length, mod-97, bank code where the format shows it; pure code in
 `money/iban.py`). Unknown tool arguments are refused and argument errors are plain words. "Today" is
@@ -582,12 +584,15 @@ federal authorities (VwVfG § 41) and social law (SGB X § 37) = 4 days for item
 2025-01-01; Land authorities (Land VwVfG) use the verified value per Land where known, otherwise the
 conservative earlier count (3 days) with `medium` confidence. It is a rule for authorities only: a
 sender of a private kind (company, landlord, bank, insurer, employer …; `rules.is_private_sender`)
-whose letter shows no administrative act gets none — its period runs from the day the letter arrived
-(§ 130 BGB; the letter's date until the person confirms the day, `low`, and the app asks for it). A
-letter shows an administrative act when it names an *Einspruch* or a remedy statute, or a
+whose letter shows no administrative act gets none — a period from delivery runs from the day the
+letter arrived (§ 130 BGB; the letter's date until the person confirms the day, `low`, and the app asks
+for it), and one the letter counts from its own date or another date it names runs from that date
+without delivery days (`private_sender_no_delivery`; the arrival day plays no part and is not asked
+for). A letter shows an administrative act when it names a remedy statute, or an *Einspruch*,
 *Widerspruch* or *Klage* whose notice names an administrative route (a *Bescheid* or its
 *Bekanntgabe*, an administrative, social or finance court, VwGO/SGG/FGO/AO/SGB/VwVfG) — a
-Kündigungsschutzklage to the labour court (§ 4 KSchG) or a Widerspruch under the BGB or VVG does not.
+Kündigungsschutzklage to the labour court (§ 4 KSchG), a Widerspruch under the BGB or VVG, or a
+firm's own "Einspruch" window (a private parking operator's, say) does not.
 An unknown sender (kind `other`) keeps the earliest plausible deemed delivery.
 
 **Contracts — regimes.** `compute_contract` dispatches on `regime` derived by code from category,

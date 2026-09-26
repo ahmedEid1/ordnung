@@ -139,6 +139,14 @@ describe("what needs the person's eyes", () => {
     expect(needsArrivalDate(authority, { received_date: null })).toBe(false);
   });
 
+  it("does not ask for the arrival date when a private sender's period runs from a date the letter gives", () => {
+    // "14 days from the invoice date" read with a delivery rule: the rule goes, the invoice date stays,
+    // so the arrival day would change nothing (the engine says private_sender_no_delivery)
+    const spec = { type: "relative" as const, date: null, time: null, anchor: "document_date" as const, anchor_date: null, amount: 14, unit: "days" as const, delivery_rule: "de_admin_post" as const, shift_rule: "auto" as const, nature: "payment" as const, legal_basis: null, text: "" };
+    const invoice = makeItem({ date_spec: spec, computation: makeReceipt({ rule_ids: ["private_sender_no_delivery", "bgb_187_1"] }) });
+    expect(needsArrivalDate(invoice, { received_date: null })).toBe(false);
+  });
+
   it("finds the active scam warning", () => {
     expect(scamSuggestion(makeDetail({ suggestions: [makeSuggestion({ kind: "saving" })] }))).toBeNull();
     expect(scamSuggestion(makeDetail({ suggestions: [makeSuggestion({ kind: "scam" })] }))?.kind).toBe("scam");

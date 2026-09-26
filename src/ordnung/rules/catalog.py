@@ -327,6 +327,16 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
+        "private_sender_no_delivery",
+        "Letters from companies: no delivery days",
+        "§ 187 Abs. 1 BGB",
+        "Deemed delivery (the 4-day rule) applies only to letters from authorities. When a company's, "
+        "landlord's or other private sender's letter counts a period from its own date or another date it "
+        "names, no delivery days are added: the period runs from that date, whenever the letter arrived.",
+        f"{_GII}/bgb/__187.html",
+        None,
+    ),
+    (
         "early_receipt",
         "Arriving early changes nothing",
         "BFH X R 96/98; BSG B 14 AS 12/09 R; BVerwG 6 C 3.22",

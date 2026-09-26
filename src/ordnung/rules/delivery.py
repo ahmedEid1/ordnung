@@ -118,14 +118,14 @@ PRIVATE_KINDS: frozenset[str] = frozenset(
     }
 )
 
-#: *Einspruch* lies only against an authority's or a court's decision: a letter that names one is no
-#: private sender's, whatever its sender was filed as.
-_PUBLIC_REMEDIES = frozenset({"einspruch"})
-#: *Widerspruch* and *Klage* lie against an administrative act (a statutory health insurer filed as
-#: ``insurer``) but also in private law: a tenant's Widerspruch (§ 574 BGB), an insurance contract's
-#: (§ 5 VVG), the Kündigungsschutzklage against an employer (§ 4 KSchG). They show an authority's
-#: decision only with a remedy notice that says so (:data:`_ADMINISTRATIVE_ROUTE`).
-_ROUTE_REMEDIES = frozenset({"widerspruch", "klage"})
+#: *Einspruch*, *Widerspruch* and *Klage* lie against an administrative act (a tax office or a statutory
+#: health insurer filed as ``company`` or ``insurer``) but also in private law: a tenant's Widerspruch
+#: (§ 574 BGB), an insurance contract's (§ 5 VVG), the Kündigungsschutzklage against an employer
+#: (§ 4 KSchG), the Einspruch against a court's Vollstreckungsbescheid (§ 700 ZPO) — and firms such as
+#: private parking operators call their own complaint window an "Einspruch". A sender filed as private
+#: that names one is in doubt: it shows an authority's decision only with a remedy notice that says so
+#: (:data:`_ADMINISTRATIVE_ROUTE`); otherwise the period runs from arrival, the earlier start.
+_ROUTE_REMEDIES = frozenset({"einspruch", "widerspruch", "klage"})
 #: A remedy notice that shows an administrative act: it names an administrative, social or finance
 #: court or the codes they apply, a *Bescheid* (not a court's Mahn- or Vollstreckungsbescheid), its
 #: *Bekanntgabe* or a *Verwaltungsakt*. Private law says *Zugang*, and its courts are the Amts-,
@@ -176,12 +176,12 @@ def is_private_sender(
     from a company, a landlord, a bank or an employer takes effect when it arrives (§ 130 Abs. 1 BGB).
     True only for a :data:`PRIVATE_KINDS` sender that ``scope`` (:func:`scope_for_party_kind`, from
     its kind, name and remedy notice) does not make an authority and whose letter shows no
-    administrative act: it names no *Einspruch*, and a *Widerspruch* or *Klage* only without a remedy
+    administrative act: it names an *Einspruch*, *Widerspruch* or *Klage* only without a remedy
     notice (``remedy_text``) naming an administrative route — an employer's letter naming the
-    Kündigungsschutzklage stays private. An unknown sender (``None``, ``other``) is not known to be
-    private: it keeps the earliest plausible deemed delivery.
+    Kündigungsschutzklage, or a parking firm's "Einspruch" window, stays private. An unknown sender
+    (``None``, ``other``) is not known to be private: it keeps the earliest plausible deemed delivery.
     """
-    if scope is not None or kind not in PRIVATE_KINDS or remedy_type in _PUBLIC_REMEDIES:
+    if scope is not None or kind not in PRIVATE_KINDS:
         return False
     return remedy_type not in _ROUTE_REMEDIES or not _ADMINISTRATIVE_ROUTE.search(remedy_text or "")
 

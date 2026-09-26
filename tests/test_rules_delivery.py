@@ -231,7 +231,9 @@ _BESCHEID = "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe 
         (None, None, None, None, False),
         # an authority's decision whatever it was filed as: its remedy notice says so ...
         ("insurer", "AOK Nordost", "widerspruch", _BESCHEID, False),
-        ("company", None, "einspruch", None, False),  # Einspruch has no private-law use
+        ("company", None, "einspruch", "Gegen diesen Bescheid ist der Einspruch gegeben.", False),
+        ("company", None, "einspruch", "Einspruch beim Finanzamt, § 347 AO", False),
+        ("company", "Familienkasse Muster-Mitte", "einspruch", None, False),  # tax law by its name
         ("employer", "Land Berlin", "klage", "Klage beim Verwaltungsgericht Berlin (§ 74 VwGO)", False),
         ("company", None, "klage", "Klage vor dem Finanzgericht", False),
         ("company", None, "widerspruch", "nach Zustellung des Widerspruchsbescheids", False),
@@ -255,6 +257,17 @@ _BESCHEID = "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe 
             True,
         ),
         ("company", None, "widerspruch", "Widerspruch gegen den Vollstreckungsbescheid", True),
+        ("company", None, "einspruch", "Einspruch gegen den Vollstreckungsbescheid (§ 700 ZPO)", True),
+        # ... and firms call their own complaint window an "Einspruch": a sender filed as private that
+        # names one without an administrative route is in doubt, and arrival is the earlier start
+        ("company", None, "einspruch", None, True),
+        (
+            "company",
+            "Park & Control GmbH",
+            "einspruch",
+            "Gegen diese Vertragsstrafe können Sie innerhalb von 14 Tagen Einspruch einlegen.",
+            True,
+        ),
         # ... or its name makes it a social agency
         ("insurer", "Deutsche Rentenversicherung Bund", None, None, False),
         ("authority", None, None, None, False),

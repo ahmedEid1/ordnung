@@ -114,7 +114,8 @@ export function needsCheck(i: Item): boolean {
  * The period starts when the letter arrived (`receipt` anchor) — or the engine counted it from the
  * arrival because the sender is no authority (`private_sender_arrival`, § 130 BGB), whatever anchor
  * it was read with — and we don't know that date yet: the rules engine fell back to the letter date
- * (earliest possible) until the person tells us. The computation decides, not the stored reading.
+ * (earliest possible) until the person tells us. The computation decides, not the stored reading: a
+ * private sender's period from a date the letter gives (`private_sender_no_delivery`) never asks.
  */
 export function needsArrivalDate(i: Item, doc: Pick<Document, "received_date">): boolean {
   if (!isOpenItem(i)) return false;

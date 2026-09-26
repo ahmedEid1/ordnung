@@ -21,9 +21,10 @@ Policies:
   (:func:`ordnung.rules.scope_for_party_kind`, :func:`ordnung.rules.is_private_sender`); the spec's
   own words (``text``, ``legal_basis``) stand in for the letter's remedy notice. So a company's,
   landlord's or employer's letter runs from its arrival even when a model asks for deemed delivery
-  (the engine's rule, :func:`ordnung.rules.deadlines.from_arrival`) — naming a *Klage* or
-  *Widerspruch* changes that only with a notice naming an administrative route — and an unknown
-  sender (none, ``other``) keeps the earliest plausible deemed delivery. Missing facts are never guessed: the engine uses the
+  (the engine's rule, :func:`ordnung.rules.deadlines.from_arrival`; a period it counts from its own
+  date or another it names keeps that date) — naming an *Einspruch*, *Klage* or *Widerspruch*
+  changes that only with a notice naming an administrative route — and an unknown sender (none,
+  ``other``) keeps the earliest plausible deemed delivery. Missing facts are never guessed: the engine uses the
   earliest plausible date and says so, and ``hints`` name the argument that would settle it (and
   never one that was given).
 * **Formal service.** A letter served in a yellow envelope has no deemed delivery; the spec help
@@ -122,13 +123,24 @@ DISCLAIMER_TEMPLATE = (
     "law as of {checked}), not reviewed by a lawyer. Check the result against the letter and get "
     "advice when a lot is at stake."
 )
-IBAN_NOTE = (
+IBAN_ADVICE = (
     "A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or "
     "the sender's official website; if a letter or e-mail says the account has changed, confirm that "
-    "through contact details you already know before paying. For a euro transfer the bank also "
-    "checks the payee's name against the account before it is sent (Empfängerüberprüfung, required "
-    "since 9 October 2025): if it reports no match or only a close one, do not pay until you have "
-    "confirmed the account."
+    "through contact details you already know before paying."
+)
+#: The note on a well-formed IBAN of an EU account (:data:`ordnung.money.iban.EU_IBAN_COUNTRIES`),
+#: where the law has the bank check the payee's name before a euro transfer.
+IBAN_NOTE = (
+    f"{IBAN_ADVICE} For a euro transfer to an account in the EU the bank also checks the payee's name "
+    "against the account before it is sent (Empfängerüberprüfung, required since 9 October 2025): if "
+    "it reports no match or only a close one, do not pay until you have confirmed the account."
+)
+#: The note on any other well-formed IBAN: no name check to rely on (``{country}`` is its country).
+IBAN_NOTE_OUTSIDE_EU = (
+    f"{IBAN_ADVICE} This IBAN is from a country outside the EU ({{country}}): the check of the payee's "
+    "name that EU law requires before a euro transfer (Empfängerüberprüfung, since 9 October 2025) may "
+    "not happen for it, so the bank not warning you says nothing about who holds the account — confirm "
+    "it through contact details you already know."
 )
 #: The deadline disclaimer does not fit a calendar or a checksum: those tools say what they are.
 HOLIDAYS_DISCLAIMER_TEMPLATE = (
@@ -488,13 +500,19 @@ class RulesTools:
 
     def check_iban(self, iban: str) -> dict[str, Any]:
         """Country, length, checksum and (where known) the bank code an IBAN carries."""
-        from ordnung.money.iban import INVALID_IBAN_ADVICE, grouped, inspect_iban
+        from ordnung.money.iban import EU_IBAN_COUNTRIES, INVALID_IBAN_ADVICE, grouped, inspect_iban
 
         if not isinstance(iban, str) or not iban.strip():
             raise RulesToolError("iban must be the IBAN as printed, e.g. DE89 3704 0044 0532 0130 00")
         if len(iban) > MAX_IBAN_INPUT:
             raise RulesToolError(f"iban is too long: an IBAN has at most 34 characters (got {len(iban)})")
         check = inspect_iban(iban)
+        if not check.valid:
+            note = INVALID_IBAN_ADVICE
+        elif check.country_code in EU_IBAN_COUNTRIES:
+            note = IBAN_NOTE
+        else:
+            note = IBAN_NOTE_OUTSIDE_EU.format(country=check.country)
         return {
             "iban": grouped(check.iban),
             "valid": check.valid,
@@ -507,7 +525,7 @@ class RulesTools:
             if check.branch_code
             else None,
             "account_number": check.account_number,
-            "note": IBAN_NOTE if check.valid else INVALID_IBAN_ADVICE,
+            "note": note,
             "disclaimer": IBAN_DISCLAIMER,
         }
 
@@ -889,7 +907,8 @@ def deadline_hints(
         hints.append(
             "If the letter is an authority's decision after all (a Bescheid), pass its kind (authority, "
             "tax_office, immigration_office …): its deemed-delivery rule then applies. A Klage to a labour "
-            "or civil court, or a Widerspruch under the BGB or VVG, does not make it one."
+            "or civil court, a Widerspruch under the BGB or VVG, or a firm's own 'Einspruch' window does "
+            "not make it one."
         )
     elif (
         spec.type == "relative"
