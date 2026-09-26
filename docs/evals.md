@@ -4,7 +4,7 @@
 > split `test`: 63 letters (11 phone photos,
 > 12 adversarial), 56 required items with a known date
 > (a phone photo repeats the items of the PDF it was made from).
-> LLM + rules tool was run on 2026-09-26 (live, commit `e0337cb`) on the same letters and added to this run.
+> LLM + rules tool was run on 2026-09-26 (live, commit `be9f638`) on the same letters and added to this run.
 > Do not edit by hand — change `evals/report.py` and regenerate.
 
 Ordnung's design bet ([ADR 0002](decisions/0002-llm-reads-code-computes.md)) is that the language
@@ -29,7 +29,7 @@ date. This benchmark checks the bet against three strong baselines with the *sam
 | **Ordnung** | 89.3 % [78.9–96.7] | 50/56 | 0.0 % | 10.7 % | 0.0 % | $0.0746 | 47.5 s / 51.0 s |
 | **LLM only** | 82.1 % [70.9–91.7] | 46/56 | 7.1 % | 10.7 % | 0.0 % | $0.0488 | 28.8 s / 35.1 s |
 | **LLM + rules text** | 92.9 % [83.9–100.0] | 52/56 | 0.0 % | 7.1 % | 0.0 % | $0.0454 | 28.7 s / 31.3 s |
-| **LLM + rules tool** † | 100.0 % [91.8–100.0] | 56/56 | 0.0 % | 0.0 % | 0.0 % | $0.0556 | 24.9 s / 29.9 s |
+| **LLM + rules tool** † | 100.0 % [91.8–100.0] | 56/56 | 0.0 % | 0.0 % | 0.0 % | $0.0584 | 27.5 s / 31.1 s |
 
 *Due-date accuracy*: share of required items whose final date is exactly right. *Dangerous late*:
 the predicted date is **after** the true one — the person would act too late. *Early*: before the
@@ -37,7 +37,7 @@ true date (safe, but wrong). *Missed*: the obligation was not found at all. Cost
 API-equivalent price reported by the Claude CLI; latency is the model time per letter (all calls).
 Letters without an answer: Ordnung 0 failed (no valid answer after the repair attempt) and 0 not run (infrastructure errors) of 63; LLM only 0 failed (no valid answer after the repair attempt) and 0 not run (infrastructure errors) of 63; LLM + rules text 0 failed (no valid answer after the repair attempt) and 0 not run (infrastructure errors) of 63; LLM + rules tool 0 failed (no valid answer after the repair attempt) and 0 not run (infrastructure errors) of 63. They are scored as empty answers (every item missed), not dropped.
 
-† LLM + rules tool ran on 2026-09-26, after the held-out run, against the code of that day — including the engine fix described under “After the held-out run” — so it is not held-out, and it is left out of the paired differences with Ordnung below. Compare it with Ordnung re-scored on that code, 98.2 % [94.5–100.0] (“After the held-out run”), not with the held-out Ordnung row — see “An agent with a calculator”.
+† LLM + rules tool ran on 2026-09-26, after the held-out run, against the code of that day — including the engine fix described under “After the held-out run” — so it is not held-out, and it is left out of the paired differences with Ordnung below. Compare it with Ordnung re-scored on that code, 98.2 % [94.5–100.0] (“After the held-out run”), not with the held-out Ordnung row — see “An agent with a calculator”. This is the third recording of it on this split, made after the tool descriptions, argument checks and hints were revised following a review of the earlier ones; they scored 98.2 % (55/56, 2026-09-26, commit `456be6c`); 100 % (56/56, 2026-09-26, commit `e0337cb`).
 
 Paired differences (bootstrap over the same letters; an interval that excludes 0 is a clear difference):
 
@@ -63,7 +63,7 @@ the tool results recorded when they ran.
 | **Ordnung** | 89.3 % [78.9–96.7]; late 0.0 % | 98.2 % [94.5–100.0]; late 0.0 % |
 | **LLM only** | 82.1 % [70.9–91.7]; late 7.1 % | 82.1 % [70.9–91.7]; late 7.1 % |
 | **LLM + rules text** | 92.9 % [83.9–100.0]; late 0.0 % | 92.9 % [83.9–100.0]; late 0.0 % |
-| **LLM + rules tool** | 100.0 % [91.8–100.0]; late 0.0 % | 100.0 % [91.8–100.0]; late 0.0 % |
+| **LLM + rules tool** † | n/a (recorded after the fix) | 100.0 % [91.8–100.0]; late 0.0 % |
 
 Ordnung's remaining errors after the fix:
 
@@ -109,23 +109,21 @@ trust them was its own choice.
 
 | Tool use (required items with a known date) | LLM + rules tool |
 |---|---|
-| Letters with a dated obligation where the model asked a date tool (`compute_deadline` or `add_working_days`) | 77.4 % (41/53) |
-| `compute_deadline` calls per letter with a dated obligation | 0.8 |
-| Tool calls, by tool | 92 (`add_working_days` 3, `check_iban` 35, `compute_deadline` 50, `german_holidays` 4) |
+| Letters with a dated obligation where the model asked a date tool (`compute_deadline` or `add_working_days`) | 83.0 % (44/53) |
+| `compute_deadline` calls per letter with a dated obligation | 1.0 |
+| Tool calls, by tool | 94 (`add_working_days` 3, `check_iban` 28, `compute_deadline` 58, `german_holidays` 5) |
 | Calls the tool refused (invalid arguments) | 0 |
-| `compute_deadline` calls that passed a `today` other than the letter's | 11 (on 10 letters) |
-| Final date = a date the tools returned for that obligation | 43 items — right 100.0 % (43/43), late 0.0 % (0/43) |
-| Final date ≠ the tools' dates for that obligation (the model overrode them) | 0 items |
-| No tool date for that obligation; the tools answered about another one on the letter | 1 item — right 100.0 % (1/1), late 0.0 % (0/1) |
-| No date tool answered on that letter (the model dated it itself) | 12 items — right 100.0 % (12/12), late 0.0 % (0/12) |
+| `compute_deadline` calls that passed a `today` other than the letter's | 0 (on 0 letters) |
+| Final date = a date the tools returned for that obligation | 44 items — right 100.0 % (44/44), late 0.0 % (0/44) |
+| Final date ≠ the tools' dates for that obligation (the model overrode them) | 1 item — right 100.0 % (1/1), late 0.0 % (0/1) |
+| No tool date for that obligation; the tools answered about another one on the letter | 2 items — right 100.0 % (2/2), late 0.0 % (0/2) |
+| No date tool answered on that letter (the model dated it itself) | 9 items — right 100.0 % (9/9), late 0.0 % (0/9) |
 
-Where the date tools had answered for an obligation, the final date differed from their answer for 0 of 43 (0.0 %). Overrides that replaced a right tool date with a wrong one: 0; that replaced a wrong tool date with the right one: 0. The tools' own answer was right for 100.0 % (43/43) of these obligations: they compute exactly what they are given, so a wrong tool date comes from the arguments the model chose (its reading of the period, anchor, sender or region) or from one of Ordnung's documented earliest-plausible-date policies. Calls carry no item id: every date counts for an obligation when the answer dates only one; otherwise a `compute_deadline` date counts for the obligation whose sentence the model passed it, and an `add_working_days` date (it gets no sentence) for an obligation whose final date it is.
-
-In 11 `compute_deadline` calls the model passed a `today` other than the letter's (the `claude` CLI tells it the real date). A rules server that uses it reports a live deadline as passed and drops its send-by date, and the final answer can repeat that; the scorer checks due dates only. The benchmark's rules server has since been pinned to the letter's `today` (`ORDNUNG_PIN_TODAY`): a recording made after that ignores such a `today` and says so in the tool's warnings.
+Where the date tools had answered for an obligation, the final date differed from their answer for 1 of 45 (2.2 %). Overrides that replaced a right tool date with a wrong one: 0; that replaced a wrong tool date with the right one: 1. The tools' own answer was right for 97.8 % (44/45) of these obligations: they compute exactly what they are given, so a wrong tool date comes from the arguments the model chose (its reading of the period, anchor, sender or region) or from one of Ordnung's documented earliest-plausible-date policies. Calls carry no item id: every date counts for an obligation when the answer dates only one; otherwise a `compute_deadline` date counts for the obligation whose sentence the model passed it, and an `add_working_days` date (it gets no sentence) for an obligation whose final date it is.
 
 This condition ran on 2026-09-26, after the fix described under “After the held-out run”, so it called the fixed engine: compare it with Ordnung re-scored after the fix (98.2 % [94.5–100.0]), not with the held-out run. Ordnung re-scored − LLM + rules tool: accuracy -1.8 pp [-5.7, +0.0], dangerous-late rate +0.0 pp [+0.0, +0.0].
 
-**What this shows.** With Ordnung's engine as a tool, the same model got every due date on the test split right: 56 of 56 (100 %, 95 % interval 91.8–100), +17.9 points over LLM only (+7.5 to +28.6) and +7.1 over pasting the rules into the prompt (0.0 to +16.7), with no late and no early date. It asked a date tool on 41 of the 53 letters with a dated obligation; all 43 dates it took from the tool were right, it overrode none, and the 13 it dated without a tool date were all dates printed in the letter (appointments, payment reminders, fixed deadlines). Against Ordnung re-scored on the same engine (98.2 %) the difference is one letter and within noise (−1.8 points, −5.7 to 0.0): that letter states a posting day two days after its own date, and the agent passed the stated day as `document_date`, which the tool describes as the date printed on the letter; that gave the date the label counts. Passed where the tool asks for it (`spec.anchor_date`), the engine gives the earlier date, as Ordnung does, deliberately and saying why. So on these letters accuracy does not decide between a fixed pipeline and an agent with a calculator, and the agent was cheaper and faster per letter ($0.056 against $0.075, 25 s against 48 s median; Ordnung's calls also extract summaries, key facts, contracts and quotes). What the pipeline adds is a guarantee about how every date was made: the agent chose for itself when to ask the tool and what to pass it, its quotes are not checked against the page, its dates carry no stored receipt, and a new run may choose differently. It even chose what day it was: in 11 of its 50 `compute_deadline` calls (10 letters) it passed the day of the recording, 26 Sep 2026 — the date the `claude` CLI tells it — as `today`, not the letter's. The due dates came out the same, but the tool then called live deadlines passed and dropped their send-by dates, and in 8 of those letters the final answer told the person the deadline had passed (a Widerspruch deadline of 15 May 2026 on a letter read on 14 Apr 2026 came with advice to seek Wiedereinsetzung); one more answer said so without such a call. The scorer checks due dates only, so the 100 % does not show this. The benchmark's rules server now keeps the letter's `today`; this recording was made before that fix and not redone. Two cautions. This condition ran after the held-out run, against the engine as fixed after it, so it is no more held-out than the re-scored Ordnung row. And this is the second recording of it on the test split: the first, with the tool interface of commit 456be6c, scored 98.2 % (55 of 56) and once replaced the tool's answer with a wrong date of its own; the tool descriptions, argument checks and hints were then revised after a review, the test split was recorded again, and that second recording is the one published here.
+**What this shows.** With Ordnung's engine as a tool, the same model got every due date on the test split right: 56 of 56 (100 %, 95 % interval 91.8–100), +17.9 points over LLM only (+7.5 to +28.6) and +7.1 over pasting the rules into the prompt (0.0 to +16.7), with no late and no early date. It asked a date tool on 44 of the 53 letters with a dated obligation. Of the 45 obligations a tool date belonged to, it took 44 unchanged; the 9 it dated without one were all printed in the letter (appointments, payment reminders, two dates in English letters). The one change is also the one letter between it and Ordnung re-scored on the same engine (98.2 %; −1.8 points, −5.7 to 0.0, within noise). That letter states a posting day two days after its own date. The agent passed it as `spec.anchor_date`, as the tool asks, and got the engine's deliberate earlier date, counted from the letter's date, which is also Ordnung's answer. It then called again without the letter's date, so the engine counted from the stated day, and answered with that later date, which the label counts. On the dev split, where this interface was checked first, it kept the earlier date on the same kind of letter and scored 24 of 25 (96 %), as Ordnung does. So on these letters accuracy does not decide between a fixed pipeline and an agent with a calculator. The agent was also cheaper and faster per letter ($0.058 against $0.075, 27 s against 48 s median; Ordnung's calls also extract summaries, key facts, contracts and quotes). What the pipeline adds is a guarantee about how every date was made. The agent chose for itself when to ask the tool, what to pass it, and here whether to accept the engine's safe date. Its quotes are not checked against the page, its dates carry no stored receipt, and a new run may choose differently. This recording ran with the rules server pinned to each letter's `today`; the model passed a `today` in 18 calls, always the letter's. Two cautions. First, this condition ran after the held-out run, against the engine as fixed after it, so it is no more held-out than the re-scored Ordnung row. Second, this is the third recording of it on the test split. The first (tool interface of commit 456be6c) scored 98.2 % (55 of 56) and once replaced the tool's answer with a wrong date of its own. The second (e0337cb) came after a review revised the tool descriptions, argument checks and hints. It scored 100 %, but in 11 of its 50 calls it passed the recording day as `today`, and eight answers then called live deadlines passed. A second review then changed the interface again: formal service, the `today` argument, and the delivery rule for private senders moved into the engine. That interface was checked on the dev split first; then the test split was recorded a third time. Each recording replaced one that a review had looked at, so this is iteration on the test split: read the 100 % with that in mind.
 
 ## Per family
 
@@ -156,16 +154,16 @@ Ordnung transcribes a photo first (the same verbatim-transcription call the app 
 
 | Metric | Ordnung | LLM only | LLM + rules text | LLM + rules tool |
 |---|---|---|---|---|
-| Document kind (also-accepted kinds count) | 88.9 % [79.1–96.9] (56/63) | 82.5 % [72.6–91.8] (52/63) | 84.1 % [74.6–92.4] (53/63) | 82.5 % [73.4–91.4] (52/63) |
+| Document kind (also-accepted kinds count) | 88.9 % [79.1–96.9] (56/63) | 82.5 % [72.6–91.8] (52/63) | 84.1 % [74.6–92.4] (53/63) | 85.7 % [75.4–93.9] (54/63) |
 | Sender (fuzzy match) | 100.0 % [93.1–100.0] (63/63) | 100.0 % [93.1–100.0] (63/63) | 100.0 % [93.1–100.0] (63/63) | 100.0 % [93.1–100.0] (63/63) |
 | Letter date | 100.0 % [93.1–100.0] (63/63) | 100.0 % [93.1–100.0] (63/63) | 100.0 % [93.1–100.0] (63/63) | 100.0 % [93.1–100.0] (63/63) |
 | Legal remedy type | 100.0 % [93.1–100.0] (63/63) | 100.0 % [93.1–100.0] (63/63) | 100.0 % [93.1–100.0] (63/63) | 100.0 % [93.1–100.0] (63/63) |
 | Reference numbers found (recall) | 96.5 % [92.3–100.0] (82/85) | 96.5 % [92.3–100.0] (82/85) | 96.5 % [92.3–100.0] (82/85) | 96.5 % [92.3–100.0] (82/85) |
-| Reference numbers given that are real (precision) | 94.3 % [88.5–98.9] (82/87) | 96.5 % [90.7–100.0] (82/85) | 96.5 % [90.7–100.0] (82/85) | 94.3 % [88.5–98.9] (82/87) |
-| Amounts found (recall) | 90.9 % [83.0–97.7] (40/44) | 97.7 % [93.0–100.0] (43/44) | 90.9 % [83.0–97.7] (40/44) | 95.5 % [89.1–100.0] (42/44) |
-| Amounts given that are expected (precision) | 46.0 % [37.8–56.8] (40/87) | 56.6 % [46.9–69.7] (43/76) | 58.0 % [46.9–73.2] (40/69) | 56.0 % [47.8–67.8] (42/75) |
+| Reference numbers given that are real (precision) | 94.3 % [88.5–98.9] (82/87) | 96.5 % [90.7–100.0] (82/85) | 96.5 % [90.7–100.0] (82/85) | 95.3 % [90.6–98.9] (82/86) |
+| Amounts found (recall) | 90.9 % [83.0–97.7] (40/44) | 97.7 % [93.0–100.0] (43/44) | 90.9 % [83.0–97.7] (40/44) | 95.5 % [88.6–100.0] (42/44) |
+| Amounts given that are expected (precision) | 46.0 % [37.8–56.8] (40/87) | 56.6 % [46.9–69.7] (43/76) | 58.0 % [46.9–73.2] (40/69) | 54.5 % [45.2–67.2] (42/77) |
 | Required items found (recall) | 100.0 % [92.3–100.0] (59/59) | 100.0 % [92.3–100.0] (59/59) | 100.0 % [92.3–100.0] (59/59) | 100.0 % [92.3–100.0] (59/59) |
-| Dated items that are real (precision) | 95.2 % [89.5–100.0] (59/62) | 81.9 % [69.9–93.5] (59/72) | 81.9 % [71.4–92.6] (59/72) | 85.5 % [75.0–95.5] (59/69) |
+| Dated items that are real (precision) | 95.2 % [89.5–100.0] (59/62) | 81.9 % [69.9–93.5] (59/72) | 81.9 % [71.4–92.6] (59/72) | 85.5 % [75.0–96.7] (59/69) |
 | Contract term end and cancel-by dates | 100.0 % [34.2–100.0] (4/4) | 100.0 % [34.2–100.0] (4/4) | 100.0 % [34.2–100.0] (4/4) | 100.0 % [34.2–100.0] (4/4) |
 
 Item precision counts only predicted items that carry a date; undated to-dos are not penalised. The baselines were asked for the narrow set of amounts the truth lists (sums to pay, to receive or set by the decision); Ordnung's amounts include every sum in its key facts, so read its amount recall together with its amount precision.
@@ -195,7 +193,7 @@ dates are also checked against their quote (`spec_consistency`) and computed by 
 | Visible injection flagged to the person | 100.0 % (3/3) | 100.0 % (3/3) | 100.0 % (3/3) | 100.0 % (3/3) |
 | Hidden (invisible) text detected | 100.0 % (2/2) | n/a (same filtered text) | n/a (same filtered text) | n/a (same filtered text) |
 | Scam recall — a scam/fraud warning is shown | 100.0 % (3/3) | 100.0 % (3/3) | 100.0 % (3/3) | 100.0 % (3/3) |
-| Scam false alarms on ordinary letters (lower is better) | 0.0 % (0/51) | 3.9 % (2/51) | 0.0 % (0/51) | 3.9 % (2/51) |
+| Scam false alarms on ordinary letters (lower is better) | 0.0 % (0/51) | 3.9 % (2/51) | 0.0 % (0/51) | 2.0 % (1/51) |
 | Conflicting dates — earliest date or flagged | 100.0 % (2/2) | 100.0 % (2/2) | 100.0 % (2/2) | 100.0 % (2/2) |
 | Missing date — no confident date, or flagged | 100.0 % (2/2) | 100.0 % (2/2) | 100.0 % (2/2) | 100.0 % (2/2) |
 | Ambiguous numeric date — no confident date, or flagged | 100.0 % (1/1) | 100.0 % (1/1) | 100.0 % (1/1) | 100.0 % (1/1) |
@@ -214,7 +212,7 @@ checks IBAN checksums in code); false alarms are counted on the ordinary, non-ad
 | Ordnung | 74 | 1,161,788 | 18,441 | $4.70 | $0.0746 | 51.0 s | 47.5 s | 94.0 s |
 | LLM only | 63 | 739,391 | 11,736 | $3.07 | $0.0488 | 35.1 s | 28.8 s | 72.3 s |
 | LLM + rules text | 63 | 899,056 | 14,271 | $2.86 | $0.0454 | 31.3 s | 28.7 s | 56.6 s |
-| LLM + rules tool | 63 | 1,864,980 | 29,603 | $3.50 | $0.0556 | 29.9 s | 24.9 s | 66.0 s |
+| LLM + rules tool | 63 | 2,031,670 | 32,249 | $3.68 | $0.0584 | 31.1 s | 27.5 s | 52.6 s |
 
 Tokens include prompt-cache reads and writes. Ordnung makes two calls for a photo (transcribe, extract); a repair call is added only when an answer fails validation. The rules-tool condition makes one call per letter in which the model takes a turn per round of tool calls; its cost and latency include those turns.
 

@@ -2,7 +2,7 @@
  "schema": 1,
  "meta": {
   "date": "2026-09-26",
-  "generated_at": "2026-09-26T10:45:17+00:00",
+  "generated_at": "2026-09-26T17:11:02+00:00",
   "model": "sonnet",
   "split": "dev",
   "conditions": [
@@ -41,18 +41,17 @@
   "resamples": 2000,
   "evals_version": "1",
   "fingerprints": {
-   "ordnung": "c0442189e53e1738",
-   "llm_only": "33d0e08a9560cf39",
-   "llm_rules_text": "670a0d9bb26625f1",
-   "llm_rules_tool": "ea9e8983014b58d3"
+   "ordnung": "8bea2a041996dbdd",
+   "llm_only": "900a6ff76e8fd749",
+   "llm_rules_text": "27e1773223c03814",
+   "llm_rules_tool": "96449449f3c24634"
   },
   "dataset": {
    "name": "ordnung-deadline-benchmark",
    "version": 1,
    "manifest_sha256": "82c0ca53d06b4f28d6e832817bdaa3c626ef5c3a0c8f150a34ccf61a81597ee5"
   },
-  "commit": "e0337cb",
-  "metrics_commit": "dc3592a"
+  "commit": "be9f638"
  },
  "metrics": {
   "ordnung": {
@@ -1359,12 +1358,12 @@
   "llm_rules_tool": {
    "documents": 28,
    "due_date_accuracy": {
-    "value": 1.0,
+    "value": 0.96,
     "ci": [
-     0.8318207759473838,
+     0.875,
      1.0
     ],
-    "k": 25.0,
+    "k": 24.0,
     "n": 25.0,
     "docs": 23
    },
@@ -1379,12 +1378,12 @@
     "docs": 23
    },
    "early_rate": {
-    "value": 0.0,
+    "value": 0.04,
     "ci": [
      0.0,
-     0.16817922405261618
+     0.125
     ],
-    "k": 0.0,
+    "k": 1.0,
     "n": 25.0,
     "docs": 23
    },
@@ -1430,14 +1429,14 @@
    },
    "taxonomy": {
     "n": 25,
-    "correct": 25,
-    "wrong": 0,
+    "correct": 24,
+    "wrong": 1,
     "reading": 0,
     "computing": 0,
     "declined": 0,
     "missed": 0,
     "late": 0,
-    "early": 0,
+    "early": 1,
     "computing_late": 0,
     "reading_late": 0,
     "flagged_wrong": 0,
@@ -1547,12 +1546,12 @@
      "docs": 3
     },
     "tax_assessment": {
-     "value": 1.0,
+     "value": 0.6666666666666666,
      "ci": [
-      0.3423802275066532,
+      0.5,
       1.0
      ],
-     "k": 3.0,
+     "k": 2.0,
      "n": 3.0,
      "docs": 2
     },
@@ -1570,12 +1569,12 @@
    "by_modality": {
     "text": {
      "due_date_accuracy": {
-      "value": 1.0,
+      "value": 0.9523809523809523,
       "ci": [
-       0.8318207759473838,
+       0.8636363636363636,
        1.0
       ],
-      "k": 21.0,
+      "k": 20.0,
       "n": 21.0,
       "docs": 19
      },
@@ -1617,12 +1616,12 @@
    },
    "extraction": {
     "classification": {
-     "value": 0.8928571428571429,
+     "value": 0.9285714285714286,
      "ci": [
-      0.76,
+      0.8148148148148148,
       1.0
      ],
-     "k": 25.0,
+     "k": 26.0,
      "n": 28.0,
      "docs": 28
     },
@@ -1677,23 +1676,23 @@
      "docs": 28
     },
     "amounts_recall": {
-     "value": 1.0,
+     "value": 0.9583333333333334,
      "ci": [
-      0.8156818649911481,
+      0.875,
       1.0
      ],
-     "k": 24.0,
+     "k": 23.0,
      "n": 24.0,
      "docs": 20
     },
     "amounts_precision": {
-     "value": 0.6153846153846154,
+     "value": 0.6216216216216216,
      "ci": [
-      0.49122807017543857,
-      0.8148148148148148
+      0.49019607843137253,
+      0.84
      ],
-     "k": 24.0,
-     "n": 39.0,
+     "k": 23.0,
+     "n": 37.0,
      "docs": 21
     },
     "item_recall": {
@@ -1707,22 +1706,22 @@
      "docs": 24
     },
     "item_precision": {
-     "value": 0.8666666666666667,
+     "value": 0.8125,
      "ci": [
-      0.7407407407407407,
-      0.96875
+      0.6774193548387096,
+      0.9354838709677419
      ],
      "k": 26.0,
-     "n": 30.0,
-     "docs": 27
+     "n": 32.0,
+     "docs": 26
     },
     "contract_dates": {
-     "value": 0.25,
+     "value": 0.5,
      "ci": [
       0.0,
-      0.5
+      1.0
      ],
-     "k": 1.0,
+     "k": 2.0,
      "n": 4.0,
      "docs": 2
     }
@@ -1739,12 +1738,12 @@
      "n": 23.0,
      "docs": 23
     },
-    "deadline_calls_per_letter": 0.782608695652174,
-    "calls": 39,
+    "deadline_calls_per_letter": 0.8260869565217391,
+    "calls": 41,
     "calls_by_tool": {
      "add_working_days": 1,
-     "check_iban": 16,
-     "compute_deadline": 21,
+     "check_iban": 15,
+     "compute_deadline": 24,
      "german_holidays": 1
     },
     "refused_calls": 0,
@@ -1766,12 +1765,12 @@
     },
     "accuracy_by_backing": {
      "tool_date": {
-      "value": 1.0,
+      "value": 0.9411764705882353,
       "ci": [
-       0.7961166989641514,
+       0.8125,
        1.0
       ],
-      "k": 17.0,
+      "k": 16.0,
       "n": 17.0,
       "docs": 17
      },
@@ -1849,19 +1848,19 @@
      }
     },
     "tool_returned_the_right_date": {
-     "value": 1.0,
+     "value": 0.9411764705882353,
      "ci": [
-      0.7961166989641514,
+      0.8125,
       1.0
      ],
-     "k": 17.0,
+     "k": 16.0,
      "n": 17.0,
      "docs": 17
     },
     "overrides_breaking_a_right_tool_date": 0,
     "overrides_fixing_a_wrong_tool_date": 0,
-    "deadline_calls_with_other_today": 2,
-    "letters_with_other_today": 2
+    "deadline_calls_with_other_today": 0,
+    "letters_with_other_today": 0
    },
    "adversarial": {
     "ambiguous_handled": {
@@ -1875,35 +1874,35 @@
      "docs": 1
     },
     "scam_false_alarm": {
-     "value": 0.0,
+     "value": 0.03571428571428571,
      "ci": [
       0.0,
-      0.13797620467498012
+      0.11538461538461539
      ],
-     "k": 0.0,
+     "k": 1.0,
      "n": 28.0,
      "docs": 28
     }
    },
    "latency_ms": {
-    "mean": 25853.35714285714,
-    "p50": 21988.5,
-    "p95": 54151.399999999994,
-    "total": 723894.0
+    "mean": 25814.071428571428,
+    "p50": 18837.0,
+    "p95": 60583.04999999998,
+    "total": 722794.0
    },
    "cost_usd": {
-    "mean": 0.04948379285714287,
-    "p50": 0.044950000000000004,
-    "p95": 0.09565120999999996,
-    "total": 1.3855462000000003
+    "mean": 0.053297942857142865,
+    "p50": 0.0465995,
+    "p95": 0.10789494999999993,
+    "total": 1.4923424000000003
    },
    "tokens": {
-    "input": 136,
-    "output": 68036,
-    "cache_read": 577751,
-    "cache_creation": 147341,
-    "total": 793264,
-    "mean_per_document": 28330.85714285714
+    "input": 128,
+    "output": 69345,
+    "cache_read": 526862,
+    "cache_creation": 173316,
+    "total": 769651,
+    "mean_per_document": 27487.535714285714
    },
    "calls": 28,
    "failed": 0,
@@ -1957,12 +1956,12 @@
   },
   "ordnung-vs-llm_rules_tool": {
    "due_date_accuracy_diff": {
-    "value": -0.040000000000000036,
+    "value": 0.0,
     "ci": [
-     -0.125,
+     0.0,
      0.0
     ],
-    "k": -1.0,
+    "k": 0.0,
     "n": 25.0,
     "docs": 24
    },
@@ -1979,12 +1978,12 @@
   },
   "llm_rules_tool-vs-llm_only": {
    "due_date_accuracy_diff": {
-    "value": 0.12,
+    "value": 0.07999999999999996,
     "ci": [
      0.0,
-     0.26315789473684215
+     0.20838815789473708
     ],
-    "k": 3.0,
+    "k": 2.0,
     "n": 25.0,
     "docs": 24
    },
@@ -2001,12 +2000,12 @@
   },
   "llm_rules_tool-vs-llm_rules_text": {
    "due_date_accuracy_diff": {
-    "value": 0.07999999999999996,
+    "value": 0.039999999999999925,
     "ci": [
      0.0,
-     0.19999999999999996
+     0.13636363636363635
     ],
-    "k": 2.0,
+    "k": 1.0,
     "n": 25.0,
     "docs": 24
    },
@@ -2212,7 +2211,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-appointment-A1",
@@ -2365,7 +2364,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-appointment-A1",
@@ -2516,7 +2515,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-appointment-A1",
@@ -2633,7 +2632,7 @@
         "title": "Passport application appointment",
         "due_date": "2026-05-12",
         "time": null,
-        "amount": 70.0,
+        "amount": null,
         "quote": "hiermit bestätigen wir Ihren Termin am Dienstag, 12.05.2026, um 09:30 Uhr im Bürgeramt Mitte, Schalter 4.",
         "confidence": "high",
         "spec": null,
@@ -2641,13 +2640,45 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The letter states a fixed calendar date and time for the appointment: Tuesday, 12.05.2026, 09:30. No period calculation is required; the appointment date is used as printed.",
+        "explanation": "The letter states a fixed calendar date and time for the appointment: Tuesday, 12.05.2026, 09:30. No period calculation is needed; the appointment date is used as printed.",
+        "notes": []
+       },
+       {
+        "kind": "payment",
+        "title": "Passport fee due at appointment",
+        "due_date": "2026-05-12",
+        "time": null,
+        "amount": 70.0,
+        "quote": "Bitte bringen Sie Ihren bisherigen Ausweis, ein aktuelles biometrisches Passfoto und die Gebühr von 70,00 € (Kartenzahlung möglich) mit.",
+        "confidence": "high",
+        "spec": null,
+        "grounding": null,
+        "value_consistent": null,
+        "needs_check": false,
+        "rule_ids": [],
+        "explanation": "The fee of 70,00 € must be brought to the appointment on 12.05.2026, so it is due on that same date (payable on-site, card payment possible).",
+        "notes": []
+       },
+       {
+        "kind": "task",
+        "title": "Cancel appointment online if unable to attend",
+        "due_date": "2026-05-11",
+        "time": null,
+        "amount": null,
+        "quote": "Kann der Termin nicht wahrgenommen werden, sagen Sie ihn bitte online ab.",
+        "confidence": "low",
+        "spec": null,
+        "grounding": null,
+        "value_consistent": null,
+        "needs_check": false,
+        "rule_ids": [],
+        "explanation": "No specific deadline is given for a cancellation beyond the obvious requirement that it must happen before the appointment itself; the latest sensible point is the day before the appointment (2026-05-12), so the last day to cancel is treated as the day prior.",
         "notes": []
        }
       ],
       "contract": null,
       "warnings": [
-       "The letter asks that the appointment be cancelled online if it cannot be kept, but gives no deadline for doing so; confirm cancellation is done via the official Musterstadt Bürgeramt channels."
+       "The letter gives no exact deadline for cancelling the appointment (only 'bitte online absagen' if it cannot be kept); the day before the appointment is assumed as the practical last day, but check the city's online portal for its own cutoff."
       ],
       "signals": [],
       "hidden_text": null,
@@ -2658,18 +2689,18 @@
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 4,
-        "output_tokens": 1393,
-        "cache_read_tokens": 14534,
-        "cache_creation_tokens": 3089,
-        "cost_usd": 0.0292008,
-        "duration_ms": 13383,
+        "input_tokens": 2,
+        "output_tokens": 1307,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 8572,
+        "cost_usd": 0.047362,
+        "duration_ms": 13195,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-appointment-A1",
@@ -2704,7 +2735,7 @@
       "required": 1,
       "matched_required": 1,
       "true_positives": 1,
-      "false_positives": 0,
+      "false_positives": 2,
       "kind_ok": true,
       "sender_ok": true,
       "document_date_ok": true,
@@ -2747,13 +2778,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0292008,
-      "latency_ms": 13383,
+      "cost_usd": 0.047362,
+      "latency_ms": 13195,
       "tokens": {
-       "input": 4,
-       "output": 1393,
-       "cache_read": 14534,
-       "cache_creation": 3089
+       "input": 2,
+       "output": 1307,
+       "cache_read": 0,
+       "cache_creation": 8572
       },
       "calls": 1,
       "failed": null,
@@ -2851,7 +2882,7 @@
         "cache_creation_tokens": 4612,
         "cost_usd": 0.024442,
         "duration_ms": 9540,
-        "wall_ms": 1
+        "wall_ms": 0
        },
        {
         "purpose": "extract",
@@ -2864,12 +2895,12 @@
         "cache_creation_tokens": 1796,
         "cost_usd": 0.032189,
         "duration_ms": 23412,
-        "wall_ms": 1
+        "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-appointment-A1-photo",
@@ -3022,7 +3053,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-appointment-A1-photo",
@@ -3189,7 +3220,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-appointment-A1-photo",
@@ -3314,12 +3345,15 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The letter states a fixed calendar date and time for the appointment: Dienstag, 12.05.2026, 09:30 Uhr. No period calculation is needed; the due date is simply the stated appointment date.",
+        "explanation": "The letter states a fixed appointment date and time: Tuesday, 12.05.2026, 09:30. No period calculation is needed; the due date is simply the stated appointment date.",
         "notes": []
        }
       ],
       "contract": null,
-      "warnings": [],
+      "warnings": [
+       "The letter asks the recipient to bring a fee of €70.00 (card payment possible) to the appointment; this is a routine government fee, not a suspicious payment request, but confirm the current passport fee before attending.",
+       "If the appointment cannot be kept, the letter asks that it be cancelled online ('sagen Sie ihn bitte online ab') but gives no specific cancellation deadline."
+      ],
       "signals": [],
       "hidden_text": null,
       "tools": [],
@@ -3330,17 +3364,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 4,
-        "output_tokens": 1311,
-        "cache_read_tokens": 16833,
-        "cache_creation_tokens": 5329,
-        "cost_usd": 0.037800600000000004,
-        "duration_ms": 14902,
+        "output_tokens": 1610,
+        "cache_read_tokens": 10873,
+        "cache_creation_tokens": 11749,
+        "cost_usd": 0.0652786,
+        "duration_ms": 17296,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-appointment-A1-photo",
@@ -3418,13 +3452,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.037800600000000004,
-      "latency_ms": 14902,
+      "cost_usd": 0.0652786,
+      "latency_ms": 17296,
       "tokens": {
        "input": 4,
-       "output": 1311,
-       "cache_read": 16833,
-       "cache_creation": 5329
+       "output": 1610,
+       "cache_read": 10873,
+       "cache_creation": 11749
       },
       "calls": 1,
       "failed": null,
@@ -3523,7 +3557,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-appointment-B1",
@@ -3674,7 +3708,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-appointment-B1",
@@ -3823,7 +3857,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-appointment-B1",
@@ -3935,7 +3969,7 @@
       "items": [
        {
         "kind": "appointment",
-        "title": "MRI examination appointment (right knee)",
+        "title": "MRI appointment (right knee)",
         "due_date": "2026-02-03",
         "time": null,
         "amount": null,
@@ -3946,7 +3980,7 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The letter states the appointment date and time directly: 03.02.2026, 14:15 Uhr. No period calculation is needed; this is the fixed appointment date. The letter also asks the patient to arrive 15 minutes early (13:55 Uhr) at reception.",
+        "explanation": "The letter states a fixed calendar date and time for the examination appointment: 03.02.2026, 14:15 Uhr. No period calculation is needed; the person should arrive 15 minutes early (13:45 Uhr) at the reception on the ground floor as instructed.",
         "notes": []
        }
       ],
@@ -3962,17 +3996,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 567,
-        "cache_read_tokens": 6200,
-        "cache_creation_tokens": 2132,
-        "cost_usd": 0.015442,
-        "duration_ms": 5702,
+        "output_tokens": 791,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 8578,
+        "cost_usd": 0.042226,
+        "duration_ms": 8446,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-appointment-B1",
@@ -4050,13 +4084,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.015442,
-      "latency_ms": 5702,
+      "cost_usd": 0.042226,
+      "latency_ms": 8446,
       "tokens": {
        "input": 2,
-       "output": 567,
-       "cache_read": 6200,
-       "cache_creation": 2132
+       "output": 791,
+       "cache_read": 0,
+       "cache_creation": 8578
       },
       "calls": 1,
       "failed": null,
@@ -4153,7 +4187,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-contract_confirmation-A1",
@@ -4271,7 +4305,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-contract_confirmation-A1",
@@ -4387,7 +4421,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-contract_confirmation-A1",
@@ -4480,33 +4514,59 @@
       "items": [],
       "contract": {
        "current_term_end": "2027-02-28",
-       "cancel_by": "2027-01-28"
+       "cancel_by": "2027-01-31"
       },
       "warnings": [
-       "This is a welcome/confirmation letter with no dated obligations other than the contract's minimum-term and cancellation terms, which are recorded in the contract field rather than as items.",
-       "The stated cancellation deadline (28.01.2027, one month before the minimum term ends on 28.02.2027) is a calculation based on the letter's own wording and should be double-checked against MusterFit's general terms (AGB), since gym contracts sometimes define notice periods differently (e.g. counted in full calendar months or requiring receipt vs. postmark)."
+       "This is a routine membership confirmation from a gym; the direct-debit IBAN and details match the company's own letterhead, so nothing here looks like phishing, but always verify direct-debit mandates against your own records.",
+       "No exact due date is fixed for the monthly fee itself (only 'monatlich im Voraus per Lastschrift'); confirm the exact debit day with MusterFit if needed."
       ],
       "signals": [],
       "hidden_text": null,
-      "tools": [],
+      "tools": [
+       {
+        "name": "compute_deadline",
+        "input": {
+         "spec": {
+          "type": "relative",
+          "amount": -1,
+          "unit": "months",
+          "anchor": "explicit_date",
+          "anchor_date": "2027-02-28",
+          "nature": "notice",
+          "shift_rule": "none",
+          "legal_basis": "Kündigungsfrist 1 Monat zum Ende der Mindestlaufzeit",
+          "text": "Kündigungsfrist 1 Monat zum Ende der Mindestlaufzeit"
+         },
+         "sender_kind": "company",
+         "sender_name": "MusterFit Studios GmbH",
+         "document_date": "2026-02-10",
+         "recipient_region": "NW",
+         "region": "NW"
+        },
+        "ok": true,
+        "due_date": "2027-01-31",
+        "date": null,
+        "error": null
+       }
+      ],
       "calls": [
        {
         "purpose": "eval_baseline",
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 2,
-        "output_tokens": 1856,
-        "cache_read_tokens": 6200,
-        "cache_creation_tokens": 2215,
-        "cost_usd": 0.028664000000000002,
-        "duration_ms": 19938,
+        "input_tokens": 4,
+        "output_tokens": 2098,
+        "cache_read_tokens": 15095,
+        "cache_creation_tokens": 4819,
+        "cost_usd": 0.043283,
+        "duration_ms": 23931,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-contract_confirmation-A1",
@@ -4541,7 +4601,7 @@
        1
       ],
       "contract_dates": [
-       1,
+       2,
        2
       ],
       "grounding": {},
@@ -4562,20 +4622,24 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.028664000000000002,
-      "latency_ms": 19938,
+      "cost_usd": 0.043283,
+      "latency_ms": 23931,
       "tokens": {
-       "input": 2,
-       "output": 1856,
-       "cache_read": 6200,
-       "cache_creation": 2215
+       "input": 4,
+       "output": 2098,
+       "cache_read": 15095,
+       "cache_creation": 4819
       },
       "calls": 1,
       "failed": null,
       "error": null,
-      "tool_calls": {},
+      "tool_calls": {
+       "compute_deadline": 1
+      },
       "tool_refusals": 0,
-      "tool_dates": []
+      "tool_dates": [
+       "2027-01-31"
+      ]
      }
     }
    }
@@ -4633,7 +4697,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-contract_confirmation-B1",
@@ -4765,7 +4829,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-contract_confirmation-B1",
@@ -4882,7 +4946,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-contract_confirmation-B1",
@@ -4985,7 +5049,7 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Date is printed explicitly in the letter as the activation date; also the anchor for the 12-month minimum term.",
+        "explanation": "The letter states the activation date directly as a calendar date: 16.06.2025. This is also the anchor date for the 12-month minimum contract term.",
         "notes": []
        }
       ],
@@ -4994,10 +5058,9 @@
        "cancel_by": "2026-05-16"
       },
       "warnings": [
-       "This is a contract summary (§ 54 TKG), not a bill or a request for action; no payment or response is due now — it only records the terms for later reference.",
-       "The minimum term runs 12 months from activation (16.06.2025); counting the day after activation under § 187/188 BGB gives a term end of 16.06.2026, one day later than a plain '12 months from 16.06.2025' reading — check the full T&Cs in the customer portal if this matters.",
-       "The 1-month notice period before that term end computes to Saturday 16.05.2026; German case law says notice deadlines don't shift to the next business day, so to be safe the cancellation should reach Muster Mobil GmbH by Friday 15.05.2026 at the latest.",
-       "The IBAN in the footer (DE08 3705 0198 0008 0011 22) is well-formed and matches the sender's own letterhead; it is only relevant if you owe money, which this letter does not claim."
+       "This is a routine § 54 TKG contract summary with no payment demand or legal remedy instructions; no signs of phishing or scam were found.",
+       "The minimum term (12 Monate ab Freischaltung, 16.06.2025) ends 16.06.2026 under §§ 187, 188 BGB; the 1-month notice period counted back from that date lands on Saturday 16.05.2026, and since notice periods do not shift for weekends, the cancellation should reach the provider by Friday 15.05.2026 at the latest to be safe.",
+       "The letter's own document date (12.06.2025) and stated activation date (16.06.2025) are both before or on 'today' (17.06.2025) as instructed for this task; the activation milestone is therefore already in the past relative to today."
       ],
       "signals": [],
       "hidden_text": null,
@@ -5007,19 +5070,21 @@
         "input": {
          "spec": {
           "type": "relative",
-          "anchor": "explicit_date",
-          "anchor_date": "2025-06-16",
           "amount": 12,
           "unit": "months",
+          "anchor": "explicit_date",
+          "anchor_date": "2025-06-16",
           "nature": "other",
           "shift_rule": "none",
-          "legal_basis": "§ 188 BGB / Vertragsklausel",
+          "legal_basis": "§ 188 Abs. 2 BGB",
           "text": "Mindestvertragslaufzeit 12 Monate ab Freischaltung"
          },
-         "sender_kind": "telecom",
-         "sender_name": "Muster Mobil GmbH",
          "document_date": "2025-06-12",
-         "recipient_region": "NW"
+         "sender_kind": "company",
+         "sender_name": "Muster Mobil GmbH",
+         "region": "NW",
+         "recipient_region": "NW",
+         "today": "2025-06-17"
         },
         "ok": true,
         "due_date": "2026-06-16",
@@ -5031,31 +5096,23 @@
         "input": {
          "spec": {
           "type": "relative",
-          "anchor": "explicit_date",
-          "anchor_date": "2026-06-16",
           "amount": -1,
           "unit": "months",
+          "anchor": "explicit_date",
+          "anchor_date": "2026-06-16",
           "nature": "notice",
-          "shift_rule": "auto",
-          "legal_basis": "§ 193 BGB; Vertragsklausel Kündigungsfrist 1 Monat zum Ende der Mindestvertragslaufzeit",
+          "shift_rule": "none",
+          "legal_basis": "Kündigungsfrist 1 Monat zum Ende der Mindestvertragslaufzeit",
           "text": "Kündigungsfrist 1 Monat zum Ende der Mindestvertragslaufzeit"
          },
-         "sender_kind": "telecom",
+         "document_date": "2025-06-12",
+         "sender_kind": "company",
          "sender_name": "Muster Mobil GmbH",
-         "recipient_region": "NW"
+         "region": "NW",
+         "today": "2025-06-17"
         },
         "ok": true,
         "due_date": "2026-05-16",
-        "date": null,
-        "error": null
-       },
-       {
-        "name": "check_iban",
-        "input": {
-         "iban": "DE08 3705 0198 0008 0011 22"
-        },
-        "ok": true,
-        "due_date": null,
         "date": null,
         "error": null
        }
@@ -5067,17 +5124,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 8,
-        "output_tokens": 4326,
-        "cache_read_tokens": 37523,
-        "cache_creation_tokens": 7620,
-        "cost_usd": 0.08126059999999999,
-        "duration_ms": 50475,
+        "output_tokens": 6942,
+        "cache_read_tokens": 43022,
+        "cache_creation_tokens": 10378,
+        "cost_usd": 0.11955239999999999,
+        "duration_ms": 74927,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-contract_confirmation-B1",
@@ -5133,20 +5190,19 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.08126059999999999,
-      "latency_ms": 50475,
+      "cost_usd": 0.11955239999999999,
+      "latency_ms": 74927,
       "tokens": {
        "input": 8,
-       "output": 4326,
-       "cache_read": 37523,
-       "cache_creation": 7620
+       "output": 6942,
+       "cache_read": 43022,
+       "cache_creation": 10378
       },
       "calls": 1,
       "failed": null,
       "error": null,
       "tool_calls": {
-       "compute_deadline": 2,
-       "check_iban": 1
+       "compute_deadline": 2
       },
       "tool_refusals": 0,
       "tool_dates": [
@@ -5247,7 +5303,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-A1",
@@ -5401,7 +5457,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-A1",
@@ -5553,7 +5609,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-A1",
@@ -5668,7 +5724,7 @@
       "items": [
        {
         "kind": "payment",
-        "title": "Pay outstanding invoice",
+        "title": "Pay outstanding invoice balance",
         "due_date": "2026-05-15",
         "time": null,
         "amount": 64.98,
@@ -5679,15 +5735,12 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The letter states a fixed calendar date for payment: 15.05.2026. This is a company's own commercial payment reminder, not a statutory deadline, so the date is taken as printed. 15.05.2026 falls on a Friday, a normal business day, so no weekend/holiday shift applies.",
+        "explanation": "The letter states a fixed calendar date for payment: 'bis zum 15.05.2026'. This is a private company's payment reminder (not an authority letter), so no deemed-delivery or statutory counting rules apply; the printed date is taken as the due date as written. 2026-05-15 falls on a Friday (a normal business day), so no weekend/holiday shift is needed.",
         "notes": []
        }
       ],
       "contract": null,
-      "warnings": [
-       "This is a commercial payment reminder (Zahlungserinnerung), not an official authority letter; if the underlying order or invoice is not recognised, verify it directly with the sender before paying.",
-       "The IBAN printed (DE23 3705 0198 0009 9001 12) is a validly formed German IBAN, but a valid IBAN does not prove ownership — compare it with any earlier order confirmation before transferring money."
-      ],
+      "warnings": [],
       "signals": [],
       "hidden_text": null,
       "tools": [
@@ -5709,17 +5762,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 4,
-        "output_tokens": 986,
-        "cache_read_tokens": 14569,
-        "cache_creation_tokens": 2797,
-        "cost_usd": 0.0239698,
-        "duration_ms": 11719,
+        "output_tokens": 1471,
+        "cache_read_tokens": 15049,
+        "cache_creation_tokens": 3102,
+        "cost_usd": 0.0301358,
+        "duration_ms": 16438,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-A1",
@@ -5797,13 +5850,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0239698,
-      "latency_ms": 11719,
+      "cost_usd": 0.0301358,
+      "latency_ms": 16438,
       "tokens": {
        "input": 4,
-       "output": 986,
-       "cache_read": 14569,
-       "cache_creation": 2797
+       "output": 1471,
+       "cache_read": 15049,
+       "cache_creation": 3102
       },
       "calls": 1,
       "failed": null,
@@ -5911,7 +5964,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-B1",
@@ -6071,7 +6124,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-B1",
@@ -6224,7 +6277,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-B1",
@@ -6351,7 +6404,7 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The letter states a fixed calendar date for payment: 30 June 2025. This is a private-sector dunning demand (not an authority letter), so no statutory delivery-fiction or BGB period-counting is needed — the date is simply as printed. 30 June 2025 falls on a Monday, a normal business day, so no weekend/holiday shift applies. Due date = 30 June 2025.",
+        "explanation": "The letter states a fixed calendar date for payment: 'bis spätestens 30. Juni 2025'. 30 June 2025 is a Monday, not a weekend day or a public holiday in NW, so no shift under §193 BGB is needed. The due date is simply the printed date.",
         "notes": []
        }
       ],
@@ -6363,7 +6416,7 @@
        {
         "name": "check_iban",
         "input": {
-         "iban": "DE24 3705 0198 0002 0202 02"
+         "iban": "DE24370501980002020202"
         },
         "ok": true,
         "due_date": null,
@@ -6378,17 +6431,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 4,
-        "output_tokens": 1894,
-        "cache_read_tokens": 14583,
-        "cache_creation_tokens": 3039,
-        "cost_usd": 0.0340206,
-        "duration_ms": 19752,
+        "output_tokens": 1090,
+        "cache_read_tokens": 15059,
+        "cache_creation_tokens": 2919,
+        "cost_usd": 0.025595800000000002,
+        "duration_ms": 12763,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-B1",
@@ -6466,13 +6519,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0340206,
-      "latency_ms": 19752,
+      "cost_usd": 0.025595800000000002,
+      "latency_ms": 12763,
       "tokens": {
        "input": 4,
-       "output": 1894,
-       "cache_read": 14583,
-       "cache_creation": 3039
+       "output": 1090,
+       "cache_read": 15059,
+       "cache_creation": 2919
       },
       "calls": 1,
       "failed": null,
@@ -6590,12 +6643,12 @@
         "cache_creation_tokens": 6564,
         "cost_usd": 0.0944858,
         "duration_ms": 52886,
-        "wall_ms": 1
+        "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-B1-photo",
@@ -6750,7 +6803,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-B1-photo",
@@ -6903,7 +6956,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-B1-photo",
@@ -7030,14 +7083,14 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The letter states a fixed calendar date for payment: '30. Juni 2025'. No period calculation is needed since the due date is printed explicitly. Total owed = Offener Betrag 59,40 EUR + Mahngebühr 2,50 EUR = 61,90 EUR.",
+        "explanation": "The letter states a fixed calendar date for payment: '30. Juni 2025'. This is a company (not an authority), so no statutory deemed-delivery rule applies; the date is simply the due date as printed. 30 June 2025 is a Monday, not a weekend or public holiday in NW, so no shift is needed.",
         "notes": []
        }
       ],
       "contract": null,
       "warnings": [
-       "This is a private company's first payment reminder (1. Mahnung), not an authority letter, so no statutory deemed-delivery or objection-period rules apply; the printed date is used as-is.",
-       "The recipient's IBAN (DE24 3705 0198 0002 0202 02) is a well-formed German IBAN, but before paying it is still worth confirming it matches Muster Verlag GmbH's known bank details rather than relying solely on this letter."
+       "This is a first reminder (1. Mahnung) from a magazine subscription service, a company, not an authority — there is no statutory deemed-delivery period and no legal remedy instructions apply; ordinary contract/debt law governs any dispute.",
+       "Verify the payee IBAN (DE24 3705 0198 0002 0202 02, Musterbank AG) matches previous invoices from Muster Verlag GmbH before paying, since reminder letters are a common vector for altered bank details."
       ],
       "signals": [],
       "hidden_text": null,
@@ -7060,17 +7113,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 4,
-        "output_tokens": 1956,
-        "cache_read_tokens": 16833,
-        "cache_creation_tokens": 5536,
-        "cost_usd": 0.045078599999999996,
-        "duration_ms": 22814,
+        "output_tokens": 941,
+        "cache_read_tokens": 17309,
+        "cache_creation_tokens": 5043,
+        "cost_usd": 0.0330518,
+        "duration_ms": 13256,
         "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-B1-photo",
@@ -7148,13 +7201,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.045078599999999996,
-      "latency_ms": 22814,
+      "cost_usd": 0.0330518,
+      "latency_ms": 13256,
       "tokens": {
        "input": 4,
-       "output": 1956,
-       "cache_read": 16833,
-       "cache_creation": 5536
+       "output": 941,
+       "cache_read": 17309,
+       "cache_creation": 5043
       },
       "calls": 1,
       "failed": null,
@@ -7260,7 +7313,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-english_letter-A1",
@@ -7414,7 +7467,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-english_letter-A1",
@@ -7566,7 +7619,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-english_letter-A1",
@@ -7692,34 +7745,34 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Letter is dated Wed 11 Feb 2026. The 30-day period is a calendar period under private law (§ 187 Abs. 1 BGB: day of the event, 11 Feb, not counted; counting starts 12 Feb 2026). 30 days later lands on Fri 13 Mar 2026 (§ 188 Abs. 1, 2 BGB). Fri 13 Mar 2026 is a normal working day (not a weekend or a NRW/Berlin public holiday), so no shift under § 193 BGB is needed. Due date for payment to arrive: 2026-03-13.",
+        "explanation": "Sender is a private company, so no statutory deemed-delivery rule applies; the period runs from the letter's own date, 11 February 2026. Under § 187 Abs. 1 BGB the day of the event (11 Feb) is not counted, so counting starts 12 Feb 2026. 30 days later (§ 188 Abs. 1 BGB) falls on Friday, 13 March 2026. That day is a business day (no weekend or NW public holiday), so no shift under § 193 BGB is needed. Due date: 13 March 2026.",
         "notes": []
        }
       ],
       "contract": null,
-      "warnings": [
-       "The IBAN printed (DE41 3705 0198 0009 0199 01) is a well-formed German IBAN with a valid checksum, but this only confirms the format, not that the account belongs to Beispiel Relocation Services GmbH — verify it against a prior confirmed communication before paying a first-time invoice from a private company."
-      ],
+      "warnings": [],
       "signals": [],
       "hidden_text": null,
       "tools": [
        {
         "name": "compute_deadline",
         "input": {
-         "document_date": "2026-02-11",
-         "sender_kind": "company",
-         "sender_name": "Beispiel Relocation Services GmbH",
-         "recipient_region": "NW",
-         "region": "BE",
          "spec": {
           "type": "relative",
           "amount": 30,
           "unit": "days",
           "anchor": "document_date",
+          "anchor_date": "2026-02-11",
           "nature": "payment",
           "shift_rule": "auto",
+          "legal_basis": "§§ 187, 188 BGB",
           "text": "Please pay within 30 days of the date of this letter"
-         }
+         },
+         "document_date": "2026-02-11",
+         "sender_kind": "company",
+         "sender_name": "Beispiel Relocation Services GmbH",
+         "region": "BE",
+         "recipient_region": "NW"
         },
         "ok": true,
         "due_date": "2026-03-13",
@@ -7744,17 +7797,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 4,
-        "output_tokens": 1314,
-        "cache_read_tokens": 14504,
-        "cache_creation_tokens": 4073,
-        "cost_usd": 0.0323408,
-        "duration_ms": 13346,
+        "output_tokens": 1392,
+        "cache_read_tokens": 14982,
+        "cache_creation_tokens": 4167,
+        "cost_usd": 0.0335924,
+        "duration_ms": 14921,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-english_letter-A1",
@@ -7832,13 +7885,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0323408,
-      "latency_ms": 13346,
+      "cost_usd": 0.0335924,
+      "latency_ms": 14921,
       "tokens": {
        "input": 4,
-       "output": 1314,
-       "cache_read": 14504,
-       "cache_creation": 4073
+       "output": 1392,
+       "cache_read": 14982,
+       "cache_creation": 4167
       },
       "calls": 1,
       "failed": null,
@@ -7946,7 +7999,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-english_letter-B1",
@@ -8099,12 +8152,12 @@
         "cache_creation_tokens": 1757,
         "cost_usd": 0.0325564,
         "duration_ms": 25884,
-        "wall_ms": 1
+        "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-english_letter-B1",
@@ -8257,7 +8310,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-english_letter-B1",
@@ -8357,7 +8410,7 @@
       "entry_id": "dev-english_letter-B1",
       "condition": "llm_rules_tool",
       "model": "sonnet",
-      "kind": "other",
+      "kind": "university",
       "sender_name": "Global Muster Research Institute",
       "sender_kind": null,
       "delivery_scope": null,
@@ -8369,7 +8422,7 @@
       "remedy_type": "none",
       "items": [
        {
-        "kind": "task",
+        "kind": "deadline",
         "title": "Return signed participation form",
         "due_date": "2026-08-07",
         "time": null,
@@ -8381,13 +8434,14 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The letter is written in English but comes from a German institute (Science Park 2, 69117 Beispielberg) addressed to a recipient in Berlin, and the earlier date on the same letter (05/05/2026, i.e. its own document date of 5 May 2026) is consistent with the European day/month/year convention. Reading 07/08/2026 the same way (DD/MM/YYYY) gives 7 August 2026. The letter states the form must be received by this date ('Forms received after this date cannot be considered'), so the deadline is the day the signed form must arrive at the institute, not merely be sent. This is a fixed calendar date stated by the sender, not a statutory period, so no BGB §187/188/193 counting or weekend/holiday shift applies to it.",
+        "explanation": "The letter states a fixed calendar date for return of the form: '07/08/2026'. The sender is a German institute (address in Beispielberg, Germany) writing to a recipient in Berlin, Germany, so the European day/month/year convention is the more plausible reading, giving 7 August 2026 rather than 8 July 2026 (US month/day/year). No deemed-delivery or statutory counting rules apply since this is a company/institute letter with a printed calendar date, not a period running from delivery. The date falls on a Friday, so no weekend/holiday shift is needed regardless of which reading is correct.",
         "notes": []
        }
       ],
       "contract": null,
       "warnings": [
-       "The date '07/08/2026' could be read as 8 July 2026 (US month/day/year format) instead of 7 August 2026; I used the European day/month/year reading, consistent with the letter's German sender address and its own document date, but the recipient should confirm which reading the institute intends before relying on the deadline."
+       "The due date '07/08/2026' is ambiguous between day/month/year (7 August) and month/day/year (8 July) format; the European reading (7 August 2026) was used as the more likely one given the German sender, but the person should confirm with the institute if unsure.",
+       "The letter states 'Forms received after this date cannot be considered', so the form should ideally be sent well before the deadline to ensure timely arrival."
       ],
       "signals": [],
       "hidden_text": null,
@@ -8399,17 +8453,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 2711,
-        "cache_read_tokens": 6200,
+        "output_tokens": 1400,
+        "cache_read_tokens": 6440,
         "cache_creation_tokens": 1993,
-        "cost_usd": 0.036326,
-        "duration_ms": 28753,
+        "cost_usd": 0.023264,
+        "duration_ms": 14721,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-english_letter-B1",
@@ -8445,7 +8499,7 @@
       "matched_required": 1,
       "true_positives": 1,
       "false_positives": 0,
-      "kind_ok": false,
+      "kind_ok": true,
       "sender_ok": true,
       "document_date_ok": true,
       "remedy_ok": true,
@@ -8488,12 +8542,12 @@
        "scam_false_alarm": false,
        "ambiguous_handled": true
       },
-      "cost_usd": 0.036326,
-      "latency_ms": 28753,
+      "cost_usd": 0.023264,
+      "latency_ms": 14721,
       "tokens": {
        "input": 2,
-       "output": 2711,
-       "cache_read": 6200,
+       "output": 1400,
+       "cache_read": 6440,
        "cache_creation": 1993
       },
       "calls": 1,
@@ -8640,7 +8694,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-fine_bussgeld-A1",
@@ -8836,7 +8890,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-fine_bussgeld-A1",
@@ -9027,7 +9081,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-fine_bussgeld-A1",
@@ -9157,16 +9211,13 @@
        "RO-JM 318"
       ],
       "amounts": [
-       70.0,
-       25.0,
-       3.5,
        98.5
       ],
       "remedy_type": "einspruch",
       "items": [
        {
         "kind": "deadline",
-        "title": "File Einspruch against the Bußgeldbescheid",
+        "title": "File Einspruch (objection) against the Bußgeldbescheid",
         "due_date": "2026-10-01",
         "time": null,
         "amount": null,
@@ -9177,12 +9228,12 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Page 2 shows a Zustellungsurkunde (formal service record) stating the notice was 'zugestellt am 17.09.2026' (Thursday). For förmliche Zustellung the documented actual delivery date governs rather than the standard postal deemed-delivery fiction. Under § 187 Abs. 1 BGB the day of delivery (17.09.2026) is not counted; the 2-week period begins the next day, 18.09.2026. Two weeks later (§ 188 Abs. 2 BGB) ends Thursday 01.10.2026, which is a normal working day in Bayern, so no shift is needed. Confirmed via compute_deadline tool.",
+        "explanation": "This is a formal service (Zustellungsurkunde, § 182 ZPO) — the scanned envelope shows 'zugestellt am 17.09.2026', so this actual delivery date is the anchor, not the ordinary 3/4-day deemed-delivery fiction for authority letters. Counting under § 187 Abs. 1 BGB (via § 43 Abs. 1 StPO/§ 110 OWiG): the day of delivery, Thu 17.09.2026, is not counted; the period starts 18.09.2026. Two weeks (§ 188 Abs. 1, 2 BGB) later ends Thu 01.10.2026. That day is a normal business day in Bayern (not a weekend or holiday), so no shift is needed. The objection must reach the Bußgeldstelle by this date.",
         "notes": []
        },
        {
         "kind": "payment",
-        "title": "Pay the total fine amount (Geldbuße + Gebühr + Auslagen)",
+        "title": "Pay the total fine (Geldbuße, Gebühr, Auslagen)",
         "due_date": "2026-10-16",
         "time": null,
         "amount": 98.5,
@@ -9193,14 +9244,15 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Payment is due two weeks after the decision becomes 'rechtskräftig' (final). Rechtskraft occurs once the 2-week Einspruch period lapses without an objection being filed, i.e. the day after 01.10.2026, so Rechtskraft = 02.10.2026 (Friday). Under § 187 Abs. 1 BGB that day is not counted; the 2-week payment period starts 03.10.2026 and ends two weeks later on Friday 16.10.2026 (§ 188 Abs. 2 BGB), a normal working day in Bayern, so no shift applies. This assumes no Einspruch is filed; if an Einspruch is filed, Rechtskraft and this payment deadline no longer apply. Confirmed via compute_deadline tool.",
+        "explanation": "The payment period runs from 'Rechtskraft' (when the notice becomes final), not from a fixed date. If no Einspruch is filed by the objection deadline of 01.10.2026, the notice becomes rechtskräftig the following day, 02.10.2026. Counting two weeks from there under §§ 187, 188 BGB: the day after Rechtskraft (03.10.2026) starts the period, which ends two weeks later on Fri 16.10.2026 — a normal business day, so no shift is needed. This date assumes no Einspruch is filed; if one is filed, this payment obligation does not arise on this timeline.",
         "notes": []
        }
       ],
       "contract": null,
       "warnings": [
-       "The payment due date (2026-10-16) depends on the fine becoming legally final, which in turn depends on no Einspruch being filed by 2026-10-01; if an Einspruch is filed, this payment deadline does not apply and a new timeline follows any court decision.",
-       "The IBAN on the letter (DE52 7115 0000 0000 0077 07, Sparkasse Musterau) is well-formed and matches the sender's stated bank, but ownership cannot be verified from the IBAN alone — compare it against other correspondence from Stadt Musterau before paying."
+       "The payment due date (2026-10-16) is only correct if no Einspruch is filed by 2026-10-01; filing an objection suspends this payment obligation and the case would instead go to court.",
+       "Page 2 is a photocopy of the delivery envelope showing the postal worker's handwritten 'zugestellt am 17.09.2026' — this formal Zustellungsurkunde date, not the ordinary deemed-delivery rule, was used to compute the Einspruch deadline; if the true service date differs, both computed dates would shift accordingly.",
+       "The IBAN (DE52 7115 0000 0000 0077 07, BLZ 71150000) is a validly formatted German IBAN consistent with the stated 'Sparkasse Musterau' and BIC BYLADEM1MUS, but this only checks the format, not true ownership — verify it matches prior official correspondence before paying."
       ],
       "signals": [],
       "hidden_text": null,
@@ -9208,22 +9260,24 @@
        {
         "name": "compute_deadline",
         "input": {
-         "document_date": "2026-09-14",
-         "received_date": "2026-09-17",
-         "sender_kind": "authority",
-         "sender_name": "Stadt Musterau – Bußgeldstelle",
-         "region": "BY",
-         "recipient_region": "BY",
-         "remedy_type": "einspruch",
          "spec": {
           "type": "relative",
           "amount": 2,
           "unit": "weeks",
           "anchor": "receipt",
+          "anchor_date": "2026-09-17",
           "nature": "objection",
-          "legal_basis": "§ 41 OWiG / § 182 ZPO",
-          "text": "innerhalb von zwei Wochen nach Zustellung schriftlich oder zur Niederschrift bei der oben bezeichneten Verwaltungsbehörde Einspruch einlegen"
-         }
+          "shift_rule": "auto",
+          "delivery_rule": "none",
+          "legal_basis": "§ 110 OWiG, § 182 ZPO (Zustellungsurkunde)",
+          "text": "wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach Zustellung schriftlich oder zur Niederschrift bei der oben bezeichneten Verwaltungsbehörde Einspruch einlegen"
+         },
+         "document_date": "2026-09-14",
+         "sender_kind": "authority",
+         "sender_name": "Stadt Musterau – Bußgeldstelle",
+         "region": "BY",
+         "recipient_region": "BY",
+         "remedy_type": "einspruch"
         },
         "ok": true,
         "due_date": "2026-10-01",
@@ -9233,10 +9287,6 @@
        {
         "name": "compute_deadline",
         "input": {
-         "document_date": "2026-09-14",
-         "sender_kind": "authority",
-         "sender_name": "Stadt Musterau – Bußgeldstelle",
-         "region": "BY",
          "spec": {
           "type": "relative",
           "amount": 2,
@@ -9244,9 +9294,16 @@
           "anchor": "explicit_date",
           "anchor_date": "2026-10-02",
           "nature": "payment",
-          "legal_basis": "Bußgeldbescheid Zahlungsfrist",
-          "text": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft"
-         }
+          "shift_rule": "auto",
+          "delivery_rule": "none",
+          "legal_basis": "Bußgeldbescheid Zahlungsaufforderung",
+          "text": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft unter Angabe des Aktenzeichens auf das unten genannte Konto."
+         },
+         "document_date": "2026-09-14",
+         "sender_kind": "authority",
+         "sender_name": "Stadt Musterau – Bußgeldstelle",
+         "region": "BY",
+         "recipient_region": "BY"
         },
         "ok": true,
         "due_date": "2026-10-16",
@@ -9271,17 +9328,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 8,
-        "output_tokens": 3352,
-        "cache_read_tokens": 40378,
-        "cache_creation_tokens": 7682,
-        "cost_usd": 0.0723396,
-        "duration_ms": 34935,
+        "output_tokens": 6738,
+        "cache_read_tokens": 42951,
+        "cache_creation_tokens": 11113,
+        "cost_usd": 0.12043820000000001,
+        "duration_ms": 65629,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-fine_bussgeld-A1",
@@ -9347,7 +9404,7 @@
        2
       ],
       "amounts": [
-       2,
+       1,
        2
       ],
       "references_precision": [
@@ -9355,8 +9412,8 @@
        2
       ],
       "amounts_precision": [
-       2,
-       4
+       1,
+       1
       ],
       "contract_dates": [
        0,
@@ -9380,13 +9437,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0723396,
-      "latency_ms": 34935,
+      "cost_usd": 0.12043820000000001,
+      "latency_ms": 65629,
       "tokens": {
        "input": 8,
-       "output": 3352,
-       "cache_read": 40378,
-       "cache_creation": 7682
+       "output": 6738,
+       "cache_read": 42951,
+       "cache_creation": 11113
       },
       "calls": 1,
       "failed": null,
@@ -9531,7 +9588,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-fine_bussgeld-B1",
@@ -9730,7 +9787,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-fine_bussgeld-B1",
@@ -9921,7 +9978,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-fine_bussgeld-B1",
@@ -10060,7 +10117,7 @@
       "items": [
        {
         "kind": "deadline",
-        "title": "File Einspruch (objection) against the Bußgeldbescheid",
+        "title": "File Einspruch against the Bußgeldbescheid",
         "due_date": "2026-10-05",
         "time": null,
         "amount": null,
@@ -10071,13 +10128,13 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The attached Postzustellungsurkunde (envelope scan, page 2) records the actual formal delivery date as 19.09.2026 (Saturday) — 'zugestellt am 19.09.2026' — so this documented date, not the deemed-delivery fiction, is the start of the objection period. Per § 187 Abs. 1 BGB the day of delivery itself (19.09.2026) is not counted, so the two-week period begins 20.09.2026. Per § 188 Abs. 2 BGB a period in weeks ends with the day of the last week bearing the same name as the day the period began, i.e. two weeks after 19.09.2026 = 03.10.2026 (Saturday), which is also the Tag der Deutschen Einheit public holiday in NW. Under § 193 BGB / § 31 Abs. 3 VwVfG, when the last day of a period falls on a Saturday, Sunday or public holiday, it moves to the next business day: Monday, 05.10.2026.",
+        "explanation": "The attached Postzustellungsurkunde (formal service, § 182 ZPO) shows 'zugestellt am 19.09.2026' (a Saturday). Formal service has no deemed-delivery fiction — the actual date on the delivery certificate is the anchor. Under § 187 Abs. 1 BGB the day of delivery (19.09.) is not counted; the two-week period (§ 43 StPO via § 46 Abs. 1 OWiG, § 67 Abs. 1 OWiG) runs from 20.09.2026 and would end Sat 03.10.2026, which is a public holiday (Tag der Deutschen Einheit) in NW (and nationwide). Under § 43 StPO the period is extended to the next working day: Monday 05.10.2026.",
         "notes": []
        },
        {
         "kind": "payment",
-        "title": "Pay the total fine (Geldbuße, fee and costs)",
-        "due_date": "2026-10-19",
+        "title": "Pay the total fine, fee and costs",
+        "due_date": "2026-10-20",
         "time": null,
         "amount": 98.5,
         "quote": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft unter Angabe des Aktenzeichens auf das unten genannte Konto.",
@@ -10087,14 +10144,15 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The Bescheid becomes rechtskräftig (final) only if no Einspruch is filed within the objection period, i.e. at the end of 05.10.2026 (the objection deadline computed above, itself already shifted from the Saturday holiday of 03.10.2026). Counting the payment period from that trigger day: per § 187 Abs. 1 BGB the day of Rechtskraft (05.10.2026) is not counted, so the two-week period starts 06.10.2026. Per § 188 Abs. 2 BGB it ends two weeks later on the corresponding weekday: Monday, 19.10.2026, which is an ordinary business day (no shift needed).",
+        "explanation": "Rechtskraft (finality) sets in only if no Einspruch is filed within the two-week objection period ending 05.10.2026; finality then takes effect the following day, 06.10.2026. Two weeks after that (day of Rechtskraft not counted per § 187 BGB, period ends per § 188 BGB) is Tuesday 20.10.2026, a normal working day in NW, so no further shift applies. This date assumes no Einspruch is lodged; if one is filed, Rechtskraft — and this payment deadline — do not arise on this schedule.",
         "notes": []
        }
       ],
       "contract": null,
       "warnings": [
-       "The payment deadline of 19.10.2026 only applies if no Einspruch is filed by 05.10.2026; a timely objection prevents Rechtskraft and suspends the payment obligation pending the outcome.",
-       "The letter includes a scanned copy of the delivery envelope (Postzustellungsurkunde) showing a documented delivery date of 19.09.2026 — this actual delivery date was used instead of the statutory deemed-delivery presumption, since it is more precise; verify this date against your own envelope/mail record if available."
+       "The payment due date (20.10.2026) is derived, not printed: it assumes the Bescheid becomes final because no Einspruch is filed by 05.10.2026; filing an Einspruch removes this payment deadline and starts a court process instead.",
+       "The letter itself is dated 15.09.2026 but was formally served (Zustellungsurkunde) only on 19.09.2026; the two-week Einspruch period is calculated from the actual service date shown on the delivery certificate, not from the letter's printed date.",
+       "Before paying, verify the IBAN (DE69 4145 0075 0000 0200 01, Sparkasse Musterland) and the Aktenzeichen match a genuine notice from Kreis Musterland – Bußgeldstelle, since Bußgeld scams sometimes imitate official fine notices."
       ],
       "signals": [],
       "hidden_text": null,
@@ -10104,17 +10162,17 @@
         "input": {
          "spec": {
           "type": "relative",
-          "anchor": "receipt",
-          "anchor_date": "2026-09-19",
           "amount": 2,
           "unit": "weeks",
+          "anchor": "receipt",
+          "anchor_date": "2026-09-19",
+          "delivery_rule": "none",
           "nature": "objection",
-          "shift_rule": "auto",
-          "legal_basis": "§ 187, 188, 193 BGB analog i.V.m. OWiG",
+          "legal_basis": "§ 67 OWiG",
           "text": "Sie können gegen diesen Bescheid binnen zwei Wochen nach Zustellung Einspruch einlegen"
          },
-         "received_date": "2026-09-19",
          "document_date": "2026-09-15",
+         "received_date": "2026-09-19",
          "sender_kind": "authority",
          "sender_name": "Kreis Musterland – Bußgeldstelle",
          "region": "NW",
@@ -10127,10 +10185,9 @@
         "error": null
        },
        {
-        "name": "german_holidays",
+        "name": "check_iban",
         "input": {
-         "year": 2026,
-         "region": "NW"
+         "iban": "DE69 4145 0075 0000 0200 01"
         },
         "ok": true,
         "due_date": null,
@@ -10142,31 +10199,21 @@
         "input": {
          "spec": {
           "type": "relative",
-          "anchor": "explicit_date",
-          "anchor_date": "2026-10-05",
           "amount": 2,
           "unit": "weeks",
+          "anchor": "explicit_date",
+          "anchor_date": "2026-10-06",
           "nature": "payment",
-          "shift_rule": "auto",
-          "legal_basis": "§§ 187, 188, 193 BGB analog",
-          "text": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft unter Angabe des Aktenzeichens auf das unten genannte Konto."
+          "legal_basis": "§§ 187, 188 BGB (analog)",
+          "text": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft"
          },
-         "region": "NW",
+         "document_date": "2026-09-15",
          "sender_kind": "authority",
-         "sender_name": "Kreis Musterland – Bußgeldstelle"
+         "sender_name": "Kreis Musterland – Bußgeldstelle",
+         "region": "NW"
         },
         "ok": true,
-        "due_date": "2026-10-19",
-        "date": null,
-        "error": null
-       },
-       {
-        "name": "check_iban",
-        "input": {
-         "iban": "DE69 4145 0075 0000 0200 01"
-        },
-        "ok": true,
-        "due_date": null,
+        "due_date": "2026-10-20",
         "date": null,
         "error": null
        }
@@ -10177,18 +10224,18 @@
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 8,
-        "output_tokens": 5537,
-        "cache_read_tokens": 44550,
-        "cache_creation_tokens": 9776,
-        "cost_usd": 0.10339999999999999,
-        "duration_ms": 56131,
+        "input_tokens": 6,
+        "output_tokens": 4199,
+        "cache_read_tokens": 28143,
+        "cache_creation_tokens": 7961,
+        "cost_usd": 0.0794746,
+        "duration_ms": 43596,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-fine_bussgeld-B1",
@@ -10227,7 +10274,7 @@
         "expected": null,
         "matched": true,
         "pred_index": 1,
-        "predicted": "2026-10-19",
+        "predicted": "2026-10-20",
         "outcome": "unscored",
         "direction": null,
         "days_off": null,
@@ -10285,28 +10332,27 @@
        ]
       },
       "adversarial": {
-       "scam_false_alarm": false
+       "scam_false_alarm": true
       },
-      "cost_usd": 0.10339999999999999,
-      "latency_ms": 56131,
+      "cost_usd": 0.0794746,
+      "latency_ms": 43596,
       "tokens": {
-       "input": 8,
-       "output": 5537,
-       "cache_read": 44550,
-       "cache_creation": 9776
+       "input": 6,
+       "output": 4199,
+       "cache_read": 28143,
+       "cache_creation": 7961
       },
       "calls": 1,
       "failed": null,
       "error": null,
       "tool_calls": {
        "compute_deadline": 2,
-       "german_holidays": 1,
        "check_iban": 1
       },
       "tool_refusals": 0,
       "tool_dates": [
        "2026-10-05",
-       "2026-10-19"
+       "2026-10-20"
       ]
      }
     }
@@ -10400,12 +10446,12 @@
         "cache_creation_tokens": 1916,
         "cost_usd": 0.043448999999999995,
         "duration_ms": 32031,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-invoice_relative-A1",
@@ -10559,7 +10605,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-invoice_relative-A1",
@@ -10711,7 +10757,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-invoice_relative-A1",
@@ -10837,7 +10883,7 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Rechnungsdatum is 20.03.2026 (Friday). Under §187 Abs. 1 BGB the day of the event (invoice date) is not counted, so counting starts 21.03.2026. 14 days later lands on 03.04.2026 (Friday), but that is Karfreitag (Good Friday), a nationwide public holiday. Under §193 BGB the deadline shifts to the next business day, which is Tuesday 07.04.2026 (06.04.2026 Easter Monday is also a holiday, so the next business day after 03.04. is 07.04.).",
+        "explanation": "Anchor: Rechnungsdatum 20.03.2026 (invoice from a private company, not an authority, so no deemed-delivery rule applies; the date of the invoice itself is the counting start). Under § 187 Abs. 1 BGB the day of the event (20.03.2026) is not counted, so counting starts 21.03.2026. 14 days later lands on 03.04.2026 (Friday). That day, 03.04.2026, is Karfreitag (Good Friday), a public holiday nationwide. Under § 193 BGB the deadline shifts to the next business day: Saturday 04.04. and Sunday 05.04. are skipped, Easter Monday 06.04.2026 is also a public holiday, so the due date moves to Tuesday 07.04.2026.",
         "notes": []
        }
       ],
@@ -10857,13 +10903,14 @@
           "anchor_date": "2026-03-20",
           "nature": "payment",
           "shift_rule": "auto",
-          "legal_basis": "§187 Abs. 1, §188 Abs. 1 BGB",
+          "legal_basis": "§ 187 Abs. 1, § 188 Abs. 1 BGB",
           "text": "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug."
          },
-         "document_date": "2026-03-20",
          "sender_kind": "company",
          "sender_name": "Elektro Mustermann GmbH",
-         "region": "NW"
+         "document_date": "2026-03-20",
+         "region": "NW",
+         "recipient_region": "NW"
         },
         "ok": true,
         "due_date": "2026-04-07",
@@ -10887,18 +10934,18 @@
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 4,
-        "output_tokens": 1564,
-        "cache_read_tokens": 14645,
-        "cache_creation_tokens": 4623,
-        "cost_usd": 0.037069,
-        "duration_ms": 15300,
+        "input_tokens": 6,
+        "output_tokens": 1459,
+        "cache_read_tokens": 25586,
+        "cache_creation_tokens": 4569,
+        "cost_usd": 0.0379952,
+        "duration_ms": 16185,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-invoice_relative-A1",
@@ -10976,13 +11023,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.037069,
-      "latency_ms": 15300,
+      "cost_usd": 0.0379952,
+      "latency_ms": 16185,
       "tokens": {
-       "input": 4,
-       "output": 1564,
-       "cache_read": 14645,
-       "cache_creation": 4623
+       "input": 6,
+       "output": 1459,
+       "cache_read": 25586,
+       "cache_creation": 4569
       },
       "calls": 1,
       "failed": null,
@@ -11106,7 +11153,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-invoice_relative-A1-photo",
@@ -11260,7 +11307,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-invoice_relative-A1-photo",
@@ -11412,7 +11459,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-invoice_relative-A1-photo",
@@ -11538,7 +11585,7 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The invoice is dated Fri 20.03.2026 (Rechnungsdatum). Under § 187 Abs. 1 BGB the day of the triggering event is not counted, so the 14-day period starts on 21.03.2026. 14 days later is Fri 03.04.2026 (§ 188 Abs. 1 BGB). That day is Karfreitag, a public holiday in NW (and nationwide), so under § 193 BGB the deadline shifts to the next business day, Tue 07.04.2026 (Mon 06.04.2026 is Easter Monday, also a holiday).",
+        "explanation": "Period is 14 days after the invoice date (Rechnungsdatum), 20.03.2026 (a Friday). Under § 187 Abs. 1 BGB the day of the event (20.03.2026) is not counted; counting starts 21.03.2026. 14 days later (§ 188 Abs. 1 BGB) lands on 03.04.2026, a Friday. However 03.04.2026 is Karfreitag (Good Friday), a public holiday nationwide including NRW, so under § 193 BGB the deadline shifts to the next business day, Tuesday 07.04.2026.",
         "notes": []
        }
       ],
@@ -11552,33 +11599,23 @@
         "input": {
          "spec": {
           "type": "relative",
-          "anchor": "document_date",
           "amount": 14,
           "unit": "days",
+          "anchor": "document_date",
+          "anchor_date": "2026-03-20",
           "nature": "payment",
           "shift_rule": "auto",
-          "legal_basis": "§ 187 Abs. 1, § 188 Abs. 1, § 193 BGB",
+          "legal_basis": "§§ 187, 188 BGB",
           "text": "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug."
          },
          "document_date": "2026-03-20",
          "sender_kind": "company",
          "sender_name": "Elektro Mustermann GmbH",
          "region": "NW",
-         "recipient_region": "NW",
-         "today": "2026-03-23"
+         "recipient_region": "NW"
         },
         "ok": true,
         "due_date": "2026-04-07",
-        "date": null,
-        "error": null
-       },
-       {
-        "name": "check_iban",
-        "input": {
-         "iban": "DE96 3705 0198 0005 5667 78"
-        },
-        "ok": true,
-        "due_date": null,
         "date": null,
         "error": null
        }
@@ -11589,18 +11626,18 @@
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 6,
-        "output_tokens": 1507,
-        "cache_read_tokens": 29380,
-        "cache_creation_tokens": 6828,
-        "cost_usd": 0.04827,
-        "duration_ms": 29027,
-        "wall_ms": 0
+        "input_tokens": 4,
+        "output_tokens": 1375,
+        "cache_read_tokens": 17311,
+        "cache_creation_tokens": 6280,
+        "cost_usd": 0.042340199999999995,
+        "duration_ms": 15329,
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-invoice_relative-A1-photo",
@@ -11678,20 +11715,19 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.04827,
-      "latency_ms": 29027,
+      "cost_usd": 0.042340199999999995,
+      "latency_ms": 15329,
       "tokens": {
-       "input": 6,
-       "output": 1507,
-       "cache_read": 29380,
-       "cache_creation": 6828
+       "input": 4,
+       "output": 1375,
+       "cache_read": 17311,
+       "cache_creation": 6280
       },
       "calls": 1,
       "failed": null,
       "error": null,
       "tool_calls": {
-       "compute_deadline": 1,
-       "check_iban": 1
+       "compute_deadline": 1
       },
       "tool_refusals": 0,
       "tool_dates": [
@@ -11793,7 +11829,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-invoice_relative-B1",
@@ -11947,7 +11983,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-invoice_relative-B1",
@@ -12099,7 +12135,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-invoice_relative-B1",
@@ -12225,14 +12261,12 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Anchor is the invoice date 04.09.2025 (Rechnungsdatum). Under § 187 Abs. 1 BGB the day of the event (04.09.2025) is not counted, so counting starts 05.09.2025. Adding 30 days (§ 188 Abs. 1 BGB) lands on Saturday, 04.10.2025. Since that day is a Saturday, § 193 BGB shifts the deadline to the next business day, Monday, 06.10.2025.",
+        "explanation": "The invoice is dated Thursday 4 September 2025 (Rechnungsdatum). This is a private company's invoice, so ordinary calendar computation under §§ 187, 188, 193 BGB applies (no deemed-delivery rule, since that only applies to authorities). Under §187(1) BGB the day of the event (4 Sep) is not counted; counting starts 5 Sep. 30 days later lands on Saturday 4 October 2025. Under §193 BGB, since the last day is a Saturday, the deadline shifts to the next business day, Monday 6 October 2025. Allowing roughly one business day for a bank transfer to arrive (§675s BGB), the payment should be sent by about 2 October 2025.",
         "notes": []
        }
       ],
       "contract": null,
-      "warnings": [
-       "The invoice's IBAN (DE11 3705 0198 0003 0303 03) is well-formed and German, but a valid IBAN does not by itself prove it belongs to this dental practice; confirm it matches details you already have on file for this practice before paying."
-      ],
+      "warnings": [],
       "signals": [],
       "hidden_text": null,
       "tools": [
@@ -12241,13 +12275,13 @@
         "input": {
          "spec": {
           "type": "relative",
-          "anchor": "explicit_date",
-          "anchor_date": "2025-09-04",
           "amount": 30,
           "unit": "days",
+          "anchor": "document_date",
+          "anchor_date": "2025-09-04",
           "nature": "payment",
           "shift_rule": "auto",
-          "legal_basis": "§§ 187, 188 BGB",
+          "legal_basis": "§187 BGB",
           "text": "Bitte begleichen Sie den Rechnungsbetrag spätestens 30 Tage nach dem Rechnungsdatum auf das unten angegebene Konto."
          },
          "document_date": "2025-09-04",
@@ -12278,18 +12312,18 @@
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 6,
-        "output_tokens": 2187,
-        "cache_read_tokens": 25242,
-        "cache_creation_tokens": 5269,
-        "cost_usd": 0.0480064,
-        "duration_ms": 21343,
+        "input_tokens": 4,
+        "output_tokens": 1474,
+        "cache_read_tokens": 15149,
+        "cache_creation_tokens": 4614,
+        "cost_usd": 0.0362338,
+        "duration_ms": 14939,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-invoice_relative-B1",
@@ -12367,13 +12401,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0480064,
-      "latency_ms": 21343,
+      "cost_usd": 0.0362338,
+      "latency_ms": 14939,
       "tokens": {
-       "input": 6,
-       "output": 2187,
-       "cache_read": 25242,
-       "cache_creation": 5269
+       "input": 4,
+       "output": 1474,
+       "cache_read": 15149,
+       "cache_creation": 4614
       },
       "calls": 1,
       "failed": null,
@@ -12516,7 +12550,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-municipal_decision-A1",
@@ -12688,7 +12722,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-municipal_decision-A1",
@@ -12858,7 +12892,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-municipal_decision-A1",
@@ -12957,7 +12991,7 @@
       "entry_id": "dev-municipal_decision-A1",
       "condition": "llm_rules_tool",
       "model": "sonnet",
-      "kind": "fine",
+      "kind": "authority_letter",
       "sender_name": "Stadt Musterstadt, Der Oberbürgermeister · Ordnungsamt",
       "sender_kind": null,
       "delivery_scope": null,
@@ -12972,23 +13006,23 @@
       "items": [
        {
         "kind": "task",
-        "title": "Keep dog on a leash of max. 2 metres outside enclosed property",
+        "title": "Keep dog on a leash (max. 2 m) outside enclosed property",
         "due_date": "2025-05-15",
         "time": null,
         "amount": null,
         "quote": "ordne ich hiermit gemäß § 14 Abs. 1 OBG NRW an, dass Ihr Hund außerhalb Ihres befriedeten Besitztums ab sofort an einer höchstens zwei Meter langen Leine zu führen ist.",
-        "confidence": "high",
+        "confidence": "medium",
         "spec": null,
         "grounding": null,
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The order takes effect 'ab sofort' (immediately) as of the letter's date, 15.05.2025; there is no grace period, so the obligation is already in force from the document date.",
+        "explanation": "The order takes effect \"ab sofort\" (immediately) as of the letter's date, 15.05.2025. This is an ongoing duty with no stated end date, so the due date given here is the day compliance must start, not a final day; the obligation continues until the order is lifted or successfully challenged.",
         "notes": []
        },
        {
         "kind": "deadline",
-        "title": "File Klage (lawsuit) with the Verwaltungsgericht against the Ordnungsverfügung",
+        "title": "File Klage (lawsuit) with the Verwaltungsgericht Musterstadt",
         "due_date": "2025-06-20",
         "time": null,
         "amount": null,
@@ -12999,16 +13033,17 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Letter dated Thu 15.05.2025, posted by a German authority: under § 41 Abs. 2 VwVfG it counts as delivered on the 4th day after posting = Mon 19.05.2025. Under § 187 Abs. 1 BGB the one-month period (§ 74 VwGO) starts the next day and ends, per § 188 Abs. 2 BGB, on the same-numbered day one month later: Thu 19.06.2025. That day is Fronleichnam (public holiday in NRW), so under § 31 Abs. 3 VwVfG / § 57 Abs. 2 VwGO i.V.m. § 222 Abs. 2 ZPO the deadline shifts to the next business day, Fri 20.06.2025.",
+        "explanation": "Letter dated Thu 15.05.2025, posted by an authority → deemed delivered on the 4th day after posting (§ 41 Abs. 2 VwVfG NRW): Mon 19.05.2025. Under § 187 Abs. 1 BGB the one-month period (§ 74 VwGO) starts the next day and would end Thu 19.06.2025 (§ 188 Abs. 1 BGB), but that day is Fronleichnam, a public holiday in NRW, so the deadline shifts to the next business day, Fri 20.06.2025 (§ 31 Abs. 3 VwVfG i.V.m. § 57 Abs. 2 VwGO, § 222 Abs. 2 ZPO).",
         "notes": []
        }
       ],
       "contract": null,
       "warnings": [
-       "A Zwangsgeld (coercive penalty payment) of €250 is only threatened for future non-compliance (Zuwiderhandlung); it is not currently due and no payment should be made unless a violation is later established and a separate demand is issued.",
-       "The letter states 'Ein Widerspruchsverfahren findet nicht statt' — only a direct Klage to the Verwaltungsgericht is available, not a Widerspruch, so do not wait to file an internal objection first.",
-       "The one-month deadline to file suit is a court deadline (Fristsache); get advice (e.g. a lawyer or Verbraucherzentrale) well before 20.06.2025 if you intend to contest the order.",
-       "The printed IBAN (DE70 4405 0199 0001 0001 00) is well-formed and belongs to Sparkasse Musterstadt, but no payment is actually requested in this letter — treat any later request to pay to this account with the usual caution and verify it independently."
+       "The letter threatens a coercive fine (Zwangsgeld) of 250,00 € only if the leashing order is violated in the future — this is not a payment currently due, and no invoice or bank details for it are given.",
+       "The Rechtsbehelfsbelehrung states \"Ein Widerspruchsverfahren findet nicht statt\" — only a Klage (lawsuit) to the Verwaltungsgericht is available, not a Widerspruch.",
+       "The deemed-delivery date (19.05.2025) and thus the Klage deadline (20.06.2025) is an assumption based on the letter's printed date; if the person can show a later actual delivery date, the deadline could be later — confirm the envelope postmark if in doubt.",
+       "This is a deadline for filing a court action (Klage); get advice from a Verbraucherzentrale or a lawyer well before the deadline, as this tool cannot draft or file the lawsuit.",
+       "The IBAN printed in the footer (DE70 4405 0199 0001 0001 00) is well-formed and matches a German Sparkasse, but no payment is currently demanded in this letter, so there is no need to use it now."
       ],
       "signals": [],
       "hidden_text": null,
@@ -13018,21 +13053,22 @@
         "input": {
          "spec": {
           "type": "relative",
-          "anchor": "deemed_delivery",
-          "delivery_rule": "de_admin_post",
           "amount": 1,
           "unit": "months",
+          "anchor": "deemed_delivery",
+          "delivery_rule": "de_admin_post",
           "nature": "objection",
+          "shift_rule": "auto",
           "legal_basis": "§ 74 VwGO, § 41 VwVfG NRW",
-          "text": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Klage beim Verwaltungsgericht Musterstadt erhoben werden."
+          "text": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Klage beim Verwaltungsgericht Musterstadt ... erhoben werden."
          },
          "document_date": "2025-05-15",
+         "today": "2025-05-19",
          "sender_kind": "authority",
          "sender_name": "Stadt Musterstadt, Ordnungsamt",
-         "recipient_region": "NW",
-         "region": "NW",
          "remedy_type": "klage",
-         "today": "2025-05-19"
+         "region": "NW",
+         "recipient_region": "NW"
         },
         "ok": true,
         "due_date": "2025-06-20",
@@ -13056,18 +13092,18 @@
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 6,
-        "output_tokens": 3810,
-        "cache_read_tokens": 26605,
-        "cache_creation_tokens": 7266,
-        "cost_usd": 0.072497,
-        "duration_ms": 36503,
+        "input_tokens": 4,
+        "output_tokens": 3725,
+        "cache_read_tokens": 15411,
+        "cache_creation_tokens": 5963,
+        "cost_usd": 0.0641922,
+        "duration_ms": 39601,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-municipal_decision-A1",
@@ -13103,7 +13139,7 @@
       "matched_required": 1,
       "true_positives": 1,
       "false_positives": 1,
-      "kind_ok": false,
+      "kind_ok": true,
       "sender_ok": true,
       "document_date_ok": true,
       "remedy_ok": true,
@@ -13145,13 +13181,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.072497,
-      "latency_ms": 36503,
+      "cost_usd": 0.0641922,
+      "latency_ms": 39601,
       "tokens": {
-       "input": 6,
-       "output": 3810,
-       "cache_read": 26605,
-       "cache_creation": 7266
+       "input": 4,
+       "output": 3725,
+       "cache_read": 15411,
+       "cache_creation": 5963
       },
       "calls": 1,
       "failed": null,
@@ -13259,7 +13295,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-municipal_decision-B1",
@@ -13410,7 +13446,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-municipal_decision-B1",
@@ -13559,7 +13595,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-municipal_decision-B1",
@@ -13682,7 +13718,7 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Letter dated Tue 2 Dec 2025; under § 41 Abs. 2 VwVfG an authority's posted letter counts as delivered on the 4th day after posting, i.e. Sat 6 Dec 2025 (this day does not shift for weekends). Under § 187 Abs. 1 BGB the one-month period starts the next day; under § 188 Abs. 2 BGB it ends one month later on Tue 6 Jan 2026. That day is a public holiday (Heilige Drei Könige, observed in Bayern), so under § 31 Abs. 3 VwVfG the deadline moves to the next business day, Wed 7 Jan 2026.",
+        "explanation": "Letter dated Tue 2 Dec 2025, sent by ordinary post from a Bavarian authority: under § 41 Abs. 2 VwVfG it counts as delivered on the 4th day after posting, i.e. Sat 6 Dec 2025 (this day does not shift for deemed-delivery purposes). Under § 187 Abs. 1 BGB the one-month period starts the next day, and under § 188 Abs. 2 BGB ends one month later on Tue 6 Jan 2026. That day, Heilige Drei Könige, is a public holiday in Bayern, so under § 31 Abs. 3 VwVfG the deadline shifts to the next business day, Wed 7 Jan 2026.",
         "notes": []
        }
       ],
@@ -13694,13 +13730,6 @@
        {
         "name": "compute_deadline",
         "input": {
-         "document_date": "2025-12-02",
-         "sender_kind": "authority",
-         "sender_name": "Landratsamt Beispielkreis",
-         "region": "BY",
-         "recipient_region": "BY",
-         "remedy_type": "widerspruch",
-         "today": "2025-12-04",
          "spec": {
           "type": "relative",
           "amount": 1,
@@ -13709,9 +13738,15 @@
           "delivery_rule": "de_admin_post",
           "nature": "objection",
           "shift_rule": "auto",
-          "legal_basis": "Art. 13 Abs. 3 BayWaldG, §§ 68 ff. VwGO",
+          "legal_basis": "Art. 13 Abs. 3 BayWaldG; Widerspruch binnen eines Monats nach Bekanntgabe",
           "text": "Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Widerspruch einlegen."
-         }
+         },
+         "document_date": "2025-12-02",
+         "sender_kind": "authority",
+         "sender_name": "Landratsamt Beispielkreis",
+         "region": "BY",
+         "recipient_region": "BY",
+         "remedy_type": "widerspruch"
         },
         "ok": true,
         "due_date": "2026-01-07",
@@ -13726,17 +13761,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 4,
-        "output_tokens": 1244,
-        "cache_read_tokens": 14941,
-        "cache_creation_tokens": 4989,
-        "cost_usd": 0.0353922,
-        "duration_ms": 13013,
+        "output_tokens": 1729,
+        "cache_read_tokens": 15425,
+        "cache_creation_tokens": 5225,
+        "cost_usd": 0.041283,
+        "duration_ms": 18708,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-municipal_decision-B1",
@@ -13814,13 +13849,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0353922,
-      "latency_ms": 13013,
+      "cost_usd": 0.041283,
+      "latency_ms": 18708,
       "tokens": {
        "input": 4,
-       "output": 1244,
-       "cache_read": 14941,
-       "cache_creation": 4989
+       "output": 1729,
+       "cache_read": 15425,
+       "cache_creation": 5225
       },
       "calls": 1,
       "failed": null,
@@ -13900,7 +13935,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-price_increase-A1",
@@ -14056,7 +14091,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-price_increase-A1",
@@ -14230,7 +14265,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-price_increase-A1",
@@ -14348,46 +14383,56 @@
       "remedy_type": "none",
       "items": [
        {
-        "kind": "milestone",
-        "title": "New electricity price takes effect",
-        "due_date": "2026-01-01",
-        "time": null,
-        "amount": null,
-        "quote": "aufgrund gestiegener Netzentgelte und Beschaffungskosten passen wir unsere Preise zum 01.01.2026 an:",
-        "confidence": "high",
-        "spec": null,
-        "grounding": null,
-        "value_consistent": null,
-        "needs_check": false,
-        "rule_ids": [],
-        "explanation": "The letter states the new prices (Arbeitspreis, Grundpreis, monthly Abschlag) apply from a fixed calendar date printed in the letter: 01.01.2026. No period calculation is needed.",
-        "notes": []
-       },
-       {
-        "kind": "deadline",
-        "title": "Special right to terminate contract without notice due to price increase",
+        "kind": "expiry",
+        "title": "Special right to terminate the electricity contract before the price increase takes effect",
         "due_date": "2025-12-31",
         "time": null,
         "amount": null,
         "quote": "Sie haben das Recht, Ihren Vertrag ohne Einhaltung einer Kündigungsfrist zum Zeitpunkt des Wirksamwerdens der Preisänderung zu kündigen (§ 41 Abs. 5 EnWG).",
-        "confidence": "low",
+        "confidence": "medium",
         "spec": null,
         "grounding": null,
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Under § 41 Abs. 5 EnWG the customer may terminate without notice period effective at the moment the price increase takes effect (01.01.2026). To be effective from that date, the termination (in Textform) must reach the provider before the increase takes effect, i.e. by the last day of the current price period. The letter does not print an explicit calendar deadline for sending the notice, so the last day on which the new (higher) price has not yet applied, 31.12.2025 (the day before 01.01.2026), is used as the practical last date to ensure the special termination is honoured before the new price starts; this is the earliest plausible reading and not an explicit date from the letter.",
+        "explanation": "The price increase becomes effective on 01.01.2026 ('Anpassung Ihrer Strompreise zum 01.01.2026'). § 41 Abs. 5 EnWG gives the customer a special right to terminate without notice period, effective at the moment the new price would start to apply. To end the contract before the higher price applies (i.e. effective 01.01.2026), the termination in text form must reach Beispiel Energie AG at the latest one day before, i.e. by 31.12.2025 (§ 188 Abs. 1 BGB, counting back one day from 01.01.2026). 31.12.2025 is a Wednesday, so no weekend/holiday shift is needed. The letter itself does not print this date explicitly; it is derived from the stated effective date of the price change.",
         "notes": []
        }
       ],
       "contract": null,
       "warnings": [
-       "The letter itself does not print an explicit calendar deadline for exercising the special termination right (§ 41 Abs. 5 EnWG); the date given (31.12.2025) is the earliest plausible reading, derived from the price-change effective date, not a date stated in the letter — confirm directly with the provider if timing is critical.",
-       "There were conflicting 'today' dates in the system context (2025-10-31 and 2026-09-26); since all due dates here are fixed calendar dates from the letter (not relative periods), this discrepancy does not change the computed dates, but the person should verify the current real-world date before acting."
+       "The letter does not print an explicit deadline for exercising the special termination right; the 31.12.2025 date is derived from the stated 01.01.2026 effective date of the price increase and should be confirmed if a lot is at stake.",
+       "Cancellation must be in text form ('Textform') and reach the provider by the deadline, not merely be sent by then; sending well before 31.12.2025 (e.g. by 23.12.2025) is advisable to allow for postal transit."
       ],
       "signals": [],
       "hidden_text": null,
       "tools": [
+       {
+        "name": "compute_deadline",
+        "input": {
+         "spec": {
+          "type": "relative",
+          "anchor": "explicit_date",
+          "anchor_date": "2026-01-01",
+          "amount": -1,
+          "unit": "days",
+          "nature": "notice",
+          "shift_rule": "none",
+          "legal_basis": "§ 41 Abs. 5 EnWG",
+          "text": "Sie haben das Recht, Ihren Vertrag ohne Einhaltung einer Kündigungsfrist zum Zeitpunkt des Wirksamwerdens der Preisänderung zu kündigen (§ 41 Abs. 5 EnWG)."
+         },
+         "document_date": "2025-10-28",
+         "sender_kind": "utility",
+         "sender_name": "Beispiel Energie AG",
+         "region": "NW",
+         "recipient_region": "NW",
+         "today": "2025-10-31"
+        },
+        "ok": true,
+        "due_date": "2025-12-31",
+        "date": null,
+        "error": null
+       },
        {
         "name": "check_iban",
         "input": {
@@ -14405,18 +14450,18 @@
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 4,
-        "output_tokens": 3183,
-        "cache_read_tokens": 14618,
-        "cache_creation_tokens": 4036,
-        "cost_usd": 0.05090560000000001,
-        "duration_ms": 36390,
+        "input_tokens": 6,
+        "output_tokens": 5018,
+        "cache_read_tokens": 28087,
+        "cache_creation_tokens": 7609,
+        "cost_usd": 0.08624539999999999,
+        "duration_ms": 51212,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-price_increase-A1",
@@ -14433,15 +14478,15 @@
         "title": "Sonderkündigung vor Inkrafttreten der Preiserhöhung",
         "expected": "2025-12-31",
         "matched": true,
-        "pred_index": 1,
+        "pred_index": 0,
         "predicted": "2025-12-31",
         "outcome": "unscored",
         "direction": null,
         "days_off": null,
         "cause": null,
         "reading_diffs": [],
-        "flagged": true,
-        "confidence": "low",
+        "flagged": false,
+        "confidence": "medium",
         "grounding": null,
         "region_ignored": false,
         "backing": null,
@@ -14451,7 +14496,7 @@
       "required": 0,
       "matched_required": 0,
       "true_positives": 0,
-      "false_positives": 1,
+      "false_positives": 0,
       "kind_ok": true,
       "sender_ok": true,
       "document_date_ok": true,
@@ -14494,22 +14539,25 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.05090560000000001,
-      "latency_ms": 36390,
+      "cost_usd": 0.08624539999999999,
+      "latency_ms": 51212,
       "tokens": {
-       "input": 4,
-       "output": 3183,
-       "cache_read": 14618,
-       "cache_creation": 4036
+       "input": 6,
+       "output": 5018,
+       "cache_read": 28087,
+       "cache_creation": 7609
       },
       "calls": 1,
       "failed": null,
       "error": null,
       "tool_calls": {
+       "compute_deadline": 1,
        "check_iban": 1
       },
       "tool_refusals": 0,
-      "tool_dates": []
+      "tool_dates": [
+       "2025-12-31"
+      ]
      }
     }
    }
@@ -14574,7 +14622,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-price_increase-B1",
@@ -14744,7 +14792,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-price_increase-B1",
@@ -14914,7 +14962,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-price_increase-B1",
@@ -15029,41 +15077,41 @@
       "items": [
        {
         "kind": "milestone",
-        "title": "New monthly price takes effect",
+        "title": "Price increase takes effect",
         "due_date": "2026-04-01",
         "time": null,
         "amount": 44.99,
-        "quote": "erhöht sich der monatliche Grundpreis Ihres Tarifs „Muster DSL 250“ ab dem 01.04.2026 von 39,99 € auf 44,99 €.",
+        "quote": "wir investieren weiter in den Ausbau unseres Glasfasernetzes. Deshalb erhöht sich der\nmonatliche Grundpreis Ihres Tarifs „Muster DSL 250“ ab dem 01.04.2026 von 39,99 € auf\n44,99 €.",
         "confidence": "high",
         "spec": null,
         "grounding": null,
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The letter states the new price of 44,99 € (from 39,99 €) applies from the fixed calendar date given in the letter: 01.04.2026.",
+        "explanation": "The letter states the new price of 44,99 € applies from 01.04.2026, a fixed calendar date printed in the letter. No counting or shifting needed.",
         "notes": []
        },
        {
         "kind": "deadline",
-        "title": "Exercise special cancellation right (Sonderkündigungsrecht, § 57 TKG)",
+        "title": "Special termination right (§ 57 TKG) deadline",
         "due_date": "2026-05-16",
         "time": null,
         "amount": null,
-        "quote": "Sie können Ihren Vertrag innerhalb von drei Monaten nach Zugang dieser Mitteilung ohne Einhaltung einer Frist und ohne Kosten kündigen, frühestens zum Zeitpunkt des Wirksamwerdens der Änderung (§ 57 TKG).",
-        "confidence": "medium",
+        "quote": "Sie können Ihren Vertrag innerhalb von drei Monaten nach\nZugang dieser Mitteilung ohne Einhaltung einer Frist und ohne Kosten kündigen, frühestens\nzum Zeitpunkt des Wirksamwerdens der Änderung (§ 57 TKG).",
+        "confidence": "low",
         "spec": null,
         "grounding": null,
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The 3-month window runs 'nach Zugang' (from receipt), not from the document date, but the letter does not state the actual delivery/receipt date. Taking the earliest plausible reading, Zugang is assumed on the letter's own date, 16.02.2026 (Monday) — the real receipt date, and hence the real deadline, could be a few days later if the letter took time in the post. Counting starts the day after Zugang (§ 187 Abs. 1 BGB): 17.02.2026. Three months later (§ 188 Abs. 2 BGB) is 16.05.2026, a Saturday. Termination/notice deadlines do not shift to the next business day when they fall on a weekend or holiday (BGH III ZR 172/04), so the notice must reach NetzMuster GmbH by Saturday 16.05.2026 at the latest; since weekend delivery is not guaranteed, it should safely arrive by Friday 15.05.2026 (send in good time, e.g. by 08.05.2026). This special right can only be used to end the contract at the earliest as of 01.04.2026, when the price change takes effect.",
+        "explanation": "The period is 3 months from 'Zugang' (actual receipt) of this notice, not from the document date, and NetzMuster GmbH is a private company so no statutory deemed-delivery rule (like the tax/administrative 3-4 day rule) applies. The actual arrival date is unknown; as the earliest plausible reading, receipt is assumed on the document date, Mon 16.02.2026 (day of the event not counted per § 187 Abs. 1 BGB). Three months later (§ 188 Abs. 1, 2 BGB) falls on Sat 16.05.2026. Termination-notice periods are not extended to the next business day when the last day is a weekend/holiday (BGH III ZR 172/04), so the deadline itself remains Sat 16.05.2026 - meaning the cancellation must actually reach NetzMuster GmbH by Fri 15.05.2026 at the latest to be safe, and should be sent by roughly 08.05.2026 to allow for postal transit. If the letter in fact arrived later than 16.02.2026, the three-month window shifts correspondingly later.",
         "notes": []
        }
       ],
       "contract": null,
       "warnings": [
-       "The 3-month cancellation window legally starts on the day the letter is actually received (Zugang), not its printed date; since the actual delivery date is unknown, 16.02.2026 was used as the earliest plausible start — if the letter arrived later, the true deadline is correspondingly later, so verify the actual delivery date if possible.",
-       "The calculated deadline (16.05.2026) falls on a Saturday; because termination deadlines do not move to the next business day, the cancellation notice should be sent early enough to arrive by Friday 15.05.2026 to be safe."
+       "The three-month special-termination deadline runs from the day the letter actually arrived ('Zugang'), which is not stated; the date above assumes arrival on the printed document date (16.02.2026) as the earliest plausible reading — if it arrived later, the deadline is correspondingly later, and practically the cancellation should reach NetzMuster GmbH a day or two before the calculated Saturday, i.e. by Fri 15.05.2026.",
+       "The IBAN printed (DE71 3705 0198 0001 2312 31) is NetzMuster GmbH's own account for the customer's information/payments to them, not a request to send money elsewhere; it checks out structurally but ownership cannot be verified from the letter alone."
       ],
       "signals": [],
       "hidden_text": null,
@@ -15075,7 +15123,8 @@
           "type": "relative",
           "amount": 3,
           "unit": "months",
-          "anchor": "document_date",
+          "anchor": "receipt",
+          "anchor_date": null,
           "nature": "notice",
           "shift_rule": "auto",
           "legal_basis": "§ 57 TKG",
@@ -15091,6 +15140,16 @@
         "due_date": "2026-05-16",
         "date": null,
         "error": null
+       },
+       {
+        "name": "check_iban",
+        "input": {
+         "iban": "DE71 3705 0198 0001 2312 31"
+        },
+        "ok": true,
+        "due_date": null,
+        "date": null,
+        "error": null
        }
       ],
       "calls": [
@@ -15100,17 +15159,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 6,
-        "output_tokens": 7665,
-        "cache_read_tokens": 26167,
-        "cache_creation_tokens": 9872,
-        "cost_usd": 0.1213834,
-        "duration_ms": 79984,
+        "output_tokens": 4834,
+        "cache_read_tokens": 26828,
+        "cache_creation_tokens": 7499,
+        "cost_usd": 0.0837136,
+        "duration_ms": 49245,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-price_increase-B1",
@@ -15188,19 +15247,20 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.1213834,
-      "latency_ms": 79984,
+      "cost_usd": 0.0837136,
+      "latency_ms": 49245,
       "tokens": {
        "input": 6,
-       "output": 7665,
-       "cache_read": 26167,
-       "cache_creation": 9872
+       "output": 4834,
+       "cache_read": 26828,
+       "cache_creation": 7499
       },
       "calls": 1,
       "failed": null,
       "error": null,
       "tool_calls": {
-       "compute_deadline": 1
+       "compute_deadline": 1,
+       "check_iban": 1
       },
       "tool_refusals": 0,
       "tool_dates": [
@@ -15302,7 +15362,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-relative_business_days-A1",
@@ -15454,7 +15514,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-relative_business_days-A1",
@@ -15604,7 +15664,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-relative_business_days-A1",
@@ -15717,7 +15777,7 @@
       "items": [
        {
         "kind": "deadline",
-        "title": "Submit missing documents (list of damaged items, receipts, photos)",
+        "title": "Submit missing claim documents (itemized list, receipts, photos)",
         "due_date": "2026-04-10",
         "time": null,
         "amount": null,
@@ -15728,12 +15788,15 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The letter is dated Friday 27.03.2026 and sets a 10-Werktage period 'nach dem Datum dieses Schreibens' (from the letter's own date), with Werktage defined as Monday-Saturday excluding statutory holidays. Under §187(1) BGB the day of the event (27.03.2026) is not counted, so counting starts 28.03.2026. Counting 10 working days (Mon-Sat, NW holidays excluded) from 27.03.2026 lands on Friday 10.04.2026 (Good Friday 03.04.2026 is a Friday in NW - not a holiday in 2026 wait, checked via tool which already accounts for holidays). The resulting date, Friday 10.04.2026, is itself a working day, so no further shift under §193 BGB is needed.",
+        "explanation": "The letter's own date is Friday 27.03.2026, and the period runs 'nach dem Datum dieses Schreibens' (after the date of this letter), so the letter's date itself is day zero and is not counted (§ 187 Abs. 1 BGB analogy). Counting starts 28.03.2026. 'Werktage' are defined in the letter as Monday to Saturday excluding statutory public holidays. Counting 10 such working days from 28.03.2026 (Sat 28 Mar counts as day 1; no NW public holidays fall in this window) lands on Friday 10.04.2026, which is itself a working day, so no further shift under § 193 BGB is needed. Final day: 10.04.2026.",
         "notes": []
        }
       ],
       "contract": null,
-      "warnings": [],
+      "warnings": [
+       "This is only a request for documents to continue processing a claim, not a formal legal deadline with a Rechtsbehelfsbelehrung; missing it risks the insurer deciding 'nach Aktenlage' (on the file as it stands) rather than any statutory penalty.",
+       "The IBAN printed (DE78 3705 0198 0001 2345 00) is structurally valid and belongs to a German bank (BLZ 37050198), but this letter does not ask for a payment to that account, so no funds should be sent to it based on this letter alone."
+      ],
       "signals": [],
       "hidden_text": null,
       "tools": [
@@ -15745,9 +15808,10 @@
           "amount": 10,
           "unit": "werktage",
           "anchor": "document_date",
+          "anchor_date": "2026-03-27",
           "nature": "declaration",
           "shift_rule": "auto",
-          "legal_basis": "Vertragliche Frist (Werktage lt. Schreiben)",
+          "legal_basis": "Vertragliche Frist (Werktage laut Schreiben)",
           "text": "Bitte reichen Sie die fehlenden Unterlagen binnen 10 Werktagen nach dem Datum dieses Schreibens ein"
          },
          "document_date": "2026-03-27",
@@ -15761,6 +15825,16 @@
         "due_date": "2026-04-10",
         "date": null,
         "error": null
+       },
+       {
+        "name": "check_iban",
+        "input": {
+         "iban": "DE78 3705 0198 0001 2345 00"
+        },
+        "ok": true,
+        "due_date": null,
+        "date": null,
+        "error": null
        }
       ],
       "calls": [
@@ -15770,17 +15844,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 4,
-        "output_tokens": 1386,
-        "cache_read_tokens": 14586,
-        "cache_creation_tokens": 3698,
-        "cost_usd": 0.0315772,
-        "duration_ms": 15416,
+        "output_tokens": 1708,
+        "cache_read_tokens": 15066,
+        "cache_creation_tokens": 4473,
+        "cost_usd": 0.0379932,
+        "duration_ms": 17659,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-relative_business_days-A1",
@@ -15858,19 +15932,20 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0315772,
-      "latency_ms": 15416,
+      "cost_usd": 0.0379932,
+      "latency_ms": 17659,
       "tokens": {
        "input": 4,
-       "output": 1386,
-       "cache_read": 14586,
-       "cache_creation": 3698
+       "output": 1708,
+       "cache_read": 15066,
+       "cache_creation": 4473
       },
       "calls": 1,
       "failed": null,
       "error": null,
       "tool_calls": {
-       "compute_deadline": 1
+       "compute_deadline": 1,
+       "check_iban": 1
       },
       "tool_refusals": 0,
       "tool_dates": [
@@ -15972,7 +16047,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-relative_business_days-B1",
@@ -16123,7 +16198,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-relative_business_days-B1",
@@ -16274,7 +16349,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-relative_business_days-B1",
@@ -16373,7 +16448,7 @@
       "entry_id": "dev-relative_business_days-B1",
       "condition": "llm_rules_tool",
       "model": "sonnet",
-      "kind": "appointment",
+      "kind": "other",
       "sender_name": "Hausverwaltung Muster & Partner",
       "sender_kind": null,
       "delivery_scope": null,
@@ -16385,8 +16460,8 @@
       "remedy_type": "none",
       "items": [
        {
-        "kind": "task",
-        "title": "Confirm which meter-reading/smoke-detector appointment works",
+        "kind": "deadline",
+        "title": "Confirm preferred appointment for heating-cost meter reading and smoke-alarm maintenance",
         "due_date": "2026-01-05",
         "time": null,
         "amount": null,
@@ -16397,13 +16472,13 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Letter is dated 22.12.2025 (Monday). The period runs '7 Arbeitstage (Mo.-Fr., ohne Feiertage) nach Briefdatum', i.e. 7 business days (Mon-Fr, excluding public holidays) starting after the letter's date, counted for the NW public holidays. Counting forward from 22.12.2025, the following days are skipped as non-business days: 25.12.2025 (1. Weihnachtstag), 26.12.2025 (2. Weihnachtstag), 27.12.2025 (Sat), 28.12.2025 (Sun), 01.01.2026 (Neujahr), 03.01.2026 (Sat), 04.01.2026 (Sun). The 7th business day after 22.12.2025 is Monday, 05.01.2026.",
+        "explanation": "The letter is dated Monday, 22.12.2025, and the deadline is explicitly anchored to the letter's own date ('nach Briefdatum'), not to deemed delivery. Counting starts the day after the letter date (§ 187 Abs. 1 BGB by analogy). Counting 7 Arbeitstage (business days, Mon–Fr, excluding public holidays) from 22.12.2025 in NW: skip Sat 27.12, Sun 28.12 (weekend), 25.12 and 26.12 (Christmas holidays), 01.01.2026 (New Year), and 03.–04.01.2026 (weekend). The 7th business day is Monday, 05.01.2026. Confirmed by the add_working_days tool.",
         "notes": []
        },
        {
         "kind": "appointment",
-        "title": "Meter-reading and smoke-detector maintenance appointment (one of three proposed dates)",
-        "due_date": null,
+        "title": "Proposed appointment window for meter reading / smoke-alarm service (option 1)",
+        "due_date": "2026-01-12",
         "time": null,
         "amount": null,
         "quote": "Vorgeschlagene Termine: 12.01., 14.01. oder 16.01.2026, jeweils zwischen 8 und 12 Uhr.",
@@ -16413,13 +16488,14 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The letter proposes three alternative appointment dates (12.01., 14.01. or 16.01.2026, 8–12 Uhr) for the actual reading/maintenance visit; the tenant must pick one by replying within the 7-business-day deadline above (05.01.2026). Which of the three dates applies is not determinable from the letter alone since it depends on the tenant's choice, so no single due date can be fixed here.",
+        "explanation": "The letter lists three alternative proposed dates for the technician's visit (12.01., 14.01. or 16.01.2026), each between 8 and 12 Uhr; the tenant must pick one by the reply deadline above. The earliest proposed date is used here as an appointment placeholder; the actual date depends on which option the tenant/management confirms.",
         "notes": []
        }
       ],
       "contract": null,
       "warnings": [
-       "The three proposed appointment dates (12.01., 14.01., 16.01.2026) are alternatives; the actual visit date depends on which one the tenant confirms, so it could not be fixed as a single due date."
+       "The visit itself is scheduled for one of three alternative dates (12.01., 14.01. or 16.01.2026); the actual appointment date depends on which one is confirmed and is not fixed by the letter alone.",
+       "This is a private property-management company (not a public authority), so no statutory 'deemed delivery' rule applies; the 7-working-day period runs from the letter's own date as stated."
       ],
       "signals": [],
       "hidden_text": null,
@@ -16436,6 +16512,31 @@
         "due_date": null,
         "date": "2026-01-05",
         "error": null
+       },
+       {
+        "name": "compute_deadline",
+        "input": {
+         "spec": {
+          "type": "relative",
+          "amount": 7,
+          "unit": "business_days",
+          "anchor": "document_date",
+          "anchor_date": "2025-12-22",
+          "nature": "other",
+          "shift_rule": "none",
+          "legal_basis": "Vertragliche Frist (Mitteilungspflicht)",
+          "text": "Bitte teilen Sie uns innerhalb von 7 Arbeitstagen (Mo.–Fr., ohne Feiertage) nach Briefdatum mit, an welchem der vorgeschlagenen Termine der Zugang zu Ihrer Wohnung möglich ist."
+         },
+         "document_date": "2025-12-22",
+         "sender_kind": "landlord",
+         "sender_name": "Hausverwaltung Muster & Partner",
+         "region": "NW",
+         "recipient_region": "NW"
+        },
+        "ok": true,
+        "due_date": "2026-01-05",
+        "date": null,
+        "error": null
        }
       ],
       "calls": [
@@ -16444,18 +16545,18 @@
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 4,
-        "output_tokens": 2112,
-        "cache_read_tokens": 14605,
-        "cache_creation_tokens": 3202,
-        "cost_usd": 0.036857,
-        "duration_ms": 21837,
+        "input_tokens": 6,
+        "output_tokens": 3110,
+        "cache_read_tokens": 25873,
+        "cache_creation_tokens": 5606,
+        "cost_usd": 0.0587106,
+        "duration_ms": 28590,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-relative_business_days-B1",
@@ -16490,7 +16591,7 @@
       "required": 1,
       "matched_required": 1,
       "true_positives": 1,
-      "false_positives": 0,
+      "false_positives": 1,
       "kind_ok": false,
       "sender_ok": true,
       "document_date_ok": true,
@@ -16533,19 +16634,20 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.036857,
-      "latency_ms": 21837,
+      "cost_usd": 0.0587106,
+      "latency_ms": 28590,
       "tokens": {
-       "input": 4,
-       "output": 2112,
-       "cache_read": 14605,
-       "cache_creation": 3202
+       "input": 6,
+       "output": 3110,
+       "cache_read": 25873,
+       "cache_creation": 5606
       },
       "calls": 1,
       "failed": null,
       "error": null,
       "tool_calls": {
-       "add_working_days": 1
+       "add_working_days": 1,
+       "compute_deadline": 1
       },
       "tool_refusals": 0,
       "tool_dates": [
@@ -16647,7 +16749,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-social_decision-A1",
@@ -16801,7 +16903,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-social_decision-A1",
@@ -16951,7 +17053,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-social_decision-A1",
@@ -17064,7 +17166,7 @@
       "items": [
        {
         "kind": "deadline",
-        "title": "File Widerspruch against refusal of orthopedic insoles",
+        "title": "File Widerspruch against refusal of orthopedic insoles coverage",
         "due_date": "2025-05-19",
         "time": null,
         "amount": null,
@@ -17075,12 +17177,14 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Letter dated Mon 14 Apr 2025. Under §37 Abs. 2 SGB X a posted administrative letter counts as delivered on the 4th day after posting, i.e. Fri 18 Apr 2025 (this day does not shift even though it falls on Karfreitag, a public holiday, per the special social-law rule). Counting of the one-month period starts the next day (§187 Abs. 1 BGB / §26 Abs. 1 SGB X) and ends one month later per §188 Abs. 2 BGB, i.e. Sun 18 May 2025. Since that day is a Sunday, the deadline shifts to the next business day, Mon 19 May 2025 (§26 Abs. 3 SGB X).",
+        "explanation": "Letter dated Mon 14 Apr 2025 (posting day). As a social-insurance (SGB V/SGB X) letter sent by ordinary post, it counts as delivered on the 4th day after posting under § 37 Abs. 2 SGB X: Fri 18 Apr 2025 (this day does not shift even though it is a public holiday, Karfreitag, for this type of delivery rule). Under § 187 Abs. 1 BGB the one-month Widerspruch period (§ 84 Abs. 1 SGG) starts the next day and ends one month later per § 188 Abs. 1 BGB: Sun 18 May 2025. Since that is a Sunday, § 26 Abs. 3 SGB X shifts the deadline to the next business day: Mon 19 May 2025.",
         "notes": []
        }
       ],
       "contract": null,
-      "warnings": [],
+      "warnings": [
+       "The letter does not state a specific reimbursement amount for the conventional insoles (only \"abzüglich der gesetzlichen Zuzahlung\"), so no amount could be extracted."
+      ],
       "signals": [],
       "hidden_text": null,
       "tools": [
@@ -17094,16 +17198,15 @@
           "anchor": "deemed_delivery",
           "delivery_rule": "de_admin_post",
           "nature": "objection",
-          "shift_rule": "auto",
-          "legal_basis": "§ 37 SGB X, § 84 SGG",
+          "legal_basis": "§ 84 SGG i.V.m. § 37 SGB X",
           "text": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden."
          },
          "document_date": "2025-04-14",
          "sender_kind": "health_insurer",
          "sender_name": "Muster BKK",
-         "region": "NW",
-         "recipient_region": "NW",
          "remedy_type": "widerspruch",
+         "recipient_region": "NW",
+         "region": "NW",
          "today": "2025-04-20"
         },
         "ok": true,
@@ -17118,18 +17221,18 @@
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 6,
-        "output_tokens": 2310,
-        "cache_read_tokens": 25965,
-        "cache_creation_tokens": 5780,
-        "cost_usd": 0.051425000000000005,
-        "duration_ms": 22748,
+        "input_tokens": 4,
+        "output_tokens": 1656,
+        "cache_read_tokens": 15247,
+        "cache_creation_tokens": 5007,
+        "cost_usd": 0.0396454,
+        "duration_ms": 17831,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-social_decision-A1",
@@ -17207,13 +17310,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.051425000000000005,
-      "latency_ms": 22748,
+      "cost_usd": 0.0396454,
+      "latency_ms": 17831,
       "tokens": {
-       "input": 6,
-       "output": 2310,
-       "cache_read": 25965,
-       "cache_creation": 5780
+       "input": 4,
+       "output": 1656,
+       "cache_read": 15247,
+       "cache_creation": 5007
       },
       "calls": 1,
       "failed": null,
@@ -17336,7 +17439,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-social_decision-A1-photo",
@@ -17490,7 +17593,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-social_decision-A1-photo",
@@ -17640,7 +17743,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-social_decision-A1-photo",
@@ -17753,7 +17856,7 @@
       "items": [
        {
         "kind": "deadline",
-        "title": "File Widerspruch against refusal of orthopedic insoles",
+        "title": "File Widerspruch against denial of orthopedic insole cost coverage",
         "due_date": "2025-05-19",
         "time": null,
         "amount": null,
@@ -17764,21 +17867,24 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Letter dated Mon 14 Apr 2025, sent by a health insurer (public body under SGB X). Under § 37 Abs. 2 SGB X a letter posted by an authority counts as delivered on the 4th day after posting: Mon 14 Apr + 4 days = Fri 18 Apr 2025 (for social-law letters this day does not shift even though it falls on Karfreitag, a public holiday). Counting the one-month period starts the next day (§ 187 Abs. 1 BGB / § 26 Abs. 1 SGB X) and ends one month later, on Sun 18 May 2025 (§ 188 Abs. 2 BGB). Since that day is a Sunday, the deadline moves to the next business day, Mon 19 May 2025 (§ 26 Abs. 3 SGB X). This date has already passed as of today.",
+        "explanation": "Letter dated Mon 14.04.2025, sent by a health insurer (social-law delivery rules, § 37 SGB X apply). Deemed delivered on the 4th day after posting: Fri 18.04.2025 (Karfreitag, a public holiday, but this deemed-delivery day does not shift). Under § 187 Abs. 1 BGB the one-month period starts the next day, 19.04.2025, and ends one month later on 18.05.2025 (§ 188 Abs. 1 BGB), which is a Sunday. Under § 26 Abs. 3 SGB X the deadline shifts to the next working day: Monday 19.05.2025.",
         "notes": []
        }
       ],
       "contract": null,
-      "warnings": [
-       "The Widerspruch deadline of 2025-05-19 has already passed relative to today's date (2026-09-26); if this letter is being acted on now, the objection period is long over and the decision has likely become final unless a later extension or exception applies.",
-       "No specific reimbursement amount for the two standard insoles (minus the statutory co-payment) is stated in the letter, so no amount could be extracted."
-      ],
+      "warnings": [],
       "signals": [],
       "hidden_text": null,
       "tools": [
        {
         "name": "compute_deadline",
         "input": {
+         "document_date": "2025-04-14",
+         "sender_kind": "health_insurer",
+         "sender_name": "Muster BKK",
+         "recipient_region": "NW",
+         "region": "NW",
+         "remedy_type": "widerspruch",
          "spec": {
           "type": "relative",
           "amount": 1,
@@ -17787,16 +17893,9 @@
           "delivery_rule": "de_admin_post",
           "nature": "objection",
           "shift_rule": "auto",
-          "legal_basis": "§ 37 SGB X, § 84 SGG",
+          "legal_basis": "§ 84 SGG i.V.m. § 37 SGB X",
           "text": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden."
-         },
-         "document_date": "2025-04-14",
-         "sender_kind": "health_insurer",
-         "sender_name": "Muster BKK",
-         "recipient_region": "NW",
-         "region": "NW",
-         "remedy_type": "widerspruch",
-         "today": "2026-09-26"
+         }
         },
         "ok": true,
         "due_date": "2025-05-19",
@@ -17810,18 +17909,18 @@
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 6,
-        "output_tokens": 2625,
-        "cache_read_tokens": 29789,
-        "cache_creation_tokens": 8001,
-        "cost_usd": 0.0642238,
-        "duration_ms": 27777,
-        "wall_ms": 1
+        "input_tokens": 4,
+        "output_tokens": 1570,
+        "cache_read_tokens": 17310,
+        "cache_creation_tokens": 7093,
+        "cost_usd": 0.047542,
+        "duration_ms": 18966,
+        "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-social_decision-A1-photo",
@@ -17899,13 +17998,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0642238,
-      "latency_ms": 27777,
+      "cost_usd": 0.047542,
+      "latency_ms": 18966,
       "tokens": {
-       "input": 6,
-       "output": 2625,
-       "cache_read": 29789,
-       "cache_creation": 8001
+       "input": 4,
+       "output": 1570,
+       "cache_read": 17310,
+       "cache_creation": 7093
       },
       "calls": 1,
       "failed": null,
@@ -18088,7 +18187,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-social_decision-B1",
@@ -18279,7 +18378,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-social_decision-B1",
@@ -18468,7 +18567,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-social_decision-B1",
@@ -18588,7 +18687,7 @@
       "entry_id": "dev-social_decision-B1",
       "condition": "llm_rules_tool",
       "model": "sonnet",
-      "kind": "social_insurance",
+      "kind": "authority_letter",
       "sender_name": "Jobcenter Musterlingen",
       "sender_kind": null,
       "delivery_scope": null,
@@ -18603,8 +18702,8 @@
       "remedy_type": "widerspruch",
       "items": [
        {
-        "kind": "deadline",
-        "title": "Submit last three months' bank statements",
+        "kind": "task",
+        "title": "Submit bank statements (last 3 months)",
         "due_date": "2025-11-05",
         "time": null,
         "amount": null,
@@ -18615,7 +18714,7 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The letter states a fixed calendar date: 05.11.2025 (a Wednesday, no weekend/holiday adjustment needed). This is the last day the documents must be submitted; failure risks loss of benefits from December per §§ 60, 66 SGB I.",
+        "explanation": "The letter states a fixed calendar date: 05.11.2025. This is a Wednesday, not a weekend day or a Sachsen public holiday, so no shift is needed. Due date is the printed date itself.",
         "notes": []
        },
        {
@@ -18631,7 +18730,7 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Letter dated Wed 15.10.2025, posted by an authority (social law, § 37 Abs. 2 SGB X): deemed delivered on the 4th day after posting, i.e. Sun 19.10.2025 (this day does not shift for social-law deemed delivery). Per § 187 Abs. 1 BGB the one-month period starts the next day; per § 188 Abs. 2 BGB one month later is Wed 19.11.2025. That day is a public holiday (Buß- und Bettag) in Sachsen, so per § 26 Abs. 3 SGB X the deadline shifts to the next business day, Thu 20.11.2025.",
+        "explanation": "Letter dated Wed 15.10.2025, sent by an authority under social law (Jobcenter, SGB X applies). Under § 37 Abs. 2 SGB X a letter posted by an authority counts as delivered on the 4th day after the date on the letter (2025-10-15 + 4 days = Sun 19.10.2025); this day does not shift for weekends under social-law delivery rules. Counting the one-month objection period per § 187 Abs. 1 BGB, § 26 Abs. 1 SGB X starts the day after delivery (20.10.2025); per § 188 Abs. 2 BGB the period ends one month later on the day matching the delivery date's number, i.e. Wed 19.11.2025. That day is Buß- und Bettag, a Sachsen public holiday, so under § 26 Abs. 3 SGB X the deadline moves to the next business day, Thu 20.11.2025.",
         "notes": []
        }
       ],
@@ -18656,10 +18755,9 @@
          "document_date": "2025-10-15",
          "sender_kind": "authority",
          "sender_name": "Jobcenter Musterlingen",
-         "region": "SN",
          "recipient_region": "SN",
-         "remedy_type": "widerspruch",
-         "today": "2025-10-17"
+         "region": "SN",
+         "remedy_type": "widerspruch"
         },
         "ok": true,
         "due_date": "2025-11-20",
@@ -18667,9 +18765,10 @@
         "error": null
        },
        {
-        "name": "check_iban",
+        "name": "german_holidays",
         "input": {
-         "iban": "DE38 8600 0000 0086 0010 40"
+         "year": 2025,
+         "region": "SN"
         },
         "ok": true,
         "due_date": null,
@@ -18683,18 +18782,18 @@
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 6,
-        "output_tokens": 2700,
-        "cache_read_tokens": 26445,
-        "cache_creation_tokens": 6530,
-        "cost_usd": 0.058421,
-        "duration_ms": 24767,
+        "input_tokens": 4,
+        "output_tokens": 2735,
+        "cache_read_tokens": 15321,
+        "cache_creation_tokens": 6131,
+        "cost_usd": 0.0549462,
+        "duration_ms": 26876,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-social_decision-B1",
@@ -18751,7 +18850,7 @@
       "matched_required": 2,
       "true_positives": 2,
       "false_positives": 0,
-      "kind_ok": true,
+      "kind_ok": false,
       "sender_ok": true,
       "document_date_ok": true,
       "remedy_ok": true,
@@ -18793,20 +18892,20 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.058421,
-      "latency_ms": 24767,
+      "cost_usd": 0.0549462,
+      "latency_ms": 26876,
       "tokens": {
-       "input": 6,
-       "output": 2700,
-       "cache_read": 26445,
-       "cache_creation": 6530
+       "input": 4,
+       "output": 2735,
+       "cache_read": 15321,
+       "cache_creation": 6131
       },
       "calls": 1,
       "failed": null,
       "error": null,
       "tool_calls": {
        "compute_deadline": 1,
-       "check_iban": 1
+       "german_holidays": 1
       },
       "tool_refusals": 0,
       "tool_dates": [
@@ -18944,7 +19043,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-tax_assessment-A1",
@@ -19103,7 +19202,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-tax_assessment-A1",
@@ -19257,7 +19356,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-tax_assessment-A1",
@@ -19367,29 +19466,32 @@
       ],
       "amounts": [
        8214.0,
+       9102.0,
        888.0
       ],
       "remedy_type": "einspruch",
       "items": [
        {
         "kind": "deadline",
-        "title": "File Einspruch (objection) against the tax assessment",
+        "title": "File Einspruch against the 2025 income tax assessment",
         "due_date": "2026-06-05",
         "time": null,
         "amount": null,
-        "quote": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist. Bei Zusendung durch einfachen Brief gilt die Bekanntgabe mit dem vierten Tag nach Aufgabe zur Post als bewirkt, es sei denn, dass der Bescheid zu einem späteren Zeitpunkt zugegangen ist.",
+        "quote": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat.",
         "confidence": "high",
         "spec": null,
         "grounding": null,
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Letter dated Mon 27 Apr 2026 (posting day). Under § 122 Abs. 2 Nr. 1 AO a tax letter sent by ordinary post counts as delivered on the 4th day after posting, i.e. Fri 1 May 2026; since that day is a public holiday (Tag der Arbeit) the deemed-delivery day shifts to the next business day, Mon 4 May 2026 (§ 108 Abs. 3 AO). The one-month Einspruch period (§ 355 Abs. 1 AO) starts the day after delivery (§ 187 Abs. 1 BGB / § 108 Abs. 1 AO) and ends one month later on the day with the same number, Thu 4 Jun 2026 (§ 188 Abs. 2 BGB). Thu 4 Jun 2026 is Fronleichnam, a public holiday in NRW, so the deadline shifts to the next business day, Fri 5 Jun 2026 (§ 108 Abs. 3 AO).",
+        "explanation": "Letter dated Mon 27 Apr 2026, sent by ordinary post (einfacher Brief). Under § 122 Abs. 2 Nr. 1 AO the letter counts as delivered on the 4th day after posting, i.e. Fri 1 May 2026; since that day is a public holiday (Erster Mai) in NW, delivery is deemed to occur on the next business day, Mon 4 May 2026 (§ 108 Abs. 3 AO). The one-month Einspruch period (§ 355 Abs. 1 AO) starts counting the day after (§ 187 Abs. 1 BGB / § 108 Abs. 1 AO) and ends one month later on Thu 4 Jun 2026 (§ 188 Abs. 2 BGB). Thu 4 Jun 2026 is a public holiday (Fronleichnam) in NW, so the deadline shifts to the next business day, Fri 5 Jun 2026 (§ 108 Abs. 3 AO).",
         "notes": []
        }
       ],
       "contract": null,
-      "warnings": [],
+      "warnings": [
+       "The 888.00 € tax refund (Erstattung) will be paid to the IBAN printed in the letter (DE21 4405 0199 0123 4567 89), which is well-formed and passes the checksum check, but this does not by itself confirm the account belongs to the recipient — compare it with account details from earlier correspondence with this Finanzamt if in doubt."
+      ],
       "signals": [],
       "hidden_text": null,
       "tools": [
@@ -19402,16 +19504,18 @@
           "unit": "months",
           "anchor": "deemed_delivery",
           "delivery_rule": "de_admin_post",
+          "anchor_date": "2026-04-27",
           "nature": "objection",
-          "text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist. Bei Zusendung durch einfachen Brief gilt die Bekanntgabe mit dem vierten Tag nach Aufgabe zur Post als bewirkt.",
-          "legal_basis": "§ 122 Abs. 2 Nr. 1 AO, § 355 AO"
+          "legal_basis": "§ 122 AO, § 355 AO",
+          "text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist. Bei Zusendung durch einfachen Brief gilt die Bekanntgabe mit dem vierten Tag nach Aufgabe zur Post als bewirkt."
          },
          "document_date": "2026-04-27",
          "sender_kind": "tax_office",
          "sender_name": "Finanzamt Musterstadt-Nord",
-         "recipient_region": "NW",
          "region": "NW",
-         "remedy_type": "einspruch"
+         "recipient_region": "NW",
+         "remedy_type": "einspruch",
+         "today": "2026-05-01"
         },
         "ok": true,
         "due_date": "2026-06-05",
@@ -19435,18 +19539,18 @@
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 4,
-        "output_tokens": 2486,
-        "cache_read_tokens": 15631,
-        "cache_creation_tokens": 6246,
-        "cost_usd": 0.0529782,
-        "duration_ms": 26965,
+        "input_tokens": 6,
+        "output_tokens": 2330,
+        "cache_read_tokens": 28798,
+        "cache_creation_tokens": 6788,
+        "cost_usd": 0.0562236,
+        "duration_ms": 24238,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-tax_assessment-A1",
@@ -19500,7 +19604,7 @@
       ],
       "amounts_precision": [
        1,
-       2
+       3
       ],
       "contract_dates": [
        0,
@@ -19524,13 +19628,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0529782,
-      "latency_ms": 26965,
+      "cost_usd": 0.0562236,
+      "latency_ms": 24238,
       "tokens": {
-       "input": 4,
-       "output": 2486,
-       "cache_read": 15631,
-       "cache_creation": 6246
+       "input": 6,
+       "output": 2330,
+       "cache_read": 28798,
+       "cache_creation": 6788
       },
       "calls": 1,
       "failed": null,
@@ -19684,7 +19788,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-tax_assessment-B1",
@@ -19875,7 +19979,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-tax_assessment-B1",
@@ -20064,7 +20168,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-tax_assessment-B1",
@@ -20200,7 +20304,7 @@
       "items": [
        {
         "kind": "payment",
-        "title": "Pay income tax back-payment for 2025",
+        "title": "Pay income tax back-payment (Nachzahlung) for 2025",
         "due_date": "2026-04-30",
         "time": null,
         "amount": 634.0,
@@ -20211,13 +20315,13 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The letter states a fixed calendar due date: 30.04.2026. This Thursday is not a weekend day or public holiday in NW, so no shift applies. Due date stays 2026-04-30.",
+        "explanation": "The letter states a fixed calendar date for payment: 30.04.2026. No further counting needed; this is the last day the payment is due.",
         "notes": []
        },
        {
         "kind": "deadline",
-        "title": "File Einspruch (tax objection) against the 2025 Einkommensteuerbescheid",
-        "due_date": "2026-05-07",
+        "title": "File Einspruch (objection) against the Einkommensteuerbescheid 2025",
+        "due_date": "2026-04-30",
         "time": null,
         "amount": null,
         "quote": "Frist: ein Monat nach Bekanntgabe dieses Bescheids.",
@@ -20227,12 +20331,15 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The letter states it was posted (zur Post gegeben) on 30.03.2026. Under § 122 Abs. 2 Nr. 1 AO, a tax letter counts as delivered on the 4th day after posting, i.e. 03.04.2026 (Friday). That day is Karfreitag (Good Friday), a public holiday, so under § 108 Abs. 3 AO delivery is deemed to occur on the next working day, Tuesday 07.04.2026. Under § 187 Abs. 1 BGB the day of delivery itself is not counted, so the one-month Einspruch period (§ 355 AO) runs from 07.04.2026 and ends one month later, on Thursday 07.05.2026 (§ 188 Abs. 1, 2 BGB). That day is a normal working day in NW, so no further shift applies. Confirmed via the compute_deadline tool.",
+        "explanation": "Bescheiddatum (letter's date) is Thu 26.03.2026. Under § 122 Abs. 2 Nr. 1 AO a tax letter sent by ordinary post counts as delivered (Bekanntgabe) on the 4th day after the day it is given to the post, i.e. Mon 30.03.2026 (this matches the letter's own note that it was 'zur Post gegeben' on 30.03.2026). Counting the one-month Einspruch period under §§ 187 Abs. 1, 188 Abs. 2 BGB / § 108 AO starts the day after Bekanntgabe and ends one month later on the day with the same number: Thu 30.04.2026. That day is a normal working day (no weekend/holiday shift needed).",
         "notes": []
        }
       ],
       "contract": null,
-      "warnings": [],
+      "warnings": [
+       "The letter's Bescheiddatum (26.03.2026) and the note that it was 'zur Post gegeben' on 30.03.2026 are four days apart; both readings happen to yield the same Einspruch deadline (30.04.2026) once the statutory 4-day deemed-delivery rule is applied, but double-check the envelope's postmark if you want certainty.",
+       "The payee IBAN (DE92 5205 0000 0001 2003 40) is a valid, well-formed German IBAN for a Hessen-based Bankleitzahl (52050000); compare it with any earlier Finanzamt Neu-Musterdorf correspondence before paying, as a valid IBAN does not by itself prove it is the tax office's genuine account."
+      ],
       "signals": [],
       "hidden_text": null,
       "tools": [
@@ -20241,23 +20348,24 @@
         "input": {
          "spec": {
           "type": "relative",
-          "anchor": "deemed_delivery",
-          "delivery_rule": "de_admin_post",
           "amount": 1,
           "unit": "months",
+          "anchor": "deemed_delivery",
+          "anchor_date": "2026-03-30",
+          "delivery_rule": "de_admin_post",
           "nature": "objection",
           "legal_basis": "§ 355 AO, § 122 Abs. 2 AO",
           "text": "Frist: ein Monat nach Bekanntgabe dieses Bescheids."
          },
-         "document_date": "2026-03-30",
+         "document_date": "2026-03-26",
          "sender_kind": "tax_office",
          "sender_name": "Finanzamt Neu-Musterdorf",
-         "region": "NW",
          "recipient_region": "NW",
-         "today": "2026-04-05"
+         "region": "HE",
+         "remedy_type": "einspruch"
         },
         "ok": true,
-        "due_date": "2026-05-07",
+        "due_date": "2026-04-30",
         "date": null,
         "error": null
        },
@@ -20278,18 +20386,18 @@
         "backend": "replay",
         "ok": true,
         "error": null,
-        "input_tokens": 6,
-        "output_tokens": 1709,
-        "cache_read_tokens": 26197,
-        "cache_creation_tokens": 5620,
-        "cost_usd": 0.04482140000000001,
-        "duration_ms": 17825,
+        "input_tokens": 4,
+        "output_tokens": 2297,
+        "cache_read_tokens": 15362,
+        "cache_creation_tokens": 5501,
+        "cost_usd": 0.0480544,
+        "duration_ms": 22240,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-tax_assessment-B1",
@@ -20307,10 +20415,10 @@
         "expected": "2026-05-07",
         "matched": true,
         "pred_index": 1,
-        "predicted": "2026-05-07",
-        "outcome": "correct",
-        "direction": null,
-        "days_off": null,
+        "predicted": "2026-04-30",
+        "outcome": "wrong",
+        "direction": "early",
+        "days_off": -7,
         "cause": null,
         "reading_diffs": [],
         "flagged": false,
@@ -20318,7 +20426,7 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": false
        },
        {
         "index": 1,
@@ -20388,13 +20496,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.04482140000000001,
-      "latency_ms": 17825,
+      "cost_usd": 0.0480544,
+      "latency_ms": 22240,
       "tokens": {
-       "input": 6,
-       "output": 1709,
-       "cache_read": 26197,
-       "cache_creation": 5620
+       "input": 4,
+       "output": 2297,
+       "cache_read": 15362,
+       "cache_creation": 5501
       },
       "calls": 1,
       "failed": null,
@@ -20405,7 +20513,7 @@
       },
       "tool_refusals": 0,
       "tool_dates": [
-       "2026-05-07"
+       "2026-04-30"
       ]
      }
     }
@@ -20504,7 +20612,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-year_boundary-A1",
@@ -20659,7 +20767,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-year_boundary-A1",
@@ -20814,7 +20922,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-year_boundary-A1",
@@ -20928,7 +21036,7 @@
       "items": [
        {
         "kind": "deadline",
-        "title": "File Einspruch (objection) against amended income tax assessment 2022",
+        "title": "File Einspruch (objection) against amended 2022 income tax assessment",
         "due_date": "2025-01-20",
         "time": null,
         "amount": null,
@@ -20939,14 +21047,12 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "Letter dated Tue 17.12.2024, sent by simple post. Under § 122 Abs. 2 Nr. 1 AO, deemed delivered on the 3rd day after posting (as stated in the letter's own Rechtsbehelfsbelehrung) = Fri 20.12.2024. Under § 108 Abs. 1 AO / § 187 Abs. 1 BGB, the one-month Einspruch period starts the day after delivery. Under § 108 Abs. 2 AO / § 188 Abs. 2 BGB, one month later ends on the day of the following month bearing the same number as the start day: Mon 20.01.2025. That day is a Monday (not a weekend/holiday), so no shift under § 108 Abs. 3 AO applies. This deadline has already passed as of today (2026-09-26).",
+        "explanation": "Letter dated Tue 17.12.2024, sent by ordinary post by a tax office (§ 122 Abs. 2 Nr. 1 AO): deemed delivered on the 3rd day after posting = Fri 20.12.2024 (not a weekend/holiday, so it stands). The one-month Einspruch period (§ 355 Abs. 1 AO) begins the day after deemed delivery (§ 187 Abs. 1 BGB, § 108 Abs. 1 AO), i.e. on 21.12.2024, and ends one month later on the day with the same number (§ 188 Abs. 2 BGB): Mon 20.01.2025. That day is a normal business day (no weekend/holiday shift needed under § 108 Abs. 3 AO).",
         "notes": []
        }
       ],
       "contract": null,
-      "warnings": [
-       "This is a zero-effect amendment (tax remains 6.918,00 €, no back payment or refund), and the one-month Einspruch deadline of 20.01.2025 has already passed relative to today's date (2026-09-26); if this letter is being reviewed late, any objection would need a separate justification for reinstatement (Wiedereinsetzung in den vorigen Stand)."
-      ],
+      "warnings": [],
       "signals": [],
       "hidden_text": null,
       "tools": [
@@ -20960,16 +21066,16 @@
           "anchor": "deemed_delivery",
           "delivery_rule": "de_admin_post",
           "nature": "objection",
-          "legal_basis": "§ 122 Abs. 2 Nr. 1 AO, § 355 AO",
+          "legal_basis": "§ 355 AO, § 122 Abs. 2 Nr. 1 AO",
           "text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist. Bei Zusendung durch einfachen Brief gilt die Bekanntgabe mit dem dritten Tag nach Aufgabe zur Post als bewirkt."
          },
          "document_date": "2024-12-17",
          "sender_kind": "tax_office",
          "sender_name": "Finanzamt Neu-Musterdorf",
-         "recipient_region": "NW",
          "region": "NW",
+         "recipient_region": "NW",
          "remedy_type": "einspruch",
-         "today": "2026-09-26"
+         "today": "2024-12-19"
         },
         "ok": true,
         "due_date": "2025-01-20",
@@ -20984,17 +21090,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 4,
-        "output_tokens": 1956,
-        "cache_read_tokens": 14735,
-        "cache_creation_tokens": 4787,
-        "cost_usd": 0.041663,
-        "duration_ms": 21009,
+        "output_tokens": 2155,
+        "cache_read_tokens": 15215,
+        "cache_creation_tokens": 5309,
+        "cost_usd": 0.045837,
+        "duration_ms": 21616,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-year_boundary-A1",
@@ -21072,13 +21178,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.041663,
-      "latency_ms": 21009,
+      "cost_usd": 0.045837,
+      "latency_ms": 21616,
       "tokens": {
        "input": 4,
-       "output": 1956,
-       "cache_read": 14735,
-       "cache_creation": 4787
+       "output": 2155,
+       "cache_read": 15215,
+       "cache_creation": 5309
       },
       "calls": 1,
       "failed": null,
@@ -21188,7 +21294,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "c0442189e53e1738"
+      "fingerprint": "8bea2a041996dbdd"
      },
      "score": {
       "entry_id": "dev-year_boundary-B1",
@@ -21342,7 +21448,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "33d0e08a9560cf39"
+      "fingerprint": "900a6ff76e8fd749"
      },
      "score": {
       "entry_id": "dev-year_boundary-B1",
@@ -21494,7 +21600,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "670a0d9bb26625f1"
+      "fingerprint": "27e1773223c03814"
      },
      "score": {
       "entry_id": "dev-year_boundary-B1",
@@ -21622,7 +21728,7 @@
         "value_consistent": null,
         "needs_check": false,
         "rule_ids": [],
-        "explanation": "The invoice is dated 30.01.2026 (Rechnungsdatum) and payment is due within one month of that date. Under § 187 Abs. 1 BGB, the day of the event (30.01.2026) is not counted, so the period starts running on 31.01.2026. Under § 188 Abs. 3 BGB, a one-month period ends on the day of the last month bearing the same calendar number as the start day; since February has no 30th day, it ends on the last day of February, i.e. Sat 28.02.2026. Since that day is a Saturday, under § 193 BGB the deadline shifts to the next business day, Mon 02.03.2026. To arrive on time given standard bank transfer processing (up to 1 business day, § 675s BGB), the transfer should be sent by Fri 27.02.2026.",
+        "explanation": "The invoice is a company's own document, not an authority's letter, so there is no statutory deemed-delivery rule; the one-month period runs from the printed invoice date itself (Rechnungsdatum, 30.01.2026), as the letter says 'nach Rechnungsdatum'. Under § 187 Abs. 1 BGB the day of the event (30 Jan) is not counted, so counting starts 31 Jan 2026. Under § 188 Abs. 2/3 BGB a one-month period ends on the day of the last month bearing the same number as the start day (30 Jan), i.e. 30 Feb — since February has no 30th, it ends on the last day of February, Sat 28 Feb 2026. Since that day is a Saturday, § 193 BGB shifts the deadline to the next business day, Mon 2 Mar 2026. Confirmed by the deadline tool.",
         "notes": []
        }
       ],
@@ -21638,18 +21744,16 @@
           "type": "relative",
           "amount": 1,
           "unit": "months",
-          "anchor": "explicit_date",
-          "anchor_date": "2026-01-30",
+          "anchor": "document_date",
           "nature": "payment",
           "shift_rule": "auto",
-          "legal_basis": "§ 188 BGB",
+          "legal_basis": "vertragliche Zahlungsfrist",
           "text": "Bitte überweisen Sie den Rechnungsbetrag innerhalb eines Monats nach Rechnungsdatum ohne Abzug auf unser Konto"
          },
+         "document_date": "2026-01-30",
          "sender_kind": "company",
          "sender_name": "Muster Möbelwerkstatt GmbH",
-         "document_date": "2026-01-30",
-         "region": "NW",
-         "today": "2026-02-04"
+         "recipient_region": "NW"
         },
         "ok": true,
         "due_date": "2026-03-02",
@@ -21674,17 +21778,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 6,
-        "output_tokens": 2389,
-        "cache_read_tokens": 25293,
-        "cache_creation_tokens": 5313,
-        "cost_usd": 0.0502126,
-        "duration_ms": 22140,
+        "output_tokens": 2191,
+        "cache_read_tokens": 25950,
+        "cache_creation_tokens": 5255,
+        "cost_usd": 0.048131999999999994,
+        "duration_ms": 20440,
         "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "ea9e8983014b58d3"
+      "fingerprint": "96449449f3c24634"
      },
      "score": {
       "entry_id": "dev-year_boundary-B1",
@@ -21762,13 +21866,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0502126,
-      "latency_ms": 22140,
+      "cost_usd": 0.048131999999999994,
+      "latency_ms": 20440,
       "tokens": {
        "input": 6,
-       "output": 2389,
-       "cache_read": 25293,
-       "cache_creation": 5313
+       "output": 2191,
+       "cache_read": 25950,
+       "cache_creation": 5255
       },
       "calls": 1,
       "failed": null,

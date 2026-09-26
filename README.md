@@ -211,9 +211,10 @@ model Sonnet, 95 % bootstrap intervals.
 ² A code-only fix, scored on the same recorded model outputs. The test split informed it, so this
 row is no longer held-out.
 ³ Not held-out: it calls the engine as fixed after the held-out run, so compare it with the row
-above it (the chart puts the two side by side). It is also the second recording of this condition
-on the test split: the first scored 98.2 %, the tool descriptions, argument checks and hints were
-then revised after a review, and the test split was recorded again.
+above it (the chart puts the two side by side). It is also the third recording of this condition
+on the test split: the first scored 98.2 %, the second 100 %; after each, a review revised the tool
+interface, and the test split was recorded again (the last time only after checking the new
+interface on the dev split, where it scored 96 %, as the pipeline does).
 
 What the numbers say:
 
@@ -231,15 +232,16 @@ What the numbers say:
   deliberate choice to count from the earliest safe date.
 - **Given the engine as a tool, the model gets the law right too.** With Ordnung's engine as MCP
   tools, the same model got all 56 dates right (+17.9 points over LLM only, 95 % interval +7.5 to
-  +28.6), level with the fixed pipeline within noise. It asked the tool on 41 of 53 letters and
+  +28.6), level with the fixed pipeline within noise. It asked the tool on 44 of 53 letters and
   dated the rest, all printed dates, itself. The one letter between it and the pipeline states a
-  posting day after its own date: the agent passed that day as the letter's date, against the
-  tool's description, which gave the labelled date; passed as documented, the tool gives the
-  pipeline's earlier date. So the case for the pipeline is not accuracy: the agent decides for
-  itself when to ask and what to pass (the first recording once overrode the tool with a wrong
-  date; in 11 of 50 calls it passed the recording day as "today", and eight answers then called a
-  live deadline passed, which the scorer, checking due dates only, does not count), its quotes are
-  not checked against the page, and its dates carry no stored receipt.
+  posting day after its own date: the agent passed it as the tool asks and got the engine's
+  deliberate earlier date (the pipeline's), then asked again without the letter's date and took the
+  later date the label counts. So the case for the pipeline is not accuracy: the agent decides for
+  itself when to ask, what to pass and whether to accept the engine's safe date (an earlier
+  recording once overrode the tool with a wrong date, another passed the recording day as "today"
+  in 11 of 50 calls, and eight answers then called a live deadline passed, which the scorer,
+  checking due dates only, does not count), its quotes are not checked against the page, and its
+  dates carry no stored receipt.
 - **Accuracy is not the only thing the engine buys.** Every date comes with a receipt a person can
   check, the same letter always gives the same date, and the calendar is data rather than memory:
   the rules-text baseline got two of six invoice terms wrong because it didn't know that

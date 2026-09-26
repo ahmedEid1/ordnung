@@ -26,7 +26,13 @@ Claude reads through it also reaches every other MCP server loaded there, throug
   plainly when the ledger server is still in the file, and `--remove-ledger` takes it out.
 - A model, not a person, now passes the facts, so the tools check what they are given: an arrival
   day (or a delivery day the letter states) after today is refused, an implausible one lowers
-  confidence, and a `today` far from the server's is flagged — the benchmark's server ignores it.
+  confidence, and a result is always for the server's today — a caller's `today` far from it only
+  adds that day's view (the benchmark's server ignores it), so a stale date never makes a live
+  deadline look missed.
+- The tools add no law of their own: whether a sender has deemed delivery at all (a company's letter
+  counts from its arrival, an unknown sender's keeps the earliest plausible deemed delivery) is the
+  engine's rule, under its coverage gate, so a tool and the app give the same date for the same facts.
+  Next to the ledger (`--with-ledger`), a letter in the ledger keeps its stored date.
 - Ask's own server leaves the rules tools out (`--ledger-only`). Ask quotes the ledger's stored
   receipts and never computes a new date (SPEC § 21); with a calculator in reach, any date it
   echoed would also pass Ask's fact check.
@@ -40,13 +46,15 @@ Claude reads through it also reaches every other MCP server loaded there, throug
 The engine reaches people where they already are, without their data. The fourth condition answers
 "why a fixed pipeline instead of an agent with a calculator?" with data ([evals](../evals.md)): with
 the tool the same model matched the pipeline's accuracy within noise (all 56 dates of the test split
-right in its second recording there, made after the tool interface was revised; the first scored
-98.2 %, as does the fixed pipeline; no dangerous-late date), so the pipeline's case rests on what an
-agent's answer lacks — a quote checked against the page, a stored receipt per date, the same date
-for the same letter every time, and no reliance on the model choosing when to call the tool and
-what to pass it (it dated the printed dates of 12 of 53 letters without asking, passed the day of
-the recording as "today" in 11 of 50 calls and then told people live deadlines had passed, and the
-first recording once overrode the tool with a wrong date). Tool results and the tools' descriptions
+right in its third recording there, each made after a review revised the tool interface — the last
+one checked on the dev split first; the first scored 98.2 %, as does the fixed pipeline, the second
+100 %; no dangerous-late date), so the pipeline's case rests on what an agent's answer lacks — a
+quote checked against the page, a stored receipt per date, the same date for the same letter every
+time, and no reliance on the model choosing when to call the tool, what to pass it and whether to
+accept its safe date (it dated the printed dates of 9 of 53 letters without asking, and on the one
+letter between it and the pipeline asked again without the letter's date to get a later one; an
+earlier recording passed the day of the recording as "today" in 11 of 50 calls and then told people
+live deadlines had passed, and the first once overrode the tool with a wrong date). Tool results and the tools' descriptions
 are part of the benchmark recording, so an engine or description change does not re-score that
-condition; it has to be recorded again, and until then the CI gate, which checks Ordnung, leaves it
-out with a warning.
+condition; it has to be recorded again (on the dev split first), and until then the CI gate, which
+checks Ordnung, leaves it — and only it — out with a warning.

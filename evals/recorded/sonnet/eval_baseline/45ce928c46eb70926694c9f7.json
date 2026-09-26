@@ -1,0 +1,133 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"66558d0cff6b709e7189c044842a3f9ba40a34d879dba31805f69e58d9a657db\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2025-10-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-fine_bussgeld-C1"
+    ],
+    "prompt_head": "Today is Friday, 2025-10-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_documen"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Beispielheide – Bußgeldstelle Verkehrsordnungswidrigkeiten\",\"document_date\":\"2025-10-13\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.2-OWi-25-064411\"},{\"label\":\"Kennzeichen\",\"value\":\"BH-AM 204\"}],\"amounts\":[70,25,3.5,98.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Er muss binnen zwei Wochen ab der Zustellung schriftlich oder zur Niederschrift beim Landkreis Beispielheide eingelegt werden.\",\"computation\":\"The scanned Zustellungsurkunde on page 2 shows formal service ('förmliche Zustellung', § 182 ZPO) with the postal carrier noting 'zugestellt am 17.10.2025' — a documented actual delivery date, so the statutory deemed-delivery fiction for ordinary post does not apply; the period runs from this stated delivery day. Under § 187 Abs. 1 BGB the day of delivery (Fri 17 Oct 2025) is not counted, so counting starts Sat 18 Oct 2025. Two weeks (§ 188 Abs. 2 BGB) from Fri 17 Oct 2025 ends Fri 31 Oct 2025, which is Reformationstag, a public holiday in Niedersachsen (and nationwide since 2018). Under § 31 Abs. 3 VwVfG the deadline moves to the next working day, Mon 3 Nov 2025.\",\"due_date\":\"2025-11-03\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine, fee and expenses (Gesamtbetrag)\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist, fällig; geben Sie bei der Überweisung bitte das Aktenzeichen an.\",\"computation\":\"Payment falls due two weeks after the Bescheid becomes 'rechtskräftig' (final), which happens if no Einspruch is filed within the objection period computed above (ending Mon 3 Nov 2025); the decision then becomes final on Tue 4 Nov 2025. Under § 187 Abs. 1 BGB that day is not counted, so counting starts Wed 5 Nov 2025; two weeks (§ 188 Abs. 2 BGB) from Tue 4 Nov 2025 ends Tue 18 Nov 2025, a normal working day in Niedersachsen, so no weekend/holiday shift applies. This date is contingent on no Einspruch being lodged; filing an Einspruch would suspend this payment obligation until the case is otherwise concluded.\",\"due_date\":\"2025-11-18\",\"confidence\":\"medium\",\"amount\":98.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (2025-11-18) assumes no Einspruch is filed by the 2025-11-03 deadline; if an Einspruch is lodged, the Bescheid does not become final and this payment date does not apply.\",\"Page 2 is a scan of the delivery envelope (Postzustellungsurkunde) showing 'zugestellt am 17.10.2025' in handwriting; this is the actual, documented delivery date used to start the objection period, not the printed letter date of 13.10.2025.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Beispielheide – Bußgeldstelle Verkehrsordnungswidrigkeiten",
+      "document_date": "2025-10-13",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.2-OWi-25-064411"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "BH-AM 204"
+        }
+      ],
+      "amounts": [
+        70,
+        25,
+        3.5,
+        98.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Er muss binnen zwei Wochen ab der Zustellung schriftlich oder zur Niederschrift beim Landkreis Beispielheide eingelegt werden.",
+          "computation": "The scanned Zustellungsurkunde on page 2 shows formal service ('förmliche Zustellung', § 182 ZPO) with the postal carrier noting 'zugestellt am 17.10.2025' — a documented actual delivery date, so the statutory deemed-delivery fiction for ordinary post does not apply; the period runs from this stated delivery day. Under § 187 Abs. 1 BGB the day of delivery (Fri 17 Oct 2025) is not counted, so counting starts Sat 18 Oct 2025. Two weeks (§ 188 Abs. 2 BGB) from Fri 17 Oct 2025 ends Fri 31 Oct 2025, which is Reformationstag, a public holiday in Niedersachsen (and nationwide since 2018). Under § 31 Abs. 3 VwVfG the deadline moves to the next working day, Mon 3 Nov 2025.",
+          "due_date": "2025-11-03",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine, fee and expenses (Gesamtbetrag)",
+          "quote": "Der Gesamtbetrag ist zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist, fällig; geben Sie bei der Überweisung bitte das Aktenzeichen an.",
+          "computation": "Payment falls due two weeks after the Bescheid becomes 'rechtskräftig' (final), which happens if no Einspruch is filed within the objection period computed above (ending Mon 3 Nov 2025); the decision then becomes final on Tue 4 Nov 2025. Under § 187 Abs. 1 BGB that day is not counted, so counting starts Wed 5 Nov 2025; two weeks (§ 188 Abs. 2 BGB) from Tue 4 Nov 2025 ends Tue 18 Nov 2025, a normal working day in Niedersachsen, so no weekend/holiday shift applies. This date is contingent on no Einspruch being lodged; filing an Einspruch would suspend this payment obligation until the case is otherwise concluded.",
+          "due_date": "2025-11-18",
+          "confidence": "medium",
+          "amount": 98.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (2025-11-18) assumes no Einspruch is filed by the 2025-11-03 deadline; if an Einspruch is lodged, the Bescheid does not become final and this payment date does not apply.",
+        "Page 2 is a scan of the delivery envelope (Postzustellungsurkunde) showing 'zugestellt am 17.10.2025' in handwriting; this is the actual, documented delivery date used to start the objection period, not the printed letter date of 13.10.2025."
+      ]
+    },
+    "usage": {
+      "input_tokens": 10,
+      "output_tokens": 5683,
+      "cache_read_tokens": 56019,
+      "cache_creation_tokens": 10249,
+      "cost_usd": 0.1090498,
+      "duration_ms": 59046,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2025-10-17",
+            "delivery_rule": "none",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 41 OWiG, § 182 ZPO (Zustellungsurkunde)",
+            "text": "Er muss binnen zwei Wochen ab der Zustellung schriftlich oder zur Niederschrift beim Landkreis Beispielheide eingelegt werden."
+          },
+          "document_date": "2025-10-13",
+          "sender_kind": "authority",
+          "sender_name": "Landkreis Beispielheide",
+          "region": "NI",
+          "recipient_region": "NI",
+          "remedy_type": "einspruch",
+          "today": "2025-10-17"
+        },
+        "result": "{\"due_date\":\"2025-11-03\",\"weekday\":\"Monday\",\"send_by\":\"2025-10-27\",\"summary\":\"Two weeks after delivery on Fri 17 Oct 2025 (as stated on the letter) is Fri 31 Oct 2025, a public holiday, Reformationstag, so the deadline moves to Mon 3 Nov 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Fri 17 Oct 2025\",\"date\":\"2025-10-17\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Fri 31 Oct 2025\",\"date\":\"2025-10-31\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Fri 31 Oct 2025 is a public holiday, Reformationstag, so the deadline moves to Mon 3 Nov 2025\",\"date\":\"2025-11-03\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Mon 27 Oct 2025 to allow 4 business days for a letter to arrive\",\"date\":\"2025-10-27\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-10-17\",\"letter_date\":\"2025-10-13\",\"received_date\":\"2025-10-17\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Niedersachsen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "explicit_date",
+            "anchor_date": "2025-11-04",
+            "delivery_rule": "none",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§ 91 OWiG (Fälligkeit)",
+            "text": "Der Gesamtbetrag ist zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist, fällig"
+          },
+          "document_date": "2025-10-13",
+          "sender_kind": "authority",
+          "sender_name": "Landkreis Beispielheide",
+          "region": "NI",
+          "recipient_region": "NI",
+          "today": "2025-10-17"
+        },
+        "result": "{\"due_date\":\"2025-11-18\",\"weekday\":\"Tuesday\",\"send_by\":\"2025-11-17\",\"summary\":\"Two weeks after Tue 4 Nov 2025 is Tue 18 Nov 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Tue 4 Nov 2025\",\"date\":\"2025-11-04\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Tue 18 Nov 2025\",\"date\":\"2025-11-18\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 18 Nov 2025 is a working day, so it stays\",\"date\":\"2025-11-18\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Mon 17 Nov 2025 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2025-11-17\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2025-10-17\",\"letter_date\":\"2025-10-13\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Niedersachsen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE61258516600000005566"
+        },
+        "result": "{\"iban\":\"DE61 2585 1660 0000 0055 66\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"25851660\"},\"account_number\":\"0000005566\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying. For a euro transfer the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required since 9 October 2025): if it reports no match or only a close one, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

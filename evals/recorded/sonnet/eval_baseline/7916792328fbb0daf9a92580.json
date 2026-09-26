@@ -1,0 +1,97 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"f7ae48bbc89b54cf01e188e8575e931a74ae3baa69a0ec295ab50349241b195b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-year_boundary-B1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-02-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Muster Möbelwerkstatt GmbH\",\"document_date\":\"2026-01-30\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"RE-2026-0142\"},{\"label\":\"Kundennummer\",\"value\":\"K-10877\"},{\"label\":\"USt-IdNr.\",\"value\":\"DE 298 441 207\"},{\"label\":\"Amtsgericht Neu-Musterdorf HRB\",\"value\":\"4471\"}],\"amounts\":[1487.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for built-in shelf\",\"quote\":\"Bitte überweisen Sie den Rechnungsbetrag innerhalb eines Monats nach Rechnungsdatum ohne Abzug auf unser Konto (IBAN siehe unten).\",\"computation\":\"The invoice is a company's own document, not an authority's letter, so there is no statutory deemed-delivery rule; the one-month period runs from the printed invoice date itself (Rechnungsdatum, 30.01.2026), as the letter says 'nach Rechnungsdatum'. Under § 187 Abs. 1 BGB the day of the event (30 Jan) is not counted, so counting starts 31 Jan 2026. Under § 188 Abs. 2/3 BGB a one-month period ends on the day of the last month bearing the same number as the start day (30 Jan), i.e. 30 Feb — since February has no 30th, it ends on the last day of February, Sat 28 Feb 2026. Since that day is a Saturday, § 193 BGB shifts the deadline to the next business day, Mon 2 Mar 2026. Confirmed by the deadline tool.\",\"due_date\":\"2026-03-02\",\"confidence\":\"high\",\"amount\":1487.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Muster Möbelwerkstatt GmbH",
+      "document_date": "2026-01-30",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "RE-2026-0142"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "K-10877"
+        },
+        {
+          "label": "USt-IdNr.",
+          "value": "DE 298 441 207"
+        },
+        {
+          "label": "Amtsgericht Neu-Musterdorf HRB",
+          "value": "4471"
+        }
+      ],
+      "amounts": [
+        1487.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for built-in shelf",
+          "quote": "Bitte überweisen Sie den Rechnungsbetrag innerhalb eines Monats nach Rechnungsdatum ohne Abzug auf unser Konto (IBAN siehe unten).",
+          "computation": "The invoice is a company's own document, not an authority's letter, so there is no statutory deemed-delivery rule; the one-month period runs from the printed invoice date itself (Rechnungsdatum, 30.01.2026), as the letter says 'nach Rechnungsdatum'. Under § 187 Abs. 1 BGB the day of the event (30 Jan) is not counted, so counting starts 31 Jan 2026. Under § 188 Abs. 2/3 BGB a one-month period ends on the day of the last month bearing the same number as the start day (30 Jan), i.e. 30 Feb — since February has no 30th, it ends on the last day of February, Sat 28 Feb 2026. Since that day is a Saturday, § 193 BGB shifts the deadline to the next business day, Mon 2 Mar 2026. Confirmed by the deadline tool.",
+          "due_date": "2026-03-02",
+          "confidence": "high",
+          "amount": 1487.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2191,
+      "cache_read_tokens": 25950,
+      "cache_creation_tokens": 5255,
+      "cost_usd": 0.048131999999999994,
+      "duration_ms": 20440,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "document_date",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "vertragliche Zahlungsfrist",
+            "text": "Bitte überweisen Sie den Rechnungsbetrag innerhalb eines Monats nach Rechnungsdatum ohne Abzug auf unser Konto"
+          },
+          "document_date": "2026-01-30",
+          "sender_kind": "company",
+          "sender_name": "Muster Möbelwerkstatt GmbH",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-03-02\",\"weekday\":\"Monday\",\"send_by\":\"2026-02-27\",\"summary\":\"One month after the letter's date (Fri 30 Jan 2026) is Sat 28 Feb 2026, a Saturday, so the deadline moves to Mon 2 Mar 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Fri 30 Jan 2026\",\"date\":\"2026-01-30\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Sat 28 Feb 2026\",\"date\":\"2026-02-28\",\"rule_id\":\"bgb_188_3\",\"citation\":\"§ 188 Abs. 3 BGB\"},{\"label\":\"Sat 28 Feb 2026 is a Saturday, so the deadline moves to Mon 2 Mar 2026\",\"date\":\"2026-03-02\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Fri 27 Feb 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-02-27\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188_3\",\"title\":\"Shorter months\",\"citation\":\"§ 188 Abs. 3 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-02-04\",\"letter_date\":\"2026-01-30\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE44 3705 0198 0080 0441 20"
+        },
+        "result": "{\"iban\":\"DE44 3705 0198 0080 0441 20\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0080044120\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying. For a euro transfer the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required since 9 October 2025): if it reports no match or only a close one, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}
