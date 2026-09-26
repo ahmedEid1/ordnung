@@ -53,14 +53,14 @@
    "manifest_sha256": "82c0ca53d06b4f28d6e832817bdaa3c626ef5c3a0c8f150a34ccf61a81597ee5"
   },
   "commit": "17f2292",
-  "metrics_commit": "be9f638",
+  "metrics_commit": "a12db54",
   "added_conditions": {
    "llm_rules_tool": {
     "date": "2026-09-26",
     "backend": "live",
     "commit": "be9f638",
     "run_id": "tool-test-r3",
-    "note": "With Ordnung's engine as a tool, the same model got every due date on the test split right: 56 of 56 (100 %, 95 % interval 91.8–100), +17.9 points over LLM only (+7.5 to +28.6) and +7.1 over pasting the rules into the prompt (0.0 to +16.7), with no late and no early date. It asked a date tool on 44 of the 53 letters with a dated obligation. Of the 45 obligations a tool date belonged to, it took 44 unchanged; the 9 it dated without one were all printed in the letter (appointments, payment reminders, two dates in English letters). The one change is also the one letter between it and Ordnung re-scored on the same engine (98.2 %; −1.8 points, −5.7 to 0.0, within noise). That letter states a posting day two days after its own date. The agent passed it as `spec.anchor_date`, as the tool asks, and got the engine's deliberate earlier date, counted from the letter's date, which is also Ordnung's answer. It then called again without the letter's date, so the engine counted from the stated day, and answered with that later date, which the label counts. On the dev split, where this interface was checked first, it kept the earlier date on the same kind of letter and scored 24 of 25 (96 %), as Ordnung does. So on these letters accuracy does not decide between a fixed pipeline and an agent with a calculator. The agent was also cheaper and faster per letter ($0.058 against $0.075, 27 s against 48 s median; Ordnung's calls also extract summaries, key facts, contracts and quotes). What the pipeline adds is a guarantee about how every date was made. The agent chose for itself when to ask the tool, what to pass it, and here whether to accept the engine's safe date. Its quotes are not checked against the page, its dates carry no stored receipt, and a new run may choose differently. This recording ran with the rules server pinned to each letter's `today`; the model passed a `today` in 18 calls, always the letter's. Two cautions. First, this condition ran after the held-out run, against the engine as fixed after it, so it is no more held-out than the re-scored Ordnung row. Second, this is the third recording of it on the test split. The first (tool interface of commit 456be6c) scored 98.2 % (55 of 56) and once replaced the tool's answer with a wrong date of its own. The second (e0337cb) came after a review revised the tool descriptions, argument checks and hints. It scored 100 %, but in 11 of its 50 calls it passed the recording day as `today`, and eight answers then called live deadlines passed. A second review then changed the interface again: formal service, the `today` argument, and the delivery rule for private senders moved into the engine. That interface was checked on the dev split first; then the test split was recorded a third time. Each recording replaced one that a review had looked at, so this is iteration on the test split: read the 100 % with that in mind.",
+    "note": "With Ordnung's engine as a tool, the same model got every due date on the test split right: 56 of 56 (100 %, 95 % interval 91.8–100), +17.9 points over LLM only (+7.5 to +28.6) and +7.1 over pasting the rules into the prompt (0.0 to +16.7), with no late and no early date. It asked a date tool on 44 of the 53 letters with a dated obligation. Of the 45 obligations a tool date belonged to, it answered every one with a date the tools had returned for it; the 9 it dated without one were all printed in the letter (appointments, payment reminders, two dates in English letters). The one letter between it and Ordnung re-scored on the same engine (98.2 %; −1.8 points, −5.7 to 0.0, within noise) is one where it asked twice. That letter states a posting day two days after its own date. The agent passed it as `spec.anchor_date`, as the tool asks, and got the engine's deliberate earlier date, counted from the letter's date, which is also Ordnung's answer. It then called again without the letter's date, so the engine counted from the stated day, and answered with that later date, which the label counts. (That second call quoted the posting-day sentence rather than the objection's, so an earlier version of this page, whose scorer matched calls to obligations by sentence only, counted the answer as an override of the tools; the scorer now gives a date no obligation's sentence claims to the obligation it dates. The tools now also say when a stated posting day could not be checked because the letter's date is missing, with a hint and lower confidence — after this recording.) On the dev split, where this interface was checked first, it kept the earlier date on the same kind of letter and scored 24 of 25 (96 %), as Ordnung does. So on these letters accuracy does not decide between a fixed pipeline and an agent with a calculator. The agent was also cheaper and faster per letter ($0.058 against $0.075, 27 s against 48 s median; Ordnung's calls also extract summaries, key facts, contracts and quotes). What the pipeline adds is a guarantee about how every date was made. The agent chose for itself when to ask the tool, what to pass it, and here whether to accept the engine's safe date. Its quotes are not checked against the page, its dates carry no stored receipt, and a new run may choose differently. This recording ran with the rules server pinned to each letter's `today`; the model passed a `today` in 18 calls, always the letter's. Two cautions. First, this condition ran after the held-out run, against the engine as fixed after it, so it is no more held-out than the re-scored Ordnung row. Second, this is the third recording of it on the test split. The first (tool interface of commit 456be6c) scored 98.2 % (55 of 56) and once replaced the tool's answer with a wrong date of its own. The second (e0337cb) came after a review revised the tool descriptions, argument checks and hints. It scored 100 %, but in 11 of its 50 calls it passed the recording day as `today`, and eight answers then called live deadlines passed. A second review then changed the interface again: formal service, the `today` argument, and the delivery rule for private senders moved into the engine. That interface was checked on the dev split first; then the test split was recorded a third time. Each recording replaced one that a review had looked at, so this is iteration on the test split: read the 100 % with that in mind. The six recordings, three per split, cost $14.91 (API-equivalent), at the ceiling of the budget set for this condition; it will not be recorded again without the owner's approval.",
     "earlier_recordings": [
      {
       "date": "2026-09-26",
@@ -77,6 +77,44 @@
       "k": 56.0,
       "n": 56.0,
       "value": 1.0
+     }
+    ],
+    "recording_spend": [
+     {
+      "split": "dev",
+      "commit": "456be6c",
+      "calls": 28,
+      "cost_usd": 1.4477
+     },
+     {
+      "split": "test",
+      "commit": "456be6c",
+      "calls": 63,
+      "cost_usd": 3.4003
+     },
+     {
+      "split": "dev",
+      "commit": "bb9b53a",
+      "calls": 28,
+      "cost_usd": 1.3855
+     },
+     {
+      "split": "test",
+      "commit": "bb9b53a",
+      "calls": 63,
+      "cost_usd": 3.5036
+     },
+     {
+      "split": "dev",
+      "commit": "a60a8ae",
+      "calls": 28,
+      "cost_usd": 1.4923
+     },
+     {
+      "split": "test",
+      "commit": "a60a8ae",
+      "calls": 63,
+      "cost_usd": 3.6791
      }
     ]
    }
@@ -1979,18 +2017,18 @@
     },
     "refused_calls": 0,
     "items_by_backing": {
-     "tool_date": 44,
-     "overrode_tool": 1,
+     "tool_date": 45,
+     "overrode_tool": 0,
      "other_obligation": 2,
      "no_tool_date": 9
     },
     "final_differs_from_tool": {
-     "value": 0.022222222222222223,
+     "value": 0.0,
      "ci": [
       0.0,
-      0.06976744186046512
+      0.09405782583720246
      ],
-     "k": 1.0,
+     "k": 0.0,
      "n": 45.0,
      "docs": 44
     },
@@ -1998,22 +2036,22 @@
      "tool_date": {
       "value": 1.0,
       "ci": [
-       0.9035813714055363,
+       0.9059421741627975,
        1.0
       ],
-      "k": 44.0,
-      "n": 44.0,
-      "docs": 43
+      "k": 45.0,
+      "n": 45.0,
+      "docs": 44
      },
      "overrode_tool": {
-      "value": 1.0,
+      "value": null,
       "ci": [
-       0.20654931437723745,
-       1.0
+       null,
+       null
       ],
-      "k": 1.0,
-      "n": 1.0,
-      "docs": 1
+      "k": 0.0,
+      "n": 0.0,
+      "docs": 0
      },
      "other_obligation": {
       "value": 1.0,
@@ -2041,21 +2079,21 @@
       "value": 0.0,
       "ci": [
        0.0,
-       0.09641862859446362
+       0.09405782583720246
       ],
       "k": 0.0,
-      "n": 44.0,
-      "docs": 43
+      "n": 45.0,
+      "docs": 44
      },
      "overrode_tool": {
-      "value": 0.0,
+      "value": null,
       "ci": [
-       0.0,
-       0.7934506856227626
+       null,
+       null
       ],
       "k": 0.0,
-      "n": 1.0,
-      "docs": 1
+      "n": 0.0,
+      "docs": 0
      },
      "other_obligation": {
       "value": 0.0,
@@ -2079,17 +2117,17 @@
      }
     },
     "tool_returned_the_right_date": {
-     "value": 0.9777777777777777,
+     "value": 1.0,
      "ci": [
-      0.9302325581395349,
+      0.9059421741627975,
       1.0
      ],
-     "k": 44.0,
+     "k": 45.0,
      "n": 45.0,
      "docs": 44
     },
     "overrides_breaking_a_right_tool_date": 0,
-    "overrides_fixing_a_wrong_tool_date": 1,
+    "overrides_fixing_a_wrong_tool_date": 0,
     "deadline_calls_with_other_today": 0,
     "letters_with_other_today": 0
    },
@@ -42877,8 +42915,8 @@
         "confidence": "high",
         "grounding": null,
         "region_ignored": false,
-        "backing": "overrode_tool",
-        "tool_had_truth": false
+        "backing": "tool_date",
+        "tool_had_truth": true
        },
        {
         "index": 1,

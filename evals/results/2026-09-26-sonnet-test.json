@@ -52,7 +52,8 @@
    "version": 1,
    "manifest_sha256": "82c0ca53d06b4f28d6e832817bdaa3c626ef5c3a0c8f150a34ccf61a81597ee5"
   },
-  "commit": "be9f638"
+  "commit": "be9f638",
+  "metrics_commit": "a12db54"
  },
  "metrics": {
   "ordnung": {
@@ -1949,18 +1950,18 @@
     },
     "refused_calls": 0,
     "items_by_backing": {
-     "tool_date": 44,
-     "overrode_tool": 1,
+     "tool_date": 45,
+     "overrode_tool": 0,
      "other_obligation": 2,
      "no_tool_date": 9
     },
     "final_differs_from_tool": {
-     "value": 0.022222222222222223,
+     "value": 0.0,
      "ci": [
       0.0,
-      0.06976744186046512
+      0.09405782583720246
      ],
-     "k": 1.0,
+     "k": 0.0,
      "n": 45.0,
      "docs": 44
     },
@@ -1968,22 +1969,22 @@
      "tool_date": {
       "value": 1.0,
       "ci": [
-       0.9035813714055363,
+       0.9059421741627975,
        1.0
       ],
-      "k": 44.0,
-      "n": 44.0,
-      "docs": 43
+      "k": 45.0,
+      "n": 45.0,
+      "docs": 44
      },
      "overrode_tool": {
-      "value": 1.0,
+      "value": null,
       "ci": [
-       0.20654931437723745,
-       1.0
+       null,
+       null
       ],
-      "k": 1.0,
-      "n": 1.0,
-      "docs": 1
+      "k": 0.0,
+      "n": 0.0,
+      "docs": 0
      },
      "other_obligation": {
       "value": 1.0,
@@ -2011,21 +2012,21 @@
       "value": 0.0,
       "ci": [
        0.0,
-       0.09641862859446362
+       0.09405782583720246
       ],
       "k": 0.0,
-      "n": 44.0,
-      "docs": 43
+      "n": 45.0,
+      "docs": 44
      },
      "overrode_tool": {
-      "value": 0.0,
+      "value": null,
       "ci": [
-       0.0,
-       0.7934506856227626
+       null,
+       null
       ],
       "k": 0.0,
-      "n": 1.0,
-      "docs": 1
+      "n": 0.0,
+      "docs": 0
      },
      "other_obligation": {
       "value": 0.0,
@@ -2049,17 +2050,17 @@
      }
     },
     "tool_returned_the_right_date": {
-     "value": 0.9777777777777777,
+     "value": 1.0,
      "ci": [
-      0.9302325581395349,
+      0.9059421741627975,
       1.0
      ],
-     "k": 44.0,
+     "k": 45.0,
      "n": 45.0,
      "docs": 44
     },
     "overrides_breaking_a_right_tool_date": 0,
-    "overrides_fixing_a_wrong_tool_date": 1,
+    "overrides_fixing_a_wrong_tool_date": 0,
     "deadline_calls_with_other_today": 0,
     "letters_with_other_today": 0
    },
@@ -42818,8 +42819,8 @@
         "confidence": "high",
         "grounding": null,
         "region_ignored": false,
-        "backing": "overrode_tool",
-        "tool_had_truth": false
+        "backing": "tool_date",
+        "tool_had_truth": true
        },
        {
         "index": 1,
