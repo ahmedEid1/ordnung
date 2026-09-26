@@ -3,9 +3,11 @@
 The answer check in the app (``ordnung.assistant.support``) and this scorer must not share a parser:
 a blind spot in one would then hide itself. This module reads the forms answers use — ``2026-10-21``,
 ``21.10.2026``, ``21.10.``, ``21 Oct 2026``, ``Wed 21 October``, ``21. Oktober 2026``,
-``October 21, 2026``, ``94.99 €``, ``€94.99``, ``94,99 €``, ``EUR 1,560.00``, ``640 €`` — and notes
-whether a value stands inside the quotation marks the answer check puts around a letter's words
-(“…”). A date without a year is read in the year closest to the sample life's today.
+``October 21, 2026``, ``21-10-2026``, ``94.99 €``, ``€94.99``, ``94,99 €``, ``EUR 1,560.00``,
+``640 €`` — and notes whether a value stands inside the quotation marks the answer check puts around
+a letter's words (“…”, or „…“ in a German answer). A date without a year is read in the year closest
+to the sample life's today. The answer is read as it is shown: Markdown emphasis and code markers,
+backslash escapes and invisible characters are dropped first, so ``31.**12**.2027`` is a date.
 
 Numbers count as amounts when a currency stands next to them or when they have exactly two decimals.
 Citation markers (``[item:itm_…]``) are removed first, so ids never read as numbers.
@@ -38,6 +40,7 @@ _MONTH = "|".join(sorted(_MONTHS, key=len, reverse=True))
 _DATE = re.compile(
     rf"""
       (?<![\d.])(?P<iy>\d{{4}})-(?P<im>\d{{2}})-(?P<id>\d{{2}})(?!\d)
+    | (?<![\d.-])(?P<hd>\d{{1,2}})-(?P<hm>\d{{1,2}})-(?P<hy>\d{{4}})(?!\d)
     | (?<![\d.,])(?P<dd>\d{{1,2}})\.(?P<dm>\d{{1,2}})\.(?P<dy>\d{{4}}|\d{{2}}(?!\d))?
     | (?<![\d.,])(?P<wd>\d{{1,2}})(?:st|nd|rd|th)?\.?\s+(?:of\s+)?(?P<wm>{_MONTH})\b\.?(?:,?\s+(?P<wy>\d{{4}}))?
     | \b(?P<mm>{_MONTH})\b\.?\s+(?P<md>\d{{1,2}})(?:st|nd|rd|th)?\b(?:,?\s+(?P<my>\d{{4}}))?
@@ -57,7 +60,8 @@ _AMOUNT = re.compile(
 _MARKER = re.compile(
     r"\[\s*[a-z]+\s*:\s*[a-z]{3}_[a-z0-9]+(?:\s*[,;]\s*[a-z]+\s*:\s*[a-z]{3}_[a-z0-9]+)*\s*\]", re.I
 )
-_QUOTED = re.compile(r"“[^“”\n]{0,80}”")
+_QUOTED = re.compile(r"“[^“”\n]{0,80}”|„[^„“\n]{0,80}“")
+_HIDDEN = re.compile(r"[*_`\u00ad\u200b-\u200f\u2060-\u2064\ufeff]|\\(?=[.\-*_`])")
 
 
 @dataclass(frozen=True)
@@ -109,7 +113,7 @@ def _amount(number: str) -> float | None:
 
 def mentions(text: str) -> list[Mention]:
     """Every date and amount in ``text``, in reading order."""
-    plain = _MARKER.sub("", text)
+    plain = _HIDDEN.sub("", _MARKER.sub("", text))
     quotes = [(match.start(), match.end()) for match in _QUOTED.finditer(plain)]
 
     def quoted(start: int, end: int) -> bool:
@@ -121,6 +125,8 @@ def mentions(text: str) -> list[Mention]:
         g = match.groupdict()
         if g["iy"]:
             value = _date(g["id"], int(g["im"]), g["iy"]) if 1 <= int(g["im"]) <= 12 else None
+        elif g["hd"]:
+            value = _date(g["hd"], int(g["hm"]), g["hy"]) if 1 <= int(g["hm"]) <= 12 else None
         elif g["dd"]:
             value = _date(g["dd"], int(g["dm"]), g["dy"]) if 1 <= int(g["dm"]) <= 12 else None
         elif g["wd"]:

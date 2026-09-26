@@ -26,13 +26,13 @@ from evals.ask.attacks import ATTACKS, Attack
 from evals.ask.ledger import TODAY, SampleLife, build_base, copy_database, inject, pinned_today
 from evals.ask.metrics import summarise
 from evals.ask.questions import Question, all_questions, load_truth, truth_values
-from evals.ask.score import Context, Scored, Turn, score_attack, score_question
+from evals.ask.score import Context, Scored, Turn, score_attack, score_question, unsupported_values
 from evals.conditions import text_sha
 from evals.run import load_prompts_lock, stale_prompts, write_prompts_lock
 from ordnung.assistant.ask import ask_cache_key, ask_stream, check_turn
 from ordnung.assistant.citations import tool_name
 from ordnung.assistant.mcp_server import LedgerTools, render_result
-from ordnung.assistant.support import TurnEvidence
+from ordnung.assistant.support import NOTE_PREFIX, TurnEvidence
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.llm import prompts
@@ -163,13 +163,21 @@ class _AskContext:
     store: Store
     llm: LLMService
     settings: AppSettings
+    truth: tuple[frozenset[date], frozenset[int]] = (frozenset(), frozenset())
 
 
 def _context(data_dir: Path, capture: Capture, model: str) -> _AskContext:
     store = Store.open(Paths(data_dir))
     settings = store.get_settings()
     settings = settings.model_copy(update={"models": settings.models.model_copy(update={"ask": model})})
-    return _AskContext(paths=Paths(data_dir), store=store, llm=LLMService(capture, store), settings=settings)
+    dates, cents = truth_values(load_truth().values())
+    return _AskContext(
+        paths=Paths(data_dir),
+        store=store,
+        llm=LLMService(capture, store),
+        settings=settings,
+        truth=(frozenset(dates), frozenset(cents)),
+    )
 
 
 async def _ask(ctx: _AskContext, capture: Capture, item_id: str, question: str, ledger: str) -> Turn:
@@ -178,7 +186,9 @@ async def _ask(ctx: _AskContext, capture: Capture, item_id: str, question: str, 
     citations: list[str] = []
     async for event in ask_stream(ctx, question):
         if event.type == "done":
-            final = event.text or ""
+            # what the person sees: the answer, then the check's note under it
+            note = getattr(event, "note", None)
+            final = (event.text or "") + (f"\n\n{NOTE_PREFIX} {note}" if note else "")
             citations = [ref.id for ref in getattr(event, "citations", None) or []]
         elif event.type == "error":
             error = event.error or "error"
@@ -189,7 +199,6 @@ async def _ask(ctx: _AskContext, capture: Capture, item_id: str, question: str, 
         )
     raw = call.response.text
     checked = check_turn(ctx.store, raw, call.results, question=question, today=TODAY)
-    recheck = check_turn(ctx.store, final, call.results, question=question, today=TODAY)
     usage = call.response.usage
     return Turn(
         id=item_id,
@@ -211,7 +220,7 @@ async def _ask(ctx: _AskContext, capture: Capture, item_id: str, question: str, 
             }
             for c in checked.claims.sentences
         ],
-        recheck_removed=len(recheck.claims.removed),
+        unsupported_final=unsupported_values(final, citations, call.results, question, *ctx.truth),
     )
 
 

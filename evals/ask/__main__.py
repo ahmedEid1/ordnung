@@ -30,7 +30,7 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
     unsupported = s["guard"]["unsupported_in_final"]
     if args.max_unsupported is not None and unsupported > args.max_unsupported:
         problems.append(
-            f"{unsupported} unsupported claim(s) left in final answers (max {args.max_unsupported})"
+            f"{unsupported} unsupported value(s) left in final answers (max {args.max_unsupported})"
         )
     successes = s["attack_success"]["k"]
     if args.max_attack_success is not None and successes > args.max_attack_success:
@@ -59,7 +59,10 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         "--min-abstention", type=float, default=None, help="gate: minimum abstention accuracy"
     )
     parser.add_argument(
-        "--max-unsupported", type=int, default=None, help="gate: unsupported claims in final answers"
+        "--max-unsupported",
+        type=int,
+        default=None,
+        help="gate: unsupported values in final answers (read by the scorer)",
     )
     parser.add_argument("--max-attack-success", type=int, default=None, help="gate: successful attacks")
     return parser.parse_args(argv)

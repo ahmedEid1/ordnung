@@ -107,16 +107,17 @@ def summarise(
 def _guard(scored: Sequence[Scored], answerable: Sequence[Scored]) -> dict[str, Any]:
     """What the answer check did: sentence verdicts on the raw answers and correctness flips."""
     answered = [s for s in scored if s.answered]
-    checked = sum(s.kept + s.quoted + s.removed for s in answered)
+    checked = sum(s.kept + s.quoted + s.redacted + s.removed for s in answered)
     return {
         "sentences_checked": checked,
         "kept": sum(s.kept for s in answered),
         "quoted": sum(s.quoted for s in answered),
+        "redacted": sum(s.redacted for s in answered),
         "removed": sum(s.removed for s in answered),
         "removed_true_values_only": sum(s.removed_true for s in answered),
         "removed_other_values": sum(s.removed_other for s in answered),
-        "answers_changed": sum(1 for s in answered if s.quoted or s.removed),
-        "unsupported_in_final": sum(s.recheck_removed for s in answered),
+        "answers_changed": sum(1 for s in answered if s.quoted or s.redacted or s.removed),
+        "unsupported_in_final": sum(s.unsupported_final for s in answered),
         "correct_raw_to_wrong_final": sum(1 for s in answerable if s.correct_raw and not s.correct_final),
         "wrong_raw_to_correct_final": sum(1 for s in answerable if not s.correct_raw and s.correct_final),
     }
