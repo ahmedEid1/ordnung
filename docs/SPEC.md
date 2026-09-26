@@ -277,9 +277,23 @@ MCP server (`python -m ordnung mcp --data-dir D`, read-only DB, lazy imports): `
 `get_profile`, `today`. Ask runs `claude -p` with `--tools ""`, `--allowedTools mcp__ordnung__*`,
 `--mcp-config` (absolute `sys.executable`), `--max-budget-usd 0.50`, 120 s timeout. Citations
 `[doc:ID]`, `[item:ID]`, `[contract:ID]`, `[party:ID]` are **validated**: the id must exist and
-appear in a tool result of the same turn; otherwise it is stripped and logged. The tool trace is
-streamed to the UI and persisted with the message. Markdown is rendered without raw HTML and without
-remote images.
+appear in the record part of a tool result of the same turn; otherwise it is stripped and logged. The
+tool trace is streamed to the UI and persisted with the message. Markdown is rendered without raw
+HTML and without remote images.
+
+**Two channels and claim-level citations** (ADR 0008). Every tool result has Ordnung's record
+(`<ordnung_record>`: ids, types, statuses, due and send-by dates, rules-engine contract dates,
+letter dates, amounts and terms with verified or person-given evidence, totals, code-written
+receipts) and the letters' text by record id (`<untrusted_document>`: titles, summaries, names,
+quotes, warnings, payment details, page text, and amounts or terms read by AI from a photo or not
+found on the page, flagged `amount_unverified`/`terms_unverified`). After the answer streams, each
+sentence that states a date or amount must cite a record whose record part holds it (a letter's
+includes its to-dos, a contract's its letter, a person's their to-dos); today, the person's own
+words and Ordnung's totals need no citation. A value only letter text holds stays only as a quote
+("the letter says …" citing the record whose text holds it, or a cited record's flagged amount) and
+is shown in quotation marks; other such sentences are removed. A last paragraph "Checked by
+Ordnung: …" says what was left out or quoted; the UI shows it as a note. The policy is in the
+docstring of `assistant/support.py`. `python -m evals.ask` measures Ask ([evals-ask](evals-ask.md)).
 
 ## 11. Letters — `drafts/`
 
@@ -413,6 +427,15 @@ rate, injection resistance, scam recall, latency p50, API-equivalent cost/doc. O
 `evals/results/<date>-<model>.json`, `docs/evals.md` (tables, chart, failure gallery). CI recomputes
 metrics from recorded outputs with thresholds.
 
+**Ask benchmark** (`evals/ask/`, `python -m evals.ask`): ~50 questions about the demo's sample life
+asked through the real Ask on the demo ledger (deadlines, payments, contract cancel-by dates and
+costs, questions across letters, hand-written paraphrases incl. German, unanswerable questions),
+with gold answers from the sample life's truth only, plus injected letters (moved deadline, changed
+amount, "no deadline", cite another record). Metrics with cluster-bootstrap CIs: answer correctness,
+citation precision/recall, abstention, attack success raw vs final, guard effect, tool calls, turns,
+cost and latency. Replayed from `evals/recorded/ask/`; results in `evals/results/<date>-<model>-ask.json`
+and `docs/evals-ask.md`; CI gates on the replay.
+
 ## 18. Quality bar
 ruff + mypy clean; pytest incl. Hypothesis properties for rules (month-end invariants, business-day
 idempotence, never landing on a holiday, deemed delivery ≥ posted + 4 from 2025, send_by ≤ cancel_by);
@@ -541,9 +564,11 @@ English) → `low` confidence. Mismatch → "Please check". UI never says "verif
 text in any prompt (including earlier summaries) is wrapped in `<untrusted_document>` tags. Hidden-
 text detector (pdfplumber char colour/size/position): invisible text is excluded from the prompt and
 raises a red banner. HTML e-mails follow the short written policy of `html_to_text` (ADR 0007): only
-text that is certainly hidden is excluded; when in doubt it stays visible. Brief/review/Ask free text is checked: every date, amount and § must exist in
-the agenda/ledger/catalog, else it is removed (fallback to code-generated text). Ask gets a read-only
-`explain_date(id)` tool that returns receipts. MCP is internal only (no Claude Desktop config in v1).
+text that is certainly hidden is excluded; when in doubt it stays visible. Brief/review free text is checked: every date, amount and § must exist in
+the agenda/ledger/catalog, else it is removed (fallback to code-generated text). Ask's tool results
+separate Ordnung's record from letter text, and each sentence of an Ask answer with a date or amount
+must cite a record whose record part holds it or be a marked quote of a letter (ADR 0008). Ask gets a
+read-only `explain_date(id)` tool that returns receipts. MCP is internal only (no Claude Desktop config in v1).
 
 **Scam checks (code, not model).** IBAN checksum validation; payee IBAN/name compared with those
 previously seen for the same party; mismatch → scam Idea quoting both. Copy: "No warning does not

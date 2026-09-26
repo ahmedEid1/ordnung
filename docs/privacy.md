@@ -70,7 +70,9 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
 - *Ask* can only call Ordnung's **read-only** tools; there are no write tools for a
   prompt-injected document to abuse.
 - *Ask*'s tool results (search snippets, summaries, quotes, page texts) reach the model inside
-  `<untrusted_document>` markers too. Text an HTML e-mail certainly hides from every reader (inline
+  `<untrusted_document>` markers too, apart from Ordnung's own record of dates and amounts; a
+  sentence of an answer whose date or amount comes only from a letter's text is removed or shown as
+  a quote ([ADR 0008](decisions/0008-two-channels-and-claim-level-citations.md)). Text an HTML e-mail certainly hides from every reader (inline
   `display:none`, `visibility:hidden`, `opacity:0`, a font of at most 1 px, zero-height clipped or
   far off-screen boxes, text in its own inline background colour, simple hiding classes) is kept from
   the model like hidden text in PDFs. When that isn't certain (media queries, Outlook-only parts,

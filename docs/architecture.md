@@ -57,7 +57,8 @@ flowchart LR
 | Document → model | Documents are untrusted: hidden text removed, content wrapped in `<untrusted_document>`, **no tools** during reading, output forced through a JSON schema |
 | Model → ledger | Schema validation, quote grounding with exact digits, `spec_consistency`, deterministic date computation, confidence rubric → "Please check" |
 | Model → user | Ideas and letters are suggestions; nothing is sent, paid, closed or deleted without a click; letters use fixed legal templates |
-| Agent → data | Ask only has read-only MCP tools on a `query_only` connection; every tool result is wrapped as untrusted; citations must appear in the same turn's tool results |
+| Agent → data | Ask only has read-only MCP tools on a `query_only` connection. Every tool result has two channels: Ordnung's record (`<ordnung_record>`: ids, statuses, due and send-by dates, rules-engine dates, verified amounts, totals, code-written receipts) and the letters' text by record id (`<untrusted_document>`: titles, summaries, names, quotes, page text, unverified amounts); `<` and `>` are escaped in both ([ADR 0008](decisions/0008-two-channels-and-claim-level-citations.md)) |
+| Agent → user | Citations must name records from a record part of the same turn. Each sentence that states a date or amount must cite a record whose record part holds it, or be a marked quote of a letter (shown in quotation marks); others are removed, with a visible note. Measured by `python -m evals.ask` ([evals-ask](evals-ask.md)) |
 | Upload → machine | Checked before anything decodes it: PDF stream expansion, image pixels and text pages are capped; the data folder is private to the account (`0700`, files `0600`) |
 | Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs |
 | Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence` |
@@ -106,12 +107,16 @@ sequenceDiagram
   S->>C: question + system prompt (tools: mcp__ordnung__* only, budget cap, timeout)
   loop agent loop
     C->>M: search / get_document / list_contracts / explain_date
-    M-->>C: results with ids (document text wrapped as untrusted)
+    M-->>C: <ordnung_record> ids, dates, verified amounts + <untrusted_document> letter text by id
   end
   C-->>S: streamed answer with [contract:…] [doc:…] citations
-  S->>S: validate citations (exist + seen in this turn's tool results), strip others
-  S-->>U: answer + tool trace + citation chips (SSE)
+  S->>S: citations: exist + in a record part of this turn, else stripped
+  S->>S: each sentence with a date or amount: in the cited record's record part? else a marked letter quote? else removed
+  S-->>U: checked answer + note + tool trace + citation chips (SSE)
 ```
+
+The check is a short written policy (`assistant/support.py`): deterministic, linear in the answer
+and the tool results, and re-run by the Ask benchmark over recorded answers.
 
 ## Data model (simplified)
 
@@ -175,3 +180,4 @@ normalised name), so re-processing is idempotent and recorded demo outputs stay 
 | Demo | `ordnung demo --check`: rebuild twice with strict replay → zero misses, identical dumps, all references resolve |
 | Web app | Vitest units + Playwright tour over demo mode with axe accessibility checks |
 | Model quality | The benchmark in [evals](evals.md), recomputed deterministically in CI from recorded outputs |
+| Ask | Unit tests of the two channels and the claim policy (incl. injected dates and ids), and the Ask benchmark in [evals-ask](evals-ask.md), replayed in CI with gates |
