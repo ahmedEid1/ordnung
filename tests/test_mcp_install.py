@@ -18,6 +18,7 @@ from typer.testing import CliRunner
 from ordnung.assistant import mcp_install
 from ordnung.assistant.mcp_install import (
     FULL_SERVER_NAME,
+    RULES_ONLY_PRIVACY,
     RULES_SERVER_NAME,
     InstallError,
     Plan,
@@ -26,10 +27,13 @@ from ordnung.assistant.mcp_install import (
     desktop_config_path,
     instructions,
     merge_server,
+    other_entry_in,
     plan_install,
+    privacy_note,
     server_entry,
     write_command,
     write_config,
+    written_message,
 )
 from ordnung.cli import app
 from ordnung.config import Paths
@@ -313,6 +317,57 @@ def test_the_ledger_is_never_written_into_a_projects_shared_mcp_json(tmp_path: P
     assert list(project.iterdir()) == [project / ".mcp.json"]  # no backup either
 
 
+def test_the_rules_tools_do_not_hide_a_ledger_left_in_the_config(tmp_path: Path) -> None:
+    """Re-running the default install to take back ledger access must not say "none of your data"
+    while the full server stays in the file."""
+    config = settings_folder(tmp_path) / "claude_desktop_config.json"
+    config.write_text(json.dumps(EXISTING), encoding="utf-8")
+    full_plan = desktop_plan(tmp_path, rules_only=False, data_dir=tmp_path / "data")
+    rules_plan = desktop_plan(tmp_path)
+    assert other_entry_in(rules_plan) is None and privacy_note(rules_plan) == RULES_ONLY_PRIVACY
+    write_config(full_plan, now=NOW)
+    assert other_entry_in(rules_plan) == FULL_SERVER_NAME
+    note = privacy_note(rules_plan, other=FULL_SERVER_NAME)
+    assert "none of your data" not in note and "it can still read your ledger" in note
+    assert "--remove-ledger" in note and "rules tools twice" in note
+
+    kept = write_config(rules_plan, now=NOW)
+    assert (kept.status, kept.other, kept.removed) == ("added", FULL_SERVER_NAME, None)
+    assert "It still has “ordnung”, which reads your ledger" in written_message(rules_plan, kept)
+    again = write_config(rules_plan, now=NOW)
+    assert again.status == "unchanged" and again.other == FULL_SERVER_NAME
+    assert written_message(rules_plan, again).endswith("add --remove-ledger to take it out.")
+
+    backups = len(list(config.parent.glob("*.bak-*")))
+    removed = write_config(rules_plan, now=NOW, remove_ledger=True)
+    assert (removed.status, removed.removed, removed.other) == ("unchanged", FULL_SERVER_NAME, None)
+    assert removed.backup is not None and len(list(config.parent.glob("*.bak-*"))) == backups + 1
+    assert FULL_SERVER_NAME in json.loads(removed.backup.read_text(encoding="utf-8"))["mcpServers"]
+    assert set(json.loads(config.read_text(encoding="utf-8"))["mcpServers"]) == {"files", RULES_SERVER_NAME}
+    assert "took out “ordnung” (Ordnung with your data)" in written_message(rules_plan, removed)
+    assert write_config(rules_plan, now=NOW, remove_ledger=True).status == "unchanged"  # nothing left to do
+
+    # the full server notes the rules entry it duplicates; remove_ledger is for the rules tools only
+    assert "“ordnung_rules” is there too" in privacy_note(full_plan, other=RULES_SERVER_NAME)
+    with pytest.raises(ValueError, match="remove_ledger goes with the rules tools"):
+        write_config(full_plan, remove_ledger=True)
+    # an unreadable config is not "having" it (write_config reports that file)
+    config.write_text("{oops", encoding="utf-8")
+    assert other_entry_in(rules_plan) is None
+    assert other_entry_in(desktop_plan(tmp_path / "nowhere")) is None
+
+
+def test_instructions_to_take_the_ledger_out(tmp_path: Path) -> None:
+    desktop = instructions(desktop_plan(tmp_path), remove_ledger=True, system="linux")
+    assert (
+        "(keep the servers that are already there)\nand take “ordnung” (Ordnung with your data) out of it:"
+        in desktop
+    )
+    assert "  ordnung mcp install --client claude-desktop --remove-ledger --write\n" in desktop
+    code = instructions(plan_install("claude-code", rules_only=True, cwd=tmp_path), system="linux")
+    assert "run this there to take it out:\n  claude mcp remove --scope local ordnung\n" in code
+
+
 def test_write_refuses_a_folder_and_reads_a_bom(tmp_path: Path) -> None:
     (settings_folder(tmp_path) / "claude_desktop_config.json").mkdir()
     with pytest.raises(InstallError, match="is not a file"):
@@ -440,10 +495,77 @@ def test_cli_options_before_install_fail_loudly(
     assert not config.exists()
 
 
-def test_cli_a_data_folder_without_the_ledger_is_a_mistake(home: Path, tmp_path: Path) -> None:
-    result = runner.invoke(app, ["mcp", "install", "--client", "claude-desktop", "--data-dir", str(tmp_path)])
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["mcp", "install", "--client", "claude-desktop", "--data-dir", "{data}"],
+        ["--data-dir", "{data}", "mcp", "install", "--client", "claude-desktop"],  # the global option too
+    ],
+)
+def test_cli_a_data_folder_without_the_ledger_is_a_mistake(
+    home: Path, tmp_path: Path, args: list[str]
+) -> None:
+    result = runner.invoke(app, [arg.format(data=tmp_path) for arg in args])
     assert result.exit_code == 1 and "--data-dir would not be used" in result.stderr
     assert "--with-ledger" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["mcp", "--rules-only", "--data-dir", "{data}", "--print-config"],
+        ["--data-dir", "{data}", "mcp", "--rules-only", "--print-config"],
+    ],
+)
+def test_cli_serving_the_rules_tools_refuses_a_data_folder(
+    home: Path, tmp_path: Path, args: list[str]
+) -> None:
+    result = runner.invoke(app, [arg.format(data=tmp_path) for arg in args])
+    assert result.exit_code == 1 and "The rules tools read no data folder" in result.stderr
+    assert result.stdout == ""
+
+
+def test_cli_reinstalling_the_rules_tools_says_the_ledger_is_still_there(
+    home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ORDNUNG_HOME", str(default_data_folder(home)))
+    config = settings_folder(home) / "claude_desktop_config.json"
+    config.write_text(json.dumps(EXISTING), encoding="utf-8")
+    desktop = ["mcp", "install", "--client", "claude-desktop"]
+    assert runner.invoke(app, [*desktop, "--with-ledger", "--write"]).exit_code == 0
+    rules = runner.invoke(app, [*desktop, "--write"])
+    assert rules.exit_code == 0, rules.output
+    assert "none of your data" not in rules.output
+    assert "also has Ordnung with your data (“ordnung” in" in rules.output
+    assert "It still has “ordnung”, which reads your ledger: add --remove-ledger" in rules.output
+    assert set(json.loads(config.read_text(encoding="utf-8"))["mcpServers"]) == {
+        "files",
+        FULL_SERVER_NAME,
+        RULES_SERVER_NAME,
+    }
+    printed = runner.invoke(app, [*desktop, "--remove-ledger"])
+    assert printed.exit_code == 0 and "will be removed" in printed.output
+    assert "--remove-ledger --write" in printed.output
+    removed = runner.invoke(app, [*desktop, "--remove-ledger", "--write"])
+    assert removed.exit_code == 0, removed.output
+    assert (
+        "took out “ordnung” (Ordnung with your data)" in removed.output
+        and "Restart Claude Desktop" in removed.output
+    )
+    assert set(json.loads(config.read_text(encoding="utf-8"))["mcpServers"]) == {"files", RULES_SERVER_NAME}
+    nothing = runner.invoke(app, [*desktop, "--remove-ledger", "--write"])
+    assert nothing.exit_code == 0 and "There was no “ordnung” entry" in nothing.output
+    both = runner.invoke(app, [*desktop, "--with-ledger", "--remove-ledger"])
+    assert both.exit_code == 1 and "exclude each other" in both.stderr
+
+
+def test_cli_errors_keep_paths_whole(home: Path) -> None:
+    """A narrow terminal must not split a path over two lines: it could not be copied."""
+    narrow = CliRunner(env={"COLUMNS": "60", "NO_COLOR": "1"})
+    result = narrow.invoke(app, ["mcp", "install", "--client", "claude-desktop", "--write"])
+    assert result.exit_code == 1
+    folder = str(home / ".config" / "Claude")
+    assert len(folder) > 30 and f"settings folder {folder} does not exist" in result.stderr
 
 
 def test_cli_reports_a_config_that_is_not_utf8(home: Path) -> None:

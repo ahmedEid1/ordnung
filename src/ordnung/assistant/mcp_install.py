@@ -29,6 +29,13 @@ Written policy (ADR 0007) — nothing here guesses:
   commands are quoted for this platform's shell (``cmd.exe`` on Windows, POSIX elsewhere).
 * **Only UTF-8 JSON.** The apps read their config as UTF-8; a file in another encoding (a UTF-16
   file written by Windows PowerShell 5.1, say) is refused untouched like invalid JSON.
+* **One Ordnung, said plainly.** The rules-only entry (``ordnung_rules``) and the full server
+  (``ordnung``) have different names, so installing one leaves the other in place. When the target
+  file already has the other one, the person is told — above all when the ledger stays readable
+  after they installed "the rules tools alone" — and ``--remove-ledger`` (with the rules tools)
+  takes the full server out in the same backed-up write. A full server added with ``claude mcp add
+  --scope local`` lives in Claude Code's own settings, which Ordnung does not edit: the printed
+  ``claude mcp remove`` command takes it out.
 """
 
 from __future__ import annotations
@@ -88,6 +95,10 @@ class WriteResult:
     status: WriteStatus
     path: Path
     backup: Path | None = None
+    #: The other Ordnung entry this write took out (``--remove-ledger``).
+    removed: str | None = None
+    #: The other Ordnung entry still in the file afterwards (see :func:`other_entry_name`).
+    other: str | None = None
 
 
 # --------------------------------------------------------------------------------------------------
@@ -209,8 +220,34 @@ def merge_server(text: str | None, name: str, entry: dict[str, Any]) -> tuple[di
     return {**data, "mcpServers": {**servers, name: entry}}, status
 
 
-def write_config(plan: Plan, *, now: datetime | None = None) -> WriteResult:
-    """Merge ``plan``'s entry into its config file (see the module policy); never clobbers."""
+def other_entry_name(plan: Plan) -> str:
+    """The name of the other Ordnung server: the full one for the rules tools, and the other way round."""
+    return FULL_SERVER_NAME if plan.rules_only else RULES_SERVER_NAME
+
+
+def other_entry_in(plan: Plan) -> str | None:
+    """The other Ordnung server's name if ``plan``'s config file already has it, else ``None``.
+
+    Best effort, for what is printed before anything is written: a missing or unreadable file
+    counts as not having it (:func:`write_config` reports such a file).
+    """
+    path = plan.path.resolve() if plan.path.is_symlink() else plan.path
+    try:
+        data = json.loads(_read(path) or "{}")
+    except (InstallError, OSError, ValueError):
+        return None
+    servers = data.get("mcpServers") if isinstance(data, dict) else None
+    name = other_entry_name(plan)
+    return name if isinstance(servers, dict) and name in servers else None
+
+
+def write_config(plan: Plan, *, now: datetime | None = None, remove_ledger: bool = False) -> WriteResult:
+    """Merge ``plan``'s entry into its config file (see the module policy); never clobbers.
+
+    ``remove_ledger`` (rules-only plans) also takes the full server's entry out, in the same write.
+    """
+    if remove_ledger and not plan.rules_only:
+        raise ValueError("remove_ledger goes with the rules tools")
     path = plan.path
     if path.is_symlink():
         path = path.resolve()
@@ -236,12 +273,18 @@ def write_config(plan: Plan, *, now: datetime | None = None) -> WriteResult:
         raise InstallError(
             f"Nothing was changed: {path} — {exc}. Fix or move that file, then run this again."
         ) from exc
-    if status == "unchanged":
-        return WriteResult(status=status, path=path)
+    servers: dict[str, Any] = merged.get("mcpServers", {})
+    other = other_entry_name(plan)
+    removed = other if remove_ledger and other in servers else None
+    if removed is not None:
+        merged = {**merged, "mcpServers": {name: entry for name, entry in servers.items() if name != removed}}
+    left = other if other in servers and removed is None else None
+    if status == "unchanged" and removed is None:
+        return WriteResult(status=status, path=path, other=left)
     backup = _backup(path, now or datetime.now()) if existing is not None else None
     mode = path.stat().st_mode & 0o7777 if existing is not None else NEW_FILE_MODE
     _replace(path, render_json(merged), mode)
-    return WriteResult(status=status, path=path, backup=backup)
+    return WriteResult(status=status, path=path, backup=backup, removed=removed, other=left)
 
 
 def _read(path: Path) -> str | None:
@@ -298,8 +341,33 @@ NEXT_STEP: dict[str, str] = {
 _CLIENT_NAMES = {"claude-desktop": "Claude Desktop", "claude-code": "Claude Code"}
 
 
-def privacy_note(plan: Plan) -> str:
-    return RULES_ONLY_PRIVACY if plan.rules_only else FULL_PRIVACY
+def privacy_note(plan: Plan, *, other: str | None = None, remove_ledger: bool = False) -> str:
+    """What the client will be able to read — said before anything is printed to copy or written.
+
+    ``other`` is the other Ordnung entry already in the config (:func:`other_entry_in`): with the
+    rules tools, a ledger that stays readable must not be hidden behind "none of your data".
+    """
+    if not plan.rules_only:
+        if other is None:
+            return FULL_PRIVACY
+        return (
+            f"{FULL_PRIVACY} (“{other}” is there too; this server has the same rules tools, so you can "
+            "remove that entry.)"
+        )
+    if other is None:
+        return RULES_ONLY_PRIVACY
+    if remove_ledger:
+        return f"{RULES_ONLY_PRIVACY} “{other}”, which reads your ledger, will be removed."
+    return ledger_left_note(plan)
+
+
+def ledger_left_note(plan: Plan) -> str:
+    """The warning when a rules-only install leaves the full server in the config."""
+    return (
+        f"{_CLIENT_NAMES[plan.client]} also has Ordnung with your data (“{FULL_SERVER_NAME}” in "
+        f"{plan.path}): it can still read your ledger, and Claude gets the rules tools twice. Add "
+        "--remove-ledger to take that entry out (the file is backed up first)."
+    )
 
 
 def what(plan: Plan) -> str:
@@ -307,7 +375,12 @@ def what(plan: Plan) -> str:
 
 
 def write_command(
-    plan: Plan, *, data_dir: Path | None = None, config: Path | None = None, system: str | None = None
+    plan: Plan,
+    *,
+    data_dir: Path | None = None,
+    config: Path | None = None,
+    system: str | None = None,
+    remove_ledger: bool = False,
 ) -> str:
     """The ``ordnung mcp install … --write`` command that does what the printed instructions say."""
     argv = ["ordnung", "mcp", "install", "--client", plan.client]
@@ -317,16 +390,30 @@ def write_command(
             argv += ["--data-dir", str(data_dir)]
     if config is not None:
         argv += ["--config", str(config)]
+    if remove_ledger:
+        argv.append("--remove-ledger")
     return shell_join([*argv, "--write"], system=system)
 
 
 def instructions(
-    plan: Plan, *, data_dir: Path | None = None, config: Path | None = None, system: str | None = None
+    plan: Plan,
+    *,
+    data_dir: Path | None = None,
+    config: Path | None = None,
+    system: str | None = None,
+    remove_ledger: bool = False,
 ) -> str:
-    """What ``ordnung mcp install`` prints without ``--write`` (plain text, nothing wrapped)."""
+    """What ``ordnung mcp install`` prints without ``--write`` (plain text, nothing wrapped).
+
+    ``remove_ledger``: also say to take the full server's entry out of the file.
+    """
     entry = render_json(plan.snippet).rstrip()
-    again = write_command(plan, data_dir=data_dir, config=config, system=system)
+    again = write_command(plan, data_dir=data_dir, config=config, system=system, remove_ledger=remove_ledger)
     remove = f"To remove it again: {claude_code_remove_command(plan, system=system)}"
+    full = Plan(client=plan.client, name=FULL_SERVER_NAME, entry={}, path=plan.path, rules_only=False)
+    ledger = f"“{FULL_SERVER_NAME}” (Ordnung with your data)"
+    take_out = [f"and take {ledger} out of it:"] if remove_ledger else []
+    colon = "" if remove_ledger else ":"
     if plan.client == "claude-code" and not plan.rules_only:
         lines = [
             f"To add {what(plan)} to Claude Code for you, in this project only, run here:",
@@ -340,9 +427,12 @@ def instructions(
             f"To add {what(plan)} to Claude Code for all your projects, run:",
             f"  {claude_code_command(plan, system=system)}",
             remove,
+            f"If you gave a project {ledger} before, run this there to take it out:",
+            f"  {claude_code_remove_command(full, system=system)}",
             "",
             "Or, for one project, add this entry to its .mcp.json (usually committed with the project;",
-            "the entry names this computer's Python, so others may need to change that path):",
+            f"the entry names this computer's Python, so others may need to change that path){colon}",
+            *take_out,
             f"  {plan.path}",
             "",
             entry,
@@ -354,7 +444,8 @@ def instructions(
         lines = [
             f'To add {what(plan)} to Claude Desktop, add this entry to "mcpServers" in',
             f"  {plan.path}",
-            "(keep the servers that are already there):",
+            f"(keep the servers that are already there){colon}",
+            *take_out,
             "",
             entry,
             "",
@@ -367,10 +458,22 @@ def instructions(
 
 
 def written_message(plan: Plan, result: WriteResult) -> str:
-    """One line on what ``--write`` did."""
+    """One line on what ``--write`` did (and on the other Ordnung entry, if the file has one)."""
     target = f"“{plan.name}” in {result.path}"
     client = _CLIENT_NAMES[plan.client]
+    if result.removed is not None:
+        taken = f"took out “{result.removed}” (Ordnung with your data)"
+        if result.status == "unchanged":
+            return f"{client} keeps {what(plan)} as {target}; {taken}."
+        verb = "Added" if result.status == "added" else "Updated"
+        return f"{verb} {what(plan)} for {client} as {target}, and {taken}."
     if result.status == "unchanged":
-        return f"{client} already has {what(plan)} as {target}; nothing changed."
-    verb = "Added" if result.status == "added" else "Updated"
-    return f"{verb} {what(plan)} for {client} as {target}."
+        line = f"{client} already has {what(plan)} as {target}; nothing changed."
+    else:
+        verb = "Added" if result.status == "added" else "Updated"
+        line = f"{verb} {what(plan)} for {client} as {target}."
+    if result.other is not None and plan.rules_only:
+        line += (
+            f" It still has “{result.other}”, which reads your ledger: add --remove-ledger to take it out."
+        )
+    return line
