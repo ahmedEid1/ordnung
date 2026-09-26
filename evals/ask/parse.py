@@ -10,7 +10,8 @@ to the sample life's today. The answer is read as it is shown: Markdown emphasis
 backslash escapes and invisible characters are dropped first, so ``31.**12**.2027`` is a date.
 
 Numbers count as amounts when a currency stands next to them or when they have exactly two decimals.
-Citation markers (``[item:itm_…]``) are removed first, so ids never read as numbers.
+A month with a year and no day (``December 2027``, ``Ende Dezember 2027``, ``end of 2027``) is a
+*month* mention. Citation markers (``[item:itm_…]``) are removed first, so ids never read as numbers.
 """
 
 from __future__ import annotations
@@ -47,6 +48,11 @@ _DATE = re.compile(
     """,
     re.IGNORECASE | re.VERBOSE,
 )
+_MONTH_ONLY = re.compile(
+    rf"\b(?:(?:end\s+of\s+(?:the\s+)?|ende\s+)?(?P<m>{_MONTH})\b\.?,?\s+(?P<y>\d{{4}})\b"
+    rf"|(?:end\s+of\s+(?:the\s+)?|ende\s+|year-end\s+)(?P<ey>\d{{4}})\b)",
+    re.IGNORECASE,
+)
 _CURRENCY = r"(?:€|EUR\b|Euro\b|euros?\b)"
 _AMOUNT = re.compile(
     rf"""
@@ -68,7 +74,7 @@ _HIDDEN = re.compile(r"[*_`\u00ad\u200b-\u200f\u2060-\u2064\ufeff]|\\(?=[.\-*_`]
 class Mention:
     """A date or an amount found in a text; ``quoted``: inside the answer check's “…”."""
 
-    kind: Literal["date", "amount"]
+    kind: Literal["date", "amount", "month"]
     text: str
     quoted: bool
     date: date = TODAY
@@ -137,6 +143,20 @@ def mentions(text: str) -> list[Mention]:
             span = match.span()
             taken.append(span)
             found.append((span[0], Mention("date", match.group(), quoted(*span), date=value)))
+    for match in _MONTH_ONLY.finditer(plain):
+        span = match.span()
+        if any(start < span[1] and span[0] < end for start, end in taken):
+            continue  # part of a full date
+        year, month = (
+            (int(match.group("ey")), 12)
+            if match.group("ey")
+            else (
+                int(match.group("y")),
+                _MONTHS[match.group("m").lower()],
+            )
+        )
+        taken.append(span)
+        found.append((span[0], Mention("month", match.group(), quoted(*span), date=date(year, month, 1))))
     for match in _AMOUNT.finditer(plain):
         span = match.span("num")
         if any(start <= span[0] < end for start, end in taken):
@@ -163,6 +183,6 @@ def stated(text: str, *, include_quoted: bool = True) -> tuple[set[date], set[in
             continue
         if mention.kind == "date":
             dates.add(mention.date)
-        else:
+        elif mention.kind == "amount":
             cents.add(mention.cents)
     return dates, cents

@@ -3,28 +3,39 @@
     "purpose": "ask",
     "model": "sonnet",
     "prompt_version": "4+1",
-    "cache_key": "ask:{\"history\":null,\"ledger\":\"6d6cd53a1de67dd7779d855a0568f390d2649b88003fef5f9d133894d07bfa7a\",\"question\":\"How much is my rent and when is the next payment due?\",\"today\":\"2026-09-28\"}",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"0c632793bca170a24a9e211d2b14683cf444a10ea120204307ca235ba837bdde\",\"question\":\"How much do I owe the library, and how does that fit with my payments this month?\",\"today\":\"2026-09-28\"}",
     "attachments": [],
     "doc_ids": [],
-    "prompt_head": "The person asks:\nHow much is my rent and when is the next payment due?\n"
+    "prompt_head": "The person asks:\nHow much do I owe the library, and how does that fit with my payments this month?\n"
   },
   "response": {
-    "text": "Your rent is **640.00 €** per month [item:itm_b1b5643x7qy7].\n\n- Ordnung has no specific due date stored for this monthly rent payment [item:itm_b1b5643x7qy7] — the letter text notes it should be paid \"by the third working day of each month,\" but no exact date is recorded.\n- Fixed monthly rent cost on file: 640.00 € [contract:ctr_y2hc77av3ps4] (\"Mietvertrag Wohnung 05-2-03, Beispielweg 5\").\n\nIf you want, I can pull up the rental contract details for exact terms — but for the precise next due date, you may want to check the contract or set a reminder in Ordnung (\"Add to my calendar\").",
+    "text": "You owe the library **4.50 €**, due Fri 2 Oct 2026 [item:itm_kgsfgwac9wzx].\n\n- It's from Stadtbibliothek Musterstadt for overdue items [item:itm_kgsfgwac9wzx], to be paid at the service desk or payment machine.\n- It's not counted in this month's (September) `due_this_month` total of 94.99 € because its due date falls in October, but it appears in the upcoming payments list alongside your other early-October bills [item:itm_kgsfgwac9wzx].\n- For September itself, the only payment due is 94.99 € to TechMarkt Online GmbH on Wed 30 Sep 2026 [item:itm_c05nsrmyz6av].\n- Right after that, in early October, you also have the Deutschlandticket (63.00 €) [item:itm_rjz7qsr1817e] and a traffic fine — the letter says 30.00 € (unverified, worth checking) [item:itm_31yxpwg03cdb] — landing around the same time as the library fee.\n\nSo the library fee is small but lands right in the cluster of early-October payments — worth settling it along with the others.",
     "data": null,
     "usage": {
       "input_tokens": 4,
-      "output_tokens": 301,
-      "cache_read_tokens": 9908,
-      "cache_creation_tokens": 6143,
-      "cost_usd": 0.029571600000000003,
-      "duration_ms": 8216,
-      "turns": 2
+      "output_tokens": 492,
+      "cache_read_tokens": 9915,
+      "cache_creation_tokens": 6489,
+      "cost_usd": 0.032867,
+      "duration_ms": 11381,
+      "turns": 3
     },
     "model": "claude-sonnet-5",
     "cache_hit": false,
     "backend": "claude"
   },
   "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "library"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_5c5axexztnw6\",\"kind\":\"dunning\",\"date\":\"2026-09-22\",\"party_id\":\"pty_d2ymm5s3htd0\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_5c5axexztnw6\":{\"title\":\"Overdue library items – 1st reminder (Erinnerung: Leihfrist überschritten)\",\"snippet\":\"This is a reminder from the city library (Stadtbibliothek) that two books you borrowed are past…\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"}}\n</untrusted_document>"
+    },
     {
       "type": "tool_use",
       "name": "mcp__ordnung__money_summary",
@@ -36,79 +47,155 @@
     },
     {
       "type": "text",
-      "text": "Your r"
+      "text": "You"
     },
     {
       "type": "text",
-      "text": "ent is **640"
+      "text": " ow"
     },
     {
       "type": "text",
-      "text": "."
+      "text": "e the"
     },
     {
       "type": "text",
-      "text": "00 €"
+      "text": " library"
     },
     {
       "type": "text",
-      "text": "** per month ["
+      "text": " **4"
     },
     {
       "type": "text",
-      "text": "item"
+      "text": ".50"
     },
     {
       "type": "text",
-      "text": ":"
+      "text": " €"
     },
     {
       "type": "text",
-      "text": "itm_b1b5643"
+      "text": "**"
     },
     {
       "type": "text",
-      "text": "x7qy7].\n\n-"
+      "text": ", due"
     },
     {
       "type": "text",
-      "text": " Ordnung"
+      "text": " F"
     },
     {
       "type": "text",
-      "text": " has"
+      "text": "ri 2"
     },
     {
       "type": "text",
-      "text": " no specific due date st"
+      "text": " Oct 2026 "
     },
     {
       "type": "text",
-      "text": "ored for this mon"
+      "text": "[item"
     },
     {
       "type": "text",
-      "text": "thly r"
+      "text": ":it"
     },
     {
       "type": "text",
-      "text": "ent payment ["
+      "text": "m_kgs"
     },
     {
       "type": "text",
-      "text": "item:itm_b1b"
+      "text": "f"
     },
     {
       "type": "text",
-      "text": "5643x7qy7]"
+      "text": "g"
     },
     {
       "type": "text",
-      "text": " — the"
+      "text": "w"
     },
     {
       "type": "text",
-      "text": " letter text"
+      "text": "ac"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "]."
+    },
+    {
+      "type": "text",
+      "text": "\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " It's from"
+    },
+    {
+      "type": "text",
+      "text": " St"
+    },
+    {
+      "type": "text",
+      "text": "adtbiblioth"
+    },
+    {
+      "type": "text",
+      "text": "ek Mus"
+    },
+    {
+      "type": "text",
+      "text": "terstadt for"
+    },
+    {
+      "type": "text",
+      "text": " overdue items"
+    },
+    {
+      "type": "text",
+      "text": " ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_kgs"
+    },
+    {
+      "type": "text",
+      "text": "fgwac9wzx"
+    },
+    {
+      "type": "text",
+      "text": "], to"
+    },
+    {
+      "type": "text",
+      "text": " be paid at the service"
+    },
+    {
+      "type": "text",
+      "text": " desk or pay"
+    },
+    {
+      "type": "text",
+      "text": "ment machine.\n- It's"
     },
     {
       "type": "text",
@@ -116,63 +203,163 @@
     },
     {
       "type": "text",
-      "text": "es it should be paid \"by"
+      "text": " coun"
     },
     {
       "type": "text",
-      "text": " the third working day of each month,\""
+      "text": "ted in this"
     },
     {
       "type": "text",
-      "text": " but no ex"
+      "text": " month's ("
     },
     {
       "type": "text",
-      "text": "act date is recorded."
+      "text": "September"
     },
     {
       "type": "text",
-      "text": "\n- Fixed month"
+      "text": ") `"
     },
     {
       "type": "text",
-      "text": "ly r"
+      "text": "due_this_month` total of"
     },
     {
       "type": "text",
-      "text": "ent cost on"
+      "text": " 94"
     },
     {
       "type": "text",
-      "text": " file"
+      "text": "."
     },
     {
       "type": "text",
-      "text": ":"
+      "text": "99"
     },
     {
       "type": "text",
-      "text": " 640.00 €"
+      "text": " €"
     },
     {
       "type": "text",
-      "text": " [contract:"
+      "text": " because its due date fal"
     },
     {
       "type": "text",
-      "text": "ctr_y2"
+      "text": "ls in October,"
     },
     {
       "type": "text",
-      "text": "h"
+      "text": " but it app"
     },
     {
       "type": "text",
-      "text": "c"
+      "text": "ears in the upcoming pay"
     },
     {
       "type": "text",
-      "text": "77"
+      "text": "ments list al"
+    },
+    {
+      "type": "text",
+      "text": "ongside your"
+    },
+    {
+      "type": "text",
+      "text": " other early"
+    },
+    {
+      "type": "text",
+      "text": "-"
+    },
+    {
+      "type": "text",
+      "text": "October b"
+    },
+    {
+      "type": "text",
+      "text": "ills [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_kgsf"
+    },
+    {
+      "type": "text",
+      "text": "gwac9wzx]."
+    },
+    {
+      "type": "text",
+      "text": "\n- For September itself, the"
+    },
+    {
+      "type": "text",
+      "text": " only pay"
+    },
+    {
+      "type": "text",
+      "text": "ment due is "
+    },
+    {
+      "type": "text",
+      "text": "94.99 € to"
+    },
+    {
+      "type": "text",
+      "text": " TechM"
+    },
+    {
+      "type": "text",
+      "text": "ar"
+    },
+    {
+      "type": "text",
+      "text": "kt Online"
+    },
+    {
+      "type": "text",
+      "text": " GmbH on W"
+    },
+    {
+      "type": "text",
+      "text": "ed 30 Sep "
+    },
+    {
+      "type": "text",
+      "text": "2026 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_c05"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "y"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "6"
     },
     {
       "type": "text",
@@ -180,35 +367,131 @@
     },
     {
       "type": "text",
-      "text": "3"
+      "text": "]."
     },
     {
       "type": "text",
-      "text": "ps"
+      "text": "\n- Right"
     },
     {
       "type": "text",
-      "text": "4]"
+      "text": " after that, in"
     },
     {
       "type": "text",
-      "text": " "
+      "text": " early"
     },
     {
       "type": "text",
-      "text": "(\"M"
+      "text": " October,"
     },
     {
       "type": "text",
-      "text": "ietvertrag W"
+      "text": " you also have the"
     },
     {
       "type": "text",
-      "text": "ohnung 05"
+      "text": " Deutsch"
     },
     {
       "type": "text",
-      "text": "-2-"
+      "text": "landtic"
+    },
+    {
+      "type": "text",
+      "text": "ket ("
+    },
+    {
+      "type": "text",
+      "text": "63"
+    },
+    {
+      "type": "text",
+      "text": ".00 €)"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_rj"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "7"
+    },
+    {
+      "type": "text",
+      "text": "q"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "1"
+    },
+    {
+      "type": "text",
+      "text": "817"
+    },
+    {
+      "type": "text",
+      "text": "e"
+    },
+    {
+      "type": "text",
+      "text": "]"
+    },
+    {
+      "type": "text",
+      "text": " and a traffic fine —"
+    },
+    {
+      "type": "text",
+      "text": " the letter says "
+    },
+    {
+      "type": "text",
+      "text": "30.00 € ("
+    },
+    {
+      "type": "text",
+      "text": "un"
+    },
+    {
+      "type": "text",
+      "text": "verified, wor"
+    },
+    {
+      "type": "text",
+      "text": "th checking) [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_31y"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "g"
     },
     {
       "type": "text",
@@ -216,39 +499,31 @@
     },
     {
       "type": "text",
-      "text": ", Be"
+      "text": "c"
     },
     {
       "type": "text",
-      "text": "ispiel"
+      "text": "d"
     },
     {
       "type": "text",
-      "text": "weg 5"
+      "text": "b"
     },
     {
       "type": "text",
-      "text": "\").\n\nIf"
+      "text": "] — land"
     },
     {
       "type": "text",
-      "text": " you want, I can pull up"
+      "text": "ing around the same time as the library"
     },
     {
       "type": "text",
-      "text": " the rental cont"
+      "text": " fee.\n\nSo the library"
     },
     {
       "type": "text",
-      "text": "ract details"
-    },
-    {
-      "type": "text",
-      "text": " for exact ter"
-    },
-    {
-      "type": "text",
-      "text": "ms —"
+      "text": " fee is small"
     },
     {
       "type": "text",
@@ -256,68 +531,48 @@
     },
     {
       "type": "text",
-      "text": " for"
+      "text": " l"
     },
     {
       "type": "text",
-      "text": " the prec"
+      "text": "ands right"
     },
     {
       "type": "text",
-      "text": "ise next due"
+      "text": " in the c"
     },
     {
       "type": "text",
-      "text": " date, you"
+      "text": "luster of early"
     },
     {
       "type": "text",
-      "text": " may"
+      "text": "-October payments —"
     },
     {
       "type": "text",
-      "text": " want to check the contract or"
+      "text": " worth sett"
     },
     {
       "type": "text",
-      "text": " set"
+      "text": "ling it along"
     },
     {
       "type": "text",
-      "text": " a"
-    },
-    {
-      "type": "text",
-      "text": " reminder in"
-    },
-    {
-      "type": "text",
-      "text": " Ordnung "
-    },
-    {
-      "type": "text",
-      "text": "(\"Add"
-    },
-    {
-      "type": "text",
-      "text": " to my"
-    },
-    {
-      "type": "text",
-      "text": " calendar\")."
+      "text": " with the others."
     },
     {
       "type": "done",
       "response": {
-        "text": "Your rent is **640.00 €** per month [item:itm_b1b5643x7qy7].\n\n- Ordnung has no specific due date stored for this monthly rent payment [item:itm_b1b5643x7qy7] — the letter text notes it should be paid \"by the third working day of each month,\" but no exact date is recorded.\n- Fixed monthly rent cost on file: 640.00 € [contract:ctr_y2hc77av3ps4] (\"Mietvertrag Wohnung 05-2-03, Beispielweg 5\").\n\nIf you want, I can pull up the rental contract details for exact terms — but for the precise next due date, you may want to check the contract or set a reminder in Ordnung (\"Add to my calendar\").",
+        "text": "You owe the library **4.50 €**, due Fri 2 Oct 2026 [item:itm_kgsfgwac9wzx].\n\n- It's from Stadtbibliothek Musterstadt for overdue items [item:itm_kgsfgwac9wzx], to be paid at the service desk or payment machine.\n- It's not counted in this month's (September) `due_this_month` total of 94.99 € because its due date falls in October, but it appears in the upcoming payments list alongside your other early-October bills [item:itm_kgsfgwac9wzx].\n- For September itself, the only payment due is 94.99 € to TechMarkt Online GmbH on Wed 30 Sep 2026 [item:itm_c05nsrmyz6av].\n- Right after that, in early October, you also have the Deutschlandticket (63.00 €) [item:itm_rjz7qsr1817e] and a traffic fine — the letter says 30.00 € (unverified, worth checking) [item:itm_31yxpwg03cdb] — landing around the same time as the library fee.\n\nSo the library fee is small but lands right in the cluster of early-October payments — worth settling it along with the others.",
         "usage": {
           "input_tokens": 4,
-          "output_tokens": 301,
-          "cache_read_tokens": 9908,
-          "cache_creation_tokens": 6143,
-          "cost_usd": 0.029571600000000003,
-          "duration_ms": 8216,
-          "turns": 2
+          "output_tokens": 492,
+          "cache_read_tokens": 9915,
+          "cache_creation_tokens": 6489,
+          "cost_usd": 0.032867,
+          "duration_ms": 11381,
+          "turns": 3
         },
         "model": "claude-sonnet-5",
         "cache_hit": false,
