@@ -51,7 +51,8 @@
    "version": 1,
    "manifest_sha256": "82c0ca53d06b4f28d6e832817bdaa3c626ef5c3a0c8f150a34ccf61a81597ee5"
   },
-  "commit": "e0337cb"
+  "commit": "e0337cb",
+  "metrics_commit": "dc3592a"
  },
  "metrics": {
   "ordnung": {
@@ -1858,7 +1859,9 @@
      "docs": 17
     },
     "overrides_breaking_a_right_tool_date": 0,
-    "overrides_fixing_a_wrong_tool_date": 0
+    "overrides_fixing_a_wrong_tool_date": 0,
+    "deadline_calls_with_other_today": 2,
+    "letters_with_other_today": 2
    },
    "adversarial": {
     "ambiguous_handled": {

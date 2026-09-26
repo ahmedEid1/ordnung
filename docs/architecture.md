@@ -26,7 +26,7 @@ flowchart LR
     end
     DB[("SQLite<br/>WAL · FTS5 · trigram")]
     FS[("files/ · derived/")]
-    MCP["Ordnung MCP server<br/>read-only · ledger + rules tools"]
+    MCP["Ordnung MCP server (--ledger-only)<br/>read-only ledger tools, no rules tools"]
   end
 
   subgraph account["Your Claude account"]
@@ -135,14 +135,22 @@ flowchart LR
   T -->|"date + receipt + citations"| M
 ```
 
-- `ordnung mcp --rules-only` opens no data folder, so nothing personal is exposed; the full
-  `ordnung mcp --data-dir D` serves the rules tools next to the ledger tools. Ask's own server
-  leaves them out (`--ledger-only`): Ask quotes stored receipts and never computes a date, and its
-  fact check would otherwise accept any date a rules tool echoed.
+- `ordnung mcp --rules-only` opens no data folder, so nothing personal is exposed (a `--data-dir`
+  given with it is refused, not ignored); the full `ordnung mcp --data-dir D` serves the rules tools
+  next to the ledger tools. Ask's own server leaves them out (`--ledger-only`, the server in the
+  diagram above): Ask quotes stored receipts and never computes a date, and its fact check would
+  otherwise accept any date a rules tool echoed.
+- A model, not a person, passes the facts here, so the tools check them: an arrival day — or a
+  delivery day the letter states — after today is refused, an implausible one lowers confidence, a
+  letter dated after today is flagged, and a `today` far from the server's is flagged (the
+  benchmark's server, started with `rules_server_config(today=…)`, ignores it). A sender named as
+  no authority gets no deemed delivery, and a holiday of only part of a Land (15 August in Bavaria)
+  near a send-by date is named, since counting back over it comes out a day late.
 - `ordnung mcp install --client claude-desktop|claude-code` adds the rules tools unless the ledger
   is asked for (`--with-ledger`, with the privacy warning first); it prints the entry and the file
   it belongs in, and `--write` merges only Ordnung's entry, backs the file up and refuses a file it
-  cannot parse (`ordnung/assistant/mcp_install.py`, policy in its docstring).
+  cannot parse (`ordnung/assistant/mcp_install.py`, policy in its docstring). Installing the rules
+  tools where the full server already is says so, and `--remove-ledger` takes that entry out.
 - The benchmark's fourth condition runs exactly this server next to the *LLM only* prompt, to
   measure an agent with a calculator against the fixed pipeline ([evals](evals.md)).
 

@@ -287,17 +287,27 @@ remote images.
 
 **Rules tools** (`assistant/rules_tools.py`, no ledger): `compute_deadline(spec, document_date?,
 sender_kind?, sender_name?, remedy_type?, region?, recipient_region?, received_date?, today?)` —
-the extractor's `DateSpec` (validated strictly: unknown keys are refused, `date` and `anchor_date`
-must be `YYYY-MM-DD`) → the rules engine's date with steps, rule ids, citations, warnings,
-confidence and hints naming a missing argument (never one that was given); a `received_date` after
-today is refused, and one before the letter's date or more than 14 days after it (when the period
-runs from arrival) gets a warning and one level less confidence; `german_holidays(year, region?)`;
+the extractor's `DateSpec` (validated strictly: unknown keys are refused, every date must be
+`YYYY-MM-DD`, `true` is no number) → the rules engine's date with steps, rule ids, citations,
+warnings, confidence and hints naming a missing argument (never one that was given; for a holiday
+region the one the engine reads: `recipient_region` for a payment to a company or person, else
+`region`), and `assumed` (today, letter date, the arrival day used and where it came from, the
+delivery law, the holiday calendar and which argument's Land it follows). The day a period runs
+from is checked: when it runs from arrival, the day used — a delivery day the letter states
+(`spec.anchor_date` not before the letter's date) or `received_date` — after today is refused, and
+one before the letter's date or more than 14 days after it gets a warning and one level less
+confidence; an arrival day the engine did not use is named. A letter dated after today gets a
+warning and one level less confidence. A sender named as no authority gets no deemed delivery (the
+period counts from arrival, at the earliest the letter's date). A holiday of only part of a Land
+(BY, SN, TH) between the send-by or safe date and the due date is named. `german_holidays(year, region?)`;
 `add_working_days(start, days, day_type, region?)`; `check_iban(iban)` (a printed `IBAN:` label and
 invisible characters ignored; country from the full SWIFT registry — any other two letters are not
 an IBAN — registered length, mod-97, bank code where the format shows it; pure code in
 `money/iban.py`). Unknown tool arguments are refused and argument errors are plain words. "Today" is
-the caller's, else `ORDNUNG_TODAY`, else the date in Germany. Every result carries "Information, not
-legal advice". The full server serves them next to the ledger tools (counting from the ledger's
+the server's (`ORDNUNG_TODAY`, else the date in Germany); a caller's `today` replaces it, with a
+warning when more than a day apart, except on a server started pinned (`ORDNUNG_PIN_TODAY=1`, as
+the benchmark starts it), which does not use it. Every result carries "Information, not legal
+advice". The full server serves them next to the ledger tools (counting from the ledger's
 day) — except Ask's own server (`--ledger-only`): Ask quotes stored receipts and never computes a
 date, and its fact check would otherwise accept any date a rules tool echoed; `ordnung mcp
 --rules-only` serves only them — no data folder, nothing personal.
@@ -314,7 +324,9 @@ Windows `%APPDATA%\Claude\…`, Linux `$XDG_CONFIG_HOME/Claude/…`) and, for Cl
 commands are quoted for the platform's shell. `--write` merges only `mcpServers.<name>`
 (`ordnung_rules` or `ordnung`), backs the file up first, writes atomically, keeps its permissions,
 refuses invalid JSON or a file that is not UTF-8 without touching it, and never creates Claude
-Desktop's settings folder.
+Desktop's settings folder. When the file already has the other Ordnung server, the command says so
+(above all when the ledger stays readable next to the rules tools), and `--remove-ledger` (rules
+tools only) takes the full server's entry out in the same backed-up write.
 
 ## 11. Letters — `drafts/`
 
@@ -424,7 +436,7 @@ dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighte
 `brief` · `ask "…"` · `demo [--serve] [--reset] [--check] [--live] [--no-browser]` · `doctor
 [--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--data-dir D] [--print-config]
 [--rules-only]` · `mcp install --client claude-desktop|claude-code [--rules-only|--with-ledger]
-[--data-dir D] [--config PATH] [--write]` · `openapi`.
+[--data-dir D] [--config PATH] [--remove-ledger] [--write]` · `openapi`.
 If a server is running (`server.json` + live pid) `add`/`ask`/`brief` go through its API; otherwise
 they run in-process under an exclusive data-dir lock.
 
@@ -445,11 +457,14 @@ rules) vs **LLM-only** (same model, same context incl. today/region/document dat
 instruction to apply current German law) vs **LLM + rule text** (law text pasted into the prompt) vs
 **LLM + rules tool** (the LLM-only prompt plus a three-sentence note naming the tools and inviting
 the model to use them; the `claude` CLI gets only `ordnung mcp --rules-only`, pinned to the letter's
-today, $1 cap per call — an agent with a calculator). For the tool condition the report adds how
-often the model asked a date tool (`compute_deadline`, or the `add_working_days` calculator), how
-often the final date differs from the tools' answer for that obligation, which obligations were
-dated without any tool date, and the accuracy of each group; its tool calls and answers are part of
-the recording (`LLMResponse.tool_calls`).
+today — a `today` the model passes is not used — $1 cap per call — an agent with a calculator). For
+the tool condition the report adds how often the model asked a date tool (`compute_deadline`, or the
+`add_working_days` calculator), how often the final date differs from the tools' answer for that
+obligation, which obligations were dated without any tool date, the accuracy of each group, and the
+`compute_deadline` calls that passed a `today` other than the letter's; its tool calls and answers
+are part of the recording (`LLMResponse.tool_calls`). The tools' descriptions and input schemas are
+part of that condition's prompt version, so changing them needs a live re-record; until then the CI
+gate (which checks Ordnung's thresholds) leaves that condition out with a warning.
 Metrics with n and 95 % bootstrap CIs: due-date accuracy (overall and per kind), error split
 **reading** (wrong DateSpec/anchor/amount) vs **computing** (wrong arithmetic/law), classification,
 sender/reference/amount accuracy, item recall/precision, evidence grounding rate, false-verified

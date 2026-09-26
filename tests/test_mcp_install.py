@@ -406,7 +406,7 @@ def default_data_folder(home: Path) -> Path:
 def test_cli_installs_the_rules_tools_unless_the_ledger_is_asked_for(
     home: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The command most people type must not hand their ledger to the client (ADR 0008)."""
+    """The command most people type must not hand their ledger to the client (ADR 0009)."""
     monkeypatch.setenv("ORDNUNG_HOME", str(default_data_folder(home)))
     config = settings_folder(home) / "claude_desktop_config.json"
     result = runner.invoke(app, ["mcp", "install", "--client", "claude-desktop", "--write"])
