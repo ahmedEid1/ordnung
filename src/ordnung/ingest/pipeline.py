@@ -50,6 +50,7 @@ from ordnung.ingest.plan import (
     compute_item,
     corrections,
     filed_kind,
+    law_deadlines,
     payment_details,
     remedy_warnings,
     rule_context,
@@ -62,7 +63,6 @@ from ordnung.ingest.transcribe import transcribe_pages
 from ordnung.llm.base import ClaudeRateLimited, LLMError
 from ordnung.models import Document, DocumentExtraction, Job, Page
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
-from ordnung.rules.routing import derived_deadlines
 
 if TYPE_CHECKING:
     from ordnung.app_context import AppContext
@@ -461,7 +461,7 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
             hidden_text=data.hidden_text,
             full_text=full_text,
             kind=kind,
-            derived=derived_deadlines(kind, end=ctx.end_date),
+            derived=law_deadlines(kind, reading, ctx),
         )
 
 

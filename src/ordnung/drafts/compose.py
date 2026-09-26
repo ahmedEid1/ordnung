@@ -445,7 +445,7 @@ def template_input(
         schufa=bool(_SCHUFA_RE.search(party.name if party else details.recipient or "")),
         deadline=parse_day(deadline.due_date) if deadline else None,
         amount=payment.amount if payment else None,
-        period=billing_period_text(text) if text else None,
+        period=billing_period_text(text, before=sources.doc_date) if text else None,
     )
 
 
@@ -517,7 +517,7 @@ def _withdrawal_due(details: LetterDetails, profile: Profile, today: date) -> tu
         end, _ = long_withdrawal_end(start)
         return end, [
             f"Without proper instructions on the right to withdraw, it lasts until {fmt_date(end)} at the latest "
-            "(12 months and 14 days, § 356 Abs. 3 BGB). Sending it in time is enough."
+            "(12 months and 14 days, § 356 Abs. 4 BGB). Sending it in time is enough."
         ]
     spec = DateSpec(
         type="relative",

@@ -21,6 +21,11 @@ from ordnung.models import DocumentExtraction, Item
 from test_api_support import TODAY, Api, ApiRouter, api_for
 
 MB_QUOTE = "Sie können binnen zwei Wochen seit der Zustellung dieses Bescheids Widerspruch erheben."
+#: The warning every Mahnbescheid carries (§ 692 Abs. 1 Nr. 4 ZPO); a reading quotes it as a matter of course.
+MB_WARNING = (
+    "Nach Ablauf dieser Frist kann der Antragsteller einen Vollstreckungsbescheid erwirken und aus diesem "
+    "die Zwangsvollstreckung betreiben."
+)
 MAHNBESCHEID = Letter(
     marker="Mahnbescheid",
     pages=(
@@ -31,6 +36,7 @@ MAHNBESCHEID = Letter(
             "Geschäftsnummer: 26-1234567-0-8",
             "Antragsteller: Inkasso Nord GmbH, Hauptforderung 480,00 EUR",
             MB_QUOTE,
+            MB_WARNING,
         ),
     ),
     payload={
@@ -40,7 +46,11 @@ MAHNBESCHEID = Letter(
         "sender": {"name": "Amtsgericht Hagen - Zentrales Mahngericht", "kind": "authority"},
         "document_date": "2026-09-21",
         "references": [{"label": "Geschäftsnummer", "value": "26-1234567-0-8"}],
-        "summary": "A court payment order for 480 EUR claimed by Inkasso Nord GmbH.",
+        "summary": (
+            "A court payment order for 480 EUR claimed by Inkasso Nord GmbH; without an objection the claimant "
+            "can apply for an enforcement order (Vollstreckungsbescheid)."
+        ),
+        "key_facts": [{"label": "If you don't object", "value": "Enforcement order", "quote": MB_WARNING}],
         "explanation": "Pay or object within two weeks.",
         "items": [
             {

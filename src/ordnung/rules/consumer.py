@@ -9,7 +9,7 @@ Pure date functions; :mod:`ordnung.rules.letters` turns the withdrawal period in
   be withdrawn until the Monday two weeks later). Sending the withdrawal in time is enough
   (§ 355 Abs. 1 S. 5 BGB), so there is no postal buffer.
 * **Without proper instructions** the 14 days never start and the right ends 12 months after the
-  regular period would have ended (§ 356 Abs. 3 S. 2 BGB; Art. 10 Abs. 1 Directive 2011/83/EU).
+  regular period would have ended (§ 356 Abs. 4 S. 1 BGB; Art. 10 Abs. 1 Directive 2011/83/EU).
   The German wording ("zwölf Monate und 14 Tage") can also be read as 12 months first, then 14 days;
   the two differ by a day or two around month ends, and Ordnung uses the earlier (SPEC § 21).
 * **Time-bar** (§§ 195, 199 Abs. 1 BGB): most claims become time-barred at the end of the third

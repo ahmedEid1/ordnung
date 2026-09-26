@@ -18,7 +18,10 @@ Arrival days follow the engine's policy (SPEC § 21): a day stated in the letter
 person counts; otherwise the letter's date, the earliest plausible day, with ``low`` confidence and
 the question "when did it arrive?". When the letter also names its own date for one of these
 deadlines and it differs from the law's, the receipt says so; for the rent increase the law's date
-is shown (a landlord can't shorten it), for the others the earlier of the two.
+is shown (a landlord can't shorten it), for the others the earlier of the two. A withdrawal period
+the letter states that isn't 14 days (a shop may grant 30) is shown next to the law's: the earlier
+date while it lasts, then the later one — never "passed" while either still runs. A passed objection
+date for a landlord's notice says when the tenant may still object (§ 574b Abs. 2 S. 2 BGB).
 """
 
 from __future__ import annotations
@@ -36,16 +39,24 @@ from ordnung.rules.deadlines import (
     _receipt,
     _resolve_anchor,
     _safe_date,
+    _same_period,
     check_regional_holidays,
     parse_date,
     plan_send_by,
 )
 from ordnung.rules.employment import registration_deadline
-from ordnung.rules.explain import fmt_date, month_name
-from ordnung.rules.periods import shift_to_business_day
+from ordnung.rules.explain import fmt_date, fmt_period, month_name
+from ordnung.rules.periods import add_period, shift_to_business_day
 from ordnung.rules.tenancy import consent_period, notice_objection_deadline
 
 _Compute = Callable[[DateSpec, RuleContext, Trace, int], ComputationReceipt]
+
+#: § 574b Abs. 2 S. 2 BGB: without the landlord's timely notice of the right to object, the tenant
+#: can still object at the first hearing of an eviction suit.
+LATE_NOTICE_OBJECTION = (
+    "If the landlord didn't tell you in time about your right to object, its form and its deadline, you can "
+    "still object at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB) — get advice."
+)
 
 
 def _arrival(spec: DateSpec, ctx: RuleContext, trace: Trace) -> date | None:
@@ -61,12 +72,11 @@ def _written_date(spec: DateSpec) -> date | None:
     return parse_date(spec.date) if spec.type == "fixed" else None
 
 
-def _note_letter_date(trace: Trace, spec: DateSpec, legal: date, *, keep: str) -> None:
-    written = _written_date(spec)
-    if written is not None and written != legal:
-        trace.warnings.append(
-            f"The letter names {fmt_date(written)}; by law the date is {fmt_date(legal)} — {keep}."
-        )
+def _note_letter_date(trace: Trace, written: date, legal: date, *, keep: str) -> None:
+    """The letter names ``written`` for a deadline the law sets to ``legal`` (they differ)."""
+    trace.warnings.append(
+        f"The letter names {fmt_date(written)}; by law the date is {fmt_date(legal)} — {keep}."
+    )
 
 
 def _registration(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -> ComputationReceipt:
@@ -125,7 +135,14 @@ def _consent(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -> Com
     trace.step(
         f"Only if you agree, the higher rent is owed from {fmt_date(rent_from)}", rent_from, "bgb_558b"
     )
-    _note_letter_date(trace, spec, due, keep="a landlord can't shorten the time you have to decide")
+    written = _written_date(spec)
+    if written is not None and written != due:
+        keep = (
+            "a landlord can't shorten the time you have to decide, so the law's date is shown"
+            if written < due
+            else "the law's date is shown, the earlier one"
+        )
+        _note_letter_date(trace, written, due, keep=keep)
     send_by = plan_send_by(trace, ctx.today, due, region=region, buffer=buffer)
     summary = (
         f"You have until {fmt_date(due)} to decide whether to agree; if you agree, the higher rent is owed "
@@ -154,20 +171,52 @@ def _notice_objection(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: in
     trace.step(f"The tenancy ends on {fmt_date(end)}", end, "bgb_574b")
     trace.step(f"Two months before that, the objection must arrive by {fmt_date(due)}", due, "bgb_574b")
     if written is not None and written < due:
-        _note_letter_date(trace, spec, due, keep="we show the earlier")
+        _note_letter_date(trace, written, due, keep="we show the earlier")
         due = written
     safe = _safe_date(trace, due, region, backward=True)
     send_by = plan_send_by(trace, ctx.today, safe, region=region, buffer=buffer)
+    if due < ctx.today:
+        trace.warnings.append(LATE_NOTICE_OBJECTION)
     summary = (
         f"Your objection must reach the landlord by {fmt_date(due)}, two months before the tenancy ends."
     )
     return _receipt(trace, ctx, due=due, summary=summary, send_by=send_by, safe_date=safe, region=region)
 
 
+def _stated_period(spec: DateSpec, start: date, legal: date, region: str | None, trace: Trace) -> date | None:
+    """The end of a withdrawal period the letter states when it isn't the law's 14 days (a shop may
+    grant more; a shorter one doesn't count against the consumer), after the § 193 shift."""
+    if (
+        spec.amount is None
+        or spec.unit is None
+        or _same_period((spec.amount, spec.unit), (WITHDRAWAL_DAYS, "days"))
+    ):
+        return None
+    if spec.amount <= 0 or spec.unit in ("business_days", "werktage"):
+        return None
+    raw, _ = add_period(start, spec.amount, spec.unit)
+    stated, _ = shift_to_business_day(raw, region, "bgb_193")
+    period = fmt_period(spec.amount, spec.unit)
+    if stated > legal:
+        trace.soft(
+            f"The letter gives you {period} (until {fmt_date(stated)}), longer than the 14 days the law sets "
+            f"(until {fmt_date(legal)}). A longer period the seller grants counts — keep the letter as proof. "
+            "We show the earlier date while it lasts."
+        )
+    else:
+        trace.soft(
+            f"The letter says {period} (until {fmt_date(stated)}), but the law gives 14 days (until "
+            f"{fmt_date(legal)}) — a shorter period doesn't count against you. We show the earlier date while it "
+            "lasts."
+        )
+    return stated
+
+
 def _withdrawal(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -> ComputationReceipt:
     region = calendar_de.normalize_region(ctx.recipient_region)
     written = _written_date(spec)
     anchor = _resolve_anchor(spec, ctx, trace) if spec.type == "relative" else None
+    stated: date | None = None
     if anchor is None:
         if written is None:
             return _receipt(
@@ -186,8 +235,18 @@ def _withdrawal(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -> 
             )
     due, steps = shift_to_business_day(raw, region, "bgb_193")
     trace.extend(steps)
+    if start is not None:
+        stated = _stated_period(spec, start, due, region, trace)
+    later = max(due, stated) if stated is not None else None
+    due = min(due, stated) if stated is not None else due
     if region is None:
         check_regional_holidays(trace, [due])
+    if later is not None and due < ctx.today:
+        if later >= ctx.today:
+            trace.warnings.append(
+                f"The earlier date ({fmt_date(due)}) has passed, but you can still withdraw until {fmt_date(later)}."
+            )
+        due = later
     send_by: date | None = due
     if due < ctx.today:
         trace.warnings.append(

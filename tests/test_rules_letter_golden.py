@@ -3,7 +3,8 @@
 The cases come from the statutes and from court, ministry, Arbeitsagentur, tenants' association and
 Verbraucherzentrale pages (cited per case). ``date`` cases run through the public ``compute_due``
 (so routing by legal basis and by the letter's kind is part of what is tested), ``statement`` cases
-through :func:`ordnung.rules.tenancy.statement_check`, ``withdrawal_long`` cases through
+through :func:`ordnung.rules.tenancy.statement_check` (``statement_text`` cases read the billing period
+from the statement's text first, :func:`ordnung.rules.advice.billing_period`), ``withdrawal_long`` cases through
 :func:`ordnung.rules.consumer.long_withdrawal_end`. Where sources disagree, the case records the
 later date as ``alternative`` and the engine must give the earlier one (SPEC § 21).
 """
@@ -18,6 +19,7 @@ from typing import Any
 import pytest
 
 from ordnung.models import DateSpec
+from ordnung.rules.advice import billing_period
 from ordnung.rules.consumer import long_withdrawal_end
 from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.rules.tenancy import statement_check
@@ -48,6 +50,17 @@ def _run(case: dict[str, Any]) -> dict[str, Any]:
             "late": check.late,
             "objections_by": check.objections_by.isoformat(),
         }
+    if inp["kind"] == "statement_text":
+        arrived = date.fromisoformat(inp["arrived"])
+        period = billing_period(inp["text"], before=arrived)
+        assert period is not None, case["id"]
+        check = statement_check(period.end, arrived, confirmed=inp["confirmed"], region=inp["region"])
+        return {
+            "period_end": period.end.isoformat(),
+            "exact": period.exact,
+            "deadline": check.deadline.isoformat(),
+            "late": check.late,
+        }
     end, _ = long_withdrawal_end(date.fromisoformat(inp["start"]))
     return {"end": end.isoformat()}
 
@@ -58,7 +71,7 @@ def test_golden_file_shape() -> None:
     for case in CASES:
         assert case["reasoning"] and case["sources"], case["id"]
         assert all("https://" in source for source in case["sources"]), case["id"]
-        assert case["input"]["kind"] in ("date", "statement", "withdrawal_long"), case["id"]
+        assert case["input"]["kind"] in ("date", "statement", "statement_text", "withdrawal_long"), case["id"]
         if case["unsure"]:
             assert case.get("unsure_note"), case["id"]
 

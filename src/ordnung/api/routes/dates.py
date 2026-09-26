@@ -24,6 +24,7 @@ from ordnung.ingest.plan import (
     compute_item,
     consistency_reasons,
     document_context,
+    law_deadlines,
     needs_check,
     sync_rule_items,
 )
@@ -39,7 +40,6 @@ from ordnung.models import (
 )
 from ordnung.recurrence import SCHEDULE_FIELDS, at_occurrence, keeps_later_date, rolled
 from ordnung.rules import RuleContext, compute_due
-from ordnung.rules.routing import derived_deadlines
 from ordnung.secretary.triggers import postal_buffer
 
 MANUAL_SUMMARY = "You set this date yourself."
@@ -125,7 +125,7 @@ def _refresh_rule_items(
     """File the deadlines the law adds to the letter's (possibly corrected) kind again; returns the
     rule to-dos that are new or whose dates changed."""
     before = {item.id: item for item in store.list_items(doc_id=document.id) if item.origin == "rule"}
-    derived = derived_deadlines(document.kind, end=ctx.end_date)
+    derived = law_deadlines(document.kind, store.get_extraction(document.id), ctx)
     after = sync_rule_items(store, document, derived, ctx, today=today, postal_buffer_days=buffer)
     dates = ("due_date", "send_by")
     return [

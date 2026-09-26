@@ -80,11 +80,14 @@ class StatementCheck:
     """Whether an operating-cost statement arrived in time (§ 556 Abs. 3 BGB).
 
     ``late`` is ``True`` only when the statement certainly arrived after ``deadline``, ``False`` when it
-    certainly arrived in time, ``None`` when the arrival day is unknown and the letter's date does not
-    decide it. ``objections_by`` is the last day the tenant's objections can arrive.
+    arrived in time, ``None`` when the arrival day is unknown and the letter's date does not decide it.
+    ``raw_deadline`` is the end of the twelfth month before any weekend/holiday shift: a statement that
+    arrived after it is on time only by that shift, which the card says (its use here is disputed).
+    ``objections_by`` is the last day the tenant's objections can arrive.
     """
 
     period_end: date
+    raw_deadline: date
     deadline: date
     arrived: date
     arrival_confirmed: bool
@@ -102,7 +105,8 @@ def statement_check(
     the last day of the twelfth month after the period ends, moved off weekends and holidays; the
     objection deadline is twelve months after arrival, moved the same way (§ 193 BGB).
     """
-    deadline = _latest_working_day_on_or_after(month_end(add_months(period_end, 12)), region)
+    raw_deadline = month_end(add_months(period_end, 12))
+    deadline = _latest_working_day_on_or_after(raw_deadline, region)
     if arrived > deadline:
         late: bool | None = True
     elif confirmed:
@@ -112,6 +116,7 @@ def statement_check(
     objections_by = calendar_de.next_business_day(add_months(arrived, 12), region)
     return StatementCheck(
         period_end=period_end,
+        raw_deadline=raw_deadline,
         deadline=deadline,
         arrived=arrived,
         arrival_confirmed=confirmed,

@@ -13,7 +13,7 @@ from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.consumer import long_withdrawal_end, withdrawal_end
 from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.rules.employment import registration_deadline
-from ordnung.rules.periods import add_months
+from ordnung.rules.periods import add_months, latest_receipt_for
 from ordnung.rules.tenancy import consent_period, month_end, notice_objection_deadline, statement_check
 
 dates = st.dates(min_value=date(2000, 1, 1), max_value=date(2060, 12, 31))
@@ -45,7 +45,7 @@ def test_registration_is_never_later_than_either_rule_allows(learned: date, days
         assert end is not None and learned <= due and add_months(due, 3) <= end
     else:
         assert due == learned + timedelta(days=3)
-        assert end is None or add_months(learned, 3) > end or learned > due - timedelta(days=3)
+        assert end is None or learned > latest_receipt_for(end, 3, "months")
 
 
 @given(dates)
@@ -94,6 +94,38 @@ def test_court_orders_end_on_a_working_day_and_are_never_high(
     assert receipt.due_date is not None and receipt.confidence != "high"
     due = date.fromisoformat(receipt.due_date)
     assert calendar_de.is_business_day(due, region) and 14 <= (due - served).days <= 18
+
+
+court_specs = st.builds(
+    DateSpec,
+    type=st.sampled_from(["fixed", "relative"]),
+    date=dates.map(date.isoformat),
+    anchor=st.sampled_from(["receipt", "document_date", "explicit_date", "deemed_delivery", None]),
+    anchor_date=dates.map(date.isoformat),
+    amount=st.integers(min_value=1, max_value=30),
+    unit=st.sampled_from(["days", "weeks", "months"]),
+    nature=st.sampled_from(["objection", "payment", "declaration", "notice", "appointment", "other"]),
+    shift_rule=st.sampled_from(["auto", "none", "next_business_day"]),
+    legal_basis=st.sampled_from([None, "§ 692 Abs. 1 Nr. 3 ZPO", "§ 339 ZPO", "§ 4 KSchG", "§ 355 BGB"]),
+)
+
+
+@given(court_specs, dates, regions, st.sampled_from(["court_payment_order", "enforcement_order", None]))
+def test_no_court_date_is_ever_high_whatever_its_type(
+    spec: DateSpec, served: date, region: str | None, kind: str | None
+) -> None:
+    ctx = RuleContext(
+        today=served,
+        region=region,
+        document_date=served,
+        received_date=served,
+        received_confirmed=True,
+        letter_kind=kind,
+    )
+    receipt = compute_due(spec, ctx)
+    court_rule = any(rule in receipt.rule_ids for rule in ("zpo_692", "zpo_339", "kschg_4"))
+    if receipt.due_date is not None and (kind is not None or court_rule):
+        assert receipt.confidence != "high"
 
 
 @given(dates, st.integers(min_value=0, max_value=800), st.booleans(), regions)

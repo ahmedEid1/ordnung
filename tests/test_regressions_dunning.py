@@ -138,3 +138,43 @@ def test_a_reminder_about_arrears_does_not_hide_the_bills_recurring_payments(sto
     assert back_payment.id not in shown
     soon = {idea.refs[0].id for idea in run_triggers(store, TODAY)["deadline_soon"]}
     assert advance.id in soon
+
+
+def test_a_court_payment_order_about_the_invoice_takes_over_its_payment(store: Store) -> None:
+    """Code files a Mahnbescheid as a court order, not a reminder (review C1): it must still take over
+    the invoice's payment, or the invoice shows up to pay next to the court order."""
+    party = store.add_party(name="Stadtwerke Musterstadt", kind="utility")
+    case = store.add_case(title="Invoice RE-4711", party_id=party.id)
+    references = [{"label": "Rechnungsnummer", "value": "RE-4711"}]
+    invoice = add_doc(
+        store,
+        "invoice",
+        kind="invoice",
+        title="Invoice RE-4711",
+        doc_date="2026-06-01",
+        party_id=party.id,
+        case_id=case.id,
+        references=references,
+    )
+    order = add_doc(
+        store,
+        "order",
+        kind="court_payment_order",
+        title="Mahnbescheid",
+        doc_date="2026-09-21",
+        party_id=party.id,
+        case_id=case.id,
+        references=references,
+    )
+    bill = store.add_item(
+        kind="payment",
+        title="Pay the invoice",
+        doc_id=invoice,
+        party_id=party.id,
+        due_date="2026-06-15",
+        amount=480.0,
+        direction="out",
+    )
+    ledger = Ledger(store, TODAY)
+    assert ledger.is_superseded_by_reminder(bill)
+    assert ledger.covering_reminders()[invoice].id == order

@@ -12,11 +12,16 @@ Form rules (SPEC § 11, § 21):
 * Court orders: the objection to a court payment order goes to the court in writing, best on the
   enclosed form, or online at online-mahnantrag.de (§ 694 ZPO; § 692 Abs. 1 Nr. 5 ZPO); the objection
   to an enforcement order in writing to the court (§ 700, § 340 ZPO). Any Amtsgericht's
-  Rechtsantragstelle takes either down for the record (§ 702, § 129a ZPO). Never by e-mail.
+  Rechtsantragstelle takes either down for the record (§ 702, § 129a ZPO), but at a court other than
+  the issuing one it only counts once the record reaches the issuing court (§ 129a Abs. 3 S. 2 ZPO),
+  so the channel says to go early (by the send-by date, as for a letter). Never by e-mail.
 * A tenant's objection to the landlord's notice: text form since 2025 (§ 574b Abs. 1 BGB); a signed
   letter by Einwurf-Einschreiben is still the safest proof.
 * A withdrawal (§ 355 BGB): any clear statement; sending it in time is enough, so there is no postal
-  buffer. The shop's withdrawal button counts when pressed (§ 356a BGB, since 19 June 2026).
+  buffer. The withdrawal button (§ 356a BGB, since 19 June 2026) only exists for contracts made
+  online, so it is offered as one channel, not the recommended one.
+* Replies to a rent increase request (consent needs no form but should be provable, § 558b BGB) and
+  to an operating-cost statement (objections within twelve months, § 556 Abs. 3 S. 5 BGB) say so.
 * The other template letters need no form; channels are ranked by proof.
 """
 
@@ -238,9 +243,11 @@ def _court_objection(letter_kind: str) -> SendGuidance:
         ),
         _channel(
             "in_person",
-            "Rechtsantragstelle of any Amtsgericht",
-            "Free: they write it down for you (zu Protokoll). Bring the order and its envelope.",
-            rule_id,
+            "Rechtsantragstelle (for the record)",
+            "Free: they write it down for you (zu Protokoll); bring the order and its envelope. At the court "
+            "that issued the order it counts at once. Any other Amtsgericht can take it down too, but then it "
+            "only counts once their record reaches the issuing court — go by the send-by date, as for a letter.",
+            "zpo_129a",
         ),
         _channel(
             "fax", "Fax of the signed letter", "Counts as written; keep the transmission report.", rule_id
@@ -265,8 +272,9 @@ def _court_objection(letter_kind: str) -> SendGuidance:
         tips = ["Keep a copy of the form you send and the envelope with the delivery date."]
     else:
         note = (
-            "In writing to the court that issued the order (not by e-mail), or at the Rechtsantragstelle of any "
-            "Amtsgericht. The period can't be extended."
+            "In writing to the court that issued the order (not by e-mail), or for the record at its "
+            "Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record "
+            "reaches the issuing court (§ 129a Abs. 3 S. 2 ZPO) — go early. The period can't be extended."
         )
         tips = ["An objection doesn't stop enforcement by itself — ask for advice about suspending it."]
     return SendGuidance(form="written_form", form_note=note, channels=channels, tips=tips)
@@ -304,14 +312,18 @@ def _withdrawal() -> SendGuidance:
         "(§ 355 Abs. 1 BGB); sending the goods back alone is not a withdrawal.",
         channels=[
             _channel(
-                "online_button",
-                "The shop's withdrawal button",
-                "Online shops must offer one since 19 June 2026; it counts when you press it — save the confirmation.",
-                "bgb_356a",
+                "email",
+                "E-mail",
+                "Valid; keep the sent e-mail as proof of when you sent it.",
+                "bgb_355",
                 recommended=True,
             ),
             _channel(
-                "email", "E-mail", "Valid; keep the sent e-mail as proof of when you sent it.", "bgb_355"
+                "online_button",
+                "The withdrawal button (contracts made online)",
+                "For a contract made on a website or in an app, the company must offer one since 19 June 2026; it "
+                "counts when you press it — save the confirmation. Not for contracts made at the door or by phone.",
+                "bgb_356a",
             ),
             _channel("registered_letter", "Letter by Einwurf-Einschreiben", _EINSCHREIBEN, "bgb_355"),
             _channel("fax", "Fax", "Keep the transmission report.", "bgb_355"),
@@ -347,17 +359,43 @@ def _payment_plan(party_kind: str | None) -> SendGuidance:
     return guidance
 
 
-def _to_landlord(note: str) -> SendGuidance:
+def _to_landlord(note: str, rule_id: str | None = None) -> SendGuidance:
     return SendGuidance(
         form="any",
         form_note=note,
         channels=[
-            _channel("registered_letter", "Letter by Einwurf-Einschreiben", _EINSCHREIBEN, recommended=True),
-            _channel("email", "E-mail", "Quick; keep the sent message and ask for a confirmation."),
-            _channel("in_person", "Hand it over in person", "Take a witness who has read the letter."),
-            _channel("letter", "Letter by normal post", "Works, but you can't prove it arrived."),
+            _channel(
+                "registered_letter",
+                "Letter by Einwurf-Einschreiben",
+                _EINSCHREIBEN,
+                rule_id,
+                recommended=True,
+            ),
+            _channel("email", "E-mail", "Quick; keep the sent message and ask for a confirmation.", rule_id),
+            _channel(
+                "in_person", "Hand it over in person", "Take a witness who has read the letter.", rule_id
+            ),
+            _channel("letter", "Letter by normal post", "Works, but you can't prove it arrived.", rule_id),
         ],
     )
+
+
+_STATEMENT_OBJECTIONS = (
+    "Objections to the statement must reach the landlord within twelve months of receiving it (§ 556 Abs. 3 "
+    "S. 5 BGB) — keep proof of when yours arrived."
+)
+
+
+def _rent_increase_reply() -> SendGuidance:
+    guidance = _to_landlord(
+        "Agreeing needs no special form, but make it provable: a letter by Einwurf-Einschreiben, or an e-mail the "
+        "landlord confirms. You can agree to all of the increase or only part of it.",
+        "bgb_558b",
+    )
+    guidance.tips.append(
+        "Paying the higher rent without a word can also count as agreeing — decide first, then pay."
+    )
+    return guidance
 
 
 def _template(kind: str, party_kind: str | None) -> SendGuidance:
@@ -372,6 +410,10 @@ def _template(kind: str, party_kind: str | None) -> SendGuidance:
         )
     if kind == "deposit_return":
         return _to_landlord("No special form is needed; keep proof of when you asked.")
+    if kind == "receipts_inspection":
+        guidance = _to_landlord("No special form is needed; keep proof of when you asked.", "bgb_556_3")
+        guidance.tips.append(_STATEMENT_OBJECTIONS)
+        return guidance
     guidance = _general_reply()
     if kind == "extension_request":
         guidance.tips.append(
@@ -425,6 +467,13 @@ def send_guidance(
         guidance = _tenancy_objection()
     elif kind == "objection":
         guidance = _objection(party_kind)
+    elif kind == "general_reply" and letter_kind == "rent_increase":
+        guidance = _rent_increase_reply()
+    elif kind == "general_reply" and letter_kind == "operating_costs":
+        guidance = _to_landlord(
+            "No special form is needed; keep proof of when your reply arrived.", "bgb_556_3"
+        )
+        guidance.tips.append(_STATEMENT_OBJECTIONS)
     elif kind == "general_reply":
         guidance = _general_reply()
     else:
@@ -459,8 +508,8 @@ def _withdrawal_dates(guidance: SendGuidance, due: date, today: date) -> SendGui
     if due < today:
         guidance.tips.insert(
             0,
-            f"The 14 days ended on {fmt_date(due)}. If you were never properly told about your right to "
-            "withdraw, it may last longer — get advice.",
+            f"The period to withdraw ended on {fmt_date(due)}. A withdrawal sent now probably comes too late — "
+            "get advice before you rely on it.",
         )
         return guidance
     guidance.send_by = due.isoformat()

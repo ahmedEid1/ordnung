@@ -64,7 +64,13 @@ from ordnung.recurrence import (
 )
 from ordnung.rules import RuleContext, compute_due, scope_for_party_kind
 from ordnung.rules.deadlines import parse_date
-from ordnung.rules.routing import DerivedDeadline, announced_end, letter_kind
+from ordnung.rules.routing import (
+    DerivedDeadline,
+    announced_end,
+    derived_deadlines,
+    extraordinary_notice,
+    letter_kind,
+)
 from ordnung.secretary.scam import iban_from_page, iban_valid, normalize_iban
 
 DueDateSource = Literal["computed", "fixed", "manual", "none"]
@@ -615,6 +621,20 @@ def _rule_item_fields(
         "origin": "rule",
         "filed_on": today.isoformat(),
     }
+
+
+def law_deadlines(
+    kind: str | None, extraction: DocumentExtraction | None, ctx: RuleContext
+) -> list[DerivedDeadline]:
+    """The deadlines the law adds to a letter of ``kind`` (:func:`ordnung.rules.routing.derived_deadlines`)
+    with the facts its reading gives: the end a termination announces, the letter's date and whether
+    the notice has no notice period."""
+    return derived_deadlines(
+        kind,
+        end=ctx.end_date,
+        letter_date=ctx.document_date,
+        extraordinary=extraction is not None and extraordinary_notice(extraction),
+    )
 
 
 def sync_rule_items(

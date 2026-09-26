@@ -453,6 +453,16 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
+        "zpo_129a",
+        "Objections for the record at any Amtsgericht",
+        "§ 129a Abs. 1, 3 ZPO",
+        "Any Amtsgericht's Rechtsantragstelle can take down an objection for the record. It only takes effect "
+        "when that record reaches the court it is meant for, so at another court a deadline can still be "
+        "missed: go early, or to the court that issued the order.",
+        f"{_GII}/zpo/__129a.html",
+        None,
+    ),
+    (
         "bgb_195",
         "Old claims may be time-barred",
         "§ 195 BGB; § 199 Abs. 1 BGB; § 214 Abs. 1 BGB",
@@ -476,7 +486,7 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
     (
         "sgb3_38",
         "Register as job-seeking (arbeitsuchend)",
-        "§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 7, Abs. 6 SGB III",
+        "§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III",
         "Register with the Agentur für Arbeit at the latest three months before your job ends, or within "
         "three days of learning the end date if less time is left. A short notice with your details and the "
         "end date keeps the deadline. Registering late can cost one week of unemployment benefit.",
@@ -546,9 +556,9 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
-        "bgb_356_3",
+        "bgb_356_4",
         "No or wrong withdrawal instructions: 12 months and 14 days",
-        "§ 356 Abs. 3 BGB; Art. 10 Abs. 1 RL 2011/83/EU",
+        "§ 356 Abs. 3 S. 1, Abs. 4 S. 1 BGB; Art. 10 Abs. 1 RL 2011/83/EU",
         "Without proper instructions the 14 days don't start; the right to withdraw ends at the latest "
         "twelve months after the regular 14 days would have ended. Financial services follow other rules.",
         f"{_GII}/bgb/__356.html",

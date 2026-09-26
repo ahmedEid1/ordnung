@@ -5,6 +5,7 @@
   "semantics": {
     "date": "compute_due(spec, ctx): due_date (and safe_date / confidence / send_by where stated)",
     "statement": "tenancy.statement_check(period_end, arrived, confirmed, region): deadline, late, objections_by",
+    "statement_text": "advice.billing_period(text, before=arrived), then tenancy.statement_check: period_end, exact, deadline, late",
     "withdrawal_long": "consumer.long_withdrawal_end(start): the last day without proper instructions",
     "alternative": "a later date some sources give; the engine keeps the earlier one (SPEC § 21)"
   },
@@ -182,7 +183,8 @@
       ],
       "sources": [
         "§ 38 Abs. 1 S. 2 SGB III — https://www.gesetze-im-internet.de/sgb_3/__38.html",
-        "Bundesagentur für Arbeit: 'innerhalb von 3 Tagen' — https://www.arbeitsagentur.de/arbeitslos-arbeit-finden/arbeitslosengeld/ihre-schritte-wenn-sie-arbeitslos-werden/wie-sie-sich-arbeitsuchend-melden"
+        "Bundesagentur für Arbeit: 'innerhalb von 3 Tagen' — https://www.arbeitsagentur.de/arbeitslos-arbeit-finden/arbeitslosengeld/ihre-schritte-wenn-sie-arbeitslos-werden/wie-sie-sich-arbeitsuchend-melden",
+        "§ 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III: 'Die Dauer einer Sperrzeit bei Meldeversäumnis oder bei verspäteter Arbeitsuchendmeldung beträgt eine Woche.' — https://www.gesetze-im-internet.de/sgb_3/__159.html"
       ],
       "unsure": false
     },
@@ -343,6 +345,42 @@
       "unsure": false
     },
     {
+      "id": "bgb556-04-heating-year-july-to-june",
+      "description": "Heizkostenabrechnung 'Abrechnungsjahr 2023/2024 (01.07.2023 bis 30.06.2024)', am Mo 10.03.2025 erhalten.",
+      "input": {
+        "kind": "statement_text",
+        "text": "Heizkostenabrechnung\nAbrechnungsjahr 2023/2024 (01.07.2023 bis 30.06.2024)\nNachzahlung 214,10 EUR",
+        "arrived": "2025-03-10", "confirmed": true, "region": "NW"
+      },
+      "expected": {"period_end": "2024-06-30", "exact": true, "deadline": "2025-06-30", "late": false},
+      "reasoning": [
+        "A billing year need not be the calendar year: this one runs from 1 Jul 2023 to 30 Jun 2024, so the statement is due by the end of the twelfth month after 30 Jun 2024, Mon 30 Jun 2025.",
+        "It arrived on 10 Mar 2025, in time. Reading 'Abrechnungsjahr 2023/2024' as the calendar year 2023 would wrongly call it late and say no back-payment is owed."
+      ],
+      "sources": [
+        "§ 556 Abs. 3 S. 1, 2 BGB: 'Über die Vorauszahlungen für Betriebskosten ist jährlich abzurechnen … Die Abrechnung ist dem Mieter spätestens bis zum Ablauf des zwölften Monats nach Ende des Abrechnungszeitraums mitzuteilen.' — https://www.gesetze-im-internet.de/bgb/__556.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb556-05-previous-year-named-too",
+      "description": "Betriebskostenabrechnung 'Abrechnungszeitraum 2024' mit Vorjahresvergleich 'Abrechnungszeitraum 01.01.2023 - 31.12.2023', am Mo 10.02.2025 erhalten.",
+      "input": {
+        "kind": "statement_text",
+        "text": "Betriebskostenabrechnung\nAbrechnungszeitraum 2024\nVorjahr: Abrechnungszeitraum 01.01.2023 - 31.12.2023",
+        "arrived": "2025-02-10", "confirmed": true, "region": "NW"
+      },
+      "expected": {"period_end": "2024-12-31", "exact": false, "deadline": "2025-12-31", "late": false},
+      "reasoning": [
+        "The statement is for 2024; the 2023 dates are the previous year's comparison. The latest period named ends on 31 Dec 2024, so the statement is due by Wed 31 Dec 2025 and arrived in time.",
+        "Only the year of this period is named, so Ordnung calls such a statement neither certainly late nor certainly on time."
+      ],
+      "sources": [
+        "§ 556 Abs. 3 S. 1, 2 BGB: 'Über die Vorauszahlungen für Betriebskosten ist jährlich abzurechnen … Die Abrechnung ist dem Mieter spätestens bis zum Ablauf des zwölften Monats nach Ende des Abrechnungszeitraums mitzuteilen.' — https://www.gesetze-im-internet.de/bgb/__556.html"
+      ],
+      "unsure": false
+    },
+    {
       "id": "bgb355-01-doorstep-saturday",
       "description": "Zeitschriften-Abo an der Haustür am Sa 12.09.2026 geschlossen, Widerrufsbelehrung ausgehändigt.",
       "input": {
@@ -385,10 +423,10 @@
       "input": {"kind": "withdrawal_long", "start": "2025-03-01"},
       "expected": {"end": "2026-03-15"},
       "reasoning": [
-        "The regular period would have ended on 15 Mar 2025; without instructions the right ends twelve months later, 15 Mar 2026 (§ 356 Abs. 3 S. 2 BGB; Art. 10 Abs. 1 Directive 2011/83/EU)."
+        "The regular period would have ended on 15 Mar 2025; without instructions the right ends twelve months later, 15 Mar 2026 (§ 356 Abs. 4 S. 1 BGB; Art. 10 Abs. 1 Directive 2011/83/EU)."
       ],
       "sources": [
-        "§ 356 Abs. 3 BGB — https://www.gesetze-im-internet.de/bgb/__356.html",
+        "§ 356 Abs. 4 S. 1 BGB: 'Das Widerrufsrecht erlischt spätestens zwölf Monate und 14 Tage nach dem in Absatz 2 oder § 355 Absatz 2 Satz 2 genannten Zeitpunkt.' — https://www.gesetze-im-internet.de/bgb/__356.html",
         "Art. 10 Abs. 1 Directive 2011/83/EU: 'the withdrawal period shall expire 12 months from the end of the initial withdrawal period' — https://eur-lex.europa.eu/eli/dir/2011/83/oj",
         "Verbraucherzentrale: without proper instructions 'beträgt die Widerrufsfrist 12 Monate und 14 Tage' — https://www.verbraucherzentrale.de/wissen/vertraege-reklamation/kundenrechte/fristen-dschungel-der-termine-10387"
       ],
@@ -406,7 +444,7 @@
       ],
       "sources": [
         "Art. 10 Abs. 1 Directive 2011/83/EU — https://eur-lex.europa.eu/eli/dir/2011/83/oj",
-        "§ 356 Abs. 3 S. 2 BGB — https://www.gesetze-im-internet.de/bgb/__356.html"
+        "§ 356 Abs. 4 S. 1 BGB — https://www.gesetze-im-internet.de/bgb/__356.html"
       ],
       "unsure": true,
       "unsure_note": "The two readings differ by a day around month ends; no court has decided which one is meant."

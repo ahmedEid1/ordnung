@@ -56,6 +56,10 @@ HighStakesKind = Literal[
     "operating_costs",
 ]
 HIGH_STAKES_KINDS: tuple[str, ...] = HighStakesKind.__args__  # type: ignore[attr-defined]
+#: Letters that demand an earlier invoice's money again and take over its payment: a reminder, and a
+#: court order about the claim (the model may read a Mahnbescheid as a reminder; code files it as a
+#: court order, and it must still count as one).
+PAYMENT_DEMAND_KINDS: tuple[str, ...] = ("dunning", "court_payment_order", "enforcement_order")
 #: The kind stored on a letter: the model's reading, or a high-stakes kind code assigned.
 LetterKind = Literal[DocumentKind, HighStakesKind]
 LETTER_KINDS: tuple[str, ...] = (*DOCUMENT_KINDS, *HIGH_STAKES_KINDS)

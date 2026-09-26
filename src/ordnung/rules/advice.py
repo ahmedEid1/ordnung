@@ -17,14 +17,20 @@ Computed facts, each with the policy that keeps it honest:
   with 15 % and 20 %. The cap counts from the rent three years ago and without operating costs, so a
   result within the cap is only "within the cap as far as these amounts show".
 * **Late statement** (§ 556 Abs. 3 BGB, :func:`~ordnung.rules.tenancy.statement_check`): the billing
-  period is read from the letter's text — the first "Abrechnungszeitraum/-periode … <date> – <date>"
-  or "Abrechnungsjahr <year>". A statement is called late only when it certainly is; without a
-  period, nothing is claimed.
+  period is read from the letter's text (:func:`billing_period`): every date range in it
+  ("01.07.2024 – 30.06.2025", "vom … bis zum …") that ended before the statement arrived, and every
+  billing year ("Abrechnungsjahr 2024", "Abrechnungszeitraum 2023/2024", taken to end on 31 December
+  of its last year); the latest end wins, because a later end only makes the deadline later. A
+  billing year gives way to a range that ends in it or later (the range says which months the year
+  covers). A statement is called late only when it certainly is: from a billing year alone it is at
+  most "probably late", and "on time" is only certain when neither the weekend/holiday shift of the
+  deadline nor an unknown Land decided it. Without a period, nothing is claimed.
 """
 
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from datetime import date
 
 from ordnung.models import AdviceFact, HelpLink, LetterAdvice
@@ -41,10 +47,11 @@ from ordnung.rules.tenancy import (
 # -------------------------------------------------------------------------------------------- help
 
 COURT_DESK = HelpLink(
-    name="Rechtsantragstelle at any Amtsgericht",
+    name="Rechtsantragstelle at the Amtsgericht",
     what=(
-        "Free. Staff write down your objection for you (zu Protokoll) and explain the next steps — bring "
-        "the letter and its envelope."
+        "Free. Staff write down your objection for you (zu Protokoll) and explain the next steps — bring the "
+        "letter and its envelope. Best at the court that issued it: at another Amtsgericht the objection only "
+        "counts once their record reaches that court (§ 129a Abs. 3 S. 2 ZPO), so go early."
     ),
     url="https://www.justizadressen.nrw.de/de/justiz/suche",
 )
@@ -99,25 +106,58 @@ ONLINE_OBJECTION = HelpLink(
 
 # ---------------------------------------------------------------------------------------- policies
 
-_PERIOD_RE = re.compile(
-    r"abrechnungs(?:zeitraum|periode)\D{0,30}?(\d{1,2})\.(\d{1,2})\.(\d{4})\s*(?:-|–|bis)\s*"
-    r"(\d{1,2})\.(\d{1,2})\.(\d{4})",
+_DAY = r"(\d{1,2})\.(\d{1,2})\.(\d{4}|\d{2}(?!\d))"
+_RANGE_RE = re.compile(
+    rf"(\d{{1,2}})\.(\d{{1,2}})\.(\d{{4}}|\d{{2}}(?!\d))?\s*(?:-|–|—|bis(?:\s+(?:zum|einschließlich))?)\s*{_DAY}",
     re.I,
 )
-_YEAR_RE = re.compile(r"abrechnungsjahr\D{0,10}(\d{4})", re.I)
+_YEAR_RE = re.compile(
+    r"abrechnungs(?:jahr|zeitraum|periode)\D{0,10}?((?:19|20)\d{2})(?!\d)(?:\s*/\s*((?:19|20)?\d{2})(?!\d))?",
+    re.I,
+)
 
 
-def billing_period_end(text: str) -> date | None:
-    """The end of the billing period an operating-cost statement names (policy above), or ``None``."""
-    match = _PERIOD_RE.search(text)
-    if match:
-        day, month, year = (int(part) for part in match.groups()[3:])
+@dataclass(frozen=True)
+class BillingPeriod:
+    """The billing period a statement names (policy above): its last day, whether that day is the
+    letter's own (``exact``) or the end of a billing year assumed to be 31 December, and how the letter
+    writes it (for a reply's subject)."""
+
+    end: date
+    exact: bool
+    text: str
+
+
+def _year(value: str) -> int:
+    return int(value) if len(value) == 4 else 2000 + int(value)
+
+
+def billing_period(text: str, *, before: date | None = None) -> BillingPeriod | None:
+    """The billing period an operating-cost statement names (policy above), or ``None``.
+
+    ``before`` is the day the statement arrived (or its date): a range that ends later can't be its
+    billing period (a new prepayment period, say) and is left out.
+    """
+    ranges: list[BillingPeriod] = []
+    for match in _RANGE_RE.finditer(text):
+        d1, m1, y1, d2, m2, y2 = match.groups()
         try:
-            return date(year, month, day)
+            end = date(_year(y2), int(m2), int(d2))
         except ValueError:
-            return None
-    year_match = _YEAR_RE.search(text)
-    return date(int(year_match.group(1)), 12, 31) if year_match else None
+            continue
+        if before is None or end <= before:
+            start = f"{int(d1):02d}.{int(m1):02d}." + (str(_year(y1)) if y1 else "")
+            ranges.append(BillingPeriod(end, True, f"{start} – {end:%d.%m.%Y}"))
+    years: list[BillingPeriod] = []
+    for match in _YEAR_RE.finditer(text):
+        first, second = match.groups()
+        last = _year(second) if second else int(first)
+        if second and not int(first) < last <= int(first) + 1:
+            continue  # "2024/12" is not a split year
+        if not any(period.end.year >= last for period in ranges):
+            years.append(BillingPeriod(date(last, 12, 31), False, f"{first}/{second}" if second else first))
+    candidates = [*ranges, *years]
+    return max(candidates, key=lambda period: (period.end, period.exact)) if candidates else None
 
 
 def _time_bar(today: date) -> AdviceFact:
@@ -171,9 +211,9 @@ def _rent_cap(old: float | None, new: float | None) -> AdviceFact:
 
 
 def _statement(text: str, arrived: date | None, confirmed: bool, region: str | None) -> AdviceFact:
-    period_end = billing_period_end(text)
+    period = billing_period(text, before=arrived) if arrived is not None else None
     citation = catalog.citation("bgb_556_3")
-    if period_end is None or arrived is None:
+    if period is None or arrived is None:
         return AdviceFact(
             title="Was it on time?",
             text=(
@@ -182,8 +222,31 @@ def _statement(text: str, arrived: date | None, confirmed: bool, region: str | N
             ),
             citation=citation,
         )
-    check = statement_check(period_end, arrived, confirmed=confirmed, region=region)
-    when = f"The billing period ended on {fmt_date(period_end)}, so the statement had to arrive by {fmt_date(check.deadline)}."
+    check = statement_check(period.end, arrived, confirmed=confirmed, region=region)
+    deadline = fmt_date(check.deadline)
+    if not period.exact:
+        assumed = (
+            f"The letter names the billing year ({period.text}) but not its dates. If the period ended on "
+            f"{fmt_date(period.end)}, the statement had to arrive by {deadline}."
+        )
+        if check.late:
+            return AdviceFact(
+                title="Probably too late — check the billing period",
+                text=(
+                    f"{assumed} It arrived later, so you may owe no back-payment (Nachzahlung). Check the "
+                    "period's dates in the statement and ask a tenants' association before you rely on it."
+                ),
+                tone="warn",
+                citation=citation,
+            )
+        return AdviceFact(
+            title="Probably on time",
+            text=f"{assumed} It arrived before that; the exact dates of the period would tell for sure.",
+            citation=citation,
+        )
+    when = (
+        f"The billing period ended on {fmt_date(period.end)}, so the statement had to arrive by {deadline}."
+    )
     if check.late:
         return AdviceFact(
             title="This statement came too late",
@@ -199,6 +262,22 @@ def _statement(text: str, arrived: date | None, confirmed: bool, region: str | N
         return AdviceFact(
             title="Probably on time",
             text=f"{when} Its date is before that; tell us when it arrived to be sure.",
+            citation=citation,
+        )
+    if check.arrived > check.raw_deadline:
+        region_note = (
+            " We don't know your Land, so we counted a holiday in any Land."
+            if region is None and check.deadline != check.raw_deadline
+            else ""
+        )
+        return AdviceFact(
+            title="Probably on time",
+            text=(
+                f"It arrived after {fmt_date(check.raw_deadline)}, the end of the twelfth month after the billing "
+                f"period ({fmt_date(period.end)}). It only counts as on time because that day was a weekend or "
+                f"holiday and the deadline moved to {deadline} — whether that rule (§ 193 BGB) applies here is "
+                f"disputed.{region_note} Ask a tenants' association if a back-payment is at stake."
+            ),
             citation=citation,
         )
     return AdviceFact(title="On time", text=f"{when} It arrived in time.", tone="good", citation=citation)
@@ -256,14 +335,15 @@ def letter_advice(
             urgent=True,
             steps=[
                 "Find the delivery date on the yellow envelope (or the bailiff's papers) and enter it.",
-                "To object, write to the court that issued the order — not by e-mail — or go to the "
-                "Rechtsantragstelle of any Amtsgericht.",
+                "To object, write to the court that issued the order — not by e-mail — or go to its "
+                "Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their "
+                "record reaches the issuing court, so go early.",
                 "An objection doesn't stop enforcement by itself; ask for advice about suspending it.",
                 "If you do owe the money, paying it stops further enforcement costs.",
             ],
             facts=[_time_bar(today)],
             help=[COURT_DESK, LEGAL_AID, DEBT_ADVICE],
-            rule_ids=["zpo_339", "zpo_180", "zpo_222", "bgb_195"],
+            rule_ids=["zpo_339", "zpo_180", "zpo_222", "zpo_129a", "bgb_195"],
         )
     if kind == "dismissal":
         return LetterAdvice(
@@ -296,6 +376,10 @@ def letter_advice(
             steps=[
                 "Don't agree to move out or sign anything before you have had advice.",
                 "If you object, keep proof that it arrived; a letter is safest, text form is enough since 2025.",
+                "If the landlord didn't tell you in time about your right to object, its form and its deadline, "
+                "you can still object at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB).",
+                "A notice without notice period (fristlos) can't be met with this objection. If it is for rent "
+                "arrears, paying all of them in time can still undo it (§ 569 Abs. 3 Nr. 2 BGB) — get advice at once.",
             ],
             help=[TENANTS, LEGAL_AID],
             rule_ids=["bgb_574b"],
@@ -335,10 +419,8 @@ def letter_advice(
     return None
 
 
-def billing_period_text(text: str) -> str | None:
-    """The billing period as the letter writes it (``01.01.2025 – 31.12.2025``), for a reply's subject."""
-    match = _PERIOD_RE.search(text)
-    if match is None:
-        return None
-    d1, m1, y1, d2, m2, y2 = match.groups()
-    return f"{int(d1):02d}.{int(m1):02d}.{y1} – {int(d2):02d}.{int(m2):02d}.{y2}"
+def billing_period_text(text: str, *, before: date | None = None) -> str | None:
+    """The billing period as the letter names it (``01.01.2025 – 31.12.2025``, or a billing year), for
+    a reply's subject; ``before`` as in :func:`billing_period`."""
+    period = billing_period(text, before=before)
+    return period.text if period else None

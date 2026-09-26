@@ -31,6 +31,7 @@ from rapidfuzz import fuzz, utils
 from ordnung.db.store import Store, normalize_identifier
 from ordnung.ids import content_id
 from ordnung.models import (
+    PAYMENT_DEMAND_KINDS,
     Case,
     Contract,
     Document,
@@ -501,18 +502,22 @@ def invoice_numbers(references: Iterable[Identifier]) -> set[str]:
 def reminder_covers(reminder: Document, other: Document) -> bool:
     """Whether the payment reminder ``reminder`` takes over the payments of ``other``: a letter of the
     same thread about the same invoice number, written before it — the invoice itself, or an earlier
-    reminder. A later letter citing the number (a corrected invoice, "Bezug: RE-4711") is a new demand.
+    reminder. A court order about the claim counts as a reminder (:data:`PAYMENT_DEMAND_KINDS`). A later letter citing the number (a corrected invoice, "Bezug: RE-4711") is a new demand.
 
     Pure: callers decide which reminders count (live ones without scam signs).
     """
-    if reminder.kind != "dunning" or reminder.direction != "incoming" or other.id == reminder.id:
+    if (
+        reminder.kind not in PAYMENT_DEMAND_KINDS
+        or reminder.direction != "incoming"
+        or other.id == reminder.id
+    ):
         return False
     if reminder.case_id is None or other.case_id != reminder.case_id:
         return False
     numbers = invoice_numbers(reminder.references)
     if not numbers or not any(normalize_identifier(ref.value) in numbers for ref in other.references):
         return False
-    if other.kind == "dunning":  # of two reminders, the later one is the one to pay
+    if other.kind in PAYMENT_DEMAND_KINDS:  # of two reminders, the later one is the one to pay
         return (other.doc_date or "", other.created_at) < (reminder.doc_date or "", reminder.created_at)
     # without both dates it can't be told which came first (a reminder may be read before its invoice)
     return not (other.doc_date and reminder.doc_date and other.doc_date > reminder.doc_date)

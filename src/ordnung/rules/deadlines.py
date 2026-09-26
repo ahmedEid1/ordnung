@@ -628,6 +628,12 @@ def _formal_service_note(trace: Trace, spec: DateSpec, anchor: _Anchor, statute:
     )
 
 
+#: Letters from a court: none of their dates is ever ``high`` (brief C1, SPEC § 21).
+_COURT_LETTERS = ("court_payment_order", "enforcement_order")
+_COURT_LETTER_NOTE = (
+    "This date is on a court order. Ordnung's date is information, not legal advice — get advice (see the "
+    "card on this letter)."
+)
 #: What each court deadline means for the person (a soft note: court dates are never ``high``).
 _COURT_NOTES: dict[str, str] = {
     "zpo_692": (
@@ -644,6 +650,23 @@ _COURT_NOTES: dict[str, str] = {
         "Rechtsantragstelle."
     ),
 }
+
+
+def _court_notes(trace: Trace, spec: DateSpec, ctx: RuleContext) -> None:
+    """Court deadlines and every date on a court order are never ``high``, whatever the DateSpec's
+    type: a soft note says why, and the court rule is recorded (the pipeline then files no second
+    to-do for it)."""
+    statute = (_statute(spec, ctx.letter_kind) or (None, ()))[0]
+    if statute in _COURT_NOTES:
+        trace.use(statute)
+        trace.soft(_COURT_NOTES[statute])
+    elif ctx.letter_kind in _COURT_LETTERS:
+        trace.soft(_COURT_LETTER_NOTE)
+    if statute == "zpo_692":
+        trace.warnings.append(
+            "A late objection still counts until the enforcement order is issued (§ 694 ZPO) — but don't "
+            "rely on that."
+        )
 
 
 def _compute_relative(
@@ -728,13 +751,6 @@ def _compute_relative(
         )
     if statute in _FORMAL_SERVICE:
         _formal_service_note(trace, spec, anchor, statute)
-    if statute in _COURT_NOTES:
-        trace.soft(_COURT_NOTES[statute])
-    if statute == "zpo_692":
-        trace.warnings.append(
-            "A late objection still counts until the enforcement order is issued (§ 694 ZPO) — but don't "
-            "rely on that."
-        )
     if statute == "klage_1_month":
         trace.soft(
             "This is the deadline for a court action (Klage). Ordnung can't draft or file court actions — "
@@ -793,6 +809,7 @@ def compute_due(
             f"Ordnung only knows German rules; this date was computed as if the letter were German ({ctx.country})."
         )
     try:
+        _court_notes(trace, spec, ctx)
         special = routing.special_rule(spec, ctx.letter_kind, authority=ctx.delivery_scope is not None)
         if special is not None:
             # the letter rules build on this module's receipts, so they are imported where needed
