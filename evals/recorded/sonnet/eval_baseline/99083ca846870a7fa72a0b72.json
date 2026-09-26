@@ -1,0 +1,69 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"40073fead6afba208c4cc03dc7e6dc49ce14fbe295c6cb05dfbbda573328b9e2\",\"mode\":\"text\",\"region\":\"SN\",\"today\":\"2025-10-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-social_decision-B1"
+    ],
+    "prompt_head": "Today is Friday, 2025-10-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen (SN), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Jobcenter Musterlingen\",\"document_date\":\"2025-10-15\",\"references\":[{\"label\":\"BG-Nummer\",\"value\":\"04701//0081542\"},{\"label\":\"Kundennummer\",\"value\":\"912D415377\"}],\"amounts\":[1126.4],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit bank statements (last 3 months)\",\"quote\":\"Bitte reichen Sie bis zum 05.11.2025 die Kontoauszüge der letzten drei Monate ein.\",\"computation\":\"The letter prints a fixed calendar date, 05.11.2025, as the submission deadline. A printed calendar date is used as written, with no period-counting needed. 05.11.2025 is a Wednesday, so no weekend/holiday adjustment applies.\",\"due_date\":\"2025-11-05\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Widerspruch (objection) against the Änderungsbescheid\",\"quote\":\"Gegen diesen Bescheid kann jede betroffene Person innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.\",\"computation\":\"The Jobcenter is a social-law body, so § 37 Abs. 2 SGB X applies: no separate 'Tag der Aufgabe zur Post' is stated, so the printed document date, Wed 15.10.2025, is the posting date. Delivery (Bekanntgabe) is deemed to occur on the 4th day after posting (letter posted after 1 Jan 2025): 15.10. + 4 days = Sun 19.10.2025. Unlike tax offices, this deemed-delivery day is NOT shifted for authorities such as Jobcenters even though it falls on a Sunday, so Bekanntgabe = 19.10.2025. The one-month Widerspruchsfrist (§ 84 SGG / § 26 SGB X, counted like §§ 187, 188 BGB) then ends on the day in the following month bearing the same number as the delivery day: 19.11.2025. That date is Buß- und Bettag, a public holiday in Sachsen (Land of the issuing Jobcenter) in 2025. Since only the end of a period (not its start or the deemed delivery day) shifts for holidays, the deadline moves to the next working day: Thu 20.11.2025.\",\"due_date\":\"2025-11-20\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Jobcenter Musterlingen",
+      "document_date": "2025-10-15",
+      "references": [
+        {
+          "label": "BG-Nummer",
+          "value": "04701//0081542"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "912D415377"
+        }
+      ],
+      "amounts": [
+        1126.4
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit bank statements (last 3 months)",
+          "quote": "Bitte reichen Sie bis zum 05.11.2025 die Kontoauszüge der letzten drei Monate ein.",
+          "computation": "The letter prints a fixed calendar date, 05.11.2025, as the submission deadline. A printed calendar date is used as written, with no period-counting needed. 05.11.2025 is a Wednesday, so no weekend/holiday adjustment applies.",
+          "due_date": "2025-11-05",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Widerspruch (objection) against the Änderungsbescheid",
+          "quote": "Gegen diesen Bescheid kann jede betroffene Person innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
+          "computation": "The Jobcenter is a social-law body, so § 37 Abs. 2 SGB X applies: no separate 'Tag der Aufgabe zur Post' is stated, so the printed document date, Wed 15.10.2025, is the posting date. Delivery (Bekanntgabe) is deemed to occur on the 4th day after posting (letter posted after 1 Jan 2025): 15.10. + 4 days = Sun 19.10.2025. Unlike tax offices, this deemed-delivery day is NOT shifted for authorities such as Jobcenters even though it falls on a Sunday, so Bekanntgabe = 19.10.2025. The one-month Widerspruchsfrist (§ 84 SGG / § 26 SGB X, counted like §§ 187, 188 BGB) then ends on the day in the following month bearing the same number as the delivery day: 19.11.2025. That date is Buß- und Bettag, a public holiday in Sachsen (Land of the issuing Jobcenter) in 2025. Since only the end of a period (not its start or the deemed delivery day) shifts for holidays, the deadline moves to the next working day: Thu 20.11.2025.",
+          "due_date": "2025-11-20",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4025,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2205,
+      "cost_usd": 0.05018,
+      "duration_ms": 40371,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"7fc19fea3f4de6a07a6641d667f5ec834b7478bcc413127775cb6cc0a8534291\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-09\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-relative_business_days-D1"
+    ],
+    "prompt_head": "Today is Saturday, 2026-05-09 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Beispiel Versicherung AG\",\"document_date\":\"2026-05-06\",\"references\":[{\"label\":\"Schaden-Nr.\",\"value\":\"KH-26-0428-112\"},{\"label\":\"Kennzeichen\",\"value\":\"MS-MB 77\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return completed accident questionnaire\",\"quote\":\"Bitte senden Sie uns den ausgefüllten Fragebogen innerhalb von 10 Arbeitstagen (Montag bis Freitag, ohne Feiertage) nach dem Briefdatum zurück.\",\"computation\":\"This is a private deadline set by the insurer, counted from the letter date under §§ 187, 188 BGB with 'Arbeitstage' defined by the letter itself as Monday-Friday excluding public holidays. Letter date (Briefdatum) = Wed 06.05.2026; as the day of the triggering event, it is not counted, so counting starts on Thu 07.05.2026. Counting only Mon-Fri, excluding NW public holidays: Thu 07.05 (1), Fri 08.05 (2), [Sat 09/Sun 10 skipped], Mon 11.05 (3), Tue 12.05 (4), Wed 13.05 (5), Thu 14.05 = Christi Himmelfahrt/Ascension Day, a nationwide holiday, excluded, Fri 15.05 (6), [Sat 16/Sun 17 skipped], Mon 18.05 (7), Tue 19.05 (8), Wed 20.05 (9), Thu 21.05 (10). The 10th business day is Thu 21.05.2026, which is itself a normal working day, so no further weekend/holiday shift applies.\",\"due_date\":\"2026-05-21\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private request from your own insurer for information about the accident, not a decision or a bill; there is no legal remedy instruction (Rechtsbehelfsbelehrung) and none is required.\"]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Beispiel Versicherung AG",
+      "document_date": "2026-05-06",
+      "references": [
+        {
+          "label": "Schaden-Nr.",
+          "value": "KH-26-0428-112"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MS-MB 77"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return completed accident questionnaire",
+          "quote": "Bitte senden Sie uns den ausgefüllten Fragebogen innerhalb von 10 Arbeitstagen (Montag bis Freitag, ohne Feiertage) nach dem Briefdatum zurück.",
+          "computation": "This is a private deadline set by the insurer, counted from the letter date under §§ 187, 188 BGB with 'Arbeitstage' defined by the letter itself as Monday-Friday excluding public holidays. Letter date (Briefdatum) = Wed 06.05.2026; as the day of the triggering event, it is not counted, so counting starts on Thu 07.05.2026. Counting only Mon-Fri, excluding NW public holidays: Thu 07.05 (1), Fri 08.05 (2), [Sat 09/Sun 10 skipped], Mon 11.05 (3), Tue 12.05 (4), Wed 13.05 (5), Thu 14.05 = Christi Himmelfahrt/Ascension Day, a nationwide holiday, excluded, Fri 15.05 (6), [Sat 16/Sun 17 skipped], Mon 18.05 (7), Tue 19.05 (8), Wed 20.05 (9), Thu 21.05 (10). The 10th business day is Thu 21.05.2026, which is itself a normal working day, so no further weekend/holiday shift applies.",
+          "due_date": "2026-05-21",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private request from your own insurer for information about the accident, not a decision or a bill; there is no legal remedy instruction (Rechtsbehelfsbelehrung) and none is required."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2671,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1944,
+      "cost_usd": 0.035596,
+      "duration_ms": 24389,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

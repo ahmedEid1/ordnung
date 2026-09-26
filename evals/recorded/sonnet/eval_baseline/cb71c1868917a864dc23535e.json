@@ -1,0 +1,71 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"01ce5fc8e8c63f03baa3a5cb31d499898ba22e5946227005f0849a2ab4d5b2cd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-09-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-fine_bussgeld-B1"
+    ],
+    "prompt_head": "Today is Sunday, 2026-09-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Kreis Musterland – Bußgeldstelle\",\"document_date\":\"2026-09-15\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"7.3-OWi-2026-88213\"},{\"label\":\"Kennzeichen\",\"value\":\"MS-MB 77\"}],\"amounts\":[98.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Sie können gegen diesen Bescheid binnen zwei Wochen nach Zustellung Einspruch einlegen – schriftlich oder zur Niederschrift beim Kreis Musterland – Bußgeldstelle.\",\"computation\":\"This is a formal delivery (Zustellungsurkunde, § 182 ZPO); the delivery agent recorded on the envelope 'zugestellt am 19.09.2026' (a Saturday). For formal delivery the date on the envelope counts exactly as written; no days are added. Per § 67 OWiG/§ 43 StPO the Einspruch period is two weeks after this delivery. Applying §§ 187, 188 BGB: the delivery day itself (Saturday 19.09.2026) is not counted; a two-week period ends on the day two weeks later bearing the same weekday name, i.e. Saturday 03.10.2026. That day is both a Saturday and a nationwide public holiday (Tag der Deutschen Einheit), and the following day (Sunday 04.10.2026) is also not a working day, so under § 43 Abs. 2 StPO the period runs to the next working day: Monday 05.10.2026.\",\"due_date\":\"2026-10-05\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (Gesamtbetrag)\",\"quote\":\"Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft unter Angabe des Aktenzeichens auf das unten genannte Konto.\",\"computation\":\"The fine notice becomes legally final (Rechtskraft) if no Einspruch is filed within the objection period, i.e. at the end of that period on Monday 05.10.2026. Payment is due two weeks after Rechtskraft. Applying §§ 187, 188 BGB: the day of Rechtskraft (05.10.2026, a Monday) is not counted; a two-week period ends on the same weekday two weeks later, i.e. Monday 19.10.2026. That day is neither a weekend day nor a public holiday in NRW, so no further adjustment is needed. This assumes no Einspruch is filed; if one is filed, this payment obligation does not apply.\",\"due_date\":\"2026-10-19\",\"confidence\":\"medium\",\"amount\":98.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date depends on the assumption that no Einspruch is filed and that Rechtskraft occurs exactly at the end of the two-week objection period; if the person files an Einspruch, this payment deadline does not apply and confidence on that date is therefore medium.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Kreis Musterland – Bußgeldstelle",
+      "document_date": "2026-09-15",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "7.3-OWi-2026-88213"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MS-MB 77"
+        }
+      ],
+      "amounts": [
+        98.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Sie können gegen diesen Bescheid binnen zwei Wochen nach Zustellung Einspruch einlegen – schriftlich oder zur Niederschrift beim Kreis Musterland – Bußgeldstelle.",
+          "computation": "This is a formal delivery (Zustellungsurkunde, § 182 ZPO); the delivery agent recorded on the envelope 'zugestellt am 19.09.2026' (a Saturday). For formal delivery the date on the envelope counts exactly as written; no days are added. Per § 67 OWiG/§ 43 StPO the Einspruch period is two weeks after this delivery. Applying §§ 187, 188 BGB: the delivery day itself (Saturday 19.09.2026) is not counted; a two-week period ends on the day two weeks later bearing the same weekday name, i.e. Saturday 03.10.2026. That day is both a Saturday and a nationwide public holiday (Tag der Deutschen Einheit), and the following day (Sunday 04.10.2026) is also not a working day, so under § 43 Abs. 2 StPO the period runs to the next working day: Monday 05.10.2026.",
+          "due_date": "2026-10-05",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (Gesamtbetrag)",
+          "quote": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft unter Angabe des Aktenzeichens auf das unten genannte Konto.",
+          "computation": "The fine notice becomes legally final (Rechtskraft) if no Einspruch is filed within the objection period, i.e. at the end of that period on Monday 05.10.2026. Payment is due two weeks after Rechtskraft. Applying §§ 187, 188 BGB: the day of Rechtskraft (05.10.2026, a Monday) is not counted; a two-week period ends on the same weekday two weeks later, i.e. Monday 19.10.2026. That day is neither a weekend day nor a public holiday in NRW, so no further adjustment is needed. This assumes no Einspruch is filed; if one is filed, this payment obligation does not apply.",
+          "due_date": "2026-10-19",
+          "confidence": "medium",
+          "amount": 98.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date depends on the assumption that no Einspruch is filed and that Rechtskraft occurs exactly at the end of the two-week objection period; if the person files an Einspruch, this payment deadline does not apply and confidence on that date is therefore medium."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4772,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2736,
+      "cost_usd": 0.059774,
+      "duration_ms": 46113,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

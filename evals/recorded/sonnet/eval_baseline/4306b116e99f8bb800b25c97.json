@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"680fe4bc2003490a4b2108c3f16379937e8ed6906dbbee11a63cc466505a7461\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-social_decision-A1"
+    ],
+    "prompt_head": "Today is Sunday, 2025-04-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Muster BKK\",\"document_date\":\"2025-04-14\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"M482915673\"},{\"label\":\"Unser Zeichen\",\"value\":\"HM-25-044712\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against partial rejection of insole cost coverage\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\",\"computation\":\"Sender is a statutory health insurance fund (Körperschaft des öffentlichen Rechts), so the delivery fiction of § 37 Abs. 2 SGB X applies: a letter sent by post is deemed delivered on the third day after it was handed to the post. Document date (presumed date of posting) = Monday, 14.04.2025. Third day after = Thursday, 17.04.2025 (not a Sunday/holiday, so no shift) -> Bekanntgabe = 17.04.2025. The one-month Widerspruchsfrist then runs under §§ 26 SGB X, 187 Abs. 1, 188 Abs. 2 BGB: the day of Bekanntgabe is not counted, the period starts 18.04.2025 and ends one month later on the day bearing the same number, i.e. 17.05.2025. That day is a Saturday; under § 193 BGB the deadline moves to the next business day, Monday 19.05.2025 (no NRW public holiday intervenes). Final deadline: 19.05.2025.\",\"due_date\":\"2025-05-19\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The exact delivery date relies on the statutory 3-day postal fiction (§ 37 Abs. 2 SGB X) starting from the letter's printed date, since no separate postmark or dispatch date is given; if the letter was actually posted later, the deadline shifts accordingly.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Muster BKK",
+      "document_date": "2025-04-14",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "M482915673"
+        },
+        {
+          "label": "Unser Zeichen",
+          "value": "HM-25-044712"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against partial rejection of insole cost coverage",
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+          "computation": "Sender is a statutory health insurance fund (Körperschaft des öffentlichen Rechts), so the delivery fiction of § 37 Abs. 2 SGB X applies: a letter sent by post is deemed delivered on the third day after it was handed to the post. Document date (presumed date of posting) = Monday, 14.04.2025. Third day after = Thursday, 17.04.2025 (not a Sunday/holiday, so no shift) -> Bekanntgabe = 17.04.2025. The one-month Widerspruchsfrist then runs under §§ 26 SGB X, 187 Abs. 1, 188 Abs. 2 BGB: the day of Bekanntgabe is not counted, the period starts 18.04.2025 and ends one month later on the day bearing the same number, i.e. 17.05.2025. That day is a Saturday; under § 193 BGB the deadline moves to the next business day, Monday 19.05.2025 (no NRW public holiday intervenes). Final deadline: 19.05.2025.",
+          "due_date": "2025-05-19",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The exact delivery date relies on the statutory 3-day postal fiction (§ 37 Abs. 2 SGB X) starting from the letter's printed date, since no separate postmark or dispatch date is given; if the letter was actually posted later, the deadline shifts accordingly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2272,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2129,
+      "cost_usd": 0.0318644,
+      "duration_ms": 22455,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

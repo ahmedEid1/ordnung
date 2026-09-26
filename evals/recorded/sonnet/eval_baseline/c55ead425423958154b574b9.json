@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"ab6ff2ff934dc90f122f4b7caf5e9f4db755b1a8fc9600252417d9d433708bd9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-english_letter-B1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-05-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-05-05\",\"items\":[{\"kind\":\"task\",\"title\":\"Return signed participation form\",\"quote\":\"Please return the signed participation form by 07/08/2026.\",\"computation\":\"The letter gives a fixed calendar date rather than a period, so no statutory delivery-fiction or day-counting rules (§§ 187, 188, 193 BGB) apply — the date printed is simply the deadline. However, the date is written numerically as '07/08/2026', which is ambiguous between the European day/month/year order (7 August 2026) and the US month/day/year order (8 July 2026). The sender is a German institute (Beispielberg, Germany) writing on German-style letterhead, and the document date is given the same way ('05/05/2026'), consistent with German convention, so the day/month/year reading (7 August 2026) is adopted as most plausible. 7 August 2026 is a Friday, a normal business day in NW, so no weekend/holiday shift is needed. Note: since today's date is 2026-09-25, this deadline has already passed under either reading.\",\"due_date\":\"2026-08-07\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"other\",\"references\":[{\"label\":\"Reference\",\"value\":\"GMRI/ST/2026/118\"}],\"remedy_type\":\"none\",\"sender_name\":\"Global Muster Research Institute\",\"warnings\":[\"The deadline date '07/08/2026' is written in a numeric format that is ambiguous between day/month/year (7 August 2026, used here) and month/day/year (8 July 2026); confirm the intended date with the sender if this matters.\",\"Given the stated 'today' of 2026-09-25, this participation-form deadline (7 August 2026, or 8 July 2026 under the alternative reading) has already passed — contact the sender to check whether late submission is still possible.\",\"The letter's own date '05/05/2026' is also in the same ambiguous numeric format, though day and month coincide so it does not affect the result.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-05-05",
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return signed participation form",
+          "quote": "Please return the signed participation form by 07/08/2026.",
+          "computation": "The letter gives a fixed calendar date rather than a period, so no statutory delivery-fiction or day-counting rules (§§ 187, 188, 193 BGB) apply — the date printed is simply the deadline. However, the date is written numerically as '07/08/2026', which is ambiguous between the European day/month/year order (7 August 2026) and the US month/day/year order (8 July 2026). The sender is a German institute (Beispielberg, Germany) writing on German-style letterhead, and the document date is given the same way ('05/05/2026'), consistent with German convention, so the day/month/year reading (7 August 2026) is adopted as most plausible. 7 August 2026 is a Friday, a normal business day in NW, so no weekend/holiday shift is needed. Note: since today's date is 2026-09-25, this deadline has already passed under either reading.",
+          "due_date": "2026-08-07",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "other",
+      "references": [
+        {
+          "label": "Reference",
+          "value": "GMRI/ST/2026/118"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Global Muster Research Institute",
+      "warnings": [
+        "The deadline date '07/08/2026' is written in a numeric format that is ambiguous between day/month/year (7 August 2026, used here) and month/day/year (8 July 2026); confirm the intended date with the sender if this matters.",
+        "Given the stated 'today' of 2026-09-25, this participation-form deadline (7 August 2026, or 8 July 2026 under the alternative reading) has already passed — contact the sender to check whether late submission is still possible.",
+        "The letter's own date '05/05/2026' is also in the same ambiguous numeric format, though day and month coincide so it does not affect the result."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2490,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1757,
+      "cost_usd": 0.0325564,
+      "duration_ms": 25884,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

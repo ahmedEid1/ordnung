@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"9750a43949ec9293d3278ba4b9d745d901e2c459029fe8751e9d6f4f87a6fc2b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-english_letter-A1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-02-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Beispiel Relocation Services GmbH\",\"document_date\":\"2026-02-11\",\"references\":[{\"label\":\"Invoice no.\",\"value\":\"INV-26-0207\"},{\"label\":\"Client ref.\",\"value\":\"C-4410\"}],\"amounts\":[1190],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay settling-in package invoice\",\"quote\":\"Please pay within 30 days of the date of this letter by bank transfer to the account shown below, quoting the invoice number.\",\"computation\":\"The letter is dated 11 February 2026. The period is set by private contract, not by an authority's notification, so it runs from the date stated in the letter itself. Per § 187(1) BGB, since the event (the letter's date) marks the start, that day is excluded and counting begins on 12 February 2026 (day 1). Day 30 falls on 13 March 2026 (Feb 12 = day 1 ... Feb 28 = day 17 ... Mar 13 = day 30). 13 March 2026 is a Friday, not a Saturday, Sunday, or NRW public holiday, so no § 193 BGB extension applies.\",\"due_date\":\"2026-03-13\",\"confidence\":\"high\",\"amount\":1190}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Beispiel Relocation Services GmbH",
+      "document_date": "2026-02-11",
+      "references": [
+        {
+          "label": "Invoice no.",
+          "value": "INV-26-0207"
+        },
+        {
+          "label": "Client ref.",
+          "value": "C-4410"
+        }
+      ],
+      "amounts": [
+        1190
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay settling-in package invoice",
+          "quote": "Please pay within 30 days of the date of this letter by bank transfer to the account shown below, quoting the invoice number.",
+          "computation": "The letter is dated 11 February 2026. The period is set by private contract, not by an authority's notification, so it runs from the date stated in the letter itself. Per § 187(1) BGB, since the event (the letter's date) marks the start, that day is excluded and counting begins on 12 February 2026 (day 1). Day 30 falls on 13 March 2026 (Feb 12 = day 1 ... Feb 28 = day 17 ... Mar 13 = day 30). 13 March 2026 is a Friday, not a Saturday, Sunday, or NRW public holiday, so no § 193 BGB extension applies.",
+          "due_date": "2026-03-13",
+          "confidence": "high",
+          "amount": 1190
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1957,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1868,
+      "cost_usd": 0.0276704,
+      "duration_ms": 18947,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

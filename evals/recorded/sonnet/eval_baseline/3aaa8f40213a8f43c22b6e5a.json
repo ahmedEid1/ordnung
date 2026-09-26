@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"31460712e7ac4a18827c60470539b7715f9ddf8a2b4108b351fbb3c99f9bc5f3\",\"mode\":\"text\",\"region\":\"BE\",\"today\":\"2025-12-14\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-fine_bussgeld-C2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-12-14 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Berlin (BE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Polizei Berlin (Muster) – Bußgeldstelle\",\"document_date\":\"2025-12-08\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"OWi 5114/25-VK\"},{\"label\":\"Kennzeichen\",\"value\":\"B-NM 2291\"}],\"amounts\":[98.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the fine notice\",\"quote\":\"Er muss binnen zwei Wochen ab der Zustellung schriftlich oder zur Niederschrift bei der Polizei Berlin (Muster) – Bußgeldstelle eingelegt werden.\",\"computation\":\"Formal delivery via Postzustellungsurkunde: the copy of the envelope shows 'zugestellt am 11.12.2025' (Thursday). For formal delivery, the date written on the envelope is the delivery day itself, no days are added. The objection period is two weeks from delivery (§ 67 OWiG, counted per §§ 187, 188 BGB): the day of delivery (11.12.2025) is not counted, and a period stated in weeks ends on the day two weeks later that matches the weekday of the triggering day, i.e. Thursday 25.12.2025. 25.12.2025 is 1. Weihnachtsfeiertag (nationwide holiday) and 26.12.2025 is 2. Weihnachtsfeiertag (nationwide holiday); 27.12.2025 is a Saturday, which under § 193 BGB also does not count as the end of a deadline; 28.12.2025 is a Sunday. The period therefore rolls over to the next ordinary working day, Monday 29.12.2025 (§ 43 Abs. 2 StPO / § 193 BGB).\",\"due_date\":\"2025-12-29\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (Gesamtbetrag)\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist, fällig; geben Sie bei der Überweisung bitte das Aktenzeichen an.\",\"computation\":\"Assuming no Einspruch is filed within the objection period (ending 29.12.2025, see the objection item), the notice becomes rechtskräftig (final) on the following day, 30.12.2025 (Tuesday). Payment is due two weeks after that event; the day of the event is not counted (§ 187 Abs. 1 BGB) and the two-week period ends on the matching weekday two weeks later: 30.12.2025 + 14 days = Tuesday 13.01.2026, which is neither a weekend day nor a Berlin public holiday, so no further shift applies.\",\"due_date\":\"2026-01-13\",\"confidence\":\"medium\",\"amount\":98.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letterhead itself labels the sender as fictive: 'Polizei Berlin (Muster) – Bußgeldstelle' and 'Der Polizeipräsident (fiktive Musterbehörde)'; this appears to be a sample/template document rather than a genuine authority letter, so the recipient should verify authenticity (real case numbers, real sender address/phone, real IBAN) before acting or paying.\",\"The payment due date depends on the assumption that no Einspruch is filed within the objection period ending 2025-12-29; if an objection is lodged, the payment obligation and its date no longer apply as computed.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Polizei Berlin (Muster) – Bußgeldstelle",
+      "document_date": "2025-12-08",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "OWi 5114/25-VK"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "B-NM 2291"
+        }
+      ],
+      "amounts": [
+        98.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the fine notice",
+          "quote": "Er muss binnen zwei Wochen ab der Zustellung schriftlich oder zur Niederschrift bei der Polizei Berlin (Muster) – Bußgeldstelle eingelegt werden.",
+          "computation": "Formal delivery via Postzustellungsurkunde: the copy of the envelope shows 'zugestellt am 11.12.2025' (Thursday). For formal delivery, the date written on the envelope is the delivery day itself, no days are added. The objection period is two weeks from delivery (§ 67 OWiG, counted per §§ 187, 188 BGB): the day of delivery (11.12.2025) is not counted, and a period stated in weeks ends on the day two weeks later that matches the weekday of the triggering day, i.e. Thursday 25.12.2025. 25.12.2025 is 1. Weihnachtsfeiertag (nationwide holiday) and 26.12.2025 is 2. Weihnachtsfeiertag (nationwide holiday); 27.12.2025 is a Saturday, which under § 193 BGB also does not count as the end of a deadline; 28.12.2025 is a Sunday. The period therefore rolls over to the next ordinary working day, Monday 29.12.2025 (§ 43 Abs. 2 StPO / § 193 BGB).",
+          "due_date": "2025-12-29",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (Gesamtbetrag)",
+          "quote": "Der Gesamtbetrag ist zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist, fällig; geben Sie bei der Überweisung bitte das Aktenzeichen an.",
+          "computation": "Assuming no Einspruch is filed within the objection period (ending 29.12.2025, see the objection item), the notice becomes rechtskräftig (final) on the following day, 30.12.2025 (Tuesday). Payment is due two weeks after that event; the day of the event is not counted (§ 187 Abs. 1 BGB) and the two-week period ends on the matching weekday two weeks later: 30.12.2025 + 14 days = Tuesday 13.01.2026, which is neither a weekend day nor a Berlin public holiday, so no further shift applies.",
+          "due_date": "2026-01-13",
+          "confidence": "medium",
+          "amount": 98.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letterhead itself labels the sender as fictive: 'Polizei Berlin (Muster) – Bußgeldstelle' and 'Der Polizeipräsident (fiktive Musterbehörde)'; this appears to be a sample/template document rather than a genuine authority letter, so the recipient should verify authenticity (real case numbers, real sender address/phone, real IBAN) before acting or paying.",
+        "The payment due date depends on the assumption that no Einspruch is filed within the objection period ending 2025-12-29; if an objection is lodged, the payment obligation and its date no longer apply as computed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6093,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2803,
+      "cost_usd": 0.07325200000000001,
+      "duration_ms": 55777,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

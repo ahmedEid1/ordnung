@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"c0446fd52a4cf077781be192d661ab60610d09bbaf4d11ce4ec062346985b7f1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-07-21\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-adversarial-missing_date-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-07-21 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Musterstadt · Ordnungsamt\",\"document_date\":null,\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.4-SN-2026-0311\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File action (Klage) with the administrative court against the rejection\",\"quote\":\"Die Klage muss binnen eines Monats ab Bekanntgabe des Bescheids schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle erhoben werden.\",\"computation\":\"The one-month Klage period under § 74 VwGO runs from the day the decision is deemed delivered (Bekanntgabe). Delivery of a posted letter from a general authority (city Ordnungsamt, not a tax office) counts as the 4th day after posting (§ 41 Abs. 2 VwVfG NRW, PostModG), taking the date printed on the letter as the posting date unless a separate 'Tag der Aufgabe zur Post' is stated. However, this letter carries no date at all (no 'Musterstadt, den ...' line and no separate posting date), so the posting/delivery day cannot be established. Without a known delivery date, the one-month period (which would then run to the same day-number one month later, moved to the next working day if that fell on a Saturday, Sunday or NRW public holiday) cannot be computed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter itself carries no date anywhere (no 'Musterstadt, den ...' line), so the delivery day (Bekanntgabe) that starts the one-month Klage deadline cannot be determined from this document; check the envelope postmark or any covering note for the actual mailing date to compute the real deadline.\",\"The addressee block lists 'Herr Özdemir' above 'Mara Beispiel' while the salutation reads 'Sehr geehrte Frau Beispiel' and the signature is 'Özdemir' under 'Im Auftrag' — this is likely just the caseworker's name shown for inquiries ('Auskunft') next to the actual recipient, but the recipient should confirm the letter is correctly addressed to them.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Musterstadt · Ordnungsamt",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.4-SN-2026-0311"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File action (Klage) with the administrative court against the rejection",
+          "quote": "Die Klage muss binnen eines Monats ab Bekanntgabe des Bescheids schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle erhoben werden.",
+          "computation": "The one-month Klage period under § 74 VwGO runs from the day the decision is deemed delivered (Bekanntgabe). Delivery of a posted letter from a general authority (city Ordnungsamt, not a tax office) counts as the 4th day after posting (§ 41 Abs. 2 VwVfG NRW, PostModG), taking the date printed on the letter as the posting date unless a separate 'Tag der Aufgabe zur Post' is stated. However, this letter carries no date at all (no 'Musterstadt, den ...' line and no separate posting date), so the posting/delivery day cannot be established. Without a known delivery date, the one-month period (which would then run to the same day-number one month later, moved to the next working day if that fell on a Saturday, Sunday or NRW public holiday) cannot be computed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter itself carries no date anywhere (no 'Musterstadt, den ...' line), so the delivery day (Bekanntgabe) that starts the one-month Klage deadline cannot be determined from this document; check the envelope postmark or any covering note for the actual mailing date to compute the real deadline.",
+        "The addressee block lists 'Herr Özdemir' above 'Mara Beispiel' while the salutation reads 'Sehr geehrte Frau Beispiel' and the signature is 'Özdemir' under 'Im Auftrag' — this is likely just the caseworker's name shown for inquiries ('Auskunft') next to the actual recipient, but the recipient should confirm the letter is correctly addressed to them."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2877,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2131,
+      "cost_usd": 0.038403999999999994,
+      "duration_ms": 28735,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

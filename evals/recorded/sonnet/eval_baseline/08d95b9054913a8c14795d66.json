@@ -1,0 +1,56 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b4bc9be1e71f0ebb7819577c472a6e4b08fddef749cdcc46bacda4c0db25d3bb\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-dunning_fixed-D1"
+    ],
+    "prompt_head": "Today is Friday, 2026-02-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Hausverwaltung Muster & Partner\",\"document_date\":\"2026-02-16\",\"references\":[{\"label\":\"Mieter-Nr.\",\"value\":\"0512-05\"}],\"amounts\":[286.14],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding Betriebskosten balance 2024\",\"quote\":\"Den ausstehenden Betrag erbitten wir bis spätestens Freitag, den 27. Februar 2026 auf das unten genannte Konto.\",\"computation\":\"The letter states an explicit calendar due date: Friday, 27 February 2026. Checking the calendar, 27 February 2026 does indeed fall on a Friday, so no weekend/holiday adjustment under §193 BGB is needed. The due date is taken as stated.\",\"due_date\":\"2026-02-27\",\"confidence\":\"high\",\"amount\":286.14}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Hausverwaltung Muster & Partner",
+      "document_date": "2026-02-16",
+      "references": [
+        {
+          "label": "Mieter-Nr.",
+          "value": "0512-05"
+        }
+      ],
+      "amounts": [
+        286.14
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding Betriebskosten balance 2024",
+          "quote": "Den ausstehenden Betrag erbitten wir bis spätestens Freitag, den 27. Februar 2026 auf das unten genannte Konto.",
+          "computation": "The letter states an explicit calendar due date: Friday, 27 February 2026. Checking the calendar, 27 February 2026 does indeed fall on a Friday, so no weekend/holiday adjustment under §193 BGB is needed. The due date is taken as stated.",
+          "due_date": "2026-02-27",
+          "confidence": "high",
+          "amount": 286.14
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 916,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1977,
+      "cost_usd": 0.0176964,
+      "duration_ms": 8867,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

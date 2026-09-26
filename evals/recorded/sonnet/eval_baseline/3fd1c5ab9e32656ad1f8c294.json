@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"eddef6d0e26f4254e7ac11dc467f23ddaec04d663bf17b54bcd021234376d6bc\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-09-12\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-price_increase-C1"
+    ],
+    "prompt_head": "Today is Saturday, 2026-09-12 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[10.94,12.36,14.5,96,109],\"contract\":null,\"document_date\":\"2026-09-10\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Special termination right due to price increase\",\"quote\":\"Sie können den Vertrag ohne Einhaltung einer Kündigungsfrist zum Wirksamwerden der Preisänderung kündigen.\",\"computation\":\"The letter grants a special right to terminate without the usual notice period, effective at the moment the price change takes effect (01.11.2026). To actually avoid being charged the new, higher price, the termination (in text form, e.g. email) must reach Muster Gas GmbH before the increase becomes effective, i.e. by the last day of the current price (31.10.2026). No explicit calendar deadline for sending the cancellation is stated in the letter, so this is derived from the effective date of the price change (01.11.2026) minus one day.\",\"due_date\":\"2026-10-31\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"price_increase\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"MG-510 2277\"},{\"label\":\"Zählpunkt\",\"value\":\"DE0005111201000000000000000123456\"}],\"remedy_type\":\"none\",\"sender_name\":\"Muster Gas GmbH\",\"warnings\":[\"The letter does not state an explicit calendar deadline for sending the special termination notice; the 2026-10-31 due date is inferred as the day before the price increase takes effect (01.11.2026) and should be double-checked with the provider if an early cancellation is intended.\"]}",
+    "data": {
+      "amounts": [
+        10.94,
+        12.36,
+        14.5,
+        96,
+        109
+      ],
+      "contract": null,
+      "document_date": "2026-09-10",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Special termination right due to price increase",
+          "quote": "Sie können den Vertrag ohne Einhaltung einer Kündigungsfrist zum Wirksamwerden der Preisänderung kündigen.",
+          "computation": "The letter grants a special right to terminate without the usual notice period, effective at the moment the price change takes effect (01.11.2026). To actually avoid being charged the new, higher price, the termination (in text form, e.g. email) must reach Muster Gas GmbH before the increase becomes effective, i.e. by the last day of the current price (31.10.2026). No explicit calendar deadline for sending the cancellation is stated in the letter, so this is derived from the effective date of the price change (01.11.2026) minus one day.",
+          "due_date": "2026-10-31",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "price_increase",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "MG-510 2277"
+        },
+        {
+          "label": "Zählpunkt",
+          "value": "DE0005111201000000000000000123456"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Muster Gas GmbH",
+      "warnings": [
+        "The letter does not state an explicit calendar deadline for sending the special termination notice; the 2026-10-31 due date is inferred as the day before the price increase takes effect (01.11.2026) and should be double-checked with the provider if an early cancellation is intended."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2222,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2002,
+      "cost_usd": 0.0308564,
+      "duration_ms": 22886,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"d85e0b5b3f75cd0903b699a7958efb55e36c3d5ec704a461efb8de6061013854\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-06\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-adversarial-conflicting_dates-1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-05-06 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Beispiel Bürobedarf GmbH\",\"document_date\":\"2026-04-30\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"BB-4471\"},{\"label\":\"Kundennummer\",\"value\":\"31077\"}],\"amounts\":[156.91],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice BB-4471\",\"quote\":\"Bitte zahlen Sie den Rechnungsbetrag bis zum 13.05.2026 ohne Abzug.\",\"computation\":\"The letter gives two different payment dates: the body text states 'bis zum 13.05.2026' while a separate line states 'Fälligkeitsdatum: 20.05.2026'. These two statements are contradictory. Per the rule to use the earliest plausible date when a letter contradicts itself, the due date is set to the earlier of the two, 2026-05-13. Neither date falls on a weekend (13.05.2026 is a Wednesday) or a NRW public holiday, so no adjustment is needed.\",\"due_date\":\"2026-05-13\",\"confidence\":\"low\",\"amount\":156.91}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter states two different payment deadlines for the same invoice ('bis zum 13.05.2026' in the text vs. 'Fälligkeitsdatum: 20.05.2026' in the payment details box) — please check the correct date directly with the sender before assuming either is definitive.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Beispiel Bürobedarf GmbH",
+      "document_date": "2026-04-30",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "BB-4471"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "31077"
+        }
+      ],
+      "amounts": [
+        156.91
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice BB-4471",
+          "quote": "Bitte zahlen Sie den Rechnungsbetrag bis zum 13.05.2026 ohne Abzug.",
+          "computation": "The letter gives two different payment dates: the body text states 'bis zum 13.05.2026' while a separate line states 'Fälligkeitsdatum: 20.05.2026'. These two statements are contradictory. Per the rule to use the earliest plausible date when a letter contradicts itself, the due date is set to the earlier of the two, 2026-05-13. Neither date falls on a weekend (13.05.2026 is a Wednesday) or a NRW public holiday, so no adjustment is needed.",
+          "due_date": "2026-05-13",
+          "confidence": "low",
+          "amount": 156.91
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter states two different payment deadlines for the same invoice ('bis zum 13.05.2026' in the text vs. 'Fälligkeitsdatum: 20.05.2026' in the payment details box) — please check the correct date directly with the sender before assuming either is definitive."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1013,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1962,
+      "cost_usd": 0.018606400000000002,
+      "duration_ms": 9413,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

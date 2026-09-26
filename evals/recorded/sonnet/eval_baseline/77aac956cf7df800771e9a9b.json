@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"66d72469a157e4a8c4e622ced4c981e22f15afdbf3995efcae4d8d83e72eefb5\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-04-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-tax_assessment-B1"
+    ],
+    "prompt_head": "Today is Sunday, 2026-04-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Neu-Musterdorf\",\"document_date\":\"2026-03-26\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"026 812 40517\"}],\"amounts\":[11405,634],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay income tax back-payment for 2025\",\"quote\":\"Bitte zahlen Sie 634,00 € bis zum 30.04.2026.\",\"computation\":\"The letter states an explicit calendar date for payment: 30.04.2026. That day is a Thursday, not a weekend day or public holiday in NW, so no shift applies.\",\"due_date\":\"2026-04-30\",\"confidence\":\"high\",\"amount\":634},{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Einkommensteuerbescheid 2025\",\"quote\":\"Frist: ein Monat nach Bekanntgabe dieses Bescheids.\",\"computation\":\"The letter states it was 'zur Post gegeben am 30.03.2026', so this posting date (not the printed Bescheiddatum of 26.03.2026) starts the delivery fiction. This is a Finanzamt, and posting is after 1 Jan 2025, so the 4-day delivery rule (§122 Abs.2 Nr.1 AO) applies: 30.03.2026 + 4 days = 03.04.2026 (a Friday) = deemed delivery day; it is not a Saturday, Sunday or holiday, so no shift under §108 Abs.3 AO is needed here. The one-month Einspruch period (§355 Abs.1 AO) then runs from 03.04.2026 to the same-numbered day one month later: 03.05.2026. That day is a Sunday, so under §108 Abs.3 AO the period end moves to the next working day, Monday 04.05.2026, which is not a public holiday in NW.\",\"due_date\":\"2026-05-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Neu-Musterdorf",
+      "document_date": "2026-03-26",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "026 812 40517"
+        }
+      ],
+      "amounts": [
+        11405,
+        634
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay income tax back-payment for 2025",
+          "quote": "Bitte zahlen Sie 634,00 € bis zum 30.04.2026.",
+          "computation": "The letter states an explicit calendar date for payment: 30.04.2026. That day is a Thursday, not a weekend day or public holiday in NW, so no shift applies.",
+          "due_date": "2026-04-30",
+          "confidence": "high",
+          "amount": 634
+        },
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Einkommensteuerbescheid 2025",
+          "quote": "Frist: ein Monat nach Bekanntgabe dieses Bescheids.",
+          "computation": "The letter states it was 'zur Post gegeben am 30.03.2026', so this posting date (not the printed Bescheiddatum of 26.03.2026) starts the delivery fiction. This is a Finanzamt, and posting is after 1 Jan 2025, so the 4-day delivery rule (§122 Abs.2 Nr.1 AO) applies: 30.03.2026 + 4 days = 03.04.2026 (a Friday) = deemed delivery day; it is not a Saturday, Sunday or holiday, so no shift under §108 Abs.3 AO is needed here. The one-month Einspruch period (§355 Abs.1 AO) then runs from 03.04.2026 to the same-numbered day one month later: 03.05.2026. That day is a Sunday, so under §108 Abs.3 AO the period end moves to the next working day, Monday 04.05.2026, which is not a public holiday in NW.",
+          "due_date": "2026-05-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3701,
+      "cache_read_tokens": 13302,
+      "cache_creation_tokens": 5117,
+      "cost_usd": 0.0601464,
+      "duration_ms": 32816,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

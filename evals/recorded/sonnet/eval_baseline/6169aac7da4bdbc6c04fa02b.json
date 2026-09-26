@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"d5fc4acdfb03198101076b1e06b84ef6d05d6c24bfbf9f958692b9610fd328b0\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2025-11-01\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-tax_assessment-C1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-11-01 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispielhausen\",\"document_date\":\"2025-10-27\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"31/217/40955\"}],\"amounts\":[7012,767],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2024 income tax assessment\",\"quote\":\"Der Einspruch ist innerhalb eines Monats nach Bekanntgabe dieses Bescheids beim Finanzamt Beispielhausen, Am Musterwall 7, 31134 Beispielhausen, schriftlich oder elektronisch einzulegen oder dort zur Niederschrift zu erklären.\",\"computation\":\"Letter dated and posted 27.10.2025 (Monday). Under § 122 Abs. 2 Nr. 1 AO a letter sent by ordinary post is deemed delivered on the 4th day after posting: 27.10.2025 + 4 days = 31.10.2025 (Friday). Since this is a Finanzamt, if the 4th day were a Saturday/Sunday/holiday it would move to the next working day (§ 108 Abs. 3 AO) - but 31.10.2025 is a Friday, so it stands as the delivery (Bekanntgabe) date. The one-month objection period under § 355 Abs. 1 AO / §§ 187 Abs. 1, 188 Abs. 2 BGB starts the day after delivery (01.11.2025, day of the event not counted) and ends one month later on the day with the same number: 30.11.2025 is the last day since November has no 31st (§ 188 Abs. 3 BGB - end-of-month rule applies here because the starting reference day, 31 October, does not exist in November). 30.11.2025 is a Sunday, so under § 108 Abs. 3 AO the deadline moves to the next working day, Monday 01.12.2025. No relevant public holiday intervenes.\",\"due_date\":\"2025-12-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Tax refund payout\",\"quote\":\"Die Auszahlung erfolgt in den nächsten Tagen auf das bekannte Konto.\",\"computation\":\"The letter states the refund of 767,00 € will be paid out 'in the next few days' to the account on file, without giving a specific calendar date, so no exact due date can be computed. This is an expected incoming payment to the taxpayer, not an obligation with a fixed deadline.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":767}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter only says the refund of 767,00 € will arrive 'in den nächsten Tagen' without a specific date, so no exact payout date could be determined - if it does not arrive within a reasonable time, contact the Finanzamt using the details printed on the letter (not any different contact info).\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispielhausen",
+      "document_date": "2025-10-27",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "31/217/40955"
+        }
+      ],
+      "amounts": [
+        7012,
+        767
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2024 income tax assessment",
+          "quote": "Der Einspruch ist innerhalb eines Monats nach Bekanntgabe dieses Bescheids beim Finanzamt Beispielhausen, Am Musterwall 7, 31134 Beispielhausen, schriftlich oder elektronisch einzulegen oder dort zur Niederschrift zu erklären.",
+          "computation": "Letter dated and posted 27.10.2025 (Monday). Under § 122 Abs. 2 Nr. 1 AO a letter sent by ordinary post is deemed delivered on the 4th day after posting: 27.10.2025 + 4 days = 31.10.2025 (Friday). Since this is a Finanzamt, if the 4th day were a Saturday/Sunday/holiday it would move to the next working day (§ 108 Abs. 3 AO) - but 31.10.2025 is a Friday, so it stands as the delivery (Bekanntgabe) date. The one-month objection period under § 355 Abs. 1 AO / §§ 187 Abs. 1, 188 Abs. 2 BGB starts the day after delivery (01.11.2025, day of the event not counted) and ends one month later on the day with the same number: 30.11.2025 is the last day since November has no 31st (§ 188 Abs. 3 BGB - end-of-month rule applies here because the starting reference day, 31 October, does not exist in November). 30.11.2025 is a Sunday, so under § 108 Abs. 3 AO the deadline moves to the next working day, Monday 01.12.2025. No relevant public holiday intervenes.",
+          "due_date": "2025-12-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Tax refund payout",
+          "quote": "Die Auszahlung erfolgt in den nächsten Tagen auf das bekannte Konto.",
+          "computation": "The letter states the refund of 767,00 € will be paid out 'in the next few days' to the account on file, without giving a specific calendar date, so no exact due date can be computed. This is an expected incoming payment to the taxpayer, not an obligation with a fixed deadline.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 767
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter only says the refund of 767,00 € will arrive 'in den nächsten Tagen' without a specific date, so no exact payout date could be determined - if it does not arrive within a reasonable time, contact the Finanzamt using the details printed on the letter (not any different contact info)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2071,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2440,
+      "cost_usd": 0.03158,
+      "duration_ms": 20622,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"68996b176d59ad24bfb2b63a598d2eec5431c99ea5d8011483818354b8a11e78\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-12-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-year_boundary-C2"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-12-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"amounts\":[420],\"contract\":null,\"document_date\":\"2025-12-22\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against advance-payment assessment\",\"quote\":\"Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behörde schriftlich oder elektronisch einzulegen.\",\"computation\":\"Posting date = letter date 22.12.2025 (Monday), no separate 'zur Post gegeben am' date is stated. Delivery fiction for authorities posted on/after 1 Jan 2025: 4th calendar day after posting = 22.12.+4 = 26.12.2025. This is a Finanzamt, so § 108 Abs. 3 AO applies: since 26.12.2025 (2. Weihnachtsfeiertag) is a nationwide public holiday, delivery moves to the next working day. 27.12. (Sat) and 28.12. (Sun) are skipped, so deemed delivery = Monday 29.12.2025. One-month Einspruch period (§ 355 Abs.1 AO, §§187,188 BGB): day of delivery not counted, period ends on the day with the same number one month later = 29.01.2026 (Thursday), not a weekend/holiday, so no further shift.\",\"due_date\":\"2026-01-29\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"1st quarterly income-tax advance payment 2026 (Q1)\",\"quote\":\"Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).\",\"computation\":\"Fixed calendar due date stated in the letter: 10.03.2026. This falls on a Tuesday, not a public holiday in NW, so it stands as printed.\",\"due_date\":\"2026-03-10\",\"confidence\":\"high\",\"amount\":420},{\"kind\":\"payment\",\"title\":\"2nd quarterly income-tax advance payment 2026 (Q2)\",\"quote\":\"Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).\",\"computation\":\"Fixed calendar due date stated in the letter: 10.06.2026 (Wednesday). Corpus Christi 2026 falls on 04.06.2026, not on the 10th, and no other holiday applies in NW, so the date stands as printed.\",\"due_date\":\"2026-06-10\",\"confidence\":\"high\",\"amount\":420},{\"kind\":\"payment\",\"title\":\"3rd quarterly income-tax advance payment 2026 (Q3)\",\"quote\":\"Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).\",\"computation\":\"Fixed calendar due date stated in the letter: 10.09.2026 (Thursday), not a public holiday in NW, so it stands as printed.\",\"due_date\":\"2026-09-10\",\"confidence\":\"high\",\"amount\":420},{\"kind\":\"payment\",\"title\":\"4th quarterly income-tax advance payment 2026 (Q4)\",\"quote\":\"Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).\",\"computation\":\"Fixed calendar due date stated in the letter: 10.12.2026 (Thursday), not a public holiday in NW, so it stands as printed.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":420}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"075/104/33871\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Musterhafen\",\"warnings\":[\"The letter does not state a separate 'zur Post gegeben am' date, so the printed letter date (22.12.2025) was assumed as the posting date for the delivery-fiction calculation; if actual posting was later, the Einspruch deadline shifts accordingly.\",\"The Finanzamt's address (27568 Musterhafen) does not correspond to a real German postal code/city, and the IBAN given for the office is unusual for a tax authority payment context — verify the sender's authenticity and official contact details before relying on this letter or sending any payment there.\"]}",
+    "data": {
+      "amounts": [
+        420
+      ],
+      "contract": null,
+      "document_date": "2025-12-22",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against advance-payment assessment",
+          "quote": "Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behörde schriftlich oder elektronisch einzulegen.",
+          "computation": "Posting date = letter date 22.12.2025 (Monday), no separate 'zur Post gegeben am' date is stated. Delivery fiction for authorities posted on/after 1 Jan 2025: 4th calendar day after posting = 22.12.+4 = 26.12.2025. This is a Finanzamt, so § 108 Abs. 3 AO applies: since 26.12.2025 (2. Weihnachtsfeiertag) is a nationwide public holiday, delivery moves to the next working day. 27.12. (Sat) and 28.12. (Sun) are skipped, so deemed delivery = Monday 29.12.2025. One-month Einspruch period (§ 355 Abs.1 AO, §§187,188 BGB): day of delivery not counted, period ends on the day with the same number one month later = 29.01.2026 (Thursday), not a weekend/holiday, so no further shift.",
+          "due_date": "2026-01-29",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "1st quarterly income-tax advance payment 2026 (Q1)",
+          "quote": "Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).",
+          "computation": "Fixed calendar due date stated in the letter: 10.03.2026. This falls on a Tuesday, not a public holiday in NW, so it stands as printed.",
+          "due_date": "2026-03-10",
+          "confidence": "high",
+          "amount": 420
+        },
+        {
+          "kind": "payment",
+          "title": "2nd quarterly income-tax advance payment 2026 (Q2)",
+          "quote": "Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).",
+          "computation": "Fixed calendar due date stated in the letter: 10.06.2026 (Wednesday). Corpus Christi 2026 falls on 04.06.2026, not on the 10th, and no other holiday applies in NW, so the date stands as printed.",
+          "due_date": "2026-06-10",
+          "confidence": "high",
+          "amount": 420
+        },
+        {
+          "kind": "payment",
+          "title": "3rd quarterly income-tax advance payment 2026 (Q3)",
+          "quote": "Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).",
+          "computation": "Fixed calendar due date stated in the letter: 10.09.2026 (Thursday), not a public holiday in NW, so it stands as printed.",
+          "due_date": "2026-09-10",
+          "confidence": "high",
+          "amount": 420
+        },
+        {
+          "kind": "payment",
+          "title": "4th quarterly income-tax advance payment 2026 (Q4)",
+          "quote": "Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).",
+          "computation": "Fixed calendar due date stated in the letter: 10.12.2026 (Thursday), not a public holiday in NW, so it stands as printed.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": 420
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "075/104/33871"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Musterhafen",
+      "warnings": [
+        "The letter does not state a separate 'zur Post gegeben am' date, so the printed letter date (22.12.2025) was assumed as the posting date for the delivery-fiction calculation; if actual posting was later, the Einspruch deadline shifts accordingly.",
+        "The Finanzamt's address (27568 Musterhafen) does not correspond to a real German postal code/city, and the IBAN given for the office is unusual for a tax authority payment context — verify the sender's authenticity and official contact details before relying on this letter or sending any payment there."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4070,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1979,
+      "cost_usd": 0.049726,
+      "duration_ms": 36685,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"a43136f76276b554c97ee46216a607f5f931b041c110335b503d5ff1ca579610\",\"mode\":\"text\",\"region\":\"BE\",\"today\":\"2026-09-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-appointment-C1"
+    ],
+    "prompt_head": "Today is Friday, 2026-09-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Berlin (BE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Landesamt für Einwanderung Muster\",\"document_date\":\"2026-09-21\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"IV B 22 – 4412/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"In-person appointment for residence permit extension\",\"quote\":\"zur Bearbeitung Ihres Antrags vom 01.09.2026 laden wir Sie zur persönlichen Vorsprache ein am Donnerstag, den 15.10.2026, um 10:45 Uhr, Haus B, Wartebereich 2.\",\"computation\":\"The letter states an explicit calendar date and time for the appointment: Thursday, 15.10.2026, 10:45, Haus B, Wartebereich 2. No period calculation is needed; the appointment date is taken as printed.\",\"due_date\":\"2026-10-15\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letterhead itself labels the sender as a '(fiktive Musterbehörde)' i.e. a fictitious/sample authority, and the contact email uses a '.example' domain reserved for documentation/testing purposes — this appears to be a template/sample letter rather than a genuine official notice; verify the real sender before acting on it.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Landesamt für Einwanderung Muster",
+      "document_date": "2026-09-21",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "IV B 22 – 4412/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "In-person appointment for residence permit extension",
+          "quote": "zur Bearbeitung Ihres Antrags vom 01.09.2026 laden wir Sie zur persönlichen Vorsprache ein am Donnerstag, den 15.10.2026, um 10:45 Uhr, Haus B, Wartebereich 2.",
+          "computation": "The letter states an explicit calendar date and time for the appointment: Thursday, 15.10.2026, 10:45, Haus B, Wartebereich 2. No period calculation is needed; the appointment date is taken as printed.",
+          "due_date": "2026-10-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letterhead itself labels the sender as a '(fiktive Musterbehörde)' i.e. a fictitious/sample authority, and the contact email uses a '.example' domain reserved for documentation/testing purposes — this appears to be a template/sample letter rather than a genuine official notice; verify the real sender before acting on it."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 990,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1940,
+      "cost_usd": 0.0182884,
+      "duration_ms": 10244,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

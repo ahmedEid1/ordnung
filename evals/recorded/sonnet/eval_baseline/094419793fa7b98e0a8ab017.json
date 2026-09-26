@@ -1,0 +1,56 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"53750ab2d21a27754d1e4e3cd67646d082d77be6d03810c9b0825733ad894aa2\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-11-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-english_letter-C2"
+    ],
+    "prompt_head": "Today is Friday, 2025-11-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"utility_bill\",\"sender_name\":\"Muster Apartments GmbH\",\"document_date\":\"2025-11-03\",\"references\":[{\"label\":\"Tenant no.\",\"value\":\"MA-HH-0512\"}],\"amounts\":[184.2],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay utility cost balance (2024/25)\",\"quote\":\"Please settle the outstanding balance of €184.20 no later than 30 days after the date of this statement.\",\"computation\":\"This is a private-law payment deadline (landlord to tenant), counted under §§ 187, 188 BGB. The event triggering the period is the date of the statement, 3 November 2025; that day is not counted (§ 187 Abs. 1 BGB). Counting 30 days forward: day 1 = 4 Nov, ..., day 27 = 30 Nov, day 28 = 1 Dec, day 29 = 2 Dec, day 30 = 3 Dec 2025. So the period ends 3 December 2025, which is a Wednesday (not a weekend or public holiday in NRW or Berlin), so no shift under § 193 BGB is needed.\",\"due_date\":\"2025-12-03\",\"confidence\":\"high\",\"amount\":184.2}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "utility_bill",
+      "sender_name": "Muster Apartments GmbH",
+      "document_date": "2025-11-03",
+      "references": [
+        {
+          "label": "Tenant no.",
+          "value": "MA-HH-0512"
+        }
+      ],
+      "amounts": [
+        184.2
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay utility cost balance (2024/25)",
+          "quote": "Please settle the outstanding balance of €184.20 no later than 30 days after the date of this statement.",
+          "computation": "This is a private-law payment deadline (landlord to tenant), counted under §§ 187, 188 BGB. The event triggering the period is the date of the statement, 3 November 2025; that day is not counted (§ 187 Abs. 1 BGB). Counting 30 days forward: day 1 = 4 Nov, ..., day 27 = 30 Nov, day 28 = 1 Dec, day 29 = 2 Dec, day 30 = 3 Dec 2025. So the period ends 3 December 2025, which is a Wednesday (not a weekend or public holiday in NRW or Berlin), so no shift under § 193 BGB is needed.",
+          "due_date": "2025-12-03",
+          "confidence": "high",
+          "amount": 184.2
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1457,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1838,
+      "cost_usd": 0.023032,
+      "duration_ms": 14927,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

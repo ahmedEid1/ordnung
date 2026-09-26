@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"245f2f211c9b77216513c514472efc02f0960841a09216b2dbf0493bac5bb9f8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-31\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-price_increase-A1"
+    ],
+    "prompt_head": "Today is Friday, 2025-10-31 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispiel Energie AG\",\"document_date\":\"2025-10-28\",\"references\":[{\"label\":\"Vertragskonto\",\"value\":\"BE-3301 8812\"}],\"amounts\":[31.48,34.92,12.9,13.9,72,81],\"items\":[{\"kind\":\"milestone\",\"title\":\"New electricity prices take effect\",\"quote\":\"aufgrund gestiegener Netzentgelte und Beschaffungskosten passen wir unsere Preise zum 01.01.2026 an:\",\"computation\":\"The letter states the new prices (Arbeitspreis, Grundpreis, monthly Abschlag) take effect on a fixed calendar date, 01.01.2026, as printed. No period counting is needed since it is an explicit calendar date.\",\"due_date\":\"2026-01-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Exercise special termination right (price-increase clause)\",\"quote\":\"Sie haben das Recht, Ihren Vertrag ohne Einhaltung einer Kündigungsfrist zum Zeitpunkt des Wirksamwerdens der Preisänderung zu kündigen (§ 41 Abs. 5 EnWG).\",\"computation\":\"§ 41 Abs. 5 EnWG grants a special right to terminate without the usual notice period, effective at the moment the price change takes effect (01.01.2026). No explicit calendar deadline for sending the notice is printed in the letter. To actually avoid being charged the new, higher price from 01.01.2026, the termination in text form must reach the provider before that date, i.e. at the latest so that it is received by the last day of the old price period, 31.12.2025. This end date is not itself moved for weekends/holidays because no fixed statutory period with a §193 BGB-style deadline is being counted here; it is derived from the stated effective date, not a counted period, so the outcome is inferred rather than explicitly stated.\",\"due_date\":\"2025-12-31\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter itself gives no explicit final calendar day for sending the special termination notice; the 31.12.2025 date for that item is inferred from the stated 01.01.2026 effective date, not stated verbatim, so double-check with the provider if you intend to use this right.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispiel Energie AG",
+      "document_date": "2025-10-28",
+      "references": [
+        {
+          "label": "Vertragskonto",
+          "value": "BE-3301 8812"
+        }
+      ],
+      "amounts": [
+        31.48,
+        34.92,
+        12.9,
+        13.9,
+        72,
+        81
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "New electricity prices take effect",
+          "quote": "aufgrund gestiegener Netzentgelte und Beschaffungskosten passen wir unsere Preise zum 01.01.2026 an:",
+          "computation": "The letter states the new prices (Arbeitspreis, Grundpreis, monthly Abschlag) take effect on a fixed calendar date, 01.01.2026, as printed. No period counting is needed since it is an explicit calendar date.",
+          "due_date": "2026-01-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Exercise special termination right (price-increase clause)",
+          "quote": "Sie haben das Recht, Ihren Vertrag ohne Einhaltung einer Kündigungsfrist zum Zeitpunkt des Wirksamwerdens der Preisänderung zu kündigen (§ 41 Abs. 5 EnWG).",
+          "computation": "§ 41 Abs. 5 EnWG grants a special right to terminate without the usual notice period, effective at the moment the price change takes effect (01.01.2026). No explicit calendar deadline for sending the notice is printed in the letter. To actually avoid being charged the new, higher price from 01.01.2026, the termination in text form must reach the provider before that date, i.e. at the latest so that it is received by the last day of the old price period, 31.12.2025. This end date is not itself moved for weekends/holidays because no fixed statutory period with a §193 BGB-style deadline is being counted here; it is derived from the stated effective date, not a counted period, so the outcome is inferred rather than explicitly stated.",
+          "due_date": "2025-12-31",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter itself gives no explicit final calendar day for sending the special termination notice; the 31.12.2025 date for that item is inferred from the stated 01.01.2026 effective date, not stated verbatim, so double-check with the provider if you intend to use this right."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3547,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1984,
+      "cost_usd": 0.044516,
+      "duration_ms": 37320,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"823aad1f0a693d0b96916cdd08884c1a71878f1f7932d73d5c39474af7529976\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-08-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-adversarial-missing_date-1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-08-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Malerbetrieb Muster\",\"document_date\":null,\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"26/077\"}],\"amounts\":[1130.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for painting work\",\"quote\":\"Bitte überweisen Sie den Betrag innerhalb von 14 Tagen nach Erhalt dieser Rechnung auf unser Konto.\",\"computation\":\"The 14-day payment period runs from receipt of the invoice ('nach Erhalt dieser Rechnung'), not from the invoice's own date. The letter, however, prints no invoice date at all - only the date the painting work was completed (12.08.2026). Without a printed or otherwise known issue/mailing date, the actual date of receipt by the recipient cannot be established, so the start of the §187 BGB period is unknown and the 14-day count (which would end on a working day per §193 BGB if it fell on a weekend/holiday) cannot be reliably computed. As an earliest plausible estimate, if the invoice were issued and received on the same day as project completion (12.08.2026), the 14-day period (day of receipt not counted, ending 14 days later) would run 13.08.2026-26.08.2026, i.e. Wednesday 26.08.2026 (a working day, no adjustment needed) - but this rests on an unverified assumption about the receipt date.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":1130.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The invoice carries no printed invoice date (Rechnungsdatum), only the work-completion date (12.08.2026); since the 14-day payment period runs from 'Erhalt dieser Rechnung' (receipt of the invoice), the exact due date cannot be verified without knowing when the invoice was actually sent/received - check the postmark or email timestamp to confirm the real deadline.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Malerbetrieb Muster",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "26/077"
+        }
+      ],
+      "amounts": [
+        1130.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for painting work",
+          "quote": "Bitte überweisen Sie den Betrag innerhalb von 14 Tagen nach Erhalt dieser Rechnung auf unser Konto.",
+          "computation": "The 14-day payment period runs from receipt of the invoice ('nach Erhalt dieser Rechnung'), not from the invoice's own date. The letter, however, prints no invoice date at all - only the date the painting work was completed (12.08.2026). Without a printed or otherwise known issue/mailing date, the actual date of receipt by the recipient cannot be established, so the start of the §187 BGB period is unknown and the 14-day count (which would end on a working day per §193 BGB if it fell on a weekend/holiday) cannot be reliably computed. As an earliest plausible estimate, if the invoice were issued and received on the same day as project completion (12.08.2026), the 14-day period (day of receipt not counted, ending 14 days later) would run 13.08.2026-26.08.2026, i.e. Wednesday 26.08.2026 (a working day, no adjustment needed) - but this rests on an unverified assumption about the receipt date.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 1130.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The invoice carries no printed invoice date (Rechnungsdatum), only the work-completion date (12.08.2026); since the 14-day payment period runs from 'Erhalt dieser Rechnung' (receipt of the invoice), the exact due date cannot be verified without knowing when the invoice was actually sent/received - check the postmark or email timestamp to confirm the real deadline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2601,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1909,
+      "cost_usd": 0.034755999999999995,
+      "duration_ms": 28039,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}
