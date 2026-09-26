@@ -31,7 +31,8 @@ describe("Contracts page", () => {
     const callouts = within(decide).getAllByRole("listitem");
     expect(callouts).toHaveLength(1);
     expect(within(callouts[0]!).getByRole("heading", { name: /FunkNetz Allnet L/ })).toBeInTheDocument();
-    expect(within(callouts[0]!).getByText(/Decide by Thu 8 Oct/)).toBeInTheDocument();
+    // the countdown's parts are separate spans (so it can wrap between them)
+    expect(within(callouts[0]!).getByText((_, el) => el?.tagName === "TIME" && /^Decide by Thu 8 Oct/.test(el.textContent ?? ""))).toBeInTheDocument();
     expect(within(callouts[0]!).getByText("Kündigung (cancellation / notice)")).toBeInTheDocument();
     expect(within(callouts[0]!).getByRole("link", { name: /Draft cancellation/ })).toHaveAttribute(
       "href",

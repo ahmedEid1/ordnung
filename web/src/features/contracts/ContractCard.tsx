@@ -25,7 +25,8 @@ function Row({ label, children, strong }: { label: string; children: ReactNode; 
   return (
     <div className={cn("flex items-baseline justify-between gap-3 py-1.5", strong && "font-medium")}>
       <dt className="text-[13px] text-muted">{label}</dt>
-      <dd className="min-w-0 text-right text-[13px] text-ink">{children}</dd>
+      {/* never narrower than its widest unbreakable part (a date): the label wraps instead */}
+      <dd className="text-right text-[13px] text-ink">{children}</dd>
     </div>
   );
 }

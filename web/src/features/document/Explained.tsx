@@ -31,7 +31,8 @@ export function ExplainedSimply({ doc }: { doc: Document }) {
         {doc.tax_relevant && doc.tax_note ? (
           <p className="mt-4 flex items-start gap-2 rounded-lg bg-k-expiry-soft px-3 py-2.5 text-[13px] leading-5 text-k-expiry-ink">
             <Landmark className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <span>
+            {/* a long German term ("Werbungskosten/Entfernungspauschale") breaks instead of widening the page */}
+            <span className="min-w-0 wrap-break-word">
               <span className="font-semibold">For your tax return: </span>
               {doc.tax_note}
             </span>

@@ -162,6 +162,20 @@ describe("colour tokens", () => {
     }
   });
 
+  it.each([
+    ["light", light],
+    ["dark", dark],
+  ])("%s: field edges are visible (3:1) and field text and placeholders readable (4.5:1) wherever a field sits", (_, t) => {
+    for (const bg of ["surface", "canvas", "surface-2"]) {
+      expect(contrast(t["color-control-border"]!, t[`color-${bg}`]!), `control-border on ${bg}`).toBeGreaterThanOrEqual(3);
+      expect(contrast(t["color-muted"]!, t[`color-${bg}`]!), `muted (placeholder) on ${bg}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("disabled buttons can be told from busy ones", () => {
+    expect(css).toMatch(/@custom-variant inactive \(&:is\(:disabled, \[aria-disabled="true"\]\):not\(\[aria-busy="true"\]\)\);/);
+  });
+
   it("the scrim behind dialogs, drawers and sheets dims the page in both themes", () => {
     const alpha = (v: string) => Number(/\/\s*([\d.]+)\)/.exec(v)?.[1]);
     const channels = (v: string) => (/rgb\((\d+) (\d+) (\d+)/.exec(v) ?? []).slice(1).map(Number);

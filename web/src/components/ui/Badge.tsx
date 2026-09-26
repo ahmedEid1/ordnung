@@ -41,16 +41,34 @@ export function Badge({ tone = "neutral", variant = "soft", size = "sm", icon: I
   );
 }
 
-/** Numeric count bubble (nav badges, tab counts). Hidden when count is 0 unless `showZero`. */
+/** Filled count colours: a solid tone with text that stays ≥ 4.5:1 on it in both themes. */
+const SOLID_COUNT: Partial<Record<Tone, string>> = {
+  accent: "bg-accent text-on-accent",
+  neutral: "bg-muted text-surface",
+};
+
+/**
+ * Numeric count bubble (nav badges, tab counts). Hidden when count is 0 unless `showZero`.
+ *
+ * One look for the same meaning everywhere: `tone="warn"` for counts that need the person
+ * ("3 to check"), `neutral` (default) for counts that only inform ("22 letters"). `soft` sits in
+ * text rows and tabs; `solid` is for a bubble on an icon's corner (with `size="compact"`, 16 px,
+ * still 11 px text).
+ */
 export function CountBadge({
   count,
   tone = "neutral",
+  variant = "soft",
+  size = "md",
   showZero,
   className,
   label,
 }: {
   count: number;
   tone?: Tone;
+  variant?: "soft" | "solid";
+  /** `md` (20 px, 12 px text) or `compact` (16 px, 11 px text — icon corners). */
+  size?: "md" | "compact";
   showZero?: boolean;
   className?: string;
   /** accessible text, e.g. "3 letters to check" */
@@ -61,9 +79,12 @@ export function CountBadge({
   return (
     <span
       className={cn(
-        "inline-grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums leading-none",
-        t.soft,
-        t.text,
+        "inline-grid shrink-0 place-items-center rounded-full font-semibold tabular-nums leading-none",
+        size === "md" ? "h-5 min-w-5 px-1.5 text-xs" : "h-4 min-w-4 px-1 text-2xs",
+        variant === "soft"
+          ? // neutral: surface-3, so the bubble shows on surface-2 tracks and rows too
+            cn(tone === "neutral" ? "bg-surface-3" : t.soft, t.text)
+          : (SOLID_COUNT[tone] ?? cn(t.solid, "text-white dark:text-canvas")),
         className,
       )}
       aria-label={label}

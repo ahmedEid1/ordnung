@@ -15,6 +15,7 @@ import {
   startOfDay,
 } from "date-fns";
 import type { CostInterval } from "@/api/types";
+import { NBSP, protectRefs } from "./glue";
 
 export type DateInput = string | Date;
 
@@ -46,7 +47,11 @@ export type DateStyle = "short" | "day" | "medium" | "long" | "numeric" | "month
 
 export interface FormatDateOptions {
   style?: DateStyle;
-  /** When given (and `withYear` is "auto"), the year is shown only if it differs from today's. */
+  /**
+   * When given (and `withYear` is "auto"), the year is shown only if it differs from today's.
+   * Without it "auto" can't tell and never shows the year — in components use `useFormatDate()`
+   * (`@/lib/today`), which always passes the app's today.
+   */
   today?: DateInput;
   withYear?: "auto" | "always" | "never";
 }
@@ -125,17 +130,82 @@ export function formatRelativeDays(date: DateInput, today: DateInput, mode: Rela
 export type Urgency = "overdue" | "today" | "soon" | "week" | "month" | "later" | "past";
 
 /**
- * Urgency bucket for colouring countdowns: overdue (due, past) · today · soon (≤ 3 days) ·
- * week (≤ 7) · month (≤ 30) · later · past (events in the past).
+ * Urgency bucket of a date — the app's one urgency scale (countdowns, card stripes, charts, lists):
+ * `overdue` (due, in the past) · `today` · `soon` (tomorrow) · `week` (2–7 days) · `month`
+ * (8–30 days) · `later` · `past` (events in the past). {@link urgencyTone} colours it.
  */
 export function urgencyOf(date: DateInput, today: DateInput, mode: RelativeMode = "due"): Urgency {
   const n = daysUntil(date, today);
   if (n < 0) return mode === "due" ? "overdue" : "past";
   if (n === 0) return "today";
-  if (n <= 3) return "soon";
+  if (n === 1) return "soon";
   if (n <= 7) return "week";
   if (n <= 30) return "month";
   return "later";
+}
+
+/** How loud an urgency is: red, amber, plain ink or muted. */
+export type UrgencyLevel = "danger" | "warn" | "ink" | "muted";
+
+/** overdue / today / tomorrow → danger · within a week → warn · within 30 days → ink · later → muted. */
+export const URGENCY_LEVEL: Record<Urgency, UrgencyLevel> = {
+  overdue: "danger",
+  today: "danger",
+  soon: "danger",
+  week: "warn",
+  month: "ink",
+  later: "muted",
+  past: "muted",
+};
+
+export interface UrgencyToneOptions {
+  /**
+   * The loudest this date may get. Direct debits (the bank collects them, nothing to do) and
+   * appointments (nothing to send) use `"warn"`: they never turn red.
+   */
+  cap?: "warn";
+  /** Show `later` dates in ink instead of muted — for card rows where the date is the content. */
+  inkLater?: boolean;
+}
+
+/** Tailwind classes for an urgency level (full literal class names so Tailwind can see them). */
+export interface UrgencyTone {
+  level: UrgencyLevel;
+  /** text colour (AA on surfaces and on `soft`) */
+  text: string;
+  /** soft tinted background (pills) — pair with `text` */
+  soft: string;
+  /** solid fill (dots, bars) */
+  solid: string;
+  /** a card's urgency edge: loud for danger/warn, a quiet line otherwise */
+  stripe: string;
+  /** subtle border */
+  border: string;
+}
+
+const URGENCY_TONES: Record<UrgencyLevel, Omit<UrgencyTone, "level">> = {
+  danger: { text: "text-danger-ink", soft: "bg-danger-soft", solid: "bg-danger", stripe: "bg-danger", border: "border-danger/25" },
+  warn: { text: "text-warn-ink", soft: "bg-warn-soft", solid: "bg-warn", stripe: "bg-warn", border: "border-warn/30" },
+  ink: { text: "text-ink", soft: "bg-surface-2", solid: "bg-muted", stripe: "bg-line-strong", border: "border-line-strong" },
+  muted: { text: "text-muted", soft: "bg-surface-2", solid: "bg-faint", stripe: "bg-line", border: "border-line" },
+};
+
+/** The level of an urgency after the options (`cap`, `inkLater`). */
+export function urgencyLevel(u: Urgency, opts: UrgencyToneOptions = {}): UrgencyLevel {
+  let level = URGENCY_LEVEL[u];
+  if (opts.cap === "warn" && level === "danger") level = "warn";
+  if (opts.inkLater && u === "later") level = "ink";
+  return level;
+}
+
+/**
+ * Colours for an urgency — the same everywhere a date is coloured by how close it is.
+ *
+ * @example urgencyTone(urgencyOf(due, today)).text  → "text-warn-ink" five days out
+ */
+export function urgencyTone(u: Urgency, opts: UrgencyToneOptions = {}): UrgencyTone {
+  const level = urgencyLevel(u, opts);
+  return { level, ...URGENCY_TONES[level] };
 }
 
 /** "3 min ago", "2 h ago", "yesterday", "12 Sep" — for activity logs (real timestamps). */
@@ -271,10 +341,12 @@ export function formatUsd(n: number | null | undefined): string {
   return `$${n.toFixed(2)}`;
 }
 
-/** 0.873 → "87 %". */
+const percentFormat = new Intl.NumberFormat("en-GB", { style: "percent", maximumFractionDigits: 0 });
+
+/** 0.873 → "87%" (English, like the rest of the UI — no space before the sign). */
 export function formatPercent(ratio: number | null | undefined): string {
   if (ratio === null || ratio === undefined || !Number.isFinite(ratio)) return "—";
-  return `${Math.round(ratio * 100)} %`;
+  return percentFormat.format(ratio);
 }
 
 /** Group an IBAN in blocks of four: "DE44500105175407324931" → "DE44 5001 0517 5407 3249 31". */
@@ -348,6 +420,65 @@ export function formatInlineDates(text: string, today?: DateInput): string {
     const date = formatDate(day, { style: "short", today, withYear: today ? "auto" : "always" });
     return time ? `${date}, ${formatTime(time)}` : date;
   });
+}
+
+// ------------------------------------------------------------------------------------------------
+// Running text: keep units together
+// ------------------------------------------------------------------------------------------------
+
+export { plainText, protectRefs } from "./glue";
+
+const WEEKDAY = String.raw`(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*|Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)`;
+const MONTH = String.raw`(?:Jan(?:uary|uar)?|Feb(?:ruary|ruar)?|Mar(?:ch)?|März|Apr(?:il)?|May|Mai|Jun[ei]?|Jul[iy]?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Okt(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|Dez(?:ember)?)\.?(?![\p{L}])`;
+/** "Wed 14 Oct", "Wednesday, 14 October 2026", "14. Oktober 2026", "October 14, 2026". */
+const DAY_MONTH = new RegExp(String.raw`(?:\b${WEEKDAY},?\s+)?\b\d{1,2}\.?\s+${MONTH}(?:\s+\d{4}\b)?|\b${MONTH}\s+\d{1,2}\b(?:,\s+\d{4}\b)?`, "gu");
+/** "§ 56", "§§ 312", "Abs. 3", "Art. 6", "Nr. 2", "Satz 1" — the label stays with its number. */
+const LAW_REF = /(§§?|\b(?:Abs|Art|Nr|No|Ziff|S)\.|\b(?:Absatz|Artikel|Satz|Nummer))\s+(?=\d)/g;
+/** "10:30 Uhr" */
+const TIME_UHR = /\b(\d{1,2}[:.]\d{2})\s+(Uhr)\b/g;
+/** "94,99 €", "1.560,00 EUR", "30 Euro" (amount first). */
+const MONEY_AFTER = /(?<![\d.,])(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)\s?(€|EUR|Euro)(?![\p{L}])/gu;
+/** "€ 94,99", "EUR 94.99" (currency first). */
+const MONEY_BEFORE = /(?<![\p{L}])(€|EUR)\s?(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)(?![\d])/gu;
+
+function inlineMoney(num: string): string | null {
+  const n = parseLooseNumber(num);
+  // as precise as written: "30 €" → "€30", "30,00 €" → "€30.00"
+  return n === null ? null : formatMoney(n, { decimals: /[.,]\d{2}$/.test(num) ? 2 : 0 });
+}
+
+export interface InlineTextOptions {
+  /** The app's today, so ISO dates leave out the current year. */
+  today?: DateInput;
+  /**
+   * Rewrite money ("94,99 €" → "€94.99") and ISO dates into the app's English format (default).
+   * `false` only glues units together — for quotes that must stay as the letter wrote them.
+   */
+  rewrite?: boolean;
+}
+
+/**
+ * Model- or letter-written running text in the app's style: money in one English format
+ * ("94.99 EUR", "1.560,00 €" → "€94.99", "€1,560.00"), ISO dates as "Wed 14 Oct", and units that
+ * must not break across lines glued with non-breaking spaces and hyphens — dates ("Wed 14 Oct"),
+ * "§ 56", "Abs. 3", "Art. 6", "€ 30", "10:30 Uhr" and reference numbers ({@link protectRefs}).
+ * Display only (see {@link plainText}).
+ */
+export function formatInlineText(text: string, opts: InlineTextOptions = {}): string {
+  let out = text;
+  if (opts.rewrite !== false) {
+    out = formatInlineDates(out, opts.today);
+    out = out.replace(MONEY_AFTER, (whole, num: string) => inlineMoney(num) ?? whole);
+    out = out.replace(MONEY_BEFORE, (whole, _cur: string, num: string) => inlineMoney(num) ?? whole);
+  }
+  return protectRefs(
+    out
+      .replace(DAY_MONTH, (d) => d.replace(/\s+/g, NBSP))
+      .replace(LAW_REF, `$1${NBSP}`)
+      .replace(TIME_UHR, `$1${NBSP}$2`)
+      .replace(/(\d)[ \t]+(€|EUR\b|Euro\b)/g, `$1${NBSP}$2`)
+      .replace(/(€|\bEUR)[ \t]+(?=\d)/g, `$1${NBSP}`),
+  );
 }
 
 const GERMAN_WORDS = /\b(der|die|das|und|nicht|wir|Sie|Ihr|Ihre|Ihren|ist|wird|werden|bei|mit|zu|auf|dem|den|des|ein|eine|einen|für|oder|von|bis|zum|zur|im|am|sich|bitte|sicherstellen|müssen|Betrag|Frist)\b/g;

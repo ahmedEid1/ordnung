@@ -6,22 +6,39 @@ import { Spinner } from "./Spinner";
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "link" | "soft";
 export type ButtonSize = "sm" | "md" | "lg";
 
+/*
+ * Buttons don't shrink or wrap by default (toolbars, card footers). To let one share a tight row,
+ * pass `min-w-0` with `flex-1` (or `shrink`): its text label then ends in "…" instead of
+ * overflowing.
+ *
+ * Disabled (not busy) buttons turn neutral — a disabled teal "Write the letter" must not read as
+ * ready; a busy one (`loading`) keeps its colour next to the spinner. `inactive:` is defined in
+ * styles/index.css.
+ */
 const base =
   "relative inline-flex shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium " +
   "transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-out " +
-  "active:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 " +
+  "active:translate-y-px disabled:pointer-events-none aria-disabled:pointer-events-none " +
+  "inactive:text-faint inactive:shadow-none " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
+/** Filled variants lose their fill when disabled. */
+const inactiveFill = "inactive:border-transparent inactive:bg-surface-3";
+
 const variants: Record<ButtonVariant, string> = {
-  primary:
+  primary: cn(
     "bg-accent text-on-accent shadow-[inset_0_1px_0_rgb(255_255_255/0.14),0_1px_2px_rgb(0_0_0/0.14)] hover:bg-accent-strong dark:hover:bg-accent-strong",
-  secondary:
-    "border border-line-strong/80 bg-surface text-ink shadow-[var(--shadow-card)] hover:border-line-strong hover:bg-surface-2",
-  soft: "bg-accent-soft text-accent hover:bg-accent/15",
+    inactiveFill,
+  ),
+  secondary: cn("border border-line-strong/80 bg-surface text-ink shadow-[var(--shadow-card)] hover:border-line-strong hover:bg-surface-2", inactiveFill),
+  soft: cn("bg-accent-soft text-accent hover:bg-accent/15", inactiveFill),
   ghost: "text-muted hover:bg-surface-3/70 hover:text-ink",
-  danger:
+  danger: cn(
     "bg-danger text-white shadow-[0_1px_2px_rgb(0_0_0/0.14)] hover:bg-danger/90 dark:border dark:border-danger/40 dark:bg-danger-soft dark:text-danger-ink dark:hover:bg-danger/20",
-  link: "h-auto! px-0! text-accent underline-offset-4 hover:underline active:translate-y-0",
+    inactiveFill,
+  ),
+  // text-sized, but still a 24 px tall target (WCAG 2.5.8)
+  link: "h-auto! min-h-6 px-0! text-accent underline-offset-4 hover:underline active:translate-y-0",
 };
 
 const sizes: Record<ButtonSize, string> = {
@@ -80,7 +97,8 @@ export function Button({
       {...rest}
     >
       {loading ? <Spinner className="size-4" /> : Icon ? <Icon aria-hidden /> : null}
-      {children}
+      {/* a text label can end in "…" when the caller lets the button shrink (`min-w-0 flex-1`) */}
+      {typeof children === "string" || typeof children === "number" ? <span className="min-w-0 truncate">{children}</span> : children}
       {IconRight && !loading ? <IconRight aria-hidden /> : null}
     </button>
   );

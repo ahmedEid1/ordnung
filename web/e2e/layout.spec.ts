@@ -1,10 +1,12 @@
 /**
- * Layout guards on real pages (what jsdom can't see): keyboard focus never ends up hidden under
- * the sticky top bar or the phone tab bar (WCAG 2.4.11), the focus ring is the accent colour
- * from the first frame, and popovers sit whole and clear of the top bar (sheets on phones).
+ * Layout guards on real pages (what jsdom can't see): nothing makes a page scroll sideways at
+ * 320 CSS px (WCAG 1.4.10), keyboard focus never ends up hidden under the sticky top bar or the
+ * phone tab bar (WCAG 2.4.11), the focus ring is the accent colour from the first frame, tabs
+ * that don't fit scroll with a fade and keep the selected tab in view, and popovers sit whole and
+ * clear of the top bar (sheets on phones).
  */
 import type { Locator, Page } from "@playwright/test";
-import { expect, open, setTour, settle, test } from "./helpers";
+import { apiGet, expect, open, setTour, settle, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -47,6 +49,98 @@ async function obscuredFocus(page: Page, stops: number, key: "Tab" | "Shift+Tab"
   }
   return hidden;
 }
+
+/**
+ * What makes the page wider than the screen: [] when it fits, else the innermost elements that
+ * stick out past the right edge (and aren't inside a scroll area that clips them).
+ */
+async function sideways(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const root = document.documentElement;
+    if (root.scrollWidth <= root.clientWidth) return [];
+    const edge = root.clientWidth + 0.5;
+    const clipped = (el: Element) => {
+      for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
+        if (getComputedStyle(n).overflowX !== "visible" && n.getBoundingClientRect().right <= edge) return true;
+      }
+      return false;
+    };
+    const out: string[] = [];
+    for (const el of document.body.querySelectorAll("*")) {
+      const r = el.getBoundingClientRect();
+      if (!r.width || r.right <= edge || clipped(el)) continue;
+      if ([...el.children].some((c) => c.getBoundingClientRect().right > edge)) continue;
+      out.push(`<${el.tagName.toLowerCase()}> "${(el.textContent ?? "").trim().slice(0, 50)}" ends at ${Math.round(r.right)} px`);
+    }
+    return [`page is ${root.scrollWidth} px wide`, ...out.slice(0, 5)];
+  });
+}
+
+test.describe("phone 320 px: no page scrolls sideways (WCAG 1.4.10 reflow)", () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+
+  for (const [path, h1] of [
+    ["/", /Sam/],
+    ["/inbox", "Inbox"],
+    ["/contracts", "Contracts"],
+    ["/letters", "Letters"],
+    ["/timeline", "Timeline"],
+  ] as const) {
+    test(`${path} fits`, async ({ page }) => {
+      await open(page, path, h1);
+      expect(await sideways(page)).toEqual([]);
+    });
+  }
+
+  test("every letter fits", async ({ page }) => {
+    test.setTimeout(180_000);
+    const docs = await apiGet<{ id: string; title: string | null }[]>(page, "/api/documents");
+    expect(docs.length).toBeGreaterThan(5);
+    const wide: string[] = [];
+    for (const doc of docs) {
+      await open(page, `/documents/${doc.id}`);
+      const problem = await sideways(page);
+      if (problem.length) wide.push(`${doc.title ?? doc.id}: ${problem.join("; ")}`);
+    }
+    expect(wide).toEqual([]);
+  });
+
+  test("tabs that don't fit scroll with a fade, keep the selected tab in view and its focus ring whole", async ({ page }) => {
+    await open(page, "/contracts", "Contracts");
+    const list = page.getByRole("tablist", { name: "Show contracts" });
+    const track = list.locator("xpath=..");
+    const last = list.getByRole("tab").last();
+    // more tabs to the right: that edge fades
+    const overflow = await list.evaluate((el) => el.scrollWidth > el.clientWidth);
+    if (overflow) await expect(track).toHaveAttribute("data-overflow", /end/);
+    await last.click();
+    await expect(last).toHaveAttribute("aria-selected", "true");
+    await settle(page);
+    const inView = async (tab: Locator) =>
+      tab.evaluate((el) => {
+        const t = el.getBoundingClientRect();
+        const l = el.parentElement!.getBoundingClientRect();
+        return t.left >= l.left - 0.5 && t.right <= l.right + 0.5;
+      });
+    expect(await inView(last)).toBe(true);
+    if (overflow) {
+      await expect(track).toHaveAttribute("data-overflow", /start/);
+      // a swipe back along the row stays where the person left it
+      await list.evaluate((el) => el.scrollTo({ left: 0 }));
+      await expect(track).toHaveAttribute("data-overflow", "end");
+      await page.waitForTimeout(300);
+      expect(await list.evaluate((el) => el.scrollLeft)).toBe(0);
+    }
+    // keyboard: back to the first tab, which scrolls back into view; the ring is drawn inside the tab
+    await page.keyboard.press("Home");
+    const first = list.getByRole("tab").first();
+    await expect(first).toBeFocused();
+    await settle(page);
+    expect(await inView(first)).toBe(true);
+    expect(await first.evaluate((el) => getComputedStyle(el).outlineOffset)).toBe("-2px");
+    expect(await sideways(page)).toEqual([]);
+  });
+});
 
 test.describe("phone: focus stays clear of the top bar and the tab bar", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });

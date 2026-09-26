@@ -2,7 +2,7 @@
 import { Search, X } from "lucide-react";
 import type { DocumentKind } from "@/api/types";
 import { Tabs } from "@/components/ui/Tabs";
-import { Select } from "@/components/ui/Field";
+import { Select, controlClasses } from "@/components/ui/Field";
 import type { InboxFilter } from "./filters";
 
 export function InboxToolbar({
@@ -67,7 +67,7 @@ export function InboxToolbar({
             value={query}
             onChange={(e) => onQuery(e.target.value)}
             placeholder="Search sender, title, amount…"
-            className="h-9 w-full rounded-lg border border-line-strong/80 bg-surface pl-9 pr-8 text-base text-ink shadow-[inset_0_1px_1px_rgb(0_0_0/0.03)] placeholder:text-muted/70 hover:border-line-strong focus-visible:border-accent focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/20 [&::-webkit-search-cancel-button]:hidden"
+            className={controlClasses("pl-9 pr-8 [&::-webkit-search-cancel-button]:hidden")}
           />
           {query ? (
             <button

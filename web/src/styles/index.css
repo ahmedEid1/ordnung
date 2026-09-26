@@ -5,6 +5,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 /* inside a phone bottom sheet (Popover on phones) — e.g. `in-sheet:hidden` on a heading the sheet's title repeats */
 @custom-variant in-sheet (&:where([data-sheet] *));
+/* a control that can't be used right now — disabled, and not merely busy (a `loading` button keeps its look) */
+@custom-variant inactive (&:is(:disabled, [aria-disabled="true"]):not([aria-busy="true"]));
 
 /*
  * Ordnung design tokens — "calm paper".
@@ -52,6 +54,8 @@
   --color-surface-3: #e9e5db;
   --color-line: #e4dfd4;
   --color-line-strong: #d3ccbd;
+  /* the edge of a text field, select or checkbox: ≥ 3:1 on surface, canvas and surface-2 (WCAG 1.4.11) */
+  --color-control-border: #8f8877;
   --color-ink: #1d1b16;
   --color-muted: #6b6558;
   --color-faint: #9a937f;
@@ -131,6 +135,7 @@
   --color-surface-3: #2c2a24;
   --color-line: #34312a;
   --color-line-strong: #454035;
+  --color-control-border: #756e5e;
   --color-ink: #f2efe7;
   --color-muted: #ada697;
   --color-faint: #7d776a;
