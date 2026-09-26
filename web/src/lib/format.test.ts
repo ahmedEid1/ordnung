@@ -135,6 +135,17 @@ describe("values copied from letters", () => {
     expect(formatInlineDates("from 2026-09-28 to 2026-10-26", "2026-09-28")).toBe("from Mon 28 Sep to Mon 26 Oct");
   });
 
+  it("keeps one weekday when the text writes one before an ISO date", () => {
+    // review finding: a recorded answer's "due Wed 2026-09-30" showed as "due Wed Wed 30 Sep 2026"
+    expect(formatInlineDates("due Wed 2026-09-30", "2026-09-28")).toBe("due Wed 30 Sep");
+    expect(formatInlineDates("fällig Mi. 2026-09-30 und Thursday, 2026-10-01", "2026-09-28")).toBe(
+      "fällig Wed 30 Sep und Thu 1 Oct",
+    );
+    expect(formatInlineDates("Monday 2026-09-28 10:30", "2026-09-28")).toBe("Mon 28 Sep, 10:30");
+    expect(formatInlineDates("Womo 2026-09-30", "2026-09-28")).toBe("Womo Wed 30 Sep");
+    expect(formatInlineDates("So 2026-09-30 it is", "2026-09-28")).toBe("So Wed 30 Sep it is");
+  });
+
   it("tells German sentences from English ones", () => {
     expect(looksGerman("Geht der Betrag nicht fristgerecht ein, müssen wir die Forderung übergeben.")).toBe(true);
     expect(looksGerman("Ausreichende Kontodeckung für die monatliche SEPA-Lastschrift sicherstellen.")).toBe(true);

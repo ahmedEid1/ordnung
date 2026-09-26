@@ -340,9 +340,19 @@ export function formatFactValue(value: string): string {
   return value;
 }
 
-/** ISO dates inside running text ("from 2026-09-28 to 2026-10-26") → "Mon 28 Sep". */
+// German two-letter weekdays only with their dot: "So 2026-10-04" may be English "so"
+const WEEKDAY_BEFORE =
+  "(?:(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tues?|Wed|Thu(?:rs?)?|Fri|Sat|Sun|" +
+  "Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)\\.?|(?:Mo|Di|Mi|Do|Fr|Sa|So)\\.),?[ \\u00a0])?";
+const INLINE_ISO = new RegExp(`\\b${WEEKDAY_BEFORE}(\\d{4}-\\d{2}-\\d{2})(?:[ T](\\d{2}:\\d{2})(?::\\d{2})?Z?)?\\b`, "g");
+
+/**
+ * ISO dates inside running text ("from 2026-09-28 to 2026-10-26") → "Mon 28 Sep". A weekday written
+ * just before the date ("due Wed 2026-09-30") is part of it: the formatted date brings its own, so it
+ * never reads "Wed Wed 30 Sep".
+ */
 export function formatInlineDates(text: string, today?: DateInput): string {
-  return text.replace(/\b(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2})(?::\d{2})?Z?)?\b/g, (whole, day: string, time?: string) => {
+  return text.replace(INLINE_ISO, (whole, day: string, time?: string) => {
     if (!tryParseDate(day)) return whole;
     // without "today" the year can't be left out safely
     const date = formatDate(day, { style: "short", today, withYear: today ? "auto" : "always" });
