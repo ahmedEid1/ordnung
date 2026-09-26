@@ -7,10 +7,7 @@ tools at all. Every result is compact JSON that carries record ids for citations
 in ``<untrusted_document>`` tags (titles, summaries, snippets, quotes and page texts all come from
 letters, SPEC §21); documents the person marked "Keep private — no AI" never
 leave the database. Dates are never computed for the model: :meth:`LedgerTools.explain_date` hands
-it the rules engine's receipts to quote. For other clients the server also carries the ledger-free
-rules tools of :mod:`ordnung.assistant.rules_tools` (also served alone by ``ordnung mcp
---rules-only``), which compute new dates from what a letter says; Ask's own server leaves them out
-(``--ledger-only``).
+it the rules engine's receipts to quote.
 
 Heavy modules (views, triggers, rules) are imported on first use so the server starts quickly.
 """
@@ -649,9 +646,11 @@ OptionalDateArg = Annotated[str | None, Field(description="A date written YYYY-M
 def build_server(store: Store, *, today: date | None = None, rules_tools: bool = True) -> MCPServer:
     """An ``MCPServer('ordnung')`` whose read-only tools answer from ``store``.
 
-    ``rules_tools`` adds the ledger-free rules tools (for other clients). Ask's server leaves them
-    out: Ask quotes the ledger's stored receipts and never computes a new date (SPEC § 21), and its
-    fact check would otherwise accept any date a rules tool echoed or computed.
+    ``rules_tools`` adds the ledger-free rules tools of :mod:`ordnung.assistant.rules_tools` (for
+    other clients; ``ordnung mcp --rules-only`` serves them alone), which compute new dates from what a
+    letter says. Ask's server leaves them out (``--ledger-only``): Ask quotes the ledger's stored
+    receipts and never computes a new date (SPEC § 21), and its fact check would otherwise accept any
+    date a rules tool echoed or computed.
     """
     from mcp.server.mcpserver import MCPServer
     from mcp.server.mcpserver.exceptions import ToolError
