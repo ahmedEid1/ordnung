@@ -396,11 +396,13 @@ export async function demoCatalog({ api, server }) {
       id: `contracts-tab-${tab.toLowerCase()}`,
       group: "contracts",
       route: "/contracts",
-      how: `open /contracts, tab “${tab}”`,
+      how: `open /contracts, tab “${tab}” (or /contracts?status=${tab.toLowerCase()}: a status without contracts has no tab)`,
       description: `Contracts filtered to “${tab}”.`,
       run: async (c) => {
         await c.goto("/contracts");
-        await c.click(c.page.getByRole("tablist", { name: "Show contracts" }).getByRole("tab", { name: new RegExp(`^${tab}`) }));
+        const tabEl = c.page.getByRole("tablist", { name: "Show contracts" }).getByRole("tab", { name: new RegExp(`^${tab}`) });
+        if (await c.exists(tabEl)) await c.click(tabEl);
+        else await c.goto(`/contracts?status=${tab.toLowerCase()}`);
       },
     });
   }

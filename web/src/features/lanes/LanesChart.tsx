@@ -50,6 +50,8 @@ export interface LanesChartProps {
   ariaLabel: string;
   /** heading and description shown above the chart */
   title?: ReactNode;
+  /** level of the title's heading: 2 (default) under the page's h1, 3 inside a section with its own h2 */
+  headingLevel?: 2 | 3;
   description?: ReactNode;
   /** extra controls next to the zoom switch */
   actions?: ReactNode;
@@ -131,6 +133,7 @@ export function LanesChart({
   today,
   ariaLabel,
   title,
+  headingLevel = 2,
   description,
   actions,
   labelHeading = "Life area",
@@ -256,11 +259,12 @@ export function LanesChart({
   };
 
   const hasLanes = lanes.length > 0;
+  const Heading = headingLevel === 3 ? "h3" : "h2";
   const headerRow =
     title || description || actions || (hasLanes && !loading) ? (
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4 sm:flex-row sm:items-end sm:px-5 sm:pt-5">
         <div className="min-w-0 flex-1">
-          {title ? <h2 className="display text-[21px] font-semibold leading-tight text-ink sm:text-[23px]">{title}</h2> : null}
+          {title ? <Heading className="display text-[21px] font-semibold leading-tight text-ink sm:text-[23px]">{title}</Heading> : null}
           {description ? <p className="mt-1 text-[13.5px] leading-snug text-muted">{description}</p> : null}
         </div>
         {hasLanes && !loading ? (

@@ -50,7 +50,8 @@ test.describe("pages", () => {
     await open(page, "/contracts");
     const decide = page.getByRole("region", { name: /^Decide by/ });
     const funknetz = decide.getByRole("listitem").filter({ has: page.getByRole("heading", { name: /FunkNetz Smart M/ }) });
-    await expect(funknetz).toContainText("post your Kündigung (cancellation / notice) by Thu 8 Oct");
+    // "send", like the chart's "Send by" diamond and the card's "Send by" row
+    await expect(funknetz).toContainText("send your Kündigung (cancellation / notice) by Thu 8 Oct");
     await expect(funknetz).toContainText("must arrive by Wed 14 Oct");
     await expect(funknetz.getByRole("link", { name: "Draft cancellation for FunkNetz Smart M" })).toBeVisible();
     // the lanes chart marks the same send-by date

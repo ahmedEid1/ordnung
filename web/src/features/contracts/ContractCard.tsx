@@ -1,32 +1,34 @@
 /** One contract: what it is, what it costs, how it ends (in plain words), the dates to act by. */
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { FilePen, FileText, Info, TriangleAlert } from "lucide-react";
+import { FilePen, FileSearch, FileText, Info, TriangleAlert } from "lucide-react";
 import type { Contract, Party } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { buttonVariants } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
 import { KindIcon } from "@/components/ui/KindBadge";
+import { Money } from "@/components/ui/Money";
 import { PartyChip } from "@/components/ui/PartyChip";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { CONTRACT_CATEGORY_COPY, copyFor } from "@/lib/copy";
-import { formatIntervalSuffix, formatMoney } from "@/lib/format";
+import { formatMoney, protectRefs } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ContractWhy } from "./ContractWhy";
-import { contractMonthlyCost, isLockInDecision, isRollingContract, ruleInWords } from "./model";
+import { CONTINUES_MONTHLY, contractMonthlyCost, isFixedTerm, isLockInDecision, isRollingContract, ruleInWords, termsUnclear } from "./model";
 import { composerHrefFor, endingLetterLabel, offersEndingLetter } from "./links";
 import { dayNumber } from "@/features/lanes/scale";
 
-/** Regimes under which an uncancelled contract simply continues, cancellable at any time. */
-const ROLLING_REGIMES = new Set(["bgb309_new", "tkg56", "stromgvv20", "sgbv175"]);
-
+/**
+ * A label and its value on one line; when both don't fit (a narrow card, a long label) the value
+ * moves under the label, still flush right — the label is never squeezed into "Send / by", and a
+ * long countdown wraps inside the value, never past the card.
+ */
 function Row({ label, children, strong }: { label: string; children: ReactNode; strong?: boolean }) {
   return (
-    <div className={cn("flex items-baseline justify-between gap-3 py-1.5", strong && "font-medium")}>
-      <dt className="text-[13px] text-muted">{label}</dt>
-      {/* never narrower than its widest unbreakable part (a date): the label wraps instead */}
-      <dd className="text-right text-[13px] text-ink">{children}</dd>
+    <div className={cn("flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-1.5", strong && "font-medium")}>
+      <dt className="min-w-0 text-[13px] text-muted">{label}</dt>
+      <dd className="ml-auto min-w-0 max-w-full text-right text-[13px] text-ink">{children}</dd>
     </div>
   );
 }
@@ -48,24 +50,36 @@ export function ContractCard({
   const category = copyFor(CONTRACT_CATEGORY_COPY, c.category).label;
   const active = c.status === "active";
   const rolling = isRollingContract(c);
+  const fixedTerm = active && isFixedTerm(c);
+  const unclear = termsUnclear(c);
   // a rolling contract can be cancelled any month: no countdown, just when it would end
   const upcomingSend = !rolling && comp?.send_by && comp.send_by >= today ? comp.send_by : null;
   const decideSoon = Boolean(upcomingSend && isLockInDecision(c) && dayNumber(upcomingSend) - dayNumber(today) <= 60);
   const upcomingCancel = !rolling && comp?.cancel_by && comp.cancel_by >= today ? comp.cancel_by : null;
+  const termEnd = comp?.current_term_end ?? null;
+  // the earliest end, unless a row already says it (the end of the term, a fixed end date)
+  const earliest =
+    active && comp?.earliest_exit && comp.earliest_exit >= today && !upcomingCancel && comp.earliest_exit !== termEnd && comp.earliest_exit !== c.end_date
+      ? comp.earliest_exit
+      : null;
+  const rollingArriveBy = rolling && comp?.cancel_by && comp.cancel_by >= today ? comp.cancel_by : null;
   const lowConfidence = comp?.confidence === "low";
   const titleId = `contract-${c.id}-title`;
   const isJob = c.category === "employment";
   const offerLetter = offersEndingLetter(c);
   // e.g. the broadcasting fee: say why there is nothing to cancel instead of offering a letter
   const whyNot = active && !offerLetter ? c.cancel_hint : null;
+  const hasCost = c.cost_amount !== null && Boolean(c.cost_interval) && c.cost_interval !== "once";
 
   return (
     <article
       id={`contract-${c.id}`}
       aria-labelledby={titleId}
       data-contract-id={c.id}
+      // focusable from script only: a contract picked in the chart takes the focus with it
+      tabIndex={-1}
       className={cn(
-        "card flex w-full flex-col p-4 transition-[box-shadow,border-color] duration-300 sm:p-5",
+        "card flex w-full min-w-0 flex-col p-4 transition-[box-shadow,border-color] duration-300 sm:p-5",
         selected && "border-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]",
         !active && "bg-surface/70",
       )}
@@ -73,8 +87,9 @@ export function ContractCard({
       <header className="flex items-start gap-3">
         <KindIcon category={c.category} size="md" title={category} />
         <div className="min-w-0 flex-1">
+          {/* a flat number ("Wohnung 05-2-03") never breaks at its hyphens */}
           <h3 id={titleId} className="text-[15px] font-semibold leading-snug text-ink">
-            {c.name}
+            {protectRefs(c.name)}
           </h3>
           <p className="mt-0.5 text-[12.5px] text-muted">{category}</p>
         </div>
@@ -89,18 +104,23 @@ export function ContractCard({
       </header>
 
       {c.party_id || party ? (
-        <div className="mt-3">
+        <div className="mt-3 min-w-0">
           <PartyChip party={party ?? null} id={c.party_id} name={party?.name ?? null} />
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-baseline gap-2">
-        {c.cost_amount !== null && c.cost_interval && c.cost_interval !== "once" ? (
+      <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        {hasCost ? (
           <>
-            <span className="display text-[24px] font-semibold leading-none text-ink">{formatMoney(c.cost_amount, { currency: c.cost_currency })}</span>
-            <span className="-ml-1 text-[13px] text-muted">{formatIntervalSuffix(c.cost_interval)}</span>
+            <Money
+              amount={c.cost_amount}
+              currency={c.cost_currency}
+              interval={c.cost_interval}
+              className="display text-[24px] font-semibold leading-none"
+              intervalClassName="font-sans text-[13px]"
+            />
             {c.cost_interval !== "monthly" && monthly !== null ? (
-              <span className="text-[12.5px] text-muted">≈ {formatMoney(monthly, { currency: c.cost_currency })}/month</span>
+              <span className="whitespace-nowrap text-[12.5px] text-muted">≈ {formatMoney(monthly, { currency: c.cost_currency })}/month</span>
             ) : null}
           </>
         ) : isJob ? (
@@ -116,42 +136,41 @@ export function ContractCard({
       </p>
       <ContractWhy contract={c} className="mt-1.5 self-start" />
 
-      {rolling && comp?.cancel_by && comp.earliest_exit ? (
-        <p className="mt-3 text-[13px] leading-relaxed text-ink/85" data-testid="rolling-note">
-          Cancel any time — it ends <DateText date={comp.earliest_exit} className="font-medium text-ink" /> if your notice arrives by{" "}
-          <DateText date={comp.cancel_by} className="font-medium text-ink" />, otherwise a month later.
-        </p>
-      ) : null}
-
       <dl className="mt-3 divide-y divide-line/80 border-y border-line/80 empty:hidden">
         {upcomingSend ? (
-          <Row label="Post it by" strong>
-            <Countdown date={upcomingSend} showDate />
+          <Row label="Send by" strong>
+            {/* the key date stays ink however far out it is (a grey "in 11 months" reads as done) */}
+            <Countdown date={upcomingSend} showDate inkLater />
           </Row>
         ) : null}
         {upcomingCancel ? (
           <Row label="Must arrive by">
-            <Countdown date={upcomingCancel} showDate className={upcomingSend ? "font-normal" : undefined} />
+            <Countdown date={upcomingCancel} showDate inkLater className={upcomingSend ? "font-normal" : undefined} />
           </Row>
         ) : null}
-        {comp?.current_term_end ? (
-          <Row label={comp.current_term_end < today ? "Term ended" : "Current term ends"}>
-            <DateText date={comp.current_term_end} />
+        {termEnd ? (
+          <Row label={termEnd < today ? "Term ended" : fixedTerm ? "Ends" : "Current term ends"}>
+            <DateText date={termEnd} />
           </Row>
         ) : null}
         {comp?.next_renewal && comp.next_renewal >= today ? (
-          <Row label={ROLLING_REGIMES.has(comp.regime) || !c.renewal_term_months ? "Runs on month by month from" : "Renews on"}>
+          <Row label={CONTINUES_MONTHLY.has(comp.regime) || !c.renewal_term_months ? "Then monthly from" : "Renews on"}>
             <DateText date={comp.next_renewal} />
           </Row>
         ) : null}
-        {c.end_date && c.end_date !== comp?.current_term_end ? (
+        {c.end_date && c.end_date !== termEnd ? (
           <Row label={c.end_date < today ? "Ended" : "Ends"}>
             <DateText date={c.end_date} />
           </Row>
         ) : null}
-        {active && !rolling && comp?.earliest_exit && comp.earliest_exit >= today && !upcomingCancel ? (
+        {earliest ? (
           <Row label="Earliest end if you cancel now">
-            <DateText date={comp.earliest_exit} />
+            <DateText date={earliest} />
+          </Row>
+        ) : null}
+        {rollingArriveBy ? (
+          <Row label="Notice must arrive by">
+            <DateText date={rollingArriveBy} />
           </Row>
         ) : null}
         {c.customer_number ? (
@@ -161,6 +180,12 @@ export function ContractCard({
         ) : null}
       </dl>
 
+      {rollingArriveBy ? (
+        <p className="mt-2 text-[12.5px] leading-5 text-muted" data-testid="rolling-note">
+          You can cancel any month — a notice that arrives later ends it a month later.
+        </p>
+      ) : null}
+
       {whyNot ? (
         <p className="mt-4 flex items-start gap-2 rounded-lg bg-surface-2/70 px-3 py-2 text-[12.5px] leading-5 text-muted" data-testid="cancel-hint">
           <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
@@ -169,18 +194,26 @@ export function ContractCard({
       ) : null}
 
       <footer className="mt-auto flex flex-wrap items-center gap-2 pt-4">
+        {unclear && c.source_doc_id ? (
+          // the notice period isn't in the letter we read: checking it comes first
+          <Link to={`/documents/${encodeURIComponent(c.source_doc_id)}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+            <FileSearch aria-hidden />
+            Check the letter
+            <span className="sr-only"> for {c.name}</span>
+          </Link>
+        ) : null}
         {offerLetter ? (
           <Link
             to={composerHrefFor(c)}
             title={isJob && c.cancel_hint ? c.cancel_hint : undefined}
-            className={buttonVariants({ variant: decideSoon ? "primary" : "secondary", size: "sm" })}
+            className={buttonVariants({ variant: decideSoon ? "primary" : unclear ? "ghost" : "secondary", size: "sm" })}
           >
             <FilePen aria-hidden />
             {endingLetterLabel(c)}
             <span className="sr-only"> for {c.name}</span>
           </Link>
         ) : null}
-        {c.source_doc_id ? (
+        {c.source_doc_id && !unclear ? (
           <Link to={`/documents/${encodeURIComponent(c.source_doc_id)}`} className={buttonVariants({ variant: "ghost", size: "sm" })}>
             <FileText aria-hidden />
             Open letter

@@ -24,30 +24,41 @@ export interface FixedCosts {
   yearly: number;
   /** per currency — a $20 subscription is not €20 of the fixed costs */
   monthlyTotals: Totals;
+  /** what a year of them costs, from each contract's own amount (€59.90 a year counts as €59.90) */
   yearlyTotals: Totals;
   /** active contracts with a known recurring cost */
   counted: number;
   /** active contracts without a known cost (not in the total) */
   unknown: number;
+  /** active jobs: they pay you, so they are never a fixed cost (even when the letter names the pay) */
+  jobs: number;
 }
 
-/** Sum of the monthly costs of active contracts per currency (rounded to cents) and the yearly equivalent. */
+const PER_YEAR = { monthly: 12, quarterly: 4, yearly: 1 } as const;
+
+/** Sum of the monthly costs of active contracts per currency (rounded to cents) and what a year of them costs. */
 export function fixedCosts(contracts: Contract[]): FixedCosts {
   let monthlyTotals: Totals = {};
+  let yearlyTotals: Totals = {};
   let counted = 0;
   let unknown = 0;
+  let jobs = 0;
   for (const c of contracts) {
     if (c.status !== "active") continue;
+    if (c.category === "employment") {
+      jobs++;
+      continue;
+    }
     const m = contractMonthlyCost(c);
-    if (m === null) {
-      if (c.category !== "employment") unknown++;
+    if (m === null || c.cost_amount === null || !c.cost_interval || c.cost_interval === "once") {
+      unknown++;
       continue;
     }
     monthlyTotals = addToTotals(monthlyTotals, m, c.cost_currency);
+    yearlyTotals = addToTotals(yearlyTotals, c.cost_amount * PER_YEAR[c.cost_interval], c.cost_currency);
     counted++;
   }
-  const yearlyTotals = Object.fromEntries(Object.entries(monthlyTotals).map(([code, m]) => [code, Math.round(m * 12 * 100) / 100]));
-  return { monthly: monthlyTotals.EUR ?? 0, yearly: yearlyTotals.EUR ?? 0, monthlyTotals, yearlyTotals, counted, unknown };
+  return { monthly: monthlyTotals.EUR ?? 0, yearly: yearlyTotals.EUR ?? 0, monthlyTotals, yearlyTotals, counted, unknown, jobs };
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -71,6 +82,29 @@ export function isLockInDecision(c: Pick<Contract, "computed">): boolean {
 export function isRollingContract(c: Pick<Contract, "computed" | "status">): boolean {
   const k = c.computed;
   return c.status === "active" && Boolean(k?.cancel_by) && !k?.next_renewal && !k?.current_term_end;
+}
+
+/** Rules under which an uncancelled contract simply continues after its term, cancellable any month. */
+export const CONTINUES_MONTHLY = new Set<string>(["bgb309_new", "tkg56", "stromgvv20", "sgbv175"]);
+
+/**
+ * A contract that ends by itself on its end date (a fixed-term job). Not one whose end date is
+ * only the end of its minimum term: a consumer contract that then runs on month by month (it has
+ * a next renewal, or a rule that keeps it going) is not ending.
+ */
+export function isFixedTerm(c: Pick<Contract, "computed" | "end_date">): boolean {
+  const k = c.computed;
+  if (!c.end_date || (k?.current_term_end && k.current_term_end !== c.end_date)) return false;
+  return !k?.next_renewal && !CONTINUES_MONTHLY.has(k?.regime ?? "");
+}
+
+/**
+ * Terms we couldn't work out (low confidence, and no date at all — usually the notice period is
+ * missing from the letter): nothing about how it ends may be drawn as if it were known.
+ */
+export function termsUnclear(c: Pick<Contract, "computed" | "status">): boolean {
+  const k = c.computed;
+  return c.status === "active" && k?.confidence === "low" && !k.cancel_by && !k.earliest_exit && !k.current_term_end && !k.next_renewal;
 }
 
 /**
@@ -186,8 +220,10 @@ export function ruleInWords(c: Contract, today: string): RuleInWords {
       text = "Open-ended: notice given by the 3rd working day of a month ends the tenancy at the end of the month after next — signed by hand on paper";
       break;
     case "employment622":
+      // a fixed-term job can only be ended early if the contract allows it (§ 15 Abs. 4 TzBfG):
+      // name the notice only when the contract has one
       text = c.end_date
-        ? `Fixed term until ${formatDate(c.end_date, { style: "day", today })}; ${notice ?? "the statutory notice"} to end it earlier`
+        ? `Fixed term until ${formatDate(c.end_date, { style: "day", today })} — it ends by itself${notice ? `. To leave earlier: ${notice}` : ", no notice needed"}`
         : `Employment: ${notice ?? "the statutory notice"}, at least the legal minimum`;
       break;
     default: {
@@ -221,6 +257,25 @@ function addMonthsISO(iso: string, months: number): string {
 
 const marker = (date: string, label: string, kind: TimelineMarker["kind"]): TimelineMarker => ({ date, label, kind });
 
+export interface LaneNote {
+  text: string;
+  tone: "warn" | "muted";
+}
+
+/**
+ * The line under a contract's name in the chart when the next date on its lane would mislead:
+ * terms we couldn't work out ask to be checked, and a contract that is no decision (cancellable
+ * any month, or its minimum term just running out) says when it could end at the earliest — not
+ * "Minimum term ends · in 2 days". Null: the chart's own next date.
+ */
+export function contractLaneNote(c: Contract, today: string): LaneNote | null {
+  // short enough for a phone's lane label; the same words as the card's button
+  if (termsUnclear(c)) return { text: "Check the letter", tone: "warn" };
+  const exit = c.computed?.earliest_exit;
+  if (c.status !== "active" || !exit || exit < today || isLockInDecision(c) || isFixedTerm(c)) return null;
+  return { text: `Earliest end · ${formatDate(exit, { style: "day", today })}`, tone: "muted" };
+}
+
 /**
  * One lane per contract: the current term (or the whole open-ended contract), what follows it
  * (renewal / month to month), the hatched "Time to cancel" window ending on the must-arrive-by
@@ -252,7 +307,7 @@ export function contractLanes(contracts: Contract[], range: { from: string; to: 
     if (c.status !== "active") {
       const end = c.end_date ?? termEnd ?? today;
       bars.push(bar("term", c.status === "cancelled" ? "Cancelled — runs until" : "Ended", start, end, { markers: [marker(end, "Ends", "expiry")] }));
-    } else if (c.end_date && (!termEnd || termEnd === c.end_date)) {
+    } else if (c.end_date && isFixedTerm(c)) {
       bars.push(bar("term", "Fixed term", start, c.end_date, { markers: [marker(c.end_date, "Ends", "expiry")] }));
     } else if (termEnd) {
       const regime = comp?.regime;
@@ -273,6 +328,9 @@ export function contractLanes(contracts: Contract[], range: { from: string; to: 
       } else {
         bars.push(bar("after", "Cancellable any time", next, beyond));
       }
+    } else if (termsUnclear(c)) {
+      // no notice period in the letter: don't draw it as cancellable any time
+      bars.push(bar("open", "Terms unclear", start, beyond));
     } else {
       const anyTime = c.notice_basis === "any_time" || comp?.regime === "bgb309_new" || comp?.regime === "stromgvv20";
       bars.push(bar("open", anyTime ? "Cancellable any time" : "Open-ended", start, beyond));

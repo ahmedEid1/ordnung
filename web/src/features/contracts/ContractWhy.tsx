@@ -10,17 +10,21 @@ import { ADVICE_LINKS } from "@/components/ui/Disclaimer";
 import { Receipt, ReceiptPopover, useReceiptSteps, type ReceiptDate } from "@/components/ui/Receipt";
 import { CONTRACT_REGIME_COPY, copyFor } from "@/lib/copy";
 import { formatInlineText } from "@/lib/format";
-import { isRollingContract } from "./model";
+import { CONTINUES_MONTHLY, isFixedTerm, isRollingContract } from "./model";
 
 function contractDates(contract: Contract): ReceiptDate[] {
   const comp = contract.computed;
   if (!comp) return [];
   const dates: ReceiptDate[] = [];
-  if (comp.send_by) dates.push({ label: "Post it by", date: comp.send_by });
+  // the same words as the card: "Send by", "Must arrive by", "Then monthly from"
+  if (comp.send_by) dates.push({ label: "Send by", date: comp.send_by });
   if (comp.cancel_by) dates.push({ label: "Must arrive by", date: comp.cancel_by });
   if (comp.safe_date && comp.safe_date !== comp.cancel_by) dates.push({ label: "Safe date (a working day)", date: comp.safe_date });
-  if (comp.current_term_end) dates.push({ label: "Current term ends", date: comp.current_term_end });
-  if (comp.next_renewal) dates.push({ label: "Renews on", date: comp.next_renewal });
+  if (comp.current_term_end) dates.push({ label: isFixedTerm(contract) ? "Ends" : "Current term ends", date: comp.current_term_end });
+  if (comp.next_renewal) {
+    const monthly = CONTINUES_MONTHLY.has(comp.regime) || !contract.renewal_term_months;
+    dates.push({ label: monthly ? "Then monthly from" : "Renews on", date: comp.next_renewal });
+  }
   if (comp.earliest_exit && comp.earliest_exit !== comp.current_term_end) dates.push({ label: "Earliest possible end", date: comp.earliest_exit });
   return dates;
 }
