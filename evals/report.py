@@ -186,7 +186,9 @@ def add_condition(
     A condition the run already had from the start is refused: its numbers are the published run's
     and must stay as they were. Replacing a condition added earlier this way is allowed, and never
     silent: the replaced recording's date, commit and accuracy go to its ``earlier_recordings``,
-    which the headline's footnote and the chart show next to the number.
+    which the headline's footnote and the chart show next to the number. Its ``recording_spend`` (what
+    every live recording of it cost, on both splits — kept by hand, see :func:`recording_spend_text`)
+    is carried over.
     """
     meta, source_meta = results["meta"], source["meta"]
     if condition in meta.get("conditions", []) and condition not in meta.get("added_conditions", {}):
@@ -232,6 +234,7 @@ def add_condition(
         "run_id": source_meta.get("run_id"),
         "note": note,
         **({"earlier_recordings": earlier} if earlier else {}),
+        **({"recording_spend": spend} if (spend := (replaced or {}).get("recording_spend")) else {}),
     }
     return recompute_metrics(merged, manifest_path)
 
@@ -262,6 +265,28 @@ def earlier_recordings_text(info: Mapping[str, Any], *, short: bool = False) -> 
         f"checks and hints were revised following a review of the earlier ones; they scored "
         + "; ".join(scores)
         + "."
+    )
+
+
+def recording_spend_text(info: Mapping[str, Any]) -> str:
+    """What recording an added condition cost in all, from its ``recording_spend``; empty without one.
+
+    ``recording_spend`` lists every live recording of the condition — both splits, replaced ones
+    included — as ``{"split", "commit", "calls", "cost_usd"}`` (the API-equivalent cost the Claude CLI
+    reported for its recorded answers). It is kept by hand: the replaced recordings are no longer in
+    the tree, so only the record says what they cost.
+    """
+    spend = info.get("recording_spend") or []
+    if not spend:
+        return ""
+    total = sum(float(row.get("cost_usd") or 0) for row in spend)
+    by_split: dict[str, list[str]] = {}
+    for row in spend:
+        by_split.setdefault(str(row.get("split")), []).append(f"${float(row.get('cost_usd') or 0):.2f}")
+    parts = "; ".join(f"{split} {', '.join(costs)}" for split, costs in by_split.items())
+    return (
+        f"Recording it cost ${total:.2f} in all (API-equivalent): {len(spend)} live recordings, in order "
+        f"{parts}; smoke runs of a few letters are not counted."
     )
 
 
@@ -649,11 +674,13 @@ def _headline(
                 + "."
             )
         recordings = earlier_recordings_text(info)
+        spend = recording_spend_text(info)
         footnotes.append(
             f"† {_label(condition)} ran on {info.get('date')}, after the held-out run, against the code of "
             f"that day — including the engine fix described under “After the held-out run” — so it is not "
             f"held-out, and it is left out of the paired differences with Ordnung below.{fair}"
             + (f" {recordings}" if recordings else "")
+            + (f" {spend}" if spend else "")
         )
     footnote = ("\n\n" + "\n\n".join(footnotes)) if footnotes else ""
     paired = (
@@ -856,8 +883,9 @@ def _tool_section(results: Mapping[str, Any], rescored: Mapping[str, Any] | None
         "chose (its reading of the period, anchor, sender or region) or from one of Ordnung's documented "
         "earliest-plausible-date policies. Calls carry no item id: every date counts for an obligation "
         "when the answer dates only one; otherwise a `compute_deadline` date counts for the obligation "
-        "whose sentence the model passed it, and an `add_working_days` date (it gets no sentence) for an "
-        "obligation whose final date it is.",
+        "whose sentence the model passed it, and a date no obligation's sentence claims (an "
+        "`add_working_days` date, which gets no sentence, or a call given another sentence of the letter) "
+        "for an obligation whose final date it is.",
     ]
     if other_today:
         paragraphs.append(

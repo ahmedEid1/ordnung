@@ -777,6 +777,42 @@ def test_calls_belong_to_the_item_whose_sentence_they_were_given() -> None:
     assert not metrics.same_sentence("", period.quote) and not metrics.same_sentence("binnen", "")
 
 
+def test_a_call_given_a_sentence_no_item_quotes_belongs_to_the_item_it_dates() -> None:
+    """Reviewer repro (test-tax_assessment-D1): the model asked about the Einspruch twice — once quoting
+    the remedy sentence (the engine's earlier date), once quoting the posting-day sentence — and answered
+    with the second call's date. That is the tool's date, not an override of it."""
+    entry = make_entry(
+        items=[truth_item("deadline", "2026-02-09")], optional=[truth_item("payment", "2026-02-05")]
+    )
+    payment = item("payment", "2026-02-05", quote="Zu zahlen: 1.236,00 € – fällig am 05.02.2026")
+    objection = item(
+        "deadline",
+        "2026-02-09",
+        quote="Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch erhoben werden.",
+    )
+
+    def call(text: str, due: str) -> ToolUse:
+        return ToolUse(name="compute_deadline", input={"spec": {"text": text}}, due_date=due)
+
+    remedy = call(objection.quote, "2026-02-05")
+    posting = call("Dieser Bescheid wurde am 02.01.2026 zur Post gegeben.", "2026-02-09")
+    answer = prediction(entry, [payment, objection], condition="llm_rules_tool", tools=[remedy, posting])
+    assert metrics.item_tool_dates(answer, objection) == ["2026-02-05", "2026-02-09"]
+    assert metrics.item_tool_dates(answer, payment) == []  # 5 Feb came from the remedy sentence's call
+    (outcome,) = score_document(entry, answer).scored_items
+    assert (outcome.backing, outcome.tool_had_truth, outcome.outcome) == ("tool_date", True, "correct")
+    # a date claimed by another item's sentence stays that item's
+    claimed = call(payment.quote, "2026-02-09")
+    other = prediction(entry, [payment, objection], condition="llm_rules_tool", tools=[remedy, claimed])
+    assert metrics.item_tool_dates(other, objection) == ["2026-02-05"]
+    assert score_document(entry, other).scored_items[0].backing == "overrode_tool"
+    # a spec that is no object has no sentence
+    odd = ToolUse(name="compute_deadline", input={"spec": "x"}, due_date="2026-02-09")
+    assert metrics.item_tool_dates(prediction(entry, [payment, objection], tools=[odd]), objection) == [
+        "2026-02-09"
+    ]
+
+
 def test_tool_use_summary() -> None:
     entries = [make_entry(f"test-{n}") for n in range(4)]
     answers = [

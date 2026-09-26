@@ -30,8 +30,10 @@ returned — ``compute_deadline``'s due date and ``add_working_days``' date (the
 may use instead). Calls carry no item id, so a date is attributed by a written policy: every date
 belongs to the only item when the answer dates just one; otherwise a ``compute_deadline`` date
 belongs to the item whose sentence it was given (its ``spec.text`` matches the item's quote, fuzzy
-partial match ≥ :data:`SAME_SENTENCE_SCORE`), and an ``add_working_days`` date — which comes with no
-sentence — to an item whose final date it is. Every scored item the model dated is then
+partial match ≥ :data:`SAME_SENTENCE_SCORE`), and a date no item's sentence claims — an
+``add_working_days`` date, which comes with no sentence, or a ``compute_deadline`` call given a
+sentence no item quotes (e.g. the one stating the posting day) — to an item whose final date it is.
+Every scored item the model dated is then
 ``tool_date`` (its final date is one of its tool dates), ``overrode_tool`` (it has tool dates, the
 final date is none of them), ``other_obligation`` (it has none, but the letter's date tools answered
 about another of its obligations) or ``no_tool_date`` (no date tool answered on that letter).
@@ -603,20 +605,29 @@ def same_sentence(spec_text: str, quote: str) -> bool:
     return float(score) >= SAME_SENTENCE_SCORE
 
 
+def _spec_text(use: ToolUse) -> str:
+    spec = use.input.get("spec")
+    return str((spec if isinstance(spec, dict) else {}).get("text") or "")
+
+
 def item_tool_dates(pred: Prediction, item: PredictedItem) -> list[str]:
-    """The tool dates that belong to ``item`` (module docstring, "Tool use")."""
+    """The tool dates that belong to ``item`` (module docstring, "Tool use").
+
+    A ``compute_deadline`` call belongs to the items whose sentence it was given; a date no item's
+    sentence claims belongs to an item whose final date it is.
+    """
     answers = _date_answers(pred)
     if sum(1 for other in pred.items if other.due_date) > 1:
         final = iso_or_none(item.due_date)
-        answers = [
-            use
-            for use in answers
-            if (
-                same_sentence(str((use.input.get("spec") or {}).get("text") or ""), item.quote)
-                if use.name == "compute_deadline"
-                else answer_date(use) == final
-            )
-        ]
+
+        def belongs(use: ToolUse) -> bool:
+            if use.name == "compute_deadline":
+                claimed = [other for other in pred.items if same_sentence(_spec_text(use), other.quote)]
+                if claimed:
+                    return item in claimed
+            return answer_date(use) == final
+
+        answers = [use for use in answers if belongs(use)]
     return list(dict.fromkeys(day for use in answers if (day := answer_date(use))))
 
 

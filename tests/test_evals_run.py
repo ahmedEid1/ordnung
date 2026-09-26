@@ -1132,6 +1132,23 @@ async def test_a_condition_added_later_keeps_the_published_numbers(tmp_path: Pat
     third = report.add_condition(again, later.results, "llm_rules_tool")
     assert len(third["meta"]["added_conditions"]["llm_rules_tool"]["earlier_recordings"]) == 2
     assert "This is the third recording" in report.render_markdown([third])
+    # what every recording cost (both splits, kept by hand) is shown with it and survives a replacement
+    assert "Recording it cost" not in report.render_markdown([third])
+    third["meta"]["added_conditions"]["llm_rules_tool"]["recording_spend"] = [
+        {"split": "dev", "commit": "a", "calls": 28, "cost_usd": 1.4477},
+        {"split": "test", "commit": "a", "calls": 63, "cost_usd": 3.4003},
+        {"split": "test", "commit": "b", "calls": 63, "cost_usd": 3.5036},
+    ]
+    fourth = report.add_condition(third, later.results, "llm_rules_tool")
+    spent = next(
+        line
+        for line in report.render_markdown([fourth]).splitlines()
+        if line.startswith("† LLM + rules tool")
+    )
+    assert (
+        "Recording it cost $8.35 in all (API-equivalent): 3 live recordings, in order dev $1.45; test $3.40, "
+        "$3.50; smoke runs of a few letters are not counted." in spent
+    )
     # the re-scored table does not put a condition recorded after the fix under "held-out"
     rescored_section = report.render_markdown([again], rescored=again).split("## After the held-out run", 1)[
         1
