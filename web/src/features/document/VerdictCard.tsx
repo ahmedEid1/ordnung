@@ -39,10 +39,11 @@ import {
   dayCountdown,
   decisionSuggestion,
   incomingMoney,
-  isCourtOrder,
   isOpenItem,
   isOptionalObjection,
+  isServed,
   leadsWithDecision,
+  mayNotBeOwed,
   mustAct,
   needsArrivalDate,
   needsCheck,
@@ -90,6 +91,13 @@ function Section({ label, icon: Icon, children, className }: { label: string; ic
   );
 }
 
+/** What the verdict says about a letter that must be acted on when no to-do carries its date. */
+const ADVICE_NOW: Record<string, string> = {
+  landlord_notice: "Get advice now: your landlord is ending your tenancy. Have the notice checked by a tenants' association — see the card on this page.",
+  dismissal: "Get advice now: only a court action within three weeks of receiving a dismissal keeps your rights — see the card on this page.",
+  default: "Get advice now: this is a court order with a short deadline — see the card on this page.",
+};
+
 export interface VerdictCardProps {
   detail: DocumentDetail;
   primary: Item | null;
@@ -114,6 +122,8 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
   const optional = open ? isOptionalObjection(open) && !mustAct(doc) : false;
   const alsoByLaw = !scam && !decision ? otherLawDeadlines(detail.items, open) : [];
   const refund = incomingMoney(detail.items);
+  // a late operating-cost statement's back-payment: still a to-do, but checked before it is paid
+  const notOwed = open ? mayNotBeOwed(open, detail.advice) : false;
   const refundText = refund?.amount != null ? `${formatMoney(refund.amount, { currency: refund.currency })} comes back to you` : null;
 
   return (
@@ -194,6 +204,15 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
               </p>
             ) : null}
             {debit ? <p className="mt-1 text-[13px] text-muted">Collected automatically by direct debit — nothing to transfer.</p> : null}
+            {notOwed ? (
+              <p className="mt-2 flex items-start gap-1.5 text-[13.5px] leading-snug text-warn-ink">
+                <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                <span>
+                  Check before you pay: this statement seems to have come too late, so you may owe no back-payment (§&nbsp;556 Abs.&nbsp;3 BGB). See the card on this
+                  page.
+                </span>
+              </p>
+            ) : null}
             {alsoByLaw.length ? (
               <ul className="mt-3 space-y-1.5" aria-label="Also due by law">
                 {alsoByLaw.map((i) => (
@@ -214,6 +233,13 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
               </ul>
             ) : null}
           </>
+        ) : mustAct(doc) ? (
+          // a court order, a dismissal or a landlord's notice without an open to-do (a notice without notice
+          // period, or one whose end we couldn't read) is never "nothing to do"
+          <p className="flex items-start gap-2 text-[16px] font-medium leading-snug text-ink">
+            <Scale className="mt-0.5 size-[18px] shrink-0 text-warn" aria-hidden />
+            <span>{ADVICE_NOW[doc.kind ?? "default"] ?? ADVICE_NOW.default}</span>
+          </p>
         ) : (
           <p className="flex items-center gap-2 text-[15px] font-medium text-ink">
             <CircleCheckBig className="size-[18px] text-ok" aria-hidden />
@@ -288,7 +314,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
                   Counted from the letter date — the earliest possible.{" "}
                   {onAskArrival ? (
                     <button type="button" onClick={onAskArrival} className="font-semibold underline underline-offset-2 hover:no-underline">
-                      {isCourtOrder(doc) ? "Tell us when it was delivered" : "Tell us when it arrived"}
+                      {isServed(doc, [open]) ? "Tell us when it was delivered" : "Tell us when it arrived"}
                     </button>
                   ) : null}
                 </span>

@@ -90,6 +90,45 @@ describe("the advice card of a high-stakes letter", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
+  it("asks a court letter filed as another kind for its envelope date, never 'Today'", () => {
+    // a Versäumnisurteil's Einspruch counts from delivery (its receipt cites § 180 ZPO)
+    const doc = makeDoc({ id: "doc_vu", kind: "authority_letter", area: "money", title: "Versäumnisurteil", received_date: null, doc_date: "2026-09-22" });
+    const item = makeItem({
+      id: "itm_vu",
+      title: "Object to the default judgment (Einspruch)",
+      due_date: "2026-10-06",
+      date_spec: { type: "relative", anchor: "receipt", amount: 2, unit: "weeks", nature: "objection", text: "", anchor_date: null, date: null, time: null, legal_basis: "§ 339 ZPO", delivery_rule: "none", shift_rule: "auto" },
+      computation: makeReceipt({ rule_ids: ["zpo_339", "zpo_180", "receipt_fallback"] }),
+    });
+    renderWithProviders(<DocumentWarnings detail={makeDetail({ document: doc, items: [item] })} />, { client: client() });
+    expect(screen.getByText("When was it delivered?")).toBeInTheDocument();
+    expect((screen.getByLabelText("Date on the yellow envelope") as HTMLInputElement).value).toBe("");
+    expect(screen.queryByRole("button", { name: "Today" })).toBeNull();
+  });
+
+  it("never files a landlord's notice without a to-do as 'nothing to do'", () => {
+    // a notice without notice period, or one whose end we couldn't read, has no objection to-do
+    const doc = makeDoc({ id: "doc_notice", kind: "landlord_notice", area: "home", title: "Fristlose Kündigung" });
+    renderWithProviders(<VerdictCard detail={makeDetail({ document: doc, items: [] })} primary={null} onAskArrival={() => {}} />, { client: client() });
+    expect(screen.queryByText(/Nothing right now/)).toBeNull();
+    expect(screen.getByText(/Get advice now: your landlord is ending your tenancy/)).toBeInTheDocument();
+  });
+
+  it("says to check a late statement's back-payment before paying, and doesn't lead with Pay", () => {
+    const doc = makeDoc({ id: "doc_statement", kind: "utility_bill", area: "home", title: "Operating-cost statement 2024" });
+    const pay = makeItem({
+      kind: "payment",
+      title: "Pay the back-payment",
+      amount: 120,
+      due_date: "2026-09-30",
+      computation: makeReceipt({ rule_ids: ["date_as_written", "bgb_556_3"] }),
+    });
+    const detail = makeDetail({ document: doc, items: [pay] });
+    renderWithProviders(<VerdictCard detail={detail} primary={pay} onAskArrival={() => {}} />, { client: client() });
+    expect(screen.getByText(/Check before you pay: this statement seems to have come too late/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Pay/ })).toBeNull();
+  });
+
   it("replaces the generic court-action card with the letter's own", () => {
     const doc = makeDoc({ kind: "dismissal", area: "work", remedy: { type: "klage", addressee: "Arbeitsgericht", period_text: null, form_text: null, quote: null } });
     renderWithProviders(<DocumentWarnings detail={makeDetail({ document: doc, advice: ADVICE_BY_KIND.dismissal })} />, { client: client() });

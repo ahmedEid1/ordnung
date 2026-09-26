@@ -9,7 +9,7 @@ import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
 import { Dialog } from "@/components/ui/Dialog";
 import { Disclaimer } from "@/components/ui/Disclaimer";
-import { Field, Input, Select, Textarea } from "@/components/ui/Field";
+import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { Glossary } from "@/components/ui/Glossary";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -166,6 +166,14 @@ function DocOption({ d, party, extra }: { d: Document; party?: Party; extra?: Re
   );
 }
 
+/**
+ * Whether an objection to this letter can ask to suspend enforcement: an enforcement order or an
+ * authority's decision — not a court payment order (nothing to enforce yet) or a landlord's notice.
+ */
+function canSuspend(doc: Document | null): boolean {
+  return Boolean(doc) && doc!.kind !== "court_payment_order" && doc!.kind !== "landlord_notice";
+}
+
 /** Why an objection is possible when the law, not the letter's instructions, gives it. */
 function StatutoryNote({ kind, term }: { kind: Document["kind"]; term: "Einspruch" | "Widerspruch" }) {
   if (kind === "landlord_notice") {
@@ -180,14 +188,15 @@ function StatutoryNote({ kind, term }: { kind: Document["kind"]; term: "Einspruc
     return (
       <>
         The law gives you an <Glossary term={term} /> against an enforcement order (§ 700 ZPO). It goes to the court that sent it; reasons can follow. The
-        order can still be enforced while your objection is pending — to ask the court to suspend it, write “suspend enforcement” in your wishes below.
+        order can still be enforced while your objection is pending — tick below to ask the court to suspend it.
       </>
     );
   }
   return (
     <>
-      The law gives you a <Glossary term={term} /> against a court payment order (§ 694 ZPO). It goes to the court that sent it — no reasons needed. You can also
-      use the court's own form.
+      The law gives you a <Glossary term={term} /> against a court payment order (§ 694 ZPO). It goes to the court that sent it — no reasons needed. This
+      letter objects to the whole claim. To object to only part of it (only the interest or the costs, say), use the form that came with the order and
+      tick how much you object to — send the form or this letter, not both.
     </>
   );
 }
@@ -429,6 +438,8 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const [typedRecipient, setTypedRecipient] = useState("");
   const [values, setValues] = useState<DetailValues>({});
   const [instructions, setInstructions] = useState("");
+  // the application to suspend enforcement is a legal sentence: an explicit choice, never read from the wishes
+  const [suspend, setSuspend] = useState(false);
   const [language, setLanguage] = useState<"de" | "en">("de");
   const [filter, setFilter] = useState("");
   // opened for a chosen letter ("Withdraw", "Ask for more time" on a letter): start at step 2, not the list of kinds
@@ -541,6 +552,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
         case_id: (kind === "cancellation" ? contract?.case_id : doc?.case_id) ?? null,
         instructions: instructions.trim() || undefined,
         language,
+        suspend_enforcement: kind === "objection" && canSuspend(doc) ? suspend : undefined,
         details: template ? detailsPayload(template, templateValues, recipientId ? null : typedRecipient) : undefined,
       },
       {
@@ -681,7 +693,16 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                     {objectable.map((d) => {
                       const c = objectionCheck(d);
                       return (
-                        <OptionRow key={d.id} name="letter-doc" value={d.id} selected={docId === d.id} onSelect={() => setDocId(d.id)}>
+                        <OptionRow
+                          key={d.id}
+                          name="letter-doc"
+                          value={d.id}
+                          selected={docId === d.id}
+                          onSelect={() => {
+                            setDocId(d.id);
+                            setSuspend(false);
+                          }}
+                        >
                           <DocOption
                             d={d}
                             party={parties.get(d.party_id ?? "")}
@@ -714,6 +735,19 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                       </span>
                     ) : null}
                   </p>
+                ) : null}
+                {doc && check.ok && canSuspend(doc) ? (
+                  <Checkbox
+                    label={doc.kind === "enforcement_order" ? "Also ask the court to suspend enforcement for now" : "Also ask to suspend enforcement"}
+                    description={
+                      doc.kind === "enforcement_order"
+                        ? "Adds the application for “einstweilige Einstellung” (§§ 719, 707 ZPO). The court decides; get advice about it."
+                        : "Adds the application for “Aussetzung der Vollziehung”. For taxes and other public charges, an objection alone doesn't stop the payment being due."
+                    }
+                    checked={suspend}
+                    onChange={(e) => setSuspend(e.target.checked)}
+                    className="mt-3"
+                  />
                 ) : null}
               </>
             ) : null}

@@ -1852,6 +1852,12 @@ export interface components {
             language?: "de" | "en";
             /** @description the facts a template letter needs (withdrawal, payment plan …) */
             details?: components["schemas"]["LetterDetails"] | null;
+            /**
+             * Suspend Enforcement
+             * @description an objection also applies to suspend enforcement (einstweilige Einstellung at a court, Aussetzung der Vollziehung at an authority); ignored for other letters and a court payment order
+             * @default false
+             */
+            suspend_enforcement?: boolean;
         };
         /**
          * DraftPatch

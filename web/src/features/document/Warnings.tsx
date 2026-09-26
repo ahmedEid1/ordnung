@@ -20,7 +20,7 @@ import { ADVICE_LINKS } from "@/components/ui/Disclaimer";
 import { Glossary } from "@/components/ui/Glossary";
 import { Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
-import { needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
+import { isServed, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
 import { useItemActions } from "./actions";
 import { useEvidence } from "./EvidenceContext";
 import { LetterAdviceCard } from "./LetterAdvice";
@@ -212,12 +212,9 @@ function AdviceCard({ type, addressee }: { type: "klage" | "unclear"; addressee:
   );
 }
 
-/** Court orders are served formally: the day counts from the date on the yellow envelope. */
-const SERVED = new Set<Document["kind"]>(["court_payment_order", "enforcement_order"]);
-
 function ArrivalQuestion({ doc, items }: { doc: Document; items: Item[] }) {
   const todayISO = useTodayISO();
-  const served = SERVED.has(doc.kind);
+  const served = isServed(doc, items);
   const update = useUpdateDocument();
   // A court's letter counts from the date the postman wrote on the envelope, often days before it was
   // opened: nothing is filled in for it, so one Save can never move a court deadline later by mistake.
@@ -242,9 +239,10 @@ function ArrivalQuestion({ doc, items }: { doc: Document; items: Item[] }) {
       {
         onSuccess: () =>
           toast.success("Thanks — dates updated", {
+            // a start the letter itself names counts when it is earlier (see "Why this date?")
             description: served
-              ? `Counting from ${formatDate(date, { style: "short" })}, the delivery date on the envelope.`
-              : `Counting from ${formatDate(date, { style: "short" })}, when the letter arrived.`,
+              ? `Counting from ${formatDate(date, { style: "short" })}, the delivery date on the envelope — or from an earlier start the letter names.`
+              : `Counting from ${formatDate(date, { style: "short" })}, when the letter arrived — or from an earlier day the letter names.`,
           }),
       },
     );

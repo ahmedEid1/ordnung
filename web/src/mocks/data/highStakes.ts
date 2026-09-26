@@ -442,8 +442,8 @@ export const DISMISSAL_RULES: Record<string, { spec: DateSpec; receipt: Computat
       "confidence": "high"
     },
     "title": "Register as job-seeking (arbeitsuchend) at the Agentur für Arbeit",
-    "action": "Register online, by phone or in person. Your details and the end date of the job are enough for now. Not needed if this ends an apprenticeship in a company (§ 38 Abs. 1 S. 4 SGB III).",
-    "consequence": "Registering late can cost you one week of unemployment benefit (Sperrzeit).",
+    "action": "Register online, by phone or in person. Your details and the end date of the job are enough for now. Not needed if this ends an apprenticeship in a company (§ 38 Abs. 1 S. 4 SGB III). Working students (Werkstudenten) and mini-jobbers are usually not insured against unemployment (§ 27 SGB III): they have no benefit to lose, but registering still helps.",
+    "consequence": "If you claim unemployment benefit, registering late can cost you one week of it (Sperrzeit).",
     "priority": "high"
   }
 };
@@ -513,7 +513,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
     },
     "notes": [
       "In writing to the court that issued the order (§ 694 ZPO) — best on the form that came with it (tick how much you object to and sign it), or online. No reasons are needed; e-mail is not valid.",
-      "The letter objects to the whole claim; no reasons are needed. The form that came with the order does the same — use either, not both. Get advice if you're unsure."
+      "This letter objects to the whole claim; no reasons are needed. To object to only part of it (for example only the interest or the costs), don't send this letter: use the form that came with the order and tick how much you object to, or go to the court's Rechtsantragstelle. Send the form or this letter, not both. Get advice if you're unsure."
     ]
   },
   "enforcement_order": {

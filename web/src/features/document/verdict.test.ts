@@ -4,7 +4,9 @@ import {
   decisionSuggestion,
   incomingMoney,
   isOptionalObjection,
+  isServed,
   leadsWithDecision,
+  mayNotBeOwed,
   needsArrivalDate,
   needsCheck,
   openItemCounts,
@@ -94,6 +96,18 @@ describe("chooseMainAction", () => {
     expect(chooseMainAction(makeDetail({ items: [notice] }), notice)).toMatchObject({ type: "draft", draftKind: "cancellation" });
   });
 
+  it("doesn't lead with Pay for a back-payment that may not be owed (a late operating-cost statement)", () => {
+    const pay = makeItem({ kind: "payment", amount: 120, due_date: "2026-09-30", computation: makeReceipt({ rule_ids: ["date_as_written", "bgb_556_3"] }) });
+    expect(mayNotBeOwed(pay, null)).toBe(true);
+    expect(chooseMainAction(makeDetail({ items: [pay] }), pay).type).toBe("calendar");
+    // an undated one is caught by the letter's urgent card
+    const undated = makeItem({ kind: "payment", amount: 120 });
+    const card = { kind: "operating_costs", urgent: true } as NonNullable<Parameters<typeof mayNotBeOwed>[1]>;
+    expect(mayNotBeOwed(undated, card)).toBe(true);
+    expect(mayNotBeOwed(undated, { ...card, urgent: false })).toBe(false);
+    expect(mayNotBeOwed(makeItem({ kind: "deadline", computation: makeReceipt({ rule_ids: ["bgb_556_3"] }) }), card)).toBe(false);
+  });
+
   it("pays payments, calendars dated to-dos, otherwise marks done", () => {
     const pay = makeItem({ kind: "payment", amount: 184.3, due_date: "2026-10-09" });
     const incoming = makeItem({ kind: "payment", amount: 324, direction: "in", due_date: "2026-10-09" });
@@ -133,6 +147,10 @@ describe("what needs the person's eyes", () => {
     expect(needsArrivalDate(court, { received_date: null })).toBe(true);
     expect(needsArrivalDate(court, { received_date: "2026-09-25" })).toBe(false);
     expect(needsArrivalDate(makeItem({ date_spec: spec }), { received_date: null })).toBe(false);
+    // any court letter whose period runs from delivery is "served", whatever kind it was filed as
+    expect(isServed(makeDoc({ kind: "authority_letter" }), [court])).toBe(true);
+    expect(isServed(makeDoc({ kind: "enforcement_order" }), [])).toBe(true);
+    expect(isServed(makeDoc({ kind: "authority_letter" }), [makeItem({ date_spec: spec })])).toBe(false);
   });
 
   it("finds the active scam warning", () => {

@@ -127,6 +127,16 @@ export function needsArrivalDate(i: Item, doc: Pick<Document, "received_date">):
 const COURT_ORDERS = new Set<Document["kind"]>(["court_payment_order", "enforcement_order"]);
 
 /**
+ * A court's letter whose period runs from formal delivery (§ 180 ZPO), so the question is "when was it
+ * delivered?" (the date on the yellow envelope), never "when did it arrive?" with a Today button: filed
+ * as a court order, or any to-do whose receipt cites § 180 ZPO (a Versäumnisurteil's Einspruch, an
+ * order filed as another kind) — the same test as {@link needsArrivalDate}.
+ */
+export function isServed(doc: Pick<Document, "kind">, items: Item[]): boolean {
+  return COURT_ORDERS.has(doc.kind) || items.some((i) => Boolean(i.computation?.rule_ids.includes("zpo_180")));
+}
+
+/**
  * A court order: its objection deadline is not "only if you disagree" — doing nothing lets the claim
  * be enforced, so the person must pay or object.
  */
@@ -144,6 +154,17 @@ const MUST_ACT = new Set<Document["kind"]>([...COURT_ORDERS, "dismissal", "landl
 
 export function mustAct(doc: Pick<Document, "kind">): boolean {
   return MUST_ACT.has(doc.kind);
+}
+
+/**
+ * A back-payment that may not be owed: an operating-cost statement that came after its twelve-month
+ * deadline (§ 556 Abs. 3 BGB). The server marks the payment's receipt (it cites `bgb_556_3`), and the
+ * letter's card is then urgent — so even an undated payment is caught. It stays open (nothing is
+ * dismissed for the person), but "Pay" is no longer the main button.
+ */
+export function mayNotBeOwed(i: Item, advice: DocumentDetail["advice"]): boolean {
+  if (i.kind !== "payment") return false;
+  return Boolean(i.computation?.rule_ids.includes("bgb_556_3")) || (advice?.kind === "operating_costs" && advice.urgent);
 }
 
 /** The other open deadlines the law sets for this letter (a dismissal's registration), earliest first. */
@@ -164,8 +185,8 @@ export type MainAction =
  * The one main button of the verdict card:
  * scam → never "Pay" (offer to compare with a real letter) · Einspruch/Widerspruch → draft the
  * objection (type comes from the Rechtsbehelfsbelehrung, never a guess) · a notice deadline on a
- * contract → draft the cancellation · a payment → Pay · a dated to-do → Add to calendar ·
- * otherwise Mark done.
+ * contract → draft the cancellation · a payment → Pay (not when it may not be owed, see
+ * {@link mayNotBeOwed}) · a dated to-do → Add to calendar · otherwise Mark done.
  */
 export function chooseMainAction(detail: DocumentDetail, primary: Item | null): MainAction {
   const scam = scamSuggestion(detail);
@@ -182,7 +203,14 @@ export function chooseMainAction(detail: DocumentDetail, primary: Item | null): 
   if (primary.date_spec?.nature === "notice" && primary.contract_id) {
     return { type: "draft", draftKind: "cancellation", label: "Draft cancellation", item: primary };
   }
-  if (primary.kind === "payment" && primary.direction !== "in" && primary.amount != null && !isDirectDebit(primary)) return { type: "pay", item: primary };
+  if (
+    primary.kind === "payment" &&
+    primary.direction !== "in" &&
+    primary.amount != null &&
+    !isDirectDebit(primary) &&
+    !mayNotBeOwed(primary, detail.advice)
+  )
+    return { type: "pay", item: primary };
   if (primary.due_date) return { type: "calendar", item: primary };
   return { type: "done", item: primary };
 }

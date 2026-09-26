@@ -154,7 +154,7 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "Don't agree to move out or sign anything before you have had advice.",
       "If you object, keep proof that it arrived; a letter is safest, text form is enough since 2025.",
       "If the landlord didn't tell you in time about your right to object, its form and its deadline, you can still object at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB).",
-      "There is no hardship objection for a short let or a furnished room in the flat your landlord lives in (§ 549 Abs. 2 BGB) — ask a tenants' association.",
+      "There is no hardship objection for a garage, parking space or business premises let on its own (§ 578 BGB), nor for a short let or a furnished room in the flat your landlord lives in (§ 549 Abs. 2 BGB) — ask a tenants' association.",
       "A notice without notice period (fristlos) can't be met with this objection. If it is for rent arrears, paying all of them in time can still undo it (§ 569 Abs. 3 Nr. 2 BGB) — get advice at once."
     ],
     "facts": [],
@@ -252,7 +252,7 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "summary": "A court sent this on behalf of someone who says you owe them money. The court has not checked whether that is true. Within two weeks of delivery you either pay or object (Widerspruch); otherwise the claimant can get an enforcement order and have the money collected.",
     "urgent": true,
     "steps": [
-      "The period counts from the delivery date you entered — check it matches the yellow envelope.",
+      "The period counts from the delivery date you entered, or from an earlier start the letter names (see “Why this date?”) — check it matches the yellow envelope.",
       "If you don't owe the money, or not all of it, object on the enclosed form (or online) and send it to the court. You don't have to give reasons.",
       "If you do owe it, pay the claimant — not the court — including the costs listed.",
       "Check it's real: a genuine order comes from a court in a yellow envelope, never by e-mail."
@@ -301,7 +301,7 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "summary": "This court order can be enforced right away, like a judgment. You have two weeks from delivery to object (Einspruch), and this period can't be extended.",
     "urgent": true,
     "steps": [
-      "The period counts from the delivery date you entered — check it matches the yellow envelope.",
+      "The period counts from the delivery date you entered, or from an earlier start the letter names (see “Why this date?”) — check it matches the yellow envelope.",
       "To object, write to the court that issued the order — not by e-mail — or go to its Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record reaches the issuing court, so go early.",
       "An objection doesn't stop enforcement by itself; ask for advice about suspending it.",
       "If you do owe the money, paying it stops further enforcement costs."
@@ -397,7 +397,7 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "Don't agree to move out or sign anything before you have had advice.",
       "If you object, keep proof that it arrived; a letter is safest, text form is enough since 2025.",
       "If the landlord didn't tell you in time about your right to object, its form and its deadline, you can still object at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB).",
-      "There is no hardship objection for a short let or a furnished room in the flat your landlord lives in (§ 549 Abs. 2 BGB) — ask a tenants' association.",
+      "There is no hardship objection for a garage, parking space or business premises let on its own (§ 578 BGB), nor for a short let or a furnished room in the flat your landlord lives in (§ 549 Abs. 2 BGB) — ask a tenants' association.",
       "A notice without notice period (fristlos) can't be met with this objection. If it is for rent arrears, paying all of them in time can still undo it (§ 569 Abs. 3 Nr. 2 BGB) — get advice at once."
     ],
     "facts": [],

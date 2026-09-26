@@ -227,6 +227,21 @@ describe("Letters page", () => {
     expect(post?.body).toMatchObject({ kind: "objection", doc_id: "doc_tax", party_id: "pty_finanzamt", instructions: "Laptop is for work", language: "de" });
   });
 
+  it("asks to suspend enforcement only when ticked — never from the wishes", async () => {
+    const { calls } = useMockApi({ full: true });
+    const user = userEvent.setup();
+    renderWithProviders(<LettersPage />, { route: "/letters?kind=objection&doc=doc_tax" });
+    const dialog = await screen.findByRole("dialog", { name: "New letter" });
+    const box = await within(dialog).findByRole("checkbox", { name: /Also ask to suspend enforcement/ });
+    expect(box).not.toBeChecked();
+    await user.type(within(dialog).getByLabelText(/Your wishes/), "I don't want to suspend enforcement");
+    await user.click(box);
+    await user.click(within(dialog).getByRole("button", { name: /Write the letter/ }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/drafts")).toBe(true));
+    const post = calls.find((c) => c.method === "POST" && c.path === "/drafts");
+    expect(post?.body).toMatchObject({ kind: "objection", doc_id: "doc_tax", suspend_enforcement: true });
+  });
+
   it("pre-fills a cancellation from a contract", async () => {
     useMockApi();
     renderWithProviders(<LettersPage />, { route: "/letters?kind=cancellation&contract=ctr_phone" });
