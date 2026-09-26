@@ -6,7 +6,7 @@
  */
 import type { LucideIcon } from "lucide-react";
 import { CalendarPlus, DatabaseSearch, FileSearch, HandCoins, KeyRound, MapPinHouse, Undo2, Wrench } from "lucide-react";
-import type { Item, LetterDetails, PartyKind, TemplateDraftKind } from "@/api/types";
+import type { Document, Item, LetterDetails, PartyKind, TemplateDraftKind } from "@/api/types";
 import { formatDate, formatMoney } from "@/lib/format";
 
 /** Who a template letter can go to: a letter it answers or a person/organisation, or a typed address. */
@@ -71,7 +71,7 @@ export const TEMPLATES: TemplateConfig[] = [
     whichLabel: "Which letter set the deadline?",
     fields: [
       { name: "until", type: "date", label: "New date you ask for", required: true, need: "the new date", when: "future" },
-      { name: "deadline", type: "date", label: "Current deadline", hint: "Leave empty to use the deadline in the letter." },
+      { name: "deadline", type: "date", label: "Current deadline", hint: "The date you were given, if the letter itself doesn't name it." },
     ],
     wishes: "e.g. I'm waiting for documents from my employer.",
   },
@@ -197,13 +197,61 @@ export interface LetterDefaults {
 
 const OPEN = new Set(["open", "snoozed"]);
 
-/** The letter's defaults from its to-dos — the same choice the server makes (`_earliest_open`). */
-export function letterDefaults(items: readonly Pick<Item, "kind" | "status" | "due_date" | "amount">[]): LetterDefaults {
-  const earliest = (kinds: string[]) =>
+type DefaultsItem = Pick<Item, "kind" | "status" | "due_date" | "amount"> & Partial<Pick<Item, "origin" | "date_spec">>;
+
+/**
+ * A deadline the law sets — one the law adds to the letter (`origin: "rule"`) or an objection period:
+ * nobody extends it by being asked (drafts/compose.py `extendable`).
+ */
+export function isStatutoryDeadline(i: Partial<Pick<Item, "origin" | "date_spec">>): boolean {
+  return i.origin === "rule" || i.date_spec?.nature === "objection";
+}
+
+/** The letter's defaults from its to-dos — the same choice the server makes (`_earliest_open`): the
+ * deadline to extend is never one the law sets. */
+export function letterDefaults(items: readonly DefaultsItem[]): LetterDefaults {
+  const earliest = (kinds: string[], extendable = false) =>
     items
-      .filter((i) => OPEN.has(i.status) && kinds.includes(i.kind) && i.due_date)
+      .filter((i) => OPEN.has(i.status) && kinds.includes(i.kind) && i.due_date && !(extendable && isStatutoryDeadline(i)))
       .sort((a, b) => (a.due_date! < b.due_date! ? -1 : a.due_date! > b.due_date! ? 1 : 0))[0] ?? null;
-  return { deadline: earliest(["deadline", "task"])?.due_date ?? null, amount: earliest(["payment"])?.amount ?? null };
+  return { deadline: earliest(["deadline", "task"], true)?.due_date ?? null, amount: earliest(["payment"])?.amount ?? null };
+}
+
+/** The letter's open deadlines the law sets (a request for more time can't move them). */
+export function statutoryDeadlines<T extends DefaultsItem>(items: readonly T[]): T[] {
+  return items.filter((i) => OPEN.has(i.status) && (i.kind === "deadline" || i.kind === "task") && i.due_date && isStatutoryDeadline(i));
+}
+
+const COURT_ORDERS = new Set<Document["kind"]>(["court_payment_order", "enforcement_order"]);
+
+/**
+ * Why a template letter can't answer this letter — the server refuses the same (drafts/compose.py
+ * `template_refusal`): more time against a deadline the law sets (a court order, a dismissal), or
+ * instalments offered to a court instead of the claimant.
+ */
+export function templateRefusal(kind: TemplateDraftKind, letterKind: Document["kind"] | null | undefined): { title: string; body: string } | null {
+  if (kind === "extension_request" && letterKind && COURT_ORDERS.has(letterKind)) {
+    return {
+      title: "A court's two weeks can't be extended",
+      body:
+        letterKind === "enforcement_order"
+          ? "The two weeks to object to an enforcement order are a Notfrist (§ 339 ZPO) — no one can extend them. Object in time instead, or get advice at once."
+          : "The two weeks to pay or object to a court payment order are set by law (§ 692 ZPO) — no one can extend them by being asked. Object in time instead, or get advice at the court's Rechtsantragstelle.",
+    };
+  }
+  if (kind === "extension_request" && letterKind === "dismissal") {
+    return {
+      title: "The three weeks can't be extended",
+      body: "The three weeks for a court action against a dismissal are set by law (§ 4 KSchG) — your employer can't extend them. Get advice now (see the card on the letter).",
+    };
+  }
+  if (kind === "payment_plan" && letterKind && COURT_ORDERS.has(letterKind)) {
+    return {
+      title: "Offer instalments to the claimant, not the court",
+      body: "A court doesn't agree instalments — the claimant does. Choose the claimant below instead of the letter, and still pay or object by the court's deadline: an offer to pay in instalments doesn't stop the order.",
+    };
+  }
+  return null;
 }
 
 const NO_DEFAULTS: LetterDefaults = { deadline: null, amount: null };

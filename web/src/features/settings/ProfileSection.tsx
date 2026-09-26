@@ -73,7 +73,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
           </Field>
         </div>
         <p className="mt-5 flex items-center gap-2 text-[12.5px] text-muted">
-          <Lock className="size-3.5 shrink-0" aria-hidden /> Stored only on this computer and printed on your letters. Your address and IBAN are never sent to Claude.
+          <Lock className="size-3.5 shrink-0" aria-hidden /> Stored only on this computer and printed on your letters. Ordnung never puts the address and IBAN you enter here into its requests to Claude — letters you add are read as they are printed.
         </p>
       </SettingsCard>
     </section>

@@ -20,6 +20,7 @@ import type {
   Health,
   Item,
   Job,
+  LetterAdvice,
   MailOpenResult,
   PageInfo,
   Profile,
@@ -40,9 +41,9 @@ import { icsDataUrl, itemsToIcs } from "./ics";
 import { BRIEF_TEXT, DEMO_CHECKS, RULES, USAGE } from "./data/system";
 import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
 import { CHECKS_OK, phoneGuidance } from "./data/drafts";
-import { ADVICE_BY_DOC, ADVICE_BY_KIND } from "./data/advice";
+import { ADVICE_ARRIVED_BY_KIND, ADVICE_BY_DOC, ADVICE_BY_KIND } from "./data/advice";
 import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
-import { templateLetter } from "./data/templateLetters";
+import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
 import { SAM, sha } from "./data/constants";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
 
@@ -175,6 +176,18 @@ function pageInfos(db: MockDb, d: Document): PageInfo[] {
   }));
 }
 
+/**
+ * The letter's "get advice" card as the real app works it out on read: a card from the letter itself
+ * only while it is filed as it was read, else its kind's — without asking again for an arrival day
+ * the person entered.
+ */
+function adviceFor(db: MockDb, d: Document): LetterAdvice | null {
+  const own = ADVICE_BY_DOC[d.id];
+  if (own && d.kind === db.seedKind(d.id)) return own;
+  if (!isHighStakes(d.kind)) return null;
+  return (d.received_date ? ADVICE_ARRIVED_BY_KIND : ADVICE_BY_KIND)[d.kind];
+}
+
 function documentDetail(db: MockDb, id: string): DocumentDetail {
   const d = db.document(id) ?? notFound("This letter doesn't exist (anymore).");
   const items = db.state.items.filter((i) => i.doc_id === id);
@@ -186,7 +199,7 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
   );
   return {
     document: d,
-    advice: ADVICE_BY_DOC[d.id] ?? (isHighStakes(d.kind) ? ADVICE_BY_KIND[d.kind] : null),
+    advice: adviceFor(db, d),
     pages: pageInfos(db, d),
     items,
     contracts,
@@ -234,10 +247,15 @@ function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDr
   const partyId = body.party_id ?? contract?.party_id ?? doc?.party_id ?? null;
   const party = db.party(partyId);
   const details = body.details ?? {};
+  const refusal = templateRefusal(body.kind, doc?.kind);
+  if (refusal) throw new HttpError(422, refusal);
   if (!party && !details.recipient) throw new HttpError(422, "Choose who the letter is for, or type their name and address.");
   const firstRef = doc?.references[0];
   const reference = contract?.customer_number ? `Kundennummer ${contract.customer_number}` : firstRef ? `${firstRef.label} ${firstRef.value}` : null;
-  const openDeadline = db.state.items.filter((i) => i.doc_id === doc?.id && i.kind === "deadline" && i.status === "open" && i.due_date).sort((a, b) => (a.due_date! < b.due_date! ? -1 : 1))[0];
+  // the deadline to extend is one someone set — never one the law sets (a rule to-do, an objection period)
+  const openDeadline = db.state.items
+    .filter((i) => i.doc_id === doc?.id && i.kind === "deadline" && i.status === "open" && i.due_date && i.origin !== "rule" && i.date_spec?.nature !== "objection")
+    .sort((a, b) => (a.due_date! < b.due_date! ? -1 : 1))[0];
   const payment = db.state.items.find((i) => i.doc_id === doc?.id && i.kind === "payment" && i.status === "open");
   const letterText = doc ? JSON.stringify(letterFor(doc.id) ?? "") : "";
   const period = /(\d{2}\.\d{2}\.\d{4})\s*(?:-|–|bis)\s*(\d{2}\.\d{2}\.\d{4})/.exec(letterText);
@@ -247,7 +265,7 @@ function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDr
       details: { ...details, deadline: details.deadline ?? openDeadline?.due_date ?? null, amount: details.amount ?? payment?.amount ?? null, period: details.period ?? (period ? `${period[1]} – ${period[2]}` : null) },
       reference,
       docDate: doc?.doc_date ?? null,
-      topic: contract?.name ?? doc?.title ?? null,
+      topic: contract?.name ?? null,
       address: db.state.profile.address,
       iban: db.state.profile.iban,
       taxOffice: party?.kind === "tax_office",
@@ -257,6 +275,7 @@ function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDr
   } catch (err) {
     throw new HttpError(422, err instanceof Error ? err.message : String(err));
   }
+  if (isCourtName(party?.name ?? details.recipient?.split("\n")[0])) letter.guidance.channels = courtChannels();
   const now = nowTs();
   const salutationDe = "Sehr geehrte Damen und Herren,";
   const body_de = [salutationDe, ...letter.paragraphs].join("\n\n");
@@ -367,6 +386,7 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
           ],
           tips: ["Keep a copy of what you sent."],
         };
+  if (!statutory && isCourtName(party?.name)) guidance.channels = courtChannels();
   const hasPlaceholder = bodyDe.includes("…");
   return {
     id: newId("drf"),
@@ -679,7 +699,12 @@ const routes: [string, string, Handler][] = [
     ({ db, params, body }) => {
       const d = db.document(params.id!) ?? notFound();
       const patch = pick<Document>(body, DOC_PATCHABLE);
+      const kindChanged = patch.kind !== undefined && patch.kind !== d.kind;
       Object.assign(d, patch, { updated_at: nowTs() });
+      if (kindChanged) {
+        db.refileRuleItems(d);
+        emit("item.updated", {});
+      }
       if (patch.received_date && d.id === "doc_parking") {
         recomputeParking(db, patch.received_date);
         d.status = "processed";

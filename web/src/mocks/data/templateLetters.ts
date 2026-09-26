@@ -101,6 +101,34 @@ function generalGuidance(note = "No special form is needed."): SendGuidance {
   };
 }
 
+/** A court takes letters in writing only — never plain e-mail (`send.py` `_court_channels`). */
+export function courtChannels(): SendChannel[] {
+  return [
+    channel("letter", "Signed letter", "Quote the court's reference (Aktenzeichen); keep a copy.", null, true),
+    channel("fax", "Fax of the signed letter", "Keep the transmission report."),
+    channel("in_person", "At the court's Rechtsantragstelle", "Free: staff take it down for you; bring the court's letter."),
+    channel("email", "E-mail", "Not valid at a court.", null, false, false),
+  ];
+}
+
+/** A court's name (`routing.is_court`): a word ending in "gericht", and no bailiff or court cashier. */
+export function isCourtName(name: string | null | undefined): boolean {
+  return /gericht\b/i.test(name ?? "") && !/vollzieh|kasse|zahlstelle/i.test(name ?? "");
+}
+
+/** Template letters the server refuses for a kind of letter (`compose.py` `template_refusal`). */
+export function templateRefusal(kind: TemplateDraftKind, letterKind: string | null | undefined): string | null {
+  if (kind === "extension_request" && letterKind === "court_payment_order")
+    return "The two weeks to pay or object to a court payment order are set by law (§ 692 ZPO), and no one can extend them by being asked. Object in time instead — the letter's page offers the objection — or get advice at the court's Rechtsantragstelle.";
+  if (kind === "extension_request" && letterKind === "enforcement_order")
+    return "The two weeks to object to an enforcement order can't be extended (Notfrist, § 339 ZPO). Object in time instead — the letter's page offers the objection — or get advice at once.";
+  if (kind === "extension_request" && letterKind === "dismissal")
+    return "The three weeks for a court action against a dismissal are set by law (§ 4 KSchG) — your employer can't extend them. Get advice now (see the card on the letter).";
+  if (kind === "payment_plan" && (letterKind === "court_payment_order" || letterKind === "enforcement_order"))
+    return "A court doesn't agree instalments — the claimant does. Write to the claimant instead (choose them as the recipient, without the letter), and still pay or object by the court's deadline: an offer to pay in instalments doesn't stop the order.";
+  return null;
+}
+
 function landlordGuidance(note: string): SendGuidance {
   return {
     ...generalGuidance(note),

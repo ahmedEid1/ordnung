@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { Building2, Check, FileX, Languages, Mail, Scale, Search, Sparkles, type LucideIcon } from "lucide-react";
-import { useContracts, useCreateDraft, useDocument, useDocuments, useParties, useProfile } from "@/api/hooks";
+import { useContracts, useCreateDraft, useDocument, useDocuments, useParties, useProfile, useSuggestions } from "@/api/hooks";
 import type { Contract, Document, DraftKind, Party } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
@@ -32,6 +32,8 @@ import {
   letterDefaults,
   missingFields,
   sortForTemplate,
+  statutoryDeadlines,
+  templateRefusal,
   type DetailValues,
   type TemplateConfig,
 } from "./templates";
@@ -177,8 +179,8 @@ function StatutoryNote({ kind, term }: { kind: Document["kind"]; term: "Einspruc
   if (kind === "enforcement_order") {
     return (
       <>
-        The law gives you an <Glossary term={term} /> against an enforcement order (§ 700 ZPO). It goes to the court that sent it; reasons can follow. Paying
-        can still be demanded while it runs.
+        The law gives you an <Glossary term={term} /> against an enforcement order (§ 700 ZPO). It goes to the court that sent it; reasons can follow. The
+        order can still be enforced while your objection is pending — to ask the court to suspend it, write “suspend enforcement” in your wishes below.
       </>
     );
   }
@@ -307,6 +309,9 @@ function TemplateRecipient({
   }, [docs, filter, byId]);
   const sorted = useMemo(() => sortForTemplate(parties, config), [parties, config]);
   const letters = config.target === "letter-or-party";
+  // a letter whose sender isn't in Ordnung: the person types who it goes to (the server needs a recipient)
+  const chosen = letters && docId ? (docs.find((d) => d.id === docId) ?? null) : null;
+  const unknownSender = Boolean(chosen && !chosen.party_id);
 
   return (
     <div className="space-y-3">
@@ -337,6 +342,17 @@ function TemplateRecipient({
               {!shown.length ? <p className="px-1 py-2 text-sm text-muted">{filter ? `No letters match “${filter}”.` : "No letters yet."}</p> : null}
             </div>
           )}
+          {unknownSender ? (
+            <Field label="Who is it for?" hint="This letter's sender isn't in Ordnung — type their name and address as the letter shows them.">
+              <Textarea
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                rows={4}
+                className="min-h-24"
+                placeholder={"Company name\nStreet and number\nPostcode and town"}
+              />
+            </Field>
+          ) : null}
         </>
       ) : null}
       <Field label={letters ? "Or write to someone without a letter" : "Recipient"} optional={letters}>
@@ -374,7 +390,8 @@ function TemplateRecipient({
               Use SCHUFA's address
             </Button>
           </div>
-          <Field label="Or type their name and address" hint="Under Art. 15 GDPR SCHUFA must send you a free copy of the data it holds about you; further copies may cost a fee." className="mt-2">
+          <p className="mt-1.5 text-[12.5px] leading-5 text-muted">SCHUFA, Germany's main credit agency, must send you a free copy of the data and scores it holds about you.</p>
+          <Field label="Or type their name and address" hint="Every company or office must send you a free first copy of your data (Art. 15(3) GDPR)." className="mt-2">
             <Textarea
               value={typed}
               onChange={(e) => {
@@ -384,8 +401,8 @@ function TemplateRecipient({
                   setDocId(null);
                 }
               }}
-              rows={3}
-              className="min-h-20"
+              rows={4}
+              className="min-h-24"
               placeholder={"Company name\nStreet and number\nPostcode and town"}
             />
           </Field>
@@ -402,6 +419,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const contractsQ = useContracts();
   const partiesQ = useParties();
   const profileQ = useProfile();
+  const suggestionsQ = useSuggestions();
   const create = useCreateDraft();
 
   const [kind, setKind] = useState<DraftKind | null>(prefill?.kind ?? null);
@@ -428,6 +446,17 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
 
   const parties = useMemo(() => new Map((partiesQ.data ?? []).map((p) => [p.id, p])), [partiesQ.data]);
   const docs = useMemo(() => usableDocuments(docsQ.data ?? []), [docsQ.data]);
+  // letters flagged as a possible scam are never answered with a template (a withdrawal, instalments…)
+  const scamDocIds = useMemo(
+    () =>
+      new Set(
+        (suggestionsQ.data ?? [])
+          .filter((s) => s.kind === "scam" && s.status !== "dismissed" && s.status !== "expired")
+          .flatMap((s) => s.refs.filter((r) => r.type === "document").map((r) => r.id)),
+      ),
+    [suggestionsQ.data],
+  );
+  const templateDocs = useMemo(() => docs.filter((d) => !scamDocIds.has(d.id)), [docs, scamDocIds]);
   const objectable = useMemo(() => objectionDocuments(docsQ.data ?? []), [docsQ.data]);
   const contracts = useMemo(() => cancellableContracts(contractsQ.data ?? []), [contractsQ.data]);
   const doc = docId ? (docsQ.data ?? []).find((d) => d.id === docId) ?? null : null;
@@ -457,17 +486,22 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const contractBlocked = kind === "cancellation" && contract !== null && !offersEndingLetter(contract);
   const resignation = kind === "cancellation" && contract?.category === "employment";
 
-  // what the template form starts with: the letter's or contract's name, the profile's address
+  // what the template form starts with: the contract's name (never a letter's title, which is Ordnung's
+  // English summary, not what was ordered), the profile's address
   const templateValues: DetailValues = !template
     ? values
     : {
-        ...(template.kind === "withdrawal" ? { subject_matter: contract?.name ?? doc?.title ?? "" } : {}),
+        ...(template.kind === "withdrawal" ? { subject_matter: contract?.name ?? "" } : {}),
         ...(template.kind === "address_change" ? { new_address: profileQ.data?.address ?? "" } : {}),
         ...values,
       };
   const missing = template ? missingFields(template, templateValues) : [];
   const invalid = template ? template.fields.some((f) => fieldError(f, templateValues, today, defaults)) : false;
-  const templateTarget = Boolean(doc || partyId || (template?.target === "party-or-typed" && typedRecipient.trim()));
+  const typedTo = Boolean(typedRecipient.trim());
+  const templateTarget = Boolean((doc && (doc.party_id || typedTo)) || partyId || (template?.target === "party-or-typed" && typedTo));
+  const refusal = template && doc ? templateRefusal(template.kind, doc.kind) : null;
+  // a request for more time can't move the deadlines the law sets: say so before it is written
+  const lawDeadlines = kind === "extension_request" && !refusal ? statutoryDeadlines(letterQ.data?.items ?? []) : [];
 
   const ready =
     kind === "cancellation"
@@ -477,7 +511,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
         : kind === "general_reply"
           ? Boolean(doc || partyId)
           : template
-            ? templateTarget && !missing.length && !invalid
+            ? templateTarget && !refusal && !missing.length && !invalid
             : false;
 
   const pickKind = (k: DraftKind) => {
@@ -489,6 +523,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
       setPartyId(doc.party_id);
       setDocId(null);
     }
+    if (isTemplateKind(k) && doc && scamDocIds.has(doc.id)) setDocId(null);
     setValues({});
   };
 
@@ -532,9 +567,13 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
           ? doc || partyId
             ? null
             : "Choose the letter you're answering, or who to write to."
-          : template && !templateTarget
-            ? "Choose who the letter is for."
-            : missing.length
+          : refusal
+            ? "This letter can't answer the one you chose — see why above."
+            : template && !templateTarget
+              ? doc && !doc.party_id
+                ? "Type who the letter is for — its sender isn't in Ordnung."
+                : "Choose who the letter is for."
+              : missing.length
               ? `Still needed: ${joinAnd(missing)}.`
               : invalid
                 ? "Fix the date or amount marked above."
@@ -728,7 +767,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
             {template ? (
               <TemplateRecipient
                 config={template}
-                docs={docs}
+                docs={templateDocs}
                 docId={docId}
                 setDocId={setDocId}
                 partyId={partyId}
@@ -739,14 +778,31 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                 setTyped={setTypedRecipient}
               />
             ) : null}
+            {refusal ? (
+              <Callout tone="warn" className="mt-3" title={refusal.title}>
+                {refusal.body}
+              </Callout>
+            ) : lawDeadlines.length ? (
+              <Callout tone="info" className="mt-3" title="Deadlines set by law can't be extended by asking">
+                {lawDeadlines.length === 1 ? (
+                  <>
+                    “{lawDeadlines[0]!.title}” (<DateText date={lawDeadlines[0]!.due_date!} style="medium" />) is set by law — meet it anyway.
+                  </>
+                ) : (
+                  <>This letter's objection and legal deadlines are set by law — meet them anyway.</>
+                )}{" "}
+                Ask for more time only for something the sender set, such as sending documents.
+              </Callout>
+            ) : null}
 
             {recipient && !objectionBlocked ? (
+              // the whole name and address, wrapped: on a phone an ellipsis would hide where the letter goes
               <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-surface-2/70 px-3 py-2.5 text-[13px]">
                 <span className="text-muted">To</span>
                 <Avatar name={recipient.name} kind={recipient.kind} size="sm" />
-                <span className="min-w-0 flex-1 truncate font-medium text-ink">
-                  {recipient.name}
-                  {recipient.address ? <span className="font-normal text-muted"> · {recipient.address}</span> : null}
+                <span className="min-w-0 flex-1 leading-snug [overflow-wrap:anywhere]">
+                  <span className="font-medium text-ink">{recipient.name}</span>
+                  {recipient.address ? <span className="block text-[12.5px] text-muted">{recipient.address}</span> : null}
                 </span>
               </div>
             ) : null}
@@ -754,7 +810,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
         ) : null}
 
         {/* 3 · the facts a template letter needs */}
-        {template && template.fields.length + (template.kind === "deposit_return" ? 1 : 0) > 0 ? (
+        {template && !refusal && template.fields.length + (template.kind === "deposit_return" ? 1 : 0) > 0 ? (
           <section aria-labelledby="cmp-details">
             <StepLabel n={3} id="cmp-details">
               The details
@@ -764,7 +820,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
         ) : null}
 
         {/* wishes + language */}
-        {kind && !objectionBlocked ? (
+        {kind && !objectionBlocked && !refusal ? (
           <section aria-labelledby="cmp-extra" className="space-y-4">
             <StepLabel n={template && template.fields.length + (template.kind === "deposit_return" ? 1 : 0) > 0 ? 4 : 3} id="cmp-extra">
               Anything to add?

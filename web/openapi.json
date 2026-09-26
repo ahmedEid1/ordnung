@@ -7215,6 +7215,30 @@
             },
             "type": "array",
             "title": "Rule Ids"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "cancellation",
+                  "objection",
+                  "general_reply",
+                  "withdrawal",
+                  "extension_request",
+                  "payment_plan",
+                  "defect_notice",
+                  "data_access",
+                  "receipts_inspection",
+                  "deposit_return",
+                  "address_change"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft"
           }
         },
         "type": "object",
@@ -7226,7 +7250,8 @@
           "steps",
           "facts",
           "help",
-          "rule_ids"
+          "rule_ids",
+          "draft"
         ],
         "title": "LetterAdvice",
         "description": "The \"get advice\" card of a high-stakes letter, worked out on read (:mod:`ordnung.rules.advice`).\n\n``urgent`` letters (court orders, a dismissal) always carry it; the others show it as information."

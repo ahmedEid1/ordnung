@@ -17,16 +17,25 @@ const FACT_TONE: Record<AdviceFact["tone"], { box: string; icon: LucideIcon; ico
   good: { box: "border-ok/25 bg-ok-soft", icon: CircleCheck, iconClass: "text-ok", title: "text-ok-ink" },
 };
 
-/** The letter the card offers to draft (court orders get theirs from the verdict's main button). */
-const CARD_ACTION: Partial<Record<LetterAdvice["kind"], { kind: DraftKind; label: string; icon: LucideIcon }>> = {
-  landlord_notice: { kind: "objection", label: "Draft a hardship objection", icon: PenLine },
-  operating_costs: { kind: "receipts_inspection", label: "Ask to see the receipts", icon: FileSearch },
+/** Keep a citation's parts on one line ("§ 38 Abs. 1 S. 4 SGB III" never breaks after "§"). */
+export function keepCitations(text: string): string {
+  return text.replace(/(§|Abs\.|S\.|Nr\.|Art\.)\s+(?=\d)/g, "$1\u00a0");
+}
+
+/**
+ * How the card's letter reads (`advice.draft`, decided by the backend: none for a notice without
+ * notice period, where the hardship objection doesn't apply; court orders get theirs from the verdict).
+ */
+const CARD_ACTION: Partial<Record<DraftKind, { label: string; icon: LucideIcon }>> = {
+  objection: { label: "Draft a hardship objection", icon: PenLine },
+  receipts_inspection: { label: "Ask to see the receipts", icon: FileSearch },
 };
 
 export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: Pick<Document, "id" | "party_id" | "case_id"> }) {
   const draft = useStartDraft();
   const urgent = advice.urgent;
-  const action = CARD_ACTION[advice.kind];
+  const draftKind = advice.draft ?? null;
+  const action = draftKind ? CARD_ACTION[draftKind] : undefined;
   const titleId = `advice-${doc.id}`;
   return (
     <section
@@ -54,7 +63,7 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
 
       {/* the summary lines up with the steps below it: under the title on a wide card, full width on a narrow one */}
       <div className="space-y-4 px-4 pb-4 pt-2 sm:px-5 @[34rem]:pl-[68px]">
-        <p className="text-[14px] leading-relaxed text-ink/85">{advice.summary}</p>
+        <p className="text-[14px] leading-relaxed text-ink/85">{keepCitations(advice.summary)}</p>
         {advice.steps.length ? (
           <div>
             <h3 className={cn("text-[12px] font-semibold uppercase tracking-[0.07em]", urgent ? "text-warn-ink/85" : "text-muted")}>What to do</h3>
@@ -70,7 +79,7 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
                   >
                     {i + 1}
                   </span>
-                  <span className="min-w-0 pt-px">{s}</span>
+                  <span className="min-w-0 pt-px">{keepCitations(s)}</span>
                 </li>
               ))}
             </ol>
@@ -86,8 +95,8 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
                   <t.icon className={cn("mt-0.5 size-4 shrink-0", t.iconClass)} aria-hidden />
                   <div className="min-w-0 flex-1">
                     <p className={cn("text-[13.5px] font-semibold leading-5", t.title)}>{f.title}</p>
-                    <p className="mt-0.5 text-[13px] leading-relaxed text-ink/85">{f.text}</p>
-                    {f.citation ? <p className="mt-1 text-[12px] leading-4 text-muted [overflow-wrap:anywhere]">{f.citation}</p> : null}
+                    <p className="mt-0.5 text-[13px] leading-relaxed text-ink/85">{keepCitations(f.text)}</p>
+                    {f.citation ? <p className="mt-1 text-[12px] leading-4 text-muted">{keepCitations(f.citation)}</p> : null}
                   </div>
                 </li>
               );
@@ -118,7 +127,7 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
                           <ArrowUpRight className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                           <span className="sr-only"> (opens in a new tab)</span>
                         </span>
-                        <span className="mt-0.5 text-[12.5px] leading-snug text-muted">{h.what}</span>
+                        <span className="mt-0.5 text-[12.5px] leading-snug text-muted">{keepCitations(h.what)}</span>
                       </a>
                     ) : (
                       <div className={box}>
@@ -133,14 +142,14 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
           </div>
         ) : null}
 
-        {action ? (
+        {action && draftKind ? (
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant="secondary"
               icon={action.icon}
               loading={draft.pending}
-              onClick={() => draft.start(action.kind, { doc_id: doc.id, party_id: doc.party_id, case_id: doc.case_id })}
+              onClick={() => draft.start(draftKind, { doc_id: doc.id, party_id: doc.party_id, case_id: doc.case_id })}
             >
               {action.label}
             </Button>

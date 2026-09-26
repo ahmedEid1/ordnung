@@ -29,6 +29,9 @@ export const SAFE_NOTE = "No warning does not mean it is safe.";
 
 const isHiddenTextWarning = (w: string) => /invisible text|hidden text/i.test(w);
 
+/** A reading's warning that only repeats the arrival question ("…when it arrived", "…when it was delivered"). */
+export const REPEATS_ARRIVAL_QUESTION = /arriv|received|zugang|deliver|zustell/i;
+
 /** Warnings shown in the scam banner / generic list (the hidden-text one has its own banner). */
 function otherWarnings(doc: Document): string[] {
   return doc.warnings.filter((w) => w.trim() && w.trim() !== SAFE_NOTE && !(doc.hidden_text && isHiddenTextWarning(w)));
@@ -41,8 +44,8 @@ export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
   const arrival = detail.items.filter((i) => needsArrivalDate(i, doc));
   const remedy = doc.remedy?.type;
   const warnings = otherWarnings(doc);
-  // the arrival question already explains the "we don't know when it arrived" warning
-  const general = arrival.length ? warnings.filter((w) => !/arriv|received|zugang/i.test(w)) : warnings;
+  // the arrival question already explains the "we don't know when it arrived / was delivered" warning
+  const general = arrival.length ? warnings.filter((w) => !REPEATS_ARRIVAL_QUESTION.test(w)) : warnings;
 
   // a high-stakes letter's own card replaces the generic "get advice" one; urgent cards go first
   const advice = detail.advice && !scam ? <LetterAdviceCard key="letter-advice" advice={detail.advice} doc={doc} /> : null;

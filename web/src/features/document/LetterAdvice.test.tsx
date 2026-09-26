@@ -8,7 +8,8 @@ import { createMockServer } from "@/mocks/server";
 import { ADVICE_BY_KIND } from "@/mocks/data/advice";
 import { DocumentWarnings } from "./Warnings";
 import { ItemsList } from "./ItemsList";
-import { LetterAdviceCard } from "./LetterAdvice";
+import { ThreadSection } from "./Related";
+import { LetterAdviceCard, keepCitations } from "./LetterAdvice";
 import { chooseMainAction } from "./verdict";
 import { VerdictCard } from "./VerdictCard";
 import { makeDetail, makeDoc, makeItem, makeReceipt } from "./fixtures";
@@ -183,6 +184,102 @@ describe("the advice card of a high-stakes letter", () => {
     const after = (await (await srv.handle("GET", "/documents/doc_mahnbescheid", new URLSearchParams(), undefined)).json()) as DocumentDetail;
     expect(after.items[0]?.due_date).toBe("2026-10-09");
     expect(after.items[0]?.computation?.confidence).toBe("medium");
+  });
+
+  it("asks for a court order's delivery date once — the reading's own 'when was it delivered' warning is not repeated", async () => {
+    const detail = await detailFromMock("doc_mahnbescheid");
+    expect(detail.document.warnings.join(" ")).toMatch(/when the letter was delivered/);
+    renderWithProviders(<DocumentWarnings detail={detail} />, { client: client() });
+    expect(screen.getByText("When was it delivered?")).toBeInTheDocument();
+    expect(screen.queryByText("Please check")).toBeNull();
+    expect(screen.queryByText(/We don't know yet when the letter was delivered/)).toBeNull();
+  });
+
+  it("offers only the letter the backend says fits — no hardship objection to a notice without notice period", () => {
+    const notice = makeDoc({ id: "doc_notice", kind: "landlord_notice", area: "home", title: "Kündigung" });
+    const { unmount } = renderWithProviders(<LetterAdviceCard advice={ADVICE_BY_KIND.landlord_notice} doc={notice} />, { client: client() });
+    expect(ADVICE_BY_KIND.landlord_notice.draft).toBe("objection");
+    expect(screen.getByRole("button", { name: "Draft a hardship objection" })).toBeInTheDocument();
+    unmount();
+    const fristlos = {
+      ...ADVICE_BY_KIND.landlord_notice,
+      draft: null,
+      facts: [{ title: "This reads as a notice without notice period (fristlos)", text: "The hardship objection doesn't apply to it.", tone: "warn" as const, citation: "§ 574 Abs. 1 S. 2 BGB" }],
+    };
+    renderWithProviders(<LetterAdviceCard advice={fristlos} doc={notice} />, { client: client() });
+    expect(screen.getByText("This reads as a notice without notice period (fristlos)")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /hardship objection/ })).toBeNull();
+  });
+
+  it("never calls a landlord's notice 'nothing to do if the decision is right'", () => {
+    const doc = makeDoc({ id: "doc_notice", kind: "landlord_notice", area: "home", title: "Kündigung Ihrer Wohnung", received_date: "2026-09-25" });
+    const item = makeItem({
+      title: "Decide whether to object to the notice (Widerspruch)",
+      action: "Your tenancy ends on Wed 31 Mar 2027. Have the notice checked by a tenants' association (form, reason, period).",
+      consequence: "After this day the landlord may refuse to continue the tenancy.",
+      origin: "rule",
+      due_date: "2027-01-29",
+      date_spec: { type: "relative", anchor: "explicit_date", amount: -2, unit: "months", nature: "objection", text: "", anchor_date: "2027-03-31", date: null, time: null, legal_basis: "§ 574b Abs. 2 BGB", delivery_rule: "none", shift_rule: "auto" },
+    });
+    renderWithProviders(<VerdictCard detail={makeDetail({ document: doc, items: [item] })} primary={item} onAskArrival={() => {}} />, { client: client() });
+    expect(screen.queryByText(/Nothing to do/)).toBeNull();
+    expect(screen.queryByText("Only if you disagree")).toBeNull();
+    expect(screen.getByText(/Your tenancy ends on Wed 31 Mar 2027/)).toBeInTheDocument();
+    expect(screen.getByText("By when")).toBeInTheDocument();
+    expect(screen.getByText("If you ignore it")).toBeInTheDocument();
+  });
+
+  it("asks when a court order was delivered, not when it arrived", () => {
+    const item = makeItem({
+      title: "Pay or object to the court payment order (Mahnbescheid)",
+      origin: "rule",
+      due_date: "2026-10-06",
+      date_spec: { type: "relative", anchor: "receipt", amount: 2, unit: "weeks", nature: "objection", text: "", anchor_date: null, date: null, time: null, legal_basis: "§ 692 ZPO", delivery_rule: "none", shift_rule: "auto" },
+    });
+    renderWithProviders(<VerdictCard detail={makeDetail({ document: courtDoc, items: [item] })} primary={item} onAskArrival={() => {}} />, { client: client() });
+    expect(screen.getByRole("button", { name: "Tell us when it was delivered" })).toBeInTheDocument();
+  });
+
+  it("the static demo's cards stop asking for an arrival day the person entered", async () => {
+    const dismissal = await detailFromMock("doc_dismissal");
+    expect(dismissal.document.received_date).toBe("2026-09-28");
+    expect(dismissal.advice?.steps[0]).toMatch(/which you entered/);
+    const order = await detailFromMock("doc_mahnbescheid");
+    expect(order.advice?.steps[0]).toMatch(/^Find the delivery date/);
+  });
+
+  it("static demo: choosing another kind drops the letter's own card and the deadlines the law added, and brings them back", async () => {
+    const srv = createMockServer({ staticDemo: false, latency: 0 });
+    srv.openAllMail();
+    const get = async (id: string) => (await (await srv.handle("GET", `/documents/${id}`, new URLSearchParams(), undefined)).json()) as DocumentDetail;
+    await srv.handle("PATCH", "/documents/doc_nebenkosten", new URLSearchParams(), { kind: "other" });
+    expect((await get("doc_nebenkosten")).advice).toBeNull();
+    await srv.handle("PATCH", "/documents/doc_dismissal", new URLSearchParams(), { kind: "employment" });
+    const refiled = await get("doc_dismissal");
+    expect(refiled.advice).toBeNull();
+    expect(refiled.items.filter((i) => i.origin === "rule")).toEqual([]);
+    await srv.handle("PATCH", "/documents/doc_dismissal", new URLSearchParams(), { kind: "dismissal" });
+    const back = await get("doc_dismissal");
+    expect(back.advice?.kind).toBe("dismissal");
+    expect(back.items.map((i) => i.slot_key)).toEqual(["rule:kschg_4", "rule:sgb3_38"]);
+  });
+
+  it("keeps the 'This letter' badge outside a long, truncated title in the thread", async () => {
+    const detail = await detailFromMock("doc_dismissal");
+    expect(detail.related.length).toBeGreaterThan(0);
+    renderWithProviders(<ThreadSection detail={detail} />, { client: client() });
+    const badge = screen.getByText("This letter");
+    expect(badge.closest(".truncate")).toBeNull();
+    expect(badge).toHaveClass("shrink-0");
+    expect(screen.getByText(detail.document.title!)).toHaveClass("truncate");
+  });
+
+  it("never breaks a citation after its § sign", () => {
+    expect(keepCitations("(§ 38 Abs. 1 S. 4 SGB III, § 111 Abs. 2 ArbGG, Art. 15 GDPR)")).toBe(
+      "(§\u00a038 Abs.\u00a01 S.\u00a04 SGB III, §\u00a0111 Abs.\u00a02 ArbGG, Art.\u00a015 GDPR)",
+    );
+    renderWithProviders(<LetterAdviceCard advice={ADVICE_BY_KIND.dismissal} doc={makeDoc({ kind: "dismissal" })} />, { client: client() });
+    expect(screen.getByText(/Apprentices:/).textContent).toContain("§\u00a038 Abs.\u00a01 S.\u00a04 SGB III");
   });
 
   it("marks to-dos the law adds as set by law", () => {

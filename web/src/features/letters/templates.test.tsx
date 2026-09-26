@@ -22,6 +22,8 @@ import {
   nextDay,
   parseMoney,
   sortForTemplate,
+  statutoryDeadlines,
+  templateRefusal,
 } from "./templates";
 
 beforeEach(() => {
@@ -83,6 +85,28 @@ describe("template letter helpers", () => {
         { kind: "task", status: "open", due_date: null, amount: null },
       ]),
     ).toEqual({ deadline: "2026-10-12", amount: 120 });
+  });
+
+  it("never offers a deadline the law sets as the one to extend", () => {
+    const objection = { type: "relative", nature: "objection" } as const;
+    const items = [
+      { kind: "deadline", status: "open", due_date: "2026-10-05", amount: null, origin: "rule" as const },
+      { kind: "deadline", status: "open", due_date: "2026-10-08", amount: null, origin: "extracted" as const, date_spec: { ...objection } },
+      { kind: "deadline", status: "open", due_date: "2026-10-12", amount: null, origin: "extracted" as const },
+    ] as Parameters<typeof letterDefaults>[0];
+    expect(letterDefaults(items).deadline).toBe("2026-10-12");
+    expect(statutoryDeadlines(items).map((i) => i.due_date)).toEqual(["2026-10-05", "2026-10-08"]);
+    expect(letterDefaults(items.slice(0, 2)).deadline).toBeNull();
+  });
+
+  it("refuses more time against a court order or a dismissal, and instalments offered to a court", () => {
+    expect(templateRefusal("extension_request", "court_payment_order")?.body).toMatch(/§ 692 ZPO/);
+    expect(templateRefusal("extension_request", "enforcement_order")?.body).toMatch(/Notfrist/);
+    expect(templateRefusal("extension_request", "dismissal")?.body).toMatch(/§ 4 KSchG/);
+    expect(templateRefusal("payment_plan", "enforcement_order")?.title).toMatch(/claimant, not the court/);
+    expect(templateRefusal("payment_plan", "dismissal")).toBeNull();
+    expect(templateRefusal("extension_request", "tax_assessment")).toBeNull();
+    expect(templateRefusal("withdrawal", "court_payment_order")).toBeNull();
   });
 
   it("lists the required facts still missing, in form order", () => {
@@ -219,5 +243,47 @@ describe("composer — template letters", () => {
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/letters\/drf_/));
     const post = calls.find((c) => c.method === "POST" && c.path === "/drafts");
     expect(post?.body).toMatchObject({ kind: "payment_plan", party_id: "pty_finanzamt", details: { instalment: 50, first_instalment: "2026-11-01" } });
+  });
+
+  it("won't ask a court for more time or offer it instalments — before anything is written", async () => {
+    const { calls } = useMockApi({ full: true });
+    const user = userEvent.setup();
+    renderWithProviders(<LettersPage />, { route: "/letters?new=1&doc=doc_mahnbescheid" });
+    const dialog = await screen.findByRole("dialog", { name: "New letter" });
+    await user.click(within(dialog).getByRole("radio", { name: /Ask for more time/ }));
+    expect(await within(dialog).findByText("A court's two weeks can't be extended")).toBeInTheDocument();
+    const write = within(dialog).getByRole("button", { name: /Write the letter/ });
+    // nothing to fill in for a letter that can't be written
+    expect(within(dialog).queryByLabelText(/New date you ask for/)).toBeNull();
+    expect(within(dialog).queryByLabelText(/Your wishes/)).toBeNull();
+    expect(write).toBeDisabled();
+    expect(within(dialog).getByText("This letter can't answer the one you chose — see why above.")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("radio", { name: /Pay in instalments/ }));
+    expect(await within(dialog).findByText("Offer instalments to the claimant, not the court")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /Write the letter/ })).toBeDisabled();
+    expect(calls.some((c) => c.method === "POST" && c.path === "/drafts")).toBe(false);
+  });
+
+  it("asks who a letter is for when its sender isn't in Ordnung, and starts a withdrawal with nothing guessed", async () => {
+    const { calls } = useMockApi({ full: true });
+    const user = userEvent.setup();
+    const { router } = renderWithProviders(<LettersPage />, { route: "/letters?new=1" });
+    const dialog = await screen.findByRole("dialog", { name: "New letter" });
+    await user.click(within(dialog).getByRole("radio", { name: /Withdraw from a purchase/ }));
+    // a letter flagged as a possible scam is never answered with a template
+    expect(within(dialog).queryByRole("radio", { name: /Last reminder/ })).toBeNull();
+    await user.click(within(dialog).getByRole("radio", { name: /Passport \(photo\)/ }));
+    // the letter's title is Ordnung's summary, not what was ordered
+    expect(within(dialog).getByLabelText(/What did you order or sign up for/)).toHaveValue("");
+    await user.type(within(dialog).getByLabelText(/What did you order or sign up for/), "Fotoservice");
+    const write = within(dialog).getByRole("button", { name: /Write the letter/ });
+    expect(write).toBeDisabled();
+    expect(within(dialog).getByText("Type who the letter is for — its sender isn't in Ordnung.")).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/Who is it for/), "Foto Schnell GmbH{Enter}Bahnhofstraße 1{Enter}12345 Musterstadt");
+    await waitFor(() => expect(write).toBeEnabled());
+    await user.click(write);
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/letters\/drf_/));
+    const post = calls.find((c) => c.method === "POST" && c.path === "/drafts");
+    expect(post?.body).toMatchObject({ kind: "withdrawal", party_id: null, details: { subject_matter: "Fotoservice", recipient: expect.stringContaining("Foto Schnell GmbH") } });
   });
 });

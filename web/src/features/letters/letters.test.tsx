@@ -219,7 +219,7 @@ describe("Letters page", () => {
     const { router } = renderWithProviders(<LettersPage />, { route: "/letters?kind=objection&doc=doc_tax" });
     const dialog = await screen.findByRole("dialog", { name: "New letter" });
     expect(await within(dialog).findByText("Einspruch possible")).toBeInTheDocument();
-    expect(dialog).toHaveTextContent(/To\s*FM\s*Finanzamt Musterstadt · Steuerring 10/);
+    expect(dialog).toHaveTextContent(/To\s*FM\s*Finanzamt Musterstadt\s*Steuerring 10, 12345 Musterstadt/);
     await user.type(within(dialog).getByLabelText(/Your wishes/), "Laptop is for work");
     await user.click(within(dialog).getByRole("button", { name: /Write the letter/ }));
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/letters\/drf_/));

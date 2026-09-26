@@ -442,7 +442,7 @@ export const DISMISSAL_RULES: Record<string, { spec: DateSpec; receipt: Computat
       "confidence": "high"
     },
     "title": "Register as job-seeking (arbeitsuchend) at the Agentur für Arbeit",
-    "action": "Register online, by phone or in person. Your details and the end date of the job are enough for now.",
+    "action": "Register online, by phone or in person. Your details and the end date of the job are enough for now. Not needed if this ends an apprenticeship in a company (§ 38 Abs. 1 S. 4 SGB III).",
     "consequence": "Registering late can cost you one week of unemployment benefit (Sperrzeit).",
     "priority": "high"
   }

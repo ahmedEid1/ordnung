@@ -22,6 +22,11 @@ STATEMENT_TEXT = "Abrechnungszeitraum 01.10.2025 bis 31.12.2025"
 
 def main() -> None:
     by_kind = {kind: letter_advice(kind, today=TODAY) for kind in HIGH_STAKES_KINDS}
+    # once the person entered the arrival (delivery) day, the cards stop asking for it
+    arrived = {
+        kind: letter_advice(kind, today=TODAY, arrived=TODAY, arrival_confirmed=True)
+        for kind in HIGH_STAKES_KINDS
+    }
     statement = letter_advice(
         "operating_costs",
         today=TODAY,
@@ -43,7 +48,14 @@ def main() -> None:
     kinds = {kind: card.model_dump() for kind, card in by_kind.items() if card is not None}
     print(f"export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {dump(kinds)};")
     print()
-    print("/** Cards worked out from a demo letter itself (Sam's operating-cost statement). */")
+    print("/** The same cards once the person entered when the letter arrived (or was delivered). */")
+    confirmed = {kind: card.model_dump() for kind, card in arrived.items() if card is not None}
+    print(f"export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {dump(confirmed)};")
+    print()
+    print(
+        "/** Cards worked out from a demo letter itself (Sam's operating-cost statement), while it is filed as "
+        "it was read. */"
+    )
     docs = {"doc_nebenkosten": statement.model_dump() if statement else None}
     print(f"export const ADVICE_BY_DOC: Record<string, LetterAdvice> = {dump(docs)};")
 

@@ -260,7 +260,7 @@ function CardContent({ step, stepIndex, here, compact, headingRef, go, onShow, o
         <button
           type="button"
           onClick={() => go({ type: "next" })}
-          className="mt-2 text-[12px] font-medium text-muted underline-offset-2 hover:text-ink hover:underline"
+          className="mt-1.5 inline-flex min-h-6 items-center text-[12px] font-medium text-muted underline-offset-2 hover:text-ink hover:underline"
         >
           {last ? "Finish the tour" : "Skip this step"}
         </button>

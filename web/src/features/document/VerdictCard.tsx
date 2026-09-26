@@ -39,6 +39,7 @@ import {
   dayCountdown,
   decisionSuggestion,
   incomingMoney,
+  isCourtOrder,
   isOpenItem,
   isOptionalObjection,
   leadsWithDecision,
@@ -287,7 +288,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
                   Counted from the letter date — the earliest possible.{" "}
                   {onAskArrival ? (
                     <button type="button" onClick={onAskArrival} className="font-semibold underline underline-offset-2 hover:no-underline">
-                      Tell us when it arrived
+                      {isCourtOrder(doc) ? "Tell us when it was delivered" : "Tell us when it arrived"}
                     </button>
                   ) : null}
                 </span>

@@ -107,7 +107,7 @@ export function ComingUp({
               <div className="mb-1 flex items-baseline justify-between gap-3">
                 <h3 className="text-[13px] font-semibold text-ink">
                   {g.label}
-                  {g.range ? <span className="ml-2 font-normal text-muted">{g.range}</span> : null}
+                  {g.range ? <span className="ml-2 inline-block whitespace-nowrap font-normal text-muted">{g.range}</span> : null}
                 </h3>
                 {Object.keys(g.totals).length ? (
                   <span className="shrink-0 text-[12px] text-muted">

@@ -133,10 +133,11 @@ export function isCourtOrder(doc: Pick<Document, "kind">): boolean {
 
 /**
  * Letters whose law-set deadline is never "only if you disagree": a court order (pay or object, or it
- * is enforced) and a dismissal (only a court action in time keeps the person's rights, and the
- * registration as job-seeking is due either way).
+ * is enforced), a dismissal (only a court action in time keeps the person's rights, and the
+ * registration as job-seeking is due either way) and a landlord's notice (the home ends: have it
+ * checked, and object in time if moving out is a hardship).
  */
-const MUST_ACT = new Set<Document["kind"]>([...COURT_ORDERS, "dismissal"]);
+const MUST_ACT = new Set<Document["kind"]>([...COURT_ORDERS, "dismissal", "landlord_notice"]);
 
 export function mustAct(doc: Pick<Document, "kind">): boolean {
   return MUST_ACT.has(doc.kind);

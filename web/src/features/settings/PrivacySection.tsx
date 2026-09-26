@@ -186,27 +186,31 @@ export function PrivacySection() {
               <Suspense fallback={<Skeleton className="h-60 w-full rounded-lg" />}>
                 <UsageChart rows={rows} />
               </Suspense>
-              <table className="sr-only">
-                <caption>API-equivalent cost by purpose</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Purpose</th>
-                    <th scope="col">Calls</th>
-                    <th scope="col">Tokens</th>
-                    <th scope="col">Cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.purpose}>
-                      <th scope="row">{r.label}</th>
-                      <td>{r.calls}</td>
-                      <td>{formatCompact(r.tokens)}</td>
-                      <td>{formatUsd(r.cost)}</td>
+              {/* a table won't shrink to sr-only's 1px (it grows to fit its cells and widened the page on
+                  phones), so its wrapper is what is visually hidden */}
+              <div className="sr-only">
+                <table>
+                  <caption>API-equivalent cost by purpose</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Purpose</th>
+                      <th scope="col">Calls</th>
+                      <th scope="col">Tokens</th>
+                      <th scope="col">Cost</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {rows.map((r) => (
+                      <tr key={r.purpose}>
+                        <th scope="row">{r.label}</th>
+                        <td>{r.calls}</td>
+                        <td>{formatCompact(r.tokens)}</td>
+                        <td>{formatUsd(r.cost)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
         </SettingsCard>

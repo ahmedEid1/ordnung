@@ -49,7 +49,8 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "zpo_180",
       "zpo_222",
       "bgb_195"
-    ]
+    ],
+    "draft": null
   },
   "enforcement_order": {
     "kind": "enforcement_order",
@@ -93,7 +94,8 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "zpo_222",
       "zpo_129a",
       "bgb_195"
-    ]
+    ],
+    "draft": null
   },
   "dismissal": {
     "kind": "dismissal",
@@ -104,7 +106,8 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "Enter the day you received the dismissal — the three weeks count from then.",
       "Get advice today: your union, an employment lawyer or the labour court's Rechtsantragstelle.",
       "Register as job-seeking at the Agentur für Arbeit in time (see the to-do).",
-      "Don't sign anything else, like a termination agreement, before you have had advice."
+      "Don't sign anything else, like a termination agreement, before you have had advice.",
+      "Apprentices: you don't have to register (§ 38 Abs. 1 S. 4 SGB III), and if your chamber has a conciliation board (Schlichtungsausschuss, § 111 Abs. 2 ArbGG) it must hear the case before the court — ask your chamber or union at once."
     ],
     "facts": [],
     "help": [
@@ -137,7 +140,8 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "rule_ids": [
       "kschg_4",
       "sgb3_38"
-    ]
+    ],
+    "draft": null
   },
   "landlord_notice": {
     "kind": "landlord_notice",
@@ -148,6 +152,7 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "Don't agree to move out or sign anything before you have had advice.",
       "If you object, keep proof that it arrived; a letter is safest, text form is enough since 2025.",
       "If the landlord didn't tell you in time about your right to object, its form and its deadline, you can still object at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB).",
+      "There is no hardship objection for a short let or a furnished room in the flat your landlord lives in (§ 549 Abs. 2 BGB) — ask a tenants' association.",
       "A notice without notice period (fristlos) can't be met with this objection. If it is for rent arrears, paying all of them in time can still undo it (§ 569 Abs. 3 Nr. 2 BGB) — get advice at once."
     ],
     "facts": [],
@@ -164,8 +169,10 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       }
     ],
     "rule_ids": [
-      "bgb_574b"
-    ]
+      "bgb_574b",
+      "bgb_549"
+    ],
+    "draft": "objection"
   },
   "rent_increase": {
     "kind": "rent_increase",
@@ -174,7 +181,8 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "urgent": false,
     "steps": [
       "Check the new rent against your city's rent index (Mietspiegel), if it has one.",
-      "You can agree to all or part of the increase; paying the new rent can count as agreeing."
+      "You can agree to all or part of the increase; paying the new rent can count as agreeing.",
+      "These rules don't apply to a short let or a furnished room in the flat your landlord lives in (§ 549 Abs. 2 BGB) or a student hall (§ 549 Abs. 3 BGB) — ask a tenants' association."
     ],
     "facts": [
       {
@@ -193,8 +201,10 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     ],
     "rule_ids": [
       "bgb_558b",
-      "bgb_558_3"
-    ]
+      "bgb_558_3",
+      "bgb_549"
+    ],
+    "draft": null
   },
   "operating_costs": {
     "kind": "operating_costs",
@@ -227,11 +237,253 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     ],
     "rule_ids": [
       "bgb_556_3"
-    ]
+    ],
+    "draft": "receipts_inspection"
   }
 };
 
-/** Cards worked out from a demo letter itself (Sam's operating-cost statement). */
+/** The same cards once the person entered when the letter arrived (or was delivered). */
+export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
+  "court_payment_order": {
+    "kind": "court_payment_order",
+    "title": "Court payment order (Mahnbescheid) — act within two weeks",
+    "summary": "A court sent this on behalf of someone who says you owe them money. The court has not checked whether that is true. Within two weeks of delivery you either pay or object (Widerspruch); otherwise the claimant can get an enforcement order and have the money collected.",
+    "urgent": true,
+    "steps": [
+      "The two weeks count from the delivery date you entered — check it matches the yellow envelope.",
+      "If you don't owe the money, or not all of it, object on the enclosed form (or online) and send it to the court. You don't have to give reasons.",
+      "If you do owe it, pay the claimant — not the court — including the costs listed.",
+      "Check it's real: a genuine order comes from a court in a yellow envelope, never by e-mail."
+    ],
+    "facts": [
+      {
+        "title": "Old claims may be time-barred",
+        "text": "Most claims become time-barred three years after the end of the year they arose. A claim from 2022 or earlier may be time-barred — but only if you say so (a court doesn't check it), and steps like this order can pause the period. Get advice before you rely on it.",
+        "tone": "info",
+        "citation": "§ 195 BGB; § 199 Abs. 1 BGB; § 214 Abs. 1 BGB"
+      }
+    ],
+    "help": [
+      {
+        "name": "Rechtsantragstelle at the Amtsgericht",
+        "what": "Free. Staff write down your objection for you (zu Protokoll) and explain the next steps — bring the letter and its envelope. Best at the court that issued it: at another Amtsgericht the objection only counts once their record reaches that court (§ 129a Abs. 3 S. 2 ZPO), so go early.",
+        "url": "https://www.justizadressen.nrw.de/de/justiz/suche"
+      },
+      {
+        "name": "Online objection (online-mahnantrag.de)",
+        "what": "The courts' official site: object online with your ID card, or print a barcode form to sign and post.",
+        "url": "https://www.online-mahnantrag.de/"
+      },
+      {
+        "name": "Schuldnerberatung (free debt advice)",
+        "what": "Recognised debt advice centres check claims and help you answer them, free of charge.",
+        "url": "https://www.meine-schulden.de/"
+      },
+      {
+        "name": "Beratungshilfe (legal advice on a low income)",
+        "what": "A lawyer's advice for a small fee if you have little money; apply at your local Amtsgericht.",
+        "url": "https://service.justiz.de/beratungshilfe"
+      }
+    ],
+    "rule_ids": [
+      "zpo_692",
+      "zpo_180",
+      "zpo_222",
+      "bgb_195"
+    ],
+    "draft": null
+  },
+  "enforcement_order": {
+    "kind": "enforcement_order",
+    "title": "Enforcement order (Vollstreckungsbescheid) — two weeks to object",
+    "summary": "This court order can be enforced right away, like a judgment. You have two weeks from delivery to object (Einspruch), and this period can't be extended.",
+    "urgent": true,
+    "steps": [
+      "The two weeks count from the delivery date you entered — check it matches the yellow envelope.",
+      "To object, write to the court that issued the order — not by e-mail — or go to its Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record reaches the issuing court, so go early.",
+      "An objection doesn't stop enforcement by itself; ask for advice about suspending it.",
+      "If you do owe the money, paying it stops further enforcement costs."
+    ],
+    "facts": [
+      {
+        "title": "Old claims may be time-barred",
+        "text": "Most claims become time-barred three years after the end of the year they arose. A claim from 2022 or earlier may be time-barred — but only if you say so (a court doesn't check it), and steps like this order can pause the period. Get advice before you rely on it.",
+        "tone": "info",
+        "citation": "§ 195 BGB; § 199 Abs. 1 BGB; § 214 Abs. 1 BGB"
+      }
+    ],
+    "help": [
+      {
+        "name": "Rechtsantragstelle at the Amtsgericht",
+        "what": "Free. Staff write down your objection for you (zu Protokoll) and explain the next steps — bring the letter and its envelope. Best at the court that issued it: at another Amtsgericht the objection only counts once their record reaches that court (§ 129a Abs. 3 S. 2 ZPO), so go early.",
+        "url": "https://www.justizadressen.nrw.de/de/justiz/suche"
+      },
+      {
+        "name": "Beratungshilfe (legal advice on a low income)",
+        "what": "A lawyer's advice for a small fee if you have little money; apply at your local Amtsgericht.",
+        "url": "https://service.justiz.de/beratungshilfe"
+      },
+      {
+        "name": "Schuldnerberatung (free debt advice)",
+        "what": "Recognised debt advice centres check claims and help you answer them, free of charge.",
+        "url": "https://www.meine-schulden.de/"
+      }
+    ],
+    "rule_ids": [
+      "zpo_339",
+      "zpo_180",
+      "zpo_222",
+      "zpo_129a",
+      "bgb_195"
+    ],
+    "draft": null
+  },
+  "dismissal": {
+    "kind": "dismissal",
+    "title": "Dismissal — three weeks to go to court",
+    "summary": "If you think this dismissal is wrong, only a court action at the labour court (Kündigungsschutzklage) within three weeks of receiving it keeps your rights. After that it counts as valid, even if it wasn't.",
+    "urgent": true,
+    "steps": [
+      "The three weeks count from the day you received it, which you entered — check it's right.",
+      "Get advice today: your union, an employment lawyer or the labour court's Rechtsantragstelle.",
+      "Register as job-seeking at the Agentur für Arbeit in time (see the to-do).",
+      "Don't sign anything else, like a termination agreement, before you have had advice.",
+      "Apprentices: you don't have to register (§ 38 Abs. 1 S. 4 SGB III), and if your chamber has a conciliation board (Schlichtungsausschuss, § 111 Abs. 2 ArbGG) it must hear the case before the court — ask your chamber or union at once."
+    ],
+    "facts": [],
+    "help": [
+      {
+        "name": "Your trade union",
+        "what": "If you are a member, the union's legal service advises and represents you at the labour court.",
+        "url": "https://www.dgbrechtsschutz.de/"
+      },
+      {
+        "name": "A lawyer for employment law (Fachanwalt für Arbeitsrecht)",
+        "what": "At the labour court's first instance each side pays its own lawyer, whatever the outcome.",
+        "url": "https://anwaltauskunft.de/"
+      },
+      {
+        "name": "Rechtsantragstelle of the labour court",
+        "what": "Free. They take down your court action (Klage) for you — you don't need a lawyer to file it.",
+        "url": "https://www.justizadressen.nrw.de/de/justiz/suche"
+      },
+      {
+        "name": "Beratungshilfe (legal advice on a low income)",
+        "what": "A lawyer's advice for a small fee if you have little money; apply at your local Amtsgericht.",
+        "url": "https://service.justiz.de/beratungshilfe"
+      },
+      {
+        "name": "Agentur für Arbeit",
+        "what": "Register as job-seeking online, by phone (0800 4 5555 00, free) or in person.",
+        "url": "https://www.arbeitsagentur.de/arbeitslos-arbeit-finden/arbeitslosengeld/ihre-schritte-wenn-sie-arbeitslos-werden/wie-sie-sich-arbeitsuchend-melden"
+      }
+    ],
+    "rule_ids": [
+      "kschg_4",
+      "sgb3_38"
+    ],
+    "draft": null
+  },
+  "landlord_notice": {
+    "kind": "landlord_notice",
+    "title": "Notice from your landlord — get advice before you act",
+    "summary": "A tenants' association can check whether the notice is valid (form, reason, period). If moving out would be a hardship, you can object and ask to stay; the objection must reach the landlord at the latest two months before the tenancy ends.",
+    "urgent": false,
+    "steps": [
+      "Don't agree to move out or sign anything before you have had advice.",
+      "If you object, keep proof that it arrived; a letter is safest, text form is enough since 2025.",
+      "If the landlord didn't tell you in time about your right to object, its form and its deadline, you can still object at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB).",
+      "There is no hardship objection for a short let or a furnished room in the flat your landlord lives in (§ 549 Abs. 2 BGB) — ask a tenants' association.",
+      "A notice without notice period (fristlos) can't be met with this objection. If it is for rent arrears, paying all of them in time can still undo it (§ 569 Abs. 3 Nr. 2 BGB) — get advice at once."
+    ],
+    "facts": [],
+    "help": [
+      {
+        "name": "Mieterverein (tenants' association)",
+        "what": "Members get tenancy advice and help with letters; membership is usually a few euros a month.",
+        "url": "https://www.mieterbund.de/"
+      },
+      {
+        "name": "Beratungshilfe (legal advice on a low income)",
+        "what": "A lawyer's advice for a small fee if you have little money; apply at your local Amtsgericht.",
+        "url": "https://service.justiz.de/beratungshilfe"
+      }
+    ],
+    "rule_ids": [
+      "bgb_574b",
+      "bgb_549"
+    ],
+    "draft": "objection"
+  },
+  "rent_increase": {
+    "kind": "rent_increase",
+    "title": "Rent increase request — you decide",
+    "summary": "Your landlord asks you to agree to a higher rent. You have until the end of the second month after you received the request to decide, and the higher rent is only owed if you agree.",
+    "urgent": false,
+    "steps": [
+      "Check the new rent against your city's rent index (Mietspiegel), if it has one.",
+      "You can agree to all or part of the increase; paying the new rent can count as agreeing.",
+      "These rules don't apply to a short let or a furnished room in the flat your landlord lives in (§ 549 Abs. 2 BGB) or a student hall (§ 549 Abs. 3 BGB) — ask a tenants' association."
+    ],
+    "facts": [
+      {
+        "title": "Check the rent cap (Kappungsgrenze)",
+        "text": "Within three years the rent may rise by at most 20 % (15 % in many cities), and it must have been unchanged for 15 months. We couldn't read the old and new rent to check it.",
+        "tone": "info",
+        "citation": "§ 558 Abs. 1, 3 BGB"
+      }
+    ],
+    "help": [
+      {
+        "name": "Mieterverein (tenants' association)",
+        "what": "Members get tenancy advice and help with letters; membership is usually a few euros a month.",
+        "url": "https://www.mieterbund.de/"
+      }
+    ],
+    "rule_ids": [
+      "bgb_558b",
+      "bgb_558_3",
+      "bgb_549"
+    ],
+    "draft": null
+  },
+  "operating_costs": {
+    "kind": "operating_costs",
+    "title": "Operating-cost statement (Betriebskostenabrechnung)",
+    "summary": "You can ask to see the receipts behind the statement, and object to mistakes within twelve months of receiving it.",
+    "urgent": false,
+    "steps": [
+      "Compare the costs with last year's statement and your lease.",
+      "Ask to see the receipts (Belegeinsicht) if something looks wrong — Ordnung can draft the letter."
+    ],
+    "facts": [
+      {
+        "title": "Was it on time?",
+        "text": "A statement must arrive within twelve months after the billing period ends; after that you usually owe no back-payment. We couldn't find the billing period in the letter to check.",
+        "tone": "info",
+        "citation": "§ 556 Abs. 3 S. 2, 3, 5, 6 BGB; § 556 Abs. 4 BGB"
+      }
+    ],
+    "help": [
+      {
+        "name": "Mieterverein (tenants' association)",
+        "what": "Members get tenancy advice and help with letters; membership is usually a few euros a month.",
+        "url": "https://www.mieterbund.de/"
+      },
+      {
+        "name": "Verbraucherzentrale",
+        "what": "Consumer advice centres help with dubious claims, contracts and withdrawals for a small fee.",
+        "url": "https://www.verbraucherzentrale.de/"
+      }
+    ],
+    "rule_ids": [
+      "bgb_556_3"
+    ],
+    "draft": "receipts_inspection"
+  }
+};
+
+/** Cards worked out from a demo letter itself (Sam's operating-cost statement), while it is filed as it was read. */
 export const ADVICE_BY_DOC: Record<string, LetterAdvice> = {
   "doc_nebenkosten": {
     "kind": "operating_costs",
@@ -264,6 +516,7 @@ export const ADVICE_BY_DOC: Record<string, LetterAdvice> = {
     ],
     "rule_ids": [
       "bgb_556_3"
-    ]
+    ],
+    "draft": "receipts_inspection"
   }
 };
