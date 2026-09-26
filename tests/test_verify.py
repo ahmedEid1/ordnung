@@ -6,6 +6,8 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from PIL import Image
 from rapidfuzz import fuzz
 
@@ -34,6 +36,7 @@ from ordnung.ingest.verify import (
     DateMention,
     Located,
     PageInput,
+    amount_matches,
     ground_evidence,
     locate_quote,
     parse_amounts,
@@ -442,10 +445,24 @@ def test_parse_dates_several_and_as_date() -> None:
         ("Steuernummer 123/456/78901", []),
         ("Wert 1,234.5", []),
         ("1.2,34 EUR", []),
+        # malformed groups (an OCR slip, a typo) are not amounts — and never raise
+        ("Ref 12,34..56", []),
+        ("94.99,,31", []),
+        ("Ihre Zahlung vom 15,.09.26 ist eingegangen.", []),
+        ("x 31,.10.30 €", []),
+        ("5,.10.20", []),
     ],
 )
 def test_parse_amounts(text: str, expected: list[float]) -> None:
     assert parse_amounts(text) == pytest.approx(expected)
+
+
+@settings(max_examples=400, deadline=None)
+@given(st.text(alphabet="0123456789.,-€ EURSD$£x", max_size=40))
+def test_amount_matches_never_raises(text: str) -> None:
+    """A letter's text can hold any run of digits and separators: reading it never raises."""
+    for match in amount_matches(text):
+        assert match.value >= 0
 
 
 @pytest.mark.parametrize(

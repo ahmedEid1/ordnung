@@ -218,6 +218,8 @@ _MONTHS = {
     **dict.fromkeys(("dezember", "december", "dez", "dec"), 12),
 }
 _MONTH = "|".join(sorted(_MONTHS, key=len, reverse=True))
+MONTH_NUMBERS: dict[str, int] = dict(_MONTHS)
+"""Month names and abbreviations (German and English, case-folded) → month number."""
 _ORDINAL = r"(?:st|nd|rd|th)?"
 # Travel documents print the month twice: "10 FEB / FÉV 2027" (ICAO bilingual format).
 _BILINGUAL_MONTH = re.compile(
@@ -338,26 +340,40 @@ def amount_matches(text: str) -> list[AmountMatch]:
 
 
 def _amount_value(number: str, has_currency: bool) -> float | None:
+    """The value of a number as written, or ``None`` when it is not a well-formed amount (a malformed
+    one such as ``12,34..56`` or an OCR slip like ``15,.09.26`` is not an amount — it never raises)."""
     separators = {ch for ch in number if ch in ".,"}
     if not separators:
-        return float(number) if has_currency else None
+        return _float(number) if has_currency else None
     if len(separators) == 2:
         decimal = "." if number.rfind(".") > number.rfind(",") else ","
         integer, _, fraction = number.rpartition(decimal)
         groups = integer.split("," if decimal == "." else ".")
-        if len(fraction) == 2 and _thousands_groups(groups):
-            return float("".join(groups) + "." + fraction)
+        if len(fraction) == 2 and fraction.isdecimal() and _thousands_groups(groups):
+            return _float("".join(groups) + "." + fraction)
         return None
     parts = number.split(separators.pop())
-    if len(parts) == 2 and len(parts[1]) == 2:
-        return float(f"{parts[0]}.{parts[1]}")
+    if len(parts) == 2 and len(parts[1]) == 2 and all(part.isdecimal() for part in parts):
+        return _float(f"{parts[0]}.{parts[1]}")
     if has_currency and _thousands_groups(parts):
-        return float("".join(parts))
+        return _float("".join(parts))
     return None
 
 
 def _thousands_groups(groups: list[str]) -> bool:
-    return 1 <= len(groups[0]) <= 3 and all(len(g) == 3 for g in groups[1:])
+    """``1.234.567``: a first group of one to three digits, then groups of exactly three digits."""
+    return (
+        1 <= len(groups[0]) <= 3
+        and all(len(g) == 3 for g in groups[1:])
+        and all(g.isdecimal() for g in groups)
+    )
+
+
+def _float(digits: str) -> float | None:
+    try:
+        return float(digits)
+    except ValueError:  # defensive: the checks above only pass digits and one decimal point
+        return None
 
 
 _NUMBER_WORDS = {
