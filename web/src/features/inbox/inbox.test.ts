@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeDetail, makeDoc, makeItem, makeSuggestion } from "@/features/document/fixtures";
 import type { Contract } from "@/api/types";
-import { filterCounts, filterDocuments, groupLetters, kindOptions, openItemsByDoc, parseFilter } from "./filters";
+import { filterCounts, filterDocuments, groupLetters, inboxDateInfo, kindOptions, openItemsByDoc, parseFilter, pinJustRead } from "./filters";
 import { recapSentence, summarizeBatch } from "./recap";
 
 const TODAY = "2026-09-28";
@@ -44,6 +44,28 @@ describe("inbox filters", () => {
       ["August", ["c"]],
       ["December 2025", ["d"]],
     ]);
+  });
+
+  it("pins letters read from New mail on top ('Just read'), after the ones being read", () => {
+    const reading = makeDoc({ id: "r", status: "processing", received_date: "2026-09-28", kind: null });
+    const groups = groupLetters([...docs.slice(0, 4), reading], TODAY);
+    // "c" arrived in August, but it just came out of the New-mail tray
+    expect(pinJustRead(groups, new Set(["c", "r", "gone"])).map((g) => [g.label, g.docs.map((d) => d.id)])).toEqual([
+      ["Being read", ["r"]],
+      ["Just read", ["c"]],
+      ["Last 7 days", ["a", "b"]],
+      ["December 2025", ["d"]],
+    ]);
+    expect(pinJustRead(groups.slice(1), new Set(["a"])).map((g) => g.label)).toEqual(["Just read", "Last 7 days", "August", "December 2025"]);
+    // nothing to pin: the very same groups
+    expect(pinJustRead(groups, new Set())).toBe(groups);
+    expect(pinJustRead(groups, new Set(["r", "zzz"]))).toBe(groups);
+  });
+
+  it("dates a row by its arrival (the grouping date) and keeps the letter's own date aside", () => {
+    expect(inboxDateInfo(makeDoc({ received_date: "2026-09-02", doc_date: "2026-08-31" }))).toEqual({ date: "2026-09-02", verb: "Arrived", docDate: "2026-08-31" });
+    expect(inboxDateInfo(makeDoc({ received_date: "2026-09-02", doc_date: "2026-09-02" }))).toEqual({ date: "2026-09-02", verb: "Arrived", docDate: null });
+    expect(inboxDateInfo(makeDoc({ received_date: null, doc_date: null, created_at: "2026-09-26T08:00:00Z" }))).toEqual({ date: "2026-09-26", verb: "Added", docDate: null });
   });
 
   it("counts open to-dos per letter and finds the next one", () => {

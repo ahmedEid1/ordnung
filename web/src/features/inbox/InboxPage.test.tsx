@@ -41,7 +41,7 @@ describe("Inbox", () => {
     const row = parking.closest("li")!;
     expect(within(row).getAllByText("Please check").length).toBeGreaterThan(0);
     expect(within(row).getByRole("button", { name: /Ordnungsamt Musterstadt/ })).toBeInTheDocument();
-    expect(within(row).getAllByLabelText("1 open to-do").length).toBeGreaterThan(0);
+    expect(within(row).getAllByText("1 to-do").length).toBeGreaterThan(0);
     assertNoRawEnumsInElement(container);
   });
 

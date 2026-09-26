@@ -50,10 +50,44 @@ export function inboxDate(d: Document): string {
   return d.received_date ?? d.created_at.slice(0, 10);
 }
 
+/**
+ * The date a row shows — the one its month group is built from ({@link inboxDate}) — and what it
+ * is: "Arrived" (the letter's arrival date) or "Added" (no arrival date: when it was added). The
+ * letter's own date goes along when it differs ("dated 31 Aug").
+ */
+export function inboxDateInfo(d: Document): { date: string; verb: "Arrived" | "Added"; docDate: string | null } {
+  const date = inboxDate(d);
+  return { date, verb: d.received_date ? "Arrived" : "Added", docDate: d.doc_date && d.doc_date !== date ? d.doc_date : null };
+}
+
 export interface LetterGroup {
   key: string;
   label: string;
   docs: Document[];
+}
+
+export const JUST_READ_LABEL = "Just read";
+
+/**
+ * Letters read from the demo's New mail go on top ("Just read", after the letters being read):
+ * they arrived today in the story, but their arrival date (from the letter) would file them
+ * somewhere down the list. Groups left empty disappear; order within groups is kept.
+ */
+export function pinJustRead(groups: LetterGroup[], ids: ReadonlySet<string>): LetterGroup[] {
+  if (!ids.size) return groups;
+  const pinned: Document[] = [];
+  const rest: LetterGroup[] = [];
+  for (const g of groups) {
+    if (g.key === "reading") {
+      rest.push(g);
+      continue;
+    }
+    const docs = g.docs.filter((d) => (ids.has(d.id) ? (pinned.push(d), false) : true));
+    if (docs.length) rest.push(docs.length === g.docs.length ? g : { ...g, docs });
+  }
+  if (!pinned.length) return groups;
+  const at = rest[0]?.key === "reading" ? 1 : 0;
+  return [...rest.slice(0, at), { key: "just-read", label: JUST_READ_LABEL, docs: pinned }, ...rest.slice(at)];
 }
 
 /**

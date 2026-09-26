@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { LoadingLabel } from "@/components/ui/Skeleton";
 import { DocumentSkeleton, DocumentView } from "@/features/document/DocumentView";
+import { isReading } from "@/features/inbox/filters";
+import { useMarkLetterSeen } from "@/features/inbox/seen";
 
 /** Every letter lives in the Inbox: its parent when it wasn't opened from another section. */
 const HOME = { to: "/inbox", label: "Inbox" };
@@ -21,6 +23,8 @@ export default function DocumentPage() {
   const q = useDocument(id);
   const doc = q.data?.document;
   const parent = useOriginParent(HOME);
+  // the Inbox's "New" badge clears once the letter itself was shown
+  useMarkLetterSeen(doc && !isReading(doc) ? doc.id : null);
 
   return (
     <Page title={doc ? (doc.title ?? doc.filename) : "Letter"} parent={parent} className="pt-4 md:pt-6">
