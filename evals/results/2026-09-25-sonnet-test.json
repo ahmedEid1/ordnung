@@ -53,14 +53,14 @@
    "manifest_sha256": "82c0ca53d06b4f28d6e832817bdaa3c626ef5c3a0c8f150a34ccf61a81597ee5"
   },
   "commit": "17f2292",
-  "metrics_commit": "a12db54",
+  "metrics_commit": "b3f0688",
   "added_conditions": {
    "llm_rules_tool": {
     "date": "2026-09-26",
     "backend": "live",
     "commit": "be9f638",
     "run_id": "tool-test-r3",
-    "note": "With Ordnung's engine as a tool, the same model got every due date on the test split right: 56 of 56 (100 %, 95 % interval 91.8–100), +17.9 points over LLM only (+7.5 to +28.6) and +7.1 over pasting the rules into the prompt (0.0 to +16.7), with no late and no early date. It asked a date tool on 44 of the 53 letters with a dated obligation. Of the 45 obligations a tool date belonged to, it answered every one with a date the tools had returned for it; the 9 it dated without one were all printed in the letter (appointments, payment reminders, two dates in English letters). The one letter between it and Ordnung re-scored on the same engine (98.2 %; −1.8 points, −5.7 to 0.0, within noise) is one where it asked twice. That letter states a posting day two days after its own date. The agent passed it as `spec.anchor_date`, as the tool asks, and got the engine's deliberate earlier date, counted from the letter's date, which is also Ordnung's answer. It then called again without the letter's date, so the engine counted from the stated day, and answered with that later date, which the label counts. (That second call quoted the posting-day sentence rather than the objection's, so an earlier version of this page, whose scorer matched calls to obligations by sentence only, counted the answer as an override of the tools; the scorer now gives a date no obligation's sentence claims to the obligation it dates. The tools now also say when a stated posting day could not be checked because the letter's date is missing, with a hint and lower confidence — after this recording.) On the dev split, where this interface was checked first, it kept the earlier date on the same kind of letter and scored 24 of 25 (96 %), as Ordnung does. So on these letters accuracy does not decide between a fixed pipeline and an agent with a calculator. The agent was also cheaper and faster per letter ($0.058 against $0.075, 27 s against 48 s median; Ordnung's calls also extract summaries, key facts, contracts and quotes). What the pipeline adds is a guarantee about how every date was made. The agent chose for itself when to ask the tool, what to pass it, and here whether to accept the engine's safe date. Its quotes are not checked against the page, its dates carry no stored receipt, and a new run may choose differently. This recording ran with the rules server pinned to each letter's `today`; the model passed a `today` in 18 calls, always the letter's. Two cautions. First, this condition ran after the held-out run, against the engine as fixed after it, so it is no more held-out than the re-scored Ordnung row. Second, this is the third recording of it on the test split. The first (tool interface of commit 456be6c) scored 98.2 % (55 of 56) and once replaced the tool's answer with a wrong date of its own. The second (e0337cb) came after a review revised the tool descriptions, argument checks and hints. It scored 100 %, but in 11 of its 50 calls it passed the recording day as `today`, and eight answers then called live deadlines passed. A second review then changed the interface again: formal service, the `today` argument, and the delivery rule for private senders moved into the engine. That interface was checked on the dev split first; then the test split was recorded a third time. Each recording replaced one that a review had looked at, so this is iteration on the test split: read the 100 % with that in mind. The six recordings, three per split, cost $14.91 (API-equivalent), at the ceiling of the budget set for this condition; it will not be recorded again without the owner's approval.",
+    "note": "With Ordnung's engine as a tool, the same model got every due date on the test split right: 56 of 56 (100 %, 95 % interval 91.8–100), +17.9 points over LLM only (+7.5 to +28.6) and +7.1 over pasting the rules into the prompt (0.0 to +16.7, an interval that does not exclude 0: not a clear difference), with no late and no early date. It asked a date tool on 44 of the 53 letters with a dated obligation. Of the 45 obligations a tool date belonged to, it answered every one with a date the tools had returned for it — for two of them the tools had returned two differing dates and it chose one: the earlier on a letter with conflicting dates, the later on the letter below; the 9 it dated without one were all printed in the letter (appointments, payment reminders, two dates in English letters). The one letter between it and Ordnung re-scored on the same engine (98.2 %; −1.8 points, −5.7 to 0.0, within noise) is one where it asked twice. That letter states a posting day two days after its own date. The agent passed it as `spec.anchor_date`, as the tool asks, and got the engine's deliberate earlier date, counted from the letter's date, which is also Ordnung's answer. It then called again without the letter's date, so the engine counted from the stated day, and answered with that later date, which the label counts. (That second call quoted the posting-day sentence rather than the objection's, so an earlier version of this page, whose scorer matched calls to obligations by sentence only, counted the answer as an override of the tools; the scorer now gives a date no obligation's sentence claims to the obligation it dates. The tools now also say when a stated posting day could not be checked because the letter's date is missing, with a hint and lower confidence — after this recording.) On the dev split, where this interface was checked first, it kept the earlier date on the same kind of letter and scored 24 of 25 (96 %), as Ordnung does. So on these letters accuracy does not decide between a fixed pipeline and an agent with a calculator. The agent was also cheaper and faster per letter ($0.058 against $0.075, 27 s against 48 s median; Ordnung's calls also extract summaries, key facts, contracts and quotes). What the pipeline adds is a guarantee about how every date was made. The agent chose for itself when to ask the tool, what to pass it, and here whether to accept the engine's safe date. Its quotes are not checked against the page, its dates carry no stored receipt, and a new run may choose differently. This recording ran with the rules server pinned to each letter's `today`; the model passed a `today` in 18 calls, always the letter's. Two cautions. First, this condition ran after the held-out run, against the engine as fixed after it, so it is no more held-out than the re-scored Ordnung row. Second, this is the third recording of it on the test split. The first (tool interface of commit 456be6c) scored 98.2 % (55 of 56) and once replaced the tool's answer with a wrong date of its own. The second (e0337cb) came after a review revised the tool descriptions, argument checks and hints. It scored 100 %, but in 11 of its 50 calls it passed the recording day as `today`, and eight answers then called live deadlines passed. A second review then changed the interface again: formal service, the `today` argument, and the delivery rule for private senders moved into the engine. That interface was checked on the dev split first; then the test split was recorded a third time. Each recording replaced one that a review had looked at, so this is iteration on the test split: read the 100 % with that in mind. The six recordings, three per split, cost $14.91 (API-equivalent), and smoke runs of a few letters, whose cost was not recorded, came on top: the budget of well under $15 set for recording this condition was not kept, and it will not be recorded again without the owner's approval.",
     "earlier_recordings": [
      {
       "date": "2026-09-26",
@@ -116,7 +116,8 @@
       "calls": 63,
       "cost_usd": 3.6791
      }
-    ]
+    ],
+    "recording_budget_usd": 15
    }
   }
  },
@@ -2008,6 +2009,8 @@
      "docs": 53
     },
     "deadline_calls_per_letter": 0.9622641509433962,
+    "deadline_calls_on_dated_letters": 51,
+    "dated_letters": 53,
     "calls": 94,
     "calls_by_tool": {
      "add_working_days": 3,
@@ -2128,6 +2131,13 @@
     },
     "overrides_breaking_a_right_tool_date": 0,
     "overrides_fixing_a_wrong_tool_date": 0,
+    "chose_among_differing_tool_dates": {
+     "items": 2,
+     "chose_a_later_date": 1,
+     "correct": 2,
+     "late": 0
+    },
+    "tool_dated_items_with_differing_dates": 2,
     "deadline_calls_with_other_today": 0,
     "letters_with_other_today": 0
    },
@@ -2669,7 +2679,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -2825,7 +2837,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -2979,7 +2993,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -3185,7 +3201,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 2,
+        "chose_later_tool_date": false
        }
       ],
       "required": 1,
@@ -3380,7 +3398,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -3534,7 +3554,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -3686,7 +3708,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -3866,7 +3890,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -4098,7 +4124,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -4121,7 +4149,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -4290,7 +4320,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -4311,7 +4343,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -4479,7 +4513,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -4500,7 +4536,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -4716,7 +4754,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -4737,7 +4777,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -4935,7 +4977,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -5089,7 +5133,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -5241,7 +5287,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -5429,7 +5477,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -5659,7 +5709,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -5834,7 +5886,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -6007,7 +6061,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -6192,7 +6248,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -6424,7 +6482,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -6599,7 +6659,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -6770,7 +6832,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -6979,7 +7043,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -7228,7 +7294,9 @@
         "grounding": "model_read",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -7402,7 +7470,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -7573,7 +7643,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -7773,7 +7845,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -7964,7 +8038,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -8120,7 +8196,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -8273,7 +8351,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -8464,7 +8544,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -8655,7 +8737,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -8809,7 +8893,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -8961,7 +9047,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -9139,7 +9227,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -9334,7 +9424,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -9497,7 +9589,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -9657,7 +9751,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -9829,7 +9925,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -10039,7 +10137,9 @@
         "grounding": "model_read",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -10201,7 +10301,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -10363,7 +10465,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -10557,7 +10661,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -10757,7 +10863,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -10917,7 +11025,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -11075,7 +11185,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -11265,7 +11377,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -11482,7 +11596,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -11635,7 +11751,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -11803,7 +11921,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -11955,7 +12075,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "no_tool_date",
-        "tool_had_truth": false
+        "tool_had_truth": false,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -12140,7 +12262,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -12293,7 +12417,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -12444,7 +12570,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -12596,7 +12724,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "no_tool_date",
-        "tool_had_truth": false
+        "tool_had_truth": false,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -12823,7 +12953,9 @@
         "grounding": "model_read",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -12976,7 +13108,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -13127,7 +13261,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -13279,7 +13415,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "no_tool_date",
-        "tool_had_truth": false
+        "tool_had_truth": false,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -13528,7 +13666,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -13681,7 +13821,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -13834,7 +13976,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -13985,7 +14129,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "no_tool_date",
-        "tool_had_truth": false
+        "tool_had_truth": false,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -15336,7 +15482,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -15491,7 +15639,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -15644,7 +15794,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -15811,7 +15963,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "no_tool_date",
-        "tool_had_truth": false
+        "tool_had_truth": false,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -16015,7 +16169,9 @@
         "grounding": "model_read",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -16170,7 +16326,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -16326,7 +16484,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -16492,7 +16652,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "no_tool_date",
-        "tool_had_truth": false
+        "tool_had_truth": false,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -16681,7 +16843,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -16839,7 +17003,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -16992,7 +17158,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -17160,7 +17328,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "no_tool_date",
-        "tool_had_truth": false
+        "tool_had_truth": false,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -17347,7 +17517,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -17500,7 +17672,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -17654,7 +17828,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -17838,7 +18014,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -18028,7 +18206,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -18179,7 +18359,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -18328,7 +18510,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -18499,7 +18683,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -18704,7 +18890,9 @@
         "grounding": "model_read",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -18855,7 +19043,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -19004,7 +19194,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -19153,7 +19345,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "no_tool_date",
-        "tool_had_truth": false
+        "tool_had_truth": false,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -19343,7 +19537,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -19496,7 +19692,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -19647,7 +19845,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -19840,7 +20040,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -20029,7 +20231,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -20181,7 +20385,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -20331,7 +20537,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -20483,7 +20691,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "no_tool_date",
-        "tool_had_truth": false
+        "tool_had_truth": false,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -20672,7 +20882,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -20826,7 +21038,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -20978,7 +21192,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -21131,7 +21347,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -21355,7 +21573,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -21378,7 +21598,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -21554,7 +21776,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -21575,7 +21799,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -21746,7 +21972,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -21767,7 +21995,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -22007,7 +22237,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -22028,7 +22260,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -22260,7 +22494,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -22283,7 +22519,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -22461,7 +22699,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -22482,7 +22722,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -22653,7 +22895,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -22674,7 +22918,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -22922,7 +23168,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -22943,7 +23191,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -23173,7 +23423,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -23196,7 +23448,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -23370,7 +23624,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -23391,7 +23647,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -23562,7 +23820,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -23583,7 +23843,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -23830,7 +24092,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -23851,7 +24115,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -24081,7 +24347,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -24104,7 +24372,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -24277,7 +24547,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -24298,7 +24570,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -24469,7 +24743,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -24490,7 +24766,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -24734,7 +25012,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -24755,7 +25035,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -24950,7 +25232,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -25104,7 +25388,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -25256,7 +25542,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -25436,7 +25724,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -25643,7 +25933,9 @@
         "grounding": "model_read",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -25797,7 +26089,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -25949,7 +26243,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -26137,7 +26433,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -26332,7 +26630,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -26486,7 +26786,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -26638,7 +26940,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -26824,7 +27128,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -27018,7 +27324,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -27172,7 +27480,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -27324,7 +27634,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -27511,7 +27823,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -27719,7 +28033,9 @@
         "grounding": "model_read",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -27873,7 +28189,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -28025,7 +28343,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -28214,7 +28534,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -28407,7 +28729,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -28561,7 +28885,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -28713,7 +29039,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -28899,7 +29227,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -29121,7 +29451,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -29292,7 +29624,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -29460,7 +29794,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -29657,7 +29993,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -29893,7 +30231,9 @@
         "grounding": "model_read",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -30080,7 +30420,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -30265,7 +30607,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -30482,7 +30826,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -30676,7 +31022,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -30827,7 +31175,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -30978,7 +31328,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -31154,7 +31506,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -31374,7 +31728,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -31527,7 +31883,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -31678,7 +32036,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -31856,7 +32216,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -32088,7 +32450,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -32109,7 +32473,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 2,
@@ -32281,7 +32647,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -32302,7 +32670,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 2,
@@ -32471,7 +32841,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -32492,7 +32864,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 2,
@@ -32700,7 +33074,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -32721,7 +33097,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "other_obligation",
-        "tool_had_truth": false
+        "tool_had_truth": false,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 2,
@@ -32883,7 +33261,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -33041,7 +33421,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -33200,7 +33582,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -33375,7 +33759,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -33531,7 +33917,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -33702,7 +34090,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -33873,7 +34263,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -34063,7 +34455,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 0,
@@ -34256,7 +34650,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -34423,7 +34819,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -34588,7 +34986,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -34751,7 +35151,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -34940,7 +35342,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -35094,7 +35498,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -35243,7 +35649,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -35435,7 +35843,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -35626,7 +36036,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -35778,7 +36190,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -35930,7 +36344,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -36104,7 +36520,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -36310,7 +36728,9 @@
         "grounding": "model_read",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -36462,7 +36882,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -36614,7 +37036,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -36812,7 +37236,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -37008,7 +37434,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -37159,7 +37587,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -37308,7 +37738,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -37485,7 +37917,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -37717,7 +38151,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -37908,7 +38344,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -38078,7 +38516,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -38274,7 +38714,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -38515,7 +38957,9 @@
         "grounding": "model_read",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -38703,7 +39147,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -38891,7 +39337,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -39105,7 +39553,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -39330,7 +39780,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -39482,7 +39934,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -39632,7 +40086,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -39811,7 +40267,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -40035,7 +40493,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -40186,7 +40646,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -40339,7 +40801,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -40514,7 +40978,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -40739,7 +41205,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -40912,7 +41380,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -41082,7 +41552,9 @@
         "grounding": null,
         "region_ignored": true,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -41281,7 +41753,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -41507,7 +41981,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -41679,7 +42155,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -41847,7 +42325,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -42044,7 +42524,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -42281,7 +42763,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -42302,7 +42786,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 2,
@@ -42472,7 +42958,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -42493,7 +42981,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 2,
@@ -42661,7 +43151,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -42682,7 +43174,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 2,
@@ -42916,7 +43410,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 2,
+        "chose_later_tool_date": true
        },
        {
         "index": 1,
@@ -42937,7 +43433,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "other_obligation",
-        "tool_had_truth": false
+        "tool_had_truth": false,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 2,
@@ -43163,7 +43661,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -43335,7 +43835,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -43488,7 +43990,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -43668,7 +44172,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -43898,7 +44404,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -44070,7 +44578,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -44240,7 +44750,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -44465,7 +44977,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -44702,7 +45216,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -44723,7 +45239,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -44943,7 +45461,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -44964,7 +45484,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -45182,7 +45704,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -45203,7 +45727,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -45455,7 +45981,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -45476,7 +46004,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -45714,7 +46244,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -45735,7 +46267,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 2,
@@ -45908,7 +46442,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -45929,7 +46465,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 2,
@@ -46096,7 +46634,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -46117,7 +46657,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 2,
@@ -46339,7 +46881,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        },
        {
         "index": 1,
@@ -46360,7 +46904,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 2,
@@ -46551,7 +47097,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -46705,7 +47253,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -46856,7 +47406,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -47036,7 +47588,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -47242,7 +47796,9 @@
         "grounding": "model_read",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -47396,7 +47952,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -47545,7 +48103,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -47722,7 +48282,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -47915,7 +48477,9 @@
         "grounding": "verified",
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -48068,7 +48632,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -48221,7 +48787,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": null,
-        "tool_had_truth": null
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,
@@ -48400,7 +48968,9 @@
         "grounding": null,
         "region_ignored": false,
         "backing": "tool_date",
-        "tool_had_truth": true
+        "tool_had_truth": true,
+        "tool_date_count": 1,
+        "chose_later_tool_date": null
        }
       ],
       "required": 1,

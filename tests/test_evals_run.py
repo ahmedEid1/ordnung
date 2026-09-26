@@ -1176,6 +1176,11 @@ async def test_a_condition_added_later_keeps_the_published_numbers(tmp_path: Pat
         "$3.40, $3.50, plus smoke runs of a few letters whose cost was not recorded." in spent
     )
     assert "budget" not in spent
+    # the page says how to record the added condition again without replacing it (reviewer: only --help did)
+    reproduce = report.render_markdown([fourth]).split("## Reproduce", 1)[1]
+    assert "--conditions llm_rules_tool`, which never rewrites this page" in reproduce
+    assert "--add-condition llm_rules_tool=evals/results/<new run>.json" in reproduce
+    assert "--add-condition" not in report.render_markdown([before]).split("## Reproduce", 1)[1]
     # with the budget set for it, the page says plainly whether it was kept (reviewer: $14.91 of "well
     # under $15", smoke runs uncounted, was reported as "at the ceiling")
     fourth["meta"]["added_conditions"]["llm_rules_tool"]["recording_budget_usd"] = 9
@@ -1183,8 +1188,8 @@ async def test_a_condition_added_later_keeps_the_published_numbers(tmp_path: Pat
     assert fifth["meta"]["added_conditions"]["llm_rules_tool"]["recording_budget_usd"] == 9  # carried over
     over = report.recording_spend_text(fifth["meta"]["added_conditions"]["llm_rules_tool"])
     assert over.endswith(
-        "The budget for recording it was $9.00, to stay well under: the spend reached it, and with the smoke "
-        "runs may exceed it, so that budget was not kept."
+        "The budget for recording it was $9.00, to stay well under: the counted spend alone came within a "
+        "tenth of it, and the smoke runs come on top, so that budget was not kept."
     )
     fifth["meta"]["added_conditions"]["llm_rules_tool"]["recording_budget_usd"] = 15
     kept = report.recording_spend_text(fifth["meta"]["added_conditions"]["llm_rules_tool"])

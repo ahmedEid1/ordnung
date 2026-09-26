@@ -301,8 +301,8 @@ def recording_spend_text(info: Mapping[str, Any]) -> str:
         return text
     if total >= 0.9 * float(budget):
         return (
-            f"{text} The budget for recording it was ${float(budget):.2f}, to stay well under: the spend "
-            "reached it, and with the smoke runs may exceed it, so that budget was not kept."
+            f"{text} The budget for recording it was ${float(budget):.2f}, to stay well under: the counted "
+            "spend alone came within a tenth of it, and the smoke runs come on top, so that budget was not kept."
         )
     return f"{text} The budget for recording it was ${float(budget):.2f}."
 
@@ -1279,6 +1279,15 @@ condition's."""
 def _reproduce_section(meta: Mapping[str, Any]) -> str:
     model = meta.get("model", "sonnet")
     split = meta.get("split", "test")
+    added = sorted(meta.get("added_conditions") or {})
+    later = "".join(
+        f"\n{_label(name)} was added after the run: it is recorded on its own (`python -m evals.run --live "
+        f"--split {split} --model {model} --conditions {name}`, which never rewrites this page) and joins "
+        f"the run with `python -m evals.report evals/results/<run>.json --rescored "
+        f"evals/results/<run>-rescored.json --add-condition {name}=evals/results/<new run>.json --note "
+        "<finding>.md` (the run's own conditions stay as published)."
+        for name in added
+    )
     return f"""## Reproduce
 
 ```bash
@@ -1291,7 +1300,7 @@ Recorded outputs live in `evals/recorded/<model>/` (keyed like the app's replay 
 results with every prediction in `evals/results/`. A replay scores the recorded outputs with the
 rules engine of the checked-out commit; this run's numbers come from commit `{meta.get("commit") or "?"}`.
 The page is rendered from the results files alone:
-`python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]`."""
+`python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]`.{later}"""
 
 
 def render_pending_markdown() -> str:
