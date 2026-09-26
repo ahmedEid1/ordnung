@@ -37,6 +37,9 @@ import { BRIEF_TEXT, DEMO_CHECKS, RULES, USAGE } from "./data/system";
 import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
 import { CHECKS_OK, phoneGuidance } from "./data/drafts";
 import { SAM, sha } from "./data/constants";
+import { TRAY_DOCUMENTS } from "./data/documents";
+import { TRAY_ITEMS } from "./data/items";
+import { PARTIES } from "./data/parties";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
 
 export interface MockOptions {
@@ -293,6 +296,17 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
 
 const CITABLE = new Set<string>(["document", "item", "contract", "party"]);
 
+/** Titles of the New-mail letters' records before they are opened (recordings may cite them). */
+function trayLabel(r: SuggestionRef): string | null {
+  if (r.type === "document") {
+    const d = TRAY_DOCUMENTS[r.id];
+    return d ? (d.title ?? d.filename) : null;
+  }
+  if (r.type === "item") return Object.values(TRAY_ITEMS).flat().find((i) => i.id === r.id)?.title ?? null;
+  if (r.type === "party") return PARTIES.find((p) => p.id === r.id)?.name ?? null;
+  return null;
+}
+
 /** Citations as the API's `done` event carries them: with the cited record's label. */
 function citationRefs(db: MockDb, refs: SuggestionRef[]): CitationRef[] {
   const labelOf = (r: SuggestionRef): string | null => {
@@ -304,8 +318,12 @@ function citationRefs(db: MockDb, refs: SuggestionRef[]): CitationRef[] {
     if (r.type === "contract") return db.state.contracts.find((c) => c.id === r.id)?.name ?? null;
     return db.party(r.id)?.name ?? null;
   };
-  // recordings may cite letters of the New-mail tray that aren't opened yet: keep them (id as label)
-  return refs.filter((r) => CITABLE.has(r.type)).map((r) => ({ type: r.type as CitationRef["type"], id: r.id, label: labelOf(r) ?? r.id }));
+  // recordings may cite letters of the New-mail tray that aren't opened yet: label them from the tray;
+  // like the API, a citation of a record that exists nowhere is dropped
+  return refs.flatMap((r) => {
+    const label = CITABLE.has(r.type) ? (labelOf(r) ?? trayLabel(r)) : null;
+    return label ? [{ type: r.type as CitationRef["type"], id: r.id, label }] : [];
+  });
 }
 
 function askStream(ctx: Ctx): Response {
@@ -331,14 +349,17 @@ function askStream(ctx: Ctx): Response {
       try {
         controller.enqueue(enc.encode(": connected\n\n"));
         await sleep(250 * speed, signal);
+        // like the real API: the model's words stream as they come (`raw`), then `done` carries the
+        // checked answer, which may leave a sentence out and add Ordnung's note
         const text = rec?.text ?? FALLBACK_ANSWER;
+        const streamed = rec?.raw ?? text;
         for (const t of rec?.tools ?? []) {
           send({ type: "tool_use", name: t.name, input: t.input });
           await sleep(550 * speed, signal);
           send({ type: "tool_result", name: t.name, text: t.result });
           await sleep(200 * speed, signal);
         }
-        const chunks = text.match(/\S+\s*/g) ?? [text];
+        const chunks = streamed.match(/\S+\s*/g) ?? [streamed];
         for (let i = 0; i < chunks.length; i += 3) {
           if (signal?.aborted) break;
           send({ type: "text", text: chunks.slice(i, i + 3).join("") });

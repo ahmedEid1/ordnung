@@ -201,8 +201,12 @@ export function parseInline(src: string, citations: ReadonlyMap<string, Citation
           seen.add(r.id);
           return ok;
         });
-        if (kept.length) for (const r of kept) out.push({ t: "cite", ref: citations!.get(r.id)! });
-        else {
+        if (kept.length) {
+          // keep the marker on the line of the fact it supports ("…by Wed 21 Oct ³"), never alone
+          const last = out[out.length - 1];
+          if (last?.t === "text") last.v = last.v.replace(/[ \t]+$/, " ");
+          for (const r of kept) out.push({ t: "cite", ref: citations!.get(r.id)! });
+        } else {
           // drop the marker together with the spaces before it: "fact [doc:x]." → "fact."
           const last = out[out.length - 1];
           if (last?.t === "text") last.v = last.v.replace(/[ \t]+$/, "");

@@ -56,7 +56,9 @@ export function makeRefResolver(src: RefSources) {
 
   const resolve = (ref: CitationRef): RefInfo => {
     const kind = KIND[ref.type];
-    const title = ref.label?.trim() || titleOf(ref.id) || kind.label;
+    const label = ref.label?.trim();
+    // never show a bare id ("doc_x9…") as a title: fall back to the ledger's title, then the kind
+    const title = (label && label !== ref.id ? label : null) || titleOf(ref.id) || kind.label;
     let href: string | null = null;
     if (ref.type === "document") href = `/documents/${encodeURIComponent(ref.id)}`;
     else if (ref.type === "item") {

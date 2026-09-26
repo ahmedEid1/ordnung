@@ -109,6 +109,27 @@ describe("mock dataset", () => {
     expect(text).toMatch(/"citations":\[\{"type":"[a-z]+","id":"[a-z]+_[a-z_]+","label":"/);
   });
 
+  it("streams the model's words, then the checked answer with Ordnung's note (like the API)", async () => {
+    const s = srv();
+    const res = await s.handle("POST", "/ask", new URLSearchParams(), { question: "What did the Finanzamt send me?" });
+    const events = (await res.text())
+      .split("\n\n")
+      .filter((block) => block.startsWith("data: "))
+      .map((block) => JSON.parse(block.slice(6)) as { type: string; text?: string; citations?: { id: string; label: string | null }[] });
+    const streamed = events.filter((e) => e.type === "text").map((e) => e.text).join("");
+    const done = events.find((e) => e.type === "done")!;
+    expect(streamed).toContain("Post it by Thu 15 Oct to be safe.");
+    expect(done.text).not.toContain("Post it by");
+    expect(done.text).toContain("**“324,00 €”**");
+    expect(done.text).toMatch(/\n\nChecked by Ordnung: 1 sentence was left out/);
+    // the tax letter waits unopened in New mail: its records are labelled from the tray, never by id
+    expect(done.citations!.map((c) => c.label)).toEqual([
+      "Finanzamt Musterstadt",
+      "Income tax assessment 2025",
+      expect.stringMatching(/Einspruch/),
+    ]);
+  });
+
   it("refuses Claude-only actions in the static demo with a friendly message", async () => {
     const s = createMockServer({ staticDemo: true, latency: 0 });
     const res = await s.handle("POST", "/suggestions/review", new URLSearchParams(), {});

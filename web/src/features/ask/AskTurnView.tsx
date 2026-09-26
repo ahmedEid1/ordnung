@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Check, Copy, RotateCw, Square } from "lucide-react";
+import { Check, Copy, RotateCw, ShieldCheck, Square } from "lucide-react";
 import { LogoMark } from "@/components/shell/Logo";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { useClipboard } from "@/features/today/clipboard";
+import { splitCheckNote } from "./checkNote";
 import { citationIndex, numberCitations, stripAllMarkers } from "./citations";
 import { CitationChip, CitationMarker } from "./CitationChip";
 import { Markdown } from "./Markdown";
@@ -39,6 +40,24 @@ function Thinking() {
   );
 }
 
+/**
+ * What Ordnung's answer check did (ADR 0008): sentences left out because their date or amount isn't
+ * in the records they cite, and values shown in quotation marks because only a letter states them.
+ */
+export function CheckNote({ text }: { text: string }) {
+  return (
+    <p
+      role="note"
+      className="mt-3 flex items-start gap-2 rounded-lg border border-line bg-surface-2/60 px-3 py-2 text-[13px] leading-5 text-muted"
+    >
+      <ShieldCheck className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+      <span className="min-w-0">
+        <span className="font-medium text-ink">Checked by Ordnung.</span> {text}
+      </span>
+    </p>
+  );
+}
+
 export interface AnswerViewProps {
   answer: AnswerState;
   resolve: (ref: CitationRef) => RefInfo;
@@ -52,8 +71,9 @@ export interface AnswerViewProps {
 export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: AnswerViewProps) {
   const { copy, copied } = useClipboard();
   const live = answer.status === "streaming";
+  const { body, note } = useMemo(() => splitCheckNote(answer.text), [answer.text]);
   const valid = useMemo(() => (live ? null : citationIndex(answer.citations)), [live, answer.citations]);
-  const numbers = useMemo(() => (valid ? numberCitations(answer.text, valid) : new Map<string, number>()), [valid, answer.text]);
+  const numbers = useMemo(() => (valid ? numberCitations(body, valid) : new Map<string, number>()), [valid, body]);
   const sources = useMemo(
     () => (valid ? [...numbers.entries()].map(([id, n]) => ({ n, info: resolve(valid.get(id)!) })) : []),
     [valid, numbers, resolve],
@@ -67,9 +87,9 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
       <LogoMark className="mt-0.5 size-7 rounded-lg" />
       <div className="min-w-0 flex-1" aria-busy={live || undefined}>
         <ToolTrace steps={answer.tools} live={live} titleOf={titleOf} />
-        {answer.text ? (
+        {body ? (
           <Markdown
-            text={answer.text}
+            text={body}
             citations={valid}
             streaming={live}
             renderCitation={(ref, key) => <CitationMarker key={key} info={resolve(ref)} n={numbers.get(ref.id) ?? 0} />}
@@ -77,6 +97,12 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
         ) : live ? (
           <Thinking />
         ) : null}
+
+        {live && body ? (
+          <p className="mt-2 text-[12.5px] leading-5 text-muted">Dates and amounts are checked against your records when the answer is complete.</p>
+        ) : null}
+
+        {note && !live ? <CheckNote text={note} /> : null}
 
         {answer.status === "stopped" ? (
           <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-muted">

@@ -160,7 +160,8 @@ export default function AskPage() {
         </div>
       )}
 
-      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-6 bg-linear-to-t from-canvas from-70% to-transparent px-4 pb-3 pt-6 sm:-mx-6 sm:px-6 md:bottom-0 md:pb-5 lg:-mx-10 lg:px-10">
+      {/* on phones the demo tour's bar sits above the tab bar: the composer stays above both */}
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom)+var(--ordnung-toast-lift,0px))] z-10 -mx-4 mt-6 bg-linear-to-t from-canvas from-70% to-transparent px-4 pb-3 pt-6 sm:-mx-6 sm:px-6 md:bottom-0 md:pb-5 lg:-mx-10 lg:px-10">
         <AskComposer value={draft} onChange={setDraft} onSubmit={send} onStop={thread.stop} streaming={thread.streaming} textareaRef={inputRef} />
         <p id="ask-hint" className="mt-2 text-center text-[12px] leading-5 text-muted">
           {replayDemo ? "Demo: suggested questions replay recorded answers. " : null}

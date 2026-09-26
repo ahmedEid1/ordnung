@@ -10,7 +10,10 @@ export interface RecordedAnswer {
   /** lower-case keywords; a question matching all of any group replays this answer */
   match: string[][];
   tools: { name: string; input: Record<string, unknown>; result: string }[];
+  /** the checked answer (what `done` carries and the conversation keeps) */
   text: string;
+  /** what the model streamed before Ordnung's check, when the check changed it */
+  raw?: string;
   citations: SuggestionRef[];
 }
 
@@ -58,12 +61,22 @@ export const RECORDED: RecordedAnswer[] = [
       { name: "get_document", input: { doc_id: "doc_tax" }, result: "Read the letter" },
       { name: "explain_date", input: { item_or_contract_id: "itm_tax_objection" }, result: "Found how the date was worked out" },
     ],
-    text:
-      "Finanzamt Musterstadt [party:pty_finanzamt] sent your **income tax assessment for 2025** (Bescheid of 15 Sep 2026) [doc:doc_tax]:\n\n" +
-      "- You get **324,00 €** back.\n" +
-      "- They did **not accept your laptop (1.049,00 €)** as a work expense, because proof of work use was missing.\n\n" +
-      "If you disagree, you can file an **Einspruch** (objection). It is free, a short letter is enough and the reasons can follow later. It must reach the Finanzamt by **Wed 21 Oct** [item:itm_tax_objection].\n\n" +
+    // the check (ADR 0008): the refund was read by AI from a photo, so it may only be quoted; the
+    // post-by date is the model's own arithmetic, so that sentence is left out
+    raw:
+      "Finanzamt Musterstadt [party:pty_finanzamt] sent your **income tax assessment for 2025** [doc:doc_tax]:\n\n" +
+      "- The letter says you get **324,00 €** back [doc:doc_tax].\n" +
+      "- They did **not accept your laptop** as a work expense, because proof of work use was missing [doc:doc_tax].\n\n" +
+      "If you disagree, you can file an **Einspruch** (objection). It is free, a short letter is enough and the reasons can follow later. It must reach the Finanzamt by **Wed 21 Oct** [item:itm_tax_objection]. Post it by Thu 15 Oct to be safe.\n\n" +
       "The letter was read from a phone photo, so please compare the date with the paper letter.",
+    text:
+      "Finanzamt Musterstadt [party:pty_finanzamt] sent your **income tax assessment for 2025** [doc:doc_tax]:\n\n" +
+      "- The letter says you get **“324,00 €”** back [doc:doc_tax].\n" +
+      "- They did **not accept your laptop** as a work expense, because proof of work use was missing [doc:doc_tax].\n\n" +
+      "If you disagree, you can file an **Einspruch** (objection). It is free, a short letter is enough and the reasons can follow later. It must reach the Finanzamt by **Wed 21 Oct** [item:itm_tax_objection].\n\n" +
+      "The letter was read from a phone photo, so please compare the date with the paper letter.\n\n" +
+      "Checked by Ordnung: 1 sentence was left out because its date or amount could not be matched to your records. " +
+      "Values in “quotation marks” are quoted from a letter; Ordnung has not confirmed them.",
     citations: [
       { type: "party", id: "pty_finanzamt" },
       { type: "document", id: "doc_tax" },
