@@ -230,7 +230,7 @@ def _objection(party_kind: str | None) -> SendGuidance:
 
 def _court_objection(letter_kind: str) -> SendGuidance:
     payment_order = letter_kind == "court_payment_order"
-    rule_id = "zpo_692" if payment_order else "zpo_339"
+    # the court rule is cited once, in the form note's own words; channels cite only what they add
     channels = [
         _channel(
             "registered_letter",
@@ -238,7 +238,6 @@ def _court_objection(letter_kind: str) -> SendGuidance:
             if payment_order
             else "Signed letter by Einwurf-Einschreiben",
             "Send it to the court that issued the order. " + _EINSCHREIBEN,
-            rule_id,
             recommended=True,
         ),
         _channel(
@@ -249,11 +248,9 @@ def _court_objection(letter_kind: str) -> SendGuidance:
             "only counts once their record reaches the issuing court — go by the send-by date, as for a letter.",
             "zpo_129a",
         ),
-        _channel(
-            "fax", "Fax of the signed letter", "Counts as written; keep the transmission report.", rule_id
-        ),
-        _channel("letter", "Signed letter by normal post", "Works, but you can't prove it arrived.", rule_id),
-        _channel("email", "E-mail", "Not valid at a court.", rule_id, allowed=False),
+        _channel("fax", "Fax of the signed letter", "Counts as written; keep the transmission report."),
+        _channel("letter", "Signed letter by normal post", "Works, but you can't prove it arrived."),
+        _channel("email", "E-mail", "Not valid at a court.", allowed=False),
     ]
     if payment_order:
         channels.insert(
@@ -262,17 +259,16 @@ def _court_objection(letter_kind: str) -> SendGuidance:
                 "portal",
                 "online-mahnantrag.de",
                 "The courts' own site: object online with your ID card, or print a barcode form to sign and post.",
-                rule_id,
             ),
         )
         note = (
-            "In writing to the court that issued the order — best on the form that came with it (tick how much "
-            "you object to and sign it), or online. No reasons are needed; e-mail is not valid."
+            "In writing to the court that issued the order (§ 694 ZPO) — best on the form that came with it (tick "
+            "how much you object to and sign it), or online. No reasons are needed; e-mail is not valid."
         )
         tips = ["Keep a copy of the form you send and the envelope with the delivery date."]
     else:
         note = (
-            "In writing to the court that issued the order (not by e-mail), or for the record at its "
+            "In writing to the court that issued the order (§ 700, § 340 ZPO; not by e-mail), or for the record at its "
             "Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record "
             "reaches the issuing court (§ 129a Abs. 3 S. 2 ZPO) — go early. The period can't be extended."
         )

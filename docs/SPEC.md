@@ -201,9 +201,13 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   orders, § 692/§ 339 ZPO; § 38 SGB III; the end-of-month consent period, § 558b BGB; two months
   before the end, § 574b BGB; the 14-day withdrawal that only has to be sent, § 355 BGB), and
   `routing.derived_deadlines` adds the deadlines the law sets that the letter doesn't state (the
-  three weeks of § 4 KSchG) as `origin="rule"` to-dos. Court deadlines are never `high`. An
-  operating-cost statement is recognised on read only; its card checks the 12-month limit of § 556
-  Abs. 3 BGB and calls a statement late only when it certainly is.
+  three weeks of § 4 KSchG) as `origin="rule"` to-dos. A date follows a letter rule only when its
+  nature fits (an appointment is never re-dated as a registration). No date on a court order is
+  ever `high`, fixed or relative. An operating-cost statement is recognised on read only; its card
+  checks the 12-month limit of § 556 Abs. 3 BGB from the latest billing period the letter names and
+  calls a statement late only when it certainly is (from a billing year alone: at most "probably").
+  The person can correct a letter's kind on its page ("What kind of letter is this?"); a kind the
+  person chose is kept when the letter is read again, a kind an older version filed is not.
 
 ## 7. LLM layer — `llm/` (implemented; update to v2 invocation)
 

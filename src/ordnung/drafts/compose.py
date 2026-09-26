@@ -989,24 +989,28 @@ _TEMPLATE_NOTES: dict[str, tuple[str, ...]] = {
 }
 
 
+#: What an objection the law gives a letter does (the other objections: :data:`_OBJECTION_NOTE`).
+STATUTORY_OBJECTION_NOTES: dict[str, str] = {
+    "court_payment_order": (
+        "The letter objects to the whole claim; no reasons are needed. The form that came with the order "
+        "does the same — use either, not both. Get advice if you're unsure."
+    ),
+    "landlord_notice": (
+        "The objection only helps if moving out would be a hardship for you or your household. Talk to "
+        "a tenants' association before you send it; the reasons follow on request."
+    ),
+}
+_OBJECTION_NOTE = (
+    "The letter files the objection and says the reasons will follow. Get advice before you send "
+    "reasons or if you're unsure."
+)
+
+
 def _kind_notes(plan: Plan, sources: Sources) -> list[str]:
     """Notes about what this kind of letter does and doesn't do."""
     letter_kind = sources.document.kind if sources.document else None
     if plan.kind == "objection":
-        if letter_kind == "court_payment_order":
-            return [
-                "The letter objects to the whole claim; no reasons are needed. The form that came with the order "
-                "does the same — use either, not both. Get advice if you're unsure."
-            ]
-        if letter_kind == "landlord_notice":
-            return [
-                "The objection only helps if moving out would be a hardship for you or your household. Talk to "
-                "a tenants' association before you send it; the reasons follow on request."
-            ]
-        return [
-            "The letter files the objection and says the reasons will follow. Get advice before you send "
-            "reasons or if you're unsure."
-        ]
+        return [STATUTORY_OBJECTION_NOTES.get(letter_kind or "", _OBJECTION_NOTE)]
     notes = list(_TEMPLATE_NOTES.get(plan.kind, ()))
     if plan.kind == "payment_plan":
         tax = sources.party is not None and sources.party.kind == "tax_office"
