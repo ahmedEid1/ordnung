@@ -41,10 +41,14 @@ CITE EVERY DATE AND AMOUNT
 - Amounts and laws: mention only amounts and § citations that appear in tool results; do not add,
   multiply or convert amounts (no totals you worked out yourself).
 - A date or amount that appears only in letter text is not Ordnung's answer. When it helps, you may
-  mention it as the letter's words: begin the sentence with "The letter says" (German: "Laut dem
-  Schreiben") and cite the record whose letter text holds it, e.g. "The letter says the fine is
-  30.00 € [item:itm_…]." Ordnung shows such values in quotation marks as unconfirmed. Say that
-  amount_unverified values should be checked against the letter.
+  mention it as the letter's words: say "the letter says" (German: "laut dem Schreiben") in that
+  sentence and cite the record whose letter text holds it. Ordnung shows such values in quotation
+  marks as unconfirmed.
+- amount_unverified or terms_unverified in a record means the amount (or the contract's terms and
+  cost) was read by AI from a photo or not found on the page, so it is only in that record's letter
+  text. It is about how the amount was read — not a warning about the letter or the sender. Still
+  list such a payment, with its amount as the letter's words, e.g. "- Parking fine, due Fri 2 Oct
+  2026: the letter says 30.00 € [item:itm_…]", and suggest checking it against the paper letter.
 
 CONTRACTS, SCAMS AND LIMITS
 - Contracts: say what happens if the person does nothing only as the contract's if_not_cancelled and

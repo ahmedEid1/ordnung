@@ -18,11 +18,15 @@ record of the records it cites, with this written policy:
    citation: today's date, what the person wrote in their own questions, and the overview values
    Ordnung's code adds up outside any one record (``today`` and the money totals of
    ``money_summary``).
-3. **Quoted.** A date or amount that is not supported may stay only as a quote of a letter: the
-   sentence names the letter as its source with one of the phrases in :data:`LETTER_QUOTE` ("the
-   letter says …", "laut dem Schreiben …") *and* the value is in the letter text of a record it
-   cites. The value is then put in quotation marks (“31.12.2027”) and the answer gets a note that
-   quoted values are the letter's words, not Ordnung's.
+3. **Quoted.** A date or amount that is not supported may stay only as a quote of a letter, when
+   either (a) the sentence names the letter as its source with one of the phrases in
+   :data:`LETTER_QUOTE` ("the letter says …", "laut dem Schreiben …") *and* the value is in the
+   letter text of a record it cites, or (b) the value is the unverified amount of a record it cites —
+   a to-do or contract whose record says ``amount_unverified`` or ``terms_unverified`` (read by AI
+   from a photo, or not found on the page) and whose letter text holds that amount. Case (b) keeps a
+   real payment in a list instead of dropping it; the amount came through the pipeline, not from
+   free letter text. The value is then put in quotation marks (“31.12.2027”) and the answer gets a
+   note that quoted values are the letter's words, not Ordnung's.
 4. **Removed.** Every other sentence that states a date or amount is removed; a note under the answer
    says how many. A sentence naming a § that is neither in the rules catalog nor in this turn's tool
    results is removed too (the earlier, weaker rule for laws). When nothing is left, Ask answers with
@@ -62,6 +66,8 @@ AMOUNT_KEYS = frozenset({"amount", "monthly", "monthly_cost", "due_this_month", 
 AMOUNT_MAPS = frozenset({"fixed_costs_by_category", "fixed_costs_monthly_other_currencies"})
 """Fields whose values are all money (``{"rent": 640.0, …}``)."""
 CONTEXT_KEYS = frozenset({"today", *AMOUNT_MAPS, "due_this_month", "fixed_costs_monthly"})
+UNVERIFIED_FLAGS = ("amount_unverified", "terms_unverified")
+"""Record flags saying a record's amounts are only in its letter text (policy rule 3b)."""
 """Top-level record fields that belong to no one record: overview values Ordnung's code worked out."""
 
 NOTE_PREFIX = "Checked by Ordnung:"
@@ -179,12 +185,14 @@ class TurnEvidence:
 
     ``record``: the dates and amounts of each record's record part (and of the records inside it or
     linked to it); ``letters``: those of its letter text (and of the records crediting it);
-    ``context``: values that need no citation; ``seen_ids``: every citable id in a record part;
-    ``paragraphs``: the § citations known from the rules catalog and the tool results.
+    ``unverified``: the amounts of records whose record flags them as unverified (they sit in the
+    letter text); ``context``: values that need no citation; ``seen_ids``: every citable id in a
+    record part; ``paragraphs``: the § citations known from the rules catalog and the tool results.
     """
 
     record: Mapping[str, FactSet]
     letters: Mapping[str, FactSet]
+    unverified: Mapping[str, FactSet]
     context: FactSet
     seen_ids: frozenset[str]
     paragraphs: frozenset[tuple[str, str | None]]
@@ -206,22 +214,28 @@ class TurnEvidence:
         paragraphs: set[tuple[str, str | None]] = set()
         for text in catalog:
             paragraphs.update(paragraphs_in(text))
-        letter_bags: dict[str, FactSet] = defaultdict(FactSet)
+        letter_fields: list[tuple[str, Any]] = []
         for text in results:
             paragraphs.update(paragraphs_in(text))
             parsed = parse_tool_result(text)
             if parsed.record is not None:
                 collector.walk(parsed.record)
-            for record_id, fields in parsed.letters.items():
-                if isinstance(record_id, str):
-                    _collect_letter(fields, letter_bags[record_id], money=False, key=None)
+            letter_fields += [(key, value) for key, value in parsed.letters.items() if isinstance(key, str)]
         letters: dict[str, FactSet] = defaultdict(FactSet)
-        for record_id, bag in letter_bags.items():
+        unverified: dict[str, FactSet] = defaultdict(FactSet)
+        for record_id, fields in letter_fields:
+            bag = FactSet()
+            _collect_letter(fields, bag, money=False, key=None)
+            owed = FactSet()
+            if record_id in collector.flagged:
+                _collect_letter(fields, owed, money=False, key=None, text=False)
             for owner in collector.credit.get(record_id, {record_id}):
                 _merge(letters[owner], bag)
+                _merge(unverified[owner], owed)
         return cls(
             record=dict(collector.record),
             letters=dict(letters),
+            unverified=dict(unverified),
             context=collector.context,
             seen_ids=frozenset(collector.seen),
             paragraphs=frozenset(paragraphs),
@@ -234,8 +248,14 @@ class TurnEvidence:
         )
 
     def quotes(self, value: Value, cited: Collection[str]) -> bool:
-        """Policy rule 3 (second half): in the letter text of a cited record."""
+        """Policy rule 3a (second half): in the letter text of a cited record."""
         return any(value.found_in(self.letters.get(ref_id, _EMPTY)) for ref_id in cited)
+
+    def unverified_amount(self, value: Value, cited: Collection[str]) -> bool:
+        """Policy rule 3b: the flagged, unverified amount of a cited record."""
+        return value.amount is not None and any(
+            value.found_in(self.unverified.get(ref_id, _EMPTY)) for ref_id in cited
+        )
 
     def knows_paragraph(self, number: str, law: str | None) -> bool:
         """A § citation from the catalog or the tool results (a bare number: any law with it)."""
@@ -250,6 +270,7 @@ class _Collector:
     def __init__(self) -> None:
         self.record: dict[str, FactSet] = defaultdict(FactSet)
         self.credit: dict[str, set[str]] = defaultdict(set)
+        self.flagged: set[str] = set()
         self.context = FactSet()
         self.seen: set[str] = set()
 
@@ -272,6 +293,8 @@ class _Collector:
             own = node.get("id")
             if isinstance(own, str) and CITABLE_ID.fullmatch(own):
                 self.credit[own].update(here)
+                if any(node.get(flag) for flag in UNVERIFIED_FLAGS):
+                    self.flagged.add(own)
             for child_key, value in node.items():
                 self._visit(
                     value,
@@ -309,15 +332,17 @@ def _citable_ids(node: Mapping[str, Any]) -> Iterator[str]:
             yield value
 
 
-def _collect_letter(node: Any, bag: FactSet, *, money: bool, key: str | None) -> None:
+def _collect_letter(node: Any, bag: FactSet, *, money: bool, key: str | None, text: bool = True) -> None:
+    """Dates and amounts of letter text; ``text=False``: only the money fields (the filed amounts)."""
     if isinstance(node, dict):
         for child_key, value in node.items():
-            _collect_letter(value, bag, money=money or child_key in AMOUNT_MAPS, key=child_key)
+            _collect_letter(value, bag, money=money or child_key in AMOUNT_MAPS, key=child_key, text=text)
     elif isinstance(node, list):
         for value in node:
-            _collect_letter(value, bag, money=money, key=key)
+            _collect_letter(value, bag, money=money, key=key, text=text)
     elif isinstance(node, str):
-        bag.add_text(node)
+        if text:
+            bag.add_text(node)
     elif isinstance(node, int | float) and not isinstance(node, bool) and (money or key in AMOUNT_KEYS):
         bag.add_amount(float(node))
 
@@ -452,7 +477,11 @@ def check_sentence(
     if not missing:
         return SentenceCheck(sentence, "kept", stated, result=sentence)
     unsupported = tuple(value.text for value in missing)
-    if LETTER_QUOTE.search(plain) and all(evidence.quotes(value, cited) for value in missing):
+    framed = bool(LETTER_QUOTE.search(plain))
+    if all(
+        evidence.unverified_amount(value, cited) or (framed and evidence.quotes(value, cited))
+        for value in missing
+    ):
         quoted = sentence
         for value in missing:
             quoted = quote_value(quoted, value.text)

@@ -26,9 +26,11 @@ from ordnung.assistant.channels import (
     parse_tool_result,
 )
 from ordnung.assistant.mcp_server import (
+    AMOUNT_NOT_FOUND,
     PAGE_TEXT_LIMIT,
     PRIVATE_NOTE,
     SERVER_NAME,
+    TERMS_UNVERIFIED,
     LedgerTools,
     ToolInputError,
     build_server,
@@ -203,7 +205,7 @@ def test_unverified_amounts_are_letter_text(tools: LedgerTools, ids: dict[str, s
     result = tools.list_items(kind="payment")
     rows = {row["id"]: row for row in result.record["items"]}
     parking = rows[ids["parking_payment"]]  # its quote was not found in the letter
-    assert "amount" not in parking and parking["amount_unverified"] is True
+    assert "amount" not in parking and parking["amount_unverified"] == AMOUNT_NOT_FOUND
     assert result.letters[ids["parking_payment"]]["amount"] == 25.0
     assert rows[ids["semester_fee"]]["amount"] == 320.5  # entered by the person
     assert "amount" not in result.letters.get(ids["semester_fee"], {})
@@ -267,7 +269,7 @@ def test_contract_terms_read_from_a_photo_are_letter_text(
     store.update_contract(ids["phone"], evidence=evidence)
     result = tools.list_contracts()
     phone = {row["id"]: row for row in result.record["contracts"]}[ids["phone"]]
-    assert phone["terms_unverified"] is True
+    assert phone["terms_unverified"] == TERMS_UNVERIFIED
     assert "cost" not in phone and "start_date" not in phone
     assert phone["dates"]["cancel_by"] == "2026-10-14"  # the rules engine's dates stay the record
     assert result.letters[ids["phone"]]["cost"]["amount"] == 29.99
@@ -275,7 +277,7 @@ def test_contract_terms_read_from_a_photo_are_letter_text(
     row = {entry["id"]: entry for entry in money.record["fixed_cost_contracts"]}[ids["phone"]]
     assert "monthly_cost" not in row and money.letters[ids["phone"]]["monthly_cost"] == 29.99
     explained = tools.explain_date(ids["phone"])
-    assert explained.record["terms_unverified"] is True and "start_date" not in explained.record
+    assert explained.record["terms_unverified"] == TERMS_UNVERIFIED and "start_date" not in explained.record
     assert explained.letters[ids["phone"]]["start_date"] == "2024-11-15"
 
 
@@ -311,7 +313,7 @@ def test_timeline_range_ids_and_privacy(tools: LedgerTools, ids: dict[str, str])
     assert all("title" not in row for row in entries)
     assert answer.letters[ids["tax_objection"]]["title"] == "Objection deadline (Einspruch)"
     parking = next(row for row in entries if row["id"] == ids["parking_payment"])
-    assert parking["amount_unverified"] is True and "amount" not in parking
+    assert parking["amount_unverified"] == AMOUNT_NOT_FOUND and "amount" not in parking
     dunning = next(row for row in entries if row["id"] == ids["dunning_payment"])
     assert dunning["amount"] == 94.99
 

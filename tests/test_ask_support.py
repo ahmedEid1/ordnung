@@ -174,13 +174,24 @@ def test_receipt_dates_written_by_code_support_the_explanation(
     assert verdicts == ["kept"]
 
 
-def test_unverified_amounts_can_only_be_quoted(tools: LedgerTools, ids: dict[str, str]) -> None:
+def test_unverified_amounts_stay_only_as_quotes(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """Rule 3b: a to-do's own unverified amount is kept as a quote (a payment never silently vanishes
+    from a list); any other letter-only value still needs the letter named as its source."""
+    store.update_item(
+        ids["parking_payment"], consequence="Otherwise further costs of at least 28,50 € follow."
+    )
     evidence = evidence_of(tools, ("list_items", {"kind": "payment"}))
     parking = ids["parking_payment"]
-    assert check(f"The parking fine is 25.00 € [item:{parking}].", evidence)[1] == ["removed"]
+    text, verdicts = check(f"- Parking fine, due 29 Sep: 25.00 € [item:{parking}].", evidence)
+    assert (text, verdicts) == (f"- Parking fine, due 29 Sep: “25.00 €” [item:{parking}].", ["quoted"])
     text, verdicts = check(f"The letter says the fine is 25.00 € [item:{parking}].", evidence)
-    assert verdicts == ["quoted"]
-    assert text == f"The letter says the fine is “25.00 €” [item:{parking}]."
+    assert (text, verdicts) == (f"The letter says the fine is “25.00 €” [item:{parking}].", ["quoted"])
+    # the amount of another record, or letter text that is not the filed amount, is not enough
+    assert check(f"The fine is 25.00 € [item:{ids['dunning_payment']}].", evidence)[1] == ["removed"]
+    assert check(f"Late payment costs at least 28,50 € [item:{parking}].", evidence)[1] == ["removed"]
+    assert check(f"The letter says late payment costs 28,50 € [item:{parking}].", evidence)[1] == ["quoted"]
     # the date of the same to-do is Ordnung's record (flagged needs_check)
     assert check(f"It is due on 29 Sep [item:{parking}].", evidence)[1] == ["kept"]
 

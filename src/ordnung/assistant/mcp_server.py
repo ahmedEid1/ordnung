@@ -403,21 +403,23 @@ class LedgerTools:
             "past": entry.past or None,
         }
         if entry.amount is not None:
-            if self._amount_verified(entry.ref.type, entry.ref.id):
+            note = self._unverified_amount(entry.ref.type, entry.ref.id)
+            if note is None:
                 row.update(amount=entry.amount, currency=entry.currency)
             else:
                 letters.add(entry.ref.id, amount=entry.amount, currency=entry.currency)
-                row["amount_unverified"] = True
+                row["amount_unverified"] = note
         return row
 
-    def _amount_verified(self, ref_type: str, ref_id: str) -> bool:
+    def _unverified_amount(self, ref_type: str, ref_id: str) -> str | None:
+        """Why the amount of a timeline entry is only letter text (``None``: it is verified)."""
         if ref_type == "item":
             item = self.store.get_item(ref_id)
-            return item is not None and is_verified(item.grounding)
+            return _amount_note(item.grounding if item else None)
         if ref_type == "contract":
             contract = self.store.get_contract(ref_id)
-            return contract is not None and _terms_verified(contract)
-        return False
+            return None if contract is not None and _terms_verified(contract) else TERMS_UNVERIFIED
+        return _amount_note(None)
 
     def money_summary(self) -> ToolAnswer:
         """Payments due this month, upcoming payments and fixed costs per month (active contracts).
@@ -439,7 +441,7 @@ class LedgerTools:
                 row["monthly_cost"] = contract.monthly_cost()
             else:
                 letters.add(contract.id, monthly_cost=contract.monthly_cost())
-                row["terms_unverified"] = True
+                row["terms_unverified"] = TERMS_UNVERIFIED
             fixed.append(row)
         record = {
             "month": ledger.today.strftime("%Y-%m"),
@@ -547,13 +549,38 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
         "scam_warning": bool(scam) or None,
     }
     if item.amount is not None:
-        currency = item.currency
-        if is_verified(item.grounding):
-            row.update(amount=item.amount, currency=currency)
+        note = _amount_note(item.grounding)
+        if note is None:
+            row.update(amount=item.amount, currency=item.currency)
         else:
-            letters.add(item.id, amount=item.amount, currency=currency)
-            row["amount_unverified"] = True
+            letters.add(item.id, amount=item.amount, currency=item.currency)
+            row["amount_unverified"] = note
     return row
+
+
+AMOUNT_READ_BY_AI = (
+    "The amount was read by AI from a photo or scan, so it is only in the letter text: give it as "
+    "what the letter says and suggest checking it against the paper letter."
+)
+AMOUNT_NOT_FOUND = (
+    "The amount could not be found in the letter's text, so it is only in the letter text: give it as "
+    "what the letter says and suggest checking it."
+)
+TERMS_UNVERIFIED = (
+    "The terms and cost were read by AI from a photo or could not be found in the letter, so they are "
+    "only in the letter text: give them as what the letter says."
+)
+
+
+def _amount_note(grounding: str | None) -> str | None:
+    """Why an amount is only letter text (``None`` when its evidence is verified, ADR 0003).
+
+    The note is written into the record so the model knows what the flag means (it is about how the
+    amount was read, not a warning about the letter).
+    """
+    if is_verified(grounding):
+        return None
+    return AMOUNT_READ_BY_AI if grounding == "model_read" else AMOUNT_NOT_FOUND
 
 
 def _contract_ref(contract: Contract, letters: LetterText) -> dict[str, Any]:
@@ -619,7 +646,7 @@ def _terms_into(
         row.update(terms)
     else:
         letters.add(contract.id, **terms)
-        row["terms_unverified"] = True
+        row["terms_unverified"] = TERMS_UNVERIFIED
 
 
 def _terms(contract: Contract) -> dict[str, Any]:
