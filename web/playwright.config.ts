@@ -36,6 +36,7 @@ export default defineConfig({
   projects: [
     { name: "tour", testMatch: /tour\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "pages", testMatch: /pages\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    { name: "layout", testMatch: /(layout|feedback|shell)\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
   ],
   webServer: {
     command: `"${ORDNUNG_BIN}" demo --serve --no-browser --port ${PORT} --data-dir "${DATA_DIR}" --reset`,

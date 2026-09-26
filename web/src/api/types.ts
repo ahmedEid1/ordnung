@@ -410,6 +410,8 @@ export type Dashboard = Schemas["Dashboard"];
 export type PageInfo = Schemas["PageInfo"];
 export type DocumentDetail = Schemas["DocumentDetail"];
 export type PartyDetail = Schemas["PartyDetail"];
+/** An open to-do of a party that is not one to act on (replaced by a reminder, history, scam signs). */
+export type ItemAside = Schemas["ItemAside"];
 export type CaseDetail = Schemas["CaseDetail"];
 /** Model use for one purpose (calls, cache hits, errors, tokens, cost). */
 export type PurposeUsage = Schemas["PurposeUsage"];

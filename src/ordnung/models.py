@@ -909,12 +909,27 @@ class DocumentDetail(_Model):
     drafts: list[Draft] = Field(default_factory=list)
 
 
+class ItemAside(_Model):
+    """An open to-do that is not one to act on (worked out on read, never stored).
+
+    ``replaced``: a payment reminder (``replaced_by``, a document id) took over the invoice payment —
+    pay once, not twice. ``history``: its date had long passed when the letter was read (an archive
+    letter). ``suspicious``: the letter shows signs of a scam.
+    """
+
+    item_id: str
+    reason: Literal["replaced", "history", "suspicious"]
+    replaced_by: str | None = None
+
+
 class PartyDetail(_Model):
     party: Party
     documents: list[Document] = Field(default_factory=list)
     items: list[Item] = Field(default_factory=list)
     contracts: list[Contract] = Field(default_factory=list)
     cases: list[Case] = Field(default_factory=list)
+    #: open items of ``items`` the drawer lists apart as "older or replaced" (Today leaves them out)
+    set_aside: list[ItemAside] = Field(default_factory=list)
 
 
 class CaseDetail(_Model):
