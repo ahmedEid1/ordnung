@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createContext, useContext, useMemo, useRef, type ReactElement, type ReactNode, type RefObject } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router";
 import {
@@ -32,10 +32,12 @@ import { formatIban, formatMoney, urgencyOf, urgencyTone, type UrgencyTone } fro
 import { useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { useClipboard } from "./clipboard";
+import { focusAfterLeaving, focusWhenReady } from "./focus";
 import { fadeUp, stagger } from "./motion";
 import { allClearTitle, composerHref, type ActionVerb, type DateRole, type TodayAction } from "./selection";
 import { actionHref } from "./useTodayData";
 import { receiptForContract, receiptForItem } from "./receipt";
+import { ReadMore } from "./ReadMore";
 import { WhyThisDate } from "./WhyThisDate";
 import { LetterText } from "@/components/ui/LetterText";
 
@@ -112,34 +114,6 @@ export function ActionCountdown({ action, variant = "pill", className }: { actio
 
 const headingId = (key: string) => `top-${key}`;
 
-/**
- * Focus sits on nothing in particular: <body>, <main> (where a closing toast hands it back), a
- * removed node, or a toast (its Undo was just used and it is on its way out).
- */
-function focusIsLost(): boolean {
-  const a = document.activeElement;
-  return !a || a === document.body || a.tagName === "MAIN" || !a.isConnected || Boolean(a.closest("[data-toast]"));
-}
-
-/**
- * Once `find` returns an element (checked every frame for up to `ms`), focus it — but only when
- * focus is lost by then, so someone who has moved on is not pulled back.
- */
-function focusWhenReady(find: () => HTMLElement | null, ms = 5000): void {
-  const until = performance.now() + ms;
-  const tick = () => {
-    const el = find();
-    if (!el) {
-      if (performance.now() < until) requestAnimationFrame(tick);
-      return;
-    }
-    if (!focusIsLost()) return;
-    if (!el.hasAttribute("tabindex")) el.tabIndex = -1;
-    el.focus();
-  };
-  requestAnimationFrame(tick);
-}
-
 interface TopFocus {
   /** This card is about to leave: when it's gone, focus the card now in its place (or the section heading). */
   leaving: (key: string) => void;
@@ -153,14 +127,7 @@ function useTopFocus(list: RefObject<HTMLElement | null>): TopFocus {
   return useMemo<TopFocus>(() => {
     const headings = () => Array.from(list.current?.querySelectorAll<HTMLElement>("[data-top-heading]") ?? []);
     return {
-      leaving: (key) => {
-        const at = Math.max(0, headings().findIndex((h) => h.id === headingId(key)));
-        focusWhenReady(() => {
-          if (document.getElementById(headingId(key))) return null;
-          const rest = headings();
-          return rest[Math.min(at, rest.length - 1)] ?? document.getElementById("top3-title");
-        });
-      },
+      leaving: (key) => focusAfterLeaving(headings, headingId(key), "top3-title"),
       returning: (key) => focusWhenReady(() => document.getElementById(headingId(key))),
     };
   }, [list]);
@@ -300,6 +267,18 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
   );
 }
 
+/**
+ * "Pay" opens the {@link PayPanel} (a bottom sheet on phones); the child is the trigger. Top 3 and
+ * the Ideas about the same payment use it, so "Pay" means one thing on the page.
+ */
+export function PayPopover({ action, children }: { action: TodayAction; children: ReactElement }) {
+  return (
+    <Popover content={(close) => <PayPanel action={action} close={close} />} className="w-[22rem]" label={verbLabel(VERB.pay.label, action.title)} title="Pay" placement="bottom-start">
+      {children}
+    </Popover>
+  );
+}
+
 // ------------------------------------------------------------------------------------------------
 // Verb button
 // ------------------------------------------------------------------------------------------------
@@ -313,11 +292,11 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
 
   if (action.verb === "pay") {
     return (
-      <Popover content={(close) => <PayPanel action={action} close={close} />} className="w-[22rem]" label={label} title="Pay" placement="bottom-start">
+      <PayPopover action={action}>
         <Button variant={variant} size="sm" icon={verb.icon} aria-label={label}>
           {verb.label}
         </Button>
-      </Popover>
+      </PayPopover>
     );
   }
 
@@ -364,41 +343,9 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
 // Card
 // ------------------------------------------------------------------------------------------------
 
-/**
- * The card's reason, up to four lines; a longer one gets "Read more" (measured — only text that is
- * really cut offers it). The full text is always in the page for screen readers.
- */
+/** The card's reason, up to four lines; a longer one gets "Read more". */
 function Reason({ children }: { children: ReactNode }) {
-  const id = useId();
-  const ref = useRef<HTMLParagraphElement>(null);
-  const [open, setOpen] = useState(false);
-  const [cut, setCut] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || open || typeof ResizeObserver === "undefined") return;
-    // (the observer reports once right away, then on every resize)
-    const ro = new ResizeObserver(() => setCut(el.scrollHeight > el.clientHeight + 1));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [open]);
-  return (
-    <>
-      <p ref={ref} id={id} className={cn("mt-2 text-[13.5px] leading-relaxed text-muted", !open && "line-clamp-4")}>
-        {children}
-      </p>
-      {cut || open ? (
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={id}
-          onClick={() => setOpen(!open)}
-          className="-mx-1 mt-0.5 inline-flex min-h-6 items-center self-start rounded-md px-1 text-sm font-semibold text-accent underline-offset-2 hover:underline"
-        >
-          {open ? "Show less" : "Read more"}
-        </button>
-      ) : null}
-    </>
-  );
+  return <ReadMore className="mt-2 text-[13.5px] leading-relaxed text-muted">{children}</ReadMore>;
 }
 
 function ActionCard({ action, index, party, today }: { action: TodayAction; index: number; party: Party | undefined; today: string }) {

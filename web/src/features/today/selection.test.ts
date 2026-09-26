@@ -301,8 +301,9 @@ describe("Coming up · grouped by week", () => {
       ],
       TODAY,
     );
-    expect(groups.map((g) => g.label)).toEqual(["Overdue", "This week", "Next week", "Week of 12 Oct"]);
-    expect(groups[1]!.range).toBe("28 Sep – 4 Oct");
+    // later weeks are named by their days, not "Week of 12 Oct 12 – 18 Oct"
+    expect(groups.map((g) => g.label)).toEqual(["Overdue", "This week", "Next week", "12 – 18 Oct"]);
+    expect(groups.map((g) => g.range)).toEqual(["", "28 Sep – 4 Oct", "5 – 11 Oct", ""]);
     expect(groups[1]!.totals).toEqual({ EUR: 94.99 });
     expect(groups[2]!.totals).toEqual({ EUR: 640 });
     expect(groups.flatMap((g) => g.entries).some((e) => e.date === "2026-11-30")).toBe(false);

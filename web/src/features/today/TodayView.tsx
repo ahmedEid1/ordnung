@@ -224,7 +224,13 @@ export function TodayView() {
       </div>
 
       <div className={IDEAS}>
-        <IdeasSection shown={ideas.slice(0, shownIdeas)} more={ideas.slice(shownIdeas)} today={derived.day} pinnedIds={derived.pinnedIds} />
+        <IdeasSection
+          shown={ideas.slice(0, shownIdeas)}
+          more={ideas.slice(shownIdeas)}
+          today={derived.day}
+          pinnedIds={derived.pinnedIds}
+          actions={derived.candidates}
+        />
       </div>
 
       <LifeAtAGlance areas={dash.areas} />
