@@ -68,7 +68,7 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   (invisible) text is removed before it reaches the model, and every extracted fact is checked
   against the page before it is shown as "found in the letter".
 - *Ask* can only call Ordnung's **read-only** tools; there are no write tools for a
-  prompt-injected document to abuse. (Its date tools compute from their arguments and read nothing.)
+  prompt-injected document to abuse.
 - *Ask*'s tool results (search snippets, summaries, quotes, page texts) reach the model inside
   `<untrusted_document>` markers too. Text an HTML e-mail certainly hides from every reader (inline
   `display:none`, `visibility:hidden`, `opacity:0`, a font of at most 1 px, zero-height clipped or
@@ -92,20 +92,24 @@ then see depends on which server you add:
 
 | You add | The client can see | Leaves your computer? |
 |---|---|---|
-| **The rules tools** (`--rules-only`, recommended) | Nothing of yours. The tools open no data folder: they compute dates, holidays, working days and IBAN checks from what the client passes them (the dates and words of a letter you shared there yourself). | Only what you type or share in that client, as always |
-| **The full server** (`--data-dir …`) | Your ledger, read-only, as *Ask* sees it: letters' titles, summaries, page text and quotes, to-dos, contracts, people and organisations, money. The contents of letters you marked *Keep private (no AI)* are withheld. | Whatever Claude reads through it becomes part of that conversation, sent to Anthropic under that client's account and settings |
+| **The rules tools** (the default) | Nothing of yours. The tools open no data folder: they compute dates, holidays, working days and IBAN checks from what the client passes them (the dates and words of a letter you shared there yourself). | Only what you type or share in that client, as always |
+| **The full server** (`--with-ledger`) | Your ledger, read-only, as *Ask* sees it: letters' titles, summaries, page text and quotes, to-dos, contracts, people and organisations, money. The contents of letters you marked *Keep private (no AI)* are withheld. | Whatever Claude reads through it becomes part of that conversation, sent to Anthropic under that client's account and settings |
 
-With the full server, **every other MCP server loaded in the same client can see what Claude read
-from your ledger** through the model: a web-search, e-mail or file server there could send it on,
-and a prompt-injected document elsewhere could ask Claude to. Ordnung cannot control another
-client's servers or history; that is why the rules-only server is the default suggestion and the
-full server needs your data folder named and prints this warning. Neither server can change,
-delete, send or pay anything.
+With the full server, **every other tool of that client can see what Claude read from your
+ledger** through the model: another MCP server loaded there (web search, e-mail, files) and, in
+Claude Code, its own shell and web tools could send it on, and a prompt-injected document elsewhere
+could ask Claude to. Ordnung cannot control another client's tools or history. That is why
+`ordnung mcp install` adds only the rules tools unless you ask for your ledger with
+`--with-ledger`, and then shows this warning before it prints or writes anything. In Claude Code the
+full server is added for you and the current project only (`claude mcp add --scope local`); Ordnung
+never writes it into a project's `.mcp.json`, which is usually committed and shared. Neither server
+can change, delete, send or pay anything.
 
 `ordnung mcp install` prints the entry and the file it belongs in; only `--write` changes that file,
 after saving a copy of it next to it, and it adds or replaces only Ordnung's own entry. To remove
 Ordnung again, delete the `ordnung` or `ordnung_rules` entry from `mcpServers` (or restore the
-backup), or run `claude mcp remove ordnung_rules` for Claude Code.
+backup); for Claude Code run `claude mcp remove --scope user ordnung_rules` or
+`claude mcp remove --scope local ordnung` (the install command prints the right one).
 
 ## Demo fixtures
 

@@ -6,7 +6,7 @@ import { citationIndex, numberCitations, parseCitations, stripAllMarkers, stripI
 import { inlineText, isInternalHref, parseInline, parseMarkdown } from "./markdown";
 import { Markdown } from "./Markdown";
 import { accumulate, accumulateAll, EMPTY_ANSWER } from "./stream";
-import { fallbackToolLabel, TOOL_ICONS, toolLabel, toolResultText } from "./tools";
+import { fallbackToolLabel, toolLabel, toolResultText } from "./tools";
 import { formatDate } from "@/lib/format";
 import { ToolTrace } from "./ToolTrace";
 import { makeRefResolver } from "./refs";
@@ -251,35 +251,19 @@ describe("tool trace labels", () => {
     expect(fallbackToolLabel("mystery_tool")).toBe("Looked something up");
   });
 
-  it("names the rules tools and gives each its own icon", () => {
-    expect(fallbackToolLabel("compute_deadline", { spec: {} })).toBe("Worked out a deadline with Ordnung's date rules");
-    expect(fallbackToolLabel("german_holidays", { year: 2026 })).toBe("Looked up public holidays");
-    expect(fallbackToolLabel("add_working_days", { start: "2026-12-22", days: 5 })).toBe("Counted working days");
-    expect(fallbackToolLabel("check_iban", { iban: "DE89" })).toBe("Checked an IBAN");
-    const icons = ["compute_deadline", "german_holidays", "add_working_days", "check_iban"].map((name) => TOOL_ICONS[name]);
-    expect(icons.every(Boolean)).toBe(true);
-    expect(new Set(icons).size).toBe(4);
-  });
-
-  it("renders a rules-tool step with its label and a readable result", () => {
+  it("renders a finished step with its label and a readable result", () => {
     const steps = [
-      {
-        name: "compute_deadline",
-        input: { spec: { type: "relative" } },
-        label: "Worked out a deadline with Ordnung's date rules",
-        result: "Due 2026-10-21",
-        done: true,
-      },
+      { name: "today", input: {}, label: "Checked today's date", result: "Today is 2026-09-28", done: true },
     ];
     render(<ToolTrace steps={steps} live />);
     const list = screen.getByRole("list", { name: "What Ordnung looked at" });
-    expect(within(list).getByText("Worked out a deadline with Ordnung's date rules")).toBeTruthy();
-    expect(within(list).getByText(`Due ${formatDate("2026-10-21", { style: "short", withYear: "always" })}`)).toBeTruthy();
-    expect(within(list).queryByText("Due 2026-10-21")).toBeNull();
+    expect(within(list).getByText("Checked today's date")).toBeTruthy();
+    expect(within(list).getByText(`Today is ${formatDate("2026-09-28", { style: "short", withYear: "always" })}`)).toBeTruthy();
+    expect(within(list).queryByText("Today is 2026-09-28")).toBeNull();
   });
 
   it("shows dates in results the way the app writes them", () => {
-    expect(toolResultText("Due 2026-10-21")).toBe(`Due ${formatDate("2026-10-21", { style: "short", withYear: "always" })}`);
+    expect(toolResultText("Today is 2026-09-28")).toBe(`Today is ${formatDate("2026-09-28", { style: "short", withYear: "always" })}`);
     expect(toolResultText("Found 3 letters")).toBe("Found 3 letters");
   });
 });

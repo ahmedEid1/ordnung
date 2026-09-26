@@ -358,9 +358,14 @@ async def test_all_four_conditions_end_to_end(tmp_path: Path) -> None:
     # The agent with a calculator: its tool calls are recorded and compared with its final dates.
     assert all(metrics[c]["tool_use"] is None for c in ("ordnung", "llm_only", "llm_rules_text"))
     use = metrics["llm_rules_tool"]["tool_use"]
-    assert use["letters_with_deadline_call"]["k"] == 2 and use["letters_with_deadline_call"]["n"] == 2
+    assert use["letters_with_date_tool_call"]["k"] == 2 and use["letters_with_date_tool_call"]["n"] == 2
     assert use["calls_by_tool"] == {"compute_deadline": 3} and use["refused_calls"] == 1
-    assert use["items_by_backing"] == {"tool_date": 1, "overrode_tool": 1, "no_tool_date": 0}
+    assert use["items_by_backing"] == {
+        "tool_date": 1,
+        "overrode_tool": 1,
+        "other_obligation": 0,
+        "no_tool_date": 0,
+    }
     assert use["final_differs_from_tool"]["value"] == 0.5
     assert use["accuracy_by_backing"]["tool_date"]["value"] == 1.0
     assert use["late_by_backing"]["overrode_tool"]["value"] == 1.0
@@ -409,7 +414,7 @@ async def test_all_four_conditions_end_to_end(tmp_path: Path) -> None:
     assert "Partial run" in docs and "Dev split" in docs
     assert "three strong baselines" in docs and "**LLM + rules tool**" in docs
     assert "- LLM + rules tool − LLM only: accuracy" in docs
-    assert "`compute_deadline` returned:" in docs  # the tool's answer in the failure gallery
+    assert "The date tools returned:" in docs  # the tool's answer in the failure gallery
     assert "0 failed (no valid answer after the repair attempt) and 0 not run" in docs  # n always shown
     assert "Incomplete run" not in docs
     assert outcome.chart_path is not None and outcome.chart_path.is_file()
@@ -934,8 +939,17 @@ def test_tool_uses_policy() -> None:
         ToolCall(name=f"{TOOL_PREFIX}check_iban", input={"iban": "x"}, result="Error executing tool: nope"),
         ToolCall(name=f"{TOOL_PREFIX}compute_deadline", input={}, result=None),
         ToolCall(name=f"{TOOL_PREFIX}compute_deadline", input={}, result="[1, 2]"),
+        ToolCall(
+            name=f"{TOOL_PREFIX}add_working_days",
+            input={"start": "2026-12-22", "days": 5},
+            result='{"date":"2026-12-30","due_date":"2027-01-01"}',
+        ),
     ]
     uses = tool_uses(calls)
+    # the calculator's answer is a date too; compute_deadline's field is not read from other tools
+    assert (uses[-1].name, uses[-1].date, uses[-1].due_date) == ("add_working_days", "2026-12-30", None)
+    assert all(u.date is None for u in uses[:-1])
+    uses = uses[:-1]
     assert [(u.name, u.ok, u.due_date) for u in uses] == [
         ("compute_deadline", True, "2026-10-21"),
         ("compute_deadline", True, None),
@@ -978,14 +992,31 @@ async def test_a_condition_added_later_keeps_the_published_numbers(tmp_path: Pat
     page = report.render_markdown([merged])
     assert "LLM + rules tool was run on 2026-09-26 (fake" in page
     assert "**What this shows.** The tool helped." in page
-    assert "(LLM + rules tool ran later, against the code of that day" in page  # next to Ordnung − tool
+    # a later run on changed code is marked, and never set against the held-out Ordnung as "a difference"
+    assert "| **LLM + rules tool** † |" in page and "† LLM + rules tool ran on 2026-09-26" in page
+    assert "Ordnung − LLM + rules tool" not in page and "LLM + rules tool − LLM only: accuracy" in page
     assert "Ordnung re-scored − LLM + rules tool" not in page  # no re-scored run to compare with
     with_rescored = report.render_markdown([merged], rescored=merged)
     assert "compare it with Ordnung re-scored after the fix" in with_rescored
     assert "Ordnung re-scored − LLM + rules tool: accuracy" in with_rescored
+    assert "Compare it with Ordnung re-scored on that code" in with_rescored  # the headline's footnote
+    # the chart puts the later run next to Ordnung re-scored on the same code, in a panel of its own
+    held_out, fixed = report.chart_panels(merged, rescored=merged)
+    assert (held_out.title, held_out.conditions) == (
+        "Held-out run",
+        ["ordnung", "llm_only", "llm_rules_text"],
+    )
+    assert (fixed.title, fixed.conditions) == (
+        "After the engine fix (not held-out)",
+        ["ordnung", "llm_rules_tool"],
+    )
+    assert fixed.groups[0][1]["ordnung"] == merged["metrics"]["ordnung"]["due_date_accuracy"]
     svg = report.svg_chart(merged, rescored=merged)
-    assert "LLM + rules tool ran later, with the code of that day · Ordnung re-scored with that code:" in svg
-    assert "ran later" not in report.svg_chart(before)
+    assert "After the engine fix (not held-out)" in svg and "Held-out run" in svg
+    assert "next to Ordnung's held-out outputs re-scored with it" in svg
+    (alone,) = report.chart_panels(merged)  # without a re-scored run: one panel and a warning note
+    assert alone.title is None and "not comparable with the held-out run" in report.svg_chart(merged)
+    assert "ran later" not in report.svg_chart(before) and len(report.chart_panels(before)) == 1
 
     with pytest.raises(ValueError, match="differ in split"):
         report.add_condition(

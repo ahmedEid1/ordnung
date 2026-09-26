@@ -287,22 +287,34 @@ remote images.
 
 **Rules tools** (`assistant/rules_tools.py`, no ledger): `compute_deadline(spec, document_date?,
 sender_kind?, sender_name?, remedy_type?, region?, recipient_region?, received_date?, today?)` —
-the extractor's `DateSpec` (validated strictly: unknown keys are refused) → the rules engine's date
-with steps, rule ids, citations, warnings, confidence and hints naming a missing argument;
-`german_holidays(year, region?)`; `add_working_days(start, days, day_type, region?)`;
-`check_iban(iban)` (country, registered length, mod-97, bank code where the format shows it; pure
-code in `money/iban.py`). Every result carries "Information, not legal advice". The full server
-serves them next to the ledger tools (counting from the ledger's day); `ordnung mcp --rules-only`
-serves only them — no data folder, nothing personal.
+the extractor's `DateSpec` (validated strictly: unknown keys are refused, `date` and `anchor_date`
+must be `YYYY-MM-DD`) → the rules engine's date with steps, rule ids, citations, warnings,
+confidence and hints naming a missing argument (never one that was given); a `received_date` after
+today is refused, and one before the letter's date or more than 14 days after it (when the period
+runs from arrival) gets a warning and one level less confidence; `german_holidays(year, region?)`;
+`add_working_days(start, days, day_type, region?)`; `check_iban(iban)` (a printed `IBAN:` label and
+invisible characters ignored; country from the full SWIFT registry — any other two letters are not
+an IBAN — registered length, mod-97, bank code where the format shows it; pure code in
+`money/iban.py`). Unknown tool arguments are refused and argument errors are plain words. "Today" is
+the caller's, else `ORDNUNG_TODAY`, else the date in Germany. Every result carries "Information, not
+legal advice". The full server serves them next to the ledger tools (counting from the ledger's
+day) — except Ask's own server (`--ledger-only`): Ask quotes stored receipts and never computes a
+date, and its fact check would otherwise accept any date a rules tool echoed; `ordnung mcp
+--rules-only` serves only them — no data folder, nothing personal.
 
 **Other clients** (`assistant/mcp_install.py`). `ordnung mcp install --client claude-desktop|
-claude-code [--rules-only] [--write] [--config PATH]` prints the entry, the target file (Claude
-Desktop: macOS `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows
-`%APPDATA%\Claude\…`, Linux `$XDG_CONFIG_HOME/Claude/…`) and, for Claude Code, the
-`claude mcp add --scope user` command or a project `.mcp.json` entry. `--write` merges only
-`mcpServers.<name>` (`ordnung_rules` or `ordnung`), backs the file up first, writes atomically,
-keeps its permissions, refuses invalid JSON without touching it, and never creates Claude Desktop's
-settings folder. The full server needs an existing database and prints a privacy warning.
+claude-code [--rules-only|--with-ledger] [--data-dir D] [--config PATH] [--write]` adds the rules
+tools (the default) or, with `--with-ledger`, the full server, which needs an existing database and
+shows the privacy warning before anything is printed to copy or written (`--data-dir` without
+`--with-ledger`, and options put before `install`, are refused rather than ignored). It prints the
+entry, the target file (Claude Desktop: macOS `~/Library/Application Support/Claude/claude_desktop_config.json`,
+Windows `%APPDATA%\Claude\…`, Linux `$XDG_CONFIG_HOME/Claude/…`) and, for Claude Code, the
+`claude mcp add` command (rules tools `--scope user` or a project `.mcp.json` entry; the full server
+`--scope local` only, never a shared `.mcp.json`) and the matching `claude mcp remove`. Printed
+commands are quoted for the platform's shell. `--write` merges only `mcpServers.<name>`
+(`ordnung_rules` or `ordnung`), backs the file up first, writes atomically, keeps its permissions,
+refuses invalid JSON or a file that is not UTF-8 without touching it, and never creates Claude
+Desktop's settings folder.
 
 ## 11. Letters — `drafts/`
 
@@ -410,8 +422,9 @@ dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighte
 ## 15. CLI
 `serve [--port 8765] [--no-browser] [--no-token]` · `add FILES… [--combine] [--private]` ·
 `brief` · `ask "…"` · `demo [--serve] [--reset] [--check] [--live] [--no-browser]` · `doctor
-[--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--print-config] [--rules-only]` ·
-`mcp install --client claude-desktop|claude-code [--rules-only] [--write]` · `openapi`.
+[--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--data-dir D] [--print-config]
+[--rules-only]` · `mcp install --client claude-desktop|claude-code [--rules-only|--with-ledger]
+[--data-dir D] [--config PATH] [--write]` · `openapi`.
 If a server is running (`server.json` + live pid) `add`/`ask`/`brief` go through its API; otherwise
 they run in-process under an exclusive data-dir lock.
 
@@ -430,11 +443,13 @@ letters, scams, conflicting dates, missing document date). Labels are the genera
 expected dates computed by hand-checked rules (tests cross-check). Conditions: **Ordnung** (extract →
 rules) vs **LLM-only** (same model, same context incl. today/region/document date, explicit
 instruction to apply current German law) vs **LLM + rule text** (law text pasted into the prompt) vs
-**LLM + rules tool** (the LLM-only prompt plus one sentence naming the tools; the `claude` CLI gets
-only `ordnung mcp --rules-only`, pinned to the letter's today, $1 cap per call — an agent with a
-calculator). For the tool condition the report adds how often `compute_deadline` was called, how
-often the final date differs from the tool's answer for that obligation, and the accuracy of each group;
-its tool calls and answers are part of the recording (`LLMResponse.tool_calls`).
+**LLM + rules tool** (the LLM-only prompt plus a three-sentence note naming the tools and inviting
+the model to use them; the `claude` CLI gets only `ordnung mcp --rules-only`, pinned to the letter's
+today, $1 cap per call — an agent with a calculator). For the tool condition the report adds how
+often the model asked a date tool (`compute_deadline`, or the `add_working_days` calculator), how
+often the final date differs from the tools' answer for that obligation, which obligations were
+dated without any tool date, and the accuracy of each group; its tool calls and answers are part of
+the recording (`LLMResponse.tool_calls`).
 Metrics with n and 95 % bootstrap CIs: due-date accuracy (overall and per kind), error split
 **reading** (wrong DateSpec/anchor/amount) vs **computing** (wrong arithmetic/law), classification,
 sender/reference/amount accuracy, item recall/precision, evidence grounding rate, false-verified
@@ -572,11 +587,12 @@ text detector (pdfplumber char colour/size/position): invisible text is excluded
 raises a red banner. HTML e-mails follow the short written policy of `html_to_text` (ADR 0007): only
 text that is certainly hidden is excluded; when in doubt it stays visible. Brief/review/Ask free text is checked: every date, amount and § must exist in
 the agenda/ledger/catalog, else it is removed (fallback to code-generated text). Ask gets a read-only
-`explain_date(id)` tool that returns receipts. MCP is read-only everywhere. Besides Ask, other
-clients can use it: `ordnung mcp --rules-only` (the rules tools alone: no data folder, nothing
-personal) is the recommended way into Claude Desktop or Claude Code; the full server exposes the
-ledger to that client, and so, through the model, to any other MCP server loaded there
-(`docs/privacy.md`). `ordnung mcp install` prints the entry first and writes only with `--write`.
+`explain_date(id)` tool that returns receipts, and no tool that computes a new date. MCP is
+read-only everywhere. Besides Ask, other clients can use it: the rules tools alone (`ordnung mcp
+--rules-only`: no data folder, nothing personal) are what `ordnung mcp install` adds to Claude
+Desktop or Claude Code; the full server (`--with-ledger`) exposes the ledger to that client, and so,
+through the model, to its other tools and MCP servers (`docs/privacy.md`). `ordnung mcp install`
+prints the entry first and writes only with `--write`.
 
 **Scam checks (code, not model).** IBAN checksum validation; payee IBAN/name compared with those
 previously seen for the same party; mismatch → scam Idea quoting both. Copy: "No warning does not

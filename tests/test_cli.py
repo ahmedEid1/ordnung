@@ -535,6 +535,9 @@ def test_mcp_print_config(data_dir: Path) -> None:
     assert result.exit_code == 0
     server = json.loads(result.output)["mcpServers"]["ordnung"]
     assert server["args"] == ["-m", "ordnung", "mcp", "--data-dir", str(data_dir.resolve())]
+    ledger_only = invoke("mcp", "--print-config", "--ledger-only", "--data-dir", str(data_dir))
+    assert json.loads(ledger_only.output)["mcpServers"]["ordnung"]["args"][-1] == "--ledger-only"
+    assert "--ledger-only" not in plain(invoke("mcp", "--help").output)  # Ask's switch, not for people
 
 
 def test_mcp_without_a_database_says_so_on_stderr(tmp_path: Path) -> None:

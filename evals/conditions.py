@@ -715,15 +715,19 @@ def tool_uses(calls: Sequence[ToolCall]) -> list[ToolUse]:
     """The recorded tool calls as the scorer needs them.
 
     Policy: a rules tool answers with a JSON object, so any other answer (the CLI's error text for
-    refused arguments, or no answer) is a failed call; ``due_date`` is kept for ``compute_deadline``.
+    refused arguments, or no answer) is a failed call; the date is kept for the date tools
+    (``compute_deadline``'s ``due_date``, ``add_working_days``' ``date``).
     """
     uses = []
     for call in calls:
         name = call.name.removeprefix(TOOL_PREFIX)
-        data = _json_object(call.result)
-        due = iso_or_none(data.get("due_date")) if data is not None and name == "compute_deadline" else None
-        error = None if data is not None else " ".join((call.result or "no answer").split())[:300]
-        uses.append(ToolUse(name=name, input=call.input, ok=data is not None, due_date=due, error=error))
+        parsed = _json_object(call.result)
+        data = parsed or {}
+        due = iso_or_none(data.get("due_date")) if name == "compute_deadline" else None
+        day = iso_or_none(data.get("date")) if name == "add_working_days" else None
+        ok = parsed is not None
+        error = None if ok else " ".join((call.result or "no answer").split())[:300]
+        uses.append(ToolUse(name=name, input=call.input, ok=ok, due_date=due, date=day, error=error))
     return uses
 
 

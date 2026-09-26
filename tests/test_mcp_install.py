@@ -22,6 +22,7 @@ from ordnung.assistant.mcp_install import (
     InstallError,
     Plan,
     claude_code_command,
+    claude_code_remove_command,
     desktop_config_path,
     instructions,
     merge_server,
@@ -103,6 +104,18 @@ def test_plans(tmp_path: Path) -> None:
         plan_install("chatgpt", rules_only=True)  # type: ignore[arg-type]
 
 
+def test_claude_code_scopes_keep_the_ledger_private() -> None:
+    """The rules tools may go into every project; the ledger only into this person's own project scope."""
+    rules = plan_install("claude-code", rules_only=True, cwd=Path("/p"))
+    full = plan_install("claude-code", rules_only=False, data_dir=Path("/d"), cwd=Path("/p"))
+    assert claude_code_command(rules, system="linux").startswith(
+        "claude mcp add --scope user ordnung_rules -- "
+    )
+    assert claude_code_command(full, system="linux").startswith("claude mcp add --scope local ordnung -- ")
+    assert claude_code_remove_command(full, system="linux") == "claude mcp remove --scope local ordnung"
+    assert claude_code_remove_command(rules, system="linux") == "claude mcp remove --scope user ordnung_rules"
+
+
 def test_claude_code_command_is_quoted_for_the_shell() -> None:
     plan = Plan(
         client="claude-code",
@@ -126,13 +139,34 @@ def test_printed_instructions(tmp_path: Path) -> None:
     desktop = instructions(desktop_plan(tmp_path))
     assert str(tmp_path / ".config" / "Claude" / "claude_desktop_config.json") in desktop
     assert json.dumps(RULES_ENTRY["args"][-1]) in desktop and '"ordnung_rules": {' in desktop
-    assert "ordnung mcp install --client claude-desktop --rules-only --write" in desktop
+    assert (
+        "  ordnung mcp install --client claude-desktop --write\n" in desktop
+    )  # the rules tools: the default
     assert desktop.rstrip().endswith("Then restart Claude Desktop.")
+    rules = instructions(plan_install("claude-code", rules_only=True, cwd=tmp_path), system="linux")
+    assert "claude mcp add --scope user ordnung_rules -- " in rules and ".mcp.json" in rules
+    assert "usually committed with the project" in rules and "this computer's Python" in rules
+    assert "To remove it again: claude mcp remove --scope user ordnung_rules" in rules
     full = plan_install("claude-code", rules_only=False, data_dir=tmp_path / "my data", cwd=tmp_path)
     text = instructions(full, data_dir=tmp_path / "my data", system="linux")
-    assert "claude mcp add --scope user ordnung -- " in text and ".mcp.json" in text
-    assert f"--data-dir '{tmp_path / 'my data'}' --write" in text
+    assert "claude mcp add --scope local ordnung -- " in text and "in this project only" in text
+    assert '"mcpServers"' not in text and "--write" not in text  # the ledger is never offered for .mcp.json
+    assert "To remove it again: claude mcp remove --scope local ordnung" in text
+    full_desktop = desktop_plan(tmp_path, rules_only=False, data_dir=tmp_path / "my data")
+    assert f"--with-ledger --data-dir '{tmp_path / 'my data'}' --write" in instructions(
+        full_desktop, data_dir=tmp_path / "my data", system="linux"
+    )
     assert write_command(full, config=tmp_path / "c.json").endswith(f"--config {tmp_path / 'c.json'} --write")
+
+
+def test_printed_commands_are_quoted_for_windows() -> None:
+    """cmd.exe does not understand POSIX single quotes."""
+    plan = plan_install("claude-desktop", rules_only=False, data_dir=Path("/d"), system="win32", env={})
+    command = write_command(plan, data_dir=Path("C:/Users/A B/Ordnung"), system="win32")
+    assert command == (
+        'ordnung mcp install --client claude-desktop --with-ledger --data-dir "C:/Users/A B/Ordnung" --write'
+    )
+    assert "'" not in instructions(plan, data_dir=Path("C:/Users/A B/Ordnung"), system="win32")
 
 
 # --------------------------------------------------------------------------------------------------
@@ -256,6 +290,29 @@ def test_write_through_a_symlink_keeps_the_link(tmp_path: Path) -> None:
     assert result.backup is not None and result.backup.parent == dotfiles
 
 
+def test_write_refuses_a_file_that_is_not_utf8_and_changes_nothing(tmp_path: Path) -> None:
+    """Windows PowerShell 5.1's `>` writes UTF-16 with a byte-order mark: refused, never a traceback."""
+    config = settings_folder(tmp_path) / "claude_desktop_config.json"
+    utf16 = "\ufeff".encode("utf-16-le") + json.dumps(EXISTING).encode("utf-16-le")
+    config.write_bytes(utf16)
+    with pytest.raises(InstallError, match=r"Nothing was changed: .* it is not UTF-8 text") as raised:
+        write_config(desktop_plan(tmp_path), now=NOW)
+    assert "Save it as UTF-8" in str(raised.value)
+    assert config.read_bytes() == utf16 and list(config.parent.iterdir()) == [config]
+
+
+def test_the_ledger_is_never_written_into_a_projects_shared_mcp_json(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / ".mcp.json").write_text(json.dumps(EXISTING), encoding="utf-8")
+    full = plan_install("claude-code", rules_only=False, data_dir=tmp_path / "data", cwd=project)
+    with pytest.raises(InstallError, match="usually committed with the project") as raised:
+        write_config(full, now=NOW)
+    assert "claude mcp add --scope local" in str(raised.value)
+    assert json.loads((project / ".mcp.json").read_text(encoding="utf-8")) == EXISTING
+    assert list(project.iterdir()) == [project / ".mcp.json"]  # no backup either
+
+
 def test_write_refuses_a_folder_and_reads_a_bom(tmp_path: Path) -> None:
     (settings_folder(tmp_path) / "claude_desktop_config.json").mkdir()
     with pytest.raises(InstallError, match="is not a file"):
@@ -281,6 +338,26 @@ def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("APPDATA", str(folder / "AppData" / "Roaming"))
     monkeypatch.setattr(sys, "platform", "linux")
     return folder
+
+
+def default_data_folder(home: Path) -> Path:
+    """A database in the default data folder — what most people have."""
+    folder = home / "data"
+    folder.mkdir()
+    Paths(folder).db.write_bytes(b"")
+    return folder
+
+
+def test_cli_installs_the_rules_tools_unless_the_ledger_is_asked_for(
+    home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The command most people type must not hand their ledger to the client (ADR 0008)."""
+    monkeypatch.setenv("ORDNUNG_HOME", str(default_data_folder(home)))
+    config = settings_folder(home) / "claude_desktop_config.json"
+    result = runner.invoke(app, ["mcp", "install", "--client", "claude-desktop", "--write"])
+    assert result.exit_code == 0, result.output
+    assert set(json.loads(config.read_text(encoding="utf-8"))["mcpServers"]) == {RULES_SERVER_NAME}
+    assert "Added Ordnung's rules tools" in result.output and "ledger" not in result.output
 
 
 def test_cli_prints_without_writing(home: Path) -> None:
@@ -312,24 +389,70 @@ def test_cli_refuses_invalid_json(home: Path) -> None:
     assert config.read_text(encoding="utf-8") == "{oops"
 
 
-def test_cli_full_server_needs_a_database_and_warns_about_privacy(home: Path, tmp_path: Path) -> None:
+def test_cli_full_server_needs_a_database_and_warns_about_privacy_first(home: Path, tmp_path: Path) -> None:
     data = tmp_path / "data"
-    missing = runner.invoke(app, ["mcp", "install", "--client", "claude-code", "--data-dir", str(data)])
+    ledger = ["mcp", "install", "--client", "claude-desktop", "--with-ledger", "--data-dir", str(data)]
+    missing = runner.invoke(app, ledger)
     assert missing.exit_code == 1 and "There is no Ordnung database" in missing.stderr
     data.mkdir()
     Paths(data).db.write_bytes(b"")
-    project = tmp_path / "project"
-    project.mkdir()
-    config = project / ".mcp.json"
-    args = ["mcp", "install", "--client", "claude-code", "--data-dir", str(data), "--config", str(config)]
+    config = tmp_path / "claude.json"
+    args = [*ledger, "--config", str(config)]
     printed = runner.invoke(app, args)
     assert printed.exit_code == 0, printed.output
     assert f"--data-dir {data.resolve()}" in printed.output
-    assert "other MCP servers loaded in the same client can see it too" in printed.output
+    assert "other MCP servers loaded there and, in Claude Code, its own shell and web tools" in printed.output
+    assert not config.exists()
     written = runner.invoke(app, [*args, "--write"])
     assert written.exit_code == 0, written.output
+    # the warning comes before the file is changed, not as a footnote after it
+    assert written.output.index("read access to your Ordnung ledger") < written.output.index("Added Ordnung")
     entry = json.loads(config.read_text(encoding="utf-8"))["mcpServers"][FULL_SERVER_NAME]
     assert entry["args"] == ["-m", "ordnung", "mcp", "--data-dir", str(data.resolve())]
+
+
+def test_cli_refuses_the_ledger_in_a_projects_mcp_json(
+    home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data = default_data_folder(home)
+    monkeypatch.chdir(tmp_path)
+    args = ["mcp", "install", "--client", "claude-code", "--with-ledger", "--data-dir", str(data), "--write"]
+    result = runner.invoke(app, args)
+    assert result.exit_code == 1 and "usually committed with the project" in result.stderr
+    assert not (tmp_path / ".mcp.json").exists()
+
+
+@pytest.mark.parametrize(
+    "before",
+    [["--rules-only"], ["--data-dir", "/somewhere"], ["--print-config"]],
+)
+def test_cli_options_before_install_fail_loudly(
+    home: Path, monkeypatch: pytest.MonkeyPatch, before: list[str]
+) -> None:
+    """`ordnung mcp --rules-only install …` used to drop the flag and install the whole ledger."""
+    monkeypatch.setenv("ORDNUNG_HOME", str(default_data_folder(home)))
+    config = settings_folder(home) / "claude_desktop_config.json"
+    result = runner.invoke(
+        app, ["mcp", *before, "install", "--client", "claude-desktop", "--with-ledger", "--write"]
+    )
+    assert result.exit_code == 1 and f"{before[0]} before “install” would not be used" in result.stderr
+    assert "Put the options after it" in result.stderr
+    assert not config.exists()
+
+
+def test_cli_a_data_folder_without_the_ledger_is_a_mistake(home: Path, tmp_path: Path) -> None:
+    result = runner.invoke(app, ["mcp", "install", "--client", "claude-desktop", "--data-dir", str(tmp_path)])
+    assert result.exit_code == 1 and "--data-dir would not be used" in result.stderr
+    assert "--with-ledger" in result.stderr
+
+
+def test_cli_reports_a_config_that_is_not_utf8(home: Path) -> None:
+    config = settings_folder(home) / "claude_desktop_config.json"
+    config.write_bytes(b"\xff\xfe{\x00}\x00")
+    result = runner.invoke(app, ["mcp", "install", "--client", "claude-desktop", "--write"])
+    assert result.exit_code == 1 and isinstance(result.exception, SystemExit)  # a message, no traceback
+    assert "not UTF-8 text" in result.stderr
+    assert config.read_bytes() == b"\xff\xfe{\x00}\x00"
 
 
 def test_cli_rejects_an_unknown_client(home: Path) -> None:

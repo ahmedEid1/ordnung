@@ -86,13 +86,13 @@ The rules engine also works as MCP tools, with no data folder and nothing person
 `german_holidays`, `add_working_days` and `check_iban`.
 
 ```bash
-ordnung mcp install --client claude-desktop --rules-only           # prints the entry and where it goes
-ordnung mcp install --client claude-desktop --rules-only --write   # merges it in (backup first); restart Claude
-ordnung mcp install --client claude-code --rules-only              # the `claude mcp add` command
+ordnung mcp install --client claude-desktop           # prints the entry and where it goes
+ordnung mcp install --client claude-desktop --write   # merges it in (backup first); restart Claude
+ordnung mcp install --client claude-code              # the `claude mcp add` command
 ```
 
-Then ask Claude about a letter; it reads, Ordnung's engine computes. Leaving out `--rules-only`
-gives the client your read-only ledger as well — see [what that means](docs/privacy.md#using-ordnung-from-claude-desktop-or-claude-code).
+Then ask Claude about a letter; it reads, Ordnung's engine computes. This adds the rules tools only;
+`--with-ledger` gives the client your read-only ledger as well — see [what that means](docs/privacy.md#using-ordnung-from-claude-desktop-or-claude-code).
 
 ## A tour
 

@@ -15,6 +15,7 @@ import re
 import sys
 from collections import Counter
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -438,7 +439,7 @@ def render_markdown(
     meta = main["meta"]
     sections = [
         _intro(main),
-        _headline(main, chart),
+        _headline(main, chart, rescored),
         _rescored_section(main, rescored) if rescored else "",
         _taxonomy_section(main),
         _tool_section(main, rescored),
@@ -534,15 +535,24 @@ def _unanswered_note(results: Mapping[str, Any]) -> str:
     )
 
 
-def _headline(results: Mapping[str, Any], chart: str | None) -> str:
+def _later(results: Mapping[str, Any]) -> dict[str, Any]:
+    """Conditions scored into this run from a later run (``meta.added_conditions``) that have metrics."""
+    added = results["meta"].get("added_conditions") or {}
+    return {c: info for c, info in added.items() if c in results["metrics"]}
+
+
+def _headline(
+    results: Mapping[str, Any], chart: str | None, rescored: Mapping[str, Any] | None = None
+) -> str:
     metrics = results["metrics"]
+    later = _later(results)
     rows = []
     for condition in _conditions(results):
         m = metrics[condition]
         acc = m["due_date_accuracy"]
         rows.append(
             [
-                f"**{_label(condition)}**",
+                f"**{_label(condition)}**" + (" †" if condition in later else ""),
                 rate(acc),
                 f"{_num(acc['k'])}/{_num(acc['n'])}",
                 rate(m["dangerous_late_rate"], ci=False),
@@ -566,21 +576,32 @@ def _headline(results: Mapping[str, Any], chart: str | None) -> str:
         rows,
     )
     comparisons = results.get("comparisons") or {}
-    added = results["meta"].get("added_conditions") or {}
     lines = []
     for key, value in comparisons.items():
         first, other = key.split("-vs-", 1)
-        later = next((c for c in (first, other) if c in added), None)
-        pointer = " — see “An agent with a calculator”" if later == TOOL_CONDITION else ""
-        caveat = (
-            f" ({_label(later)} ran later, against the code of that day{pointer})"
-            if later and "ordnung" in (first, other)
-            else ""
-        )
+        if "ordnung" in (first, other) and ({first, other} & set(later)):
+            continue  # a later run on changed code against the held-out Ordnung: not a fair pair (see †)
         lines.append(
             f"- {_label(first)} − {_label(other)}: accuracy {diff(value['due_date_accuracy_diff'])}, "
-            f"dangerous-late rate {diff(value['dangerous_late_rate_diff'])}{caveat}."
+            f"dangerous-late rate {diff(value['dangerous_late_rate_diff'])}."
         )
+    footnotes = []
+    for condition, info in later.items():
+        fair = ""
+        rescored_ordnung = ((rescored or {}).get("metrics") or {}).get("ordnung")
+        if rescored_ordnung is not None:
+            fair = (
+                f" Compare it with Ordnung re-scored on that code, {rate(rescored_ordnung['due_date_accuracy'])}"
+                " (“After the held-out run”), not with the held-out Ordnung row"
+                + (" — see “An agent with a calculator”" if condition == TOOL_CONDITION else "")
+                + "."
+            )
+        footnotes.append(
+            f"† {_label(condition)} ran on {info.get('date')}, after the held-out run, against the code of "
+            f"that day — including the engine fix described under “After the held-out run” — so it is not "
+            f"held-out, and it is left out of the paired differences with Ordnung below.{fair}"
+        )
+    footnote = ("\n\n" + "\n\n".join(footnotes)) if footnotes else ""
     paired = (
         "Paired differences (bootstrap over the same letters; an interval that excludes 0 is a clear difference):\n\n"
         + "\n".join(lines)
@@ -596,7 +617,7 @@ def _headline(results: Mapping[str, Any], chart: str | None) -> str:
 the predicted date is **after** the true one — the person would act too late. *Early*: before the
 true date (safe, but wrong). *Missed*: the obligation was not found at all. Cost is the
 API-equivalent price reported by the Claude CLI; latency is the model time per letter (all calls).
-{_unanswered_note(results)}
+{_unanswered_note(results)}{footnote}
 
 {paired}
 
@@ -728,17 +749,22 @@ def _tool_section(results: Mapping[str, Any], rescored: Mapping[str, Any] | None
     per_letter = use["deadline_calls_per_letter"]
     rows = [
         [
-            "Letters with a dated obligation where the model called `compute_deadline`",
-            rate(use["letters_with_deadline_call"], ci=False, counts=True),
+            "Letters with a dated obligation where the model asked a date tool "
+            "(`compute_deadline` or `add_working_days`)",
+            rate(use["letters_with_date_tool_call"], ci=False, counts=True),
         ],
-        ["`compute_deadline` calls per such letter", f"{per_letter:.1f}" if per_letter is not None else "—"],
+        [
+            "`compute_deadline` calls per letter with a dated obligation",
+            f"{per_letter:.1f}" if per_letter is not None else "—",
+        ],
         ["Tool calls, by tool", f"{use['calls']} ({calls})"],
         ["Calls the tool refused (invalid arguments)", str(use["refused_calls"])],
     ]
     labels = {
-        "tool_date": "Final date = the date the tool returned for that obligation",
-        "overrode_tool": "Final date ≠ the tool's date for that obligation (the model overrode it)",
-        "no_tool_date": "No tool date for that obligation (not asked)",
+        "tool_date": "Final date = a date the tools returned for that obligation",
+        "overrode_tool": "Final date ≠ the tools' dates for that obligation (the model overrode them)",
+        "other_obligation": "No tool date for that obligation; the tools answered about another one on the letter",
+        "no_tool_date": "No date tool answered on that letter (the model dated it itself)",
     }
     for backing, label in labels.items():
         accuracy = use["accuracy_by_backing"][backing]
@@ -755,15 +781,17 @@ def _tool_section(results: Mapping[str, Any], rescored: Mapping[str, Any] | None
     differs = use["final_differs_from_tool"]
     right = use["tool_returned_the_right_date"]
     paragraphs = [
-        f"Where the tool had answered for an obligation, the final date differed from its answer for "
-        f"{_share(by_backing['overrode_tool'], tool_dated)}. Overrides that replaced a right tool date "
-        f"with a wrong one: {use['overrides_breaking_a_right_tool_date']}; that replaced a wrong tool "
-        f"date with the right one: {use['overrides_fixing_a_wrong_tool_date']}. The tool's own answer "
-        f"was right for {rate(right, ci=False, counts=True)} of these obligations: it computes exactly what it "
-        "is given, so a wrong tool date comes from the arguments the model chose (its reading of the "
-        "period, anchor, sender or region) or from one of Ordnung's documented earliest-plausible-date "
-        "policies. Calls carry no item id: a call counts for an obligation when the sentence the model "
-        "passed it is that obligation's sentence, or when the answer dates only one obligation.",
+        f"Where the date tools had answered for an obligation, the final date differed from their "
+        f"answer for {_share(by_backing['overrode_tool'], tool_dated)}. Overrides that replaced a right "
+        f"tool date with a wrong one: {use['overrides_breaking_a_right_tool_date']}; that replaced a "
+        f"wrong tool date with the right one: {use['overrides_fixing_a_wrong_tool_date']}. The tools' "
+        f"own answer was right for {rate(right, ci=False, counts=True)} of these obligations: they "
+        "compute exactly what they are given, so a wrong tool date comes from the arguments the model "
+        "chose (its reading of the period, anchor, sender or region) or from one of Ordnung's documented "
+        "earliest-plausible-date policies. Calls carry no item id: every date counts for an obligation "
+        "when the answer dates only one; otherwise a `compute_deadline` date counts for the obligation "
+        "whose sentence the model passed it, and an `add_working_days` date (it gets no sentence) for an "
+        "obligation whose final date it is.",
     ]
     if differs.get("value") is None:
         paragraphs = ["The tool returned no dates on this run."]
@@ -785,8 +813,10 @@ def _tool_section(results: Mapping[str, Any], rescored: Mapping[str, Any] | None
 
 Why a fixed pipeline instead of giving the model Ordnung's rules engine as a tool? In the **LLM +
 rules tool** condition the model had the engine as MCP tools (`compute_deadline`, `german_holidays`,
-`add_working_days`, `check_iban` — `ordnung mcp --rules-only`), the *LLM only* prompt and one
-sentence saying the tools exist; when to call them and whether to trust them was its own choice.
+`add_working_days`, `check_iban` — `ordnung mcp --rules-only`), the *LLM only* prompt and a short
+note that names the tools and invites the model to use them when they help
+([`evals/prompts/rules_tool.md`](../evals/prompts/rules_tool.md)); when to call them and whether to
+trust them was its own choice.
 
 {table}
 
@@ -1012,9 +1042,9 @@ def _gallery_section(results: Mapping[str, Any]) -> str:
         if "tool_dates" in g:
             answers = ", ".join(human_date(d) for d in g["tool_dates"])
             lines.append(
-                f"   - `compute_deadline` returned: {answers}"
+                f"   - The date tools returned: {answers}"
                 if answers
-                else "   - The tool returned no date."
+                else "   - The date tools returned no date."
             )
         if g.get("failed"):
             lines.append(f"   - The condition produced no usable answer: {g['failed']}")
@@ -1060,7 +1090,8 @@ the app would get it from the sender's address or the person's settings; none ha
 apply current German law, to choose the earliest plausible date when in doubt and to return no date
 when none can be determined ([`evals/prompts`](../evals/prompts)); the rules-text prompt adds a
 verified summary of the rules condensed from [deadline-rules.md](deadline-rules.md), and the
-rules-tool prompt one sentence naming the tools (the tools' own descriptions explain them).
+rules-tool prompt a three-sentence note that names the tools and invites the model to use them when
+they help (the tools' own descriptions explain them).
 
 **Scoring.** Predicted items are matched to truth items per letter (optimal assignment over kind,
 date, amount and title/quote similarity). Due-date accuracy is exact-date agreement on required
@@ -1172,6 +1203,49 @@ def write_chart(
         return svg
 
 
+@dataclass(frozen=True)
+class ChartPanel:
+    """One panel of the accuracy chart: its conditions and, per group, their estimates."""
+
+    title: str | None
+    conditions: list[str]
+    groups: list[tuple[str, dict[str, Mapping[str, Any]]]]
+
+
+def chart_panels(results: Mapping[str, Any], rescored: Mapping[str, Any] | None = None) -> list[ChartPanel]:
+    """The chart's panels: one, or — for a condition added from a later run on fixed code, when the
+    re-scored run exists — the held-out run on the left and, on the right, that condition next to
+    Ordnung re-scored with the same code (the fair pair: never a later run beside the held-out bar).
+    """
+    groups = chart_groups(results)
+    conditions = _conditions(results)
+    later = [c for c in conditions if c in _later(results)]
+    fixed = ((rescored or {}).get("metrics") or {}).get("ordnung")
+    if not later or rescored is None or fixed is None:
+        return [ChartPanel(None, conditions, groups)]
+    held_out = [c for c in conditions if c not in later]
+    after = dict(chart_groups(rescored))
+    return [
+        ChartPanel(
+            "Held-out run", held_out, [(label, {c: v[c] for c in held_out if c in v}) for label, v in groups]
+        ),
+        ChartPanel(
+            "After the engine fix (not held-out)",
+            ["ordnung", *later],
+            [
+                (
+                    label,
+                    {
+                        **({"ordnung": after[label]["ordnung"]} if "ordnung" in after.get(label, {}) else {}),
+                        **{c: v[c] for c in later if c in v},
+                    },
+                )
+                for label, v in groups
+            ],
+        ),
+    ]
+
+
 def _chart_title(
     results: Mapping[str, Any], rescored: Mapping[str, Any] | None = None
 ) -> tuple[str, str, str | None]:
@@ -1181,15 +1255,26 @@ def _chart_title(
         f"95 % bootstrap CI · model {meta.get('model')} · {meta.get('split')} split · "
         f"{meta.get('scored_items')} items in {meta.get('entries')} letters"
     )
-    note = None
-    later = [c for c in (meta.get("added_conditions") or {}) if c in results["metrics"]]
-    if later:
-        names = " and ".join(_label(c) for c in later)
-        note = f"{names} ran later, with the code of that day"
-        ordnung = ((rescored or {}).get("metrics") or {}).get("ordnung")
-        if ordnung is not None:
-            note += f" · Ordnung re-scored with that code: {pct(ordnung['due_date_accuracy']['value'], 0)}"
+    later = _later(results)
+    if not later:
+        return "Due-date accuracy on required items", subtitle, None
+    names = " and ".join(_label(c) for c in later)
+    dates = ", ".join(sorted({str(info.get("date")) for info in later.values()}))
+    if len(chart_panels(results, rescored)) > 1:
+        note = (
+            f"Right: {names}, run on {dates} against the fixed engine, next to Ordnung's held-out "
+            "outputs re-scored with it"
+        )
+    else:
+        note = (
+            f"{names} ran later ({dates}), with the code of that day — not comparable with the held-out run"
+        )
     return "Due-date accuracy on required items", subtitle, note
+
+
+def _legend_conditions(panels: Sequence[ChartPanel]) -> list[str]:
+    seen = dict.fromkeys(c for panel in panels for c in panel.conditions)
+    return [c for c in CONDITIONS if c in seen] + [c for c in seen if c not in CONDITIONS]
 
 
 def _matplotlib_chart(
@@ -1200,64 +1285,69 @@ def _matplotlib_chart(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    groups = chart_groups(results)
-    conditions = _conditions(results)
+    panels = chart_panels(results, rescored)
+    groups = panels[0].groups
     title, subtitle, note = _chart_title(results, rescored)
     # The header, in inches: title, subtitle, the optional note, then the legend in its own row, so a
-    # long legend never runs into the title.
+    # long legend never runs into the title; panel titles get a line of their own below it.
     header_lines = [
         (title, 12.0, "bold", TEXT_PRIMARY, 0.36),
         (subtitle, 8.5, "normal", TEXT_SECONDARY, 0.24),
     ]
     if note:
         header_lines.append((note, 8.5, "normal", TEXT_SECONDARY, 0.24))
-    header = 0.14 + sum(line[4] for line in header_lines) + 0.34
+    titled = any(panel.title for panel in panels)
+    header = 0.14 + sum(line[4] for line in header_lines) + 0.34 + (0.3 if titled else 0)
     bar, gap = 0.17, 0.07
-    step = len(conditions) * (bar + gap) + 0.45
-    height = header + 0.3 + 1.05 * len(groups)
-    fig, ax = plt.subplots(figsize=(8.4, height), dpi=160)
+    bars = max(len(panel.conditions) for panel in panels)
+    step = bars * (bar + gap) + 0.45
+    height = header + 0.3 + (1.05 if bars >= 4 else 0.85) * len(groups)
+    fig, axes = plt.subplots(1, len(panels), figsize=(8.4, height), dpi=160, sharey=True, squeeze=False)
     fig.patch.set_facecolor(SURFACE)
-    ax.set_facecolor(SURFACE)
-    ticks, labels = [], []
-    for g, (label, values) in enumerate(groups):
-        top = -g * step
-        ticks.append(top - (len(conditions) - 1) * (bar + gap) / 2)
-        labels.append(label)
-        for i, condition in enumerate(conditions):
-            est = values.get(condition)
-            if not est or est.get("value") is None:
-                continue
-            y = top - i * (bar + gap)
-            value = est["value"] * 100
-            ax.barh(y, value, height=bar, color=CONDITION_COLORS.get(condition, TEXT_SECONDARY), zorder=2)
-            lo, hi = est.get("ci") or (None, None)
-            end = value
-            if lo is not None and hi is not None:
-                ax.plot([lo * 100, hi * 100], [y, y], color=TEXT_SECONDARY, linewidth=1.2, zorder=3)
-                ax.plot(
-                    [lo * 100] * 2, [y - bar / 4, y + bar / 4], color=TEXT_SECONDARY, linewidth=1.2, zorder=3
+    for ax, panel in zip(axes[0], panels, strict=True):
+        ax.set_facecolor(SURFACE)
+        ticks, labels = [], []
+        for g, (label, values) in enumerate(panel.groups):
+            top = -g * step
+            ticks.append(top - (bars - 1) * (bar + gap) / 2)
+            labels.append(label)
+            for i, condition in enumerate(panel.conditions):
+                est = values.get(condition)
+                if not est or est.get("value") is None:
+                    continue
+                y = top - i * (bar + gap)
+                value = est["value"] * 100
+                color = CONDITION_COLORS.get(condition, TEXT_SECONDARY)
+                ax.barh(y, value, height=bar, color=color, zorder=2)
+                lo, hi = est.get("ci") or (None, None)
+                end = value
+                if lo is not None and hi is not None:
+                    line = {"color": TEXT_SECONDARY, "linewidth": 1.2, "zorder": 3}
+                    ax.plot([lo * 100, hi * 100], [y, y], **line)
+                    ax.plot([lo * 100] * 2, [y - bar / 4, y + bar / 4], **line)
+                    ax.plot([hi * 100] * 2, [y - bar / 4, y + bar / 4], **line)
+                    end = max(end, hi * 100)
+                ax.text(
+                    end + 1.5, y, f"{value:.0f} %", va="center", ha="left", fontsize=8.5, color=TEXT_PRIMARY
                 )
-                ax.plot(
-                    [hi * 100] * 2, [y - bar / 4, y + bar / 4], color=TEXT_SECONDARY, linewidth=1.2, zorder=3
-                )
-                end = max(end, hi * 100)
-            ax.text(end + 1.2, y, f"{value:.0f} %", va="center", ha="left", fontsize=8.5, color=TEXT_PRIMARY)
-    ax.set_yticks(ticks, labels, fontsize=9.5, color=TEXT_PRIMARY)
-    ax.set_xlim(0, 112)
-    ax.set_xticks(
-        [0, 25, 50, 75, 100], ["0 %", "25 %", "50 %", "75 %", "100 %"], fontsize=8.5, color=TEXT_SECONDARY
-    )
-    ax.grid(axis="x", color=GRID, linewidth=0.8, zorder=0)
-    ax.tick_params(length=0)
-    for spine in ax.spines.values():
-        spine.set_visible(False)
+        ax.set_yticks(ticks, labels, fontsize=9.5, color=TEXT_PRIMARY)
+        ax.set_xlim(0, 118)
+        ax.set_xticks(
+            [0, 25, 50, 75, 100], ["0 %", "25 %", "50 %", "75 %", "100 %"], fontsize=8.5, color=TEXT_SECONDARY
+        )
+        ax.grid(axis="x", color=GRID, linewidth=0.8, zorder=0)
+        ax.tick_params(length=0)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        if panel.title:
+            ax.set_title(panel.title, loc="left", fontsize=9.5, fontweight="bold", color=TEXT_PRIMARY, pad=8)
     y = 0.14
     for text, size, weight, color, advance in header_lines:
         fig.text(0.012, 1 - y / height, text, fontsize=size, fontweight=weight, color=color, va="top")
         y += advance
     handles = [
         matplotlib.patches.Patch(color=CONDITION_COLORS.get(c, TEXT_SECONDARY), label=_label(c))
-        for c in conditions
+        for c in _legend_conditions(panels)
     ]
     fig.legend(
         handles=handles,
@@ -1269,7 +1359,9 @@ def _matplotlib_chart(
         labelcolor=TEXT_PRIMARY,
         handlelength=1.0,
     )
-    fig.subplots_adjust(left=0.15, right=0.98, top=1 - (header + 0.1) / height, bottom=0.35 / height)
+    fig.subplots_adjust(
+        left=0.15, right=0.98, top=1 - (header + 0.1) / height, bottom=0.35 / height, wspace=0.12
+    )
     fig.savefig(path, facecolor=SURFACE, metadata={"Software": None})
     plt.close(fig)
     return path
@@ -1281,14 +1373,16 @@ def _esc(text: str) -> str:
 
 def svg_chart(results: Mapping[str, Any], *, rescored: Mapping[str, Any] | None = None) -> str:
     """The same chart as a self-contained SVG (used when matplotlib is not installed)."""
-    groups = chart_groups(results)
-    conditions = _conditions(results)
+    panels = chart_panels(results, rescored)
+    groups = panels[0].groups
     title, subtitle, note = _chart_title(results, rescored)
     shift = 17 if note else 0  # the note takes a line of its own above the legend
-    width, left, right, bar, gap, group_gap = 760, 130, 60, 16, 5, 22
-    plot = width - left - right
-    top = 78 + shift
-    group_height = len(conditions) * (bar + gap) - gap
+    titled = 20 if any(panel.title for panel in panels) else 0
+    width, left, right, bar, gap, group_gap, gutter = 760, 130, 50, 16, 5, 22, 36
+    plot = (width - left - right - gutter * (len(panels) - 1)) / len(panels)
+    top = 78 + shift + titled
+    bars = max(len(panel.conditions) for panel in panels)
+    group_height = bars * (bar + gap) - gap
     height = top + len(groups) * (group_height + group_gap) + 28
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
@@ -1300,7 +1394,7 @@ def svg_chart(results: Mapping[str, Any], *, rescored: Mapping[str, Any] | None 
     if note:
         parts.append(f'<text x="12" y="60" font-size="11" fill="{TEXT_SECONDARY}">{_esc(note)}</text>')
     x = 12.0
-    for condition in conditions:
+    for condition in _legend_conditions(panels):
         color = CONDITION_COLORS.get(condition, TEXT_SECONDARY)
         parts.append(f'<rect x="{x:.1f}" y="{54 + shift}" width="10" height="10" rx="2" fill="{color}"/>')
         parts.append(
@@ -1308,47 +1402,58 @@ def svg_chart(results: Mapping[str, Any], *, rescored: Mapping[str, Any] | None 
         )
         x += 34 + 5.6 * len(_label(condition))  # swatch, gap and an estimate of the label's width at 11 px
     axis_bottom = height - 24
-    for tick in (0, 25, 50, 75, 100):
-        tx = left + plot * tick / 100
-        parts.append(
-            f'<line x1="{tx:.1f}" y1="{top - 6}" x2="{tx:.1f}" y2="{axis_bottom}" stroke="{GRID}" stroke-width="1"/>'
-        )
-        parts.append(
-            f'<text x="{tx:.1f}" y="{axis_bottom + 15}" font-size="10" text-anchor="middle" fill="{TEXT_SECONDARY}">{tick} %</text>'
-        )
     y = top
-    for label, values in groups:
+    for label, _ in groups:
         parts.append(
             f'<text x="{left - 10}" y="{y + group_height / 2 + 4:.1f}" font-size="12" text-anchor="end" '
             f'fill="{TEXT_PRIMARY}">{_esc(label)}</text>'
         )
-        for i, condition in enumerate(conditions):
-            est = values.get(condition)
-            by = y + i * (bar + gap)
-            if not est or est.get("value") is None:
-                continue
-            value = est["value"]
-            w = plot * value
-            color = CONDITION_COLORS.get(condition, TEXT_SECONDARY)
-            parts.append(f'<rect x="{left}" y="{by}" width="{w:.1f}" height="{bar}" fill="{color}"/>')
-            end = w
-            lo, hi = est.get("ci") or (None, None)
-            if lo is not None and hi is not None:
-                x0, x1 = left + plot * lo, left + plot * hi
-                mid = by + bar / 2
-                parts.append(
-                    f'<line x1="{x0:.1f}" y1="{mid}" x2="{x1:.1f}" y2="{mid}" stroke="{TEXT_SECONDARY}" stroke-width="1.5"/>'
-                )
-                for cap in (x0, x1):
-                    parts.append(
-                        f'<line x1="{cap:.1f}" y1="{mid - 4}" x2="{cap:.1f}" y2="{mid + 4}" stroke="{TEXT_SECONDARY}" stroke-width="1.5"/>'
-                    )
-                end = max(end, plot * hi)
-            parts.append(
-                f'<text x="{left + end + 6:.1f}" y="{by + bar / 2 + 4:.1f}" font-size="11" fill="{TEXT_PRIMARY}">'
-                f"{value * 100:.0f} %</text>"
-            )
         y += group_height + group_gap
+    for p, panel in enumerate(panels):
+        x0 = left + p * (plot + gutter)
+        if panel.title:
+            parts.append(
+                f'<text x="{x0:.1f}" y="{top - 12}" font-size="12" font-weight="600" fill="{TEXT_PRIMARY}">'
+                f"{_esc(panel.title)}</text>"
+            )
+        scale = plot / 1.12  # 0-112 %: room for the value labels after 100 %
+        for tick in (0, 25, 50, 75, 100):
+            tx = x0 + scale * tick / 100
+            parts.append(
+                f'<line x1="{tx:.1f}" y1="{top - 6}" x2="{tx:.1f}" y2="{axis_bottom}" stroke="{GRID}" stroke-width="1"/>'
+            )
+            parts.append(
+                f'<text x="{tx:.1f}" y="{axis_bottom + 15}" font-size="10" text-anchor="middle" fill="{TEXT_SECONDARY}">{tick} %</text>'
+            )
+        y = top
+        for _, values in panel.groups:
+            for i, condition in enumerate(panel.conditions):
+                est = values.get(condition)
+                by = y + i * (bar + gap)
+                if not est or est.get("value") is None:
+                    continue
+                value = est["value"]
+                w = scale * value
+                color = CONDITION_COLORS.get(condition, TEXT_SECONDARY)
+                parts.append(f'<rect x="{x0:.1f}" y="{by}" width="{w:.1f}" height="{bar}" fill="{color}"/>')
+                end = w
+                lo, hi = est.get("ci") or (None, None)
+                if lo is not None and hi is not None:
+                    c0, c1 = x0 + scale * lo, x0 + scale * hi
+                    mid = by + bar / 2
+                    parts.append(
+                        f'<line x1="{c0:.1f}" y1="{mid}" x2="{c1:.1f}" y2="{mid}" stroke="{TEXT_SECONDARY}" stroke-width="1.5"/>'
+                    )
+                    for cap in (c0, c1):
+                        parts.append(
+                            f'<line x1="{cap:.1f}" y1="{mid - 4}" x2="{cap:.1f}" y2="{mid + 4}" stroke="{TEXT_SECONDARY}" stroke-width="1.5"/>'
+                        )
+                    end = max(end, scale * hi)
+                parts.append(
+                    f'<text x="{x0 + end + 6:.1f}" y="{by + bar / 2 + 4:.1f}" font-size="11" fill="{TEXT_PRIMARY}">'
+                    f"{value * 100:.0f} %</text>"
+                )
+            y += group_height + group_gap
     parts.append("</svg>")
     return "\n".join(parts) + "\n"
 

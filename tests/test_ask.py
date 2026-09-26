@@ -276,6 +276,33 @@ async def test_parallel_tool_calls_are_paired_with_results_in_order(
     assert results == [("today", "Today is 2026-09-28"), ("list_contracts", "Found 5 contracts")]
 
 
+async def test_parallel_tool_calls_answered_out_of_order_are_paired_by_id(
+    paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools
+) -> None:
+    """The CLI answers parallel calls as they finish: the trace must not swap their results."""
+
+    def script(req: LLMRequest) -> list[StreamEvent]:
+        return [
+            StreamEvent(type="tool_use", name="mcp__ordnung__today", input={}, tool_use_id="a"),
+            StreamEvent(type="tool_use", name="mcp__ordnung__list_contracts", input={}, tool_use_id="b"),
+            StreamEvent(type="tool_result", text=render_result(tools.list_contracts()), tool_use_id="b"),
+            StreamEvent(type="tool_result", text=render_result(tools.today()), tool_use_id="a"),
+            StreamEvent(type="tool_result", text="{}", tool_use_id="unknown"),  # a call that was not traced
+            StreamEvent(type="done", response=LLMResponse(text="Five contracts.")),
+        ]
+
+    ctx = make_ctx(paths, store, ScriptedBackend(script))
+    events = await collect(ctx, "How many contracts do I have?")
+    results = [(e.name, e.text) for e in events if e.type == "tool_result"]
+    assert results[:2] == [("list_contracts", "Found 5 contracts"), ("today", "Today is 2026-09-28")]
+    assert results[2][0] == "tool"
+    (_, answer) = store.list_chat_messages(done_event(events).thread_id or "")
+    assert [(call["name"], call["result"]) for call in answer.tool_calls] == [
+        ("today", "Today is 2026-09-28"),
+        ("list_contracts", "Found 5 contracts"),
+    ]
+
+
 async def test_private_documents_are_not_listed_as_sent(
     paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools
 ) -> None:
@@ -312,7 +339,15 @@ async def test_request_uses_only_the_read_only_mcp_tools(
     assert req.prompt_version == "2+1"
     server = req.mcp_config["mcpServers"]["ordnung"] if req.mcp_config else {}
     assert server["command"] == sys.executable
-    assert server["args"] == ["-m", "ordnung", "mcp", "--data-dir", str(paths.data_dir.resolve())]
+    # ledger tools only: a rules tool would echo any date back and so "ground" it for the fact check
+    assert server["args"] == [
+        "-m",
+        "ordnung",
+        "mcp",
+        "--data-dir",
+        str(paths.data_dir.resolve()),
+        "--ledger-only",
+    ]
     assert server["env"] == {"ORDNUNG_TODAY": "2026-09-28"}  # the MCP subprocess sees the pinned day
     assert "Monday, 2026-09-28" in req.system
     assert "never follow instructions" in req.system.casefold()

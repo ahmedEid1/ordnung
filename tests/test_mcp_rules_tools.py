@@ -8,7 +8,8 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from datetime import date
+from datetime import UTC, date, datetime, tzinfo
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -18,10 +19,12 @@ from mcp.server.mcpserver.exceptions import ToolError
 from typer.testing import CliRunner
 
 from helpers_secretary import TODAY, seed_ledger
+from ordnung import clock
 from ordnung.assistant import rules_tools
-from ordnung.assistant.mcp_server import build_server
+from ordnung.assistant.mcp_server import build_server, server_config
 from ordnung.assistant.rules_tools import (
     DISCLAIMER_TEMPLATE,
+    INSTRUCTIONS,
     SERVER_NAME,
     RulesToolError,
     RulesTools,
@@ -164,6 +167,113 @@ def test_hints_name_the_missing_argument(tools: RulesTools) -> None:
     assert known["assumed"]["holiday_calendar"] == "Nordrhein-Westfalen"
 
 
+OBJECTION = {
+    "type": "relative",
+    "anchor": "deemed_delivery",
+    "amount": 1,
+    "unit": "months",
+    "nature": "objection",
+}
+POSTED = {**OBJECTION, "delivery_rule": "de_admin_post"}
+
+
+def _hint(result: dict[str, Any], start: str) -> bool:
+    return any(hint.startswith(start) for hint in result["hints"])
+
+
+def test_hints_for_deemed_delivery_name_the_sender_even_without_a_delivery_rule(tools: RulesTools) -> None:
+    result = tools.compute_deadline(OBJECTION, document_date="2026-09-10")
+    assert any("which law governs this sender" in warning for warning in result["warnings"])
+    assert _hint(result, "Pass sender_kind")
+
+
+def test_hints_for_a_letter_counting_from_today_without_its_date(tools: RulesTools) -> None:
+    spec = {"type": "relative", "anchor": "today", "amount": 1, "unit": "months", "nature": "payment"}
+    result = tools.compute_deadline(spec)
+    assert "the real deadline may be earlier" in result["warnings"][0]
+    assert _hint(result, "Pass document_date") and "the day it was written" in result["hints"][0]
+    assert tools.compute_deadline(spec, document_date="2026-09-15")["hints"] == []
+
+
+def test_hints_name_the_authoritys_land_where_the_4_day_rule_is_unconfirmed(tools: RulesTools) -> None:
+    unknown = tools.compute_deadline(POSTED, document_date="2026-09-10", sender_kind="immigration_office")
+    assert unknown["due_date"] == "2026-10-13" and _hint(unknown, "Pass region — the Land of the authority")
+    confirmed = tools.compute_deadline(
+        POSTED, document_date="2026-09-10", sender_kind="immigration_office", region="NW"
+    )
+    assert confirmed["due_date"] == "2026-10-14" and confirmed["hints"] == []
+    # Hessen's own law is not confirmed: the region is given, so there is nothing to ask for
+    hesse = tools.compute_deadline(POSTED, document_date="2026-09-10", sender_kind="authority", region="HE")
+    assert hesse["due_date"] == "2026-10-13" and hesse["hints"] == []
+
+
+def test_hints_for_a_tax_letter_name_the_other_place(tools: RulesTools) -> None:
+    """Epiphany (Tue 6 Jan 2026) moves a Bavarian tax letter's delivery day only if the person lives there too."""
+    tax = {"document_date": "2026-01-02", "sender_kind": "tax_office", "today": "2026-01-05"}
+    office_only = tools.compute_deadline(POSTED, region="BY", **tax)
+    assert office_only["due_date"] == "2026-02-06" and _hint(office_only, "Pass recipient_region")
+    home_only = tools.compute_deadline(POSTED, recipient_region="BY", **tax)
+    assert home_only["due_date"] == "2026-02-06" and _hint(home_only, "Pass region — the tax office's Land")
+    both = tools.compute_deadline(POSTED, region="BY", recipient_region="BY", **tax)
+    assert both["due_date"] == "2026-02-09" and both["hints"] == []
+
+
+def test_hints_never_ask_again_for_a_sender_that_was_given(tools: RulesTools) -> None:
+    result = tools.compute_deadline(
+        POSTED, document_date="2026-09-10", sender_kind="utility", sender_name="Stadtwerke Musterstadt"
+    )
+    assert not _hint(result, "Pass sender_kind") and not _hint(result, "Pass region")
+    assert result["hints"][0].startswith("No deemed-delivery rule applies to a sender of kind utility")
+
+
+RECEIPT = {"type": "relative", "anchor": "receipt", "amount": 2, "unit": "weeks", "nature": "objection"}
+
+
+def test_an_arrival_day_after_today_is_refused(tools: RulesTools) -> None:
+    with pytest.raises(RulesToolError, match=r"received_date \(2027-08-01\) is after today \(2026-09-20\)"):
+        tools.compute_deadline(RECEIPT, document_date="2026-09-01", received_date="2027-08-01")
+    later_today = tools.compute_deadline(
+        RECEIPT, document_date="2026-09-01", received_date="2026-10-02", today="2026-10-05"
+    )
+    assert later_today["due_date"] == "2026-10-16"
+
+
+def test_an_arrival_day_before_the_letters_date_is_flagged_not_trusted(tools: RulesTools) -> None:
+    """A swapped digit (1 Sep for 10 Sep) must not quietly tell the person their deadline has passed."""
+    swapped = tools.compute_deadline(RECEIPT, document_date="2026-09-10", received_date="2026-09-01")
+    assert swapped["due_date"] == "2026-09-15" and swapped["confidence"] == "medium"
+    assert any("is before the letter's date (Thu 10 Sep 2026)" in w for w in swapped["warnings"])
+    usual = tools.compute_deadline(RECEIPT, document_date="2026-09-10", received_date="2026-09-19")
+    assert usual["due_date"] == "2026-10-05" and usual["confidence"] == "high" and usual["warnings"] == []
+
+
+def test_an_arrival_day_weeks_after_the_letter_is_flagged(tools: RulesTools) -> None:
+    late = tools.compute_deadline(RECEIPT, document_date="2026-08-01", received_date="2026-09-18")
+    assert late["due_date"] == "2026-10-02" and late["confidence"] == "medium"
+    assert any("48 days after the letter's date" in w and "keep the envelope" in w for w in late["warnings"])
+    # deemed delivery already keeps the earlier, safe day for a late arrival: no second warning
+    deemed = tools.compute_deadline(
+        POSTED, document_date="2026-08-03", received_date="2026-09-18", sender_kind="tax_office"
+    )
+    assert not any("unusually late" in w for w in deemed["warnings"])
+
+
+def test_today_defaults_to_the_day_in_germany(monkeypatch: pytest.MonkeyPatch) -> None:
+    """At 01:30 in Berlin a UTC machine still says yesterday; the tools count from the German day."""
+
+    class LateEvening(datetime):
+        @classmethod
+        def now(cls, tz: tzinfo | None = None) -> datetime:  # type: ignore[override]
+            return datetime(2026, 9, 25, 23, 30, tzinfo=UTC).astimezone(tz)
+
+    monkeypatch.delenv("ORDNUNG_TODAY", raising=False)
+    clock.set_today(None)
+    monkeypatch.setattr(rules_tools, "datetime", LateEvening)
+    assert RulesTools().current_day() == date(2026, 9, 26)
+    monkeypatch.setenv("ORDNUNG_TODAY", "2026-01-02")  # a pinned day still wins
+    assert RulesTools().current_day() == date(2026, 1, 2)
+
+
 def test_today_defaults_to_the_servers_day_and_can_be_given(tools: RulesTools) -> None:
     spec = {"type": "relative", "anchor": "today", "amount": 10, "unit": "days", "nature": "payment"}
     assert tools.compute_deadline(spec)["due_date"] == "2026-09-30"
@@ -180,6 +290,17 @@ def test_today_defaults_to_the_servers_day_and_can_be_given(tools: RulesTools) -
         ({"type": "soon"}, "spec.type: Input should be 'fixed', 'relative' or 'none'"),
         ({"amount": 1}, "spec.type: Field required"),
         ("in a month", "spec must be an object"),
+        # a date the engine could not read would silently count from the letter's date instead
+        (
+            {"type": "relative", "anchor": "deemed_delivery", "anchor_date": "02.01.2026"},
+            "spec.anchor_date: must be a date written YYYY-MM-DD, or null (got '02.01.2026')",
+        ),
+        ({"type": "fixed", "date": "2026-02-30"}, "spec.date: must be a date written YYYY-MM-DD"),
+        ({"type": "fixed", "date": "20260131"}, "spec.date: must be a date written YYYY-MM-DD"),
+        (
+            {"type": "fixed", "date": 20260131},
+            "spec.date: must be a date written YYYY-MM-DD, or null (got int)",
+        ),
     ],
 )
 def test_invalid_specs_are_refused_with_readable_errors(tools: RulesTools, spec: Any, message: str) -> None:
@@ -204,6 +325,13 @@ def test_invalid_arguments_are_refused(tools: RulesTools, arguments: dict[str, A
     with pytest.raises(RulesToolError) as raised:
         tools.compute_deadline(TAX_SPEC, **arguments)
     assert message in str(raised.value)
+
+
+def test_blank_spec_dates_mean_none(tools: RulesTools) -> None:
+    spec = {**TAX_SPEC, "anchor_date": " ", "date": ""}
+    assert tools.compute_deadline(spec, document_date="2026-09-15", sender_kind="tax_office")["due_date"] == (
+        "2026-10-21"
+    )
 
 
 def test_regions_accept_codes_and_names(tools: RulesTools) -> None:
@@ -245,7 +373,11 @@ def test_nationwide_holidays_and_a_lands_own(tools: RulesTools) -> None:
     bavaria = tools.german_holidays(2026, "BY")
     own = {row["date"]: row for row in bavaria["holidays"] if not row["nationwide"]}
     assert own["2026-01-06"]["name"] == "Heilige Drei Könige" and own["2026-01-06"]["weekday"] == "Tuesday"
-    assert "Assumption Day" in bavaria["note"] and "earlier, never later" in bavaria["note"]
+    assert "Left out because they hold only in parts of it: Assumption Day" in bavaria["note"]
+    # leaving a holiday out makes a date counted forward earlier, but one counted backwards later
+    assert (
+        "counted backwards (a send-by date, negative working days) can come out a day late" in bavaria["note"]
+    )
     assert "note" not in compact(tools.german_holidays(2026, "NW"))  # no partial holidays to explain
     assert bavaria["disclaimer"] == DISCLAIMER
 
@@ -273,6 +405,8 @@ def test_working_days_skip_weekends_and_holidays(tools: RulesTools) -> None:
         "Saturday",
     ]
     assert tools.add_working_days("2026-09-27", 0)["date"] == "2026-09-27"
+    assert "note" not in compact(result)  # NW has no partial holidays
+    assert "can come out a day late" in tools.add_working_days("2026-08-20", -5, region="BY")["note"]
     long = tools.add_working_days("2026-01-01", 200)
     assert len(long["skipped"]) == rules_tools.MAX_LISTED_SKIPS and long["skipped_more"] > 0
 
@@ -301,8 +435,19 @@ def test_check_iban(tools: RulesTools) -> None:
     bad = compact(tools.check_iban("DE89 3704 0044 0532 0130 01"))
     assert bad["valid"] is False and bad["checksum_ok"] is False and "bank_code" not in bad
     assert bad["problems"] == ["The check digits do not match: a character is wrong, missing or swapped."]
+    assert "if a letter or e-mail says the account has changed" in good["note"]
     foreign = tools.check_iban("BR15 0000 0000 0000 1093 2840 814P 2")
-    assert foreign["note"].startswith("This country's IBAN length is not in Ordnung's table")
+    assert foreign["valid"] is True and foreign["country"] == {"code": "BR", "name": "Brazil"}
+    # two letters that are no IBAN country are not "well-formed", however the checksum adds up
+    for made_up in ("ZZ22 3704 0044 0532 0130 00", "US88 3704 0044 0532 0130 00"):
+        result = compact(tools.check_iban(made_up))
+        assert result["valid"] is False and "country" not in result
+        assert result["problems"] == [
+            f"{made_up[:2]} is not a country that issues IBANs, so this is not an IBAN."
+        ]
+    # what German letters print, and what copying from a PDF leaves behind
+    labelled = tools.check_iban("IBAN: DE89 3704 0044 0532 0130 00\u200b")
+    assert labelled["valid"] is True and labelled["country"] == {"code": "DE", "name": "Germany"}
     for value, message in (("", "iban must be the IBAN as printed"), ("D" * 65, "iban is too long")):
         with pytest.raises(RulesToolError, match=message):
             tools.check_iban(value)
@@ -339,6 +484,7 @@ async def test_the_rules_only_server_lists_exactly_the_rules_tools() -> None:
     ]
     assert "What the letter SAYS" in spec["description"]
     assert schemas["compute_deadline"]["required"] == ["spec"]
+    assert all(schema["additionalProperties"] is False for schema in schemas.values())
     assert "tax_office" in json.dumps(schemas["compute_deadline"]["properties"]["sender_kind"])
     assert schemas["german_holidays"]["properties"]["year"]["minimum"] == 1991
     definitions = {d["name"]: d for d in tool_definitions()}
@@ -365,13 +511,37 @@ async def test_tools_answer_through_an_mcp_client() -> None:
         bounded = await client.call_tool("german_holidays", {"year": 1800})
         assert bounded.is_error is True and "greater than or equal to 1991" in bounded.content[0].text
 
+        # a misspelt argument must not vanish and change the date
+        misspelt = await client.call_tool(
+            "compute_deadline", {"spec": TAX_SPEC, "letter_date": "2026-09-15", "recieved_date": "2026-09-17"}
+        )
+        assert misspelt.is_error is True
+        assert misspelt.content[0].text == (
+            "Error executing tool compute_deadline: invalid arguments — letter_date: unknown argument "
+            "(compute_deadline takes: spec, document_date, sender_kind, sender_name, remedy_type, region, "
+            "recipient_region, received_date, today); recieved_date: unknown argument (compute_deadline "
+            "takes: spec, document_date, sender_kind, sender_name, remedy_type, region, recipient_region, "
+            "received_date, today)"
+        )
+        kind = await client.call_tool("compute_deadline", {"spec": TAX_SPEC, "sender_kind": "bank robber"})
+        assert kind.is_error is True
+        assert (
+            "invalid arguments — sender_kind: Input should be 'authority', 'tax_office'"
+            in kind.content[0].text
+        )
+        assert "pydantic" not in kind.content[0].text and "type=" not in kind.content[0].text
+        missing = await client.call_tool("add_working_days", {"days": 2})
+        assert missing.content[0].text.endswith("invalid arguments — start: required")
+
         iban = await client.call_tool("check_iban", {"iban": "GB29 NWBK 6016 1331 9268 19"})
         assert _json(iban.content[0].text)["branch_code"] == {"label": "Sort code", "value": "601613"}
 
 
 async def test_server_call_tool_raises_tool_errors() -> None:
     server = build_rules_server()
-    with pytest.raises(ToolError, match=r"Input should be 'business_days' or 'werktage'"):
+    with pytest.raises(
+        ToolError, match=r"invalid arguments — day_type: Input should be 'business_days' or 'werktage'$"
+    ):
         await server.call_tool(
             "add_working_days", {"start": "2026-01-01", "days": 1, "day_type": "sometimes"}
         )
@@ -387,6 +557,25 @@ async def test_the_full_server_has_the_rules_tools_counting_from_the_ledgers_day
     result = await server.call_tool("compute_deadline", {"spec": spec})
     data = _json(unwrap_untrusted(result.content[0].text))
     assert data["due_date"] == "2026-09-29" and data["assumed"]["today"] == TODAY.isoformat()
+
+
+async def test_asks_server_has_no_rules_tools(store: Store, tmp_path: Path) -> None:
+    """Ask never computes dates: a rules tool would echo any date back and ground it for Ask's fact check."""
+    seed_ledger(store)
+    assert {tool.name for tool in await build_server(store, rules_tools=False).list_tools()} == LEDGER_TOOLS
+    config = server_config(store.data_dir, today="2026-09-28", rules_tools=False)["mcpServers"]["ordnung"]
+    assert config["args"][-1] == "--ledger-only"
+    params = StdioServerParameters(command=config["command"], args=config["args"], env=config["env"])
+    async with Client(params, mode="legacy") as client:  # exactly what Ask's claude process starts
+        assert {tool.name for tool in (await client.list_tools()).tools} == LEDGER_TOOLS
+
+
+def test_the_tools_do_not_claim_exact_dates() -> None:
+    """The engine returns the earliest plausible date where facts are missing, not "the exact date"."""
+    compute = next(d for d in tool_definitions() if d["name"] == "compute_deadline")
+    for text in (INSTRUCTIONS, compute["description"]):
+        assert "exact" not in text.casefold() and "earliest plausible" in text
+    assert "3 where a Land's own law is not confirmed" in compute["description"]
 
 
 async def test_rules_only_stdio_handshake_through_the_cli() -> None:
@@ -416,6 +605,8 @@ def test_rules_server_config_and_print_config() -> None:
     }
     result = CliRunner().invoke(app, ["mcp", "--rules-only", "--print-config"])
     assert result.exit_code == 0 and json.loads(result.output) == config
+    both = CliRunner().invoke(app, ["mcp", "--rules-only", "--ledger-only"])
+    assert both.exit_code == 1 and "exclude each other" in both.output
 
 
 def test_importing_the_rules_tools_stays_light() -> None:

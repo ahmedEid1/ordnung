@@ -16,12 +16,18 @@ Claude reads through it also reaches every other MCP server loaded there, throug
   `add_working_days` and `check_iban` expose the calendar and the IBAN check. Results carry the
   engine's receipt, hints for missing facts and "information, not legal advice"; they echo no letter
   text. ADR 0002 holds across the process boundary: the model reads, code computes.
-- `ordnung mcp --rules-only` serves only these tools and opens no data folder. It is what the docs
-  and `ordnung mcp install` lead with; the full ledger server (which also carries the tools) needs
-  the data folder named and prints what it exposes.
+- `ordnung mcp --rules-only` serves only these tools and opens no data folder. It is what
+  `ordnung mcp install` adds; the full ledger server (which also carries the tools) needs an explicit
+  `--with-ledger`, and the install command shows what it exposes before it prints or writes the
+  entry. In Claude Code the ledger goes only into the person's local scope (`claude mcp add --scope
+  local`), never into a project's `.mcp.json`, which is usually committed and shared. Options that
+  would be dropped (put before `install`, or a data folder without `--with-ledger`) are refused.
+- Ask's own server leaves the rules tools out (`--ledger-only`). Ask quotes the ledger's stored
+  receipts and never computes a new date (SPEC § 21); with a calculator in reach, any date it
+  echoed would also pass Ask's fact check.
 - `ordnung mcp install` prints first and writes only with `--write`, under a written merge policy:
-  only Ordnung's entry changes, the file is backed up, a file that is not a JSON object is refused
-  untouched, an app's settings folder is never created.
+  only Ordnung's entry changes, the file is backed up, a file that is not a UTF-8 JSON object is
+  refused untouched, an app's settings folder is never created.
 - The benchmark measures the alternative this invites — an agent with Ordnung's engine as a tool
   instead of the fixed pipeline — as a fourth condition, on the same letters.
 

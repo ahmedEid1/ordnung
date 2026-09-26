@@ -295,13 +295,15 @@ class ToolUse(BaseModel):
     """One tool call a condition's model made (``llm_rules_tool``), as the scorer needs it.
 
     ``ok`` is false when the tool refused the arguments (its answer was not a JSON object);
-    ``due_date`` is what ``compute_deadline`` returned (``None`` for no date or other tools).
+    ``due_date`` is what ``compute_deadline`` returned and ``date`` what ``add_working_days``
+    returned (``None`` for no date or other tools).
     """
 
     name: str
     input: dict[str, Any] = Field(default_factory=dict)
     ok: bool = True
     due_date: str | None = None
+    date: str | None = None
     error: str | None = None
 
 

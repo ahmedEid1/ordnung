@@ -136,10 +136,13 @@ flowchart LR
 ```
 
 - `ordnung mcp --rules-only` opens no data folder, so nothing personal is exposed; the full
-  `ordnung mcp --data-dir D` serves the rules tools next to the ledger tools (Ask sees both).
-- `ordnung mcp install --client claude-desktop|claude-code` prints the entry and the file it belongs
-  in; `--write` merges only Ordnung's entry, backs the file up and refuses a file it cannot parse
-  (`ordnung/assistant/mcp_install.py`, policy in its docstring).
+  `ordnung mcp --data-dir D` serves the rules tools next to the ledger tools. Ask's own server
+  leaves them out (`--ledger-only`): Ask quotes stored receipts and never computes a date, and its
+  fact check would otherwise accept any date a rules tool echoed.
+- `ordnung mcp install --client claude-desktop|claude-code` adds the rules tools unless the ledger
+  is asked for (`--with-ledger`, with the privacy warning first); it prints the entry and the file
+  it belongs in, and `--write` merges only Ordnung's entry, backs the file up and refuses a file it
+  cannot parse (`ordnung/assistant/mcp_install.py`, policy in its docstring).
 - The benchmark's fourth condition runs exactly this server next to the *LLM only* prompt, to
   measure an agent with a calculator against the fixed pipeline ([evals](evals.md)).
 

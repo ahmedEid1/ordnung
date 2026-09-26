@@ -56,10 +56,35 @@ def test_a_missing_character_fails_length_and_checksum() -> None:
     assert check.problems[0] == "Germany IBANs have 22 characters; this one has 21."
 
 
-def test_a_country_outside_the_table_gets_the_checksum_only() -> None:
+def test_every_registry_country_has_its_length() -> None:
+    """The full SWIFT registry: Brazil's example is valid, lengths stay within ISO 13616's 15-34."""
+    assert len(IBAN_COUNTRIES) == 89
+    assert all(15 <= country.length <= 34 for country in IBAN_COUNTRIES.values())
     check = inspect_iban("BR15 0000 0000 0000 1093 2840 814P 2")  # Brazil: a valid registry example
-    assert check.country is None and check.length_expected is None and check.length_ok is None
-    assert check.checksum_ok and check.valid
+    assert check.valid and check.country == "Brazil" and check.length_ok is True and check.bank_code is None
+
+
+@pytest.mark.parametrize("text", ["ZZ22 3704 0044 0532 0130 00", "US88 3704 0044 0532 0130 00"])
+def test_two_letters_that_are_no_iban_country_are_not_an_iban(text: str) -> None:
+    """The checksum adds up, but neither ZZ nor the US issue IBANs: not well-formed, no country guessed."""
+    check = inspect_iban(text)
+    assert check.shape_ok and check.checksum_ok and not check.valid
+    assert (check.country_code, check.country, check.length_ok) == (None, None, None)
+    assert check.problems == [f"{text[:2]} is not a country that issues IBANs, so this is not an IBAN."]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "IBAN: DE89 3704 0044 0532 0130 00",  # as German letters print it
+        "iban DE89 3704 0044 0532 0130 00",
+        "DE89 3704 0044 0532 0130 00\u200b",  # a zero-width space copied from a PDF
+        "\ufeffDE89\u00a03704 0044\u20600532 0130 00",  # a byte-order mark, a no-break space, a word joiner
+    ],
+)
+def test_labels_and_invisible_characters_are_ignored(text: str) -> None:
+    check = inspect_iban(text)
+    assert check.valid and check.iban == "DE89370400440532013000" and check.country_code == "DE"
 
 
 @pytest.mark.parametrize(

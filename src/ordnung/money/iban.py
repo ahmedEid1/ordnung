@@ -2,10 +2,13 @@
 
 Pure code, no I/O. Policy (ISO 13616 and the SWIFT IBAN registry):
 
-* **Well-formed** means: letters and digits only (spaces, dashes and dots as printed are ignored),
-  two letters for the country, two check digits, the registered length of that country when it is
-  in :data:`IBAN_COUNTRIES`, and the mod-97 checksum. A country not in the table gets the checksum
-  check only, and the result says so.
+* **As printed.** A leading ``IBAN``/``IBAN:`` label, spaces, dashes and dots are ignored, and so
+  are invisible format characters that copying from a PDF or web page leaves behind (zero-width
+  spaces, byte-order marks: Unicode category Cf).
+* **Well-formed** means: letters and digits only, two letters for a country that issues IBANs
+  (:data:`IBAN_COUNTRIES`, the full SWIFT registry), two check digits, that country's registered
+  length, and the mod-97 checksum. Any other two letters (``US``, ``ZZ`` …) are not an IBAN, even
+  when the checksum happens to add up; the country is then reported as unknown, never as a guess.
 * **Bank code** — the national bank identifier (and branch code where the registry defines one) is
   cut out of the account part only for the countries listed with its position; elsewhere it is
   ``None`` rather than a guess. No bank *names*: that needs each country's bank directory.
@@ -16,9 +19,11 @@ Pure code, no I/O. Policy (ISO 13616 and the SWIFT IBAN registry):
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, replace
 
 _NOISE = re.compile(r"[\s\-.]+")
+_LABEL = re.compile(r"^\s*IBAN\s*:?", re.IGNORECASE)
 _SHAPE = re.compile(r"^[A-Z]{2}[0-9]{2}[A-Z0-9]+$")
 MAX_LENGTH = 34
 MIN_LENGTH = 15
@@ -40,56 +45,100 @@ class IbanCountry:
     account: tuple[int, int] | None = None
 
 
-#: The countries of the SEPA area and Germany's neighbours (lengths from the SWIFT IBAN registry).
+#: Every country in the SWIFT IBAN registry (release checked 2026-09) with its IBAN length; the bank
+#: and branch code positions for the countries whose format shows them and that German letters use.
+#: Territories that use another country's IBAN (Guernsey, Jersey and the Isle of Man: GB; Åland: FI;
+#: the French overseas departments and collectivities: FR) are not separate entries.
 IBAN_COUNTRIES: dict[str, IbanCountry] = {
     "AD": IbanCountry("Andorra", 24),
+    "AE": IbanCountry("United Arab Emirates", 23),
     "AL": IbanCountry("Albania", 28),
     "AT": IbanCountry("Austria", 20, bank=(4, 9), bank_label="Bankleitzahl"),
+    "AZ": IbanCountry("Azerbaijan", 28),
     "BA": IbanCountry("Bosnia and Herzegovina", 20),
     "BE": IbanCountry("Belgium", 16, bank=(4, 7)),
     "BG": IbanCountry("Bulgaria", 22),
+    "BH": IbanCountry("Bahrain", 22),
+    "BI": IbanCountry("Burundi", 27),
+    "BR": IbanCountry("Brazil", 29),
+    "BY": IbanCountry("Belarus", 28),
     "CH": IbanCountry("Switzerland", 21, bank=(4, 9), bank_label="Bank clearing number (IID)"),
+    "CR": IbanCountry("Costa Rica", 22),
     "CY": IbanCountry("Cyprus", 28),
     "CZ": IbanCountry("Czechia", 24, bank=(4, 8)),
     "DE": IbanCountry("Germany", 22, bank=(4, 12), bank_label="Bankleitzahl (BLZ)", account=(12, 22)),
+    "DJ": IbanCountry("Djibouti", 27),
     "DK": IbanCountry("Denmark", 18, bank=(4, 8)),
+    "DO": IbanCountry("Dominican Republic", 28),
     "EE": IbanCountry("Estonia", 20),
+    "EG": IbanCountry("Egypt", 29),
     "ES": IbanCountry("Spain", 24, bank=(4, 8), branch=(8, 12)),
     "FI": IbanCountry("Finland", 18),
+    "FK": IbanCountry("Falkland Islands", 18),
     "FO": IbanCountry("Faroe Islands", 18),
     "FR": IbanCountry("France", 27, bank=(4, 9), branch=(9, 14), branch_label="Code guichet"),
     "GB": IbanCountry("United Kingdom", 22, bank=(4, 8), branch=(8, 14), branch_label="Sort code"),
+    "GE": IbanCountry("Georgia", 22),
     "GI": IbanCountry("Gibraltar", 23),
     "GL": IbanCountry("Greenland", 18),
     "GR": IbanCountry("Greece", 27),
+    "GT": IbanCountry("Guatemala", 28),
+    "HN": IbanCountry("Honduras", 28),
     "HR": IbanCountry("Croatia", 21),
     "HU": IbanCountry("Hungary", 28),
     "IE": IbanCountry("Ireland", 22, bank=(4, 8), branch=(8, 14), branch_label="Sort code"),
+    "IL": IbanCountry("Israel", 23),
+    "IQ": IbanCountry("Iraq", 23),
     "IS": IbanCountry("Iceland", 26),
     "IT": IbanCountry("Italy", 27, bank=(5, 10), bank_label="ABI", branch=(10, 15), branch_label="CAB"),
+    "JO": IbanCountry("Jordan", 30),
+    "KW": IbanCountry("Kuwait", 30),
+    "KZ": IbanCountry("Kazakhstan", 20),
+    "LB": IbanCountry("Lebanon", 28),
+    "LC": IbanCountry("Saint Lucia", 32),
     "LI": IbanCountry("Liechtenstein", 21),
     "LT": IbanCountry("Lithuania", 20),
     "LU": IbanCountry("Luxembourg", 20, bank=(4, 7)),
     "LV": IbanCountry("Latvia", 21),
+    "LY": IbanCountry("Libya", 25),
     "MC": IbanCountry("Monaco", 27),
     "MD": IbanCountry("Moldova", 24),
     "ME": IbanCountry("Montenegro", 22),
     "MK": IbanCountry("North Macedonia", 19),
+    "MN": IbanCountry("Mongolia", 20),
+    "MR": IbanCountry("Mauritania", 27),
     "MT": IbanCountry("Malta", 31),
+    "MU": IbanCountry("Mauritius", 30),
+    "NI": IbanCountry("Nicaragua", 28),
     "NL": IbanCountry("Netherlands", 18, bank=(4, 8)),
     "NO": IbanCountry("Norway", 15, bank=(4, 8)),
+    "OM": IbanCountry("Oman", 23),
+    "PK": IbanCountry("Pakistan", 24),
     "PL": IbanCountry("Poland", 28),
+    "PS": IbanCountry("Palestine", 29),
     "PT": IbanCountry("Portugal", 25, bank=(4, 8), branch=(8, 12)),
+    "QA": IbanCountry("Qatar", 29),
     "RO": IbanCountry("Romania", 24),
     "RS": IbanCountry("Serbia", 22),
+    "RU": IbanCountry("Russia", 33),
+    "SA": IbanCountry("Saudi Arabia", 24),
+    "SC": IbanCountry("Seychelles", 31),
+    "SD": IbanCountry("Sudan", 18),
     "SE": IbanCountry("Sweden", 24),
     "SI": IbanCountry("Slovenia", 19),
     "SK": IbanCountry("Slovakia", 24),
     "SM": IbanCountry("San Marino", 27),
+    "SO": IbanCountry("Somalia", 23),
+    "ST": IbanCountry("São Tomé and Príncipe", 25),
+    "SV": IbanCountry("El Salvador", 28),
+    "TL": IbanCountry("Timor-Leste", 23),
+    "TN": IbanCountry("Tunisia", 24),
     "TR": IbanCountry("Türkiye", 26),
     "UA": IbanCountry("Ukraine", 29),
     "VA": IbanCountry("Vatican City", 22),
+    "VG": IbanCountry("British Virgin Islands", 24),
     "XK": IbanCountry("Kosovo", 20),
+    "YE": IbanCountry("Yemen", 30),
 }
 
 
@@ -111,12 +160,12 @@ class IbanCheck:
 
     @property
     def length_ok(self) -> bool | None:
-        """``None`` when the country's length is not in the table."""
+        """``None`` when the two letters are not an IBAN country (so there is no length to check)."""
         return None if self.length_expected is None else len(self.iban) == self.length_expected
 
     @property
     def valid(self) -> bool:
-        return self.shape_ok and self.length_ok is not False and self.checksum_ok
+        return self.shape_ok and self.country is not None and self.length_ok is True and self.checksum_ok
 
     @property
     def problems(self) -> list[str]:
@@ -126,6 +175,8 @@ class IbanCheck:
             found.append(
                 "It is not shaped like an IBAN (two letters, two check digits, then letters and digits)."
             )
+        elif self.country is None:
+            found.append(f"{self.iban[:2]} is not a country that issues IBANs, so this is not an IBAN.")
         elif self.length_ok is False:
             found.append(
                 f"{self.country} IBANs have {self.length_expected} characters; this one has {len(self.iban)}."
@@ -136,8 +187,9 @@ class IbanCheck:
 
 
 def normalize(text: str) -> str:
-    """``"de89 3704-0044 0532 0130 00"`` → ``"DE89370400440532013000"``."""
-    return _NOISE.sub("", text).upper()
+    """``"IBAN: de89 3704-0044 0532 0130 00"`` → ``"DE89370400440532013000"`` (see module policy)."""
+    visible = "".join(char for char in text if unicodedata.category(char) != "Cf")
+    return _NOISE.sub("", _LABEL.sub("", visible)).upper()
 
 
 def grouped(iban: str) -> str:
@@ -155,11 +207,10 @@ def inspect_iban(text: str) -> IbanCheck:
     """Everything the IBAN itself tells: country, length, checksum and (where known) bank code."""
     iban = normalize(text)
     shape_ok = MIN_LENGTH <= len(iban) <= MAX_LENGTH and _SHAPE.match(iban) is not None
-    code = iban[:2] if len(iban) >= 2 and iban[:2].isalpha() and iban[:2].isascii() else None
-    country = IBAN_COUNTRIES.get(code or "")
+    country = IBAN_COUNTRIES.get(iban[:2])
     check = IbanCheck(
         iban=iban,
-        country_code=code,
+        country_code=iban[:2] if country else None,
         country=country.name if country else None,
         shape_ok=shape_ok,
         length_expected=country.length if country else None,

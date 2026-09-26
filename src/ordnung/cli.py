@@ -1055,7 +1055,8 @@ def eval_(ctx: typer.Context) -> None:
 
 mcp_app = typer.Typer(
     name="mcp",
-    help="Ordnung's read-only MCP tools: serve them over stdio, or install them into Claude.",
+    help="Ordnung's read-only MCP tools: serve them over stdio, or install them into Claude "
+    "(the options below are for serving; `install` takes its own).",
     add_completion=False,
     rich_markup_mode="rich",
 )
@@ -1065,7 +1066,7 @@ RulesOnlyOption = Annotated[
     bool,
     typer.Option(
         "--rules-only",
-        help="Only the deadline, holiday, working-day and IBAN tools: no data folder, nothing personal.",
+        help="Serve only the deadline, holiday, working-day and IBAN tools: no data folder, nothing personal.",
     ),
 ]
 
@@ -1078,10 +1079,36 @@ def mcp(
         bool, typer.Option("--print-config", help="Print the MCP config JSON and exit.")
     ] = False,
     rules_only: RulesOnlyOption = False,
+    ledger_only: Annotated[
+        bool,
+        typer.Option(
+            "--ledger-only",
+            hidden=True,
+            help="Only the ledger tools, without the rules tools (Ask's server: Ask never computes dates).",
+        ),
+    ] = False,
 ) -> None:
     """Serve Ordnung's read-only tools over stdio (Ask starts this; nothing else is printed)."""
     if ctx.invoked_subcommand is not None:
+        given = [
+            name
+            for name, value in (
+                ("--data-dir", data_dir),
+                ("--print-config", print_config),
+                ("--rules-only", rules_only),
+                ("--ledger-only", ledger_only),
+            )
+            if value
+        ]
+        if given:
+            raise _fail(
+                f"{', '.join(given)} before “{ctx.invoked_subcommand}” would not be used.",
+                hint=f"Put the options after it, e.g. ordnung mcp {ctx.invoked_subcommand} --client "
+                "claude-desktop (the rules tools alone), or add --with-ledger --data-dir … for your ledger.",
+            )
         return
+    if rules_only and ledger_only:
+        raise _fail("--rules-only and --ledger-only exclude each other.")
     if rules_only:
         from ordnung.assistant import rules_tools
 
@@ -1094,10 +1121,10 @@ def mcp(
 
     folder = _folder(ctx, data_dir)
     if print_config:
-        typer.echo(json.dumps(mcp_server.server_config(folder), indent=2))
+        typer.echo(json.dumps(mcp_server.server_config(folder, rules_tools=not ledger_only), indent=2))
         return
     try:
-        mcp_server.run(folder)
+        mcp_server.run(folder, rules_tools=not ledger_only)
     except FileNotFoundError as exc:
         raise _fail(str(exc), hint="Pass the data folder with --data-dir, or use --rules-only.") from None
 
@@ -1109,7 +1136,14 @@ def mcp_install(
         McpClient,
         typer.Option("--client", metavar="CLIENT", help="claude-desktop or claude-code.", show_default=False),
     ],
-    rules_only: RulesOnlyOption = False,
+    rules_only: Annotated[
+        bool,
+        typer.Option(
+            "--rules-only/--with-ledger",
+            help="The rules tools alone (the default: no data folder, nothing personal), or also your "
+            "read-only ledger (--with-ledger), which the client and its other tools can then read.",
+        ),
+    ] = True,
     write: Annotated[
         bool,
         typer.Option("--write", help="Merge the entry into the config file (the file is backed up first)."),
@@ -1120,35 +1154,55 @@ def mcp_install(
             "--config", help="Use this config file instead of the client's usual one.", show_default=False
         ),
     ] = None,
-    data_dir: DataDirOption = None,
+    data_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--data-dir",
+            help="With --with-ledger: your data folder (default: ORDNUNG_HOME or your user data folder).",
+            show_default=False,
+        ),
+    ] = None,
 ) -> None:
-    """Add Ordnung to Claude Desktop or Claude Code: prints the entry; --write merges it in."""
+    """Add Ordnung's rules tools (or, with --with-ledger, your ledger too) to Claude Desktop or Claude Code.
+
+    Prints the entry and where it goes; --write merges it in.
+    """
     from ordnung.assistant import mcp_install as install
 
     folder = None
-    if not rules_only:
+    if rules_only:
+        if data_dir is not None:
+            raise _fail(
+                "The rules tools read no data folder, so --data-dir would not be used.",
+                hint="Add --with-ledger to give the client your ledger, or leave out --data-dir.",
+            )
+    else:
         folder = _folder(ctx, data_dir)
         if not Paths(folder).db.is_file():
             raise _fail(
                 f"There is no Ordnung database in {folder}.",
-                hint="Name your data folder with --data-dir, or install only the rules tools with --rules-only.",
+                hint="Name your data folder with --data-dir, or leave out --with-ledger for the rules tools alone.",
             )
     plan = install.plan_install(client, rules_only=rules_only, data_dir=folder, config=config)
+    # What the client will see, before anything is printed to copy or written.
+    if rules_only:
+        console.print(f"[dim]{escape(install.privacy_note(plan))}[/]", soft_wrap=True)
+    else:
+        console.print(f"[yellow]![/] {escape(install.privacy_note(plan))}", soft_wrap=True)
     if not write:
         typer.echo(install.instructions(plan, data_dir=folder, config=config))
-    else:
-        try:
-            result = install.write_config(plan)
-        except install.InstallError as exc:
-            raise _fail(str(exc)) from None
-        except OSError as exc:
-            raise _fail(f"Couldn't write {plan.path}: {exc.strerror or exc}") from None
-        console.print(f"[green]✓[/] {escape(install.written_message(plan, result))}", soft_wrap=True)
-        if result.backup is not None:
-            console.print(f"  The previous version is saved as {escape(str(result.backup))}", soft_wrap=True)
-        if result.status != "unchanged":
-            console.print(f"  {install.NEXT_STEP[plan.client]}")
-    console.print(f"[dim]{escape(install.privacy_note(plan))}[/]", soft_wrap=True)
+        return
+    try:
+        result = install.write_config(plan)
+    except install.InstallError as exc:
+        raise _fail(str(exc)) from None
+    except OSError as exc:
+        raise _fail(f"Couldn't write {plan.path}: {exc.strerror or exc}") from None
+    console.print(f"[green]✓[/] {escape(install.written_message(plan, result))}", soft_wrap=True)
+    if result.backup is not None:
+        console.print(f"  The previous version is saved as {escape(str(result.backup))}", soft_wrap=True)
+    if result.status != "unchanged":
+        console.print(f"  {install.NEXT_STEP[plan.client]}")
 
 
 @app.command()

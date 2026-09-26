@@ -25,13 +25,16 @@ error) scores as an empty answer: its items are missed and it gets no credit for
 — not even for a letter without a date or a remedy, where an empty answer would otherwise "agree".
 
 **Tool use** (conditions whose model had tools, ``Prediction.tools`` not ``None``). Per letter: the
-calls per tool, the calls refused for invalid arguments, and the distinct due dates
-``compute_deadline`` returned. Calls carry no item id, so a call is attributed by a written policy:
-it belongs to an answered item when its ``spec.text`` is that item's sentence (fuzzy partial match
-≥ :data:`SAME_SENTENCE_SCORE` with the item's quote), and to the only item when the answer dates
-just one. Every scored item the model dated is then ``tool_date`` (its final date is one its calls
-returned), ``overrode_tool`` (its calls returned dates, the final date is none of them) or
-``no_tool_date`` (no call of its own returned a date: not asked, or asked about another sentence).
+calls per tool, the calls refused for invalid arguments, and the distinct dates the *date tools*
+returned — ``compute_deadline``'s due date and ``add_working_days``' date (the calculator the model
+may use instead). Calls carry no item id, so a date is attributed by a written policy: every date
+belongs to the only item when the answer dates just one; otherwise a ``compute_deadline`` date
+belongs to the item whose sentence it was given (its ``spec.text`` matches the item's quote, fuzzy
+partial match ≥ :data:`SAME_SENTENCE_SCORE`), and an ``add_working_days`` date — which comes with no
+sentence — to an item whose final date it is. Every scored item the model dated is then
+``tool_date`` (its final date is one of its tool dates), ``overrode_tool`` (it has tool dates, the
+final date is none of them), ``other_obligation`` (it has none, but the letter's date tools answered
+about another of its obligations) or ``no_tool_date`` (no date tool answered on that letter).
 """
 
 from __future__ import annotations
@@ -108,11 +111,13 @@ UNCERTAINTY_RE = re.compile(
 )
 
 ItemOutcomeName = Literal["correct", "wrong", "declined", "missed", "unscored"]
-ToolBacking = Literal["tool_date", "overrode_tool", "no_tool_date"]
+ToolBacking = Literal["tool_date", "overrode_tool", "other_obligation", "no_tool_date"]
 TOOL_CONDITION = "llm_rules_tool"
 #: The conditions the tool condition is also compared with (it extends their prompts).
 TOOL_PEERS = ("llm_only", "llm_rules_text")
-BACKINGS: tuple[ToolBacking, ...] = ("tool_date", "overrode_tool", "no_tool_date")
+BACKINGS: tuple[ToolBacking, ...] = ("tool_date", "overrode_tool", "other_obligation", "no_tool_date")
+#: The tools whose answer is a date for an obligation, and the result field that holds it.
+DATE_TOOLS = ("compute_deadline", "add_working_days")
 #: How alike a tool call's `spec.text` and an item's quote must be to be the same sentence.
 SAME_SENTENCE_SCORE = 80.0
 
@@ -429,12 +434,16 @@ class DocScore:
     tool_calls: dict[str, int] | None = None
     #: Tool calls refused for invalid arguments.
     tool_refusals: int = 0
-    #: The distinct due dates ``compute_deadline`` returned on this letter.
+    #: The distinct dates the date tools (:data:`DATE_TOOLS`) returned on this letter.
     tool_dates: list[str] = field(default_factory=list)
 
     @property
     def deadline_calls(self) -> int:
         return (self.tool_calls or {}).get("compute_deadline", 0)
+
+    @property
+    def date_tool_calls(self) -> int:
+        return sum((self.tool_calls or {}).get(name, 0) for name in DATE_TOOLS)
 
     @property
     def scored_items(self) -> list[ItemOutcome]:
@@ -562,18 +571,25 @@ def _item_outcome(
             result.cause = "reading" if result.reading_diffs else "computing"
     if pred.tools is not None and item is not None and predicted is not None:
         dates = item_tool_dates(pred, item)
-        result.backing = tool_backing(result.predicted, dates)
+        result.backing = tool_backing(result.predicted, dates, letter_dates=tool_dates(pred))
         result.tool_had_truth = expected.isoformat() in dates
     return result
 
 
-def _deadline_answers(pred: Prediction) -> list[ToolUse]:
-    return [use for use in pred.tools or [] if use.name == "compute_deadline" and use.due_date]
+def answer_date(use: ToolUse) -> str | None:
+    """The date a date tool returned (``compute_deadline``'s due date, ``add_working_days``' date)."""
+    if use.name == "compute_deadline":
+        return use.due_date
+    return use.date if use.name == "add_working_days" else None
+
+
+def _date_answers(pred: Prediction) -> list[ToolUse]:
+    return [use for use in pred.tools or [] if answer_date(use)]
 
 
 def tool_dates(pred: Prediction) -> list[str]:
-    """The distinct due dates ``compute_deadline`` returned on this letter, in call order."""
-    return list(dict.fromkeys(use.due_date for use in _deadline_answers(pred) if use.due_date))
+    """The distinct dates the date tools returned on this letter, in call order."""
+    return list(dict.fromkeys(day for use in _date_answers(pred) if (day := answer_date(use))))
 
 
 def same_sentence(spec_text: str, quote: str) -> bool:
@@ -585,21 +601,28 @@ def same_sentence(spec_text: str, quote: str) -> bool:
 
 
 def item_tool_dates(pred: Prediction, item: PredictedItem) -> list[str]:
-    """The due dates of the ``compute_deadline`` calls that belong to ``item`` (module docstring)."""
-    answers = _deadline_answers(pred)
+    """The tool dates that belong to ``item`` (module docstring, "Tool use")."""
+    answers = _date_answers(pred)
     if sum(1 for other in pred.items if other.due_date) > 1:
+        final = iso_or_none(item.due_date)
         answers = [
             use
             for use in answers
-            if same_sentence(str((use.input.get("spec") or {}).get("text") or ""), item.quote)
+            if (
+                same_sentence(str((use.input.get("spec") or {}).get("text") or ""), item.quote)
+                if use.name == "compute_deadline"
+                else answer_date(use) == final
+            )
         ]
-    return list(dict.fromkeys(use.due_date for use in answers if use.due_date))
+    return list(dict.fromkeys(day for use in answers if (day := answer_date(use))))
 
 
-def tool_backing(predicted: str | None, dates: Sequence[str]) -> ToolBacking:
-    """How a final date relates to the letter's tool dates (module docstring, "Tool use")."""
+def tool_backing(
+    predicted: str | None, dates: Sequence[str], *, letter_dates: Sequence[str] = ()
+) -> ToolBacking:
+    """How a final date relates to its tool dates and the letter's (module docstring, "Tool use")."""
     if not dates:
-        return "no_tool_date"
+        return "other_obligation" if letter_dates else "no_tool_date"
     return "tool_date" if iso_or_none(predicted) in dates else "overrode_tool"
 
 
@@ -1117,7 +1140,7 @@ def tool_use_summary(scores: Sequence[DocScore], est: Callable[..., dict[str, An
     items = [item for score in scores for item in score.scored_items if item.backing is not None]
     overrides = [item for item in items if item.backing == "overrode_tool"]
     return {
-        "letters_with_deadline_call": est(dated_letters, lambda s: (float(s.deadline_calls > 0), 1.0)),
+        "letters_with_date_tool_call": est(dated_letters, lambda s: (float(s.date_tool_calls > 0), 1.0)),
         "deadline_calls_per_letter": (
             sum(s.deadline_calls for s in dated_letters) / len(dated_letters) if dated_letters else None
         ),
