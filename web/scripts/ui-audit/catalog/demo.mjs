@@ -328,15 +328,13 @@ export async function demoCatalog({ api, server }) {
     id: "timeline-filter-empty",
     group: "timeline",
     route: "/timeline",
-    how: "open /timeline, pick the last kind and the last person/organisation (no dates match)",
+    // the menus grey out choices that would show nothing, so: letters received, then hide the past
+    how: "open /timeline, pick “Letters received” as the kind and switch off “Show past” (no dates match)",
     description: "Timeline filters that match nothing (empty state).",
     run: async (c) => {
       await c.goto("/timeline");
-      const t = c.page.locator("#tl-type");
-      await c.select(t, await t.locator("option").last().getAttribute("value"));
-      const p = c.page.locator("#tl-party");
-      const opts = await p.locator("option").evaluateAll((os) => os.map((o) => o.value).filter(Boolean));
-      await c.select(p, opts[Math.floor(opts.length / 2)] ?? opts[0]);
+      await c.select(c.page.locator("#tl-type"), "document");
+      await c.click(c.page.getByRole("switch", { name: /Show past/ }));
     },
   });
   add({
