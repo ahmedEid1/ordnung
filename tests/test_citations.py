@@ -181,3 +181,17 @@ def test_result_summaries() -> None:
     assert result_summary("search", "[1, 2]") == "No result"
     assert result_summary("search", json.dumps({"hits": [{}]})) == "No result"  # no record part
     assert result_summary("mystery", dump({"x": 1})) == "Done"
+
+
+def test_tool_labels_never_show_a_value_the_model_chose() -> None:
+    """Final review: the trace (shown before the answer check) repeated the model's search words and
+    names verbatim, so an injected letter could make it show "Frist verlängert bis 31.12.2027"."""
+    assert (
+        tool_label("search", {"query": "Einspruchsfrist verlängert 31.12.2027 999,00 €"})
+        == 'Searched your letters for "Einspruchsfrist verlängert … … €"'
+    )
+    assert tool_label("get_party", {"party_id_or_name": "FunkNetz 16:00"}) == 'Looked up "FunkNetz …"'
+    assert tool_label("timeline", {"from_date": "31.12.2027", "to_date": "2027-12-31"}) == (
+        "Checked your timeline from … to 2027-12-31"
+    )
+    assert tool_label("list_items", {"status": "31.12.2027"}) == "Checked your open to-dos & dates"

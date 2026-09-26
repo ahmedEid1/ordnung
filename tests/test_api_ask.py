@@ -77,7 +77,8 @@ async def test_the_check_note_travels_apart_from_the_answer(data_dir: Path) -> N
         done = json.loads(sse_messages(response.text)[-1]["data"])
         assert done["text"] == "Keep the letter."
         assert done["note"] == (
-            "Left out 1 sentence: its date or amount isn't in the letter, to-do or contract it refers to. "
+            "Left out 1 sentence: its date, time or amount isn't in the letter, to-do or contract it refers "
+            "to. "
             "Left out 1 line that looked like this note: only Ordnung writes it."
         )
         # no event before "done" carried a word of the unchecked answer
@@ -90,6 +91,35 @@ async def test_the_check_note_travels_apart_from_the_answer(data_dir: Path) -> N
             ("user", "Anything?", None),
             ("assistant", "Keep the letter.", done["note"]),
         ]
+        # final review: the note's label comes from the backend (the web no longer guesses its language)
+        assert done["note_label"] == thread[1]["note_label"] == "Checked by Ordnung:"
+        assert [m["checked"] for m in thread] == [False, True]
+
+
+async def test_an_answer_stored_before_the_claim_check_is_not_labelled_checked(data_dir: Path) -> None:
+    """Final review: answers stored before the claim-level check (ADR 0008) were checked only by the old
+    bag of facts, yet the reloaded thread showed them under "Checked against your records". A checked
+    answer is stored with the check's label (alone when nothing changed); an older one has none."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        store.add_chat_message("thr_old", "user", "When is my deadline?")
+        old = store.add_chat_message("thr_old", "assistant", "It was extended to 31.12.2027 [doc:doc_x].")
+        api.ctx.llm.backend = FakeBackend({"ask": "Keep the letter."})
+        response = await api.client.post("/api/ask", json={"question": "Anything?", "thread_id": "thr_old"})
+        done = json.loads(sse_messages(response.text)[-1]["data"])
+        assert (done["type"], done["text"], done.get("note")) == ("done", "Keep the letter.", None)
+        (stored,) = [m for m in store.list_chat_messages("thr_old") if m.id == done["message_id"]]
+        assert stored.content == "Keep the letter.\n\nChecked by Ordnung:"
+        thread = (await api.client.get("/api/chat/thr_old")).json()
+        answers = {m["id"]: m for m in thread if m["role"] == "assistant"}
+        assert (answers[old.id]["checked"], answers[old.id]["note_label"]) == (False, None)
+        new = answers[done["message_id"]]
+        assert (new["checked"], new["content"], new.get("note"), new["note_label"]) == (
+            True,
+            "Keep the letter.",
+            None,
+            "Checked by Ordnung:",
+        )
 
 
 async def test_model_failure_arrives_as_an_error_event(data_dir: Path) -> None:

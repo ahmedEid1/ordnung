@@ -12,12 +12,14 @@ nobody sees a word of it before code has checked it:
 * every citation (``[doc:ID]`` …) must name a record that exists *and* appears in the record part
   of a tool result of this turn (an id that only a letter's text mentions is not enough); others are
   stripped;
-* every date and amount must be in the record part of a record its sentence cites (a letter's
-  unverified amount and the person's own values are shown in quotation marks as unconfirmed); other
-  values are left out, and a sentence with nothing left to keep is removed
+* every date, time and amount must be in the record part of a record its sentence cites (a
+  letter's unverified amount and the person's own values are shown in quotation marks as
+  unconfirmed); other values are left out, and a sentence with nothing left to keep is removed
   (:mod:`ordnung.assistant.support`, the written policy);
-* a short note says what was left out or quoted. Only the check writes it: a line of the model's
-  that starts like it is left out (and counted in the note), and the note travels in its own field.
+* a short note says what was left out, quoted or cited, and which citations were removed or weekday
+  names corrected. Only the check writes it: a line of the model's that starts like it is left out
+  (and counted in the note), and the note travels in its own field, with its label in the answer's
+  language. The trace's labels show the model's search words without their digits.
 
 Removals are logged in the activity log. The final ``done`` event (:class:`AskEvent`) carries the
 checked answer — which replaces the streamed deltas — the note, the validated citations with labels,
@@ -53,6 +55,8 @@ from ordnung.assistant.citations import (
 )
 from ordnung.assistant.mcp_server import PARTY_FIELDS, SERVER_NAME, server_config
 from ordnung.assistant.support import (
+    NOTE_PREFIX,
+    NOTE_PREFIX_DE,
     CheckedAnswer,
     TurnEvidence,
     check_answer,
@@ -115,9 +119,10 @@ class AskContext(Protocol):
 
 class AskEvent(StreamEvent):
     """A stream event; the final ``done`` event also carries the answer check's note (without its
-    prefix), the answer's ids and citations."""
+    label), the label in the answer's language, the answer's ids and citations."""
 
     note: str | None = None
+    note_label: str | None = None
     citations: list[CitationRef] | None = None
     message_id: str | None = None
     thread_id: str | None = None
@@ -371,6 +376,7 @@ def _finish(store: Store, turn: _Turn, checked: AnswerCheck, *, question: str, t
         type="done",
         text=checked.body,
         note=checked.note,
+        note_label=checked.claims.style.note_prefix,
         citations=citations,
         message_id=message.id,
         thread_id=thread_id,
@@ -382,7 +388,8 @@ class AnswerCheck:
     """What the checks made of one answer: the checked ``body`` (or a fallback), the ``note`` under it
     (without its label, :data:`~ordnung.assistant.support.NOTE_LABELS`), the verdict on every sentence with a
     date, amount or § (``claims``) and the citations stripped. ``text`` is what is stored: the body,
-    then the note as its own last paragraph."""
+    then the note under its label as its own last paragraph — the label alone when the check changed
+    nothing, so a stored answer always says it was checked (:func:`checked_by_claims`)."""
 
     body: str
     note: str | None
@@ -391,7 +398,8 @@ class AnswerCheck:
 
     @property
     def text(self) -> str:
-        return f"{self.body}\n\n{self.claims.style.note_prefix} {self.note}" if self.note else self.body
+        label = self.claims.style.note_prefix
+        return f"{self.body}\n\n{label} {self.note}" if self.note else f"{self.body}\n\n{label}"
 
 
 def check_turn(
@@ -405,9 +413,9 @@ def check_turn(
 ) -> AnswerCheck:
     """Check ``answer`` against this turn's tool results (pure apart from reading ``store``).
 
-    Citations first (:func:`valid_citation_ids`), then every sentence with a date or amount
+    Citations first (:func:`valid_citation_ids`), then every sentence with a date, time or amount
     (:func:`ordnung.assistant.support.check_answer`); weekday names are corrected and the note is
-    made. An answer the check emptied — of sentences it left out or of lines that looked like its note
+    made (it also says when citations were removed or weekday names corrected). An answer the check emptied — of sentences it left out or of lines that looked like its note
     — becomes :data:`UNSUPPORTED_ANSWER` (in German for a German answer), and its note still says what
     was left out and why; only an answer that was empty already becomes :data:`NO_ANSWER` (in German
     for a German question).
@@ -417,14 +425,15 @@ def check_turn(
     cited = parse_citations(answer)
     valid = valid_citation_ids(store, cited, evidence.seen_ids)
     claims = check_answer(answer, evidence, citable=valid)
-    body = correct_weekdays(_EXTRA_BLANK_LINES.sub("\n\n", strip_invalid(claims.text, valid)).strip(), today)
-    note = claims.note()
+    removed = sorted({citation.id for citation in cited} - valid)
+    stripped = _EXTRA_BLANK_LINES.sub("\n\n", strip_invalid(claims.text, valid)).strip()
+    body = correct_weekdays(stripped, today)
+    note = claims.note(stripped=len(removed), weekdays=body != stripped)
     german = (claims.style if answer.strip() else style_for(question)).german
     if not body and (claims.removed or claims.forged_notes):
         body = UNSUPPORTED_ANSWER_DE if german else UNSUPPORTED_ANSWER
     elif not body:
         body, note = (NO_ANSWER_DE if german else NO_ANSWER), None
-    removed = sorted({citation.id for citation in cited} - valid)
     label = claims.style.note_prefix
     return AnswerCheck(body, note.removeprefix(label).strip() if note else None, claims, removed)
 
@@ -436,8 +445,26 @@ def known_laws() -> list[str]:
 
 
 def stored_answer(message: ChatMessage) -> tuple[str, str | None]:
-    """A stored message's text and, for an answer, the check's note split off it (without prefix)."""
-    return split_note(message.content) if message.role == "assistant" else (message.content, None)
+    """A stored message's text and, for an answer, the check's note split off it (without prefix;
+    ``None`` when the check changed nothing, or for an answer stored before the check wrote a label)."""
+    if message.role != "assistant":
+        return message.content, None
+    body, note = split_note(message.content)
+    return body, note or None
+
+
+def stored_note_label(message: ChatMessage) -> str | None:
+    """The label a stored answer was checked under (in the answer's language), if it has one."""
+    if message.role != "assistant" or split_note(message.content)[1] is None:
+        return None
+    return NOTE_PREFIX_DE if message.content.rpartition("\n\n")[2].startswith(NOTE_PREFIX_DE) else NOTE_PREFIX
+
+
+def checked_by_claims(message: ChatMessage) -> bool:
+    """Whether a stored answer went through the claim-level check (ADR 0008): it ends with the check's
+    label, with the note or alone (:attr:`AnswerCheck.text`). An answer stored before (the earlier, weaker
+    check) has none, and the app never shows it as "Checked against your records"."""
+    return message.role == "assistant" and split_note(message.content)[1] is not None
 
 
 def valid_citation_ids(store: Store, cited: Iterable[Citation], seen: Collection[str]) -> set[str]:

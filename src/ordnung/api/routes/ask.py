@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from ordnung.api.deps import ApiState, StateDep, StoreDep
 from ordnung.api.routes.demo import optional_demo_function
 from ordnung.api.sse import EventStreamResponse, close_iterator, model_stream_response
-from ordnung.assistant.ask import ask_stream, stored_answer
+from ordnung.assistant.ask import ask_stream, checked_by_claims, stored_answer, stored_note_label
 from ordnung.assistant.citations import CitationRef
 from ordnung.llm.base import StreamEvent as LLMStreamEvent
 from ordnung.models import ChatMessage
@@ -52,6 +52,10 @@ class StreamEvent(BaseModel):
     error: str | None = None
     note: str | None = Field(
         default=None, description="what the answer check left out or quoted (done); shown apart from the text"
+    )
+    note_label: str | None = Field(
+        default=None,
+        description="the label of the note in the answer's language (done), e.g. 'Checked by Ordnung:'",
     )
     citations: list[CitationRef] | None = Field(default=None, description="validated citations (done)")
     message_id: str | None = None
@@ -96,6 +100,11 @@ class ThreadMessage(ChatMessage):
     note: str | None = Field(
         default=None, description="what the answer check left out or quoted; shown apart from the text"
     )
+    note_label: str | None = Field(default=None, description="the note's label in the answer's language")
+    checked: bool = Field(
+        default=False,
+        description="the answer went through the claim-level check (answers stored before it did not)",
+    )
 
 
 @router.get("/chat/{thread_id}", response_model=list[ThreadMessage])
@@ -104,5 +113,10 @@ def chat_thread(thread_id: str, store: StoreDep) -> list[ThreadMessage]:
     messages = []
     for message in store.list_chat_messages(thread_id):
         body, note = stored_answer(message)
-        messages.append(ThreadMessage.model_validate({**message.model_dump(), "content": body, "note": note}))
+        extra = {
+            "note": note,
+            "note_label": stored_note_label(message),
+            "checked": checked_by_claims(message),
+        }
+        messages.append(ThreadMessage.model_validate({**message.model_dump(), "content": body, **extra}))
     return messages

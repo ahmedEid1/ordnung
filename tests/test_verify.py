@@ -466,6 +466,15 @@ def test_amount_matches_never_raises(text: str) -> None:
 
 
 @pytest.mark.parametrize(
+    "text", ["Gebühr: " + "9" * 400 + " €", "EUR " + "1" * 320 + ",00", "9" * 330 + ",- €"]
+)
+def test_a_number_too_long_to_be_an_amount_is_none(text: str) -> None:
+    """Final review: about 310 digits read as ``inf``, and every caller that took its cents raised (a
+    hostile letter stopped every Ask answer that read it). Such a number is no amount."""
+    assert amount_matches(text) == [] and parse_amounts(text) == []
+
+
+@pytest.mark.parametrize(
     ("text", "expected"),
     [
         ("innerhalb von zwei Wochen", [(2, "weeks")]),

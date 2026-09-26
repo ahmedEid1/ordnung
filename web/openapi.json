@@ -8312,6 +8312,18 @@
             "title": "Note",
             "description": "what the answer check left out or quoted (done); shown apart from the text"
           },
+          "note_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Label",
+            "description": "the label of the note in the answer's language (done), e.g. 'Checked by Ordnung:'"
+          },
           "citations": {
             "anyOf": [
               {
@@ -8715,6 +8727,24 @@
             ],
             "title": "Note",
             "description": "what the answer check left out or quoted; shown apart from the text"
+          },
+          "note_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Label",
+            "description": "the note's label in the answer's language"
+          },
+          "checked": {
+            "type": "boolean",
+            "title": "Checked",
+            "description": "the answer went through the claim-level check (answers stored before it did not)",
+            "default": false
           }
         },
         "type": "object",
@@ -8726,7 +8756,9 @@
           "citations",
           "tool_calls",
           "created_at",
-          "note"
+          "note",
+          "note_label",
+          "checked"
         ],
         "title": "ThreadMessage",
         "description": "A stored question or answer; an answer's check note is split off its text into ``note``."

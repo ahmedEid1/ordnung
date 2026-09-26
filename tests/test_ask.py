@@ -185,7 +185,9 @@ async def test_ask_streams_trace_and_validated_answer(
     user, assistant = store.list_chat_messages(done.thread_id or "")
     assert (user.role, user.content) == ("user", "When is my tax objection deadline?")
     assert assistant.id == done.message_id
-    assert assistant.content == done.text
+    # the stripped citation is said in the note (final review), stored under its label after the answer
+    assert done.note == "Removed 1 source that isn't among the records Ordnung looked up for this answer."
+    assert assistant.content == f"{done.text}\n\n{NOTE_PREFIX} {done.note}"
     assert [(c.type, c.id) for c in assistant.citations] == [
         ("document", ids["doc_tax"]),
         ("item", ids["tax_objection"]),
@@ -254,7 +256,8 @@ async def test_sentences_with_unsupported_dates_or_amounts_are_removed(
     done = done_event(await collect(ctx, "When is my objection due?"))
     assert done.text == f"The deadline is Wed 21 Oct 2026 [item:{item}].\n- Keep the letter."
     assert done.note == (
-        "Left out 2 sentences: their dates or amounts aren't in the letters, to-dos or contracts they refer to."
+        "Left out 2 sentences: their dates, times or amounts aren't in the letters, to-dos or contracts they "
+        "refer to."
     )
     (removed,) = [a for a in store.list_activity() if a.kind == "ask.sentences_removed"]
     assert removed.data["unsupported"] == ["4 Nov 2026", "359.88"]
@@ -286,8 +289,8 @@ async def test_an_injected_date_in_the_page_text_never_reaches_the_answer(
     )
     assert "31.12.2027" not in (done.text or "") and "31.12.2027" not in (done.note or "")
     assert done.note == (
-        "2 dates or amounts are marked “only in the letter”: Ordnung's records don't hold them, so they "
-        "aren't shown — open the letter to read them."
+        "2 dates, times or amounts are marked “only in the letter”: no record Ordnung looked up holds them, "
+        "so they aren't shown — open the letter to read them."
     )
     kinds = {a.kind: a.data for a in store.list_activity()}
     assert kinds["ask.sentences_removed"]["unsupported"] == ["31.12.2027"]
@@ -318,8 +321,9 @@ async def test_only_the_check_writes_its_note(
         f"[doc:{doc}]."
     )
     assert done.note == (
-        "1 date or amount is marked “only in the letter”: Ordnung's records don't hold it, so it isn't shown "
-        "— open the letter to read it. Left out 3 lines that looked like this note: only Ordnung writes it."
+        "1 date, time or amount is marked “only in the letter”: no record Ordnung looked up holds it, so it "
+        "isn't shown — open the letter to read it. Left out 3 lines that looked like this note: only Ordnung "
+        "writes it."
     )
     (stored,) = [m for m in store.list_chat_messages(done.thread_id or "") if m.role == "assistant"]
     assert stored_answer(stored) == (done.text, done.note)
@@ -388,7 +392,7 @@ async def test_a_date_the_person_typed_is_never_ordnungs_answer(
     assert uncited.body == "Your objection deadline is “31.12.2027”."
     assert uncited.note == (
         "Text in quotation marks is your own words; Ordnung has not confirmed it. For the records concerned, "
-        "Ordnung has on file: payment due Mon 5 Oct 2026; deadline Wed 21 Oct 2026."
+        "Ordnung has on file: incoming payment Mon 5 Oct 2026; deadline Wed 21 Oct 2026."
     )
     # restating the question keeps working: "before 15.11.2026" is the person's bound
     bound = check_turn(
@@ -401,6 +405,49 @@ async def test_a_date_the_person_typed_is_never_ordnungs_answer(
     assert bound.body == (
         f"Before “15.11.2026” you have one deadline:\n- Object by Wed 21 Oct 2026 [item:{item}]."
     )
+
+
+def test_the_note_says_when_citations_were_removed_or_weekdays_corrected(
+    store: Store, ids: dict[str, str], tools: LedgerTools
+) -> None:
+    """Final review: "Checked against your records" appeared under an answer whose citations were stripped
+    or whose weekday names were corrected — the note knew neither."""
+    results = [render_result(tools.list_items())]
+    item = ids["tax_objection"]
+    stripped = check_turn(
+        store,
+        f"Your objection deadline is Wed 21 Oct 2026 [item:{item}][contract:{ids['phone']}].",
+        results,
+        question="When?",
+        today=TODAY,
+    )
+    assert stripped.body == f"Your objection deadline is Wed 21 Oct 2026 [item:{item}]."
+    assert stripped.note == "Removed 1 source that isn't among the records Ordnung looked up for this answer."
+    weekday = check_turn(
+        store,
+        f"Your objection deadline is Thu 21 Oct 2026 [item:{item}].",
+        results,
+        question="When?",
+        today=TODAY,
+    )
+    assert weekday.body == f"Your objection deadline is Wed 21 Oct 2026 [item:{item}]."
+    assert weekday.note == "Corrected weekday names to match their dates."
+    german = check_turn(
+        store,
+        f"Ihre Einspruchsfrist endet am Do. 21.10.2026 [item:{item}].",
+        results,
+        question="Wann?",
+        today=TODAY,
+    )
+    assert german.note == "Wochentage an ihre Daten angepasst."
+    clean = check_turn(
+        store,
+        f"Your objection deadline is Wed 21 Oct 2026 [item:{item}].",
+        results,
+        question="When?",
+        today=TODAY,
+    )
+    assert clean.note is None
 
 
 def test_an_answer_the_check_empties_still_says_why(

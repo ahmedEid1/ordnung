@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import functools
+import math
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -370,10 +371,13 @@ def _thousands_groups(groups: list[str]) -> bool:
 
 
 def _float(digits: str) -> float | None:
+    """The number, or ``None`` when it is none or too large to be an amount (hundreds of digits read as
+    ``inf``, whose cents no code can compute)."""
     try:
-        return float(digits)
+        value = float(digits)
     except ValueError:  # defensive: the checks above only pass digits and one decimal point
         return None
+    return value if math.isfinite(value) else None
 
 
 _NUMBER_WORDS = {

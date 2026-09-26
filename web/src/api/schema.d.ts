@@ -2770,6 +2770,11 @@ export interface components {
              */
             note?: string | null;
             /**
+             * Note Label
+             * @description the label of the note in the answer's language (done), e.g. 'Checked by Ordnung:'
+             */
+            note_label?: string | null;
+            /**
              * Citations
              * @description validated citations (done)
              */
@@ -2896,6 +2901,17 @@ export interface components {
              * @description what the answer check left out or quoted; shown apart from the text
              */
             note: string | null;
+            /**
+             * Note Label
+             * @description the note's label in the answer's language
+             */
+            note_label: string | null;
+            /**
+             * Checked
+             * @description the answer went through the claim-level check (answers stored before it did not)
+             * @default false
+             */
+            checked: boolean;
         };
         /** TimelineEntry */
         TimelineEntry: {

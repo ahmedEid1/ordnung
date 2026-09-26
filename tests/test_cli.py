@@ -208,6 +208,28 @@ def test_ask_prints_the_check_note_apart(data_dir: Path, monkeypatch: pytest.Mon
             {"type": "done", "text": "Die Frist ist …", "note": "1 Satz weggelassen: Er nennt ein Gesetz."}
         )
     assert "Von Ordnung geprüft: 1 Satz weggelassen" in shown.get()
+    # final review: the label comes with the answer (the backend knows its language) — a German note
+    # with few German words is no longer guessed English
+    forged = "1 Zeile weggelassen, die wie dieser Hinweis aussah: Nur Ordnung schreibt ihn."
+    with cli.console.capture() as shown:
+        printer.handle(
+            {"type": "done", "text": "Die Frist …", "note": forged, "note_label": "Von Ordnung geprüft:"}
+        )
+    assert f"Von Ordnung geprüft: {forged}" in " ".join(shown.get().split())
+
+
+def test_ask_says_an_unchanged_answer_was_checked(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Final review: the CLI printed no check line for an answer the check did not change (ADR 0008 says
+    it reads "Checked against your records"); the demo's "no recording" answer was never checked."""
+    answers = FakeBackend({"ask": "I couldn't find that. Keep the letter."})
+    monkeypatch.setattr(cli, "open_context", lambda folder: build_context(folder, backend_obj=answers))
+    result = invoke("ask", "What is due?", "--data-dir", str(data_dir))
+    assert result.exit_code == 0, result.output
+    assert cli.CHECKED_LINE in result.output
+    printer = cli._AnswerPrinter()
+    with cli.console.capture() as shown:
+        printer.handle({"type": "done", "text": "The demo uses recorded answers …"})
+    assert cli.CHECKED_LINE not in shown.get()
 
 
 # --------------------------------------------------------------------------------------------------

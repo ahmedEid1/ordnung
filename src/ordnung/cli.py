@@ -752,14 +752,15 @@ def brief(
 # --------------------------------------------------------------------------------------------------
 
 
-WRITING_LINE = "Writing the answer — it is shown once Ordnung has checked it against your records…"
+WRITING_LINE = "Writing the answer — it appears once Ordnung has checked it against your records…"
+CHECKED_LINE = "Checked against your records."
 
 
 class _AnswerPrinter:
     """Prints an Ask stream: tool trace lines; one line while the answer is written (its words are not
     streamed: nobody sees them before Ordnung's check, ADR 0008); then the checked answer, the check's
-    note under its label in the answer's language, and the sources. A stream that ends without a checked
-    answer prints only why."""
+    note under its label in the answer's language (or "Checked against your records." when the check
+    changed nothing), and the sources. A stream that ends without a checked answer prints only why."""
 
     def __init__(self) -> None:
         self.writing = False
@@ -777,17 +778,34 @@ class _AnswerPrinter:
                 console.print(f"[dim]{escape(WRITING_LINE)}[/]")
             self.writing = True
         elif kind == "done":
-            self._done(text, str(event.get("note") or ""), event.get("citations") or [])
+            self._done(
+                text,
+                str(event.get("note") or ""),
+                event.get("citations") or [],
+                label=str(event.get("note_label") or ""),
+                checked=bool(event.get("message_id")),
+            )
         elif kind == "error":
             self.failed = True
             err_console.print(f"[red]✗[/] {escape(str(event.get('error') or text or 'The answer stopped.'))}")
 
-    def _done(self, text: str, note: str, citations: Sequence[Mapping[str, Any]]) -> None:
-        from ordnung.assistant.support import labelled_note
+    def _done(
+        self,
+        text: str,
+        note: str,
+        citations: Sequence[Mapping[str, Any]],
+        *,
+        label: str = "",
+        checked: bool = True,
+    ) -> None:
+        from ordnung.assistant.support import NOTE_PREFIX_DE, labelled_note
 
         console.print(escape(text.strip()))
         if note:
-            console.print(f"[dim]{escape(labelled_note(note))}[/]")
+            german = (label == NOTE_PREFIX_DE) if label else None
+            console.print(f"[dim]{escape(labelled_note(note, german=german))}[/]")
+        elif checked and text.strip():  # the demo's "no recording" answer went through no check
+            console.print(f"[dim]{escape(CHECKED_LINE)}[/]")
         if citations:
             console.print("[bold]Sources[/]")
             for citation in citations:

@@ -6,7 +6,11 @@ bracket (``[doc:doc_a, item:itm_b]``) or spell the type out (``[document:doc_a]`
 understood, and :func:`strip_invalid` rewrites every marker it keeps in the canonical one-id form.
 
 Tool labels are the past-tense chips of the Ask trace ("Searched your letters for "Kündigung"");
-result summaries are the short text shown once a tool answered ("Found 4 to-dos & dates").
+result summaries are the short text shown once a tool answered ("Found 4 to-dos & dates"). A label
+shows the model's own words only where it searched for them (a search, a name to look up), and every
+word with a digit in them is shown as "…": the trace appears before the answer check, so it never
+shows a date, time or amount a letter could have put there (ADR 0008). Date ranges of the tools'
+arguments are shown as the range looked at.
 """
 
 from __future__ import annotations
@@ -176,7 +180,7 @@ def tool_label(name: str, args: Mapping[str, Any] | None = None, title_of: Title
     if short == "get_party":
         return f'Looked up "{_text(args.get("party_id_or_name"), title_of)}"'
     if short == "timeline":
-        return f"Checked your timeline from {_text(args.get('from_date'))} to {_text(args.get('to_date'))}"
+        return f"Checked your timeline from {_day(args.get('from_date'))} to {_day(args.get('to_date'))}"
     if short == "explain_date":
         found = _titled("Checked how", args.get("item_or_contract_id"), title_of, fallback="")
         return f"{found} was worked out" if found else "Checked how a date was worked out"
@@ -202,13 +206,13 @@ def result_summary(name: str, text: str | None) -> str:
 
 
 def _items_label(args: Mapping[str, Any]) -> str:
-    status = args.get("status") or "open"
+    status = args.get("status") if args.get("status") in _STATUSES else "open"
     scope = "your to-dos & dates" if status == "all" else f"your {status} to-dos & dates"
     start, end = args.get("from_date"), args.get("to_date")
     if start and end:
-        return f"Checked {scope} from {start} to {end}"
+        return f"Checked {scope} from {_day(start)} to {_day(end)}"
     if start or end:
-        return f"Checked {scope} {'from ' + str(start) if start else 'until ' + str(end)}"
+        return f"Checked {scope} {'from ' + _day(start) if start else 'until ' + _day(end)}"
     return f"Checked {scope}"
 
 
@@ -217,11 +221,25 @@ def _titled(verb: str, ref_id: Any, title_of: TitleLookup | None, *, fallback: s
     return f'{verb} "{title}"' if title else fallback
 
 
+_WITH_DIGIT = re.compile(r"[^\s\"“”„]*\d[^\s\"“”„]*")
+
+
 def _text(value: Any, title_of: TitleLookup | None = None) -> str:
+    """The model's words for a label: a record's title when they name one, else as written with every
+    word that holds a digit shown as "…" (never a value the check has not read), at most 60 characters."""
     raw = " ".join(str(value or "").split())
-    if title_of is not None and raw:
-        raw = title_of(raw) or raw
-    return raw if len(raw) <= 60 else raw[:59] + "…"
+    title = title_of(raw) if title_of is not None and raw else None
+    shown = title or _WITH_DIGIT.sub("…", raw)
+    return shown if len(shown) <= 60 else shown[:59] + "…"
+
+
+def _day(value: Any) -> str:
+    """A date argument (the tool accepts only ``YYYY-MM-DD``); anything else is shown as "…"."""
+    return value if isinstance(value, str) and _ISO_DAY.fullmatch(value) else "…"
+
+
+_ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
+_STATUSES = frozenset({"open", "done", "dismissed", "snoozed", "missed", "all"})
 
 
 def _count(n: int, singular: str, plural: str) -> str:
