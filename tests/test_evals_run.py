@@ -327,8 +327,9 @@ async def test_all_three_conditions_end_to_end(tmp_path: Path) -> None:
     # The page can be re-rendered from the results JSON alone.
     rendered = tmp_path / "rerendered.md"
     assert report.main([str(path), "--docs", str(rendered), "--chart", str(tmp_path / "chart.png")]) == 0
+    suffix = outcome.chart_path.suffix  # .png with matplotlib, else the SVG fallback
     assert rendered.read_text(encoding="utf-8") == docs.replace(
-        "assets/eval-due-date-accuracy.png", "chart.png"
+        f"assets/eval-due-date-accuracy{suffix}", f"chart{suffix}"
     )
 
     # A rerun resumes entirely from the per-letter cache and reproduces the metrics.

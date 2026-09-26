@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -56,6 +57,11 @@ def fake_model(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def invoke(*args: str) -> Any:
     return runner.invoke(app, list(args))
+
+
+def plain(output: str) -> str:
+    """Help text without terminal styling (Typer forces Rich styling on CI, e.g. GITHUB_ACTIONS)."""
+    return re.sub(r"\x1b\[[0-9;]*m", "", output)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -520,7 +526,8 @@ def test_doctor_without_claude_fails_with_a_fix(
 
 def test_mcp_help() -> None:
     result = invoke("mcp", "--help")
-    assert result.exit_code == 0 and "--data-dir" in result.output and "--print-config" in result.output
+    assert result.exit_code == 0
+    assert "--data-dir" in plain(result.output) and "--print-config" in plain(result.output)
 
 
 def test_mcp_print_config(data_dir: Path) -> None:

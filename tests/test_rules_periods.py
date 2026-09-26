@@ -77,6 +77,19 @@ def test_holidays(day: str, region: str | None, holiday: bool) -> None:
     assert is_holiday(D(day), region) is holiday
 
 
+def test_holiday_names_are_german_on_an_english_system(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The holidays library translates names from LANG/LANGUAGE unless told a language; a receipt
+    must read the same on every machine."""
+    monkeypatch.setenv("LANGUAGE", "en")
+    monkeypatch.setenv("LANG", "en_US.UTF-8")
+    calendar_de._holidays_for.cache_clear()
+    try:
+        assert calendar_de.holiday_name(D("2026-10-03")) == "Tag der Deutschen Einheit"
+        assert calendar_de.holiday_name(D("2026-06-04"), "NW") == "Fronleichnam"
+    finally:
+        calendar_de._holidays_for.cache_clear()
+
+
 def test_day_kind_and_regional_lands() -> None:
     assert calendar_de.day_kind(D("2026-10-03")) == "Tag der Deutschen Einheit"
     assert calendar_de.day_kind(D("2026-10-10")) == "Saturday"

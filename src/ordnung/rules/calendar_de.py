@@ -82,7 +82,8 @@ def holiday_calendar_label(region: str | None) -> str:
 
 @lru_cache(maxsize=512)
 def _holidays_for(code: str | None, year: int) -> dict[date, str]:
-    calendar = holidays.Germany(subdiv=code, years=year) if code else holidays.Germany(years=year)
+    # German names whatever the system locale (the library would translate them from LANG/LANGUAGE)
+    calendar = holidays.Germany(subdiv=code, years=year, language="de")
     return dict(calendar.items())
 
 

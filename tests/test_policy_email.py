@@ -3,10 +3,11 @@ of the policy in its docstring, found by verifying it; each test pins the fix.""
 
 from __future__ import annotations
 
-import time
+from collections.abc import Callable
 
 import pytest
 
+from helpers_timing import assert_linear
 from ordnung.ingest.text import html_to_text
 
 AMOUNT = "Rechnungsbetrag 77,00 EUR, fällig am 10.10.2026"
@@ -18,14 +19,6 @@ def _mail(body: str, head: str = "") -> str:
         "<body style='margin:0;background-color:#ffffff'>"
         f"<p>Sehr geehrte Frau Rivera,</p>{body}<p>Mit freundlichen Grüßen</p></body></html>"
     )
-
-
-def _elapsed(markup: str) -> float:
-    started = time.perf_counter()
-    visible, _ = html_to_text(markup)
-    elapsed = time.perf_counter() - started
-    assert visible
-    return elapsed
 
 
 # --------------------------------------------------------------------------------------------------
@@ -98,20 +91,20 @@ def test_a_column_sized_by_the_font_shorthand_or_a_font_tag_is_visible(column: s
 
 
 @pytest.mark.parametrize(
-    "markup",
+    "build",
     [
-        f'<p style="font-size:{"9" * 6000}!">Hallo</p>',
-        f'<p style="position:absolute;left:-{"9" * 6000}!px">Hallo</p>',
-        f'<p style="color:rgb({"9" * 6000}!, 0, 0)">Hallo</p>',
-        f'<style>.note {{ opacity: {"9" * 6000}! }}</style><p class="note">Hallo</p>',
+        lambda n: f'<p style="font-size:{"9" * n}!">Hallo</p>',
+        lambda n: f'<p style="position:absolute;left:-{"9" * n}!px">Hallo</p>',
+        lambda n: f'<p style="color:rgb({"9" * n}!, 0, 0)">Hallo</p>',
+        lambda n: f'<style>.note {{ opacity: {"9" * n}! }}</style><p class="note">Hallo</p>',
     ],
     ids=["inline-font-size", "inline-offset", "inline-rgb", "style-sheet-opacity"],
 )
-def test_a_long_number_in_a_css_value_is_read_in_linear_time(markup: str) -> None:
+def test_a_long_number_in_a_css_value_is_read_in_linear_time(build: Callable[[int], str]) -> None:
     """Point 6: linear time, no regex with catastrophic backtracking (1 MB well under a second, so a
     6 KB e-mail in a few milliseconds). ``re`` holds the GIL, so a crafted e-mail stalls the whole
     local server while it is read (at upload and at every page render)."""
-    assert _elapsed(_mail(markup)) < 0.2
+    assert_linear(lambda n: _mail(build(n)), 6000)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -121,8 +114,11 @@ def test_a_long_number_in_a_css_value_is_read_in_linear_time(markup: str) -> Non
 
 def test_nested_style_rules_are_read_in_linear_time() -> None:
     """A rule's declarations are the text directly in its block, so no text is read twice."""
-    css = ".a { color: #333; " * 4000 + "}" * 4000
-    assert _elapsed(_mail("<p>Hallo</p>", f"<style>{css}</style>")) < 0.2
+
+    def build(n: int) -> str:
+        return _mail("<p>Hallo</p>", "<style>" + ".a { color: #333; " * n + "}" * n + "</style>")
+
+    assert_linear(build, 4000)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -131,8 +127,10 @@ def test_nested_style_rules_are_read_in_linear_time() -> None:
 
 
 def test_a_selector_full_of_open_brackets_is_read_in_linear_time() -> None:
-    css = "[" * 60_000 + " { display: block }"
-    assert _elapsed(_mail("<p>Hallo</p>", f"<style>{css}</style>")) < 0.2
+    def build(n: int) -> str:
+        return _mail("<p>Hallo</p>", "<style>" + "[" * n + " { display: block }</style>")
+
+    assert_linear(build, 60_000)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -229,8 +227,12 @@ def test_a_class_shown_by_a_rule_with_a_hex_escape_is_not_hidden() -> None:
 
 
 def test_a_selector_full_of_escapes_is_read_in_linear_time() -> None:
-    css = ".a" + "\\:" * 30_000 + "\\3a " * 10_000 + " { display: block }"
-    assert _elapsed(_mail("<p>Hallo</p>", f"<style>{css}</style>")) < 0.2
+    def build(n: int) -> str:
+        return _mail(
+            "<p>Hallo</p>", "<style>.a" + "\\:" * (3 * n) + "\\3a " * n + " { display: block }</style>"
+        )
+
+    assert_linear(build, 10_000)
 
 
 # --------------------------------------------------------------------------------------------------
