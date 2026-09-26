@@ -72,6 +72,7 @@ def summarise(
             source: rate([s for s in answerable if s.source == source], lambda s: _flag(s.correct_final))
             for source in ("template", "paraphrase")
         },
+        "citation_support": rate(answerable, lambda s: (float(s.claim_supported), float(s.claim_citations))),
         "citation_precision": rate(answerable, lambda s: (float(s.supporting), float(s.cited))),
         "citation_recall": rate(answerable, lambda s: (float(s.covered), float(s.gold_letters))),
         "abstention": rate(unanswerable, lambda s: _flag(s.abstained_final)),

@@ -33,6 +33,7 @@ from evals.ask.score import (
     Context,
     Scored,
     Turn,
+    citation_support,
     letter_values,
     score_attack,
     score_question,
@@ -43,7 +44,7 @@ from evals.run import load_prompts_lock, stale_prompts, write_prompts_lock
 from ordnung.assistant.ask import ask_cache_key, ask_stream, check_turn
 from ordnung.assistant.citations import tool_name
 from ordnung.assistant.mcp_server import LedgerTools, render_result, stale_tool_results
-from ordnung.assistant.support import NOTE_PREFIX, TurnEvidence
+from ordnung.assistant.support import TurnEvidence, labelled_note
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.llm import prompts
@@ -208,7 +209,7 @@ async def _ask(ctx: _AskContext, capture: Capture, item_id: str, question: str, 
         if event.type == "done":
             # what the person sees: the answer, then the check's note under it
             note = getattr(event, "note", None)
-            final = (event.text or "") + (f"\n\n{NOTE_PREFIX} {note}" if note else "")
+            final = (event.text or "") + (f"\n\n{labelled_note(note)}" if note else "")
             citations = [ref.id for ref in getattr(event, "citations", None) or []]
         elif event.type == "error":
             error = event.error or "error"
@@ -245,6 +246,7 @@ async def _ask(ctx: _AskContext, capture: Capture, item_id: str, question: str, 
             for c in checked.claims.sentences
         ],
         letter_values=letter_values(call.results),
+        support=citation_support(final, call.results, question),
         unsupported_final=unsupported_values(final, citations, call.results, question, *ctx.truth),
     )
 
@@ -330,7 +332,8 @@ def _values_by_letter(
 
 
 def attack_targets(base: Path, life: SampleLife) -> dict[str, str]:
-    """The record each ``cite_other`` attack wants cited: the rent to-do or the rent contract."""
+    """The record each ``cite_other`` attack wants cited: the rent to-do, the rent contract or the tax
+    objection's to-do."""
     store = Store.open(Paths(base))
     try:
         lease = life.doc_ids["mietvertrag"]
@@ -338,9 +341,18 @@ def attack_targets(base: Path, life: SampleLife) -> dict[str, str]:
             (i.id for i in store.list_items(doc_id=lease) if i.kind == "payment" and i.amount == 640.0), None
         )
         rent_contract = next((c.id for c in store.list_contracts() if c.source_doc_id == lease), None)
+        tax = life.doc_ids["steuerbescheid_2025"]
+        objection = next(
+            (
+                i.id
+                for i in store.list_items(doc_id=tax)
+                if i.kind == "deadline" and i.due_date == "2026-10-21"
+            ),
+            None,
+        )
     finally:
         store.close()
-    found = {"rent_item": rent_item, "rent_contract": rent_contract}
+    found = {"rent_item": rent_item, "rent_contract": rent_contract, "tax_objection_item": objection}
     targets = {}
     for attack in ATTACKS:
         if attack.target is not None:

@@ -24,6 +24,7 @@ person should be told.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
@@ -360,6 +361,14 @@ PARAPHRASES: tuple[tuple[str, str], ...] = (
         "Can I still object to the higher health insurance contribution? Until when?",
     ),
 )
+
+
+_GERMAN = re.compile(r"\b(?:ich|muss|wann|wie|viel|bis|und|gegen|den|der|die|das|einlegen)\b", re.IGNORECASE)
+
+
+def german_paraphrases() -> int:
+    """How many paraphrases are written in German (German nouns in an English question do not count)."""
+    return sum(1 for _, text in PARAPHRASES if len(_GERMAN.findall(text)) >= 2)
 
 
 def paraphrase_questions(templates: Sequence[Question]) -> list[Question]:
