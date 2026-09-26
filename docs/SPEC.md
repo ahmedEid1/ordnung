@@ -291,26 +291,35 @@ letter's language that are not codes; totals add up verified amounts only). A to
 within a size budget by leaving out rows (and says how many), and the answer is checked against the
 whole result the model read. `money_summary` also lists open payments with no stored due date (a
 rent whose day the letter did not give) and, apart, the demands of letters with scam signs
-(`do_not_pay`). After the answer streams, it is read as it will be shown (Markdown, escapes and
-invisible characters dropped, more date forms such as `31-12-2027`, `31 12 2027`, `31.XII.2027`, and
-currency words) and each date or amount must be in the record part of a record its sentence cites
-(a letter's includes its to-dos, a contract's its letter, a person's their to-dos; a sentence
-without citations takes its line's, a list item its lead line's); today and Ordnung's totals need no
-citation, and a sentence without citations of its own may state the own date or amount of any record
-the answer cites. A value only letter text holds stays only as a quote — "the letter says …" (or a
+(`do_not_pay`), with `today` and each fixed-cost contract's category. `list_contracts` names a letter
+that says a contract is cancelled only as `cancellation_letter` (pending the person's confirmation;
+the end date it gives is letter text; letters with scam signs are left out), and `if_not_cancelled`
+says a fixed-term contract ends by itself (with the § 15 Abs. 6 TzBfG / § 545 BGB caveat for
+employment and tenancies). After the answer streams, it is read as it will be shown (Markdown,
+escapes and invisible characters dropped, soft-wrapped lines joined where a value spans the break,
+more date forms such as `31-12-2027`, `31 12 2027`, `31.XII.2027`, `31-Dec-2027`, months without a
+day such as `December 2027`, one-decimal amounts next to a currency and currency words; a number is a
+clock time only with its unit, and a rate is no amount) and each date or amount must be in the record
+part of a record its sentence cites (a letter's includes its to-dos, a contract's its letter, a
+person's their to-dos, a contract's its category's fixed costs; a sentence without citations takes
+its line's, a list item its lead line's); today needs no citation, Ordnung's totals only in a sentence
+without a citation of its own, and a sentence without citations of its own may state the own date or amount of
+any record the answer cites. A value only letter text holds stays only as a quote — "the letter says …" (or a
 listed equivalent, such as "the letter's text contains a line claiming …") before it in the value's
 own clause, not negated, citing the record whose text holds it (or, citing nothing, a letter read in
 the turn), or a cited record's flagged amount — and a value the person typed stays only as their
 words; both are shown in quotation marks, and the note then gives Ordnung's own date or amount of the
 records the quote belongs to. Any other value is replaced by "[date left out]" / "[amount left out]"
-when its sentence keeps a value, else the sentence is removed; a § only a letter names is quoted, an
-unknown § is replaced by "[law left out]" (or removes a sentence with nothing else to keep). No
-left-out value is ever shown. The check's note (what was left out or quoted, and why), in the
+when its sentence keeps a value, else the sentence is removed; a § only a letter names is quoted when
+its clause names the letter as its source, and any other § not in the rules catalog or a record
+removes its sentence. No left-out value is ever shown. The check runs off the event loop and fails
+closed: if it cannot read an answer, the stream ends with an error, never with the unchecked text as
+the answer. The check's note (what was left out or quoted, and why), in the
 answer's language, travels in its own `note` field of the `done` event and the stored thread, also
 when the whole answer was left out; the UI shows only that field, copies it with the answer, and a
 model sentence that starts like the note is dropped. Streaming text and an answer that is stopped or
-fails before the check are shown muted, the latter marked as unchecked. The policy is in the
-docstring of `assistant/support.py`. `python -m evals.ask` measures Ask ([evals-ask](evals-ask.md)).
+fails before the check are shown muted, the latter marked as unchecked; the CLI prints streamed text
+dim under "Draft — not yet checked". The policy is in the docstring of `assistant/support.py`. `python -m evals.ask` measures Ask ([evals-ask](evals-ask.md)).
 
 ## 11. Letters — `drafts/`
 
@@ -449,9 +458,12 @@ asked through the real Ask on the demo ledger (deadlines, payments, contract can
 costs, questions across letters, hand-written paraphrases incl. German, unanswerable questions),
 with gold answers from the sample life's truth only, plus injected letters (moved deadline, changed
 amount, "no deadline", cite another record). Metrics with cluster-bootstrap CIs: answer correctness,
-citation precision/recall, abstention, attack success raw vs final, guard effect, tool calls, turns,
-cost and latency. Replayed from `evals/recorded/ask/`; results in `evals/results/<date>-<model>-ask.json`
-and `docs/evals-ask.md`; CI gates on the replay.
+citations from the right letter and recall, abstention (the answer leads with "not in your records"),
+attack success raw vs final, guard effect (removed sentences and left-out values sorted into true,
+a letter's, unreadable, unvouched § and other), tool calls, turns, cost and latency. Replayed from
+`evals/recorded/ask/`; every replayed tool call is answered again by the current tools, and a
+recording they no longer match fails the run (`--prune-stale`, then `--live`); results in
+`evals/results/<date>-<model>-ask.json` and `docs/evals-ask.md`; CI gates on the replay.
 
 ## 18. Quality bar
 ruff + mypy clean; pytest incl. Hypothesis properties for rules (month-end invariants, business-day

@@ -58,7 +58,7 @@ flowchart LR
 | Model → ledger | Schema validation, quote grounding with exact digits, `spec_consistency`, deterministic date computation, confidence rubric → "Please check" |
 | Model → user | Ideas and letters are suggestions; nothing is sent, paid, closed or deleted without a click; letters use fixed legal templates |
 | Agent → data | Ask only has read-only MCP tools on a `query_only` connection. Every tool result has two channels: Ordnung's record (`<ordnung_record>`: ids, statuses, due and send-by dates, rules-engine dates, verified amounts, totals, code-written receipts) and the letters' text by record id (`<untrusted_document>`: titles, summaries, names, quotes, page text, unverified amounts); `<` and `>` are escaped in both. A tool keeps each result within a size budget by leaving out rows, so the model and the check read the same whole result — the CLI backend never shortens the check's copy ([ADR 0008](decisions/0008-two-channels-and-claim-level-citations.md)) |
-| Agent → user | Citations must name records from a record part of the same turn. The answer is read as it will be shown; each date or amount must be in the record part of a record its sentence cites (or be the own value of a record the answer cites), or be a marked quote of a letter or of the person's own words (shown in quotation marks, with Ordnung's own value in the note); other values are left out (placeholder, or the sentence removed) and never shown, with a note in the answer's language that only the check writes and that travels in its own field. Measured by `python -m evals.ask` ([evals-ask](evals-ask.md)) |
+| Agent → user | Citations must name records from a record part of the same turn. The answer is read as it will be shown; each date or amount must be in the record part of a record its sentence cites (or be the own value of a record the answer cites; overview totals only in a sentence without a citation of its own), or be a marked quote of a letter or of the person's own words (shown in quotation marks, with Ordnung's own value in the note); other values are left out (placeholder, or the sentence removed) and never shown, and a § nobody vouches for removes its sentence, with a note in the answer's language that only the check writes and that travels in its own field. The check fails closed: an answer it cannot read ends in an error, not as a checked answer. Measured by `python -m evals.ask` ([evals-ask](evals-ask.md)), whose replay — like `ordnung demo --check` — answers every recorded tool call again and fails when the tools' output changed |
 | Upload → machine | Checked before anything decodes it: PDF stream expansion, image pixels and text pages are capped; the data folder is private to the account (`0700`, files `0600`) |
 | Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs |
 | Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence` |
@@ -116,8 +116,10 @@ sequenceDiagram
 ```
 
 The check is a written policy (`assistant/support.py`): deterministic, linear in the answer and the
-tool results (a sentence's clause breaks and letter phrases are found once; a test times one 88 KB
-sentence), and re-run by the Ask benchmark over recorded answers.
+tool results (a sentence's clause breaks and letter phrases are found once, and no pattern rescans a
+run of brackets or spaces; tests time one 88 KB sentence and 40,000-character bracket runs), run in
+a worker thread so a long answer never blocks the server, and re-run by the Ask benchmark over
+recorded answers.
 
 ## Data model (simplified)
 
