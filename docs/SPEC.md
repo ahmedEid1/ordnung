@@ -297,43 +297,66 @@ the app's own scam Idea says — a real sender whose bank account changed shows 
 (`09:15`); anything else the extraction read there is letter text. `list_contracts` names a letter
 that says a contract is cancelled only as `cancellation_letter` (pending the person's confirmation;
 the end date it gives is letter text; letters with scam signs are left out), and `if_not_cancelled`
-says a fixed-term contract ends by itself — except a job or a flat let: there it gives the term's end
-and says notice may still be needed (an agreed notice clause, § 15 Abs. 4 TzBfG; a lease without a
-written reason for its term counts as open-ended, § 575 Abs. 1 BGB), with the § 15 Abs. 6 TzBfG /
-§ 545 BGB caveat; the record's summary for such a contract never says "no cancellation needed". The
-model's words are never streamed: while it writes, the UI and the CLI show only the tool trace and
-"Writing the answer — it is shown once Ordnung has checked it", and nobody sees a word before the
-check. Then the answer is read as it will be shown (Markdown, escapes and invisible characters
-dropped, an underscore or asterisk between digits kept as the web shows it, soft-wrapped lines joined
-where a value spans the break) with every date form of the policy — `parse_dates`, `31 12 2027`,
-`31.XII.2027`, `31-Dec-2027`, a time after a date (`2027-12-31T23:59`), months without a day
-(`December 2027`, `Dec '27`, `12/2027`, `2027-12`), and any run of digit groups joined by single
-marks (`31|12|2027`, `31_12_2027`, `31.12.2O27`) that holds a day, month and year, which is
-*unreadable* and never supported when it is no calendar date; one-decimal amounts next to a currency
-and currency words; a number is a clock time only with its unit, and a rate is no amount. Every date
-form the web formats inside an answer (`formatInlineDates`) is in a list both test suites read. Each
-date or amount must be in the record part of a record its sentence cites (a letter's includes its
-to-dos, a contract's its letter, a person's their to-dos, a contract's its category's fixed costs; a
-sentence without citations takes its line's, a list item its lead line's); today needs no citation,
-Ordnung's totals only in a sentence without a citation of its own, and a sentence without citations
-of its own may state the own date or amount of a record the answer cites — the check then adds that
-record's citation, so its chip shows whose value it is. A cited record's flagged, unverified amount
-and a value the person typed are shown in quotation marks as unconfirmed. Every other value is left
-out: one only a letter's text holds becomes "[date only in the letter]" / "[amount only in the
-letter]" — however the sentence is worded; no phrase such as "the letter says" makes a letter's value
-shown — and any other "[date left out]" / "[amount left out]". A sentence that keeps no value is
-removed unless all it leaves out is a letter's (then its words are about the letter, such as a
-warning about injected text); a § not in the rules catalog or a record — also one only a letter
-names — removes its sentence. No left-out value is ever shown. The check runs off the event loop and
-fails closed: if it cannot read an answer, the stream ends with an error and nothing of the answer
-is shown. The check's note (what was left out, quoted or cited, and why; for the records concerned,
-their own dates or amounts on file), in the answer's language and under its label in that language
-("Checked by Ordnung" / "Von Ordnung geprüft"), travels in its own `note` field of the `done` event
-and the stored thread, also when the whole answer was left out; the UI shows only that field and
-copies it with the answer, and an answer the check did not change says "Checked against your
-records". A model sentence that starts like the note is left out, and the note says so. An answer
-stopped before the check shows nothing of it. The policy is in the docstring of
-`assistant/support.py`. `python -m evals.ask` measures Ask ([evals-ask](evals-ask.md)).
+says a fixed-term contract ends by itself: a job ends by itself on its date (§ 15 Abs. 1 TzBfG), and
+only ending it earlier needs notice, possible only when agreed (§ 15 Abs. 4 TzBfG); a flat let's
+record says notice may still be needed (a lease without a written reason for its term usually counts
+as open-ended, § 575 Abs. 1 BGB — except in a student or youth hall, for temporary use or for a
+furnished room in the landlord's flat, § 549 Abs. 2 and 3 BGB); both with the § 15 Abs. 6 TzBfG /
+§ 545 BGB caveat. **Release blocker (rules workstream):** the contract page still prints the rules
+engine's "ends by itself — no cancellation needed" (`rules/explain.py`) and `explain_date` still
+lists the `fixed_term` rule titled "Fixed-term contracts end by themselves" for a flat let; the rules
+must say what Ask's record says before release. The answer's words are never streamed: while the
+model writes, the UI and the CLI show only the tool trace — which tools ran, with the words searched
+for (every word with a digit shown as "…") and the date range looked at — and "Writing the answer —
+it appears once Ordnung has checked it", and nobody sees a word of the answer before the check. Then
+the answer is read as it will be shown (bidirectional formatting characters removed from it,
+Markdown, escapes and invisible characters dropped, an underscore or asterisk between digits kept as
+the web shows it, soft-wrapped lines joined where a value spans the break, a line starting with a
+day read whole as the web shows it) with every date form of the policy — `parse_dates`, `31 12
+2027`, `31 12 27`, `2027 12 31`, `31.XII.2027`, a month name joined to digits (`31-Dec-27`,
+`2027-Dec-31`, `Dec-31-2027`, `31Dec2027`), `20271231`, `31.12.'27`, a time after a date
+(`2027-12-31T23:59`), months without a day (`December 2027`, `Dec '27`, `12/2027`, `2027-12`), parts
+of a month as their days (`Ende Oktober 2026` is 31 Oct 2026, `Mitte Oktober` the 11th to 20th,
+`Anfang Oktober` the 1st to 10th), and any run of digit groups joined by single marks
+(`31|12|2027`, `31_12_2027`, `31.12.2O27`, `31.l2.2027`, `O1.O1.2028`) that holds a day, month and
+year, which is *unreadable* and never supported when it is no calendar date; clock times (`16:00`,
+`4 pm`, `10 Uhr`, `10.30 Uhr`); one-decimal amounts next to a currency, currency words, amounts glued
+to a currency code, cents and scale words (`999EUR`, `99900 Cent`, `1,5k €`); a rate is no amount,
+and a number too long to be an amount is unreadable (never an exception). What stays unread is listed
+in the policy's limits. Every date form the web formats inside an answer (`formatInlineDates`) is in a
+list both test suites read. Each date, time or amount must be in the record part of a record its
+sentence cites (a letter's includes its to-dos, a contract's its letter, a person's their to-dos; a
+sentence without citations takes its line's, a list item its lead line's; a time must be the cited
+record's time); today needs no citation, and Ordnung's totals — a category's fixed costs among them —
+only in a sentence without a citation of its own. A sentence without citations of its own (one that
+inherits its neighbour's too) may state a value in the record part of a record the answer cites; when
+all its values belong to one record, the check adds that record's citation, so its chip shows whose
+value it is — never the citation of a record with scam signs (`scam_warning`, `do_not_pay`: its values
+stay, without a chip), and none when the values belong to several. A cited record's flagged, unverified amount and a value the person
+typed are shown in quotation marks as unconfirmed. Every other value is left out: one only a letter's
+text holds (and no record of the turn) becomes "[date only in the letter]" / "[time only in the
+letter]" / "[amount only in the letter]" — however the sentence is worded; no phrase such as "the
+letter says" makes a letter's value shown — and any other "[date left out]" / "[time left out]" /
+"[amount left out]". A sentence that keeps no value is removed unless all it leaves out is a letter's
+(then its words are about the letter, such as a warning about injected text); a § that is not in the
+rules catalog, among the laws Ordnung's own Ideas state (`IDEA_LAWS`) or in a record — also one only
+a letter names — removes its sentence. No left-out value is ever shown. The check runs off the event
+loop and fails closed: if it cannot read an answer, the stream ends with an error and nothing of the
+answer is shown. The check's note (what was left out, quoted or cited, the citations removed and the
+weekday names corrected, and why; for the records concerned, their own dates or amounts on file —
+never a demand not to pay), in the answer's language and under its label in that language ("Checked
+by Ordnung:" / "Von Ordnung geprüft:", sent with the answer as `note_label`), travels in its own
+`note` field of the `done` event and the stored thread, also when the whole answer was left out; the
+UI shows only that field and copies it with the answer, and an answer the check did not change says
+"Checked against your records" (in the web and the CLI). A checked answer is stored with the label
+(alone when nothing changed), so the thread marks it `checked`; an answer stored before the
+claim-level check has no label and is never shown as checked. A model sentence that starts like the
+note is left out, and the note says so. An answer stopped before the check shows nothing of it. The
+prompt (`ask_system` version 4) still says that values a letter states are shown in quotation marks;
+since the fourth review round they are shown as "[… only in the letter]" instead — aligning the
+prompt means recording every Ask answer again and is a **release blocker** for the next prompt
+version (with the German form of address and `do_not_pay`'s wording). The policy is in the docstring
+of `assistant/support.py`. `python -m evals.ask` measures Ask ([evals-ask](evals-ask.md)).
 
 ## 11. Letters — `drafts/`
 
@@ -472,9 +495,11 @@ metrics from recorded outputs with thresholds.
 **Ask benchmark** (`evals/ask/`, `python -m evals.ask`): ~50 questions about the demo's sample life
 asked through the real Ask on the demo ledger (deadlines, payments, contract cancel-by dates and
 costs, questions across letters, hand-written paraphrases incl. German, unanswerable questions),
-with gold answers from the sample life's truth only, plus injected letters (moved deadline, changed
-amount, "no deadline", cite another record). Metrics with cluster-bootstrap CIs: answer correctness,
-citations from the right letter and recall, abstention (the answer leads with "not in your records"),
+with gold answers from the sample life's truth only, plus injected letters (moved deadline — also
+to the end of its own month —, changed amount, "no deadline", cite another record). Metrics with
+cluster-bootstrap CIs: answer correctness, citation precision by support (a cited record's record
+part holds a value of its sentence), citations from the right letter and recall, abstention (the
+answer leads with "not in your records"),
 attack success raw vs final, guard effect (removed sentences and left-out values sorted into true,
 a letter's, unreadable, unvouched § and other), tool calls, turns, cost and latency. Replayed from
 `evals/recorded/ask/`; every replayed tool call is answered again by the current tools, and a
@@ -614,7 +639,8 @@ the agenda/ledger/catalog, else it is removed (fallback to code-generated text).
 separate Ordnung's record from letter text, and each date or amount of an Ask answer must be in the
 record part of a record its sentence cites (a cited record's unverified amount or the person's own
 words are shown quoted as unconfirmed); anything else is left out — a letter's value as "[date only
-in the letter]" (ADR 0008). Ask gets a
+in the letter]" (ADR 0008). The tool trace, shown before the check, shows search words without
+digits. Ask gets a
 read-only `explain_date(id)` tool that returns receipts. MCP is internal only (no Claude Desktop config in v1).
 
 **Scam checks (code, not model).** IBAN checksum validation; payee IBAN/name compared with those

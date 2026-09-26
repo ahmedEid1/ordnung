@@ -32,9 +32,11 @@ mentioned could be cited too. There was also no measurement of Ask at all.
    Each date or amount must be in the *record part* of a record its sentence cites (a letter's part
    includes its to-dos; a contract's includes its letter; a person's includes their to-dos; a
    sentence without citations takes its line's, a list item its lead line's). Today's date and
-   Ordnung's overview totals need no citation, and a sentence without citations of its own may state
-   the own date or amount of a record the answer cites (and the check then adds that record's
-   citation, so its chip shows whose value it is). A cited record's own flagged, unverified amount
+   Ordnung's overview totals need no citation (only in a sentence without a citation of its own), and
+   a sentence without citations of its own — also one that inherits its neighbour's — may state a
+   value of a record the answer cites: when its values belong to one record the check adds that
+   record's citation, so its chip shows whose value it is (never a record with scam signs, never
+   several). A cited record's own flagged, unverified amount
    and a value the person typed stay, in quotation marks, as unconfirmed. Every other value is left
    out: one only a letter's text holds is shown as "[date only in the letter]" / "[amount only in
    the letter]" — whatever the sentence's wording (since the fourth review round no phrase such as
@@ -42,18 +44,22 @@ mentioned could be cited too. There was also no measurement of Ask at all.
    left out]"; a sentence that keeps no value is removed unless all it leaves out is a letter's (a
    warning about injected text), and a left-out value is never shown. When values were left out, the
    note gives the own dates or amounts of the records concerned, each with what it is. A § must be
-   in the rules catalog or a record part; any other — also one only a letter names — removes its
-   whole sentence. What counts as a value fails closed: any run of digit groups joined by single
+   in the rules catalog, among the laws Ordnung's own Ideas state (`IDEA_LAWS`) or in a record part;
+   any other — also one only a letter names — removes its whole sentence. What counts as a value fails closed: any run of digit groups joined by single
    marks that holds a day, month and year is read, and one that is no calendar date is
    *unreadable* and never supported. Overview totals support only a sentence without a citation of
    its own; a category's fixed costs belong to the contracts of that category.
-3. **Only the check writes its note, and nobody reads an unchecked word.** The note (what was left
-   out, quoted or cited, and why) travels in its own field of the `done` event and the stored
-   thread, under its label in the answer's language; the UI shows only that field, and a model
-   sentence that starts like the note is left out (the note says so). The model's words are never
+3. **Only the check writes its note, and nobody reads an unchecked word of the answer.** The note
+   (what was left out, quoted or cited, the citations removed and the weekday names corrected, and
+   why) travels in its own field of the `done` event and the stored thread, under its label in the
+   answer's language (sent with it, never guessed); the UI shows only that field, and a model
+   sentence that starts like the note is left out (the note says so). The answer's words are never
    streamed: the UI and the CLI show the tool trace and "writing …" until the check is done, and
-   nothing of an answer that stops, fails or cannot be checked (it fails closed, with an error).
-   An answer the check did not change says "Checked against your records".
+   nothing of an answer that stops, fails or cannot be checked (it fails closed, with an error). The
+   trace does show the model's choices — which tools ran, the words it searched for and the date
+   range it looked at —, with every word that holds a digit shown as "…". An answer the check did not
+   change says "Checked against your records"; a stored answer carries the check's label (alone when
+   nothing changed), so one stored before this check is never shown as checked.
 4. **Citations need a record part.** A cited id must appear in the record part of a tool result of
    the same turn and exist; an id that only a letter's text names is stripped.
 5. **The prompt says so** (`ask_system` version 4 — see the fourth round below for the one line it
@@ -132,21 +138,51 @@ mentioned could be cited too. There was also no measurement of Ask at all.
   aligning it (and the form of address in German answers, and `do_not_pay`'s wording, which the tool
   description already hedges) is left for the next prompt version, because a prompt change means
   recording every Ask answer again. The recordings whose tool results changed were recorded again.
-- Why this is a written policy in the sense of ADR 0007, although its value-form lists grew over four
+- Revised after the final review (recorded in [evals-ask](../evals-ask.md)). Reviewers showed by
+  hand: "Ende Oktober 2026" was read as the month, which the real deadline (Wed 21 Oct) is in, so a
+  deadline ten days too late passed as Ordnung's; a category's fixed-cost total (health plus
+  liability insurance) backed a wrong cost for each contract of the category; a sentence that
+  inherited its neighbour's citation stated another record's date with no chip of its own; the
+  check's added citations put a scam demand's chip on a payments heading (in the recorded demo), and
+  its note called that demand "payment due"; clock times were never checked (an appointment moved
+  to 16:00 passed); a number of about 310 digits in a letter made every answer that read it fail; a
+  right-to-left override made the check read another date than the browser showed; the web
+  renumbered lines starting with a day ("21. Oktober 2026" shown as "2."); many digit forms passed
+  unread (`31.l2.2027`, `31-Dec-27`, `20271231`, `999EUR`, `1,5k €` …); the note said "only in the
+  letter" for values a record held; stripped citations and corrected weekdays went unmentioned; the
+  trace showed the model's search words verbatim; answers stored before this check were shown as
+  checked; and a fixed-term job's record said it "may still need notice to end then" — wrong under
+  § 15 Abs. 1 TzBfG (it ends with its time; only ending it earlier needs agreed notice, § 15 Abs. 4),
+  while the flat let's caveat ignored § 549 Abs. 2 and 3 BGB (student halls, furnished rooms). All
+  are fixed: the end of a month is its last day and the middle and beginning are their days;
+  category totals are overview totals; rule 3 applies to inherited support (one record's chip, none
+  for several, never a scam record's); times are values that must be the cited record's; numbers
+  too long to be amounts are none (and unreadable next to a currency); bidirectional controls are
+  removed from the answer; the forms are read and what stays unread is listed in the policy's limits;
+  the letter placeholder needs that no record of the turn holds the value; and the job's record says
+  it ends by itself. A same-month attack was added to the benchmark (a fee due Fri 15 Jan 2027 moved
+  to "Ende Januar 2027"). The recordings whose tool results changed (the contract list) were recorded
+  again with the same prompt (version 4). Two things stay open as **release blockers**: the prompt
+  still invites "the letter says …" and says letter values are shown in quotation marks (they are
+  shown as "[… only in the letter]"); aligning it, with the German form of address and `do_not_pay`'s
+  wording, needs every Ask answer recorded again, once, when the integrator records the next prompt
+  version. And the contract page and the `fixed_term` rule's title still say a flat let "ends by
+  itself" (the rules engine's text, owned by the rules workstream).
+- Why this is a written policy in the sense of ADR 0007, although its value-form lists grew over five
   review rounds: what decides whether a value is *Ordnung's* is small and closed — it must be in the
   code-written record part of a record the answer cites; everything else is placeholdered, quoted as
   unconfirmed (a flagged amount, the person's words) or removed, whatever the wording. The form
   lists decide only what counts as a value at all, and since the fourth round they fail closed for
   digit forms: any run of digit groups joined by marks that holds a day, a month and a year is read,
   and one that is no date is never supported. What remains unread is named in the policy's limits
-  (dates in words, bare years, calendar weeks, digit groups apart only by spaces other than day
-  month year, other scripts). The machine-readable quotes considered earlier (`[quote:doc_…]“…”`)
+  (dates in words without a named month, bare years, calendar weeks, six-digit dates, times without
+  a unit, other scripts, amounts in words). The machine-readable quotes considered earlier (`[quote:doc_…]“…”`)
   would let a correct letter value be shown as a quote again; they need a prompt change, UI support
   and a new measurement, and are the next step if the cost of the closed policy — correct letter
   values shown only as placeholders — proves too high in use.
 - Accepted limits, documented in the policy: support is literal (a value in a cited record supports
   a sentence that says something else about it), claims without a date, amount or § ("there is no
-  deadline"), dates in words, bare years and rates are not read, a sentence whose value was left out
+  deadline"), dates in words without a named month, bare years and rates are not read, a sentence whose value was left out
   keeps its other words ("moved to [date only in the letter]" — also when it repeats a letter's claim
   as if it were true), and a correct value or § only a letter holds is never shown. The benchmark's
   `no_deadline` and `cite_other` attacks measure exactly these gaps.
