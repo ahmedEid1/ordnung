@@ -25,8 +25,12 @@ Written policy (ADR 0007) — nothing here guesses:
   a temporary file in the same folder that then replaces the original, with the original's
   permissions (``0600`` for a new file). A symlinked config is written through to its target.
 * **The command is absolute.** Apps start servers with a minimal ``PATH``, so the entry runs this
-  Python (``sys.executable -m ordnung``) and, for the full server, names the data folder. Printed
-  commands are quoted for this platform's shell (``cmd.exe`` on Windows, POSIX elsewhere).
+  Python (``sys.executable -m ordnung``) and, for the full server, names the data folder. That path
+  shows this computer's folders (the user name too), so wherever an entry goes into a project's
+  ``.mcp.json`` — printed or written — the person is told before they commit it. Printed commands
+  are quoted for this platform's shell: POSIX, or on Windows ``cmd.exe``, where an argument with a
+  space or one of its metacharacters (``& | < > ^ ( )``) goes in double quotes; a ``%NAME%`` in a
+  path would still be expanded there (no quoting stops that at its prompt; paths rarely have one).
 * **Only UTF-8 JSON.** The apps read their config as UTF-8; a file in another encoding (a UTF-16
   file written by Windows PowerShell 5.1, say) is refused untouched like invalid JSON.
 * **One Ordnung, said plainly.** The rules-only entry (``ordnung_rules``) and the full server
@@ -42,6 +46,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -180,11 +185,39 @@ def claude_code_remove_command(plan: Plan, *, system: str | None = None) -> str:
     return shell_join(["claude", "mcp", "remove", "--scope", code_scope(plan), plan.name], system=system)
 
 
+#: The characters cmd.exe acts on outside double quotes (``&`` starts a second command, ``|`` a pipe …).
+_CMD_META = re.compile(r"[&|<>^()]")
+
+
 def shell_join(argv: list[str], *, system: str | None = None) -> str:
-    """``argv`` as one command line quoted for this (or the given) platform's shell."""
+    """``argv`` as one command line quoted for this (or the given) platform's shell (module policy).
+
+    Windows: each argument as the program's C runtime parses it (:func:`subprocess.list2cmdline`),
+    in double quotes when it has a cmd.exe metacharacter too, so that cmd.exe passes it on whole.
+    """
     if (system or sys.platform).startswith("win"):
-        return subprocess.list2cmdline(argv)
+        return " ".join(_cmd_arg(arg) for arg in argv)
     return shlex.join(argv)
+
+
+def _cmd_arg(arg: str) -> str:
+    """One argument for cmd.exe: :func:`subprocess.list2cmdline`'s quoting, forced for a metacharacter.
+
+    In double quotes, backslashes before a quote (and at the end) are doubled, as the C runtime
+    reads them; an argument with a double quote of its own cannot be made safe for cmd.exe (it
+    toggles quoting), but no Windows path has one.
+    """
+    if not _CMD_META.search(arg) or " " in arg or "\t" in arg:
+        return subprocess.list2cmdline([arg])
+    out: list[str] = []
+    slashes = 0
+    for char in arg:
+        if char == "\\":
+            slashes += 1
+            continue
+        out.append("\\" * (2 * slashes + 1) + char if char == '"' else "\\" * slashes + char)
+        slashes = 0
+    return '"' + "".join(out) + "\\" * (2 * slashes) + '"'
 
 
 def render_json(data: Mapping[str, Any]) -> str:
@@ -458,22 +491,35 @@ def instructions(
 
 
 def written_message(plan: Plan, result: WriteResult) -> str:
-    """One line on what ``--write`` did (and on the other Ordnung entry, if the file has one)."""
+    """What ``--write`` did (and on the other Ordnung entry, if the file has one); for a project's
+    ``.mcp.json``, also that its entry names this computer's Python (module policy)."""
     target = f"“{plan.name}” in {result.path}"
     client = _CLIENT_NAMES[plan.client]
     if result.removed is not None:
         taken = f"took out “{result.removed}” (Ordnung with your data)"
         if result.status == "unchanged":
-            return f"{client} keeps {what(plan)} as {target}; {taken}."
-        verb = "Added" if result.status == "added" else "Updated"
-        return f"{verb} {what(plan)} for {client} as {target}, and {taken}."
-    if result.status == "unchanged":
+            line = f"{client} keeps {what(plan)} as {target}; {taken}."
+        else:
+            verb = "Added" if result.status == "added" else "Updated"
+            line = f"{verb} {what(plan)} for {client} as {target}, and {taken}."
+    elif result.status == "unchanged":
         line = f"{client} already has {what(plan)} as {target}; nothing changed."
     else:
         verb = "Added" if result.status == "added" else "Updated"
         line = f"{verb} {what(plan)} for {client} as {target}."
-    if result.other is not None and plan.rules_only:
+    if result.removed is None and result.other is not None and plan.rules_only:
         line += (
             f" It still has “{result.other}”, which reads your ledger: add --remove-ledger to take it out."
         )
+    if result.path.name == CODE_PROJECT_CONFIG_NAME:
+        line += f" {project_file_note(plan)}"
     return line
+
+
+def project_file_note(plan: Plan) -> str:
+    """What committing a project's ``.mcp.json`` with ``plan``'s entry would share."""
+    return (
+        f"The entry runs this computer's Python ({plan.entry['command']}): if you commit "
+        f"{CODE_PROJECT_CONFIG_NAME}, that path shows others your folders and user name, and on their "
+        "computers it needs changing."
+    )

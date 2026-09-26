@@ -173,6 +173,75 @@ def test_printed_commands_are_quoted_for_windows() -> None:
     assert "'" not in instructions(plan, data_dir=Path("C:/Users/A B/Ordnung"), system="win32")
 
 
+def _cmd_acts_on(line: str) -> list[str]:
+    """The metacharacters cmd.exe would act on in ``line`` (the ones outside double quotes)."""
+    quoted, found = False, []
+    for char in line:
+        if char == '"':
+            quoted = not quoted
+        elif char in "&|<>^()" and not quoted:
+            found.append(char)
+    return found
+
+
+def _c_runtime_argv(line: str) -> list[str]:
+    """``line`` split as the Microsoft C runtime does (backslashes before a quote, quoted spans)."""
+    args: list[str] = []
+    current: list[str] = []
+    started = quoted = False
+    i = 0
+    while i < len(line):
+        char = line[i]
+        if char == "\\":
+            end = i
+            while end < len(line) and line[end] == "\\":
+                end += 1
+            count = end - i
+            if end < len(line) and line[end] == '"':
+                current.append("\\" * (count // 2) + ('"' if count % 2 else ""))
+                i = end + 1 if count % 2 else end
+            else:
+                current.append("\\" * count)
+                i = end
+            started = True
+        elif char == '"':
+            quoted, started, i = not quoted, True, i + 1
+        elif char in " \t" and not quoted:
+            if started:
+                args.append("".join(current))
+                current, started = [], False
+            i += 1
+        else:
+            current.append(char)
+            started, i = True, i + 1
+    if started:
+        args.append("".join(current))
+    return args
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        r"C:\Users\Tom&Jerry\venv\Scripts\python.exe",
+        "C:\\Users\\Tom&Jerry\\",
+        r"D:\Data (old)\Ordnung",
+        r"D:\a^b|c<d>e",
+        "C:\\Users\\A B & C\\Ordnung\\",
+        r"C:\Users\Sam\Ordnung",
+    ],
+)
+def test_printed_windows_commands_survive_cmd_exe(path: str) -> None:
+    """Reviewer repro: a folder like ``Tom&Jerry`` is legal on Windows, and cmd.exe runs whatever follows
+    an unquoted ``&`` as a second command. Every argument must reach the program whole."""
+    argv = ["claude", "mcp", "add", "--scope", "user", "ordnung_rules", "--", path, "-m", "ordnung", "mcp"]
+    line = mcp_install.shell_join(argv, system="win32")
+    assert _cmd_acts_on(line) == [], line
+    assert _c_runtime_argv(line) == argv, line
+    # nothing changes for arguments without a metacharacter, and POSIX shells keep shlex's quoting
+    assert mcp_install.shell_join(["a", "b c"], system="win32") == 'a "b c"'
+    assert mcp_install.shell_join(["Tom&Jerry"], system="linux") == "'Tom&Jerry'"
+
+
 # --------------------------------------------------------------------------------------------------
 # merging
 # --------------------------------------------------------------------------------------------------
@@ -257,6 +326,26 @@ def test_write_creates_a_new_file_privately(tmp_path: Path) -> None:
     assert json.loads((project / ".mcp.json").read_text(encoding="utf-8")) == plan.snippet
     if os.name == "posix":
         assert stat.S_IMODE((project / ".mcp.json").stat().st_mode) == 0o600
+
+
+def test_writing_a_projects_mcp_json_says_the_entry_names_this_computers_python(
+    home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reviewer repro: the dry run warned that .mcp.json (meant to be committed) gets this computer's
+    Python path — user name included — but a direct --write said only "Added …"."""
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["mcp", "install", "--client", "claude-code", "--write"])
+    assert result.exit_code == 0, result.output
+    entry = json.loads((tmp_path / ".mcp.json").read_text(encoding="utf-8"))["mcpServers"][RULES_SERVER_NAME]
+    said = " ".join(result.output.split())
+    assert f"The entry runs this computer's Python ({entry['command']})" in said
+    assert "if you commit .mcp.json, that path shows others your folders and user name" in said
+    again = write_config(plan_install("claude-code", rules_only=True, cwd=tmp_path), now=NOW)
+    assert "this computer's Python" in written_message(plan_install("claude-code", rules_only=True), again)
+    # Claude Desktop's own settings file is nobody else's: no such note
+    desktop = desktop_plan(tmp_path)
+    settings_folder(tmp_path)
+    assert "this computer's Python" not in written_message(desktop, write_config(desktop, now=NOW))
 
 
 def test_write_refuses_invalid_json_and_changes_nothing(tmp_path: Path) -> None:
