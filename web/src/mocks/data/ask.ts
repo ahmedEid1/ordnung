@@ -75,12 +75,13 @@ export const RECORDED: RecordedAnswer[] = [
     match: [["deadline", "october"], ["dates", "october"], ["due", "october"]],
     tools: [
       { name: "today", input: {}, result: "Today is Mon 28 Sep 2026 (demo date)" },
-      { name: "list_items", input: { from: "2026-10-01", to: "2026-10-31", status: "open" }, result: "Found 6 to-dos & dates" },
+      { name: "list_items", input: { from: "2026-10-01", to: "2026-10-31", status: "open" }, result: "Found 7 to-dos & dates" },
     ],
     text:
-      "October brings **six dates**, the first ones right at the start:\n\n" +
+      "October brings **seven dates**, the first ones right at the start:\n\n" +
       "- **Fri 2 Oct** — return the library books and pay **4,50 €** [item:itm_library_fee]\n" +
       "- **Mon 5 Oct** — rent for October, **640,00 €** [item:itm_rent_oct]\n" +
+      "- **Tue 6 Oct** — post your objection to FitWell's price increase by then if you want to make one; it must arrive by **Mon 12 Oct** (an email is enough) [item:itm_gym_price]\n" +
       "- **Thu 8 Oct, 09:15** — dentist, check-up and cleaning [item:itm_dentist]\n" +
       "- **Thu 8 Oct** — post your phone-contract cancellation by then if you want to switch; it must arrive by **Wed 14 Oct** [item:itm_phone_cancel]\n" +
       "- **Wed 14 Oct, 10:30** — residence permit appointment at the Ausländerbehörde [item:itm_abh_appt]\n" +
@@ -88,6 +89,7 @@ export const RECORDED: RecordedAnswer[] = [
     citations: [
       { type: "item", id: "itm_library_fee" },
       { type: "item", id: "itm_rent_oct" },
+      { type: "item", id: "itm_gym_price" },
       { type: "item", id: "itm_dentist" },
       { type: "item", id: "itm_phone_cancel" },
       { type: "item", id: "itm_abh_appt" },
@@ -106,12 +108,13 @@ export const RECORDED: RecordedAnswer[] = [
       "1. **Parking fine, 30 €** — pay by **Tue 29 Sep** to be safe [item:itm_parking]. I don't know when the letter arrived, so I counted from the letter date; if it came later you have a bit more time [doc:doc_parking].\n" +
       "2. **TechMarkt reminder, 94,99 €** — due **Wed 30 Sep**, otherwise it may go to a debt collector [doc:doc_tm_dunning].\n" +
       "3. **Library** — return the two books and pay **4,50 €** by **Fri 2 Oct** [item:itm_library_fee].\n\n" +
-      "Nothing else is due before Sunday. Next week brings rent (Mon 5 Oct), the dentist (Thu 8 Oct, 09:15) and your phone-contract decision.",
+      "Nothing else is due before Sunday. Next week brings rent (Mon 5 Oct), your objection to FitWell's price increase if you want to make one (post it by Tue 6 Oct, or email it by Mon 12 Oct) [item:itm_gym_price], the dentist (Thu 8 Oct, 09:15) and your phone-contract decision.",
     citations: [
       { type: "item", id: "itm_parking" },
       { type: "document", id: "doc_parking" },
       { type: "document", id: "doc_tm_dunning" },
       { type: "item", id: "itm_library_fee" },
+      { type: "item", id: "itm_gym_price" },
     ],
   },
   {

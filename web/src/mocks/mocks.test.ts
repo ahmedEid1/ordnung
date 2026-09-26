@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createMockServer } from "./server";
 import { letterFor } from "./db";
-import type { Dashboard, DocumentDetail, Evidence, Item, Lane, TimelineEntry } from "@/api/types";
+import type { Activity, Dashboard, DocumentDetail, Evidence, Item, Lane, RuleInfo, TimelineEntry } from "@/api/types";
 import { findRawEnums } from "@/lib/copy";
 import { needsArrivalDate } from "@/features/document/verdict";
+import { RECORDED } from "./data/ask";
 
 const srv = () => createMockServer({ staticDemo: false, latency: 0 });
 
@@ -145,6 +146,50 @@ describe("mock dataset", () => {
     const it = detail.items.find((i) => i.id === "itm_gym_price")!;
     expect(it.consequence).toBe("FitWell says it will charge 32,90 € from 1 Nov unless you object.");
     expect([it.consequence, it.description, detail.document.summary].join(" ")).not.toMatch(/applies from|rises from|raises your/);
+  });
+
+  it("links every rule of FitWell's receipt to the rules catalog, by the engine's ids", async () => {
+    // the static demo mirrors the app's receipt: "Four weeks later" is bgb_188 (§ 188 BGB), not an id
+    // the engine never emits, so "Why this date?" finds each rule and its law link
+    const s = srv();
+    const rules = new Map((await get<RuleInfo[]>(s, "/rules")).map((r) => [r.id, r]));
+    for (const received of [null, "2026-09-19"]) {
+      const s2 = srv();
+      if (received) await s2.handle("PATCH", "/documents/doc_gym_price", new URLSearchParams(), { received_date: received });
+      const it = (await get<DocumentDetail>(s2, "/documents/doc_gym_price")).items.find((i) => i.id === "itm_gym_price")!;
+      for (const step of it.computation!.steps.filter((step) => step.rule_id && step.rule_id !== "postal_buffer")) {
+        expect(rules.get(step.rule_id!)?.url, `${step.rule_id} in the mock rules`).toMatch(/^https:\/\/www\.gesetze-im-internet\.de\//);
+      }
+      expect(it.computation!.rule_ids).toContain("bgb_188");
+    }
+    // no receipt in the static demo points at a rule the catalog lacks
+    for (const item of s.db.state.items) {
+      for (const step of item.computation?.steps ?? []) {
+        if (step.rule_id && ["bgb_187_1", "bgb_188", "bgb_193", "private_sender_arrival"].includes(step.rule_id)) {
+          expect(rules.has(step.rule_id)).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("knows FitWell's objection deadline in the recorded Ask answers and the activity feed", async () => {
+    // the dashboard shows it: an answer about October or this week must not leave it out
+    for (const question of ["Which deadlines are coming up in October?", "What do I need to do this week?"]) {
+      const answer = RECORDED.find((a) => a.question === question)!;
+      expect(answer.text, question).toContain("[item:itm_gym_price]");
+      expect(answer.text, question).toContain("Tue 6 Oct");
+      expect(answer.citations).toContainEqual({ type: "item", id: "itm_gym_price" });
+    }
+    const october = RECORDED.find((a) => a.question === "Which deadlines are coming up in October?")!;
+    const dated = october.text.split("\n").filter((line) => line.startsWith("- **"));
+    expect(dated).toHaveLength(7);
+    expect(october.tools.find((t) => t.name === "list_items")?.result).toBe("Found 7 to-dos & dates");
+    expect(october.text).toMatch(/seven dates/);
+    const activity = await get<Activity[]>(srv(), "/activity");
+    expect(activity.find((a) => a.ref_id === "doc_gym_price")?.message).toBe("Read “Gym price increase — FitWell” (1 page)");
+    expect(new Set(activity.map((a) => a.id)).size).toBe(activity.length);
+    const times = activity.map((a) => a.ts);
+    expect([...times].sort().reverse()).toEqual(times);
   });
 
   it("streams recorded Ask answers as SSE", async () => {

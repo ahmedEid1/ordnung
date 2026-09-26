@@ -435,11 +435,11 @@ function recomputeGymPrice(db: MockDb, receivedDate: string) {
     steps: [
       { label: `Not an authority's letter, so no delivery days: the period runs from the day you received it (${day(receivedDate)})`, date: receivedDate, rule_id: "private_sender_arrival", citation: "§ 130 Abs. 1 BGB" },
       { label: `Counting starts the day after ${day(receivedDate)}`, date: receivedDate, rule_id: "bgb_187_1", citation: "§ 187 Abs. 1 BGB" },
-      { label: `Four weeks later: ${day(end)}`, date: iso(end), rule_id: "bgb_188_2", citation: "§ 188 Abs. 2 BGB" },
+      { label: `Four weeks later: ${day(end)}`, date: iso(end), rule_id: "bgb_188", citation: "§ 188 Abs. 2 BGB" },
       { label: moved, date: iso(due), rule_id: "bgb_193", citation: "§ 193 BGB" },
       { label: `Send by ${day(sendBy)} to allow 4 business days for a letter to arrive`, date: iso(sendBy), rule_id: "postal_buffer", citation: null },
     ],
-    rule_ids: ["private_sender_arrival", "bgb_187_1", "bgb_188_2", "bgb_193", "postal_buffer"],
+    rule_ids: ["private_sender_arrival", "bgb_187_1", "bgb_188", "bgb_193", "postal_buffer"],
     // like the engine: the rule it applied stays said; the arrival day is no longer assumed
     warnings: it.computation.warnings.filter((w) => w.startsWith("No delivery days were added")),
     confidence: "high",
@@ -459,7 +459,7 @@ function recomputeParking(db: MockDb, receivedDate: string) {
     summary: `The letter reached you on ${format(parseISO(receivedDate), "EEE d MMM")}; one week later is ${format(parseISO(due), "EEE d MMM")}.`,
     steps: [
       { label: "Letter arrived (confirmed by you)", date: receivedDate, rule_id: "receipt_user", citation: null },
-      { label: "One week later", date: due, rule_id: "bgb188_weeks", citation: "§ 188 Abs. 2 BGB" },
+      { label: "One week later", date: due, rule_id: "bgb_188", citation: "§ 188 Abs. 2 BGB" },
     ],
     warnings: [],
     confidence: "high",

@@ -112,6 +112,9 @@ export const DOCUMENTS: Document[] = [
     ],
     references: [{ label: "Mitgliedsnummer", value: "FW-20931" }],
   }),
+  // Static demo only: the real demo's samples (src/ordnung/demo/samples) have no FitWell price letter. It
+  // shows a company's letter the engine counts from its arrival (§ 130 BGB) and the arrival question; the
+  // recorded Ask answers, the brief and the activity feed (data/ask.ts, data/system.ts) know it too.
   doc({
     id: "doc_gym_price",
     filename: "FitWell_Beitragsanpassung.pdf",

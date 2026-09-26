@@ -139,6 +139,16 @@ describe("what needs the person's eyes", () => {
     expect(needsArrivalDate(authority, { received_date: null })).toBe(false);
   });
 
+  it("asks for the arrival date for a private sender's letter whose date is missing too", () => {
+    // the engine could compute no date (it needs the arrival day), but still says which rule it applied
+    const spec = { type: "relative" as const, date: null, time: null, anchor: "deemed_delivery" as const, anchor_date: null, amount: 4, unit: "weeks" as const, delivery_rule: "de_admin_post" as const, shift_rule: "auto" as const, nature: "objection" as const, legal_basis: null, text: "" };
+    const undated = makeItem({ date_spec: spec, due_date: null, send_by: null, computation: makeReceipt({ due_date: null, send_by: null, rule_ids: ["private_sender_arrival"], confidence: "low" }) });
+    expect(needsArrivalDate(undated, { received_date: null })).toBe(true);
+    // the rule id asks, not the stored reading: deemed delivery alone never does
+    const silent = { ...undated, computation: makeReceipt({ due_date: null, send_by: null, rule_ids: [], confidence: "low" }) };
+    expect(needsArrivalDate(silent, { received_date: null })).toBe(false);
+  });
+
   it("does not ask for the arrival date when a private sender's period runs from a date the letter gives", () => {
     // "14 days from the invoice date" read with a delivery rule: the rule goes, the invoice date stays,
     // so the arrival day would change nothing (the engine says private_sender_no_delivery)
