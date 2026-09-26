@@ -809,6 +809,29 @@ async def test_published_page_only_from_an_error_free_run(
     assert outcome.docs_path is None and not docs.exists()
 
 
+async def test_a_run_of_some_conditions_never_rewrites_the_published_page(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reviewer repro: re-recording the tool condition as documented (``--live --conditions
+    llm_rules_tool``, test split) rendered docs/evals.md from that run alone — a one-row headline that
+    replaced the held-out page. Only a run of every condition writes the page."""
+    one = [e for e in load_manifest(MANIFEST) if e.id == "test-tax_assessment-C1"]
+    monkeypatch.setattr(eval_run, "select_entries", lambda *args, **kwargs: list(one))
+    docs = tmp_path / "docs" / "evals.md"
+    config = make_config(
+        tmp_path, split="test", ids=None, write_docs=None, live=True, conditions=["llm_rules_tool"]
+    )
+    assert not config.partial and not config.every_condition
+    outcome = await eval_run.run_benchmark(config, backend=FakeBackend(Responder()))
+    assert outcome.ok and outcome.runs[0].results_path is not None  # the results are written ...
+    assert outcome.docs_path is None and not docs.exists()  # ... the page is not
+    # the same run of every condition does write it
+    everything = make_config(tmp_path / "all", split="test", ids=None, write_docs=None, live=True)
+    assert everything.every_condition
+    full = await eval_run.run_benchmark(everything, backend=FakeBackend(Responder()))
+    assert full.docs_path is not None and full.docs_path.exists()
+
+
 async def test_model_failures_are_recorded_and_replayed_as_failures(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -900,7 +923,10 @@ def test_the_ci_gate_leaves_out_a_baseline_without_recordings(
     assert eval_run.run_cli(gate, backend=MissingRecordings("llm_rules_tool")) == 0
     err = capsys.readouterr().err
     assert "left out of the gate, recorded answers missing: llm_rules_tool" in err
-    assert "(record again with --live --conditions llm_rules_tool)" in err
+    # the recipe records the condition without touching the page, then adds it to the published run
+    flat = " ".join(err.split())
+    assert "python -m evals.run --live --split dev --conditions llm_rules_tool" in flat
+    assert "--add-condition llm_rules_tool=evals/results/<new run>.json" in flat
     results = json.loads(
         (tmp_path / "results" / "2026-09-25-sonnet-dev-partial.json").read_text(encoding="utf-8")
     )
@@ -1146,9 +1172,23 @@ async def test_a_condition_added_later_keeps_the_published_numbers(tmp_path: Pat
         if line.startswith("† LLM + rules tool")
     )
     assert (
-        "Recording it cost $8.35 in all (API-equivalent): 3 live recordings, in order dev $1.45; test $3.40, "
-        "$3.50; smoke runs of a few letters are not counted." in spent
+        "Recording it cost at least $8.35 (API-equivalent): 3 live recordings, in order dev $1.45; test "
+        "$3.40, $3.50, plus smoke runs of a few letters whose cost was not recorded." in spent
     )
+    assert "budget" not in spent
+    # with the budget set for it, the page says plainly whether it was kept (reviewer: $14.91 of "well
+    # under $15", smoke runs uncounted, was reported as "at the ceiling")
+    fourth["meta"]["added_conditions"]["llm_rules_tool"]["recording_budget_usd"] = 9
+    fifth = report.add_condition(fourth, later.results, "llm_rules_tool")
+    assert fifth["meta"]["added_conditions"]["llm_rules_tool"]["recording_budget_usd"] == 9  # carried over
+    over = report.recording_spend_text(fifth["meta"]["added_conditions"]["llm_rules_tool"])
+    assert over.endswith(
+        "The budget for recording it was $9.00, to stay well under: the spend reached it, and with the smoke "
+        "runs may exceed it, so that budget was not kept."
+    )
+    fifth["meta"]["added_conditions"]["llm_rules_tool"]["recording_budget_usd"] = 15
+    kept = report.recording_spend_text(fifth["meta"]["added_conditions"]["llm_rules_tool"])
+    assert kept.endswith("The budget for recording it was $15.00.") and "not kept" not in kept
     # the re-scored table does not put a condition recorded after the fix under "held-out"
     rescored_section = report.render_markdown([again], rescored=again).split("## After the held-out run", 1)[
         1

@@ -849,6 +849,53 @@ def test_tool_use_summary() -> None:
     assert (use["deadline_calls_with_other_today"], use["letters_with_other_today"]) == (0, 0)
 
 
+def test_an_item_with_differing_tool_dates_is_counted_apart() -> None:
+    """Reviewer: on test-tax_assessment-D1 the tools returned 5 Feb (given the letter's date) and 9 Feb
+    (asked again without it), and the model took the later one. That scores as "a date the tools
+    returned" and "the tools had the right date", so no override row can show the choice: such items
+    are counted apart, with how often the model took a later date than the earliest."""
+    entries = [make_entry(f"test-{n}") for n in range(3)]  # each expects 2026-06-05
+    answers = [
+        ([item()], [_deadline("2026-06-03"), _deadline("2026-06-05")]),  # took the later one (right)
+        ([item(due="2026-06-03")], [_deadline("2026-06-05"), _deadline("2026-06-03")]),  # the earlier (early)
+        ([item()], [_deadline("2026-06-05")]),  # one date: nothing to choose
+    ]
+    predictions = {
+        "llm_rules_tool": {
+            e.id: prediction(e, items, condition="llm_rules_tool", tools=tools)
+            for e, (items, tools) in zip(entries, answers, strict=True)
+        }
+    }
+    evaluation = evaluate(entries, predictions, resamples=50)
+    use = evaluation.metrics["llm_rules_tool"]["tool_use"]
+    assert use["items_by_backing"]["tool_date"] == 3 and use["tool_returned_the_right_date"]["k"] == 3
+    assert use["tool_dated_items_with_differing_dates"] == 2
+    assert use["chose_among_differing_tool_dates"] == {
+        "items": 2,
+        "chose_a_later_date": 1,
+        "correct": 1,
+        "late": 0,
+    }
+    assert (use["deadline_calls_on_dated_letters"], use["dated_letters"]) == (5, 3)
+    page = report._tool_section({"meta": {}, "metrics": evaluation.metrics})
+    assert (
+        "| ↳ the tools returned differing dates for it (asked again with other facts); the model chose one "
+        "| 2 items — a later one than the earliest: 1; right 1/2, late 0/2 |"
+    ) in page
+    # the per-letter count is not rounded into "1.0" next to a total of other letters' calls
+    assert (
+        "| `compute_deadline` calls per letter with a dated obligation | 1.67 (5 calls on 3 letters) |"
+        in page
+    )
+    assert (
+        "right for 100.0 % (3/3) of these obligations (for 2 of them the tools returned differing dates, and "
+        "it counts when one was right: which to answer with was the model's choice, a later one 1 time)"
+    ) in page
+    assert (
+        "| Final date is none of the dates the tools returned for that obligation (the model overrode" in page
+    )
+
+
 def test_calls_with_a_today_other_than_the_letters_are_counted() -> None:
     """The claude CLI tells the model the real date; a call passing it is counted (the scorer checks
     due dates only, which would hide a tool that called a live deadline passed)."""

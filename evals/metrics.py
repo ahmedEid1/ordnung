@@ -37,6 +37,10 @@ Every scored item the model dated is then
 ``tool_date`` (its final date is one of its tool dates), ``overrode_tool`` (it has tool dates, the
 final date is none of them), ``other_obligation`` (it has none, but the letter's date tools answered
 about another of its obligations) or ``no_tool_date`` (no date tool answered on that letter).
+An item can have *differing* tool dates (the model asked again with other facts): its final date
+then counts as ``tool_date`` whichever it chose, and "the tools had the right date" whenever one of
+them was right, so these items are also counted apart — how many, and how often the model chose a
+later date than the earliest the tools gave it.
 Also counted: ``compute_deadline`` calls that passed a ``today`` other than the letter's (the
 ``claude`` CLI tells the model the real date; a later ``today`` makes the tool call a live deadline
 passed and drop its send-by date, which the scorer, checking due dates only, does not see).
@@ -394,6 +398,10 @@ class ItemOutcome:
     backing: ToolBacking | None = None
     #: Conditions with tools: whether the tool returned the expected date for this letter at all.
     tool_had_truth: bool | None = None
+    #: Conditions with tools: how many different dates the tools returned for this item.
+    tool_date_count: int = 0
+    #: With differing tool dates: whether the final date is later than the earliest of them.
+    chose_later_tool_date: bool | None = None
 
     @property
     def scored(self) -> bool:
@@ -578,6 +586,9 @@ def _item_outcome(
         dates = item_tool_dates(pred, item)
         result.backing = tool_backing(result.predicted, dates, letter_dates=tool_dates(pred))
         result.tool_had_truth = expected.isoformat() in dates
+        result.tool_date_count = len(dates)
+        if len(dates) > 1 and result.backing == "tool_date":
+            result.chose_later_tool_date = predicted.isoformat() > min(dates)
     return result
 
 
@@ -1153,11 +1164,13 @@ def tool_use_summary(scores: Sequence[DocScore], est: Callable[..., dict[str, An
         by_tool.update(score.tool_calls or {})
     items = [item for score in scores for item in score.scored_items if item.backing is not None]
     overrides = [item for item in items if item.backing == "overrode_tool"]
+    chosen = [item for item in items if item.chose_later_tool_date is not None]
+    deadline_calls = sum(s.deadline_calls for s in dated_letters)
     return {
         "letters_with_date_tool_call": est(dated_letters, lambda s: (float(s.date_tool_calls > 0), 1.0)),
-        "deadline_calls_per_letter": (
-            sum(s.deadline_calls for s in dated_letters) / len(dated_letters) if dated_letters else None
-        ),
+        "deadline_calls_per_letter": deadline_calls / len(dated_letters) if dated_letters else None,
+        "deadline_calls_on_dated_letters": deadline_calls,
+        "dated_letters": len(dated_letters),
         "calls": sum(by_tool.values()),
         "calls_by_tool": dict(sorted(by_tool.items())),
         "refused_calls": sum(score.tool_refusals for score in scores),
@@ -1177,6 +1190,16 @@ def tool_use_summary(scores: Sequence[DocScore], est: Callable[..., dict[str, An
         ),
         "overrides_fixing_a_wrong_tool_date": sum(
             1 for i in overrides if not i.tool_had_truth and i.outcome == "correct"
+        ),
+        # items whose tools gave differing dates, and the model took one of them (module docstring)
+        "chose_among_differing_tool_dates": {
+            "items": len(chosen),
+            "chose_a_later_date": sum(1 for i in chosen if i.chose_later_tool_date),
+            "correct": sum(1 for i in chosen if i.outcome == "correct"),
+            "late": sum(1 for i in chosen if i.direction == "late"),
+        },
+        "tool_dated_items_with_differing_dates": sum(
+            1 for i in items if i.backing in ("tool_date", "overrode_tool") and i.tool_date_count > 1
         ),
     }
 

@@ -188,7 +188,7 @@ def add_condition(
     silent: the replaced recording's date, commit and accuracy go to its ``earlier_recordings``,
     which the headline's footnote and the chart show next to the number. Its ``recording_spend`` (what
     every live recording of it cost, on both splits — kept by hand, see :func:`recording_spend_text`)
-    is carried over.
+    and ``recording_budget_usd`` are carried over.
     """
     meta, source_meta = results["meta"], source["meta"]
     if condition in meta.get("conditions", []) and condition not in meta.get("added_conditions", {}):
@@ -235,6 +235,11 @@ def add_condition(
         "note": note,
         **({"earlier_recordings": earlier} if earlier else {}),
         **({"recording_spend": spend} if (spend := (replaced or {}).get("recording_spend")) else {}),
+        **(
+            {"recording_budget_usd": budget}
+            if (budget := (replaced or {}).get("recording_budget_usd")) is not None
+            else {}
+        ),
     }
     return recompute_metrics(merged, manifest_path)
 
@@ -274,7 +279,10 @@ def recording_spend_text(info: Mapping[str, Any]) -> str:
     ``recording_spend`` lists every live recording of the condition — both splits, replaced ones
     included — as ``{"split", "commit", "calls", "cost_usd"}`` (the API-equivalent cost the Claude CLI
     reported for its recorded answers). It is kept by hand: the replaced recordings are no longer in
-    the tree, so only the record says what they cost.
+    the tree, so only the record says what they cost. Smoke runs of a few letters were not recorded
+    and their cost is unknown, so the total is a lower bound. With ``recording_budget_usd`` (the budget
+    set for recording it, to stay well under) the text says plainly when the counted spend alone came
+    within a tenth of it: the budget was then not kept.
     """
     spend = info.get("recording_spend") or []
     if not spend:
@@ -284,10 +292,19 @@ def recording_spend_text(info: Mapping[str, Any]) -> str:
     for row in spend:
         by_split.setdefault(str(row.get("split")), []).append(f"${float(row.get('cost_usd') or 0):.2f}")
     parts = "; ".join(f"{split} {', '.join(costs)}" for split, costs in by_split.items())
-    return (
-        f"Recording it cost ${total:.2f} in all (API-equivalent): {len(spend)} live recordings, in order "
-        f"{parts}; smoke runs of a few letters are not counted."
+    text = (
+        f"Recording it cost at least ${total:.2f} (API-equivalent): {len(spend)} live recordings, in order "
+        f"{parts}, plus smoke runs of a few letters whose cost was not recorded."
     )
+    budget = info.get("recording_budget_usd")
+    if budget is None:
+        return text
+    if total >= 0.9 * float(budget):
+        return (
+            f"{text} The budget for recording it was ${float(budget):.2f}, to stay well under: the spend "
+            "reached it, and with the smoke runs may exceed it, so that budget was not kept."
+        )
+    return f"{text} The budget for recording it was ${float(budget):.2f}."
 
 
 def write_json(path: Path, data: Mapping[str, Any]) -> Path:
@@ -831,16 +848,18 @@ def _tool_section(results: Mapping[str, Any], rescored: Mapping[str, Any] | None
     tool_dated = by_backing["tool_date"] + by_backing["overrode_tool"]
     calls = ", ".join(f"`{name}` {count}" for name, count in use["calls_by_tool"].items()) or "none"
     per_letter = use["deadline_calls_per_letter"]
+    per_letter_text = "—" if per_letter is None else f"{per_letter:.2f}"
+    if per_letter is not None and "deadline_calls_on_dated_letters" in use:
+        per_letter_text += (
+            f" ({use['deadline_calls_on_dated_letters']} calls on {use['dated_letters']} letters)"
+        )
     rows = [
         [
             "Letters with a dated obligation where the model asked a date tool "
             "(`compute_deadline` or `add_working_days`)",
             rate(use["letters_with_date_tool_call"], ci=False, counts=True),
         ],
-        [
-            "`compute_deadline` calls per letter with a dated obligation",
-            f"{per_letter:.1f}" if per_letter is not None else "—",
-        ],
+        ["`compute_deadline` calls per letter with a dated obligation", per_letter_text],
         ["Tool calls, by tool", f"{use['calls']} ({calls})"],
         ["Calls the tool refused (invalid arguments)", str(use["refused_calls"])],
     ]
@@ -855,10 +874,12 @@ def _tool_section(results: Mapping[str, Any], rescored: Mapping[str, Any] | None
         )
     labels = {
         "tool_date": "Final date = a date the tools returned for that obligation",
-        "overrode_tool": "Final date ≠ the tools' dates for that obligation (the model overrode them)",
+        "overrode_tool": "Final date is none of the dates the tools returned for that obligation (the model "
+        "overrode them)",
         "other_obligation": "No tool date for that obligation; the tools answered about another one on the letter",
         "no_tool_date": "No date tool answered on that letter (the model dated it itself)",
     }
+    chosen = use.get("chose_among_differing_tool_dates")
     for backing, label in labels.items():
         accuracy = use["accuracy_by_backing"][backing]
         late = use["late_by_backing"][backing]
@@ -870,15 +891,31 @@ def _tool_section(results: Mapping[str, Any], rescored: Mapping[str, Any] | None
             else "0 items"
         )
         rows.append([label, detail])
+        if backing == "tool_date" and chosen is not None:
+            rows.append(
+                [
+                    "↳ the tools returned differing dates for it (asked again with other facts); the model "
+                    "chose one",
+                    _chosen_text(chosen),
+                ]
+            )
     table = _table(["Tool use (required items with a known date)", _label(TOOL_CONDITION)], rows)
     differs = use["final_differs_from_tool"]
     right = use["tool_returned_the_right_date"]
+    several = use.get("tool_dated_items_with_differing_dates", 0)
+    choice = (
+        f" (for {several} of them the tools returned differing dates, and it counts when one was right: "
+        f"which to answer with was the model's choice, a later one {chosen['chose_a_later_date']} "
+        f"{'time' if chosen['chose_a_later_date'] == 1 else 'times'})"
+        if several and chosen is not None
+        else ""
+    )
     paragraphs = [
         f"Where the date tools had answered for an obligation, the final date differed from their "
         f"answer for {_share(by_backing['overrode_tool'], tool_dated)}. Overrides that replaced a right "
         f"tool date with a wrong one: {use['overrides_breaking_a_right_tool_date']}; that replaced a "
         f"wrong tool date with the right one: {use['overrides_fixing_a_wrong_tool_date']}. The tools' "
-        f"own answer was right for {rate(right, ci=False, counts=True)} of these obligations: they "
+        f"own answer was right for {rate(right, ci=False, counts=True)} of these obligations{choice}: they "
         "compute exactly what they are given, so a wrong tool date comes from the arguments the model "
         "chose (its reading of the period, anchor, sender or region) or from one of Ordnung's documented "
         "earliest-plausible-date policies. Calls carry no item id: every date counts for an obligation "
@@ -924,6 +961,17 @@ trust them was its own choice.
 {table}
 
 """ + "\n\n".join(paragraphs)
+
+
+def _chosen_text(chosen: Mapping[str, int]) -> str:
+    """The row on items whose tools returned differing dates (``chose_among_differing_tool_dates``)."""
+    n = chosen["items"]
+    if not n:
+        return "0 items"
+    return (
+        f"{n} {'item' if n == 1 else 'items'} — a later one than the earliest: {chosen['chose_a_later_date']}; "
+        f"right {chosen['correct']}/{n}, late {chosen['late']}/{n}"
+    )
 
 
 def _family_section(results: Mapping[str, Any]) -> str:

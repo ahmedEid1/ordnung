@@ -14,8 +14,12 @@ prompt's text changed under the same version (the baselines' keys include their 
 
 Each (letter, condition) prediction is also cached in ``evals/results/cache/<run_id>/`` together
 with a fingerprint of the prompts (full text) and code it depends on, under a name that includes the
-letter's inputs (file hash, today, regions), so a rerun only redoes what changed or failed. Results go to ``evals/results/<YYYY-MM-DD>-<model>-<split>.json``; a full test-split run
-also regenerates ``docs/evals.md`` and its chart.
+letter's inputs (file hash, today, regions), so a rerun only redoes what changed or failed. Results go to ``evals/results/<YYYY-MM-DD>-<model>-<split>.json``; a complete,
+error-free live run of every condition on the test split also regenerates ``docs/evals.md`` and its
+chart. A run of some conditions never does (the page would lose the others' published rows): a
+condition recorded again after the published run (``llm_rules_tool``, :data:`RECORD_AGAIN`) joins it
+with ``python -m evals.report … --add-condition``, which keeps the held-out run's own conditions as
+they were.
 
 ``ordnung eval`` delegates here via :func:`run_cli`.
 """
@@ -133,6 +137,11 @@ class RunConfig:
     def partial(self) -> bool:
         """Entries were filtered: the run is not the whole split."""
         return bool(self.families or self.ids or self.limit is not None)
+
+    @property
+    def every_condition(self) -> bool:
+        """Every benchmark condition runs: a published page from fewer would drop the others' rows."""
+        return set(CONDITIONS) <= set(self.conditions)
 
     @property
     def date(self) -> str:
@@ -558,14 +567,16 @@ async def run_benchmark(
     finished = [run.results for run in outcome.runs if run.results is not None]
     write_docs = config.write_docs
     if write_docs is None:
-        # The published page only from a complete, error-free live run (--allow-errors scores
-        # missing answers as empty — fine for a look, not for docs/evals.md). A replay recomputes the
-        # numbers without touching the page, which may also show a re-scored run (evals.report
-        # --rescored); pass --docs to force it.
+        # The published page only from a complete, error-free live run of every condition
+        # (--allow-errors scores missing answers as empty — fine for a look, not for docs/evals.md; a
+        # run of some conditions joins the published run with evals.report --add-condition). A replay
+        # recomputes the numbers without touching the page, which may also show a re-scored run
+        # (evals.report --rescored); pass --docs to force it.
         write_docs = (
             config.live
             and config.split == "test"
             and not config.partial
+            and config.every_condition
             and outcome.ok
             and not any(run.errors for run in outcome.runs)
         )
@@ -578,6 +589,14 @@ async def run_benchmark(
 
 
 REPLAY_MISS = "no recorded response"
+#: How to record a condition added after the published run again, and publish it (docs never change
+#: on the recording itself: it runs one condition). Recording costs tokens: see ``docs/evals.md``.
+RECORD_AGAIN = (
+    "record it again with `python -m evals.run --live --split dev --conditions {condition}` and then "
+    "`--split test` (neither rewrites docs/evals.md), then add the test run to the published one: "
+    "`python -m evals.report evals/results/<run>.json --rescored evals/results/<run>-rescored.json "
+    "--add-condition {condition}=evals/results/<new run>.json --note <finding>.md`"
+)
 #: The only condition a gated replay may leave out: its replay key includes the rules tools' Python
 #: docstrings and schemas, which change with the code. The published baselines' prompts are files
 #: that must not change unnoticed, so their misses still fail the gate.
@@ -601,7 +620,7 @@ def _leave_out_unrecorded(run: ModelRun, say: Progress) -> None:
         say(
             f"warning: {run.model}: {condition} has no recorded answer for {count} letter(s) — its prompt "
             "or tool definitions changed since it was recorded. It is left out of this gated run (the gate "
-            f"checks Ordnung only); record it again with --live --conditions {condition}."
+            f"checks Ordnung only); {RECORD_AGAIN.format(condition=condition)}."
         )
         del run.predictions[condition]
     run.left_out = sorted(missing)
@@ -782,11 +801,10 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
         _stderr(line)
     failures = gate_failures(outcome, min_accuracy=ns.min_accuracy, max_dangerous_late=ns.max_dangerous_late)
     for run in outcome.runs:
-        if run.left_out:
-            names = " ".join(run.left_out)
+        for condition in run.left_out:
             _stderr(
-                f"warning: {run.model}: left out of the gate, recorded answers missing: {names} "
-                f"(record again with --live --conditions {names})"
+                f"warning: {run.model}: left out of the gate, recorded answers missing: {condition} — "
+                f"{RECORD_AGAIN.format(condition=condition)}"
             )
     for line in failures:
         _stderr(f"threshold missed: {line}")
