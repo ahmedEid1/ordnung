@@ -31,7 +31,13 @@ from ordnung.clock import now_iso
 from ordnung.db.store import NotFoundError, Store
 from ordnung.drafts import templates
 from ordnung.drafts.checks import CheckContext, run_checks
-from ordnung.drafts.template_letters import TEMPLATES, TemplateError, TemplateInput, template_letter
+from ordnung.drafts.template_letters import (
+    ADDRESS_FRAMES,
+    TEMPLATES,
+    TemplateError,
+    TemplateInput,
+    template_letter,
+)
 from ordnung.drafts.templates import STATUTORY_REMEDIES, LetterLanguage, LetterParts, RemedyKind
 from ordnung.ids import content_id, new_id
 from ordnung.llm.base import ClaudeBadOutput, LLMError, LLMRequest, LLMResponse, ReplayMiss
@@ -63,6 +69,7 @@ from ordnung.rules.advice import billing_period_text
 from ordnung.rules.consumer import long_withdrawal_end
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.review import language_name, split_sentences, stable_hash, untrusted_json
+from ordnung.secretary.scam import ibans_in_text, normalize_iban
 from ordnung.secretary.triggers import Ledger, contract_area, contract_computation, parse_day, postal_buffer
 from ordnung.tick import local_today
 
@@ -505,16 +512,29 @@ def _earliest_due(items: list[Item]) -> date | None:
     return min(days) if days else None
 
 
+#: Financial services keep the right to withdraw past twelve months when the instructions were missing
+#: (§ 356 Abs. 4 S. 2 BGB), so an expired right is only ever "most likely" expired.
+_FINANCIAL_SERVICES = "(Contracts for financial services, such as loans or insurance, follow other rules.)"
+
+
 def _withdrawal_due(details: LetterDetails, profile: Profile, today: date) -> tuple[date | None, list[str]]:
     """The last day to send a withdrawal (§§ 355, 356 BGB) and notes on it, from when the goods came or
-    the contract was made; ``None`` without either date."""
+    the contract was made; ``None`` without either date. A right that has most likely run out is said
+    to have, with the exception for financial services, instead of a date in the past as a deadline."""
     start = parse_day(details.received_on) or parse_day(details.ordered_on)
     if start is None:
         return None, [
             "Add when you ordered or received it: Ordnung then shows how long you can withdraw (usually 14 days)."
         ]
+    end, _ = long_withdrawal_end(start)
+    expired = (
+        f"Even without proper instructions, the right to withdraw ended on {fmt_date(end)} at the latest (12 months "
+        f"and 14 days, § 356 Abs. 4 BGB), so it has most likely expired. {_FINANCIAL_SERVICES} Get advice before "
+        "you send it."
+    )
     if details.instructions_missing:
-        end, _ = long_withdrawal_end(start)
+        if end < today:
+            return end, [expired]
         return end, [
             f"Without proper instructions on the right to withdraw, it lasts until {fmt_date(end)} at the latest "
             "(12 months and 14 days, § 356 Abs. 4 BGB). Sending it in time is enough."
@@ -532,7 +552,8 @@ def _withdrawal_due(details: LetterDetails, profile: Profile, today: date) -> tu
     due = parse_day(receipt.due_date)
     if due is None or due >= today:
         return due, [receipt.summary] if due else []
-    end, _ = long_withdrawal_end(start)
+    if end < today:
+        return due, [f"The 14 days ended on {fmt_date(due)}. {expired}"]
     return due, [
         f"The 14 days ended on {fmt_date(due)}. If you were never properly told about the right to withdraw, "
         f"it lasts until {fmt_date(end)} — tick that option; otherwise get advice before you send it."
@@ -638,25 +659,79 @@ class Written:
     failure: str | None = None
 
 
-def private_values(sources: Sources, details: LetterDetails) -> tuple[tuple[str, str], ...]:
+Private = tuple[tuple[str, str], ...]
+_ADDRESS_LABELS = ("your address", "your new address", "your old address")
+
+
+def private_values(sources: Sources, details: LetterDetails) -> Private:
     """The person's addresses and IBAN, which template letters may contain but the model never sees
-    (docs/privacy.md: "your address is never sent"), each with the placeholder that replaces it."""
-    found: list[tuple[str, str]] = []
-    if sources.profile.iban:
-        found.append((sources.profile.iban, "[your IBAN]"))
-    for text in (sources.profile.address, details.new_address, details.old_address):
+    (docs/privacy.md: "your address and IBAN are never sent"), each with its own placeholder, so an
+    answer that repeats a placeholder can be given the value back (:func:`_unmasked`). Longest values
+    first, so a whole address is replaced before its lines."""
+    found: dict[str, str] = {}
+    iban = normalize_iban(sources.profile.iban)
+    if iban:
+        found[iban] = "[your IBAN]"
+        found.setdefault(" ".join(iban[start : start + 4] for start in range(0, len(iban), 4)), "[your IBAN]")
+    for label, text in zip(
+        _ADDRESS_LABELS, (sources.profile.address, details.new_address, details.old_address), strict=True
+    ):
         lines = address_lines(text)
-        found.extend((value, "[your address]") for value in (", ".join(lines), *lines) if value)
-    return tuple(sorted(set(found), key=lambda pair: -len(pair[0])))
+        if lines:
+            found.setdefault(", ".join(lines), f"[{label}]")
+        if len(lines) > 1:
+            for number, line in enumerate(lines, 1):
+                found.setdefault(line, f"[{label}, line {number}]")
+    return _longest_first(found)
 
 
-def _masked(text: str, private: tuple[tuple[str, str], ...]) -> str:
+def _longest_first(found: dict[str, str]) -> Private:
+    return tuple(sorted(found.items(), key=lambda pair: (-len(pair[0]), pair[0])))
+
+
+def letter_private_values(draft: Draft, sources: Sources) -> Private:
+    """:func:`private_values` for a stored letter, whose template facts weren't kept: the profile's
+    address and IBAN, the sender block's address, every valid IBAN in the letter and the addresses the
+    template sentences carry (:data:`~ordnung.drafts.template_letters.ADDRESS_FRAMES`)."""
+    found = dict(private_values(sources, LetterDetails()))
+    for number, line in enumerate(draft.sender_block.splitlines()[1:], 1):
+        if line.strip():
+            found.setdefault(line.strip(), f"[your address, line {number}]")
+    text = f"{draft.subject}\n{draft.body}"
+    others = 0
+    for iban in ibans_in_text(text):
+        if iban not in found:
+            others += 1
+            found[iban] = f"[IBAN {others}]"
+        grouped = " ".join(iban[start : start + 4] for start in range(0, len(iban), 4))
+        found.setdefault(grouped, found[iban])
+    addresses = 0
+    for match in ADDRESS_FRAMES.finditer(text):
+        value = next(group for group in match.groups() if group).strip()
+        if value and value not in found:
+            addresses += 1
+            found[value] = f"[an address {addresses}]"
+    return _longest_first(found)
+
+
+def _masked(text: str, private: Private) -> str:
     for value, placeholder in private:
         text = text.replace(value, placeholder)
     return text
 
 
-def _parts_payload(parts: LetterParts, private: tuple[tuple[str, str], ...] = ()) -> dict[str, object]:
+def _unmasked(text: str, private: Private) -> str:
+    """The model's text with the values its placeholders stand for (the letter shows real values; an
+    IBAN masked in two spellings comes back without spaces)."""
+    values: dict[str, str] = {}
+    for value, placeholder in reversed(private):  # shortest first
+        values.setdefault(placeholder, value)
+    for placeholder, value in values.items():
+        text = re.compile(re.escape(placeholder), re.I).sub(value.replace("\\", "\\\\"), text)
+    return text
+
+
+def _parts_payload(parts: LetterParts, private: Private = ()) -> dict[str, object]:
     return {
         "subject": _masked(parts.subject, private),
         "salutation": parts.salutation,
@@ -788,6 +863,16 @@ def _single_lines(values: list[str], *, limit: int, max_chars: int) -> tuple[str
 
 
 def _written_from(output: DraftOutput, plan: Plan, signer: str) -> Written:
+    """The model's answer as the letter uses it, with the person's values back where it repeated a
+    placeholder (:func:`private_values`)."""
+    output = output.model_copy(
+        update={
+            "subject": _unmasked(output.subject, plan.private),
+            "body": _unmasked(output.body, plan.private),
+            "body_translation": _unmasked(output.body_translation, plan.private),
+            "notes_for_user": [_unmasked(note, plan.private) for note in output.notes_for_user],
+        }
+    )
     paragraphs, removed = free_paragraphs(output.body, signer=signer)
     if plan.language == "de" and not plan.letter.paragraphs and paragraphs:
         paragraphs[0] = _lowercase_start(paragraphs[0])
@@ -1083,9 +1168,12 @@ def refresh_checks(store: Store, draft_id: str, *, channel: str | None = None) -
 # --------------------------------------------------------------------------------------------------
 
 
-def translation_request(draft: Draft, sources: Sources, target: str, settings: AppSettings) -> LLMRequest:
-    """The ``draft`` model call that only translates the letter as it stands (subject and text)."""
-    letter = {"subject": draft.subject, "text": draft.body}
+def translation_request(
+    draft: Draft, sources: Sources, target: str, settings: AppSettings, private: Private = ()
+) -> LLMRequest:
+    """The ``draft`` model call that only translates the letter as it stands (subject and text), with
+    the person's addresses and IBAN replaced by placeholders (``private``: :func:`letter_private_values`)."""
+    letter = {"subject": _masked(draft.subject, private), "text": _masked(draft.body, private)}
     system_version, system = render("draft_translate_system")
     version, prompt = render(
         "draft_translate",
@@ -1140,13 +1228,15 @@ async def retranslate(ctx: AppContext, draft_id: str) -> Draft:
         raise DraftError("This letter is already in your language, so there is nothing to translate.")
     if not draft.body.strip():
         raise DraftError("The letter is empty — write it first, then translate it.")
-    request = translation_request(draft, sources, target, ctx.settings)
+    private = letter_private_values(draft, sources)
+    request = translation_request(draft, sources, target, ctx.settings, private)
     response = await ctx.llm.complete(request)
     text = _translation_text(response)
     if not text and response.cache_hit:  # an unusable answer from the cache: ask afresh once
         text = _translation_text(await ctx.llm.complete(request, use_cache=False))
     if not text:
         raise ClaudeBadOutput("The translation couldn't be read. Please try again.")
+    text = _unmasked(text, private)
     with store.tx():
         updated = store.update_draft(draft_id, body_translation=text)
         store.log_activity(

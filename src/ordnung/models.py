@@ -6,9 +6,10 @@ database, the API and the LLM outputs. Timestamps are ISO-8601 UTC strings.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from datetime import date
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 # --------------------------------------------------------------------------------------------------
 # Enums
@@ -554,32 +555,44 @@ class Draft(_Model):
     updated_at: str
 
 
+def _iso_day(value: str) -> str:
+    try:
+        return date.fromisoformat(value.strip()).isoformat()
+    except ValueError as exc:
+        raise ValueError(f"“{value}” is not a date; use the form YYYY-MM-DD.") from exc
+
+
+#: A ``YYYY-MM-DD`` day (validated and normalised).
+IsoDay = Annotated[str, AfterValidator(_iso_day)]
+
+
 class LetterDetails(_Model):
     """Facts a template letter needs besides the letter, contract or person it is about.
 
     Everything is optional here; each template names the facts it requires
-    (:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD``, amounts in euros.
+    (:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused
+    with a clear message, never a server error), amounts in euros.
     """
 
     subject_matter: str | None = Field(
         default=None, max_length=200, description="what was ordered or agreed, e.g. 'Kaffeemaschine'"
     )
-    ordered_on: str | None = Field(default=None, description="the day the contract was concluded")
-    received_on: str | None = Field(default=None, description="the day the goods arrived")
+    ordered_on: IsoDay | None = Field(default=None, description="the day the contract was concluded")
+    received_on: IsoDay | None = Field(default=None, description="the day the goods arrived")
     instructions_missing: bool = Field(
         default=False, description="no (or wrong) instructions about the right of withdrawal were given"
     )
-    deadline: str | None = Field(default=None, description="the deadline that should be extended")
-    until: str | None = Field(default=None, description="the new date asked for")
+    deadline: IsoDay | None = Field(default=None, description="the deadline that should be extended")
+    until: IsoDay | None = Field(default=None, description="the new date asked for")
     amount: float | None = Field(default=None, ge=0, description="the total owed, or the deposit")
     instalment: float | None = Field(default=None, gt=0, description="the monthly instalment offered")
-    first_instalment: str | None = Field(default=None, description="the day of the first instalment")
+    first_instalment: IsoDay | None = Field(default=None, description="the day of the first instalment")
     defect: str | None = Field(default=None, max_length=1000, description="what is broken or wrong")
-    noticed_on: str | None = Field(default=None, description="since when the defect exists")
-    fix_by: str | None = Field(default=None, description="the day by which it should be repaired")
+    noticed_on: IsoDay | None = Field(default=None, description="since when the defect exists")
+    fix_by: IsoDay | None = Field(default=None, description="the day by which it should be repaired")
     period: str | None = Field(default=None, max_length=80, description="the billing period")
-    moved_out_on: str | None = Field(default=None, description="the day the flat was handed back")
-    moved_on: str | None = Field(default=None, description="the day of the move")
+    moved_out_on: IsoDay | None = Field(default=None, description="the day the flat was handed back")
+    moved_on: IsoDay | None = Field(default=None, description="the day of the move")
     old_address: str | None = Field(default=None, max_length=300)
     new_address: str | None = Field(default=None, max_length=300)
     recipient: str | None = Field(

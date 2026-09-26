@@ -39,6 +39,7 @@ from ordnung.ingest.intake import (
 )
 from ordnung.ingest.link import DUNNING_ITEM_NOTE
 from ordnung.ingest.pipeline import add_file, ledger_lock, reprocess
+from ordnung.ingest.plan import KIND_CHOSEN
 from ordnung.llm.replay import ReplayBackend
 from ordnung.models import (
     HIGH_STAKES_KINDS,
@@ -388,6 +389,15 @@ async def update_document(doc_id: str, patch: DocumentPatch, ctx: CtxDep, today:
         return document
     async with ledger_lock():
         changed = await asyncio.to_thread(recompute_document_items, ctx.store, document, today)
+    if kind_changed:
+        # a kind the person chose is kept when the letter is read again (ingest.plan.corrections)
+        ctx.store.log_activity(
+            KIND_CHOSEN,
+            f"You filed “{document.title or document.filename}” as “{(document.kind or 'other').replace('_', ' ')}”",
+            ref_type="document",
+            ref_id=doc_id,
+            data={"kind": document.kind, "was": before.kind if before else None},
+        )
     if "received_date" in changes and document.received_date:
         ctx.store.log_activity(
             "document.received_date",

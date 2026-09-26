@@ -14,13 +14,23 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
 from fixtures_llm import iban
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.drafts import templates
 from ordnung.drafts.checks import unknown_citations
-from ordnung.drafts.compose import DraftError, compose, mark_sent
+from ordnung.drafts.compose import (
+    DraftError,
+    Sources,
+    _masked,
+    _unmasked,
+    compose,
+    letter_private_values,
+    mark_sent,
+    retranslate,
+)
 from ordnung.drafts.template_letters import (
     IBAN_PLACEHOLDER,
     TEMPLATES,
@@ -351,8 +361,14 @@ def test_missing_and_invalid_facts() -> None:
     assert missing_facts("data_access", _inp()) == []
     with pytest.raises(TemplateError, match="add what is broken or wrong"):
         template_letter("defect_notice", "de", _inp())
+    # LetterDetails refuses such a date already; the template refuses it too, should one get through
+    with pytest.raises(ValidationError, match="use the form YYYY-MM-DD"):
+        _inp(subject_matter="Abo", ordered_on="gestern")
+    unchecked = TemplateInput(
+        details=LetterDetails.model_construct(subject_matter="Abo", ordered_on="gestern")
+    )
     with pytest.raises(TemplateError, match="is not a date"):
-        template_letter("withdrawal", "de", _inp(subject_matter="Abo", ordered_on="gestern"))
+        template_letter("withdrawal", "de", unchecked)
 
 
 def test_format_money() -> None:
@@ -475,6 +491,30 @@ async def test_withdrawal_draft_shows_the_period(ctx: AppContext, ids: dict[str,
     )
     assert any("12 months and 14 days" in note for note in long.notes_for_user)
 
+    # received 10 Jan 2025: even the 12 months and 14 days (24 Jan 2026) are over by 28 Sep 2026
+    expired = await compose(
+        ctx,
+        "withdrawal",
+        party_id=ids["shop"],
+        details=LetterDetails(subject_matter="Abo", received_on="2025-01-10", instructions_missing=True),
+    )
+    [note] = [note for note in expired.notes_for_user if "12 months and 14 days" in note]
+    assert "ended on Sat 24 Jan 2026 at the latest" in note and "most likely expired" in note
+    assert "financial services" in note and "at the latest (12" not in note.split("ended")[0]
+    assert expired.send_guidance is not None and expired.send_guidance.send_by is None
+    tip = expired.send_guidance.tips[0]
+    assert "ended on Sat 24 Jan 2026" in tip and "14 days" not in tip and "comes too late" in tip
+    expired_unticked = await compose(
+        ctx,
+        "withdrawal",
+        party_id=ids["shop"],
+        details=LetterDetails(subject_matter="Abo", received_on="2025-01-10"),
+    )
+    assert any(
+        "The 14 days ended" in note and "most likely expired" in note and "tick that option" not in note
+        for note in expired_unticked.notes_for_user
+    )
+
     undated = await compose(
         ctx, "withdrawal", party_id=ids["shop"], details=LetterDetails(subject_matter="Abo")
     )
@@ -555,7 +595,7 @@ async def test_template_letters_refuse_what_they_cant_write(ctx: AppContext, ids
             ctx,
             "withdrawal",
             party_id=ids["shop"],
-            details=LetterDetails(subject_matter="x", received_on="soon"),
+            details=LetterDetails.model_construct(subject_matter="x", received_on="soon"),
         )
 
 
@@ -584,6 +624,18 @@ async def test_api_drafts_a_template_letter_and_explains_what_is_missing(data_di
         assert bad.status_code == 422
 
 
+@pytest.mark.parametrize("field", ["deadline", "until", "received_on", "moved_out_on", "fix_by"])
+async def test_a_date_that_isnt_iso_is_refused_not_a_server_error(data_dir: Path, field: str) -> None:
+    """A German date typed by an API or MCP caller ("31.10.2026") used to crash the extension request
+    with a 500; every date in the details is now checked the same way."""
+    async with api_for(data_dir) as api:
+        party = api.ctx.store.add_party(name="Finanzamt Musterstadt", kind="tax_office").id
+        body = {"kind": "extension_request", "party_id": party, "details": {field: "31.10.2026"}}
+        response = await api.client.post("/api/drafts", json=body)
+        assert response.status_code == 422, response.text
+        assert "use the form YYYY-MM-DD" in response.text
+
+
 async def test_profile_iban_is_validated_and_normalised(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         spaced = " ".join(MY_IBAN[i : i + 4] for i in range(0, len(MY_IBAN), 4)).lower()
@@ -597,16 +649,22 @@ async def test_profile_iban_is_validated_and_normalised(data_dir: Path) -> None:
 
 
 async def test_the_model_never_sees_the_persons_address_or_iban(data_dir: Path) -> None:
-    """docs/privacy.md: your address is never sent — template letters that contain it (and the IBAN)
-    reach the model with placeholders; the letter itself keeps them."""
+    """docs/privacy.md: your address and IBAN are never sent — template letters that contain them reach
+    the model with placeholders, when drafted and when translated again; the letter and its translation
+    show the real values."""
     seen: list[str] = []
 
     def answer(req: LLMRequest) -> dict[str, Any]:
         seen.append(req.prompt)
+        if "body_translation" in req.schema_.get("required", []) and "body" not in req.schema_.get(
+            "properties", {}
+        ):
+            # translating again: the model repeats the placeholders it was given
+            return {"body_translation": "Please transfer the deposit to [your IBAN]; flat at [an address 1]."}
         return {
             "subject": "",
             "body": "Vielen Dank.",
-            "body_translation": "",
+            "body_translation": "Please settle the deposit and transfer it to [Your IBAN] — flat [your old address].",
             "enclosures": [],
             "notes_for_user": [],
         }
@@ -630,15 +688,54 @@ async def test_the_model_never_sees_the_persons_address_or_iban(data_dir: Path) 
         )
         moved = await compose(context, "address_change", party_id=landlord, details=LetterDetails())
         assert MY_IBAN in deposit.body and "Altweg 1" in deposit.body and "Beispielweg 5" in moved.body
-        assert len(seen) == 2
+        # the first translation shows the values the model only saw as placeholders
+        assert f"transfer it to {MY_IBAN}" in deposit.body_translation
+        assert "flat Altweg 1, 12345 Musterstadt" in deposit.body_translation
+        assert "[your" not in deposit.body_translation.lower()
+        retranslated = await retranslate(context, deposit.id)
+        assert len(seen) == 3
         for prompt in seen:
             for private in (MY_IBAN, "Beispielweg 5", "Altweg 1", "12345 Musterstadt"):
                 assert private not in prompt
-            assert "[your address]" in prompt
-        assert "[your IBAN]" in seen[0]
+        assert "[your IBAN]" in seen[0] and "[your old address]" in seen[0] and "[your address]" in seen[1]
+        assert "[your IBAN]" in seen[2] and "[an address 1]" in seen[2]  # the typed old address, too
+        assert retranslated.body_translation == (
+            f"Please transfer the deposit to {MY_IBAN}; flat at Altweg 1, 12345 Musterstadt."
+        )
     finally:
         context.close()
         clock.set_today(None)
+
+
+def test_a_stored_letters_private_values() -> None:
+    """Translating again has no template facts: the profile, the sender block, every valid IBAN and
+    the addresses the template sentences carry are masked (German and English letters)."""
+    other = iban("DE", "370400440532013000")
+    sources = Sources(profile=Profile(name="Sam", address="Beispielweg 5, 12345 Musterstadt", iban=MY_IBAN))
+    for body in (
+        "hiermit zeige ich Ihnen einen Mangel in meiner Wohnung Altweg 1, 12345 Musterstadt an: kaputt\n\n"
+        f"Meine neue Anschrift lautet: Neue Str. 5, 10115 Berlin.\nKonto {other[:4]} {other[4:8]} {other[8:12]} "
+        f"{other[12:16]} {other[16:20]} {other[20:]}",
+        "I hereby notify you of a defect in my flat at Altweg 1, 12345 Musterstadt: broken\n\n"
+        f"My new address is: Neue Str. 5, 10115 Berlin.\nAccount {other}",
+    ):
+        draft = Draft(
+            id="drf_1",
+            kind="defect_notice",
+            sender_block="Sam\nBeispielweg 5\n12345 Musterstadt",
+            subject="Mängelanzeige – Wohnung Altweg 1, 12345 Musterstadt – Nr. 7",
+            body=body,
+            created_at="2026-09-28T10:00:00",
+            updated_at="2026-09-28T10:00:00",
+        )
+        private = letter_private_values(draft, sources)
+        masked = _masked(f"{draft.subject}\n{draft.body}", private)
+        for value in ("Altweg 1", "Neue Str. 5", "10115 Berlin", "Beispielweg 5", other, other[:4] + " "):
+            assert value not in masked
+        assert "Nr. 7" in masked and ("kaputt" in masked or "broken" in masked)
+        assert _unmasked(masked, private).replace(" ", "") == f"{draft.subject}\n{draft.body}".replace(
+            " ", ""
+        )
 
 
 async def test_a_template_letter_to_someone_not_in_ordnung_yet(ctx: AppContext, ids: dict[str, str]) -> None:

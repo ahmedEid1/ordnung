@@ -429,18 +429,32 @@ def _read_facts(extraction: DocumentExtraction) -> dict[str, Any]:
     }
 
 
-def corrections(document: Document, previous: DocumentExtraction | None) -> dict[str, Any]:
+#: The activity entry that records a kind the person chose for a letter (``data["kind"]``).
+KIND_CHOSEN = "document.kind"
+
+
+def corrections(
+    document: Document, previous: DocumentExtraction | None, *, chosen_kind: str | None = None
+) -> dict[str, Any]:
     """The letter facts the person corrected: those that differ from the model's last reading (its
-    kind as code files it). A letter filed before Ordnung knew a high-stakes kind therefore keeps
-    its kind when it is read again; the person can set the kind by hand.
+    kind as code files it).
+
+    The kind is a correction only when the person chose it (``chosen_kind``, from the
+    :data:`KIND_CHOSEN` activity entry) or when it is neither the kind code files the reading as nor
+    the model's own kind. A letter filed by an older Ordnung under the model's kind (a Mahnbescheid as
+    ``dunning``) therefore gets its high-stakes kind when it is read again, and a kind the person picked
+    on the letter's page — even the model's own — is kept.
     """
     if previous is None:
         return {}
-    return {
+    found = {
         name: getattr(document, name)
         for name, value in _read_facts(previous).items()
         if getattr(document, name) != value
     }
+    if "kind" in found and document.kind != chosen_kind and document.kind == previous.kind:
+        del found["kind"]
+    return found
 
 
 def with_corrections(extraction: DocumentExtraction, corrected: dict[str, Any]) -> DocumentExtraction:

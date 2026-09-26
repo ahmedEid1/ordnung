@@ -13,6 +13,7 @@ a deposit letter, which is left as the placeholder ``[IBAN]`` so the checks ask 
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date
 
@@ -390,6 +391,17 @@ def _address(language: LetterLanguage, inp: TemplateInput) -> LetterParts:
         paragraphs.append("Please send your post to my new address from now on.")
         subject = _dash("Change of address", inp.reference)
     return LetterParts(subject, salutation(language, inp.person_name), tuple(paragraphs), closing(language))
+
+
+#: Where the sentences above write an address (the flat, the new and the old address), so a stored letter's
+#: addresses can be kept from the model when it is translated again (``compose.letter_private_values``).
+ADDRESS_FRAMES = re.compile(
+    r"(?:meiner Wohnung|über die Wohnung|in my flat at|of the flat at) (?P<address>[^\n]+?)"
+    r"(?= an:| ist beendet;| has ended;|: )|"
+    r"(?:Anschrift lautet|Anschrift war|new address is|previous address was): (?P<line>[^\n]+?)\.?$|"
+    r"– (?:Wohnung|flat at) (?P<subject>[^\n–]+?)(?= –|$)",
+    re.M,
+)
 
 
 _BUILDERS = {

@@ -45,6 +45,7 @@ from ordnung.ingest.intake import (
 )
 from ordnung.ingest.link import ensure_party, link_document
 from ordnung.ingest.plan import (
+    KIND_CHOSEN,
     PlanResult,
     Verification,
     compute_item,
@@ -412,7 +413,12 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
     """
     with store.tx():
         full_text = store.get_document_text(data.document.id)
-        corrected = corrections(data.document, store.get_extraction(data.document.id))
+        chosen = store.last_activity("document", data.document.id, [KIND_CHOSEN])
+        corrected = corrections(
+            data.document,
+            store.get_extraction(data.document.id),
+            chosen_kind=chosen.data.get("kind") if chosen else None,
+        )
         reading = with_corrections(data.extraction, corrected)
         reading = reading.model_copy(update={"payment": payment_details(reading.payment, full_text)})
         kind = filed_kind(reading, corrected)

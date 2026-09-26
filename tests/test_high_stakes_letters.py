@@ -198,10 +198,29 @@ async def test_correcting_the_kind_reroutes_the_dates(data_dir: Path) -> None:
         detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
         assert detail["advice"] is None
 
-        # re-reading keeps the person's correction
+        activity = (await api.client.get("/api/activity")).json()
+        assert any(
+            entry["kind"] == "document.kind" and entry["data"]["kind"] == "authority_letter"
+            for entry in activity
+        )
+
+        # re-reading keeps the person's correction, although it is the model's own kind
         await api.client.post(f"/api/documents/{doc_id}/reprocess")
         await api.read_all()
         assert (api.ctx.store.get_document(doc_id) or pytest.fail()).kind == "authority_letter"
+
+
+async def test_a_letter_filed_before_ordnung_knew_its_kind_gets_it_when_read_again(data_dir: Path) -> None:
+    """An older Ordnung filed a Mahnbescheid under the model's kind. That is no correction by the
+    person, so "Read again" files it as a court order with its card and its rule to-do."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, MAHNBESCHEID)
+        api.ctx.store.update_document(doc_id, kind="authority_letter")  # as an older version stored it
+        await api.client.post(f"/api/documents/{doc_id}/reprocess")
+        await api.read_all()
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "court_payment_order"
+        assert detail["advice"] is not None and detail["advice"]["urgent"]
 
 
 async def test_a_dismissal_gets_the_deadlines_the_law_adds(data_dir: Path) -> None:
@@ -295,4 +314,11 @@ def test_a_kind_the_person_chose_is_a_correction() -> None:
     assert corrections(filed, reading) == {}
     # the person's choice wins, even when it is the model's own kind
     for chosen in ("dunning", "authority_letter"):
-        assert corrections(filed.model_copy(update={"kind": chosen}), reading) == {"kind": chosen}
+        kind_set = filed.model_copy(update={"kind": chosen})
+        assert corrections(kind_set, reading, chosen_kind=chosen) == {"kind": chosen}
+    # a kind that is neither Ordnung's nor the model's was set by the person (an older API call)
+    assert corrections(filed.model_copy(update={"kind": "dunning"}), reading) == {"kind": "dunning"}
+    # the model's own kind, filed by an older Ordnung, is no correction: reading again reclassifies
+    old = filed.model_copy(update={"kind": "authority_letter"})
+    assert corrections(old, reading) == {}
+    assert corrections(old, reading, chosen_kind="dismissal") == {}  # an earlier choice, since changed
