@@ -1,0 +1,80 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"80126615c4a204ecaa4d0fd389d644fb1c0bf07d601acb0fa13324092809a608\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2025-12-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-municipal_decision-B1"
+    ],
+    "prompt_head": "Today is Thursday, 2025-12-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Landratsamt Beispielkreis\",\"document_date\":\"2025-12-02\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32-1415.3/2025-118\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of exemption permit\",\"quote\":\"Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Widerspruch einlegen.\",\"computation\":\"Letter dated Tue 2 Dec 2025; under § 41 Abs. 2 VwVfG an authority's posted letter counts as delivered on the 4th day after posting, i.e. Sat 6 Dec 2025 (this day does not shift for weekends). Under § 187 Abs. 1 BGB the one-month period starts the next day; under § 188 Abs. 2 BGB it ends one month later on Tue 6 Jan 2026. That day is a public holiday (Heilige Drei Könige, observed in Bayern), so under § 31 Abs. 3 VwVfG the deadline moves to the next business day, Wed 7 Jan 2026.\",\"due_date\":\"2026-01-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Landratsamt Beispielkreis",
+      "document_date": "2025-12-02",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32-1415.3/2025-118"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of exemption permit",
+          "quote": "Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Widerspruch einlegen.",
+          "computation": "Letter dated Tue 2 Dec 2025; under § 41 Abs. 2 VwVfG an authority's posted letter counts as delivered on the 4th day after posting, i.e. Sat 6 Dec 2025 (this day does not shift for weekends). Under § 187 Abs. 1 BGB the one-month period starts the next day; under § 188 Abs. 2 BGB it ends one month later on Tue 6 Jan 2026. That day is a public holiday (Heilige Drei Könige, observed in Bayern), so under § 31 Abs. 3 VwVfG the deadline moves to the next business day, Wed 7 Jan 2026.",
+          "due_date": "2026-01-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1244,
+      "cache_read_tokens": 14941,
+      "cache_creation_tokens": 4989,
+      "cost_usd": 0.0353922,
+      "duration_ms": 13013,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "document_date": "2025-12-02",
+          "sender_kind": "authority",
+          "sender_name": "Landratsamt Beispielkreis",
+          "region": "BY",
+          "recipient_region": "BY",
+          "remedy_type": "widerspruch",
+          "today": "2025-12-04",
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "Art. 13 Abs. 3 BayWaldG, §§ 68 ff. VwGO",
+            "text": "Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Widerspruch einlegen."
+          }
+        },
+        "result": "{\"due_date\":\"2026-01-07\",\"weekday\":\"Wednesday\",\"send_by\":\"2025-12-30\",\"summary\":\"Letter dated Tue 2 Dec 2025 counts as delivered on Sat 6 Dec (this day does not move for this kind of letter); one month later is Tue 6 Jan 2026, a public holiday, Heilige Drei Könige, so the deadline moves to Wed 7 Jan 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Posting day: Tue 2 Dec 2025 (the letter's date; the real posting day can only be later)\",\"date\":\"2025-12-02\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Sat 6 Dec 2025\",\"date\":\"2025-12-06\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"For general administrative letters this day does not move, even though it is a Saturday\",\"date\":\"2025-12-06\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"Counting starts the day after Sat 6 Dec 2025\",\"date\":\"2025-12-06\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Tue 6 Jan 2026\",\"date\":\"2026-01-06\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 6 Jan 2026 is a public holiday, Heilige Drei Könige, so the deadline moves to Wed 7 Jan 2026\",\"date\":\"2026-01-07\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Tue 30 Dec 2025 to allow 4 business days for a letter to arrive\",\"date\":\"2025-12-30\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"vwvfg_41_2\",\"title\":\"Authority letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__41.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-12-04\",\"letter_date\":\"2025-12-02\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Bayern\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

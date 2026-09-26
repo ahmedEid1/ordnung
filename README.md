@@ -202,15 +202,15 @@ model Sonnet, 95 % bootstrap intervals.
 | LLM + rules text | 92.9 % [83.9–100] | 0 % |
 | **Ordnung**, held-out run | 89.3 % [78.9–96.7] | **0 %** |
 | **Ordnung**, after fixing the gap that run found² | 98.2 % [94.5–100] | **0 %** |
-| LLM + rules tool, run a day later with the fixed engine³ | 98.2 % [94.5–100] | 0 % |
+| LLM + rules tool, run later with the fixed engine³ | 100 % [91.8–100] | 0 % |
 
-<p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy on the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %, LLM + rules tool 98 % (run later with the fixed engine, on which Ordnung scores 98 %), with 95 % confidence intervals, for all letters, text PDFs and phone photos"></p>
+<p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
 
 ¹ The predicted date is after the real deadline, so the person would act too late.
 ² A code-only fix, scored on the same recorded model outputs. The test split informed it, so this
 row is no longer held-out.
 ³ Not tuned on anything, but it calls the engine as fixed after the held-out run, so compare it with
-the row above it.
+the row above it (the chart puts the two side by side).
 
 What the numbers say:
 
@@ -227,10 +227,12 @@ What the numbers say:
   law instead of social law. With that fixed, the same outputs score 98.2 %. The sixth is a
   deliberate choice to count from the earliest safe date.
 - **Given the engine as a tool, the model gets the law right too.** With Ordnung's engine as MCP
-  tools, the same model scored 98.2 % (+16.1 points over LLM only, 95 % interval +4.8 to +27.5),
-  as accurate as the pipeline. So the case for the pipeline is not accuracy: the agent decided
-  itself when to call the tool (it did not for 16 dates) and once overrode it, its quotes are not
-  checked against the page, and its dates carry no stored receipt.
+  tools, the same model got all 56 dates right (+17.9 points over LLM only, 95 % interval +7.5 to
+  +28.6), level with the fixed pipeline within noise. It asked the tool on 41 of 53 letters and
+  dated the rest, all printed dates, itself. So the case for the pipeline is not accuracy: the
+  agent decides for itself when to ask and what to pass (an earlier recording once overrode the
+  tool with a wrong date), its quotes are not checked against the page, and its dates carry no
+  stored receipt.
 - **Accuracy is not the only thing the engine buys.** Every date comes with a receipt a person can
   check, the same letter always gives the same date, and the calendar is data rather than memory:
   the rules-text baseline got two of six invoice terms wrong because it didn't know that

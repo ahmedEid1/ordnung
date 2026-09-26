@@ -1,0 +1,93 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"5af156686898245263dda5b97f53a5f93515314cabb4f49d25afaac15ab4aba3\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-09-06\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-invoice_relative-B1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-09-06 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Zahnarztpraxis Dr. Beispiel\",\"document_date\":\"2025-09-04\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"PL-25-0913\"},{\"label\":\"Kundennummer\",\"value\":\"Pat. 4471\"}],\"amounts\":[197.93],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay dental invoice\",\"quote\":\"Bitte begleichen Sie den Rechnungsbetrag spätestens 30 Tage nach dem Rechnungsdatum auf das unten angegebene Konto.\",\"computation\":\"Anchor is the invoice date 04.09.2025 (Rechnungsdatum). Under § 187 Abs. 1 BGB the day of the event (04.09.2025) is not counted, so counting starts 05.09.2025. Adding 30 days (§ 188 Abs. 1 BGB) lands on Saturday, 04.10.2025. Since that day is a Saturday, § 193 BGB shifts the deadline to the next business day, Monday, 06.10.2025.\",\"due_date\":\"2025-10-06\",\"confidence\":\"high\",\"amount\":197.93}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The invoice's IBAN (DE11 3705 0198 0003 0303 03) is well-formed and German, but a valid IBAN does not by itself prove it belongs to this dental practice; confirm it matches details you already have on file for this practice before paying.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Zahnarztpraxis Dr. Beispiel",
+      "document_date": "2025-09-04",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "PL-25-0913"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "Pat. 4471"
+        }
+      ],
+      "amounts": [
+        197.93
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay dental invoice",
+          "quote": "Bitte begleichen Sie den Rechnungsbetrag spätestens 30 Tage nach dem Rechnungsdatum auf das unten angegebene Konto.",
+          "computation": "Anchor is the invoice date 04.09.2025 (Rechnungsdatum). Under § 187 Abs. 1 BGB the day of the event (04.09.2025) is not counted, so counting starts 05.09.2025. Adding 30 days (§ 188 Abs. 1 BGB) lands on Saturday, 04.10.2025. Since that day is a Saturday, § 193 BGB shifts the deadline to the next business day, Monday, 06.10.2025.",
+          "due_date": "2025-10-06",
+          "confidence": "high",
+          "amount": 197.93
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The invoice's IBAN (DE11 3705 0198 0003 0303 03) is well-formed and German, but a valid IBAN does not by itself prove it belongs to this dental practice; confirm it matches details you already have on file for this practice before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2187,
+      "cache_read_tokens": 25242,
+      "cache_creation_tokens": 5269,
+      "cost_usd": 0.0480064,
+      "duration_ms": 21343,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "anchor": "explicit_date",
+            "anchor_date": "2025-09-04",
+            "amount": 30,
+            "unit": "days",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 187, 188 BGB",
+            "text": "Bitte begleichen Sie den Rechnungsbetrag spätestens 30 Tage nach dem Rechnungsdatum auf das unten angegebene Konto."
+          },
+          "document_date": "2025-09-04",
+          "sender_kind": "doctor",
+          "sender_name": "Zahnarztpraxis Dr. Beispiel",
+          "region": "NW",
+          "today": "2025-09-06"
+        },
+        "result": "{\"due_date\":\"2025-10-06\",\"weekday\":\"Monday\",\"send_by\":\"2025-10-02\",\"summary\":\"30 days after Thu 4 Sep 2025 is Sat 4 Oct 2025, a Saturday, so the deadline moves to Mon 6 Oct 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Thu 4 Sep 2025\",\"date\":\"2025-09-04\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"30 days later: Sat 4 Oct 2025\",\"date\":\"2025-10-04\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sat 4 Oct 2025 is a Saturday, so the deadline moves to Mon 6 Oct 2025\",\"date\":\"2025-10-06\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Thu 2 Oct 2025 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2025-10-02\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2025-09-06\",\"letter_date\":\"2025-09-04\",\"holiday_calendar\":\"Germany (nationwide holidays only)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE11 3705 0198 0003 0303 03"
+        },
+        "result": "{\"iban\":\"DE11 3705 0198 0003 0303 03\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0003030303\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

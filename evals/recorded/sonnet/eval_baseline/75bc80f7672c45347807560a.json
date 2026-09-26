@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"ab6ff2ff934dc90f122f4b7caf5e9f4db755b1a8fc9600252417d9d433708bd9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-english_letter-B1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-05-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Global Muster Research Institute\",\"document_date\":\"2026-05-05\",\"references\":[{\"label\":\"Reference\",\"value\":\"GMRI/ST/2026/118\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return signed participation form\",\"quote\":\"Please return the signed participation form by 07/08/2026.\",\"computation\":\"The letter is written in English but comes from a German institute (Science Park 2, 69117 Beispielberg) addressed to a recipient in Berlin, and the earlier date on the same letter (05/05/2026, i.e. its own document date of 5 May 2026) is consistent with the European day/month/year convention. Reading 07/08/2026 the same way (DD/MM/YYYY) gives 7 August 2026. The letter states the form must be received by this date ('Forms received after this date cannot be considered'), so the deadline is the day the signed form must arrive at the institute, not merely be sent. This is a fixed calendar date stated by the sender, not a statutory period, so no BGB §187/188/193 counting or weekend/holiday shift applies to it.\",\"due_date\":\"2026-08-07\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The date '07/08/2026' could be read as 8 July 2026 (US month/day/year format) instead of 7 August 2026; I used the European day/month/year reading, consistent with the letter's German sender address and its own document date, but the recipient should confirm which reading the institute intends before relying on the deadline.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Global Muster Research Institute",
+      "document_date": "2026-05-05",
+      "references": [
+        {
+          "label": "Reference",
+          "value": "GMRI/ST/2026/118"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return signed participation form",
+          "quote": "Please return the signed participation form by 07/08/2026.",
+          "computation": "The letter is written in English but comes from a German institute (Science Park 2, 69117 Beispielberg) addressed to a recipient in Berlin, and the earlier date on the same letter (05/05/2026, i.e. its own document date of 5 May 2026) is consistent with the European day/month/year convention. Reading 07/08/2026 the same way (DD/MM/YYYY) gives 7 August 2026. The letter states the form must be received by this date ('Forms received after this date cannot be considered'), so the deadline is the day the signed form must arrive at the institute, not merely be sent. This is a fixed calendar date stated by the sender, not a statutory period, so no BGB §187/188/193 counting or weekend/holiday shift applies to it.",
+          "due_date": "2026-08-07",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The date '07/08/2026' could be read as 8 July 2026 (US month/day/year format) instead of 7 August 2026; I used the European day/month/year reading, consistent with the letter's German sender address and its own document date, but the recipient should confirm which reading the institute intends before relying on the deadline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2711,
+      "cache_read_tokens": 6200,
+      "cache_creation_tokens": 1993,
+      "cost_usd": 0.036326,
+      "duration_ms": 28753,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

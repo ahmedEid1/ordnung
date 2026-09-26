@@ -34,9 +34,11 @@ Claude reads through it also reaches every other MCP server loaded there, throug
 ## Consequences
 The engine reaches people where they already are, without their data. The fourth condition answers
 "why a fixed pipeline instead of an agent with a calculator?" with data ([evals](../evals.md)): with
-the tool the same model reached the pipeline's accuracy (98.2 % on the test split, no dangerous-late
-date), so the pipeline's case rests on what an agent's answer lacks — a quote checked against the
-page, a stored receipt per date, the same date for the same letter every time, and no reliance on
-the model choosing to call the tool (it skipped it for 16 dates it judged simple, and overrode it
-once). Tool results are part of the benchmark recording, so an engine change does not re-score that
-condition; it has to be recorded again.
+the tool the same model matched the pipeline's accuracy within noise (all 56 dates of the test split
+right, against 98.2 % for the fixed pipeline; no dangerous-late date), so the pipeline's case rests
+on what an agent's answer lacks — a quote checked against the page, a stored receipt per date, the
+same date for the same letter every time, and no reliance on the model choosing when to call the
+tool and what to pass it (it dated the printed dates of 12 of 53 letters without asking, and an
+earlier recording once overrode the tool with a wrong date). Tool results and the tools'
+descriptions are part of the benchmark recording, so an engine or description change does not
+re-score that condition; it has to be recorded again.

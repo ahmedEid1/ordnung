@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"b4bc9be1e71f0ebb7819577c472a6e4b08fddef749cdcc46bacda4c0db25d3bb\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-dunning_fixed-D1"
+    ],
+    "prompt_head": "Today is Friday, 2026-02-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Hausverwaltung Muster & Partner\",\"document_date\":\"2026-02-16\",\"references\":[{\"label\":\"Mieter-Nr.\",\"value\":\"0512-05\"}],\"amounts\":[286.14],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding utility cost balance (2024 statement)\",\"quote\":\"Den ausstehenden Betrag erbitten wir bis spätestens Freitag, den 27. Februar 2026 auf das unten genannte Konto.\",\"computation\":\"The letter states a fixed calendar date for payment: 'bis spätestens Freitag, den 27. Februar 2026'. 2026-02-27 is indeed a Friday and not a public holiday in NW, so no shift is needed. The due date is simply the stated date.\",\"due_date\":\"2026-02-27\",\"confidence\":\"high\",\"amount\":286.14}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private landlord/property-management reminder (not a public authority), so statutory deadline-delivery rules for administrative letters do not apply here; the payment date is simply the calendar date printed in the letter.\",\"The letter says it becomes moot if payment was already made ('Falls Sie bereits gezahlt haben, ist dieses Schreiben gegenstandslos') — check bank records for a prior payment of the 2024 Betriebskostenabrechnung before paying again.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Hausverwaltung Muster & Partner",
+      "document_date": "2026-02-16",
+      "references": [
+        {
+          "label": "Mieter-Nr.",
+          "value": "0512-05"
+        }
+      ],
+      "amounts": [
+        286.14
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding utility cost balance (2024 statement)",
+          "quote": "Den ausstehenden Betrag erbitten wir bis spätestens Freitag, den 27. Februar 2026 auf das unten genannte Konto.",
+          "computation": "The letter states a fixed calendar date for payment: 'bis spätestens Freitag, den 27. Februar 2026'. 2026-02-27 is indeed a Friday and not a public holiday in NW, so no shift is needed. The due date is simply the stated date.",
+          "due_date": "2026-02-27",
+          "confidence": "high",
+          "amount": 286.14
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private landlord/property-management reminder (not a public authority), so statutory deadline-delivery rules for administrative letters do not apply here; the payment date is simply the calendar date printed in the letter.",
+        "The letter says it becomes moot if payment was already made ('Falls Sie bereits gezahlt haben, ist dieses Schreiben gegenstandslos') — check bank records for a prior payment of the 2024 Betriebskostenabrechnung before paying again."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1135,
+      "cache_read_tokens": 14613,
+      "cache_creation_tokens": 3021,
+      "cost_usd": 0.026364600000000002,
+      "duration_ms": 13514,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE89 3705 0198 0004 0506 00"
+        },
+        "result": "{\"iban\":\"DE89 3705 0198 0004 0506 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0004050600\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

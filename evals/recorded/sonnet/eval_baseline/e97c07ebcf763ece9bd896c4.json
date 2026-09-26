@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"2618b881474aea22d7ca40e6a2e4002154b0c67277b0a9da400f6058e7452075\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-06\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-english_letter-D2"
+    ],
+    "prompt_head": "Today is Friday, 2026-02-06 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-02-02\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit completed housing form\",\"quote\":\"The completed housing form is due on 03/06/2026; forms that arrive later go on the\\nwaiting list.\",\"computation\":\"The letter prints a fixed date '03/06/2026' rather than a period, so no statutory delivery/counting rules apply - the printed date is the deadline itself. The only other date on the letter, the document date, is printed as '02/02/2026' and must read 02 Feb 2026 (day/month/year) since today is 2026-02-06 and the letter would otherwise be dated in the future. Applying the same day/month/year convention consistently to '03/06/2026' gives 3 June 2026. (Read the other way, as month/day/year, it would be 6 March 2026; the letter does not disambiguate, see warning.)\",\"due_date\":\"2026-06-03\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"university\",\"references\":[{\"label\":\"Applicant no.\",\"value\":\"MEP-2026-0381\"}],\"remedy_type\":\"none\",\"sender_name\":\"Musterfield Exchange Programme\",\"warnings\":[\"The due date '03/06/2026' is written in numeric-only format and is ambiguous: read as day/month/year (consistent with the letter's own dating of '02/02/2026') it is 3 June 2026, but read as month/day/year it would be 6 March 2026 - confirm with the programme which is meant before relying on it.\",\"This assistant's own 'today' was given as 2026-02-06 in the task instructions, which is only 4 days after the letter's stated document date of 02/02/2026; no other verification of the letter's authenticity was possible from the text alone.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-02-02",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit completed housing form",
+          "quote": "The completed housing form is due on 03/06/2026; forms that arrive later go on the\nwaiting list.",
+          "computation": "The letter prints a fixed date '03/06/2026' rather than a period, so no statutory delivery/counting rules apply - the printed date is the deadline itself. The only other date on the letter, the document date, is printed as '02/02/2026' and must read 02 Feb 2026 (day/month/year) since today is 2026-02-06 and the letter would otherwise be dated in the future. Applying the same day/month/year convention consistently to '03/06/2026' gives 3 June 2026. (Read the other way, as month/day/year, it would be 6 March 2026; the letter does not disambiguate, see warning.)",
+          "due_date": "2026-06-03",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "university",
+      "references": [
+        {
+          "label": "Applicant no.",
+          "value": "MEP-2026-0381"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Musterfield Exchange Programme",
+      "warnings": [
+        "The due date '03/06/2026' is written in numeric-only format and is ambiguous: read as day/month/year (consistent with the letter's own dating of '02/02/2026') it is 3 June 2026, but read as month/day/year it would be 6 March 2026 - confirm with the programme which is meant before relying on it.",
+        "This assistant's own 'today' was given as 2026-02-06 in the task instructions, which is only 4 days after the letter's stated document date of 02/02/2026; no other verification of the letter's authenticity was possible from the text alone."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2126,
+      "cache_read_tokens": 6200,
+      "cache_creation_tokens": 2007,
+      "cost_usd": 0.030532,
+      "duration_ms": 22181,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

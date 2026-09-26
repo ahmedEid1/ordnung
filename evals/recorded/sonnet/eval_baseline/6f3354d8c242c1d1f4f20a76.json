@@ -1,0 +1,135 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"68996b176d59ad24bfb2b63a598d2eec5431c99ea5d8011483818354b8a11e78\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-12-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-year_boundary-C2"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-12-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterhafen\",\"document_date\":\"2025-12-22\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"075/104/33871\"}],\"amounts\":[420],\"remedy_type\":\"einspruch\",\"contract\":null,\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch against the assessment\",\"quote\":\"Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behörde schriftlich oder elektronisch einzulegen.\",\"computation\":\"Letter dated Mon 22 Dec 2025. Under § 122 Abs. 2 Nr. 1 AO a letter posted by mail counts as delivered on the 4th day after posting, i.e. Fri 26 Dec 2025. That day is Zweiter Weihnachtstag, a public holiday in NW, so under § 108 Abs. 3 AO the deemed-delivery day shifts to the next working day, Mon 29 Dec 2025. Counting the one-month Einspruch period starts the following day (§ 187 Abs. 1 BGB / § 108 Abs. 1 AO) and ends one month later, on Thu 29 Jan 2026 (§ 188 Abs. 2 BGB), which is itself a normal working day so no further shift applies.\",\"due_date\":\"2026-01-29\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"1st quarterly income-tax prepayment for 2026\",\"quote\":\"Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).\",\"computation\":\"The letter fixes a fixed calendar due date of 10 March each year starting 2026. 10 March 2026 falls on a Tuesday, a normal working day, so no weekend/holiday shift is needed; the due date stands as printed.\",\"due_date\":\"2026-03-10\",\"confidence\":\"high\",\"amount\":420},{\"kind\":\"payment\",\"title\":\"2nd quarterly income-tax prepayment for 2026\",\"quote\":\"Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).\",\"computation\":\"Fixed calendar due date 10 June 2026, which is a Wednesday, a normal working day; no shift needed.\",\"due_date\":\"2026-06-10\",\"confidence\":\"high\",\"amount\":420},{\"kind\":\"payment\",\"title\":\"3rd quarterly income-tax prepayment for 2026\",\"quote\":\"Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).\",\"computation\":\"Fixed calendar due date 10 September 2026, which is a Thursday, a normal working day; no shift needed.\",\"due_date\":\"2026-09-10\",\"confidence\":\"high\",\"amount\":420},{\"kind\":\"payment\",\"title\":\"4th quarterly income-tax prepayment for 2026\",\"quote\":\"Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).\",\"computation\":\"Fixed calendar due date 10 December 2026. Checked against 2026 NW holiday calendar (which places Erster Weihnachtstag on Fri 25 Dec and Zweiter Weihnachtstag on Sat 26 Dec, confirming the surrounding week's weekdays); 10 December 2026 falls on a Thursday, a normal working day, so no shift is needed.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":420}],\"warnings\":[\"The letterhead lists a bank IBAN (DE26 2905 0000 0008 8007 70, valid German IBAN for BLZ 29050000) as contact information rather than as an explicit payment instruction; before paying the quarterly amounts, confirm this account against a prior, independently-verified Finanzamt Musterhafen letter or its official website rather than relying solely on this document.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterhafen",
+      "document_date": "2025-12-22",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "075/104/33871"
+        }
+      ],
+      "amounts": [
+        420
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch against the assessment",
+          "quote": "Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behörde schriftlich oder elektronisch einzulegen.",
+          "computation": "Letter dated Mon 22 Dec 2025. Under § 122 Abs. 2 Nr. 1 AO a letter posted by mail counts as delivered on the 4th day after posting, i.e. Fri 26 Dec 2025. That day is Zweiter Weihnachtstag, a public holiday in NW, so under § 108 Abs. 3 AO the deemed-delivery day shifts to the next working day, Mon 29 Dec 2025. Counting the one-month Einspruch period starts the following day (§ 187 Abs. 1 BGB / § 108 Abs. 1 AO) and ends one month later, on Thu 29 Jan 2026 (§ 188 Abs. 2 BGB), which is itself a normal working day so no further shift applies.",
+          "due_date": "2026-01-29",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "1st quarterly income-tax prepayment for 2026",
+          "quote": "Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).",
+          "computation": "The letter fixes a fixed calendar due date of 10 March each year starting 2026. 10 March 2026 falls on a Tuesday, a normal working day, so no weekend/holiday shift is needed; the due date stands as printed.",
+          "due_date": "2026-03-10",
+          "confidence": "high",
+          "amount": 420
+        },
+        {
+          "kind": "payment",
+          "title": "2nd quarterly income-tax prepayment for 2026",
+          "quote": "Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).",
+          "computation": "Fixed calendar due date 10 June 2026, which is a Wednesday, a normal working day; no shift needed.",
+          "due_date": "2026-06-10",
+          "confidence": "high",
+          "amount": 420
+        },
+        {
+          "kind": "payment",
+          "title": "3rd quarterly income-tax prepayment for 2026",
+          "quote": "Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).",
+          "computation": "Fixed calendar due date 10 September 2026, which is a Thursday, a normal working day; no shift needed.",
+          "due_date": "2026-09-10",
+          "confidence": "high",
+          "amount": 420
+        },
+        {
+          "kind": "payment",
+          "title": "4th quarterly income-tax prepayment for 2026",
+          "quote": "Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).",
+          "computation": "Fixed calendar due date 10 December 2026. Checked against 2026 NW holiday calendar (which places Erster Weihnachtstag on Fri 25 Dec and Zweiter Weihnachtstag on Sat 26 Dec, confirming the surrounding week's weekdays); 10 December 2026 falls on a Thursday, a normal working day, so no shift is needed.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": 420
+        }
+      ],
+      "warnings": [
+        "The letterhead lists a bank IBAN (DE26 2905 0000 0008 8007 70, valid German IBAN for BLZ 29050000) as contact information rather than as an explicit payment instruction; before paying the quarterly amounts, confirm this account against a prior, independently-verified Finanzamt Musterhafen letter or its official website rather than relying solely on this document."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 6702,
+      "cache_read_tokens": 28084,
+      "cache_creation_tokens": 9981,
+      "cost_usd": 0.1125728,
+      "duration_ms": 62205,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 355 AO, § 122 Abs. 2 Nr. 1 AO",
+            "text": "Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behörde schriftlich oder elektronisch einzulegen."
+          },
+          "document_date": "2025-12-22",
+          "sender_kind": "tax_office",
+          "sender_name": "Finanzamt Musterhafen",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "einspruch",
+          "today": "2025-12-24"
+        },
+        "result": "{\"due_date\":\"2026-01-29\",\"weekday\":\"Thursday\",\"send_by\":\"2026-01-23\",\"summary\":\"Letter dated Mon 22 Dec 2025 counts as delivered on Fri 26 Dec, moved to Mon 29 Dec; one month later is Thu 29 Jan 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Posting day: Mon 22 Dec 2025 (the letter's date; the real posting day can only be later)\",\"date\":\"2025-12-22\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Fri 26 Dec 2025\",\"date\":\"2025-12-26\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Fri 26 Dec 2025 is a public holiday, Zweiter Weihnachtstag, so delivery moves to Mon 29 Dec 2025\",\"date\":\"2025-12-29\",\"rule_id\":\"ao_fiction_shift\",\"citation\":\"BFH IX R 68/98; § 108 Abs. 3 AO; AEAO zu § 108 Nr. 2\"},{\"label\":\"Counting starts the day after Mon 29 Dec 2025\",\"date\":\"2025-12-29\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 29 Jan 2026\",\"date\":\"2026-01-29\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 29 Jan 2026 is a working day, so it stays\",\"date\":\"2026-01-29\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Fri 23 Jan 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-01-23\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_fiction_shift\",\"title\":\"Tax delivery day moves off weekends and holidays\",\"citation\":\"BFH IX R 68/98; § 108 Abs. 3 AO; AEAO zu § 108 Nr. 2\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BFH&Datum=14.10.2003&Aktenzeichen=IX+R+68/98\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_355\",\"title\":\"Tax objection (Einspruch): one month\",\"citation\":\"§ 355 Abs. 1 AO; § 357 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__355.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-12-24\",\"letter_date\":\"2025-12-22\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Nordrhein-Westfalen\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2026,
+          "region": "NW"
+        },
+        "result": "{\"year\":2026,\"region\":\"NW\",\"calendar\":\"Nordrhein-Westfalen\",\"holidays\":[{\"date\":\"2026-01-01\",\"weekday\":\"Thursday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2026-04-03\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2026-04-06\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2026-05-01\",\"weekday\":\"Friday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2026-05-14\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2026-05-25\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2026-06-04\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2026-10-03\",\"weekday\":\"Saturday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2026-11-01\",\"weekday\":\"Sunday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2026-12-25\",\"weekday\":\"Friday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2026-12-26\",\"weekday\":\"Saturday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE26 2905 0000 0008 8007 70"
+        },
+        "result": "{\"iban\":\"DE26 2905 0000 0008 8007 70\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"29050000\"},\"account_number\":\"0008800770\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

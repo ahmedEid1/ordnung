@@ -1,0 +1,114 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"d2fec5d14fc6e5706d1e6be2b87bd397b5fa6e39987c5c19518a2fa94156b91a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-06-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-contract_confirmation-B1"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-06-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Muster Mobil GmbH\",\"document_date\":\"2025-06-12\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"MM-7730921\"}],\"amounts\":[24.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"SIM card activation\",\"quote\":\"Ihre SIM-Karte wird am 16.06.2025 freigeschaltet.\",\"computation\":\"Date is printed explicitly in the letter as the activation date; also the anchor for the 12-month minimum term.\",\"due_date\":\"2025-06-16\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2026-06-16\",\"cancel_by\":\"2026-05-16\"},\"warnings\":[\"This is a contract summary (§ 54 TKG), not a bill or a request for action; no payment or response is due now — it only records the terms for later reference.\",\"The minimum term runs 12 months from activation (16.06.2025); counting the day after activation under § 187/188 BGB gives a term end of 16.06.2026, one day later than a plain '12 months from 16.06.2025' reading — check the full T&Cs in the customer portal if this matters.\",\"The 1-month notice period before that term end computes to Saturday 16.05.2026; German case law says notice deadlines don't shift to the next business day, so to be safe the cancellation should reach Muster Mobil GmbH by Friday 15.05.2026 at the latest.\",\"The IBAN in the footer (DE08 3705 0198 0008 0011 22) is well-formed and matches the sender's own letterhead; it is only relevant if you owe money, which this letter does not claim.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Muster Mobil GmbH",
+      "document_date": "2025-06-12",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "MM-7730921"
+        }
+      ],
+      "amounts": [
+        24.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "SIM card activation",
+          "quote": "Ihre SIM-Karte wird am 16.06.2025 freigeschaltet.",
+          "computation": "Date is printed explicitly in the letter as the activation date; also the anchor for the 12-month minimum term.",
+          "due_date": "2025-06-16",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2026-06-16",
+        "cancel_by": "2026-05-16"
+      },
+      "warnings": [
+        "This is a contract summary (§ 54 TKG), not a bill or a request for action; no payment or response is due now — it only records the terms for later reference.",
+        "The minimum term runs 12 months from activation (16.06.2025); counting the day after activation under § 187/188 BGB gives a term end of 16.06.2026, one day later than a plain '12 months from 16.06.2025' reading — check the full T&Cs in the customer portal if this matters.",
+        "The 1-month notice period before that term end computes to Saturday 16.05.2026; German case law says notice deadlines don't shift to the next business day, so to be safe the cancellation should reach Muster Mobil GmbH by Friday 15.05.2026 at the latest.",
+        "The IBAN in the footer (DE08 3705 0198 0008 0011 22) is well-formed and matches the sender's own letterhead; it is only relevant if you owe money, which this letter does not claim."
+      ]
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 4326,
+      "cache_read_tokens": 37523,
+      "cache_creation_tokens": 7620,
+      "cost_usd": 0.08126059999999999,
+      "duration_ms": 50475,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "anchor": "explicit_date",
+            "anchor_date": "2025-06-16",
+            "amount": 12,
+            "unit": "months",
+            "nature": "other",
+            "shift_rule": "none",
+            "legal_basis": "§ 188 BGB / Vertragsklausel",
+            "text": "Mindestvertragslaufzeit 12 Monate ab Freischaltung"
+          },
+          "sender_kind": "telecom",
+          "sender_name": "Muster Mobil GmbH",
+          "document_date": "2025-06-12",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-06-16\",\"weekday\":\"Tuesday\",\"summary\":\"12 months after Mon 16 Jun 2025 is Tue 16 Jun 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Mon 16 Jun 2025\",\"date\":\"2025-06-16\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"12 months later: Tue 16 Jun 2026\",\"date\":\"2026-06-16\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"}],\"assumed\":{\"today\":\"2025-06-17\",\"letter_date\":\"2025-06-12\",\"holiday_calendar\":\"Germany (nationwide holidays only)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-06-16",
+            "amount": -1,
+            "unit": "months",
+            "nature": "notice",
+            "shift_rule": "auto",
+            "legal_basis": "§ 193 BGB; Vertragsklausel Kündigungsfrist 1 Monat zum Ende der Mindestvertragslaufzeit",
+            "text": "Kündigungsfrist 1 Monat zum Ende der Mindestvertragslaufzeit"
+          },
+          "sender_kind": "telecom",
+          "sender_name": "Muster Mobil GmbH",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-05-16\",\"weekday\":\"Saturday\",\"send_by\":\"2026-05-08\",\"safe_date\":\"2026-05-15\",\"summary\":\"One month before Tue 16 Jun 2026 is Sat 16 May 2026, a Saturday; notice deadlines don't move, so aim for Fri 15 May 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"One month before Tue 16 Jun 2026: it must arrive by Sat 16 May 2026\",\"date\":\"2026-05-16\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sat 16 May 2026 is a Saturday, but notice deadlines never move to the next working day\",\"date\":\"2026-05-16\",\"rule_id\":\"notice_no_shift\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\"},{\"label\":\"Safe date: make sure it arrives by Fri 15 May 2026\",\"date\":\"2026-05-15\",\"rule_id\":\"safe_date\",\"citation\":\"Ordnung safety policy\"},{\"label\":\"Send by Fri 8 May 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-05-08\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"notice_no_shift\",\"title\":\"Notice periods never move to Monday\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=17.02.2005&Aktenzeichen=III+ZR+172/04\"},{\"id\":\"safe_date\",\"title\":\"Safe date\",\"citation\":\"Ordnung safety policy\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-06-17\",\"holiday_calendar\":\"Germany (nationwide holidays only)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE08 3705 0198 0008 0011 22"
+        },
+        "result": "{\"iban\":\"DE08 3705 0198 0008 0011 22\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0008001122\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

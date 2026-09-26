@@ -1,0 +1,92 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"fb44eab6bcd3241323f9aad189a112083513a74226f9700debc54de49635b6c6\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-01\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-tax_assessment-A1"
+    ],
+    "prompt_head": "Today is Friday, 2026-05-01 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterstadt-Nord\",\"document_date\":\"2026-04-27\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"315/5118/4072\"},{\"label\":\"Identifikationsnummer\",\"value\":\"58 214 730 915\"}],\"amounts\":[8214,888],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist. Bei Zusendung durch einfachen Brief gilt die Bekanntgabe mit dem vierten Tag nach Aufgabe zur Post als bewirkt, es sei denn, dass der Bescheid zu einem späteren Zeitpunkt zugegangen ist.\",\"computation\":\"Letter dated Mon 27 Apr 2026 (posting day). Under § 122 Abs. 2 Nr. 1 AO a tax letter sent by ordinary post counts as delivered on the 4th day after posting, i.e. Fri 1 May 2026; since that day is a public holiday (Tag der Arbeit) the deemed-delivery day shifts to the next business day, Mon 4 May 2026 (§ 108 Abs. 3 AO). The one-month Einspruch period (§ 355 Abs. 1 AO) starts the day after delivery (§ 187 Abs. 1 BGB / § 108 Abs. 1 AO) and ends one month later on the day with the same number, Thu 4 Jun 2026 (§ 188 Abs. 2 BGB). Thu 4 Jun 2026 is Fronleichnam, a public holiday in NRW, so the deadline shifts to the next business day, Fri 5 Jun 2026 (§ 108 Abs. 3 AO).\",\"due_date\":\"2026-06-05\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterstadt-Nord",
+      "document_date": "2026-04-27",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "315/5118/4072"
+        },
+        {
+          "label": "Identifikationsnummer",
+          "value": "58 214 730 915"
+        }
+      ],
+      "amounts": [
+        8214,
+        888
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist. Bei Zusendung durch einfachen Brief gilt die Bekanntgabe mit dem vierten Tag nach Aufgabe zur Post als bewirkt, es sei denn, dass der Bescheid zu einem späteren Zeitpunkt zugegangen ist.",
+          "computation": "Letter dated Mon 27 Apr 2026 (posting day). Under § 122 Abs. 2 Nr. 1 AO a tax letter sent by ordinary post counts as delivered on the 4th day after posting, i.e. Fri 1 May 2026; since that day is a public holiday (Tag der Arbeit) the deemed-delivery day shifts to the next business day, Mon 4 May 2026 (§ 108 Abs. 3 AO). The one-month Einspruch period (§ 355 Abs. 1 AO) starts the day after delivery (§ 187 Abs. 1 BGB / § 108 Abs. 1 AO) and ends one month later on the day with the same number, Thu 4 Jun 2026 (§ 188 Abs. 2 BGB). Thu 4 Jun 2026 is Fronleichnam, a public holiday in NRW, so the deadline shifts to the next business day, Fri 5 Jun 2026 (§ 108 Abs. 3 AO).",
+          "due_date": "2026-06-05",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2486,
+      "cache_read_tokens": 15631,
+      "cache_creation_tokens": 6246,
+      "cost_usd": 0.0529782,
+      "duration_ms": 26965,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist. Bei Zusendung durch einfachen Brief gilt die Bekanntgabe mit dem vierten Tag nach Aufgabe zur Post als bewirkt.",
+            "legal_basis": "§ 122 Abs. 2 Nr. 1 AO, § 355 AO"
+          },
+          "document_date": "2026-04-27",
+          "sender_kind": "tax_office",
+          "sender_name": "Finanzamt Musterstadt-Nord",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2026-06-05\",\"weekday\":\"Friday\",\"send_by\":\"2026-05-29\",\"summary\":\"Letter dated Mon 27 Apr 2026 counts as delivered on Fri 1 May, moved to Mon 4 May; one month later is Thu 4 Jun 2026, a public holiday, Fronleichnam, so the deadline moves to Fri 5 Jun 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Posting day: Mon 27 Apr 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-04-27\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Fri 1 May 2026\",\"date\":\"2026-05-01\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Fri 1 May 2026 is a public holiday, Erster Mai, so delivery moves to Mon 4 May 2026\",\"date\":\"2026-05-04\",\"rule_id\":\"ao_fiction_shift\",\"citation\":\"BFH IX R 68/98; § 108 Abs. 3 AO; AEAO zu § 108 Nr. 2\"},{\"label\":\"Counting starts the day after Mon 4 May 2026\",\"date\":\"2026-05-04\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 4 Jun 2026\",\"date\":\"2026-06-04\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 4 Jun 2026 is a public holiday, Fronleichnam, so the deadline moves to Fri 5 Jun 2026\",\"date\":\"2026-06-05\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Fri 29 May 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-05-29\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_fiction_shift\",\"title\":\"Tax delivery day moves off weekends and holidays\",\"citation\":\"BFH IX R 68/98; § 108 Abs. 3 AO; AEAO zu § 108 Nr. 2\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BFH&Datum=14.10.2003&Aktenzeichen=IX+R+68/98\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_355\",\"title\":\"Tax objection (Einspruch): one month\",\"citation\":\"§ 355 Abs. 1 AO; § 357 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__355.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-05-01\",\"letter_date\":\"2026-04-27\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Nordrhein-Westfalen\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE21 4405 0199 0123 4567 89"
+        },
+        "result": "{\"iban\":\"DE21 4405 0199 0123 4567 89\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"44050199\"},\"account_number\":\"0123456789\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

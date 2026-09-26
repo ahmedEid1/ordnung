@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"45a10eae156eae050518a11baddedb7f1e760aac0c24d82bdaa7e19ad453d956\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-23\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-year_boundary-D2"
+    ],
+    "prompt_head": "Today is Monday, 2024-12-23 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Allgemeine Musterkasse\",\"document_date\":\"2024-12-20\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"A204518872\"}],\"amounts\":[748.2],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of Zuzahlungsbefreiung\",\"quote\":\"Widerspruch gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Allgemeinen Musterkasse erhoben werden.\",\"computation\":\"The letter is dated Fri 20.12.2024 (posting day assumed same as letter date). The letter's own text states a Bescheid sent by simple post counts as delivered on the third day after posting (§ 37 Abs. 2 SGB X), i.e. Mon 23.12.2024 (no weekend/holiday shift applies to this deemed-delivery rule itself). The one-month Widerspruch period (§ 84 Abs. 1 SGG) then starts the day after deemed delivery (§ 187 Abs. 1 BGB, § 26 Abs. 1 SGB X), i.e. from 24.12.2024, and ends one month later on the day matching the delivery date's number (§ 188 Abs. 2 BGB): Thu 23.01.2025. That day is a normal working day in NRW, so no further shift applies.\",\"due_date\":\"2025-01-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter references a Belastungsgrenze/annual gross income figure of 748,20 € which the recipient should verify was correctly calculated from their actual income and prior co-payments before deciding whether to object.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Allgemeine Musterkasse",
+      "document_date": "2024-12-20",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "A204518872"
+        }
+      ],
+      "amounts": [
+        748.2
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of Zuzahlungsbefreiung",
+          "quote": "Widerspruch gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Allgemeinen Musterkasse erhoben werden.",
+          "computation": "The letter is dated Fri 20.12.2024 (posting day assumed same as letter date). The letter's own text states a Bescheid sent by simple post counts as delivered on the third day after posting (§ 37 Abs. 2 SGB X), i.e. Mon 23.12.2024 (no weekend/holiday shift applies to this deemed-delivery rule itself). The one-month Widerspruch period (§ 84 Abs. 1 SGG) then starts the day after deemed delivery (§ 187 Abs. 1 BGB, § 26 Abs. 1 SGB X), i.e. from 24.12.2024, and ends one month later on the day matching the delivery date's number (§ 188 Abs. 2 BGB): Thu 23.01.2025. That day is a normal working day in NRW, so no further shift applies.",
+          "due_date": "2025-01-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter references a Belastungsgrenze/annual gross income figure of 748,20 € which the recipient should verify was correctly calculated from their actual income and prior co-payments before deciding whether to object."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2414,
+      "cache_read_tokens": 25411,
+      "cache_creation_tokens": 5569,
+      "cost_usd": 0.0515102,
+      "duration_ms": 24857,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "legal_basis": "§ 62 SGB V, § 84 SGG / § 37 SGB X",
+            "text": "Widerspruch gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Allgemeinen Musterkasse erhoben werden."
+          },
+          "document_date": "2024-12-20",
+          "sender_kind": "health_insurer",
+          "sender_name": "Allgemeine Musterkasse",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "widerspruch",
+          "today": "2024-12-23"
+        },
+        "result": "{\"due_date\":\"2025-01-23\",\"weekday\":\"Thursday\",\"send_by\":\"2025-01-17\",\"summary\":\"Letter dated Fri 20 Dec 2024 counts as delivered on Mon 23 Dec; one month later is Thu 23 Jan 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Posting day: Fri 20 Dec 2024 (the letter's date; the real posting day can only be later)\",\"date\":\"2024-12-20\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 3rd day after posting: Mon 23 Dec 2024\",\"date\":\"2024-12-23\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"Counting starts the day after Mon 23 Dec 2024\",\"date\":\"2024-12-23\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 23 Jan 2025\",\"date\":\"2025-01-23\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 23 Jan 2025 is a working day, so it stays\",\"date\":\"2025-01-23\",\"rule_id\":\"sgbx_26_3\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\"},{\"label\":\"Send by Fri 17 Jan 2025 to allow 4 business days for a letter to arrive\",\"date\":\"2025-01-17\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"sgbx_37_2\",\"title\":\"Social-law letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__37.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"sgg_84\",\"title\":\"Objection in social law (Widerspruch): one month\",\"citation\":\"§ 84 Abs. 1 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgg/__84.html\"},{\"id\":\"sgbx_26_3\",\"title\":\"Weekend and holiday shift (social law)\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__26.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2024-12-23\",\"letter_date\":\"2024-12-20\",\"delivery_law\":\"social law (§ 37 SGB X)\",\"holiday_calendar\":\"Nordrhein-Westfalen\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

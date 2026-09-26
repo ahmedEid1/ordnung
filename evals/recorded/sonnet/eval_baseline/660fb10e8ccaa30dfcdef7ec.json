@@ -1,0 +1,85 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"86132beb3cdf3559ac6eede79222327966697ef62c83de47df664f4b43e2de20\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-04-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-invoice_relative-D1"
+    ],
+    "prompt_head": "Today is Monday, 2026-04-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Stadtwerke Musterstadt GmbH\",\"document_date\":\"2026-04-14\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"SR-26-004187\"},{\"label\":\"Kundennummer\",\"value\":\"300 441 872\"}],\"amounts\":[105.58],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay final electricity invoice\",\"quote\":\"Der Rechnungsbetrag ist innerhalb von 30 Tagen nach dem Rechnungsdatum ohne Abzug zur Zahlung fällig.\",\"computation\":\"Anchor: Rechnungsdatum 14.04.2026 (private-law payment, § 187 Abs. 1 BGB: day of the event not counted, counting starts 15.04.2026). Add 30 days: 30 days after 14.04.2026 is 14.05.2026 (Thursday). 14.05.2026 is Christi Himmelfahrt, a nationwide public holiday, so under § 193 BGB the deadline shifts to the next business day, Friday 15.05.2026.\",\"due_date\":\"2026-05-15\",\"confidence\":\"high\",\"amount\":105.58}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Stadtwerke Musterstadt GmbH",
+      "document_date": "2026-04-14",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "SR-26-004187"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "300 441 872"
+        }
+      ],
+      "amounts": [
+        105.58
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay final electricity invoice",
+          "quote": "Der Rechnungsbetrag ist innerhalb von 30 Tagen nach dem Rechnungsdatum ohne Abzug zur Zahlung fällig.",
+          "computation": "Anchor: Rechnungsdatum 14.04.2026 (private-law payment, § 187 Abs. 1 BGB: day of the event not counted, counting starts 15.04.2026). Add 30 days: 30 days after 14.04.2026 is 14.05.2026 (Thursday). 14.05.2026 is Christi Himmelfahrt, a nationwide public holiday, so under § 193 BGB the deadline shifts to the next business day, Friday 15.05.2026.",
+          "due_date": "2026-05-15",
+          "confidence": "high",
+          "amount": 105.58
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1343,
+      "cache_read_tokens": 14658,
+      "cache_creation_tokens": 4464,
+      "cost_usd": 0.0342256,
+      "duration_ms": 13810,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-04-14",
+            "amount": 30,
+            "unit": "days",
+            "nature": "payment",
+            "text": "Der Rechnungsbetrag ist innerhalb von 30 Tagen nach dem Rechnungsdatum ohne Abzug zur Zahlung fällig.",
+            "legal_basis": "§§ 187, 188 BGB"
+          }
+        },
+        "result": "{\"due_date\":\"2026-05-15\",\"weekday\":\"Friday\",\"send_by\":\"2026-05-13\",\"summary\":\"30 days after Tue 14 Apr 2026 is Thu 14 May 2026, a public holiday, Christi Himmelfahrt, so the deadline moves to Fri 15 May 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Tue 14 Apr 2026\",\"date\":\"2026-04-14\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"30 days later: Thu 14 May 2026\",\"date\":\"2026-05-14\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 14 May 2026 is a public holiday, Christi Himmelfahrt, so the deadline moves to Fri 15 May 2026\",\"date\":\"2026-05-15\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Wed 13 May 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-05-13\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-04-20\",\"holiday_calendar\":\"Germany (nationwide holidays only)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE65 3705 0198 0007 0001 23"
+        },
+        "result": "{\"iban\":\"DE65 3705 0198 0007 0001 23\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0007000123\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

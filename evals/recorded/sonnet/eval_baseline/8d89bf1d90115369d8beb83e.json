@@ -1,0 +1,126 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"91bb2a4788ae171e932ec45c150b1494d7974393bb5ab0e37838d6ea2456f2c3\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-09-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-fine_bussgeld-A1"
+    ],
+    "prompt_head": "Today is Friday, 2026-09-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Stadt Musterau – Bußgeldstelle\",\"document_date\":\"2026-09-14\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG-2026-114502\"},{\"label\":\"Kennzeichen\",\"value\":\"RO-JM 318\"}],\"amounts\":[70,25,3.5,98.5],\"remedy_type\":\"einspruch\",\"contract\":null,\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Dieser Bußgeldbescheid wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach Zustellung schriftlich oder zur Niederschrift bei der oben bezeichneten Verwaltungsbehörde Einspruch einlegen.\",\"computation\":\"Page 2 shows a Zustellungsurkunde (formal service record) stating the notice was 'zugestellt am 17.09.2026' (Thursday). For förmliche Zustellung the documented actual delivery date governs rather than the standard postal deemed-delivery fiction. Under § 187 Abs. 1 BGB the day of delivery (17.09.2026) is not counted; the 2-week period begins the next day, 18.09.2026. Two weeks later (§ 188 Abs. 2 BGB) ends Thursday 01.10.2026, which is a normal working day in Bayern, so no shift is needed. Confirmed via compute_deadline tool.\",\"due_date\":\"2026-10-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (Geldbuße + Gebühr + Auslagen)\",\"quote\":\"Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft unter Angabe des Aktenzeichens auf das unten genannte Konto.\",\"computation\":\"Payment is due two weeks after the decision becomes 'rechtskräftig' (final). Rechtskraft occurs once the 2-week Einspruch period lapses without an objection being filed, i.e. the day after 01.10.2026, so Rechtskraft = 02.10.2026 (Friday). Under § 187 Abs. 1 BGB that day is not counted; the 2-week payment period starts 03.10.2026 and ends two weeks later on Friday 16.10.2026 (§ 188 Abs. 2 BGB), a normal working day in Bayern, so no shift applies. This assumes no Einspruch is filed; if an Einspruch is filed, Rechtskraft and this payment deadline no longer apply. Confirmed via compute_deadline tool.\",\"due_date\":\"2026-10-16\",\"confidence\":\"medium\",\"amount\":98.5}],\"warnings\":[\"The payment due date (2026-10-16) depends on the fine becoming legally final, which in turn depends on no Einspruch being filed by 2026-10-01; if an Einspruch is filed, this payment deadline does not apply and a new timeline follows any court decision.\",\"The IBAN on the letter (DE52 7115 0000 0000 0077 07, Sparkasse Musterau) is well-formed and matches the sender's stated bank, but ownership cannot be verified from the IBAN alone — compare it against other correspondence from Stadt Musterau before paying.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Stadt Musterau – Bußgeldstelle",
+      "document_date": "2026-09-14",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG-2026-114502"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "RO-JM 318"
+        }
+      ],
+      "amounts": [
+        70,
+        25,
+        3.5,
+        98.5
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Dieser Bußgeldbescheid wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach Zustellung schriftlich oder zur Niederschrift bei der oben bezeichneten Verwaltungsbehörde Einspruch einlegen.",
+          "computation": "Page 2 shows a Zustellungsurkunde (formal service record) stating the notice was 'zugestellt am 17.09.2026' (Thursday). For förmliche Zustellung the documented actual delivery date governs rather than the standard postal deemed-delivery fiction. Under § 187 Abs. 1 BGB the day of delivery (17.09.2026) is not counted; the 2-week period begins the next day, 18.09.2026. Two weeks later (§ 188 Abs. 2 BGB) ends Thursday 01.10.2026, which is a normal working day in Bayern, so no shift is needed. Confirmed via compute_deadline tool.",
+          "due_date": "2026-10-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (Geldbuße + Gebühr + Auslagen)",
+          "quote": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft unter Angabe des Aktenzeichens auf das unten genannte Konto.",
+          "computation": "Payment is due two weeks after the decision becomes 'rechtskräftig' (final). Rechtskraft occurs once the 2-week Einspruch period lapses without an objection being filed, i.e. the day after 01.10.2026, so Rechtskraft = 02.10.2026 (Friday). Under § 187 Abs. 1 BGB that day is not counted; the 2-week payment period starts 03.10.2026 and ends two weeks later on Friday 16.10.2026 (§ 188 Abs. 2 BGB), a normal working day in Bayern, so no shift applies. This assumes no Einspruch is filed; if an Einspruch is filed, Rechtskraft and this payment deadline no longer apply. Confirmed via compute_deadline tool.",
+          "due_date": "2026-10-16",
+          "confidence": "medium",
+          "amount": 98.5
+        }
+      ],
+      "warnings": [
+        "The payment due date (2026-10-16) depends on the fine becoming legally final, which in turn depends on no Einspruch being filed by 2026-10-01; if an Einspruch is filed, this payment deadline does not apply and a new timeline follows any court decision.",
+        "The IBAN on the letter (DE52 7115 0000 0000 0077 07, Sparkasse Musterau) is well-formed and matches the sender's stated bank, but ownership cannot be verified from the IBAN alone — compare it against other correspondence from Stadt Musterau before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 3352,
+      "cache_read_tokens": 40378,
+      "cache_creation_tokens": 7682,
+      "cost_usd": 0.0723396,
+      "duration_ms": 34935,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "document_date": "2026-09-14",
+          "received_date": "2026-09-17",
+          "sender_kind": "authority",
+          "sender_name": "Stadt Musterau – Bußgeldstelle",
+          "region": "BY",
+          "recipient_region": "BY",
+          "remedy_type": "einspruch",
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "nature": "objection",
+            "legal_basis": "§ 41 OWiG / § 182 ZPO",
+            "text": "innerhalb von zwei Wochen nach Zustellung schriftlich oder zur Niederschrift bei der oben bezeichneten Verwaltungsbehörde Einspruch einlegen"
+          }
+        },
+        "result": "{\"due_date\":\"2026-10-01\",\"weekday\":\"Thursday\",\"send_by\":\"2026-09-25\",\"summary\":\"Two weeks after the day you received it (Thu 17 Sep 2026) is Thu 1 Oct 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Thu 17 Sep 2026\",\"date\":\"2026-09-17\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Thu 1 Oct 2026\",\"date\":\"2026-10-01\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 1 Oct 2026 is a working day, so it stays\",\"date\":\"2026-10-01\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Fri 25 Sep 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-09-25\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-09-18\",\"letter_date\":\"2026-09-14\",\"received_date\":\"2026-09-17\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Bayern\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "document_date": "2026-09-14",
+          "sender_kind": "authority",
+          "sender_name": "Stadt Musterau – Bußgeldstelle",
+          "region": "BY",
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-10-02",
+            "nature": "payment",
+            "legal_basis": "Bußgeldbescheid Zahlungsfrist",
+            "text": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft"
+          }
+        },
+        "result": "{\"due_date\":\"2026-10-16\",\"weekday\":\"Friday\",\"send_by\":\"2026-10-15\",\"summary\":\"Two weeks after Fri 2 Oct 2026 is Fri 16 Oct 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Fri 2 Oct 2026\",\"date\":\"2026-10-02\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Fri 16 Oct 2026\",\"date\":\"2026-10-16\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Fri 16 Oct 2026 is a working day, so it stays\",\"date\":\"2026-10-16\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Thu 15 Oct 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-10-15\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-09-18\",\"letter_date\":\"2026-09-14\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Bayern\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE52 7115 0000 0000 0077 07"
+        },
+        "result": "{\"iban\":\"DE52 7115 0000 0000 0077 07\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"71150000\"},\"account_number\":\"0000007707\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

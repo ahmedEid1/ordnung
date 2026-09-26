@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"b6eb80c811982f34b6db5d6e6ae71d56fdb17c938954cae5c09a21a2a01760a7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-dunning_fixed-A1"
+    ],
+    "prompt_head": "Today is Friday, 2026-05-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Beispiel Versand GmbH\",\"document_date\":\"2026-05-04\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"KD 1188204\"},{\"label\":\"Rechnung\",\"value\":\"BV-7790114\"}],\"amounts\":[64.98],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding invoice\",\"quote\":\"Bitte überweisen Sie den Betrag bis zum 15.05.2026 auf das unten genannte Konto.\",\"computation\":\"The letter states a fixed calendar date for payment: 15.05.2026. This is a company's own commercial payment reminder, not a statutory deadline, so the date is taken as printed. 15.05.2026 falls on a Friday, a normal business day, so no weekend/holiday shift applies.\",\"due_date\":\"2026-05-15\",\"confidence\":\"high\",\"amount\":64.98}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a commercial payment reminder (Zahlungserinnerung), not an official authority letter; if the underlying order or invoice is not recognised, verify it directly with the sender before paying.\",\"The IBAN printed (DE23 3705 0198 0009 9001 12) is a validly formed German IBAN, but a valid IBAN does not prove ownership — compare it with any earlier order confirmation before transferring money.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Beispiel Versand GmbH",
+      "document_date": "2026-05-04",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "KD 1188204"
+        },
+        {
+          "label": "Rechnung",
+          "value": "BV-7790114"
+        }
+      ],
+      "amounts": [
+        64.98
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding invoice",
+          "quote": "Bitte überweisen Sie den Betrag bis zum 15.05.2026 auf das unten genannte Konto.",
+          "computation": "The letter states a fixed calendar date for payment: 15.05.2026. This is a company's own commercial payment reminder, not a statutory deadline, so the date is taken as printed. 15.05.2026 falls on a Friday, a normal business day, so no weekend/holiday shift applies.",
+          "due_date": "2026-05-15",
+          "confidence": "high",
+          "amount": 64.98
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a commercial payment reminder (Zahlungserinnerung), not an official authority letter; if the underlying order or invoice is not recognised, verify it directly with the sender before paying.",
+        "The IBAN printed (DE23 3705 0198 0009 9001 12) is a validly formed German IBAN, but a valid IBAN does not prove ownership — compare it with any earlier order confirmation before transferring money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 986,
+      "cache_read_tokens": 14569,
+      "cache_creation_tokens": 2797,
+      "cost_usd": 0.0239698,
+      "duration_ms": 11719,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE23 3705 0198 0009 9001 12"
+        },
+        "result": "{\"iban\":\"DE23 3705 0198 0009 9001 12\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0009900112\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

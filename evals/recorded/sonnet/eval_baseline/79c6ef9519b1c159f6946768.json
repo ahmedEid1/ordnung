@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"245f2f211c9b77216513c514472efc02f0960841a09216b2dbf0493bac5bb9f8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-31\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-price_increase-A1"
+    ],
+    "prompt_head": "Today is Friday, 2025-10-31 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispiel Energie AG\",\"document_date\":\"2025-10-28\",\"references\":[{\"label\":\"Vertragskonto\",\"value\":\"BE-3301 8812\"}],\"amounts\":[31.48,34.92,12.9,13.9,72,81],\"items\":[{\"kind\":\"milestone\",\"title\":\"New electricity price takes effect\",\"quote\":\"aufgrund gestiegener Netzentgelte und Beschaffungskosten passen wir unsere Preise zum 01.01.2026 an:\",\"computation\":\"The letter states the new prices (Arbeitspreis, Grundpreis, monthly Abschlag) apply from a fixed calendar date printed in the letter: 01.01.2026. No period calculation is needed.\",\"due_date\":\"2026-01-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Special right to terminate contract without notice due to price increase\",\"quote\":\"Sie haben das Recht, Ihren Vertrag ohne Einhaltung einer Kündigungsfrist zum Zeitpunkt des Wirksamwerdens der Preisänderung zu kündigen (§ 41 Abs. 5 EnWG).\",\"computation\":\"Under § 41 Abs. 5 EnWG the customer may terminate without notice period effective at the moment the price increase takes effect (01.01.2026). To be effective from that date, the termination (in Textform) must reach the provider before the increase takes effect, i.e. by the last day of the current price period. The letter does not print an explicit calendar deadline for sending the notice, so the last day on which the new (higher) price has not yet applied, 31.12.2025 (the day before 01.01.2026), is used as the practical last date to ensure the special termination is honoured before the new price starts; this is the earliest plausible reading and not an explicit date from the letter.\",\"due_date\":\"2025-12-31\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter itself does not print an explicit calendar deadline for exercising the special termination right (§ 41 Abs. 5 EnWG); the date given (31.12.2025) is the earliest plausible reading, derived from the price-change effective date, not a date stated in the letter — confirm directly with the provider if timing is critical.\",\"There were conflicting 'today' dates in the system context (2025-10-31 and 2026-09-26); since all due dates here are fixed calendar dates from the letter (not relative periods), this discrepancy does not change the computed dates, but the person should verify the current real-world date before acting.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispiel Energie AG",
+      "document_date": "2025-10-28",
+      "references": [
+        {
+          "label": "Vertragskonto",
+          "value": "BE-3301 8812"
+        }
+      ],
+      "amounts": [
+        31.48,
+        34.92,
+        12.9,
+        13.9,
+        72,
+        81
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "New electricity price takes effect",
+          "quote": "aufgrund gestiegener Netzentgelte und Beschaffungskosten passen wir unsere Preise zum 01.01.2026 an:",
+          "computation": "The letter states the new prices (Arbeitspreis, Grundpreis, monthly Abschlag) apply from a fixed calendar date printed in the letter: 01.01.2026. No period calculation is needed.",
+          "due_date": "2026-01-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Special right to terminate contract without notice due to price increase",
+          "quote": "Sie haben das Recht, Ihren Vertrag ohne Einhaltung einer Kündigungsfrist zum Zeitpunkt des Wirksamwerdens der Preisänderung zu kündigen (§ 41 Abs. 5 EnWG).",
+          "computation": "Under § 41 Abs. 5 EnWG the customer may terminate without notice period effective at the moment the price increase takes effect (01.01.2026). To be effective from that date, the termination (in Textform) must reach the provider before the increase takes effect, i.e. by the last day of the current price period. The letter does not print an explicit calendar deadline for sending the notice, so the last day on which the new (higher) price has not yet applied, 31.12.2025 (the day before 01.01.2026), is used as the practical last date to ensure the special termination is honoured before the new price starts; this is the earliest plausible reading and not an explicit date from the letter.",
+          "due_date": "2025-12-31",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter itself does not print an explicit calendar deadline for exercising the special termination right (§ 41 Abs. 5 EnWG); the date given (31.12.2025) is the earliest plausible reading, derived from the price-change effective date, not a date stated in the letter — confirm directly with the provider if timing is critical.",
+        "There were conflicting 'today' dates in the system context (2025-10-31 and 2026-09-26); since all due dates here are fixed calendar dates from the letter (not relative periods), this discrepancy does not change the computed dates, but the person should verify the current real-world date before acting."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3183,
+      "cache_read_tokens": 14618,
+      "cache_creation_tokens": 4036,
+      "cost_usd": 0.05090560000000001,
+      "duration_ms": 36390,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE81 3705 0198 0002 3456 78"
+        },
+        "result": "{\"iban\":\"DE81 3705 0198 0002 3456 78\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0002345678\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.hb1381882",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"1895a27dcb843ad404a99d9481342356db1067e2e095978f5474db0c8f52934b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-09-11\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-english_letter-D1"
+    ],
+    "prompt_head": "Today is Friday, 2026-09-11 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Example Student Health Plan, Inc.\",\"document_date\":\"2026-09-08\",\"references\":[{\"label\":\"Member ID\",\"value\":\"ESHP-88120-04\"},{\"label\":\"Claim no.\",\"value\":\"CLM-2026-55181\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit itemized bill and proof of payment for claim\",\"quote\":\"Your claim documents must be received by September 30, 2026.\",\"computation\":\"The letter states a fixed calendar date by which the additional claim documents (itemized bill and proof of payment) must be received by the insurer. This is a private US company's own administrative deadline, not a German statutory period, so no §§187-193 BGB counting or deemed-delivery rules apply; the date is taken as printed: September 30, 2026.\",\"due_date\":\"2026-09-30\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The sender is a US-based company (Boston, MA) rather than a German entity; the person should verify that this claim request is genuinely tied to their real health insurance claim for the August 21, 2026 ER visit before sending any personal medical or payment documents by email or post.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Example Student Health Plan, Inc.",
+      "document_date": "2026-09-08",
+      "references": [
+        {
+          "label": "Member ID",
+          "value": "ESHP-88120-04"
+        },
+        {
+          "label": "Claim no.",
+          "value": "CLM-2026-55181"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit itemized bill and proof of payment for claim",
+          "quote": "Your claim documents must be received by September 30, 2026.",
+          "computation": "The letter states a fixed calendar date by which the additional claim documents (itemized bill and proof of payment) must be received by the insurer. This is a private US company's own administrative deadline, not a German statutory period, so no §§187-193 BGB counting or deemed-delivery rules apply; the date is taken as printed: September 30, 2026.",
+          "due_date": "2026-09-30",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The sender is a US-based company (Boston, MA) rather than a German entity; the person should verify that this claim request is genuinely tied to their real health insurance claim for the August 21, 2026 ER visit before sending any personal medical or payment documents by email or post."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1230,
+      "cache_read_tokens": 6200,
+      "cache_creation_tokens": 2009,
+      "cost_usd": 0.021580000000000002,
+      "duration_ms": 13239,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

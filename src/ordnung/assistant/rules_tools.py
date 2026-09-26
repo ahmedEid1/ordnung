@@ -416,19 +416,21 @@ def arrival_checked(
     Only where the period runs from the arrival day (``anchor: receipt``): elsewhere the engine
     already treats an arrival day it is given (deemed delivery keeps the earlier, safe day).
     """
+    from ordnung.rules.explain import fmt_date
+
     if received is None or letter_day is None or spec.type != "relative" or spec.anchor != "receipt":
         return receipt
     gap = (received - letter_day).days
     if gap < 0:
         warning = (
-            f"The arrival day given ({_long(received)}) is before the letter's date ({_long(letter_day)}). "
+            f"The arrival day given ({fmt_date(received)}) is before the letter's date ({fmt_date(letter_day)}). "
             "A letter rarely arrives before the date printed on it — check both dates: a wrong arrival "
             "day gives a wrong deadline."
         )
     elif gap > LATE_ARRIVAL_DAYS:
         warning = (
-            f"The arrival day given ({_long(received)}) is {gap} days after the letter's date "
-            f"({_long(letter_day)}), which is unusually late for post. Check it: a later arrival day "
+            f"The arrival day given ({fmt_date(received)}) is {gap} days after the letter's date "
+            f"({fmt_date(letter_day)}), which is unusually late for post. Check it: a later arrival day "
             "moves the deadline later. If it is right, keep the envelope as proof."
         )
     else:
@@ -436,10 +438,6 @@ def arrival_checked(
     return receipt.model_copy(
         update={"warnings": [*receipt.warnings, warning], "confidence": _LOWER[receipt.confidence]}
     )
-
-
-def _long(day: date) -> str:
-    return f"{_WEEKDAYS[day.weekday()][:3]} {day.day} {day.strftime('%b %Y')}"
 
 
 def deadline_hints(
