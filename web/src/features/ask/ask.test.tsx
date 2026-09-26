@@ -157,7 +157,7 @@ describe("safe markdown renderer", () => {
   it("while streaming, no marker becomes a chip and a partial marker is hidden", () => {
     const { container } = renderMd("Send by Thu 8 Oct [item:itm_phone_cancel] and [do", null, true);
     expect(container.querySelector("[data-cite]")).toBeNull();
-    expect(container.textContent).toBe("Send by Thu 8 Oct and");
+    expect(container.textContent).toBe("Send by Thu\u00a08\u00a0Oct and"); // a date never breaks across lines
   });
 
   it("parses headings and quotes without producing heading elements from model text", () => {

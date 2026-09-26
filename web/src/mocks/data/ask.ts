@@ -69,13 +69,13 @@ export const RECORDED: RecordedAnswer[] = [
       { name: "explain_date", input: { item_or_contract_id: "itm_tax_objection" }, result: "Found how the date was worked out" },
     ],
     // the check (ADR 0008): the refund was read by AI from a photo, so it may only be quoted as the
-    // letter's words; "until 4 Nov" is the model's own arithmetic (no record holds it), so that
-    // sentence is left out
+    // letter's words; "before Sat 17 Oct" is the model's own date arithmetic (no record holds it),
+    // so that sentence is left out
     raw:
       "Finanzamt Musterstadt [party:pty_finanzamt] sent your **income tax assessment for 2025** [doc:doc_tax]:\n\n" +
       "- The letter says you get **324,00 €** back [doc:doc_tax].\n" +
       "- They did **not accept your laptop** as a work expense, because proof of work use was missing [doc:doc_tax].\n\n" +
-      "If you disagree, you can file an **Einspruch** (objection). It is free, a short letter is enough and the reasons can follow later. It must reach the Finanzamt by **Wed 21 Oct** [item:itm_tax_objection]; post it by **Thu 15 Oct** to be safe. If you need longer, you could ask for more time until 4 Nov.\n\n" +
+      "If you disagree, you can file an **Einspruch** (objection). It is free, a short letter is enough and the reasons can follow later. It must reach the Finanzamt by **Wed 21 Oct** [item:itm_tax_objection]; post it by **Thu 15 Oct** to be safe. Plan an evening before Sat 17 Oct to write it.\n\n" +
       "The letter was read from a phone photo, so please compare the date with the paper letter.",
     text:
       "Finanzamt Musterstadt [party:pty_finanzamt] sent your **income tax assessment for 2025** [doc:doc_tax]:\n\n" +
@@ -84,8 +84,8 @@ export const RECORDED: RecordedAnswer[] = [
       "If you disagree, you can file an **Einspruch** (objection). It is free, a short letter is enough and the reasons can follow later. It must reach the Finanzamt by **Wed 21 Oct** [item:itm_tax_objection]; post it by **Thu 15 Oct** to be safe.\n\n" +
       "The letter was read from a phone photo, so please compare the date with the paper letter.",
     note:
-      "1 sentence was left out: its date or amount is not in the record it cites. " +
-      "Values in quotation marks are quoted from a letter; Ordnung has not confirmed them.",
+      "Ordnung left out 1 sentence: it couldn't match its date or amount to the letter, to-do or contract the sentence refers to. " +
+      "Text in quotation marks is quoted from a letter; Ordnung has not confirmed it.",
     citations: [
       { type: "party", id: "pty_finanzamt" },
       { type: "document", id: "doc_tax" },

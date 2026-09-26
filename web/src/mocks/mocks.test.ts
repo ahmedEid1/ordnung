@@ -121,14 +121,17 @@ describe("mock dataset", () => {
       );
     const streamed = events.filter((e) => e.type === "text").map((e) => e.text).join("");
     const done = events.find((e) => e.type === "done")!;
-    // the model's own arithmetic is left out; the send-by date is the objection to-do's own
-    expect(streamed).toContain("you could ask for more time until 4 Nov.");
-    expect(done.text).not.toContain("4 Nov");
+    // the model's own date arithmetic is left out (a harmless one: the demo never streams legal
+    // advice, such as "ask for more time", that the check would not catch); the send-by date is
+    // the objection to-do's own
+    expect(streamed).toContain("Plan an evening before Sat 17 Oct to write it.");
+    expect(streamed).not.toMatch(/more time|extension|verlänger/i);
+    expect(done.text).not.toContain("17 Oct");
     expect(done.text).toContain("post it by **Thu 15 Oct** to be safe.");
     expect(done.text).toContain("**“324,00 €”**");
     // the note travels in its own field, like the API's
     expect(done.text).not.toContain("Checked by Ordnung");
-    expect(done.note).toMatch(/^1 sentence was left out: its date or amount is not in the record it cites\./);
+    expect(done.note).toMatch(/^Ordnung left out 1 sentence: it couldn't match its date or amount to the letter/);
     const threadId = (done as { thread_id?: string }).thread_id;
     const history = await s.handle("GET", `/chat/${threadId}`, new URLSearchParams(), undefined);
     const thread = (await history.json()) as { role: string; note: string | null }[];

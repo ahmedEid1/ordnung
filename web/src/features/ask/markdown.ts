@@ -202,9 +202,9 @@ export function parseInline(src: string, citations: ReadonlyMap<string, Citation
           return ok;
         });
         if (kept.length) {
-          // keep the marker on the line of the fact it supports ("…by Wed 21 Oct ³"), never alone
+          // one no-break space before the marker; <Markdown> keeps it with the word before it
           const last = out[out.length - 1];
-          if (last?.t === "text") last.v = last.v.replace(/[ \t]+$/, " ");
+          if (last?.t === "text") last.v = last.v.replace(/[ \t]+$/, "\u00a0");
           for (const r of kept) out.push({ t: "cite", ref: citations!.get(r.id)! });
         } else {
           // drop the marker together with the spaces before it: "fact [doc:x]." → "fact."

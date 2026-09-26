@@ -9,8 +9,8 @@ import { accumulate, EMPTY_ANSWER, type AnswerState } from "./stream";
 import { turnsFromHistory } from "./useAskThread";
 
 const NOTE =
-  "1 sentence was left out: its date or amount is not in the record it cites. " +
-  "Values in quotation marks are quoted from a letter; Ordnung has not confirmed them.";
+  "Ordnung left out 1 sentence: it couldn't match its date or amount to the letter, to-do or contract the sentence refers to. " +
+  "Text in quotation marks is quoted from a letter; Ordnung has not confirmed it.";
 
 function inRouter(element: React.ReactElement) {
   const router = createMemoryRouter([{ path: "*", element }], { initialEntries: ["/"] });
@@ -44,7 +44,7 @@ describe("the answer check's note", () => {
     };
     inRouter(<AnswerView answer={answer} resolve={resolve} />);
     expect(screen.getByRole("note")).toHaveTextContent(`Checked by Ordnung. ${NOTE}`);
-    expect(screen.getByText(/the fine is “25,00 €”/)).toBeInTheDocument();
+    expect(document.body.textContent).toMatch(/the fine is “25,00\s€”/);
   });
 
   it("is never read out of the answer text — a model can write the words too", () => {
@@ -64,6 +64,19 @@ describe("the answer check's note", () => {
   });
 });
 
+describe("copying an answer", () => {
+  it("copies the check's note with it, which explains its quotation marks and left-out values", async () => {
+    const writes: string[] = [];
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: async (t: string) => void writes.push(t) }, configurable: true });
+    const { resolve } = makeRefResolver({});
+    const answer: AnswerState = { ...EMPTY_ANSWER, status: "done", text: "Pay by [date left out] [item:itm_a].", note: NOTE };
+    inRouter(<AnswerView answer={answer} resolve={resolve} />);
+    screen.getByRole("button", { name: /Copy answer/ }).click();
+    await screen.findByText("Copied");
+    expect(writes).toEqual([`Pay by [date left out].\n\nChecked by Ordnung. ${NOTE}`]);
+  });
+});
+
 describe("a partial answer the check never saw", () => {
   it("says so when the person stopped it, and mutes the unchecked words", () => {
     const { resolve } = makeRefResolver({});
@@ -74,6 +87,21 @@ describe("a partial answer the check never saw", () => {
     );
     expect(container.querySelector(".text-muted")?.textContent).toContain("Your deadline moved to 31.12.2027");
     expect(container.textContent).not.toContain("[doc:doc_x");
+  });
+
+  it("mutes bold values too, and streaming text in the same unchecked tone (review round 2)", () => {
+    const { resolve } = makeRefResolver({});
+    const stopped: AnswerState = { ...EMPTY_ANSWER, status: "stopped", text: "You get **324,00 €** back" };
+    const { container, unmount } = inRouter(<AnswerView answer={stopped} resolve={resolve} />);
+    const body = container.querySelector("[data-muted]")!;
+    expect(body.className).toContain("[&_strong]:text-muted");
+    expect(body.querySelector("strong")?.textContent).toBe("324,00\u00a0€");
+    unmount();
+    const streaming = inRouter(<AnswerView answer={{ ...stopped, status: "streaming" }} resolve={resolve} />);
+    expect(streaming.container.querySelector("[data-muted]")).not.toBeNull();
+    streaming.unmount();
+    const done = inRouter(<AnswerView answer={{ ...stopped, status: "done" }} resolve={resolve} />);
+    expect(done.container.querySelector("[data-muted]")).toBeNull();
   });
 
   it("says so when the answer failed half-way", () => {
@@ -106,11 +134,17 @@ describe("citation chips stay with their fact", () => {
       1
     </sup>
   );
+  const groups = (container: HTMLElement) =>
+    [...container.querySelectorAll("span.whitespace-nowrap")].filter((g) => g.querySelector("[data-cite]")).map((g) => g.textContent);
 
-  it("the space before a validated marker does not break (the chip never starts a line)", () => {
+  it("the word before a chip wraps with it, so the chip never starts a line (review round 2)", () => {
+    // a no-break space alone did not do it: a line may break between text and an inline-grid chip
     const valid = citationIndex([{ type: "item", id: "itm_a" }]);
     const { container } = inRouter(<Markdown text="Due by **Wed 21 Oct** [item:itm_a]." citations={valid} renderCitation={renderCite} />);
-    expect(container.textContent).toBe("Due by Wed 21 Oct\u00a01.");
+    expect(groups(container)).toEqual(["Wed\u00a021\u00a0Oct\u00a01."]);
+    expect(container.textContent).toBe("Due by Wed\u00a021\u00a0Oct\u00a01.");
+    // the bold stays bold inside the group
+    expect(container.querySelector("span.whitespace-nowrap strong")?.textContent).toBe("Wed\u00a021\u00a0Oct");
   });
 
   it("punctuation after a chip never wraps onto a line of its own", () => {
@@ -121,20 +155,38 @@ describe("citation chips stay with their fact", () => {
     const { container } = inRouter(
       <Markdown text="Your assessment for 2025 [doc:doc_b]: pay by 1 Oct [item:itm_a] [doc:doc_b]. Done." citations={valid} renderCitation={renderCite} />,
     );
-    const groups = [...container.querySelectorAll("span.whitespace-nowrap")];
-    expect(groups.map((g) => g.textContent)).toEqual(["1:", "1 1."]);
-    expect(container.textContent).toBe("Your assessment for 2025 1: pay by 1 Oct 1 1. Done.");
+    expect(groups(container)).toEqual(["2025\u00a01:", "1\u00a0Oct\u00a01\u00a01."]);
+    expect(container.textContent).toBe("Your assessment for 2025\u00a01: pay by 1\u00a0Oct\u00a01\u00a01. Done.");
+  });
+
+  it("a word too long to wrap on a phone stays outside the group", () => {
+    const valid = citationIndex([{ type: "document", id: "doc_b" }]);
+    const { container } = inRouter(
+      <Markdown text="Bring your certificate (Immatrikulationsbescheinigung) [doc:doc_b]." citations={valid} renderCitation={renderCite} />,
+    );
+    expect(groups(container)).toEqual(["1."]);
+  });
+
+  it("amounts and dates never break across lines", () => {
+    const { container } = inRouter(
+      <Markdown text="You get 324,00 € back; pay € 18.43 by Wed 14 Oct 2026, or Mi. 21.10.2026." citations={null} renderCitation={() => null} />,
+    );
+    expect(container.textContent).toBe(
+      "You get 324,00\u00a0€ back; pay €\u00a018.43 by Wed\u00a014\u00a0Oct\u00a02026, or Mi.\u00a021.10.2026.",
+    );
   });
 });
 
 describe("values the check left out", () => {
   it("show as a muted placeholder, not as bracketed text", () => {
     const { container } = inRouter(
-      <Markdown text="Late fees of [amount left out] per day; Frist [Datum weggelassen]." citations={null} renderCitation={() => null} />,
+      <Markdown text="Late fees of [amount left out] per day; Frist [Datum weggelassen]; see [law left out]." citations={null} renderCitation={() => null} />,
     );
-    const marks = [...container.querySelectorAll("span[title]")];
-    expect(marks.map((m) => m.textContent)).toEqual(["amount left out", "Datum weggelassen"]);
-    expect(container.textContent).toBe("Late fees of amount left out per day; Frist Datum weggelassen.");
+    const marks = [...container.querySelectorAll("span[data-left-out]")];
+    expect(marks.map((m) => m.textContent?.replace(/\u00a0/g, " "))).toEqual(["amount left out", "Datum weggelassen", "law left out"]);
+    expect(container.textContent?.replace(/\u00a0/g, " ")).toBe("Late fees of amount left out per day; Frist Datum weggelassen; see law left out.");
+    // no hover-only explanation: the check's note under the answer explains the mark
+    expect(container.querySelector("span[title]")).toBeNull();
   });
 });
 

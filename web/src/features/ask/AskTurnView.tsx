@@ -18,7 +18,7 @@ import type { TitleLookup } from "./tools";
 export function QuestionBubble({ text }: { text: string }) {
   return (
     <div className="flex justify-end">
-      <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-accent-soft px-4 py-2.5 text-[15px] leading-relaxed text-ink">
+      <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-accent-soft px-4 py-2.5 text-[15px] leading-relaxed text-ink">
         <span className="sr-only">You asked: </span>
         {text}
       </p>
@@ -39,6 +39,9 @@ function Thinking() {
   );
 }
 
+/** The label the check's note is shown (and copied) under. */
+export const CHECK_NOTE_LABEL = "Checked by Ordnung.";
+
 /**
  * What Ordnung's answer check did (ADR 0008): dates or amounts left out because the records their
  * sentences cite don't hold them, and values shown in quotation marks as a letter's (or the
@@ -51,8 +54,8 @@ export function CheckNote({ text }: { text: string }) {
       className="mt-3 flex items-start gap-2 rounded-lg border border-line bg-surface-2/60 px-3 py-2 text-[13px] leading-5 text-muted"
     >
       <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
-      <span className="min-w-0">
-        <span className="font-medium text-ink">Checked by Ordnung.</span> {text}
+      <span className="min-w-0 break-words">
+        <span className="font-medium text-ink">{CHECK_NOTE_LABEL}</span> {text}
       </span>
     </p>
   );
@@ -95,6 +98,8 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
     [valid, numbers, resolve],
   );
   const plain = stripAllMarkers(answer.text).trim();
+  // the note travels with a copied answer: it explains its quotation marks and "[date left out]"
+  const copyText = note ? `${plain}\n\n${CHECK_NOTE_LABEL} ${note}` : plain;
   const copyId = answer.messageId ?? plain;
   const isCopied = copied === copyId;
 
@@ -108,7 +113,7 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
             text={body}
             citations={valid}
             streaming={live || unchecked}
-            className={unchecked ? "text-muted" : undefined}
+            muted={live || unchecked}
             renderCitation={(ref, key) => <CitationMarker key={key} info={resolve(ref)} n={numbers.get(ref.id) ?? 0} />}
           />
         ) : live ? (
@@ -169,7 +174,7 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
           <div className="mt-2 flex items-center gap-1">
             <button
               type="button"
-              onClick={() => void copy(plain, copyId)}
+              onClick={() => void copy(copyText, copyId)}
               className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
               {isCopied ? <Check className="size-3.5 text-ok" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
