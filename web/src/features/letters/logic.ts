@@ -17,6 +17,7 @@ import {
   type Draft,
   type DraftCheck,
   type DraftKind,
+  type LetterAdvice,
   type Remedy,
   type SendChannel,
   type SendChannelKind,
@@ -69,7 +70,7 @@ export type ObjectionCheck =
       /** the remedy comes from the law, not the letter's instructions (§ 694, § 700 ZPO; § 574 BGB) */
       statutory: boolean;
     }
-  | { ok: false; reason: "missing" | "klage" | "none" | "unclear"; title: string; body: string; advice: AdviceLink[] };
+  | { ok: false; reason: "missing" | "klage" | "none" | "unclear" | "no_hardship"; title: string; body: string; advice: AdviceLink[] };
 
 export function adviceFor(area: Area | null | undefined): AdviceLink[] {
   switch (area) {
@@ -95,11 +96,29 @@ export const STATUTORY_REMEDY: Partial<Record<NonNullable<Document["kind"]>, "Ei
   landlord_notice: "Widerspruch",
 };
 
-/** Can Ordnung draft an objection against this letter? (SPEC §21 "Remedies & letters") */
-export function objectionCheck(doc: (Pick<Document, "remedy" | "area"> & Partial<Pick<Document, "kind">>) | null | undefined): ObjectionCheck {
+/**
+ * Can Ordnung draft an objection against this letter? (SPEC §21 "Remedies & letters") `card` is the
+ * letter's "get advice" card, when loaded: a landlord's notice without notice period has no hardship
+ * objection (§ 574 Abs. 1 S. 2 BGB) — its card offers no letter (`draft: null`), and the server refuses
+ * one (`compose.objection_remedy`) with the card's words.
+ */
+export function objectionCheck(
+  doc: (Pick<Document, "remedy" | "area"> & Partial<Pick<Document, "kind">>) | null | undefined,
+  card?: LetterAdvice | null,
+): ObjectionCheck {
   const remedy = doc?.remedy ?? null;
   const advice = adviceFor(doc?.area);
   const statutory = doc?.kind ? STATUTORY_REMEDY[doc.kind] : undefined;
+  if (doc?.kind === "landlord_notice" && card?.kind === "landlord_notice" && card.draft === null) {
+    const [fact] = card.facts;
+    return {
+      ok: false,
+      reason: "no_hardship",
+      title: fact?.title ?? "There is no hardship objection against this notice",
+      body: fact?.text ?? "The hardship objection doesn't apply to a notice without notice period. Get advice at once.",
+      advice,
+    };
+  }
   if (statutory) {
     const own = remedy && (remedy.type === "einspruch" || remedy.type === "widerspruch") ? (remedy as Remedy & { type: "einspruch" | "widerspruch" }) : null;
     return { ok: true, remedy: own, term: statutory, statutory: true };

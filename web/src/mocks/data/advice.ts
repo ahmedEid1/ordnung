@@ -106,6 +106,7 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "Enter the day you received the dismissal — the three weeks count from then.",
       "Get advice today: your union, an employment lawyer or the labour court's Rechtsantragstelle.",
       "Register as job-seeking at the Agentur für Arbeit in time (see the to-do).",
+      "That doesn't replace registering as unemployed (arbeitslos melden): do that too, online or in person, at the latest on your first day without work — unemployment benefit is only paid from then (§ 141 SGB III).",
       "Don't sign anything else, like a termination agreement, before you have had advice.",
       "Apprentices: you don't have to register (§ 38 Abs. 1 S. 4 SGB III), and if your chamber has a conciliation board (Schlichtungsausschuss, § 111 Abs. 2 ArbGG) it must hear the case before the court — ask your chamber or union at once."
     ],
@@ -133,13 +134,14 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       },
       {
         "name": "Agentur für Arbeit",
-        "what": "Register as job-seeking online, by phone (0800 4 5555 00, free) or in person.",
+        "what": "Register as job-seeking online, by phone (0800 4 5555 00, free) or in person — and, by your first day without work, as unemployed (online or in person).",
         "url": "https://www.arbeitsagentur.de/arbeitslos-arbeit-finden/arbeitslosengeld/ihre-schritte-wenn-sie-arbeitslos-werden/wie-sie-sich-arbeitsuchend-melden"
       }
     ],
     "rule_ids": [
       "kschg_4",
-      "sgb3_38"
+      "sgb3_38",
+      "sgb3_141"
     ],
     "draft": null
   },
@@ -250,7 +252,7 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "summary": "A court sent this on behalf of someone who says you owe them money. The court has not checked whether that is true. Within two weeks of delivery you either pay or object (Widerspruch); otherwise the claimant can get an enforcement order and have the money collected.",
     "urgent": true,
     "steps": [
-      "The two weeks count from the delivery date you entered — check it matches the yellow envelope.",
+      "The period counts from the delivery date you entered — check it matches the yellow envelope.",
       "If you don't owe the money, or not all of it, object on the enclosed form (or online) and send it to the court. You don't have to give reasons.",
       "If you do owe it, pay the claimant — not the court — including the costs listed.",
       "Check it's real: a genuine order comes from a court in a yellow envelope, never by e-mail."
@@ -299,7 +301,7 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "summary": "This court order can be enforced right away, like a judgment. You have two weeks from delivery to object (Einspruch), and this period can't be extended.",
     "urgent": true,
     "steps": [
-      "The two weeks count from the delivery date you entered — check it matches the yellow envelope.",
+      "The period counts from the delivery date you entered — check it matches the yellow envelope.",
       "To object, write to the court that issued the order — not by e-mail — or go to its Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record reaches the issuing court, so go early.",
       "An objection doesn't stop enforcement by itself; ask for advice about suspending it.",
       "If you do owe the money, paying it stops further enforcement costs."
@@ -347,6 +349,7 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "The three weeks count from the day you received it, which you entered — check it's right.",
       "Get advice today: your union, an employment lawyer or the labour court's Rechtsantragstelle.",
       "Register as job-seeking at the Agentur für Arbeit in time (see the to-do).",
+      "That doesn't replace registering as unemployed (arbeitslos melden): do that too, online or in person, at the latest on your first day without work — unemployment benefit is only paid from then (§ 141 SGB III).",
       "Don't sign anything else, like a termination agreement, before you have had advice.",
       "Apprentices: you don't have to register (§ 38 Abs. 1 S. 4 SGB III), and if your chamber has a conciliation board (Schlichtungsausschuss, § 111 Abs. 2 ArbGG) it must hear the case before the court — ask your chamber or union at once."
     ],
@@ -374,13 +377,14 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       },
       {
         "name": "Agentur für Arbeit",
-        "what": "Register as job-seeking online, by phone (0800 4 5555 00, free) or in person.",
+        "what": "Register as job-seeking online, by phone (0800 4 5555 00, free) or in person — and, by your first day without work, as unemployed (online or in person).",
         "url": "https://www.arbeitsagentur.de/arbeitslos-arbeit-finden/arbeitslosengeld/ihre-schritte-wenn-sie-arbeitslos-werden/wie-sie-sich-arbeitsuchend-melden"
       }
     ],
     "rule_ids": [
       "kschg_4",
-      "sgb3_38"
+      "sgb3_38",
+      "sgb3_141"
     ],
     "draft": null
   },

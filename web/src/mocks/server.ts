@@ -325,6 +325,9 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
   if (isTemplateKind(body.kind)) return composeTemplateDraft(db, { ...body, kind: body.kind });
   const contract = body.contract_id ? db.state.contracts.find((c) => c.id === body.contract_id) : undefined;
   const doc = body.doc_id ? db.document(body.doc_id) : null;
+  // a notice without notice period has no hardship objection: its card offers none (compose.objection_remedy)
+  const card = doc && body.kind === "objection" && doc.kind === "landlord_notice" ? adviceFor(db, doc) : null;
+  if (card && card.draft === null) throw new HttpError(422, card.facts[0]?.text ?? "There is no hardship objection against this notice.");
   const partyId = body.party_id ?? contract?.party_id ?? doc?.party_id ?? null;
   const party = db.party(partyId);
   const ref = contract?.customer_number ?? doc?.references[0]?.value ?? party?.identifiers[0]?.value ?? "";

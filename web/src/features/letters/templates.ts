@@ -232,11 +232,11 @@ const COURT_ORDERS = new Set<Document["kind"]>(["court_payment_order", "enforcem
 export function templateRefusal(kind: TemplateDraftKind, letterKind: Document["kind"] | null | undefined): { title: string; body: string } | null {
   if (kind === "extension_request" && letterKind && COURT_ORDERS.has(letterKind)) {
     return {
-      title: "A court's two weeks can't be extended",
+      title: "A court's deadline can't be extended",
       body:
         letterKind === "enforcement_order"
-          ? "The two weeks to object to an enforcement order are a Notfrist (§ 339 ZPO) — no one can extend them. Object in time instead, or get advice at once."
-          : "The two weeks to pay or object to a court payment order are set by law (§ 692 ZPO) — no one can extend them by being asked. Object in time instead, or get advice at the court's Rechtsantragstelle.",
+          ? "The period to object to an enforcement order is a Notfrist (two weeks, § 339 ZPO; one week at a labour court, § 59 ArbGG) — no one can extend it. Object in time instead, or get advice at once."
+          : "The period to pay or object to a court payment order is set by law (two weeks, § 692 ZPO; one week at a labour court, § 46a ArbGG) — no one can extend it by being asked. Object in time instead, or get advice at the court's Rechtsantragstelle.",
     };
   }
   if (kind === "extension_request" && letterKind === "dismissal") {

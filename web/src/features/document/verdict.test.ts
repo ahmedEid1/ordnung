@@ -127,6 +127,14 @@ describe("what needs the person's eyes", () => {
     expect(needsArrivalDate(makeItem(), { received_date: null })).toBe(false);
   });
 
+  it("asks for a court order's delivery date whatever anchor its period was read with", () => {
+    const spec = { type: "relative" as const, date: null, time: null, anchor: "document_date" as const, anchor_date: null, amount: 2, unit: "weeks" as const, delivery_rule: "none" as const, shift_rule: "auto" as const, nature: "objection" as const, legal_basis: null, text: "" };
+    const court = makeItem({ date_spec: spec, computation: makeReceipt({ rule_ids: ["zpo_692", "bgb_187_1", "zpo_180", "zpo_222"] }) });
+    expect(needsArrivalDate(court, { received_date: null })).toBe(true);
+    expect(needsArrivalDate(court, { received_date: "2026-09-25" })).toBe(false);
+    expect(needsArrivalDate(makeItem({ date_spec: spec }), { received_date: null })).toBe(false);
+  });
+
   it("finds the active scam warning", () => {
     expect(scamSuggestion(makeDetail({ suggestions: [makeSuggestion({ kind: "saving" })] }))).toBeNull();
     expect(scamSuggestion(makeDetail({ suggestions: [makeSuggestion({ kind: "scam" })] }))?.kind).toBe("scam");

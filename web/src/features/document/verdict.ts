@@ -111,11 +111,14 @@ export function needsCheck(i: Item): boolean {
 }
 
 /**
- * The period starts when the letter arrived (`receipt` anchor) and we don't know that date yet —
- * the rules engine fell back to the letter date (earliest possible) until the person tells us.
+ * The period starts when the letter arrived (`receipt` anchor) — or, for a court order, when it was
+ * delivered (§ 180 ZPO), whatever anchor it was read with — and we don't know that date yet: the
+ * rules engine fell back to the letter date (earliest possible) until the person tells us.
  */
 export function needsArrivalDate(i: Item, doc: Pick<Document, "received_date">): boolean {
-  if (!isOpenItem(i) || i.date_spec?.anchor !== "receipt") return false;
+  if (!isOpenItem(i)) return false;
+  const served = Boolean(i.computation?.rule_ids.includes("zpo_180"));
+  if (i.date_spec?.anchor !== "receipt" && !served) return false;
   if (!doc.received_date) return true;
   return Boolean(i.computation?.rule_ids.some((r) => r.includes("fallback")));
 }

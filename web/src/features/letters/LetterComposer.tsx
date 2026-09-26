@@ -439,8 +439,11 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
     const t = window.setTimeout(() => whichRef.current?.scrollIntoView?.({ block: "start" }), 60);
     return () => window.clearTimeout(t);
   }, [open, startAtWhich]);
-  // the answered letter's own deadline and amount: the server uses them when the fields are left empty
-  const needsLetter = kind === "extension_request" || kind === "payment_plan";
+  const doc = docId ? (docsQ.data ?? []).find((d) => d.id === docId) ?? null : null;
+  // the answered letter's own deadline and amount: the server uses them when the fields are left empty;
+  // a landlord's notice's card says whether it has a hardship objection at all
+  const needsCard = kind === "objection" && doc?.kind === "landlord_notice";
+  const needsLetter = kind === "extension_request" || kind === "payment_plan" || needsCard;
   const letterQ = useDocument(needsLetter && docId ? docId : undefined);
   const defaults = useMemo(() => letterDefaults(letterQ.data?.items ?? []), [letterQ.data]);
 
@@ -459,7 +462,6 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const templateDocs = useMemo(() => docs.filter((d) => !scamDocIds.has(d.id)), [docs, scamDocIds]);
   const objectable = useMemo(() => objectionDocuments(docsQ.data ?? []), [docsQ.data]);
   const contracts = useMemo(() => cancellableContracts(contractsQ.data ?? []), [contractsQ.data]);
-  const doc = docId ? (docsQ.data ?? []).find((d) => d.id === docId) ?? null : null;
   const template = isTemplateKind(kind) ? TEMPLATE_BY_KIND[kind] : null;
   // "Draft cancellation" from a letter: find the contract that letter belongs to
   const inferredContractId = useMemo(() => {
@@ -469,7 +471,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   }, [kind, contractId, prefill?.docId, contractsQ.data]);
   const effContractId = contractId ?? inferredContractId;
   const contract = effContractId ? (contractsQ.data ?? []).find((c) => c.id === effContractId) ?? null : null;
-  const check = objectionCheck(doc);
+  const check = objectionCheck(doc, needsCard ? letterQ.data?.advice : null);
   const objectionBlocked = kind === "objection" && Boolean(doc) && !check.ok;
   const noObjectable = !docsQ.isPending && objectable.length === 0 && !(doc && check.ok);
 
@@ -507,7 +509,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
     kind === "cancellation"
       ? Boolean(contract) && !contractBlocked
       : kind === "objection"
-        ? Boolean(doc) && check.ok
+        ? Boolean(doc) && check.ok && !(needsCard && letterQ.isPending)
         : kind === "general_reply"
           ? Boolean(doc || partyId)
           : template

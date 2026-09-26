@@ -83,7 +83,11 @@ describe("the advice card of a high-stakes letter", () => {
     // the date is on the envelope — the person never sees the Zustellungsurkunde itself
     expect(screen.getByText(/the postman wrote that date on the yellow envelope/)).toBeInTheDocument();
     expect(screen.queryByText(/Zustellungsurkunde/)).toBeNull();
-    expect(screen.getByLabelText("Delivery date")).toBeInTheDocument();
+    // the envelope date is often days before the letter was opened: nothing is filled in, no "Today"
+    const input = screen.getByLabelText("Date on the yellow envelope") as HTMLInputElement;
+    expect(input.value).toBe("");
+    expect(screen.queryByRole("button", { name: "Today" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
   it("replaces the generic court-action card with the letter's own", () => {

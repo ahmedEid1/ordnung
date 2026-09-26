@@ -6,6 +6,7 @@
  */
 import { addDays, format, parseISO } from "date-fns";
 import type { LetterDetails, SendChannel, SendGuidance, TemplateDraftKind } from "@/api/types";
+import { HOLIDAYS, WITHDRAWAL_GUIDANCE } from "./highStakes";
 
 export interface TemplateContext {
   details: LetterDetails;
@@ -55,11 +56,15 @@ const oneLine = (address: string | null | undefined) =>
 const dash = (...parts: (string | null | undefined)[]) => parts.filter(Boolean).join(" – ");
 const moneyDe = (n: number) => `${n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
 const moneyEn = (n: number) => `€${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-/** A weekend end moves to Monday (§ 193 BGB; the demo leaves out public holidays). */
-const toWorkingDay = (iso: string) => {
-  const day = parseISO(iso).getDay();
-  return day === 6 ? format(addDays(parseISO(iso), 2), "yyyy-MM-dd") : day === 0 ? format(addDays(parseISO(iso), 1), "yyyy-MM-dd") : iso;
+const HOLIDAY_SET = new Set(HOLIDAYS);
+/** A last day on a weekend or a public holiday in Sam's Land moves to the next working day (§ 193 BGB). */
+const toWorkingDay = (iso: string): string => {
+  let day = iso;
+  while ([0, 6].includes(parseISO(day).getDay()) || HOLIDAY_SET.has(day)) day = format(addDays(parseISO(day), 1), "yyyy-MM-dd");
+  return day;
 };
+/** "Mon 12 Oct 2026", as the rules engine writes a date (`explain.fmt_date`). */
+const day = (iso: string) => format(parseISO(iso), "EEE d MMM yyyy");
 const sentence = (text: string) => {
   const t = text.trim().replace(/\s+/g, " ");
   return /[.!?]$/.test(t) ? t : `${t}.`;
@@ -119,9 +124,9 @@ export function isCourtName(name: string | null | undefined): boolean {
 /** Template letters the server refuses for a kind of letter (`compose.py` `template_refusal`). */
 export function templateRefusal(kind: TemplateDraftKind, letterKind: string | null | undefined): string | null {
   if (kind === "extension_request" && letterKind === "court_payment_order")
-    return "The two weeks to pay or object to a court payment order are set by law (§ 692 ZPO), and no one can extend them by being asked. Object in time instead — the letter's page offers the objection — or get advice at the court's Rechtsantragstelle.";
+    return "The period to pay or object to a court payment order is set by law (two weeks, § 692 ZPO; one week at a labour court, § 46a ArbGG), and no one can extend it by being asked. Object in time instead — the letter's page offers the objection — or get advice at the court's Rechtsantragstelle.";
   if (kind === "extension_request" && letterKind === "enforcement_order")
-    return "The two weeks to object to an enforcement order can't be extended (Notfrist, § 339 ZPO). Object in time instead — the letter's page offers the objection — or get advice at once.";
+    return "The period to object to an enforcement order can't be extended (Notfrist: two weeks, § 339 ZPO; one week at a labour court, § 59 ArbGG). Object in time instead — the letter's page offers the objection — or get advice at once.";
   if (kind === "extension_request" && letterKind === "dismissal")
     return "The three weeks for a court action against a dismissal are set by law (§ 4 KSchG) — your employer can't extend them. Get advice now (see the card on the letter).";
   if (kind === "payment_plan" && (letterKind === "court_payment_order" || letterKind === "enforcement_order"))
@@ -162,21 +167,27 @@ export function templateLetter(kind: TemplateDraftKind, ctx: TemplateContext): T
         ],
         subjectEn: dash(`Withdrawal from the contract for “${what}”`, ctx.reference),
         paragraphsEn: [`I hereby withdraw from the contract I concluded for “${what}”${whenEn ? ` (${whenEn})` : ""}.`, "Please confirm receipt of this withdrawal and refund all payments I have made."],
+        // as compose._withdrawal_due and send._withdrawal_dates (the demo has no "instructions missing" case)
         notes: until
-          ? [until >= ctx.today ? `You can withdraw until ${en(until)} — sending it in time is enough.` : `The 14 days ended on ${en(until)}. If you were never properly told about the right to withdraw, it lasts longer — get advice.`]
+          ? [
+              until >= ctx.today
+                ? `You can withdraw until ${day(until)} (counted from ${day(start!)}, sending it in time is enough).`
+                : `The 14 days ended on ${day(until)}. If you were never properly told about the right to withdraw, it lasts longer — get advice before you send it.`,
+            ]
           : ["Add when you ordered or received it: Ordnung then shows how long you can withdraw (usually 14 days)."],
         guidance: {
+          ...WITHDRAWAL_GUIDANCE,
           send_by: until && until >= ctx.today ? until : null,
-          must_arrive_by: null,
-          form: "text_form",
-          form_note: "Any clear statement is enough — no reasons, no signature. Sending it in time is enough (§ 355 Abs. 1 BGB); sending the goods back alone is not a withdrawal.",
-          channels: [
-            channel("online_button", "The shop's withdrawal button", "Online shops must offer one since 19 June 2026; it counts when you press it — save the confirmation.", "§ 356a BGB", true),
-            channel("email", "E-mail", "Valid; keep the sent e-mail as proof of when you sent it.", "§ 355 Abs. 1, 2 BGB"),
-            channel("registered_letter", "Letter by Einwurf-Einschreiben", EINSCHREIBEN, "§ 355 Abs. 1, 2 BGB"),
-            channel("letter", "Letter by normal post", "Valid, but you can't prove when you sent it.", "§ 355 Abs. 1, 2 BGB"),
+          tips: [
+            ...(until
+              ? [
+                  until >= ctx.today
+                    ? `Send it by ${day(until)} — sending it in time is enough.`
+                    : `The period to withdraw ended on ${day(until)}. A withdrawal sent now probably comes too late — get advice before you rely on it.`,
+                ]
+              : []),
+            ...WITHDRAWAL_GUIDANCE.tips,
           ],
-          tips: ["Send the goods back separately, as the shop's instructions say.", "Keep a copy of what you send and any proof of delivery."],
         },
       };
     }

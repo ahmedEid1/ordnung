@@ -623,3 +623,60 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
     ]
   }
 };
+
+/** How to send a withdrawal (`send.py` `_withdrawal`; the send-by date is added per letter). */
+export const WITHDRAWAL_GUIDANCE: SendGuidance = {
+  "send_by": null,
+  "must_arrive_by": null,
+  "form": "text_form",
+  "form_note": "Any clear statement is enough — no reasons, no signature. Sending it in time is enough (§ 355 Abs. 1 BGB); sending the goods back alone is not a withdrawal.",
+  "channels": [
+    {
+      "channel": "email",
+      "label": "E-mail",
+      "allowed": true,
+      "recommended": true,
+      "note": "Valid; keep the sent e-mail as proof of when you sent it.",
+      "citation": "§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB"
+    },
+    {
+      "channel": "online_button",
+      "label": "The withdrawal button (contracts made online)",
+      "allowed": true,
+      "recommended": false,
+      "note": "For a contract made on a website or in an app, the company must offer one since 19 June 2026; it counts when you press it — save the confirmation. Not for contracts made at the door or by phone.",
+      "citation": "§ 356a BGB"
+    },
+    {
+      "channel": "registered_letter",
+      "label": "Letter by Einwurf-Einschreiben",
+      "allowed": true,
+      "recommended": false,
+      "note": "Einwurf-Einschreiben (registered letter): keep the posting receipt and ask for the delivery record (Auslieferungsbeleg) — online tracking alone is no proof (BAG 2 AZR 68/24).",
+      "citation": "§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB"
+    },
+    {
+      "channel": "fax",
+      "label": "Fax",
+      "allowed": true,
+      "recommended": false,
+      "note": "Keep the transmission report.",
+      "citation": "§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB"
+    },
+    {
+      "channel": "letter",
+      "label": "Letter by normal post",
+      "allowed": true,
+      "recommended": false,
+      "note": "Valid, but you can't prove when you sent it.",
+      "citation": "§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB"
+    }
+  ],
+  "tips": [
+    "Send the goods back separately, as the shop's instructions say.",
+    "Keep a copy of what you send and any proof of delivery."
+  ]
+};
+
+/** Weekday public holidays in Sam's Land (NW), 2025–2028: a withdrawal's last day moves off them. */
+export const HOLIDAYS: string[] = ["2025-01-01", "2025-04-18", "2025-04-21", "2025-05-01", "2025-05-29", "2025-06-09", "2025-06-19", "2025-10-03", "2025-12-25", "2025-12-26", "2026-01-01", "2026-04-03", "2026-04-06", "2026-05-01", "2026-05-14", "2026-05-25", "2026-06-04", "2026-12-25", "2027-01-01", "2027-03-26", "2027-03-29", "2027-05-06", "2027-05-17", "2027-05-27", "2027-11-01", "2028-04-14", "2028-04-17", "2028-05-01", "2028-05-25", "2028-06-05", "2028-06-15", "2028-10-03", "2028-11-01", "2028-12-25", "2028-12-26"];

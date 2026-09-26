@@ -288,10 +288,18 @@ export function normalizeIban(iban: string): string {
   return iban.replace(/[\s\-.]+/g, "").toUpperCase();
 }
 
-/** Shape and ISO 13616 mod-97 checksum of an IBAN (the server also checks each country's length). */
+/** Shape, length for its country and ISO 13616 mod-97 checksum of an IBAN, like the server (`iban_valid`). */
+/** Each country's IBAN length, as the server checks it (`secretary/scam.py` `IBAN_LENGTHS`). */
+const IBAN_LENGTHS: Record<string, number> = {
+  AT: 20, BE: 16, CH: 21, CZ: 24, DE: 22, DK: 18, ES: 24, FI: 18, FR: 27, GB: 22, IE: 22, IT: 27, LU: 20, NL: 18, NO: 15,
+  PL: 28, PT: 25, SE: 24,
+};
+
 export function ibanLooksValid(iban: string): boolean {
   const v = normalizeIban(iban);
   if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(v)) return false;
+  const length = IBAN_LENGTHS[v.slice(0, 2)];
+  if (length !== undefined && v.length !== length) return false;
   let rest = 0;
   for (const ch of v.slice(4) + v.slice(0, 4)) {
     for (const digit of String(parseInt(ch, 36))) rest = (rest * 10 + Number(digit)) % 97;

@@ -8,6 +8,7 @@ import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { ibanLooksValid, normalizeIban } from "@/lib/format";
 import { __clearToasts } from "@/components/ui/Toast";
 import LettersPage from "@/pages/LettersPage";
+import { templateLetter as mockTemplateLetter } from "@/mocks/data/templateLetters";
 import { followUpDate, objectionCheck } from "./logic";
 import {
   SCHUFA_ADDRESS,
@@ -178,6 +179,17 @@ describe("statutory objections and follow-ups", () => {
     expect(objectionCheck({ kind: "dismissal", remedy: null, area: "work" })).toMatchObject({ ok: false, reason: "missing" });
   });
 
+  it("the static demo's withdrawal says what the real rules say: e-mail first, holidays counted", () => {
+    const ctx = { details: { subject_matter: "Kaffeemaschine", received_on: "2026-12-11" }, reference: null, docDate: null, topic: null, address: "", iban: "", taxOffice: false, schufa: false, today: "2026-12-14" };
+    const letter = mockTemplateLetter("withdrawal", ctx);
+    // 14 days end on Christmas Day (Fri 25 Dec 2026): the next working day is Mon 28 Dec (§ 193 BGB)
+    expect(letter.guidance.send_by).toBe("2026-12-28");
+    expect(letter.notes[0]).toContain("Mon 28 Dec 2026");
+    const recommended = letter.guidance.channels.filter((c) => c.recommended).map((c) => c.channel);
+    expect(recommended).toEqual(["email"]);
+    expect(letter.guidance.channels.find((c) => c.channel === "online_button")?.note).toMatch(/Not for contracts made at the door or by phone/);
+  });
+
   it("gives a data request a month to answer before the follow-up", () => {
     expect(followUpDate("2026-09-28", "data_access")).toBe("2026-11-02");
     expect(followUpDate("2026-09-28", "withdrawal")).toBe("2026-10-19");
@@ -188,6 +200,26 @@ describe("statutory objections and follow-ups", () => {
     expect(ibanLooksValid("DE89 3704 0044 0532 0130 00")).toBe(true);
     expect(ibanLooksValid("DE89 3704 0044 0532 0130 01")).toBe(false);
     expect(ibanLooksValid("not an iban")).toBe(false);
+    // a valid checksum at the wrong length for its country: the server refuses it too
+    expect(ibanLooksValid("DE86 3704 0044 0532 0130")).toBe(false);
+    expect(ibanLooksValid("AT61 1904 3002 3457 3201")).toBe(true);
+  });
+
+  it("offers no hardship objection against a notice without notice period — as its card says", () => {
+    const notice = { kind: "landlord_notice" as const, remedy: null, area: "home" as const };
+    const fristlos = {
+      kind: "landlord_notice" as const,
+      title: "Notice from your landlord — get advice before you act",
+      summary: "",
+      urgent: false,
+      steps: [],
+      facts: [{ title: "This reads as a notice without notice period (fristlos)", text: "The hardship objection doesn't apply to it, so Ordnung doesn't draft one.", tone: "warn" as const, citation: "§ 574 Abs. 1 S. 2 BGB" }],
+      help: [],
+      rule_ids: [],
+      draft: null,
+    };
+    expect(objectionCheck(notice, fristlos)).toMatchObject({ ok: false, reason: "no_hardship", title: "This reads as a notice without notice period (fristlos)" });
+    expect(objectionCheck(notice, { ...fristlos, draft: "objection" })).toMatchObject({ ok: true, term: "Widerspruch" });
   });
 });
 
@@ -251,7 +283,7 @@ describe("composer — template letters", () => {
     renderWithProviders(<LettersPage />, { route: "/letters?new=1&doc=doc_mahnbescheid" });
     const dialog = await screen.findByRole("dialog", { name: "New letter" });
     await user.click(within(dialog).getByRole("radio", { name: /Ask for more time/ }));
-    expect(await within(dialog).findByText("A court's two weeks can't be extended")).toBeInTheDocument();
+    expect(await within(dialog).findByText("A court's deadline can't be extended")).toBeInTheDocument();
     const write = within(dialog).getByRole("button", { name: /Write the letter/ });
     // nothing to fill in for a letter that can't be written
     expect(within(dialog).queryByLabelText(/New date you ask for/)).toBeNull();

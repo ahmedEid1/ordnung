@@ -219,21 +219,34 @@ function ArrivalQuestion({ doc, items }: { doc: Document; items: Item[] }) {
   const todayISO = useTodayISO();
   const served = SERVED.has(doc.kind);
   const update = useUpdateDocument();
-  const [date, setDate] = useState(doc.received_date ?? todayISO);
+  // A court's letter counts from the date the postman wrote on the envelope, often days before it was
+  // opened: nothing is filled in for it, so one Save can never move a court deadline later by mistake.
+  const [date, setDate] = useState(doc.received_date ?? (served ? "" : todayISO));
   const min = doc.doc_date ?? undefined;
   const valid = Boolean(date) && date <= todayISO && (!min || date >= min);
-  const quick = [0, 1, 2].map((n) => {
-    const d = new Date(`${todayISO}T00:00:00`);
-    d.setDate(d.getDate() - n);
-    return toISODate(d);
-  }).filter((d) => !min || d >= min);
+  const quick = served
+    ? []
+    : [0, 1, 2]
+        .map((n) => {
+          const d = new Date(`${todayISO}T00:00:00`);
+          d.setDate(d.getDate() - n);
+          return toISODate(d);
+        })
+        .filter((d) => !min || d >= min);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!valid) return;
     update.mutate(
       { id: doc.id, patch: { received_date: date } },
-      { onSuccess: () => toast.success("Thanks — dates updated", { description: `Counting from ${formatDate(date, { style: "short" })}, when the letter arrived.` }) },
+      {
+        onSuccess: () =>
+          toast.success("Thanks — dates updated", {
+            description: served
+              ? `Counting from ${formatDate(date, { style: "short" })}, the delivery date on the envelope.`
+              : `Counting from ${formatDate(date, { style: "short" })}, when the letter arrived.`,
+          }),
+      },
     );
   };
 
@@ -273,8 +286,8 @@ function ArrivalQuestion({ doc, items }: { doc: Document; items: Item[] }) {
                 {i === 0 ? "Today" : i === 1 ? "Yesterday" : formatDate(d, { style: "short" })}
               </button>
             ))}
-            <label className="sr-only" htmlFor="arrival-date">
-              {served ? "Delivery date" : "Arrival date"}
+            <label className={served ? "text-[13px] font-medium text-ink" : "sr-only"} htmlFor="arrival-date">
+              {served ? "Date on the yellow envelope" : "Arrival date"}
             </label>
             <Input
               id="arrival-date"
