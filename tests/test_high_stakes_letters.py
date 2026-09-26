@@ -72,6 +72,47 @@ MAHNBESCHEID = Letter(
     },
 )
 
+LABOUR_QUOTE = "Sie können binnen einer Woche seit der Zustellung dieses Bescheids Widerspruch erheben."
+#: A labour court's Mahnbescheid (an employer reclaiming pay): one week, § 46a Abs. 3 ArbGG.
+LABOUR_MAHNBESCHEID = Letter(
+    marker="Arbeitsgericht Berlin",
+    pages=(
+        (
+            "Arbeitsgericht Berlin - Magdeburger Platz 1 - 10785 Berlin",
+            "SPECIMEN",
+            "Mahnbescheid vom 21.09.2026",
+            "Antragsteller: Café Kranz GmbH, Rückzahlung Lohnvorschuss 900,00 EUR",
+            LABOUR_QUOTE,
+        ),
+    ),
+    payload={
+        "kind": "authority_letter",
+        "area": "work",
+        "title": "Mahnbescheid (court payment order)",
+        "sender": {"name": "Arbeitsgericht Berlin", "kind": "authority"},
+        "document_date": "2026-09-21",
+        "summary": "A labour court payment order for 900 EUR claimed by your former employer.",
+        "explanation": "Pay or object.",
+        "items": [
+            {
+                "kind": "deadline",
+                "title": "Object or pay",
+                "date": {
+                    "type": "relative",
+                    "anchor": "receipt",
+                    "amount": 1,
+                    "unit": "weeks",
+                    "nature": "objection",
+                    "text": "binnen einer Woche seit der Zustellung dieses Bescheids",
+                },
+                "quote": LABOUR_QUOTE,
+            }
+        ],
+        "remedy": {"type": "widerspruch", "addressee": "Arbeitsgericht Berlin", "quote": LABOUR_QUOTE},
+        "urgency": "critical",
+    },
+)
+
 DISMISSAL_QUOTE = "hiermit kündigen wir das Arbeitsverhältnis fristgerecht zum 31.12.2026."
 DISMISSAL = Letter(
     marker="Kündigung Arbeitsverhältnis",
@@ -213,8 +254,8 @@ SEVERANCE = Letter(
 )
 
 
-def _notice(marker: str, quote: str) -> Letter:
-    """A landlord's notice ending the tenancy on 31 Mar 2027, in the words of ``quote``."""
+def _notice(marker: str, quote: str, end: str | None = "2027-03-31") -> Letter:
+    """A landlord's notice ending the tenancy on ``end`` (31 Mar 2027), in the words of ``quote``."""
     return Letter(
         marker=marker,
         pages=(("Hausverwaltung Muster GmbH", "SPECIMEN", marker, quote),),
@@ -227,7 +268,7 @@ def _notice(marker: str, quote: str) -> Letter:
             "summary": "Your landlord ends the tenancy.",
             "explanation": "Get advice.",
             "items": [],
-            "change": {"type": "termination_by_provider", "effective_date": "2027-03-31", "quote": quote},
+            "change": {"type": "termination_by_provider", "effective_date": end, "quote": quote},
             "urgency": "high",
         },
     )
@@ -235,7 +276,8 @@ def _notice(marker: str, quote: str) -> Letter:
 
 FRISTLOS = _notice(
     "Fristlose Kündigung",
-    "hiermit kündigen wir das Mietverhältnis fristlos wegen Zahlungsverzugs zum 31.03.2027.",
+    "hiermit kündigen wir das Mietverhältnis fristlos wegen Zahlungsverzugs.",
+    end=None,
 )
 HILFSWEISE = _notice(
     "Kündigung fristlos, hilfsweise fristgerecht",
@@ -243,7 +285,17 @@ HILFSWEISE = _notice(
 )
 
 #: Routed by the first marker found: the letters that quote another's marker come first.
-LETTERS = (BAILIFF, CLAIMANT, SEVERANCE, MAHNBESCHEID, DISMISSAL, STATEMENT, HILFSWEISE, FRISTLOS)
+LETTERS = (
+    BAILIFF,
+    CLAIMANT,
+    SEVERANCE,
+    LABOUR_MAHNBESCHEID,
+    MAHNBESCHEID,
+    DISMISSAL,
+    STATEMENT,
+    HILFSWEISE,
+    FRISTLOS,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -301,6 +353,25 @@ async def test_a_court_payment_order_is_filed_routed_and_carries_the_advice_card
 
         filtered = (await api.client.get("/api/documents", params={"kind": "court_payment_order"})).json()
         assert [doc["id"] for doc in filtered] == [doc_id]
+
+
+async def test_a_labour_courts_payment_order_gives_one_week(data_dir: Path) -> None:
+    """§ 46a Abs. 3 ArbGG: one week, not the two weeks of § 692 ZPO — in the dates, the card and the
+    sending advice."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, LABOUR_MAHNBESCHEID)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "court_payment_order"
+        [objection] = detail["items"]  # counted under the labour court's rule: no second to-do
+        assert objection["due_date"] == "2026-09-28" and objection["computation"]["confidence"] == "low"
+        assert "arbgg_46a" in objection["computation"]["rule_ids"]
+        assert not any("two weeks" in w for w in objection["computation"]["warnings"])
+        advice = detail["advice"]
+        assert advice["urgent"] and "one week" in advice["title"]
+        assert all("online-mahnantrag" not in link["url"] for link in advice["help"])
+        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-23"})
+        [item] = api.ctx.store.list_items(doc_id=doc_id)
+        assert item.due_date == "2026-09-30"
 
 
 async def test_correcting_the_kind_reroutes_the_dates(data_dir: Path) -> None:
@@ -456,6 +527,14 @@ async def test_a_notice_without_notice_period_gets_no_hardship_objection(
         assert advice["draft"] == ("objection" if objection else None)
         rules = [item["due_date"] for item in detail["items"] if item["origin"] == "rule"]
         assert rules == (["2027-01-31"] if objection else [])  # two months before 31 Mar 2027
+        if not objection:
+            # the composer refuses the hardship objection the card doesn't offer (§ 574 Abs. 1 S. 2 BGB)
+            refused = await api.client.post("/api/drafts", json={"kind": "objection", "doc_id": doc_id})
+            assert refused.status_code == 422
+            assert (
+                "doesn't apply" in refused.json()["detail"]
+                and "§ 569 Abs. 3 Nr. 2" in refused.json()["detail"]
+            )
 
 
 async def test_an_operating_cost_statement_keeps_its_kind_and_gets_its_card_on_read(data_dir: Path) -> None:
@@ -514,3 +593,8 @@ def test_a_kind_the_person_chose_is_a_correction() -> None:
     old = filed.model_copy(update={"kind": "authority_letter"})
     assert corrections(old, reading) == {}
     assert corrections(old, reading, chosen_kind="dismissal") == {}  # an earlier choice, since changed
+    # a high-stakes kind an older Ordnung filed, which the policy no longer gives the reading, isn't the
+    # person's: reading again files the reading's kind (unless the person chose it)
+    dunning = reading.model_copy(update={"kind": "dunning", "sender": None, "remedy": None})
+    assert corrections(filed, dunning) == {}
+    assert corrections(filed, dunning, chosen_kind="court_payment_order") == {"kind": "court_payment_order"}

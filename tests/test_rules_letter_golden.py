@@ -58,6 +58,7 @@ def _run(case: dict[str, Any]) -> dict[str, Any]:
         return {
             "period_end": period.end.isoformat(),
             "exact": period.exact,
+            "labelled": period.labelled,
             "deadline": check.deadline.isoformat(),
             "late": check.late,
         }
@@ -90,4 +91,16 @@ def test_letter_golden_case(case: dict[str, Any]) -> None:
 
 def test_every_new_rule_has_a_golden_case() -> None:
     cited = {case["id"].split("-")[0] for case in CASES}
-    assert {"zpo692", "zpo339", "kschg4", "sgb3", "bgb558b", "bgb574b", "bgb556", "bgb355", "bgb356"} <= cited
+    assert {
+        "zpo692",
+        "zpo339",
+        "arbgg46a",
+        "arbgg59",
+        "kschg4",
+        "sgb3",
+        "bgb558b",
+        "bgb574b",
+        "bgb556",
+        "bgb355",
+        "bgb356",
+    } <= cited

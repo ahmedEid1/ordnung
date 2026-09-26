@@ -185,17 +185,21 @@ def _notice_objection(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: in
 
 def _stated_period(spec: DateSpec, start: date, legal: date, region: str | None, trace: Trace) -> date | None:
     """The end of a withdrawal period the letter states when it isn't the law's 14 days (a shop may
-    grant more; a shorter one doesn't count against the consumer), after the § 193 shift."""
+    grant more, e.g. 14 Werktage; a shorter one doesn't count against the consumer), after the § 193
+    shift."""
     if (
         spec.amount is None
         or spec.unit is None
         or _same_period((spec.amount, spec.unit), (WITHDRAWAL_DAYS, "days"))
     ):
         return None
-    if spec.amount <= 0 or spec.unit in ("business_days", "werktage"):
+    if spec.amount <= 0:
         return None
-    raw, _ = add_period(start, spec.amount, spec.unit)
+    # working days (Werktage) count without a regional holiday we can't place: the earlier day
+    raw, _ = add_period(start, spec.amount, spec.unit, region=region)
     stated, _ = shift_to_business_day(raw, region, "bgb_193")
+    if stated == legal:
+        return None  # another way of writing the same day (10 working days, two weeks)
     period = fmt_period(spec.amount, spec.unit)
     if stated > legal:
         trace.soft(

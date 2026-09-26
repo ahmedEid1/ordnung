@@ -40,6 +40,7 @@ from ordnung.ingest.verify import (
 )
 from ordnung.models import (
     DOCUMENT_KINDS,
+    HIGH_STAKES_KINDS,
     ComputationReceipt,
     DateSpec,
     Document,
@@ -71,6 +72,8 @@ from ordnung.rules.routing import (
     computed_under,
     derived_deadlines,
     extraordinary_notice,
+    is_court,
+    is_labour_court,
     letter_kind,
 )
 from ordnung.secretary.scam import iban_from_page, iban_valid, normalize_iban
@@ -284,10 +287,13 @@ def rule_context(
     AO, health insurer or social-benefits agency → SGB X, other authorities → VwVfG; see
     :func:`ordnung.rules.scope_for_party_kind`). A received date on the document was entered by the person, so
     it counts as confirmed. ``filed_as`` is the letter's kind (default: the reading's, :func:`letter_kind`),
-    which routes the dates of high-stakes letters; a termination's end date comes with it.
+    which routes the dates of high-stakes letters; a termination's end date comes with it. A court's
+    letter is marked as one (and a labour court's), whatever kind it was filed as: its dates never use a
+    delivery fiction and are never ``high``.
     """
     sender = extraction.sender
     kind = party.kind if party else (sender.kind if sender else None)
+    name = party.name if party else (sender.name if sender else "")
     remedy = extraction.remedy
     return RuleContext(
         today=today,
@@ -305,6 +311,8 @@ def rule_context(
         recipient_region=recipient_region,
         letter_kind=filed_as or letter_kind(extraction),
         end_date=announced_end(extraction),
+        court=is_court(name),
+        labour_court=is_labour_court(name),
     )
 
 
@@ -442,10 +450,12 @@ def corrections(
     kind as code files it).
 
     The kind is a correction only when the person chose it (``chosen_kind``, from the
-    :data:`KIND_CHOSEN` activity entry) or when it is neither the kind code files the reading as nor
-    the model's own kind. A letter filed by an older Ordnung under the model's kind (a Mahnbescheid as
-    ``dunning``) therefore gets its high-stakes kind when it is read again, and a kind the person picked
-    on the letter's page — even the model's own — is kept.
+    :data:`KIND_CHOSEN` activity entry) or when it is none of the kinds code may have filed: not the
+    kind code files the reading as, not the model's own kind and not a high-stakes kind (which only code
+    or the person's choice assigns). A letter filed by an older Ordnung under the model's kind (a
+    Mahnbescheid as ``dunning``) therefore gets its high-stakes kind when it is read again, one an older
+    Ordnung filed as a court order that the policy no longer recognises gets the model's kind back, and
+    a kind the person picked on the letter's page — even the model's own — is kept.
     """
     if previous is None:
         return {}
@@ -454,7 +464,11 @@ def corrections(
         for name, value in _read_facts(previous).items()
         if getattr(document, name) != value
     }
-    if "kind" in found and document.kind != chosen_kind and document.kind == previous.kind:
+    if (
+        "kind" in found
+        and document.kind != chosen_kind
+        and (document.kind == previous.kind or document.kind in HIGH_STAKES_KINDS)
+    ):
         del found["kind"]
     return found
 
@@ -649,8 +663,9 @@ def law_deadlines(
         kind,
         end=ctx.end_date,
         letter_date=ctx.document_date,
+        labour_court=ctx.labour_court,
         extraordinary=extraction is not None
-        and extraordinary_notice(extraction)
+        and extraordinary_notice(extraction, ctx.document_date)
         and not alternative_notice(extraction),
     )
 

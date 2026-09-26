@@ -9,12 +9,20 @@ from hypothesis import strategies as st
 
 from ordnung.models import DateSpec, DocumentExtraction, ExtractedItem, ExtractedParty, Remedy
 from ordnung.rules import calendar_de, routing
+from ordnung.rules.advice import letter_advice
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.consumer import long_withdrawal_end, withdrawal_end
 from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.rules.employment import registration_deadline
 from ordnung.rules.periods import add_months, latest_receipt_for
-from ordnung.rules.tenancy import consent_period, month_end, notice_objection_deadline, statement_check
+from ordnung.rules.tenancy import (
+    cap_limit,
+    consent_period,
+    exceeds_cap,
+    month_end,
+    notice_objection_deadline,
+    statement_check,
+)
 
 dates = st.dates(min_value=date(2000, 1, 1), max_value=date(2060, 12, 31))
 regions = st.one_of(st.none(), st.sampled_from(sorted(REGION_NAMES)))
@@ -110,22 +118,37 @@ court_specs = st.builds(
 )
 
 
-@given(court_specs, dates, regions, st.sampled_from(["court_payment_order", "enforcement_order", None]))
+@given(
+    court_specs,
+    dates,
+    regions,
+    st.sampled_from(["court_payment_order", "enforcement_order", None]),
+    st.sampled_from(["", "court", "labour_court"]),
+)
 def test_no_court_date_is_ever_high_whatever_its_type(
-    spec: DateSpec, served: date, region: str | None, kind: str | None
+    spec: DateSpec, served: date, region: str | None, kind: str | None, sender: str
 ) -> None:
+    """Whatever a court order's date looks like — and whatever a court's letter was filed as — it is never
+    ``high``, and a court's letter never gets an authority's delivery fiction."""
     ctx = RuleContext(
         today=served,
         region=region,
         document_date=served,
         received_date=served,
         received_confirmed=True,
+        delivery_scope="vwvfg" if sender else None,
         letter_kind=kind,
+        court=bool(sender),
+        labour_court=sender == "labour_court",
     )
     receipt = compute_due(spec, ctx)
-    court_rule = any(rule in receipt.rule_ids for rule in ("zpo_692", "zpo_339", "kschg_4"))
-    if receipt.due_date is not None and (kind is not None or court_rule):
+    court_rule = any(
+        rule in receipt.rule_ids for rule in ("zpo_692", "zpo_339", "arbgg_46a", "arbgg_59", "kschg_4")
+    )
+    if receipt.due_date is not None and (kind is not None or court_rule or sender):
         assert receipt.confidence != "high"
+    if sender:
+        assert "vwvfg_41_2" not in receipt.rule_ids
 
 
 @given(dates, st.integers(min_value=0, max_value=800), st.booleans(), regions)
@@ -142,6 +165,63 @@ def test_a_statement_is_only_called_late_when_it_certainly_is(
     else:
         assert not confirmed and arrived <= check.deadline
     assert check.objections_by >= add_months(arrived, 12)
+
+
+_MONTHS_DE = "Januar Februar März April Mai Juni Juli August September Oktober November Dezember".split()
+#: How a statement may write its own period (or not at all); ``{s}``/``{e}`` are its first and last day.
+_OWN_PERIOD = (
+    "Abrechnungszeitraum: {s:%d.%m.%Y} - {e:%d.%m.%Y}",
+    "Abrechnung für den Zeitraum vom {s.day}. {sm} {s.year} bis {e.day}. {em} {e.year}",
+    "Betriebskostenabrechnung (Zeitraum {s:%Y-%m-%d} bis {e:%Y-%m-%d})",
+    "Heizkostenabrechnung\nZeitraum: {sm} bis {em} {e.year}",
+    "Betriebskostenabrechnung für das Jahr {e.year}",
+    "Nebenkostenabrechnung",
+)
+
+
+@given(
+    st.dates(min_value=date(2005, 1, 1), max_value=date(2050, 12, 31)),
+    st.sampled_from(_OWN_PERIOD),
+    st.integers(min_value=0, max_value=365),
+    st.booleans(),
+    regions,
+)
+def test_the_previous_years_figures_never_make_an_on_time_statement_late(
+    day: date, own: str, days: int, confirmed: bool, region: str | None
+) -> None:
+    """Whatever way the statement writes its own period — or if Ordnung can't read it — the previous
+    year's comparison next to it never makes a statement that arrived in time "late"."""
+    end = date(day.year, 12, 31) if "Jahr" in own else month_end(day)
+    start = add_months(end, -12) + timedelta(days=1)
+    arrived = min(end + timedelta(days=1 + days), month_end(add_months(end, 12)))
+    previous = f"{add_months(start, -12):%d.%m.%Y} – {start - timedelta(days=1):%d.%m.%Y}"
+    text = (
+        own.format(s=start, e=end, sm=_MONTHS_DE[start.month - 1], em=_MONTHS_DE[end.month - 1])
+        + f"\nNachzahlung 120,00 EUR\nVerbrauchsvergleich: Vorjahreszeitraum {previous}: 9.100 kWh"
+        + f"\nVorjahr ({previous}): 1.980,00 EUR"
+    )
+    card = letter_advice(
+        "operating_costs",
+        today=arrived,
+        arrived=arrived,
+        arrival_confirmed=confirmed,
+        region=region,
+        text=text,
+    )
+    assert card is not None
+    [fact] = card.facts
+    assert "late" not in fact.title and fact.tone != "warn", (text, fact)
+
+
+@given(st.integers(min_value=1, max_value=1_000_000), st.sampled_from([15.0, 20.0]))
+def test_the_highest_rent_a_cap_allows_is_within_it_and_a_cent_more_is_not(
+    old_cents: int, cap: float
+) -> None:
+    old = old_cents / 100
+    limit = cap_limit(old, cap)
+    assert not exceeds_cap(old, limit, cap)
+    assert exceeds_cap(old, round(limit + 0.01, 2), cap)
+    assert round(limit * 100) * 100 <= old_cents * (100 + cap)
 
 
 words = st.text(alphabet=st.characters(categories=["L", "Zs"]), max_size=40)

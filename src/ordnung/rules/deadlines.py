@@ -53,10 +53,13 @@ ASSUMED_RECEIPT_WARNING: Final = (
 
 _SHIFTING_NATURES = ("objection", "payment", "declaration")
 _SEND_BY_NATURES = ("objection", "payment", "declaration", "notice")
+#: Court orders under the ZPO (and at a labour court, § 46a ArbGG): delivered by the court (§ 180 ZPO),
+#: shifted by § 222 Abs. 2 ZPO.
+_CIVIL_COURT = ("zpo_692", "zpo_339", "arbgg_46a", "arbgg_59")
 #: Statutes whose period runs from formal service (yellow envelope), not from a delivery fiction.
-_FORMAL_SERVICE = ("owig_67", "stpo_410", "zpo_692", "zpo_339")
-#: Court orders under the ZPO: delivered by the court (§ 180 ZPO), shifted by § 222 Abs. 2 ZPO.
-_CIVIL_COURT = ("zpo_692", "zpo_339")
+_FORMAL_SERVICE = ("owig_67", "stpo_410", *_CIVIL_COURT)
+#: A labour court's orders have one week, not two (§ 46a Abs. 3, § 59 S. 1 ArbGG).
+_LABOUR_COURT_RULES = {"zpo_692": "arbgg_46a", "zpo_339": "arbgg_59"}
 _CHANNEL_BY_RULE: dict[str, DeliveryChannel] = {
     "de_admin_electronic": "electronic",
     "de_admin_portal": "portal",
@@ -64,6 +67,7 @@ _CHANNEL_BY_RULE: dict[str, DeliveryChannel] = {
 
 _ONE_MONTH: tuple[tuple[int, PeriodUnit], ...] = ((1, "months"),)
 _ONE_OR_THREE_MONTHS: tuple[tuple[int, PeriodUnit], ...] = ((1, "months"), (3, "months"))
+_ONE_WEEK: tuple[tuple[int, PeriodUnit], ...] = ((1, "weeks"),)
 _TWO_WEEKS: tuple[tuple[int, PeriodUnit], ...] = ((2, "weeks"),)
 _THREE_WEEKS: tuple[tuple[int, PeriodUnit], ...] = ((3, "weeks"),)
 
@@ -79,6 +83,8 @@ _STATUTES: list[tuple[re.Pattern[str], str, tuple[tuple[int, PeriodUnit], ...]]]
     (re.compile(r"\b410\b[^§]{0,20}\bStPO\b", re.I), "stpo_410", _TWO_WEEKS),
     (re.compile(r"\b87\b[^§]{0,20}\bSGG\b", re.I), "klage_1_month", _ONE_OR_THREE_MONTHS),
     (re.compile(r"\b74\b[^§]{0,20}\bVwGO\b|\b47\b[^§]{0,20}\bFGO\b", re.I), "klage_1_month", _ONE_MONTH),
+    (re.compile(r"\b46a\b[^§]{0,20}\bArbGG\b", re.I), "arbgg_46a", _ONE_WEEK),
+    (re.compile(r"\b59\b[^§]{0,20}\bArbGG\b", re.I), "arbgg_59", _ONE_WEEK),
     (re.compile(r"\b69[24]\b[^§]{0,20}\bZPO\b", re.I), "zpo_692", _TWO_WEEKS),
     (re.compile(r"\b(?:339|700)\b[^§]{0,20}\bZPO\b", re.I), "zpo_339", _TWO_WEEKS),
     (re.compile(r"\b4\b[^§]{0,20}\bKSchG\b|Kündigungsschutzklage", re.I), "kschg_4", _THREE_WEEKS),
@@ -90,6 +96,8 @@ _STATUTE_PERIODS = {rule_id: periods for _, rule_id, periods in _STATUTES}
 _STATUTE_NATURES: dict[str, tuple[DateNature, ...]] = {
     "zpo_692": ("objection", "payment", "declaration"),
     "zpo_339": ("objection", "declaration"),
+    "arbgg_46a": ("objection", "payment", "declaration"),
+    "arbgg_59": ("objection", "declaration"),
     "kschg_4": ("objection", "declaration"),
 }
 _SHIFT_RULE_BY_SCOPE: dict[DeliveryScope, str] = {
@@ -114,7 +122,10 @@ class RuleContext:
     debtor's home (§§ 269, 270 Abs. 4, 193 BGB; research ``bgb_271_286_2_zahlungsziel_rechnung``).
     ``letter_kind`` is the letter's kind (``Document.kind``), which routes the dates of high-stakes
     letters (:mod:`ordnung.rules.routing`); ``end_date`` is the end of the job or tenancy a termination
-    announces.
+    announces. ``court``: the sender is a court (:func:`ordnung.rules.routing.is_court`) — its periods
+    run from formal service, never from a delivery fiction, and none of its dates is ``high``, whatever
+    kind the letter was filed as. ``labour_court``: a labour court, whose orders give one week, not two
+    (§ 46a Abs. 3, § 59 ArbGG).
     """
 
     today: date
@@ -127,6 +138,8 @@ class RuleContext:
     recipient_region: str | None = None
     letter_kind: str | None = None
     end_date: date | None = None
+    court: bool = False
+    labour_court: bool = False
 
 
 @dataclass
@@ -219,16 +232,27 @@ def parse_date(value: str | None) -> date | None:
 
 
 def _statute(
-    spec: DateSpec, letter_kind: str | None = None
+    spec: DateSpec, letter_kind: str | None = None, *, labour_court: bool = False
 ) -> tuple[str, tuple[tuple[int, PeriodUnit], ...]] | None:
     """The statute the DateSpec cites, else the one its kind of letter gives it (court orders); a court
-    rule only for a date of a nature it binds (:data:`_STATUTE_NATURES`)."""
+    rule only for a date of a nature it binds (:data:`_STATUTE_NATURES`). At a labour court an order's
+    ZPO rule is the ArbGG's one-week rule (§ 46a Abs. 3, § 59 ArbGG)."""
     haystack = f"{spec.legal_basis or ''} {spec.text}"
-    for pattern, rule_id, periods in _STATUTES:
-        if pattern.search(haystack) and spec.nature in _STATUTE_NATURES.get(rule_id, (spec.nature,)):
-            return rule_id, periods
-    by_kind = routing.kind_statute(letter_kind, spec)
-    return (by_kind, _STATUTE_PERIODS[by_kind]) if by_kind else None
+    found = next(
+        (
+            (rule_id, periods)
+            for pattern, rule_id, periods in _STATUTES
+            if pattern.search(haystack) and spec.nature in _STATUTE_NATURES.get(rule_id, (spec.nature,))
+        ),
+        None,
+    )
+    by_kind = routing.kind_statute(letter_kind, spec) if found is None else None
+    if by_kind is not None:
+        found = by_kind, _STATUTE_PERIODS[by_kind]
+    if found is not None and labour_court and found[0] in _LABOUR_COURT_RULES:
+        rule_id = _LABOUR_COURT_RULES[found[0]]
+        return rule_id, _STATUTE_PERIODS[rule_id]
+    return found
 
 
 def statute_rule(spec: DateSpec) -> str | None:
@@ -394,7 +418,7 @@ def _end_clause(
 def _shift_rule_id(ctx: RuleContext, statute: str | None) -> str:
     if statute in ("owig_67", "stpo_410"):
         return "stpo_43"
-    if statute in _CIVIL_COURT:
+    if statute in _CIVIL_COURT or (ctx.court and statute is None):
         return "zpo_222"
     if statute == "kschg_4":
         return "bgb_193"
@@ -615,23 +639,38 @@ def _late_receipt_note(
     trace.use("late_receipt")
 
 
+def _served(spec: DateSpec, ctx: RuleContext, trace: Trace) -> _Anchor | None:
+    """The start of a period that runs from formal service, whatever anchor the letter was read with:
+    a day the letter names as its start, or as the delivery day on or after its date; else the delivery
+    day the person entered (the envelope date); else as the anchor says (the letter's date, the
+    earliest plausible start — :func:`_formal_service_note` asks for the envelope date)."""
+    stated = parse_date(spec.anchor_date) if spec.anchor == "receipt" else None
+    if spec.anchor == "explicit_date" or (
+        stated is not None and (ctx.document_date is None or stated >= ctx.document_date)
+    ):
+        return _resolve_anchor(spec, ctx, trace)
+    if ctx.received_confirmed and ctx.received_date:
+        return _Anchor(ctx.received_date, "receipt")
+    return _resolve_anchor(spec, ctx, trace)
+
+
 def _formal_service_note(trace: Trace, spec: DateSpec, anchor: _Anchor, statute: str) -> None:
     """Fines, penal orders and court orders run from formal service, which the letter's date can only
     precede. A court order's envelope date is its start (§ 180 ZPO) even while it is unknown."""
+    if anchor.source in ("explicit", "receipt", "stated_receipt") or spec.anchor == "receipt":
+        if statute in _CIVIL_COURT:
+            trace.use("zpo_180")
+        return  # known, or already asked for ("when did it arrive?")
     if statute in _CIVIL_COURT:
         trace.use("zpo_180")
-        if anchor.source in ("explicit", "receipt", "stated_receipt") or spec.anchor == "receipt":
-            return  # known, or already asked for ("when did it arrive?")
         trace.soft(
-            "The two weeks run from delivery (Zustellung): the date the postman wrote on the yellow "
+            "The period runs from delivery (Zustellung): the date the postman wrote on the yellow "
             f"envelope (§ 180 ZPO). We counted from {anchor.phrase}, which can only be earlier — enter the "
             "envelope date for the exact deadline."
         )
         return
-    if spec.anchor in ("explicit_date", "receipt"):
-        return
     trace.soft(
-        "The two weeks run from formal delivery: the date written on the yellow envelope, or for an "
+        "The period runs from formal delivery: the date written on the yellow envelope, or for an "
         "Übergabe-Einschreiben the 4th day after posting (§ 4 Abs. 2 VwZG). We counted from "
         f"{anchor.phrase}, which can only be earlier — enter the envelope date for the exact deadline."
     )
@@ -643,6 +682,12 @@ _COURT_LETTER_NOTE = (
     "This date is on a court order. Ordnung's date is information, not legal advice — get advice (see the "
     "card on this letter)."
 )
+#: Any other letter from a court (not filed as a court order).
+_COURT_SENDER_NOTE = (
+    "This is a court's letter: its periods usually run from delivery (Zustellung, the date on the yellow "
+    "envelope), never from a 4-day rule. Ordnung's date is information, not legal advice — get advice if "
+    "a lot is at stake."
+)
 #: What each court deadline means for the person (a soft note: court dates are never ``high``).
 _COURT_NOTES: dict[str, str] = {
     "zpo_692": (
@@ -652,6 +697,14 @@ _COURT_NOTES: dict[str, str] = {
     "zpo_339": (
         "This is a court deadline that can't be extended (Notfrist), and the order can be enforced "
         "meanwhile. Get advice now (see the card on this letter)."
+    ),
+    "arbgg_46a": (
+        "This is a labour court's deadline: one week, not two (§ 46a Abs. 3 ArbGG). Ordnung's date is "
+        "information, not legal advice — if you don't owe the money, object in time and get advice."
+    ),
+    "arbgg_59": (
+        "This is a labour court's deadline that can't be extended: one week (Notfrist, § 59 ArbGG), and the "
+        "order can be enforced meanwhile. Get advice now (see the card on this letter)."
     ),
     "kschg_4": (
         "This is the deadline for a court action at the labour court (Kündigungsschutzklage). Ordnung "
@@ -666,13 +719,15 @@ def _court_notes(trace: Trace, spec: DateSpec, ctx: RuleContext) -> None:
     type: a soft note says why, and the court rule is cited. Only a date of a nature the court rule
     binds is one (:func:`_statute`): a hearing or a severance payment that mentions the court action
     is not."""
-    statute = (_statute(spec, ctx.letter_kind) or (None, ()))[0]
+    statute = (_statute(spec, ctx.letter_kind, labour_court=ctx.labour_court) or (None, ()))[0]
     if statute in _COURT_NOTES:
         trace.use(statute)
         trace.soft(_COURT_NOTES[statute])
     elif ctx.letter_kind in _COURT_LETTERS:
         trace.soft(_COURT_LETTER_NOTE)
-    if statute == "zpo_692":
+    elif ctx.court:
+        trace.soft(_COURT_SENDER_NOTE)
+    if statute in ("zpo_692", "arbgg_46a"):
         trace.warnings.append(
             "A late objection still counts until the enforcement order is issued (§ 694 ZPO) — but don't "
             "rely on that."
@@ -690,7 +745,13 @@ def _compute_relative(
     period = fmt_period(amount, unit)
     if abs(amount) > MAX_PERIOD[unit]:
         return _no_date(trace, ctx, f"A period of {period} can't be right — please check the letter.")
-    anchor = _resolve_anchor(spec, ctx, trace)
+    statute, statutory_periods = _statute(spec, ctx.letter_kind, labour_court=ctx.labour_court) or (None, ())
+    # Fines, penal orders and a court's letters run from formal service (yellow envelope, § 4 VwZG,
+    # § 180 ZPO), never from the 4th-day fiction of ordinary authority letters: without the envelope
+    # date the letter's own date is the earliest plausible start (legal research
+    # owig_einspruch_bussgeldbescheid_2_wochen); with it, that date, whatever anchor the letter was read with.
+    formal = statute in _FORMAL_SERVICE or ctx.court
+    anchor = _served(spec, ctx, trace) if formal else _resolve_anchor(spec, ctx, trace)
     if anchor is None:
         return _receipt(
             trace,
@@ -699,11 +760,7 @@ def _compute_relative(
             summary="No date could be computed: the start date is missing.",
             region=place,
         )
-    statute, statutory_periods = _statute(spec, ctx.letter_kind) or (None, ())
-    # Fines and penal orders run from formal service (yellow envelope, § 4 VwZG), never from the
-    # 4th-day fiction of ordinary authority letters: without the envelope date the letter's own date is
-    # the earliest plausible start (legal research owig_einspruch_bussgeldbescheid_2_wochen).
-    uses_delivery = statute not in _FORMAL_SERVICE and (
+    uses_delivery = not formal and (
         spec.anchor == "deemed_delivery"
         or (spec.delivery_rule != "none" and spec.anchor in ("document_date", "explicit_date"))
     )
@@ -820,7 +877,9 @@ def compute_due(
         )
     try:
         _court_notes(trace, spec, ctx)
-        special = routing.special_rule(spec, ctx.letter_kind, authority=ctx.delivery_scope is not None)
+        special = routing.special_rule(
+            spec, ctx.letter_kind, authority=ctx.delivery_scope is not None or ctx.court
+        )
         if special is not None:
             # the letter rules build on this module's receipts, so they are imported where needed
             from ordnung.rules.letters import compute_letter_date

@@ -207,14 +207,26 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   Widerspruch/Einspruch remedy or an objection date) and its title or remedy says which: a
   bailiff's letter, the court's notices to a claimant and enforcement-stage letters are not. A date
   follows a letter rule only when its nature fits (an appointment is never re-dated as a
-  registration; a hearing never follows the court-action rule). No date on a court order is ever
-  `high`, fixed or relative. Rule to-dos are filed on read and when the person chooses the kind; a
+  registration; a hearing never follows the court-action rule; a withdrawal is a declaration). No
+  date on a court order is ever `high`, fixed or relative, and a court order's envelope date, once
+  entered, is its start whatever anchor it was read with. Every letter from a court
+  (`RuleContext.court`), whatever kind it is filed as, runs from delivery — never from an authority's
+  4-day fiction — and is never `high`; a labour court's orders give one week (§ 46a Abs. 3, § 59 ArbGG;
+  `RuleContext.labour_court`), in their dates, to-dos, card and sending advice. A landlord's notice is
+  one without notice period only when its own quote or the title says so, not negated, only reserved
+  or "mit der gesetzlichen Frist", and the tenancy ends within two months; then there is no hardship
+  objection to-do, and the card and the composer offer no objection letter. A rent increase is a
+  consent request unless its own quote or title names another kind of increase or a quote says consent
+  isn't needed. Rule to-dos are filed on read and when the person chooses the kind; a
   changed region, postal buffer or arrival day only recomputes those left, so a deleted one stays
   deleted. An operating-cost statement is recognised on read only; its card
-  checks the 12-month limit of § 556 Abs. 3 BGB from the latest billing period the letter names and
-  calls a statement late only when it certainly is (from a billing year alone: at most "probably").
-  The person can correct a letter's kind on its page ("What kind of letter is this?"); a kind the
-  person chose is kept when the letter is read again, a kind an older version filed is not.
+  checks the 12-month limit of § 556 Abs. 3 BGB from the latest billing period the letter names (in
+  figures, words, ISO dates or months, or a billing year) and calls a statement late only when it
+  certainly is: only a range the letter calls its billing period decides (any other range or a billing
+  year: at most "probably"), and when the latest range found is the previous year's comparison nothing
+  is claimed. The rent cap is compared exactly, in cents. The person can correct a letter's kind on its
+  page ("What kind of letter is this?"); a kind the person chose is kept when the letter is read again,
+  a kind an older version filed — the model's, or a high-stakes kind the policy no longer gives — is not.
 
 ## 7. LLM layer — `llm/` (implemented; update to v2 invocation)
 

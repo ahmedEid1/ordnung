@@ -247,6 +247,29 @@ def test_rule_context_recognises_social_law_senders_filed_as_authority(store: St
     )
 
 
+def test_rule_context_marks_a_courts_letter_whatever_kind_it_was_filed_as(store: Store) -> None:
+    """A court's letter never gets an authority's delivery fiction, even when it isn't filed as a court
+    order (the policy missed it, or it is another kind of court letter); a labour court's orders give one
+    week."""
+    document = store.add_document(sha256="f" * 64, filename="x", mime="application/pdf", file_path="x")
+    court = rule_context(
+        None,
+        document,
+        extraction([], sender={"name": "AG Coburg – Mahngericht", "kind": "authority"}),
+        date(2026, 9, 25),
+    )
+    assert court.court and not court.labour_court and court.letter_kind != "court_payment_order"
+    labour = store.add_party(name="Arbeitsgericht Berlin", kind="authority")
+    assert rule_context(labour, document, extraction([]), date(2026, 9, 25)).labour_court
+    bailiff = rule_context(
+        None,
+        document,
+        extraction([], sender={"name": "Gerichtsvollzieher beim Amtsgericht Köln", "kind": "authority"}),
+        date(2026, 9, 25),
+    )
+    assert not bailiff.court
+
+
 def test_remedy_warnings_and_payment_details() -> None:
     assert remedy_warnings(Remedy(type="klage"))[0].startswith(
         "This decision can only be challenged in court"

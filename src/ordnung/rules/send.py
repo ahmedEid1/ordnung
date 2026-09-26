@@ -14,7 +14,9 @@ Form rules (SPEC § 11, § 21):
   to an enforcement order in writing to the court (§ 700, § 340 ZPO). Any Amtsgericht's
   Rechtsantragstelle takes either down for the record (§ 702, § 129a ZPO), but at a court other than
   the issuing one it only counts once the record reaches the issuing court (§ 129a Abs. 3 S. 2 ZPO),
-  so the channel says to go early (by the send-by date, as for a letter). Never by e-mail.
+  so the channel says to go early (by the send-by date, as for a letter). Never by e-mail. A labour
+  court's orders are answered at that court, in writing or for the record at its office (§ 46a ArbGG,
+  § 59 S. 2 ArbGG) — not at online-mahnantrag.de, and within one week.
 * A tenant's objection to the landlord's notice: text form since 2025 (§ 574b Abs. 1 BGB); a signed
   letter by Einwurf-Einschreiben is still the safest proof.
 * A withdrawal (§ 355 BGB): any clear statement; sending it in time is enough, so there is no postal
@@ -228,6 +230,38 @@ def _objection(party_kind: str | None) -> SendGuidance:
     )
 
 
+def _labour_court_objection(letter_kind: str) -> SendGuidance:
+    remedy = "objection (Widerspruch)" if letter_kind == "court_payment_order" else "objection (Einspruch)"
+    rule = "arbgg_46a" if letter_kind == "court_payment_order" else "arbgg_59"
+    channels = [
+        _channel(
+            "registered_letter",
+            "Signed form or letter by Einwurf-Einschreiben",
+            "Send it to the labour court that issued the order. " + _EINSCHREIBEN,
+            recommended=True,
+        ),
+        _channel(
+            "in_person",
+            "The labour court's office (for the record)",
+            "Free: they write it down for you (zu Protokoll); bring the order and its envelope.",
+            rule,
+        ),
+        _channel("fax", "Fax of the signed letter", "Counts as written; keep the transmission report."),
+        _channel("letter", "Signed letter by normal post", "Works, but you can't prove it arrived."),
+        _channel("email", "E-mail", "Not valid at a court.", allowed=False),
+    ]
+    note = (
+        f"Your {remedy} must reach the labour court that issued the order within one week (§ 46a Abs. 3, § 59 "
+        "ArbGG) — in writing or for the record at its office; not by e-mail."
+    )
+    return SendGuidance(
+        form="written_form",
+        form_note=note,
+        channels=channels,
+        tips=["You have one week, not two: send it today or go to the court's office."],
+    )
+
+
 def _court_objection(letter_kind: str) -> SendGuidance:
     payment_order = letter_kind == "court_payment_order"
     # the court rule is cited once, in the form note's own words; channels cite only what they add
@@ -401,8 +435,8 @@ def _template(kind: str, party_kind: str | None) -> SendGuidance:
         return _payment_plan(party_kind)
     if kind == "defect_notice":
         return _to_landlord(
-            "No special form, but keep proof that you reported the defect: from then on the rent may be reduced "
-            "(§ 536c BGB)."
+            "No special form, but keep proof that you reported the defect: the rent is reduced while it lasts, and "
+            "if the landlord didn't know of it you can lose that for the time they couldn't repair it (§ 536c BGB)."
         )
     if kind == "deposit_return":
         return _to_landlord("No special form is needed; keep proof of when you asked.")
@@ -466,12 +500,14 @@ def send_guidance(
     today: date,
     postal_buffer_days: int = POSTAL_BUFFER_DAYS,
     court: bool = False,
+    labour_court: bool = False,
 ) -> SendGuidance:
     """Ranked channels, form requirement and dates for sending a letter of ``kind``.
 
     ``letter_kind`` is the kind of the letter being answered: an objection to a court order or to a
     landlord's notice has its own form. ``court``: the letter goes to a court, which takes it only in
-    writing — never by plain e-mail. ``due`` is the day it must *arrive* (``must_arrive_by``).
+    writing — never by plain e-mail; ``labour_court``: it is a labour court, whose orders are answered
+    there within one week. ``due`` is the day it must *arrive* (``must_arrive_by``).
     ``send_by`` is the latest day to post a letter: ``postal_buffer_days`` business days before the
     last business day on or before ``due``, never before ``today``; ``None`` without a due date or
     once it has passed. A withdrawal only has to be *sent* by ``due`` (§ 355 Abs. 1 S. 5 BGB).
@@ -479,7 +515,7 @@ def send_guidance(
     if kind == "cancellation":
         guidance = _cancellation(contract_category, party_kind)
     elif kind == "objection" and letter_kind in ("court_payment_order", "enforcement_order"):
-        guidance = _court_objection(letter_kind)
+        guidance = _labour_court_objection(letter_kind) if labour_court else _court_objection(letter_kind)
     elif kind == "objection" and letter_kind == "landlord_notice":
         guidance = _tenancy_objection()
     elif kind == "objection":

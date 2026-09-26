@@ -20,7 +20,10 @@ policies, and cases the policies do not decide are documented limitations, not b
                            names. A court's other letters about an order are neither: to the claimant
                            (the other side objected, the order was served, a cost invoice, a request to
                            fix the application, the application was withdrawn), after an objection
-                           (*Abgabenachricht*), or from enforcement (a garnishment order, a suspension).
+                           (*Abgabenachricht*), or from enforcement (a garnishment order, a suspension)
+                           — but "der Antragsgegner hat *keinen* Widerspruch erhoben" is why an
+                           enforcement order was issued. A labour court's orders are these kinds too,
+                           with one week (§ 46a Abs. 3, § 59 ArbGG; :func:`is_labour_court`).
                            A debt collector threatening an order is not a court, so its letter stays a
                            reminder. Anything these signals don't decide keeps the model's kind; the
                            person can file it as a court order on the letter's page.
@@ -31,9 +34,13 @@ policies, and cases the policies do not decide are documented limitations, not b
                            sender ``landlord`` or a rent contract)
 ``rent_increase``          a price increase about a tenancy whose *quoted* wording asks for consent
                            ("Zustimmung", "Vergleichsmiete", "Mietspiegel", § 558 BGB) — never from the
-                           model's own prose — and that nowhere reads as an increase that needs no
-                           consent (graduated or index rent, modernisation, operating-cost prepayments
-                           under § 560 BGB, "no consent needed"), in German or English
+                           model's own prose — unless the increase's own quote or the reading's title
+                           names another kind of increase, which needs no consent (graduated or index
+                           rent, modernisation, operating-cost prepayments; §§ 557a, 557b, 559, 560 BGB),
+                           or a quote says consent isn't needed ("Zustimmung nicht erforderlich"). What
+                           happens *without* consent ("Sollten Sie Ihre Zustimmung nicht erteilen …"), a
+                           key fact about the prepayment or a Mietspiegel feature ("Bad modernisiert")
+                           never vetoes: every § 558 request has them
 =========================  ============================================================================
 
 These are the letters whose *dates* depend on their kind, so the kind is filed with the letter. An
@@ -51,20 +58,24 @@ kind; the person can set the kind on the letter's page, and its dates are then r
 **2. The rule of a date** (:func:`kind_statute`, :func:`special_rule`): a date follows the statute
 its ``legal_basis`` or wording cites, if its nature fits that statute (a date that isn't a
 declaration is never a registration, an appointment never re-dated); if it cites none, a court
-order's objection, payment and declaration dates follow the court rule (two weeks from delivery), a
+order's objection, payment and declaration dates follow the court rule (two weeks from delivery; one
+week at a labour court, :func:`is_labour_court`), a
 rent increase's declarations and objections the consent period and a landlord's notice's objections
 the § 574b period. Wordings that decide on their own: "Kündigungsschutzklage", "arbeitsuchend
 melden" (a declaration, and not an authority's own fixed date), and a consumer "Widerrufsfrist/
--recht/-belehrung" from a sender that is not an authority (an authority's *Widerruf* is a
-revocation) and that cites no other law's withdrawal right (insurance: VVG).
+-recht/-belehrung" on a declaration (the withdrawal itself — not a cancellation or a payment that
+mentions it) from a sender that is not an authority or a court (their *Widerruf* is a revocation)
+and that cites no other law's withdrawal right (insurance: VVG).
 
 **3. Dates the law adds** (:func:`derived_deadlines`): these letters rarely state their most
 important deadline (a dismissal never mentions the three weeks for a court action), so each kind
 brings the deadlines the law sets, which the pipeline files as to-dos unless an extracted date
 was computed under that rule (:func:`computed_under`: routed to it, or a period counted under it —
-not a date that merely mentions it, like a severance payment "if you don't sue"). A landlord's notice without notice period (*fristlos*/*außerordentlich*)
-gets no objection to-do: the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB) — unless it
-also gives notice with a notice period in the alternative (*hilfsweise fristgemäß*), which it applies to.
+not a date that merely mentions it, like a severance payment "if you don't sue"). A landlord's notice
+without notice period (:func:`extraordinary_notice`: its own quote or the title says *fristlos*, not
+negated, only reserved or "mit der gesetzlichen Frist", and the tenancy ends within two months) gets no
+objection to-do: the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB) — unless it also
+gives notice with a notice period in the alternative (*hilfsweise fristgemäß*), which it applies to.
 """
 
 from __future__ import annotations
@@ -79,6 +90,7 @@ from ordnung.rules.explain import fmt_date
 from ordnung.rules.tenancy import notice_objection_deadline
 
 _COURT_SENDER = re.compile(r"gericht\b", re.I)
+_LABOUR_COURT = re.compile(r"arbeitsgericht", re.I)
 #: Senders that name a court without being one: a bailiff ("Gerichtsvollzieher bei dem Amtsgericht …",
 #: "Obergerichtsvollzieherin …, Amtsgericht Köln") or a court cashier.
 _NOT_A_COURT = re.compile(r"vollzieh|kasse|zahlstelle", re.I)
@@ -92,6 +104,9 @@ _ENFORCEMENT_TITLE = re.compile(r"vollstreckungsbescheid|enforcement", re.I)
 _WIDERSPRUCH = re.compile(r"widerspr|\b69[24]\b[^§]{0,20}\bZPO\b", re.I)
 _EINSPRUCH = re.compile(r"einspruch|\b(?:339|700)\b[^§]{0,20}\bZPO\b", re.I)
 _IN_SENTENCE = r"(?:[^.!?\n]|\.(?=\d)){0,100}?"
+#: The same, with no "kein"/"nicht" in it: "Der Antragsgegner hat keinen Widerspruch erhoben" is why an
+#: enforcement order was issued, not a notice that the other side objected.
+_UNNEGATED = r"(?:(?!\bkein|\bnicht\b)(?:[^.!?\n]|\.(?=\d))){0,100}?"
 #: A court's other letters about an order, in the letter's own (German) wording.
 _FOLLOW_UP = re.compile(
     "|".join(
@@ -101,7 +116,7 @@ _FOLLOW_UP = re.compile(
             rf"(?<!kein\s)(?<!keinen\s)\b(?:widerspruch|einspruch)\b{_IN_SENTENCE}\b(?:ist|wurde|sind)\s+"
             r"(?:hier\s+|fristgerecht\s+|rechtzeitig\s+|am\s+\S+\s+)?(?:eingegangen|erhoben|eingelegt)\b",
             # to the claimant: the other side objected, the order was served, costs, the application
-            rf"\b(?:antragsgegner|schuldner|gegner)\w*\s+hat\b{_IN_SENTENCE}(?:widerspr|einspruch)",
+            rf"\b(?:antragsgegner|schuldner|gegner)\w*\s+hat\b{_UNNEGATED}(?:widerspr|einspruch)",
             r"\b(?:nachricht|mitteilung|hinweis)\w*\s+(?:an|für)\s+(?:den|die)\s+antragsteller|"
             r"\bsie\s+als\s+antragsteller|\bihr(?:e[mnrs]?)?\s+(?:mahn)?antr(?:ag|äge)|"
             r"zustellungsnachricht|monierung|kostenrechnung",
@@ -124,13 +139,27 @@ _FOLLOW_UP_TITLE = re.compile(
 )
 #: A § 558 request asks for consent — in the letter's own (German) wording.
 _CONSENT = re.compile(r"zustimm|vergleichsmiete|mietspiegel|\b558[ab]?\b[^§]{0,20}\bBGB\b", re.I)
-_NO_CONSENT_INCREASE = re.compile(
+#: An increase of another kind, in the increase's own quote: graduated or index rent, modernisation,
+#: operating-cost prepayments (§§ 557a, 557b, 559, 560 BGB) — none needs consent.
+_OTHER_INCREASE = re.compile(
     r"staffelmiete|indexmiete|preisindex|modernisierung|\b55(?:7a|7b|9[a-e]?|60)\b[^§]{0,20}\bBGB\b|"
-    r"anpassung\s+(?:der|ihrer)\s+\S*vorauszahlung|vorauszahlung\S*\s+(?:wird|werden)\s+(?:\S+\s+){0,3}"
-    r"(?:angepasst|erhöht)|(?:keine|keiner|ohne|nicht)\s+(?:ihre\s+|ihrer\s+)?zustimmung|"
-    r"zustimmung\s+(?:ist\s+)?(?:nicht|entbehrlich)|price index|index[- ](?:rent|linked)|indexed rent|"
-    r"graduated|stepped rent|staggered rent|moderni[sz]|prepayment|advance payment|"
-    r"(?:don't|do not|doesn't|does not|no)\s+(?:need\s+(?:to\s+|your\s+)?)?(?:agree|consent)",
+    r"(?:anpassung|erhöhung)\s+(?:der|ihrer)\s+\S*vorauszahlung|"
+    r"vorauszahlung\w*\s+(?:(?:wird|werden)\s+(?:\S+\s+){0,3}(?:angepasst|erhöht)|erhöh|steig)",
+    re.I,
+)
+#: The same as the reading's (English) title may call it.
+_OTHER_INCREASE_TITLE = re.compile(
+    r"index[- ](?:rent|linked)|indexed rent|price index|graduated|stepped rent|staggered rent|staffel|"
+    r"moderni[sz]ation|\b55(?:7a|7b|9|60)\b|(?:prepayment|advance payment)s?\s+(?:adjust|increas|rise)|"
+    r"(?:adjust|increas)\w*\s+(?:of\s+)?(?:the\s+|your\s+)?(?:operating[- ]costs?\s+)?(?:prepayment|advance payment)",
+    re.I,
+)
+#: "No consent needed", in the letter's own words anywhere — never "if you don't consent" (every § 558
+#: request says what happens then).
+_NO_CONSENT_NEEDED = re.compile(
+    r"zustimmung\s+(?:ist\s+|wird\s+)?(?:nicht\s+(?:erforderlich|nötig|notwendig)|entbehrlich)|"
+    r"zustimmung\s+bedarf\s+es\s+nicht|bedarf\s+(?:es\s+)?(?:keiner|nicht\s+ihrer)\s+zustimmung|"
+    r"ohne\s+dass\s+es\s+ihrer\s+zustimmung\s+bedarf",
     re.I,
 )
 _OPERATING_COSTS = re.compile(
@@ -148,9 +177,24 @@ _NOT_A_LANDLORD = (
     "health_insurer",
     "public_broadcaster",
 )
+#: A notice without notice period, in the termination's own quote or the reading's title.
 _EXTRAORDINARY = re.compile(
-    r"fristlos|außerordentlich|ausserordentlich|without notice|extraordinary|\b543\b[^§]{0,20}\bBGB\b|"
-    r"\b569\b[^§]{0,20}\bBGB\b",
+    r"fristlos|außerordentlich|ausserordentlich|ohne\s+einhaltung\s+(?:einer|der)\s+(?:kündigungs)?frist|"
+    r"without notice|extraordinar|\b543\b[^§]{0,20}\bBGB\b|\b569\b[^§]{0,20}\bBGB\b",
+    re.I,
+)
+#: … unless it is negated or only reserved ("nicht fristlos", "eine fristlose Kündigung behalten wir uns
+#: vor"), in the same sentence.
+_NEGATED = re.compile(r"\b(?:nicht|kein\w*|not|no|never)\b[^.!?;\n]{0,30}$", re.I)
+_RESERVED = re.compile(r"vorbehalt|\bbehalten\b.*\bvor\b|\breserv", re.I)
+_SENTENCE_END = re.compile(r"[!?;\n]|\.(?=\s+[A-ZÄÖÜ]|\s*$)")
+#: A special termination with the statutory notice period: the hardship objection applies to it
+#: (§ 575a Abs. 2 BGB for § 573d; the buyer at a forced sale, § 57a ZVG; the insolvency administrator,
+#: § 111 InsO; heirs, § 564 BGB; the end of a usufruct, § 1056 BGB).
+_STATUTORY_PERIOD = re.compile(
+    r"(?:mit|unter\s+einhaltung)\s+(?:der\s+|einer\s+)?gesetzlichen\s+(?:kündigungs)?frist|"
+    r"statutory notice period|\b57(?:3d|5a)\b[^§]{0,20}\bBGB\b|\b57a\b[^§]{0,20}\bZVG\b|"
+    r"\b111\b[^§]{0,20}\bInsO\b|\b564\b[^§]{0,20}\bBGB\b|\b1056\b[^§]{0,20}\bBGB\b",
     re.I,
 )
 
@@ -266,6 +310,12 @@ def is_court(name: str) -> bool:
     return bool(_COURT_SENDER.search(name)) and not _NOT_A_COURT.search(name)
 
 
+def is_labour_court(name: str) -> bool:
+    """Whether a court is a labour court (Arbeitsgericht, Landesarbeitsgericht): its orders give one week,
+    not two (§ 46a Abs. 3, § 59 ArbGG)."""
+    return is_court(name) and bool(_LABOUR_COURT.search(name))
+
+
 def classify_letter(extraction: DocumentExtraction) -> HighStakesKind | None:
     """The high-stakes kind of a letter from the model's reading, or ``None`` (policy 1 above)."""
     sender = extraction.sender
@@ -280,14 +330,22 @@ def classify_letter(extraction: DocumentExtraction) -> HighStakesKind | None:
             return "dismissal"
         if tenancy:
             return "landlord_notice"
-    if (
-        tenancy
-        and change == "price_increase"
-        and _CONSENT.search(_quoted_text(extraction))
-        and not _NO_CONSENT_INCREASE.search(_reading_text(extraction))
-    ):
+    if tenancy and change == "price_increase" and _consent_request(extraction):
         return "rent_increase"
     return None
+
+
+def _consent_request(extraction: DocumentExtraction) -> bool:
+    """Whether a rent increase asks for consent (policy 1): its quoted wording asks for it, its own quote
+    and its title name no other kind of increase, and nothing it quotes says no consent is needed."""
+    quoted = _quoted_text(extraction)
+    own = extraction.change.quote if extraction.change is not None else ""
+    return (
+        bool(_CONSENT.search(quoted))
+        and not _OTHER_INCREASE.search(own)
+        and not _OTHER_INCREASE_TITLE.search(extraction.title)
+        and not _NO_CONSENT_NEEDED.search(quoted)
+    )
 
 
 def names_statement(extraction: DocumentExtraction) -> bool:
@@ -305,9 +363,39 @@ def names_statement(extraction: DocumentExtraction) -> bool:
     )
 
 
-def extraordinary_notice(extraction: DocumentExtraction) -> bool:
-    """Whether a termination reads as one without notice period (*fristlos*, *außerordentlich*)."""
-    return bool(_EXTRAORDINARY.search(_reading_text(extraction)))
+def _asserted(text: str, match: re.Match[str]) -> bool:
+    """Whether a wording in ``text`` is said, not negated or only reserved, in its sentence."""
+    starts = [end.end() for end in _SENTENCE_END.finditer(text, 0, match.start())]
+    after = _SENTENCE_END.search(text, match.end())
+    sentence = text[starts[-1] if starts else 0 : after.start() if after else len(text)]
+    before = text[starts[-1] if starts else 0 : match.start()]
+    return not _NEGATED.search(before) and not _RESERVED.search(sentence)
+
+
+def extraordinary_notice(extraction: DocumentExtraction, letter_date: date | None = None) -> bool:
+    """Whether a termination is one without notice period (*fristlos*), the only one the hardship
+    objection doesn't apply to (§ 574 Abs. 1 S. 2 BGB).
+
+    Only the termination's own quote and the reading's title count — never the model's summary or
+    other quotes, which may mention a *fristlose Kündigung* the landlord only reserves. The wording must
+    say it (*fristlos*, *außerordentlich*, "ohne Einhaltung einer Kündigungsfrist", § 543 or § 569 BGB),
+    not deny or reserve it, and not give the statutory period (*mit der gesetzlichen Frist*: a special
+    termination the objection applies to). And the tenancy must end soon: no end stated, or one less
+    than two months after the letter's date (``letter_date``, else the reading's) — unless it is the end
+    of a notice given in the alternative (*hilfsweise*). When unsure, it is an ordinary notice: its
+    objection to-do is kept, and the card says it doesn't apply to a notice without notice period.
+    """
+    own = extraction.change.quote if extraction.change is not None else ""
+    text = f"{extraction.title}\n{own}"
+    if _STATUTORY_PERIOD.search(text) or not any(
+        _asserted(text, match) for match in _EXTRAORDINARY.finditer(text)
+    ):
+        return False
+    end = announced_end(extraction)
+    written = letter_date or _parse_day(extraction.document_date)
+    if end is None or alternative_notice(extraction):
+        return True
+    return written is not None and notice_objection_deadline(end) < written
 
 
 def alternative_notice(extraction: DocumentExtraction) -> bool:
@@ -321,15 +409,19 @@ def letter_kind(extraction: DocumentExtraction) -> LetterKind:
     return classify_letter(extraction) or extraction.kind
 
 
+def _parse_day(value: str | None) -> date | None:
+    try:
+        return date.fromisoformat(value.strip()[:10]) if value else None
+    except ValueError:
+        return None
+
+
 def announced_end(extraction: DocumentExtraction) -> date | None:
     """The end of the job or tenancy a termination announces (its effective date), if stated."""
     change = extraction.change
-    if change is None or change.type != "termination_by_provider" or not change.effective_date:
+    if change is None or change.type != "termination_by_provider":
         return None
-    try:
-        return date.fromisoformat(change.effective_date.strip()[:10])
-    except ValueError:
-        return None
+    return _parse_day(change.effective_date)
 
 
 def kind_statute(letter: str | None, spec: DateSpec) -> str | None:
@@ -367,7 +459,7 @@ def special_rule(spec: DateSpec, letter: str | None, *, authority: bool) -> str 
         return "bgb_574b"
     if (
         not authority
-        and spec.nature not in ("objection", "appointment")
+        and spec.nature == "declaration"
         and _WITHDRAWAL.search(haystack)
         and not _OTHER_WITHDRAWAL_LAW.search(haystack)
     ):
@@ -434,6 +526,43 @@ _ENFORCEMENT = DerivedDeadline(
     priority="critical",
     spec=_relative(
         2, "weeks", "objection", "§ 700 Abs. 1, § 339 Abs. 1 ZPO", "Einspruchsfrist zwei Wochen ab Zustellung"
+    ),
+)
+_LABOUR_COURT_ORDER = DerivedDeadline(
+    rule_id="arbgg_46a",
+    title="Pay or object to the labour court's payment order (Mahnbescheid)",
+    action=(
+        "If you don't owe the money, or not all of it, object (Widerspruch) at the labour court that issued "
+        "the order, on the form that came with it. If you owe it, pay the claimant."
+    ),
+    consequence=(
+        "At a labour court you have one week, not two. After it the claimant can ask for an enforcement order "
+        "(Vollstreckungsbescheid), and the money can then be collected by a bailiff."
+    ),
+    priority="critical",
+    spec=_relative(
+        1,
+        "weeks",
+        "objection",
+        "§ 46a Abs. 3 ArbGG, § 692 Abs. 1 Nr. 3 ZPO",
+        "binnen einer Woche seit der Zustellung des Mahnbescheids",
+    ),
+)
+_LABOUR_ENFORCEMENT = DerivedDeadline(
+    rule_id="arbgg_59",
+    title="Object to the labour court's enforcement order (Einspruch)",
+    action=(
+        "Send your objection (Einspruch) in writing to the labour court that issued it, or make it for the record "
+        "at its office — get advice first."
+    ),
+    consequence="After one week the order can no longer be challenged and can be enforced for good.",
+    priority="critical",
+    spec=_relative(
+        1,
+        "weeks",
+        "objection",
+        "§ 59 S. 1 ArbGG, § 700 Abs. 1 ZPO",
+        "Einspruchsfrist eine Woche ab Zustellung",
     ),
 )
 _COURT_ACTION = DerivedDeadline(
@@ -503,9 +632,15 @@ def computed_under(spec: DateSpec, rule_ids: Sequence[str], rule_id: str) -> boo
 
 
 def derived_deadlines(
-    letter: str | None, *, end: date | None, letter_date: date | None = None, extraordinary: bool = False
+    letter: str | None,
+    *,
+    end: date | None,
+    letter_date: date | None = None,
+    extraordinary: bool = False,
+    labour_court: bool = False,
 ) -> list[DerivedDeadline]:
     """The deadlines the law adds to a kind of letter; ``end`` is the end its termination announces.
+    A court order from a labour court (``labour_court``) gives one week (§ 46a Abs. 3, § 59 ArbGG).
 
     The objection to a landlord's notice counts back from the end of the tenancy, so it is only
     added when that end is known — and not for a notice without notice period (``extraordinary``: one
@@ -514,9 +649,9 @@ def derived_deadlines(
     and its card points to advice instead.
     """
     if letter == "court_payment_order":
-        return [_COURT_ORDER]
+        return [_LABOUR_COURT_ORDER if labour_court else _COURT_ORDER]
     if letter == "enforcement_order":
-        return [_ENFORCEMENT]
+        return [_LABOUR_ENFORCEMENT if labour_court else _ENFORCEMENT]
     if letter == "dismissal":
         return [_COURT_ACTION, _REGISTER]
     if letter == "rent_increase":

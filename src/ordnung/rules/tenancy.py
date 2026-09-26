@@ -56,10 +56,24 @@ def notice_objection_deadline(tenancy_end: date) -> date:
 
 
 def rent_increase_percent(old: float, new: float) -> float | None:
-    """How much the rent rises, in per cent rounded to one decimal (``None`` for unusable amounts)."""
+    """How much the rent rises, in per cent rounded to one decimal (``None`` for unusable amounts).
+    For display only: whether a cap is exceeded is decided in cents (:func:`exceeds_cap`)."""
     if old <= 0 or new <= 0:
         return None
     return round((new - old) / old * 100, 1)
+
+
+def cap_limit(old: float, cap_percent: float) -> float:
+    """The highest rent a cap of ``cap_percent`` allows from ``old``, in euros (to the cent, rounded
+    down: a cap is a limit)."""
+    cents = round(old * 100)
+    return (cents * (100 + round(cap_percent)) // 100) / 100
+
+
+def exceeds_cap(old: float, new: float, cap_percent: float) -> bool:
+    """Whether ``new`` is more than ``cap_percent`` above ``old`` — compared exactly, in cents, never
+    from a rounded percentage (15.04 % is above 15 %)."""
+    return round(new * 100) * 100 > round(old * 100) * (100 + round(cap_percent))
 
 
 def _latest_working_day_on_or_after(d: date, region: str | None) -> date:

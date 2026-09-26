@@ -453,6 +453,24 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
+        "arbgg_46a",
+        "Labour court payment order (Mahnbescheid): one week to pay or object",
+        "§ 46a Abs. 1, 3 ArbGG; § 692 Abs. 1 Nr. 3 ZPO",
+        "A payment order from a labour court (Arbeitsgericht) — for example an employer reclaiming wages — gives "
+        "one week, not two: within one week of delivery you pay or object (Widerspruch) at that court.",
+        f"{_GII}/arbgg/__46a.html",
+        None,
+    ),
+    (
+        "arbgg_59",
+        "Labour court enforcement order (Vollstreckungsbescheid): one week to object",
+        "§ 59 S. 1, 2 ArbGG; § 46a Abs. 1 ArbGG; § 700 Abs. 1 ZPO",
+        "At a labour court the objection (Einspruch) to an enforcement order must reach the court within one "
+        "week of delivery (Notfrist), in writing or for the record at the court's office.",
+        f"{_GII}/arbgg/__59.html",
+        None,
+    ),
+    (
         "zpo_129a",
         "Objections for the record at any Amtsgericht",
         "§ 129a Abs. 1, 3 ZPO",
@@ -491,6 +509,16 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "three days of learning the end date if less time is left. A short notice with your details and the "
         "end date keeps the deadline. Registering late can cost one week of unemployment benefit.",
         f"{_GII}/sgb_3/__38.html",
+        None,
+    ),
+    (
+        "sgb3_141",
+        "Register as unemployed (arbeitslos melden)",
+        "§ 141 Abs. 1 SGB III; § 137 Abs. 1 SGB III",
+        "Registering as job-seeking doesn't replace this: register as unemployed online or in person at the "
+        "latest on your first day without work (up to three months before is fine). Unemployment benefit is "
+        "only paid from then.",
+        f"{_GII}/sgb_3/__141.html",
         None,
     ),
     # ------------------------------------------------------------------ tenancy letters
@@ -550,9 +578,10 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
     (
         "bgb_536c",
         "Report defects in the flat",
-        "§ 536c Abs. 1 BGB; § 536 Abs. 1 BGB",
-        "A tenant must report a defect to the landlord without delay. From then on the rent may be reduced "
-        "while the defect lasts.",
+        "§ 536c Abs. 1, 2 BGB; § 536 Abs. 1 BGB",
+        "A tenant must report a defect to the landlord without delay. The rent is reduced by law while the defect "
+        "lasts; if you don't report it, you can lose that for the time the landlord couldn't repair it because "
+        "they didn't know (and may owe damages).",
         f"{_GII}/bgb/__536c.html",
         None,
     ),

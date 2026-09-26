@@ -68,7 +68,7 @@ from ordnung.rules import LAST_CHECKED, RuleContext, compute_due, send_guidance
 from ordnung.rules.advice import billing_period_text
 from ordnung.rules.consumer import long_withdrawal_end
 from ordnung.rules.explain import fmt_date
-from ordnung.rules.routing import is_court
+from ordnung.rules.routing import alternative_notice, extraordinary_notice, is_court, is_labour_court
 from ordnung.secretary.review import language_name, split_sentences, stable_hash, untrusted_json
 from ordnung.secretary.scam import ibans_in_text, normalize_iban
 from ordnung.secretary.triggers import Ledger, contract_area, contract_computation, parse_day, postal_buffer
@@ -383,15 +383,34 @@ def _person_name(kind: str, party: Party | None) -> str | None:
     return party.name
 
 
+#: Why there is no hardship objection against a notice without notice period (the card says the same).
+NO_HARDSHIP_OBJECTION = (
+    "This reads as a notice without notice period (fristlos). The hardship objection (§ 574 BGB) doesn't apply "
+    "to it (§ 574 Abs. 1 S. 2 BGB), so Ordnung doesn't draft one. If it is for rent arrears, paying all of "
+    "them — at the latest two months after an eviction suit is served — can still undo it (§ 569 Abs. 3 Nr. 2 "
+    "BGB). Get advice at once, for example from a tenants' association."
+)
+
+
 def objection_remedy(sources: Sources) -> RemedyKind:
     """The remedy an objection letter uses; raises :class:`DraftError` unless it is Einspruch/Widerspruch.
 
     Court orders and a landlord's notice have the remedy the law gives them (a Widerspruch against a
     court payment order, an Einspruch against an enforcement order, the tenant's Widerspruch), whatever
-    their instructions were read as.
+    their instructions were read as — except a landlord's notice without notice period that gives none
+    in the alternative (:func:`~ordnung.rules.routing.extraordinary_notice`): the hardship objection
+    doesn't apply to it, and the letter's card offers none either.
     """
     if sources.document is None:
         raise DraftError("Choose the decision (the letter) you want to object to.")
+    reading = sources.extraction
+    if (
+        sources.document.kind == "landlord_notice"
+        and reading is not None
+        and extraordinary_notice(reading, sources.doc_date)
+        and not alternative_notice(reading)
+    ):
+        raise DraftError(NO_HARDSHIP_OBJECTION)
     statutory = STATUTORY_REMEDIES.get(sources.document.kind or "")
     if statutory is not None:
         return statutory
@@ -444,13 +463,14 @@ def _earliest_open(
 #: asking for more time would only cost the person the deadline.
 _NO_EXTENSION: dict[str, str] = {
     "court_payment_order": (
-        "The two weeks to pay or object to a court payment order are set by law (§ 692 ZPO), and no one can "
-        "extend them by being asked. Object in time instead — the letter's page offers the objection — or get "
-        "advice at the court's Rechtsantragstelle."
+        "The period to pay or object to a court payment order is set by law (two weeks, § 692 ZPO; one week at "
+        "a labour court, § 46a ArbGG), and no one can extend it by being asked. Object in time instead — the "
+        "letter's page offers the objection — or get advice at the court's Rechtsantragstelle."
     ),
     "enforcement_order": (
-        "The two weeks to object to an enforcement order can't be extended (Notfrist, § 339 ZPO). Object in "
-        "time instead — the letter's page offers the objection — or get advice at once."
+        "The period to object to an enforcement order can't be extended (Notfrist: two weeks, § 339 ZPO; one "
+        "week at a labour court, § 59 ArbGG). Object in time instead — the letter's page offers the objection "
+        "— or get advice at once."
     ),
     "dismissal": (
         "The three weeks for a court action against a dismissal are set by law (§ 4 KSchG) — your employer "
@@ -687,6 +707,7 @@ def plan_letter(
         today=today,
         postal_buffer_days=postal_buffer(sources.profile),
         court=is_court(recipient),
+        labour_court=is_labour_court(recipient),
     )
     return Plan(
         kind, language, letter, reference, translation, guidance, tuple(notes), private_values(sources, facts)

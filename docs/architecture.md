@@ -55,7 +55,7 @@ flowchart LR
 | Boundary | Defence |
 |---|---|
 | Document → model | Documents are untrusted: hidden text removed, content wrapped in `<untrusted_document>`, **no tools** during reading, output forced through a JSON schema |
-| Model → ledger | Schema validation, quote grounding with exact digits, `spec_consistency`, deterministic date computation, confidence rubric → "Please check"; high-stakes letter kinds (court orders, a dismissal …) are assigned by a written code policy from the reading, never by the model, and court deadlines are never `high` |
+| Model → ledger | Schema validation, quote grounding with exact digits, `spec_consistency`, deterministic date computation, confidence rubric → "Please check"; high-stakes letter kinds (court orders, a dismissal …) are assigned by a written code policy from the reading, never by the model, and court deadlines — every date on a court's letter, whatever kind it is filed as — are never `high` and never use a delivery fiction |
 | Model → user | Ideas and letters are suggestions; nothing is sent, paid, closed or deleted without a click; letters use fixed legal templates |
 | Agent → data | Ask only has read-only MCP tools on a `query_only` connection; every tool result is wrapped as untrusted; citations must appear in the same turn's tool results |
 | Upload → machine | Checked before anything decodes it: PDF stream expansion, image pixels and text pages are capped; the data folder is private to the account (`0700`, files `0600`) |

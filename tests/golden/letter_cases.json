@@ -5,7 +5,7 @@
   "semantics": {
     "date": "compute_due(spec, ctx): due_date (and safe_date / confidence / send_by where stated)",
     "statement": "tenancy.statement_check(period_end, arrived, confirmed, region): deadline, late, objections_by",
-    "statement_text": "advice.billing_period(text, before=arrived), then tenancy.statement_check: period_end, exact, deadline, late",
+    "statement_text": "advice.billing_period(text, before=arrived), then tenancy.statement_check: period_end, exact, labelled, deadline, late",
     "withdrawal_long": "consumer.long_withdrawal_end(start): the last day without proper instructions",
     "alternative": "a later date some sources give; the engine keeps the earlier one (SPEC § 21)"
   },
@@ -86,6 +86,47 @@
         "§ 339 Abs. 1 ZPO: 'Die Einspruchsfrist beträgt zwei Wochen; sie ist eine Notfrist und beginnt mit der Zustellung' — https://www.gesetze-im-internet.de/zpo/__339.html",
         "§ 700 Abs. 1 ZPO: 'Der Vollstreckungsbescheid steht einem für vorläufig vollstreckbar erklärten Versäumnisurteil gleich.' — https://www.gesetze-im-internet.de/zpo/__700.html",
         "Hessen, ordentliche Gerichtsbarkeit: 'ein Einspruch nur innerhalb einer Frist von zwei Wochen nach Zustellung des Vollstreckungsbescheides zulässig' — https://ordentliche-gerichtsbarkeit.hessen.de/themen-der-ordentlichen-gerichtsbarkeit/mahnverfahren/einspruch-gegen-einen-vollstreckungsbescheid"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "arbgg46a-01-labour-court-one-week",
+      "description": "Mahnbescheid des Arbeitsgerichts Berlin (ein Arbeitgeber fordert einen Lohnvorschuss zurück), Zustellung per gelber Zustellungsurkunde am Di 22.09.2026; die Lesung nennt zwei Wochen.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 2, "unit": "weeks", "nature": "objection", "text": "binnen zwei Wochen seit der Zustellung"},
+        "ctx": {"today": "2026-09-23", "region": "BE", "document_date": "2026-09-21", "received_date": "2026-09-22", "received_confirmed": true, "letter_kind": "court_payment_order", "court": true, "labour_court": true}
+      },
+      "expected": {"due_date": "2026-09-29", "confidence": "low"},
+      "reasoning": [
+        "At a labour court the period in a Mahnbescheid is one week, not the two weeks of § 692 Abs. 1 Nr. 3 ZPO (§ 46a Abs. 3 ArbGG).",
+        "It runs from Zustellung, Tue 22 Sep 2026; one week later is Tue 29 Sep 2026 (§ 222 Abs. 1 ZPO with §§ 187 Abs. 1, 188 Abs. 2 BGB).",
+        "The reading says two weeks: Ordnung keeps the law's earlier week and says so (a soft note); a court deadline is never 'high' — here 'low'."
+      ],
+      "sources": [
+        "§ 46a Abs. 3 ArbGG: 'Die in den Mahnbescheid nach § 692 Abs. 1 Nr. 3 der Zivilprozeßordnung aufzunehmende Frist beträgt eine Woche.' — https://www.gesetze-im-internet.de/arbgg/__46a.html",
+        "§ 222 ZPO — https://www.gesetze-im-internet.de/zpo/__222.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "arbgg59-01-labour-court-enforcement-unity-day",
+      "description": "Vollstreckungsbescheid des Arbeitsgerichts Berlin, am Sa 26.09.2026 in den Briefkasten eingelegt (Datum auf dem gelben Umschlag).",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 1, "unit": "weeks", "nature": "objection", "text": "Einspruch binnen einer Woche nach Zustellung"},
+        "ctx": {"today": "2026-09-28", "region": "BE", "document_date": "2026-09-23", "received_date": "2026-09-26", "received_confirmed": true, "letter_kind": "enforcement_order", "court": true, "labour_court": true}
+      },
+      "expected": {"due_date": "2026-10-05", "confidence": "medium"},
+      "reasoning": [
+        "A Vollstreckungsbescheid counts as a default judgment (§ 700 Abs. 1 ZPO, applied by § 46a Abs. 1 ArbGG); at a labour court the objection to it must be made within a one-week Notfrist (§ 59 S. 1 ArbGG).",
+        "One week from Sat 26 Sep 2026 ends on Sat 3 Oct 2026, German Unity Day, so the period ends on Mon 5 Oct 2026 (§ 222 Abs. 2 ZPO).",
+        "A court deadline is never 'high' in Ordnung."
+      ],
+      "sources": [
+        "§ 59 ArbGG: 'Gegen ein Versäumnisurteil kann eine Partei, gegen die das Urteil ergangen ist, binnen einer Notfrist von einer Woche nach seiner Zustellung Einspruch einlegen.' — https://www.gesetze-im-internet.de/arbgg/__59.html",
+        "§ 46a Abs. 1 ArbGG (the ZPO's Mahnverfahren applies unless the ArbGG says otherwise) — https://www.gesetze-im-internet.de/arbgg/__46a.html",
+        "§ 700 Abs. 1 ZPO — https://www.gesetze-im-internet.de/zpo/__700.html"
       ],
       "unsure": false
     },
@@ -377,6 +418,21 @@
       ],
       "sources": [
         "§ 556 Abs. 3 S. 1, 2 BGB: 'Über die Vorauszahlungen für Betriebskosten ist jährlich abzurechnen … Die Abrechnung ist dem Mieter spätestens bis zum Ablauf des zwölften Monats nach Ende des Abrechnungszeitraums mitzuteilen.' — https://www.gesetze-im-internet.de/bgb/__556.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb556-06-period-in-words-next-to-previous-year",
+      "description": "Heiz- und Betriebskostenabrechnung, die ihren Zeitraum in Worten nennt und daneben den Vorjahresvergleich in Ziffern; zugegangen am Do 10.09.2026.",
+      "input": {"kind": "statement_text", "text": "Betriebs- und Heizkostenabrechnung für den Zeitraum vom 1. Januar 2025 bis 31. Dezember 2025\nNachzahlung: 312,40 EUR\nVerbrauchsvergleich: Vorjahreszeitraum 01.01.2024 - 31.12.2024: 9.100 kWh", "arrived": "2026-09-10", "confirmed": true, "region": "BE"},
+      "expected": {"period_end": "2025-12-31", "exact": true, "labelled": true, "deadline": "2026-12-31", "late": false},
+      "reasoning": [
+        "The statement's own period ends on 31 Dec 2025; it must arrive by the end of the twelfth month after that, Thu 31 Dec 2026 (§ 556 Abs. 3 S. 2 BGB). It arrived on 10 Sep 2026: on time.",
+        "The previous year's range (01.01.2024 – 31.12.2024) is the comparison a heating statement must show — taken as the billing period it would wrongly make the statement late."
+      ],
+      "sources": [
+        "§ 556 Abs. 3 S. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__556.html",
+        "§ 6a Abs. 3 S. 1 Nr. 5 HeizkostenV: 'einen Vergleich des witterungsbereinigten Energieverbrauchs des jüngsten Abrechnungszeitraums des Nutzers mit seinem witterungsbereinigten Energieverbrauch im vorhergehenden Abrechnungszeitraum' — https://www.gesetze-im-internet.de/heizkostenv/__6a.html"
       ],
       "unsure": false
     },

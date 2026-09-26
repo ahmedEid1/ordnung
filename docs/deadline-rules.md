@@ -58,7 +58,8 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 | Implausible period (over 100 years) or a date at the end of the calendar | No date, `low` confidence, "please check" — never an error that stops the document. |
 | Arrival day of a letter needed but not confirmed | Uses the letter's date and asks when it really arrived (`low` confidence). |
 | Kind of sender (procedural law) unknown | 3rd/4th-day rule **without** the weekend shift; 3 days unless the Land is known to use 4 (portal: the day after it was made available). |
-| Court order (Mahnbescheid, Vollstreckungsbescheid) without the envelope date | Counts from the order's own date and asks for the date on the yellow envelope (`low`); court deadlines are never `high`. |
+| Court order (Mahnbescheid, Vollstreckungsbescheid) without the envelope date | Counts from the order's own date and asks for the date on the yellow envelope (`low`); court deadlines are never `high`. Once the envelope date is entered it is the start, whatever anchor the period was read with. |
+| Any other letter from a court (not filed as a court order) | No 4-day fiction (counts from the letter's date or the entered delivery day) and never `high`, whatever kind it was filed as. |
 | Whether an operating-cost statement came too late | Resolved in the landlord's favour: called late only when it certainly arrived after the deadline (section 7). |
 | Letter's period differs from the statute (e.g. "6 weeks" for a tax objection) | Computes both and uses the earlier date. |
 | Notice period missing from a contract | Assumes the longest notice the law allows (earliest deadline). |
@@ -341,11 +342,11 @@ written policy per ADR 0007) and files them under their own kind:
 
 | Kind | Recognised when the reading … | Its dates follow | Deadlines the law adds (filed as to-dos) | Card |
 |---|---|---|---|---|
-| `court_payment_order` (*Mahnbescheid*) | comes from a court (sender's name ends a word in "gericht", and names no bailiff — *Gerichtsvollzieher bei dem Amtsgericht …* — or court cashier), names a Mahnbescheid, asks the person to answer it as the respondent, and is one (see below) | `zpo_692` | pay or object within two weeks | get advice now |
-| `enforcement_order` (*Vollstreckungsbescheid*) | comes from a court, names a Vollstreckungsbescheid, asks the person to answer it, and is one (see below) | `zpo_339` | object within two weeks | get advice now |
+| `court_payment_order` (*Mahnbescheid*) | comes from a court (sender's name ends a word in "gericht", and names no bailiff — *Gerichtsvollzieher bei dem Amtsgericht …* — or court cashier), names a Mahnbescheid, asks the person to answer it as the respondent, and is one (see below) | `zpo_692` (at a labour court `arbgg_46a`) | pay or object within two weeks (one week at a labour court) | get advice now |
+| `enforcement_order` (*Vollstreckungsbescheid*) | comes from a court, names a Vollstreckungsbescheid, asks the person to answer it, and is one (see below) | `zpo_339` (at a labour court `arbgg_59`) | object within two weeks (one week at a labour court) | get advice now |
 | `dismissal` | reports a termination by the other side about a job | `kschg_4`, `sgb3_38` | court action within three weeks; register as job-seeking | get advice now |
 | `landlord_notice` | reports a termination by the other side about a tenancy | `bgb_574b` | the objection, when the end of the tenancy is stated and the notice has a notice period (or gives one in the alternative) | tenants' association |
-| `rent_increase` | reports a rent increase whose quoted German wording asks for consent (Zustimmung, Vergleichsmiete, Mietspiegel, § 558 BGB) and that nowhere reads as a graduated, index, modernisation or prepayment (§ 560) increase or "no consent needed", in German or English | `bgb_558b` | decide on the consent | rent cap check |
+| `rent_increase` | reports a rent increase whose quoted German wording asks for consent (Zustimmung, Vergleichsmiete, Mietspiegel, § 558 BGB), unless the increase's own quote or the title names another kind of increase (graduated, index, modernisation, prepayments; §§ 557a, 557b, 559, 560 BGB) or a quote says consent isn't needed — what happens *without* consent ("Sollten Sie Ihre Zustimmung nicht erteilen …"), the prepayment in the new total and a Mietspiegel feature ("Bad modernisiert") never veto it | `bgb_558b` | decide on the consent | rent cap check |
 | `operating_costs` | names an operating-cost statement in its title, or with a tenancy or a billing period, and isn't from a utility or a public body — recognised on read only, because its dates don't depend on it | ordinary 12-month period | — | late-statement check |
 
 **Which court order a court's letter is.** A court writes many letters that name an order: to the
@@ -362,7 +363,8 @@ the order he enforces. None of them starts a two-week period for the person, so 
    "Nach Widerspruch …", "Der Antragsgegner hat … Widerspruch erhoben", *Nachricht an den Antragsteller*,
    *Zustellungsnachricht*, *Monierung*, *Kostenrechnung*, "Antrag … zurückgenommen",
    *Pfändungs- und Überweisungsbeschluss*, "Zwangsvollstreckung … eingestellt"; in English only in the
-   title, e.g. "objection received", "garnishment", "suspended", "notice of service").
+   title, e.g. "objection received", "garnishment", "suspended", "notice of service"). "Der Antragsgegner
+   hat *keinen* Widerspruch erhoben" is why an enforcement order was issued, not a later letter.
 3. **Which order.** The order the title names first (German, or "payment order" / "enforcement order");
    else the remedy the letter states (*Widerspruch* → Mahnbescheid, *Einspruch* → Vollstreckungsbescheid,
    from the remedy or the objection date's own wording). Nothing else decides: every Mahnbescheid warns
@@ -377,6 +379,22 @@ letter's page ("What kind of letter is this?"), and its dates and to-dos are rec
 the person chose is kept when the letter is read again; a kind Ordnung chose is not, so a letter filed
 before Ordnung knew these kinds gets its high-stakes kind the next time it is read.
 
+**A court's other letters.** Whatever kind a court's letter is filed as — the policy may miss an order
+(a reading with no remedy), or it is another court letter (a *Versäumnisurteil*, a hearing) — its dates
+never get an authority's 4-day delivery fiction (they run from the letter's date, the earliest plausible
+start, or the delivery day the person entered) and are never `high`: each carries a note that a court's
+periods usually run from the date on the yellow envelope.
+
+**Labour courts** (`arbgg_46a`, `arbgg_59`; § 46a Abs. 1, 3, § 59 ArbGG). A labour court's (*Arbeitsgericht*)
+Mahnbescheid gives **one week**, not two (§ 46a Abs. 3 ArbGG), and the objection to its enforcement order
+is a one-week *Notfrist* (§ 59 S. 1 ArbGG with § 700 Abs. 1 ZPO). A court order whose sender is a labour
+court is filed under the same kinds, but its dates, to-dos, card and sending advice use the week: the card
+names the labour court's office, where the objection can be made for the record (§ 59 S. 2 ArbGG), and not
+online-mahnantrag.de. A period the reading gives as two weeks is cut to the law's week with a note.
+Example: delivered Tue 22 Sep 2026 → **Tue 29 Sep 2026**; an enforcement order delivered Sat 26 Sep 2026 →
+Sat 3 Oct (German Unity Day) → **Mon 5 Oct 2026** ([§ 46a ArbGG](https://www.gesetze-im-internet.de/arbgg/__46a.html),
+[§ 59 ArbGG](https://www.gesetze-im-internet.de/arbgg/__59.html)).
+
 **Which rule a date follows.** A date follows the rule its legal basis or wording cites only if its
 nature fits that rule: a registration is a declaration (an appointment "about your Arbeitsuchendmeldung"
 or an authority's own fixed date is never re-dated as one, and the wording must say "arbeitsuchend
@@ -384,6 +402,8 @@ melden" or cite § 38 SGB III), the consent period takes declarations and object
 rent is owed from is a payment), the § 574b period takes objections only, and a withdrawal wording that
 cites another law's withdrawal right (insurance, VVG) keeps its own period. The court rules only take
 the dates they are about: the objection or court action, and for a Mahnbescheid paying instead — a
+withdrawal takes declarations only (a cancellation "unabhängig von Ihrem Widerrufsrecht" or a payment
+"30 Tage nach Ablauf der Widerrufsfrist" keeps its own rule) — a
 labour-court hearing "in Sachen Kündigungsschutzklage" or a severance paid "if you don't sue" (§ 1a
 KSchG) mentions the court action but doesn't follow it. A deadline the law adds is filed as a to-do
 (`origin = "rule"`, one per rule) unless one of the letter's own dates was **computed under** that rule
@@ -399,7 +419,8 @@ person deleted stays deleted. Court deadlines — and every date on a court orde
 (*Zustellung*): the date the postman wrote on the yellow envelope — also a Saturday, if that is when
 it was put in the letterbox (§ 180 ZPO, `zpo_180`). No 4-day rule. Counted by §§ 187, 188 BGB and
 moved off weekends and holidays at the court's seat (§ 222 ZPO, `zpo_222`). Without the envelope date
-the order's own date is used (it can only be earlier). A late objection still counts until the
+the order's own date is used (it can only be earlier); once the person enters it, it is the start even
+when the reading counted the period from the order's date. A late objection still counts until the
 enforcement order is issued (§ 694 Abs. 1 ZPO) — shown as a warning, never relied on.
 
 | Delivered | Court | Deadline | Source |
@@ -442,8 +463,12 @@ date as read ([Bundesagentur für Arbeit](https://www.arbeitsagentur.de/arbeitsl
 | Fri 25 Sep 2026 | Sat 31 Oct 2026 | Mon 28 Sep 2026 (three days) |
 | Thu 1 Oct 2026 | Mon 30 Nov 2026 | Sun 4 Oct 2026 (kept; may run to Mon 5 Oct) |
 
-Registering late costs one week of unemployment benefit (*Sperrzeit*, § 159 Abs. 1 S. 2 Nr. 9, Abs. 6
-SGB III). **Apprentices** don't have to register when a company apprenticeship ends (§ 38 Abs. 1 S. 4
+Registering late can cost one week of unemployment benefit (*Sperrzeit*, § 159 Abs. 1 S. 2 Nr. 9, Abs. 6
+SGB III; not with an important reason). It doesn't replace **registering as unemployed** (`sgb3_141`,
+§ 141 Abs. 1, § 137 Abs. 1 SGB III): online or in person, at the latest on the first day without work (up
+to three months before is allowed) — unemployment benefit is only paid from then. The dismissal card
+says so next to the job-seeking to-do ([Bundesagentur für Arbeit](https://www.arbeitsagentur.de/arbeitslos-arbeit-finden/arbeitslosengeld/ihre-schritte-wenn-sie-arbeitslos-werden/wie-sie-sich-arbeitsuchend-melden):
+"Die Arbeitsuchendmeldung ersetzt nicht die Arbeitslosmeldung"). **Apprentices** don't have to register when a company apprenticeship ends (§ 38 Abs. 1 S. 4
 SGB III), and where their chamber has set up a conciliation board (*Schlichtungsausschuss*, § 111 Abs. 2
 ArbGG) it must hear a dispute before the labour court. Ordnung can't tell an apprenticeship from a job,
 so the to-do and the card say so instead of dropping the registration.
@@ -455,7 +480,9 @@ holiday moves to the next working day (§ 193 BGB). A date the landlord names is
 law's: an earlier one can't shorten the period, a later one is noted and the law's (earlier) date is
 kept. The card checks the **rent cap** (`bgb_558_3`, § 558 Abs. 3 BGB) from
 the old and new amounts the model read: more than 20 % within three years is not allowed, more than
-15 % not in the many cities with the lower cap. The cap counts from the rent three years ago and
+15 % not in the many cities with the lower cap. The caps are limits in euros, so the amounts are compared
+exactly, in cents (800 → 920.30 € is 15.04 %: above 15 %); the percentage is only rounded for display
+(two decimals near a cap), and a card above a cap names the highest rent it allows. The cap counts from the rent three years ago and
 without operating costs, so a result within the cap is only "as far as these amounts show".
 
 | Request arrived | Decide by | Higher rent from | Source |
@@ -471,10 +498,17 @@ working day before). Since the *Bürokratieentlastungsgesetz IV* (1 Jan 2025) te
 signed letter by Einwurf-Einschreiben is still the safest proof. If the landlord didn't point out the
 right to object, its form and its deadline in time (§ 568 Abs. 2 BGB), it can still be raised at the
 first hearing of an eviction suit (§ 574b Abs. 2 S. 2) — the card says so, and so does the receipt once
-the date has passed; the date shown is never moved for it. A notice without notice period (*fristlos*,
-*außerordentlich*, or ending less than two months after its date) gets no objection to-do: the hardship
-objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB); the card says so, offers no objection letter and
-points to advice and, for rent arrears, to paying them in time (§ 569 Abs. 3 Nr. 2 BGB). A notice without
+the date has passed; the date shown is never moved for it. A notice without notice period gets no
+objection to-do: the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB); the card says so,
+the composer refuses the objection letter with the same words, and both point to advice and, for rent
+arrears, to paying them in time (§ 569 Abs. 3 Nr. 2 BGB). A notice counts as one only when **its own
+quote or the title** says so (*fristlos*, *außerordentlich*, "ohne Einhaltung einer Kündigungsfrist",
+§ 543 or § 569 BGB) — never the model's summary or another quote, which may mention a *fristlose
+Kündigung* the landlord only reserves — and the wording is not negated ("keine fristlose Kündigung"),
+reserved ("… behalten wir uns vor") or given "mit der gesetzlichen Frist" (a special termination — § 573d,
+§ 575a BGB, § 57a ZVG, § 111 InsO, § 564 BGB — which the objection applies to, § 575a Abs. 2 BGB), and
+the tenancy ends within two months of the letter (or no end is stated). When unsure it is an ordinary
+notice: the to-do stays, and the card says the objection doesn't apply to a notice without notice period. A notice without
 notice period that also gives notice with one in the alternative (*hilfsweise fristgemäß*) keeps the
 to-do and the letter: the objection applies to that notice. **Not for every tenancy** (`bgb_549`, § 549
 Abs. 2, 3 BGB): a flat let only for temporary use and a furnished room in the flat the landlord lives
@@ -490,17 +524,22 @@ objections are due twelve months after it arrived (an ordinary period the engine
 and the tenant may inspect the receipts. The card's check is written so that it never wrongly says
 "you don't owe it":
 
-* **The billing period** is read from the letter's text: every date range in it ("01.07.2024 –
-  30.06.2025", "vom … bis zum …") that ended before the statement arrived, and every billing year
-  ("Abrechnungsjahr 2024", "Abrechnungszeitraum 2023/2024", taken to end on 31 December of its last
-  year). The **latest** end wins, because a later end only makes the deadline later; a billing year gives
-  way to a range that ends in it or later (the range says which months a heating year covers), and the
-  previous year's comparison never decides.
+* **The billing period** is read from the letter's text (and the reading's title): every date range in it
+  that ended before the statement arrived — in figures ("01.07.2024 – 30.06.2025"), in words ("vom 1. Januar
+  2025 bis 31. Dezember 2025"), as ISO dates or months ("Januar bis Dezember 2025", "01/2025 – 12/2025") —
+  and every billing year ("Abrechnungsjahr 2024", "Abrechnungszeitraum 2023/2024",
+  "Betriebskostenabrechnung für das Jahr 2025", "Operating-cost statement 2025"), taken to end on
+  31 December of its last year. The **latest** end wins, because a later end only makes the deadline later;
+  a billing year gives way to a range that ends in it or later (the range says which months a heating year
+  covers). The previous year's comparison (next to "Vorjahr", "Vergleich"; a heating statement must show
+  it, § 6a Abs. 3 S. 1 Nr. 5 HeizkostenV) never decides: when it is the latest range found, the
+  statement's own period was missed and nothing is claimed.
 * The later reading of "end of the twelfth month" is used, and the deadline moves off weekends and
   holidays in the landlord's favour (with *any* Land's holiday when the tenant's is unknown).
 * A statement is called late only when it certainly arrived after the deadline — its own date after the
-  deadline, or a confirmed arrival day after it. From a billing year alone it is at most "probably too
-  late — check the billing period".
+  deadline, or a confirmed arrival day after it — **and** the range is one the letter calls its billing
+  period ("Abrechnungszeitraum", "für den Zeitraum vom …", "Abrechnungsjahr 2023/2024 (…)"). From any
+  other range or a billing year alone it is at most "probably too late — check the billing period".
 * "On time" is only said without "probably" when the weekend/holiday shift (whose use here is disputed)
   and an unknown Land didn't decide it.
 
@@ -511,6 +550,7 @@ and the tenant may inspect the receipts. The card's check is written so that it 
 | Thu 31 Oct 2024 | Mon 3 Nov 2025, Land unknown | Fri 31 Oct → Mon 3 Nov 2025 | probably on time (only by the shift) | § 193 BGB |
 | Sun 30 Jun 2024 ("Abrechnungsjahr 2023/2024 (01.07.2023 bis 30.06.2024)") | Mon 10 Mar 2025 (confirmed) | Mon 30 Jun 2025 | on time | § 556 Abs. 3 S. 2 BGB |
 | "Abrechnungszeitraum 2024" (previous year 01.01.–31.12.2023 also named) | Mon 10 Feb 2025 (confirmed) | Wed 31 Dec 2025 | probably on time | § 556 Abs. 3 S. 2 BGB |
+| Wed 31 Dec 2025 ("für den Zeitraum vom 1. Januar 2025 bis 31. Dezember 2025", previous year in figures next to it) | Thu 10 Sep 2026 (confirmed) | Thu 31 Dec 2026 | on time | § 556 Abs. 3 S. 2 BGB; § 6a HeizkostenV |
 
 **Withdrawal** (`bgb_355`, `bgb_356_4`, `bgb_356a`; §§ 355, 356, 356a BGB). A contract concluded online,
 by phone or at the door can be withdrawn within 14 days; for goods the days start when they arrive.
@@ -523,9 +563,10 @@ the right ends at the latest "zwölf Monate und 14 Tage" later (§ 356 Abs. 4 S.
 after the regular period would have ended (Art. 10 Abs. 1 Directive 2011/83/EU); the German wording can
 also be read as "12 months, then 14 days", which differs by a day or two around month ends — the earlier
 date is used. A letter's wording routes here only when it cites §§ 355/356 BGB or names a
-*Widerrufsfrist/-recht/-belehrung*, the sender is not an authority (an authority's *Widerruf* is a
-revocation) and no other law's withdrawal right is cited (insurance: § 8, § 152 VVG). A period the letter
-states that isn't 14 days is shown next to the law's: a shop may grant more (30 days) and some contracts
+*Widerrufsfrist/-recht/-belehrung*, the date is a declaration (the withdrawal itself), the sender is not
+an authority or a court (their *Widerruf* is a revocation) and no other law's withdrawal right is cited
+(insurance: § 8, § 152 VVG). A period the letter states that isn't 14 days — also in working days
+(*14 Werktage*) — is shown next to the law's: a shop may grant more (30 days) and some contracts
 have a longer period by law (life insurance: 30 days, § 152 VVG), a shorter one doesn't count against the
 consumer. The earlier date is shown while it lasts, then the later one, so a
 right that still runs is never called "passed".
@@ -651,10 +692,11 @@ Windows are not moved off weekends; `safe_date` gives the working day before.
 | General reply | none | e-mail, portal, letter, fax |
 | Objection to a court payment order (`zpo_692`) | in writing to the court, best on the enclosed form; no reasons needed; **not by e-mail** (§ 694, § 692 Abs. 1 Nr. 5 ZPO) | signed form by Einwurf-Einschreiben, online-mahnantrag.de (ID card or barcode print-out), a *Rechtsantragstelle* (`zpo_129a`: at another court than the issuing one it only counts once the record arrives there — go early), fax of the signed form, letter |
 | Objection to an enforcement order (`zpo_339`) | in writing to the court; not by e-mail (§ 700, § 340 ZPO) | signed letter by Einwurf-Einschreiben, *Rechtsantragstelle* (as above, § 129a Abs. 3 S. 2 ZPO), fax, letter; an objection doesn't stop enforcement by itself |
+| Objection to a labour court's order (`arbgg_46a`, `arbgg_59`) | within **one week**, in writing to the labour court or for the record at its office (§ 46a Abs. 3, § 59 S. 2 ArbGG); not by e-mail | signed form or letter by Einwurf-Einschreiben, the labour court's office, fax, letter — not online-mahnantrag.de |
 | Tenant's objection to a landlord's notice (`bgb_574b`) | text form since 2025 (§ 574b Abs. 1 BGB) | signed letter by Einwurf-Einschreiben (safest proof), in person with a witness, e-mail, letter |
 | Withdrawal (`bgb_355`) | any clear statement; **sending it in time is enough** (§ 355 Abs. 1 S. 5 BGB), so send-by = the deadline | e-mail, the withdrawal button (`bgb_356a`, since 19 Jun 2026, only for contracts made online), Einwurf-Einschreiben, fax, letter |
 | Deferral of a tax payment (`ao_222`) | no form (§ 222 AO); until agreed, the full amount stays due | ELSTER, fax, e-mail, letter |
-| Defect notice to the landlord (`bgb_536c`) | no form, but keep proof: the rent may be reduced from then on (§ 536c BGB) | Einwurf-Einschreiben, e-mail, in person, letter |
+| Defect notice to the landlord (`bgb_536c`) | no form, but keep proof: the rent is reduced while the defect lasts, and if the landlord didn't know of it you can lose that for the time they couldn't repair it (§ 536c Abs. 2 BGB) | Einwurf-Einschreiben, e-mail, in person, letter |
 | Reply to a rent increase request (`bgb_558b`) | none, but make consent provable; consent to part of the increase is possible, and paying the higher rent can count as consent | Einwurf-Einschreiben, e-mail, in person, letter |
 | Receipts inspection, reply to an operating-cost statement (`bgb_556_3`) | none; objections must reach the landlord within twelve months of receiving the statement (§ 556 Abs. 3 S. 5 BGB) | Einwurf-Einschreiben, e-mail, in person, letter |
 | More time, instalments, data access (Art. 15 GDPR), deposit, new address | none | ranked by proof, as for a general reply; an extension only counts once confirmed — statutory deadlines can't be extended by asking, so more time against a court order or a dismissal is refused, and so are instalments offered to a court (the claimant agrees them) |

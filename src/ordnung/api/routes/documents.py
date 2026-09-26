@@ -57,7 +57,7 @@ from ordnung.models import (
 )
 from ordnung.rules.advice import letter_advice
 from ordnung.rules.deadlines import parse_date
-from ordnung.rules.routing import alternative_notice, extraordinary_notice, names_statement
+from ordnung.rules.routing import alternative_notice, extraordinary_notice, is_labour_court, names_statement
 from ordnung.secretary.triggers import Ledger
 
 router = APIRouter(tags=["documents"])
@@ -204,6 +204,8 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
     change = extraction.change if extraction is not None else None
     arrived = parse_date(document.received_date) or parse_date(document.doc_date)
     notice = extraction if kind == "landlord_notice" else None
+    party = store.get_party(document.party_id) if document.party_id else None
+    sender = party.name if party else (extraction.sender.name if extraction and extraction.sender else "")
     return letter_advice(
         kind,
         today=today,
@@ -212,9 +214,11 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
         region=store.get_profile().known_region,
         old_amount=change.old_amount if change is not None else None,
         new_amount=change.new_amount if change is not None else None,
-        text=store.get_document_text(document.id),
-        extraordinary=notice is not None and extraordinary_notice(notice),
+        # the title may name the billing year ("Operating-cost statement 2025")
+        text=f"{document.title or ''}\n{store.get_document_text(document.id)}",
+        extraordinary=notice is not None and extraordinary_notice(notice, parse_date(document.doc_date)),
         alternative=notice is not None and alternative_notice(notice),
+        labour_court=is_labour_court(sender),
     )
 
 
