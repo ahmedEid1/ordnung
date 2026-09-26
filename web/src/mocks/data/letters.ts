@@ -28,6 +28,10 @@ export const Q = {
     notice: "Kündigungsfrist: 1 Monat zum Ende der Mindestvertragslaufzeit, danach jederzeit mit einer Frist von einem Monat.",
     concluded: "Vertragsschluss: 15.10.2024",
   },
+  gymPrice: {
+    change: "Ab dem 01.11.2026 beträgt Ihr Monatsbeitrag 32,90 EUR statt bisher 29,90 EUR.",
+    objection: "Sie können der Anpassung innerhalb von vier Wochen nach Zugang dieses Schreibens widersprechen.",
+  },
   gym: {
     start: "Beginn der Mitgliedschaft: 01.03.2025",
     fee: "Monatsbeitrag: 29,90 EUR",
@@ -625,6 +629,27 @@ export const LETTERS: Record<string, LetterSpec> = {
           Q.parking.pay,
           "Wenn Sie nicht fristgerecht zahlen, wird ein Bußgeldverfahren eingeleitet. Dabei entstehen zusätzliche Gebühren und Auslagen.",
           { text: "Empfänger: Stadtkasse Musterstadt · IBAN DE47 7002 0270 0015 8935 21", size: 19 },
+        ],
+      },
+    ],
+  },
+
+  doc_gym_price: {
+    brand: { name: "FitWell Studios", color: "#e4572e", tagline: "Stark in Musterstadt", mark: "bars" },
+    senderLine: "FitWell Studios · Lindenallee 22 · 12345 Musterstadt",
+    recipient: RECIPIENT,
+    info: [
+      ["Datum", "14.09.2026"],
+      ["Mitgliedsnummer", "FW-20931"],
+    ],
+    pages: [
+      {
+        subject: "Anpassung Ihres Monatsbeitrags",
+        blocks: [
+          "Liebes Mitglied,",
+          `wir modernisieren unsere Geräte und verlängern die Öffnungszeiten. ${Q.gymPrice.change}`,
+          Q.gymPrice.objection,
+          "Ihr FitWell-Team",
         ],
       },
     ],

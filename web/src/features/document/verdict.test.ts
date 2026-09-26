@@ -127,6 +127,18 @@ describe("what needs the person's eyes", () => {
     expect(needsArrivalDate(makeItem(), { received_date: null })).toBe(false);
   });
 
+  it("asks for the arrival date when the engine counted a private sender's letter from its arrival", () => {
+    // read as deemed delivery, but a company's letter has none: the engine counts from arrival (§ 130 BGB)
+    const spec = { type: "relative" as const, date: null, time: null, anchor: "deemed_delivery" as const, anchor_date: null, amount: 14, unit: "days" as const, delivery_rule: "de_admin_post" as const, shift_rule: "auto" as const, nature: "payment" as const, legal_basis: null, text: "" };
+    const company = makeItem({ date_spec: spec, computation: makeReceipt({ rule_ids: ["private_sender_arrival", "bgb_187_1"], confidence: "low" }) });
+    expect(needsArrivalDate(company, { received_date: null })).toBe(true);
+    expect(needsArrivalDate(company, { received_date: "2026-09-25" })).toBe(false);
+    expect(needsArrivalDate({ ...company, status: "done" }, { received_date: null })).toBe(false);
+    // an authority's letter keeps its deemed delivery: nothing to ask
+    const authority = { ...company, computation: makeReceipt({ rule_ids: ["posting_day", "vwvfg_41_2"] }) };
+    expect(needsArrivalDate(authority, { received_date: null })).toBe(false);
+  });
+
   it("finds the active scam warning", () => {
     expect(scamSuggestion(makeDetail({ suggestions: [makeSuggestion({ kind: "saving" })] }))).toBeNull();
     expect(scamSuggestion(makeDetail({ suggestions: [makeSuggestion({ kind: "scam" })] }))?.kind).toBe("scam");

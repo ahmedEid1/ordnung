@@ -386,6 +386,28 @@ function pick<T extends object>(src: unknown, keys: readonly string[]): Partial<
   return out as Partial<T>;
 }
 
+/** Like the API: FitWell's four weeks run from the arrival day the person confirmed (§ 130 BGB). */
+function recomputeGymPrice(db: MockDb, receivedDate: string) {
+  const it = db.state.items.find((i) => i.id === "itm_gym_price");
+  if (!it?.computation) return;
+  const due = format(addDays(parseISO(receivedDate), 28), "yyyy-MM-dd");
+  const day = (d: string) => format(parseISO(d), "EEE d MMM yyyy");
+  it.due_date = due;
+  it.grounding = "user";
+  it.updated_at = nowTs();
+  it.computation = {
+    ...it.computation,
+    due_date: due,
+    summary: `Four weeks after the day you received it (${day(receivedDate)}) is ${day(due)}.`,
+    steps: [
+      { label: `Not an authority's letter, so no delivery days: the period runs from the day you received it (${day(receivedDate)})`, date: receivedDate, rule_id: "private_sender_arrival", citation: "§ 130 Abs. 1 BGB" },
+      { label: `Four weeks later: ${day(due)}`, date: due, rule_id: "bgb_188_2", citation: "§ 188 Abs. 2 BGB" },
+    ],
+    warnings: [],
+    confidence: "high",
+  };
+}
+
 function recomputeParking(db: MockDb, receivedDate: string) {
   const it = db.state.items.find((i) => i.id === "itm_parking");
   if (!it) return;
@@ -554,6 +576,7 @@ const routes: [string, string, Handler][] = [
       const d = db.document(params.id!) ?? notFound();
       const patch = pick<Document>(body, DOC_PATCHABLE);
       Object.assign(d, patch, { updated_at: nowTs() });
+      if (patch.received_date && d.id === "doc_gym_price") recomputeGymPrice(db, patch.received_date);
       if (patch.received_date && d.id === "doc_parking") {
         recomputeParking(db, patch.received_date);
         d.status = "processed";

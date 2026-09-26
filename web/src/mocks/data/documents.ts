@@ -113,6 +113,29 @@ export const DOCUMENTS: Document[] = [
     references: [{ label: "Mitgliedsnummer", value: "FW-20931" }],
   }),
   doc({
+    id: "doc_gym_price",
+    filename: "FitWell_Beitragsanpassung.pdf",
+    title: "Gym price increase — FitWell",
+    kind: "price_increase",
+    area: "leisure",
+    doc_date: "2026-09-14",
+    received_date: null,
+    party_id: "pty_fitwell",
+    created_at: ts("2026-09-15", "19:02"),
+    urgency: "normal",
+    summary: "FitWell raises your monthly fee from 29,90 € to 32,90 € from 1 Nov. You can object within four weeks of receiving the letter.",
+    explanation:
+      "FitWell is a company, not an authority, so its four weeks start on the day the letter reached you — there are no extra delivery days. Tell us when it arrived; until then we count from the letter date (14 Sep), the earliest possible. You can also cancel the membership with one month's notice.",
+    key_facts: [
+      fact("New monthly fee", "32,90 € from 1 Nov 2026", ev("doc_gym_price", Q.gymPrice.change)),
+      fact("Object within", "4 weeks of receipt", ev("doc_gym_price", Q.gymPrice.objection)),
+    ],
+    references: [{ label: "Mitgliedsnummer", value: "FW-20931" }],
+    warnings: [
+      "We don't know when this letter arrived. Until you tell us, dates count from the letter date (14 Sep) — the earliest possible.",
+    ],
+  }),
+  doc({
     id: "doc_power",
     filename: "Stadtwerke_Vertragsbestaetigung.pdf",
     title: "Electricity contract — MusterStrom Natur",

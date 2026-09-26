@@ -3,6 +3,7 @@ import { createMockServer } from "./server";
 import { letterFor } from "./db";
 import type { Dashboard, DocumentDetail, Evidence, Item, Lane, TimelineEntry } from "@/api/types";
 import { findRawEnums } from "@/lib/copy";
+import { needsArrivalDate } from "@/features/document/verdict";
 
 const srv = () => createMockServer({ staticDemo: false, latency: 0 });
 
@@ -94,6 +95,21 @@ describe("mock dataset", () => {
     expect(it.due_date).toBe("2026-10-02");
     expect(it.computation?.confidence).toBe("high");
     expect(detail.document.status).toBe("processed");
+  });
+
+  it("asks when a company's letter arrived, and counts from the day given", async () => {
+    // read as deemed delivery, but the engine counted FitWell's letter from its arrival (§ 130 BGB)
+    const s = srv();
+    const before = await get<DocumentDetail>(s, "/documents/doc_gym_price");
+    const it0 = before.items.find((i) => i.id === "itm_gym_price")!;
+    expect(it0.date_spec?.anchor).toBe("deemed_delivery");
+    expect(needsArrivalDate(it0, before.document)).toBe(true);
+    await s.handle("PATCH", "/documents/doc_gym_price", new URLSearchParams(), { received_date: "2026-09-16" });
+    const after = await get<DocumentDetail>(s, "/documents/doc_gym_price");
+    const it1 = after.items.find((i) => i.id === "itm_gym_price")!;
+    expect(it1.due_date).toBe("2026-10-14");
+    expect(it1.computation?.confidence).toBe("high");
+    expect(needsArrivalDate(it1, after.document)).toBe(false);
   });
 
   it("streams recorded Ask answers as SSE", async () => {

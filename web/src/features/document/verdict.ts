@@ -111,11 +111,15 @@ export function needsCheck(i: Item): boolean {
 }
 
 /**
- * The period starts when the letter arrived (`receipt` anchor) and we don't know that date yet —
- * the rules engine fell back to the letter date (earliest possible) until the person tells us.
+ * The period starts when the letter arrived (`receipt` anchor) — or the engine counted it from the
+ * arrival because the sender is no authority (`private_sender_arrival`, § 130 BGB), whatever anchor
+ * it was read with — and we don't know that date yet: the rules engine fell back to the letter date
+ * (earliest possible) until the person tells us. The computation decides, not the stored reading.
  */
 export function needsArrivalDate(i: Item, doc: Pick<Document, "received_date">): boolean {
-  if (!isOpenItem(i) || i.date_spec?.anchor !== "receipt") return false;
+  if (!isOpenItem(i)) return false;
+  const fromArrival = Boolean(i.computation?.rule_ids.includes("private_sender_arrival"));
+  if (i.date_spec?.anchor !== "receipt" && !fromArrival) return false;
   if (!doc.received_date) return true;
   return Boolean(i.computation?.rule_ids.some((r) => r.includes("fallback")));
 }
