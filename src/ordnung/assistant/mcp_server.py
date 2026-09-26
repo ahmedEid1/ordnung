@@ -7,7 +7,9 @@ tools at all. Every result is compact JSON that carries record ids for citations
 in ``<untrusted_document>`` tags (titles, summaries, snippets, quotes and page texts all come from
 letters, SPEC §21); documents the person marked "Keep private — no AI" never
 leave the database. Dates are never computed for the model: :meth:`LedgerTools.explain_date` hands
-it the rules engine's receipts to quote.
+it the rules engine's receipts to quote, and the ledger-free rules tools of
+:mod:`ordnung.assistant.rules_tools` (also served alone by ``ordnung mcp --rules-only``) compute new
+ones from what a letter says.
 
 Heavy modules (views, triggers, rules) are imported on first use so the server starts quickly.
 """
@@ -748,4 +750,8 @@ def build_server(store: Store, *, today: date | None = None) -> MCPServer:
         """Today's date and weekday."""
         return answer(tools.today)
 
+    # The ledger-free rules tools (compute_deadline, german_holidays, …), counting from the ledger's day.
+    from ordnung.assistant.rules_tools import register as register_rules_tools
+
+    register_rules_tools(server, today=tools.current_day)
     return server

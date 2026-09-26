@@ -41,6 +41,11 @@ TOOL_NAMES = {
     "explain_date",
     "get_profile",
     "today",
+    # the ledger-free rules tools (tests/test_mcp_rules_tools.py)
+    "compute_deadline",
+    "german_holidays",
+    "add_working_days",
+    "check_iban",
 }
 
 

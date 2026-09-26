@@ -149,6 +149,13 @@ def test_tool_labels() -> None:
     assert tool_label("money_summary") == "Checked your money overview"
     assert tool_label("get_profile") == "Checked your profile"
     assert tool_label("today") == "Checked today's date"
+    assert (
+        tool_label("mcp__ordnung__compute_deadline", {"spec": {}})
+        == "Worked out a deadline with Ordnung's date rules"
+    )
+    assert tool_label("german_holidays", {"year": 2026}) == "Looked up public holidays"
+    assert tool_label("add_working_days", {"start": "2026-12-22", "days": 5}) == "Counted working days"
+    assert tool_label("check_iban", {"iban": "DE89"}) == "Checked an IBAN"
     assert tool_label("Bash", {"command": "rm -rf /"}) == "Used a tool"
 
 
@@ -172,6 +179,15 @@ def test_result_summaries() -> None:
     assert result_summary("get_document", dump({"id": DOC})) == "Read the letter"
     assert result_summary("get_document", dump({"found": False, "message": "no"})) == "Nothing found"
     assert result_summary("today", dump({"today": "2026-09-28"})) == "Today is 2026-09-28"
+    # the ledger-free rules tools
+    assert (
+        result_summary("mcp__ordnung__compute_deadline", dump({"due_date": "2026-10-21"})) == "Due 2026-10-21"
+    )
+    assert result_summary("compute_deadline", dump({"due_date": None})) == "No date could be worked out"
+    assert result_summary("german_holidays", dump({"holidays": [{}] * 9})) == "Found 9 public holidays"
+    assert result_summary("add_working_days", dump({"date": "2026-12-30"})) == "Lands on 2026-12-30"
+    assert result_summary("check_iban", dump({"valid": True})) == "A well-formed IBAN"
+    assert result_summary("check_iban", dump({"valid": False})) == "Not a valid IBAN"
     assert result_summary("explain_date", dump({"id": ITEM})) == "Found how the date was worked out"
     assert result_summary("money_summary", dump({})) == "Money overview ready"
     assert result_summary("get_profile", dump({"name": "Sam"})) == "Profile read"

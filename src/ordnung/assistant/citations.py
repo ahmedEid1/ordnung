@@ -126,6 +126,11 @@ _FIXED_LABELS: dict[str, str] = {
     "money_summary": "Checked your money overview",
     "get_profile": "Checked your profile",
     "today": "Checked today's date",
+    # the ledger-free rules tools (assistant/rules_tools.py)
+    "compute_deadline": "Worked out a deadline with Ordnung's date rules",
+    "german_holidays": "Looked up public holidays",
+    "add_working_days": "Counted working days",
+    "check_iban": "Checked an IBAN",
 }
 _COUNTED_RESULTS: dict[str, tuple[str, str, str]] = {
     # tool → (result key, singular noun, plural noun)
@@ -134,6 +139,7 @@ _COUNTED_RESULTS: dict[str, tuple[str, str, str]] = {
     "list_contracts": ("contracts", "contract", "contracts"),
     "timeline": ("entries", "date on the timeline", "dates on the timeline"),
     "get_party": ("parties", "match", "matches"),
+    "german_holidays": ("holidays", "public holiday", "public holidays"),
 }
 _FIXED_RESULTS: dict[str, str] = {
     "get_document": "Read the letter",
@@ -184,6 +190,13 @@ def result_summary(name: str, text: str | None) -> str:
         return "Nothing found"
     if short == "today" and isinstance(data.get("today"), str):
         return f"Today is {data['today']}"
+    if short == "compute_deadline":
+        due = data.get("due_date")
+        return f"Due {due}" if isinstance(due, str) else "No date could be worked out"
+    if short == "add_working_days" and isinstance(data.get("date"), str):
+        return f"Lands on {data['date']}"
+    if short == "check_iban" and isinstance(data.get("valid"), bool):
+        return "A well-formed IBAN" if data["valid"] else "Not a valid IBAN"
     if short in _COUNTED_RESULTS:
         key, singular, plural = _COUNTED_RESULTS[short]
         values = data.get(key)

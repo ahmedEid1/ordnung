@@ -41,6 +41,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from ordnung import __version__
+from ordnung.assistant.mcp_install import McpClient
 from ordnung.config import REPO_DIR, Paths, default_data_dir, resolve_paths
 from ordnung.server import DEFAULT_HOST, DEFAULT_PORT, ServerInfo, advertise, generate_token, running_server
 
@@ -1052,15 +1053,43 @@ def eval_(ctx: typer.Context) -> None:
     raise typer.Exit(int(code or 0))
 
 
-@app.command()
+mcp_app = typer.Typer(
+    name="mcp",
+    help="Ordnung's read-only MCP tools: serve them over stdio, or install them into Claude.",
+    add_completion=False,
+    rich_markup_mode="rich",
+)
+app.add_typer(mcp_app)
+
+RulesOnlyOption = Annotated[
+    bool,
+    typer.Option(
+        "--rules-only",
+        help="Only the deadline, holiday, working-day and IBAN tools: no data folder, nothing personal.",
+    ),
+]
+
+
+@mcp_app.callback(invoke_without_command=True)
 def mcp(
     ctx: typer.Context,
     data_dir: DataDirOption = None,
     print_config: Annotated[
         bool, typer.Option("--print-config", help="Print the MCP config JSON and exit.")
     ] = False,
+    rules_only: RulesOnlyOption = False,
 ) -> None:
     """Serve Ordnung's read-only tools over stdio (Ask starts this; nothing else is printed)."""
+    if ctx.invoked_subcommand is not None:
+        return
+    if rules_only:
+        from ordnung.assistant import rules_tools
+
+        if print_config:
+            typer.echo(json.dumps(rules_tools.rules_server_config(), indent=2))
+            return
+        rules_tools.run_rules_only()
+        return
     from ordnung.assistant import mcp_server
 
     folder = _folder(ctx, data_dir)
@@ -1070,7 +1099,56 @@ def mcp(
     try:
         mcp_server.run(folder)
     except FileNotFoundError as exc:
-        raise _fail(str(exc), hint="Pass the data folder with --data-dir.") from None
+        raise _fail(str(exc), hint="Pass the data folder with --data-dir, or use --rules-only.") from None
+
+
+@mcp_app.command("install")
+def mcp_install(
+    ctx: typer.Context,
+    client: Annotated[
+        McpClient,
+        typer.Option("--client", metavar="CLIENT", help="claude-desktop or claude-code.", show_default=False),
+    ],
+    rules_only: RulesOnlyOption = False,
+    write: Annotated[
+        bool,
+        typer.Option("--write", help="Merge the entry into the config file (the file is backed up first)."),
+    ] = False,
+    config: Annotated[
+        Path | None,
+        typer.Option(
+            "--config", help="Use this config file instead of the client's usual one.", show_default=False
+        ),
+    ] = None,
+    data_dir: DataDirOption = None,
+) -> None:
+    """Add Ordnung to Claude Desktop or Claude Code: prints the entry; --write merges it in."""
+    from ordnung.assistant import mcp_install as install
+
+    folder = None
+    if not rules_only:
+        folder = _folder(ctx, data_dir)
+        if not Paths(folder).db.is_file():
+            raise _fail(
+                f"There is no Ordnung database in {folder}.",
+                hint="Name your data folder with --data-dir, or install only the rules tools with --rules-only.",
+            )
+    plan = install.plan_install(client, rules_only=rules_only, data_dir=folder, config=config)
+    if not write:
+        typer.echo(install.instructions(plan, data_dir=folder, config=config))
+    else:
+        try:
+            result = install.write_config(plan)
+        except install.InstallError as exc:
+            raise _fail(str(exc)) from None
+        except OSError as exc:
+            raise _fail(f"Couldn't write {plan.path}: {exc.strerror or exc}") from None
+        console.print(f"[green]✓[/] {escape(install.written_message(plan, result))}", soft_wrap=True)
+        if result.backup is not None:
+            console.print(f"  The previous version is saved as {escape(str(result.backup))}", soft_wrap=True)
+        if result.status != "unchanged":
+            console.print(f"  {install.NEXT_STEP[plan.client]}")
+    console.print(f"[dim]{escape(install.privacy_note(plan))}[/]", soft_wrap=True)
 
 
 @app.command()

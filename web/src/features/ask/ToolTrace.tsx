@@ -5,7 +5,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/utils";
 import type { ToolStep } from "./stream";
 import { Wrench } from "lucide-react";
-import { TOOL_ICONS, toolLabel, type TitleLookup } from "./tools";
+import { TOOL_ICONS, toolLabel, toolResultText, type TitleLookup } from "./tools";
 
 function StepChip({ step, titleOf }: { step: ToolStep; titleOf?: TitleLookup }) {
   const Icon = TOOL_ICONS[step.name] ?? Wrench;
@@ -25,7 +25,7 @@ function StepChip({ step, titleOf }: { step: ToolStep; titleOf?: TitleLookup }) 
         step.result ? (
           <span className="hidden shrink-0 items-center gap-1 text-muted sm:inline-flex">
             <Check className="size-3 text-ok" aria-hidden />
-            {step.result}
+            {toolResultText(step.result)}
           </span>
         ) : (
           <>

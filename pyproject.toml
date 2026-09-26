@@ -105,7 +105,7 @@ plugins = ["pydantic.mypy"]
 # The pure core (date rules, recurrence, calendar, clock, ids) gets the checks of `mypy --strict`
 # (`strict` itself is global-only; warn_redundant_casts and warn_unused_configs are too).
 [[tool.mypy.overrides]]
-module = ["ordnung.rules.*", "ordnung.recurrence", "ordnung.calendar.*", "ordnung.clock", "ordnung.ids"]
+module = ["ordnung.rules.*", "ordnung.recurrence", "ordnung.calendar.*", "ordnung.clock", "ordnung.ids", "ordnung.money.*"]
 disallow_any_generics = true
 disallow_subclassing_any = true
 disallow_untyped_calls = true

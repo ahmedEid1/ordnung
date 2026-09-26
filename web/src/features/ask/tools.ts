@@ -5,9 +5,13 @@
  * mirrors `ordnung/assistant/citations.py::tool_label`.
  */
 import {
+  Calculator,
+  CalendarClock,
   CalendarDays,
   CalendarRange,
+  CalendarX,
   FileText,
+  Landmark,
   ListTodo,
   Scale,
   Search,
@@ -31,6 +35,11 @@ export const TOOL_ICONS: Record<string, LucideIcon> = {
   timeline: CalendarRange,
   today: CalendarDays,
   get_profile: UserRound,
+  // the ledger-free rules tools (ordnung/assistant/rules_tools.py)
+  compute_deadline: Calculator,
+  german_holidays: CalendarX,
+  add_working_days: CalendarClock,
+  check_iban: Landmark,
 };
 
 /** Resolves an id (doc_…, itm_…) to a readable title. */
@@ -98,9 +107,22 @@ export function fallbackToolLabel(name: string, input: Record<string, unknown> =
       return "Checked today's date";
     case "get_profile":
       return "Checked your profile";
+    case "compute_deadline":
+      return "Worked out a deadline with Ordnung's date rules";
+    case "german_holidays":
+      return "Looked up public holidays";
+    case "add_working_days":
+      return "Counted working days";
+    case "check_iban":
+      return "Checked an IBAN";
     default:
       return "Looked something up";
   }
+}
+
+/** The result next to a finished step ("Due 2026-10-21" → "Due Wed 21 Oct 2026"), dates in the app's style. */
+export function toolResultText(result: string): string {
+  return formatInlineDates(result);
 }
 
 /** The chip text for a step: the backend label when present, else the fallback. */
