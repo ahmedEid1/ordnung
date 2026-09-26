@@ -229,9 +229,29 @@ def _any_date(text: str) -> bool:
     return bool(_DE_DATE_RE.search(text) or _EN_DATE_RE.search(text))
 
 
+#: Template letters that need a date in them: (passed, what to add).
+_DATED_TEMPLATES: dict[str, tuple[str, str]] = {
+    "withdrawal": (
+        "Names when you ordered or received it.",
+        "Add when you ordered or received it, so they find your order.",
+    ),
+    "extension_request": ("Names the new date you ask for.", "Name the new date you ask for."),
+    "payment_plan": ("Names when the instalments start.", "Name the day of the first instalment."),
+    "defect_notice": (
+        "Says since when, or by when it should be fixed.",
+        "Say since when the defect exists or by when it should be fixed.",
+    ),
+    "deposit_return": ("Names when you handed the flat back.", "Add the day you handed the flat back."),
+}
+
+
 def has_dates(draft: Draft, context: CheckContext) -> DraftCheck:
-    """Cancellations name the end date (or "nächstmöglichen Zeitpunkt"); objections the decision date."""
+    """Cancellations name the end date (or "nächstmöglichen Zeitpunkt"); objections the decision date;
+    template letters the date they are about (:data:`_DATED_TEMPLATES`)."""
     body = draft.body
+    if draft.kind in _DATED_TEMPLATES:
+        passed, missing = _DATED_TEMPLATES[draft.kind]
+        return _check("has_dates", _any_date(body), passed if _any_date(body) else missing)
     if draft.kind == "cancellation":
         if _any_date(body) or any(phrase in body.casefold() for phrase in _NEXT_POSSIBLE):
             return _check("has_dates", True, "Says when the contract should end.")

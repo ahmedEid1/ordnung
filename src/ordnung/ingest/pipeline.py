@@ -49,6 +49,7 @@ from ordnung.ingest.plan import (
     Verification,
     compute_item,
     corrections,
+    filed_kind,
     payment_details,
     remedy_warnings,
     rule_context,
@@ -61,6 +62,7 @@ from ordnung.ingest.transcribe import transcribe_pages
 from ordnung.llm.base import ClaudeRateLimited, LLMError
 from ordnung.models import Document, DocumentExtraction, Job, Page
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
+from ordnung.rules.routing import derived_deadlines
 
 if TYPE_CHECKING:
     from ordnung.app_context import AppContext
@@ -413,6 +415,7 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
         corrected = corrections(data.document, store.get_extraction(data.document.id))
         reading = with_corrections(data.extraction, corrected)
         reading = reading.model_copy(update={"payment": payment_details(reading.payment, full_text)})
+        kind = filed_kind(reading, corrected)
         party = ensure_party(store, reading)
         ctx = rule_context(
             party,
@@ -421,6 +424,7 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
             data.today,
             recipient_region=data.recipient_region,
             country=data.country,
+            filed_as=kind,
         )
         computed = [
             compute_item(verified, ctx, postal_buffer_days=data.postal_buffer_days)
@@ -456,6 +460,8 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
             text_mode=data.text_mode,
             hidden_text=data.hidden_text,
             full_text=full_text,
+            kind=kind,
+            derived=derived_deadlines(kind, end=ctx.end_date),
         )
 
 

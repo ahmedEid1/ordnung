@@ -1,7 +1,8 @@
 """Date work the API does on the person's behalf, always through the rules engine (SPEC §21):
 
 * :func:`recompute_document_items` — after the person confirms when a letter arrived (or corrects
-  its date), the letter's extracted to-dos are recomputed from their stored DateSpecs;
+  its date or kind), the letter's extracted to-dos are recomputed from their stored DateSpecs and the
+  deadlines the law adds to its kind are filed again;
   :func:`recompute_all_items` does it for every letter after the holiday region changed;
 * :func:`manual_date_fields` — a date the person typed in becomes ``due_date_source="manual"`` with
   a send-by date and a receipt from the engine;
@@ -24,6 +25,7 @@ from ordnung.ingest.plan import (
     consistency_reasons,
     document_context,
     needs_check,
+    sync_rule_items,
 )
 from ordnung.models import (
     ComputationReceipt,
@@ -37,6 +39,7 @@ from ordnung.models import (
 )
 from ordnung.recurrence import SCHEDULE_FIELDS, at_occurrence, keeps_later_date, rolled
 from ordnung.rules import RuleContext, compute_due
+from ordnung.rules.routing import derived_deadlines
 from ordnung.secretary.triggers import postal_buffer
 
 MANUAL_SUMMARY = "You set this date yourself."
@@ -112,7 +115,24 @@ def recompute_document_items(store: Store, document: Document, today: date) -> l
             fields = {name: getattr(moved, name) for name in SCHEDULE_FIELDS}
             if any(getattr(item, name) != value for name, value in fields.items()):
                 changed.append(store.update_item(item.id, **fields))
+        changed.extend(_refresh_rule_items(store, document, ctx, today, buffer))
     return changed
+
+
+def _refresh_rule_items(
+    store: Store, document: Document, ctx: RuleContext, today: date, buffer: int
+) -> list[Item]:
+    """File the deadlines the law adds to the letter's (possibly corrected) kind again; returns the
+    rule to-dos that are new or whose dates changed."""
+    before = {item.id: item for item in store.list_items(doc_id=document.id) if item.origin == "rule"}
+    derived = derived_deadlines(document.kind, end=ctx.end_date)
+    after = sync_rule_items(store, document, derived, ctx, today=today, postal_buffer_days=buffer)
+    dates = ("due_date", "send_by")
+    return [
+        item
+        for item in after
+        if item.id not in before or any(getattr(item, n) != getattr(before[item.id], n) for n in dates)
+    ]
 
 
 def recompute_all_items(store: Store, today: date) -> list[Item]:

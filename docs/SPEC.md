@@ -193,6 +193,17 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
 - Every result has steps with rule ids + citations and a one-sentence plain explanation
   (`ComputationReceipt.summary`), e.g. "Letter dated 15 Sep counts as delivered on Sat 19 Sep →
   moved to Mon 21 Sep; one month later is Wed 21 Oct."
+- **High-stakes letters** (`routing.py`, `letters.py`, `advice.py`; `docs/deadline-rules.md` § 7):
+  code recognises a court payment order, an enforcement order, a dismissal, a landlord's notice and
+  a rent increase request from the model's reading (a written policy; the extraction prompt is
+  unchanged) and files the letter under that kind (`Document.kind`, a `HighStakesKind` only code
+  assigns). `RuleContext.letter_kind` routes its dates (two weeks from the envelope date for court
+  orders, § 692/§ 339 ZPO; § 38 SGB III; the end-of-month consent period, § 558b BGB; two months
+  before the end, § 574b BGB; the 14-day withdrawal that only has to be sent, § 355 BGB), and
+  `routing.derived_deadlines` adds the deadlines the law sets that the letter doesn't state (the
+  three weeks of § 4 KSchG) as `origin="rule"` to-dos. Court deadlines are never `high`. An
+  operating-cost statement is recognised on read only; its card checks the 12-month limit of § 556
+  Abs. 3 BGB and calls a statement late only when it certainly is.
 
 ## 7. LLM layer — `llm/` (implemented; update to v2 invocation)
 
@@ -283,14 +294,22 @@ remote images.
 
 ## 11. Letters — `drafts/`
 
-Kinds: `cancellation`, `objection` (Einspruch/Widerspruch), `general_reply`. Compose → `DraftOutput
+Kinds: `cancellation`, `objection` (Einspruch/Widerspruch — for a court order or a landlord's notice
+the remedy the law gives it), `general_reply`, and the template letters `withdrawal`,
+`extension_request`, `payment_plan` (Stundung under § 222 AO to a tax office), `defect_notice`
+(§ 536c BGB), `data_access` (Art. 15 GDPR, the free SCHUFA copy), `receipts_inspection` (§ 556 Abs. 4
+BGB), `deposit_return` (the profile's IBAN) and `address_change`, written entirely from fixed German
+and English sentences (`drafts/template_letters.py`) filled from `LetterDetails` (`POST /api/drafts`
+`details`); a missing required fact is refused with what to add. Compose → `DraftOutput
 {subject, body, body_translation, enclosures, notes_for_user}` (letter in German for German
 recipients; translation in the user's language) → checks (`has_reference`, `has_dates`,
 `recipient_complete`, `sender_complete`, `no_placeholders`, `language_matches`) → DIN 5008 Form B PDF
 (fpdf2, DejaVu). `send_guidance` (rules): send-by date, channel ranking (provider's cancel button
 § 312k BGB; text form/email where allowed § 309 Nr. 13 BGB; signed paper where required: rent § 568,
-employment § 623 BGB; "Einschreiben Einwurf — keep the receipt"). Marking sent asks for channel +
-date and creates a 21-day follow-up item.
+employment § 623 BGB; "Einschreiben Einwurf — keep the receipt"; the objection to a court order in
+writing or at online-mahnantrag.de, never by e-mail; a withdrawal only has to be sent in time).
+Marking sent asks for channel + date and creates a follow-up item 21 days later (35 for a data access
+request, which has one month from receipt).
 
 ## 12. Calendar — `calendar/ics.py`
 One-click `.ics` export of open dated items + contract send_by dates, VALARMs from

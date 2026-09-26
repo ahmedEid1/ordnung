@@ -41,17 +41,22 @@ from ordnung.ingest.link import DUNNING_ITEM_NOTE
 from ordnung.ingest.pipeline import add_file, ledger_lock, reprocess
 from ordnung.llm.replay import ReplayBackend
 from ordnung.models import (
+    HIGH_STAKES_KINDS,
     Area,
     Direction,
     Document,
     DocumentDetail,
-    DocumentKind,
     DocumentStatus,
     Item,
     Job,
+    LetterAdvice,
+    LetterKind,
     PageInfo,
     Suggestion,
 )
+from ordnung.rules.advice import letter_advice
+from ordnung.rules.deadlines import parse_date
+from ordnung.rules.routing import names_statement
 from ordnung.secretary.triggers import Ledger
 
 router = APIRouter(tags=["documents"])
@@ -88,12 +93,13 @@ class UploadResult(BaseModel):
 class DocumentPatch(BaseModel):
     """Corrections the person can make to a letter. ``received_date`` (when the letter arrived) and
     ``doc_date`` recompute the letter's to-dos with the rules engine unless ``received_confirmed`` is
-    ``false``."""
+    ``false``; so does ``kind``, which decides the rules of high-stakes letters (a court order, a
+    dismissal …)."""
 
     model_config = ConfigDict(extra="forbid")
 
     title: str | None = None
-    kind: DocumentKind | None = None
+    kind: LetterKind | None = None
     area: Area | None = None
     tags: list[str] | None = None
     doc_date: IsoDate | None = None
@@ -122,7 +128,7 @@ class DeleteResult(BaseModel):
 def list_documents(
     store: StoreDep,
     q: str | None = None,
-    kind: DocumentKind | None = None,
+    kind: LetterKind | None = None,
     party_id: str | None = None,
     case_id: str | None = None,
     status_: Annotated[DocumentStatus | None, Query(alias="status")] = None,
@@ -184,9 +190,33 @@ def _with_reminder_notes(store: Store, items: list[Item], today: date) -> list[I
     ]
 
 
+def letter_card(store: Store, document: Document, today: date) -> LetterAdvice | None:
+    """The "get advice" card of a high-stakes letter, worked out on read from its kind, its dates,
+    the amounts read from it and its text (:func:`ordnung.rules.advice.letter_advice`)."""
+    extraction = store.get_extraction(document.id)
+    kind: str | None = document.kind
+    if kind not in HIGH_STAKES_KINDS:
+        # an operating-cost statement's dates don't depend on its kind: recognised on read only
+        kind = "operating_costs" if extraction is not None and names_statement(extraction) else None
+    if kind is None:
+        return None
+    change = extraction.change if extraction is not None else None
+    arrived = parse_date(document.received_date) or parse_date(document.doc_date)
+    return letter_advice(
+        kind,
+        today=today,
+        arrived=arrived,
+        arrival_confirmed=document.received_date is not None,
+        region=store.get_profile().known_region,
+        old_amount=change.old_amount if change is not None else None,
+        new_amount=change.new_amount if change is not None else None,
+        text=store.get_document_text(document.id),
+    )
+
+
 def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
     """The document viewer's data: the letter, its pages, to-dos, contracts, sender, thread, related
-    letters, Ideas and drafts."""
+    letters, Ideas, drafts and, for a high-stakes letter, its "get advice" card."""
     document = require(store.get_document(doc_id), NOT_FOUND)
     items = _with_reminder_notes(store, store.list_items(doc_id=doc_id), today)
     linked = {item.contract_id for item in items if item.contract_id}
@@ -199,6 +229,7 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
     ]
     return DocumentDetail(
         document=document,
+        advice=letter_card(store, document, today),
         pages=_page_infos(store, doc_id),
         items=items,
         contracts=contracts_with_computations(store, contracts, today),
@@ -347,7 +378,9 @@ async def update_document(doc_id: str, patch: DocumentPatch, ctx: CtxDep, today:
     """Correct a letter's facts; a confirmed arrival date or corrected letter date recomputes its to-dos."""
     changes = patch.model_dump(exclude_unset=True)
     confirmed = changes.pop("received_confirmed", None)
-    dates_changed = bool({"received_date", "doc_date"} & changes.keys()) or confirmed is True
+    before = ctx.store.get_document(doc_id)
+    kind_changed = "kind" in changes and before is not None and before.kind != changes["kind"]
+    dates_changed = bool({"received_date", "doc_date"} & changes.keys()) or confirmed is True or kind_changed
     document = await asyncio.to_thread(_apply_patch, ctx.store, doc_id, changes)
     if not (dates_changed and confirmed is not False):
         if changes:

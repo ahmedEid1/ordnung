@@ -1,8 +1,10 @@
 """Compose a letter (SPEC §11, §21): fixed operative sentences, optional model text, checks, send guidance.
 
 Code decides everything legally relevant: the kind of letter (an objection only when the letter's
-Rechtsbehelfsbelehrung names an Einspruch or Widerspruch), the operative sentences
-(:mod:`ordnung.drafts.templates`), recipient and sender blocks, place and date, subject with
+Rechtsbehelfsbelehrung names an Einspruch or Widerspruch, or the law gives one: a court order or a
+landlord's notice), the operative sentences (:mod:`ordnung.drafts.templates`, and
+:mod:`ordnung.drafts.template_letters` for the everyday letters that ask for something, filled from
+:class:`~ordnung.models.LetterDetails`), recipient and sender blocks, place and date, subject with
 references, the end date of a cancellation (rules engine) and the send-by date
 (:func:`ordnung.rules.send_guidance`). The model (purpose ``draft``) only writes optional polite free
 text consistent with the person's instructions, the translation into the person's language and
@@ -29,7 +31,8 @@ from ordnung.clock import now_iso
 from ordnung.db.store import NotFoundError, Store
 from ordnung.drafts import templates
 from ordnung.drafts.checks import CheckContext, run_checks
-from ordnung.drafts.templates import LetterLanguage, LetterParts, RemedyKind
+from ordnung.drafts.template_letters import TEMPLATES, TemplateError, TemplateInput, template_letter
+from ordnung.drafts.templates import STATUTORY_REMEDIES, LetterLanguage, LetterParts, RemedyKind
 from ordnung.ids import content_id, new_id
 from ordnung.llm.base import ClaudeBadOutput, LLMError, LLMRequest, LLMResponse, ReplayMiss
 from ordnung.llm.prompts import render
@@ -39,6 +42,7 @@ from ordnung.models import (
     ComputationReceipt,
     ComputationStep,
     Contract,
+    DateSpec,
     Document,
     DocumentExtraction,
     Draft,
@@ -46,13 +50,18 @@ from ordnung.models import (
     DraftOutput,
     DraftTranslationOutput,
     Item,
+    LetterDetails,
     Party,
     Profile,
     Remedy,
     SendChannel,
     SendGuidance,
+    TemplateDraftKind,
 )
-from ordnung.rules import LAST_CHECKED, send_guidance
+from ordnung.rules import LAST_CHECKED, RuleContext, compute_due, send_guidance
+from ordnung.rules.advice import billing_period_text
+from ordnung.rules.consumer import long_withdrawal_end
+from ordnung.rules.explain import fmt_date
 from ordnung.secretary.review import language_name, split_sentences, stable_hash, untrusted_json
 from ordnung.secretary.triggers import Ledger, contract_area, contract_computation, parse_day, postal_buffer
 from ordnung.tick import local_today
@@ -63,6 +72,9 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 FOLLOWUP_DAYS = 21
+#: Days to wait for a reply per kind of letter when it differs: a data request has one month from
+#: receipt (Art. 12 Abs. 3 GDPR), plus the post.
+FOLLOWUP_DAYS_BY_KIND = {"data_access": 35}
 MAX_INSTRUCTIONS = 4000
 MAX_FREE_TEXT = 3000
 MAX_TRANSLATION = 8000
@@ -80,7 +92,9 @@ _KIND_LABELS = {
     "cancellation": "cancellation of a contract (Kündigung)",
     "objection": "objection against an official decision (Einspruch or Widerspruch)",
     "general_reply": "general reply to a letter",
+    **{kind: spec.label for kind, spec in TEMPLATES.items()},
 }
+_SCHUFA_RE = re.compile(r"\bschufa\b", re.I)
 _ENGLISH_REFERENCE_LABELS = {
     "steuernummer": "tax number",
     "aktenzeichen": "reference",
@@ -348,6 +362,8 @@ class Plan:
     reference: LetterParts | None  # the frame in the translation language (English when not de/en)
     translation_language: str | None  # the person's language; None when no translation is needed
     guidance: SendGuidance
+    notes: tuple[str, ...] = ()  # what code worked out for this letter (e.g. how long a withdrawal runs)
+    private: tuple[tuple[str, str], ...] = ()  # (value, placeholder) the model never sees (_masked)
 
 
 def _person_name(kind: str, party: Party | None) -> str | None:
@@ -357,9 +373,17 @@ def _person_name(kind: str, party: Party | None) -> str | None:
 
 
 def objection_remedy(sources: Sources) -> RemedyKind:
-    """The remedy an objection letter uses; raises :class:`DraftError` unless it is Einspruch/Widerspruch."""
+    """The remedy an objection letter uses; raises :class:`DraftError` unless it is Einspruch/Widerspruch.
+
+    Court orders and a landlord's notice have the remedy the law gives them (a Widerspruch against a
+    court payment order, an Einspruch against an enforcement order, the tenant's Widerspruch), whatever
+    their instructions were read as.
+    """
     if sources.document is None:
         raise DraftError("Choose the decision (the letter) you want to object to.")
+    statutory = STATUTORY_REMEDIES.get(sources.document.kind or "")
+    if statutory is not None:
+        return statutory
     remedy = sources.remedy
     kind = remedy.type if remedy is not None else "none"
     if kind == "einspruch":
@@ -384,6 +408,44 @@ def objection_remedy(sources: Sources) -> RemedyKind:
     )
 
 
+def _earliest_open(store: Store, sources: Sources, kinds: tuple[str, ...]) -> Item | None:
+    if sources.document is None:
+        return None
+    items = [
+        item
+        for item in store.list_items(doc_id=sources.document.id, status=_OPEN, include_undated=False)
+        if item.kind in kinds and parse_day(item.due_date) is not None
+    ]
+    return min(items, key=lambda item: item.due_date or "") if items else None
+
+
+def template_input(
+    store: Store, kind: str, sources: Sources, details: LetterDetails, language: LetterLanguage
+) -> TemplateInput:
+    """What a template letter can use: the person's details, the letter and contract it is about, the
+    profile, and defaults from the ledger (the letter's earliest open deadline and payment, its billing
+    period)."""
+    party, document = sources.party, sources.document
+    deadline = _earliest_open(store, sources, ("deadline", "task"))
+    payment = _earliest_open(store, sources, ("payment",))
+    text = store.get_document_text(document.id) if document is not None else ""
+    topic = sources.contract.name if sources.contract else (document.title if document else None)
+    return TemplateInput(
+        details=details,
+        reference=letter_reference(sources, language),
+        doc_date=sources.doc_date,
+        topic=topic,
+        address=sources.profile.address or None,
+        iban=sources.profile.iban or None,
+        person_name=_person_name(kind, party),
+        tax_office=party is not None and party.kind == "tax_office",
+        schufa=party is not None and bool(_SCHUFA_RE.search(party.name)),
+        deadline=parse_day(deadline.due_date) if deadline else None,
+        amount=payment.amount if payment else None,
+        period=billing_period_text(text) if text else None,
+    )
+
+
 def _frame(
     kind: str,
     sources: Sources,
@@ -391,8 +453,17 @@ def _frame(
     *,
     end_date: date | None,
     suspend_enforcement: bool,
+    template: TemplateInput | None = None,
 ) -> LetterParts:
     person = _person_name(kind, sources.party)
+    if kind in TEMPLATES:
+        if sources.party is None:
+            raise DraftError("Choose who the letter is for.")
+        assert template is not None  # plan_letter builds it for template kinds
+        try:
+            return template_letter(cast(TemplateDraftKind, kind), language, template)
+        except TemplateError as exc:
+            raise DraftError(str(exc)) from exc
     if kind == "cancellation":
         if sources.contract is None:
             raise DraftError(
@@ -413,6 +484,7 @@ def _frame(
             doc_date=sources.doc_date,
             reference=letter_reference(sources, language),
             suspend_enforcement=suspend_enforcement,
+            flat=", ".join(address_lines(sources.profile.address)) or None,
         )
     if sources.party is None:
         raise DraftError("Choose who the letter is for.")
@@ -428,6 +500,40 @@ def _frame(
 def _earliest_due(items: list[Item]) -> date | None:
     days = [day for day in (parse_day(item.due_date) for item in items) if day is not None]
     return min(days) if days else None
+
+
+def _withdrawal_due(details: LetterDetails, profile: Profile, today: date) -> tuple[date | None, list[str]]:
+    """The last day to send a withdrawal (§§ 355, 356 BGB) and notes on it, from when the goods came or
+    the contract was made; ``None`` without either date."""
+    start = parse_day(details.received_on) or parse_day(details.ordered_on)
+    if start is None:
+        return None, [
+            "Add when you ordered or received it: Ordnung then shows how long you can withdraw (usually 14 days)."
+        ]
+    if details.instructions_missing:
+        end, _ = long_withdrawal_end(start)
+        return end, [
+            f"Without proper instructions on the right to withdraw, it lasts until {fmt_date(end)} at the latest "
+            "(12 months and 14 days, § 356 Abs. 3 BGB). Sending it in time is enough."
+        ]
+    spec = DateSpec(
+        type="relative",
+        anchor="explicit_date",
+        anchor_date=start.isoformat(),
+        amount=14,
+        unit="days",
+        nature="declaration",
+        legal_basis="§ 355 BGB",
+    )
+    receipt = compute_due(spec, RuleContext(today=today, recipient_region=profile.known_region))
+    due = parse_day(receipt.due_date)
+    if due is None or due >= today:
+        return due, [receipt.summary] if due else []
+    end, _ = long_withdrawal_end(start)
+    return due, [
+        f"The 14 days ended on {fmt_date(due)}. If you were never properly told about the right to withdraw, "
+        f"it lasts until {fmt_date(end)} — tick that option; otherwise get advice before you send it."
+    ]
 
 
 def _letter_due(store: Store, kind: str, sources: Sources, today: date) -> tuple[date | None, date | None]:
@@ -446,6 +552,11 @@ def _letter_due(store: Store, kind: str, sources: Sources, today: date) -> tuple
     if kind == "objection":
         objections = [item for item in items if item.date_spec and item.date_spec.nature == "objection"]
         items = objections or [item for item in items if item.kind == "deadline"]
+    if kind == "payment_plan":
+        payment = _earliest_open(store, sources, ("payment",))
+        return None, parse_day(payment.due_date) if payment else None
+    if kind in TEMPLATES and kind != "extension_request":
+        return None, None
     return None, _earliest_due(items)
 
 
@@ -463,28 +574,46 @@ def plan_letter(
     *,
     suspend_enforcement: bool = False,
     today: date,
+    details: LetterDetails | None = None,
 ) -> Plan:
     """The code-written frame, reference translation and send guidance of a letter."""
     end_date, due = _letter_due(store, kind, sources, today)
-    letter = _frame(kind, sources, language, end_date=end_date, suspend_enforcement=suspend_enforcement)
+    facts = details or LetterDetails()
+    notes: list[str] = []
+    if kind == "withdrawal":
+        due, notes = _withdrawal_due(facts, sources.profile, today)
+    elif kind == "extension_request":
+        due = min(day for day in (due, parse_day(facts.deadline)) if day) if due or facts.deadline else None
+
+    def frame(frame_language: LetterLanguage) -> LetterParts:
+        template = template_input(store, kind, sources, facts, frame_language) if kind in TEMPLATES else None
+        return _frame(
+            kind,
+            sources,
+            frame_language,
+            end_date=end_date,
+            suspend_enforcement=suspend_enforcement,
+            template=template,
+        )
+
+    letter = frame(language)
     translation = translation_language(sources.profile, language)
     reference_language: LetterLanguage = "de" if translation == "de" else "en"
-    reference = (
-        _frame(kind, sources, reference_language, end_date=end_date, suspend_enforcement=suspend_enforcement)
-        if translation
-        else None
-    )
+    reference = frame(reference_language) if translation else None
     party = sources.party
     guidance = send_guidance(
         kind,
         contract_category=sources.contract.category if sources.contract else None,
         party_kind=party.kind if party else None,
+        letter_kind=sources.document.kind if sources.document else None,
         due=due,
         region=party.region if party else None,
         today=today,
         postal_buffer_days=postal_buffer(sources.profile),
     )
-    return Plan(kind, language, letter, reference, translation, guidance)
+    return Plan(
+        kind, language, letter, reference, translation, guidance, tuple(notes), private_values(sources, facts)
+    )
 
 
 # --------------------------------------------------------------------------------------------------
@@ -506,11 +635,29 @@ class Written:
     failure: str | None = None
 
 
-def _parts_payload(parts: LetterParts) -> dict[str, object]:
+def private_values(sources: Sources, details: LetterDetails) -> tuple[tuple[str, str], ...]:
+    """The person's addresses and IBAN, which template letters may contain but the model never sees
+    (docs/privacy.md: "your address is never sent"), each with the placeholder that replaces it."""
+    found: list[tuple[str, str]] = []
+    if sources.profile.iban:
+        found.append((sources.profile.iban, "[your IBAN]"))
+    for text in (sources.profile.address, details.new_address, details.old_address):
+        lines = address_lines(text)
+        found.extend((value, "[your address]") for value in (", ".join(lines), *lines) if value)
+    return tuple(sorted(set(found), key=lambda pair: -len(pair[0])))
+
+
+def _masked(text: str, private: tuple[tuple[str, str], ...]) -> str:
+    for value, placeholder in private:
+        text = text.replace(value, placeholder)
+    return text
+
+
+def _parts_payload(parts: LetterParts, private: tuple[tuple[str, str], ...] = ()) -> dict[str, object]:
     return {
-        "subject": parts.subject,
+        "subject": _masked(parts.subject, private),
         "salutation": parts.salutation,
-        "fixed_paragraphs": list(parts.paragraphs),
+        "fixed_paragraphs": [_masked(paragraph, private) for paragraph in parts.paragraphs],
         "closing": parts.closing,
     }
 
@@ -538,14 +685,18 @@ def _about_payload(sources: Sources) -> dict[str, object]:
 
 
 def model_payload(plan: Plan, sources: Sources, recipient: str) -> dict[str, object]:
-    """The letter and background as the model sees it (no ids, no wall-clock data)."""
+    """The letter and background as the model sees it (no ids, no wall-clock data, and the person's
+    addresses and IBAN replaced by placeholders: :func:`private_values`)."""
     reference = None
     if plan.reference is not None:
         reference_language = "de" if plan.translation_language == "de" else "en"
-        reference = {"language": language_name(reference_language), **_parts_payload(plan.reference)}
+        reference = {
+            "language": language_name(reference_language),
+            **_parts_payload(plan.reference, plan.private),
+        }
     return {
         "kind": plan.kind,
-        "letter": _parts_payload(plan.letter),
+        "letter": _parts_payload(plan.letter, plan.private),
         "reference_translation": reference,
         "recipient": recipient.splitlines()[0] if recipient else None,
         "about": _about_payload(sources),
@@ -724,7 +875,64 @@ def _body_paragraphs(plan: Plan, written: Written) -> tuple[str, ...]:
     return (templates.BODY_PLACEHOLDER[plan.language],)
 
 
-def _notes(plan: Plan, written: Written, fallback_used: bool) -> list[str]:
+#: What the person should know about each template letter (the law, not advice).
+_TEMPLATE_NOTES: dict[str, tuple[str, ...]] = {
+    "extension_request": (
+        "Add a short reason in your wishes — offices decide case by case. Deadlines set by law (objections, "
+        "court deadlines) can't be extended by asking: meet them anyway.",
+    ),
+    "defect_notice": (
+        "Report defects straight away: if you don't, you can lose the right to reduce the rent for that time "
+        "(§ 536c BGB). Describe the defect in German if you can, and keep photos.",
+    ),
+    "data_access": (
+        "They must answer within one month of receiving it. SCHUFA also offers this free copy online "
+        "('Datenkopie nach Art. 15 DSGVO') at meineschufa.de.",
+        "If they ask you to prove who you are, send only what they need.",
+    ),
+    "receipts_inspection": (
+        "Your objections to the statement must reach the landlord within 12 months of receiving it (§ 556 Abs. 3 BGB).",
+    ),
+    "deposit_return": (
+        "There is no fixed legal deadline: landlords often take a few months and may keep part of the deposit "
+        "until the next operating-cost statement.",
+    ),
+    "address_change": ("Registering at the Bürgeramt within two weeks of moving in is a separate duty.",),
+}
+
+
+def _kind_notes(plan: Plan, sources: Sources) -> list[str]:
+    """Notes about what this kind of letter does and doesn't do."""
+    letter_kind = sources.document.kind if sources.document else None
+    if plan.kind == "objection":
+        if letter_kind == "court_payment_order":
+            return [
+                "The letter objects to the whole claim; no reasons are needed. The form that came with the order "
+                "does the same — use either, not both. Get advice if you're unsure."
+            ]
+        if letter_kind == "landlord_notice":
+            return [
+                "The objection only helps if moving out would be a hardship for you or your household. Talk to "
+                "a tenants' association before you send it; the reasons follow on request."
+            ]
+        return [
+            "The letter files the objection and says the reasons will follow. Get advice before you send "
+            "reasons or if you're unsure."
+        ]
+    notes = list(_TEMPLATE_NOTES.get(plan.kind, ()))
+    if plan.kind == "payment_plan":
+        tax = sources.party is not None and sources.party.kind == "tax_office"
+        notes.append(
+            "The tax office usually charges interest on a deferral."
+            if tax
+            else "Until they agree, the full amount stays due."
+        )
+    if plan.kind == "deposit_return" and not sources.profile.iban:
+        notes.append("Add your IBAN in Settings → Profile, or type it where the letter says [IBAN].")
+    return notes
+
+
+def _notes(plan: Plan, written: Written, fallback_used: bool, sources: Sources) -> list[str]:
     notes: list[str] = []
     if written.failure == "private":
         notes.append("This letter's source is kept private, so it was drafted without AI.")
@@ -745,11 +953,8 @@ def _notes(plan: Plan, written: Written, fallback_used: bool) -> list[str]:
         notes.append("A sentence citing a law was removed — Ordnung letters don't argue legal points.")
     if plan.guidance.form == "written_form" and plan.guidance.form_note:
         notes.append(plan.guidance.form_note)
-    if plan.kind == "objection":
-        notes.append(
-            "The letter files the objection and says the reasons will follow. Get advice before you send "
-            "reasons or if you're unsure."
-        )
+    notes.extend(plan.notes)
+    notes.extend(_kind_notes(plan, sources))
     if fallback_used and plan.translation_language not in ("de", "en"):
         notes.append("The translation is in English because the AI translation wasn't available.")
     notes.extend(written.notes)
@@ -765,7 +970,7 @@ def check_context(
     profile, party, document = sources.profile, sources.party, sources.document
     doc_text = store.get_document_text(document.id) if document else ""
     remedy = sources.remedy
-    known_ids = [*known_references(sources), profile.email, profile.phone]
+    known_ids = [*known_references(sources), profile.email, profile.phone, profile.iban]
     known_texts = [profile.address, doc_text]
     if party is not None:
         known_ids.extend([*party.ibans, party.email or "", party.phone or ""])
@@ -787,7 +992,9 @@ def check_context(
 
 def _validate_request(kind: str, language: str) -> tuple[DraftKind, LetterLanguage]:
     if kind not in DRAFT_KINDS:
-        raise DraftError(f"Ordnung can draft a cancellation, an objection or a general reply, not “{kind}”.")
+        raise DraftError(
+            f"Ordnung drafts cancellations, objections, replies and its letter templates — not “{kind}”."
+        )
     if language not in templates.LETTER_LANGUAGES:
         raise DraftError("Letters can be written in German or English.")
     return cast(DraftKind, kind), cast(LetterLanguage, language)
@@ -803,18 +1010,22 @@ async def compose(
     instructions: str = "",
     language: str = "de",
     suspend_enforcement: bool = False,
+    details: LetterDetails | None = None,
 ) -> Draft:
     """Draft, check and store a letter; raises :class:`DraftError` when it can't be drafted as asked.
 
     ``suspend_enforcement`` (or instructions asking for "Aussetzung der Vollziehung") adds the
-    application to suspend enforcement to an objection.
+    application to suspend enforcement to an objection. ``details`` are the facts a template letter
+    needs (:data:`~ordnung.drafts.template_letters.TEMPLATES`).
     """
     draft_kind, letter_language = _validate_request(kind, language)
     store, today = ctx.store, local_today(ctx.store)
     instructions = instructions.strip()[:MAX_INSTRUCTIONS]
     suspend = suspend_enforcement or bool(_SUSPEND_RE.search(instructions))
     sources = load_sources(store, draft_kind, doc_id=doc_id, contract_id=contract_id, party_id=party_id)
-    plan = plan_letter(store, draft_kind, sources, letter_language, suspend_enforcement=suspend, today=today)
+    plan = plan_letter(
+        store, draft_kind, sources, letter_language, suspend_enforcement=suspend, today=today, details=details
+    )
     recipient = recipient_block(draft_kind, sources)
     written = await write_with_model(ctx, plan, sources, recipient, instructions)
     signer = sources.profile.name.strip()
@@ -835,7 +1046,7 @@ async def compose(
         body=_letter_text(plan.letter, _body_paragraphs(plan, written)),
         body_translation=translation,
         enclosures=list(written.enclosures),
-        notes_for_user=_notes(plan, written, fallback_used),
+        notes_for_user=_notes(plan, written, fallback_used, sources),
         send_guidance=plan.guidance,
         created_at=now,
         updated_at=now,
@@ -960,15 +1171,16 @@ def _channel_label(draft: Draft, channel: str) -> str:
 
 
 def _followup_fields(draft: Draft, sources: Sources, sent_on: date, channel: str) -> dict[str, object]:
-    due = sent_on + timedelta(days=FOLLOWUP_DAYS)
+    wait = FOLLOWUP_DAYS_BY_KIND.get(draft.kind, FOLLOWUP_DAYS)
+    due = sent_on + timedelta(days=wait)
     who = sources.party.name if sources.party else None
     sent_label = templates.format_date(sent_on, "en")
     receipt = ComputationReceipt(
         due_date=due.isoformat(),
-        summary=f"You sent the letter on {sent_label}; {FOLLOWUP_DAYS} days later is {templates.format_date(due, 'en')}.",
+        summary=f"You sent the letter on {sent_label}; {wait} days later is {templates.format_date(due, 'en')}.",
         steps=[
             ComputationStep(label="Letter sent", date=sent_on.isoformat()),
-            ComputationStep(label=f"{FOLLOWUP_DAYS} days to wait for a reply", date=due.isoformat()),
+            ComputationStep(label=f"{wait} days to wait for a reply", date=due.isoformat()),
         ],
         confidence="high",
     )

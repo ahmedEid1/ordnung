@@ -6,7 +6,8 @@
 * :func:`compute_item` runs the rules engine and lowers the confidence per the § 21 rubric using
   the grounding and consistency results, listing the reasons in the receipt's warnings.
 * :func:`write_plan` upserts items by ``slot_key`` (never touching rows the person edited), deletes
-  stale extracted items and writes the document's facts, status and activity entry. Reading a letter
+  stale extracted items, files the deadlines the law adds to high-stakes letters
+  (:func:`sync_rule_items`) and writes the document's facts, status and activity entry. Reading a letter
   again keeps what the person did: letter facts they corrected (:func:`corrections`) and to-dos they
   acted on (paid, snoozed, dismissed …) or that repeat, which move to the new reading's slot when it
   quotes their sentence differently; a recurring to-do never moves back on its schedule
@@ -38,6 +39,7 @@ from ordnung.ingest.verify import (
     spec_consistency,
 )
 from ordnung.models import (
+    DOCUMENT_KINDS,
     ComputationReceipt,
     DateSpec,
     Document,
@@ -47,6 +49,7 @@ from ordnung.models import (
     ExtractedItem,
     Item,
     KeyFact,
+    LetterKind,
     Party,
     PaymentDetails,
     Remedy,
@@ -61,6 +64,7 @@ from ordnung.recurrence import (
 )
 from ordnung.rules import RuleContext, compute_due, scope_for_party_kind
 from ordnung.rules.deadlines import parse_date
+from ordnung.rules.routing import DerivedDeadline, announced_end, letter_kind
 from ordnung.secretary.scam import iban_from_page, iban_valid, normalize_iban
 
 DueDateSource = Literal["computed", "fixed", "manual", "none"]
@@ -120,9 +124,15 @@ class VerifiedItem:
 
 def needs_check(item: Item) -> bool:
     """An open, dated to-do whose quote was not found or does not state its values, not yet confirmed
-    (a to-do marked done or "not a real to-do" leaves nothing to check)."""
+    (a to-do marked done or "not a real to-do" leaves nothing to check). A deadline the law adds
+    (``origin="rule"``) quotes nothing, so it has nothing to check either."""
     dated = item.due_date is not None or (item.date_spec is not None and item.date_spec.type != "none")
-    if not dated or item.grounding == "user" or item.status not in ("open", "snoozed"):
+    if (
+        not dated
+        or item.grounding == "user"
+        or item.status not in ("open", "snoozed")
+        or item.origin == "rule"
+    ):
         return False
     return item.grounding == "unverified" or any(not evidence.value_consistent for evidence in item.evidence)
 
@@ -255,6 +265,7 @@ def rule_context(
     *,
     recipient_region: str | None = None,
     country: str = "DE",
+    filed_as: str | None = None,
 ) -> RuleContext:
     """Facts the rules engine needs besides the DateSpec (SPEC § 21).
 
@@ -264,7 +275,8 @@ def rule_context(
     for contracts). The delivery scope follows the sender's kind, name and remedy notice (tax office →
     AO, health insurer or social-benefits agency → SGB X, other authorities → VwVfG; see
     :func:`ordnung.rules.scope_for_party_kind`). A received date on the document was entered by the person, so
-    it counts as confirmed.
+    it counts as confirmed. ``filed_as`` is the letter's kind (default: the reading's, :func:`letter_kind`),
+    which routes the dates of high-stakes letters; a termination's end date comes with it.
     """
     sender = extraction.sender
     kind = party.kind if party else (sender.kind if sender else None)
@@ -283,6 +295,8 @@ def rule_context(
             remedy_text=remedy_text(remedy),
         ),
         recipient_region=recipient_region,
+        letter_kind=filed_as or letter_kind(extraction),
+        end_date=announced_end(extraction),
     )
 
 
@@ -297,7 +311,13 @@ def document_context(store: Store, document: Document, today: date) -> RuleConte
     party = store.get_party(document.party_id) if document.party_id else None
     profile = store.get_profile()
     return rule_context(
-        party, document, extraction, today, recipient_region=profile.known_region, country=profile.country
+        party,
+        document,
+        extraction,
+        today,
+        recipient_region=profile.known_region,
+        country=profile.country,
+        filed_as=document.kind,
     )
 
 
@@ -393,18 +413,21 @@ CORRECTABLE_FIELDS: dict[str, str] = {
 
 
 def _read_facts(extraction: DocumentExtraction) -> dict[str, Any]:
-    """The letter facts as :func:`write_plan` stores them from a reading."""
+    """The letter facts as :func:`write_plan` stores them from a reading (its kind as code files it)."""
     doc_date = parse_date(extraction.document_date)
     return {
         "title": extraction.title,
-        "kind": extraction.kind,
+        "kind": letter_kind(extraction),
         "area": extraction.area,
         "doc_date": doc_date.isoformat() if doc_date else None,
     }
 
 
 def corrections(document: Document, previous: DocumentExtraction | None) -> dict[str, Any]:
-    """The letter facts the person corrected: those that differ from the model's last reading."""
+    """The letter facts the person corrected: those that differ from the model's last reading (its
+    kind as code files it). A letter filed before Ordnung knew a high-stakes kind therefore keeps
+    its kind when it is read again; the person can set the kind by hand.
+    """
     if previous is None:
         return {}
     return {
@@ -415,12 +438,23 @@ def corrections(document: Document, previous: DocumentExtraction | None) -> dict
 
 
 def with_corrections(extraction: DocumentExtraction, corrected: dict[str, Any]) -> DocumentExtraction:
-    """The reading with the person's corrections applied (what dates, links and the letter use)."""
-    if not corrected:
-        return extraction
-    return extraction.model_copy(
-        update={CORRECTABLE_FIELDS[name]: value for name, value in corrected.items()}
-    )
+    """The reading with the person's corrections applied (what dates, links and the letter use).
+
+    The reading keeps the model's vocabulary: a kind only code assigns stays out of it (see
+    :func:`filed_kind`).
+    """
+    update = {
+        CORRECTABLE_FIELDS[name]: value
+        for name, value in corrected.items()
+        if name != "kind" or value in DOCUMENT_KINDS
+    }
+    return extraction.model_copy(update=update) if update else extraction
+
+
+def filed_kind(reading: DocumentExtraction, corrected: dict[str, Any]) -> LetterKind:
+    """The kind a letter is filed as: the person's correction, else the kind code reads from it."""
+    kind: LetterKind = corrected.get("kind") or letter_kind(reading)
+    return kind
 
 
 def _item_fields(
@@ -554,6 +588,71 @@ def write_items(
     return items
 
 
+#: Slot of a deadline the law adds to a letter: one per rule (:func:`sync_rule_items`).
+RULE_SLOT_PREFIX = "rule:"
+
+
+def _rule_item_fields(
+    derived: DerivedDeadline, receipt: ComputationReceipt, *, document: Document, today: date
+) -> dict[str, Any]:
+    return {
+        "kind": "deadline",
+        "title": derived.title,
+        "action": derived.action,
+        "consequence": derived.consequence,
+        "due_date": receipt.due_date,
+        "send_by": receipt.send_by,
+        "date_spec": derived.spec,
+        "computation": receipt,
+        "priority": derived.priority,
+        "area": document.area or "other",
+        "party_id": document.party_id,
+        "case_id": document.case_id,
+        "evidence": [],
+        # the letter's kind is Claude's reading; the date is the law's (nothing in the letter to quote)
+        "grounding": "model_read",
+        "due_date_source": "computed" if receipt.due_date else "none",
+        "origin": "rule",
+        "filed_on": today.isoformat(),
+    }
+
+
+def sync_rule_items(
+    store: Store,
+    document: Document,
+    derived: Sequence[DerivedDeadline],
+    ctx: RuleContext,
+    *,
+    today: date,
+    postal_buffer_days: int,
+) -> list[Item]:
+    """File the deadlines the law adds to a high-stakes letter as to-dos (``origin="rule"``).
+
+    A deadline is left out when one of the letter's own to-dos already follows its rule (its receipt
+    cites the rule id). Dates come straight from the rules engine: there is no quote to grade. Rule
+    to-dos the letter no longer has (its kind was corrected) are deleted unless the person acted on
+    them; those the person edited are kept as they are. Returns the letter's rule to-dos.
+    """
+    covered = {
+        rule_id
+        for item in store.list_items(doc_id=document.id)
+        if item.origin == "extracted" and item.computation is not None
+        for rule_id in item.computation.rule_ids
+    }
+    wanted = [entry for entry in derived if entry.rule_id not in covered]
+    slots = {RULE_SLOT_PREFIX + entry.rule_id for entry in wanted}
+    for item in store.list_items(doc_id=document.id):
+        stale = item.origin == "rule" and item.slot_key not in slots
+        if stale and item.status == "open" and not item.user_modified:
+            store.delete_item(item.id)
+    filed = []
+    for entry in wanted:
+        receipt = compute_due(entry.spec, ctx, postal_buffer_days=postal_buffer_days)
+        fields = _rule_item_fields(entry, receipt, document=document, today=today)
+        filed.append(store.upsert_item_by_slot(document.id, RULE_SLOT_PREFIX + entry.rule_id, **fields))
+    return filed
+
+
 def activity_message(title: str, items: Sequence[Item], party_name: str | None) -> str:
     """``Read "Tax assessment 2025" · 1 deadline, 1 payment · linked to Finanzamt Musterstadt``."""
     counts = Counter(item.kind for item in items)
@@ -586,13 +685,17 @@ def write_plan(
     ctx: RuleContext,
     postal_buffer_days: int,
     model_reading: DocumentExtraction | None = None,
+    kind: LetterKind | None = None,
+    derived: Sequence[DerivedDeadline] = (),
 ) -> PlanResult:
     """Write items, document facts and status, re-index search and log the activity entry.
 
     ``extraction`` is the reading with the person's corrections applied (:func:`with_corrections`);
     ``model_reading`` is the model's own, stored as the letter's extraction (default: ``extraction``)
-    so later readings can still tell which facts the person corrected. ``today`` is the person's day;
-    ``computed`` was computed in ``ctx`` with ``postal_buffer_days``.
+    so later readings can still tell which facts the person corrected. ``kind`` is the kind the letter
+    is filed as (:func:`filed_kind`; default: the reading's) and ``derived`` the deadlines the law adds
+    to it (:func:`sync_rule_items`). ``today`` is the person's day; ``computed`` was computed in
+    ``ctx`` with ``postal_buffer_days``.
     """
     items = write_items(
         store,
@@ -605,6 +708,21 @@ def write_plan(
         ctx=ctx,
         postal_buffer_days=postal_buffer_days,
     )
+    rule_items = sync_rule_items(
+        store,
+        document.model_copy(
+            update={
+                "area": extraction.area,
+                "party_id": links.party.id if links.party else None,
+                "case_id": links.case.id if links.case else None,
+            }
+        ),
+        derived,
+        ctx,
+        today=today,
+        postal_buffer_days=postal_buffer_days,
+    )
+    items = [*items, *rule_items]
     # the stored to-dos decide: one the person confirmed, paid or dismissed was kept and needs no check
     unsure = any(needs_check(item) for item in store.list_items(doc_id=document.id))
     status: DocumentStatus = "needs_review" if unsure else "processed"
@@ -612,7 +730,7 @@ def write_plan(
     doc_date = parse_date(extraction.document_date)
     updated = store.update_document(
         document.id,
-        kind=extraction.kind,
+        kind=kind or letter_kind(extraction),
         area=extraction.area,
         title=extraction.title,
         summary=extraction.summary,

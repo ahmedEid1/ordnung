@@ -18,7 +18,7 @@ flowchart LR
     API["FastAPI<br/>token · same-origin · CSP"]
     subgraph core["ordnung core"]
       ING["Ingest pipeline<br/>intake → text/transcribe → extract<br/>→ verify → compute → link → plan"]
-      RUL["Rules engine<br/>(pure, 100% tested)"]
+      RUL["Rules engine<br/>(pure, 100% tested)<br/>+ high-stakes letter routing"]
       SEC["Secretary<br/>triggers · review · brief · daily tick"]
       ASK["Ask (agent loop)"]
       DRF["Letters<br/>templates · checks · DIN 5008 PDF"]
@@ -55,7 +55,7 @@ flowchart LR
 | Boundary | Defence |
 |---|---|
 | Document → model | Documents are untrusted: hidden text removed, content wrapped in `<untrusted_document>`, **no tools** during reading, output forced through a JSON schema |
-| Model → ledger | Schema validation, quote grounding with exact digits, `spec_consistency`, deterministic date computation, confidence rubric → "Please check" |
+| Model → ledger | Schema validation, quote grounding with exact digits, `spec_consistency`, deterministic date computation, confidence rubric → "Please check"; high-stakes letter kinds (court orders, a dismissal …) are assigned by a written code policy from the reading, never by the model, and court deadlines are never `high` |
 | Model → user | Ideas and letters are suggestions; nothing is sent, paid, closed or deleted without a click; letters use fixed legal templates |
 | Agent → data | Ask only has read-only MCP tools on a `query_only` connection; every tool result is wrapped as untrusted; citations must appear in the same turn's tool results |
 | Upload → machine | Checked before anything decodes it: PDF stream expansion, image pixels and text pages are capped; the data folder is private to the account (`0700`, files `0600`) |
@@ -84,8 +84,9 @@ sequenceDiagram
   A->>C: extract (page text in <untrusted_document>, JSON schema)
   C-->>A: DocumentExtraction with DateSpecs + verbatim quotes
   A->>T: ground every quote (fuzzy ≥ 90 + exact digits) → boxes, grounding level
-  A->>R: compute_due / compute_contract (RuleContext: today, region, delivery scope)
-  R-->>A: due date · send-by · receipt (steps, citations, confidence)
+  A->>R: classify the letter (court order, dismissal, tenancy …) from the reading
+  A->>R: compute_due / compute_contract (RuleContext: today, region, delivery scope, letter kind)
+  R-->>A: due date · send-by · receipt (steps, citations, confidence) + deadlines the law adds
   A->>D: link party/thread/contract, upsert to-dos by slot, reindex — one transaction
   A->>A: triggers → Ideas (reconciled) · SSE events to the UI
 ```

@@ -14,7 +14,7 @@ from ordnung.api.routes.common import IsoDate, ledger_changed, replay_only, requ
 from ordnung.db.store import Store
 from ordnung.drafts import pdf
 from ordnung.drafts.compose import MAX_INSTRUCTIONS, compose, mark_sent, refresh_checks, retranslate
-from ordnung.models import Draft, DraftKind
+from ordnung.models import Draft, DraftKind, LetterDetails
 
 router = APIRouter(tags=["drafts"])
 
@@ -39,6 +39,9 @@ class DraftCreate(BaseModel):
     )
     instructions: str = Field(default="", max_length=MAX_INSTRUCTIONS)
     language: Literal["de", "en"] = "de"
+    details: LetterDetails | None = Field(
+        default=None, description="the facts a template letter needs (withdrawal, payment plan …)"
+    )
 
 
 class DraftPatch(BaseModel):
@@ -73,8 +76,9 @@ def list_drafts(store: StoreDep) -> list[Draft]:
 
 @router.post("/drafts", response_model=Draft, status_code=status.HTTP_201_CREATED)
 async def create_draft(body: DraftCreate, ctx: CtxDep) -> Draft:
-    """Draft a cancellation, objection or reply: fixed legal wording, model-written courtesy text and
-    translation, automatic checks and "how to send it"."""
+    """Draft a cancellation, objection, reply or template letter (withdrawal, more time, instalments,
+    defect, data access, receipts, deposit, new address): fixed legal wording, model-written courtesy
+    text and translation, automatic checks and "how to send it"."""
     return await compose(
         ctx,
         body.kind,
@@ -83,6 +87,7 @@ async def create_draft(body: DraftCreate, ctx: CtxDep) -> Draft:
         party_id=body.party_id,
         instructions=body.instructions,
         language=body.language,
+        details=body.details,
     )
 
 
