@@ -5,7 +5,7 @@ import type { ReceiptModel } from "./receipt";
 export function ReceiptView({ receipt, title }: { receipt: ReceiptModel; title?: string }) {
   const steps = useReceiptSteps(receipt.steps);
   const dates: ReceiptDate[] = [];
-  if (receipt.sendBy) dates.push({ label: "Send by", date: receipt.sendBy });
+  if (receipt.sendBy) dates.push({ label: receipt.sendByLabel ?? "Send by", date: receipt.sendBy });
   if (receipt.dueDate) dates.push({ label: receipt.sendBy ? "Must arrive by" : receipt.dueLabel, date: receipt.dueDate });
   const ev = !receipt.computed ? receipt.evidence : null;
   return (
