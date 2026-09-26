@@ -460,6 +460,7 @@ export function PartyDrawer() {
       ) : isError && !notFound ? (
         <EmptyState
           illustration="error"
+          headingLevel={3}
           variant="plain"
           title="Couldn't load this contact"
           description="Your letters are safe — Ordnung didn't answer. Is it still running?"
@@ -475,6 +476,7 @@ export function PartyDrawer() {
       ) : !data || !party ? (
         <EmptyState
           illustration="search"
+          headingLevel={3}
           variant="plain"
           title="We couldn't find this contact"
           description="It may have been merged with another one or deleted."
