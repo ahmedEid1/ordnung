@@ -1,0 +1,1 @@
+var e=/direct debit|lastschrift|abbuchung|abgebucht|sufficient funds|kontodeckung|collected automatically/i,t=/\btransfer|überweis/i;function n(n){if(n.kind!==`payment`)return!1;let r=[n.title,n.action,n.description].filter(Boolean).join(` `);return e.test(r)&&!t.test(n.action??``)}function r(e){return e.kind===`payment`&&e.direction===`in`}export{r as n,n as t};
