@@ -80,7 +80,9 @@ export default function AskPage() {
   const asked = thread.all.map((t) => t.question);
   const announce = last
     ? last.answer.status === "streaming"
-      ? "Looking through your records…"
+      ? last.answer.writing
+        ? "Writing the answer — it appears once Ordnung has checked it."
+        : "Looking through your records…"
       : last.answer.status === "done"
         ? "Answer ready."
         : last.answer.status === "error"

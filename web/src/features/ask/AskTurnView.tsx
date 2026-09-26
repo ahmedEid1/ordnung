@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Check, Copy, Info, RotateCw, ShieldAlert, Square } from "lucide-react";
+import { Check, Copy, Info, RotateCw, Square } from "lucide-react";
 import { LogoMark } from "@/components/shell/Logo";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { useClipboard } from "@/features/today/clipboard";
+import { looksGerman } from "@/lib/format";
 import { citationIndex, numberCitations, stripAllMarkers } from "./citations";
 import { CitationChip, CitationMarker } from "./CitationChip";
 import { Markdown } from "./Markdown";
@@ -26,28 +27,38 @@ export function QuestionBubble({ text }: { text: string }) {
   );
 }
 
-function Thinking() {
+function Thinking({ writing }: { writing: boolean }) {
   return (
-    <p className="flex items-center gap-2 text-[14px] text-muted">
+    <p className="flex items-center gap-2 text-[14px] text-muted" role="status">
       <span className="flex gap-1" aria-hidden>
         {[0, 1, 2].map((i) => (
           <span key={i} className="size-1.5 rounded-full bg-accent/60 animate-pulse-soft motion-reduce:animate-none" style={{ animationDelay: `${i * 180}ms` }} />
         ))}
       </span>
-      Looking through your records…
+      {writing ? "Writing the answer — it appears once Ordnung has checked it against your records…" : "Looking through your records…"}
     </p>
   );
 }
 
-/** The label the check's note is shown (and copied) under. */
+/** The label the check's note is shown (and copied) under, in the note's language. */
 export const CHECK_NOTE_LABEL = "Checked by Ordnung.";
+export const CHECK_NOTE_LABEL_DE = "Von Ordnung geprüft.";
+
+/** A German note (the check writes it in the answer's language) gets the German label. */
+export function checkNoteLabel(note: string): string {
+  return looksGerman(note) ? CHECK_NOTE_LABEL_DE : CHECK_NOTE_LABEL;
+}
+
+/** Shown under a checked answer the check did not change. */
+export const CHECKED_LINE = "Checked against your records.";
 
 /**
  * What Ordnung's answer check did (ADR 0008): dates or amounts left out because the records their
- * sentences cite don't hold them, and values shown in quotation marks as a letter's (or the
- * person's) words. The text comes only from the `done` event's `note` field, never from the answer.
+ * sentences cite don't hold them, values marked as only a letter's, the person's words in quotation
+ * marks, citations it added. The text comes only from the `done` event's `note` field, never from the
+ * answer. Every checked answer shows the line, so an answer without a note is visibly checked too.
  */
-export function CheckNote({ text }: { text: string }) {
+export function CheckNote({ text }: { text: string | null }) {
   return (
     <p
       role="note"
@@ -55,20 +66,13 @@ export function CheckNote({ text }: { text: string }) {
     >
       <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
       <span className="min-w-0 break-words">
-        <span className="font-medium text-ink">{CHECK_NOTE_LABEL}</span> {text}
-      </span>
-    </p>
-  );
-}
-
-/** A partial answer that ended before the check ran (stopped, or failed): its values are unchecked. */
-function UncheckedNote({ stopped }: { stopped: boolean }) {
-  return (
-    <p role="note" className="mt-2 flex items-start gap-1.5 text-[13px] leading-5 text-muted">
-      <ShieldAlert className="mt-0.5 size-3.5 shrink-0 text-warn" aria-hidden />
-      <span className="min-w-0">
-        {stopped ? "Stopped before Ordnung checked it — " : "This partial answer was not checked — "}
-        its dates and amounts are unchecked and may be wrong.
+        {text ? (
+          <>
+            <span className="font-medium text-ink">{checkNoteLabel(text)}</span> {text}
+          </>
+        ) : (
+          <span className="font-medium text-ink">{CHECKED_LINE}</span>
+        )}
       </span>
     </p>
   );
@@ -83,23 +87,27 @@ export interface AnswerViewProps {
   demoNote?: boolean;
 }
 
-/** One answer: tool trace, the (streaming) text with citation chips, sources and actions. */
+/**
+ * One answer: tool trace, the checked text with citation chips, the check's line, sources and actions.
+ * While the answer streams only the trace and a "writing" line show: its words appear once checked.
+ */
 export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: AnswerViewProps) {
   const { copy, copied } = useClipboard();
   const live = answer.status === "streaming";
-  const body = answer.text;
+  const done = answer.status === "done";
+  const body = done ? answer.text : "";
   const note = answer.note;
-  // stopped or failed before the check ran: the streamed words stay, visibly unchecked
-  const unchecked = (answer.status === "stopped" || answer.status === "error") && Boolean(body.trim());
+  // an answer that went through the check (a stored one always did; the demo's "no recording" did not)
+  const checked = done && Boolean(answer.messageId) && Boolean(body.trim());
   const valid = useMemo(() => (live ? null : citationIndex(answer.citations)), [live, answer.citations]);
   const numbers = useMemo(() => (valid ? numberCitations(body, valid) : new Map<string, number>()), [valid, body]);
   const sources = useMemo(
     () => (valid ? [...numbers.entries()].map(([id, n]) => ({ n, info: resolve(valid.get(id)!) })) : []),
     [valid, numbers, resolve],
   );
-  const plain = stripAllMarkers(answer.text).trim();
+  const plain = stripAllMarkers(body).trim();
   // the note travels with a copied answer: it explains its quotation marks and "[date left out]"
-  const copyText = note ? `${plain}\n\n${CHECK_NOTE_LABEL} ${note}` : plain;
+  const copyText = note ? `${plain}\n\n${checkNoteLabel(note)} ${note}` : plain;
   const copyId = answer.messageId ?? plain;
   const isCopied = copied === copyId;
 
@@ -112,25 +120,17 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
           <Markdown
             text={body}
             citations={valid}
-            streaming={live || unchecked}
-            muted={live || unchecked}
             renderCitation={(ref, key) => <CitationMarker key={key} info={resolve(ref)} n={numbers.get(ref.id) ?? 0} />}
           />
         ) : live ? (
-          <Thinking />
+          <Thinking writing={answer.writing} />
         ) : null}
 
-        {live && body ? (
-          <p className="mt-2 text-[12.5px] leading-5 text-muted">Dates and amounts are checked against your records when the answer is complete.</p>
-        ) : null}
+        {checked ? <CheckNote text={note} /> : null}
 
-        {note && !live ? <CheckNote text={note} /> : null}
-
-        {unchecked ? <UncheckedNote stopped={answer.status === "stopped"} /> : null}
-
-        {answer.status === "stopped" && !unchecked ? (
+        {answer.status === "stopped" ? (
           <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-muted">
-            <Square className="size-3" aria-hidden /> Stopped before an answer arrived.
+            <Square className="size-3" aria-hidden /> Stopped before Ordnung checked an answer — nothing of it is shown.
           </p>
         ) : null}
 

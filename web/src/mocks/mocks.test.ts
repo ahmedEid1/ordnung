@@ -96,6 +96,21 @@ describe("mock dataset", () => {
     expect(detail.document.status).toBe("processed");
   });
 
+  it("keeps no unrecorded question, and its reply carries no message id (like the API's demo miss)", async () => {
+    const s = srv();
+    const res = await s.handle("POST", "/ask", new URLSearchParams(), { question: "What is the meaning of life?" });
+    const done = (await res.text())
+      .split("\n\n")
+      .filter((block) => block.startsWith("data: "))
+      .map((block) => JSON.parse(block.slice(6)) as { type: string; message_id?: string; thread_id?: string; text?: string })
+      .find((e) => e.type === "done")!;
+    // the UI marks an answer "Checked against your records" only when it was stored — this one never was checked
+    expect(done.message_id).toBeUndefined();
+    expect(done.text).toMatch(/recorded answers/);
+    const history = await s.handle("GET", `/chat/${done.thread_id}`, new URLSearchParams(), undefined);
+    expect(await history.json()).toEqual([]);
+  });
+
   it("streams recorded Ask answers as SSE", async () => {
     const s = srv();
     const res = await s.handle("POST", "/ask", new URLSearchParams(), { question: "Can I still cancel my phone contract?" });
@@ -109,7 +124,7 @@ describe("mock dataset", () => {
     expect(text).toMatch(/"citations":\[\{"type":"[a-z]+","id":"[a-z]+_[a-z_]+","label":"/);
   });
 
-  it("streams the model's words, then the checked answer with Ordnung's note (like the API)", async () => {
+  it("sends no word before the check, then the checked answer with Ordnung's note (like the API)", async () => {
     const s = srv();
     const res = await s.handle("POST", "/ask", new URLSearchParams(), { question: "What did the Finanzamt send me?" });
     const events = (await res.text())
@@ -119,19 +134,18 @@ describe("mock dataset", () => {
         (block) =>
           JSON.parse(block.slice(6)) as { type: string; text?: string; note?: string | null; citations?: { id: string; label: string | null }[] },
       );
-    const streamed = events.filter((e) => e.type === "text").map((e) => e.text).join("");
+    const streamed = events.filter((e) => e.type === "text").map((e) => e.text ?? "").join("");
     const done = events.find((e) => e.type === "done")!;
-    // the model's own date arithmetic is left out (a harmless one: the demo never streams legal
-    // advice, such as "ask for more time", that the check would not catch); the send-by date is
-    // the objection to-do's own
-    expect(streamed).toContain("Plan an evening before Sat 17 Oct to write it.");
-    expect(streamed).not.toMatch(/more time|extension|verlänger/i);
+    // like the real API, no word of the answer is sent before the check (review round 4): one "writing"
+    // event, then the checked answer — the model's own date arithmetic never shows, not even briefly
+    expect(events.filter((e) => e.type === "text")).toHaveLength(1);
+    expect(streamed).toBe("");
     expect(done.text).not.toContain("17 Oct");
     expect(done.text).toContain("post it by **Thu 15 Oct** to be safe.");
     expect(done.text).toContain("**“324,00 €”**");
     // the note travels in its own field, like the API's
     expect(done.text).not.toContain("Checked by Ordnung");
-    expect(done.note).toMatch(/^Ordnung left out 1 sentence: it couldn't match its date or amount to the letter/);
+    expect(done.note).toMatch(/^Left out 1 sentence: its date or amount isn't in the letter/);
     const threadId = (done as { thread_id?: string }).thread_id;
     const history = await s.handle("GET", `/chat/${threadId}`, new URLSearchParams(), undefined);
     const thread = (await history.json()) as { role: string; note: string | null }[];

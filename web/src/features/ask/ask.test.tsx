@@ -180,7 +180,7 @@ describe("stream accumulation", () => {
     { type: "text", text: "**Thu 8 Oct** [item:itm_phone_cancel] [doc:doc_x]." },
   ];
 
-  it("builds the tool trace and the text as events arrive", () => {
+  it("builds the tool trace as events arrive, and never keeps unchecked words (review round 4)", () => {
     const s = accumulateAll(events);
     expect(s.status).toBe("streaming");
     expect(s.tools.map((t) => [t.name, t.done, t.result])).toEqual([
@@ -188,7 +188,9 @@ describe("stream accumulation", () => {
       ["list_items", true, "Found 4 to-dos & dates"],
     ]);
     expect(s.tools[0]!.label).toBe('Searched your letters for "Kündigung"');
-    expect(s.text).toBe("Yes. Send it by **Thu 8 Oct** [item:itm_phone_cancel] [doc:doc_x].");
+    // a text event only says the answer is being written — even one that carries words
+    expect(s.writing).toBe(true);
+    expect(s.text).toBe("");
   });
 
   it("matches results to calls in call order (FIFO), by name when given", () => {
@@ -220,18 +222,19 @@ describe("stream accumulation", () => {
     expect(s.threadId).toBe("thr_1");
   });
 
-  it("keeps the streamed text when done has none, and closes open tool calls", () => {
+  it("shows nothing unchecked when done has no text, and closes open tool calls", () => {
     const s = accumulateAll([{ type: "tool_use", name: "today" }, { type: "text", text: "Hi" }, { type: "done", thread_id: "thr_2" }]);
-    expect(s.text).toBe("Hi");
+    expect(s.text).toBe("");
+    expect(s.writing).toBe(false);
     expect(s.tools[0]!.done).toBe(true);
     expect(s.citations).toEqual([]);
   });
 
-  it("errors keep what arrived so far", () => {
-    const s = accumulateAll([{ type: "text", text: "Partial" }, { type: "error", error: "Claude is not signed in." }]);
+  it("an error keeps no words of the unchecked answer", () => {
+    const s = accumulateAll([{ type: "text", text: "Partial 31.12.2027" }, { type: "error", error: "Claude is not signed in." }]);
     expect(s.status).toBe("error");
     expect(s.error).toBe("Claude is not signed in.");
-    expect(s.text).toBe("Partial");
+    expect(s.text).toBe("");
   });
 });
 

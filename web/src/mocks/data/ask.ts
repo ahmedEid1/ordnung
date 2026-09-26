@@ -5,8 +5,9 @@
  *
  * The answers follow the app's answer check (`src/ordnung/assistant/support.py`, ADR 0008): every
  * date and amount sits in a sentence that cites the record holding it (or the list's lead line
- * does), totals come from the money overview, and a letter's own words are quoted. One answer
- * shows what the check does to an answer that breaks the rules.
+ * does), totals come from the money overview, and an amount the record flags as read from a photo
+ * is quoted as the letter's. One answer shows what the check does to an answer that breaks the
+ * rules; like the real API, the mock server never sends the words (`raw`) before the check.
  */
 import type { SuggestionRef } from "@/api/types";
 
@@ -17,7 +18,7 @@ export interface RecordedAnswer {
   tools: { name: string; input: Record<string, unknown>; result: string }[];
   /** the checked answer (what `done` carries and the conversation keeps) */
   text: string;
-  /** what the model streamed before Ordnung's check, when the check changed it */
+  /** what the model wrote before Ordnung's check, when the check changed it (never sent) */
   raw?: string;
   /** the check's note, shown under the answer (the `done` event's `note`) */
   note?: string;
@@ -38,17 +39,19 @@ export const RECORDED: RecordedAnswer[] = [
     match: [["pay", "before"], ["pay", "october"], ["payments", "october"], ["pay", "weeks"]],
     tools: [
       { name: "today", input: {}, result: "Today is Mon 28 Sep 2026 (demo date)" },
-      { name: "list_items", input: { kind: "payment", status: "open", to: "2026-10-15" }, result: "Found 8 to-dos & dates" },
+      { name: "list_items", input: { kind: "payment", status: "open", to: "2026-10-26" }, result: "Found 8 to-dos & dates" },
     ],
+    // review round 4: the headline said 6 payments over a list of 8, and the tool call stopped at 15 Oct
     text:
-      "In the next four weeks you have **6 payments**, soonest first:\n\n" +
+      "In the next four weeks you have **8 payments**, soonest first:\n\n" +
       "- **Parking fine, 30,00 €** — by **Tue 29 Sep** to be safe [item:itm_parking]\n" +
       "- **TechMarkt reminder, 94,99 €** — by **Wed 30 Sep** [item:itm_tm_dunning]\n" +
       "- **Library fee, 4,50 €** — by **Fri 2 Oct** [item:itm_library_fee]\n" +
       "- **Rent for October, 640,00 €** — by **Mon 5 Oct**, the third working day [item:itm_rent_oct]\n" +
       "- **Utility back payment, 184,30 €** — by **Fri 9 Oct** [item:itm_nk]\n" +
-      "- **Residence permit fee, 93,00 €** — paid at your appointment on **Wed 14 Oct** [item:itm_abh_fee]\n\n" +
-      "On Thu 15 Oct, your electricity instalment (48,00 €) and your health insurance contribution (142,86 €) are due as well [item:itm_power_abschlag][item:itm_bkk].",
+      "- **Residence permit fee, 93,00 €** — paid at your appointment on **Wed 14 Oct** [item:itm_abh_fee]\n" +
+      "- **Electricity instalment, 48,00 €** — **Thu 15 Oct** [item:itm_power_abschlag]\n" +
+      "- **Health insurance contribution, 142,86 €** — **Thu 15 Oct** [item:itm_bkk]",
     citations: [
       { type: "item", id: "itm_parking" },
       { type: "item", id: "itm_tm_dunning" },
@@ -84,8 +87,8 @@ export const RECORDED: RecordedAnswer[] = [
       "If you disagree, you can file an **Einspruch** (objection). It is free, a short letter is enough and the reasons can follow later. It must reach the Finanzamt by **Wed 21 Oct** [item:itm_tax_objection]; post it by **Thu 15 Oct** to be safe.\n\n" +
       "The letter was read from a phone photo, so please compare the date with the paper letter.",
     note:
-      "Ordnung left out 1 sentence: it couldn't match its date or amount to the letter, to-do or contract the sentence refers to. " +
-      "Text in quotation marks is quoted from a letter; Ordnung has not confirmed it.",
+      "Left out 1 sentence: its date or amount isn't in the letter, to-do or contract it refers to. " +
+      "Amounts in quotation marks are the letter's, read from a photo or not found on its page; Ordnung has not confirmed them.",
     citations: [
       { type: "party", id: "pty_finanzamt" },
       { type: "document", id: "doc_tax" },

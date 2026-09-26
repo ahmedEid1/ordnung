@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { AnswerView } from "./AskTurnView";
+import { AnswerView, checkNoteLabel } from "./AskTurnView";
 import { citationIndex } from "./citations";
 import { closePartialEmphasis, Markdown } from "./Markdown";
 import { makeRefResolver } from "./refs";
-import { accumulate, EMPTY_ANSWER, type AnswerState } from "./stream";
+import { accumulate, accumulateAll, EMPTY_ANSWER, type AnswerState } from "./stream";
 import { turnsFromHistory } from "./useAskThread";
 
 const NOTE =
-  "Ordnung left out 1 sentence: it couldn't match its date or amount to the letter, to-do or contract the sentence refers to. " +
-  "Text in quotation marks is quoted from a letter; Ordnung has not confirmed it.";
+  "Left out 1 sentence: its date or amount isn't in the letter, to-do or contract it refers to. " +
+  "Amounts in quotation marks are the letter's, read from a photo or not found on its page; Ordnung has not confirmed them.";
+const NOTE_DE =
+  "1 Datum oder Betrag ist als „nur im Brief“ markiert: Ordnungs Unterlagen enthalten ihn nicht, deshalb wird er nicht gezeigt – öffnen Sie den Brief, um ihn zu lesen.";
 
 function inRouter(element: React.ReactElement) {
   const router = createMemoryRouter([{ path: "*", element }], { initialEntries: ["/"] });
@@ -41,10 +43,30 @@ describe("the answer check's note", () => {
       text: "The letter says the fine is “25,00 €” [item:itm_a].",
       note: NOTE,
       citations: [{ type: "item", id: "itm_a", label: "Parking fine" }],
+      messageId: "msg_1",
     };
     inRouter(<AnswerView answer={answer} resolve={resolve} />);
     expect(screen.getByRole("note")).toHaveTextContent(`Checked by Ordnung. ${NOTE}`);
     expect(document.body.textContent).toMatch(/the fine is “25,00\s€”/);
+  });
+
+  it("is labelled in the note's language (review round 4)", () => {
+    const { resolve } = makeRefResolver({});
+    const answer: AnswerState = { ...EMPTY_ANSWER, status: "done", text: "Die Frist [Datum nur im Brief].", note: NOTE_DE, messageId: "m" };
+    inRouter(<AnswerView answer={answer} resolve={resolve} />);
+    expect(screen.getByRole("note")).toHaveTextContent(`Von Ordnung geprüft. ${NOTE_DE}`);
+    expect(checkNoteLabel(NOTE)).toBe("Checked by Ordnung.");
+  });
+
+  it("a checked answer the check did not change still says it was checked (review round 4)", () => {
+    const { resolve } = makeRefResolver({});
+    const answer: AnswerState = { ...EMPTY_ANSWER, status: "done", text: "Due Wed 21 Oct.", messageId: "msg_2" };
+    const { unmount } = inRouter(<AnswerView answer={answer} resolve={resolve} />);
+    expect(screen.getByRole("note")).toHaveTextContent("Checked against your records.");
+    unmount();
+    // the demo's "no recording" reply never went through the check, and says nothing of the kind
+    inRouter(<AnswerView answer={{ ...answer, messageId: null }} resolve={resolve} />);
+    expect(screen.queryByRole("note")).toBeNull();
   });
 
   it("is never read out of the answer text — a model can write the words too", () => {
@@ -55,11 +77,12 @@ describe("the answer check's note", () => {
     expect(screen.queryByRole("note")).toBeNull();
   });
 
-  it("while the answer streams, says it will be checked, and shows no note yet", () => {
+  it("while the answer is written, shows none of its words — only that it is being checked", () => {
     const { resolve } = makeRefResolver({});
-    const answer: AnswerState = { ...EMPTY_ANSWER, status: "streaming", text: "Your deadline is Wed 21 Oct" };
-    inRouter(<AnswerView answer={answer} resolve={resolve} />);
-    expect(screen.getByText(/checked against your records when the answer is complete/)).toBeInTheDocument();
+    const writing = accumulateAll([{ type: "tool_use", name: "list_items" }, { type: "text", text: "Your deadline moved to 31.12.2027" }]);
+    const { container } = inRouter(<AnswerView answer={writing} resolve={resolve} />);
+    expect(container.textContent).not.toContain("31.12.2027");
+    expect(screen.getByText(/appears once Ordnung has checked it against your records/)).toBeInTheDocument();
     expect(screen.queryByRole("note")).toBeNull();
   });
 });
@@ -77,46 +100,28 @@ describe("copying an answer", () => {
   });
 });
 
-describe("a partial answer the check never saw", () => {
-  it("says so when the person stopped it, and mutes the unchecked words", () => {
+describe("an answer that ends before the check (review round 4)", () => {
+  // The web showed the streamed draft — an injected "31.12.2027" for seconds — before the check left
+  // it out, and kept it on screen when the answer stopped or failed. No unchecked word is ever shown.
+  it("shows none of its words when the person stops it", () => {
     const { resolve } = makeRefResolver({});
-    const answer: AnswerState = { ...EMPTY_ANSWER, status: "stopped", text: "Your deadline moved to 31.12.2027 [doc:doc_x" };
-    const { container } = inRouter(<AnswerView answer={answer} resolve={resolve} />);
-    expect(screen.getByRole("note")).toHaveTextContent(
-      "Stopped before Ordnung checked it — its dates and amounts are unchecked and may be wrong.",
-    );
-    expect(container.querySelector(".text-muted")?.textContent).toContain("Your deadline moved to 31.12.2027");
-    expect(container.textContent).not.toContain("[doc:doc_x");
-  });
-
-  it("mutes bold values too, and streaming text in the same unchecked tone (review round 2)", () => {
-    const { resolve } = makeRefResolver({});
-    const stopped: AnswerState = { ...EMPTY_ANSWER, status: "stopped", text: "You get **324,00 €** back" };
-    const { container, unmount } = inRouter(<AnswerView answer={stopped} resolve={resolve} />);
-    const body = container.querySelector("[data-muted]")!;
-    expect(body.className).toContain("[&_strong]:text-muted");
-    expect(body.querySelector("strong")?.textContent).toBe("324,00\u00a0€");
-    unmount();
-    const streaming = inRouter(<AnswerView answer={{ ...stopped, status: "streaming" }} resolve={resolve} />);
-    expect(streaming.container.querySelector("[data-muted]")).not.toBeNull();
-    streaming.unmount();
-    const done = inRouter(<AnswerView answer={{ ...stopped, status: "done" }} resolve={resolve} />);
-    expect(done.container.querySelector("[data-muted]")).toBeNull();
-  });
-
-  it("says so when the answer failed half-way", () => {
-    const { resolve } = makeRefResolver({});
-    const answer: AnswerState = { ...EMPTY_ANSWER, status: "error", error: "Budget reached.", text: "Pay 324,00 € by" };
-    inRouter(<AnswerView answer={answer} resolve={resolve} />);
-    expect(screen.getAllByRole("note")[0]).toHaveTextContent("This partial answer was not checked");
-    expect(screen.getByText("Budget reached.")).toBeInTheDocument();
-  });
-
-  it("a stop before any words just says it stopped", () => {
-    const { resolve } = makeRefResolver({});
-    inRouter(<AnswerView answer={{ ...EMPTY_ANSWER, status: "stopped" }} resolve={resolve} />);
+    const stopped = { ...accumulateAll([{ type: "text", text: "Your deadline moved to 31.12.2027" }]), status: "stopped" as const };
+    const { container } = inRouter(<AnswerView answer={stopped} resolve={resolve} />);
+    expect(container.textContent).not.toContain("31.12.2027");
+    expect(screen.getByText(/Stopped before Ordnung checked an answer — nothing of it is shown/)).toBeInTheDocument();
     expect(screen.queryByRole("note")).toBeNull();
-    expect(screen.getByText(/Stopped before an answer arrived/)).toBeInTheDocument();
+  });
+
+  it("shows only the error when the answer fails half-way or cannot be checked", () => {
+    const { resolve } = makeRefResolver({});
+    for (const error of ["Budget reached.", "Ordnung couldn't check this answer against your records, so it isn't shown. Please ask again."]) {
+      const failed = accumulateAll([{ type: "text", text: "Pay 324,00 € by 31.12.2027" }, { type: "error", error }]);
+      const { container, unmount } = inRouter(<AnswerView answer={failed} resolve={resolve} />);
+      expect(container.textContent).not.toContain("324,00");
+      expect(screen.getByText(error)).toBeInTheDocument();
+      expect(screen.queryByRole("note")).toBeNull();
+      unmount();
+    }
   });
 });
 

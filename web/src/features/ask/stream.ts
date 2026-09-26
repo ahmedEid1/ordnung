@@ -2,9 +2,11 @@
  * Accumulating a streamed Ask answer (`POST /api/ask`, SPEC §10).
  *
  * Event order: `tool_use` (the backend adds a human label in `text`) → `tool_result` (a short
- * summary in `text`; results arrive in call order) → `text` deltas → `done` (the **checked** answer
- * text, which replaces the streamed deltas, the check's `note`, the validated citations and the
- * stored ids) or `error`. {@link accumulate} is a pure reducer so the whole flow is unit-testable.
+ * summary in `text`; results arrive in call order) → one `text` event while the answer is written →
+ * `done` (the **checked** answer text, the check's `note`, the validated citations and the stored ids)
+ * or `error`. The model's words are never shown before the check (ADR 0008): a `text` event only
+ * sets `writing`, whatever it carries, so an answer that stops or fails shows none of them.
+ * {@link accumulate} is a pure reducer so the whole flow is unit-testable.
  *
  * The note comes only from the `done` event's own field (or a stored message's `note`), never from
  * the answer text: a model can write "Checked by Ordnung:" too (ADR 0008).
@@ -27,7 +29,10 @@ export interface ToolStep {
 
 export interface AnswerState {
   status: TurnStatus;
+  /** the checked answer (`done`, or a stored message) — never unchecked words */
   text: string;
+  /** the model is writing the answer (it is shown once Ordnung has checked it) */
+  writing: boolean;
   /** what Ordnung's answer check left out or quoted (`done`), shown under the answer */
   note: string | null;
   tools: ToolStep[];
@@ -40,6 +45,7 @@ export interface AnswerState {
 export const EMPTY_ANSWER: AnswerState = {
   status: "streaming",
   text: "",
+  writing: false,
   note: null,
   tools: [],
   citations: [],
@@ -77,13 +83,15 @@ export function accumulate(state: AnswerState, ev: StreamEvent): AnswerState {
       return { ...state, tools };
     }
     case "text":
-      return { ...state, text: state.text + (ev.text ?? "") };
+      // the words wait for the check: a text event only says the answer is being written
+      return state.writing ? state : { ...state, writing: true };
     case "done":
       return {
         ...state,
         status: "done",
-        // the checked answer replaces the streamed deltas (unsupported sentences removed)
-        text: typeof ev.text === "string" && ev.text.trim() ? ev.text : state.text,
+        writing: false,
+        // only the checked answer is ever shown (unsupported values left out, sentences removed)
+        text: typeof ev.text === "string" ? ev.text : "",
         note: ev.note?.trim() || null,
         tools: state.tools.map((t) => (t.done ? t : { ...t, done: true })),
         citations: (ev.citations as CitationRef[] | undefined) ?? [],
@@ -94,6 +102,7 @@ export function accumulate(state: AnswerState, ev: StreamEvent): AnswerState {
       return {
         ...state,
         status: "error",
+        writing: false,
         error: ev.error || "Something went wrong.",
         tools: state.tools.map((t) => (t.done ? t : { ...t, done: true })),
       };

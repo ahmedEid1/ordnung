@@ -334,7 +334,9 @@ function askStream(ctx: Ctx): Response {
   const q = question.toLowerCase();
   const rec = RECORDED.find((r) => r.question.toLowerCase() === q) ?? RECORDED.find((r) => r.match.some((group) => group.every((w) => q.includes(w))));
   const now = nowTs();
-  db.state.chat.push({ id: newId("msg"), thread_id: threadId, role: "user", content: question, citations: [], tool_calls: [], created_at: now, note: null });
+  // like the API, only an answer is stored with its question: the demo's "no recording" reply is not
+  // (it never went through the check, so it carries no message id and no "checked" line)
+  if (rec) db.state.chat.push({ id: newId("msg"), thread_id: threadId, role: "user", content: question, citations: [], tool_calls: [], created_at: now, note: null });
   const enc = new TextEncoder();
   const signal = ctx.signal;
   const speed = ctx.opts.latency ?? 1;
@@ -349,21 +351,22 @@ function askStream(ctx: Ctx): Response {
       try {
         controller.enqueue(enc.encode(": connected\n\n"));
         await sleep(250 * speed, signal);
-        // like the real API: the model's words stream as they come (`raw`), then `done` carries the
-        // checked answer, which may leave a sentence out, and Ordnung's note in its own field
+        // like the real API: the tool trace, one `text` event without text while the answer is
+        // written (its words — `raw` — are never sent before the check), then `done` with the checked
+        // answer, which may leave a value or a sentence out, and Ordnung's note in its own field
         const text = rec?.text ?? FALLBACK_ANSWER;
-        const streamed = rec?.raw ?? text;
+        const written = rec?.raw ?? text;
         for (const t of rec?.tools ?? []) {
           send({ type: "tool_use", name: t.name, input: t.input });
           await sleep(550 * speed, signal);
           send({ type: "tool_result", name: t.name, text: t.result });
           await sleep(200 * speed, signal);
         }
-        const chunks = streamed.match(/\S+\s*/g) ?? [streamed];
-        for (let i = 0; i < chunks.length; i += 3) {
-          if (signal?.aborted) break;
-          send({ type: "text", text: chunks.slice(i, i + 3).join("") });
-          await sleep(38 * speed, signal);
+        send({ type: "text" });
+        await sleep(Math.min(2500, 4 * written.length) * speed, signal);
+        if (!rec) {
+          send({ type: "done", text, note: null, thread_id: threadId, citations: [] });
+          return;
         }
         const messageId = newId("msg");
         db.state.chat.push({
@@ -371,12 +374,12 @@ function askStream(ctx: Ctx): Response {
           thread_id: threadId,
           role: "assistant",
           content: text,
-          citations: rec?.citations ?? [],
-          tool_calls: (rec?.tools ?? []).map((t) => ({ name: t.name, input: t.input, result: t.result })),
+          citations: rec.citations ?? [],
+          tool_calls: rec.tools.map((t) => ({ name: t.name, input: t.input, result: t.result })),
           created_at: nowTs(),
-          note: rec?.note ?? null,
+          note: rec.note ?? null,
         } satisfies ChatMessage);
-        send({ type: "done", text, note: rec?.note ?? null, message_id: messageId, thread_id: threadId, citations: citationRefs(db, rec?.citations ?? []) });
+        send({ type: "done", text, note: rec.note ?? null, message_id: messageId, thread_id: threadId, citations: citationRefs(db, rec.citations ?? []) });
       } catch (err) {
         send({ type: "error", error: err instanceof Error ? err.message : "The answer was interrupted." });
       } finally {
