@@ -572,7 +572,11 @@ def test_nationwide_holidays_and_a_lands_own(tools: RulesTools) -> None:
         "counted backwards (a send-by date, negative working days) can come out a day late" in bavaria["note"]
     )
     assert "note" not in compact(tools.german_holidays(2026, "NW"))  # no partial holidays to explain
-    assert bavaria["disclaimer"] == DISCLAIMER
+    assert bavaria["disclaimer"].startswith("Information, not legal advice: the public holidays")
+    assert (
+        LAST_CHECKED in bavaria["disclaimer"]
+        and "Check the result against the letter" not in bavaria["disclaimer"]
+    )
 
 
 @pytest.mark.parametrize("year", [1990, 2101, True, "2026"])
@@ -624,7 +628,18 @@ def test_check_iban(tools: RulesTools) -> None:
     assert good["iban"] == "DE89 3704 0044 0532 0130 00" and good["valid"] is True
     assert good["country"] == {"code": "DE", "name": "Germany"} and good["account_number"] == "0532013000"
     assert good["bank_code"] == {"label": "Bankleitzahl (BLZ)", "value": "37040044"}
-    assert "says nothing about who owns the account" in good["note"] and good["disclaimer"] == DISCLAIMER
+    assert (
+        "says nothing about who owns the account" in good["note"] and "Empfängerüberprüfung" in good["note"]
+    )
+    # a checksum is no deadline: its disclaimer says what the check can and cannot tell
+    assert (
+        good["disclaimer"] == rules_tools.IBAN_DISCLAIMER
+        and "not legal or financial advice" in good["disclaimer"]
+    )
+    assert (
+        "rules engine" not in good["disclaimer"]
+        and "Check the result against the letter" not in good["disclaimer"]
+    )
     bad = compact(tools.check_iban("DE89 3704 0044 0532 0130 01"))
     assert bad["valid"] is False and bad["checksum_ok"] is False and "bank_code" not in bad
     assert bad["problems"] == ["The check digits do not match: a character is wrong, missing or swapped."]

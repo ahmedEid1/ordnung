@@ -43,7 +43,8 @@ Policies:
 * **No letter text in results.** Results are built by code from the engine's receipt and the
   normalised arguments; the spec's ``text`` and the sender's name are not echoed. So results are
   plain JSON, not wrapped as untrusted document text.
-* **Information, not legal advice.** Every result carries :data:`DISCLAIMER`.
+* **Information, not legal advice.** Every result carries a disclaimer that fits it: the deadline
+  one (:func:`disclaimer`) for dates, the calendar's for holidays, the IBAN check's for an IBAN.
 
 "Today" is the server's pinned day (``RulesTools(today=…)``, ``ORDNUNG_TODAY``), else the date in
 Germany (:data:`HOME_ZONE`) — never the machine's own time zone; a caller's ``today`` replaces it
@@ -97,7 +98,19 @@ DISCLAIMER_TEMPLATE = (
 IBAN_NOTE = (
     "A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or "
     "the sender's official website; if a letter or e-mail says the account has changed, confirm that "
-    "through contact details you already know before paying."
+    "through contact details you already know before paying. For a euro transfer the bank also "
+    "checks the payee's name against the account before it is sent (Empfängerüberprüfung, required "
+    "since 9 October 2025): if it reports no match or only a close one, do not pay until you have "
+    "confirmed the account."
+)
+#: The deadline disclaimer does not fit a calendar or a checksum: those tools say what they are.
+HOLIDAYS_DISCLAIMER_TEMPLATE = (
+    "Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land "
+    "law as of {checked}), not reviewed by a lawyer."
+)
+IBAN_DISCLAIMER = (
+    "Information, not legal or financial advice: what the IBAN's own characters show, checked by "
+    "Ordnung's code. It cannot tell whether the account exists or who holds it."
 )
 #: Holidays that apply in parts of a Land only: left out of the calendar (see :data:`PARTIAL_HOLIDAYS_NOTE`).
 PARTIAL_HOLIDAYS: dict[str, str] = {
@@ -346,7 +359,7 @@ class RulesTools:
             else PARTIAL_HOLIDAYS_NOTE.format(what=PARTIAL_HOLIDAYS[code])
             if code in PARTIAL_HOLIDAYS
             else None,
-            "disclaimer": disclaimer(),
+            "disclaimer": holidays_disclaimer(),
         }
 
     def add_working_days(
@@ -419,7 +432,7 @@ class RulesTools:
             else None,
             "account_number": check.account_number,
             "note": IBAN_NOTE,
-            "disclaimer": disclaimer(),
+            "disclaimer": IBAN_DISCLAIMER,
         }
 
 
@@ -432,6 +445,12 @@ def disclaimer() -> str:
     from ordnung.rules import LAST_CHECKED
 
     return DISCLAIMER_TEMPLATE.format(checked=LAST_CHECKED)
+
+
+def holidays_disclaimer() -> str:
+    from ordnung.rules import LAST_CHECKED
+
+    return HOLIDAYS_DISCLAIMER_TEMPLATE.format(checked=LAST_CHECKED)
 
 
 def parse_spec(spec: DateSpec | dict[str, Any]) -> DateSpec:

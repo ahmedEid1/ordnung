@@ -102,11 +102,24 @@ def test_lithuanian_scam_iban_is_well_formed() -> None:
     assert check.valid and check.country == "Lithuania" and check.bank_code is None
 
 
-def test_table_lengths_agree_with_the_scam_checks_lengths() -> None:
-    from ordnung.secretary.scam import IBAN_LENGTHS
+@pytest.mark.parametrize(
+    "value",
+    [
+        "DE89 3704 0044 0532 0130 00",
+        "LT08 3999 0000 0543 9871",
+        "BR15 0000 0000 0000 1093 2840 814P 2",
+        "US88 3704 0044 0532 0130 00",  # a checksum that adds up, but no IBAN country
+        "ZZ22 3704 0044 0532 0130 00",
+        "MT84 MALT 0110 0001 2345 MTLC AST0 01",  # a registry country the old scam table lacked
+        "MT84 MALT 0110 0001 2345 MTLC AST0 0",
+        "DE89 3704 0044 0532 0130 01",
+    ],
+)
+def test_the_scam_checks_and_the_rules_tool_agree(value: str) -> None:
+    """One written policy for "is this an IBAN" (ADR 0007): the app's scam checks use this module."""
+    from ordnung.secretary.scam import iban_valid
 
-    for code, length in IBAN_LENGTHS.items():
-        assert IBAN_COUNTRIES[code].length == length, code
+    assert iban_valid(value) == inspect_iban(value).valid
 
 
 def test_bank_code_spans_fit_inside_their_country_length() -> None:
