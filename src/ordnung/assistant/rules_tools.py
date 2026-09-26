@@ -22,9 +22,11 @@ Policies:
   own words (``text``, ``legal_basis``) stand in for the letter's remedy notice. So a company's,
   landlord's or employer's letter runs from its arrival even when a model asks for deemed delivery
   (the engine's rule, :func:`ordnung.rules.deadlines.from_arrival`; a period it counts from its own
-  date or another it names keeps that date) — naming an *Einspruch*, *Klage* or *Widerspruch*
-  changes that only with a notice naming an administrative route — and an unknown sender (none,
-  ``other``) keeps the earliest plausible deemed delivery. Missing facts are never guessed: the engine uses the
+  date or another it names keeps that date; for a kind a public body may be filed as, an arrival
+  after the day an authority's letter would count as delivered never makes it later) — naming an *Einspruch*, *Klage* or *Widerspruch* changes
+  that only with a notice naming an administrative route, and so do the period's own words naming
+  one (a *Bescheid*, its *Bekanntgabe* …) — and an unknown sender (none, ``other``) keeps the
+  earliest plausible deemed delivery. Missing facts are never guessed: the engine uses the
   earliest plausible date and says so, and ``hints`` name the argument that would settle it (and
   never one that was given).
 * **Formal service.** A letter served in a yellow envelope has no deemed delivery; the spec help
@@ -130,19 +132,29 @@ IBAN_ADVICE = (
     "the sender's official website; if a letter or e-mail says the account has changed, confirm that "
     "through contact details you already know before paying."
 )
-#: The note on a well-formed IBAN of an EU account (:data:`ordnung.money.iban.EU_IBAN_COUNTRIES`),
-#: where the law has the bank check the payee's name before a euro transfer.
+#: The note on a well-formed IBAN whose bank has to answer the check of the payee's name before a euro
+#: transfer (:data:`ordnung.money.iban.PAYEE_CHECK_FROM`: the euro area, since 9 October 2025).
 IBAN_NOTE = (
-    f"{IBAN_ADVICE} For a euro transfer to an account in the EU the bank also checks the payee's name "
-    "against the account before it is sent (Empfängerüberprüfung, required since 9 October 2025): if "
-    "it reports no match or only a close one, do not pay until you have confirmed the account."
+    f"{IBAN_ADVICE} For a euro transfer to this account the bank also checks the payee's name against the "
+    "account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if "
+    "it reports no match or only a close one, or says the check was not possible, do not pay until you have "
+    "confirmed the account."
+)
+#: The note on a well-formed IBAN of an EU country whose banks have to answer that check only later
+#: (``{country}``; ``{since}``: 9 July 2027 outside the euro area, 1 January 2027 for Bulgaria).
+IBAN_NOTE_CHECK_LATER = (
+    f"{IBAN_ADVICE} This IBAN is from {{country}}, whose banks have to answer the check of the payee's name "
+    "before a euro transfer (Empfängerüberprüfung) only from {since}: until then your bank may say the check "
+    "was not possible, and it not warning you says nothing about who holds the account — confirm it through "
+    "contact details you already know before paying."
 )
 #: The note on any other well-formed IBAN: no name check to rely on (``{country}`` is its country).
 IBAN_NOTE_OUTSIDE_EU = (
     f"{IBAN_ADVICE} This IBAN is from a country outside the EU ({{country}}): the check of the payee's "
-    "name that EU law requires before a euro transfer (Empfängerüberprüfung, since 9 October 2025) may "
-    "not happen for it, so the bank not warning you says nothing about who holds the account — confirm "
-    "it through contact details you already know."
+    "name that EU law requires before a euro transfer (Empfängerüberprüfung, in the euro area since "
+    "9 October 2025) may not happen for it — your bank may say it was not possible — so the bank not "
+    "warning you says nothing about who holds the account: confirm it through contact details you "
+    "already know before paying."
 )
 #: The deadline disclaimer does not fit a calendar or a checksum: those tools say what they are.
 HOLIDAYS_DISCLAIMER_TEMPLATE = (
@@ -155,8 +167,9 @@ IBAN_DISCLAIMER = (
 )
 #: Holidays that apply in parts of a Land only: left out of the calendar (see :data:`PARTIAL_HOLIDAYS_NOTE`).
 PARTIAL_HOLIDAYS: dict[str, str] = {
-    "BY": "Assumption Day (15 August) in communities with a Catholic majority and the Augsburg Peace "
-    "Festival (8 August) in Augsburg",
+    "BY": "Assumption Day (15 August) in communities with more Catholic than Protestant residents (as the "
+    "Landesamt für Statistik lists them; Munich among them) and the Augsburg Peace Festival (8 August) in "
+    "Augsburg",
     "SN": "Corpus Christi in some communities of the Sorbian area",
     "TH": "Corpus Christi in some communities with a Catholic majority",
 }
@@ -305,7 +318,7 @@ class RulesTools:
     ) -> dict[str, Any]:
         """The date a ``DateSpec`` describes, computed by the rules engine, with its receipt."""
         from ordnung.rules import RuleContext, compute_due, is_private_sender, scope_for_party_kind
-        from ordnung.rules.deadlines import from_arrival
+        from ordnung.rules.deadlines import from_arrival, period_problem
 
         parsed = parse_spec(spec)
         _check_choice("sender_kind", sender_kind, get_args(PartyKind))
@@ -335,9 +348,12 @@ class RulesTools:
             private_sender=is_private_sender(
                 sender_kind, scope=scope, remedy_type=remedy_type, remedy_text=notice
             ),
+            sender_kind=sender_kind,
         )
+        # A period that can't be read is not computed at all: nothing runs from an arrival day.
+        unreadable = parsed.type == "relative" and period_problem(parsed) is not None
         # The period the engine counts: a private sender's letter runs from its arrival, not deemed delivery.
-        counted = from_arrival(parsed, context)
+        counted = parsed if unreadable else from_arrival(parsed, context)
         stated = stated_receipt(counted, letter_day)
         if stated is not None and stated > day:
             raise RulesToolError(
@@ -349,15 +365,22 @@ class RulesTools:
         receipt = compute_due(parsed, context)
         receipt = receipt.model_copy(update={"warnings": [tool_voice(w) for w in receipt.warnings]})
         formal = formal_service_warning(counted, receipt)
+        # a private sender's late arrival did not move the start: the engine counted from an earlier day
+        late = "private_sender_late_arrival" in receipt.rule_ids
         found: list[tuple[str, bool]] = []
-        found += arrival_warnings(counted, letter_day=letter_day, received=received, stated=stated)
+        if not unreadable:
+            found += arrival_warnings(
+                counted, letter_day=letter_day, received=None if late else received, stated=stated
+            )
         found += [(w, True) for w in _future_letter_warning(counted, letter_day, day)]
         found += [(w, True) for w in unchecked_day_warning(counted, letter_day)]
         found += [(w, False) for w in formal]
         found += [(w, False) for w in _today_warning(given_today, server_day, pinned=self._pin_today)]
         receipt = with_warnings(receipt, found)
-        arrival, arrival_from = arrival_day(
-            counted, receipt, letter_day=letter_day, received=received, stated=stated
+        arrival, arrival_from = (
+            (None, None)
+            if unreadable or late
+            else arrival_day(counted, receipt, letter_day=letter_day, received=received, stated=stated)
         )
         other = compute_due(parsed, replace(context, today=other_day)) if other_day is not None else None
         return {
@@ -396,6 +419,7 @@ class RulesTools:
                 recipient_region=context.recipient_region,
                 counted_from_arrival=counted is not parsed,
                 formally_served_may_apply=bool(formal),
+                period_unreadable=unreadable,
             ),
             "for_today_given": for_other_day(other, receipt, other_day),
             "disclaimer": disclaimer(),
@@ -501,20 +525,30 @@ class RulesTools:
         }
 
     def check_iban(self, iban: str) -> dict[str, Any]:
-        """Country, length, checksum and (where known) the bank code an IBAN carries."""
-        from ordnung.money.iban import EU_IBAN_COUNTRIES, INVALID_IBAN_ADVICE, grouped, inspect_iban
+        """Country, length, checksum and (where known) the bank code an IBAN carries.
+
+        The note on a valid IBAN says whether its bank has to answer the payee-name check by today
+        (:data:`ordnung.money.iban.PAYEE_CHECK_FROM`), from when, or that it may get none.
+        """
+        from ordnung.money.iban import INVALID_IBAN_ADVICE, PAYEE_CHECK_FROM, grouped, inspect_iban
+        from ordnung.rules.explain import month_name
 
         if not isinstance(iban, str) or not iban.strip():
             raise RulesToolError("iban must be the IBAN as printed, e.g. DE89 3704 0044 0532 0130 00")
         if len(iban) > MAX_IBAN_INPUT:
             raise RulesToolError(f"iban is too long: an IBAN has at most 34 characters (got {len(iban)})")
         check = inspect_iban(iban)
+        since = PAYEE_CHECK_FROM.get(check.country_code or "")
         if not check.valid:
             note = INVALID_IBAN_ADVICE
-        elif check.country_code in EU_IBAN_COUNTRIES:
+        elif since is None:
+            note = IBAN_NOTE_OUTSIDE_EU.format(country=check.country)
+        elif since <= self.current_day():
             note = IBAN_NOTE
         else:
-            note = IBAN_NOTE_OUTSIDE_EU.format(country=check.country)
+            note = IBAN_NOTE_CHECK_LATER.format(
+                country=check.country, since=f"{since.day} {month_name(since)} {since.year}"
+            )
         return {
             "iban": grouped(check.iban),
             "valid": check.valid,
@@ -874,6 +908,7 @@ def deadline_hints(
     recipient_region: str | None = None,
     counted_from_arrival: bool = False,
     formally_served_may_apply: bool = False,
+    period_unreadable: bool = False,
 ) -> list[str]:
     """Which missing argument would settle what the engine had to assume (empty when none).
 
@@ -881,10 +916,17 @@ def deadline_hints(
     ran). Only arguments that were *not* given are named, and a holiday region by the argument the
     engine reads for this date; for a sender whose kind has no deemed-delivery rule, the hint says
     how to get it instead of asking for the kind again. The situations come from the engine's
-    warnings, by the words :mod:`ordnung.rules.deadlines` shares for them (``REGION_UNKNOWN`` …).
+    warnings, by the words :mod:`ordnung.rules.deadlines` shares for them (``REGION_UNKNOWN`` …). A
+    period the engine could not read (``period_unreadable``) gets only the hint to fix it: nothing was
+    computed, so no arrival day, sender or region would settle anything yet.
     """
     from ordnung.rules.deadlines import HOME_HOLIDAY, REGION_EARLIER, REGION_UNKNOWN, TAX_OFFICE_HOLIDAY
 
+    if period_unreadable:
+        return [
+            "Set spec.amount and spec.unit to the period the letter gives (e.g. 1 and months for "
+            "'innerhalb eines Monats'), then call again."
+        ]
     hints: list[str] = []
     delivered = "posting_day" in receipt.rule_ids  # the deemed-delivery step ran
     if spec.type == "relative":

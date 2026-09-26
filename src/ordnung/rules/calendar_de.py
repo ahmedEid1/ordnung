@@ -12,9 +12,10 @@ Two notions of a working day are used by German law and by Ordnung:
 Holidays: weekend and nationwide holidays always count. Regional (Land) holidays only count when the
 region of the place that matters is known; otherwise they are ignored, which can only make a computed
 deadline earlier, never later (safety policy, SPEC § 21). 24 and 31 December are *not* holidays.
-A holiday that holds in only part of a Land (Mariä Himmelfahrt in Bavaria's Catholic communities,
-Augsburg's Friedensfest, Fronleichnam in parts of Saxony and Thuringia) is not counted either:
-:func:`partial_holidays` lists them, and the deadline rules warn where one could move a date shown.
+A holiday that holds in only part of a Land (Mariä Himmelfahrt in Bavarian communities with more
+Catholic than Protestant residents, Augsburg's Friedensfest, Fronleichnam in parts of Saxony and
+Thuringia) is not counted either: :func:`partial_holidays` lists them, and the deadline rules warn
+where one could move a date shown.
 """
 
 from __future__ import annotations
@@ -87,7 +88,8 @@ def holiday_calendar_label(region: str | None) -> str:
 #: calendar leaves them out: the place (the community) is not known.
 PARTIAL_HOLIDAY_PLACES: dict[str, dict[str, str]] = {
     "BY": {
-        "Mariä Himmelfahrt": "the communities of Bayern with a Catholic majority (Munich among them)",
+        "Mariä Himmelfahrt": "the communities of Bayern with more Catholic than Protestant residents (as the "
+        "Landesamt für Statistik lists them; Munich among them)",
         "Augsburger Hohes Friedensfest": "the city of Augsburg (Bayern)",
     },
     "SN": {"Fronleichnam": "some communities of the Sorbian area of Sachsen"},

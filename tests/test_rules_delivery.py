@@ -268,6 +268,27 @@ _BESCHEID = "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe 
             "Gegen diese Vertragsstrafe können Sie innerhalb von 14 Tagen Einspruch einlegen.",
             True,
         ),
+        # ... in everyday German: "Bescheid geben / sagen" is "let us know", "bekanntgegeben" "announced"
+        (
+            "company",
+            "Park & Control GmbH",
+            "einspruch",
+            "Wenn Sie Einspruch einlegen möchten, geben Sie uns innerhalb von 14 Tagen nach Zugang Bescheid.",
+            True,
+        ),
+        (
+            "company",
+            None,
+            "einspruch",
+            "Wie bereits bekanntgegeben, ist ein Einspruch binnen 14 Tagen möglich.",
+            True,
+        ),
+        ("landlord", None, "widerspruch", "Sagen Sie ihr Bescheid, wenn Sie widersprechen wollen.", True),
+        ("company", None, "einspruch", "Einspruch gegen die bescheidene Bearbeitungsgebühr", True),
+        # ... while a Bescheid as the decision it is shows an administrative act
+        ("utility", "Stadtentwässerung", "widerspruch", "Widerspruch gegen den Gebührenbescheid", False),
+        ("company", None, "widerspruch", "Widerspruch gegen den Bescheid vom 1. September", False),
+        ("company", None, "klage", "Klage gegen Ihren Bescheid", False),
         # ... or its name makes it a social agency
         ("insurer", "Deutsche Rentenversicherung Bund", None, None, False),
         ("authority", None, None, None, False),
@@ -279,6 +300,37 @@ def test_private_senders_have_no_deemed_delivery(
 ) -> None:
     scope = scope_for_party_kind(kind, name=name, remedy_type=remedy_type, remedy_text=notice)
     assert is_private_sender(kind, scope=scope, remedy_type=remedy_type, remedy_text=notice) is expected
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "AOK Nordwest – Die Gesundheitskasse",
+        "BARMER",
+        "DAK-Gesundheit",
+        "IKK classic",
+        "BKK firmus",
+        "Audi BKK",
+        "Knappschaft",
+        "KKH",
+        "hkk",
+        "Verband der Ersatzkassen",
+        "SVLFG",
+    ],
+)
+def test_statutory_health_insurers_by_their_brand_are_social_law(name: str) -> None:
+    """Reviewer repro: statutory health insurers go by names without "Krankenkasse"; filed as an
+    ``insurer`` they were private, and a late arrival moved their Bescheid's deadline later."""
+    scope = scope_for_party_kind("insurer", name=name)
+    assert scope == "sgbx" and is_private_sender("insurer", scope=scope) is False
+
+
+@pytest.mark.parametrize(
+    "name", ["Allianz Versicherungs-AG", "HUK-COBURG", "Barmenia Krankenversicherung AG"]
+)
+def test_private_insurers_stay_private(name: str) -> None:
+    scope = scope_for_party_kind("insurer", name=name)
+    assert scope is None and is_private_sender("insurer", scope=scope) is True
 
 
 def test_the_administrative_route_needs_the_codes_written_as_codes() -> None:

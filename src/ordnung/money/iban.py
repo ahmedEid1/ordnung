@@ -21,6 +21,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass, replace
+from datetime import date
 
 _NOISE = re.compile(r"[\s\-.]+")
 _LABEL = re.compile(r"^\s*IBAN\s*:?", re.IGNORECASE)
@@ -145,17 +146,28 @@ IBAN_COUNTRIES: dict[str, IbanCountry] = {
     "YE": IbanCountry("Yemen", 30),
 }
 
-#: The EU member states' IBAN country codes. The payee-name check before a euro transfer
-#: (Empfängerüberprüfung, Art. 5c Reg. (EU) No 260/2012 as amended by Reg. (EU) 2024/886, from
-#: 9 October 2025) is EU law for accounts at payment service providers in the Union; an account
-#: elsewhere — the EEA's EFTA states, Switzerland, the UK or further away — may get none.
-#: Territories using a member's IBAN (the French overseas departments: FR; Åland: FI) count as it.
-EU_IBAN_COUNTRIES: frozenset[str] = frozenset(
-    {
-        "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GR", "HR", "HU",
-        "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK",
-    }
-)  # fmt: skip
+#: When the payee's bank has to answer the check of the payee's name before a euro transfer
+#: (Empfängerüberprüfung, verification of payee: Art. 5c Reg. (EU) No 260/2012 as amended by
+#: Reg. (EU) 2024/886), by the IBAN's country. It is EU law for payment service providers in the Union:
+#: in the euro area from 9 October 2025, in the member states whose currency is not the euro (CZ, DK,
+#: HU, PL, RO, SE) from 9 July 2027 (Art. 5c(9)); Bulgaria, which introduced the euro on 1 January 2026,
+#: has a year from then (Art. 16(9)), so 1 January 2027. Until its date a check of such an account may
+#: come back "not possible". An account elsewhere — the EEA's EFTA states, Switzerland, the UK or
+#: further away — may get no check at all. Territories using a member's IBAN (the French overseas
+#: departments: FR; Åland: FI) count as it.
+PAYEE_CHECK_FROM: dict[str, date] = {
+    **dict.fromkeys(
+        (
+            "AT", "BE", "CY", "DE", "EE", "ES", "FI", "FR", "GR", "HR",
+            "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PT", "SI", "SK",
+        ),
+        date(2025, 10, 9),
+    ),
+    "BG": date(2027, 1, 1),
+    **dict.fromkeys(("CZ", "DK", "HU", "PL", "RO", "SE"), date(2027, 7, 9)),
+}  # fmt: skip
+#: The EU member states' IBAN country codes.
+EU_IBAN_COUNTRIES: frozenset[str] = frozenset(PAYEE_CHECK_FROM)
 
 
 @dataclass(frozen=True)

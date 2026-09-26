@@ -30,10 +30,12 @@ Claude reads through it also reaches every other MCP server loaded there, throug
   adds that day's view (the benchmark's server ignores it), so a stale date never makes a live
   deadline look missed.
 - The tools add no law of their own: whether a sender has deemed delivery at all (a company's letter
-  counts from its arrival, an unknown sender's keeps the earliest plausible deemed delivery, and a
-  *Widerspruch* or *Klage* makes a letter an authority's only with a notice naming an administrative
-  route), and which holidays of only part of a Land a date is counted back over, are the engine's
-  rules, under its coverage gate, so a tool and the app give the same date and the same warnings for
+  counts from its arrival, but for a kind a public body may be filed as never later than an
+  authority's letter would count as delivered; an unknown sender's keeps the earliest plausible
+  deemed delivery; and an *Einspruch*, *Widerspruch* or *Klage* makes a letter an authority's only
+  with a notice naming an administrative route, as do the period's own words naming one), and which
+  holidays of only part of a Land a date is counted back over, are the engine's rules, under its
+  coverage gate, so a tool and the app give the same date and the same warnings for
   the same facts. What the tools add is about the caller, not the law: checks on the arrival day,
   a stated posting or delivery day without the letter's date, a letter dated after today and a stale
   `today` (a model passes these facts, not the person), and their warnings in the tools' own voice.

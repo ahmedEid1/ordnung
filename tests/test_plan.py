@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+import pytest
+
 from ordnung.db.store import Store
 from ordnung.ingest.link import LinkResult
 from ordnung.ingest.plan import (
@@ -230,7 +232,14 @@ def test_rule_context_marks_a_private_sender_but_not_an_unknown_one(store: Store
         extraction([], sender={"name": "AOK Nordost", "kind": "insurer"}, remedy=bescheid),
         date(2026, 9, 25),
     )
-    assert misfiled.private_sender is False and misfiled.delivery_scope is None
+    assert misfiled.private_sender is False and misfiled.delivery_scope == "sgbx"  # a statutory insurer
+    muster = rule_context(
+        None,
+        document,
+        extraction([], sender={"name": "Muster Versicherung", "kind": "insurer"}, remedy=bescheid),
+        date(2026, 9, 25),
+    )
+    assert muster.private_sender is False and muster.delivery_scope is None
     dismissal = {
         "type": "klage",
         "quote": "Eine Kündigungsschutzklage muss innerhalb von drei Wochen nach Zugang erhoben werden.",
@@ -243,6 +252,54 @@ def test_rule_context_marks_a_private_sender_but_not_an_unknown_one(store: Store
         date(2026, 9, 25),
     )
     assert employer.private_sender is True and employer.delivery_scope is None
+
+
+@pytest.mark.parametrize(
+    "words",
+    ["innerhalb eines Monats nach Bekanntgabe dieses Bescheides", "innerhalb eines Monats"],
+)
+def test_a_utility_s_bescheid_keeps_its_deemed_delivery_in_the_pipeline(store: Store, words: str) -> None:
+    """Reviewer repro: a municipal utility's Gebührenbescheid, filed as a ``utility`` and without a remedy
+    notice read. The period's sentence names the Bescheid — in the spec's words, or only in the item's
+    quote around them — so the app counts the earliest plausible deemed delivery (Mon 5 Oct), not from
+    the day the person says it arrived."""
+    document = store.add_document(
+        sha256="d" * 64, filename="x", mime="application/pdf", file_path="x", received_date="2026-09-14"
+    )
+    utility = store.add_party(name="Stadtentwässerung Musterstadt", kind="utility")
+    fee = item(
+        "Die Gebühr ist innerhalb eines Monats nach Bekanntgabe dieses Bescheides zu zahlen.",
+        type="relative",
+        amount=1,
+        unit="months",
+        anchor="deemed_delivery",
+        delivery_rule="de_admin_post",
+        nature="payment",
+        text=words,
+    )
+    page = (1, "Musterstadt, 01.09.2026\n" + fee.quote, [], "text")
+    ctx = rule_context(
+        utility,
+        document,
+        extraction([fee], document_date="2026-09-01"),
+        date(2026, 9, 26),
+        recipient_region="NW",
+    )
+    assert ctx.private_sender is True  # by its kind: the letter's own words decide
+    computed = compute_item(verified_item(fee, page), ctx, postal_buffer_days=4)
+    assert computed.due_date == "2026-10-05" and computed.receipt is not None
+    assert (
+        "posting_day" in computed.receipt.rule_ids
+        and "private_sender_arrival" not in computed.receipt.rule_ids
+    )
+    # a firm's sentence without one runs from the day it arrived (§ 130 BGB)
+    firm = item(
+        "Bitte zahlen Sie innerhalb eines Monats.",
+        **{**fee.date.model_dump(), "text": "innerhalb eines Monats"},
+    )
+    firm_page = (1, "Musterstadt, 01.09.2026\n" + firm.quote, [], "text")
+    private = compute_item(verified_item(firm, firm_page), ctx, postal_buffer_days=4)
+    assert private.receipt is not None and "private_sender_arrival" in private.receipt.rule_ids
 
 
 def test_rule_context_recognises_social_law_senders_filed_as_authority(store: Store) -> None:

@@ -88,7 +88,10 @@ _REFINABLE_KINDS = frozenset({"authority", "university", "insurer", "company", "
 _SOCIAL_SENDER = re.compile(
     r"jobcenter|agentur\s+f(?:ü|ue)r\s+arbeit|arbeitsagentur|rentenversicherung|pflegekasse|"
     r"krankenkasse|unfallkasse|berufsgenossenschaft|sozialamt|sozialhilfe|versorgungsamt|"
-    r"bafög|bafoeg|ausbildungsförderung|wohngeld|elterngeld",
+    r"bafög|bafoeg|ausbildungsförderung|wohngeld|elterngeld|"
+    # statutory health insurers that go by their brand, not "Krankenkasse" (AOK, BARMER, DAK-Gesundheit …)
+    r"\bAOK\b|\bbarmer\b|\bDAK\b|\bIKK\b|\bBKK\b|\bKKH\b|\bhkk\b|knappschaft|gesundheitskasse|"
+    r"ersatzkasse|\bSVLFG\b",
     re.IGNORECASE,
 )
 
@@ -118,23 +121,42 @@ PRIVATE_KINDS: frozenset[str] = frozenset(
     }
 )
 
+#: Private kinds a public body may be filed as: a municipal utility (a Stadtwerk's or Zweckverband's
+#: Gebührenbescheid), a statutory insurer whose name gives no sign, a civil servant's Dienstherr as an
+#: ``employer``, any ``company``. For them that the sender is no authority is only inferred, so a late
+#: arrival never makes a date later than deemed delivery would (``private_sender_late_arrival`` in
+#: :mod:`ordnung.rules.deadlines`). A gym, a landlord, a bank or a shop issues no Bescheid.
+MAY_BE_PUBLIC_KINDS: frozenset[str] = frozenset({"company", "insurer", "utility", "employer"})
+
 #: *Einspruch*, *Widerspruch* and *Klage* lie against an administrative act (a tax office or a statutory
 #: health insurer filed as ``company`` or ``insurer``) but also in private law: a tenant's Widerspruch
 #: (§ 574 BGB), an insurance contract's (§ 5 VVG), the Kündigungsschutzklage against an employer
 #: (§ 4 KSchG), the Einspruch against a court's Vollstreckungsbescheid (§ 700 ZPO) — and firms such as
 #: private parking operators call their own complaint window an "Einspruch". A sender filed as private
 #: that names one is in doubt: it shows an authority's decision only with a remedy notice that says so
-#: (:data:`_ADMINISTRATIVE_ROUTE`); otherwise the period runs from arrival, the earlier start.
+#: (:data:`_ADMINISTRATIVE_ROUTE`); otherwise the period runs from arrival — for a sender of a kind a
+#: public body may be filed as (:data:`MAY_BE_PUBLIC_KINDS`), never later than an authority's letter
+#: would count as delivered: the earlier start in either reading.
 _ROUTE_REMEDIES = frozenset({"einspruch", "widerspruch", "klage"})
-#: A remedy notice that shows an administrative act: it names an administrative, social or finance
-#: court or the codes they apply, a *Bescheid* (not a court's Mahn- or Vollstreckungsbescheid), its
-#: *Bekanntgabe* or a *Verwaltungsakt*. Private law says *Zugang*, and its courts are the Amts-,
-#: Land- and Arbeitsgericht.
+#: Words that show an administrative act: an administrative, social or finance court or the codes they
+#: apply, a *Bekanntgabe* or a *Verwaltungsakt*, or a *Bescheid* as the decision it names — a compound
+#: (*Gebührenbescheid*, *Widerspruchsbescheid*; not a court's Mahn- or Vollstreckungsbescheid), "diesen
+#: Bescheid", "Ihren Bescheid", "Bescheid vom …". Not the everyday "Bescheid geben / sagen / wissen" (let
+#: someone know) or "wie bereits bekanntgegeben" (as announced), which any firm writes. Private law says
+#: *Zugang*, and its courts are the Amts-, Land- and Arbeitsgericht.
 _ADMINISTRATIVE_ROUTE = re.compile(
     r"verwaltungsgericht|sozialgericht|finanzgericht|(?-i:\b(?:VwGO|SGG|FGO|AO|SGB|VwVfG)\b)|"
-    r"(?<!mahn)(?<!vollstreckungs)bescheid|bekanntgabe|bekanntgegeben|verwaltungsakt",
+    r"(?<=\w)(?<!mahn)(?<!vollstreckungs)(?<!un)bescheid(?:e?s|en?)?\b|"
+    r"(?:\b(?:diese[nmrs]?|den|der|dem|des)|(?-i:\bIhr(?:e[nmrs])?))\s+bescheid(?:e?s|e)?\b|"
+    r"\bbescheid(?:e?s)?\s+vom\b|bekanntgabe|verwaltungsakt",
     re.IGNORECASE,
 )
+
+
+def shows_administrative_act(text: str | None) -> bool:
+    """Whether ``text`` (a remedy notice, a period's own sentence) names an administrative route
+    (:data:`_ADMINISTRATIVE_ROUTE`): then the letter is an authority's decision, whoever it was filed as."""
+    return bool(text and _ADMINISTRATIVE_ROUTE.search(text))
 
 
 def scope_for_party_kind(
@@ -150,9 +172,10 @@ def scope_for_party_kind(
     ``university`` and ``public_broadcaster`` → ``vwvfg``. A sender filed as an ``authority`` (or a
     ``university``, ``insurer``, ``company``, ``other``) is refined by its name and the letter's remedy
     notice:
-    job centres, pension, care and accident insurance, social welfare and the § 68 SGB I benefit
-    offices, or a notice naming the Sozialgericht or the SGB → ``sgbx``; the Familienkasse → ``ao``
-    when the remedy is an *Einspruch*, otherwise ``sgbx``.
+    job centres, pension, care and accident insurance, statutory health insurers (a "Krankenkasse", or
+    by their brand: AOK, BARMER, DAK, IKK, BKK, Knappschaft …), social welfare and the § 68 SGB I
+    benefit offices, or a notice naming the Sozialgericht or the SGB → ``sgbx``; the Familienkasse →
+    ``ao`` when the remedy is an *Einspruch*, otherwise ``sgbx``.
     """
     if kind in _REFINABLE_KINDS or kind is None:
         sender = name or ""
@@ -180,10 +203,12 @@ def is_private_sender(
     notice (``remedy_text``) naming an administrative route — an employer's letter naming the
     Kündigungsschutzklage, or a parking firm's "Einspruch" window, stays private. An unknown sender
     (``None``, ``other``) is not known to be private: it keeps the earliest plausible deemed delivery.
+    A period whose own words show an administrative act keeps it too, whatever this says
+    (:func:`ordnung.rules.deadlines.from_arrival`).
     """
     if scope is not None or kind not in PRIVATE_KINDS:
         return False
-    return remedy_type not in _ROUTE_REMEDIES or not _ADMINISTRATIVE_ROUTE.search(remedy_text or "")
+    return remedy_type not in _ROUTE_REMEDIES or not shows_administrative_act(remedy_text)
 
 
 def fiction_days(posted: date) -> int:

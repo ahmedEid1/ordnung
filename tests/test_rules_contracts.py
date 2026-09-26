@@ -995,9 +995,10 @@ def test_a_contract_notice_counted_back_over_a_partial_holiday_is_named() -> Non
     result = compute_contract(gym, ctx(today="2028-08-01", region="BY"))
     assert (result.cancel_by, result.send_by, result.confidence) == ("2028-08-17", "2028-08-11", "high")
     assert [w for w in result.warnings if "Mariä Himmelfahrt" in w] == [
-        "Tue 15 Aug 2028 is Mariä Himmelfahrt, a public holiday only in the communities of Bayern with a "
-        "Catholic majority (Munich among them), which is not counted here. Where it holds, the send-by or safe "
-        "date, counted back over it, is a working day earlier: act a working day before it to be safe."
+        "Tue 15 Aug 2028 is Mariä Himmelfahrt, a public holiday only in the communities of Bayern with more "
+        "Catholic than Protestant residents (as the Landesamt für Statistik lists them; Munich among them), "
+        "which is not counted here. Where it holds, the send-by or safe date, counted back over it, is a "
+        "working day earlier: act a working day before it to be safe."
     ]
     assert compute_contract(gym, ctx(today="2028-08-01", region="HH")).warnings == []
     window = price_increase_window(

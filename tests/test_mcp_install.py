@@ -611,6 +611,10 @@ def test_cli_serving_the_rules_tools_refuses_a_data_folder(
 ) -> None:
     result = runner.invoke(app, [arg.format(data=tmp_path) for arg in args])
     assert result.exit_code == 1 and "The rules tools read no data folder" in result.stderr
+    # both ways out are "leave out": adding --rules-only would not serve the ledger (reviewer: garbled hint)
+    assert "Leave out --data-dir, or leave out --rules-only to serve your ledger too." in " ".join(
+        result.stderr.split()
+    )
     assert result.stdout == ""
 
 

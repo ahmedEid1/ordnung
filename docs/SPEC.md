@@ -311,8 +311,11 @@ a Land are the engine's warning, as in the app. `german_holidays(year, region?)`
 `add_working_days(start, days, day_type, region?)` (its disclaimer says it is a calendar count, not
 a deadline); `check_iban(iban)` (an invalid one gets the app's advice: misprinted, misread or fake —
 ask the sender before paying; a valid one says it tells nothing about the owner, and mentions the
-bank's payee-name check before a euro transfer only for an EU account — elsewhere it says there may
-be none (Reg. (EU) 2024/886); a printed `IBAN:` label and
+bank's payee-name check before a euro transfer only where the account's bank has to answer it by
+today — in the euro area since 9 October 2025; in CZ, DK, HU, PL, RO and SE only from 9 July 2027 and in
+Bulgaria from 1 January 2027, which the note names; elsewhere it says there may be none — and in
+every case that a check the bank reports "not possible" confirms nothing (Art. 5c(9), 16(9) Reg. (EU)
+No 260/2012 as amended by 2024/886); a printed `IBAN:` label and
 invisible characters ignored; country from the full SWIFT registry — any other two letters are not
 an IBAN — registered length, mod-97, bank code where the format shows it; pure code in
 `money/iban.py`). Unknown tool arguments are refused and argument errors are plain words. "Today" is
@@ -571,8 +574,8 @@ region of the place of performance is known: `Party.region` (user-set or from th
 when unambiguous) — otherwise they are ignored (earlier date). A date counted *back* over a regional
 holiday (a period before an event, the safe date of a deadline that never moves) could be earlier
 where it holds: with the region unknown that is flagged (`medium`, "act a working day before it").
-Holidays of only part of a Land (Mariä Himmelfahrt in Bavaria's Catholic communities, Augsburg's
-Friedensfest, Fronleichnam in parts of Saxony and Thuringia) are never counted, as the community is
+Holidays of only part of a Land (Mariä Himmelfahrt in Bavarian communities with more Catholic than
+Protestant residents, Augsburg's Friedensfest, Fronleichnam in parts of Saxony and Thuringia) are never counted, as the community is
 not known; where a send-by or safe date, a period counted backwards in working days (or Werktage),
 or the safe date of a deadline on one passes such a holiday, the engine names it and where it holds
 in a warning ("act a working day before it"; `rules.deadlines.check_partial_holidays`, for letters
@@ -586,13 +589,20 @@ conservative earlier count (3 days) with `medium` confidence. It is a rule for a
 sender of a private kind (company, landlord, bank, insurer, employer …; `rules.is_private_sender`)
 whose letter shows no administrative act gets none — a period from delivery runs from the day the
 letter arrived (§ 130 BGB; the letter's date until the person confirms the day, `low`, and the app asks
-for it), and one the letter counts from its own date or another date it names runs from that date
-without delivery days (`private_sender_no_delivery`; the arrival day plays no part and is not asked
-for). A letter shows an administrative act when it names a remedy statute, or an *Einspruch*,
-*Widerspruch* or *Klage* whose notice names an administrative route (a *Bescheid* or its
-*Bekanntgabe*, an administrative, social or finance court, VwGO/SGG/FGO/AO/SGB/VwVfG) — a
-Kündigungsschutzklage to the labour court (§ 4 KSchG), a Widerspruch under the BGB or VVG, or a
-firm's own "Einspruch" window (a private parking operator's, say) does not.
+for it, also when the letter's date is missing), and one the letter counts from its own date or another
+date it names runs from that date without delivery days (`private_sender_no_delivery`; the arrival day
+plays no part and is not asked for). That a sender is private is read from its kind and name, not
+known (a municipal utility's Gebührenbescheid, a statutory health insurer filed as a company), so for
+a kind a public body may be filed as (company, insurer, utility, employer) a confirmed arrival day
+after the day an authority's letter would count as delivered never moves the date later: the period
+runs from that earlier day and a warning gives the date from arrival (`private_sender_late_arrival`);
+a gym's, landlord's or bank's letter counts from the day it arrived. A letter shows an administrative act when it names a remedy statute,
+when the period's own words name one, or when an *Einspruch*, *Widerspruch* or *Klage* has a notice
+naming an administrative route (a *Bescheid* as the decision — "diesen Bescheid", a
+*Gebührenbescheid*, "Bescheid vom …", not the everyday "Bescheid geben" — or its *Bekanntgabe*, an
+administrative, social or finance court, VwGO/SGG/FGO/AO/SGB/VwVfG) — a Kündigungsschutzklage to the
+labour court (§ 4 KSchG), a Widerspruch under the BGB or VVG, or a firm's own "Einspruch" window (a
+private parking operator's, say) does not.
 An unknown sender (kind `other`) keeps the earliest plausible deemed delivery.
 
 **Contracts — regimes.** `compute_contract` dispatches on `regime` derived by code from category,

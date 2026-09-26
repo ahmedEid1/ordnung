@@ -405,11 +405,19 @@ def test_an_unknown_or_misfiled_sender_gets_the_apps_date_not_a_later_one() -> N
     args = {"document_date": "2026-03-02", "remedy_type": "widerspruch", "received_date": "2026-03-12"}
     nothing = tools.compute_deadline(spec, **args)
     assert nothing["due_date"] == "2026-04-07" and nothing["confidence"] == "low"
-    for kind, name in (("other", None), ("other", "Stadt Musterstadt"), ("insurer", "AOK Nordost")):
+    for kind, name in (
+        ("other", None),
+        ("other", "Stadt Musterstadt"),
+        ("insurer", "Muster Versicherung AG"),
+    ):
         result = tools.compute_deadline(spec, sender_kind=kind, sender_name=name, **args)
         assert (result["due_date"], result["confidence"]) == ("2026-04-07", "low"), kind
         assert PRIVATE_SENDER_WARNING not in result["warnings"]
         assert any("keep the envelope" in w for w in result["warnings"])  # the later arrival: only if shown
+    # a statutory health insurer is known by its name: social law, the same date
+    aok = tools.compute_deadline(spec, sender_kind="insurer", sender_name="AOK Nordost", **args)
+    assert aok["due_date"] == "2026-04-07" and aok["assumed"]["delivery_law"] == "social law (§ 37 SGB X)"
+    assert PRIVATE_SENDER_WARNING not in aok["warnings"]
     assert _hint(tools.compute_deadline(spec, sender_kind="other", **args), "Pass sender_kind")
     # the app: a party of kind "other" (the default) gives the same date
     scope = scope_for_party_kind("other", remedy_type="widerspruch")
@@ -462,6 +470,98 @@ def test_a_firms_own_einspruch_window_counts_from_arrival() -> None:
     )
     assert PRIVATE_SENDER_WARNING not in tax["warnings"]
     assert any(step["rule_id"] == "posting_day" for step in tax["steps"])
+
+
+def test_a_firms_let_us_know_is_no_bescheid() -> None:
+    """Reviewer repro: "geben Sie uns … Bescheid" is everyday German for "let us know", not an
+    authority's decision. The firm's Einspruch window runs from the arrival day given (Tue 29 Sep), not
+    from a deemed delivery (Thu 1 Oct, two days late) that reports the arrival day as unused."""
+    tools = at("2026-09-26")
+    text = "Wenn Sie Einspruch einlegen möchten, geben Sie uns innerhalb von 14 Tagen nach Zugang Bescheid."
+    fine = tools.compute_deadline(
+        {**POSTED, "amount": 14, "unit": "days", "text": text},
+        document_date="2026-09-14",
+        sender_kind="company",
+        sender_name="Park & Control GmbH",
+        remedy_type="einspruch",
+        received_date="2026-09-15",
+    )
+    assert fine["due_date"] == "2026-09-29"
+    assert fine["steps"][0]["rule_id"] == "private_sender_arrival"
+    assert not any(step["rule_id"] in ("posting_day", "early_receipt") for step in fine["steps"])
+    assumed = fine["assumed"]
+    assert (assumed["received_date"], assumed["received_date_from"]) == ("2026-09-15", "received_date")
+    assert assumed["received_date_not_used"] is None and not _hint(fine, "Pass region")
+
+
+def test_a_late_arrival_never_makes_a_private_senders_date_later() -> None:
+    """Reviewer repro: that a sender is private is read from its kind — a statutory insurer or a
+    municipal utility may be filed as a company. A late arrival must not move the date past the one an
+    authority's letter gives (Mon 5 Oct), at high confidence; the warning names the date from arrival."""
+    tools = at("2026-09-26")
+    spec = {**POSTED, "text": "Einspruch innerhalb eines Monats"}
+    args = {
+        "document_date": "2026-09-01",
+        "remedy_type": "einspruch",
+        "received_date": "2026-09-15",
+        "region": "NW",
+    }
+    company = tools.compute_deadline(spec, sender_kind="company", **args)
+    authority = tools.compute_deadline(spec, sender_kind="authority", **args)
+    assert company["due_date"] == authority["due_date"] == "2026-10-05"  # not Thu 15 Oct
+    assert any(
+        w.startswith("The letter arrived on Tue 15 Sep 2026") and "the deadline may be Thu 15 Oct 2026" in w
+        for w in company["warnings"]
+    )
+    assert any(step["rule_id"] == "private_sender_late_arrival" for step in company["steps"])
+    # the period did not run from the arrival day given
+    assert company["assumed"]["received_date"] is None
+    assert company["assumed"]["received_date_not_used"] == "2026-09-15"
+    # nor does a later one move it, so it gets no warning that it would (nor less confidence)
+    later = tools.compute_deadline(spec, sender_kind="company", **{**args, "received_date": "2026-09-25"})
+    assert (later["due_date"], later["confidence"]) == ("2026-10-05", company["confidence"])
+    assert not any("unusually late" in w for w in later["warnings"])
+    # a gym issues no Bescheid: its letter counts from the day it arrived (§ 130 BGB)
+    gym = tools.compute_deadline(spec, sender_kind="gym", **args)
+    assert gym["due_date"] == "2026-10-15" and gym["assumed"]["received_date"] == "2026-09-15"
+    # a municipal utility's Gebührenbescheid is an authority's decision by its own words
+    fee = {
+        **POSTED,
+        "nature": "payment",
+        "text": "Die Gebühr ist innerhalb eines Monats nach Bekanntgabe dieses Bescheides zu zahlen.",
+    }
+    utility = tools.compute_deadline(
+        fee, sender_kind="utility", document_date="2026-09-01", received_date="2026-09-14", region="NW"
+    )
+    assert utility["due_date"] == "2026-10-05" and PRIVATE_SENDER_WARNING not in utility["warnings"]
+    assert any("keep the envelope" in w for w in utility["warnings"])
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        {k: v for k, v in POSTED.items() if k != "amount"},
+        {"type": "relative", "anchor": "receipt", "unit": "days", "nature": "payment"},
+        {**POSTED, "amount": 5000, "unit": "years"},
+    ],
+)
+def test_an_unreadable_period_reports_no_arrival_day(spec: dict[str, Any]) -> None:
+    """Reviewer repro: without a readable period nothing is computed — no arrival day was assumed, and
+    no hint asks for one or for the sender; the only hint is how to fix the period."""
+    tools = at("2026-09-26")
+    for kind, received in (("bank", None), ("company", "2026-09-03"), (None, None)):
+        result = tools.compute_deadline(
+            spec, document_date="2026-09-01", sender_kind=kind, received_date=received
+        )
+        assert result["due_date"] is None and result["confidence"] == "low"
+        assert len(result["warnings"]) == 1 and PRIVATE_SENDER_WARNING not in result["warnings"]
+        assumed = result["assumed"]
+        assert (assumed["received_date"], assumed["received_date_from"]) == (None, None)
+        assert assumed["received_date_not_used"] == received
+        assert result["hints"] == [
+            "Set spec.amount and spec.unit to the period the letter gives (e.g. 1 and months for "
+            "'innerhalb eines Monats'), then call again."
+        ]
 
 
 def test_a_private_law_klage_or_widerspruch_keeps_a_private_sender_private() -> None:
@@ -636,9 +736,10 @@ def test_a_partial_holiday_before_the_deadline_is_flagged() -> None:
     bavaria = tools.compute_deadline(spec, sender_kind="company", region="BY", recipient_region="BY")
     assert (bavaria["due_date"], bavaria["send_by"]) == ("2025-08-18", "2025-08-15")
     assert [w for w in bavaria["warnings"] if "Mariä Himmelfahrt" in w] == [
-        "Fri 15 Aug 2025 is Mariä Himmelfahrt, a public holiday only in the communities of Bayern with a "
-        "Catholic majority (Munich among them), which is not counted here. Where it holds, the send-by or safe "
-        "date, counted back over it, is a working day earlier: act a working day before it to be safe."
+        "Fri 15 Aug 2025 is Mariä Himmelfahrt, a public holiday only in the communities of Bayern with more "
+        "Catholic than Protestant residents (as the Landesamt für Statistik lists them; Munich among them), "
+        "which is not counted here. Where it holds, the send-by or safe date, counted back over it, is a "
+        "working day earlier: act a working day before it to be safe."
     ]
     assert not any("Augsburg" in w for w in bavaria["warnings"])
     hamburg = tools.compute_deadline(spec, sender_kind="company", recipient_region="HH")
@@ -677,9 +778,10 @@ def test_a_partial_holiday_between_the_due_date_and_a_later_event_is_flagged() -
     result = at("2025-07-01").compute_deadline(spec, region="BY")
     assert result["due_date"] == "2025-08-12"
     assert [w for w in result["warnings"] if "Mariä Himmelfahrt" in w] == [
-        "Fri 15 Aug 2025 is Mariä Himmelfahrt, a public holiday only in the communities of Bayern with a Catholic "
-        "majority (Munich among them), which is not counted here. Where it holds, this date, counted backwards "
-        "over it, is a working day earlier: act a working day before it to be safe."
+        "Fri 15 Aug 2025 is Mariä Himmelfahrt, a public holiday only in the communities of Bayern with more "
+        "Catholic than Protestant residents (as the Landesamt für Statistik lists them; Munich among them), "
+        "which is not counted here. Where it holds, this date, counted backwards over it, is a working day "
+        "earlier: act a working day before it to be safe."
     ]
     assert not any("later" in w for w in result["warnings"])
     # a notice deadline on the holiday itself does not move: its safe date is a working day earlier there
@@ -1051,6 +1153,38 @@ def test_check_iban(tools: RulesTools) -> None:
     assert good["note"] == rules_tools.IBAN_NOTE and tools.check_iban("FR14 2004 1010 0505 0001 3M02 606")[
         "note"
     ] == (rules_tools.IBAN_NOTE)
+    # the check may come back "not possible": that is no all-clear either
+    assert "or says the check was not possible, do not pay" in good["note"]
+
+
+@pytest.mark.parametrize(
+    ("iban", "country", "since"),
+    [
+        ("SE45 5000 0000 0583 9825 7466", "Sweden", "9 July 2027"),
+        ("PL61 1090 1014 0000 0712 1981 2874", "Poland", "9 July 2027"),
+        ("BG80 BNBG 9661 1020 3456 78", "Bulgaria", "1 January 2027"),
+    ],
+)
+def test_check_iban_says_when_a_non_euro_banks_name_check_starts(
+    tools: RulesTools, iban: str, country: str, since: str
+) -> None:
+    """Reviewer repro: banks outside the euro area have to answer the payee-name check only from
+    9 July 2027 (Art. 5c(9) Reg. (EU) No 260/2012 as amended by 2024/886), Bulgaria's, in the euro since
+    1 January 2026, a year later (Art. 16(9)). Until then the note must not promise the check."""
+    from ordnung.money.iban import EU_IBAN_COUNTRIES, PAYEE_CHECK_FROM
+
+    result = tools.check_iban(iban)
+    assert result["valid"] is True and result["country"]["name"] == country
+    assert "the bank also checks" not in result["note"]
+    assert (
+        f"This IBAN is from {country}, whose banks have to answer the check of the payee's name before a "
+        f"euro transfer (Empfängerüberprüfung) only from {since}: until then your bank may say the check was "
+        "not possible"
+    ) in result["note"]
+    # from that day the check is the law there too
+    on_the_day = RulesTools(today=lambda: PAYEE_CHECK_FROM[iban[:2]]).check_iban(iban)
+    assert on_the_day["note"] == rules_tools.IBAN_NOTE
+    assert len(EU_IBAN_COUNTRIES) == 27 and {"CZ", "DK", "HU", "RO"} <= EU_IBAN_COUNTRIES
 
 
 @pytest.mark.parametrize(
@@ -1071,6 +1205,7 @@ def test_check_iban_promises_no_name_check_outside_the_eu(tools: RulesTools, iba
     assert "the bank also checks" not in result["note"]
     assert f"This IBAN is from a country outside the EU ({country})" in result["note"]
     assert "may not happen" in result["note"] and "says nothing about who owns the account" in result["note"]
+    assert "your bank may say it was not possible" in result["note"]
     # two letters that are no IBAN country are not "well-formed", however the checksum adds up
     for made_up in ("ZZ22 3704 0044 0532 0130 00", "US88 3704 0044 0532 0130 00"):
         result = compact(tools.check_iban(made_up))

@@ -1116,7 +1116,7 @@ def mcp(
         if _chosen(ctx, data_dir) is not None:
             raise _fail(
                 "The rules tools read no data folder, so --data-dir would not be used.",
-                hint="Leave out --data-dir, or --rules-only to serve your ledger too.",
+                hint="Leave out --data-dir, or leave out --rules-only to serve your ledger too.",
             )
 
         if print_config:

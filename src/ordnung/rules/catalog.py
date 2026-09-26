@@ -327,6 +327,18 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
+        "private_sender_late_arrival",
+        "Arriving late: the earlier start, in case",
+        "§ 130 Abs. 1 BGB; Ordnung safety policy (earliest plausible date)",
+        "Whether a sender is an authority is read from its letter, not known: a public body's Bescheid "
+        "may come from a sender filed as a company, an insurer, a utility or an employer. When such a "
+        "letter, counted from its arrival, arrived after the day an authority's letter would count as "
+        "delivered, Ordnung counts from that earlier day and says what the date would be from the day it "
+        "arrived.",
+        f"{_GII}/bgb/__130.html",
+        None,
+    ),
+    (
         "private_sender_no_delivery",
         "Letters from companies: no delivery days",
         "§ 187 Abs. 1 BGB",
