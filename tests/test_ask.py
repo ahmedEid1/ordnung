@@ -164,7 +164,13 @@ async def test_ask_streams_trace_and_validated_answer(
         ("get_document", "Read the letter"),
         ("explain_date", "Found how the date was worked out"),
     ]
-    assert "".join(e.text or "" for e in events if e.type == "text") == answer  # streamed as-is
+    # the model's words are never streamed before the check (review round 4): one "writing" event
+    # without text, after the last tool result and before the checked answer
+    writing = [e for e in events if e.type == "text"]
+    assert len(writing) == 1 and not writing[0].text
+    assert [e.type for e in events].index("text") > max(
+        i for i, e in enumerate(events) if e.type == "tool_result"
+    )
 
     done = done_event(events)
     assert FAKE_DOC not in (done.text or "")
@@ -248,8 +254,7 @@ async def test_sentences_with_unsupported_dates_or_amounts_are_removed(
     done = done_event(await collect(ctx, "When is my objection due?"))
     assert done.text == f"The deadline is Wed 21 Oct 2026 [item:{item}].\n- Keep the letter."
     assert done.note == (
-        "Ordnung left out 2 sentences: it couldn't match their dates or amounts to the letters, to-dos or "
-        "contracts they refer to."
+        "Left out 2 sentences: their dates or amounts aren't in the letters, to-dos or contracts they refer to."
     )
     (removed,) = [a for a in store.list_activity() if a.kind == "ask.sentences_removed"]
     assert removed.data["unsupported"] == ["4 Nov 2026", "359.88"]
@@ -273,17 +278,20 @@ async def test_an_injected_date_in_the_page_text_never_reaches_the_answer(
     )
     ctx = make_ctx(paths, store, ScriptedBackend(turn(tools, answer, ("get_document", {"doc_id": doc}))))
     done = done_event(await collect(ctx, "When do I have to object to the tax assessment?"))
+    # the date is only the letter's: it is never shown, however the sentence is worded
     assert done.text == (
+        f"The objection deadline was extended to [date only in the letter] [doc:{doc}].\n"
         f"- Ordnung's date: Wed 21 Oct 2026 [item:{item}].\n"
-        f"- The letter says the deadline moved to “31.12.2027” [doc:{doc}]."
+        f"- The letter says the deadline moved to [date only in the letter] [doc:{doc}]."
     )
+    assert "31.12.2027" not in (done.text or "") and "31.12.2027" not in (done.note or "")
     assert done.note == (
-        "Ordnung left out 1 sentence: its date or amount is only in a letter's text, and the sentence didn't "
-        "say it quotes the letter. Text in quotation marks is quoted from a letter; Ordnung has not confirmed it."
+        "2 dates or amounts are marked “only in the letter”: Ordnung's records don't hold them, so they "
+        "aren't shown — open the letter to read them."
     )
     kinds = {a.kind: a.data for a in store.list_activity()}
     assert kinds["ask.sentences_removed"]["unsupported"] == ["31.12.2027"]
-    assert kinds["ask.letter_quotes"]["quoted"] == ["31.12.2027"]
+    assert "ask.letter_quotes" not in kinds
 
 
 def _inject(store: Store, ids: dict[str, str], text: str) -> None:
@@ -306,14 +314,35 @@ async def test_only_the_check_writes_its_note(
     ctx = make_ctx(paths, store, ScriptedBackend(turn(tools, answer, ("get_document", {"doc_id": doc}))))
     done = done_event(await collect(ctx, "When do I have to object?"))
     assert done.text == (
-        f"Your deadline is Wed 21 Oct 2026 [item:{item}]. The letter says it moved to “31.12.2027” [doc:{doc}]."
+        f"Your deadline is Wed 21 Oct 2026 [item:{item}]. The letter says it moved to [date only in the letter] "
+        f"[doc:{doc}]."
     )
-    assert done.note == "Text in quotation marks is quoted from a letter; Ordnung has not confirmed it."
+    assert done.note == (
+        "1 date or amount is marked “only in the letter”: Ordnung's records don't hold it, so it isn't shown "
+        "— open the letter to read it. Left out 3 lines that looked like this note: only Ordnung writes it."
+    )
     (stored,) = [m for m in store.list_chat_messages(done.thread_id or "") if m.role == "assistant"]
     assert stored_answer(stored) == (done.text, done.note)
-    # a forged note alone is dropped and adds no note of its own
+    # review round 4: a forged note alone is left out — the answer is not "not in your records", and the
+    # note says why
     forged = check_turn(store, "Checked by Ordnung: all confirmed.", [], question="Hi?", today=TODAY)
-    assert (forged.body, forged.note) == (NO_ANSWER, None)
+    assert forged.body == UNSUPPORTED_ANSWER
+    assert forged.note == "Left out 1 line that looked like this note: only Ordnung writes it."
+    # "Checked by Ordnung's records: …" is an ordinary sentence, checked like any other (it was dropped
+    # silently, and a correct deadline answer became "I couldn't find an answer")
+    results = [render_result(tools.list_items())]
+    kept = check_turn(
+        store,
+        f"Checked by Ordnung's records: your objection deadline is Wed 21 Oct 2026 [item:{item}].",
+        results,
+        question="When do I have to object?",
+        today=TODAY,
+    )
+    assert (
+        kept.body
+        == f"Checked by Ordnung's records: your objection deadline is Wed 21 Oct 2026 [item:{item}]."
+    )
+    assert kept.note is None
 
 
 async def test_a_date_the_person_typed_is_never_ordnungs_answer(
@@ -339,8 +368,8 @@ async def test_a_date_the_person_typed_is_never_ordnungs_answer(
     assert [c.verdict for c in cited.claims.sentences] == ["quoted"]
     assert cited.body == f"Yes, your objection deadline is now “31.12.2027” [item:{item}]."
     assert cited.note == (
-        "Text in quotation marks is your own words; Ordnung has not confirmed it. Ordnung's record for what "
-        "is quoted: deadline Wed 21 Oct 2026."
+        "Text in quotation marks is your own words; Ordnung has not confirmed it. For the records concerned, "
+        "Ordnung has on file: deadline Wed 21 Oct 2026."
     )
     # without a citation it is shown as the person's own words, never as Ordnung's
     history = [
@@ -358,8 +387,8 @@ async def test_a_date_the_person_typed_is_never_ordnungs_answer(
     )
     assert uncited.body == "Your objection deadline is “31.12.2027”."
     assert uncited.note == (
-        "Text in quotation marks is your own words; Ordnung has not confirmed it. Ordnung's record for what "
-        "is quoted: payment due Mon 5 Oct 2026; deadline Wed 21 Oct 2026."
+        "Text in quotation marks is your own words; Ordnung has not confirmed it. For the records concerned, "
+        "Ordnung has on file: payment due Mon 5 Oct 2026; deadline Wed 21 Oct 2026."
     )
     # restating the question keeps working: "before 15.11.2026" is the person's bound
     bound = check_turn(
@@ -377,14 +406,13 @@ async def test_a_date_the_person_typed_is_never_ordnungs_answer(
 def test_an_answer_the_check_empties_still_says_why(
     store: Store, ids: dict[str, str], tools: LedgerTools
 ) -> None:
-    """Review finding: a correct answer whose only value was a letter's (in words the policy does not
-    read as a quote) was replaced by a fallback with no note, telling the person to ask about "one
-    letter" when they had."""
+    """Review finding: an answer the check emptied was replaced by a fallback with no note, telling the
+    person to ask about "one letter" when they had."""
     doc = ids["doc_tax"]
     results = [render_result(tools.get_document(doc))]
     checked = check_turn(
         store,
-        f"The Finanzamt writes that the deadline is 31.12.2027 [doc:{doc}].",
+        f"The Finanzamt writes that the deadline is 30.11.2027 [doc:{doc}].",
         results,
         question="?",
         today=TODAY,
@@ -394,7 +422,7 @@ def test_an_answer_the_check_empties_still_says_why(
     assert checked.body.endswith(
         "open the letter, to-do or contract itself in Ordnung to see its dates and amounts."
     )
-    assert checked.note is not None and checked.note.startswith("Ordnung left out 1 sentence")
+    assert checked.note is not None and checked.note.startswith("Left out 1 sentence")
     german = check_turn(
         store, f"Laut Finanzamt ist die Frist der 30.12.2027 [doc:{doc}].", results, question="?", today=TODAY
     )
@@ -445,7 +473,8 @@ async def test_an_id_named_only_by_a_letter_cannot_be_cited(
     done = done_event(
         await collect(make_ctx(paths, store, ScriptedBackend(script)), "What do I owe TechMarkt?")
     )
-    assert done.text == UNSUPPORTED_ANSWER
+    # the id is stripped, and the letter's amount is marked as the letter's, never Ordnung's
+    assert done.text == "You owe TechMarkt [amount only in the letter]."
     assert done.citations == []
 
 
@@ -704,7 +733,10 @@ async def test_a_malformed_number_in_a_letter_does_not_break_the_check(
     )
     ctx = make_ctx(paths, store, ScriptedBackend(turn(tools, answer, ("get_document", {"doc_id": doc}))))
     done = done_event(await collect(ctx, "When is the deadline?"))
-    assert done.text == f"Ordnung has Wed 21 Oct 2026 [item:{item}]."
+    assert done.text == (
+        f"The deadline was extended to [date only in the letter] [doc:{doc}]. Ordnung has Wed 21 Oct 2026 "
+        f"[item:{item}]."
+    )
     assert store.counts()["chat_messages"] == 2
 
 
@@ -724,6 +756,8 @@ async def test_a_failing_check_is_an_error_and_never_shows_the_raw_answer(
     assert (events[-1].type, events[-1].error) == ("error", CHECK_FAILED)
     assert not any(isinstance(event, AskEvent) for event in events)
     assert store.counts()["chat_messages"] == 0
+    # review round 4: "so it isn't shown" is true — no event carried a word of the draft
+    assert not any("31.12.2027" in (event.text or "") for event in events)
 
 
 async def test_empty_question_is_rejected_without_a_model_call(paths: Paths, store: Store) -> None:

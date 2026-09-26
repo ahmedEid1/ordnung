@@ -5,24 +5,26 @@ One question runs ``claude -p`` with no built-in tools and only Ordnung's read-o
 channels (:mod:`ordnung.assistant.channels`): Ordnung's record — what code computed, the person
 confirmed or the pipeline filed with verified evidence — and the letters' text, kept inside
 ``<untrusted_document>``. The answer streams to the UI as ``text`` deltas plus a visible tool trace
-(``tool_use`` events carry a human label, ``tool_result`` events a short summary). When the model is
-done, code checks the answer before anyone sees it as final:
+(``tool_use`` events carry a human label, ``tool_result`` events a short summary). The model's text
+itself is never streamed: one ``text`` event without text says the answer is being written, and
+nobody sees a word of it before code has checked it:
 
 * every citation (``[doc:ID]`` …) must name a record that exists *and* appears in the record part
   of a tool result of this turn (an id that only a letter's text mentions is not enough); others are
   stripped;
-* every date and amount must be in the record part of a record its sentence cites, or be shown in
-  quotation marks as a letter's (or the person's own) words; other values are left out, and a
-  sentence with nothing left to keep is removed (:mod:`ordnung.assistant.support`, the written
-  policy);
-* a short note says what was left out or quoted. Only the check writes it: a sentence of the
-  model's that starts like it is dropped, and the note travels in its own field.
+* every date and amount must be in the record part of a record its sentence cites (a letter's
+  unverified amount and the person's own values are shown in quotation marks as unconfirmed); other
+  values are left out, and a sentence with nothing left to keep is removed
+  (:mod:`ordnung.assistant.support`, the written policy);
+* a short note says what was left out or quoted. Only the check writes it: a line of the model's
+  that starts like it is left out (and counted in the note), and the note travels in its own field.
 
 Removals are logged in the activity log. The final ``done`` event (:class:`AskEvent`) carries the
 checked answer — which replaces the streamed deltas — the note, the validated citations with labels,
 and the ids of the stored assistant message and thread. Question and answer (with the tool trace
 and citations) are stored in ``chat_messages`` only when an answer arrives; the stored answer ends
-with the note as its last paragraph, and :func:`stored_answer` splits it off again for the API.
+with the note under its label (in the answer's language) as its last paragraph, and
+:func:`stored_answer` splits it off again for the API.
 """
 
 from __future__ import annotations
@@ -51,7 +53,6 @@ from ordnung.assistant.citations import (
 )
 from ordnung.assistant.mcp_server import PARTY_FIELDS, SERVER_NAME, server_config
 from ordnung.assistant.support import (
-    NOTE_PREFIX,
     CheckedAnswer,
     TurnEvidence,
     check_answer,
@@ -243,10 +244,12 @@ async def ask_stream(
 ) -> AsyncIterator[StreamEvent]:
     """Answer ``question`` (continuing ``thread_id`` if given), streaming events for the UI.
 
-    Yields ``text`` deltas, ``tool_use`` (``name``, ``input``, ``text`` = label) and ``tool_result``
-    (``name``, ``text`` = summary) events, then one :class:`AskEvent` ``done`` event with the checked
-    answer — or a single ``error`` event, also when the check itself fails (it fails closed: the
-    streamed text is never passed off as a checked answer). The check runs in a worker thread.
+    Yields ``tool_use`` (``name``, ``input``, ``text`` = label) and ``tool_result`` (``name``,
+    ``text`` = summary) events, one ``text`` event *without* text when the model starts writing, then
+    one :class:`AskEvent` ``done`` event with the checked answer — or a single ``error`` event, also
+    when the check itself fails (it fails closed). The model's words are never sent before the check
+    (ADR 0008): an answer that stops, fails or cannot be checked shows none of them. The check runs
+    in a worker thread.
     """
     question = question.strip()
     if not question:
@@ -270,8 +273,9 @@ async def ask_stream(
         elif event.type == "tool_result":
             yield turn.tool_result(event)
         elif event.type == "text":
+            if not turn.deltas:
+                yield StreamEvent(type="text")  # "writing …": the words wait for the check
             turn.deltas.append(event.text or "")
-            yield event
         elif event.type == "done":
             done = event
         else:
@@ -376,7 +380,7 @@ def _finish(store: Store, turn: _Turn, checked: AnswerCheck, *, question: str, t
 @dataclass(frozen=True)
 class AnswerCheck:
     """What the checks made of one answer: the checked ``body`` (or a fallback), the ``note`` under it
-    (without :data:`~ordnung.assistant.support.NOTE_PREFIX`), the verdict on every sentence with a
+    (without its label, :data:`~ordnung.assistant.support.NOTE_LABELS`), the verdict on every sentence with a
     date, amount or § (``claims``) and the citations stripped. ``text`` is what is stored: the body,
     then the note as its own last paragraph."""
 
@@ -387,7 +391,7 @@ class AnswerCheck:
 
     @property
     def text(self) -> str:
-        return f"{self.body}\n\n{NOTE_PREFIX} {self.note}" if self.note else self.body
+        return f"{self.body}\n\n{self.claims.style.note_prefix} {self.note}" if self.note else self.body
 
 
 def check_turn(
@@ -403,9 +407,10 @@ def check_turn(
 
     Citations first (:func:`valid_citation_ids`), then every sentence with a date or amount
     (:func:`ordnung.assistant.support.check_answer`); weekday names are corrected and the note is
-    made. An answer the check emptied becomes :data:`UNSUPPORTED_ANSWER` (in German for a German answer),
-    and its note still says what was left out and why; an answer that was empty already becomes
-    :data:`NO_ANSWER` (in German for a German question).
+    made. An answer the check emptied — of sentences it left out or of lines that looked like its note
+    — becomes :data:`UNSUPPORTED_ANSWER` (in German for a German answer), and its note still says what
+    was left out and why; only an answer that was empty already becomes :data:`NO_ANSWER` (in German
+    for a German question).
     """
     person = [question, *(message.content for message in history if message.role == "user")]
     evidence = TurnEvidence.from_results(tool_results, today=today, person=person, catalog=known_laws())
@@ -415,12 +420,13 @@ def check_turn(
     body = correct_weekdays(_EXTRA_BLANK_LINES.sub("\n\n", strip_invalid(claims.text, valid)).strip(), today)
     note = claims.note()
     german = (claims.style if answer.strip() else style_for(question)).german
-    if not body and claims.removed:
+    if not body and (claims.removed or claims.forged_notes):
         body = UNSUPPORTED_ANSWER_DE if german else UNSUPPORTED_ANSWER
     elif not body:
         body, note = (NO_ANSWER_DE if german else NO_ANSWER), None
     removed = sorted({citation.id for citation in cited} - valid)
-    return AnswerCheck(body, note.removeprefix(NOTE_PREFIX).strip() if note else None, claims, removed)
+    label = claims.style.note_prefix
+    return AnswerCheck(body, note.removeprefix(label).strip() if note else None, claims, removed)
 
 
 def known_laws() -> list[str]:

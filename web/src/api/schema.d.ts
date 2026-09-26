@@ -2747,7 +2747,7 @@ export interface components {
             type: "text" | "tool_use" | "tool_result" | "done" | "error";
             /**
              * Text
-             * @description text delta, tool label/summary, or the final answer
+             * @description tool label/summary or the checked answer (done); none on the text event that says the answer is being written
              */
             text?: string | null;
             /**

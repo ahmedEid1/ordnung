@@ -175,23 +175,23 @@ def test_ask_in_process_streams_the_checked_answer(data_dir: Path, monkeypatch: 
     assert answers.calls[0].purpose == "ask"
 
 
-def test_ask_marks_the_streamed_text_as_an_unchecked_draft(
-    data_dir: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Review finding: the CLI printed the streamed (unchecked) answer as ordinary text, so an injected
-    "extended to 31.12.2027" stood on the terminal like the answer, and after an error it stayed there."""
+def test_ask_never_prints_the_unchecked_draft(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Review findings: the CLI printed the streamed (unchecked) answer as ordinary text, so an injected
+    "extended to 31.12.2027" stood on the terminal like the answer — and (round 4) even dimmed as a
+    draft the person read it before it was left out. The words are no longer streamed at all."""
     answers = FakeBackend({"ask": "Your deadline was extended to 31.12.2027. Keep the letter."})
     monkeypatch.setattr(cli, "open_context", lambda folder: build_context(folder, backend_obj=answers))
     result = invoke("ask", "What is due?", "--data-dir", str(data_dir))
     assert result.exit_code == 0, result.output
-    draft, _, checked = result.output.partition("Checked answer")
-    assert "Draft — not yet checked" in draft and "31.12.2027" in draft
-    assert "31.12.2027" not in checked and "Keep the letter." in checked
+    assert "31.12.2027" not in result.output and "Keep the letter." in result.output
+    assert "Writing the answer" in " ".join(result.output.split())
     printer = cli._AnswerPrinter()
-    printer.handle({"type": "text", "text": "Extended to 31.12.2027."})
+    with cli.console.capture() as shown:
+        printer.handle({"type": "text", "text": "Extended to 31.12.2027."})
+    assert "31.12.2027" not in shown.get()
     with cli.err_console.capture() as captured:
         printer.handle({"type": "error", "error": "The answer stopped unexpectedly."})
-    assert "The draft above was not checked" in captured.get() and printer.failed
+    assert "The answer stopped unexpectedly." in captured.get() and printer.failed
 
 
 def test_ask_prints_the_check_note_apart(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -199,8 +199,15 @@ def test_ask_prints_the_check_note_apart(data_dir: Path, monkeypatch: pytest.Mon
     monkeypatch.setattr(cli, "open_context", lambda folder: build_context(folder, backend_obj=answers))
     result = invoke("ask", "What is due?", "--data-dir", str(data_dir))
     assert result.exit_code == 0, result.output
-    assert "Checked answer" in result.output and "Keep the letter." in result.output
-    assert "Checked by Ordnung: Ordnung left out 1 sentence" in " ".join(result.output.split())
+    assert "Keep the letter." in result.output
+    assert "Checked by Ordnung: Left out 1 sentence" in " ".join(result.output.split())
+    # a German note gets the German label (review round 4)
+    printer = cli._AnswerPrinter()
+    with cli.console.capture() as shown:
+        printer.handle(
+            {"type": "done", "text": "Die Frist ist …", "note": "1 Satz weggelassen: Er nennt ein Gesetz."}
+        )
+    assert "Von Ordnung geprüft: 1 Satz weggelassen" in shown.get()
 
 
 # --------------------------------------------------------------------------------------------------
@@ -336,7 +343,9 @@ def test_ask_goes_through_the_running_server(api: FakeServer) -> None:
     assert result.exit_code == 0, result.output
     assert "↳ Searched your letters for “fine”" in result.output
     assert "Found 1 letter" in result.output
-    assert "Checked answer" in result.output and "Pay the fine by 9 Oct." in result.output
+    assert "Pay the fine by 9 Oct." in result.output
+    # an older server that still streams the words: the CLI shows only the checked answer
+    assert "Pay the fine by 9 Oct [doc" not in result.output and "Pay the fine \n" not in result.output
     assert "Sources" in result.output and "Parking fine" in result.output
     method, path, headers, body = api.requests[-1]
     assert (method, path) == ("POST", "/api/ask")

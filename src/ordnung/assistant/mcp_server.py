@@ -19,6 +19,7 @@ Heavy modules (views, triggers, rules) are imported on first use so the server s
 
 from __future__ import annotations
 
+import re
 import sys
 from collections.abc import Callable, Iterable, Mapping
 from datetime import date
@@ -285,7 +286,8 @@ class LedgerTools:
             contract = self.store.get_contract(ref_id)
             if contract is None:
                 return _not_found("contract", ref_id)
-            return _explain_contract(contract, self.ledger().computation(contract))
+            ledger = self.ledger()
+            return _explain_contract(contract, ledger.computation(contract), today=ledger.today)
         raise ToolInputError("explain_date takes an item id (itm_…) or a contract id (ctr_…)")
 
     # ---------------------------------------------------------------------------------- contracts
@@ -416,7 +418,7 @@ class LedgerTools:
         letters.add(entry.ref.id, party=entry.party_name)
         row: dict[str, Any] = {
             "date": entry.date,
-            "time": entry.time,
+            "time": _clock_time(entry.time, letters, entry.ref.id),
             "type": entry.type,
             "status": entry.status,
             "ref_type": entry.ref.type,
@@ -452,7 +454,9 @@ class LedgerTools:
         the day the summary is for, so "the next four weeks" start from the ledger's today. Open payments without
         a due date (a rent whose day the letter did not give) are listed apart, so an answer about
         what is due can name them; payment demands of letters with scam signs are listed apart too
-        (``do_not_pay``), never among the payments (ADR 0006).
+        (``do_not_pay``, with their due dates), never among the payments (ADR 0006): not to be paid
+        until the person has checked with the sender — the app's own scam Idea says the same, and a real
+        sender whose bank account changed shows the same signs.
         """
         from ordnung.views import money_summary, payments_due_this_month
 
@@ -592,7 +596,7 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
         "status": item.status,
         "overdue": is_overdue(item, ledger.today) or None,
         "due_date": item.due_date,
-        "due_time": item.due_time,
+        "due_time": _clock_time(item.due_time, letters, item.id),
         "send_by": item.send_by,
         "date_source": item.due_date_source if item.due_date else None,
         "direction": item.direction,
@@ -631,6 +635,19 @@ TERMS_UNVERIFIED = (
     "The terms and cost were read by AI from a photo or could not be found in the letter, so they are "
     "only in the letter text: give them as what the letter says."
 )
+
+
+_CLOCK_TIME = re.compile(r"(?:[01]\d|2[0-3]):[0-5]\d")
+
+
+def _clock_time(value: str | None, letters: LetterText, record_id: str) -> str | None:
+    """A to-do's time for the record: only a clock time (``09:15``). The time is the extraction model's
+    reading of the letter, so anything else — "verlängert bis 31.12.2027" — goes to the letter text,
+    where its dates, § and ids support nothing (ADR 0008)."""
+    if value is None or _CLOCK_TIME.fullmatch(value):
+        return value
+    letters.add(record_id, time=value)
+    return None
 
 
 def _currency(value: str | None, letters: LetterText, record_id: str) -> str | None:
@@ -678,8 +695,11 @@ def _terms_verified(contract: Contract) -> bool:
 
 
 def _contract_row(ledger: Ledger, contract: Contract, letters: LetterText) -> dict[str, Any]:
-    """The rules engine's dates are the record; terms and cost too when their evidence is verified."""
-    from ordnung.views import continuation
+    """The rules engine's dates are the record; terms and cost too when their evidence is verified.
+
+    A fixed-term job or flat let gets a summary that says it may still need notice
+    (:func:`ordnung.views.fixed_term_summary`), never the engine's "no cancellation needed"."""
+    from ordnung.views import continuation, fixed_term_summary
 
     comp = ledger.computation(contract)
     letters.add(contract.id, customer_number=contract.customer_number)
@@ -707,6 +727,8 @@ def _contract_row(ledger: Ledger, contract: Contract, letters: LetterText) -> di
         else None,
         "source_doc_id": contract.source_doc_id,
     }
+    if summary := fixed_term_summary(comp, today=ledger.today):
+        row["dates"]["summary"] = summary
     cost = (
         {
             "amount": contract.cost_amount,
@@ -772,7 +794,7 @@ def _explain_item(item: Item) -> ToolAnswer:
         "id": item.id,
         "kind": item.kind,
         "due_date": item.due_date,
-        "due_time": item.due_time,
+        "due_time": _clock_time(item.due_time, letters, item.id),
         "send_by": item.send_by,
         "doc_id": item.doc_id,
         "how": _DATE_SOURCES[item.due_date_source],
@@ -785,11 +807,16 @@ def _explain_item(item: Item) -> ToolAnswer:
     return ToolAnswer(record, letters.by_id)
 
 
-def _explain_contract(contract: Contract, comp: ContractComputation) -> ToolAnswer:
+def _explain_contract(contract: Contract, comp: ContractComputation, *, today: date) -> ToolAnswer:
+    from ordnung.views import fixed_term_summary
+
     letters = LetterText()
+    computation = comp.model_dump()
+    if summary := fixed_term_summary(comp, today=today):
+        computation["summary"] = summary  # never "no cancellation needed" for a job or flat let
     record: dict[str, Any] = {
         **_contract_ref(contract, letters),
-        "computation": comp.model_dump(),
+        "computation": computation,
         "rules": _rules(comp.rule_ids, comp.steps),
         "disclaimer": _disclaimer(),
     }
@@ -996,7 +1023,9 @@ def build_server(store: Store, *, today: date | None = None) -> MCPServer:
     def money_summary() -> str:
         """Payments due this month, upcoming payments (30 days), open payments with no stored due date
         (payments_without_due_date, such as a rent whose day the letter did not give), payment demands
-        of letters with scam signs (do_not_pay: never to be paid) and fixed costs per month."""
+        of letters with scam signs (do_not_pay: not to be paid until the person has checked with the
+        sender using contact details they already know — a real sender whose bank details changed shows
+        the same signs; if it is genuine, it is due on its due_date) and fixed costs per month."""
         return answer(tools.money_summary)
 
     @tool

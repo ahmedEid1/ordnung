@@ -6,27 +6,40 @@ text* (every word that comes from a letter). An answer is checked sentence by se
 record of the records it cites, with this written policy:
 
 1. **What is read.** Each sentence as the person will see it: citation markers, Markdown emphasis,
-   code and link syntax, backslash escapes and invisible characters (format characters and the
-   other default-ignorable code points) are dropped and typographic punctuation is folded before
-   reading, so ``31.**12**.2027`` reads as 31.12.2027. A sentence ends at ``.``, ``!`` or ``?``
+   code and link syntax (a link needs text: the web shows ``[](…)`` as written), backslash escapes
+   and invisible characters (format characters and the other default-ignorable code points) are
+   dropped and typographic punctuation is folded before reading, so ``31.**12**.2027`` reads as
+   31.12.2027 — except that an underscore between two letters or digits stays (the web shows it as
+   written) and so does an asterisk between two digits. A sentence ends at ``.``, ``!`` or ``?``
    followed by a capital letter (after optional quotes, markup or citation markers), never after a
    one-letter or listed abbreviation (:data:`ABBREVIATION`: ``z. B.``, ``vgl.``, ``Nr.``, ``Wed.``,
    ``p.``); every line is split on its own — except that a line continuing its paragraph, list item
    or quote after a soft line break (the web shows them as one text) joins the line before it when a
-   date or amount stands across the break (``21.10.`` / ``2027``). A sentence *states* a date when
-   :func:`~ordnung.ingest.verify.parse_dates` finds one (plus ``31-12-2027``, ``2027/12/31``,
-   ``31-Dec-2027`` and day, month and year apart by spaces or dots, ``31 12 2027``, ``31·XII·2027``),
-   a month with a year and no day (``December 2027``, ``Ende Dezember 2027``, ``end of 2027`` read as
-   December), or a digit group shaped like a date that does not parse (it can never be supported; a
-   group after a label such as ``Tel.``, ``Wohnung`` or ``Az.`` is a number, and a phone number has
-   no date shape); it states an amount when :func:`~ordnung.ingest.verify.amount_matches` finds a
-   number next to a currency (or a currency word: ``dollars``, ``pounds``, ``francs``), a number
-   with one decimal or ``.-`` next to a currency (``18,4 €``, ``€ 18.4``, ``18.- €``), or a bare
-   number with two decimals that is neither a label number (``Raum 2.14``, ``Nr. 2.14``, ``Version
-   1.25``) nor a clock time — a time only with its unit after it or after the other end of its
-   range (``10.30 Uhr``, ``8.00–12.00 Uhr``): "from 18.36 to 21.50" is money. A number followed by
-   ``%``, "Prozent" or "percent" is a rate, not an amount. A sentence that starts like Ordnung's own
-   note (:data:`NOTE_PREFIX`) is dropped: only the check writes that note.
+   date or amount stands across the break (``21.10.`` / ``2027``). A sentence *states*
+
+   - a date when :func:`~ordnung.ingest.verify.parse_dates` finds one, or day, month (digits or
+     Roman) and year apart by spaces, dots or middle dots (``31 12 2027``, ``31·XII·2027``), or
+     ``31-Dec-2027``;
+   - a date in any run of digit groups joined by single punctuation marks or symbols (:data:`_RUN`:
+     ``31|12|2027``, ``31_12_2027``, ``31。12。2027``, ``2027.12.31``, a letter O, o, I or l inside a
+     number: ``2O27``) that holds a day, a month and a year — or a year, a month and a day — anywhere
+     in it and whatever follows it; the two marks between them may differ only around a four-digit
+     year. When those groups are no calendar date the value is *unreadable*: it is never supported.
+     A time after a date belongs to it (``2027-12-31T23:59``, ``2027-12-31Z``). A run after a label
+     such as ``Tel.``, ``Wohnung`` or ``Az.`` is a number, and a phone number has no date shape;
+   - a month with a year and no day: ``December 2027``, ``Dec '27``, ``Ende Dezember 2027``, ``end of
+     2027`` (read as December), ``12/2027``, ``12.2027``, ``2027-12``;
+   - an amount when :func:`~ordnung.ingest.verify.amount_matches` finds a number next to a currency
+     (or a currency word: ``dollars``, ``pounds``, ``francs``), a number with one decimal or ``.-``
+     next to a currency (``18,4 €``, ``€ 18.4``, ``18.- €``), or a bare number with two decimals
+     that is neither a label number (``Raum 2.14``, ``Nr. 2.14``, ``Version 1.25``) nor a clock time
+     — a time only with its unit after it or after the other end of its range (``10.30 Uhr``,
+     ``8.00–12.00 Uhr``): "from 18.36 to 21.50" is money. A number followed by ``%``, "Prozent" or
+     "percent" is a rate, not an amount.
+
+   A sentence that starts like Ordnung's own note (:data:`NOTE_LABELS`, after any symbols, emoji or
+   markup, followed by punctuation, a symbol or nothing — ``Checked by Ordnung:``, ``… Ordnung —``,
+   ``… Ordnung ✓``) is left out, and the note says so: only the check writes that note.
 2. **Cited records.** The records the sentence cites. A sentence that cites none takes those of the
    nearest sentence before it on its line that cites some, else of the nearest one after it (a
    trailing citation covers its line); a list item that cites none takes those of the line ending in
@@ -41,60 +54,67 @@ record of the records it cites, with this written policy:
    ``fixed_costs_monthly``) support only a sentence without a citation of its own — a total can equal
    one record's amount, so it never backs a claim about a record. A sentence without a citation of its
    own may state the own date or amount (a to-do's due date, a contract's cancel-by date, a verified
-   amount) of any record the answer cites — code computed or verified it, so no letter can have put
-   it there.
-4. **Quoted.** Any other value may stay only in quotation marks (“…”, or „…“ in a German answer;
-   quotation marks the answer already puts around it are used, straight ones turned into these):
-   (a) when a letter's text holds it and the value's clause names a letter as its source
-   (:data:`LETTER_QUOTE`: "the letter says …", "the letter's text contains a line claiming …",
-   "laut dem Schreiben …", "… per the letter"). The letter must be that of a record the sentence
-   cites — a letter's text belongs to the to-dos and contracts filed from it too — or, in a
-   sentence that cites nothing, of any record read in this turn. A clause ends at ``;``, a dash,
-   ``, and``/``, but``/``, so`` …, and around a contrast (``unlike …,``, ``while``, ``whereas``);
-   a phrase like "the letter says" names the source only of what follows it, and a negated one
-   ("unlike what the letter says", "the letter says nothing") names none; (b) when it is the
-   flagged, unverified amount of a cited to-do or contract (``amount_unverified``,
-   ``terms_unverified``), so a real payment stays in a list; (c) when the person wrote it in this
-   conversation: it is their words, never Ordnung's. A note under the answer says that quoted
-   values are not confirmed, and — when the answer states none of them — gives the own dates
-   (a to-do's due date, a contract's cancel-by date) or amounts of the records the quote belongs to
-   (the cited ones; with none cited, those whose letter text holds the value): "Ordnung's record for
-   what is quoted: deadline Wed 21 Oct 2026", so a letter's or the person's date never stands alone.
-5. **Left out.** Every other value is left out. In a sentence that keeps a supported or quoted value
-   it is replaced by "[date left out]" or "[amount left out]", so a record's value is never lost
-   because of another value next to it; a sentence with nothing to keep is removed. No left-out value
-   is ever shown: when the edits of a sentence would leave one standing, the sentence is removed.
+   amount) of a record the answer cites elsewhere — code computed or verified it, so no letter can
+   have put it there — and the check adds the citations of the records the value belongs to (a to-do
+   before its letter, contract or person; a month can be several to-dos') to the sentence and says so
+   in the note, so the person sees whose value it is ("… also cancelled by Wed 21 Oct 2026
+   [item:tax objection]" shows the tax objection's chip, not the phone contract's).
+4. **Shown as unconfirmed.** Two other kinds of value stay, in quotation marks (“…”, or „…“ in a
+   German answer; quotation marks the answer already puts around it are used, straight ones turned
+   into these): the flagged, unverified amount of a cited to-do or contract (``amount_unverified``,
+   ``terms_unverified``: the record itself says the amount is only the letter's), so a real payment
+   stays in a list; and a value the person wrote in this conversation — their words, never
+   Ordnung's. The note says that quoted values are not confirmed.
+5. **Left out.** Every other value is left out. One that only a letter's text holds (of a cited
+   record; citing nothing, of any record read in this turn) is replaced by "[date only in the
+   letter]" or "[amount only in the letter]": Ordnung shows a date or amount as its answer only when
+   its record holds it, and the note says to open the letter. Any other is replaced by "[date left
+   out]" or "[amount left out]" (with a month range's start: "Oct–" never stands alone). A sentence
+   that keeps no supported or quoted value is removed — its words would carry the claim alone —
+   unless every value it leaves out is a letter's: then its words are about the letter ("the letter
+   claims the deadline moved to [date only in the letter]"), and a warning about injected text stays.
+   A left-out value is never shown: when the edits of a sentence would leave one standing, the
+   sentence is removed. When a value was left out or a person's value quoted, and the answer states
+   none of the own dates (or amounts) of the records those sentences cite (citing nothing: of the
+   records whose letter text holds the value), the note gives them with what they are — never as
+   what the left-out value should have been: "For the records concerned, Ordnung has on file:
+   deadline Wed 21 Oct 2026".
 6. **Laws.** A § must be in the rules catalog, among the laws Ordnung's own Ideas state (the
    caller's ``catalog``: :func:`ordnung.assistant.ask.known_laws`) or in a record part (a list such
-   as ``§ 622 Abs. 1, 3, 6 BGB`` keeps its law, so ``§ 622 BGB`` is known). A § only a letter's text
-   names is shown in quotation marks as the letter's words — under rule 4a's condition: the § stands
-   in a clause that names the letter as its source, and the letter is that of a cited record (citing
-   nothing: of a record read in this turn). Any other § removes its whole sentence: an unvouched
-   legal basis can change what the sentence says ("under § 999 AO the deadline no longer applies"),
-   so it is never kept with the law blanked or quoted alone.
+   as ``§ 622 Abs. 1, 3, 6 BGB`` keeps its law, so ``§ 622 BGB`` is known). Any other § — also one
+   that only a letter names — removes its whole sentence: an unvouched legal basis can change what
+   the sentence says ("under § 999 AO the deadline no longer applies"), so it is never kept with the
+   law blanked.
 
-The note — in the answer's language — says how many values and sentences were left out, and why.
-When nothing is left, Ask answers with a fixed fallback and the note still says why.
+The note — in the answer's language, under its label (:data:`NOTE_LABELS`) — says how many values,
+sentences and lines were left out, and why. When nothing is left, Ask answers with a fixed fallback
+and the note still says why.
 
 The check is deterministic and linear in the size of the answer and the tool results: each sentence
-is read a bounded number of times, each value is looked up in hash maps of the cited records, the
-phrases and clause breaks of a sentence are found once, and every pattern is bounded or cannot start
-twice inside the same run of characters (a run of ``[`` or of spaces is read once).
+is read a bounded number of times, each value is looked up in hash maps of the cited records, and
+every pattern is bounded or cannot start twice inside the same run of characters (a run of ``[``, of
+digits or of spaces is read once).
 
 Known limits — documented, not bugs:
 
 - Support is literal, not semantic: a value in a cited record supports a sentence that says
   something else about it ("you owe the library 640.00 € [item:rent]" passes when the rent to-do
   holds 640.00 €). A letter can therefore still steer *which* record the model cites.
-- Dates in words ("next Friday", "end of the month", "early 2027", a bare year), rates ("2.90 %")
-  and claims without a date, amount or § ("there is no deadline") are not read; the prompt and the
-  record are the only defence there. A sentence whose value was left out keeps its words ("the
-  deadline moved to [date left out]"); the placeholder and the note show it, and Ordnung's own date
-  stays wherever it is cited.
-- A quote is recognised only by the listed phrases; other wording is treated as Ordnung's own
-  claim, so a correct letter value in it is left out — and a correct § a letter names removes its
-  sentence. The phrases decide only *how* a letter's value is shown (quoted, or left out) — never
-  that it is Ordnung's.
+- Dates in words ("next Friday", "end of the month", "early 2027", a bare year), calendar weeks
+  (``KW 52/2027``), rates ("2.90 %") and claims without a date, amount or § ("there is no deadline")
+  are not read; nor are day, month and two-digit year joined by two different marks (``31.12/27``:
+  its ``31.12`` is read as an amount), digit groups apart only by spaces other than day, month and
+  year (``2027 12 31``), dates in other scripts (``2027年12月31日``), or digits replaced by letters
+  other than O, o, I and l. The prompt and the record are the only defence there. A sentence whose
+  value was left out keeps its words ("the deadline moved to [date left out]"); the placeholder and
+  the note show it, and Ordnung's own date stays wherever it is cited.
+- A correct value that only a letter's text holds is shown only as "[date only in the letter]", and
+  a correct § that only a letter names removes its sentence. A sentence whose values are all a
+  letter's keeps its words — a warning about injected text, but also a sentence that repeats the
+  letter's claim as if it were true ("the deadline was extended to [date only in the letter]"); the
+  placeholder and the note, with Ordnung's own dates, show whose value it is. Which words of a
+  sentence quote a letter is never decided from its wording; quotes the model marks for code are
+  the next step if this costs too much in use (ADR 0008).
 - A value the person wrote stays as their words even in a sentence that agrees with it; the note
   then gives Ordnung's own value next to it.
 """
@@ -111,7 +131,7 @@ from datetime import date
 from typing import Any, Literal
 
 from ordnung.assistant.channels import parse_tool_result
-from ordnung.assistant.citations import marker_spans, parse_citations
+from ordnung.assistant.citations import ID_PREFIXES, marker_spans, parse_citations
 from ordnung.ingest.normalize import fold_punctuation
 from ordnung.ingest.verify import MONTH_NUMBERS, DateMention, amount_matches, parse_dates
 from ordnung.secretary.review import paragraph_spans, paragraphs_in
@@ -132,7 +152,7 @@ CATEGORY_ROWS = "fixed_cost_contracts"
 """A category's fixed costs belong to the contracts of that category (``fixed_cost_contracts`` rows
 carry their ``category``): in practice a category total is often one contract's cost."""
 UNVERIFIED_FLAGS = ("amount_unverified", "terms_unverified")
-"""Record flags saying a record's amounts are only in its letter text (policy rule 4b)."""
+"""Record flags saying a record's amounts are only in its letter text (policy rule 4)."""
 RECORD_LABELS: Mapping[str, tuple[str, str]] = {
     "deadline": ("deadline", "Frist"),
     "payment": ("payment due", "Zahlung fällig"),
@@ -144,70 +164,13 @@ RECORD_LABELS: Mapping[str, tuple[str, str]] = {
 }
 """How the note names a record's own date or amount (English, German); other to-do kinds are "due"."""
 MAX_RECORD_VALUES = 3
-"""The note gives the quoted records' own values only when there are at most this many of a kind."""
+"""The note gives the records' own values only when there are at most this many of a kind."""
 
 NOTE_PREFIX = "Checked by Ordnung:"
-
-_LETTER_WORDS = (
-    r"letter|notice|document|reminder|invoice|bill|statement|card|contract|page|text|sender|e-?mail|"
-    r"assessment|decision|form"
-)
-_SAYS = (
-    r"says|say|said|states|stated|claims|claimed|writes|wrote|mentions|mentioned|asks|asked|demands|"
-    r"demanded|reads|lists|listed|gives|gave|names|named|asserts|asserted|announces|announced|notes|"
-    r"noted|explains|explained|warns|warned|adds|added|cites|cited|contains|contained|includes|"
-    r"included|puts\s+it"
-)
-_DE_LETTER = r"Brief|Schreiben|Bescheid|Dokument|Rechnung|Mahnung|Absender|Text|Vertrag|Karte"
-_OWNER = r"(?:[\w-]+(?:\s+[\w-]+)?'s\s+)?"  # "the tax office's letter"
-_SENDER_SPAN = "{1,60}"  # "the letter from <up to 60 characters> says"; bounded, so matching stays linear
-LETTER_QUOTE = re.compile(
-    rf"""
-      (?P<lead>
-        \b(?:the|this|that|your|its|their)\s+{_OWNER}(?:{_LETTER_WORDS})(?:\s+(?:text|page))?
-          (?:'s\s+(?:[\w-]+\s+)?text)?(?:\s+itself)?
-          (?:\s+(?:from|of|for)\s+[^.;:!?\n]{_SENDER_SPAN}?)?\s+(?:also\s+)?(?:{_SAYS})\b
-      | \b(?:note|line|sentence|passage|paragraph|instruction|message|block|section|statement)\b
-          [^.;:!?\n]{{0,80}}?\b(?:claiming|saying|stating|asserting)\b
-      | \b(?:letter|notice)(?:'s)?\s+text\s*:
-      | \b(?:im|in\s+dem|in\s+diesem)\s+(?:{_DE_LETTER})\s+(?:steht|heißt\s+es|wird\s+behauptet)\b
-      | \b(?:der|das|die|dieser|dieses|diese)\s+(?:{_DE_LETTER})\s+(?:sagt|schreibt|behauptet|nennt|gibt\s+an|
-          verlangt|fordert|erwähnt|enthält)\b
-      )
-    | (?P<either>
-        \baccording\s+to\s+(?:the|this|that|your)\s+{_OWNER}(?:{_LETTER_WORDS})\b
-      | \b(?:it|this)\s+says\s+in\s+the\s+(?:{_LETTER_WORDS})\b
-      | \b(?:per|as\s+in)\s+(?:the|this|that|your)\s+{_OWNER}(?:{_LETTER_WORDS})\b
-      | \bas\s+(?:the|this)\s+(?:{_LETTER_WORDS})\s+(?:says|states|puts\s+it)\b
-      | \b(?:the\s+)?(?:letter|notice)'s\s+(?:own\s+)?(?:words|wording|terms)\b
-      | \b(?:laut|gemäß|gemaess)\s+(?:dem\s+|des\s+|diesem\s+|diesen\s+|ihrem\s+|ihres\s+)?(?:{_DE_LETTER})s?\b
-      )
-    """,
-    re.IGNORECASE | re.VERBOSE,
-)
-"""The phrases that name a letter as a value's source (policy rule 4a). A ``lead`` phrase ("the
-letter says") names the source of what follows it, an ``either`` phrase ("per the letter") of its
-whole clause. When in doubt, it is not."""
-CLAUSE_BREAK = re.compile(
-    r";|\s-+\s|,\s*(?:so|therefore|thus|hence|but|however|yet|which\s+means|meaning|and|or|aber|jedoch|"
-    r"daher|deshalb|somit|also|und|oder)\b",
-    re.IGNORECASE,
-)
-"""What ends a clause for rule 4a (read on folded text, where dashes are ``-``): a letter named in
-one clause is not the source of a value in the next ("the letter says nothing else, so …")."""
-CONTRAST = re.compile(
-    r"\b(?:unlike|while|whilst|whereas|although|though|despite|in\s+contrast\s+to|contrary\s+to|obwohl|"
-    r"während|wohingegen|anders\s+als|entgegen|trotz)\b",
-    re.IGNORECASE,
-)
-"""A contrast starts a clause of its own that ends at its first comma ("Unlike what the letter
-says, your deadline is …": the letter is not the source of what follows the comma)."""
-_NEGATED_BEFORE = re.compile(
-    r"\b(?:unlike|contrary\s+to|in\s+contrast\s+to|not|anders\s+als|entgegen|im\s+gegensatz\s+zu)\s+"
-    r"(?:to\s+)?(?:what\s+|dem,?\s+was\s+|was\s+)?$",
-    re.IGNORECASE,
-)
-_NEGATED_AFTER = re.compile(r"\s*(?:nothing|no|not|never|nichts|nicht|kein\w*|nie)\b", re.IGNORECASE)
+NOTE_PREFIX_DE = "Von Ordnung geprüft:"
+NOTE_LABELS = ("Checked by Ordnung", "Von Ordnung geprüft")
+"""The label of the check's note (English, German); a line of the answer that starts like it is not
+the model's to write (rule 1)."""
 
 ABBREVIATION = re.compile(
     r"(?:\b\d{1,2}|\b[^\W\d_]|[Ss]tr|\b(?:Abs|Nr|Nrn|Art|Kap|Anm|Tel|Dr|Prof|Hr|Hrn|St|Mr|Mrs|Ms|Rm|Zi|"
@@ -229,10 +192,11 @@ _OPENERS = "\"'“„‘«(*_["
 _LINE_PREFIX = re.compile(r"^(\s*(?:[-*+•]\s+|#{1,6}\s+|>\s*)?)")
 _LIST_ITEM = re.compile(r"^\s*(?:[-*+•]\s+|\d{1,4}[.)]\s+)")
 _LINK = re.compile(
-    r"!?\[([^\[\]\n]{0,500})\]\([ \t]{0,20}[^\s()\[\]]{0,2000}(?:[ \t]{1,20}\"[^\"\n]{0,300}\")?[ \t]{0,20}\)"
+    r"!?\[([^\[\]\n]{1,500})\]\([ \t]{0,20}[^\s()\[\]]{0,2000}(?:[ \t]{1,20}\"[^\"\n]{0,300}\")?[ \t]{0,20}\)"
 )
-"""Markdown link or image syntax. Neither the text nor the address may hold a bracket, and every part
-is bounded, so finding every link is linear in the answer's length (a run of ``[`` is read once)."""
+"""Markdown link or image syntax with text (the web shows ``[](…)`` as written). Neither the text
+nor the address may hold a bracket, and every part is bounded, so finding every link is linear in
+the answer's length (a run of ``[`` is read once)."""
 _ESCAPABLE = frozenset("\\`*_[]()#+-.!>~|{}")
 _MARKUP = frozenset("*_`")
 _IGNORABLE = (
@@ -262,43 +226,58 @@ _WEEKDAY_BEFORE = re.compile(
     r"\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun|"
     r"Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|Mo|Di|Mi|Do|Fr|Sa|So)\.?,?\s$"
 )
+_MONTH_NAME = "|".join(sorted(MONTH_NUMBERS, key=len, reverse=True))
+_RANGE_START_BEFORE = re.compile(rf"\b(?:{_MONTH_NAME})\.?\s?(?:[-–—]|bis|to|until)\s?$", re.IGNORECASE)
+"""A month name that starts a range ending in a value (``Oct–Dec 2026``): it goes with that value."""
 _WINDOW = 16
-"""How far before a value its currency or weekday is looked for (``Wednesday, `` is 11 characters)."""
-_EXTRA_DATES = re.compile(
-    r"(?<![\w.,/-])(?:(?P<d>\d{1,2})-(?P<m>\d{1,2})-(?P<y>\d{4})|(?P<iy>\d{4})[/.](?P<im>\d{1,2})[/.](?P<id>\d{1,2}))"
-    r"(?![\w/-]|[.,]\d)"
-)
+"""How far before a value its currency, weekday or range start is looked for (``Wednesday, `` is 11
+characters)."""
 _ROMAN_MONTHS = {
     "I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10, "XI": 11,
     "XII": 12,
 }  # fmt: skip
-_LOOSE_SEP = r"(?:[ \t]*[./·•∙‧-][ \t]*|[ \t]+)"
+_LOOSE_SEP = r"(?:[ \t]*[^\w\s()\[\]{}<>\"'“”„‘’«»,;:][ \t]*|[ \t]+)"
 _LOOSE_DATES = re.compile(
     rf"(?<![\w.,/·•∙‧-])(?P<d>0?[1-9]|[12]\d|3[01]){_LOOSE_SEP}"
     rf"(?P<m>0?[1-9]|1[0-2]|(?:XII|XI|IX|X|VIII|VII|VI|IV|V|III|II|I)(?![A-Za-z])){_LOOSE_SEP}"
-    r"(?P<y>(?:19|20)\d{2})(?![\w/-]|[.,]\d)"
+    r"(?P<y>(?:19|20)\d{2})(?!\d)"
 )
-"""Day, month (digits or Roman) and year apart by spaces, dots or middle dots: ``31 12 2027``,
-``31 . 12 . 2027``, ``31·12·2027``, ``31.XII.2027``."""
-_MONTH_NAME = "|".join(sorted(MONTH_NUMBERS, key=len, reverse=True))
+"""Day, month (digits or Roman) and year apart by spaces or by a mark with spaces around it:
+``31 12 2027``, ``31 . 12 . 2027``, ``31 | 12 | 2027``, ``31·12·2027``, ``31.XII.2027``."""
 _NAMED_DATES = re.compile(
-    rf"(?<![\w.,/-])(?P<d>\d{{1,2}})[-/](?P<m>{_MONTH_NAME})\.?[-/](?P<y>(?:19|20)\d{{2}})(?![\w/-]|[.,]\d)",
+    rf"(?<![\w.,/-])(?P<d>\d{{1,2}})[-/](?P<m>{_MONTH_NAME})\.?[-/](?P<y>(?:19|20)\d{{2}})(?!\d)",
     re.IGNORECASE,
 )
 """Day, month name and year joined by hyphens or slashes: ``31-Dec-2027``, ``31/Dez/2027``."""
 _MONTH_YEAR = re.compile(
-    rf"\b(?:(?:end\s+of|ende)\s+)?(?P<m>{_MONTH_NAME})\b\.?,?\s*(?P<y>(?:19|20)\d{{2}})(?![\w/-]|[.,]\d)"
-    r"|\b(?:end\s+of|ende|year-end|jahresende)\s+(?P<ey>(?:19|20)\d{2})(?![\w/-]|[.,]\d)",
+    rf"\b(?:(?:end\s+of|ende)\s+)?(?P<m>{_MONTH_NAME})\b\.?,?\s*(?:(?P<y>(?:19|20)\d{{2}})|'(?P<ay>\d{{2}}))(?!\d)"
+    r"|\b(?:end\s+of|ende|year-end|jahresende)\s+(?P<ey>(?:19|20)\d{2})(?!\d)",
     re.IGNORECASE,
 )
-"""A month and a year without a day: ``December 2027``, ``Ende Dezember 2027``, ``end of 2027`` (read
-as December). Such a value states a month: a record date in that month supports it (rule 3)."""
-_DATE_LIKE = re.compile(
-    r"(?<![\w.,/-])(?:\d{1,2}[./-]\d{1,2}[./-](?:\d{4}|\d{2})|\d{4}[./-]\d{1,2}[./-]\d{1,2})(?![\w/-]|[.,]\d)"
-)
-"""Digit groups shaped like a date (day, month, two- or four-digit year; or year first) that no date
-form reads: ``31.13.2027``, ``05-2-03`` — never supported. A phone number (``0221-12-3456``) has no
-date shape; a group after a label (:data:`_REFERENCE_BEFORE`) is a number, not a date."""
+"""A month and a year without a day: ``December 2027``, ``Dec '27``, ``Ende Dezember 2027``, ``end of
+2027`` (read as December). Such a value states a month: a record date in that month supports it
+(rule 3)."""
+_GROUP = r"\d(?:[OoIl]?\d)*"
+_MARK = r"(?:[^\w\s()\[\]{}<>\"'“”„‘’«»]|_)"
+_RUN = re.compile(rf"(?<![\dOoIl])(?:{_GROUP})(?:{_MARK}(?:{_GROUP}))+")
+"""Digit groups joined by single punctuation marks or symbols (an underscore too; not a bracket or a
+quotation mark): ``31|12|2027``, ``2027-12-31``, ``31。12。2027``. A group may hold a letter O, o, I or
+l between digits (``2O27``). Rule 1 reads the dates or the month in such a run; each iteration takes
+a mark and a digit, so a run is read once."""
+_SPLIT_RUN = re.compile(rf"(?P<group>{_GROUP})|(?P<mark>{_MARK})")
+_LOOKALIKE_DIGITS = str.maketrans("OoIl", "0011")
+_MONTH_MARKS = frozenset("./-_|")
+"""Marks that join a month and a year (``12/2027``): not a decimal comma, a colon or a sign."""
+_TIME_AFTER_DATE = re.compile(r"(?:[T ]\d{1,2}:\d{2}(?::\d{2}(?:[.,]\d{1,6})?)?)?(?:Z\b|[+-]\d{2}:?\d{2}\b)?")
+"""A time written right after a date (``T23:59``, `` 23:59:00``, ``Z``, ``+01:00``): part of it."""
+
+
+def _time_after(plain: str, end: int) -> int:
+    """Where a date ending at ``end`` ends with the time written right after it."""
+    found = _TIME_AFTER_DATE.match(plain, end)
+    return found.end() if found else end
+
+
 _REFERENCE_BEFORE = re.compile(
     r"(?:\b(?:Tel|Telefon|Phone|Fax|Mobil|Mobile|Handy|Wohnung|Apartment|Apt|Flat|Unit|Nr|No|Nummer|Number|"
     r"Az|Aktenzeichen|Ref|Reference|Referenz|Zeichen|Kundennummer|Vertragsnummer|Raum|Room|Zimmer)\.?:?)\s*$",
@@ -324,14 +303,24 @@ _LABEL_BEFORE = re.compile(
     r"Door|Schalter|Counter|Desk|Platz|Seat)\.?|§)\s*$",
     re.IGNORECASE,
 )
-_LAW_TAIL = re.compile(r"(?:\(\d+[a-z]?\))*(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöü]*[A-Z](?:\s+[IVX]{1,4}\b)?)?")
-_FORGED_NOTE = re.compile(r"^[\s>#*\-+•\d.)\"'(\[]*checked\s+by\s+ordnung\b", re.IGNORECASE)
+_FORGED_NOTE = re.compile(
+    r"^[\W\d_]*(?:checked\s+by\s+ordnung|von\s+ordnung\s+gepr(?:ü|ue)ft)\s*(?:[^\w\s']|$)", re.IGNORECASE
+)
+"""A sentence that starts like the check's note (after any symbols, emoji, numbers or markup) and goes
+on with punctuation or a symbol (``:``, ``—``, ``✓``, ``)``) or ends there — but not a sentence such as
+"Checked by Ordnung's records, …", which is checked like any other."""
 _QUOTE_CLOSERS: Mapping[str, str] = {
     '"': '"', "“": "”", "„": "“”", "«": "»", "»": "«", "‚": "‘’", "‹": "›", "›": "‹",
 }  # fmt: skip
 """Quotation marks an answer may put around a value, and what closes each (single straight quotes
 are apostrophes too, so they never count)."""
 _MAX_QUOTE = 240
+_MARKER_TYPES = {prefix: marker for marker, prefix in ID_PREFIXES.items()}
+"""Id prefix → the marker type that cites it (``itm`` → ``item``)."""
+_STOPS = frozenset(".!?:;")
+_HOLDER_ORDER = {"itm": 0, "ctr": 1, "doc": 2, "pty": 3}
+"""Which record a value shared through links belongs to first: a to-do's due date is the to-do's (its
+letter, contract and person hold it too), a contract's cancel-by date the contract's."""
 
 # fmt: off
 _DE_WORDS = frozenset({
@@ -373,6 +362,19 @@ def is_invisible(char: str) -> bool:
     return code >= 0x034F and any(low <= code <= high for low, high in _IGNORABLE)
 
 
+def _shown_markup(source: str, index: int) -> bool:
+    """Whether a ``*`` or ``_`` is shown as written: an underscore between two letters or digits
+    (the web never reads one as emphasis) or an asterisk between two digits (read as the mark
+    between digit groups, so ``31*12*2027`` is never hidden as ``31122027``)."""
+    char = source[index]
+    if char == "`" or index == 0 or index + 1 >= len(source):
+        return False
+    before, after = source[index - 1], source[index + 1]
+    if char == "_":
+        return before.isalnum() and after.isalnum()
+    return before.isdigit() and after.isdigit()
+
+
 def read_as_shown(source: str) -> Reading:
     """``source`` without citation markers, Markdown markup and invisible characters, punctuation folded."""
     skip = bytearray(len(source))
@@ -395,7 +397,7 @@ def read_as_shown(source: str) -> Reading:
         if char == "\\" and index + 1 < len(source) and source[index + 1] in _ESCAPABLE:
             index += 1  # an escaped character is shown as itself
             char = source[index]
-        elif char in _MARKUP or is_invisible(char):
+        elif (char in _MARKUP and not _shown_markup(source, index)) or is_invisible(char):
             index += 1
             continue
         for folded in fold_punctuation(char):
@@ -412,14 +414,13 @@ def read_as_shown(source: str) -> Reading:
 
 @dataclass
 class FactSet:
-    """Dates (full, by day and month, and by year and month), amounts (in cents) and § citations of a
-    record, a letter or the context."""
+    """Dates (full, by day and month, and by year and month) and amounts (in cents) of a record, a
+    letter or the context."""
 
     dates: set[date] = field(default_factory=set)
     day_months: set[tuple[int, int]] = field(default_factory=set)
     months: set[tuple[int, int]] = field(default_factory=set)
     cents: set[int] = field(default_factory=set)
-    laws: set[tuple[str, str | None]] = field(default_factory=set)
 
     def add_text(self, text: str) -> None:
         """Every date, month and amount written in ``text``."""
@@ -446,28 +447,23 @@ class FactSet:
     def has_amount(self, value: float) -> bool:
         return round(value * 100) in self.cents
 
-    def has_law(self, number: str, law: str | None) -> bool:
-        """A § citation (a bare number: any law with it)."""
-        if law is not None:
-            return (number, law) in self.laws
-        return any(known == number for known, _ in self.laws)
-
     def merge(self, other: FactSet) -> None:
         self.dates |= other.dates
         self.day_months |= other.day_months
         self.months |= other.months
         self.cents |= other.cents
-        self.laws |= other.laws
 
 
 _EMPTY = FactSet()
 
 
 def dates_in(text: str) -> list[DateMention]:
-    """:func:`~ordnung.ingest.verify.parse_dates` plus ``31-12-2027``, ``2027/12/31``, ``31-Dec-2027``
-    and the loose forms of :data:`_LOOSE_DATES`."""
+    """:func:`~ordnung.ingest.verify.parse_dates` plus the dates of :data:`_RUN` (``31-12-2027``,
+    ``2027/12/31``, ``31|12|2027``), ``31-Dec-2027`` and the loose forms of :data:`_LOOSE_DATES`."""
     mentions = parse_dates(text)
     folded = fold_punctuation(text)
+    for match in _RUN.finditer(folded):
+        mentions.extend(reading for value in _run_values(folded, match) for reading in value.dates)
     for pattern, reading in _DATE_FORMS:
         for match in pattern.finditer(folded):
             mentions.extend(reading(match))
@@ -475,8 +471,13 @@ def dates_in(text: str) -> list[DateMention]:
 
 
 def months_in(text: str) -> set[tuple[int, int]]:
-    """The ``(year, month)`` of every month written without a day (:data:`_MONTH_YEAR`)."""
-    return {_month_of(match) for match in _MONTH_YEAR.finditer(fold_punctuation(text))}
+    """The ``(year, month)`` of every month written without a day (:data:`_MONTH_YEAR`, ``12/2027``)."""
+    folded = fold_punctuation(text)
+    found = {_month_of(match) for match in _MONTH_YEAR.finditer(folded)}
+    found.update(
+        value.month for match in _RUN.finditer(folded) for value in _run_values(folded, match) if value.month
+    )
+    return found
 
 
 def amounts_in(text: str) -> list[float]:
@@ -513,15 +514,8 @@ def _short_amounts(plain: str) -> Iterator[tuple[int, int, float]]:
 def _month_of(match: re.Match[str]) -> tuple[int, int]:
     if match.group("ey"):
         return int(match.group("ey")), 12
-    return int(match.group("y")), MONTH_NUMBERS[match.group("m").casefold()]
-
-
-def _extra_reading(match: re.Match[str]) -> list[DateMention]:
-    if match.group("d"):
-        day, month, year = int(match.group("d")), int(match.group("m")), int(match.group("y"))
-    else:
-        day, month, year = int(match.group("id")), int(match.group("im")), int(match.group("iy"))
-    return _valid_mention(match.group(), day, month, year)
+    year = int(match.group("y")) if match.group("y") else _year(match.group("ay"))
+    return year, MONTH_NUMBERS[match.group("m").casefold()]
 
 
 def _loose_reading(match: re.Match[str]) -> list[DateMention]:
@@ -536,7 +530,6 @@ def _named_reading(match: re.Match[str]) -> list[DateMention]:
 
 
 _DATE_FORMS: tuple[tuple[re.Pattern[str], Callable[[re.Match[str]], list[DateMention]]], ...] = (
-    (_EXTRA_DATES, _extra_reading),
     (_LOOSE_DATES, _loose_reading),
     (_NAMED_DATES, _named_reading),
 )
@@ -572,6 +565,81 @@ class Value:
         return any(facts.has_date(reading) for reading in self.dates)  # a slash date may read two ways
 
 
+def _is_year(group: str) -> bool:
+    return len(group) == 4 and group[:2] in ("19", "20")
+
+
+def _date_shaped(first: str, second: str, third: str, marks: tuple[str, str]) -> Literal["dmy", "ymd", None]:
+    """Whether three digit groups hold a day, a month and a year (``dmy``) or a year, a month and a
+    day (``ymd``). A four-digit year makes any short day and month a date (unreadable if it is none).
+    A two-digit year needs the same mark twice, never a colon (``10:05:30`` is a time), and the three
+    groups must be the whole run (the caller checks): a dot, slash or hyphen makes any short day and
+    month a date, another mark only a plausible one — so a time range (``10.30–12.00``) is no date."""
+    short = len(first) <= 2 and len(second) <= 2
+    if short and len(third) == 4:
+        return "dmy"
+    if _is_year(first) and len(second) <= 2 and len(third) <= 2:
+        return "ymd"
+    mark = marks[0]
+    if not (short and len(third) == 2 and mark == marks[1] and mark != ":"):
+        return None
+    return "dmy" if mark in "./-" or (1 <= int(first) <= 31 and 1 <= int(second) <= 12) else None
+
+
+def _year(group: str) -> int:
+    """A year as written: two digits are read as :func:`~ordnung.ingest.verify.parse_dates` does."""
+    year = int(group)
+    if len(group) != 2:
+        return year
+    return 2000 + year if year < 70 else 1900 + year
+
+
+def _run_values(plain: str, match: re.Match[str]) -> list[Value]:
+    """The dates or the month a :data:`_RUN` states: every three groups in it shaped like a date (a
+    time right after it belongs to it), else a month and a four-digit year when the run is just
+    those two (``12/2027``). A run after a label (``Az. 12-3-2027``) states none."""
+    offset = match.start()
+    if _REFERENCE_BEFORE.search(plain, max(0, offset - 24), offset):
+        return []
+    groups: list[tuple[str, int, int]] = []
+    marks: list[str] = []
+    for part in _SPLIT_RUN.finditer(match.group()):
+        if part.group("group"):
+            digits = part.group("group").translate(_LOOKALIKE_DIGITS)
+            groups.append((digits, offset + part.start(), offset + part.end()))
+        else:
+            marks.append(part.group("mark"))
+    values: list[Value] = []
+    index = 0
+    while index + 2 < len(groups):
+        (first, start, _), (second, _, _), (third, _, end) = groups[index : index + 3]
+        shape = _date_shaped(first, second, third, (marks[index], marks[index + 1]))
+        if shape is None or (shape == "dmy" and len(third) == 2 and len(groups) != 3):
+            index += 1  # a two-digit year only as a whole run: "030-12-34-56" is a phone number
+            continue
+        index += 3
+        text = plain[start:end]
+        if shape == "ymd":
+            readings = _valid_mention(text, int(third), int(second), int(first))
+        else:
+            year = _year(third)
+            readings = _valid_mention(text, int(first), int(second), year)
+            if not readings or (marks[index - 3] == "/" and first != second):
+                readings += _valid_mention(text, int(second), int(first), year)  # month first
+        if not readings:
+            values.append(Value(text, "unreadable", start, end))
+            continue
+        end = _time_after(plain, end)
+        values.append(Value(plain[start:end], "date", start, end, dates=tuple(readings)))
+    if values or len(groups) != 2 or not (marks[0] in _MONTH_MARKS or not marks[0].isascii()):
+        return values
+    (first, start, _), (second, _, end) = groups
+    month_text, year_text = (second, first) if _is_year(first) and len(second) == 2 else (first, second)
+    if _is_year(year_text) and len(month_text) <= 2 and 1 <= int(month_text) <= 12:
+        return [Value(plain[start:end], "date", start, end, month=(int(year_text), int(month_text)))]
+    return []
+
+
 class _Taken:
     """The characters of a reading already claimed by a value (so each character counts once)."""
 
@@ -601,18 +669,20 @@ def stated_values(plain: str) -> list[Value]:
         if value.start < 0 or taken.free(value.start, value.end):
             values.append(value)
             taken.take(value.start, value.end)
+    for match in _RUN.finditer(plain):
+        for value in _run_values(plain, match):
+            if taken.free(value.start, value.end):
+                values.append(value)
+                taken.take(value.start, value.end)
     for pattern, reading in _DATE_FORMS:
         for match in pattern.finditer(plain):
             if taken.free(*match.span()):
                 readings = tuple(reading(match))
+                start, end = match.span()
+                end = _time_after(plain, end) if readings else end
                 kind: ValueKind = "date" if readings else "unreadable"
-                values.append(Value(match.group(), kind, *match.span(), dates=readings))
-                taken.take(*match.span())
-    for match in _DATE_LIKE.finditer(plain):
-        start = match.start()
-        if taken.free(*match.span()) and not _REFERENCE_BEFORE.search(plain, max(0, start - 24), start):
-            values.append(Value(match.group(), "unreadable", *match.span()))
-            taken.take(*match.span())
+                values.append(Value(plain[start:end], kind, start, end, dates=readings))
+                taken.take(start, end)
     for match in _MONTH_YEAR.finditer(plain):
         if taken.free(*match.span()):
             values.append(Value(match.group(), "date", *match.span(), month=_month_of(match)))
@@ -635,7 +705,7 @@ def stated_values(plain: str) -> list[Value]:
 
 def _date_values(plain: str) -> list[Value]:
     """:func:`~ordnung.ingest.verify.parse_dates` with where each date stands (a slash date may have
-    two readings, which stay one value)."""
+    two readings, which stay one value; a time right after a date belongs to it)."""
     groups: list[list[DateMention]] = []
     for mention in parse_dates(plain):
         last = groups[-1][-1] if groups else None
@@ -658,8 +728,10 @@ def _date_values(plain: str) -> list[Value]:
         if start < 0:  # a rewritten form (a bilingual month): stated, but it cannot be marked in place
             values.append(Value(raw, "date", -1, -1, dates=tuple(group)))
             continue
-        cursor = start + len(raw)
-        values.append(Value(raw, "date", start, start + len(raw), dates=tuple(group)))
+        end = start + len(raw)
+        cursor = end
+        end = _time_after(plain, end)
+        values.append(Value(plain[start:end], "date", start, end, dates=tuple(group)))
     return values
 
 
@@ -689,7 +761,7 @@ def _is_clock(match: re.Match[str] | None) -> bool:
 @dataclass(frozen=True)
 class RecordValue:
     """A record's own date (a to-do's due date, a contract's cancel-by date) or amount, which the
-    note gives for quoted records (rule 4); ``label`` says what it is (a key of :data:`RECORD_LABELS`)."""
+    note gives (rule 5); ``label`` says what it is (a key of :data:`RECORD_LABELS`)."""
 
     kind: Literal["date", "amount"]
     label: str
@@ -700,7 +772,7 @@ class RecordValue:
 
 @dataclass
 class _Index:
-    """Which records hold each date and amount (for the records a value belongs to in rule 4)."""
+    """Which records hold each date and amount (for the records a value belongs to in rule 5)."""
 
     dates: dict[date, set[str]] = field(default_factory=lambda: defaultdict(set))
     day_months: dict[tuple[int, int], set[str]] = field(default_factory=lambda: defaultdict(set))
@@ -739,12 +811,12 @@ class TurnEvidence:
 
     ``record``: the dates and amounts of each record's record part (and of the records inside it or
     linked to it; a category's fixed costs count for the contracts of that category); ``letters``:
-    those of its letter text (and of the records crediting it), with the § citations the letter
-    names; ``unverified``: the amounts of records whose record flags them as unverified (they sit in
-    the letter text); ``own``: each record's own deadlines and amounts; ``context``: today, which any
-    sentence may state; ``totals``: Ordnung's overview totals, which only a sentence without own citations
-    may state; ``person``: values the person wrote; ``seen_ids``: every citable id in a record part;
-    ``paragraphs``: the § citations of the rules catalog and the record parts.
+    those of its letter text (and of the records crediting it); ``unverified``: the amounts of records
+    whose record flags them as unverified (they sit in the letter text); ``own``: each record's own
+    deadlines and amounts; ``context``: today, which any sentence may state; ``totals``: Ordnung's
+    overview totals, which only a sentence without own citations may state; ``person``: values the
+    person wrote; ``seen_ids``: every citable id in a record part; ``paragraphs``: the § citations of
+    the rules catalog and the record parts.
     """
 
     record: Mapping[str, FactSet]
@@ -817,12 +889,20 @@ class TurnEvidence:
             return True
         return any(value.found_in(self.record.get(ref_id, _EMPTY)) for ref_id in cited)
 
-    def is_own_value(self, value: Value, records: Collection[str]) -> bool:
-        """Policy rule 3 (last part): the own date or amount of one of ``records``."""
-        return any(_states(value, own) for ref_id in records for own in self.own.get(ref_id, ()))
+    def own_holders(self, value: Value, records: Sequence[str]) -> list[str]:
+        """Policy rule 3 (last part): the records of ``records`` that ``value`` belongs to — of those
+        whose own date or amount it states, the most direct kind (a to-do before the contract, letter
+        or person it is linked to: :data:`_HOLDER_ORDER`; a month can be several to-dos' own), in the
+        order of ``records``, so the citations the check adds depend on nothing but the answer."""
+        holders = [ref for ref in records if any(_states(value, own) for own in self.own.get(ref, ()))]
+        ranks = [_HOLDER_ORDER.get(ref.split("_", 1)[0], len(_HOLDER_ORDER)) for ref in holders]
+        return [ref for ref, rank in zip(holders, ranks, strict=True) if rank == min(ranks)]
 
-    def quotes(self, value: Value, cited: Collection[str]) -> bool:
-        """Policy rule 4a (second half): in the letter text of a cited record."""
+    def in_letter(self, value: Value, cited: Collection[str]) -> bool:
+        """Whether the letter text of a cited record holds ``value`` (citing nothing: of any record
+        read in this turn) — the note then says to open the letter (rule 5)."""
+        if not cited:
+            return bool(self.letter_holders(value))
         return any(value.found_in(self.letters.get(ref_id, _EMPTY)) for ref_id in cited)
 
     def letter_holders(self, value: Value) -> set[str]:
@@ -830,13 +910,13 @@ class TurnEvidence:
         return self.letter_index.holders(value)
 
     def unverified_amount(self, value: Value, cited: Collection[str]) -> bool:
-        """Policy rule 4b: the flagged, unverified amount of a cited record."""
+        """Policy rule 4: the flagged, unverified amount of a cited record."""
         return value.kind == "amount" and any(
             value.found_in(self.unverified.get(ref_id, _EMPTY)) for ref_id in cited
         )
 
     def said_by_person(self, value: Value) -> bool:
-        """Policy rule 4c: the person wrote this value in the conversation."""
+        """Policy rule 4: the person wrote this value in the conversation."""
         return value.found_in(self.person)
 
     def knows_paragraph(self, number: str, law: str | None) -> bool:
@@ -844,11 +924,6 @@ class TurnEvidence:
         if law is not None:
             return (number, law) in self.paragraphs
         return any(known == number for known, _ in self.paragraphs)
-
-    def letter_names_paragraph(self, number: str, law: str | None, cited: Collection[str]) -> bool:
-        """A § citation in the letter text of a cited record — or, with nothing cited, of any record."""
-        pool = cited or self.letters
-        return any(self.letters.get(ref_id, _EMPTY).has_law(number, law) for ref_id in pool)
 
     def own_values(self, records: Collection[str], kind: str) -> list[RecordValue]:
         """The records' own dates (``kind="date"``) or amounts, in a stable order."""
@@ -979,7 +1054,7 @@ def _citable_ids(node: Mapping[str, Any]) -> Iterator[str]:
 
 
 def _collect_letter(node: Any, bag: FactSet, *, money: bool, key: str | None, text: bool = True) -> None:
-    """Dates, amounts and laws of letter text; ``text=False``: only the money fields (the filed amounts)."""
+    """Dates and amounts of letter text; ``text=False``: only the money fields (the filed amounts)."""
     if isinstance(node, dict):
         for child_key, value in node.items():
             _collect_letter(value, bag, money=money or child_key in AMOUNT_MAPS, key=child_key, text=text)
@@ -989,7 +1064,6 @@ def _collect_letter(node: Any, bag: FactSet, *, money: bool, key: str | None, te
     elif isinstance(node, str):
         if text:
             bag.add_text(node)
-            bag.laws.update(paragraphs_in(node))
     elif isinstance(node, int | float) and not isinstance(node, bool) and (money or key in AMOUNT_KEYS):
         bag.add_amount(float(node))
 
@@ -1007,8 +1081,15 @@ class Style:
     close_quote: str
     date_left_out: str
     amount_left_out: str
+    date_in_letter: str
+    amount_in_letter: str
     weekdays: tuple[str, ...]
     german: bool
+
+    @property
+    def note_prefix(self) -> str:
+        """The note's label as stored and printed (``Checked by Ordnung:``)."""
+        return NOTE_PREFIX_DE if self.german else NOTE_PREFIX
 
     def date(self, day: date) -> str:
         weekday = self.weekdays[day.weekday()]
@@ -1020,7 +1101,10 @@ class Style:
             number = number.replace(",", " ").replace(".", ",").replace(" ", ".")
         return f"{number} €" if value.currency == "EUR" else f"{number} {value.currency}"
 
-    def placeholder(self, kind: ValueKind) -> str:
+    def placeholder(self, kind: ValueKind, *, letter: bool = False) -> str:
+        """What stands for a left-out value (``letter``: only a letter's text holds it)."""
+        if letter:
+            return self.amount_in_letter if kind == "amount" else self.date_in_letter
         return self.amount_left_out if kind == "amount" else self.date_left_out
 
     def record_value(self, value: RecordValue) -> str:
@@ -1034,11 +1118,11 @@ class Style:
 
 
 ENGLISH = Style(
-    "“", "”", "[date left out]", "[amount left out]",
+    "“", "”", "[date left out]", "[amount left out]", "[date only in the letter]", "[amount only in the letter]",
     ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"), german=False,
 )  # fmt: skip
 GERMAN = Style(
-    "„", "“", "[Datum weggelassen]", "[Betrag weggelassen]",
+    "„", "“", "[Datum weggelassen]", "[Betrag weggelassen]", "[Datum nur im Brief]", "[Betrag nur im Brief]",
     ("Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So."), german=True,
 )  # fmt: skip
 
@@ -1054,62 +1138,92 @@ def style_for(text: str) -> Style:
 
 
 _NOTE_TEXTS: Mapping[str, tuple[str, str, str, str]] = {
-    # (English one, English many, German one, German many); {n} is the count
+    # (English one, English many, German one, German many); {n} is the count. The label says who
+    # checked ("Checked by Ordnung:"), so the texts do not start with "Ordnung" again.
     "removed_value": (
-        "Ordnung left out 1 sentence: it couldn't match its date or amount to the letter, to-do or "
-        "contract the sentence refers to.",
-        "Ordnung left out {n} sentences: it couldn't match their dates or amounts to the letters, to-dos "
-        "or contracts they refer to.",
-        "Ordnung hat 1 Satz weggelassen: Sein Datum oder Betrag passt zu keinem Brief, keiner Aufgabe und "
-        "keinem Vertrag, auf den er sich bezieht.",
-        "Ordnung hat {n} Sätze weggelassen: Ihre Daten oder Beträge passen zu keinem Brief, keiner Aufgabe "
-        "und keinem Vertrag, auf den sie sich beziehen.",
+        "Left out 1 sentence: its date or amount isn't in the letter, to-do or contract it refers to.",
+        "Left out {n} sentences: their dates or amounts aren't in the letters, to-dos or contracts they "
+        "refer to.",
+        "1 Satz weggelassen: Sein Datum oder Betrag steht nicht im Brief, in der Aufgabe oder im Vertrag, "
+        "auf den er sich bezieht.",
+        "{n} Sätze weggelassen: Ihre Daten oder Beträge stehen nicht in den Briefen, Aufgaben oder "
+        "Verträgen, auf die sie sich beziehen.",
     ),
     "removed_letter": (
-        "Ordnung left out 1 sentence: its date or amount is only in a letter's text, and the sentence "
-        "didn't say it quotes the letter.",
-        "Ordnung left out {n} sentences: their dates or amounts are only in a letter's text, and the "
-        "sentences didn't say they quote the letter.",
-        "Ordnung hat 1 Satz weggelassen: Sein Datum oder Betrag steht nur im Text eines Briefs, und der "
-        "Satz sagt nicht, dass er den Brief zitiert.",
-        "Ordnung hat {n} Sätze weggelassen: Ihre Daten oder Beträge stehen nur im Text eines Briefs, und die "
-        "Sätze sagen nicht, dass sie den Brief zitieren.",
-    ),
-    "removed_law": (
-        "Ordnung left out 1 sentence: it names a law that is neither in Ordnung's rules nor quoted from a "
-        "letter it refers to.",
-        "Ordnung left out {n} sentences: they name laws that are neither in Ordnung's rules nor quoted "
-        "from a letter they refer to.",
-        "Ordnung hat 1 Satz weggelassen: Er nennt ein Gesetz, das weder in Ordnungs Regeln steht noch als "
-        "Zitat aus einem Brief gekennzeichnet ist, auf den er sich bezieht.",
-        "Ordnung hat {n} Sätze weggelassen: Sie nennen Gesetze, die weder in Ordnungs Regeln stehen noch "
-        "als Zitat aus einem Brief gekennzeichnet sind, auf den sie sich beziehen.",
+        "Left out 1 sentence: its date or amount is only in a letter's text, which Ordnung has not "
+        "confirmed — open the letter to read it.",
+        "Left out {n} sentences: their dates or amounts are only in a letter's text, which Ordnung has not "
+        "confirmed — open the letter to read them.",
+        "1 Satz weggelassen: Sein Datum oder Betrag steht nur im Text eines Briefs, den Ordnung nicht "
+        "bestätigt hat – öffnen Sie den Brief, um ihn zu lesen.",
+        "{n} Sätze weggelassen: Ihre Daten oder Beträge stehen nur im Text eines Briefs, den Ordnung nicht "
+        "bestätigt hat – öffnen Sie den Brief, um sie zu lesen.",
     ),
     "redacted": (
-        "1 date or amount is marked “left out”: Ordnung couldn't match it to what its sentence refers to.",
-        "{n} dates or amounts are marked “left out”: Ordnung couldn't match them to what their sentences "
-        "refer to.",
-        "Ein Datum oder Betrag wurde weggelassen und so markiert: Der Wert passt nicht zu dem, worauf sich "
-        "sein Satz bezieht.",
-        "{n} Daten oder Beträge wurden weggelassen und so markiert: Die Werte passen nicht zu dem, worauf "
-        "sich ihre Sätze beziehen.",
+        "1 date or amount is marked “left out”: it isn't in what its sentence refers to.",
+        "{n} dates or amounts are marked “left out”: they aren't in what their sentences refer to.",
+        "1 Datum oder Betrag ist als „weggelassen“ markiert: Er steht nicht in dem, worauf sich sein Satz "
+        "bezieht.",
+        "{n} Daten oder Beträge sind als „weggelassen“ markiert: Sie stehen nicht in dem, worauf sich ihre "
+        "Sätze beziehen.",
+    ),
+    "redacted_letter": (
+        "1 date or amount is marked “only in the letter”: Ordnung's records don't hold it, so it isn't "
+        "shown — open the letter to read it.",
+        "{n} dates or amounts are marked “only in the letter”: Ordnung's records don't hold them, so they "
+        "aren't shown — open the letter to read them.",
+        "1 Datum oder Betrag ist als „nur im Brief“ markiert: Ordnungs Unterlagen enthalten ihn nicht, "
+        "deshalb wird er nicht gezeigt – öffnen Sie den Brief, um ihn zu lesen.",
+        "{n} Daten oder Beträge sind als „nur im Brief“ markiert: Ordnungs Unterlagen enthalten sie nicht, "
+        "deshalb werden sie nicht gezeigt – öffnen Sie den Brief, um sie zu lesen.",
+    ),
+    "removed_law": (
+        "Left out 1 sentence: it names a law that is in neither Ordnung's rules nor its records.",
+        "Left out {n} sentences: they name laws that are in neither Ordnung's rules nor its records.",
+        "1 Satz weggelassen: Er nennt ein Gesetz, das weder in Ordnungs Regeln noch in seinen Unterlagen "
+        "steht.",
+        "{n} Sätze weggelassen: Sie nennen Gesetze, die weder in Ordnungs Regeln noch in seinen Unterlagen "
+        "stehen.",
+    ),
+    "added": (
+        "Added 1 citation: a sentence without its own states the date or amount of a record the answer "
+        "cites elsewhere.",
+        "Added {n} citations where a sentence without its own states the date or amount of records the "
+        "answer cites elsewhere.",
+        "1 Quelle ergänzt: Ein Satz ohne eigene Quelle nennt das Datum oder den Betrag eines Eintrags, den "
+        "die Antwort an anderer Stelle zitiert.",
+        "{n} Quellen ergänzt, wo ein Satz ohne eigene Quelle Daten oder Beträge von Einträgen nennt, die "
+        "die Antwort an anderer Stelle zitiert.",
+    ),
+    "forged": (
+        "Left out 1 line that looked like this note: only Ordnung writes it.",
+        "Left out {n} lines that looked like this note: only Ordnung writes it.",
+        "1 Zeile weggelassen, die wie dieser Hinweis aussah: Nur Ordnung schreibt ihn.",
+        "{n} Zeilen weggelassen, die wie dieser Hinweis aussahen: Nur Ordnung schreibt ihn.",
     ),
 }
 _QUOTE_NOTES: Mapping[frozenset[str], tuple[str, str]] = {
     frozenset({"letter"}): (
-        "Text in quotation marks is quoted from a letter; Ordnung has not confirmed it.",
-        "Text in Anführungszeichen stammt aus einem Brief; Ordnung hat ihn nicht bestätigt.",
+        "Amounts in quotation marks are the letter's, read from a photo or not found on its page; Ordnung "
+        "has not confirmed them.",
+        "Beträge in Anführungszeichen stammen aus dem Brief, von einem Foto gelesen oder nicht auf seiner "
+        "Seite gefunden; Ordnung hat sie nicht bestätigt.",
     ),
     frozenset({"person"}): (
         "Text in quotation marks is your own words; Ordnung has not confirmed it.",
         "Text in Anführungszeichen stammt von Ihnen selbst; Ordnung hat ihn nicht bestätigt.",
     ),
     frozenset({"letter", "person"}): (
-        "Text in quotation marks is quoted from a letter or your own words; Ordnung has not confirmed it.",
-        "Text in Anführungszeichen stammt aus einem Brief oder von Ihnen selbst; Ordnung hat ihn nicht "
-        "bestätigt.",
+        "Text in quotation marks is a letter's unverified amount or your own words; Ordnung has not "
+        "confirmed it.",
+        "Text in Anführungszeichen ist ein ungeprüfter Betrag aus einem Brief oder stammt von Ihnen selbst; "
+        "Ordnung hat ihn nicht bestätigt.",
     ),
 }
+_RECORD_LEAD = (
+    "For the records concerned, Ordnung has on file",
+    "Zu den betroffenen Einträgen hat Ordnung gespeichert",
+)
 
 
 def _counted(key: str, count: int, style: Style) -> str | None:
@@ -1118,6 +1232,11 @@ def _counted(key: str, count: int, style: Style) -> str | None:
     one, many, one_de, many_de = _NOTE_TEXTS[key]
     text = (one_de if count == 1 else many_de) if style.german else (one if count == 1 else many)
     return text.format(n=count)
+
+
+def labelled_note(note: str) -> str:
+    """``note`` (without its label) under the label in its own language, as stored and printed."""
+    return f"{style_for(note).note_prefix} {note}"
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1131,10 +1250,11 @@ class SentenceCheck:
 
     ``values``: what it states, as read; ``unsupported``: those not in the record part of a record it
     cites (quoted or left out; for a sentence removed for its law, the § citations); ``left_out``:
-    those replaced by a placeholder, or every unsupported value of a removed sentence; ``reason``: why
-    a sentence was removed; ``result``: the sentence as it stays in the answer (empty
-    when removed); ``quote_refs``: for each value quoted as a letter's or the person's words (not
-    rule 4b), its kind and the records it belongs to (whose own values the note gives).
+    those replaced by a placeholder, or every unsupported value of a removed sentence (``in_letter``
+    of them only in a letter's text); ``reason``: why a sentence was removed; ``result``: the sentence
+    as it stays in the answer (empty when removed; with the citations the check added);
+    ``record_refs``: for each value left out or quoted as the person's words, its kind and the records
+    it belongs to (whose own values the note gives); ``added``: the ids whose citation the check added.
     """
 
     text: str
@@ -1146,12 +1266,15 @@ class SentenceCheck:
     reason: RemovalReason | None = None
     quoted_from: tuple[QuoteSource, ...] = ()
     supported: tuple[Value, ...] = ()
-    quote_refs: tuple[tuple[ValueKind, frozenset[str]], ...] = ()
+    record_refs: tuple[tuple[ValueKind, frozenset[str]], ...] = ()
+    in_letter: int = 0
+    added: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class CheckedAnswer:
-    """The answer after the check, and the verdict on every sentence that stated something checkable."""
+    """The answer after the check, and the verdict on every sentence that stated something checkable;
+    ``forged_notes``: the lines left out because they started like the check's note."""
 
     text: str
     sentences: tuple[SentenceCheck, ...]
@@ -1171,30 +1294,37 @@ class CheckedAnswer:
     def quoted(self) -> list[SentenceCheck]:
         return [check for check in self.sentences if check.quoted_from]
 
+    @property
+    def changed(self) -> bool:
+        """Whether the check left anything out (a sentence, a value or a line) or added a citation."""
+        return bool(
+            self.removed or self.redacted or self.forged_notes or any(c.added for c in self.sentences)
+        )
+
     def note(self) -> str | None:
-        """The visible note under the answer, with its prefix, in the answer's language (``None``
+        """The visible note under the answer, with its label, in the answer's language (``None``
         when nothing was changed)."""
         style = self.style
         kept = [check for check in self.sentences if check.verdict != "removed"]
+        in_letter = sum(check.in_letter for check in kept)
         parts = [
             _counted("removed_value", sum(1 for c in self.removed if c.reason == "value"), style),
             _counted("removed_letter", sum(1 for c in self.removed if c.reason == "letter"), style),
-            _counted("redacted", sum(len(c.left_out) for c in kept), style),
+            _counted("redacted", sum(len(c.left_out) for c in kept) - in_letter, style),
+            _counted("redacted_letter", in_letter, style),
             _counted("removed_law", sum(1 for c in self.removed if c.reason == "law"), style),
+            _counted("forged", self.forged_notes, style),
+            _counted("added", sum(len(c.added) for c in kept), style),
         ]
         sources = frozenset(source for check in self.quoted for source in check.quoted_from)
         if sources:
             english, german = _QUOTE_NOTES[sources]
             parts.append(german if style.german else english)
         if self.record_values:
-            lead = (
-                "Laut Ordnung gilt für das Zitierte"
-                if style.german
-                else "Ordnung's record for what is quoted"
-            )
+            lead = _RECORD_LEAD[1] if style.german else _RECORD_LEAD[0]
             parts.append(f"{lead}: {'; '.join(self.record_values)}.")
         shown = [part for part in parts if part]
-        return f"{NOTE_PREFIX} {' '.join(shown)}" if shown else None
+        return f"{style.note_prefix} {' '.join(shown)}" if shown else None
 
 
 def check_answer(
@@ -1202,7 +1332,7 @@ def check_answer(
 ) -> CheckedAnswer:
     """Apply the policy of this module to ``text``; ``citable`` are the ids that may stay cited."""
     style = style or style_for(text)
-    answer_cited = frozenset(c.id for c in parse_citations(text) if c.id in citable)
+    answer_cited = tuple(dict.fromkeys(c.id for c in parse_citations(text) if c.id in citable))
     lines: list[str] = []
     checks: list[SentenceCheck] = []
     forged = 0
@@ -1344,17 +1474,18 @@ def _value_across(before: str, after: str, *, first: bool) -> bool:
 
 
 def _record_values(checks: Sequence[SentenceCheck], evidence: TurnEvidence, style: Style) -> tuple[str, ...]:
-    """Rule 4: the own dates and amounts of the records quoted values belong to, when the answer
-    states none of them (at most :data:`MAX_RECORD_VALUES` of a kind), as the note words them."""
+    """Rule 5: the own dates and amounts of the records whose value was left out or quoted as the
+    person's words, when the answer states none of them (at most :data:`MAX_RECORD_VALUES` of a
+    kind), as the note words them."""
     shown: list[str] = []
     stated = [value for check in checks if check.result for value in check.supported]
     for kind in ("date", "amount"):
         records = {
             ref
             for check in checks
-            if check.result
-            for quoted, refs in check.quote_refs
-            if quoted == kind
+            if check.reason != "law"
+            for value_kind, refs in check.record_refs
+            if (value_kind == "amount") == (kind == "amount")
             for ref in refs
         }
         own = evidence.own_values(records, kind)
@@ -1406,13 +1537,14 @@ def check_sentence(
     cited: Collection[str],
     style: Style = ENGLISH,
     reading: Reading | None = None,
-    answer_cited: Collection[str] = (),
+    answer_cited: Sequence[str] = (),
     cites_own: bool | None = None,
 ) -> SentenceCheck | None:
     """The verdict on one sentence (``None`` when it states no date, amount or §); ``cited`` are the
-    citable records it cites or inherits (rule 2); ``answer_cited`` those the whole answer cites, for a
-    sentence without citations of its own (rule 3); ``cites_own``: whether it has citations of its own
-    (default: whether ``cited`` is non-empty) — only a sentence without may state an overview total."""
+    citable records it cites or inherits (rule 2); ``answer_cited`` those the whole answer cites, for
+    a sentence without citations of its own (rule 3: the first whose own value it states is cited in
+    it); ``cites_own``: whether it has citations of its own (default: whether ``cited`` is non-empty) —
+    only a sentence without may state an overview total."""
     reading = reading or read_as_shown(sentence)
     plain = reading.text
     values = stated_values(plain)
@@ -1420,68 +1552,103 @@ def check_sentence(
     if not values and not laws:
         return None
     stated = tuple(value.text for value in values)
-    frames = _Frames.of(plain)
-    letter_laws: list[tuple[int, int]] = []
-    unknown_laws: list[str] = []
-    for number, law, start, end in laws:
-        if evidence.knows_paragraph(number, law):
-            continue
-        # like a letter's date (rule 4a): only in a clause that names a letter as its source
-        if frames.frames_span(start, end) and evidence.letter_names_paragraph(number, law, cited):
-            letter_laws.append((start, end))
-        else:
-            unknown_laws.append(f"§ {number} {law or ''}".strip())
+    unknown_laws = [
+        f"§ {number} {law or ''}".strip()
+        for number, law, _, _ in laws
+        if not evidence.knows_paragraph(number, law)
+    ]
     if unknown_laws:  # a law nobody vouches for can change what the whole sentence means: it goes
         return SentenceCheck(
             sentence, "removed", stated, tuple(unknown_laws), left_out=tuple(unknown_laws), reason="law"
         )
-    supported = [
-        evidence.supports(value, cited, totals=None if cites_own is None else not cites_own)
-        or evidence.is_own_value(value, answer_cited)
-        for value in values
-    ]
+    added: dict[str, None] = {}
+    supported: list[bool] = []
+    for value in values:
+        if evidence.supports(value, cited, totals=None if cites_own is None else not cites_own):
+            supported.append(True)
+            continue
+        holders = evidence.own_holders(value, answer_cited)
+        added.update(dict.fromkeys(holders))  # the citations say whose value it is
+        supported.append(bool(holders))
     quoted: dict[int, tuple[QuoteSource, frozenset[str]]] = {}
     left: list[int] = []
-    letter_only = True  # every left-out value is in a letter the sentence could have quoted
+    letter: set[int] = set()  # left out, but a letter's text holds it: "[date only in the letter]"
+    refs: list[tuple[ValueKind, frozenset[str]]] = []
     for index, value in enumerate(values):
         if supported[index]:
             continue
-        holders = frozenset(cited) if cited else frozenset(evidence.letter_holders(value))
+        holders_of = frozenset(cited) if cited else frozenset(evidence.letter_holders(value))
         if evidence.unverified_amount(value, cited):
-            quoted[index] = ("letter", frozenset())  # rule 4b: the record already gives it as unverified
-        elif evidence.said_by_person(value):
-            quoted[index] = ("person", holders)
-        elif (evidence.quotes(value, cited) if cited else bool(holders)) and frames.frames_value(value):
-            quoted[index] = ("letter", holders)
+            quoted[index] = ("letter", frozenset())  # rule 4: the record already gives it as unverified
+            continue
+        refs.append((value.kind, holders_of))
+        if evidence.said_by_person(value):
+            quoted[index] = ("person", holders_of)
         else:
             left.append(index)
-            letter_only = letter_only and (evidence.quotes(value, cited) if cited else bool(holders))
+            if evidence.in_letter(value, cited):
+                letter.add(index)
+    in_letter = len(letter)
     unsupported = tuple(values[i].text for i in sorted([*quoted, *left]))
-    if not unsupported and not letter_laws:
-        return SentenceCheck(sentence, "kept", stated, result=sentence, supported=tuple(values))
+    ids = tuple(added)
+    if not unsupported:
+        cited_result = _add_citations(sentence, ids)
+        return SentenceCheck(
+            sentence, "kept", stated, result=cited_result, supported=tuple(values), added=ids
+        )
     left_texts = tuple(values[i].text for i in left)
-    keeps = bool(quoted) or bool(letter_laws) or any(supported)
     unplaced = any(values[i].start < 0 for i in (*quoted, *left))
-    if unplaced or not keeps:
-        reason: RemovalReason = "letter" if letter_only else "value"
-        return SentenceCheck(sentence, "removed", stated, unsupported, left_out=left_texts, reason=reason)
-    result = _apply(sentence, reading, values, quoted, left, letter_laws, style)
+    only_letters = bool(left) and in_letter == len(left)
+    if unplaced or not (quoted or any(supported) or only_letters):
+        reason: RemovalReason = "letter" if only_letters else "value"
+        return SentenceCheck(
+            sentence,
+            "removed",
+            stated,
+            unsupported,
+            left_out=left_texts,
+            reason=reason,
+            record_refs=tuple(refs),
+            in_letter=in_letter,
+        )
+    result = _apply(sentence, reading, values, quoted, left, letter, style)
     if result is None or _still_shows(result, left_texts):
-        return SentenceCheck(sentence, "removed", stated, unsupported, left_out=left_texts, reason="value")
-    sources: list[QuoteSource] = [source for source, _ in quoted.values()]
-    if letter_laws:
-        sources.append("letter")
+        return SentenceCheck(
+            sentence,
+            "removed",
+            stated,
+            unsupported,
+            left_out=left_texts,
+            reason="value",
+            record_refs=tuple(refs),
+            in_letter=in_letter,
+        )
     return SentenceCheck(
         sentence,
         "redacted" if left else "quoted",
         stated,
         unsupported,
-        result=result,
+        result=_add_citations(result, ids),
         left_out=left_texts,
-        quoted_from=tuple(dict.fromkeys(sources)),
+        quoted_from=tuple(dict.fromkeys(source for source, _ in quoted.values())),
         supported=tuple(value for value, ok in zip(values, supported, strict=True) if ok),
-        quote_refs=tuple((values[i].kind, refs) for i, (_, refs) in quoted.items() if refs),
+        record_refs=tuple(refs),
+        in_letter=in_letter,
+        added=ids,
     )
+
+
+def _add_citations(sentence: str, ids: Sequence[str]) -> str:
+    """``sentence`` with a citation of each of ``ids`` before its closing punctuation (rule 3)."""
+    present = {citation.id for citation in parse_citations(sentence)}
+    fresh = [ref for ref in ids if ref not in present]
+    if not fresh:
+        return sentence
+    markers = "".join(f"[{_MARKER_TYPES[ref.split('_', 1)[0]]}:{ref}]" for ref in fresh)
+    cut = len(sentence.rstrip())
+    while cut and sentence[cut - 1] in _STOPS:
+        cut -= 1
+    return f"{sentence[:cut].rstrip()} {markers}{sentence[cut:]}"
 
 
 def _apply(
@@ -1490,15 +1657,13 @@ def _apply(
     values: Sequence[Value],
     quoted: Mapping[int, tuple[QuoteSource, frozenset[str]]],
     left: Sequence[int],
-    letter_laws: Sequence[tuple[int, int]],
+    letter: Collection[int],
     style: Style,
 ) -> str | None:
-    """The sentence with its quotes and placeholders (``None`` when two edits would overlap)."""
+    """The sentence with its quotes and placeholders (``None`` when two edits would overlap);
+    ``letter``: the left-out values a letter's text holds."""
     pairs = _QuotePairs(sentence)
     edits: list[tuple[int, int, str]] = []
-    for start, end in letter_laws:  # a § only a letter names: the letter's words ("§81(4) AufenthG")
-        tail = _LAW_TAIL.match(reading.text, end)
-        edits += pairs.quote(*reading.source_span(start, tail.end() if tail else end), style)
     spans = {i: reading.source_span(values[i].start, values[i].end) for i in (*quoted, *left)}
     previous_end = 0
     for index in sorted(spans, key=lambda i: spans[i][0]):
@@ -1510,7 +1675,7 @@ def _apply(
         if index in quoted:
             edits += pairs.quote(begin, end, style)
         else:
-            edits.append((begin, end, style.placeholder(values[index].kind)))
+            edits.append((begin, end, style.placeholder(values[index].kind, letter=index in letter)))
     result = sentence
     limit = len(sentence) + 1
     for begin, end, replacement in sorted(set(edits), reverse=True):
@@ -1563,52 +1728,6 @@ class _QuotePairs:
         return [(opening, opening + 1, style.open_quote), (closing, closing + 1, style.close_quote)]
 
 
-@dataclass(frozen=True)
-class _Frames:
-    """Where a sentence names a letter as a value's source (rule 4a), found once per sentence:
-    for each clause, where its first leading phrase ends and whether it has a whole-clause phrase."""
-
-    breaks: tuple[int, ...]
-    lead_end: tuple[float, ...]
-    either: tuple[bool, ...]
-    names_letter: bool
-
-    @classmethod
-    def of(cls, plain: str) -> _Frames:
-        cuts: list[int] = []
-        for match in CLAUSE_BREAK.finditer(plain):
-            cuts.append(match.start())
-        for match in CONTRAST.finditer(plain):
-            cuts.append(match.start())
-            comma = plain.find(",", match.end())
-            if comma >= 0:
-                cuts.append(comma)
-        breaks = tuple(sorted(set(cuts)))
-        lead_end: list[float] = [float("inf")] * (len(breaks) + 1)
-        either = [False] * (len(breaks) + 1)
-        names = False
-        for match in LETTER_QUOTE.finditer(plain):
-            names = True
-            if _NEGATED_BEFORE.search(plain, max(0, match.start() - 40), match.start()):
-                continue
-            clause = bisect_right(breaks, match.start())
-            if match.group("either"):
-                either[clause] = True
-            elif not _NEGATED_AFTER.match(plain, match.end()):
-                lead_end[clause] = min(lead_end[clause], match.end())
-        return cls(breaks, tuple(lead_end), tuple(either), names)
-
-    def frames_value(self, value: Value) -> bool:
-        return self.frames_span(value.start, value.end)
-
-    def frames_span(self, start: int, end: int) -> bool:
-        """Whether the text at ``start:end`` stands in a clause that names a letter as its source."""
-        clause = bisect_right(self.breaks, start)
-        if clause < len(self.breaks) and end > self.breaks[clause]:
-            return False  # a value across a clause break belongs to neither clause
-        return self.either[clause] or self.lead_end[clause] <= start
-
-
 def _states(value: Value, record: RecordValue) -> bool:
     if record.kind == "amount":
         return value.amount is not None and round(value.amount * 100) == record.cents
@@ -1623,46 +1742,31 @@ def _states(value: Value, record: RecordValue) -> bool:
 
 def _widen(sentence: str, begin: int, end: int, kind: ValueKind) -> tuple[int, int]:
     """An amount's span with its currency (``18,43 €``, ``€ 18.43``), a date's with its weekday (``Fri
-    31.12.2027``); only :data:`_WINDOW` characters before it are read."""
+    31.12.2027``) or the month that starts its range (``Oct–Dec 2026``); only :data:`_WINDOW`
+    characters before it are read."""
     window = max(0, begin - _WINDOW)
     if kind == "amount":
         if after := _CURRENCY_AFTER.match(sentence, end):
             end = after.end()
         if before := _CURRENCY_BEFORE.search(sentence, window, begin):
             begin = before.start()
-    elif before := _WEEKDAY_BEFORE.search(sentence, window, begin):
+    elif before := _WEEKDAY_BEFORE.search(sentence, window, begin) or _RANGE_START_BEFORE.search(
+        sentence, window, begin
+    ):
         begin = before.start()
     return begin, end
 
 
-def quote_value(sentence: str, needle: str, style: Style = ENGLISH) -> str:
-    """``sentence`` with the first unquoted value read as ``needle`` (plus its currency or weekday) in
-    quotation marks — found as the sentence is shown, so markup or a non-breaking space inside it does
-    not hide it."""
-    reading = read_as_shown(sentence)
-    pairs = _QuotePairs(sentence)
-    for value in stated_values(reading.text):
-        if value.text != needle:
-            continue
-        begin, end = _widen(sentence, *reading.source_span(value.start, value.end), value.kind)
-        edits = pairs.quote(begin, end, style)
-        if not edits:
-            continue
-        result = sentence
-        for start, stop, replacement in sorted(edits, reverse=True):
-            result = result[:start] + replacement + result[stop:]
-        return result
-    return sentence
-
-
 def split_note(text: str) -> tuple[str, str | None]:
-    """A stored answer split into its body and the check's note (without :data:`NOTE_PREFIX`).
+    """A stored answer split into its body and the check's note (without its label, in either
+    language).
 
-    The check drops every model-written sentence that starts like the note, so only the note it
-    appends itself can be the last paragraph starting with the prefix.
+    The check drops every model-written line that starts like the note, so only the note it appends
+    itself can be the last paragraph starting with the label.
     """
     head, sep, tail = text.rpartition("\n\n")
     last = tail if sep else text
-    if last.startswith(NOTE_PREFIX) and "\n" not in last:
-        return (head.rstrip() if sep else ""), last[len(NOTE_PREFIX) :].strip()
+    for prefix in (NOTE_PREFIX, NOTE_PREFIX_DE):
+        if last.startswith(prefix) and "\n" not in last:
+            return (head.rstrip() if sep else ""), last[len(prefix) :].strip()
     return text, None

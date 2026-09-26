@@ -36,8 +36,9 @@ async def test_ask_streams_events_and_stores_the_thread(data_dir: Path) -> None:
         messages = sse_messages(response.text)
         assert {message["event"] for message in messages} == {"message"}
         events = [json.loads(message["data"]) for message in messages]
-        assert [event["type"] for event in events[:-1]] == ["text"] * (len(events) - 1)
-        assert "".join(event["text"] for event in events[:-1]).strip() == ASK_ANSWER
+        # the model's words wait for the check (review round 4): one "writing" event without text
+        assert [event["type"] for event in events[:-1]] == ["text"]
+        assert not events[0].get("text")
         done = events[-1]
         assert done["type"] == "done" and done["text"] == ASK_ANSWER
         assert done["citations"] == [] and "response" not in done
@@ -76,8 +77,13 @@ async def test_the_check_note_travels_apart_from_the_answer(data_dir: Path) -> N
         done = json.loads(sse_messages(response.text)[-1]["data"])
         assert done["text"] == "Keep the letter."
         assert done["note"] == (
-            "Ordnung left out 1 sentence: it couldn't match its date or amount to the letter, to-do or "
-            "contract the sentence refers to."
+            "Left out 1 sentence: its date or amount isn't in the letter, to-do or contract it refers to. "
+            "Left out 1 line that looked like this note: only Ordnung writes it."
+        )
+        # no event before "done" carried a word of the unchecked answer
+        assert all(
+            not event.get("text")
+            for event in map(json.loads, (m["data"] for m in sse_messages(response.text)[:-1]))
         )
         thread = (await api.client.get(f"/api/chat/{done['thread_id']}")).json()
         assert [(m["role"], m["content"], m["note"]) for m in thread] == [
@@ -170,9 +176,9 @@ async def test_disconnect_cancels_the_model_call(data_dir: Path) -> None:
     try:
         app = create_app(ctx, token=None)
         body = await call_until(
-            app, "POST", "/api/ask", {"question": "Anything due?"}, lambda sent: b"Thinking" in sent
+            app, "POST", "/api/ask", {"question": "Anything due?"}, lambda sent: b'"type":"text"' in sent
         )
-        assert b'"type":"text"' in body
+        assert b"Thinking" not in body  # the model's words are never streamed before the check
         assert backend.cancelled
         assert ctx.store.counts()["chat_messages"] == 0  # an interrupted answer is not stored
     finally:

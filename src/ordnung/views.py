@@ -668,31 +668,65 @@ _FIXED_TERM_CAVEATS = {
     ),
     "rent573c": (
         " If you keep living there after that and neither side objects within two weeks, it continues "
-        "with no fixed term (§ 545 BGB)."
+        "with no fixed term (§ 545 BGB) — unless the lease excludes that rule, as many leases do."
     ),
 }
 """What turns a fixed-term employment or tenancy into an open-ended one — by conduct, not by doing
 nothing (§ 15 Abs. 1 and 6 TzBfG, § 545 BGB)."""
+_FIXED_TERM_NOTICE = {
+    "employment622": (
+        " Before then it can be ended with ordinary notice only if the contract or a collective agreement "
+        "allows it (§ 15 Abs. 4 TzBfG) — many do, for example after the probation period — so check the "
+        "contract's notice clause before relying on the end date."
+    ),
+    "rent573c": (
+        " A flat let for a fixed term counts as open-ended unless the landlord gave one of the legal "
+        "reasons for the fixed term in writing when it was signed (§ 575 Abs. 1 BGB); then leaving needs "
+        "notice like any open-ended lease (§ 573c BGB) — so check the contract before relying on the end "
+        "date."
+    ),
+}
+"""Why the end date of a fixed-term job or flat let may not end it without notice: ordinary notice is
+often agreed for a fixed-term job (§ 15 Abs. 4 TzBfG), and a fixed-term flat let without a written
+legal reason counts as open-ended (§ 575 Abs. 1 S. 2 BGB). The rules engine does not read these clauses
+(it applies ``fixed_term`` to every such contract with an end date), so Ordnung never says no notice
+is needed there."""
 
 
 def continuation(contract: Contract, comp: ContractComputation, *, today: date | None = None) -> str:
     """What happens if the contract is not cancelled, in plain words.
 
-    A fixed-term contract (the rules engine applied ``fixed_term``) ends by itself on its end date — a
-    working-student contract does not turn into an open-ended one by doing nothing (§ 15 Abs. 1 TzBfG);
-    for employment and tenancies, the caveat of :data:`_FIXED_TERM_CAVEATS` says when it would.
-    Otherwise it either renews for a fixed term or runs on, cancellable at any time.
+    A fixed-term contract (the rules engine applied ``fixed_term``) ends by itself on its end date — for
+    employment and tenancies with a caveat: :data:`_FIXED_TERM_NOTICE` says why notice may still be
+    needed (an agreed notice clause, a lease without a written reason for its term), and
+    :data:`_FIXED_TERM_CAVEATS` what turns it into an open-ended one by conduct. Otherwise it either
+    renews for a fixed term or runs on, cancellable at any time.
     """
     end = parse_day(comp.current_term_end) if "fixed_term" in comp.rule_ids else None
     if end is not None:
         if today is not None and end < today:
             return f"Its fixed term ended on {fmt_date(end)}."
-        caveat = _FIXED_TERM_CAVEATS.get(comp.regime, "")
-        return f"It ends by itself on {fmt_date(end)}; no cancellation is needed.{caveat}"
+        if comp.regime in _FIXED_TERM_NOTICE:
+            notice, caveat = _FIXED_TERM_NOTICE[comp.regime], _FIXED_TERM_CAVEATS[comp.regime]
+            return f"Its fixed term ends on {fmt_date(end)}.{notice}{caveat}"
+        return f"It ends by itself on {fmt_date(end)}; no cancellation is needed."
     if not renews_for_a_term(contract, comp):
         return "It continues with no fixed term and can then be cancelled at any time with its notice period."
     months = contract.renewal_term_months
     return f"It renews for {months} months unless it is cancelled in time."
+
+
+def fixed_term_summary(comp: ContractComputation, *, today: date) -> str | None:
+    """The summary Ask's record gives a fixed-term job or flat let instead of the engine's "ends by
+    itself — no cancellation needed" (``None``: keep the engine's): its end date, and that it may still
+    need notice (:data:`_FIXED_TERM_NOTICE`)."""
+    end = parse_day(comp.current_term_end) if "fixed_term" in comp.rule_ids else None
+    if end is None or end < today or comp.regime not in _FIXED_TERM_NOTICE:
+        return None
+    return (
+        f"This contract's fixed term ends on {fmt_date(end)}; it may still need notice to end then or "
+        "earlier — see if_not_cancelled."
+    )
 
 
 def _continuation_label(contract: Contract, comp: ContractComputation) -> str:

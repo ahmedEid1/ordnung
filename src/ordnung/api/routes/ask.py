@@ -2,8 +2,10 @@
 
 ``POST /api/ask`` answers with ``text/event-stream``: one default ``message`` event per
 :class:`StreamEvent` (JSON with a ``type``) — ``tool_use``/``tool_result`` for the visible tool trace,
-``text`` deltas, then ``done`` (the checked answer's text, the check's note, validated citations,
-message and thread ids) or ``error``. Closing the connection stops the answer and the ``claude`` process behind it.
+one ``text`` event without text when the answer is being written (its words are never sent before
+the check, ADR 0008), then ``done`` (the checked answer's text, the check's note, validated
+citations, message and thread ids) or ``error``. Closing the connection stops the answer and the
+``claude`` process behind it.
 """
 
 from __future__ import annotations
@@ -40,7 +42,11 @@ class StreamEvent(BaseModel):
     """One event of the streamed answer (the JSON data of an SSE ``message`` event)."""
 
     type: Literal["text", "tool_use", "tool_result", "done", "error"]
-    text: str | None = Field(default=None, description="text delta, tool label/summary, or the final answer")
+    text: str | None = Field(
+        default=None,
+        description="tool label/summary or the checked answer (done); none on the text event that says the "
+        "answer is being written",
+    )
     name: str | None = Field(default=None, description="tool name (tool_use / tool_result)")
     input: dict[str, Any] | None = Field(default=None, description="tool input (tool_use)")
     error: str | None = None

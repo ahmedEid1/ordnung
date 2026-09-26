@@ -283,17 +283,28 @@ def test_continuation_says_whether_a_contract_renews_or_runs_on() -> None:
 
 
 @pytest.mark.parametrize(
-    ("category", "caveat"),
-    [("employment", "(§ 15 Abs. 6 TzBfG)"), ("rent", "(§ 545 BGB)"), ("other", "")],
+    ("category", "notice", "caveat"),
+    [
+        ("employment", "(§ 15 Abs. 4 TzBfG)", "(§ 15 Abs. 6 TzBfG)."),
+        (
+            "rent",
+            "(§ 575 Abs. 1 BGB)",
+            "(§ 545 BGB) — unless the lease excludes that rule, as many leases do.",
+        ),
+        ("other", "", ""),
+    ],
 )
-def test_a_fixed_term_contract_ends_by_itself(category: str, caveat: str) -> None:
-    """Review finding: the working-student contract "continues with no fixed term" if nothing is done —
+def test_a_fixed_term_contract_ends_by_itself(category: str, notice: str, caveat: str) -> None:
+    """Review findings: the working-student contract "continues with no fixed term" if nothing is done —
     wrong under § 15 Abs. 1 TzBfG: it ends when its time runs out, and only continued work the employer
-    knows of and does not object to makes it open-ended (§ 15 Abs. 6 TzBfG)."""
+    knows of and does not object to makes it open-ended (§ 15 Abs. 6 TzBfG). And (review round 4) "no
+    cancellation is needed" is wrong for exactly these two: a fixed-term job can be ended with agreed
+    ordinary notice (§ 15 Abs. 4 TzBfG), and a flat let without a written reason for its term counts as
+    open-ended (§ 575 Abs. 1 S. 2 BGB) — so Ask's record says to check the contract instead."""
     from ordnung.models import Contract, ContractTerms
     from ordnung.rules import RuleContext
     from ordnung.rules.contracts import compute_contract
-    from ordnung.views import continuation
+    from ordnung.views import continuation, fixed_term_summary
 
     stamps = {"created_at": "2026-09-01T00:00:00Z", "updated_at": "2026-09-01T00:00:00Z"}
     contract = Contract(
@@ -306,7 +317,15 @@ def test_a_fixed_term_contract_ends_by_itself(category: str, caveat: str) -> Non
     comp = compute_contract(terms, RuleContext(today=TODAY))
     assert "fixed_term" in comp.rule_ids
     text = continuation(contract, comp, today=TODAY)
-    assert text.startswith("It ends by itself on Wed 31 Mar 2027; no cancellation is needed.")
     assert "continues with no fixed term and can then be cancelled" not in text
-    assert text.endswith(f"{caveat}.") if caveat else text.endswith("needed.")
+    summary = fixed_term_summary(comp, today=TODAY)
+    if notice:
+        assert text.startswith("Its fixed term ends on Wed 31 Mar 2027.")
+        assert notice in text and "check the contract" in text and text.endswith(caveat)
+        assert "no cancellation" not in text
+        assert summary is not None and "may still need notice" in summary
+    else:
+        assert text == "It ends by itself on Wed 31 Mar 2027; no cancellation is needed."
+        assert summary is None
     assert continuation(contract, comp, today=date(2027, 4, 2)) == "Its fixed term ended on Wed 31 Mar 2027."
+    assert fixed_term_summary(comp, today=date(2027, 4, 2)) is None

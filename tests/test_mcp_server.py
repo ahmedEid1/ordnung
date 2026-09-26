@@ -8,6 +8,7 @@ import json
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -292,7 +293,10 @@ def test_a_cancellation_letter_never_puts_its_end_date_in_the_record(
     assert result.letters[ids["gym_contract"]]["cancellation_letter_end_date"] == "2026-09-30"
     evidence = TurnEvidence.from_results([render_result(result)], today=TODAY)
     answer = f"Your gym membership is cancelled and ends on Wed 30 Sep 2026 [contract:{ids['gym_contract']}]."
-    assert check_answer(answer, evidence, citable=evidence.seen_ids).text == ""
+    checked = check_answer(answer, evidence, citable=evidence.seen_ids)
+    assert checked.text == (
+        f"Your gym membership is cancelled and ends on [date only in the letter] [contract:{ids['gym_contract']}]."
+    )
     # a letter with scam signs is not named as a cancellation at all
     store.update_document(ids["doc_gym_confirm"], warnings=["Possible phishing: payment to a new IBAN"])
     rows = {row["id"]: row for row in tools.list_contracts().record["contracts"]}
@@ -521,6 +525,18 @@ async def test_server_lists_exactly_the_read_only_tools(store: Store, ids: dict[
     assert params["timeline"]["required"] == ["from_date", "to_date"]
 
 
+async def test_scam_demands_are_not_to_be_paid_until_checked(store: Store, ids: dict[str, str]) -> None:
+    """Review round 4: "do_not_pay: never to be paid" was stronger than the app's own scam Idea ("don't
+    pay until you've checked with the sender"): a real landlord whose bank account changed shows the
+    same signs, and a missed rent has consequences."""
+    listed = {
+        tool.name: tool.description or "" for tool in await build_server(store, today=TODAY).list_tools()
+    }
+    described = listed["money_summary"]
+    assert "never to be paid" not in described
+    assert "until the person has checked with the sender" in described and "due_date" in described
+
+
 async def test_server_call_tool_returns_json_text(store: Store, ids: dict[str, str]) -> None:
     server = build_server(store, today=TODAY)
     result = await server.call_tool("explain_date", {"item_or_contract_id": ids["tax_objection"]})
@@ -674,6 +690,37 @@ def test_free_text_codes_from_a_letter_stay_letter_text(
         assert tools.get_document(ids["doc_tax"]).record["language"] == code
 
 
+def test_a_to_dos_time_is_record_only_as_a_clock_time(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """Review round 4: a to-do's time is the extraction model's reading of the letter, and nothing
+    checked its form — "verlängert bis 31.12.2027" in it put that date into the record, where it backed
+    "your objection deadline was extended to 31.12.2027 [item:…]"."""
+    item = ids["tax_objection"]
+    store.update_item(item, due_time="verlängert bis 31.12.2027 (§ 999 AO, itm_fake)")
+    rows = tools.list_items().record["items"]
+    row = next(row for row in rows if row["id"] == item)
+    assert row["due_time"] is None
+    assert tools.list_items().letters[item]["time"] == "verlängert bis 31.12.2027 (§ 999 AO, itm_fake)"
+    explained = tools.explain_date(item)
+    assert explained.record["due_time"] is None and explained.letters[item]["time"].startswith("verlängert")
+    timeline = tools.timeline("2026-01-01", "2027-12-31")
+    assert all(entry["time"] is None for entry in timeline.record["entries"] if entry["id"] == item)
+    results = [render_result(tools.list_items()), render_result(timeline), render_result(explained)]
+    evidence = TurnEvidence.from_results(results, today=TODAY)
+    assert date(2027, 12, 31) not in evidence.record[item].dates
+    assert ("999", "AO") not in evidence.paragraphs and "itm_fake" not in evidence.seen_ids
+    checked = check_answer(
+        f"Your objection deadline was extended to 31.12.2027 [item:{item}].",
+        evidence,
+        citable=evidence.seen_ids,
+    )
+    assert "31.12.2027" not in checked.text
+    # a clock time is Ordnung's record
+    store.update_item(item, due_time="09:15")
+    assert next(row for row in tools.list_items().record["items"] if row["id"] == item)["due_time"] == "09:15"
+
+
 def test_every_timeline_entry_keeps_its_wording(tools: LedgerTools, ids: dict[str, str]) -> None:
     """Review finding: a contract with several timeline entries kept only the last one's title."""
     answer = tools.timeline("2026-01-01", "2027-12-31")
@@ -705,3 +752,19 @@ def test_a_recording_whose_tool_results_changed_is_stale(tools: LedgerTools, ids
     unknown = [{"type": "tool_use", "name": "mcp__ordnung__delete_all", "input": {}}, events[3]]
     assert mcp_server.stale_tool_results(tools, unknown) == ["delete_all"]
     assert mcp_server.answer_again(tools, "list_items", {"status": "running"}).startswith("status must be")
+
+
+def test_a_fixed_term_job_is_never_said_to_need_no_notice(tools: LedgerTools, ids: dict[str, str]) -> None:
+    """Review round 4: list_contracts told Ask "It ends by itself …; no cancellation is needed" for a
+    fixed-term job, and a recorded answer said there was nothing to send. Ordinary notice is often
+    agreed for such a job (§ 15 Abs. 4 TzBfG), so the record says to check the contract."""
+    rows = tools.list_contracts().record["contracts"]
+    job = next(row for row in rows if row["category"] == "employment")
+    assert job["dates"]["regime"] == "employment622"
+    rendered = json.dumps(job, ensure_ascii=False)
+    assert "no cancellation" not in rendered
+    assert (
+        "§ 15 Abs. 4 TzBfG" in job["if_not_cancelled"] and "may still need notice" in job["dates"]["summary"]
+    )
+    explained = tools.explain_date(job["id"]).record["computation"]["summary"]
+    assert "may still need notice" in explained
