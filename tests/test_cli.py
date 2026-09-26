@@ -175,6 +175,25 @@ def test_ask_in_process_streams_the_checked_answer(data_dir: Path, monkeypatch: 
     assert answers.calls[0].purpose == "ask"
 
 
+def test_ask_marks_the_streamed_text_as_an_unchecked_draft(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Review finding: the CLI printed the streamed (unchecked) answer as ordinary text, so an injected
+    "extended to 31.12.2027" stood on the terminal like the answer, and after an error it stayed there."""
+    answers = FakeBackend({"ask": "Your deadline was extended to 31.12.2027. Keep the letter."})
+    monkeypatch.setattr(cli, "open_context", lambda folder: build_context(folder, backend_obj=answers))
+    result = invoke("ask", "What is due?", "--data-dir", str(data_dir))
+    assert result.exit_code == 0, result.output
+    draft, _, checked = result.output.partition("Checked answer")
+    assert "Draft — not yet checked" in draft and "31.12.2027" in draft
+    assert "31.12.2027" not in checked and "Keep the letter." in checked
+    printer = cli._AnswerPrinter()
+    printer.handle({"type": "text", "text": "Extended to 31.12.2027."})
+    with cli.err_console.capture() as captured:
+        printer.handle({"type": "error", "error": "The answer stopped unexpectedly."})
+    assert "The draft above was not checked" in captured.get() and printer.failed
+
+
 def test_ask_prints_the_check_note_apart(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     answers = FakeBackend({"ask": "Pay 999.00 € by 1 Jan 2031. Keep the letter."})
     monkeypatch.setattr(cli, "open_context", lambda folder: build_context(folder, backend_obj=answers))

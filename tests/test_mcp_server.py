@@ -17,6 +17,7 @@ from mcp.client.stdio import StdioServerParameters
 from mcp.server.mcpserver.exceptions import ToolError
 
 from helpers_secretary import TODAY, seed_ledger
+from ordnung.assistant import mcp_server
 from ordnung.assistant.channels import (
     LETTER_CLOSE,
     LETTER_OPEN,
@@ -29,6 +30,7 @@ from ordnung.assistant.channels import (
 )
 from ordnung.assistant.mcp_server import (
     AMOUNT_NOT_FOUND,
+    CANCELLATION_PENDING,
     PAGE_TEXT_LIMIT,
     PRIVATE_NOTE,
     SERVER_NAME,
@@ -40,9 +42,10 @@ from ordnung.assistant.mcp_server import (
     render_result,
     server_config,
 )
+from ordnung.assistant.support import TurnEvidence, check_answer
 from ordnung.config import Paths
 from ordnung.db.store import Store
-from ordnung.models import Evidence
+from ordnung.models import Evidence, ExtractedChange
 
 
 def _evidence(doc_id: str, quote: str, grounding: str) -> list[Evidence]:
@@ -261,11 +264,39 @@ def test_list_contracts_carry_rule_dates(tools: LedgerTools, ids: dict[str, str]
     assert phone["dates"]["cancel_by"] == "2026-10-14"
     assert phone["dates"]["send_by"] == "2026-10-08"
     assert phone["dates"]["summary"]
-    assert rows[ids["gym_contract"]]["cancellation_confirmed"]["doc_id"] == ids["doc_gym_confirm"]
+    assert rows[ids["gym_contract"]]["cancellation_letter"] == {
+        "doc_id": ids["doc_gym_confirm"],
+        "pending_person_confirmation": True,
+        "note": CANCELLATION_PENDING,
+    }
+    # the end date is only what the letter says — until the person confirms it (ADR 0006)
+    assert result.letters[ids["gym_contract"]]["cancellation_letter_end_date"] == "2026-12-31"
     assert tools.list_contracts(status="cancelled").record["contracts"] == []
     assert len(tools.list_contracts(status="all").record["contracts"]) == 5
     with pytest.raises(ToolInputError):
         tools.list_contracts(status="running")
+
+
+def test_a_cancellation_letter_never_puts_its_end_date_in_the_record(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """Review finding: ``cancellation_confirmed.effective`` — a letter's date nobody confirmed — sat in
+    the record, so "your gym membership ends on 31 Dec 2026, nothing more is due" passed as Ordnung's."""
+    extraction = store.get_extraction(ids["doc_gym_confirm"])
+    assert extraction is not None
+    change = ExtractedChange(type="cancellation_confirmation", effective_date="2026-09-30")
+    store.update_document(ids["doc_gym_confirm"], extraction=extraction.model_copy(update={"change": change}))
+    result = tools.list_contracts()
+    gym = {row["id"]: row for row in result.record["contracts"]}[ids["gym_contract"]]
+    assert "2026-09-30" not in json.dumps(gym)
+    assert result.letters[ids["gym_contract"]]["cancellation_letter_end_date"] == "2026-09-30"
+    evidence = TurnEvidence.from_results([render_result(result)], today=TODAY)
+    answer = f"Your gym membership is cancelled and ends on Wed 30 Sep 2026 [contract:{ids['gym_contract']}]."
+    assert check_answer(answer, evidence, citable=evidence.seen_ids).text == ""
+    # a letter with scam signs is not named as a cancellation at all
+    store.update_document(ids["doc_gym_confirm"], warnings=["Possible phishing: payment to a new IBAN"])
+    rows = {row["id"]: row for row in tools.list_contracts().record["contracts"]}
+    assert "cancellation_letter" not in rows[ids["gym_contract"]]
 
 
 def test_contract_terms_read_from_a_photo_are_letter_text(
@@ -481,7 +512,7 @@ def test_a_cut_off_result_keeps_what_can_be_read_whole() -> None:
 async def test_server_lists_exactly_the_read_only_tools(store: Store, ids: dict[str, str]) -> None:
     server = build_server(store, today=TODAY)
     listed = await server.list_tools()
-    assert {tool.name for tool in listed} == TOOL_NAMES
+    assert {tool.name for tool in listed} == TOOL_NAMES == set(mcp_server.TOOL_NAMES)
     for tool in listed:
         assert tool.description and "\n" not in tool.description
         assert tool.annotations is not None and tool.annotations.read_only_hint is True
@@ -620,7 +651,8 @@ def test_money_totals_add_up_only_verified_amounts(
     assert money["fixed_costs_monthly"] == round(165.89 - 63.0, 2)
     assert "1 payment due this month and 1 contract" in money["totals_leave_out"]
     ticket = next(row for row in money["fixed_cost_contracts"] if row["id"] == ids["ticket"])
-    assert ticket == {"id": ids["ticket"], "terms_unverified": TERMS_UNVERIFIED}
+    assert ticket == {"id": ids["ticket"], "category": "transport", "terms_unverified": TERMS_UNVERIFIED}
+    assert money["today"] == TODAY.isoformat()
     assert answer.letters[ids["ticket"]]["monthly_cost"] == 63.0
 
 
@@ -648,3 +680,28 @@ def test_every_timeline_entry_keeps_its_wording(tools: LedgerTools, ids: dict[st
     rows = [row for row in answer.record["entries"] if row["id"] == ids["phone"]]
     titles = answer.letters[ids["phone"]]["titles"]
     assert len(rows) > 1 and len(titles) > 1
+
+
+# --------------------------------------------------------------------------------------------------
+# replays notice when the tools' output changed
+# --------------------------------------------------------------------------------------------------
+
+
+def test_a_recording_whose_tool_results_changed_is_stale(tools: LedgerTools, ids: dict[str, str]) -> None:
+    """Review finding: replays re-ran the check on tool results as recorded, so moving letter text back
+    into the record part (or an unverified amount into it) would have passed the benchmark's gate."""
+    doc = ids["doc_tax"]
+    calls = [("get_document", {"doc_id": doc}), ("list_contracts", {}), ("today", {})]
+    events: list[dict[str, Any]] = [
+        {"type": "tool_use", "name": f"mcp__ordnung__{name}", "input": args} for name, args in calls
+    ]
+    results = [render_result(getattr(tools, name)(**args)) for name, args in calls]
+    # parallel calls: the results may come back in another order
+    events += [{"type": "tool_result", "text": text} for text in reversed(results)]
+    assert mcp_server.stale_tool_results(tools, events) == []
+    tampered = [dict(event) for event in events]
+    tampered[3]["text"] = results[2].replace("2026-09-28", "2026-09-27")
+    assert mcp_server.stale_tool_results(tools, tampered) == ["today"]
+    unknown = [{"type": "tool_use", "name": "mcp__ordnung__delete_all", "input": {}}, events[3]]
+    assert mcp_server.stale_tool_results(tools, unknown) == ["delete_all"]
+    assert mcp_server.answer_again(tools, "list_items", {"status": "running"}).startswith("status must be")

@@ -42,7 +42,11 @@ _TYPE_ALIASES: dict[str, str] = {
     "pty": "party",
 }
 _PAIR = r"[a-z]+\s*:\s*[a-z]{3}_[a-z0-9]+"
-_GROUP_RE = re.compile(rf"(?P<lead>[ \t]*)\[\s*(?P<body>{_PAIR}(?:\s*[,;]\s*{_PAIR})*)\s*\]", re.IGNORECASE)
+_GROUP_RE = re.compile(
+    rf"(?P<lead>(?<![ \t])[ \t]*)\[\s*(?P<body>{_PAIR}(?:\s*[,;]\s*{_PAIR})*)\s*\]", re.IGNORECASE
+)
+"""A citation marker with the spaces before it; a match starts only where a run of spaces starts, so a
+long run is read once (linear time)."""
 _PAIR_RE = re.compile(r"(?P<type>[a-z]+)\s*:\s*(?P<id>[a-z]{3}_[a-z0-9]+)", re.IGNORECASE)
 
 TOOL_PREFIX = "mcp__ordnung__"

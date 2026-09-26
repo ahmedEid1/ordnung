@@ -123,11 +123,16 @@ def language_name(code: str) -> str:
 # free-text check: dates, amounts and § citations must come from the source data
 # --------------------------------------------------------------------------------------------------
 
+_PARAGRAPH_NUMBER = r"\d+[a-z]?"
+_PARAGRAPH_LIST = rf"(?:\s*(?:,|und|and|u\.|bis|-|–)\s*{_PARAGRAPH_NUMBER}(?![\d.,]\d))*"
 _PARAGRAPH_RE = re.compile(
-    r"§§?\s*(?P<num>\d+[a-z]?)"
-    r"(?:\s*(?:Abs\.|Absatz|S\.|Satz|Nr\.|Nummer|Alt\.)\s*\d+[a-z]?)*"
+    rf"(?P<sign>§§?)\s*(?P<num>{_PARAGRAPH_NUMBER})(?:\(\d+[a-z]?\))*(?P<more>{_PARAGRAPH_LIST})"
+    rf"(?:\s*(?:Abs\.|Absatz|S\.|Satz|Nr\.|Nummer|Alt\.)\s*{_PARAGRAPH_NUMBER}{_PARAGRAPH_LIST})*"
     r"(?:\s+(?P<law>[A-ZÄÖÜ][A-Za-zÄÖÜäöü]*[A-Z](?:\s+[IVX]{1,4}\b)?))?"
 )
+"""A § citation with its law: lists of paragraphs (``§§ 269, 270 BGB``) and of subsections (``§ 622
+Abs. 1, 3, 6 BGB``) keep the law that follows them."""
+_LISTED_NUMBER = re.compile(_PARAGRAPH_NUMBER)
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 _NO_BREAK_BEFORE = re.compile(
     r"(?:\b\d{1,2}|\bAbs|\bNr|\bS|\bSatz|\bca|\bz\.B|\be\.g|\bi\.e|\bvs|\bDr|\bSt)[.]$"
@@ -141,10 +146,16 @@ def paragraphs_in(text: str) -> Iterator[tuple[str, str | None]]:
 
 
 def paragraph_spans(text: str) -> Iterator[tuple[str, str | None, int, int]]:
-    """:func:`paragraphs_in` with where each citation stands: ``(number, law or None, start, end)``."""
+    """:func:`paragraphs_in` with where each citation stands: ``(number, law or None, start, end)``;
+    each paragraph of a ``§§`` list is its own citation (with the list's span)."""
     for match in _PARAGRAPH_RE.finditer(text):
         law = match.group("law")
-        yield match.group("num").lower(), " ".join(law.split()) if law else None, *match.span()
+        name = " ".join(law.split()) if law else None
+        numbers = [match.group("num")]
+        if match.group("sign") == "§§":
+            numbers += _LISTED_NUMBER.findall(match.group("more"))
+        for number in dict.fromkeys(numbers):
+            yield number.lower(), name, *match.span()
 
 
 def _strings_and_numbers(data: Any) -> Iterator[str | float]:

@@ -280,3 +280,33 @@ def test_continuation_says_whether_a_contract_renews_or_runs_on() -> None:
         == "It renews for 12 months unless it is cancelled in time."
     )
     assert "no fixed term" in continuation(gym, ContractComputation(regime="bgb309_new"))
+
+
+@pytest.mark.parametrize(
+    ("category", "caveat"),
+    [("employment", "(§ 15 Abs. 6 TzBfG)"), ("rent", "(§ 545 BGB)"), ("other", "")],
+)
+def test_a_fixed_term_contract_ends_by_itself(category: str, caveat: str) -> None:
+    """Review finding: the working-student contract "continues with no fixed term" if nothing is done —
+    wrong under § 15 Abs. 1 TzBfG: it ends when its time runs out, and only continued work the employer
+    knows of and does not object to makes it open-ended (§ 15 Abs. 6 TzBfG)."""
+    from ordnung.models import Contract, ContractTerms
+    from ordnung.rules import RuleContext
+    from ordnung.rules.contracts import compute_contract
+    from ordnung.views import continuation
+
+    stamps = {"created_at": "2026-09-01T00:00:00Z", "updated_at": "2026-09-01T00:00:00Z"}
+    contract = Contract(
+        id="ctr_f", name="Working student", category=category, start_date="2026-04-01", end_date="2027-03-31",
+        initial_term_months=12, **stamps,
+    )  # fmt: skip
+    terms = ContractTerms(
+        category=category, start_date="2026-04-01", end_date="2027-03-31", initial_term_months=12
+    )
+    comp = compute_contract(terms, RuleContext(today=TODAY))
+    assert "fixed_term" in comp.rule_ids
+    text = continuation(contract, comp, today=TODAY)
+    assert text.startswith("It ends by itself on Wed 31 Mar 2027; no cancellation is needed.")
+    assert "continues with no fixed term and can then be cancelled" not in text
+    assert text.endswith(f"{caveat}.") if caveat else text.endswith("needed.")
+    assert continuation(contract, comp, today=date(2027, 4, 2)) == "Its fixed term ended on Wed 31 Mar 2027."

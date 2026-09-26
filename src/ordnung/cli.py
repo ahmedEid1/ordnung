@@ -752,8 +752,14 @@ def brief(
 # --------------------------------------------------------------------------------------------------
 
 
+DRAFT_HEADING = "Draft — not yet checked"
+
+
 class _AnswerPrinter:
-    """Prints an Ask stream: tool trace lines, text as it arrives, then the checked answer and sources."""
+    """Prints an Ask stream: tool trace lines; the text as it arrives, dim under "Draft — not yet
+    checked" (it is the model's words before Ordnung's check, ADR 0008); then the checked answer under
+    its own heading, the check's note and the sources. A stream that ends without a checked answer says
+    the draft was not checked."""
 
     def __init__(self) -> None:
         self.streamed: list[str] = []
@@ -772,22 +778,25 @@ class _AnswerPrinter:
         elif kind == "tool_result":
             console.print(f"    [dim]{escape(text)}[/]")
         elif kind == "text":
+            if not self.streamed:
+                console.rule(f"[dim]{DRAFT_HEADING}[/]", style="dim")
             self.streamed.append(text)
-            console.print(escape(text), end="", soft_wrap=True)
+            console.print(f"[dim]{escape(text)}[/]", end="", soft_wrap=True)
         elif kind == "done":
             self._done(text, str(event.get("note") or ""), event.get("citations") or [])
         elif kind == "error":
             self._end_line()
             self.failed = True
-            err_console.print(f"[red]✗[/] {escape(str(event.get('error') or text or 'The answer stopped.'))}")
+            unchecked = " The draft above was not checked — don't rely on it." if self.streamed else ""
+            err_console.print(
+                f"[red]✗[/] {escape(str(event.get('error') or text or 'The answer stopped.'))}{unchecked}"
+            )
 
     def _done(self, text: str, note: str, citations: Sequence[Mapping[str, Any]]) -> None:
-        streamed = "".join(self.streamed).strip()
         self._end_line()
-        if text.strip() != streamed:
-            if streamed:
-                console.rule("[dim]Checked answer[/]", style="dim")
-            console.print(escape(text.strip()))
+        if self.streamed:
+            console.rule("[bold]Checked answer[/]", style="dim")
+        console.print(escape(text.strip()))
         if note:
             console.print(f"[dim]Checked by Ordnung: {escape(note)}[/]")
         if citations:

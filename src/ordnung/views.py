@@ -29,6 +29,7 @@ from ordnung.models import (
     TimelineEntry,
     TimelineMarker,
 )
+from ordnung.rules.explain import fmt_date
 from ordnung.secretary.triggers import (
     Ledger,
     action_day,
@@ -660,8 +661,34 @@ def renews_for_a_term(contract: Contract, comp: ContractComputation) -> bool:
     return comp.regime not in _ROLLING_REGIMES and bool(contract.renewal_term_months)
 
 
-def continuation(contract: Contract, comp: ContractComputation) -> str:
-    """What happens on ``next_renewal`` if the contract is not cancelled, in plain words."""
+_FIXED_TERM_CAVEATS = {
+    "employment622": (
+        " If you keep working after that with the employer's knowledge and the employer does not object "
+        "without delay, it continues with no fixed term (§ 15 Abs. 6 TzBfG)."
+    ),
+    "rent573c": (
+        " If you keep living there after that and neither side objects within two weeks, it continues "
+        "with no fixed term (§ 545 BGB)."
+    ),
+}
+"""What turns a fixed-term employment or tenancy into an open-ended one — by conduct, not by doing
+nothing (§ 15 Abs. 1 and 6 TzBfG, § 545 BGB)."""
+
+
+def continuation(contract: Contract, comp: ContractComputation, *, today: date | None = None) -> str:
+    """What happens if the contract is not cancelled, in plain words.
+
+    A fixed-term contract (the rules engine applied ``fixed_term``) ends by itself on its end date — a
+    working-student contract does not turn into an open-ended one by doing nothing (§ 15 Abs. 1 TzBfG);
+    for employment and tenancies, the caveat of :data:`_FIXED_TERM_CAVEATS` says when it would.
+    Otherwise it either renews for a fixed term or runs on, cancellable at any time.
+    """
+    end = parse_day(comp.current_term_end) if "fixed_term" in comp.rule_ids else None
+    if end is not None:
+        if today is not None and end < today:
+            return f"Its fixed term ended on {fmt_date(end)}."
+        caveat = _FIXED_TERM_CAVEATS.get(comp.regime, "")
+        return f"It ends by itself on {fmt_date(end)}; no cancellation is needed.{caveat}"
     if not renews_for_a_term(contract, comp):
         return "It continues with no fixed term and can then be cancelled at any time with its notice period."
     months = contract.renewal_term_months

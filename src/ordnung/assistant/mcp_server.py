@@ -20,7 +20,7 @@ Heavy modules (views, triggers, rules) are imported on first use so the server s
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, TypeVar, get_args
@@ -291,7 +291,12 @@ class LedgerTools:
     # ---------------------------------------------------------------------------------- contracts
 
     def list_contracts(self, status: str = "active") -> ToolAnswer:
-        """Contracts with costs and their rule-computed cancellation dates (cancel_by, send_by …)."""
+        """Contracts with costs and their rule-computed cancellation dates (cancel_by, send_by …).
+
+        A letter that says a contract is cancelled is only the letter's claim until the person
+        confirms it in Ordnung (ADR 0006): the record names the letter and says the confirmation is
+        pending; the end date the letter gives is letter text. Letters with scam signs are left out.
+        """
         _check_choice("status", status, CONTRACT_STATUSES)
         ledger = self.ledger()
         letters = LetterText()
@@ -300,12 +305,16 @@ class LedgerTools:
         for contract in ledger.contracts:
             if status in ("all", contract.status):
                 row = _contract_row(ledger, contract, letters)
-                if contract.id in confirmations:
-                    letter, effective = confirmations[contract.id]
-                    row["cancellation_confirmed"] = {
+                letter, effective = confirmations.get(contract.id, (None, None))
+                if letter is not None and not ledger.scam_reasons(letter):
+                    row["cancellation_letter"] = {
                         "doc_id": letter.id,
-                        "effective": effective.isoformat() if effective else None,
+                        "pending_person_confirmation": True,
+                        "note": CANCELLATION_PENDING,
                     }
+                    letters.add(
+                        contract.id, cancellation_letter_end_date=effective.isoformat() if effective else None
+                    )
                 rows.append(row)
         return ToolAnswer({"today": ledger.today.isoformat(), "contracts": rows}, letters.by_id)
 
@@ -438,7 +447,9 @@ class LedgerTools:
         pay, and fixed costs per month (active contracts).
 
         The totals are added up by code from *verified* amounts only (ADR 0003), so they are record
-        values; how many unverified amounts they leave out is said next to them. Open payments without
+        values; how many unverified amounts they leave out is said next to them. Each fixed-cost row
+        names its category, so a category's total belongs to its contracts (ADR 0008). ``today`` is
+        the day the summary is for, so "the next four weeks" start from the ledger's today. Open payments without
         a due date (a rent whose day the letter did not give) are listed apart, so an answer about
         what is due can name them; payment demands of letters with scam signs are listed apart too
         (``do_not_pay``), never among the payments (ADR 0006).
@@ -456,7 +467,7 @@ class LedgerTools:
             if contract.monthly_cost() is None:
                 continue
             letters.add(contract.id, name=contract.name)
-            row: dict[str, Any] = {"id": contract.id}
+            row: dict[str, Any] = {"id": contract.id, "category": contract.category}
             if _terms_verified(contract):
                 row.update(
                     monthly_cost=contract.monthly_cost(),
@@ -471,6 +482,7 @@ class LedgerTools:
         unverified_due = sum(1 for item in payments_due_this_month(ledger) if not is_verified(item.grounding))
         unverified_fixed = sum(1 for row in fixed if row.get("terms_unverified"))
         record = {
+            "today": ledger.today.isoformat(),
             "month": ledger.today.strftime("%Y-%m"),
             "currency": "EUR",
             "due_this_month": verified.due_this_month,
@@ -610,6 +622,11 @@ AMOUNT_NOT_FOUND = (
     "The amount could not be found in the letter's text, so it is only in the letter text: give it as "
     "what the letter says and suggest checking it."
 )
+CANCELLATION_PENDING = (
+    "A letter says this contract is cancelled, but the person has not confirmed it in Ordnung yet, so "
+    "the contract is still active here and its dates stand; the end date the letter gives is only in "
+    "the letter text."
+)
 TERMS_UNVERIFIED = (
     "The terms and cost were read by AI from a photo or could not be found in the letter, so they are "
     "only in the letter text: give them as what the letter says."
@@ -685,7 +702,9 @@ def _contract_row(ledger: Ledger, contract: Contract, letters: LetterText) -> di
                 "notes",
             }
         ),
-        "if_not_cancelled": continuation(contract, comp) if contract.status == "active" else None,
+        "if_not_cancelled": continuation(contract, comp, today=ledger.today)
+        if contract.status == "active"
+        else None,
         "source_doc_id": contract.source_doc_id,
     }
     cost = (
@@ -824,6 +843,59 @@ def _optional_day(name: str, value: str | None) -> date | None:
 def render_result(answer: ToolAnswer) -> str:
     """The tool result as the model reads it: the record part, then the letter text (ADR 0008)."""
     return render_tool_result(answer)
+
+
+TOOL_NAMES = (
+    "search",
+    "get_document",
+    "list_items",
+    "list_contracts",
+    "get_party",
+    "timeline",
+    "money_summary",
+    "explain_date",
+    "get_profile",
+    "today",
+)
+"""The MCP tools, each answered by the :class:`LedgerTools` method of the same name."""
+
+
+def answer_again(tools: LedgerTools, name: str, args: Mapping[str, Any]) -> str:
+    """What the tool ``name`` (``mcp__ordnung__`` prefix allowed) answers to ``args`` today: the text
+    the server returns, or an input error's message. Replays use it to notice recordings whose tool
+    results the current tools would no longer give."""
+    tool = name.removeprefix(f"mcp__{SERVER_NAME}__")
+    if tool not in TOOL_NAMES:
+        return f"unknown tool {name}"
+    try:
+        return render_result(getattr(tools, tool)(**dict(args)))
+    except (ToolInputError, TypeError) as exc:
+        return str(exc)
+
+
+def stale_tool_results(tools: LedgerTools, events: Iterable[Any]) -> list[str]:
+    """The recorded tool calls of one turn (``tool_use`` / ``tool_result`` stream events, or dicts of
+    them) whose results the current tools render differently — by name. Results are compared as a
+    multiset: the results of parallel calls may arrive in any order."""
+    calls: list[tuple[str, Mapping[str, Any]]] = []
+    recorded: list[str] = []
+    for event in events:
+        kind = event.get("type") if isinstance(event, Mapping) else event.type
+        if kind == "tool_use":
+            name = event.get("name") if isinstance(event, Mapping) else event.name
+            args = event.get("input") if isinstance(event, Mapping) else event.input
+            calls.append((str(name or ""), args if isinstance(args, Mapping) else {}))
+        elif kind == "tool_result":
+            recorded.append(str((event.get("text") if isinstance(event, Mapping) else event.text) or ""))
+    remaining = list(recorded)
+    stale = []
+    for name, args in calls:
+        text = answer_again(tools, name, args)
+        if text in remaining:
+            remaining.remove(text)
+        else:
+            stale.append(name.removeprefix(f"mcp__{SERVER_NAME}__"))
+    return stale
 
 
 # --------------------------------------------------------------------------------------------------

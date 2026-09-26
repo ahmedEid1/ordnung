@@ -17,9 +17,11 @@ from ordnung import clock
 from ordnung.app_context import build_context
 from ordnung.assistant.ask import (
     ALLOWED_TOOLS,
+    CHECK_FAILED,
     DEMO_MISS,
     EMPTY_QUESTION,
     NO_ANSWER,
+    NO_ANSWER_DE,
     UNSUPPORTED_ANSWER,
     AskEvent,
     ask_cache_key,
@@ -388,7 +390,10 @@ def test_an_answer_the_check_empties_still_says_why(
         today=TODAY,
     )
     assert checked.body == UNSUPPORTED_ANSWER
-    assert "Try asking" not in checked.body
+    assert "Try asking" not in checked.body  # they may have asked about one letter already
+    assert checked.body.endswith(
+        "open the letter, to-do or contract itself in Ordnung to see its dates and amounts."
+    )
     assert checked.note is not None and checked.note.startswith("Ordnung left out 1 sentence")
     german = check_turn(
         store, f"Laut Finanzamt ist die Frist der 30.12.2027 [doc:{doc}].", results, question="?", today=TODAY
@@ -452,6 +457,7 @@ async def test_answer_left_empty_by_the_checks_gets_a_fallback(
     assert done.text == UNSUPPORTED_ANSWER
     ctx = make_ctx(paths, store, ScriptedBackend(turn(tools, "")))
     assert done_event(await collect(ctx, "Hello?")).text == NO_ANSWER
+    assert done_event(await collect(ctx, "Wann muss ich die Miete zahlen?")).text == NO_ANSWER_DE
 
 
 async def test_parallel_tool_calls_are_paired_with_results_in_order(
@@ -683,6 +689,40 @@ async def test_stream_without_a_final_answer_is_an_error(
         ("text", None),
         ("error", "The answer stopped unexpectedly."),
     ]
+    assert store.counts()["chat_messages"] == 0
+
+
+async def test_a_malformed_number_in_a_letter_does_not_break_the_check(
+    paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools
+) -> None:
+    """A letter's text with ``12,34..56`` or an OCR slip ``15,.09.26`` once made the check raise, so
+    every question that read that letter ended without an answer."""
+    _inject(store, ids, "Ref 12,34..56 — Ihre Zahlung vom 15,.09.26 ist eingegangen. Frist bis 31.12.2027.")
+    doc, item = ids["doc_tax"], ids["tax_objection"]
+    answer = (
+        f"The deadline was extended to 31.12.2027 [doc:{doc}]. Ordnung has Wed 21 Oct 2026 [item:{item}]."
+    )
+    ctx = make_ctx(paths, store, ScriptedBackend(turn(tools, answer, ("get_document", {"doc_id": doc}))))
+    done = done_event(await collect(ctx, "When is the deadline?"))
+    assert done.text == f"Ordnung has Wed 21 Oct 2026 [item:{item}]."
+    assert store.counts()["chat_messages"] == 2
+
+
+async def test_a_failing_check_is_an_error_and_never_shows_the_raw_answer(
+    paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fail closed: when the check itself fails, the stream ends with an error (not the unchecked
+    text as a final answer) and nothing is stored."""
+
+    def broken(*args: Any, **kwargs: Any) -> Any:
+        raise ValueError("boom")
+
+    monkeypatch.setattr("ordnung.assistant.ask.check_turn", broken)
+    answer = "The deadline was extended to 31.12.2027."
+    ctx = make_ctx(paths, store, ScriptedBackend(turn(tools, answer)))
+    events = await collect(ctx, "When is the deadline?")
+    assert (events[-1].type, events[-1].error) == ("error", CHECK_FAILED)
+    assert not any(isinstance(event, AskEvent) for event in events)
     assert store.counts()["chat_messages"] == 0
 
 

@@ -27,7 +27,9 @@ with the note as its last paragraph, and :func:`stored_answer` splits it off aga
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import re
 from collections import deque
 from collections.abc import AsyncIterator, Collection, Iterable, Sequence
@@ -48,7 +50,14 @@ from ordnung.assistant.citations import (
     tool_name,
 )
 from ordnung.assistant.mcp_server import PARTY_FIELDS, SERVER_NAME, server_config
-from ordnung.assistant.support import NOTE_PREFIX, CheckedAnswer, TurnEvidence, check_answer, split_note
+from ordnung.assistant.support import (
+    NOTE_PREFIX,
+    CheckedAnswer,
+    TurnEvidence,
+    check_answer,
+    split_note,
+    style_for,
+)
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.ids import new_id
@@ -58,6 +67,7 @@ from ordnung.llm.prompts import render
 from ordnung.llm.runtime import LLMService
 from ordnung.models import AppSettings, ChatMessage
 from ordnung.secretary.review import catalog_texts, correct_weekdays, language_name, stable_hash
+from ordnung.secretary.triggers import IDEA_LAWS
 from ordnung.tick import local_today
 
 ALLOWED_TOOLS = [f"mcp__{SERVER_NAME}__*"]
@@ -67,16 +77,23 @@ HISTORY_MESSAGES = 6
 HISTORY_CHARS = 1500
 
 NO_ANSWER = "I couldn't find an answer to that in your records."
-UNSUPPORTED_ANSWER = "I couldn't back up my answer with your records, so I left it out."
-UNSUPPORTED_ANSWER_DE = (
-    "Ich konnte meine Antwort nicht mit Ihren Unterlagen belegen und habe sie deshalb weggelassen."
+NO_ANSWER_DE = "Dazu habe ich in Ihren Unterlagen keine Antwort gefunden."
+UNSUPPORTED_ANSWER = (
+    "I couldn't back up my answer with your records, so I left it out. You can open the letter, to-do or "
+    "contract itself in Ordnung to see its dates and amounts."
 )
+UNSUPPORTED_ANSWER_DE = (
+    "Ich konnte meine Antwort nicht mit Ihren Unterlagen belegen und habe sie deshalb weggelassen. Sie "
+    "können den Brief, die Aufgabe oder den Vertrag in Ordnung öffnen und dort Daten und Beträge ansehen."
+)
+CHECK_FAILED = "Ordnung couldn't check this answer against your records, so it isn't shown. Please ask again."
 DEMO_MISS = (
     "The demo uses recorded answers, and there is none for this question. Try one of the suggested questions."
 )
 EMPTY_QUESTION = "Please type a question."
 
 _EXTRA_BLANK_LINES = re.compile(r"\n{3,}")
+logger = logging.getLogger(__name__)
 
 
 class AskContext(Protocol):
@@ -228,7 +245,8 @@ async def ask_stream(
 
     Yields ``text`` deltas, ``tool_use`` (``name``, ``input``, ``text`` = label) and ``tool_result``
     (``name``, ``text`` = summary) events, then one :class:`AskEvent` ``done`` event with the checked
-    answer — or a single ``error`` event.
+    answer — or a single ``error`` event, also when the check itself fails (it fails closed: the
+    streamed text is never passed off as a checked answer). The check runs in a worker thread.
     """
     question = question.strip()
     if not question:
@@ -262,9 +280,15 @@ async def ask_stream(
         yield _failure(ctx, failure, thread)
         return
     answer = (done.response.text if done.response is not None else "") or "".join(turn.deltas)
-    yield _finish(
-        store, turn, question=question, answer=answer, thread_id=thread, history=history, today=today
-    )
+    try:  # the check reads whole tool results: off the event loop, so a long answer never blocks the API
+        checked = await asyncio.to_thread(
+            check_turn, store, answer, turn.results, question=question, history=history, today=today
+        )
+    except Exception:  # fail closed: an answer the check could not read is never shown as checked
+        logger.exception("Ask: the answer check failed")
+        yield StreamEvent(type="error", error=CHECK_FAILED)
+        return
+    yield _finish(store, turn, checked, question=question, thread_id=thread)
 
 
 def _failure(ctx: AskContext, event: StreamEvent | None, thread_id: str) -> StreamEvent:
@@ -325,18 +349,8 @@ class _Turn:
 # --------------------------------------------------------------------------------------------------
 
 
-def _finish(
-    store: Store,
-    turn: _Turn,
-    *,
-    question: str,
-    answer: str,
-    thread_id: str,
-    history: Sequence[ChatMessage],
-    today: date,
-) -> AskEvent:
-    """Check the answer (citations, then claims), store question and answer, log what was changed."""
-    checked = check_turn(store, answer, turn.results, question=question, history=history, today=today)
+def _finish(store: Store, turn: _Turn, checked: AnswerCheck, *, question: str, thread_id: str) -> AskEvent:
+    """Store question and checked answer, log what the check changed, and make the ``done`` event."""
     text = checked.text
     citations = citation_refs(store, parse_citations(checked.body))
     with store.tx():
@@ -391,21 +405,28 @@ def check_turn(
     (:func:`ordnung.assistant.support.check_answer`); weekday names are corrected and the note is
     made. An answer the check emptied becomes :data:`UNSUPPORTED_ANSWER` (in German for a German answer),
     and its note still says what was left out and why; an answer that was empty already becomes
-    :data:`NO_ANSWER`.
+    :data:`NO_ANSWER` (in German for a German question).
     """
     person = [question, *(message.content for message in history if message.role == "user")]
-    evidence = TurnEvidence.from_results(tool_results, today=today, person=person, catalog=catalog_texts())
+    evidence = TurnEvidence.from_results(tool_results, today=today, person=person, catalog=known_laws())
     cited = parse_citations(answer)
     valid = valid_citation_ids(store, cited, evidence.seen_ids)
     claims = check_answer(answer, evidence, citable=valid)
     body = correct_weekdays(_EXTRA_BLANK_LINES.sub("\n\n", strip_invalid(claims.text, valid)).strip(), today)
     note = claims.note()
+    german = (claims.style if answer.strip() else style_for(question)).german
     if not body and claims.removed:
-        body = UNSUPPORTED_ANSWER_DE if claims.style.german else UNSUPPORTED_ANSWER
+        body = UNSUPPORTED_ANSWER_DE if german else UNSUPPORTED_ANSWER
     elif not body:
-        body, note = NO_ANSWER, None
+        body, note = (NO_ANSWER_DE if german else NO_ANSWER), None
     removed = sorted({citation.id for citation in cited} - valid)
     return AnswerCheck(body, note.removeprefix(NOTE_PREFIX).strip() if note else None, claims, removed)
+
+
+def known_laws() -> list[str]:
+    """The § citations any Ask sentence may state: the rules catalog and the laws Ordnung's own Ideas
+    state (:data:`~ordnung.secretary.triggers.IDEA_LAWS`)."""
+    return [*catalog_texts(), *IDEA_LAWS]
 
 
 def stored_answer(message: ChatMessage) -> tuple[str, str | None]:
