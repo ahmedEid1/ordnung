@@ -26,18 +26,25 @@ mentioned could be cited too. There was also no measurement of Ask at all.
    amounts or terms read by AI from a photo or not found on the page, which the record flags
    (`amount_unverified`, `terms_unverified`, with a code-written note saying why). Both parts escape
    `<` and `>`, so no text can open or close a tag.
-2. **Claim-level support, as a written policy** (`assistant/support.py`, ADR 0007 style). Each
-   sentence of an answer that states a date or amount must cite a record whose *record part* holds
-   it (a letter's part includes its to-dos; a contract's includes its letter; a person's includes
-   their to-dos). Today's date, the person's own words and Ordnung's overview totals need no
-   citation. A value that only letter text holds may stay only as a quote — when the sentence says
-   "the letter says" (or a listed equivalent) and cites the record whose letter text holds it, or
-   when it is a cited record's own flagged, unverified amount — and is then shown in quotation marks
-   with a note. Every other such sentence is removed, and a note under the answer says how many. §
-   citations keep the earlier rule (catalog or tool results).
-3. **Citations need a record part.** A cited id must appear in the record part of a tool result of
+2. **Claim-level support, as a written policy** (`assistant/support.py`, ADR 0007 style). The
+   answer is read as the person will see it (Markdown, escapes and invisible characters dropped).
+   Each date or amount must be in the *record part* of a record its sentence cites (a letter's part
+   includes its to-dos; a contract's includes its letter; a person's includes their to-dos; a
+   sentence without citations takes its line's, a list item its lead line's). Today's date and
+   Ordnung's overview totals need no citation. A value that only letter text holds may stay only as
+   a quote — when the value's own clause names the letter ("the letter says", or a listed
+   equivalent) and the sentence cites the record whose letter text holds it, or when it is a cited
+   record's own flagged, unverified amount; a value the person typed stays only as their words in a
+   sentence that cites nothing. Quotes are shown in quotation marks. Every other value is left out:
+   replaced by a placeholder when its sentence keeps a record value, else the sentence is removed. A
+   § must be in the rules catalog or a record part; one only a letter names is quoted.
+3. **Only the check writes its note.** The note (what was left out or quoted, and Ordnung's own date
+   or amount when a letter's value is quoted alone) travels in its own field of the `done` event
+   and the stored thread; the UI shows only that field, and a model sentence that starts like the
+   note is dropped. An answer that stops before the check is shown as unchecked.
+4. **Citations need a record part.** A cited id must appear in the record part of a tool result of
    the same turn and exist; an id that only a letter's text names is stripped.
-4. **The prompt says so** (`ask_system` version 3), and **a benchmark measures it**
+5. **The prompt says so** (`ask_system` version 3), and **a benchmark measures it**
    (`python -m evals.ask`, [docs/evals-ask.md](../evals-ask.md)): questions with gold answers from
    the sample life's truth, injected letters, attack success with and without the check, and a CI
    gate on the replay.
@@ -47,11 +54,20 @@ mentioned could be cited too. There was also no measurement of Ask at all.
   quoted, unconfirmed value. Injected text can no longer make a citation valid.
 - The check is deterministic and linear in the answer and tool-result size; the benchmark re-runs it
   over recorded answers, so changes to it are measured without new model calls.
-- Cost: correct sentences that cite the wrong record, or none, are removed too; the note makes that
-  visible and the benchmark counts it ("removed with true values only").
+- Cost: correct values in sentences that cite the wrong record, or none, are left out too; the note
+  makes that visible and the benchmark counts it ("removed with true values only"). A sentence
+  that keeps a record value only loses the unsupported value, so a record's date is never lost
+  because of another number next to it.
+- Revised after the first review round (recorded in [evals-ask](../evals-ask.md)): the first check
+  missed values hidden by Markdown or odd date forms, cut sentences at abbreviations, read room
+  numbers and clock times as amounts, accepted a letter phrase anywhere in a sentence, let a date the
+  person typed pass as Ordnung's, accepted laws that only a letter named, and let the model write
+  the note itself. Its "unsupported claims in final answers" metric re-ran the check on its own
+  output; the benchmark now measures that with its own parser.
 - Accepted limits, documented in the policy: support is literal (a value in a cited record supports
   a sentence that says something else about it), claims without a date or amount ("there is no
-  deadline") are not read, and a quote is recognised only by the listed phrases. The benchmark's
+  deadline") are not read, a sentence whose value was left out keeps its other words ("moved to
+  [date left out]"), and a quote is recognised only by the listed phrases. The benchmark's
   `no_deadline` and `cite_other` attacks measure exactly these gaps.
 - Any change to the MCP output, the Ask prompt or the ledger fingerprint invalidates recorded Ask
   answers (demo and benchmark), which must be recorded again.

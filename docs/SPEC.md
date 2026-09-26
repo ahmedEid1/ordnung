@@ -286,14 +286,23 @@ HTML and without remote images.
 letter dates, amounts and terms with verified or person-given evidence, totals, code-written
 receipts) and the letters' text by record id (`<untrusted_document>`: titles, summaries, names,
 quotes, warnings, payment details, page text, and amounts or terms read by AI from a photo or not
-found on the page, flagged `amount_unverified`/`terms_unverified`). After the answer streams, each
-sentence that states a date or amount must cite a record whose record part holds it (a letter's
-includes its to-dos, a contract's its letter, a person's their to-dos); today, the person's own
-words and Ordnung's totals need no citation. A value only letter text holds stays only as a quote
-("the letter says …" citing the record whose text holds it, or a cited record's flagged amount) and
-is shown in quotation marks; other such sentences are removed. A last paragraph "Checked by
-Ordnung: …" says what was left out or quoted; the UI shows it as a note. The policy is in the
-docstring of `assistant/support.py`. `python -m evals.ask` measures Ask ([evals-ask](evals-ask.md)).
+found on the page, flagged `amount_unverified`/`terms_unverified`; model-read codes such as a
+letter's language that are not codes; totals add up verified amounts only). After the answer
+streams, it is read as it will be shown (Markdown, escapes and invisible characters dropped, more
+date forms such as `31-12-2027`) and each date or amount must be in the record part of a record its
+sentence cites (a letter's includes its to-dos, a contract's its letter, a person's their to-dos; a
+sentence without citations takes its line's, a list item its lead line's); today and Ordnung's
+totals need no citation. A value only letter text holds stays only as a quote — "the letter says
+…" in the value's own clause, citing the record whose text holds it, or a cited record's flagged
+amount — and a value the person typed stays only as their words in a sentence that cites nothing;
+both are shown in quotation marks. Any other value is replaced by "[date left out]" / "[amount left
+out]" when its sentence keeps a record value, else the sentence is removed; a § only a letter names
+is quoted, an unknown § removes its sentence. The check's note ("what was left out or quoted", plus
+Ordnung's own date when a letter's date is quoted alone) travels in its own `note` field of the
+`done` event and the stored thread; the UI shows only that field, and a model sentence that starts
+like the note is dropped. An answer that is stopped or fails before the check is shown muted, marked
+as unchecked. The policy is in the docstring of `assistant/support.py`. `python -m evals.ask`
+measures Ask ([evals-ask](evals-ask.md)).
 
 ## 11. Letters — `drafts/`
 
@@ -566,8 +575,9 @@ text detector (pdfplumber char colour/size/position): invisible text is excluded
 raises a red banner. HTML e-mails follow the short written policy of `html_to_text` (ADR 0007): only
 text that is certainly hidden is excluded; when in doubt it stays visible. Brief/review free text is checked: every date, amount and § must exist in
 the agenda/ledger/catalog, else it is removed (fallback to code-generated text). Ask's tool results
-separate Ordnung's record from letter text, and each sentence of an Ask answer with a date or amount
-must cite a record whose record part holds it or be a marked quote of a letter (ADR 0008). Ask gets a
+separate Ordnung's record from letter text, and each date or amount of an Ask answer must be in the
+record part of a record its sentence cites, or be a marked quote of a letter or of the person's own
+words; anything else is left out (ADR 0008). Ask gets a
 read-only `explain_date(id)` tool that returns receipts. MCP is internal only (no Claude Desktop config in v1).
 
 **Scam checks (code, not model).** IBAN checksum validation; payee IBAN/name compared with those
