@@ -1,17 +1,22 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useId, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { RotateCw, ShieldCheck } from "lucide-react";
 import { useBrief, useProfile, useRegenerateBrief } from "@/api/hooks";
 import { LogoMark } from "@/components/shell/Logo";
 import { IconButton } from "@/components/ui/Button";
 import { SkeletonText } from "@/components/ui/Skeleton";
+import { useTodayISO } from "@/lib/today";
 import { fadeUp } from "./motion";
-import { writtenAt } from "./helpers";
+import { noteText, writtenAt } from "./helpers";
 import { stripGreeting } from "./selection";
 import { cn } from "@/lib/utils";
 
+/**
+ * Amounts and days the eye should find, in the note as {@link noteText} writes it ("€94.99",
+ * "Tue 29 Sep" with non-breaking spaces, "tomorrow", "Friday").
+ */
 const EMPHASIS =
-  /(€\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d{1,3}(?:\.\d{3})*(?:,\d{2})?\s?€|\b(?:today|tomorrow|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b|\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b)/g;
+  /(€\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\b(?:today|tomorrow|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b|\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[ \u00a0]\d{1,2}[ \u00a0](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b(?:[ \u00a0]\d{4}\b)?)/g;
 
 /** Emphasise amounts and days in the note so the eye finds them. */
 function Emphasised({ text }: { text: string }) {
@@ -21,7 +26,7 @@ function Emphasised({ text }: { text: string }) {
       {parts.map((p, i) =>
         i % 2 === 1 ? (
           <strong key={i} className="whitespace-nowrap font-semibold tabular-nums text-ink">
-            {p.replace(/\s€/, "\u00a0€")}
+            {p}
           </strong>
         ) : (
           <Fragment key={i}>{p}</Fragment>
@@ -39,7 +44,11 @@ export function SecretaryNote({ fallback }: { fallback: string }) {
   const brief = useBrief();
   const regen = useRegenerateBrief();
   const data = brief.data;
-  const text = data?.text?.trim() ? stripGreeting(data.text) : fallback;
+  const today = useTodayISO();
+  const raw = data?.text?.trim() ? stripGreeting(data.text) : fallback;
+  // one style for dates and money, whoever wrote the note ("30 September" → "Wed 30 Sep", "94,99 €" → "€94.99")
+  const text = useMemo(() => noteText(raw, today), [raw, today]);
+  const noteId = useId();
   const fromAi = Boolean(data?.text?.trim()) && data?.source === "llm";
   const profile = useProfile();
   // a note prepared before its day (the demo's is from the day it was built) is "for today"
@@ -77,6 +86,7 @@ export function SecretaryNote({ fallback }: { fallback: string }) {
         <>
           {/* phones: three lines, so Top 3 stays in view */}
           <p
+            id={noteId}
             aria-live="polite"
             className={cn("display relative mt-4 max-w-[62ch] text-[18px] leading-[1.6] text-ink/90 sm:text-[20px]", !more && "max-sm:line-clamp-3")}
           >
@@ -87,7 +97,8 @@ export function SecretaryNote({ fallback }: { fallback: string }) {
               type="button"
               onClick={() => setMore(!more)}
               aria-expanded={more}
-              className="relative mt-1 text-[13px] font-semibold text-accent underline-offset-2 hover:underline sm:hidden"
+              aria-controls={noteId}
+              className="relative -mx-1 mt-1 inline-flex min-h-6 items-center rounded-md px-1 text-sm font-semibold text-accent underline-offset-2 hover:underline sm:hidden"
             >
               {more ? "Show less" : "Read more"}
             </button>

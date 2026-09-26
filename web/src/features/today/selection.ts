@@ -349,9 +349,9 @@ export function toPayWithin(actions: readonly TodayAction[], days = 30): number 
 export interface WeekGroup<T> {
   /** "overdue" or the ISO Monday of the week */
   key: string;
-  /** "Overdue", "This week", "Next week", "Week of 12 Oct" */
+  /** "Overdue", "This week", "Next week", "12 – 18 Oct" */
   label: string;
-  /** "28 Sep – 4 Oct" (empty for overdue) */
+  /** "28 Sep – 4 Oct" for this and next week (empty for overdue and later weeks, whose label is their days) */
   range: string;
   entries: T[];
   /** Sum of outgoing payments in the group, per currency */
@@ -360,7 +360,7 @@ export interface WeekGroup<T> {
 
 /**
  * Group dated entries by calendar week (Monday first, as in Germany): "Overdue", "This week",
- * "Next week", "Week of 12 Oct". Entries after `today + days` are dropped. Sorted by date.
+ * "Next week", "12 – 18 Oct". Entries after `today + days` are dropped. Sorted by date.
  */
 export function groupByWeek<T extends { date: string; amount?: number | null; currency?: string | null; outgoing?: boolean }>(
   entries: readonly T[],
@@ -383,12 +383,14 @@ export function groupByWeek<T extends { date: string; amount?: number | null; cu
       const monday = startOfWeek(parseISO(e.date), { weekStartsOn: 1 });
       key = format(monday, "yyyy-MM-dd");
       const weeks = Math.round(differenceInCalendarDays(monday, thisWeek) / 7);
-      label = weeks === 0 ? "This week" : weeks === 1 ? "Next week" : `Week of ${format(monday, "d MMM")}`;
       const sunday = addDays(monday, 6);
-      range =
+      const days =
         monday.getMonth() === sunday.getMonth()
           ? `${format(monday, "d")} – ${format(sunday, "d MMM")}`
           : `${format(monday, "d MMM")} – ${format(sunday, "d MMM")}`;
+      // later weeks are named by their days ("12 – 18 Oct", not "Week of 12 Oct 12 – 18 Oct")
+      label = weeks === 0 ? "This week" : weeks === 1 ? "Next week" : days;
+      range = weeks <= 1 ? days : "";
     }
     let g = groups.get(key);
     if (!g) {

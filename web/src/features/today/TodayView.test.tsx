@@ -44,7 +44,8 @@ describe("Today page", () => {
 
     const coming = screen.getByRole("region", { name: /Coming up/ });
     expect(within(coming).getByText("Cancel phone contract — if you want to switch")).toBeInTheDocument();
-    expect(within(coming).getByText(/Send by Thu 8 Oct/)).toBeInTheDocument();
+    // the leaf shows the day; the row says what it means and who it is with
+    expect(within(coming).getByRole("link", { name: /Thursday 8 October.*Cancel phone contract.*Send · / })).toBeInTheDocument();
 
     const ideas = screen.getByRole("region", { name: "Ideas from your secretary" });
     expect(ideas).toHaveAttribute("data-tour", "today-ideas");
