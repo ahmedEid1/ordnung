@@ -287,22 +287,30 @@ letter dates, amounts and terms with verified or person-given evidence, totals, 
 receipts) and the letters' text by record id (`<untrusted_document>`: titles, summaries, names,
 quotes, warnings, payment details, page text, and amounts or terms read by AI from a photo or not
 found on the page, flagged `amount_unverified`/`terms_unverified`; model-read codes such as a
-letter's language that are not codes; totals add up verified amounts only). After the answer
-streams, it is read as it will be shown (Markdown, escapes and invisible characters dropped, more
-date forms such as `31-12-2027`) and each date or amount must be in the record part of a record its
-sentence cites (a letter's includes its to-dos, a contract's its letter, a person's their to-dos; a
-sentence without citations takes its line's, a list item its lead line's); today and Ordnung's
-totals need no citation. A value only letter text holds stays only as a quote — "the letter says
-…" in the value's own clause, citing the record whose text holds it, or a cited record's flagged
-amount — and a value the person typed stays only as their words in a sentence that cites nothing;
-both are shown in quotation marks. Any other value is replaced by "[date left out]" / "[amount left
-out]" when its sentence keeps a record value, else the sentence is removed; a § only a letter names
-is quoted, an unknown § removes its sentence. The check's note ("what was left out or quoted", plus
-Ordnung's own date when a letter's date is quoted alone) travels in its own `note` field of the
-`done` event and the stored thread; the UI shows only that field, and a model sentence that starts
-like the note is dropped. An answer that is stopped or fails before the check is shown muted, marked
-as unchecked. The policy is in the docstring of `assistant/support.py`. `python -m evals.ask`
-measures Ask ([evals-ask](evals-ask.md)).
+letter's language that are not codes; totals add up verified amounts only). A tool keeps each result
+within a size budget by leaving out rows (and says how many), and the answer is checked against the
+whole result the model read. `money_summary` also lists open payments with no stored due date (a
+rent whose day the letter did not give) and, apart, the demands of letters with scam signs
+(`do_not_pay`). After the answer streams, it is read as it will be shown (Markdown, escapes and
+invisible characters dropped, more date forms such as `31-12-2027`, `31 12 2027`, `31.XII.2027`, and
+currency words) and each date or amount must be in the record part of a record its sentence cites
+(a letter's includes its to-dos, a contract's its letter, a person's their to-dos; a sentence
+without citations takes its line's, a list item its lead line's); today and Ordnung's totals need no
+citation, and a sentence without citations of its own may state the own date or amount of any record
+the answer cites. A value only letter text holds stays only as a quote — "the letter says …" (or a
+listed equivalent, such as "the letter's text contains a line claiming …") before it in the value's
+own clause, not negated, citing the record whose text holds it (or, citing nothing, a letter read in
+the turn), or a cited record's flagged amount — and a value the person typed stays only as their
+words; both are shown in quotation marks, and the note then gives Ordnung's own date or amount of the
+records the quote belongs to. Any other value is replaced by "[date left out]" / "[amount left out]"
+when its sentence keeps a value, else the sentence is removed; a § only a letter names is quoted, an
+unknown § is replaced by "[law left out]" (or removes a sentence with nothing else to keep). No
+left-out value is ever shown. The check's note (what was left out or quoted, and why), in the
+answer's language, travels in its own `note` field of the `done` event and the stored thread, also
+when the whole answer was left out; the UI shows only that field, copies it with the answer, and a
+model sentence that starts like the note is dropped. Streaming text and an answer that is stopped or
+fails before the check are shown muted, the latter marked as unchecked. The policy is in the
+docstring of `assistant/support.py`. `python -m evals.ask` measures Ask ([evals-ask](evals-ask.md)).
 
 ## 11. Letters — `drafts/`
 

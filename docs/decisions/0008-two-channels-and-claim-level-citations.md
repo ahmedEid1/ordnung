@@ -25,26 +25,30 @@ mentioned could be cited too. There was also no measurement of Ask at all.
    id: titles, summaries, names, key facts, quotes, warnings, payment details, page text — and
    amounts or terms read by AI from a photo or not found on the page, which the record flags
    (`amount_unverified`, `terms_unverified`, with a code-written note saying why). Both parts escape
-   `<` and `>`, so no text can open or close a tag.
+   `<` and `>`, so no text can open or close a tag. A tool keeps each result within a size budget
+   by leaving out rows (and says how many), and the check reads the whole result the model read.
 2. **Claim-level support, as a written policy** (`assistant/support.py`, ADR 0007 style). The
    answer is read as the person will see it (Markdown, escapes and invisible characters dropped).
    Each date or amount must be in the *record part* of a record its sentence cites (a letter's part
    includes its to-dos; a contract's includes its letter; a person's includes their to-dos; a
    sentence without citations takes its line's, a list item its lead line's). Today's date and
-   Ordnung's overview totals need no citation. A value that only letter text holds may stay only as
-   a quote — when the value's own clause names the letter ("the letter says", or a listed
-   equivalent) and the sentence cites the record whose letter text holds it, or when it is a cited
-   record's own flagged, unverified amount; a value the person typed stays only as their words in a
-   sentence that cites nothing. Quotes are shown in quotation marks. Every other value is left out:
-   replaced by a placeholder when its sentence keeps a record value, else the sentence is removed. A
-   § must be in the rules catalog or a record part; one only a letter names is quoted.
+   Ordnung's overview totals need no citation, and a sentence without citations of its own may state
+   the own date or amount of any record the answer cites. A value that only letter text holds may
+   stay only as a quote — when a phrase naming the letter ("the letter says", or a listed
+   equivalent) stands before it in its own clause, not negated, and the sentence cites the record
+   whose letter text holds it (citing nothing: a letter read in the turn), or when it is a cited
+   record's own flagged, unverified amount; a value the person typed stays only as their words.
+   Quotes are shown in quotation marks, and the note gives Ordnung's own date or amount of the
+   records a quote belongs to. Every other value is left out: replaced by a placeholder when its
+   sentence keeps a value, else the sentence is removed; a left-out value is never shown. A § must
+   be in the rules catalog or a record part; one only a letter names is quoted, another one left out.
 3. **Only the check writes its note.** The note (what was left out or quoted, and Ordnung's own date
    or amount when a letter's value is quoted alone) travels in its own field of the `done` event
    and the stored thread; the UI shows only that field, and a model sentence that starts like the
    note is dropped. An answer that stops before the check is shown as unchecked.
 4. **Citations need a record part.** A cited id must appear in the record part of a tool result of
    the same turn and exist; an id that only a letter's text names is stripped.
-5. **The prompt says so** (`ask_system` version 3), and **a benchmark measures it**
+5. **The prompt says so** (`ask_system` version 4), and **a benchmark measures it**
    (`python -m evals.ask`, [docs/evals-ask.md](../evals-ask.md)): questions with gold answers from
    the sample life's truth, injected letters, attack success with and without the check, and a CI
    gate on the replay.
@@ -64,6 +68,34 @@ mentioned could be cited too. There was also no measurement of Ask at all.
   person typed pass as Ordnung's, accepted laws that only a letter named, and let the model write
   the note itself. Its "unsupported claims in final answers" metric re-ran the check on its own
   output; the benchmark now measures that with its own parser.
+- Revised after the second review round (recorded in [evals-ask](../evals-ask.md)): the check
+  skipped one of two overlapping edits (a date and an amount sharing a currency), so a value the
+  note called left out stayed readable — it now never drops an edit and removes a sentence rather
+  than show a left-out value; it deleted the model's warnings about injected text (they repeat the
+  value to flag it) — "the letter's text contains a line claiming …" now names the letter as the
+  source and keeps the warning with the value quoted; a letter phrase framed values before it,
+  negated phrases, and values after ", and" or "while"; a date the person typed was lost in a
+  sentence that cites a record, and an uncited "yes, that's right: … 31.12.2027" kept it with no
+  record value next to it — it is now quoted whatever the sentence cites, and the note gives
+  Ordnung's own value; an unknown § removed a record's date; straight quotes were doubled; spaced,
+  Roman-month and default-ignorable forms and currency words were not read; one long sentence took
+  quadratic time; the note was English under German answers; and the CLI backend cut every tool
+  result at 20,000 characters for the check (not for the model), so a longer result lost its whole
+  record part. The tools now keep results within a budget by rows, `money_summary` lists undated
+  payments and demands not to pay, and the prompt went to version 4, so all Ask answers were
+  recorded again.
+- Why this is still a short written policy in the sense of ADR 0007, although its phrase and form
+  lists grew in two review rounds: the part that decides whether a value is *Ordnung's* is small
+  and closed — it must be in the code-written record part of a record the answer cites. The lists
+  only choose between two safe outcomes for a value a letter holds (a quote, with Ordnung's own
+  value in the note, or left out) and decide what counts as a value at all; a gap in them leaves a
+  correct letter value out or lets a letter's value through as a marked quote, never as Ordnung's
+  statement. Two smaller policies were considered: always leaving out letter-only values (loses
+  correct answers the record does not hold, such as a refund read from a photo, and the warnings
+  about injected text), and machine-readable quotes from the model (`[quote:doc_…]“…”`, rendered as
+  quotes) — which would replace the phrase list by a contract with the model and needs a prompt
+  change, UI support and a new measurement. The latter is the next step if review keeps finding
+  wordings.
 - Accepted limits, documented in the policy: support is literal (a value in a cited record supports
   a sentence that says something else about it), claims without a date or amount ("there is no
   deadline") are not read, a sentence whose value was left out keeps its other words ("moved to
