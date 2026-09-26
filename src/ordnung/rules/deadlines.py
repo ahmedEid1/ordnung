@@ -20,7 +20,7 @@ from datetime import date, timedelta
 from typing import Final, Literal
 
 from ordnung.models import ComputationReceipt, ComputationStep, Confidence, DateSpec, PeriodUnit
-from ordnung.rules import calendar_de, catalog
+from ordnung.rules import calendar_de, catalog, routing
 from ordnung.rules.delivery import DeliveryChannel, DeliveryScope, resolve_delivery
 from ordnung.rules.explain import (
     capitalize_first,
@@ -54,7 +54,9 @@ ASSUMED_RECEIPT_WARNING: Final = (
 _SHIFTING_NATURES = ("objection", "payment", "declaration")
 _SEND_BY_NATURES = ("objection", "payment", "declaration", "notice")
 #: Statutes whose period runs from formal service (yellow envelope), not from a delivery fiction.
-_FORMAL_SERVICE = ("owig_67", "stpo_410")
+_FORMAL_SERVICE = ("owig_67", "stpo_410", "zpo_692", "zpo_339")
+#: Court orders under the ZPO: delivered by the court (§ 180 ZPO), shifted by § 222 Abs. 2 ZPO.
+_CIVIL_COURT = ("zpo_692", "zpo_339")
 _CHANNEL_BY_RULE: dict[str, DeliveryChannel] = {
     "de_admin_electronic": "electronic",
     "de_admin_portal": "portal",
@@ -63,6 +65,7 @@ _CHANNEL_BY_RULE: dict[str, DeliveryChannel] = {
 _ONE_MONTH: tuple[tuple[int, PeriodUnit], ...] = ((1, "months"),)
 _ONE_OR_THREE_MONTHS: tuple[tuple[int, PeriodUnit], ...] = ((1, "months"), (3, "months"))
 _TWO_WEEKS: tuple[tuple[int, PeriodUnit], ...] = ((2, "weeks"),)
+_THREE_WEEKS: tuple[tuple[int, PeriodUnit], ...] = ((3, "weeks"),)
 
 # Statutes recognised in DateSpec.legal_basis / text, with their statutory periods (first = the usual
 # one; the SGG gives three months when delivered abroad). A DateSpec whose period matches none of them
@@ -76,7 +79,11 @@ _STATUTES: list[tuple[re.Pattern[str], str, tuple[tuple[int, PeriodUnit], ...]]]
     (re.compile(r"\b410\b[^§]{0,20}\bStPO\b", re.I), "stpo_410", _TWO_WEEKS),
     (re.compile(r"\b87\b[^§]{0,20}\bSGG\b", re.I), "klage_1_month", _ONE_OR_THREE_MONTHS),
     (re.compile(r"\b74\b[^§]{0,20}\bVwGO\b|\b47\b[^§]{0,20}\bFGO\b", re.I), "klage_1_month", _ONE_MONTH),
+    (re.compile(r"\b69[24]\b[^§]{0,20}\bZPO\b", re.I), "zpo_692", _TWO_WEEKS),
+    (re.compile(r"\b(?:339|700)\b[^§]{0,20}\bZPO\b", re.I), "zpo_339", _TWO_WEEKS),
+    (re.compile(r"\b4\b[^§]{0,20}\bKSchG\b|Kündigungsschutzklage", re.I), "kschg_4", _THREE_WEEKS),
 ]
+_STATUTE_PERIODS = {rule_id: periods for _, rule_id, periods in _STATUTES}
 _SHIFT_RULE_BY_SCOPE: dict[DeliveryScope, str] = {
     "ao": "ao_108_3",
     "vwvfg": "vwvfg_31_3",
@@ -97,6 +104,9 @@ class RuleContext:
     moves for a regional holiday when it applies at both places (legal research verdict, OFD Cottbus
     2004), and a payment to a private creditor uses the payer's holidays, because money is owed at the
     debtor's home (§§ 269, 270 Abs. 4, 193 BGB; research ``bgb_271_286_2_zahlungsziel_rechnung``).
+    ``letter_kind`` is the letter's kind (``Document.kind``), which routes the dates of high-stakes
+    letters (:mod:`ordnung.rules.routing`); ``end_date`` is the end of the job or tenancy a termination
+    announces.
     """
 
     today: date
@@ -107,6 +117,8 @@ class RuleContext:
     received_confirmed: bool = False
     delivery_scope: DeliveryScope | None = None
     recipient_region: str | None = None
+    letter_kind: str | None = None
+    end_date: date | None = None
 
 
 @dataclass
@@ -198,12 +210,16 @@ def parse_date(value: str | None) -> date | None:
         return None
 
 
-def _statute(spec: DateSpec) -> tuple[str, tuple[tuple[int, PeriodUnit], ...]] | None:
+def _statute(
+    spec: DateSpec, letter_kind: str | None = None
+) -> tuple[str, tuple[tuple[int, PeriodUnit], ...]] | None:
+    """The statute the DateSpec cites, else the one its kind of letter gives it (court orders)."""
     haystack = f"{spec.legal_basis or ''} {spec.text}"
     for pattern, rule_id, periods in _STATUTES:
         if pattern.search(haystack):
             return rule_id, periods
-    return None
+    by_kind = routing.kind_statute(letter_kind, spec)
+    return (by_kind, _STATUTE_PERIODS[by_kind]) if by_kind else None
 
 
 def statute_rule(spec: DateSpec) -> str | None:
@@ -369,6 +385,10 @@ def _end_clause(
 def _shift_rule_id(ctx: RuleContext, statute: str | None) -> str:
     if statute in ("owig_67", "stpo_410"):
         return "stpo_43"
+    if statute in _CIVIL_COURT:
+        return "zpo_222"
+    if statute == "kschg_4":
+        return "bgb_193"
     return _SHIFT_RULE_BY_SCOPE[ctx.delivery_scope] if ctx.delivery_scope else "bgb_193"
 
 
@@ -586,8 +606,19 @@ def _late_receipt_note(
     trace.use("late_receipt")
 
 
-def _formal_service_note(trace: Trace, spec: DateSpec, anchor: _Anchor) -> None:
-    """Fines and penal orders run from formal service, which the letter's date can only precede."""
+def _formal_service_note(trace: Trace, spec: DateSpec, anchor: _Anchor, statute: str) -> None:
+    """Fines, penal orders and court orders run from formal service, which the letter's date can only
+    precede. A court order's envelope date is its start (§ 180 ZPO) even while it is unknown."""
+    if statute in _CIVIL_COURT:
+        trace.use("zpo_180")
+        if anchor.source in ("explicit", "receipt", "stated_receipt") or spec.anchor == "receipt":
+            return  # known, or already asked for ("when did it arrive?")
+        trace.soft(
+            "The two weeks run from delivery (Zustellung): the date the postman wrote on the yellow "
+            f"envelope (§ 180 ZPO). We counted from {anchor.phrase}, which can only be earlier — enter the "
+            "envelope date for the exact deadline."
+        )
+        return
     if spec.anchor in ("explicit_date", "receipt"):
         return
     trace.soft(
@@ -595,6 +626,24 @@ def _formal_service_note(trace: Trace, spec: DateSpec, anchor: _Anchor) -> None:
         "Übergabe-Einschreiben the 4th day after posting (§ 4 Abs. 2 VwZG). We counted from "
         f"{anchor.phrase}, which can only be earlier — enter the envelope date for the exact deadline."
     )
+
+
+#: What each court deadline means for the person (a soft note: court dates are never ``high``).
+_COURT_NOTES: dict[str, str] = {
+    "zpo_692": (
+        "This is a court deadline. Ordnung's date is information, not legal advice — if you don't owe the "
+        "money, object in time and get advice (see the card on this letter)."
+    ),
+    "zpo_339": (
+        "This is a court deadline that can't be extended (Notfrist), and the order can be enforced "
+        "meanwhile. Get advice now (see the card on this letter)."
+    ),
+    "kschg_4": (
+        "This is the deadline for a court action at the labour court (Kündigungsschutzklage). Ordnung "
+        "can't draft or file it — get advice now from a union, an employment lawyer or the court's "
+        "Rechtsantragstelle."
+    ),
+}
 
 
 def _compute_relative(
@@ -617,7 +666,7 @@ def _compute_relative(
             summary="No date could be computed: the start date is missing.",
             region=place,
         )
-    statute, statutory_periods = _statute(spec) or (None, ())
+    statute, statutory_periods = _statute(spec, ctx.letter_kind) or (None, ())
     # Fines and penal orders run from formal service (yellow envelope, § 4 VwZG), never from the
     # 4th-day fiction of ordinary authority letters: without the envelope date the letter's own date is
     # the earliest plausible start (legal research owig_einspruch_bussgeldbescheid_2_wochen).
@@ -678,7 +727,14 @@ def _compute_relative(
             "(Bußgeldbescheid) is formally delivered."
         )
     if statute in _FORMAL_SERVICE:
-        _formal_service_note(trace, spec, anchor)
+        _formal_service_note(trace, spec, anchor, statute)
+    if statute in _COURT_NOTES:
+        trace.soft(_COURT_NOTES[statute])
+    if statute == "zpo_692":
+        trace.warnings.append(
+            "A late objection still counts until the enforcement order is issued (§ 694 ZPO) — but don't "
+            "rely on that."
+        )
     if statute == "klage_1_month":
         trace.soft(
             "This is the deadline for a court action (Klage). Ordnung can't draft or file court actions — "
@@ -737,6 +793,12 @@ def compute_due(
             f"Ordnung only knows German rules; this date was computed as if the letter were German ({ctx.country})."
         )
     try:
+        special = routing.special_rule(spec, ctx.letter_kind, authority=ctx.delivery_scope is not None)
+        if special is not None:
+            # the letter rules build on this module's receipts, so they are imported where needed
+            from ordnung.rules.letters import compute_letter_date
+
+            return compute_letter_date(special, spec, ctx, trace, postal_buffer_days)
         if spec.type == "fixed":
             return _compute_fixed(spec, ctx, trace, postal_buffer_days)
         return _compute_relative(spec, ctx, trace, postal_buffer_days)

@@ -58,6 +58,8 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 | Implausible period (over 100 years) or a date at the end of the calendar | No date, `low` confidence, "please check" — never an error that stops the document. |
 | Arrival day of a letter needed but not confirmed | Uses the letter's date and asks when it really arrived (`low` confidence). |
 | Kind of sender (procedural law) unknown | 3rd/4th-day rule **without** the weekend shift; 3 days unless the Land is known to use 4 (portal: the day after it was made available). |
+| Court order (Mahnbescheid, Vollstreckungsbescheid) without the envelope date | Counts from the order's own date and asks for the date on the yellow envelope (`low`); court deadlines are never `high`. |
+| Whether an operating-cost statement came too late | Resolved in the landlord's favour: called late only when it certainly arrived after the deadline (section 7). |
 | Letter's period differs from the statute (e.g. "6 weeks" for a tax objection) | Computes both and uses the earlier date. |
 | Notice period missing from a contract | Assumes the longest notice the law allows (earliest deadline). |
 | Notice deadline on a weekend/holiday | No shift (BGH III ZR 172/04) + a `safe_date` on the working day before. |
@@ -330,7 +332,143 @@ Example: tax back payment on the hero letter — due Wed 21 Oct 2026, order the 
 
 ---
 
-## 7. Contracts
+## 7. High-stakes letters
+
+Some letters are rare but catastrophic when missed, and several of them never state their most
+important deadline. The extraction prompt is unchanged (its recorded answers stay valid), so Ordnung
+recognises these letters **in code** from the model's ordinary reading (`rules/routing.py`, a short
+written policy per ADR 0007) and files them under their own kind:
+
+| Kind | Recognised when the reading … | Its dates follow | Deadlines the law adds (filed as to-dos) | Card |
+|---|---|---|---|---|
+| `court_payment_order` (*Mahnbescheid*) | comes from a court (sender's name ends a word in "gericht", not a *Gerichtsvollzieher* or *Gerichtskasse*) and names a Mahnbescheid | `zpo_692` | pay or object within two weeks | get advice now |
+| `enforcement_order` (*Vollstreckungsbescheid*) | comes from a court and names a Vollstreckungsbescheid | `zpo_339` | object within two weeks | get advice now |
+| `dismissal` | reports a termination by the other side about a job | `kschg_4`, `sgb3_38` | court action within three weeks; register as job-seeking | get advice now |
+| `landlord_notice` | reports a termination by the other side about a tenancy | `bgb_574b` | the objection, when the end of the tenancy is stated | tenants' association |
+| `rent_increase` | reports a rent increase that asks for consent (not a graduated, index or modernisation increase) | `bgb_558b` | decide on the consent | rent cap check |
+| `operating_costs` | names an operating-cost statement — recognised on read only, because its dates don't depend on it | ordinary 12-month period | — | late-statement check |
+
+A debt collector threatening a Mahnbescheid is not a court, so its letter stays a payment reminder;
+text in the model's own advice (`explanation`, `warnings`) never classifies a letter. A letter the
+policy misses keeps the model's kind; the person can set the kind on the letter, and its dates are
+recomputed at once. A deadline the law adds is filed as a to-do (`origin = "rule"`, one per rule)
+unless one of the letter's own dates already follows that rule; it has no quote to check, so it
+never makes a letter "Please check". Court deadlines are **never `high`** confidence: each carries a
+"get advice" note, and without the envelope date also the "when did it arrive?" question (`low`).
+
+**Court payment order** (`zpo_692`, § 692 Abs. 1 Nr. 3, § 694 ZPO). Two weeks from delivery
+(*Zustellung*): the date the postman wrote on the yellow envelope — also a Saturday, if that is when
+it was put in the letterbox (§ 180 ZPO, `zpo_180`). No 4-day rule. Counted by §§ 187, 188 BGB and
+moved off weekends and holidays at the court's seat (§ 222 ZPO, `zpo_222`). Without the envelope date
+the order's own date is used (it can only be earlier). A late objection still counts until the
+enforcement order is issued (§ 694 Abs. 1 ZPO) — shown as a warning, never relied on.
+
+| Delivered | Court | Deadline | Source |
+|---|---|---|---|
+| Thu 24 Sep 2026 (envelope) | AG Hagen (NW) | Thu 8 Oct 2026 | § 692 ZPO; [mahngerichte.de](https://www.mahngerichte.de/verfahrensueberblick/verfahrensablauf/widerspruch/) |
+| Sat 19 Dec 2026 (letterbox) | AG Hagen | Sat 2 Jan → Mon 4 Jan 2027 | § 180, § 222 Abs. 2 ZPO |
+| unknown; order dated Mon 21 Sep 2026 | AG Hagen | Mon 5 Oct 2026, `low`, "enter the envelope date" | SPEC § 21 |
+
+**Enforcement order** (`zpo_339`, § 700 Abs. 1, § 339 Abs. 1 ZPO). Like a default judgment: it can
+be enforced at once, and the objection (*Einspruch*) must reach the court within two weeks of delivery.
+This *Notfrist* can't be extended. Example: delivered Sat 19 Sep 2026 in Berlin → Sat 3 Oct is German
+Unity Day → **Mon 5 Oct 2026** ([Hessen courts](https://ordentliche-gerichtsbarkeit.hessen.de/themen-der-ordentlichen-gerichtsbarkeit/mahnverfahren/einspruch-gegen-einen-vollstreckungsbescheid)).
+
+**Dismissal: court action** (`kschg_4`, § 4 S. 1, § 7 KSchG). Three weeks from *receiving* the written
+dismissal; afterwards the dismissal counts as valid. The end moves off weekends and holidays (§ 193 BGB).
+The letter never states this deadline, so a dismissal always brings it as a to-do, with the "get
+advice" card (union, employment lawyer, the labour court's *Rechtsantragstelle*). Ordnung never drafts
+a court action. Examples: received Mon 6 Jan 2025 → Mon 27 Jan 2025; received Fri 11 Dec 2026 (Berlin)
+→ Fri 1 Jan → **Mon 4 Jan 2027** ([Arbeitsgericht Hamburg](https://justiz.hamburg.de/gerichte/arbeitsgericht-hamburg/informationen-merkblaetter-und-klagevordrucke-641146)).
+
+**Registering as job-seeking** (`sgb3_38`, § 38 Abs. 1 SGB III). At the latest three months before the
+job ends; when less than three months are left, within three days of learning the end date. "Three
+months before" counts back from the last day (ends 30 Sep → by 30 Jun; ends 31 Dec → by 30 Sep; some
+guides say 1 Oct — the earlier day is used). The three days are not moved off a weekend: § 26 Abs. 3
+SGB X may extend them, but registering online or by phone works on any day, so Ordnung keeps the
+earlier date and says so. Without a known end date the three-day rule is used (the earlier of the two).
+No postal buffer: it counts the day you register. The end of the job is the termination's effective
+date as read ([Bundesagentur für Arbeit](https://www.arbeitsagentur.de/arbeitslos-arbeit-finden/arbeitslosengeld/ihre-schritte-wenn-sie-arbeitslos-werden/wie-sie-sich-arbeitsuchend-melden)).
+
+| Learned | Job ends | Register by |
+|---|---|---|
+| Sat 2 May 2026 | Wed 30 Sep 2026 | Tue 30 Jun 2026 |
+| Fri 25 Sep 2026 (dismissal) | Thu 31 Dec 2026 | Wed 30 Sep 2026 |
+| Fri 25 Sep 2026 | Sat 31 Oct 2026 | Mon 28 Sep 2026 (three days) |
+| Thu 1 Oct 2026 | Mon 30 Nov 2026 | Sun 4 Oct 2026 (kept; may run to Mon 5 Oct) |
+
+**Rent increase request** (`bgb_558b`, § 558b Abs. 1, 2 BGB). The tenant may decide until the end of
+the second calendar month after the request arrived; only with consent is the higher rent owed, from
+the start of the third month. Consent is a declaration within a period, so a last day on a weekend or
+holiday moves to the next working day (§ 193 BGB). A date the landlord names is shown next to the
+law's, which it can't shorten. The card checks the **rent cap** (`bgb_558_3`, § 558 Abs. 3 BGB) from
+the old and new amounts the model read: more than 20 % within three years is not allowed, more than
+15 % not in the many cities with the lower cap. The cap counts from the rent three years ago and
+without operating costs, so a result within the cap is only "as far as these amounts show".
+
+| Request arrived | Decide by | Higher rent from | Source |
+|---|---|---|---|
+| Thu 15 Jan 2026 | Tue 31 Mar 2026 | Wed 1 Apr 2026 | [Mieterverein zu Hamburg](https://mieterschutz-hamburg.de/rat-und-tipps/mieterhoehung) |
+| Fri 15 May 2026 | Fri 31 Jul 2026 | Sat 1 Aug 2026 | [mietrecht.org](https://www.mietrecht.org/mieterhoehung/frist-zustimmung-mieterhoehung/) |
+| Fri 29 Aug 2025, landlord in NI | Fri 31 Oct (Reformation Day) → Mon 3 Nov 2025 | Sat 1 Nov 2025 | § 193 BGB |
+
+**Objecting to the landlord's notice** (`bgb_574b`, §§ 574, 574b BGB). If moving out would be a
+hardship, the tenant can object and ask to stay; the objection must reach the landlord **at the latest
+two months before the tenancy ends**, counted backwards, never moved to a later day (a safe date on the
+working day before). Since the *Bürokratieentlastungsgesetz IV* (1 Jan 2025) text form is enough; a
+signed letter by Einwurf-Einschreiben is still the safest proof. If the landlord didn't point out the
+right to object in time, it can still be raised in the first court hearing (§ 574b Abs. 2 S. 2) — never
+relied on. Examples: ends Sun 31 Oct 2027 → by Tue 31 Aug 2027; ends Fri 30 Apr 2027 → by **Sun 28 Feb
+2027**, safe date Fri 26 Feb ([Deutscher Mieterbund](https://mieterbund.de/app/uploads/2025/02/4-Siegmund-Vortrag-Kuendigungswiderspruch-und-Fortsetzung.pdf)).
+
+**Operating-cost statement** (`bgb_556_3`, § 556 Abs. 3, 4 BGB). The statement must reach the tenant by
+the end of the twelfth month after the billing period; after that a back-payment is no longer owed
+unless the landlord was not responsible for the delay (a credit stays the tenant's). The tenant's
+objections are due twelve months after it arrived (an ordinary period the engine already computes),
+and the tenant may inspect the receipts. The card's check is written so that it never wrongly says
+"you don't owe it": the billing period is read from the letter's text (the first "Abrechnungszeitraum
+… *date* – *date*" or "Abrechnungsjahr *year*"), the later reading of "end of the twelfth month" is
+used, the deadline moves off weekends and holidays in the landlord's favour (with *any* Land's holiday
+when the tenant's is unknown), and a statement is called late only when it certainly arrived after the
+deadline — its own date after the deadline, or a confirmed arrival day after it.
+
+| Billing period ends | Statement arrived | Deadline | Result | Source |
+|---|---|---|---|---|
+| Tue 31 Dec 2024 | Fri 2 Jan 2026 (confirmed) | Wed 31 Dec 2025 | too late: back-payment probably not owed | [Verbraucherzentrale Brandenburg](https://www.verbraucherzentrale-brandenburg.de/pressemeldungen/energie/verspaetete-betriebskostenabrechnung-91939) |
+| Wed 31 Dec 2025 | dated Tue 15 Dec 2026 | Thu 31 Dec 2026 | "probably on time — tell us when it arrived" | § 556 Abs. 3 BGB |
+| Thu 31 Oct 2024 | Mon 3 Nov 2025, Land unknown | Fri 31 Oct → Mon 3 Nov 2025 | on time | § 193 BGB |
+
+**Withdrawal** (`bgb_355`, `bgb_356_3`, `bgb_356a`; §§ 355, 356, 356a BGB). A contract concluded online,
+by phone or at the door can be withdrawn within 14 days; for goods the days start when they arrive.
+A last day on a weekend or holiday moves to the next working day at the consumer's home (§ 193 BGB),
+and **sending in time is enough** (§ 355 Abs. 1 S. 5 BGB), so the send-by date is the deadline itself.
+Since 19 June 2026 online shops must offer a withdrawal button (§ 356a BGB). Without proper instructions
+the right ends twelve months after the regular period would have ended (Art. 10 Abs. 1 Directive
+2011/83/EU); the German wording can also be read as "12 months, then 14 days", which differs by a day
+or two around month ends — the earlier date is used. A letter's wording routes here only when it cites
+§§ 355/356 BGB or names a *Widerrufsfrist/-recht/-belehrung* and the sender is not an authority (an
+authority's *Widerruf* is a revocation).
+
+| Start | Deadline | Source |
+|---|---|---|
+| Doorstep subscription, Sat 12 Sep 2026 | Sat 26 Sep → Mon 28 Sep 2026 | [Verbraucherzentrale](https://www.verbraucherzentrale.de/wissen/vertraege-reklamation/kundenrechte/fristen-dschungel-der-termine-10387): "am Montag zwei Wochen später" |
+| Goods received Wed 16 Dec 2026 | Wed 30 Dec 2026 | § 356 Abs. 2 BGB |
+| Goods received 1 Mar 2025, no instructions | 15 Mar 2026 | § 356 Abs. 3 BGB |
+| Goods received 16 Feb 2024, no instructions | 1 Mar 2025 (the other reading: 2 Mar) | Art. 10 Directive 2011/83/EU |
+
+**Old claims** (`bgb_195`, §§ 195, 199, 214 BGB). A court order's card says which claims *may* be
+time-barred (three years from the end of the year they arose: on 26 Sep 2026, claims from 2022 or
+earlier) — never that one *is*: the period can be paused (§ 204 BGB), and only a court decides once
+the person raises it.
+
+Every example here is a test (`tests/golden/letter_cases.json`, with the sources quoted) and the rules
+have Hypothesis properties (consent periods end on a month end; the objection is the last day two months
+still fit; court deadlines end on a working day and are never `high`; a statement is called late only
+when it certainly is).
+
+---
+
+## 8. Contracts
 
 `compute_contract(terms, ctx, channel=…)` first derives a **regime** from the contract's category,
 the other party's kind and its dates (`regime_for`), then computes:
@@ -417,7 +555,7 @@ Windows are not moved off weekends; `safe_date` gives the working day before.
 
 ---
 
-## 8. How to send it
+## 9. How to send it
 
 `send_guidance(kind, contract_category=…, party_kind=…, due=…)` ranks channels and states the form:
 
@@ -430,6 +568,13 @@ Windows are not moved off weekends; `safe_date` gives the working day before.
 | Tax objection | in writing or electronically, or in person (§ 357 AO) | ELSTER, fax, e-mail, Einwurf-Einschreiben, letter, in person |
 | Other objections | signed, in writing or for the record — plain e-mail is **not** enough (§ 70 VwGO, § 84 SGG) | Einwurf-Einschreiben, fax of the signed letter, in person, letter, the authority's own ID-based portal |
 | General reply | none | e-mail, portal, letter, fax |
+| Objection to a court payment order (`zpo_692`) | in writing to the court, best on the enclosed form; no reasons needed; **not by e-mail** (§ 694, § 692 Abs. 1 Nr. 5 ZPO) | signed form by Einwurf-Einschreiben, online-mahnantrag.de (ID card or barcode print-out), any Amtsgericht's *Rechtsantragstelle*, fax of the signed form, letter |
+| Objection to an enforcement order (`zpo_339`) | in writing to the court; not by e-mail (§ 700, § 340 ZPO) | signed letter by Einwurf-Einschreiben, *Rechtsantragstelle*, fax, letter; an objection doesn't stop enforcement by itself |
+| Tenant's objection to a landlord's notice (`bgb_574b`) | text form since 2025 (§ 574b Abs. 1 BGB) | signed letter by Einwurf-Einschreiben (safest proof), in person with a witness, e-mail, letter |
+| Withdrawal (`bgb_355`) | any clear statement; **sending it in time is enough** (§ 355 Abs. 1 S. 5 BGB), so send-by = the deadline | the shop's withdrawal button (`bgb_356a`, since 19 Jun 2026), e-mail, Einwurf-Einschreiben, fax, letter |
+| Deferral of a tax payment (`ao_222`) | no form (§ 222 AO); until agreed, the full amount stays due | ELSTER, fax, e-mail, letter |
+| Defect notice to the landlord (`bgb_536c`) | no form, but keep proof: the rent may be reduced from then on (§ 536c BGB) | Einwurf-Einschreiben, e-mail, in person, letter |
+| More time, instalments, data access (Art. 15 GDPR), receipts, deposit, new address | none | ranked by proof, as for a general reply; an extension only counts once confirmed — statutory deadlines can't be extended by asking |
 
 For an Einwurf-Einschreiben keep the posting receipt and request the delivery record
 (*Auslieferungsbeleg*): the online tracking status alone is no proof (BAG 2 AZR 68/24).
@@ -440,11 +585,14 @@ which is slightly more cautious than counting Saturday deliveries.
 
 ---
 
-## 9. What Ordnung deliberately does not compute
+## 10. What Ordnung deliberately does not compute
 
 | Not computed | Why |
 |---|---|
 | A legal deadline for a hearing form (*Anhörungsbogen*) | There is none (§ 55 OWiG). The reply date is shown as a request with `medium` confidence; the binding two weeks start only with a formal fine notice. |
+| Drafting a court action against a dismissal (*Kündigungsschutzklage*) | Ordnung files its three-week deadline with a "get advice" card; the action itself belongs with a union, a lawyer or the labour court's *Rechtsantragstelle*. |
+| Rent increases that need no consent (graduated or index rent, modernisation, §§ 557a, 557b, 559 BGB) | Not consent requests, so no consent period; they keep the model's kind. |
+| Whether a claim *is* time-barred, or a statement's lateness was the landlord's fault | Legal judgements: shown as "may be" / "probably", with advice. |
 | Court actions (*Klage*) as a remedy card | Court proceedings need advice; the app shows a "get advice" warning and never drafts them. If a letter states the court deadline as an item, the engine computes it so it is not missed, but always with the "get advice" warning and at most `medium` confidence (`klage_1_month`). |
 | The one-year period for missing instructions as *the* deadline | Whether instructions are wrong is a legal judgement — shown only as a warning. |
 | Wiedereinsetzung, extensions (§ 109 AO), limitation of prosecution (§ 26 Abs. 3 StVG, 6 months since 1 Jul 2026) | Discretionary or disputed; never something to rely on. |
@@ -461,7 +609,7 @@ which is slightly more cautious than counting Saturday deliveries.
 
 ---
 
-## 10. Rule catalog
+## 11. Rule catalog
 
 Every receipt step cites one of these rule ids (`catalog.RULES`, served at `/api/rules`; a test
 enforces that every id used by the engine exists here).
@@ -497,6 +645,15 @@ enforces that every id used by the engine exists here).
 | `bgb_622`, `bgb_623`, `fixed_term` | Employment notice, form, fixed terms | §§ 622, 623, 620 BGB; § 15 TzBfG | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__622.html) |
 | `bgb_130`, `bgb_312k`, `bgb_309_13`, `ao_357` | Arrival, cancellation button, text form, tax objection form | § 130, § 312k, § 309 Nr. 13 BGB; § 357 AO | `bgb_312k` 2022-07-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__312k.html) |
 | `bgb_675s` | Bank transfer time | § 675s Abs. 1 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__675s.html) |
+| `zpo_180`, `zpo_222` | Court letters count from delivery; court deadline shift | § 180 ZPO; § 222 ZPO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/zpo/__222.html) |
+| `zpo_692`, `zpo_339` | Court payment order; enforcement order (section 7) | § 692 Abs. 1 Nr. 3, § 694 ZPO; § 700 Abs. 1, § 339 Abs. 1 ZPO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/zpo/__692.html) |
+| `bgb_195` | Old claims may be time-barred | §§ 195, 199 Abs. 1, 214 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__199.html) |
+| `kschg_4`, `sgb3_38` | Dismissal: court action; registering as job-seeking | § 4 S. 1, § 7 KSchG; § 38 Abs. 1 SGB III | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/kschg/__4.html) |
+| `bgb_558b`, `bgb_558_3` | Rent increase request; rent cap | § 558b Abs. 1, 2 BGB; § 558 Abs. 1, 3 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__558b.html) |
+| `bgb_574b` | Objecting to a landlord's notice | §§ 574, 574b BGB | 2025-01-01 (text form) | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__574b.html) |
+| `bgb_556_3`, `bgb_536c` | Operating-cost statements; reporting defects | § 556 Abs. 3, 4 BGB; § 536c BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__556.html) |
+| `bgb_355`, `bgb_356_3`, `bgb_356a` | Withdrawal: 14 days; without instructions; withdrawal button | §§ 355, 356 BGB; Art. 10 RL 2011/83/EU; § 356a BGB | `bgb_356a` 2026-06-19 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__355.html) |
+| `ao_222` | Tax payment deferral (Stundung) | § 222 AO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/ao_1977/__222.html) |
 | `date_as_written`, `safe_date`, `postal_buffer`, `contract_as_written`, `unit_business_days` | Ordnung's own policies | — | — | — |
 
 ---

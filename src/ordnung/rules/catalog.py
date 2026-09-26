@@ -413,6 +413,165 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         f"{_GII}/ao_1977/__356.html",
         None,
     ),
+    # ------------------------------------------------------------------ court letters
+    (
+        "zpo_180",
+        "Court letters count from delivery (Zustellung)",
+        "§ 180 ZPO; § 166 ZPO",
+        "A court's letter in a yellow envelope counts as delivered on the day it was handed over or put in "
+        "your letterbox, even on a Saturday; the postman writes that date on the envelope. There is no "
+        "4-day rule. Without that date Ordnung counts from the letter's own date, which can only be earlier.",
+        f"{_GII}/zpo/__180.html",
+        None,
+    ),
+    (
+        "zpo_222",
+        "Court deadlines: weekend and holiday shift",
+        "§ 222 Abs. 1, 2 ZPO",
+        "Court deadlines are counted like §§ 187, 188 BGB; one that ends on a Saturday, Sunday or public "
+        "holiday at the court's seat ends on the next working day.",
+        f"{_GII}/zpo/__222.html",
+        None,
+    ),
+    (
+        "zpo_692",
+        "Court payment order (Mahnbescheid): two weeks to pay or object",
+        "§ 692 Abs. 1 Nr. 3 ZPO; § 694 ZPO; § 699 Abs. 1 ZPO",
+        "Within two weeks of delivery you pay or tell the court that you object (Widerspruch), in writing, "
+        "best on the enclosed form or online. The court has not checked the claim. After the two weeks the "
+        "claimant can ask for an enforcement order; a late objection still counts until that order is issued.",
+        f"{_GII}/zpo/__692.html",
+        None,
+    ),
+    (
+        "zpo_339",
+        "Enforcement order (Vollstreckungsbescheid): two weeks to object",
+        "§ 700 Abs. 1 ZPO; § 339 Abs. 1 ZPO",
+        "An enforcement order is like a default judgment and can be enforced at once. The objection "
+        "(Einspruch) must reach the court within two weeks of delivery; this Notfrist can't be extended.",
+        f"{_GII}/zpo/__339.html",
+        None,
+    ),
+    (
+        "bgb_195",
+        "Old claims may be time-barred",
+        "§ 195 BGB; § 199 Abs. 1 BGB; § 214 Abs. 1 BGB",
+        "Most claims become time-barred three years after the end of the year in which they arose and the "
+        "creditor knew of them. A court does not check this: you have to raise it yourself. Steps such as a "
+        "court payment order can pause the period, so Ordnung only ever says 'may be time-barred'.",
+        f"{_GII}/bgb/__199.html",
+        None,
+    ),
+    # ------------------------------------------------------------------ employment letters
+    (
+        "kschg_4",
+        "Dismissal: three weeks to go to the labour court",
+        "§ 4 S. 1 KSchG; § 7 KSchG",
+        "A court action against a dismissal (Kündigungsschutzklage) must reach the labour court within "
+        "three weeks of receiving the written dismissal; otherwise the dismissal counts as valid. Ordnung "
+        "shows the date with a 'get advice' card and never drafts court actions.",
+        f"{_GII}/kschg/__4.html",
+        None,
+    ),
+    (
+        "sgb3_38",
+        "Register as job-seeking (arbeitsuchend)",
+        "§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 7, Abs. 6 SGB III",
+        "Register with the Agentur für Arbeit at the latest three months before your job ends, or within "
+        "three days of learning the end date if less time is left. A short notice with your details and the "
+        "end date keeps the deadline. Registering late can cost one week of unemployment benefit.",
+        f"{_GII}/sgb_3/__38.html",
+        None,
+    ),
+    # ------------------------------------------------------------------ tenancy letters
+    (
+        "bgb_558b",
+        "Rent increase request: decide by the end of the second month",
+        "§ 558b Abs. 1, 2 BGB",
+        "You have until the end of the second calendar month after the request arrived to agree. The higher "
+        "rent is owed from the start of the third month, and only if you agree; otherwise the landlord can "
+        "sue for your consent within the following three months.",
+        f"{_GII}/bgb/__558b.html",
+        None,
+    ),
+    (
+        "bgb_558_3",
+        "Rent cap (Kappungsgrenze)",
+        "§ 558 Abs. 1, 3 BGB",
+        "Within three years the rent (without operating costs) may rise by at most 20 %, or 15 % where the "
+        "Land has set the lower cap. The rent must also have been unchanged for 15 months when the increase "
+        "takes effect.",
+        f"{_GII}/bgb/__558.html",
+        None,
+    ),
+    (
+        "bgb_574b",
+        "Objecting to a landlord's notice: two months before the end",
+        "§ 574b Abs. 1, 2 BGB; § 574 BGB",
+        "If moving out would be a hardship, you can object to the notice and ask to stay. The objection "
+        "must reach the landlord at the latest two months before the tenancy ends; text form is enough "
+        "since 2025. The period is counted backwards and never moves to a later day.",
+        f"{_GII}/bgb/__574b.html",
+        "2025-01-01",
+    ),
+    (
+        "bgb_556_3",
+        "Operating-cost statements: the 12-month limits",
+        "§ 556 Abs. 3 S. 2, 3, 5, 6 BGB; § 556 Abs. 4 BGB",
+        "The landlord's statement must arrive within twelve months after the billing period ends; after "
+        "that a back-payment is no longer owed unless the landlord was not responsible for the delay (a "
+        "credit stays yours). Your objections must reach the landlord within twelve months of receiving it. "
+        "You may inspect the receipts.",
+        f"{_GII}/bgb/__556.html",
+        None,
+    ),
+    (
+        "bgb_536c",
+        "Report defects in the flat",
+        "§ 536c Abs. 1 BGB; § 536 Abs. 1 BGB",
+        "A tenant must report a defect to the landlord without delay. From then on the rent may be reduced "
+        "while the defect lasts.",
+        f"{_GII}/bgb/__536c.html",
+        None,
+    ),
+    # ------------------------------------------------------------------ consumer letters
+    (
+        "bgb_355",
+        "Withdrawal (Widerruf): 14 days",
+        "§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB",
+        "Contracts concluded online, by phone or at your door can be withdrawn within 14 days without "
+        "reasons; for goods the days start when they arrive. Sending the withdrawal in time is enough, and "
+        "a period ending on a Saturday, Sunday or holiday runs to the next working day.",
+        f"{_GII}/bgb/__355.html",
+        None,
+    ),
+    (
+        "bgb_356_3",
+        "No or wrong withdrawal instructions: 12 months and 14 days",
+        "§ 356 Abs. 3 BGB; Art. 10 Abs. 1 RL 2011/83/EU",
+        "Without proper instructions the 14 days don't start; the right to withdraw ends at the latest "
+        "twelve months after the regular 14 days would have ended. Financial services follow other rules.",
+        f"{_GII}/bgb/__356.html",
+        None,
+    ),
+    (
+        "bgb_356a",
+        "Online withdrawal button",
+        "§ 356a BGB",
+        "Shops and services that sell online must offer a withdrawal button. A withdrawal sent with it "
+        "before the deadline counts as in time; the company must confirm it at once.",
+        f"{_GII}/bgb/__356a.html",
+        "2026-06-19",
+    ),
+    (
+        "ao_222",
+        "Tax payment deferral (Stundung)",
+        "§ 222 AO",
+        "The tax office may defer a tax payment, also in instalments, if paying at once would be a "
+        "considerable hardship and the tax is not at risk. It must be applied for; interest is usually charged.",
+        f"{_GII}/ao_1977/__222.html",
+        None,
+    ),
     # ------------------------------------------------------------------ contracts
     (
         "bgb_309_9_new",
