@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { toast } from "@/components/ui/Toast";
 import { CALENDAR_GUIDES, downloadCalendarFile, reminderSentence, type CalendarApp } from "@/features/timeline/calendar";
+import { CalendarGuideSteps } from "@/features/timeline/CalendarExport";
 import { SectionHeading, SettingsCard } from "./SettingsCard";
 
 /** "Calendar": download all dates as .ics and how to import it (Google, Apple, Outlook). */
@@ -48,17 +49,7 @@ export function CalendarSection() {
 
         <SettingsCard title="How to import it" id="set-cal-guide">
           <SegmentedControl label="Your calendar app" value={app} onChange={setApp} options={CALENDAR_GUIDES.map((g) => ({ value: g.app, label: g.label }))} />
-          <div aria-live="polite" className="mt-4">
-            <ol className="space-y-2.5">
-              {guide.steps.map((s, i) => (
-                <li key={s} className="flex gap-3 text-[14px] leading-relaxed text-ink">
-                  <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-accent-soft text-[12px] font-semibold text-accent">{i + 1}</span>
-                  <span>{s}</span>
-                </li>
-              ))}
-            </ol>
-            {guide.note ? <p className="mt-2.5 pl-9 text-[13px] text-muted">{guide.note}</p> : null}
-          </div>
+          <CalendarGuideSteps guide={guide} headingLevel={4} className="mt-4" />
         </SettingsCard>
 
       </div>
