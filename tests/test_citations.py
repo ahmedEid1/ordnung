@@ -6,6 +6,7 @@ import json
 
 import pytest
 
+from ordnung.assistant.channels import ToolAnswer, render_tool_result
 from ordnung.assistant.citations import (
     Citation,
     canonical_type,
@@ -159,8 +160,8 @@ def test_long_queries_are_shortened_in_labels() -> None:
 
 
 def test_result_summaries() -> None:
-    def dump(data: object) -> str:
-        return json.dumps(data)
+    def dump(data: dict[str, object]) -> str:
+        return render_tool_result(ToolAnswer(data, {DOC: {"title": "letter text is not counted"}}))
 
     assert result_summary("mcp__ordnung__search", dump({"hits": [{}, {}, {}]})) == "Found 3 letters"
     assert result_summary("search", dump({"hits": [{}]})) == "Found 1 letter"
@@ -178,4 +179,5 @@ def test_result_summaries() -> None:
     assert result_summary("search", "Error executing tool search: boom") == "No result"
     assert result_summary("search", None) == "No result"
     assert result_summary("search", "[1, 2]") == "No result"
+    assert result_summary("search", json.dumps({"hits": [{}]})) == "No result"  # no record part
     assert result_summary("mystery", dump({"x": 1})) == "Done"

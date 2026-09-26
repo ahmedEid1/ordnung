@@ -1,14 +1,20 @@
-"""Ask — the only true agent loop in Ordnung (SPEC §10, §21).
+"""Ask — the only true agent loop in Ordnung (SPEC §10, §21, ADR 0008).
 
 One question runs ``claude -p`` with no built-in tools and only Ordnung's read-only MCP tools
-(:mod:`ordnung.assistant.mcp_server`, spawned per question over stdio). The answer streams to the UI
-as ``text`` deltas plus a visible tool trace (``tool_use`` events carry a human label, ``tool_result``
-events a short summary). When the model is done, code checks the answer before anyone sees it as final:
+(:mod:`ordnung.assistant.mcp_server`, spawned per question over stdio). Every tool result has two
+channels (:mod:`ordnung.assistant.channels`): Ordnung's record — what code computed, the person
+confirmed or the pipeline filed with verified evidence — and the letters' text, kept inside
+``<untrusted_document>``. The answer streams to the UI as ``text`` deltas plus a visible tool trace
+(``tool_use`` events carry a human label, ``tool_result`` events a short summary). When the model is
+done, code checks the answer before anyone sees it as final:
 
-* every sentence that mentions a date, amount or § citation missing from this turn's tool results
-  (or the question, the conversation and the rules catalog) is removed;
-* every citation (``[doc:ID]`` …) must name a record that exists *and* appears in a tool result of
-  this turn; others are stripped.
+* every citation (``[doc:ID]`` …) must name a record that exists *and* appears in the record part
+  of a tool result of this turn (an id that only a letter's text mentions is not enough); others are
+  stripped;
+* every sentence that states a date or amount must cite a record whose record part holds it, or be
+  framed as quoting a letter whose text holds it (then the value is shown in quotation marks);
+  other such sentences are removed (:mod:`ordnung.assistant.support`, the written policy);
+* a short note under the answer says what was left out or quoted.
 
 Removals are logged in the activity log. The final ``done`` event (:class:`AskEvent`) carries the
 cleaned text — which replaces the streamed deltas — the validated citations with labels, and the
@@ -21,7 +27,7 @@ from __future__ import annotations
 import json
 import re
 from collections import deque
-from collections.abc import AsyncIterator, Iterable, Sequence
+from collections.abc import AsyncIterator, Collection, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Protocol
@@ -33,29 +39,22 @@ from ordnung.assistant.citations import (
     CitationRef,
     is_well_formed,
     parse_citations,
-    remove_markers,
     result_summary,
     strip_invalid,
     tool_label,
     tool_name,
 )
 from ordnung.assistant.mcp_server import PARTY_FIELDS, SERVER_NAME, server_config
+from ordnung.assistant.support import CheckedAnswer, TurnEvidence, check_answer
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.ids import new_id
-from ordnung.ingest.extract import unwrap_untrusted, wrap_untrusted
+from ordnung.ingest.extract import wrap_untrusted
 from ordnung.llm.base import LLMRequest, StreamEvent
 from ordnung.llm.prompts import render
 from ordnung.llm.runtime import LLMService
 from ordnung.models import AppSettings, ChatMessage
-from ordnung.secretary.review import (
-    Facts,
-    catalog_texts,
-    correct_weekdays,
-    language_name,
-    split_sentences,
-    stable_hash,
-)
+from ordnung.secretary.review import catalog_texts, correct_weekdays, language_name, stable_hash
 from ordnung.tick import local_today
 
 ALLOWED_TOOLS = [f"mcp__{SERVER_NAME}__*"]
@@ -74,7 +73,6 @@ DEMO_MISS = (
 )
 EMPTY_QUESTION = "Please type a question."
 
-_BULLET_PREFIX = re.compile(r"^(\s*(?:[-*+]\s+|#{1,6}\s+|>\s*)?)")
 _EXTRA_BLANK_LINES = re.compile(r"\n{3,}")
 
 
@@ -120,14 +118,17 @@ def _rows(records: Iterable[Any]) -> list[dict[str, Any]]:
 
 def ledger_fingerprint(store: Store) -> str:
     """Hash of everything Ask's read-only tools can see (every field of letters, to-dos and contracts,
-    the parties' shared fields, no timestamps), so a recorded answer replays only against the ledger
-    it was recorded from — a changed warning or IBAN makes a new recording necessary.
+    the letters' page texts, the parties' shared fields, no timestamps), so a recorded answer replays
+    only against the ledger it was recorded from — a changed warning, IBAN or page text makes a new
+    recording necessary.
     """
     profile = store.get_profile()
+    documents = store.list_documents()
     return stable_hash(
         {
             "profile": [profile.name, profile.language, profile.region, profile.country],
-            "documents": _rows(store.list_documents()),
+            "documents": _rows(documents),
+            "texts": {doc.id: stable_hash(store.get_document_text(doc.id)) for doc in documents},
             "items": _rows(store.list_items()),
             "contracts": _rows(store.list_contracts()),
             "parties": sorted(
@@ -314,17 +315,9 @@ def _finish(
     history: Sequence[ChatMessage],
     today: date,
 ) -> AskEvent:
-    """Check the answer (facts, then citations), store question and answer, log removals."""
-    facts = Facts.from_data(
-        [_parsed(result) for result in turn.results],
-        extra_texts=[question, today.isoformat(), *(m.content for m in history), *catalog_texts()],
-    )
-    grounded, unsupported = check_facts(answer, facts)
-    cited = parse_citations(grounded)
-    valid = valid_citation_ids(store, cited, turn.results)
-    text = correct_weekdays(_EXTRA_BLANK_LINES.sub("\n\n", strip_invalid(grounded, valid)).strip(), today)
-    if not text:
-        text = UNSUPPORTED_ANSWER if unsupported else NO_ANSWER
+    """Check the answer (citations, then claims), store question and answer, log what was changed."""
+    checked = check_turn(store, answer, turn.results, question=question, history=history, today=today)
+    text = checked.text
     citations = citation_refs(store, parse_citations(text))
     with store.tx():
         store.add_chat_message(thread_id, "user", question)
@@ -335,42 +328,57 @@ def _finish(
             citations=[{"type": ref.type, "id": ref.id} for ref in citations],
             tool_calls=turn.calls,
         )
-    removed = sorted({citation.id for citation in cited} - valid)
-    _log_removals(store, message.id, thread_id, removed, unsupported)
+    _log_checks(store, message.id, thread_id, checked)
     return AskEvent(type="done", text=text, citations=citations, message_id=message.id, thread_id=thread_id)
 
 
-def check_facts(text: str, facts: Facts) -> tuple[str, list[str]]:
-    """``text`` without the sentences that mention a date, amount or § citation missing from
-    ``facts`` (line structure and list bullets are kept), plus the unsupported mentions."""
-    lines: list[str] = []
-    unsupported: list[str] = []
-    for line in text.splitlines():
-        prefix = _BULLET_PREFIX.match(line)
-        lead = prefix.group(1) if prefix else ""
-        body = line[len(lead) :]
-        if not body.strip():
-            lines.append(line)
-            continue
-        kept = []
-        for sentence in split_sentences(body):
-            problems = facts.unsupported(remove_markers(sentence))
-            unsupported.extend(problems)
-            if not problems:
-                kept.append(sentence)
-        if kept:
-            lines.append(lead + " ".join(kept))
-    return "\n".join(lines), unsupported
+@dataclass(frozen=True)
+class AnswerCheck:
+    """What the checks made of one answer: the final ``text`` (with its note, or a fallback), the
+    verdict on every sentence with a date, amount or § (``claims``) and the citations stripped."""
+
+    text: str
+    claims: CheckedAnswer
+    removed_ids: list[str]
 
 
-def valid_citation_ids(store: Store, cited: Iterable[Citation], tool_results: Sequence[str]) -> set[str]:
-    """Ids that may stay cited: well-formed, present in a tool result of this turn, and existing."""
-    corpus = "\n".join(tool_results)
+def check_turn(
+    store: Store,
+    answer: str,
+    tool_results: Sequence[str],
+    *,
+    question: str,
+    history: Sequence[ChatMessage] = (),
+    today: date,
+) -> AnswerCheck:
+    """Check ``answer`` against this turn's tool results (pure apart from reading ``store``).
+
+    Citations first (:func:`valid_citation_ids`), then every sentence with a date or amount
+    (:func:`ordnung.assistant.support.check_answer`); weekday names are corrected and the note is
+    appended. An answer left empty becomes :data:`UNSUPPORTED_ANSWER` (or :data:`NO_ANSWER`).
+    """
+    person = [question, *(message.content for message in history if message.role == "user")]
+    evidence = TurnEvidence.from_results(tool_results, today=today, person=person, catalog=catalog_texts())
+    cited = parse_citations(answer)
+    valid = valid_citation_ids(store, cited, evidence.seen_ids)
+    claims = check_answer(answer, evidence, citable=valid)
+    body = correct_weekdays(_EXTRA_BLANK_LINES.sub("\n\n", strip_invalid(claims.text, valid)).strip(), today)
+    if not body:
+        text = UNSUPPORTED_ANSWER if claims.removed else NO_ANSWER
+    else:
+        note = claims.note()
+        text = f"{body}\n\n{note}" if note else body
+    return AnswerCheck(text, claims, sorted({citation.id for citation in cited} - valid))
+
+
+def valid_citation_ids(store: Store, cited: Iterable[Citation], seen: Collection[str]) -> set[str]:
+    """Ids that may stay cited: well-formed, in the record part of a tool result of this turn
+    (``seen`` — an id that only a letter's text mentions does not count), and existing."""
     return {
         citation.id
         for citation in cited
         if is_well_formed(citation.type, citation.id)
-        and citation.id in corpus
+        and citation.id in seen
         and record_label(store, citation.id) is not None
     }
 
@@ -403,30 +411,36 @@ def record_label(store: Store, ref_id: str) -> str | None:
     return None
 
 
-def _parsed(result: str) -> Any:
-    """A tool result as data (JSON parsed, so numbers count as amounts), else the raw text."""
-    try:
-        return json.loads(unwrap_untrusted(result))
-    except ValueError:
-        return result
-
-
-def _log_removals(
-    store: Store, message_id: str, thread_id: str, removed_ids: list[str], unsupported: list[str]
-) -> None:
-    if removed_ids:
+def _log_checks(store: Store, message_id: str, thread_id: str, checked: AnswerCheck) -> None:
+    if checked.removed_ids:
         store.log_activity(
             "ask.citations_removed",
-            f"Removed {len(removed_ids)} citation(s) from an answer: not found in what Ask looked up",
+            f"Removed {len(checked.removed_ids)} citation(s) from an answer: not found in what Ask looked up",
             ref_type="chat",
             ref_id=message_id,
-            data={"thread_id": thread_id, "ids": removed_ids},
+            data={"thread_id": thread_id, "ids": checked.removed_ids},
         )
-    if unsupported:
+    removed = checked.claims.removed
+    if removed:
         store.log_activity(
             "ask.sentences_removed",
-            "Removed sentences with dates, amounts or laws that are not in your records",
+            f"Removed {len(removed)} sentence(s) whose dates, amounts or laws are not in the records they cite",
             ref_type="chat",
             ref_id=message_id,
-            data={"thread_id": thread_id, "unsupported": list(dict.fromkeys(unsupported))},
+            data={
+                "thread_id": thread_id,
+                "unsupported": list(dict.fromkeys(value for check in removed for value in check.unsupported)),
+            },
+        )
+    quoted = checked.claims.quoted
+    if quoted:
+        store.log_activity(
+            "ask.letter_quotes",
+            f"Showed {len(quoted)} sentence(s) with dates or amounts only a letter states, as quotes",
+            ref_type="chat",
+            ref_id=message_id,
+            data={
+                "thread_id": thread_id,
+                "quoted": list(dict.fromkeys(value for check in quoted for value in check.unsupported)),
+            },
         )

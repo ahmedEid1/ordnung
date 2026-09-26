@@ -304,12 +304,17 @@ def parse_amounts(text: str) -> list[float]:
     Numbers with two decimals always count; whole numbers only next to a currency (``50 €``,
     ``EUR 1.200``, ``99,- €``). Dates and reference numbers are not amounts.
     """
-    amounts: list[float] = []
+    return [value for _, value in amount_mentions(text)]
+
+
+def amount_mentions(text: str) -> list[tuple[str, float]]:
+    """:func:`parse_amounts` with each amount's digits as written (``("1.234,56", 1234.56)``)."""
+    amounts: list[tuple[str, float]] = []
     for match in _AMOUNT_PATTERN.finditer(fold_punctuation(text)):
         has_currency = bool(match.group("pre") or match.group("post") or match.group("dash"))
         value = _amount_value(match.group("num"), has_currency)
         if value is not None:
-            amounts.append(value)
+            amounts.append((match.group("num"), value))
     return amounts
 
 

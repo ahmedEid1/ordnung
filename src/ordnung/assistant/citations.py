@@ -11,14 +11,13 @@ result summaries are the short text shown once a tool answered ("Found 4 to-dos 
 
 from __future__ import annotations
 
-import json
 import re
 from collections.abc import Callable, Collection, Mapping
 from typing import Any, Literal, NamedTuple
 
 from pydantic import BaseModel
 
-from ordnung.ingest.extract import unwrap_untrusted
+from ordnung.assistant.channels import parse_tool_result
 
 MARKER_TYPES: tuple[str, ...] = ("doc", "item", "contract", "party")
 """Canonical marker types, as written in answers."""
@@ -222,10 +221,6 @@ def _count(n: int, singular: str, plural: str) -> str:
 
 
 def _json_object(text: str | None) -> dict[str, Any] | None:
-    if not text:
-        return None
-    try:
-        data = json.loads(unwrap_untrusted(text))
-    except ValueError:
-        return None
+    """The record part of a tool result (what the counts and flags of the summary come from)."""
+    data = parse_tool_result(text).record
     return data if isinstance(data, dict) else None

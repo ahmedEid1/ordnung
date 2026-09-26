@@ -134,7 +134,8 @@ _NO_BREAK_BEFORE = re.compile(
 )
 
 
-def _paragraphs(text: str) -> Iterator[tuple[str, str | None]]:
+def paragraphs_in(text: str) -> Iterator[tuple[str, str | None]]:
+    """The § citations in ``text`` as ``(number, law or None)``: ``§ 122 Abs. 2 AO`` → ``("122", "AO")``."""
     for match in _PARAGRAPH_RE.finditer(text):
         law = match.group("law")
         yield match.group("num").lower(), " ".join(law.split()) if law else None
@@ -184,7 +185,7 @@ class Facts:
                 if (full := mention.as_date()) is not None:
                     dates.add(full)
             cents.update(_cents(amount) for amount in parse_amounts(value))
-            paragraphs.update(_paragraphs(value))
+            paragraphs.update(paragraphs_in(value))
         return cls(frozenset(dates), frozenset(day_months), frozenset(cents), frozenset(paragraphs))
 
     def supports_date(self, value: date) -> bool:
@@ -206,7 +207,7 @@ class Facts:
         problems.extend(raw for raw, ok in readings.items() if not ok)
         problems.extend(f"{amount:.2f}" for amount in parse_amounts(text) if not self.supports_amount(amount))
         numbers = {number for number, _ in self.paragraphs}
-        for number, law in _paragraphs(text):
+        for number, law in paragraphs_in(text):
             if (number, law) not in self.paragraphs and (law is not None or number not in numbers):
                 problems.append(f"§ {number} {law or ''}".strip())
         return problems
