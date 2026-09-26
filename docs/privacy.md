@@ -68,7 +68,7 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   (invisible) text is removed before it reaches the model, and every extracted fact is checked
   against the page before it is shown as "found in the letter".
 - *Ask* can only call Ordnung's **read-only** tools; there are no write tools for a
-  prompt-injected document to abuse.
+  prompt-injected document to abuse. (Its date tools compute from their arguments and read nothing.)
 - *Ask*'s tool results (search snippets, summaries, quotes, page texts) reach the model inside
   `<untrusted_document>` markers too. Text an HTML e-mail certainly hides from every reader (inline
   `display:none`, `visibility:hidden`, `opacity:0`, a font of at most 1 px, zero-height clipped or
@@ -84,6 +84,28 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   requests and a custom header for any change (CSRF/DNS-rebinding protection), with a strict
   Content-Security-Policy. `ordnung serve` opens your browser through a private local page, so the
   token never appears on a command line other accounts could see.
+
+## Using Ordnung from Claude Desktop or Claude Code
+
+`ordnung mcp install` can add Ordnung's MCP server to another Claude client. What that client can
+then see depends on which server you add:
+
+| You add | The client can see | Leaves your computer? |
+|---|---|---|
+| **The rules tools** (`--rules-only`, recommended) | Nothing of yours. The tools open no data folder: they compute dates, holidays, working days and IBAN checks from what the client passes them (the dates and words of a letter you shared there yourself). | Only what you type or share in that client, as always |
+| **The full server** (`--data-dir …`) | Your ledger, read-only, as *Ask* sees it: letters' titles, summaries, page text and quotes, to-dos, contracts, people and organisations, money. The contents of letters you marked *Keep private (no AI)* are withheld. | Whatever Claude reads through it becomes part of that conversation, sent to Anthropic under that client's account and settings |
+
+With the full server, **every other MCP server loaded in the same client can see what Claude read
+from your ledger** through the model: a web-search, e-mail or file server there could send it on,
+and a prompt-injected document elsewhere could ask Claude to. Ordnung cannot control another
+client's servers or history; that is why the rules-only server is the default suggestion and the
+full server needs your data folder named and prints this warning. Neither server can change,
+delete, send or pay anything.
+
+`ordnung mcp install` prints the entry and the file it belongs in; only `--write` changes that file,
+after saving a copy of it next to it, and it adds or replaces only Ordnung's own entry. To remove
+Ordnung again, delete the `ordnung` or `ordnung_rules` entry from `mcpServers` (or restore the
+backup), or run `claude mcp remove ordnung_rules` for Claude Code.
 
 ## Demo fixtures
 

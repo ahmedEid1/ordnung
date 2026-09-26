@@ -204,8 +204,12 @@ one stream-json user message containing a text block plus optional base64 `image
 claude -p --input-format stream-json --output-format stream-json --verbose
   [--include-partial-messages]  --model M  --no-session-persistence  --setting-sources ""
   --strict-mcp-config  --system-prompt S  --tools ""  [--allowedTools …]
-  [--json-schema J]  [--mcp-config C]  [--max-budget-usd B  (Ask only)]
+  [--json-schema J]  [--mcp-config C]  [--max-budget-usd B  (Ask, benchmark tool condition)]
 ```
+- `complete()` returns the model's tool calls with the answer (`LLMResponse.tool_calls`: name,
+  arguments, result text), paired by `tool_use_id` because parallel calls may answer out of order;
+  the CLI's own `StructuredOutput` call is not one of them. `stream()` yields them as events
+  (carrying the same id).
 - Process: `create_subprocess_exec(shutil.which("claude"), …, limit=32 MiB, start_new_session=True)`;
   timeout/cancel → `os.killpg`. Never `--bare` (breaks subscription login) and never
   `--dangerously-skip-permissions`.
@@ -280,6 +284,25 @@ MCP server (`python -m ordnung mcp --data-dir D`, read-only DB, lazy imports): `
 appear in a tool result of the same turn; otherwise it is stripped and logged. The tool trace is
 streamed to the UI and persisted with the message. Markdown is rendered without raw HTML and without
 remote images.
+
+**Rules tools** (`assistant/rules_tools.py`, no ledger): `compute_deadline(spec, document_date?,
+sender_kind?, sender_name?, remedy_type?, region?, recipient_region?, received_date?, today?)` —
+the extractor's `DateSpec` (validated strictly: unknown keys are refused) → the rules engine's date
+with steps, rule ids, citations, warnings, confidence and hints naming a missing argument;
+`german_holidays(year, region?)`; `add_working_days(start, days, day_type, region?)`;
+`check_iban(iban)` (country, registered length, mod-97, bank code where the format shows it; pure
+code in `money/iban.py`). Every result carries "Information, not legal advice". The full server
+serves them next to the ledger tools (counting from the ledger's day); `ordnung mcp --rules-only`
+serves only them — no data folder, nothing personal.
+
+**Other clients** (`assistant/mcp_install.py`). `ordnung mcp install --client claude-desktop|
+claude-code [--rules-only] [--write] [--config PATH]` prints the entry, the target file (Claude
+Desktop: macOS `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows
+`%APPDATA%\Claude\…`, Linux `$XDG_CONFIG_HOME/Claude/…`) and, for Claude Code, the
+`claude mcp add --scope user` command or a project `.mcp.json` entry. `--write` merges only
+`mcpServers.<name>` (`ordnung_rules` or `ordnung`), backs the file up first, writes atomically,
+keeps its permissions, refuses invalid JSON without touching it, and never creates Claude Desktop's
+settings folder. The full server needs an existing database and prints a privacy warning.
 
 ## 11. Letters — `drafts/`
 
@@ -387,7 +410,8 @@ dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighte
 ## 15. CLI
 `serve [--port 8765] [--no-browser] [--no-token]` · `add FILES… [--combine] [--private]` ·
 `brief` · `ask "…"` · `demo [--serve] [--reset] [--check] [--live] [--no-browser]` · `doctor
-[--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--print-config]` · `openapi`.
+[--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--print-config] [--rules-only]` ·
+`mcp install --client claude-desktop|claude-code [--rules-only] [--write]` · `openapi`.
 If a server is running (`server.json` + live pid) `add`/`ask`/`brief` go through its API; otherwise
 they run in-process under an exclusive data-dir lock.
 
@@ -405,7 +429,12 @@ text PDFs + simulated phone photos, German + English, plus an adversarial subset
 letters, scams, conflicting dates, missing document date). Labels are the generator's parameters;
 expected dates computed by hand-checked rules (tests cross-check). Conditions: **Ordnung** (extract →
 rules) vs **LLM-only** (same model, same context incl. today/region/document date, explicit
-instruction to apply current German law) vs **LLM + rule text** (law text pasted into the prompt).
+instruction to apply current German law) vs **LLM + rule text** (law text pasted into the prompt) vs
+**LLM + rules tool** (the LLM-only prompt plus one sentence naming the tools; the `claude` CLI gets
+only `ordnung mcp --rules-only`, pinned to the letter's today, $1 cap per call — an agent with a
+calculator). For the tool condition the report adds how often `compute_deadline` was called, how
+often the final date differs from the tool's answer for that obligation, and the accuracy of each group;
+its tool calls and answers are part of the recording (`LLMResponse.tool_calls`).
 Metrics with n and 95 % bootstrap CIs: due-date accuracy (overall and per kind), error split
 **reading** (wrong DateSpec/anchor/amount) vs **computing** (wrong arithmetic/law), classification,
 sender/reference/amount accuracy, item recall/precision, evidence grounding rate, false-verified
@@ -543,7 +572,11 @@ text detector (pdfplumber char colour/size/position): invisible text is excluded
 raises a red banner. HTML e-mails follow the short written policy of `html_to_text` (ADR 0007): only
 text that is certainly hidden is excluded; when in doubt it stays visible. Brief/review/Ask free text is checked: every date, amount and § must exist in
 the agenda/ledger/catalog, else it is removed (fallback to code-generated text). Ask gets a read-only
-`explain_date(id)` tool that returns receipts. MCP is internal only (no Claude Desktop config in v1).
+`explain_date(id)` tool that returns receipts. MCP is read-only everywhere. Besides Ask, other
+clients can use it: `ordnung mcp --rules-only` (the rules tools alone: no data folder, nothing
+personal) is the recommended way into Claude Desktop or Claude Code; the full server exposes the
+ledger to that client, and so, through the model, to any other MCP server loaded there
+(`docs/privacy.md`). `ordnung mcp install` prints the entry first and writes only with `--write`.
 
 **Scam checks (code, not model).** IBAN checksum validation; payee IBAN/name compared with those
 previously seen for the same party; mismatch → scam Idea quoting both. Copy: "No warning does not

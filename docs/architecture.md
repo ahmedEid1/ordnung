@@ -26,7 +26,7 @@ flowchart LR
     end
     DB[("SQLite<br/>WAL · FTS5 · trigram")]
     FS[("files/ · derived/")]
-    MCP["Ordnung MCP server<br/>read-only"]
+    MCP["Ordnung MCP server<br/>read-only · ledger + rules tools"]
   end
 
   subgraph account["Your Claude account"]
@@ -57,7 +57,8 @@ flowchart LR
 | Document → model | Documents are untrusted: hidden text removed, content wrapped in `<untrusted_document>`, **no tools** during reading, output forced through a JSON schema |
 | Model → ledger | Schema validation, quote grounding with exact digits, `spec_consistency`, deterministic date computation, confidence rubric → "Please check" |
 | Model → user | Ideas and letters are suggestions; nothing is sent, paid, closed or deleted without a click; letters use fixed legal templates |
-| Agent → data | Ask only has read-only MCP tools on a `query_only` connection; every tool result is wrapped as untrusted; citations must appear in the same turn's tool results |
+| Agent → data | Ask only has read-only MCP tools on a `query_only` connection; every ledger tool result is wrapped as untrusted; citations must appear in the same turn's tool results |
+| Other clients → Ordnung | `ordnung mcp --rules-only` serves only the rules tools: no data folder is opened, results are computed from the arguments alone. The full server gives a client the same read-only ledger Ask has; `ordnung mcp install` prints before it writes and never clobbers a client's config |
 | Upload → machine | Checked before anything decodes it: PDF stream expansion, image pixels and text pages are capped; the data folder is private to the account (`0700`, files `0600`) |
 | Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs |
 | Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence` |
@@ -112,6 +113,35 @@ sequenceDiagram
   S->>S: validate citations (exist + seen in this turn's tool results), strip others
   S-->>U: answer + tool trace + citation chips (SSE)
 ```
+
+## The rules engine for other Claude clients
+
+The same engine that dates letters in the app is served as MCP tools that need no ledger
+(`ordnung/assistant/rules_tools.py`): `compute_deadline` takes what a letter says — the extractor's
+`DateSpec`, validated strictly — plus the letter's date, sender and region, and returns the date
+with its receipt (steps, rule ids, citations, warnings, confidence, and hints that name a missing
+argument); `german_holidays`, `add_working_days` and `check_iban` expose the calendar and the IBAN
+check. Every result says it is information, not legal advice.
+
+```mermaid
+flowchart LR
+  subgraph client["Claude Desktop · Claude Code"]
+    M["the model reads the letter"]
+  end
+  subgraph rules["ordnung mcp --rules-only"]
+    T["compute_deadline · german_holidays<br/>add_working_days · check_iban"] --> R["Rules engine<br/>(ordnung.rules)"]
+  end
+  M -->|"DateSpec + letter date + sender"| T
+  T -->|"date + receipt + citations"| M
+```
+
+- `ordnung mcp --rules-only` opens no data folder, so nothing personal is exposed; the full
+  `ordnung mcp --data-dir D` serves the rules tools next to the ledger tools (Ask sees both).
+- `ordnung mcp install --client claude-desktop|claude-code` prints the entry and the file it belongs
+  in; `--write` merges only Ordnung's entry, backs the file up and refuses a file it cannot parse
+  (`ordnung/assistant/mcp_install.py`, policy in its docstring).
+- The benchmark's fourth condition runs exactly this server next to the *LLM only* prompt, to
+  measure an agent with a calculator against the fixed pipeline ([evals](evals.md)).
 
 ## Data model (simplified)
 
@@ -175,3 +205,4 @@ normalised name), so re-processing is idempotent and recorded demo outputs stay 
 | Demo | `ordnung demo --check`: rebuild twice with strict replay → zero misses, identical dumps, all references resolve |
 | Web app | Vitest units + Playwright tour over demo mode with axe accessibility checks |
 | Model quality | The benchmark in [evals](evals.md), recomputed deterministically in CI from recorded outputs |
+| MCP tools and install | In-memory MCP client and a real stdio handshake (`python -m ordnung mcp --rules-only`); config merge, backup and refusal in temporary home folders |
