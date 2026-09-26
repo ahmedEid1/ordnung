@@ -29,7 +29,7 @@ export function PartyChip({ party, id, name, kind, size = "sm", showKind, classN
   const pkind = party?.kind ?? kind ?? null;
   const cls = cn(
     "inline-flex max-w-full items-center gap-1.5 rounded-full border border-line bg-surface py-0.5 pl-0.5 pr-2.5 font-medium text-ink",
-    size === "sm" ? "text-[13px]" : "text-sm",
+    size === "sm" ? "text-[13px]" : "text-base",
     className,
   );
   const inner = (

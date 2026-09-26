@@ -85,7 +85,7 @@ export function AppLayout() {
         <BrowserNotifications />
         <a
           href="#main"
-          className="sr-only z-[100] rounded-lg bg-accent px-3 py-2 text-sm font-medium text-on-accent focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+          className="sr-only z-[100] rounded-lg bg-accent px-3 py-2 text-base font-medium text-on-accent focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
         >
           Skip to content
         </a>

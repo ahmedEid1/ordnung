@@ -70,7 +70,7 @@ export function CardHeader({ title, description, icon: Icon, action, level = 3, 
       ) : null}
       <div className="min-w-0 flex-1">
         <H className="text-[15px] font-semibold leading-6 text-ink">{title}</H>
-        {description ? <p className="mt-0.5 text-sm text-muted">{description}</p> : null}
+        {description ? <p className="mt-0.5 text-base text-muted">{description}</p> : null}
       </div>
       {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
     </div>

@@ -90,7 +90,7 @@ export function EmptyState({ title, description, action, illustration = "clear",
     >
       <EmptyArt kind={illustration} className={size === "sm" ? "h-16 w-24" : undefined} />
       <Heading className={cn("display mt-4 font-semibold text-ink", size === "md" ? "text-xl" : "text-lg")}>{title}</Heading>
-      {description ? <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted">{description}</p> : null}
+      {description ? <p className="mt-1.5 max-w-sm text-base leading-relaxed text-muted">{description}</p> : null}
       {action ? <div className="mt-5 flex flex-wrap items-center justify-center gap-2">{action}</div> : null}
     </div>
   );

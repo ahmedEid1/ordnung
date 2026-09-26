@@ -85,7 +85,7 @@ export function RulesSection() {
               ))}
             </ul>
           ) : (
-            <p className="py-4 text-sm text-muted">No rule matches “{q}”.</p>
+            <p className="py-4 text-base text-muted">No rule matches “{q}”.</p>
           )}
         </SettingsCard>
 

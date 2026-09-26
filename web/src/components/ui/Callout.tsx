@@ -33,7 +33,7 @@ export function Callout({ tone = "info", title, children, icon, action, alert, c
   const s = styles[tone];
   const Icon = icon ?? s.Icon;
   return (
-    <div role={alert ? "alert" : undefined} className={cn("flex gap-3 rounded-xl border px-4 py-3.5 text-sm", s.box, className)}>
+    <div role={alert ? "alert" : undefined} className={cn("flex gap-3 rounded-xl border px-4 py-3.5 text-base", s.box, className)}>
       <Icon className={cn("mt-0.5 size-[18px] shrink-0", s.icon)} aria-hidden />
       <div className="min-w-0 flex-1">
         {title ? <div className={cn("font-semibold leading-5", s.title)}>{title}</div> : null}

@@ -223,7 +223,7 @@ function ArrivalQuestion({ doc, items }: { doc: Document; items: Item[] }) {
   };
 
   return (
-    <form id="arrival-question" onSubmit={submit} className="scroll-mt-24 rounded-2xl border border-warn/30 bg-warn-soft px-4 py-4 sm:px-5">
+    <form id="arrival-question" onSubmit={submit} className="rounded-2xl border border-warn/30 bg-warn-soft px-4 py-4 sm:px-5">
       <div className="flex gap-3">
         <CalendarCheck className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
         <div className="min-w-0 flex-1">

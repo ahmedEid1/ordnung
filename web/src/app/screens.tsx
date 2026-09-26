@@ -28,7 +28,7 @@ export function UnreachableScreen({ onRetry, retrying, status }: { onRetry: () =
       <div className="card flex w-full max-w-md flex-col items-center px-6 py-10 text-center sm:px-10">
         <EmptyArt kind="error" />
         <h1 className="display mt-5 text-2xl font-semibold text-ink">{noSession ? "Please open Ordnung from its link" : "Ordnung isn't running"}</h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
+        <p className="mt-2 text-base leading-relaxed text-muted">
           {noSession
             ? "For your privacy, Ordnung only talks to the browser tab it opened itself. Run the command below and use the link it prints (or opens)."
             : "This page talks to the Ordnung app on your computer, and it didn't answer. Start it again in your terminal, then try again."}
@@ -77,7 +77,7 @@ export function RouteError({ fullScreen }: { fullScreen?: boolean }) {
     <div className="card mx-auto flex w-full max-w-lg flex-col items-center px-6 py-10 text-center sm:px-10">
       <EmptyArt kind="error" />
       <h1 className="display mt-5 text-2xl font-semibold text-ink">Something went wrong on this page</h1>
-      <p className="mt-2 text-sm leading-relaxed text-muted">
+      <p className="mt-2 text-base leading-relaxed text-muted">
         Your letters and dates are safe — this is only a display problem. Reloading usually helps.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">

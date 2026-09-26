@@ -64,7 +64,7 @@ export function ContractCard({
       aria-labelledby={titleId}
       data-contract-id={c.id}
       className={cn(
-        "card flex w-full scroll-mt-24 flex-col p-4 transition-[box-shadow,border-color] duration-300 sm:p-5",
+        "card flex w-full flex-col p-4 transition-[box-shadow,border-color] duration-300 sm:p-5",
         selected && "border-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-accent)_22%,transparent)]",
         !active && "bg-surface/70",
       )}
@@ -155,7 +155,7 @@ export function ContractCard({
         ) : null}
         {c.customer_number ? (
           <Row label="Customer number">
-            <span className="font-mono text-[12.5px] tabular-nums">{c.customer_number}</span>
+            <span className="font-ident">{c.customer_number}</span>
           </Row>
         ) : null}
       </dl>

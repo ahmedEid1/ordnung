@@ -82,7 +82,7 @@ export function DropZone() {
               <FileUp className="size-8" aria-hidden />
             </span>
             <p className="display mt-5 text-2xl font-semibold text-ink">Drop to add letters</p>
-            <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">
+            <p className="mt-2 max-w-sm text-base leading-relaxed text-muted">
               PDFs or phone photos. Ordnung reads them with your own Claude and files every date and amount.
             </p>
             <p className="mt-4 inline-flex items-center gap-1.5 text-xs text-muted">

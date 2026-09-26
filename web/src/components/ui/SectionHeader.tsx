@@ -30,7 +30,7 @@ export function SectionHeader({ title, description, icon: Icon, count, action, l
           <span>{title}</span>
           {count !== undefined ? <span className="font-medium tabular-nums text-muted">· {count}</span> : null}
         </H>
-        {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
+        {description ? <p className="mt-1 text-base text-muted">{description}</p> : null}
       </div>
       {action ? <div className="flex min-w-0 max-w-full shrink-0 items-center gap-2">{action}</div> : null}
     </div>

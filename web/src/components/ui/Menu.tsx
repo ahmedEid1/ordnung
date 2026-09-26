@@ -71,7 +71,7 @@ export function Menu({ children, items, placement = "bottom-end", label = "Actio
                   item.onSelect();
                 }}
                 className={cn(
-                  "flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-sm outline-none transition-colors",
+                  "flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-base outline-none transition-colors",
                   "hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none disabled:opacity-50",
                   item.danger ? "text-danger-ink" : "text-ink",
                 )}

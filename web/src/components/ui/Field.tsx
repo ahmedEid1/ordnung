@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useStableId } from "./internal";
 
 const control =
-  "w-full rounded-lg border border-line-strong/80 bg-surface px-3 text-sm text-ink shadow-[inset_0_1px_1px_rgb(0_0_0/0.03)] " +
+  "w-full rounded-lg border border-line-strong/80 bg-surface px-3 text-base text-ink shadow-[inset_0_1px_1px_rgb(0_0_0/0.03)] " +
   "placeholder:text-muted/70 transition-[border-color,box-shadow] hover:border-line-strong " +
   "focus-visible:border-accent focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/20 " +
   "disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-danger aria-invalid:ring-danger/15";
@@ -125,8 +125,8 @@ export function Switch({ checked, onCheckedChange, label, description, className
   return (
     <div className={cn("flex items-start justify-between gap-4", className)}>
       <label htmlFor={sid} className="min-w-0 flex-1 cursor-pointer">
-        <span className="block text-sm font-medium text-ink">{label}</span>
-        {description ? <span className="mt-0.5 block text-[13px] leading-5 text-muted">{description}</span> : null}
+        <span className="block text-base font-medium text-ink">{label}</span>
+        {description ? <span className="mt-0.5 block text-[13px] leading-5 text-pretty text-muted">{description}</span> : null}
       </label>
       {btn}
     </div>
@@ -145,9 +145,9 @@ export function Checkbox({
   return (
     <div className={cn("flex items-start gap-2.5", className)}>
       <input id={cid} type="checkbox" className="mt-0.5 size-4 shrink-0 rounded accent-[var(--color-accent)]" {...rest} />
-      <label htmlFor={cid} className="cursor-pointer text-sm">
+      <label htmlFor={cid} className="cursor-pointer text-base">
         <span className="font-medium text-ink">{label}</span>
-        {description ? <span className="mt-0.5 block text-[13px] leading-5 text-muted">{description}</span> : null}
+        {description ? <span className="mt-0.5 block text-[13px] leading-5 text-pretty text-muted">{description}</span> : null}
       </label>
     </div>
   );

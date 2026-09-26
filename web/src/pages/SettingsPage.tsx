@@ -92,7 +92,7 @@ export default function SettingsPage() {
           <div className="min-w-0 lg:sticky lg:top-20 lg:self-start">
             <SettingsNav current={section} hrefFor={hrefFor} onNavigate={go} />
           </div>
-          <div ref={paneRef} className="min-w-0 scroll-mt-20" key={section}>
+          <div ref={paneRef} className="min-w-0" key={section}>
             {loading ? (
               <div aria-busy="true">
                 <LoadingLabel>Loading your settings…</LoadingLabel>

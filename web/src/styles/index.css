@@ -12,6 +12,37 @@
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+  /* code and commands (CLI lines, code in answers) — a sans monospace, never a Courier look-alike */
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Mono", "Segoe UI Mono", Consolas, "JetBrains Mono",
+    "DejaVu Sans Mono", "Liberation Mono", monospace;
+  /* `font-ident`: IBANs, reference and customer numbers — the UI face, so a long IBAN fits where a
+     monospace one wraps; no contextual alternates (no "->" arrows or "×" inside a reference) and a
+     slashed zero where the font has one. Pair with `wrap-anywhere` so groups break at spaces first. */
+  --font-ident: var(--font-sans);
+  --font-ident--font-feature-settings: "cv11", "ss01", "zero", "calt" 0;
+
+  /*
+   * Type scale (use these instead of text-[Npx]). Text that carries information is at least
+   * --text-xs (12 px); --text-2xs is only for counters inside a larger, labelled target.
+   * UI sizes keep the body rhythm (line-height 1.5); titles are tighter. --text-h1 is the page
+   * title (30 px on phones, growing to 38 px from tablets up).
+   */
+  --text-2xs: 0.6875rem; /* 11 px */
+  --text-2xs--line-height: 1.5;
+  --text-xs: 0.75rem; /* 12 px — captions, meta, eyebrows */
+  --text-xs--line-height: 1.5;
+  --text-sm: 0.8125rem; /* 13 px — secondary text, hints, table cells */
+  --text-sm--line-height: 1.5;
+  --text-base: 0.875rem; /* 14 px — UI body: buttons, inputs, list rows */
+  --text-base--line-height: 1.5;
+  --text-md: 0.9375rem; /* 15 px — reading text, card titles */
+  --text-md--line-height: 1.5;
+  --text-lg: 1.0625rem; /* 17 px — lead text, small headings */
+  --text-lg--line-height: 1.4;
+  --text-title: 1.375rem; /* 22 px — section and dialog titles (Fraunces) */
+  --text-title--line-height: 1.25;
+  --text-h1: clamp(1.875rem, 1.25rem + 2.5vw, 2.375rem); /* 30 → 38 px */
+  --text-h1--line-height: 1.1;
 
   --color-canvas: #f7f5f0;
   --color-surface: #ffffff;
@@ -32,9 +63,10 @@
   --color-marker-strong: #f59e0b;
 
   /* semantic kinds */
-  --color-k-deadline: #e11d48;
-  --color-k-deadline-soft: #ffe4e6;
-  --color-k-payment: #d97706;
+  /* kinds are categories, not alarms: a deadline is not an error, so it never borrows the danger rose */
+  --color-k-deadline: #c026d3;
+  --color-k-deadline-soft: #fae8ff;
+  --color-k-payment: #c96a05; /* ≥ 3:1 on its soft tint too (icons sit in soft tiles) */
   --color-k-payment-soft: #fef3c7;
   --color-k-appointment: #0284c7;
   --color-k-appointment-soft: #e0f2fe;
@@ -58,7 +90,7 @@
   --color-danger-soft: #ffe4e6;
 
   /* text-on-soft "ink" variants (WCAG AA ≥ 4.5:1 on their -soft background and on surfaces) */
-  --color-k-deadline-ink: #be123c;
+  --color-k-deadline-ink: #a21caf;
   --color-k-payment-ink: #a14c05;
   --color-k-appointment-ink: #0369a1;
   --color-k-task-ink: #475569;
@@ -106,8 +138,8 @@
   --color-marker: #a16207;
   --color-marker-strong: #facc15;
 
-  --color-k-deadline: #fb7185;
-  --color-k-deadline-soft: #3b1219;
+  --color-k-deadline: #e879f9;
+  --color-k-deadline-soft: #3b1340;
   --color-k-payment: #fbbf24;
   --color-k-payment-soft: #3a2a0b;
   --color-k-appointment: #38bdf8;
@@ -130,7 +162,7 @@
   --color-danger: #fb7185;
   --color-danger-soft: #3b1219;
 
-  --color-k-deadline-ink: #fb7185;
+  --color-k-deadline-ink: #e879f9;
   --color-k-payment-ink: #fbbf24;
   --color-k-appointment-ink: #38bdf8;
   --color-k-task-ink: #94a3b8;
@@ -151,13 +183,51 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    /* native controls, scrollbars and the page canvas follow the app theme, not only the OS */
+    color-scheme: light;
+    /*
+     * Whatever gets focus or is scrolled to (Tab, anchor jumps, scrollIntoView) stops clear of the
+     * sticky top bar (h-14) and, on phones, of the fixed tab bar (h-16 + home indicator) and the
+     * demo tour bar — WCAG 2.4.11. The tour sets --ordnung-tour-bar / --ordnung-tour-clearance.
+     */
+    scroll-padding-top: 4.5rem;
+    scroll-padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px) + var(--ordnung-tour-bar, 0px));
+    @variant md {
+      scroll-padding-bottom: calc(1.5rem + var(--ordnung-tour-clearance, 0px));
+    }
+  }
+  html.dark {
+    color-scheme: dark;
   }
   body {
     @apply bg-canvas text-ink font-sans;
     font-feature-settings: "cv11", "ss01"; /* tabular figures opt-in via `tabular-nums` (Inter's tnum also widens hyphens) */
+    /* the viewport covers the whole screen (viewport-fit=cover): keep content out of the notch in landscape */
+    padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+  }
+  /* no one-word last lines: balanced headings, "pretty" paragraphs (longhands, so `truncate` and
+     `whitespace-nowrap` keep working) */
+  h1,
+  h2,
+  h3 {
+    text-wrap-style: balance;
+  }
+  p,
+  dd,
+  li,
+  figcaption,
+  blockquote {
+    text-wrap-style: pretty;
   }
   ::selection {
     background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+  }
+  /* the outline colour is the accent at rest too, so `transition-colors` (which includes
+     outline-color) never fades the focus ring in from the text colour */
+  *,
+  ::before,
+  ::after {
+    outline-color: var(--color-accent);
   }
   :focus-visible {
     outline: 2px solid var(--color-accent);
@@ -172,6 +242,14 @@
   .display {
     @apply font-display tracking-tight;
     font-variation-settings: "opsz" 72, "SOFT" 50;
+  }
+  /* small uppercase label above a title or a group ("BY WHEN", "BANK DETAILS") */
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.07em] text-muted;
+  }
+  /* the title of a card or list item */
+  .card-title {
+    @apply text-md font-semibold leading-snug text-ink;
   }
   .marker {
     background: linear-gradient(transparent 12%, color-mix(in srgb, var(--color-marker) 85%, transparent) 12%, color-mix(in srgb, var(--color-marker) 85%, transparent) 88%, transparent 88%);

@@ -79,7 +79,7 @@ export function KeyFacts({ doc, scam }: { doc: Document; scam: boolean }) {
                   <span lang="de" className="w-40 shrink-0 truncate text-[13px] text-muted">
                     {r.label}
                   </span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-ink">{r.value}</span>
+                  <span className="min-w-0 flex-1 truncate font-ident text-[13px] text-ink">{r.value}</span>
                   <CopyButton value={r.value} what={r.label} />
                 </li>
               ))}
@@ -104,7 +104,7 @@ export function KeyFacts({ doc, scam }: { doc: Document; scam: boolean }) {
               {p.iban ? (
                 <li className="flex items-center gap-3">
                   <span className="w-40 shrink-0 text-[13px] text-muted">IBAN</span>
-                  <span className={cn("min-w-0 flex-1 break-all font-mono text-[13px]", scam ? "font-semibold text-danger-ink" : "text-ink")}>
+                  <span className={cn("min-w-0 flex-1 font-ident text-[13px] wrap-anywhere", scam ? "font-semibold text-danger-ink" : "text-ink")}>
                     {formatIban(p.iban)}
                   </span>
                   {scam ? <span className="size-7 shrink-0" aria-hidden /> : <CopyButton value={p.iban.replace(/\s+/g, "")} what="IBAN" />}
@@ -113,7 +113,7 @@ export function KeyFacts({ doc, scam }: { doc: Document; scam: boolean }) {
               {p.reference ? (
                 <li className="flex items-center gap-3">
                   <span className="w-40 shrink-0 text-[13px] text-muted">Reference</span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-ink">{p.reference}</span>
+                  <span className="min-w-0 flex-1 truncate font-ident text-[13px] text-ink">{p.reference}</span>
                   <CopyButton value={p.reference} what="Reference" />
                 </li>
               ) : null}

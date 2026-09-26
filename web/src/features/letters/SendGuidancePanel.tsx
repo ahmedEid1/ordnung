@@ -60,7 +60,7 @@ function ChannelRow({ c, n }: { c: SendChannel; n: number }) {
 export function SendGuidancePanel({ guidance, sent }: { guidance: SendGuidance | null; sent?: boolean }) {
   const today = useToday();
   if (!guidance) {
-    return <p className="text-sm text-muted">No special rules for sending this letter. Post or email both work — keep a copy.</p>;
+    return <p className="text-base text-muted">No special rules for sending this letter. Post or email both work — keep a copy.</p>;
   }
   const ranked = rankChannels(guidance.channels);
   const allowed = ranked.filter((c) => c.allowed);

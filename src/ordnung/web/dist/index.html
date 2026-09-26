@@ -3,19 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content="Ordnung — your private AI secretary for life admin." />
+    <!-- browser chrome colour = the page canvas; theme.ts keeps both in step with the chosen theme -->
+    <meta name="theme-color" content="#f7f5f0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#12110e" media="(prefers-color-scheme: dark)" />
     <title>Ordnung</title>
     <script>
-      try {
-        const t = localStorage.getItem("ordnung.theme");
-        if (t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches)) {
-          document.documentElement.classList.add("dark");
-        }
-      } catch {}
+      // Before the first paint: the stored theme (absent = follow the OS), so neither the page nor
+      // native controls and scrollbars flash light in dark mode. Same rules as src/app/theme.ts.
+      (function () {
+        var t = null;
+        try {
+          t = localStorage.getItem("ordnung.theme");
+        } catch (e) {}
+        var dark = t === "dark" || (t !== "light" && !!window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+        var root = document.documentElement;
+        root.classList.toggle("dark", dark);
+        root.style.colorScheme = dark ? "dark" : "light";
+        var metas = document.querySelectorAll('meta[name="theme-color"]');
+        for (var i = 0; i < metas.length; i++) metas[i].setAttribute("content", dark ? "#12110e" : "#f7f5f0");
+      })();
     </script>
-    <script type="module" crossorigin src="/assets/index-CR-Pa27D.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CPwmx7B6.css">
+    <script type="module" crossorigin src="/assets/index-BlgvLo0M.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-od0poO4D.css">
   </head>
   <body>
     <div id="root"></div>

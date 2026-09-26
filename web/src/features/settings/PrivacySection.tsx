@@ -250,7 +250,7 @@ export function PrivacySection() {
               </table>
             </div>
           ) : (
-            <p className="px-6 pb-6 text-sm text-muted">No calls yet.</p>
+            <p className="px-6 pb-6 text-base text-muted">No calls yet.</p>
           )}
         </section>
 
@@ -287,7 +287,7 @@ export function PrivacySection() {
               })}
             </ol>
           ) : (
-            <p className="flex items-center gap-2 text-sm text-muted">
+            <p className="flex items-center gap-2 text-base text-muted">
               <Database className="size-4" aria-hidden /> Nothing yet.
             </p>
           )}

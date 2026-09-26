@@ -70,7 +70,7 @@ function CopyRow({ label, value, display, copyId, mono }: { label: string; value
     <div className="flex items-center gap-3 py-2">
       <div className="min-w-0 flex-1">
         <dt className="text-[11.5px] font-medium text-muted">{label}</dt>
-        <dd className={cn("truncate text-[14px] text-ink", mono && "font-mono text-[13px] tracking-tight")}>{display ?? value}</dd>
+        <dd className={cn("truncate text-[14px] text-ink", mono && "font-ident")}>{display ?? value}</dd>
       </div>
       <button
         type="button"

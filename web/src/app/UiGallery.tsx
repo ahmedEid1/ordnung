@@ -88,7 +88,7 @@ function ReceiptView({ receipt }: { receipt: ComputationReceipt }) {
   return (
     <div className="space-y-3">
       <p className="text-[13px] font-semibold uppercase tracking-wide text-muted">Why this date?</p>
-      <p className="text-sm leading-relaxed text-ink">{receipt.summary}</p>
+      <p className="text-base leading-relaxed text-ink">{receipt.summary}</p>
       <ConfidenceNote confidence={receipt.confidence} warnings={receipt.warnings} />
       <Button variant="link" size="sm" onClick={() => setShowRules((v) => !v)}>
         {showRules ? "Hide the rules" : "Show the rules"}
@@ -239,7 +239,7 @@ export default function UiGallery() {
           ) : null}
         </Row>
         <Row label="Glossary">
-          <p className="text-sm text-ink">
+          <p className="text-base text-ink">
             You can file an <Glossary term="Einspruch" /> within a month of the <Glossary term="Bekanntgabe" />. Check the{" "}
             <Glossary term="Rechtsbehelfsbelehrung" /> and quote your <Glossary term="Aktenzeichen" />.
           </p>
@@ -323,9 +323,9 @@ export default function UiGallery() {
                 { value: "private", label: "Private", count: 0 },
               ]}
             />
-            <TabPanel id="gallery-tabs" value="all" current={tab} className="pt-3 text-sm text-muted">All letters…</TabPanel>
-            <TabPanel id="gallery-tabs" value="check" current={tab} className="pt-3 text-sm text-muted">Letters that need you…</TabPanel>
-            <TabPanel id="gallery-tabs" value="private" current={tab} className="pt-3 text-sm text-muted">Kept private — no AI.</TabPanel>
+            <TabPanel id="gallery-tabs" value="all" current={tab} className="pt-3 text-base text-muted">All letters…</TabPanel>
+            <TabPanel id="gallery-tabs" value="check" current={tab} className="pt-3 text-base text-muted">Letters that need you…</TabPanel>
+            <TabPanel id="gallery-tabs" value="private" current={tab} className="pt-3 text-base text-muted">Kept private — no AI.</TabPanel>
           </div>
         </Row>
         <Row label="Pill tabs">
@@ -355,7 +355,7 @@ export default function UiGallery() {
           </div>
         </Row>
         <Row label="Keys & tips">
-          <span className="inline-flex items-center gap-1 text-sm text-muted">
+          <span className="inline-flex items-center gap-1 text-base text-muted">
             Search <Kbd>/</Kbd> or <Kbd>⌘</Kbd>
             <Kbd>K</Kbd>
           </span>
@@ -406,7 +406,7 @@ export default function UiGallery() {
           }
         />
         <Drawer open={drawer} onClose={() => setDrawer(false)} eyebrow="Example" title="Right-side sheet" description="Used for People & organisations.">
-          <p className="text-sm text-muted">Drawer content.</p>
+          <p className="text-base text-muted">Drawer content.</p>
         </Drawer>
       </Block>
 

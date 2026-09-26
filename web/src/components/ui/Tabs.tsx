@@ -81,7 +81,7 @@ export function Tabs<V extends string>({ items, value, onChange, label, id, vari
             disabled={t.disabled}
             onClick={() => onChange(t.value)}
             className={cn(
-              "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm font-medium transition-colors disabled:opacity-50",
+              "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-base font-medium transition-colors disabled:opacity-50",
               variant === "underline"
                 ? cn("h-10 px-0.5", selected ? "text-ink" : "text-muted hover:text-ink")
                 : cn("h-8 rounded-lg px-3", selected ? "text-ink" : "text-muted hover:text-ink"),

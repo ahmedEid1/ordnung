@@ -8,7 +8,7 @@ import { sortChecks } from "./logic";
  * placeholders, only known § citations, no invented numbers, allowed way of sending).
  */
 export function ChecksPanel({ checks, stale }: { checks: DraftCheck[]; stale?: boolean }) {
-  if (!checks.length) return <p className="text-sm text-muted">No checks for this letter yet.</p>;
+  if (!checks.length) return <p className="text-base text-muted">No checks for this letter yet.</p>;
   const failed = checks.filter((c) => !c.ok).length;
   return (
     <div>

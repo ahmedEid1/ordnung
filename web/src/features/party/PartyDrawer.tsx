@@ -56,7 +56,7 @@ function CopyRow({ label, value, display, mono = true }: { label: string; value:
   return (
     <div className="flex items-center gap-3 px-3 py-2.5">
       <dt className="w-[7.5rem] shrink-0 text-[12.5px] leading-4 text-muted">{label}</dt>
-      <dd className={cn("min-w-0 flex-1 break-all text-[13px] text-ink", mono && "font-mono tracking-tight")}>{display ?? value}</dd>
+      <dd className={cn("min-w-0 flex-1 text-[13px] text-ink wrap-anywhere", mono && "font-ident")}>{display ?? value}</dd>
       <button
         type="button"
         onClick={() => void copy(value)}

@@ -44,7 +44,7 @@ function UploadRow({ job }: { job: JobProgress }) {
           <Icon className="size-[18px]" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-ink" title={name}>
+          <p className="truncate text-base font-medium text-ink" title={name}>
             {name}
           </p>
           <p className={cn("mt-0.5 truncate text-[12.5px]", failed ? "text-danger-ink" : done ? "text-ok-ink" : "text-muted")}>{stageLabel}</p>

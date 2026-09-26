@@ -114,7 +114,7 @@ function ToastItem({ t }: { t: ToastRecord }) {
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
-      className="pointer-events-auto flex w-full items-start gap-3 rounded-xl border border-line bg-surface p-3.5 pr-2.5 text-sm shadow-[var(--shadow-pop)] sm:w-[380px]"
+      className="pointer-events-auto flex w-full items-start gap-3 rounded-xl border border-line bg-surface p-3.5 pr-2.5 text-base shadow-[var(--shadow-pop)] sm:w-[380px]"
       role={t.tone === "danger" ? "alert" : undefined}
     >
       <Icon className={cn("mt-0.5 size-[18px] shrink-0", cls)} aria-hidden />

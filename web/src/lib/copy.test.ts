@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  AREA_COPY,
+  CONTRACT_CATEGORY_COPY,
+  DOCUMENT_KIND_COPY,
   ENUM_COVERAGE,
   GROUNDING_COPY,
+  PARTY_KIND_COPY,
   PIPELINE_STEPS,
   TONES,
   assertNoRawEnums,
@@ -26,6 +30,22 @@ describe("enum copy", () => {
       expect(TONES[c!.tone]).toBeDefined();
       expect(() => assertNoRawEnums(c!.label, { exactWord: true })).not.toThrow();
     }
+  });
+
+  it.each([
+    ["letter kinds", DOCUMENT_KIND_COPY],
+    ["life areas", AREA_COPY],
+    ["organisations", PARTY_KIND_COPY],
+    ["contract categories", CONTRACT_CATEGORY_COPY],
+  ] as const)("%s are categories, not alarms: no danger, warn or deadline tone", (_, map) => {
+    for (const [value, c] of Object.entries(map)) expect(["danger", "warn", "deadline"], value).not.toContain(c.tone);
+  });
+
+  it("gives fines and payment reminders the payment tone, and health the appointment tone", () => {
+    expect(DOCUMENT_KIND_COPY.fine.tone).toBe("payment");
+    expect(DOCUMENT_KIND_COPY.dunning.tone).toBe("payment");
+    expect(AREA_COPY.health.tone).toBe("appointment");
+    expect(PARTY_KIND_COPY.health_insurer.tone).toBe("appointment");
   });
 
   it("uses the SPEC §21 trust wording", () => {

@@ -120,7 +120,7 @@ export function Popover({
               transition={{ type: "spring", stiffness: 420, damping: 40 }}
               className={cn(
                 className,
-                "fixed inset-x-0 bottom-0 z-[60] max-h-[85dvh] w-auto max-w-none overflow-auto rounded-b-none rounded-t-2xl border border-b-0 border-line bg-surface p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] text-sm text-ink shadow-[var(--shadow-pop)] outline-none scrollbar-thin",
+                "fixed inset-x-0 bottom-0 z-[60] max-h-[85dvh] w-auto max-w-none overflow-auto rounded-b-none rounded-t-2xl border border-b-0 border-line bg-surface p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] text-base text-ink shadow-[var(--shadow-pop)] outline-none scrollbar-thin",
               )}
             >
               <div aria-hidden className="mx-auto -mt-2 mb-3 h-1 w-10 rounded-full bg-line-strong" />
@@ -147,7 +147,7 @@ export function Popover({
                 transformOrigin: pos?.placement.startsWith("top") ? "bottom left" : "top left",
               }}
               className={cn(
-                "z-[60] w-80 max-w-[calc(100vw-16px)] overflow-auto rounded-xl border border-line bg-surface p-4 text-sm text-ink shadow-[var(--shadow-pop)] outline-none scrollbar-thin",
+                "z-[60] w-80 max-w-[calc(100vw-16px)] overflow-auto rounded-xl border border-line bg-surface p-4 text-base text-ink shadow-[var(--shadow-pop)] outline-none scrollbar-thin",
                 className,
               )}
             >

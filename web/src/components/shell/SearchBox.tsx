@@ -86,9 +86,9 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
       )}
     >
       {debounced.trim().length < 2 ? (
-        <p className="px-4 py-3 text-sm text-muted">Keep typing — search senders, subjects, amounts or reference numbers.</p>
+        <p className="px-4 py-3 text-base text-muted">Keep typing — search senders, subjects, amounts or reference numbers.</p>
       ) : results.length === 0 && !isFetching ? (
-        <div className="flex items-center gap-3 px-4 py-4 text-sm text-muted">
+        <div className="flex items-center gap-3 px-4 py-4 text-base text-muted">
           <SearchX className="size-4 shrink-0" aria-hidden />
           No letters match “{debounced.trim()}”.
         </div>
@@ -109,7 +109,7 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
             >
               <KindIcon docKind={d.kind} size="sm" />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-ink">{d.title ?? d.filename}</span>
+                <span className="block truncate text-base font-medium text-ink">{d.title ?? d.filename}</span>
                 <span className="block truncate text-[12.5px] text-muted">
                   {[d.party_id ? partyName.get(d.party_id) : null, documentKindLabel(d.kind)].filter(Boolean).join(" · ")}
                 </span>
@@ -146,7 +146,7 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
           onBlur={() => setFocused(false)}
           onKeyDown={onKeyDown}
           className={cn(
-            "h-9 w-full rounded-lg border border-line bg-surface/70 pl-9 pr-10 text-sm text-ink shadow-[inset_0_1px_1px_rgb(0_0_0/0.03)] outline-none transition-[border-color,box-shadow,background-color]",
+            "h-9 w-full rounded-lg border border-line bg-surface/70 pl-9 pr-10 text-base text-ink shadow-[inset_0_1px_1px_rgb(0_0_0/0.03)] outline-none transition-[border-color,box-shadow,background-color]",
             "placeholder:text-muted hover:border-line-strong focus:border-accent focus:bg-surface focus:ring-3 focus:ring-accent/15 [&::-webkit-search-cancel-button]:hidden",
           )}
         />

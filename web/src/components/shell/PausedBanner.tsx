@@ -13,7 +13,7 @@ export function PausedBanner() {
     ? "a little while"
     : until.toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" });
   return (
-    <div role="status" className="border-b border-warn/25 bg-warn-soft px-4 py-2.5 text-sm md:px-8">
+    <div role="status" className="border-b border-warn/25 bg-warn-soft px-4 py-2.5 text-base md:px-8">
       <div className="mx-auto flex max-w-6xl items-start gap-2.5">
         <CirclePause className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
         <p className="text-ink/90">

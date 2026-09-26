@@ -142,6 +142,10 @@ import {
 
 // ------------------------------------------------------------------------------------------------
 // Tones → Tailwind classes (full literal class names so Tailwind can see them)
+//
+// Categories (letter kinds, life areas, organisations, contract categories) are not alarms: they
+// never take a status tone (danger / warn) or the deadline tone. How urgent something is shows in
+// its date (Countdown) and status, so a "Fine" chip or the Health area never looks like an error.
 // ------------------------------------------------------------------------------------------------
 
 export type Tone =
@@ -210,7 +214,7 @@ export const DOCUMENT_KIND_COPY: CopyMap<DocumentKind> = {
   social_insurance: { label: "Social insurance", icon: ShieldPlus, tone: "milestone" },
   health_insurance: { label: "Health insurance", icon: HeartPulse, tone: "appointment" },
   invoice: { label: "Invoice", icon: Receipt, tone: "payment" },
-  dunning: { label: "Payment reminder", icon: BadgeAlert, tone: "deadline" },
+  dunning: { label: "Payment reminder", icon: BadgeAlert, tone: "payment" },
   contract: { label: "Contract", icon: Signature, tone: "contract" },
   contract_change: { label: "Contract change", icon: FilePenLine, tone: "contract" },
   price_increase: { label: "Price increase", icon: TrendingUp, tone: "payment" },
@@ -223,7 +227,7 @@ export const DOCUMENT_KIND_COPY: CopyMap<DocumentKind> = {
   university: { label: "University", icon: GraduationCap, tone: "milestone" },
   employment: { label: "Work", icon: Briefcase, tone: "task" },
   appointment: { label: "Appointment", icon: CalendarClock, tone: "appointment" },
-  fine: { label: "Fine", icon: Scale, tone: "deadline" },
+  fine: { label: "Fine", icon: Scale, tone: "payment" },
   receipt: { label: "Receipt", icon: ReceiptText, tone: "document" },
   identity_document: { label: "ID document", icon: IdCard, tone: "expiry" },
   broadcasting_fee: { label: "Broadcasting fee", icon: Radio, tone: "payment" },
@@ -287,7 +291,7 @@ export const AREA_COPY: CopyMap<Area> = {
   home: { label: "Home", icon: House, tone: "contract" },
   work: { label: "Work", icon: Briefcase, tone: "task" },
   study: { label: "Study", icon: GraduationCap, tone: "milestone" },
-  health: { label: "Health", icon: HeartPulse, tone: "deadline" },
+  health: { label: "Health", icon: HeartPulse, tone: "appointment" },
   money: { label: "Money", icon: Wallet, tone: "payment" },
   residence: { label: "Residence", icon: Stamp, tone: "expiry" },
   tax: { label: "Tax", icon: Landmark, tone: "expiry" },
@@ -473,7 +477,7 @@ export const PARTY_KIND_COPY: CopyMap<PartyKind> = {
   authority: { label: "Authority", icon: Building, tone: "milestone" },
   tax_office: { label: "Tax office", icon: Landmark, tone: "expiry" },
   immigration_office: { label: "Immigration office", icon: Stamp, tone: "expiry" },
-  health_insurer: { label: "Health insurer", icon: HeartPulse, tone: "deadline" },
+  health_insurer: { label: "Health insurer", icon: HeartPulse, tone: "appointment" },
   insurer: { label: "Insurer", icon: Shield, tone: "contract" },
   bank: { label: "Bank", icon: Banknote, tone: "document" },
   landlord: { label: "Landlord", icon: House, tone: "contract" },

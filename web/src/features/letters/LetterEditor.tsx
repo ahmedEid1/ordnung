@@ -150,7 +150,7 @@ function EnglishPane({ translation, stale, onRetranslate, retranslating }: { tra
       {translation ? (
         <div className="whitespace-pre-line text-[15px] leading-7 text-ink/85">{translation}</div>
       ) : (
-        <p className="text-sm text-muted">No translation for this letter.</p>
+        <p className="text-base text-muted">No translation for this letter.</p>
       )}
     </div>
   );

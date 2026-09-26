@@ -124,7 +124,7 @@ export function ComingUp({
           ))}
         </div>
       ) : (
-        <p className="card px-5 py-6 text-center text-sm text-muted">Nothing else in the next 30 days.</p>
+        <p className="card px-5 py-6 text-center text-base text-muted">Nothing else in the next 30 days.</p>
       )}
     </motion.section>
   );

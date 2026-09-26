@@ -15,6 +15,7 @@ import { Dialog } from "./Dialog";
 import { Tabs } from "./Tabs";
 import { Glossary } from "./Glossary";
 import { Button } from "./Button";
+import { Checkbox, Switch } from "./Field";
 import { EmptyState } from "./EmptyState";
 import { Toaster, toast, __clearToasts } from "./Toast";
 import { PIPELINE_STEPS } from "@/lib/copy";
@@ -111,6 +112,19 @@ describe("Dialog", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(trigger).toHaveFocus();
+  });
+});
+
+describe("Switch and Checkbox", () => {
+  it("wrap their descriptions without a one-word last line", () => {
+    renderWithProviders(
+      <>
+        <Switch checked={false} onCheckedChange={() => {}} label="Reminders" description="We remind you seven days before a deadline and again on the day." />
+        <Checkbox label="Keep private" description="Nothing about this letter is sent to Claude." />
+      </>,
+    );
+    expect(screen.getByText(/seven days before/)).toHaveClass("text-pretty");
+    expect(screen.getByText(/Nothing about this letter/)).toHaveClass("text-pretty");
   });
 });
 

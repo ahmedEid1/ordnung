@@ -173,7 +173,7 @@ export function IdeasSection({
           </AnimatePresence>
         </ul>
       ) : (
-        <p className="card px-5 py-6 text-center text-sm leading-relaxed text-muted">
+        <p className="card px-5 py-6 text-center text-base leading-relaxed text-muted">
           No new Ideas. Your secretary suggests things as letters arrive — you'll see them here.
         </p>
       )}

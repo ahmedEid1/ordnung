@@ -308,7 +308,7 @@ export function LanesChart({
             </span>
           </div>
         ) : !hasLanes ? (
-          <div className="p-5">{empty ?? <p className="py-8 text-center text-sm text-muted">Nothing on your lanes yet.</p>}</div>
+          <div className="p-5">{empty ?? <p className="py-8 text-center text-base text-muted">Nothing on your lanes yet.</p>}</div>
         ) : plotW ? (
           <div
             ref={attachScroller}

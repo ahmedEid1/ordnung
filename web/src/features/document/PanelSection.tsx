@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 /** A titled section of the document panel (landmark with a heading). */
 export function PanelSection({
@@ -22,7 +21,7 @@ export function PanelSection({
 }) {
   const hid = `${id}-title`;
   return (
-    <section id={id} aria-labelledby={hid} className={cn("scroll-mt-20", className)}>
+    <section id={id} aria-labelledby={hid} className={className}>
       <div className="mb-2.5 flex items-center gap-2 px-1">
         <h2 id={hid} className="flex items-center gap-2 text-[12.5px] font-semibold uppercase tracking-[0.07em] text-muted">
           {Icon ? <Icon className="size-4" aria-hidden /> : null}

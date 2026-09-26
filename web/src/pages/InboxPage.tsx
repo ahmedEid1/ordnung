@@ -132,7 +132,7 @@ export default function InboxPage() {
             {groups.length ? (
               <LettersList groups={groups} parties={partyMap} open={openMap} />
             ) : searching && search.isPending ? (
-              <p className="px-1 text-sm text-muted">Searching…</p>
+              <p className="px-1 text-base text-muted">Searching…</p>
             ) : filter === "check" && !kind && !searching ? (
               <EmptyState
                 size="sm"

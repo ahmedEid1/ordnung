@@ -161,7 +161,7 @@ export function TimelineList({ groups, today, hrefFor, highlight, header, empty,
   };
 
   return (
-    <section ref={card} aria-labelledby="timeline-list-title" className={cn("card relative isolate scroll-mt-20 overflow-hidden", className)}>
+    <section ref={card} aria-labelledby="timeline-list-title" className={cn("card relative isolate overflow-hidden", className)}>
       {header}
       <div ref={scroller} className="relative max-h-[min(46rem,74vh)] overflow-y-auto overscroll-contain scrollbar-thin">
         {!hasEntries ? (

@@ -66,7 +66,7 @@ export function Drawer({ open, onClose, title, eyebrow, description, headerExtra
                 <h2 id={titleId} className="display text-2xl font-semibold leading-tight text-ink">
                   {title}
                 </h2>
-                {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
+                {description ? <p className="mt-1 text-base text-muted">{description}</p> : null}
                 {headerExtra ? <div className="mt-3">{headerExtra}</div> : null}
               </div>
               <IconButton icon={X} label="Close" size="sm" onClick={onClose} className="-mr-1.5" />

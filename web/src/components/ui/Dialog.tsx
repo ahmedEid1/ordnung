@@ -97,7 +97,7 @@ export function Dialog({
                   {title}
                 </h2>
                 {description ? (
-                  <p id={descId} className="mt-1.5 text-sm leading-relaxed text-muted">
+                  <p id={descId} className="mt-1.5 text-base leading-relaxed text-muted">
                     {description}
                   </p>
                 ) : null}

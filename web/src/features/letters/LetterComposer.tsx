@@ -325,7 +325,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted">No active contracts yet. Add the contract letter to your inbox first.</p>
+                <p className="text-base text-muted">No active contracts yet. Add the contract letter to your inbox first.</p>
               )
             ) : null}
 
@@ -376,7 +376,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                     })}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted">None of your letters is a decision with instructions on how to object.</p>
+                  <p className="text-base text-muted">None of your letters is a decision with instructions on how to object.</p>
                 )}
                 {doc && check.ok ? (
                   <p className="mt-2.5 text-[13px] leading-relaxed text-muted">
@@ -420,7 +420,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                         <DocOption d={d} party={parties.get(d.party_id ?? "")} />
                       </OptionRow>
                     ))}
-                    {!replyDocs.length ? <p className="px-1 py-2 text-sm text-muted">No letters match “{filter}”.</p> : null}
+                    {!replyDocs.length ? <p className="px-1 py-2 text-base text-muted">No letters match “{filter}”.</p> : null}
                   </div>
                 )}
                 <div className="mt-3">
