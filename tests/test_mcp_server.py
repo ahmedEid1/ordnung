@@ -754,17 +754,20 @@ def test_a_recording_whose_tool_results_changed_is_stale(tools: LedgerTools, ids
     assert mcp_server.answer_again(tools, "list_items", {"status": "running"}).startswith("status must be")
 
 
-def test_a_fixed_term_job_is_never_said_to_need_no_notice(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review round 4: list_contracts told Ask "It ends by itself …; no cancellation is needed" for a
-    fixed-term job, and a recorded answer said there was nothing to send. Ordinary notice is often
-    agreed for such a job (§ 15 Abs. 4 TzBfG), so the record says to check the contract."""
+def test_a_fixed_term_job_ends_by_itself_on_its_date(tools: LedgerTools, ids: dict[str, str]) -> None:
+    """Review round 4: list_contracts told Ask "no cancellation is needed" with no word on ending a job
+    early. Final review: the replacement said it "may still need notice to end then" — wrong under § 15
+    Abs. 1 TzBfG (a calendar-fixed job ends with its time); an undated notice would end it at the next
+    possible date. The record says it ends by itself, and that only ending it earlier needs agreed notice
+    (§ 15 Abs. 4 TzBfG)."""
     rows = tools.list_contracts().record["contracts"]
     job = next(row for row in rows if row["category"] == "employment")
     assert job["dates"]["regime"] == "employment622"
     rendered = json.dumps(job, ensure_ascii=False)
-    assert "no cancellation" not in rendered
+    assert "may still need notice" not in rendered
     assert (
-        "§ 15 Abs. 4 TzBfG" in job["if_not_cancelled"] and "may still need notice" in job["dates"]["summary"]
+        "(§ 15 Abs. 1 TzBfG)" in job["if_not_cancelled"] and "(§ 15 Abs. 4 TzBfG)" in job["if_not_cancelled"]
     )
+    assert "ends then by itself" in job["dates"]["summary"]
     explained = tools.explain_date(job["id"]).record["computation"]["summary"]
-    assert "may still need notice" in explained
+    assert "ends then by itself" in explained and "may still need notice" not in explained

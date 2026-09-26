@@ -297,10 +297,11 @@ def test_continuation_says_whether_a_contract_renews_or_runs_on() -> None:
 def test_a_fixed_term_contract_ends_by_itself(category: str, notice: str, caveat: str) -> None:
     """Review findings: the working-student contract "continues with no fixed term" if nothing is done —
     wrong under § 15 Abs. 1 TzBfG: it ends when its time runs out, and only continued work the employer
-    knows of and does not object to makes it open-ended (§ 15 Abs. 6 TzBfG). And (review round 4) "no
-    cancellation is needed" is wrong for exactly these two: a fixed-term job can be ended with agreed
-    ordinary notice (§ 15 Abs. 4 TzBfG), and a flat let without a written reason for its term counts as
-    open-ended (§ 575 Abs. 1 S. 2 BGB) — so Ask's record says to check the contract instead."""
+    knows of and does not object to makes it open-ended (§ 15 Abs. 6 TzBfG). A flat let without a written
+    reason for its term counts as open-ended (§ 575 Abs. 1 S. 2 BGB), so Ask's record says to check the
+    contract. Final review: round 4 said a fixed-term job "may still need notice to end then" — wrong: § 15
+    Abs. 4 TzBfG only allows ending it *earlier* when agreed; an undated notice would end the job at the
+    next possible date instead. And § 575 does not apply in a student hall (§ 549 Abs. 3 BGB)."""
     from ordnung.models import Contract, ContractTerms
     from ordnung.rules import RuleContext
     from ordnung.rules.contracts import compute_contract
@@ -319,9 +320,18 @@ def test_a_fixed_term_contract_ends_by_itself(category: str, notice: str, caveat
     text = continuation(contract, comp, today=TODAY)
     assert "continues with no fixed term and can then be cancelled" not in text
     summary = fixed_term_summary(comp, today=TODAY)
-    if notice:
+    if category == "employment":
+        assert text.startswith(
+            "Its fixed term ends on Wed 31 Mar 2027. A fixed-term job ends then by itself, with no notice "
+            "(§ 15 Abs. 1 TzBfG). Ending it earlier takes notice"
+        )
+        assert notice in text and text.endswith(caveat) and "may still need notice" not in text
+        assert summary is not None and "ends then by itself" in summary and "(§ 15 Abs. 1 TzBfG)" in summary
+        assert "may still need notice" not in summary
+    elif notice:
         assert text.startswith("Its fixed term ends on Wed 31 Mar 2027.")
         assert notice in text and "check the contract" in text and text.endswith(caveat)
+        assert "student or youth hall of residence" in text and "(§ 549 Abs. 2 and 3 BGB)" in text
         assert "no cancellation" not in text
         assert summary is not None and "may still need notice" in summary
     else:

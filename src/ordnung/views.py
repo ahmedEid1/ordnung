@@ -675,32 +675,38 @@ _FIXED_TERM_CAVEATS = {
 nothing (§ 15 Abs. 1 and 6 TzBfG, § 545 BGB)."""
 _FIXED_TERM_NOTICE = {
     "employment622": (
-        " Before then it can be ended with ordinary notice only if the contract or a collective agreement "
-        "allows it (§ 15 Abs. 4 TzBfG) — many do, for example after the probation period — so check the "
-        "contract's notice clause before relying on the end date."
+        " A fixed-term job ends then by itself, with no notice (§ 15 Abs. 1 TzBfG). Ending it earlier takes "
+        "notice, which is possible only if the contract or a collective agreement allows it (§ 15 Abs. 4 "
+        "TzBfG) — many do, for example after the probation period."
     ),
     "rent573c": (
-        " A flat let for a fixed term counts as open-ended unless the landlord gave one of the legal "
+        " A flat let for a fixed term usually counts as open-ended unless the landlord gave one of the legal "
         "reasons for the fixed term in writing when it was signed (§ 575 Abs. 1 BGB); then leaving needs "
-        "notice like any open-ended lease (§ 573c BGB) — so check the contract before relying on the end "
-        "date."
+        "notice like any open-ended lease (§ 573c BGB). That rule does not apply to a room in a student or "
+        "youth hall of residence, a flat let only for temporary use, or a furnished room in the landlord's "
+        "own flat (§ 549 Abs. 2 and 3 BGB): there a fixed term ends by itself. So check the contract before "
+        "relying on the end date."
     ),
 }
-"""Why the end date of a fixed-term job or flat let may not end it without notice: ordinary notice is
-often agreed for a fixed-term job (§ 15 Abs. 4 TzBfG), and a fixed-term flat let without a written
-legal reason counts as open-ended (§ 575 Abs. 1 S. 2 BGB). The rules engine does not read these clauses
-(it applies ``fixed_term`` to every such contract with an end date), so Ordnung never says no notice
-is needed there."""
+"""What the end date of a fixed-term job or flat let means. A job ends by itself on its date (§ 15 Abs. 1
+TzBfG); only ending it *earlier* needs an agreed notice clause (§ 15 Abs. 4 TzBfG). A flat let's fixed
+term usually needs a written legal reason, or the lease counts as open-ended and leaving needs notice
+(§ 575 Abs. 1 S. 2 BGB) — except in a student or youth hall, for temporary use or for a furnished room
+in the landlord's flat, where § 575 does not apply (§ 549 Abs. 2 and 3 BGB). The rules engine reads none
+of these clauses (it applies ``fixed_term`` to every such contract with an end date), so for a flat let
+Ask's record says notice may still be needed. The contract page still prints the engine's "ends by itself
+— no cancellation needed" (``rules/explain.py``) for a flat let: a release blocker for the rules
+workstream (docs/SPEC.md §10)."""
 
 
 def continuation(contract: Contract, comp: ContractComputation, *, today: date | None = None) -> str:
     """What happens if the contract is not cancelled, in plain words.
 
     A fixed-term contract (the rules engine applied ``fixed_term``) ends by itself on its end date — for
-    employment and tenancies with a caveat: :data:`_FIXED_TERM_NOTICE` says why notice may still be
-    needed (an agreed notice clause, a lease without a written reason for its term), and
-    :data:`_FIXED_TERM_CAVEATS` what turns it into an open-ended one by conduct. Otherwise it either
-    renews for a fixed term or runs on, cancellable at any time.
+    employment and tenancies with what :data:`_FIXED_TERM_NOTICE` says (ending a job earlier needs an
+    agreed notice clause; a flat let may count as open-ended) and what :data:`_FIXED_TERM_CAVEATS` says
+    turns it into an open-ended one by conduct. Otherwise it either renews for a fixed term or runs on,
+    cancellable at any time.
     """
     end = parse_day(comp.current_term_end) if "fixed_term" in comp.rule_ids else None
     if end is not None:
@@ -717,12 +723,17 @@ def continuation(contract: Contract, comp: ContractComputation, *, today: date |
 
 
 def fixed_term_summary(comp: ContractComputation, *, today: date) -> str | None:
-    """The summary Ask's record gives a fixed-term job or flat let instead of the engine's "ends by
-    itself — no cancellation needed" (``None``: keep the engine's): its end date, and that it may still
-    need notice (:data:`_FIXED_TERM_NOTICE`)."""
+    """The summary Ask's record gives a fixed-term job or flat let instead of the engine's (``None``: keep
+    the engine's): a job ends by itself on its date (§ 15 Abs. 1 TzBfG), a flat let may still need
+    notice (:data:`_FIXED_TERM_NOTICE`); both point to ``if_not_cancelled`` for the rest."""
     end = parse_day(comp.current_term_end) if "fixed_term" in comp.rule_ids else None
     if end is None or end < today or comp.regime not in _FIXED_TERM_NOTICE:
         return None
+    if comp.regime == "employment622":
+        return (
+            f"This job's fixed term ends on {fmt_date(end)}: it ends then by itself, with no notice (§ 15 Abs. 1 "
+            "TzBfG) — see if_not_cancelled for ending it earlier and for what makes it open-ended."
+        )
     return (
         f"This contract's fixed term ends on {fmt_date(end)}; it may still need notice to end then or "
         "earlier — see if_not_cancelled."
