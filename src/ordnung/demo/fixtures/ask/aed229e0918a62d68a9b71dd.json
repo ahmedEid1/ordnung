@@ -9,15 +9,15 @@
     "prompt_head": "The person asks:\nWhat do I have to pay in the next four weeks?\n"
   },
   "response": {
-    "text": "Here's what's due to be paid in the next four weeks (by mid-October):\n\n- **TechMarkt Online GmbH** – outstanding invoice + reminder fee, due Wed 30 Sep 2026: 94.99 € [item:itm_c05nsrmyz6av]\n- **Deutschlandticket** direct debit, due Thu 1 Oct 2026: 63.00 € [item:itm_rjz7qsr1817e]\n- **Verwarnungsgeld (traffic fine)**, Stadt Musterstadt Ordnungsamt, due Fri 2 Oct 2026 — the letter says 30.00 €, but this amount was read by AI and is unverified, so please check it against the paper letter [item:itm_31yxpwg03cdb]\n- **Library fees**, Stadtbibliothek Musterstadt, due Fri 2 Oct 2026: 4.50 € [item:itm_kgsfgwac9wzx]\n- **Betriebs- und Heizkosten-Nachzahlung 2025** (Wohnbau Musterstadt eG), due Fri 9 Oct 2026: 184.30 € [item:itm_dmaw27qvv18n]\n- **Residence permit extension fee**, Ausländerbehörde, due Wed 14 Oct 2026 at 10:30, payable on site by card: 100.00 € [item:itm_wj2v05avgk1m]\n- **Electricity advance payment (Abschlag)**, Stadtwerke Musterstadt, due Thu 15 Oct 2026: 48.00 € [item:itm_3v56qs2n3q3v]\n- **Health & nursing care insurance**, Muster BKK, due Thu 15 Oct 2026: 156.55 € [item:itm_9qp3t27cbx8f]\n\nAdditionally, Ordnung has no due date stored for these recurring costs, so keep them in mind:\n- Mobile fee (FunkNetz), 34.99 € [item:itm_j3gjse0pknnw]\n- Gym membership (FitWell), 29.90 € [item:itm_chhc59r0d16v]\n- Rent (Wohnbau Musterstadt), 640.00 € [item:itm_b1b5643x7qy7]\n\nYou can mark any of these done or draft a payment reminder in Ordnung once handled.",
+    "text": "Here's what's due in the next four weeks (from today, 2026-09-28):\n\n**Payments with a due date:**\n- Outstanding invoice + reminder fee to TechMarkt Online GmbH, due Wed 2026-09-30: 94.99 € [item:itm_c05nsrmyz6av]\n- Deutschlandticket direct debit, due Thu 2026-10-01: 63.00 € [item:itm_rjz7qsr1817e]\n- Traffic fine (Verwarnungsgeld) to Ordnungsamt, due Fri 2026-10-02: the letter says 30.00 € [item:itm_31yxpwg03cdb] — this amount was read from the letter and not independently verified, so it's worth checking against the paper letter.\n- Library fees, due Fri 2026-10-02: 4.50 € [item:itm_kgsfgwac9wzx]\n- Nachzahlung (utility/heating cost back-payment) to Wohnbau Musterstadt, due Fri 2026-10-09: 184.30 € [item:itm_dmaw27qvv18n]\n- Residence permit extension fee (Ausländerbehörde, paid on-site), due Wed 2026-10-14: 100.00 € [item:itm_wj2v05avgk1m]\n- Electricity advance payment (Abschlag), due Thu 2026-10-15: 48.00 € [item:itm_3v56qs2n3q3v]\n- Health & nursing care insurance contribution, due Thu 2026-10-15: 156.55 € [item:itm_9qp3t27cbx8f]\n\n**No due date stored (recurring, still to budget for):**\n- Rent, 640.00 € — Ordnung has no due date stored for this one [item:itm_b1b5643x7qy7]\n- Mobile plan fee, 34.99 € — no due date stored [item:itm_j3gjse0pknnw]\n- Gym membership fee, 29.90 € — no due date stored [item:itm_chhc59r0d16v]\n\nNo scam-flagged demands were found in this period.",
     "data": null,
     "usage": {
       "input_tokens": 4,
-      "output_tokens": 1340,
-      "cache_read_tokens": 9910,
-      "cache_creation_tokens": 5323,
-      "cost_usd": 0.036682,
-      "duration_ms": 17072,
+      "output_tokens": 1239,
+      "cache_read_tokens": 9906,
+      "cache_creation_tokens": 5380,
+      "cost_usd": 0.0358992,
+      "duration_ms": 16721,
       "turns": 2
     },
     "model": "claude-sonnet-5",
@@ -32,7 +32,7 @@
     },
     {
       "type": "tool_result",
-      "text": "<ordnung_record>\n{\"month\":\"2026-09\",\"currency\":\"EUR\",\"due_this_month\":94.99,\"fixed_costs_monthly\":982.33,\"fixed_costs_by_category\":{\"bank\":4.9,\"energy\":48.0,\"gym\":29.9,\"insurance\":161.54,\"mobile\":34.99,\"rent\":640.0,\"transport\":63.0},\"upcoming_payments\":[{\"id\":\"itm_c05nsrmyz6av\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-09-30\",\"send_by\":\"2026-09-29\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"money\",\"party_id\":\"pty_adyabnsvdbpg\",\"doc_id\":\"doc_1ndcj96tf28z\",\"amount\":94.99,\"currency\":\"EUR\"},{\"id\":\"itm_rjz7qsr1817e\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-01\",\"send_by\":\"2026-09-30\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"mobility\",\"party_id\":\"pty_wmevpbzhrm3e\",\"doc_id\":\"doc_vy5abr6ejqnb\",\"contract_id\":\"ctr_cmeadtk38mac\",\"amount\":63.0,\"currency\":\"EUR\"},{\"id\":\"itm_31yxpwg03cdb\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"mobility\",\"party_id\":\"pty_v0hy6khbm1sw\",\"doc_id\":\"doc_qyh8m6fzk4w9\",\"amount_unverified\":\"The amount was read by AI from a photo or scan, so it is only in the letter text: give it as what the letter says and suggest checking it against the paper letter.\"},{\"id\":\"itm_kgsfgwac9wzx\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\",\"amount\":4.5,\"currency\":\"EUR\"},{\"id\":\"itm_dmaw27qvv18n\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-09\",\"send_by\":\"2026-10-08\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":184.3,\"currency\":\"EUR\"},{\"id\":\"itm_wj2v05avgk1m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"send_by\":\"2026-10-13\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"amount\":100.0,\"currency\":\"EUR\"},{\"id\":\"itm_3v56qs2n3q3v\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"send_by\":\"2026-10-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_fh8cf155ffm3\",\"doc_id\":\"doc_245408s5e3ga\",\"contract_id\":\"ctr_bbzemyapzvm5\",\"amount\":48.0,\"currency\":\"EUR\"},{\"id\":\"itm_9qp3t27cbx8f\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"send_by\":\"2026-10-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_55pytq44yv9e\",\"contract_id\":\"ctr_myhhpjfkpydh\",\"amount\":156.55,\"currency\":\"EUR\"}],\"payments_without_due_date\":[{\"id\":\"itm_j3gjse0pknnw\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_gjsv4q2d3ajw\",\"doc_id\":\"doc_wtjskffj1vfq\",\"contract_id\":\"ctr_fyt9k994t9q2\",\"amount\":34.99,\"currency\":\"EUR\"},{\"id\":\"itm_chhc59r0d16v\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_evgj0fa49fwt\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"contract_id\":\"ctr_15banyk4pc92\",\"amount\":29.9,\"currency\":\"EUR\"},{\"id\":\"itm_b1b5643x7qy7\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_drnw4v8g9856\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":640.0,\"currency\":\"EUR\"}],\"do_not_pay\":[],\"fixed_cost_contracts\":[{\"id\":\"ctr_cmeadtk38mac\",\"monthly_cost\":63.0,\"currency\":\"EUR\"},{\"id\":\"ctr_15banyk4pc92\",\"monthly_cost\":29.9,\"currency\":\"EUR\"},{\"id\":\"ctr_fyt9k994t9q2\",\"monthly_cost\":34.99,\"currency\":\"EUR\"},{\"id\":\"ctr_myhhpjfkpydh\",\"monthly_cost\":156.55,\"currency\":\"EUR\"},{\"id\":\"ctr_611d1sk7v1cr\",\"monthly_cost\":4.9,\"currency\":\"EUR\"},{\"id\":\"ctr_y2hc77av3ps4\",\"monthly_cost\":640.0,\"currency\":\"EUR\"},{\"id\":\"ctr_w97tm6xhn7zw\",\"monthly_cost\":4.99,\"currency\":\"EUR\"},{\"id\":\"ctr_bbzemyapzvm5\",\"monthly_cost\":48.0,\"currency\":\"EUR\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"ctr_cmeadtk38mac\":{\"name\":\"Deutschlandticket Abonnement\"},\"ctr_15banyk4pc92\":{\"name\":\"FitWell Flex 12 (Studenten) Gym Membership\"},\"ctr_fyt9k994t9q2\":{\"name\":\"FunkNetz Smart M\"},\"ctr_myhhpjfkpydh\":{\"name\":\"Gesetzliche Kranken- und Pflegeversicherung bei Muster BKK\"},\"ctr_611d1sk7v1cr\":{\"name\":\"Girokonto Klassik\"},\"ctr_y2hc77av3ps4\":{\"name\":\"Mietvertrag Wohnung 05-2-03, Beispielweg 5\"},\"ctr_w97tm6xhn7zw\":{\"name\":\"Privat-Haftpflichtversicherung (Tarif Basis Single)\"},\"ctr_bbzemyapzvm5\":{\"name\":\"Stromliefervertrag MusterStrom Flex\"},\"itm_c05nsrmyz6av\":{\"title\":\"Pay outstanding invoice plus reminder fee\",\"action\":\"Transfer the total amount of 94.99 EUR to TechMarkt Online GmbH's account by the deadline shown.\",\"consequence\":\"Geht der Betrag nicht fristgerecht ein, müssen wir die Forderung an unseren Inkassodienstleister übergeben; dadurch entstehen Ihnen weitere Kosten.\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"itm_rjz7qsr1817e\":{\"title\":\"Monatliche Abbuchung Deutschlandticket\",\"action\":\"Ausreichende Kontodeckung für die monatliche SEPA-Lastschrift sicherstellen.\"},\"pty_wmevpbzhrm3e\":{\"name\":\"Musterstadt Verkehrsbetriebe GmbH\"},\"itm_31yxpwg03cdb\":{\"title\":\"Pay Verwarnungsgeld (traffic fine)\",\"action\":\"Transfer the Verwarnungsgeld of 30.00 € to the Stadtkasse Musterstadt account by the deadline shown, quoting the Kassenzeichen.\",\"consequence\":\"If payment is not made in time, a Bußgeldverfahren (administrative fine proceedings) will be opened with additional fees and costs of at least 28.50 €.\",\"amount\":30.0,\"currency\":\"EUR\"},\"pty_v0hy6khbm1sw\":{\"name\":\"Stadt Musterstadt – Ordnungsamt (Bußgeldstelle)\"},\"itm_kgsfgwac9wzx\":{\"title\":\"Pay accumulated library fees\",\"action\":\"Pay the 4,50 € in fees at the service desk or the payment machine, typically when returning the items.\",\"consequence\":\"Unpaid fees continue to accrue and can lead to further increases and an account block.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_dmaw27qvv18n\":{\"title\":\"Nachzahlung Betriebs- und Heizkosten 2025\",\"action\":\"Pay the outstanding back-payment amount by bank transfer using the given reference.\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"},\"itm_wj2v05avgk1m\":{\"title\":\"Fee for residence permit extension application\",\"action\":\"Pay the €100 fee on site at the appointment by girocard (cash is not accepted).\"},\"pty_7jmdemeegmw0\":{\"name\":\"Stadt Musterstadt – Ausländerbehörde\"},\"itm_3v56qs2n3q3v\":{\"title\":\"Monthly advance payment (Abschlag) for electricity\"},\"pty_fh8cf155ffm3\":{\"name\":\"Stadtwerke Musterstadt GmbH\"},\"itm_9qp3t27cbx8f\":{\"title\":\"Monthly health & nursing care insurance contribution\",\"action\":\"Ensure sufficient funds are available for the direct debit (Lastschrift) collection each month.\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_j3gjse0pknnw\":{\"title\":\"Monthly mobile fee (Grundpreis)\",\"action\":\"Ensure sufficient funds for the monthly SEPA direct debit of 34.99 €.\"},\"pty_gjsv4q2d3ajw\":{\"name\":\"FunkNetz Mobil GmbH\"},\"itm_chhc59r0d16v\":{\"title\":\"Monthly gym membership fee\"},\"pty_evgj0fa49fwt\":{\"name\":\"FitWell Studios GmbH\"},\"itm_b1b5643x7qy7\":{\"title\":\"Monthly rent payment (Gesamtmiete)\",\"action\":\"Pay the total rent to the landlord's account by the third working day of each month.\"}}\n</untrusted_document>"
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"month\":\"2026-09\",\"currency\":\"EUR\",\"due_this_month\":94.99,\"fixed_costs_monthly\":982.33,\"fixed_costs_by_category\":{\"bank\":4.9,\"energy\":48.0,\"gym\":29.9,\"insurance\":161.54,\"mobile\":34.99,\"rent\":640.0,\"transport\":63.0},\"upcoming_payments\":[{\"id\":\"itm_c05nsrmyz6av\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-09-30\",\"send_by\":\"2026-09-29\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"money\",\"party_id\":\"pty_adyabnsvdbpg\",\"doc_id\":\"doc_1ndcj96tf28z\",\"amount\":94.99,\"currency\":\"EUR\"},{\"id\":\"itm_rjz7qsr1817e\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-01\",\"send_by\":\"2026-09-30\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"mobility\",\"party_id\":\"pty_wmevpbzhrm3e\",\"doc_id\":\"doc_vy5abr6ejqnb\",\"contract_id\":\"ctr_cmeadtk38mac\",\"amount\":63.0,\"currency\":\"EUR\"},{\"id\":\"itm_31yxpwg03cdb\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"mobility\",\"party_id\":\"pty_v0hy6khbm1sw\",\"doc_id\":\"doc_qyh8m6fzk4w9\",\"amount_unverified\":\"The amount was read by AI from a photo or scan, so it is only in the letter text: give it as what the letter says and suggest checking it against the paper letter.\"},{\"id\":\"itm_kgsfgwac9wzx\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\",\"amount\":4.5,\"currency\":\"EUR\"},{\"id\":\"itm_dmaw27qvv18n\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-09\",\"send_by\":\"2026-10-08\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":184.3,\"currency\":\"EUR\"},{\"id\":\"itm_wj2v05avgk1m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"send_by\":\"2026-10-13\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"amount\":100.0,\"currency\":\"EUR\"},{\"id\":\"itm_3v56qs2n3q3v\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"send_by\":\"2026-10-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_fh8cf155ffm3\",\"doc_id\":\"doc_245408s5e3ga\",\"contract_id\":\"ctr_bbzemyapzvm5\",\"amount\":48.0,\"currency\":\"EUR\"},{\"id\":\"itm_9qp3t27cbx8f\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"send_by\":\"2026-10-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_55pytq44yv9e\",\"contract_id\":\"ctr_myhhpjfkpydh\",\"amount\":156.55,\"currency\":\"EUR\"}],\"payments_without_due_date\":[{\"id\":\"itm_j3gjse0pknnw\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_gjsv4q2d3ajw\",\"doc_id\":\"doc_wtjskffj1vfq\",\"contract_id\":\"ctr_fyt9k994t9q2\",\"amount\":34.99,\"currency\":\"EUR\"},{\"id\":\"itm_chhc59r0d16v\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_evgj0fa49fwt\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"contract_id\":\"ctr_15banyk4pc92\",\"amount\":29.9,\"currency\":\"EUR\"},{\"id\":\"itm_b1b5643x7qy7\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_drnw4v8g9856\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":640.0,\"currency\":\"EUR\"}],\"do_not_pay\":[],\"fixed_cost_contracts\":[{\"id\":\"ctr_cmeadtk38mac\",\"category\":\"transport\",\"monthly_cost\":63.0,\"currency\":\"EUR\"},{\"id\":\"ctr_15banyk4pc92\",\"category\":\"gym\",\"monthly_cost\":29.9,\"currency\":\"EUR\"},{\"id\":\"ctr_fyt9k994t9q2\",\"category\":\"mobile\",\"monthly_cost\":34.99,\"currency\":\"EUR\"},{\"id\":\"ctr_myhhpjfkpydh\",\"category\":\"insurance\",\"monthly_cost\":156.55,\"currency\":\"EUR\"},{\"id\":\"ctr_611d1sk7v1cr\",\"category\":\"bank\",\"monthly_cost\":4.9,\"currency\":\"EUR\"},{\"id\":\"ctr_y2hc77av3ps4\",\"category\":\"rent\",\"monthly_cost\":640.0,\"currency\":\"EUR\"},{\"id\":\"ctr_w97tm6xhn7zw\",\"category\":\"insurance\",\"monthly_cost\":4.99,\"currency\":\"EUR\"},{\"id\":\"ctr_bbzemyapzvm5\",\"category\":\"energy\",\"monthly_cost\":48.0,\"currency\":\"EUR\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"ctr_cmeadtk38mac\":{\"name\":\"Deutschlandticket Abonnement\"},\"ctr_15banyk4pc92\":{\"name\":\"FitWell Flex 12 (Studenten) Gym Membership\"},\"ctr_fyt9k994t9q2\":{\"name\":\"FunkNetz Smart M\"},\"ctr_myhhpjfkpydh\":{\"name\":\"Gesetzliche Kranken- und Pflegeversicherung bei Muster BKK\"},\"ctr_611d1sk7v1cr\":{\"name\":\"Girokonto Klassik\"},\"ctr_y2hc77av3ps4\":{\"name\":\"Mietvertrag Wohnung 05-2-03, Beispielweg 5\"},\"ctr_w97tm6xhn7zw\":{\"name\":\"Privat-Haftpflichtversicherung (Tarif Basis Single)\"},\"ctr_bbzemyapzvm5\":{\"name\":\"Stromliefervertrag MusterStrom Flex\"},\"itm_c05nsrmyz6av\":{\"title\":\"Pay outstanding invoice plus reminder fee\",\"action\":\"Transfer the total amount of 94.99 EUR to TechMarkt Online GmbH's account by the deadline shown.\",\"consequence\":\"Geht der Betrag nicht fristgerecht ein, müssen wir die Forderung an unseren Inkassodienstleister übergeben; dadurch entstehen Ihnen weitere Kosten.\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"itm_rjz7qsr1817e\":{\"title\":\"Monatliche Abbuchung Deutschlandticket\",\"action\":\"Ausreichende Kontodeckung für die monatliche SEPA-Lastschrift sicherstellen.\"},\"pty_wmevpbzhrm3e\":{\"name\":\"Musterstadt Verkehrsbetriebe GmbH\"},\"itm_31yxpwg03cdb\":{\"title\":\"Pay Verwarnungsgeld (traffic fine)\",\"action\":\"Transfer the Verwarnungsgeld of 30.00 € to the Stadtkasse Musterstadt account by the deadline shown, quoting the Kassenzeichen.\",\"consequence\":\"If payment is not made in time, a Bußgeldverfahren (administrative fine proceedings) will be opened with additional fees and costs of at least 28.50 €.\",\"amount\":30.0,\"currency\":\"EUR\"},\"pty_v0hy6khbm1sw\":{\"name\":\"Stadt Musterstadt – Ordnungsamt (Bußgeldstelle)\"},\"itm_kgsfgwac9wzx\":{\"title\":\"Pay accumulated library fees\",\"action\":\"Pay the 4,50 € in fees at the service desk or the payment machine, typically when returning the items.\",\"consequence\":\"Unpaid fees continue to accrue and can lead to further increases and an account block.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_dmaw27qvv18n\":{\"title\":\"Nachzahlung Betriebs- und Heizkosten 2025\",\"action\":\"Pay the outstanding back-payment amount by bank transfer using the given reference.\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"},\"itm_wj2v05avgk1m\":{\"title\":\"Fee for residence permit extension application\",\"action\":\"Pay the €100 fee on site at the appointment by girocard (cash is not accepted).\"},\"pty_7jmdemeegmw0\":{\"name\":\"Stadt Musterstadt – Ausländerbehörde\"},\"itm_3v56qs2n3q3v\":{\"title\":\"Monthly advance payment (Abschlag) for electricity\"},\"pty_fh8cf155ffm3\":{\"name\":\"Stadtwerke Musterstadt GmbH\"},\"itm_9qp3t27cbx8f\":{\"title\":\"Monthly health & nursing care insurance contribution\",\"action\":\"Ensure sufficient funds are available for the direct debit (Lastschrift) collection each month.\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_j3gjse0pknnw\":{\"title\":\"Monthly mobile fee (Grundpreis)\",\"action\":\"Ensure sufficient funds for the monthly SEPA direct debit of 34.99 €.\"},\"pty_gjsv4q2d3ajw\":{\"name\":\"FunkNetz Mobil GmbH\"},\"itm_chhc59r0d16v\":{\"title\":\"Monthly gym membership fee\"},\"pty_evgj0fa49fwt\":{\"name\":\"FitWell Studios GmbH\"},\"itm_b1b5643x7qy7\":{\"title\":\"Monthly rent payment (Gesamtmiete)\",\"action\":\"Pay the total rent to the landlord's account by the third working day of each month.\"}}\n</untrusted_document>"
     },
     {
       "type": "text",
@@ -44,167 +44,195 @@
     },
     {
       "type": "text",
-      "text": " due to"
+      "text": " due in the next four weeks"
     },
     {
       "type": "text",
-      "text": " be"
+      "text": " (from today, 2026-"
     },
     {
       "type": "text",
-      "text": " paid in the next four wee"
+      "text": "09-28):\n\n**Pay"
     },
     {
       "type": "text",
-      "text": "ks (by"
+      "text": "ments with a due date:**"
     },
     {
       "type": "text",
-      "text": " m"
+      "text": "\n- Out"
     },
     {
       "type": "text",
-      "text": "id-October):"
+      "text": "standing invoice +"
     },
     {
       "type": "text",
-      "text": "\n\n- **T"
+      "text": " reminder fee to Tech"
     },
     {
       "type": "text",
-      "text": "echM"
+      "text": "M"
     },
     {
       "type": "text",
-      "text": "ar"
+      "text": "arkt Online G"
     },
     {
       "type": "text",
-      "text": "k"
+      "text": "mbH, due Wed"
     },
     {
       "type": "text",
-      "text": "t Online"
+      "text": " 2026-09-30:"
     },
     {
       "type": "text",
-      "text": " G"
+      "text": " 94."
     },
     {
       "type": "text",
-      "text": "mbH** – out"
+      "text": "99 € [item:"
     },
     {
       "type": "text",
-      "text": "standing invoice + re"
+      "text": "itm_c05"
     },
     {
       "type": "text",
-      "text": "minder fee, due"
+      "text": "ns"
     },
     {
       "type": "text",
-      "text": " W"
+      "text": "r"
     },
     {
       "type": "text",
-      "text": "ed 30 Sep "
+      "text": "m"
     },
     {
       "type": "text",
-      "text": "2026: 94.99 "
+      "text": "y"
     },
     {
       "type": "text",
-      "text": "€ [item:it"
+      "text": "z"
     },
     {
       "type": "text",
-      "text": "m_c05nsrm"
+      "text": "6"
     },
     {
       "type": "text",
-      "text": "yz6av]\n- **"
+      "text": "av"
     },
     {
       "type": "text",
-      "text": "De"
+      "text": "]\n- Deutschl"
     },
     {
       "type": "text",
-      "text": "utschlandticket**"
+      "text": "and"
     },
     {
       "type": "text",
-      "text": " direct debit,"
+      "text": "ticket dire"
     },
     {
       "type": "text",
-      "text": " due Th"
+      "text": "ct debit, due Th"
     },
     {
       "type": "text",
-      "text": "u 1 Oct "
+      "text": "u 2026-10-01"
     },
     {
       "type": "text",
-      "text": "2026: 63.00 "
+      "text": ": 63"
     },
     {
       "type": "text",
-      "text": "€ [item:itm_r"
+      "text": ".00 € [item:it"
     },
     {
       "type": "text",
-      "text": "jz7qsr1817"
+      "text": "m_rjz"
     },
     {
       "type": "text",
-      "text": "e]\n- **Ver"
+      "text": "7"
     },
     {
       "type": "text",
-      "text": "war"
+      "text": "q"
     },
     {
       "type": "text",
-      "text": "n"
+      "text": "s"
     },
     {
       "type": "text",
-      "text": "ungsgeld (traff"
+      "text": "r"
     },
     {
       "type": "text",
-      "text": "ic fine)**"
+      "text": "1"
     },
     {
       "type": "text",
-      "text": ", Stadt Muster"
+      "text": "817"
     },
     {
       "type": "text",
-      "text": "stadt"
+      "text": "e"
     },
     {
       "type": "text",
-      "text": " Ordnungsamt,"
+      "text": "]\n- Traffic f"
     },
     {
       "type": "text",
-      "text": " due Fri 2 "
+      "text": "ine (Ver"
     },
     {
       "type": "text",
-      "text": "Oct 2026 — the"
+      "text": "warn"
     },
     {
       "type": "text",
-      "text": " letter says "
+      "text": "ungsgeld) to"
     },
     {
       "type": "text",
-      "text": "30.00 €, but this"
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "Ordnungsamt,"
+    },
+    {
+      "type": "text",
+      "text": " due Fri 2026-"
+    },
+    {
+      "type": "text",
+      "text": "10-02: the letter says"
+    },
+    {
+      "type": "text",
+      "text": " 30.00 € [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_31yxp"
+    },
+    {
+      "type": "text",
+      "text": "wg03cdb] —"
+    },
+    {
+      "type": "text",
+      "text": " this"
     },
     {
       "type": "text",
@@ -212,55 +240,43 @@
     },
     {
       "type": "text",
-      "text": "ount was read by"
+      "text": "ount was"
     },
     {
       "type": "text",
-      "text": " A"
+      "text": " read from"
     },
     {
       "type": "text",
-      "text": "I and is"
+      "text": " the let"
     },
     {
       "type": "text",
-      "text": " unverified, so please"
+      "text": "ter and not independ"
     },
     {
       "type": "text",
-      "text": " check it against the"
+      "text": "ently verified, so it"
     },
     {
       "type": "text",
-      "text": " paper let"
+      "text": "'s worth checking against"
     },
     {
       "type": "text",
-      "text": "ter [item:itm_31"
+      "text": " the pa"
     },
     {
       "type": "text",
-      "text": "yxpwg03cd"
+      "text": "per letter.\n- Library"
     },
     {
       "type": "text",
-      "text": "b]\n- **Library f"
+      "text": " fees, due F"
     },
     {
       "type": "text",
-      "text": "ees**, Stadtb"
-    },
-    {
-      "type": "text",
-      "text": "ibliothek Musterst"
-    },
-    {
-      "type": "text",
-      "text": "adt, due Fri "
-    },
-    {
-      "type": "text",
-      "text": "2 Oct 2026"
+      "text": "ri 2026-10-02"
     },
     {
       "type": "text",
@@ -268,175 +284,147 @@
     },
     {
       "type": "text",
-      "text": "item:itm_kgs"
+      "text": "item:itm_k"
     },
     {
       "type": "text",
-      "text": "fgwac9wzx"
+      "text": "gsfgwac9w"
     },
     {
       "type": "text",
-      "text": "]\n- **Bet"
+      "text": "zx]\n- Nach"
     },
     {
       "type": "text",
-      "text": "riebs- und Heiz"
+      "text": "zahlung ("
     },
     {
       "type": "text",
-      "text": "kos"
+      "text": "ut"
     },
     {
       "type": "text",
-      "text": "ten-N"
+      "text": "ility/heating c"
     },
     {
       "type": "text",
-      "text": "achzahlung "
+      "text": "ost back-payment) to"
     },
     {
       "type": "text",
-      "text": "2025** (Wohn"
+      "text": " Wohnbau Mus"
     },
     {
       "type": "text",
-      "text": "bau Musterstadt"
+      "text": "terstadt, due F"
     },
     {
       "type": "text",
-      "text": " e"
+      "text": "ri 2026-10-09"
     },
     {
       "type": "text",
-      "text": "G), due Fri 9"
+      "text": ": 184.30"
     },
     {
       "type": "text",
-      "text": " Oct 2026:"
+      "text": " € [item:itm_"
     },
     {
       "type": "text",
-      "text": " 184.30 € [item"
+      "text": "dmaw27qvv"
     },
     {
       "type": "text",
-      "text": ":itm_dmaw"
+      "text": "18n]\n- Residence"
     },
     {
       "type": "text",
-      "text": "27qvv18n]"
+      "text": " permit extension fee ("
     },
     {
       "type": "text",
-      "text": "\n- **Residence permit ext"
+      "text": "Ausländerbehör"
     },
     {
       "type": "text",
-      "text": "ension fee**, Aus"
+      "text": "de,"
     },
     {
       "type": "text",
-      "text": "länderbehörde, due"
+      "text": " paid on"
     },
     {
       "type": "text",
-      "text": " Wed 14 O"
+      "text": "-site), due W"
     },
     {
       "type": "text",
-      "text": "ct 2026 at 10"
+      "text": "ed 2026-10-14"
     },
     {
       "type": "text",
-      "text": ":30, pay"
+      "text": ":"
     },
     {
       "type": "text",
-      "text": "able on site by"
+      "text": " 100.00 € [item"
     },
     {
       "type": "text",
-      "text": " card"
+      "text": ":itm_wj2v"
     },
     {
       "type": "text",
-      "text": ": 100.00 € ["
+      "text": "05avgk1m]"
     },
     {
       "type": "text",
-      "text": "item:itm_wj2"
+      "text": "\n- Electricity advance pay"
     },
     {
       "type": "text",
-      "text": "v05avgk1m]"
+      "text": "ment (Abschlag),"
     },
     {
       "type": "text",
-      "text": "\n- **Electricity adv"
+      "text": " due Th"
     },
     {
       "type": "text",
-      "text": "ance pay"
+      "text": "u 2026-10-15"
     },
     {
       "type": "text",
-      "text": "ment ("
+      "text": ": 48"
     },
     {
       "type": "text",
-      "text": "Ab"
+      "text": ".00 € [item:it"
     },
     {
       "type": "text",
-      "text": "schlag)**, St"
+      "text": "m_3v56qs2"
     },
     {
       "type": "text",
-      "text": "adtwerke Muster"
+      "text": "n3q3v]\n-"
     },
     {
       "type": "text",
-      "text": "stadt, due Thu"
+      "text": " Health & nursing care"
     },
     {
       "type": "text",
-      "text": " 15 Oct 2"
+      "text": " insurance contribution,"
     },
     {
       "type": "text",
-      "text": "026: 48.00 €"
+      "text": " due Thu 2026-"
     },
     {
       "type": "text",
-      "text": " [item:itm_3v"
-    },
-    {
-      "type": "text",
-      "text": "56qs2n3q3"
-    },
-    {
-      "type": "text",
-      "text": "v]\n- **Health &"
-    },
-    {
-      "type": "text",
-      "text": " nursing care"
-    },
-    {
-      "type": "text",
-      "text": " insurance**"
-    },
-    {
-      "type": "text",
-      "text": ", Muster BKK,"
-    },
-    {
-      "type": "text",
-      "text": " due Thu 15 "
-    },
-    {
-      "type": "text",
-      "text": "Oct 2026: 156"
+      "text": "10-15: 156"
     },
     {
       "type": "text",
@@ -448,95 +436,63 @@
     },
     {
       "type": "text",
-      "text": "cbx8f]"
+      "text": "cbx8f]\n\n**"
     },
     {
       "type": "text",
-      "text": "\n\nAddit"
+      "text": "No"
     },
     {
       "type": "text",
-      "text": "ionally, Ordnung"
+      "text": " due date st"
     },
     {
       "type": "text",
-      "text": " has no due"
+      "text": "ored ("
     },
     {
       "type": "text",
-      "text": " date stored for these rec"
+      "text": "rec"
     },
     {
       "type": "text",
-      "text": "urring cost"
+      "text": "urring,"
     },
     {
       "type": "text",
-      "text": "s,"
+      "text": " still to"
     },
     {
       "type": "text",
-      "text": " so ke"
+      "text": " bud"
     },
     {
       "type": "text",
-      "text": "ep them"
+      "text": "get for):**\n- R"
     },
     {
       "type": "text",
-      "text": " in mind:\n- M"
+      "text": "ent, "
     },
     {
       "type": "text",
-      "text": "obile fee (Funk"
+      "text": "640"
     },
     {
       "type": "text",
-      "text": "Netz),"
+      "text": ".00 € —"
     },
     {
       "type": "text",
-      "text": " 34.99 € ["
+      "text": " Ordnung has no due"
     },
     {
       "type": "text",
-      "text": "item:itm_j3g"
+      "text": " date st"
     },
     {
       "type": "text",
-      "text": "jse0pknnw]"
-    },
-    {
-      "type": "text",
-      "text": "\n- Gym membership ("
-    },
-    {
-      "type": "text",
-      "text": "FitWell), 29."
-    },
-    {
-      "type": "text",
-      "text": "90 € [item:itm"
-    },
-    {
-      "type": "text",
-      "text": "_chhc59r0d"
-    },
-    {
-      "type": "text",
-      "text": "16v]\n- Rent"
-    },
-    {
-      "type": "text",
-      "text": " (Wohnbau"
-    },
-    {
-      "type": "text",
-      "text": " Musterstadt), 640"
-    },
-    {
-      "type": "text",
-      "text": ".00 € [item:it"
+      "text": "ored for this one [item:it"
     },
     {
       "type": "text",
@@ -544,59 +500,83 @@
     },
     {
       "type": "text",
-      "text": "7qy7]\n\nYou"
+      "text": "7qy7]\n-"
     },
     {
       "type": "text",
-      "text": " can m"
+      "text": " Mobile pl"
     },
     {
       "type": "text",
-      "text": "ark any"
+      "text": "an fee, 34.99"
     },
     {
       "type": "text",
-      "text": " of these done"
+      "text": " € — no due date stored"
     },
     {
       "type": "text",
-      "text": " or"
+      "text": " [item:itm_j3"
     },
     {
       "type": "text",
-      "text": " draft a pay"
+      "text": "gjse0pknnw"
     },
     {
       "type": "text",
-      "text": "ment re"
+      "text": "]\n- Gym membership"
     },
     {
       "type": "text",
-      "text": "min"
+      "text": " fee, 29.90"
     },
     {
       "type": "text",
-      "text": "der in Ordnung once"
+      "text": " € — no due date stored"
     },
     {
       "type": "text",
-      "text": " hand"
+      "text": " [item:itm_chh"
     },
     {
       "type": "text",
-      "text": "led."
+      "text": "c59r0d16v]"
+    },
+    {
+      "type": "text",
+      "text": "\n\nNo"
+    },
+    {
+      "type": "text",
+      "text": " scam"
+    },
+    {
+      "type": "text",
+      "text": "-fl"
+    },
+    {
+      "type": "text",
+      "text": "agged dem"
+    },
+    {
+      "type": "text",
+      "text": "ands were found in this period"
+    },
+    {
+      "type": "text",
+      "text": "."
     },
     {
       "type": "done",
       "response": {
-        "text": "Here's what's due to be paid in the next four weeks (by mid-October):\n\n- **TechMarkt Online GmbH** – outstanding invoice + reminder fee, due Wed 30 Sep 2026: 94.99 € [item:itm_c05nsrmyz6av]\n- **Deutschlandticket** direct debit, due Thu 1 Oct 2026: 63.00 € [item:itm_rjz7qsr1817e]\n- **Verwarnungsgeld (traffic fine)**, Stadt Musterstadt Ordnungsamt, due Fri 2 Oct 2026 — the letter says 30.00 €, but this amount was read by AI and is unverified, so please check it against the paper letter [item:itm_31yxpwg03cdb]\n- **Library fees**, Stadtbibliothek Musterstadt, due Fri 2 Oct 2026: 4.50 € [item:itm_kgsfgwac9wzx]\n- **Betriebs- und Heizkosten-Nachzahlung 2025** (Wohnbau Musterstadt eG), due Fri 9 Oct 2026: 184.30 € [item:itm_dmaw27qvv18n]\n- **Residence permit extension fee**, Ausländerbehörde, due Wed 14 Oct 2026 at 10:30, payable on site by card: 100.00 € [item:itm_wj2v05avgk1m]\n- **Electricity advance payment (Abschlag)**, Stadtwerke Musterstadt, due Thu 15 Oct 2026: 48.00 € [item:itm_3v56qs2n3q3v]\n- **Health & nursing care insurance**, Muster BKK, due Thu 15 Oct 2026: 156.55 € [item:itm_9qp3t27cbx8f]\n\nAdditionally, Ordnung has no due date stored for these recurring costs, so keep them in mind:\n- Mobile fee (FunkNetz), 34.99 € [item:itm_j3gjse0pknnw]\n- Gym membership (FitWell), 29.90 € [item:itm_chhc59r0d16v]\n- Rent (Wohnbau Musterstadt), 640.00 € [item:itm_b1b5643x7qy7]\n\nYou can mark any of these done or draft a payment reminder in Ordnung once handled.",
+        "text": "Here's what's due in the next four weeks (from today, 2026-09-28):\n\n**Payments with a due date:**\n- Outstanding invoice + reminder fee to TechMarkt Online GmbH, due Wed 2026-09-30: 94.99 € [item:itm_c05nsrmyz6av]\n- Deutschlandticket direct debit, due Thu 2026-10-01: 63.00 € [item:itm_rjz7qsr1817e]\n- Traffic fine (Verwarnungsgeld) to Ordnungsamt, due Fri 2026-10-02: the letter says 30.00 € [item:itm_31yxpwg03cdb] — this amount was read from the letter and not independently verified, so it's worth checking against the paper letter.\n- Library fees, due Fri 2026-10-02: 4.50 € [item:itm_kgsfgwac9wzx]\n- Nachzahlung (utility/heating cost back-payment) to Wohnbau Musterstadt, due Fri 2026-10-09: 184.30 € [item:itm_dmaw27qvv18n]\n- Residence permit extension fee (Ausländerbehörde, paid on-site), due Wed 2026-10-14: 100.00 € [item:itm_wj2v05avgk1m]\n- Electricity advance payment (Abschlag), due Thu 2026-10-15: 48.00 € [item:itm_3v56qs2n3q3v]\n- Health & nursing care insurance contribution, due Thu 2026-10-15: 156.55 € [item:itm_9qp3t27cbx8f]\n\n**No due date stored (recurring, still to budget for):**\n- Rent, 640.00 € — Ordnung has no due date stored for this one [item:itm_b1b5643x7qy7]\n- Mobile plan fee, 34.99 € — no due date stored [item:itm_j3gjse0pknnw]\n- Gym membership fee, 29.90 € — no due date stored [item:itm_chhc59r0d16v]\n\nNo scam-flagged demands were found in this period.",
         "usage": {
           "input_tokens": 4,
-          "output_tokens": 1340,
-          "cache_read_tokens": 9910,
-          "cache_creation_tokens": 5323,
-          "cost_usd": 0.036682,
-          "duration_ms": 17072,
+          "output_tokens": 1239,
+          "cache_read_tokens": 9906,
+          "cache_creation_tokens": 5380,
+          "cost_usd": 0.0358992,
+          "duration_ms": 16721,
           "turns": 2
         },
         "model": "claude-sonnet-5",
