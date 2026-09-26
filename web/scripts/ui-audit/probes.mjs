@@ -499,7 +499,8 @@ function layoutProbeInPage(opts) {
     return s.display !== "none" && s.visibility !== "hidden" && !h.closest("[hidden], [inert], [aria-hidden=true]");
   });
   const modalOpen = Array.from(document.querySelectorAll('[aria-modal="true"]')).some((m) => visible(m));
-  if (!h1s.length) add({ probe: "structure", kind: "no-h1", selector: "body", text: "no <h1> on this screen", rect: null, detail: { title: document.title } });
+  // (a modal dialog, drawer or sheet makes the page with its <h1> inert; the dialog is the screen then)
+  if (!h1s.length && !modalOpen) add({ probe: "structure", kind: "no-h1", selector: "body", text: "no <h1> on this screen", rect: null, detail: { title: document.title } });
   else if (h1s.length > 1) add({ probe: "structure", kind: "several-h1", selector: h1s.map(path).join(" | ").slice(0, 300), text: h1s.map((h) => clean(h.textContent, 40)).join(" | "), rect: null, detail: { count: h1s.length } });
   const mains = Array.from(document.querySelectorAll("main, [role=main]"));
   if (mains.length !== 1 && !modalOpen) add({ probe: "structure", kind: mains.length ? "several-main" : "no-main", selector: "body", text: `${mains.length} <main> landmarks`, rect: null, detail: {} });
