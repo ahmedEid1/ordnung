@@ -92,7 +92,7 @@ from ordnung.models import ContractTerms, DocumentExtraction, DocumentKind, Item
 from ordnung.rules import RuleContext, compute_contract, is_private_sender, scope_for_party_kind
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
-from ordnung.secretary.scam import format_iban, iban_valid, normalize_iban
+from ordnung.secretary.scam import iban_valid, invalid_iban_message, normalize_iban
 
 EVALS_DIR = Path(__file__).resolve().parent
 PROMPTS_DIR = EVALS_DIR / "prompts"
@@ -408,12 +408,7 @@ def _payment_signal(extraction: DocumentExtraction) -> str | None:
     if payment is None or not payment.iban:
         return None
     iban = normalize_iban(payment.iban)
-    if iban_valid(iban):
-        return None
-    return (
-        f"The IBAN {format_iban(iban)} is not a valid account number (its check digits are wrong). "
-        "It may be misprinted, misread or fake — compare it with the letter and ask the sender before paying."
-    )
+    return None if iban_valid(iban) else invalid_iban_message(iban)
 
 
 async def run_ordnung(entry: Entry, document: PreparedDocument, llm: LLMService, *, model: str) -> Prediction:

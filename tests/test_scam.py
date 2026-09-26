@@ -92,7 +92,27 @@ def test_invalid_iban_is_a_finding(store: Store) -> None:
     party = store.add_party(name="Muster Energie")
     finding = payment_mismatch(store, party, payment("DE89 3704 0044 0532 0130 01"))
     assert finding is not None and finding.kind == "invalid_iban"
-    assert "check digits" in finding.message
+    assert finding.message == (
+        "The IBAN DE89 3704 0044 0532 0130 01 is not a valid account number. The check digits do not match: "
+        "a character is wrong, missing or swapped. It may be misprinted, misread or fake — compare it with the "
+        "letter and ask the sender before paying."
+    )
+
+
+@pytest.mark.parametrize(
+    ("value", "reason"),
+    [
+        ("HR74 1234 5678 9012 3456 7890", "Croatia IBANs have 21 characters; this one has 24."),
+        ("US51 1234 5678 9012 3456 7890", "US is not a country that issues IBANs, so this is not an IBAN."),
+    ],
+)
+def test_an_invalid_iban_names_the_real_reason(store: Store, value: str, reason: str) -> None:
+    """Both checksums add up: the warning must not blame the check digits for a length or country problem."""
+    party = store.add_party(name="Muster Energie")
+    finding = payment_mismatch(store, party, payment(value))
+    assert finding is not None and finding.kind == "invalid_iban"
+    assert reason in finding.message and "check digits" not in finding.message
+    assert scam.invalid_iban_message(value) == finding.message
 
 
 def test_known_iban_is_fine_and_a_new_one_is_not(store: Store) -> None:

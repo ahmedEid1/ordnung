@@ -294,13 +294,23 @@ def _look_alike_conflict(
     return None
 
 
+def invalid_iban_message(iban: str) -> str:
+    """The warning for an IBAN that is not well-formed, with the reasons :func:`inspect_iban` found.
+
+    The reasons are the ``check_iban`` tool's own words (an unknown country, a wrong length, wrong
+    check digits), so the app never blames the check digits for a length or country problem.
+    """
+    problems = " ".join(inspect_iban(normalize_iban(iban)).problems)
+    return (
+        f"The IBAN {format_iban(iban)} is not a valid account number. {problems} It may be misprinted, "
+        "misread or fake — compare it with the letter and ask the sender before paying."
+    )
+
+
 def _invalid(party: Party, iban: str, payee: str | None) -> ScamFinding:
     return ScamFinding(
         kind="invalid_iban",
-        message=(
-            f"The IBAN {format_iban(iban)} is not a valid account number (its check digits are wrong). "
-            "It may be misprinted, misread or fake — compare it with the letter and ask the sender before paying."
-        ),
+        message=invalid_iban_message(iban),
         party_id=party.id,
         iban=iban,
         payee=payee,
