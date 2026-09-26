@@ -1,0 +1,190 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "4+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"6d6cd53a1de67dd7779d855a0568f390d2649b88003fef5f9d133894d07bfa7a\",\"question\":\"When do I have to renew my driving licence?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen do I have to renew my driving licence?\n"
+  },
+  "response": {
+    "text": "None of these are a driving licence. I don't see any driving licence renewal in your records — no letter, contract, or to-do mentions a Führerschein/driving licence. The only expiries on file are a residence permit, a passport, and an enrolment certificate. If you have a driving licence renewal date, it doesn't appear to be stored in Ordnung yet — you may want to check the physical card or add it manually.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 304,
+      "cache_read_tokens": 15739,
+      "cache_creation_tokens": 2471,
+      "cost_usd": 0.016083800000000002,
+      "duration_ms": 7985,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Führerschein driving licence"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "expiry",
+        "status": "all"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2026-11-30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_86khkd0zfcse\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2027-02-10\",\"date_source\":\"fixed\",\"priority\":\"low\",\"area\":\"other\",\"party_id\":\"pty_z1se3q2nn3k3\",\"doc_id\":\"doc_1dgp8tp2ga0c\"},{\"id\":\"itm_315amn7z5fk0\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2027-03-31\",\"date_source\":\"fixed\",\"priority\":\"low\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_50t54msvdfcy\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_p0k64jp7r8bf\":{\"title\":\"Residence permit (Aufenthaltserlaubnis) expires\",\"action\":\"Make sure the extension application is filed at or before the appointment, before this expiry date.\",\"consequence\":\"Without a timely extension request, lawful residence status ends when the permit expires.\"},\"pty_7jmdemeegmw0\":{\"name\":\"Stadt Musterstadt – Ausländerbehörde\"},\"itm_86khkd0zfcse\":{\"title\":\"Passport expires\",\"action\":\"Renew the passport before it expires if it is still needed for travel.\"},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"},\"itm_315amn7z5fk0\":{\"title\":\"Enrolment certificate validity ends (winter semester 2026/27)\",\"action\":\"Re-register (Rückmeldung) for the next semester to receive a new enrolment certificate if you remain a student.\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>"
+    },
+    {
+      "type": "text",
+      "text": "None"
+    },
+    {
+      "type": "text",
+      "text": " of these are"
+    },
+    {
+      "type": "text",
+      "text": " a"
+    },
+    {
+      "type": "text",
+      "text": " driving"
+    },
+    {
+      "type": "text",
+      "text": " lic"
+    },
+    {
+      "type": "text",
+      "text": "ence. I don't see any dri"
+    },
+    {
+      "type": "text",
+      "text": "ving licence ren"
+    },
+    {
+      "type": "text",
+      "text": "ewal in your records — no"
+    },
+    {
+      "type": "text",
+      "text": " let"
+    },
+    {
+      "type": "text",
+      "text": "ter, contract, or to"
+    },
+    {
+      "type": "text",
+      "text": "-do m"
+    },
+    {
+      "type": "text",
+      "text": "entions a"
+    },
+    {
+      "type": "text",
+      "text": " Führ"
+    },
+    {
+      "type": "text",
+      "text": "ersch"
+    },
+    {
+      "type": "text",
+      "text": "ein/driving licence. The"
+    },
+    {
+      "type": "text",
+      "text": " only exp"
+    },
+    {
+      "type": "text",
+      "text": "iries"
+    },
+    {
+      "type": "text",
+      "text": " on file are a residence permit"
+    },
+    {
+      "type": "text",
+      "text": ", a passport, and an en"
+    },
+    {
+      "type": "text",
+      "text": "rolment certificate. If"
+    },
+    {
+      "type": "text",
+      "text": " you have a driving licence ren"
+    },
+    {
+      "type": "text",
+      "text": "ewal date, it"
+    },
+    {
+      "type": "text",
+      "text": " do"
+    },
+    {
+      "type": "text",
+      "text": "esn't appear to be st"
+    },
+    {
+      "type": "text",
+      "text": "ored in"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung yet —"
+    },
+    {
+      "type": "text",
+      "text": " you may want"
+    },
+    {
+      "type": "text",
+      "text": " to check the"
+    },
+    {
+      "type": "text",
+      "text": " phys"
+    },
+    {
+      "type": "text",
+      "text": "ical card or add it manually."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "None of these are a driving licence. I don't see any driving licence renewal in your records — no letter, contract, or to-do mentions a Führerschein/driving licence. The only expiries on file are a residence permit, a passport, and an enrolment certificate. If you have a driving licence renewal date, it doesn't appear to be stored in Ordnung yet — you may want to check the physical card or add it manually.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 304,
+          "cache_read_tokens": 15739,
+          "cache_creation_tokens": 2471,
+          "cost_usd": 0.016083800000000002,
+          "duration_ms": 7985,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude"
+      }
+    }
+  ]
+}

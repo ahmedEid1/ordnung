@@ -1,0 +1,395 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "4+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"6d6cd53a1de67dd7779d855a0568f390d2649b88003fef5f9d133894d07bfa7a\",\"question\":\"By when do I have to return the overdue library books?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_5c5axexztnw6"
+    ],
+    "prompt_head": "The person asks:\nBy when do I have to return the overdue library books?\n"
+  },
+  "response": {
+    "text": "You need to return the two overdue library books by **Fri 2 Oct 2026** [item:itm_ghq58jjdz149].\n\n- This is from a first reminder (1. Mahnung) sent by Stadtbibliothek Musterstadt, dated 22.09.2026 [doc:doc_5c5axexztnw6].\n- The overdue items are \"Einführung in die Statistik mit R\" and \"Deutsch im Alltag B2 – Übungsbuch.\"\n- Accumulated fees so far are 4.50 € [item:itm_kgsfgwac9wzx], payable when you return the items.\n- If you miss the deadline, fees rise further and your account gets blocked once fees reach 10.00 €.\n\nYou can drop the books in the library's 24-hour return box, or mark this to-do as done in Ordnung once returned.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 410,
+      "cache_read_tokens": 15934,
+      "cache_creation_tokens": 4151,
+      "cost_usd": 0.023902800000000002,
+      "duration_ms": 9925,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "library books"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_5c5axexztnw6\",\"kind\":\"dunning\",\"date\":\"2026-09-22\",\"party_id\":\"pty_d2ymm5s3htd0\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_5c5axexztnw6\":{\"title\":\"Overdue library items – 1st reminder (Erinnerung: Leihfrist überschritten)\",\"snippet\":\"This is a reminder from the city library (Stadtbibliothek) that two books you borrowed are past…\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"}}\n</untrusted_document>"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_5c5axexztnw6"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_5c5axexztnw6\",\"kind\":\"dunning\",\"date\":\"2026-09-22\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-24\",\"language\":\"de\",\"party_id\":\"pty_d2ymm5s3htd0\",\"case_id\":\"cas_mdeedpmvyhjt\",\"urgency\":\"high\",\"pages\":1,\"items\":[{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_kgsfgwac9wzx\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\",\"amount\":4.5,\"currency\":\"EUR\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_ghq58jjdz149\":{\"title\":\"Return overdue library items\",\"action\":\"Return the two overdue items (Einführung in die Statistik mit R; Deutsch im Alltag B2 – Übungsbuch) to the library, e.g. via the return box or service desk.\",\"consequence\":\"Fees increase by 0,50 € per item per opening day after the deadline, and the account is blocked for further loans once fees reach 10,00 €.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_kgsfgwac9wzx\":{\"title\":\"Pay accumulated library fees\",\"action\":\"Pay the 4,50 € in fees at the service desk or the payment machine, typically when returning the items.\",\"consequence\":\"Unpaid fees continue to accrue and can lead to further increases and an account block.\"},\"doc_5c5axexztnw6\":{\"title\":\"Overdue library items – 1st reminder (Erinnerung: Leihfrist überschritten)\",\"summary\":\"Stadtbibliothek Musterstadt sent Sam Rivera a first reminder dated 22.09.2026 that two borrowed items are overdue. Total fees so far are 4,50 €, and the letter asks for the items to be returned by 02.10.2026.\",\"explanation\":\"This is a reminder from the city library (Stadtbibliothek) that two books you borrowed are past their due date. You already owe 4.50 € in late fees, which you can pay at the service desk or the payment machine when you return the items. Please return the items by the deadline shown in the letter: after that, fees rise by 0.50 € per item for every day the library is open, and once the total reaches 10.00 € your library account will be blocked from further borrowing. You can drop items in the 24-hour return box, or renew the loan online yourself if no one else has reserved the items. This is only a library notice, not a legal or court matter, but returning the items promptly avoids extra fees.\",\"key_facts\":[{\"label\":\"Benutzernummer\",\"value\":\"0481 1123 5\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Gesamtgebühren\",\"value\":\"4.50 EUR\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Rückgabefrist\",\"value\":\"2026-10-02\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Sperrschwelle\",\"value\":\"10,00 €\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Benutzer-Nr.\",\"value\":\"0481 1123 5\"},{\"label\":\"Mediennummer\",\"value\":\"30031 004 812\"},{\"label\":\"Mediennummer\",\"value\":\"30031 017 455\"}],\"text\":\"=== Page 1 ===\\nStadtbibliothek\\nMusterstadt\\n\\nBenutzer-Nr.   0481 1123 5\\nIhr Kontakt   Ausleihe / Service\\nStadtbibliothek Musterstadt · Bibliotheksplatz 2 · 12345 Musterstadt   0123 400-7700\\nTelefon\\nDatum   22.09.2026\\nHerrn\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nErinnerung: Leihfrist überschritten (1. Mahnung)\\n\\nSehr geehrter Herr Rivera,\\n\\ndie Leihfrist für die folgenden Medien ist abgelaufen:\\n\\nTitel   Mediennummer   Leihfrist bis   Gebühr\\n\\nEinführung in die Statistik mit R   30031 004 812   08.09.2026   2,50 €\\n\\nDeutsch im Alltag B2 – Übungsbuch   30031 017 455   15.09.2026   2,00 €\\n\\nSumme der Gebühren   4,50 €\\n\\nBitte geben Sie die Medien bis zum 02.10.2026 zurück. Die bisher entstandenen Gebühren in\\nHöhe von 4,50 € können Sie bei der Rückgabe an der Servicetheke oder am Kassenautomaten\\nbezahlen.\\n\\nNach Ablauf dieser Frist erhöhen sich die Gebühren um 0,50 € pro Medium und Öffnungstag; ab einem\\nGebührenstand von 10,00 € wird Ihr Benutzerkonto für weitere Ausleihen gesperrt.\\n\\nDie Rückgabe ist rund um die Uhr über die Rückgabebox am Eingang Bibliotheksplatz möglich. Sofern\\nkeine Vormerkung vorliegt, können Sie die Leihfrist auch online in Ihrem Bibliothekskonto verlängern.\\n\\nMit freundlichen Grüßen\\nIhre Stadtbibliothek Musterstadt\\n\\nDieses Schreiben wurde maschinell erstellt und ist ohne Unterschrift gültig.\\n\\nStadtbibliothek Musterstadt   Öffnungszeiten:   Stadtkasse Musterstadt\\nBibliotheksplatz 2 · 12345 Musterstadt   Di–Fr 10–19 Uhr, Sa 10–14 Uhr   IBAN DE51 1234 5600 0000 1000 17\\nTelefon 0123 400-7700   Rückgabebox rund um die Uhr   BIC MUSKDEM1XXX\"}}\n</untrusted_document>"
+    },
+    {
+      "type": "text",
+      "text": "You"
+    },
+    {
+      "type": "text",
+      "text": " need"
+    },
+    {
+      "type": "text",
+      "text": " to return the two"
+    },
+    {
+      "type": "text",
+      "text": " overdue library"
+    },
+    {
+      "type": "text",
+      "text": " books by **F"
+    },
+    {
+      "type": "text",
+      "text": "ri "
+    },
+    {
+      "type": "text",
+      "text": "2 Oct 2026"
+    },
+    {
+      "type": "text",
+      "text": "** [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_"
+    },
+    {
+      "type": "text",
+      "text": "ghq"
+    },
+    {
+      "type": "text",
+      "text": "58"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "d"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "149"
+    },
+    {
+      "type": "text",
+      "text": "].\n\n- This"
+    },
+    {
+      "type": "text",
+      "text": " is from"
+    },
+    {
+      "type": "text",
+      "text": " a first"
+    },
+    {
+      "type": "text",
+      "text": " reminder ("
+    },
+    {
+      "type": "text",
+      "text": "1"
+    },
+    {
+      "type": "text",
+      "text": ". Mahnung) s"
+    },
+    {
+      "type": "text",
+      "text": "ent by Stadtbib"
+    },
+    {
+      "type": "text",
+      "text": "liothek Musterstad"
+    },
+    {
+      "type": "text",
+      "text": "t,"
+    },
+    {
+      "type": "text",
+      "text": " dated 22.09.2"
+    },
+    {
+      "type": "text",
+      "text": "026 [do"
+    },
+    {
+      "type": "text",
+      "text": "c:do"
+    },
+    {
+      "type": "text",
+      "text": "c_5c5"
+    },
+    {
+      "type": "text",
+      "text": "ax"
+    },
+    {
+      "type": "text",
+      "text": "ex"
+    },
+    {
+      "type": "text",
+      "text": "zt"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "6"
+    },
+    {
+      "type": "text",
+      "text": "].\n- The over"
+    },
+    {
+      "type": "text",
+      "text": "due items"
+    },
+    {
+      "type": "text",
+      "text": " are \"Einführung in die"
+    },
+    {
+      "type": "text",
+      "text": " Statistik mit R\""
+    },
+    {
+      "type": "text",
+      "text": " and \"De"
+    },
+    {
+      "type": "text",
+      "text": "utsch im Alltag"
+    },
+    {
+      "type": "text",
+      "text": " B2 – Übungs"
+    },
+    {
+      "type": "text",
+      "text": "buch.\""
+    },
+    {
+      "type": "text",
+      "text": "\n-"
+    },
+    {
+      "type": "text",
+      "text": " Accum"
+    },
+    {
+      "type": "text",
+      "text": "ulated fees so"
+    },
+    {
+      "type": "text",
+      "text": " far are"
+    },
+    {
+      "type": "text",
+      "text": " 4.50 €"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_k"
+    },
+    {
+      "type": "text",
+      "text": "gs"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "g"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "ac"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "], pay"
+    },
+    {
+      "type": "text",
+      "text": "able when"
+    },
+    {
+      "type": "text",
+      "text": " you return the items"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "text",
+      "text": "\n- If you mi"
+    },
+    {
+      "type": "text",
+      "text": "ss the deadline, fees"
+    },
+    {
+      "type": "text",
+      "text": " r"
+    },
+    {
+      "type": "text",
+      "text": "ise further"
+    },
+    {
+      "type": "text",
+      "text": " and your account g"
+    },
+    {
+      "type": "text",
+      "text": "ets blocked once"
+    },
+    {
+      "type": "text",
+      "text": " f"
+    },
+    {
+      "type": "text",
+      "text": "ees reach 10.00 "
+    },
+    {
+      "type": "text",
+      "text": "€."
+    },
+    {
+      "type": "text",
+      "text": "\n\nYou can dr"
+    },
+    {
+      "type": "text",
+      "text": "op the books in"
+    },
+    {
+      "type": "text",
+      "text": " the library"
+    },
+    {
+      "type": "text",
+      "text": "'s 24-hour return box"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " or mark this"
+    },
+    {
+      "type": "text",
+      "text": " to"
+    },
+    {
+      "type": "text",
+      "text": "-do as done in "
+    },
+    {
+      "type": "text",
+      "text": "Ordnung"
+    },
+    {
+      "type": "text",
+      "text": " once returned."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "You need to return the two overdue library books by **Fri 2 Oct 2026** [item:itm_ghq58jjdz149].\n\n- This is from a first reminder (1. Mahnung) sent by Stadtbibliothek Musterstadt, dated 22.09.2026 [doc:doc_5c5axexztnw6].\n- The overdue items are \"Einführung in die Statistik mit R\" and \"Deutsch im Alltag B2 – Übungsbuch.\"\n- Accumulated fees so far are 4.50 € [item:itm_kgsfgwac9wzx], payable when you return the items.\n- If you miss the deadline, fees rise further and your account gets blocked once fees reach 10.00 €.\n\nYou can drop the books in the library's 24-hour return box, or mark this to-do as done in Ordnung once returned.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 410,
+          "cache_read_tokens": 15934,
+          "cache_creation_tokens": 4151,
+          "cost_usd": 0.023902800000000002,
+          "duration_ms": 9925,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude"
+      }
+    }
+  ]
+}

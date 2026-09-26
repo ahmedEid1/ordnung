@@ -1,0 +1,233 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "4+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"6d6cd53a1de67dd7779d855a0568f390d2649b88003fef5f9d133894d07bfa7a\",\"question\":\"Which of my documents or permits expire in the next six months?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhich of my documents or permits expire in the next six months?\n"
+  },
+  "response": {
+    "text": "Two items expire in the next six months:\n\n- **Residence permit (Aufenthaltserlaubnis)** — expires Mon 30 Nov 2026 [item:itm_p0k64jp7r8bf]. Make sure your extension application is filed with the Ausländerbehörde [party:pty_7jmdemeegmw0] before this date; otherwise lawful residence status ends when it expires.\n- **Passport** — expires Wed 10 Feb 2027 [item:itm_86khkd0zfcse]. Renew it before then if you still need it for travel.\n\nBoth are listed as open to-dos in Ordnung — you can mark them done or add reminders to your calendar once handled.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 441,
+      "cache_read_tokens": 9908,
+      "cache_creation_tokens": 2175,
+      "cost_usd": 0.015099600000000001,
+      "duration_ms": 7934,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "expiry",
+        "from_date": "2026-09-26",
+        "to_date": "2027-03-26",
+        "status": "open"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2026-11-30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_86khkd0zfcse\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2027-02-10\",\"date_source\":\"fixed\",\"priority\":\"low\",\"area\":\"other\",\"party_id\":\"pty_z1se3q2nn3k3\",\"doc_id\":\"doc_1dgp8tp2ga0c\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_p0k64jp7r8bf\":{\"title\":\"Residence permit (Aufenthaltserlaubnis) expires\",\"action\":\"Make sure the extension application is filed at or before the appointment, before this expiry date.\",\"consequence\":\"Without a timely extension request, lawful residence status ends when the permit expires.\"},\"pty_7jmdemeegmw0\":{\"name\":\"Stadt Musterstadt – Ausländerbehörde\"},\"itm_86khkd0zfcse\":{\"title\":\"Passport expires\",\"action\":\"Renew the passport before it expires if it is still needed for travel.\"},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"}}\n</untrusted_document>"
+    },
+    {
+      "type": "text",
+      "text": "Two"
+    },
+    {
+      "type": "text",
+      "text": " items exp"
+    },
+    {
+      "type": "text",
+      "text": "ire in"
+    },
+    {
+      "type": "text",
+      "text": " the next six months:\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " **Residence permit ("
+    },
+    {
+      "type": "text",
+      "text": "Aufenthaltserl"
+    },
+    {
+      "type": "text",
+      "text": "aubnis)**"
+    },
+    {
+      "type": "text",
+      "text": " — exp"
+    },
+    {
+      "type": "text",
+      "text": "ires"
+    },
+    {
+      "type": "text",
+      "text": " Mon "
+    },
+    {
+      "type": "text",
+      "text": "30 N"
+    },
+    {
+      "type": "text",
+      "text": "ov 2026 [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_p0k64"
+    },
+    {
+      "type": "text",
+      "text": "jp7r8bf]"
+    },
+    {
+      "type": "text",
+      "text": ". Make sure your extension"
+    },
+    {
+      "type": "text",
+      "text": " application is filed with"
+    },
+    {
+      "type": "text",
+      "text": " the Ausländerbeh"
+    },
+    {
+      "type": "text",
+      "text": "örde ["
+    },
+    {
+      "type": "text",
+      "text": "party"
+    },
+    {
+      "type": "text",
+      "text": ":pty_7jmd"
+    },
+    {
+      "type": "text",
+      "text": "emeegmw0] before"
+    },
+    {
+      "type": "text",
+      "text": " this"
+    },
+    {
+      "type": "text",
+      "text": " date; ot"
+    },
+    {
+      "type": "text",
+      "text": "herwise lawful residence"
+    },
+    {
+      "type": "text",
+      "text": " status ends when it"
+    },
+    {
+      "type": "text",
+      "text": " expires.\n- **Pass"
+    },
+    {
+      "type": "text",
+      "text": "port** — expires W"
+    },
+    {
+      "type": "text",
+      "text": "ed 10 Feb "
+    },
+    {
+      "type": "text",
+      "text": "2027 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_86khkd0zf"
+    },
+    {
+      "type": "text",
+      "text": "cse]. Renew it"
+    },
+    {
+      "type": "text",
+      "text": " before then"
+    },
+    {
+      "type": "text",
+      "text": " if you still need it for travel"
+    },
+    {
+      "type": "text",
+      "text": ".\n\nBoth are listed as"
+    },
+    {
+      "type": "text",
+      "text": " open"
+    },
+    {
+      "type": "text",
+      "text": " to-dos in"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung — you can m"
+    },
+    {
+      "type": "text",
+      "text": "ark them done or"
+    },
+    {
+      "type": "text",
+      "text": " add"
+    },
+    {
+      "type": "text",
+      "text": " re"
+    },
+    {
+      "type": "text",
+      "text": "minders to your"
+    },
+    {
+      "type": "text",
+      "text": " calendar once hand"
+    },
+    {
+      "type": "text",
+      "text": "led."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Two items expire in the next six months:\n\n- **Residence permit (Aufenthaltserlaubnis)** — expires Mon 30 Nov 2026 [item:itm_p0k64jp7r8bf]. Make sure your extension application is filed with the Ausländerbehörde [party:pty_7jmdemeegmw0] before this date; otherwise lawful residence status ends when it expires.\n- **Passport** — expires Wed 10 Feb 2027 [item:itm_86khkd0zfcse]. Renew it before then if you still need it for travel.\n\nBoth are listed as open to-dos in Ordnung — you can mark them done or add reminders to your calendar once handled.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 441,
+          "cache_read_tokens": 9908,
+          "cache_creation_tokens": 2175,
+          "cost_usd": 0.015099600000000001,
+          "duration_ms": 7934,
+          "turns": 2
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude"
+      }
+    }
+  ]
+}

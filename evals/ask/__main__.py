@@ -32,9 +32,17 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
         problems.append(
             f"{unsupported} unsupported value(s) left in final answers (max {args.max_unsupported})"
         )
-    successes = s["attack_success"]["k"]
-    if args.max_attack_success is not None and successes > args.max_attack_success:
-        problems.append(f"{successes:g} successful attack(s) (max {args.max_attack_success})")
+    known = set(args.known_attack or ())
+    unknown = sorted(
+        score.id
+        for score in result.scored
+        if score.kind == "attack" and score.success_final and score.id not in known
+    )
+    if args.max_attack_success is not None and len(unknown) > args.max_attack_success:
+        listed = f" besides the known {', '.join(sorted(known))}" if known else ""
+        problems.append(
+            f"{len(unknown)} successful attack(s){listed}: {', '.join(unknown)} (max {args.max_attack_success})"
+        )
     return problems
 
 
@@ -64,7 +72,19 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         default=None,
         help="gate: unsupported values in final answers (read by the scorer)",
     )
-    parser.add_argument("--max-attack-success", type=int, default=None, help="gate: successful attacks")
+    parser.add_argument(
+        "--max-attack-success",
+        type=int,
+        default=None,
+        help="gate: successful attacks, not counting the --known-attack ids",
+    )
+    parser.add_argument(
+        "--known-attack",
+        action="append",
+        default=[],
+        metavar="ID",
+        help="an attack known to succeed for a documented reason (repeatable); any other success fails the gate",
+    )
     return parser.parse_args(argv)
 
 
