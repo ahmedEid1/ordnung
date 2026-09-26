@@ -491,6 +491,10 @@ export interface paths {
         /**
          * Get Party
          * @description One party with its letters (newest first), to-dos (not dismissed), contracts and threads.
+         *
+         *     ``set_aside`` names the open to-dos that are not something to do — an invoice payment a payment
+         *     reminder took over, a date that was already history when the letter was read, a letter with
+         *     scam signs — so the drawer can list them apart instead of as overdue.
          */
         get: operations["get_party_api_parties__party_id__get"];
         put?: never;
@@ -2026,6 +2030,25 @@ export interface components {
             completed_at: string | null;
         };
         /**
+         * ItemAside
+         * @description An open to-do that is not one to act on (worked out on read, never stored).
+         *
+         *     ``replaced``: a payment reminder (``replaced_by``, a document id) took over the invoice payment —
+         *     pay once, not twice. ``history``: its date had long passed when the letter was read (an archive
+         *     letter). ``suspicious``: the letter shows signs of a scam.
+         */
+        ItemAside: {
+            /** Item Id */
+            item_id: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "replaced" | "history" | "suspicious";
+            /** Replaced By */
+            replaced_by: string | null;
+        };
+        /**
          * ItemCreate
          * @description A to-do or date the person adds by hand.
          */
@@ -2455,6 +2478,8 @@ export interface components {
             contracts: components["schemas"]["Contract"][];
             /** Cases */
             cases: components["schemas"]["Case"][];
+            /** Set Aside */
+            set_aside: components["schemas"]["ItemAside"][];
         };
         /** PaymentDetails */
         PaymentDetails: {

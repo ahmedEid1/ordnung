@@ -19,6 +19,7 @@ import type {
   DraftCreate,
   Health,
   Item,
+  ItemAside,
   Job,
   MailOpenResult,
   PageInfo,
@@ -188,14 +189,42 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
   };
 }
 
+/**
+ * Open items that are not one to act on (the server's `ledger` rules, simplified): an invoice
+ * payment a later payment reminder of the same thread took over, or a date that was already more
+ * than 14 days past when the letter was filed.
+ */
+function setAside(db: MockDb, items: Item[]): ItemAside[] {
+  const docs = db.liveDocuments();
+  const byId = new Map(docs.map((d) => [d.id, d]));
+  const reminders = docs.filter((d) => d.kind === "dunning" && d.direction === "incoming" && d.case_id);
+  const dayMs = 86_400_000;
+  return items.flatMap((i): ItemAside[] => {
+    if (i.status !== "open") return [];
+    const doc = i.doc_id ? byId.get(i.doc_id) : undefined;
+    if (i.kind === "payment" && !i.recurrence && doc) {
+      const covering = reminders.find(
+        (r) => r.id !== doc.id && r.case_id === doc.case_id && (doc.kind === "dunning" ? (doc.doc_date ?? "") < (r.doc_date ?? "") : !(doc.doc_date && r.doc_date && doc.doc_date > r.doc_date)),
+      );
+      if (covering) return [{ item_id: i.id, reason: "replaced", replaced_by: covering.id }];
+    }
+    if (!i.recurrence && i.due_date && i.filed_on && (parseISO(i.filed_on).getTime() - parseISO(i.due_date).getTime()) / dayMs > 14) {
+      return [{ item_id: i.id, reason: "history", replaced_by: null }];
+    }
+    return [];
+  });
+}
+
 function partyDetail(db: MockDb, id: string): PartyDetail {
   const party = db.party(id) ?? notFound("Unknown person or organisation.");
+  const items = db.state.items.filter((i) => i.party_id === id && i.status !== "dismissed").sort((a, b) => ((a.due_date ?? "9") < (b.due_date ?? "9") ? -1 : 1));
   return {
     party,
     documents: db.liveDocuments().filter((d) => d.party_id === id).sort((a, b) => ((a.doc_date ?? "") < (b.doc_date ?? "") ? 1 : -1)),
-    items: db.state.items.filter((i) => i.party_id === id && i.status !== "dismissed").sort((a, b) => ((a.due_date ?? "9") < (b.due_date ?? "9") ? -1 : 1)),
+    items,
     contracts: db.state.contracts.filter((c) => c.party_id === id),
     cases: db.state.cases.filter((c) => c.party_id === id),
+    set_aside: setAside(db, items),
   };
 }
 

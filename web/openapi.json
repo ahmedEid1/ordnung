@@ -1645,7 +1645,7 @@
           "parties"
         ],
         "summary": "Get Party",
-        "description": "One party with its letters (newest first), to-dos (not dismissed), contracts and threads.",
+        "description": "One party with its letters (newest first), to-dos (not dismissed), contracts and threads.\n\n``set_aside`` names the open to-dos that are not something to do — an invoice payment a payment\nreminder took over, a date that was already history when the letter was read, a letter with\nscam signs — so the drawer can list them apart instead of as overdue.",
         "operationId": "get_party_api_parties__party_id__get",
         "parameters": [
           {
@@ -6284,6 +6284,42 @@
         ],
         "title": "Item"
       },
+      "ItemAside": {
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "title": "Item Id"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "replaced",
+              "history",
+              "suspicious"
+            ],
+            "title": "Reason"
+          },
+          "replaced_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replaced By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "reason",
+          "replaced_by"
+        ],
+        "title": "ItemAside",
+        "description": "An open to-do that is not one to act on (worked out on read, never stored).\n\n``replaced``: a payment reminder (``replaced_by``, a document id) took over the invoice payment —\npay once, not twice. ``history``: its date had long passed when the letter was read (an archive\nletter). ``suspicious``: the letter shows signs of a scam."
+      },
       "ItemCreate": {
         "properties": {
           "kind": {
@@ -7477,6 +7513,13 @@
             },
             "type": "array",
             "title": "Cases"
+          },
+          "set_aside": {
+            "items": {
+              "$ref": "#/components/schemas/ItemAside"
+            },
+            "type": "array",
+            "title": "Set Aside"
           }
         },
         "type": "object",
@@ -7485,7 +7528,8 @@
           "documents",
           "items",
           "contracts",
-          "cases"
+          "cases",
+          "set_aside"
         ],
         "title": "PartyDetail"
       },
