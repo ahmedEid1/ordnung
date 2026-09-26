@@ -72,8 +72,9 @@ interface Copier {
 
 /**
  * One identifier: the label above the value in a narrow drawer, beside it from 384 px; the copy
- * button sits in the value (`dd`), so the list stays a valid `dl`. Codes in the monospace face,
- * register entries ("Amtsgericht Musterstadt HRB 4711") in the text face; neither breaks mid-word.
+ * button sits in the value (`dd`), so the list stays a valid `dl`. IBANs and codes in the
+ * identifier face (`font-ident`), register entries ("Amtsgericht Musterstadt HRB 4711") in the text
+ * face; neither breaks mid-word.
  */
 function IdRow({ label, value, kind, copier }: { label: string; value: string; kind: "iban" | "code" | "text"; copier: Copier }) {
   const id = `${label}\n${value}`;
