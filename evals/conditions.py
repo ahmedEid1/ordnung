@@ -89,7 +89,7 @@ from ordnung.llm.claude_cli import extract_json
 from ordnung.llm.runtime import LLMService
 from ordnung.llm.schemas import extraction_schema, schema_for, transcription_schema
 from ordnung.models import ContractTerms, DocumentExtraction, DocumentKind, ItemKind, Page, RemedyType
-from ordnung.rules import RuleContext, compute_contract, scope_for_party_kind
+from ordnung.rules import RuleContext, compute_contract, is_private_sender, scope_for_party_kind
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
 from ordnung.secretary.scam import format_iban, iban_valid, normalize_iban
@@ -320,22 +320,27 @@ def ordnung_rule_context(entry: Entry, extraction: DocumentExtraction) -> RuleCo
     """The rules engine's context: the entry's today and Länder, the extracted letter date and scope.
 
     The holiday region is the authority's Land when the letterhead names one (``None`` → nationwide
-    holidays only, which the dataset guarantees gives the legal date); the delivery scope follows the
-    sender's kind, name and remedy notice exactly as in the app (``ingest.plan.rule_context``).
+    holidays only, which the dataset guarantees gives the legal date); the delivery scope — and
+    whether the sender has deemed delivery at all — follows the sender's kind, name and remedy notice
+    exactly as in the app (``ingest.plan.rule_context``).
     """
     sender = extraction.sender
     remedy = extraction.remedy
+    kind = sender.kind if sender else None
+    remedy_type = remedy.type if remedy else None
+    scope = scope_for_party_kind(
+        kind,
+        name=sender.name if sender else None,
+        remedy_type=remedy_type,
+        remedy_text=remedy_text(remedy),
+    )
     return RuleContext(
         today=entry.today_date,
         region=entry.authority_region,
         document_date=parse_iso(extraction.document_date),
-        delivery_scope=scope_for_party_kind(
-            sender.kind if sender else None,
-            name=sender.name if sender else None,
-            remedy_type=remedy.type if remedy else None,
-            remedy_text=remedy_text(remedy),
-        ),
+        delivery_scope=scope,
         recipient_region=entry.recipient_region or PERSONA_REGION,
+        private_sender=is_private_sender(kind, scope=scope, remedy_type=remedy_type),
     )
 
 

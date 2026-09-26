@@ -50,6 +50,11 @@ MAX_PERIOD: Final[dict[PeriodUnit, int]] = {
 ASSUMED_RECEIPT_WARNING: Final = (
     "We assumed the letter arrived on the date printed on it — tell us when it actually arrived."
 )
+PRIVATE_SENDER_WARNING: Final = (
+    "No delivery days were added: the rule that a letter counts as delivered a few days after posting "
+    "is only for authorities' letters, and this sender is not an authority. The period runs from the "
+    "day the letter arrived."
+)
 
 _SHIFTING_NATURES = ("objection", "payment", "declaration")
 _SEND_BY_NATURES = ("objection", "payment", "declaration", "notice")
@@ -97,6 +102,9 @@ class RuleContext:
     moves for a regional holiday when it applies at both places (legal research verdict, OFD Cottbus
     2004), and a payment to a private creditor uses the payer's holidays, because money is owed at the
     debtor's home (§§ 269, 270 Abs. 4, 193 BGB; research ``bgb_271_286_2_zahlungsziel_rechnung``).
+    ``private_sender`` says the sender is known not to be an authority
+    (:func:`ordnung.rules.delivery.is_private_sender`): its letter has no deemed delivery, so a period
+    from delivery runs from the day it arrived (:func:`from_arrival`).
     """
 
     today: date
@@ -107,6 +115,7 @@ class RuleContext:
     received_confirmed: bool = False
     delivery_scope: DeliveryScope | None = None
     recipient_region: str | None = None
+    private_sender: bool = False
 
 
 @dataclass
@@ -220,11 +229,13 @@ def _same_period(a: tuple[int, PeriodUnit], b: tuple[int, PeriodUnit]) -> bool:
     return a == b or (days_a is not None and days_a == in_days(*b))
 
 
-def check_regional_holidays(trace: Trace, days: Iterable[date]) -> None:
-    """Lower confidence (once) if a regional holiday on one of ``days`` could make a date later.
+def check_regional_holidays(trace: Trace, days: Iterable[date], *, later: bool = True) -> None:
+    """Lower confidence (once) if a regional holiday on one of ``days`` could move a date.
 
-    Only used when the holiday region is unknown: nationwide holidays were used, which can only give
-    an earlier date, but the person should know the real one may be later.
+    Only used when the holiday region is unknown: nationwide holidays were used. Counted forward,
+    that can only give an earlier date, but the person should know the real one may be later. Counted
+    backwards (a period before an event, the safe date of a deadline that never moves), a regional
+    holiday makes the real date *earlier* (``later=False``): the date shown may then be a day late.
     """
     if trace.region_flagged:
         return
@@ -233,9 +244,14 @@ def check_regional_holidays(trace: Trace, days: Iterable[date]) -> None:
         if lands:
             trace.region_flagged = True
             names = ", ".join(calendar_de.REGION_NAMES[code] for code in lands[:3])
+            where = (
+                "where the deadline would be later"
+                if later
+                else "where the deadline would be earlier — act a working day before it to be safe"
+            )
             trace.soft(
                 f"Holiday region unknown — {fmt_date(d)} is a public holiday in some Länder (e.g. {names}), "
-                "where the deadline would be later. We used nationwide holidays only."
+                f"{where}. We used nationwide holidays only."
             )
             return
 
@@ -391,6 +407,8 @@ def _compute_fixed(
     due, safe = written, None
     if spec.nature == "notice":
         safe = _safe_date(trace, written, region)
+        if region is None:
+            check_regional_holidays(trace, [written], later=False)
     elif spec.nature == "appointment":
         trace.use("authority_deadline")
     elif spec.shift_rule == "next_business_day":
@@ -464,6 +482,25 @@ def _resolve_anchor(spec: DateSpec, ctx: RuleContext, trace: Trace) -> _Anchor |
         trace.hard("The letter's date is missing, so this date can't be computed.")
         return None
     return _Anchor(ctx.document_date, "document_date")
+
+
+def from_arrival(spec: DateSpec, ctx: RuleContext) -> DateSpec:
+    """The period :func:`compute_due` counts: without deemed delivery when the sender is no authority.
+
+    For ``ctx.private_sender`` (and a relative period whose letter names none of the remedy
+    statutes, which only authorities' decisions have), ``anchor: deemed_delivery`` becomes
+    ``receipt`` — a posting day in ``anchor_date`` is no arrival day, so it is dropped — and a
+    delivery rule on a period from the letter's or another date is dropped. Without a confirmed
+    arrival day the period then runs from the letter's date, never later than with deemed delivery.
+    Anything else is returned unchanged (the same object), so callers can tell whether it applied.
+    """
+    if not ctx.private_sender or spec.type != "relative" or _statute(spec) is not None:
+        return spec
+    if spec.anchor == "deemed_delivery":
+        return spec.model_copy(update={"anchor": "receipt", "anchor_date": None, "delivery_rule": "none"})
+    if spec.delivery_rule != "none" and spec.anchor in ("document_date", "explicit_date"):
+        return spec.model_copy(update={"delivery_rule": "none"})
+    return spec
 
 
 def _today_anchor(ctx: RuleContext, trace: Trace) -> _Anchor:
@@ -608,6 +645,10 @@ def _compute_relative(
     period = fmt_period(amount, unit)
     if abs(amount) > MAX_PERIOD[unit]:
         return _no_date(trace, ctx, f"A period of {period} can't be right — please check the letter.")
+    counted = from_arrival(spec, ctx)
+    arrival_only, spec = counted is not spec, counted
+    if arrival_only:
+        trace.warnings.append(PRIVATE_SENDER_WARNING)
     anchor = _resolve_anchor(spec, ctx, trace)
     if anchor is None:
         return _receipt(
@@ -616,6 +657,12 @@ def _compute_relative(
             due=None,
             summary="No date could be computed: the start date is missing.",
             region=place,
+        )
+    if arrival_only:
+        trace.step(
+            f"Not an authority's letter, so no delivery days: the period runs from {anchor.phrase}",
+            anchor.day,
+            "private_sender_arrival",
         )
     statute, statutory_periods = _statute(spec) or (None, ())
     # Fines and penal orders run from formal service (yellow envelope, § 4 VwZG), never from the
@@ -668,6 +715,11 @@ def _compute_relative(
             raw_end,
             "bgb_188",
         )
+        if unit in ("business_days", "werktage") and place is None:
+            # A regional holiday among the days counted back does not count there: the date is earlier.
+            counts = calendar_de.is_werktag if unit == "werktage" else calendar_de.is_business_day
+            span = (raw_end + timedelta(days=i) for i in range(1, (inclusive_end - raw_end).days + 1))
+            check_regional_holidays(trace, (d for d in span if counts(d)), later=False)
 
     if statute is not None:
         trace.use(statute)
@@ -692,11 +744,11 @@ def _compute_relative(
         trace.extend(steps)
         if place is None:
             check_regional_holidays(trace, [due])
-    elif spec.nature == "notice":
-        safe = _safe_date(trace, raw_end, place)
-    elif shift:
+    elif spec.nature == "notice" or shift:
         # § 193 BGB only extends periods that run forward: "one month before …" must never end later.
-        safe = _safe_date(trace, raw_end, place, backward=True)
+        safe = _safe_date(trace, raw_end, place, backward=spec.nature != "notice")
+        if place is None:
+            check_regional_holidays(trace, [raw_end], later=False)
     if uses_delivery and not backward:
         _late_receipt_note(ctx, trace, event, (amount, unit), place, shift)
 

@@ -18,6 +18,7 @@ from ordnung.rules.delivery import (
     VWVFG_FOUR_DAY_FROM,
     deemed_delivery,
     fiction_days,
+    is_private_sender,
     resolve_delivery,
     scope_for_party_kind,
 )
@@ -213,3 +214,29 @@ def test_schleswig_holstein_confirmed_from_june_2025() -> None:
     """vwvfg verdict: § 110 LVwG SH shows the 4th day in the text as of 10 Jun 2025."""
     assert deemed_delivery(D("2025-03-03"), scope="vwvfg", region="SH")[0] == D("2025-03-06")
     assert deemed_delivery(D("2026-09-29"), scope="vwvfg", region="SH")[0] == D("2026-10-03")
+
+
+@pytest.mark.parametrize(
+    ("kind", "name", "remedy_type", "expected"),
+    [
+        ("company", None, None, True),
+        ("landlord", "Muster Wohnen GmbH", "none", True),
+        ("insurer", "Muster Haftpflicht AG", None, True),
+        # "other" is the app's "don't know", not "no authority"; nor is a missing kind
+        ("other", "Stadt Musterstadt", None, False),
+        (None, None, None, False),
+        # an authority's decision whatever it was filed as: its remedy says so ...
+        ("insurer", "AOK Nordost", "widerspruch", False),
+        ("company", None, "einspruch", False),
+        ("employer", "Land Berlin", "klage", False),
+        # ... or its name makes it a social agency
+        ("insurer", "Deutsche Rentenversicherung Bund", None, False),
+        ("authority", None, None, False),
+        ("tax_office", None, None, False),
+    ],
+)
+def test_private_senders_have_no_deemed_delivery(
+    kind: str | None, name: str | None, remedy_type: str | None, expected: bool
+) -> None:
+    scope = scope_for_party_kind(kind, name=name, remedy_type=remedy_type)
+    assert is_private_sender(kind, scope=scope, remedy_type=remedy_type) is expected

@@ -16,30 +16,37 @@ Policies:
   arguments are refused too. A misspelt field or a date in another format must fail loudly, never
   be dropped silently and change the date. Every argument error names the argument and what is
   allowed, in plain words.
-* **Same answers as the app.** The delivery law follows the sender's kind and name exactly as in
-  the pipeline (:func:`ordnung.rules.scope_for_party_kind`); the spec's own words (``text``,
-  ``legal_basis``) stand in for the letter's remedy notice. Missing facts are never guessed: the
-  engine uses the earliest plausible date and says so, and ``hints`` name the argument that would
-  settle it (and never one that was given). One difference: a model may ask for deemed delivery
-  from a sender whose kind it names and which has none (a company, a landlord). Such a letter's
-  period runs from the day it arrived, so it is counted as ``anchor: receipt`` — from the arrival
-  day given, else the letter's date (the earliest plausible start) — and a warning says so; three
-  days of deemed delivery would make the date late.
+* **Same answers as the app.** Which delivery law applies — and whether the sender is an
+  authority at all — follows the sender's kind, name and remedy exactly as in the pipeline
+  (:func:`ordnung.rules.scope_for_party_kind`, :func:`ordnung.rules.is_private_sender`); the spec's
+  own words (``text``, ``legal_basis``) stand in for the letter's remedy notice. So a company's or
+  landlord's letter runs from its arrival even when a model asks for deemed delivery (the engine's
+  rule, :func:`ordnung.rules.deadlines.from_arrival`), and an unknown sender (none, ``other``) keeps
+  the earliest plausible deemed delivery. Missing facts are never guessed: the engine uses the
+  earliest plausible date and says so, and ``hints`` name the argument that would settle it (and
+  never one that was given).
+* **Formal service.** A letter served in a yellow envelope has no deemed delivery; the spec help
+  says how to pass its date, and a result that applied deemed delivery to a posted letter says so.
 * **A model's arrival day is checked.** In the app a person enters ``received_date``; here a model
   passes it, or a delivery day the letter states (``spec.anchor_date`` with ``anchor: receipt``,
   which the engine counts from when it is not before the letter's date). The day the period
   actually runs from is checked: a day after today is refused, and one before the letter's date or
   more than :data:`LATE_ARRIVAL_DAYS` days after it gets a warning and one level less confidence (a
-  wrong arrival day moves the deadline). An arrival day the engine did not use is named in a
-  warning, and ``assumed`` reports the day used and where it came from. A letter dated after today
-  gets a warning and one level less confidence too (usually a misread year).
-* **"Today" is the server's.** A caller's ``today`` that differs from the server's by more than a
-  day gets a warning (a model's own idea of the date may be stale, and a wrong today makes a live
-  deadline look missed). A server started with ``today`` pinned (:func:`rules_server_config`, the
-  benchmark) does not use a caller's ``today`` at all and says so.
+  wrong arrival day moves the deadline). ``assumed`` reports the arrival day the period ran from
+  and where it came from — none when it did not run from an arrival — and an arrival day given but
+  not used. A letter dated after today gets a warning and one level less confidence too (usually a
+  misread year).
+* **"Today" is the server's.** A model's own idea of the date may be stale, and a wrong today makes
+  a live deadline look missed. So a result is always for the server's today, whether the deadline
+  has passed and the send-by date included; a caller's ``today`` more than a day off only adds
+  ``for_today_given`` (that day's view) and a warning. A server started with ``today`` pinned
+  (:func:`rules_server_config`, the benchmark) does not use a caller's ``today`` at all.
 * **Partial holidays.** The calendar counts only holidays of a whole Land
-  (:data:`PARTIAL_HOLIDAYS`). When one of the others falls between a send-by or safe date and the
-  due date, a warning names it: a date counted back over it can come out a day late.
+  (:data:`PARTIAL_HOLIDAYS`). Where one of the others holds, a date counted back over it comes out
+  a working day late: a send-by or safe date, a period counted backwards in working days, the safe
+  date of a deadline on it. A warning names that holiday, where it holds and which date it moves.
+* **Next to the ledger** (the full server) a letter already in the ledger keeps its stored date:
+  the instructions and ``compute_deadline``'s description say so (:data:`WITH_LEDGER_INSTRUCTIONS`).
 * **No letter text in results.** Results are built by code from the engine's receipt and the
   normalised arguments; the spec's ``text`` and the sender's name are not echoed. So results are
   plain JSON, not wrapped as untrusted document text.
@@ -68,6 +75,7 @@ import os
 import re
 import sys
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Annotated, Any, Literal, get_args
 from zoneinfo import ZoneInfo
@@ -89,6 +97,17 @@ INSTRUCTIONS = (
     "where facts are missing, the earliest plausible date, and hints on what would settle it; "
     "german_holidays, add_working_days and check_iban answer calendar and IBAN questions. The tools "
     "compute; you read the letter. Results are information, not legal advice."
+)
+#: For the full server (``--with-ledger``): its instructions and ``compute_deadline``'s description say
+#: which date wins for a letter in the ledger — the stored one, which may rest on facts the model
+#: cannot see (the arrival day the person confirmed, a corrected sender, a date they set).
+WITH_LEDGER_INSTRUCTIONS = (
+    "For a letter that is in the ledger, its dates come from list_items and explain_date: quote them — "
+    "they may rest on facts you cannot see (the day the person confirmed it arrived, a corrected sender, "
+    "a date they set). compute_deadline is for letters that are not in the ledger."
+)
+WITH_LEDGER_NOTE = (
+    "Not for a letter already in the ledger: quote its stored date from list_items or explain_date instead."
 )
 DISCLAIMER_TEMPLATE = (
     "Information, not legal advice: computed by Ordnung's rules engine from the facts given (German "
@@ -124,13 +143,33 @@ PARTIAL_HOLIDAYS_NOTE = (
     "{what}. Where one of them applies, a date counted forward can only come out earlier than the real "
     "one, but a date counted backwards (a send-by date, negative working days) can come out a day late."
 )
+#: Where each partial holiday holds, by Land and the holiday's German name (for the warnings).
+PARTIAL_HOLIDAY_PLACES: dict[str, dict[str, str]] = {
+    "BY": {
+        "Mariä Himmelfahrt": "the communities of Bayern with a Catholic majority (Munich among them)",
+        "Augsburger Hohes Friedensfest": "the city of Augsburg (Bayern)",
+    },
+    "SN": {"Fronleichnam": "some communities of the Sorbian area of Sachsen"},
+    "TH": {"Fronleichnam": "some communities of Thüringen with a Catholic majority"},
+}
+#: The rules that move a deadline to the next working day (§ 193 BGB and its siblings).
+SHIFT_RULES = frozenset({"bgb_193", "ao_108_3", "vwvfg_31_3", "sgbx_26_3", "stpo_43"})
 #: Partial holidays the holiday library leaves out even from its extra categories.
 _MORE_PARTIAL_HOLIDAYS: dict[str, tuple[tuple[int, int, str], ...]] = {
     "BY": ((8, 8, "Augsburger Hohes Friedensfest"),),
 }
 NATIONWIDE_NOTE = "Nationwide holidays only: pass region (a Land code such as BY or NW) for its own ones."
-#: How the engine's warning starts when a regional holiday could move a date (``check_regional_holidays``).
+#: How the engine's warning starts when a regional holiday could move a date (``check_regional_holidays``),
+#: and what it says when that date is counted backwards (the real one is then earlier).
 REGION_UNKNOWN_WARNING = "Holiday region unknown"
+REGION_EARLIER_WARNING = "where the deadline would be earlier"
+FORMAL_SERVICE_WARNING = (
+    "Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was "
+    "formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was "
+    "'zugestellt' on a date — that rule does not apply and the period runs from the date written on the "
+    "envelope, usually earlier: then pass spec.anchor receipt with that date as spec.anchor_date and "
+    "spec.delivery_rule none."
+)
 #: The engine's warnings when a tax letter's delivery day is a holiday at one of the two places only.
 TAX_OFFICE_HOLIDAY_WARNING = "is a public holiday where the tax office is"
 HOME_HOLIDAY_WARNING = "is a public holiday where you live"
@@ -241,14 +280,15 @@ class RulesTools:
         today: str | None = None,
     ) -> dict[str, Any]:
         """The date a ``DateSpec`` describes, computed by the rules engine, with its receipt."""
-        from ordnung.rules import RuleContext, compute_due, scope_for_party_kind
+        from ordnung.rules import RuleContext, compute_due, is_private_sender, scope_for_party_kind
+        from ordnung.rules.deadlines import from_arrival
 
         parsed = parse_spec(spec)
         _check_choice("sender_kind", sender_kind, get_args(PartyKind))
         _check_choice("remedy_type", remedy_type, get_args(RemedyType))
         server_day = self.current_day()
         given_today = _optional_day("today", today)
-        day = server_day if given_today is None or self._pin_today else given_today
+        day, other_day = self._days(given_today, server_day)
         letter_day = _optional_day("document_date", document_date)
         received = _optional_day("received_date", received_date)
         if received is not None and received > day:
@@ -262,15 +302,6 @@ class RulesTools:
             remedy_type=remedy_type,
             remedy_text=f"{parsed.legal_basis or ''} {parsed.text}",
         )
-        # A sender named as no authority has no deemed delivery: its letter counts from its arrival.
-        counted = from_arrival(parsed) if sender_kind is not None and scope is None else parsed
-        stated = stated_receipt(counted, letter_day)
-        if stated is not None and stated > day:
-            raise RulesToolError(
-                f"spec.anchor_date ({stated.isoformat()}) is after today ({day.isoformat()}): with anchor "
-                "receipt it is the day the letter was delivered — pass the delivery day the letter states, "
-                "or leave it out"
-            )
         context = RuleContext(
             today=day,
             region=_region("region", region),
@@ -279,19 +310,31 @@ class RulesTools:
             received_confirmed=received is not None,
             delivery_scope=scope,
             recipient_region=_region("recipient_region", recipient_region),
+            private_sender=is_private_sender(sender_kind, scope=scope, remedy_type=remedy_type),
         )
+        # The period the engine counts: a private sender's letter runs from its arrival, not deemed delivery.
+        counted = from_arrival(parsed, context)
+        stated = stated_receipt(counted, letter_day)
+        if stated is not None and stated > day:
+            raise RulesToolError(
+                f"spec.anchor_date ({stated.isoformat()}) is after today ({day.isoformat()}): with anchor "
+                "receipt it is the day the letter was delivered — pass the delivery day the letter states, "
+                "or leave it out"
+            )
         payer_pays = counted.nature == "payment" and scope is None  # place_region's rule (§ 270 BGB)
         place = context.recipient_region if payer_pays else context.region
-        receipt = compute_due(counted, context)
+        receipt = compute_due(parsed, context)
         found: list[tuple[str, bool]] = []
-        if counted is not parsed:
-            found.append((no_deemed_delivery_warning(sender_kind or "", received, letter_day), False))
         found += arrival_warnings(counted, letter_day=letter_day, received=received, stated=stated)
         found += [(w, True) for w in _future_letter_warning(counted, letter_day, day)]
-        found += [(w, False) for w in partial_holiday_warnings(receipt, place)]
+        found += [(w, False) for w in formal_service_warning(counted, receipt)]
+        found += [(w, False) for w in partial_holiday_warnings(counted, receipt, place)]
         found += [(w, False) for w in _today_warning(given_today, server_day, pinned=self._pin_today)]
         receipt = with_warnings(receipt, found)
-        arrival, arrival_from = arrival_day(counted, letter_day=letter_day, received=received, stated=stated)
+        arrival, arrival_from = arrival_day(
+            counted, receipt, letter_day=letter_day, received=received, stated=stated
+        )
+        other = compute_due(parsed, replace(context, today=other_day)) if other_day is not None else None
         return {
             "due_date": receipt.due_date,
             "weekday": _weekday(receipt.due_date),
@@ -309,6 +352,9 @@ class RulesTools:
                 "letter_date": letter_day.isoformat() if letter_day else None,
                 "received_date": arrival.isoformat() if arrival else None,
                 "received_date_from": arrival_from,
+                "received_date_not_used": received.isoformat()
+                if received is not None and received != arrival
+                else None,
                 "delivery_law": _DELIVERY_LAW.get(scope or ""),
                 "holiday_calendar": receipt.holiday_calendar,
                 "holidays_from": None if counted.type == "none" else _holidays_from(payer_pays),
@@ -325,8 +371,21 @@ class RulesTools:
                 recipient_region=context.recipient_region,
                 counted_from_arrival=counted is not parsed,
             ),
+            "for_today_given": for_other_day(other, receipt, other_day),
             "disclaimer": disclaimer(),
         }
+
+    def _days(self, given: date | None, server_day: date) -> tuple[date, date | None]:
+        """The day a result is for, and a caller's other day to report on as well (module docstring).
+
+        A caller's today within :data:`TODAY_TOLERANCE_DAYS` of the server's is used (a time zone
+        apart); one further off only gets ``for_today_given``, and on a pinned server it is not used.
+        """
+        if given is None or self._pin_today:
+            return server_day, None
+        if abs((given - server_day).days) <= TODAY_TOLERANCE_DAYS:
+            return given, None
+        return server_day, given
 
     def german_holidays(self, year: int, region: str | None = None) -> dict[str, Any]:
         """The public holidays of ``year``: nationwide ones, plus the Land's own for ``region``."""
@@ -386,6 +445,7 @@ class RulesTools:
         except OverflowError as exc:
             raise RulesToolError("the result would be outside the calendar") from exc
         skipped = []
+        counted: list[date] = []
         step = timedelta(days=1 if days >= 0 else -1)
         day = first
         while day != result:
@@ -393,6 +453,8 @@ class RulesTools:
             kind = day_kind(day, code)
             if kind is not None and not (werktage and kind == "Saturday"):
                 skipped.append({"date": day.isoformat(), "weekday": _WEEKDAYS[day.weekday()], "reason": kind})
+            else:
+                counted.append(day)
         return {
             "start": first.isoformat(),
             "days": days,
@@ -406,6 +468,8 @@ class RulesTools:
             "calendar": holiday_calendar_label(code),
             "note": PARTIAL_HOLIDAYS_NOTE.format(what=PARTIAL_HOLIDAYS[code])
             if code in PARTIAL_HOLIDAYS
+            else regional_note(counted, later=days >= 0)
+            if code is None
             else None,
             "disclaimer": disclaimer(),
         }
@@ -439,6 +503,31 @@ class RulesTools:
 # --------------------------------------------------------------------------------------------------
 # helpers
 # --------------------------------------------------------------------------------------------------
+
+
+def regional_note(counted: list[date], *, later: bool) -> str | None:
+    """With no region: say when a day counted is a public holiday in some Länder (``None`` if none is).
+
+    There that day is no working day, so the count ends a working day later — or, counting
+    backwards, a working day earlier, which makes the date shown too late.
+    """
+    from ordnung.rules.calendar_de import REGION_NAMES, regional_holiday_lands
+    from ordnung.rules.explain import fmt_date
+
+    for day in counted:
+        lands = regional_holiday_lands(day)
+        if lands:
+            names = ", ".join(REGION_NAMES[code] for code in lands[:3])
+            there = (
+                "the result is a working day later there"
+                if later
+                else "the result is a working day earlier there, so this date may be a day late"
+            )
+            return (
+                f"Nationwide holidays only: {fmt_date(day)}, counted here as a working day, is a public "
+                f"holiday in some Länder (e.g. {names}) — {there}. Pass region for a Land's own holidays."
+            )
+    return None
 
 
 def disclaimer() -> str:
@@ -511,40 +600,6 @@ def with_warnings(receipt: ComputationReceipt, found: list[tuple[str, bool]]) ->
     return receipt.model_copy(update={"warnings": warnings, "confidence": confidence})
 
 
-def from_arrival(spec: DateSpec) -> DateSpec:
-    """``spec`` counted from the letter's arrival instead of a deemed delivery day (module docstring).
-
-    For a sender whose kind has no deemed-delivery rule: ``anchor: deemed_delivery`` becomes
-    ``receipt`` (a posting day in ``anchor_date`` is no delivery day, so it is dropped), and a
-    ``delivery_rule`` on a period counted from the letter's or another date is dropped. The result
-    is never later than the deemed-delivery date. Anything else is returned unchanged.
-    """
-    if spec.type != "relative":
-        return spec
-    if spec.anchor == "deemed_delivery":
-        return spec.model_copy(update={"anchor": "receipt", "anchor_date": None, "delivery_rule": "none"})
-    if spec.delivery_rule != "none" and spec.anchor in ("document_date", "explicit_date"):
-        return spec.model_copy(update={"delivery_rule": "none"})
-    return spec
-
-
-def no_deemed_delivery_warning(sender_kind: str, received: date | None, letter_day: date | None) -> str:
-    from ordnung.rules.explain import fmt_date
-
-    start = (
-        f"the arrival day given ({fmt_date(received)})"
-        if received is not None
-        else f"the letter's date ({fmt_date(letter_day)}), the earliest plausible start"
-        if letter_day is not None
-        else "the day the letter arrived"
-    )
-    return (
-        f"Deemed delivery is a rule for German authorities, and a sender of kind {sender_kind} is not treated as one, "
-        f"so no delivery days were added: the period runs from the day the letter arrived, counted here "
-        f"from {start}."
-    )
-
-
 def stated_receipt(spec: DateSpec, letter_day: date | None) -> date | None:
     """The delivery day the letter states that the engine counts from (``anchor: receipt``), if any.
 
@@ -558,16 +613,63 @@ def stated_receipt(spec: DateSpec, letter_day: date | None) -> date | None:
 
 
 def arrival_day(
-    spec: DateSpec, *, letter_day: date | None, received: date | None, stated: date | None
+    spec: DateSpec,
+    receipt: ComputationReceipt,
+    *,
+    letter_day: date | None,
+    received: date | None,
+    stated: date | None,
 ) -> tuple[date | None, str | None]:
-    """The arrival day the computation used, and where it came from (for ``assumed``)."""
+    """The arrival day the period ran from, and where it came from (for ``assumed``).
+
+    Only a period that runs from the letter's arrival has one (``anchor: receipt``, after
+    :func:`ordnung.rules.deadlines.from_arrival`), or a deemed delivery the engine counted from the
+    day the letter arrived because that was before its date. Otherwise ``(None, None)``: an arrival
+    day given is then reported as not used.
+    """
     if stated is not None:
         return stated, "spec.anchor_date: the delivery day the letter states"
-    if received is not None:
-        return received, "received_date"
-    if spec.type == "relative" and spec.anchor == "receipt" and letter_day is not None:
-        return letter_day, "document_date: assumed, the earliest plausible arrival"
+    if spec.type == "relative" and spec.anchor == "receipt":
+        if received is not None:
+            return received, "received_date"
+        if letter_day is not None:
+            return letter_day, "document_date: assumed, the earliest plausible arrival"
+        return None, None
+    if received is not None and counted_from(receipt) == received:
+        return received, "received_date: it arrived before the letter's date, so the period runs from it"
     return None, None
+
+
+def counted_from(receipt: ComputationReceipt) -> date | None:
+    """The day a forward period was counted from (the engine's § 187 step), if any."""
+    day = next((step.date for step in receipt.steps if step.rule_id == "bgb_187_1"), None)
+    return date.fromisoformat(day) if day else None
+
+
+def formal_service_warning(spec: DateSpec, receipt: ComputationReceipt) -> list[str]:
+    """:data:`FORMAL_SERVICE_WARNING` when deemed delivery was applied to a letter sent by post."""
+    posted = spec.delivery_rule in ("de_admin_post", "none")
+    return [FORMAL_SERVICE_WARNING] if posted and "posting_day" in receipt.rule_ids else []
+
+
+def for_other_day(
+    other: ComputationReceipt | None, receipt: ComputationReceipt, day: date | None
+) -> dict[str, Any] | None:
+    """What ``other`` — the computation for a caller's today far from the server's — says for that day.
+
+    The result itself is for the server's today; this block only answers "on that day, had it
+    passed, and when was the send-by date?" (a hypothetical must never make a live deadline look
+    missed). The due date is repeated only when that day changes it (a letter counting from "today").
+    """
+    if other is None or day is None:
+        return None
+    due = other.due_date
+    return {
+        "today": day.isoformat(),
+        "due_date": due if due != receipt.due_date else None,
+        "send_by": other.send_by,
+        "passed": date.fromisoformat(due) < day if due else None,
+    }
 
 
 def arrival_warnings(
@@ -668,25 +770,54 @@ def partial_holidays(region: str, start: date, end: date) -> list[tuple[date, st
     )
 
 
-def partial_holiday_warnings(receipt: ComputationReceipt, region: str | None) -> list[str]:
-    """A warning for each partial holiday of ``region`` from the send-by or safe date to the due date.
+def partial_holiday_warnings(spec: DateSpec, receipt: ComputationReceipt, region: str | None) -> list[str]:
+    """A warning for each holiday of only part of ``region`` that could move a date shown.
 
-    Those are the days a date counted back from the deadline passes over (and the due date itself);
-    see :data:`PARTIAL_HOLIDAYS_NOTE`.
+    Those holidays are not in the calendar (:data:`PARTIAL_HOLIDAYS_NOTE`). Where one holds, a date
+    counted back over it is a working day early there — too late: a send-by or safe date counted
+    back from the due date, a period counted backwards in working days (negative ``amount``), and a
+    safe date when the deadline itself falls on one (it never moves). A due date on one that moves
+    to the next working day is only later there. Each warning names that holiday and where it
+    holds, and which date it moves.
     """
+    from ordnung.rules.calendar_de import add_business_days, add_werktage
+
+    if region not in PARTIAL_HOLIDAYS or receipt.due_date is None:
+        return []
+    due = date.fromisoformat(receipt.due_date)
+    fixed = receipt.safe_date is not None  # the deadline never moves: notice periods, periods counted back
+    found: list[str] = []
+    back = [date.fromisoformat(d) for d in (receipt.send_by, receipt.safe_date) if d]
+    if back:
+        for day, name in partial_holidays(region, min(back), due - timedelta(days=1)):
+            found.append(_partial(day, name, region, "the send-by or safe date, counted back over it, is"))
+    counted_back = spec.type == "relative" and spec.amount is not None and spec.amount < 0
+    if counted_back and spec.amount is not None and spec.unit in ("business_days", "werktage"):
+        count = add_werktage if spec.unit == "werktage" else add_business_days
+        end = count(due, -spec.amount, region)
+        for day, name in partial_holidays(region, due + timedelta(days=1), end):
+            found.append(_partial(day, name, region, "this date, counted backwards over it, is"))
+    for day, name in partial_holidays(region, due, due):
+        if fixed:
+            found.append(
+                _partial(day, name, region, "this deadline does not move off it, so the safe date is")
+            )
+        elif SHIFT_RULES & set(receipt.rule_ids):
+            found.append(_partial(day, name, region, None))
+    return found
+
+
+def _partial(day: date, name: str, region: str, earlier: str | None) -> str:
+    """One partial-holiday warning: ``earlier`` names the date that is a working day earlier there,
+    ``None`` says the due date moves a working day later there."""
     from ordnung.rules.calendar_de import REGION_NAMES
     from ordnung.rules.explain import fmt_date
 
-    if region is None or receipt.due_date is None:
-        return []
-    days = [date.fromisoformat(d) for d in (receipt.send_by, receipt.safe_date, receipt.due_date) if d]
-    return [
-        f"{fmt_date(day)} is {name}, a public holiday only in parts of {REGION_NAMES[region]} "
-        f"({PARTIAL_HOLIDAYS[region]}), which is not counted here. Where it is a holiday, the due date "
-        "may be a working day later, but a send-by or safe date counted back over it comes out a day "
-        "late: act a working day earlier to be safe."
-        for day, name in partial_holidays(region, min(days), max(days))
-    ]
+    place = PARTIAL_HOLIDAY_PLACES.get(region, {}).get(name, f"parts of {REGION_NAMES[region]}")
+    start = f"{fmt_date(day)} is {name}, a public holiday only in {place}, which is not counted here. Where it holds, "
+    if earlier is None:
+        return start + "the due date moves to the next working day; the date shown is the earlier one."
+    return start + f"{earlier} a working day earlier: act a working day before it to be safe."
 
 
 def _today_warning(given: date | None, server_day: date, *, pinned: bool) -> list[str]:
@@ -705,9 +836,9 @@ def _today_warning(given: date | None, server_day: date, *, pinned: bool) -> lis
         return []
     return [
         f"The today given ({fmt_date(given)}) is {gap} days {'after' if given > server_day else 'before'} "
-        f"this server's today ({fmt_date(server_day)}), and the dates were computed for it. If it is not "
-        "really today, whether the deadline has passed and the send-by date are wrong: leave today out "
-        "to use the server's."
+        f"this server's today ({fmt_date(server_day)}). The result is for the server's today — whether the "
+        "deadline has passed and the send-by date included; for_today_given shows them for the day given. "
+        "Leave today out unless you mean another day."
     ]
 
 
@@ -761,22 +892,22 @@ def deadline_hints(
             hints.append("Set spec.anchor_date to the day the period runs from.")
     if counted_from_arrival:
         hints.append(
-            "If the letter is from an authority after all, pass its kind (authority, tax_office, "
-            "immigration_office …): its deemed-delivery rule then applies."
+            "If the letter is an authority's decision after all, pass its kind (authority, tax_office, "
+            "immigration_office …) or the remedy_type it names (widerspruch, einspruch, klage): its "
+            "deemed-delivery rule then applies."
         )
     elif (
         spec.type == "relative"
         and scope is None
-        and not sender_kind
+        and sender_kind in (None, "other")
         and (delivered or spec.anchor == "deemed_delivery")
     ):
         hints.append(
-            "Pass sender_kind (tax_office, authority, immigration_office, health_insurer, university …) "
-            "and sender_name so the right delivery law applies; without them the earliest plausible "
-            "date is used."
+            "Pass sender_kind (tax_office, authority, immigration_office, health_insurer, university, or "
+            "company, landlord …) and sender_name so the right delivery law applies; without them the "
+            "earliest plausible date is used."
         )
-    not_an_authority = sender_kind is not None and scope is None
-    if region is None and LAND_DAYS_RULE in receipt.rule_ids and not not_an_authority:
+    if region is None and LAND_DAYS_RULE in receipt.rule_ids:
         hints.append(
             "Pass region — the Land of the authority: where its own law is confirmed to use the 4-day "
             "rule (e.g. NW or BY), the letter counts as delivered a day later, and so may the deadline."
@@ -792,12 +923,13 @@ def deadline_hints(
             "delivery day and the deadline a day later."
         )
     if _warned(receipt, REGION_UNKNOWN_WARNING, start=True):
+        way = "earlier" if _warned(receipt, REGION_EARLIER_WARNING) else "later"
         if spec.nature == "payment" and scope is None:  # the engine's place_region: the payer's Land
             if recipient_region is None:
                 hints.append(
                     "Pass recipient_region — the Land where the payer lives: a payment to a company or "
                     "person is made there (§§ 269, 270 Abs. 4 BGB), so its holidays apply, not region's. "
-                    "A regional holiday may make this date later."
+                    f"A regional holiday may make this date {way}."
                 )
         elif region is None:
             both = scope == "ao" and recipient_region is None
@@ -809,7 +941,7 @@ def deadline_hints(
                     if both
                     else ""
                 )
-                + ". A regional holiday may make this date later."
+                + f". A regional holiday may make this date {way}."
             )
     return hints
 
@@ -916,14 +1048,18 @@ SPEC_HELP = (
     "What the letter SAYS about the date — not a date you computed. type: fixed (a calendar date is "
     "printed: set date, YYYY-MM-DD), relative (a period: set amount, unit, anchor) or none. anchor: "
     "document_date (from the letter's date), deemed_delivery (from the day a German authority's "
-    "letter counts as delivered; set delivery_rule too), receipt (from the day it arrived), "
-    "explicit_date (from anchor_date) or today. anchor_date (YYYY-MM-DD): that start day, or a "
-    "posting day the letter states. amount: a whole number, negative for 'before'. unit: days, weeks,"
-    " months, years, business_days (Mon-Fri) or werktage (Mon-Sat). delivery_rule: de_admin_post "
-    "(posted by an authority), de_admin_electronic, de_admin_portal or none. nature: objection, "
-    "payment, declaration, notice (giving notice on a contract), appointment or other. shift_rule: "
-    "auto (decided by nature), none or next_business_day. legal_basis and text: the statute and the "
-    "sentence as printed."
+    "letter sent by ordinary post or electronically counts as delivered; set delivery_rule too), "
+    "receipt (from the day it arrived or was served), explicit_date (from anchor_date) or today. "
+    "anchor_date (YYYY-MM-DD): that start day, or a posting day the letter states. A letter formally "
+    "served — a yellow envelope (Postzustellungsurkunde), 'Zustellung', 'zugestellt am' — has no "
+    "deemed delivery: use anchor receipt, anchor_date = the date written on the envelope (or stated "
+    "as served), delivery_rule none. amount: a whole number, negative for 'before'. unit: days, "
+    "weeks, months, years, business_days (Mon-Fri) or werktage (Mon-Sat). delivery_rule: "
+    "de_admin_post (posted by an authority), de_admin_electronic, de_admin_portal or none. nature: "
+    "objection, payment, declaration, notice (giving notice on a contract), appointment or other. "
+    "shift_rule: auto (decided by nature), none or next_business_day. legal_basis and text: the "
+    "statute and the sentence as printed; an Anhörungsbogen's reply date is a request, not a legal "
+    "deadline: put 'Anhörungsbogen' in legal_basis and the result says so."
 )
 OptionalDate = Annotated[str | None, Field(description="A date written YYYY-MM-DD, or null")]
 RegionArg = Annotated[
@@ -953,7 +1089,8 @@ def tool_functions(rules: RulesTools) -> list[Callable[..., str]]:
         sender_kind: Annotated[
             PartyKind | None,
             Field(
-                description="Who sent it: tax_office, authority, immigration_office, health_insurer … or null"
+                description="Who sent it: tax_office, authority, immigration_office, health_insurer, "
+                "company, landlord … (a company's letter has no deemed delivery), or null if unknown"
             ),
         ] = None,
         sender_name: Annotated[
@@ -971,7 +1108,7 @@ def tool_functions(rules: RulesTools) -> list[Callable[..., str]]:
             Field(
                 description="The Land whose public holidays apply where the deadline is met: the "
                 "authority's or company's seat (a code such as NW, or its name); null = nationwide "
-                "holidays only, the earliest date"
+                "holidays only, and the warnings say when a Land's holiday could move the date"
             ),
         ] = None,
         recipient_region: Annotated[
@@ -988,7 +1125,14 @@ def tool_functions(rules: RulesTools) -> list[Callable[..., str]]:
                 "not after today); null if unknown"
             ),
         ] = None,
-        today: Annotated[str | None, Field(description="Today (YYYY-MM-DD); null = today")] = None,
+        today: Annotated[
+            str | None,
+            Field(
+                description="Leave null: the server knows today's date in Germany. Pass a date "
+                "(YYYY-MM-DD) only to ask about another day; the result stays for the real today and "
+                "for_today_given adds that day's view"
+            ),
+        ] = None,
     ) -> str:
         """Compute a German deadline with Ordnung's tested rules engine: deemed delivery of authority
         letters (tax, administrative and social law: 4 days for items posted since 2025, 3 where a
@@ -996,7 +1140,7 @@ def tool_functions(rules: RulesTools) -> list[Callable[..., str]]:
         shifts, working days and a send-by date. Give it what the letter says (spec) plus the
         letter's date and sender; it returns the due date with every step, the rules and citations,
         warnings, a confidence and hints for missing facts. Where the facts leave room it returns the
-        earliest plausible date, and its warnings say when the real one may be later. Information,
+        earliest plausible date, and its warnings say when the real one may differ. Information,
         not legal advice."""
         return answer(
             lambda: rules.compute_deadline(
@@ -1081,9 +1225,12 @@ def _strict_tool_class() -> type[Tool]:
     return StrictTool
 
 
-def rules_tools(*, today: Callable[[], date] | None = None, pin_today: bool = False) -> list[Tool]:
+def rules_tools(
+    *, today: Callable[[], date] | None = None, pin_today: bool = False, with_ledger: bool = False
+) -> list[Tool]:
     """The rules tools (read-only, no data) as MCP tools; ``today`` is their default today, and
-    ``pin_today`` makes it the only one (a caller's ``today`` is not used)."""
+    ``pin_today`` makes it the only one (a caller's ``today`` is not used). ``with_ledger`` (the full
+    server) adds :data:`WITH_LEDGER_NOTE` to ``compute_deadline``'s description."""
     from mcp.server.mcpserver.utilities.func_metadata import ArgModelBase
     from mcp.types import ToolAnnotations
 
@@ -1092,8 +1239,11 @@ def rules_tools(*, today: Callable[[], date] | None = None, pin_today: bool = Fa
     )
     tools = []
     for fn in tool_functions(RulesTools(today=today, pin_today=pin_today)):
+        description = _description(fn)
+        if with_ledger and fn.__name__ == "compute_deadline":
+            description = f"{description} {WITH_LEDGER_NOTE}"
         tool = _strict_tool_class().from_function(
-            fn, name=fn.__name__, description=_description(fn), annotations=read_only, structured_output=False
+            fn, name=fn.__name__, description=description, annotations=read_only, structured_output=False
         )
         base = tool.fn_metadata.arg_model
         strict: type[ArgModelBase] = type(

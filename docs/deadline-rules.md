@@ -47,7 +47,7 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 
 | Uncertainty | What Ordnung does |
 |---|---|
-| Holiday region of the sender unknown | Uses only nationwide holidays (a regional holiday could only make the deadline *later*). |
+| Holiday region of the sender unknown | Uses only nationwide holidays: counted forward, a regional holiday could only make the deadline *later*. Counted back — a period before an event, the safe date of a deadline that never moves — one could make it *earlier* there: flagged (`medium`), "act a working day before it". |
 | Payment to a company or person, payer's Land unknown | Uses only nationwide holidays (money is owed at the payer's home, §§ 269, 270 Abs. 4 BGB). |
 | Posting day unknown | Uses the date printed on the letter (the real posting day can only be the same or later). |
 | Letter arrived later than the deemed delivery day | Keeps the earlier deadline; shows the later one as "only if you can show it" (keep the envelope). |
@@ -58,6 +58,7 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 | Implausible period (over 100 years) or a date at the end of the calendar | No date, `low` confidence, "please check" — never an error that stops the document. |
 | Arrival day of a letter needed but not confirmed | Uses the letter's date and asks when it really arrived (`low` confidence). |
 | Kind of sender (procedural law) unknown | 3rd/4th-day rule **without** the weekend shift; 3 days unless the Land is known to use 4 (portal: the day after it was made available). |
+| Letter from a company, landlord, bank or other private sender | No deemed delivery — it is a rule for authorities' letters: the period runs from the day the letter arrived (§ 130 Abs. 1 BGB), the letter's date until the person says when (`low`). A sender filed as private whose letter names an *Einspruch*, *Widerspruch* or *Klage* (or a remedy statute) keeps the deemed delivery, and so does an unknown sender (kind `other`). |
 | Letter's period differs from the statute (e.g. "6 weeks" for a tax objection) | Computes both and uses the earlier date. |
 | Notice period missing from a contract | Assumes the longest notice the law allows (earliest deadline). |
 | Notice deadline on a weekend/holiday | No shift (BGH III ZR 172/04) + a `safe_date` on the working day before. |
@@ -71,7 +72,7 @@ further lowers confidence for quote problems (quote not found, digits not matchi
 | Anchor date stated in the document or confirmed by the user | anchor missing; arrival date assumed | hard → `low` |
 | Anchor date stated in the document | "today" read as the letter's date | soft |
 | Rule known and its scope verified | unknown sender type; channel assumed; letter's period ≠ statute; Land not confirmed for the 4-day rule; *Anhörungsbogen*; fine counted from the letter date; court action (*Klage*: "get advice") | soft |
-| Holiday region known | region unknown **and** a regional holiday could change this result | soft |
+| Holiday region known | region unknown **and** a regional holiday could change this result (counted forward: the days counted or the end; counted back: the days counted back or the safe date) | soft |
 
 `high` only if every criterion holds; one soft failure → `medium`; two soft failures or any hard
 failure → `low`. The reasons are listed in `warnings` in plain English.
@@ -90,7 +91,8 @@ failure → `low`. The reasons are listed in `warnings` in plain English.
   Fronleichnam, Allerheiligen, Reformationstag, Buß- und Bettag, Frauentag in Berlin) count **only
   when the region is known**. 24 and 31 December are **not** public holidays (BFH III B 135/17), nor
   is Rosenmontag. Municipal holidays (Augsburg, Mariä Himmelfahrt in parts of Bavaria) are not used,
-  which again can only make a date earlier.
+  which can only make a date counted forward earlier; a date counted back over one can come out a day
+  late, so the rules tools name such a holiday where a send-by, safe or backward date passes it.
 - **Whose holidays?** Those at the place where the declaration must be received — the seat of the
   authority, court or company (BAG 8 AZN 808/11, BGH VI ZA 27/11), i.e. `Party.region`. A **payment**
   to a company or person is owed at the payer's home (§§ 269, 270 Abs. 4 BGB), so § 193 BGB uses the
@@ -486,7 +488,7 @@ enforces that every id used by the engine exists here).
 | `ao_fiction_shift` | Tax delivery day moves off weekends | BFH IX R 68/98; AEAO zu § 108 Nr. 2 | — | [dejure.org](https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BFH&Datum=14.10.2003&Aktenzeichen=IX+R+68/98) |
 | `vwvfg_41_2` / `vwvfg_41_2a` / `vwvfg_land_days` | Authorities: 4th day, no shift / portal / Länder | § 41 Abs. 2, 2a VwVfG and Länder VwVfGs | 2025-01-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/vwvfg/__41.html) |
 | `sgbx_37_2` / `sgbx_37_2a` | Social law: 4th day, no shift / portal | § 37 Abs. 2, 2a SGB X; BSG B 14 AS 12/09 R | 2025-01-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/sgb_10/__37.html) |
-| `posting_day`, `early_receipt`, `late_receipt`, `pzu`, `delivery_scope_unknown` | Posting day, early/late arrival, yellow envelope, unknown sender | § 122 AO; § 41 VwVfG; § 37 SGB X; BFH X R 96/98; BFH VI R 18/22; § 3 VwZG | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/vwzg_2005/__3.html) |
+| `posting_day`, `early_receipt`, `late_receipt`, `pzu`, `delivery_scope_unknown`, `private_sender_arrival` | Posting day, early/late arrival, yellow envelope, unknown sender, private sender (from arrival) | § 122 AO; § 41 VwVfG; § 37 SGB X; BFH X R 96/98; BFH VI R 18/22; § 3 VwZG; § 130 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/vwzg_2005/__3.html) |
 | `ao_355`, `vwgo_70`, `sgg_84`, `owig_67`, `stpo_410`, `klage_1_month`, `owig_55`, `rbb_one_year` | Remedies (section 6) | see section 6 | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/ao_1977/__355.html) |
 | `bgb_309_9_new` / `bgb_309_9_old` | Consumer contracts | § 309 Nr. 9 BGB; Art. 229 § 60 EGBGB | 2022-03-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__309.html) |
 | `tkg_56` / `tkg_57` | Telecom term / price changes | §§ 56, 57 TKG | 2021-12-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/tkg_2021/__56.html) |

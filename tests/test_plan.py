@@ -210,6 +210,24 @@ def test_rule_context_from_party_and_document(store: Store) -> None:
     assert fallback.delivery_scope == "sgbx" and fallback.region is None and not fallback.received_confirmed
 
 
+def test_rule_context_marks_a_private_sender_but_not_an_unknown_one(store: Store) -> None:
+    """A company's letter has no deemed delivery (the engine counts it from arrival); a party of kind
+    ``other`` is the app's "don't know" and keeps the earliest plausible deemed delivery; a sender filed
+    as an insurer whose letter names a Widerspruch is an authority's decision."""
+    document = store.add_document(sha256="f" * 64, filename="x", mime="application/pdf", file_path="x")
+    company = store.add_party(name="Muster GmbH", kind="company")
+    assert rule_context(company, document, extraction([]), date(2026, 9, 25)).private_sender is True
+    unknown = store.add_party(name="Stadt Musterstadt")  # kind "other" by default
+    assert rule_context(unknown, document, extraction([]), date(2026, 9, 25)).private_sender is False
+    misfiled = rule_context(
+        None,
+        document,
+        extraction([], sender={"name": "AOK Nordost", "kind": "insurer"}, remedy={"type": "widerspruch"}),
+        date(2026, 9, 25),
+    )
+    assert misfiled.private_sender is False and misfiled.delivery_scope is None
+
+
 def test_rule_context_recognises_social_law_senders_filed_as_authority(store: Store) -> None:
     """Benchmark finding: job centres and pension insurers are read as a plain ``authority``, which
     applied the VwVfG (and a Land's 3-day rule) instead of § 37 SGB X."""

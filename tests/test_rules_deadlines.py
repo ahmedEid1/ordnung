@@ -19,9 +19,11 @@ import pytest
 from ordnung.models import DateSpec
 from ordnung.rules.deadlines import (
     ASSUMED_RECEIPT_WARNING,
+    PRIVATE_SENDER_WARNING,
     RuleContext,
     compute_due,
     compute_one_year_fallback,
+    from_arrival,
     parse_date,
     statute_rule,
 )
@@ -964,3 +966,118 @@ def test_a_delivery_date_stated_on_the_letter_is_the_anchor_for_a_fine() -> None
     # a stated date earlier than the letter itself can't be a delivery date: fall back to the safe start
     earlier = spec.model_copy(update={"anchor_date": "2026-09-10"})
     assert compute_due(earlier, ctx).due_date == "2026-09-28"
+
+
+# ------------------------------------------------------------------ private senders: no deemed delivery
+
+
+def test_a_private_senders_letter_counts_from_its_arrival() -> None:
+    """Deemed delivery is a rule for authorities: a company's "14 days after delivery" runs from the day
+    the letter arrived (§ 130 BGB) — the letter's date until the person says when, never 3 days later."""
+    spec = notice_spec(amount=14, unit="days", nature="payment")
+    company = compute_due(spec, ctx(document_date="2026-09-01", private_sender=True))
+    assert company.due_date == "2026-09-15" and company.confidence == "low"  # not Fri 18 Sep
+    assert "posting_day" not in company.rule_ids and "private_sender_arrival" in company.rule_ids
+    assert company.warnings[:2] == [PRIVATE_SENDER_WARNING, ASSUMED_RECEIPT_WARNING]
+    assert company.steps[0].label == (
+        "Not an authority's letter, so no delivery days: the period runs from the letter's date (Tue 1 Sep 2026)"
+    )
+    arrived = compute_due(
+        spec,
+        ctx(
+            document_date="2026-09-01",
+            received_date="2026-09-04",
+            received_confirmed=True,
+            private_sender=True,
+        ),
+    )
+    assert arrived.due_date == "2026-09-18" and arrived.confidence == "high"
+    assert "the day you received it (Fri 4 Sep 2026)" in arrived.steps[0].label
+    # the same letter from an unknown sender keeps the earliest plausible deemed delivery
+    assert compute_due(spec, ctx(document_date="2026-09-01")).due_date == "2026-09-18"
+
+
+def test_a_private_sender_drops_a_delivery_rule_on_the_letters_date() -> None:
+    spec = notice_spec(anchor="document_date", amount=14, unit="days", nature="payment")
+    receipt = compute_due(spec, ctx(document_date="2026-09-01", private_sender=True))
+    assert receipt.due_date == "2026-09-15" and PRIVATE_SENDER_WARNING in receipt.warnings
+    assert receipt.confidence == "high"  # the letter's own date, nothing assumed
+
+
+def test_a_remedy_statute_keeps_deemed_delivery_for_a_sender_filed_as_private() -> None:
+    """A letter naming § 70 VwGO is an authority's decision, whatever its sender was filed as."""
+    spec = notice_spec(legal_basis="§ 70 VwGO")
+    receipt = compute_due(spec, ctx(document_date="2026-09-01", private_sender=True))
+    assert "posting_day" in receipt.rule_ids and PRIVATE_SENDER_WARNING not in receipt.warnings
+    assert from_arrival(spec, ctx(private_sender=True)) is spec
+
+
+def test_from_arrival_leaves_other_specs_alone() -> None:
+    private = ctx(private_sender=True)
+    for spec in (
+        DateSpec(type="fixed", date="2026-10-01", delivery_rule="de_admin_post", anchor="document_date"),
+        DateSpec(type="relative", anchor="receipt", amount=14, unit="days"),
+        DateSpec(type="relative", anchor="document_date", amount=14, unit="days"),
+        notice_spec(),  # not a private sender
+    ):
+        context = ctx() if spec.anchor == "deemed_delivery" else private
+        assert from_arrival(spec, context) is spec
+    missing = compute_due(notice_spec(), ctx(private_sender=True))  # no date to count from at all
+    assert missing.due_date is None and PRIVATE_SENDER_WARNING in missing.warnings
+
+
+# ------------------------------------------------ region unknown: dates counted back can be too late
+
+
+def test_a_backward_count_over_a_regional_holiday_is_flagged_earlier() -> None:
+    """5 working days before Wed 5 Nov 2025 is Tue 28 Oct with nationwide holidays — but Mon 27 Oct in
+    the nine Länder where Fri 31 Oct is Reformationstag: the date shown would be a day late there."""
+    spec = DateSpec(
+        type="relative",
+        anchor="explicit_date",
+        anchor_date="2025-11-05",
+        amount=-5,
+        unit="business_days",
+        nature="declaration",
+    )
+    unknown = compute_due(spec, ctx(today=D("2025-10-01")))
+    assert unknown.due_date == "2025-10-28" and unknown.confidence == "medium"
+    assert unknown.warnings == [
+        "Holiday region unknown — Fri 31 Oct 2025 is a public holiday in some Länder (e.g. Brandenburg, Bremen, "
+        "Hamburg), where the deadline would be earlier — act a working day before it to be safe. We used "
+        "nationwide holidays only."
+    ]
+    lower_saxony = compute_due(spec, ctx(today=D("2025-10-01"), region="NI"))
+    assert lower_saxony.due_date == "2025-10-27" and lower_saxony.confidence == "high"
+    # Werktage count Saturdays: the holiday still counts; a span without one is not flagged
+    werktage = compute_due(spec.model_copy(update={"unit": "werktage"}), ctx(today=D("2025-10-01")))
+    assert werktage.confidence == "medium"
+    quiet = compute_due(spec.model_copy(update={"anchor_date": "2025-09-20"}), ctx(today=D("2025-08-01")))
+    assert quiet.confidence == "high" and quiet.warnings == []
+
+
+def test_a_safe_date_on_a_regional_holiday_is_flagged_earlier() -> None:
+    """A notice deadline never moves: on Reformationstag its safe date is the Thursday before there."""
+    fixed = compute_due(
+        DateSpec(type="fixed", date="2025-10-31", nature="notice"), ctx(today=D("2025-10-01"))
+    )
+    assert fixed.safe_date == "2025-10-31" and fixed.confidence == "medium"
+    assert "where the deadline would be earlier" in fixed.warnings[0]
+    assert (
+        compute_due(
+            DateSpec(type="fixed", date="2025-10-31", nature="notice"),
+            ctx(today=D("2025-10-01"), region="NW"),
+        ).warnings
+        == []
+    )  # not a holiday there
+    backward = DateSpec(
+        type="relative",
+        anchor="explicit_date",
+        anchor_date="2025-12-01",
+        amount=-1,
+        unit="months",
+        nature="payment",
+    )
+    receipt = compute_due(backward, ctx(today=D("2025-10-01")))  # one month before: Fri 31 Oct
+    assert receipt.due_date == "2025-10-31" and receipt.confidence == "medium"
+    assert "where the deadline would be earlier" in receipt.warnings[0]

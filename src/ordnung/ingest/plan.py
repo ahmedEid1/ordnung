@@ -59,7 +59,7 @@ from ordnung.recurrence import (
     same_rule,
     same_schedule,
 )
-from ordnung.rules import RuleContext, compute_due, scope_for_party_kind
+from ordnung.rules import RuleContext, compute_due, is_private_sender, scope_for_party_kind
 from ordnung.rules.deadlines import parse_date
 from ordnung.secretary.scam import iban_from_page, iban_valid, normalize_iban
 
@@ -263,12 +263,21 @@ def rule_context(
     Land they chose) and ``country`` their ``Profile.country`` (non-German → ``low`` confidence, as
     for contracts). The delivery scope follows the sender's kind, name and remedy notice (tax office →
     AO, health insurer or social-benefits agency → SGB X, other authorities → VwVfG; see
-    :func:`ordnung.rules.scope_for_party_kind`). A received date on the document was entered by the person, so
+    :func:`ordnung.rules.scope_for_party_kind`); a sender of a private kind (a company, a landlord, a
+    bank …) whose letter names no administrative remedy has no deemed delivery at all
+    (:func:`ordnung.rules.is_private_sender`). A received date on the document was entered by the person, so
     it counts as confirmed.
     """
     sender = extraction.sender
     kind = party.kind if party else (sender.kind if sender else None)
     remedy = extraction.remedy
+    remedy_type = remedy.type if remedy else None
+    scope = scope_for_party_kind(
+        kind,
+        name=party.name if party else (sender.name if sender else None),
+        remedy_type=remedy_type,
+        remedy_text=remedy_text(remedy),
+    )
     return RuleContext(
         today=today,
         country=country,
@@ -276,13 +285,9 @@ def rule_context(
         document_date=parse_date(extraction.document_date),
         received_date=parse_date(document.received_date),
         received_confirmed=document.received_date is not None,
-        delivery_scope=scope_for_party_kind(
-            kind,
-            name=party.name if party else (sender.name if sender else None),
-            remedy_type=remedy.type if remedy else None,
-            remedy_text=remedy_text(remedy),
-        ),
+        delivery_scope=scope,
         recipient_region=recipient_region,
+        private_sender=is_private_sender(kind, scope=scope, remedy_type=remedy_type),
     )
 
 

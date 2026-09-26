@@ -291,26 +291,35 @@ the extractor's `DateSpec` (validated strictly: unknown keys are refused, every 
 `YYYY-MM-DD`, `true` is no number) → the rules engine's date with steps, rule ids, citations,
 warnings, confidence and hints naming a missing argument (never one that was given; for a holiday
 region the one the engine reads: `recipient_region` for a payment to a company or person, else
-`region`), and `assumed` (today, letter date, the arrival day used and where it came from, the
-delivery law, the holiday calendar and which argument's Land it follows). The day a period runs
+`region`), and `assumed` (today, letter date, the arrival day the period ran from and where it came from — none
+when it did not run from one — an arrival day given but not used, the delivery law, the holiday
+calendar and which argument's Land it follows). The day a period runs
 from is checked: when it runs from arrival, the day used — a delivery day the letter states
 (`spec.anchor_date` not before the letter's date) or `received_date` — after today is refused, and
 one before the letter's date or more than 14 days after it gets a warning and one level less
 confidence; an arrival day the engine did not use is named. A letter dated after today gets a
-warning and one level less confidence. A sender named as no authority gets no deemed delivery (the
-period counts from arrival, at the earliest the letter's date). A holiday of only part of a Land
-(BY, SN, TH) between the send-by or safe date and the due date is named. `german_holidays(year, region?)`;
+warning and one level less confidence. Whether the sender has deemed delivery at all is the
+engine's rule, as in the app (a private sender's letter counts from its arrival; an unknown one,
+`other` included, keeps the earliest plausible deemed delivery). The spec help says how to pass a
+formally served letter (yellow envelope: `anchor: receipt`, the envelope's date), and a result that
+applied deemed delivery to a posted letter says it would not apply then. A holiday of only part of a
+Land (BY, SN, TH) that a date is counted back over — a send-by or safe date, a period counted
+backwards in working days, the safe date of a deadline on it — is named, with where it holds. `german_holidays(year, region?)`;
 `add_working_days(start, days, day_type, region?)`; `check_iban(iban)` (a printed `IBAN:` label and
 invisible characters ignored; country from the full SWIFT registry — any other two letters are not
 an IBAN — registered length, mod-97, bank code where the format shows it; pure code in
 `money/iban.py`). Unknown tool arguments are refused and argument errors are plain words. "Today" is
-the server's (`ORDNUNG_TODAY`, else the date in Germany); a caller's `today` replaces it, with a
-warning when more than a day apart, except on a server started pinned (`ORDNUNG_PIN_TODAY=1`, as
-the benchmark starts it), which does not use it. Every result carries "Information, not legal
-advice". The full server serves them next to the ledger tools (counting from the ledger's
-day) — except Ask's own server (`--ledger-only`): Ask quotes stored receipts and never computes a
-date, and its fact check would otherwise accept any date a rules tool echoed; `ordnung mcp
---rules-only` serves only them — no data folder, nothing personal.
+the server's (`ORDNUNG_TODAY`, else the date in Germany): a result — whether a deadline has passed,
+its send-by date — is always for it; a caller's `today` within a day of it is used (a time zone
+apart), one further off only adds `for_today_given` (that day's send-by date and whether it had
+passed) and a warning, and a server started pinned (`ORDNUNG_PIN_TODAY=1`, as the benchmark starts
+it) does not use it at all. Every result carries "Information, not legal advice". The full server
+serves them next to the ledger tools (counting from the ledger's day), and its instructions and
+`compute_deadline`'s description say that a letter in the ledger keeps its stored date (quoted from
+`list_items`/`explain_date`, which may rest on a confirmed arrival day or a corrected sender) —
+except Ask's own server (`--ledger-only`): Ask quotes stored receipts and never computes a date,
+and its fact check would otherwise accept any date a rules tool echoed; `ordnung mcp --rules-only`
+serves only them — no data folder, nothing personal.
 
 **Other clients** (`assistant/mcp_install.py`). `ordnung mcp install --client claude-desktop|
 claude-code [--rules-only|--with-ledger] [--data-dir D] [--config PATH] [--write]` adds the rules
@@ -552,12 +561,19 @@ user-confirmed arrival date; until then fall back to the document date with `low
 
 **Holidays.** Weekend + nationwide holidays always count. Regional holidays count only when the
 region of the place of performance is known: `Party.region` (user-set or from the party's postcode
-when unambiguous) — otherwise they are ignored (earlier date). Receipts state which calendar was used.
+when unambiguous) — otherwise they are ignored (earlier date). A date counted *back* over a regional
+holiday (a period before an event, the safe date of a deadline that never moves) could be earlier
+where it holds: with the region unknown that is flagged (`medium`, "act a working day before it").
+Receipts state which calendar was used.
 
 **Deemed delivery.** Day count by scope in `catalog.py` with `verified_on`: tax (AO § 122) and
 federal authorities (VwVfG § 41) and social law (SGB X § 37) = 4 days for items posted from
 2025-01-01; Land authorities (Land VwVfG) use the verified value per Land where known, otherwise the
-conservative earlier count (3 days) with `medium` confidence.
+conservative earlier count (3 days) with `medium` confidence. It is a rule for authorities only: a
+sender of a private kind (company, landlord, bank, insurer …; `rules.is_private_sender`) whose letter
+names no *Einspruch*, *Widerspruch*, *Klage* or remedy statute gets none — its period runs from the
+day the letter arrived (§ 130 BGB; the letter's date until the person confirms the day, `low`). An
+unknown sender (kind `other`) keeps the earliest plausible deemed delivery.
 
 **Contracts — regimes.** `compute_contract` dispatches on `regime` derived by code from category,
 party kind and dates: `bgb309_new` (consumer, concluded ≥ 2022-03-01: min term ≤ 24 months; after

@@ -657,13 +657,16 @@ def build_server(store: Store, *, today: date | None = None, rules_tools: bool =
     from mcp.server.mcpserver.exceptions import ToolError
     from mcp.types import ToolAnnotations
 
+    from ordnung.assistant.rules_tools import WITH_LEDGER_INSTRUCTIONS
     from ordnung.assistant.rules_tools import rules_tools as rules_tools_for
     from ordnung.ingest.extract import wrap_untrusted
 
     tools = LedgerTools(store, today=today)
-    # The ledger-free rules tools (compute_deadline, german_holidays, …), counting from the ledger's day.
-    extra = rules_tools_for(today=tools.current_day) if rules_tools else None
-    server: MCPServer = MCPServer(SERVER_NAME, instructions=INSTRUCTIONS, log_level="WARNING", tools=extra)
+    # The ledger-free rules tools (compute_deadline, german_holidays, …), counting from the ledger's day;
+    # for a letter in the ledger the stored date wins (WITH_LEDGER_INSTRUCTIONS).
+    extra = rules_tools_for(today=tools.current_day, with_ledger=True) if rules_tools else None
+    instructions = f"{INSTRUCTIONS} {WITH_LEDGER_INSTRUCTIONS}" if rules_tools else INSTRUCTIONS
+    server: MCPServer = MCPServer(SERVER_NAME, instructions=instructions, log_level="WARNING", tools=extra)
     read_only = ToolAnnotations(
         read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False
     )

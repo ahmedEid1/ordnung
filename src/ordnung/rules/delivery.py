@@ -99,6 +99,29 @@ _SOCIAL_REMEDY = re.compile(r"sozialgericht|\bSGG\b|\bSGB\b", re.IGNORECASE)
 #: BKGG, e.g. Kinderzuschlag (social law: *Widerspruch*, SGB X); the remedy tells them apart.
 _FAMILY_BENEFITS_OFFICE = re.compile(r"familienkasse", re.IGNORECASE)
 
+#: Party kinds that are never a German authority. ``other`` (the kind of an unknown sender) is not
+#: one of them, nor are the kinds with a delivery law.
+PRIVATE_KINDS: frozenset[str] = frozenset(
+    {
+        "insurer",
+        "bank",
+        "landlord",
+        "employer",
+        "utility",
+        "telecom",
+        "retailer",
+        "doctor",
+        "gym",
+        "transport",
+        "person",
+        "company",
+    }
+)
+
+#: Remedies against an administrative act: a letter that names one is an authority's decision,
+#: whatever its sender was filed as (a statutory health insurer filed as ``insurer``).
+_ADMINISTRATIVE_REMEDIES = frozenset({"einspruch", "widerspruch", "klage"})
+
 
 def scope_for_party_kind(
     kind: str | None,
@@ -124,6 +147,21 @@ def scope_for_party_kind(
         if _SOCIAL_SENDER.search(sender) or _SOCIAL_REMEDY.search(remedy_text or ""):
             return "sgbx"
     return _SCOPE_BY_PARTY_KIND.get(kind) if kind else None
+
+
+def is_private_sender(
+    kind: str | None, *, scope: DeliveryScope | None, remedy_type: str | None = None
+) -> bool:
+    """Whether a letter's sender is known not to be a German authority, so no deemed delivery applies.
+
+    Deemed delivery (§ 122 AO, § 41 VwVfG, § 37 SGB X) is a rule for authorities' letters; a letter
+    from a company, a landlord or a bank takes effect when it arrives (§ 130 Abs. 1 BGB). True only
+    for a :data:`PRIVATE_KINDS` sender that ``scope`` (:func:`scope_for_party_kind`, from its kind,
+    name and remedy notice) does not make an authority and whose letter names no administrative
+    remedy (*Einspruch*, *Widerspruch*, *Klage*). An unknown sender (``None``, ``other``) is not
+    known to be private: it keeps the earliest plausible deemed delivery.
+    """
+    return scope is None and kind in PRIVATE_KINDS and remedy_type not in _ADMINISTRATIVE_REMEDIES
 
 
 def fiction_days(posted: date) -> int:

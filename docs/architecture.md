@@ -142,10 +142,13 @@ flowchart LR
   otherwise accept any date a rules tool echoed.
 - A model, not a person, passes the facts here, so the tools check them: an arrival day — or a
   delivery day the letter states — after today is refused, an implausible one lowers confidence, a
-  letter dated after today is flagged, and a `today` far from the server's is flagged (the
-  benchmark's server, started with `rules_server_config(today=…)`, ignores it). A sender named as
-  no authority gets no deemed delivery, and a holiday of only part of a Land (15 August in Bavaria)
-  near a send-by date is named, since counting back over it comes out a day late.
+  letter dated after today is flagged, and a result is always for the server's today — a caller's
+  `today` far from it only adds that day's view (the benchmark's server, started with
+  `rules_server_config(today=…)`, ignores it). Whether a sender has deemed delivery at all is the
+  engine's rule, so the tools and the app agree (a company's letter counts from its arrival), and a
+  holiday of only part of a Land (15 August in Bavaria) that a date is counted back over is named,
+  since that date comes out a day late where it holds. Next to the ledger, a letter in the ledger
+  keeps its stored date: the full server's instructions say so.
 - `ordnung mcp install --client claude-desktop|claude-code` adds the rules tools unless the ledger
   is asked for (`--with-ledger`, with the privacy warning first); it prints the entry and the file
   it belongs in, and `--write` merges only Ordnung's entry, backs the file up and refuses a file it
