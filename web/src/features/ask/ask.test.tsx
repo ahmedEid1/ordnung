@@ -6,7 +6,7 @@ import { citationIndex, numberCitations, parseCitations, stripAllMarkers, stripI
 import { inlineText, isInternalHref, parseInline, parseMarkdown } from "./markdown";
 import { Markdown } from "./Markdown";
 import { accumulate, accumulateAll, EMPTY_ANSWER } from "./stream";
-import { fallbackToolLabel, toolLabel, toolResultText } from "./tools";
+import { fallbackToolLabel, toolLabel, toolResultText, unbreakDates } from "./tools";
 import { formatDate } from "@/lib/format";
 import { ToolTrace } from "./ToolTrace";
 import { makeRefResolver } from "./refs";
@@ -260,6 +260,35 @@ describe("tool trace labels", () => {
     expect(within(list).getByText("Checked today's date")).toBeTruthy();
     expect(within(list).getByText(`Today is ${formatDate("2026-09-28", { style: "short", withYear: "always" })}`)).toBeTruthy();
     expect(within(list).queryByText("Today is 2026-09-28")).toBeNull();
+  });
+
+  it("keeps a step's label and result readable on a phone", () => {
+    const steps = [
+      {
+        name: "list_items",
+        input: {},
+        label: "Listed your open to-dos & dates until 2026-10-15",
+        result: "Found 8 to-dos & dates",
+        done: true,
+      },
+    ];
+    render(<ToolTrace steps={steps} live />);
+    const label = screen.getByTestId("tool-step-label");
+    // wraps below `sm` (a cut-off "until 1…" hid the date) and is truncated only from `sm` up
+    expect(label.className.split(" ")).toEqual(expect.arrayContaining(["break-words", "sm:truncate"]));
+    expect(label.className.split(" ")).not.toContain("truncate");
+    // the result is on its own line on a phone, not hidden there
+    const result = screen.getByTestId("tool-step-result");
+    expect(result.className.split(" ")).not.toContain("hidden");
+    expect(result.textContent).toBe("Found 8 to-dos & dates");
+    // a wrapped line never splits a date
+    expect(label.textContent).not.toMatch(/\d{1,2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/);
+  });
+
+  it("makes the spaces inside dates non-breaking", () => {
+    expect(unbreakDates("until 15 Oct")).toBe("until 15\u00a0Oct");
+    expect(unbreakDates("Today is Mon 28 Sep 2026 (demo date)")).toBe("Today is Mon\u00a028\u00a0Sep\u00a02026 (demo date)");
+    expect(unbreakDates("Found 8 to-dos & dates")).toBe("Found 8 to-dos & dates");
   });
 
   it("shows dates in results the way the app writes them", () => {
