@@ -157,14 +157,34 @@ export function mustAct(doc: Pick<Document, "kind">): boolean {
 }
 
 /**
- * A back-payment that may not be owed: an operating-cost statement that came after its twelve-month
- * deadline (§ 556 Abs. 3 BGB). The server marks the payment's receipt (it cites `bgb_556_3`), and the
- * letter's card is then urgent — so even an undated payment is caught. It stays open (nothing is
- * dismissed for the person), but "Pay" is no longer the main button.
+ * The person has dealt with the letter: it has to-dos, and they closed every one (done or dismissed) —
+ * objected, went to court, registered. Such a letter is filed, never "get advice now" again (the server
+ * no longer marks its card urgent either).
  */
+export function isSettled(items: Item[]): boolean {
+  return !items.some(isOpenItem) && items.some((i) => i.status === "done" || i.status === "dismissed");
+}
+
+/** Why a payment may not be owed yet (see {@link notOwedReason}). */
+export type NotOwed = "late_statement" | "consent";
+
+/**
+ * Why money the person would pay may not be owed, or null: the back-payment of an operating-cost statement
+ * that came after its twelve-month deadline (§ 556 Abs. 3 BGB; the server cites `bgb_556_3`, and the card
+ * is urgent — so even an undated one is caught; never a credit or the new monthly prepayment), or a rent
+ * increase's new rent, only owed once the person agrees (§ 558b Abs. 1 BGB; the server cites `bgb_558b`).
+ * It stays open (nothing is dismissed for the person), but "Pay" is no longer the main button.
+ */
+export function notOwedReason(i: Item, advice: DocumentDetail["advice"]): NotOwed | null {
+  if (i.kind !== "payment" || i.direction === "in") return null;
+  const cites = (rule: string) => Boolean(i.computation?.rule_ids.includes(rule));
+  if (cites("bgb_558b") || advice?.kind === "rent_increase") return "consent";
+  if (i.recurrence) return null;
+  return cites("bgb_556_3") || (advice?.kind === "operating_costs" && advice.urgent) ? "late_statement" : null;
+}
+
 export function mayNotBeOwed(i: Item, advice: DocumentDetail["advice"]): boolean {
-  if (i.kind !== "payment") return false;
-  return Boolean(i.computation?.rule_ids.includes("bgb_556_3")) || (advice?.kind === "operating_costs" && advice.urgent);
+  return notOwedReason(i, advice) !== null;
 }
 
 /** The other open deadlines the law sets for this letter (a dismissal's registration), earliest first. */
@@ -184,7 +204,8 @@ export type MainAction =
 /**
  * The one main button of the verdict card:
  * scam → never "Pay" (offer to compare with a real letter) · Einspruch/Widerspruch → draft the
- * objection (type comes from the Rechtsbehelfsbelehrung, never a guess) · a notice deadline on a
+ * objection (type comes from the Rechtsbehelfsbelehrung, never a guess), unless the person has closed
+ * every to-do ({@link isSettled}) · a notice deadline on a
  * contract → draft the cancellation · a payment → Pay (not when it may not be owed, see
  * {@link mayNotBeOwed}) · a dated to-do → Add to calendar · otherwise Mark done.
  */
@@ -196,7 +217,9 @@ export function chooseMainAction(detail: DocumentDetail, primary: Item | null): 
   }
   const remedy = detail.document.remedy?.type;
   const courtOrder = isCourtOrder(detail.document);
-  if ((remedy === "einspruch" || remedy === "widerspruch" || courtOrder) && (!primary || isOpenItem(primary))) {
+  // once the person closed every to-do (objected, or paid), the letter is settled: no objection to draft
+  const stillOpen = primary ? isOpenItem(primary) : !isSettled(detail.items);
+  if ((remedy === "einspruch" || remedy === "widerspruch" || courtOrder) && stillOpen) {
     return { type: "draft", draftKind: "objection", label: "Draft objection", item: primary };
   }
   if (!primary || !isOpenItem(primary)) return { type: "none" };

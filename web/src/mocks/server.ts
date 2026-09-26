@@ -46,6 +46,7 @@ import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
 import { SAM, sha } from "./data/constants";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
+import { isSettled } from "@/features/document/verdict";
 
 const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
@@ -183,9 +184,9 @@ function pageInfos(db: MockDb, d: Document): PageInfo[] {
  */
 function adviceFor(db: MockDb, d: Document): LetterAdvice | null {
   const own = ADVICE_BY_DOC[d.id];
-  if (own && d.kind === db.seedKind(d.id)) return own;
-  if (!isHighStakes(d.kind)) return null;
-  return (d.received_date ? ADVICE_ARRIVED_BY_KIND : ADVICE_BY_KIND)[d.kind];
+  const card = own && d.kind === db.seedKind(d.id) ? own : isHighStakes(d.kind) ? (d.received_date ? ADVICE_ARRIVED_BY_KIND : ADVICE_BY_KIND)[d.kind] : null;
+  // as on the server: once the person closed every to-do of the letter, its card is no longer urgent
+  return card?.urgent && isSettled(db.state.items.filter((i) => i.doc_id === d.id)) ? { ...card, urgent: false } : card;
 }
 
 function documentDetail(db: MockDb, id: string): DocumentDetail {

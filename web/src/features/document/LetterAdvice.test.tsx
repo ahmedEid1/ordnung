@@ -86,6 +86,8 @@ describe("the advice card of a high-stakes letter", () => {
     // the envelope date is often days before the letter was opened: nothing is filled in, no "Today"
     const input = screen.getByLabelText("Date on the yellow envelope") as HTMLInputElement;
     expect(input.value).toBe("");
+    // an empty field isn't an error (WCAG 3.3.1): Save waits for a date instead
+    expect(input).not.toHaveAttribute("aria-invalid");
     expect(screen.queryByRole("button", { name: "Today" })).toBeNull();
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
@@ -323,6 +325,34 @@ describe("the advice card of a high-stakes letter", () => {
     );
     renderWithProviders(<LetterAdviceCard advice={ADVICE_BY_KIND.dismissal} doc={makeDoc({ kind: "dismissal" })} />, { client: client() });
     expect(screen.getByText(/Apprentices:/).textContent).toContain("§\u00a038 Abs.\u00a01 S.\u00a04 SGB III");
+  });
+
+  it("settles a court order once the person has dealt with every to-do", () => {
+    // objected and marked "Pay or object" done: filed — no "get advice now", no objection to draft
+    const done = makeItem({ title: "Pay or object to the court payment order (Mahnbescheid)", origin: "rule", status: "done", due_date: "2026-10-06" });
+    const detail = makeDetail({ document: courtDoc, items: [done], advice: { ...ADVICE_BY_KIND.court_payment_order, urgent: false } });
+    renderWithProviders(<VerdictCard detail={detail} primary={null} onAskArrival={() => {}} />, { client: client() });
+    expect(screen.queryByText(/Get advice now/)).toBeNull();
+    expect(screen.getByText(/Nothing right now — it's filed/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Draft objection" })).toBeNull();
+    expect(chooseMainAction(detail, null).type).toBe("none");
+  });
+
+  it("says a rent increase's new rent is only owed once the person agrees, and doesn't lead with Pay", () => {
+    const doc = makeDoc({ id: "doc_increase", kind: "rent_increase", area: "home", title: "Rent increase request" });
+    const rent = makeItem({
+      kind: "payment",
+      title: "New monthly rent",
+      amount: 670,
+      due_date: "2026-12-01",
+      recurrence: { interval: 1, unit: "months" },
+      computation: makeReceipt({ rule_ids: ["date_as_written", "bgb_558b"] }),
+    });
+    renderWithProviders(<VerdictCard detail={makeDetail({ document: doc, items: [rent], advice: ADVICE_BY_KIND.rent_increase })} primary={rent} onAskArrival={() => {}} />, {
+      client: client(),
+    });
+    expect(screen.getByText(/Decide before you pay: the higher rent is only owed once you agree/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Pay/ })).toBeNull();
   });
 
   it("marks to-dos the law adds as set by law", () => {

@@ -295,7 +295,8 @@ function ArrivalQuestion({ doc, items }: { doc: Document; items: Item[] }) {
               max={todayISO}
               onChange={(e) => setDate(e.target.value)}
               className="h-8 w-auto bg-surface"
-              aria-invalid={!valid || undefined}
+              // an empty field (a court's envelope date isn't prefilled) is not an error: Save waits for a date
+              aria-invalid={(Boolean(date) && !valid) || undefined}
             />
             <Button type="submit" size="sm" variant="primary" loading={update.isPending} disabled={!valid}>
               Save

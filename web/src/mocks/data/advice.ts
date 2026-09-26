@@ -179,7 +179,7 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
   "rent_increase": {
     "kind": "rent_increase",
     "title": "Rent increase request — you decide",
-    "summary": "Your landlord asks you to agree to a higher rent. You have until the end of the second month after you received the request to decide, and the higher rent is only owed if you agree.",
+    "summary": "Your landlord asks you to agree to a higher rent. You have until the end of the second calendar month after the month you received the request to decide (received in January: until 31 March), and the higher rent is only owed if you agree.",
     "urgent": false,
     "steps": [
       "Check the new rent against your city's rent index (Mietspiegel), if it has one.",
@@ -422,7 +422,7 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
   "rent_increase": {
     "kind": "rent_increase",
     "title": "Rent increase request — you decide",
-    "summary": "Your landlord asks you to agree to a higher rent. You have until the end of the second month after you received the request to decide, and the higher rent is only owed if you agree.",
+    "summary": "Your landlord asks you to agree to a higher rent. You have until the end of the second calendar month after the month you received the request to decide (received in January: until 31 March), and the higher rent is only owed if you agree.",
     "urgent": false,
     "steps": [
       "Check the new rent against your city's rent index (Mietspiegel), if it has one.",

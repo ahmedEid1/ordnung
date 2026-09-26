@@ -6,7 +6,9 @@ import {
   isOptionalObjection,
   isServed,
   leadsWithDecision,
+  isSettled,
   mayNotBeOwed,
+  notOwedReason,
   needsArrivalDate,
   needsCheck,
   openItemCounts,
@@ -106,6 +108,32 @@ describe("chooseMainAction", () => {
     expect(mayNotBeOwed(undated, card)).toBe(true);
     expect(mayNotBeOwed(undated, { ...card, urgent: false })).toBe(false);
     expect(mayNotBeOwed(makeItem({ kind: "deadline", computation: makeReceipt({ rule_ids: ["bgb_556_3"] }) }), card)).toBe(false);
+  });
+
+  it("never says a late statement's credit or new monthly prepayment may not be owed", () => {
+    const card = { kind: "operating_costs", urgent: true } as NonNullable<Parameters<typeof mayNotBeOwed>[1]>;
+    const credit = makeItem({ kind: "payment", amount: 85, direction: "in", computation: makeReceipt({ rule_ids: ["bgb_556_3"] }) });
+    const prepayment = makeItem({ kind: "payment", amount: 210, recurrence: { interval: 1, unit: "months" }, computation: makeReceipt({ rule_ids: ["bgb_556_3"] }) });
+    expect(notOwedReason(credit, card)).toBeNull();
+    expect(notOwedReason(prepayment, card)).toBeNull();
+    expect(notOwedReason(makeItem({ kind: "payment", amount: 120 }), card)).toBe("late_statement");
+  });
+
+  it("holds a rent increase's new rent until the person agrees", () => {
+    const rent = makeItem({ kind: "payment", amount: 670, due_date: "2026-12-01", recurrence: { interval: 1, unit: "months" }, computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
+    expect(notOwedReason(rent, null)).toBe("consent");
+    const card = { kind: "rent_increase", urgent: false } as NonNullable<Parameters<typeof mayNotBeOwed>[1]>;
+    expect(notOwedReason(makeItem({ kind: "payment", amount: 670 }), card)).toBe("consent");
+    expect(notOwedReason(makeItem({ kind: "payment", amount: 30, direction: "in" }), card)).toBeNull();
+    expect(chooseMainAction(makeDetail({ items: [rent] }), rent).type).toBe("calendar");
+  });
+
+  it("settles a letter once the person closed every to-do it has", () => {
+    const done = makeItem({ status: "done" });
+    expect(isSettled([done, makeItem({ status: "dismissed" })])).toBe(true);
+    expect(isSettled([done, makeItem({ status: "open" })])).toBe(false);
+    expect(isSettled([done, makeItem({ status: "missed" })])).toBe(false);
+    expect(isSettled([])).toBe(false); // no to-do was ever filed (a notice without notice period)
   });
 
   it("pays payments, calendars dated to-dos, otherwise marks done", () => {

@@ -42,14 +42,16 @@ import {
   isOpenItem,
   isOptionalObjection,
   isServed,
+  isSettled,
   leadsWithDecision,
-  mayNotBeOwed,
   mustAct,
   needsArrivalDate,
   needsCheck,
+  notOwedReason,
   otherLawDeadlines,
   scamSuggestion,
   type MainAction,
+  type NotOwed,
 } from "./verdict";
 import { icsFileName, icsHref, useItemActions, useStartDraft } from "./actions";
 import { KindPicker } from "./KindPicker";
@@ -91,6 +93,14 @@ function Section({ label, icon: Icon, children, className }: { label: string; ic
   );
 }
 
+/** What the verdict says under a payment that may not be owed yet ({@link notOwedReason}). */
+const NOT_OWED: Record<NotOwed, string> = {
+  late_statement:
+    "Check before you pay: this statement seems to have come too late, so you may owe no back-payment (§\u00a0556 Abs.\u00a03 BGB). See the card on this page.",
+  consent:
+    "Decide before you pay: the higher rent is only owed once you agree to the increase (§\u00a0558b Abs.\u00a01 BGB), and paying it can count as agreeing. See the card on this page.",
+};
+
 /** What the verdict says about a letter that must be acted on when no to-do carries its date. */
 const ADVICE_NOW: Record<string, string> = {
   landlord_notice: "Get advice now: your landlord is ending your tenancy. Have the notice checked by a tenants' association — see the card on this page.",
@@ -122,8 +132,9 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
   const optional = open ? isOptionalObjection(open) && !mustAct(doc) : false;
   const alsoByLaw = !scam && !decision ? otherLawDeadlines(detail.items, open) : [];
   const refund = incomingMoney(detail.items);
-  // a late operating-cost statement's back-payment: still a to-do, but checked before it is paid
-  const notOwed = open ? mayNotBeOwed(open, detail.advice) : false;
+  // a late operating-cost statement's back-payment, a rent increase's new rent: still a to-do, but
+  // checked (or decided) before it is paid
+  const notOwed = open ? notOwedReason(open, detail.advice) : null;
   const refundText = refund?.amount != null ? `${formatMoney(refund.amount, { currency: refund.currency })} comes back to you` : null;
 
   return (
@@ -207,10 +218,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
             {notOwed ? (
               <p className="mt-2 flex items-start gap-1.5 text-[13.5px] leading-snug text-warn-ink">
                 <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                <span>
-                  Check before you pay: this statement seems to have come too late, so you may owe no back-payment (§&nbsp;556 Abs.&nbsp;3 BGB). See the card on this
-                  page.
-                </span>
+                <span>{NOT_OWED[notOwed]}</span>
               </p>
             ) : null}
             {alsoByLaw.length ? (
@@ -233,9 +241,10 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
               </ul>
             ) : null}
           </>
-        ) : mustAct(doc) ? (
+        ) : mustAct(doc) && !isSettled(detail.items) ? (
           // a court order, a dismissal or a landlord's notice without an open to-do (a notice without notice
-          // period, or one whose end we couldn't read) is never "nothing to do"
+          // period, or one whose end we couldn't read) is never "nothing to do" — unless the person has closed
+          // every to-do it had (objected, went to court): then it is filed
           <p className="flex items-start gap-2 text-[16px] font-medium leading-snug text-ink">
             <Scale className="mt-0.5 size-[18px] shrink-0 text-warn" aria-hidden />
             <span>{ADVICE_NOW[doc.kind ?? "default"] ?? ADVICE_NOW.default}</span>
