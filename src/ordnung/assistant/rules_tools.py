@@ -70,9 +70,10 @@ so the benchmark treats them as part of its prompt (``evals.conditions.tool_defi
 changing any of them makes the recorded ``llm_rules_tool`` answers miss on replay until that
 condition is recorded again live and added to the published run (``evals.run.RECORD_AGAIN``: a
 one-condition run never rewrites ``docs/evals.md``; ``python -m evals.report … --add-condition``
-does). The results the tools return are not part of that digest. Recording both splits costs about $5 — the six
-recordings so far cost $14.91 in all (``docs/evals.md``) — so record again only with the owner's
-approval, and prefer fixes in results, hints and the engine to changes of what a model reads.
+does). The results the tools return are not part of that digest. Recording both splits costs about
+$5, and the six recordings so far (at least $14.91, smoke runs uncounted, ``docs/evals.md``) used up
+the budget set for this condition: record again only with the owner's approval, and prefer fixes in
+results, hints and the engine to changes of what a model reads.
 
 Heavy modules (the rules engine, the holiday calendar, the MCP SDK) are imported on first use.
 """
