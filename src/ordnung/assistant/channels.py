@@ -39,6 +39,10 @@ RECORD_OPEN = "<ordnung_record>"
 RECORD_CLOSE = "</ordnung_record>"
 LETTER_OPEN = "<untrusted_document>"  # the tags ordnung.ingest.extract.wrap_untrusted writes
 LETTER_CLOSE = "</untrusted_document>"
+RESULT_BUDGET = 50_000
+"""Characters a rendered tool result may take. A longer one is cut by rows (:func:`render_tool_result`),
+so the model and Ask's check always read the same whole result: the ``claude`` CLI would otherwise
+shorten an oversized result for the model, and a copy cut anywhere else would lose its closing tags."""
 VERIFIED_GROUNDING = frozenset({"verified", "user"})
 """Evidence levels whose amounts and terms belong to the record (ADR 0003: found in the text layer
 with matching digits, or confirmed by the person)."""
@@ -106,8 +110,28 @@ def channel_json(data: Any) -> str:
     return text.replace("<", "\\u003c").replace(">", "\\u003e")
 
 
-def render_tool_result(answer: ToolAnswer) -> str:
-    """The text the model reads: the record part, then the letter text (when there is any)."""
+def render_tool_result(answer: ToolAnswer, *, budget: int = RESULT_BUDGET) -> str:
+    """The text the model reads: the record part, then the letter text (when there is any).
+
+    A result longer than ``budget`` characters keeps as many rows of its longest list as fit, with
+    the letter text of the records still shown, and says how many rows it left out (``truncated``).
+    """
+    text = _render(answer)
+    key = _longest_list(answer.record) if len(text) > budget else None
+    if key is None:
+        return text
+    rows = answer.record[key]
+    fits, too_many = 0, len(rows)
+    while fits + 1 < too_many:  # binary search: a few renders, each linear
+        middle = (fits + too_many) // 2
+        if len(_render(_cut(answer, key, middle))) <= budget:
+            fits = middle
+        else:
+            too_many = middle
+    return _render(_cut(answer, key, fits))
+
+
+def _render(answer: ToolAnswer) -> str:
     parts = [f"{RECORD_OPEN}\n{channel_json(answer.record)}\n{RECORD_CLOSE}"]
     letters = compact(answer.letters)
     if letters:
@@ -115,19 +139,47 @@ def render_tool_result(answer: ToolAnswer) -> str:
     return "\n".join(parts)
 
 
+def _longest_list(record: dict[str, Any]) -> str | None:
+    lists = [(len(value), key) for key, value in record.items() if isinstance(value, list) and value]
+    return max(lists)[1] if lists else None
+
+
+def _cut(answer: ToolAnswer, key: str, count: int) -> ToolAnswer:
+    """``answer`` with only the first ``count`` rows of ``record[key]``, and the letter text of the
+    records still shown."""
+    rows = answer.record[key]
+    record = {
+        **answer.record,
+        key: rows[:count],
+        "truncated": True,
+        "left_out_rows": f"{len(rows) - count} more {key} not shown: ask for fewer (a narrower date range, "
+        "a kind or a status)",
+    }
+    shown = set(_CITABLE_ID.findall(json.dumps(record, default=str)))
+    return ToolAnswer(record, {ref: text for ref, text in answer.letters.items() if ref in shown})
+
+
 def parse_tool_result(text: str | None) -> ToolResult:
-    """Read a rendered tool result back (anything else has no record part and no letter text)."""
+    """Read a rendered tool result back (anything else has no record part and no letter text).
+
+    A result cut off before its end keeps what can be read whole: the record part's complete entries
+    (and the complete rows of a list cut in the middle) and the letter text's complete records. The
+    record part is always rendered first and its text escapes ``<`` and ``>``, so what stands between
+    ``<ordnung_record>`` and the cut is record, never letter text.
+    """
     stripped = (text or "").strip()
     if not stripped.startswith(RECORD_OPEN):
         return ToolResult(None, {})
     end = stripped.find(RECORD_CLOSE)
     if end < 0:
-        return ToolResult(None, {})
+        return ToolResult(_salvage(stripped[len(RECORD_OPEN) :]), {})
     record = _json(stripped[len(RECORD_OPEN) : end])
     rest = stripped[end + len(RECORD_CLOSE) :].strip()
     letters: Any = {}
-    if rest.startswith(LETTER_OPEN) and rest.endswith(LETTER_CLOSE):
-        letters = _json(rest[len(LETTER_OPEN) : -len(LETTER_CLOSE)])
+    if rest.startswith(LETTER_OPEN):
+        body = rest[len(LETTER_OPEN) :]
+        whole = body.endswith(LETTER_CLOSE)
+        letters = _json(body[: -len(LETTER_CLOSE)]) if whole else _salvage(body, rows=False)
     return ToolResult(record, letters if isinstance(letters, dict) else {})
 
 
@@ -136,6 +188,64 @@ def _json(text: str) -> Any | None:
         return json.loads(text)
     except ValueError:
         return None
+
+
+_DECODER = json.JSONDecoder()
+
+
+def _skip(text: str, index: int) -> int:
+    while index < len(text) and text[index].isspace():
+        index += 1
+    return index
+
+
+def _salvage(text: str, *, rows: bool = True) -> dict[str, Any] | None:
+    """The complete ``"key": value`` entries of a JSON object that may be cut off (``rows``: also the
+    complete rows of a list cut in the middle). Linear: every character is decoded at most twice."""
+    index = _skip(text, 0)
+    if not text.startswith("{", index):
+        return None
+    found: dict[str, Any] = {}
+    index += 1
+    while True:
+        try:
+            key, index = _DECODER.raw_decode(text, _skip(text, index))
+        except ValueError:
+            break
+        index = _skip(text, index)
+        if not isinstance(key, str) or not text.startswith(":", index):
+            break
+        start = _skip(text, index + 1)
+        try:
+            value, index = _DECODER.raw_decode(text, start)
+        except ValueError:
+            if rows and text.startswith("[", start):
+                found[key] = _rows(text, start + 1)
+            break
+        found[key] = value
+        index = _skip(text, index)
+        if not text.startswith(",", index):
+            break
+        index += 1
+    return found
+
+
+def _rows(text: str, index: int) -> list[Any]:
+    """The complete elements of a JSON list cut off after ``text[index]``."""
+    found: list[Any] = []
+    while True:
+        try:
+            value, index = _DECODER.raw_decode(text, _skip(text, index))
+        except ValueError:
+            return found
+        found.append(value)
+        index = _skip(text, index)
+        if not text.startswith(",", index):
+            return found
+        index += 1
+
+
+_CITABLE_ID = re.compile(r"(?:doc|itm|ctr|pty)_[a-z0-9]+")
 
 
 def is_verified(grounding: str | None) -> bool:

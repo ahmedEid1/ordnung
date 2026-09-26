@@ -22,8 +22,10 @@ from ordnung.assistant.channels import (
     LETTER_OPEN,
     RECORD_CLOSE,
     RECORD_OPEN,
+    RESULT_BUDGET,
     ToolAnswer,
     parse_tool_result,
+    render_tool_result,
 )
 from ordnung.assistant.mcp_server import (
     AMOUNT_NOT_FOUND,
@@ -353,6 +355,32 @@ def test_money_summary(tools: LedgerTools, ids: dict[str, str]) -> None:
     assert answer.letters[ids["phone"]]["name"] == "FunkNetz mobile"
 
 
+def test_money_summary_names_undated_payments_and_demands_not_to_pay(
+    store: Store, tools: LedgerTools, ids: dict[str, str]
+) -> None:
+    """Review finding (round 2): the demo's "what do I have to pay" answers left out the rent (a
+    payment with no stored due date) and the scam demand, because money_summary listed neither."""
+    from helpers_secretary import add_item
+
+    rent = add_item(
+        store,
+        kind="payment",
+        title="Monthly rent",
+        area="home",
+        amount=640.0,
+        currency="EUR",
+        direction="out",
+    )
+    answer = tools.money_summary()
+    money = answer.record
+    assert [row["id"] for row in money["payments_without_due_date"]] == [rent]
+    assert money["payments_without_due_date"][0]["amount"] == 640.0
+    (scam,) = money["do_not_pay"]
+    assert scam["id"] == ids["scam_payment"] and scam["scam_warning"] is True
+    assert ids["scam_payment"] not in {row["id"] for row in money["upcoming_payments"]}
+    assert answer.letters[ids["scam_payment"]]["scam_signs"]
+
+
 def test_explain_date_quotes_the_stored_receipt(tools: LedgerTools, ids: dict[str, str]) -> None:
     answer = tools.explain_date(ids["tax_objection"])
     result = answer.record
@@ -394,6 +422,55 @@ def test_render_result_is_compact_json_without_empty_fields() -> None:
     expected = '{"doc_a":{"title":"\\u003cb\\u003eBrief\\u003c/b\\u003e"}}'
     assert with_letters.endswith(f"{LETTER_OPEN}\n{expected}\n{LETTER_CLOSE}")
     assert parse_tool_result(with_letters).letters == {"doc_a": {"title": "<b>Brief</b>"}}
+
+
+def test_a_result_over_the_budget_is_cut_by_rows() -> None:
+    """Review finding (round 2): results over 20,000 characters were cut in the middle for the check;
+    now a tool keeps each result within the budget itself, whole, and says what it left out."""
+    rows = [{"id": f"itm_{n:012d}", "due_date": "2026-10-21"} for n in range(400)]
+    letters = {row["id"]: {"title": "Letter text " * 8} for row in rows}
+    answer = ToolAnswer({"today": "2026-09-28", "items": rows}, letters)
+    text = render_tool_result(answer, budget=20_000)
+    assert len(text) <= 20_000 and text.endswith(LETTER_CLOSE)
+    parsed = parse_tool_result(text)
+    kept = parsed.record["items"]
+    assert 0 < len(kept) < 400 and parsed.record["truncated"] is True
+    assert parsed.record["left_out_rows"].startswith(f"{400 - len(kept)} more items not shown")
+    assert set(parsed.letters) == {row["id"] for row in kept}  # the letter text of the rows still shown
+    assert render_tool_result(answer) == render_tool_result(answer, budget=RESULT_BUDGET)
+
+
+def test_list_items_stays_within_the_budget(store: Store, tools: LedgerTools) -> None:
+    from helpers_secretary import add_item
+
+    for n in range(200):
+        add_item(store, kind="task", title=f"Keep receipt {n} " + "for the tax return " * 12, area="tax")
+    text = render_result(tools.list_items(status="all", limit=200))
+    assert len(text) <= RESULT_BUDGET
+    assert parse_tool_result(text).record["truncated"] is True
+
+
+def test_a_cut_off_result_keeps_what_can_be_read_whole() -> None:
+    """Review finding (round 2): without its closing tag a result lost its whole record or letter part."""
+    rendered = render_tool_result(
+        ToolAnswer(
+            {"today": "2026-09-28", "items": [{"id": "itm_aaaaaaaaaaaa", "due_date": "2026-10-21"}] * 3},
+            {"doc_aaaaaaaaaaaa": {"title": "Steuerbescheid"}, "itm_aaaaaaaaaaaa": {"title": "Einspruch"}},
+        )
+    )
+    in_letters = rendered[: rendered.index('"itm_aaaaaaaaaaaa":{"title"') + 10]
+    parsed = parse_tool_result(in_letters)
+    assert len(parsed.record["items"]) == 3
+    assert parsed.letters == {"doc_aaaaaaaaaaaa": {"title": "Steuerbescheid"}}
+    in_record = rendered[: rendered.index("}", rendered.index("itm_aaaaaaaaaaaa") + 1) + 2]
+    cut = parse_tool_result(in_record)
+    assert cut.record == {
+        "today": "2026-09-28",
+        "items": [{"id": "itm_aaaaaaaaaaaa", "due_date": "2026-10-21"}],
+    }
+    assert cut.letters == {}
+    assert parse_tool_result(f"{RECORD_OPEN}\n[1, 2").record is None
+    assert parse_tool_result(f'{RECORD_OPEN}\n{{"a": 1, "b').record == {"a": 1}
 
 
 # --------------------------------------------------------------------------------------------------

@@ -181,7 +181,7 @@ def test_ask_prints_the_check_note_apart(data_dir: Path, monkeypatch: pytest.Mon
     result = invoke("ask", "What is due?", "--data-dir", str(data_dir))
     assert result.exit_code == 0, result.output
     assert "Checked answer" in result.output and "Keep the letter." in result.output
-    assert "Checked by Ordnung: 1 sentence was left out" in " ".join(result.output.split())
+    assert "Checked by Ordnung: Ordnung left out 1 sentence" in " ".join(result.output.split())
 
 
 # --------------------------------------------------------------------------------------------------

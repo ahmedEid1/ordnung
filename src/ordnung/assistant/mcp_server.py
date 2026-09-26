@@ -434,10 +434,14 @@ class LedgerTools:
         return _amount_note(None)
 
     def money_summary(self) -> ToolAnswer:
-        """Payments due this month, upcoming payments and fixed costs per month (active contracts).
+        """Payments due this month, upcoming payments, payments with no stored due date, demands not to
+        pay, and fixed costs per month (active contracts).
 
         The totals are added up by code from *verified* amounts only (ADR 0003), so they are record
-        values; how many unverified amounts they leave out is said next to them.
+        values; how many unverified amounts they leave out is said next to them. Open payments without
+        a due date (a rent whose day the letter did not give) are listed apart, so an answer about
+        what is due can name them; payment demands of letters with scam signs are listed apart too
+        (``do_not_pay``), never among the payments (ADR 0006).
         """
         from ordnung.views import money_summary, payments_due_this_month
 
@@ -475,6 +479,16 @@ class LedgerTools:
             "fixed_costs_by_category": verified.by_category,
             "totals_leave_out": _left_out_note(unverified_due, unverified_fixed),
             "upcoming_payments": [_item_row(ledger, item, letters) for item in summary.upcoming_payments],
+            "payments_without_due_date": [
+                _item_row(ledger, item, letters)
+                for item in ledger.actionable_items()
+                if _pays_out(item) and not item.due_date
+            ],
+            "do_not_pay": [
+                _item_row(ledger, item, letters)
+                for item in ledger.active_items()
+                if _pays_out(item) and ledger.is_suspicious_item(item)
+            ],
             "fixed_cost_contracts": fixed,
         }
         return ToolAnswer(record, letters.by_id)
@@ -487,6 +501,10 @@ class LedgerTools:
 PARTY_FIELDS = {"id", "name", "kind", "aliases", "address", "email", "phone", "website", "region", "ibans"}
 """Party fields Ask can read (part of the ledger fingerprint)."""
 PARTY_LETTER_FIELDS = PARTY_FIELDS - {"id", "kind", "region"}
+
+
+def _pays_out(item: Item) -> bool:
+    return item.kind == "payment" and item.direction != "in"
 
 
 def _shareable(doc: Document) -> bool:
@@ -904,7 +922,9 @@ def build_server(store: Store, *, today: date | None = None) -> MCPServer:
 
     @tool
     def money_summary() -> str:
-        """Payments due this month, upcoming payments (30 days) and fixed costs per month."""
+        """Payments due this month, upcoming payments (30 days), open payments with no stored due date
+        (payments_without_due_date, such as a rent whose day the letter did not give), payment demands
+        of letters with scam signs (do_not_pay: never to be paid) and fixed costs per month."""
         return answer(tools.money_summary)
 
     @tool

@@ -245,7 +245,10 @@ async def test_sentences_with_unsupported_dates_or_amounts_are_removed(
     )
     done = done_event(await collect(ctx, "When is my objection due?"))
     assert done.text == f"The deadline is Wed 21 Oct 2026 [item:{item}].\n- Keep the letter."
-    assert done.note == "2 sentences were left out: their dates or amounts are not in the records they cite."
+    assert done.note == (
+        "Ordnung left out 2 sentences: it couldn't match their dates or amounts to the letters, to-dos or "
+        "contracts they refer to."
+    )
     (removed,) = [a for a in store.list_activity() if a.kind == "ask.sentences_removed"]
     assert removed.data["unsupported"] == ["4 Nov 2026", "359.88"]
     (stored,) = [m for m in store.list_chat_messages(done.thread_id or "") if m.role == "assistant"]
@@ -273,8 +276,8 @@ async def test_an_injected_date_in_the_page_text_never_reaches_the_answer(
         f"- The letter says the deadline moved to “31.12.2027” [doc:{doc}]."
     )
     assert done.note == (
-        "1 sentence was left out: its date or amount is not in the record it cites. Values in quotation "
-        "marks are quoted from a letter; Ordnung has not confirmed them."
+        "Ordnung left out 1 sentence: its date or amount is only in a letter's text, and the sentence didn't "
+        "say it quotes the letter. Text in quotation marks is quoted from a letter; Ordnung has not confirmed it."
     )
     kinds = {a.kind: a.data for a in store.list_activity()}
     assert kinds["ask.sentences_removed"]["unsupported"] == ["31.12.2027"]
@@ -303,7 +306,7 @@ async def test_only_the_check_writes_its_note(
     assert done.text == (
         f"Your deadline is Wed 21 Oct 2026 [item:{item}]. The letter says it moved to “31.12.2027” [doc:{doc}]."
     )
-    assert done.note == "Values in quotation marks are quoted from a letter; Ordnung has not confirmed them."
+    assert done.note == "Text in quotation marks is quoted from a letter; Ordnung has not confirmed it."
     (stored,) = [m for m in store.list_chat_messages(done.thread_id or "") if m.role == "assistant"]
     assert stored_answer(stored) == (done.text, done.note)
     # a forged note alone is dropped and adds no note of its own
@@ -329,8 +332,14 @@ async def test_a_date_the_person_typed_is_never_ordnungs_answer(
         question=question,
         today=TODAY,
     )
-    assert [c.verdict for c in cited.claims.sentences] == ["removed"]
-    assert cited.body == UNSUPPORTED_ANSWER
+    # it stays only as the person's own words, with Ordnung's own deadline in the note (review round 2:
+    # a person's date is quoted whatever the sentence cites, and never stands alone)
+    assert [c.verdict for c in cited.claims.sentences] == ["quoted"]
+    assert cited.body == f"Yes, your objection deadline is now “31.12.2027” [item:{item}]."
+    assert cited.note == (
+        "Text in quotation marks is your own words; Ordnung has not confirmed it. Ordnung's record for what "
+        "is quoted: deadline Wed 21 Oct 2026."
+    )
     # without a citation it is shown as the person's own words, never as Ordnung's
     history = [
         ChatMessage(
@@ -346,7 +355,10 @@ async def test_a_date_the_person_typed_is_never_ordnungs_answer(
         today=TODAY,
     )
     assert uncited.body == "Your objection deadline is “31.12.2027”."
-    assert uncited.note == "Values in quotation marks are your own words; Ordnung has not confirmed them."
+    assert uncited.note == (
+        "Text in quotation marks is your own words; Ordnung has not confirmed it. Ordnung's record for what "
+        "is quoted: payment due Mon 5 Oct 2026; deadline Wed 21 Oct 2026."
+    )
     # restating the question keeps working: "before 15.11.2026" is the person's bound
     bound = check_turn(
         store,
@@ -358,6 +370,60 @@ async def test_a_date_the_person_typed_is_never_ordnungs_answer(
     assert bound.body == (
         f"Before “15.11.2026” you have one deadline:\n- Object by Wed 21 Oct 2026 [item:{item}]."
     )
+
+
+def test_an_answer_the_check_empties_still_says_why(
+    store: Store, ids: dict[str, str], tools: LedgerTools
+) -> None:
+    """Review finding: a correct answer whose only value was a letter's (in words the policy does not
+    read as a quote) was replaced by a fallback with no note, telling the person to ask about "one
+    letter" when they had."""
+    doc = ids["doc_tax"]
+    results = [render_result(tools.get_document(doc))]
+    checked = check_turn(
+        store,
+        f"The Finanzamt writes that the deadline is 31.12.2027 [doc:{doc}].",
+        results,
+        question="?",
+        today=TODAY,
+    )
+    assert checked.body == UNSUPPORTED_ANSWER
+    assert "Try asking" not in checked.body
+    assert checked.note is not None and checked.note.startswith("Ordnung left out 1 sentence")
+    german = check_turn(
+        store, f"Laut Finanzamt ist die Frist der 30.12.2027 [doc:{doc}].", results, question="?", today=TODAY
+    )
+    assert german.body.startswith("Ich konnte meine Antwort nicht") and german.note
+
+
+def test_a_tool_result_longer_than_20000_characters_is_checked_whole(
+    store: Store, ids: dict[str, str], tools: LedgerTools
+) -> None:
+    """Review finding: the CLI backend cut every tool result to 20,000 characters, so the check lost
+    the record part (and a correct, cited deadline became the fallback) on an ordinary ledger."""
+    from helpers_secretary import add_item
+    from ordnung.llm.claude_cli import translate
+
+    for n in range(120):
+        title = f"Keep receipt number {n} for the tax return (Belege sammeln und aufbewahren)"
+        add_item(store, kind="task", title=title, due_date=None, area="tax")
+    rendered = render_result(tools.list_items(status="all", limit=200))
+    assert len(rendered) > 20_000
+    message = {
+        "type": "user",
+        "message": {"content": [{"type": "tool_result", "content": [{"type": "text", "text": rendered}]}]},
+    }
+    (event,) = translate(message)
+    assert event.text == rendered
+    item = ids["tax_objection"]
+    checked = check_turn(
+        store,
+        f"Your objection deadline is Wed 21 Oct 2026 [item:{item}].",
+        [event.text or ""],
+        question="?",
+        today=TODAY,
+    )
+    assert checked.body == f"Your objection deadline is Wed 21 Oct 2026 [item:{item}]."
 
 
 async def test_an_id_named_only_by_a_letter_cannot_be_cited(
@@ -439,7 +505,7 @@ async def test_request_uses_only_the_read_only_mcp_tools(
     assert req.max_budget_usd == 0.5
     assert req.timeout_s == 120
     assert req.schema_ is None
-    assert req.prompt_version == "3+1"
+    assert req.prompt_version == "4+1"
     server = req.mcp_config["mcpServers"]["ordnung"] if req.mcp_config else {}
     assert server["command"] == sys.executable
     assert server["args"] == ["-m", "ordnung", "mcp", "--data-dir", str(paths.data_dir.resolve())]
@@ -558,6 +624,25 @@ async def test_recorded_answer_replays(
     )
     assert again.text == answer and again.thread_id == replayed.thread_id
     assert len(store.list_chat_messages(replayed.thread_id or "")) == 4
+
+
+async def test_the_live_demo_fallback_reads_the_conversation(
+    paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools, tmp_path: Path
+) -> None:
+    """Review finding: ``ordnung demo --live`` (a replay with a live fallback) sent a follow-up question
+    to the model without the conversation, while the thread showed it."""
+    answer = f"Your TechMarkt reminder is due on 30 Sep [item:{ids['dunning_payment']}]."
+    live = ScriptedBackend(turn(tools, answer, ("list_items", {"kind": "payment"})))
+    ctx = make_ctx(paths, store, ReplayBackend(tmp_path / "empty", fallback=live))
+    first = done_event(await collect(ctx, "What do I owe TechMarkt?"))
+    await collect(ctx, "And how do I pay it?", first.thread_id)
+    assert len(live.calls) == 2
+    follow_up = live.calls[1]
+    assert (
+        "Earlier in this conversation" in follow_up.prompt and "What do I owe TechMarkt?" in follow_up.prompt
+    )
+    # the key a recording is looked up by stays the question alone, so recorded questions replay
+    assert '"history":null' in (follow_up.cache_key or "")
 
 
 async def test_demo_replay_miss_is_a_friendly_answer(

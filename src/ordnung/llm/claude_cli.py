@@ -185,7 +185,9 @@ def translate(msg: dict[str, Any]) -> list[StreamEvent]:
                     body = block.get("content")
                     if isinstance(body, list):
                         body = "".join(c.get("text", "") for c in body if isinstance(c, dict))
-                    out.append(StreamEvent(type="tool_result", text=str(body)[:20000]))
+                    # whole, as the model read it: Ask checks its answer against this text (ADR 0008),
+                    # and Ordnung's MCP tools keep each result within channels.RESULT_BUDGET themselves
+                    out.append(StreamEvent(type="tool_result", text=str(body)))
         return out
     return []
 

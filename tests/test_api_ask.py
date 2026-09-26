@@ -75,7 +75,10 @@ async def test_the_check_note_travels_apart_from_the_answer(data_dir: Path) -> N
         response = await api.client.post("/api/ask", json={"question": "Anything?"})
         done = json.loads(sse_messages(response.text)[-1]["data"])
         assert done["text"] == "Keep the letter."
-        assert done["note"] == "1 sentence was left out: its date or amount is not in the record it cites."
+        assert done["note"] == (
+            "Ordnung left out 1 sentence: it couldn't match its date or amount to the letter, to-do or "
+            "contract the sentence refers to."
+        )
         thread = (await api.client.get(f"/api/chat/{done['thread_id']}")).json()
         assert [(m["role"], m["content"], m["note"]) for m in thread] == [
             ("user", "Anything?", None),

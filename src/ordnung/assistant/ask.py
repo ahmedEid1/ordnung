@@ -67,9 +67,9 @@ HISTORY_MESSAGES = 6
 HISTORY_CHARS = 1500
 
 NO_ANSWER = "I couldn't find an answer to that in your records."
-UNSUPPORTED_ANSWER = (
-    "I couldn't back up my answer with your records, so I left it out. Try asking about one letter, "
-    "contract or date."
+UNSUPPORTED_ANSWER = "I couldn't back up my answer with your records, so I left it out."
+UNSUPPORTED_ANSWER_DE = (
+    "Ich konnte meine Antwort nicht mit Ihren Unterlagen belegen und habe sie deshalb weggelassen."
 )
 DEMO_MISS = (
     "The demo uses recorded answers, and there is none for this question. Try one of the suggested questions."
@@ -162,8 +162,16 @@ def ask_cache_key(store: Store, question: str, history: Sequence[ChatMessage], t
     return "ask:" + json.dumps(basis, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
-def build_request(ctx: AskContext, question: str, history: Sequence[ChatMessage], today: date) -> LLMRequest:
-    """The ``ask`` request: read-only MCP tools only, a budget cap and a timeout."""
+def build_request(
+    ctx: AskContext,
+    question: str,
+    history: Sequence[ChatMessage],
+    today: date,
+    *,
+    key_history: Sequence[ChatMessage] | None = None,
+) -> LLMRequest:
+    """The ``ask`` request: read-only MCP tools only, a budget cap and a timeout. The prompt carries
+    ``history``; the cache key ``key_history`` (default: the same)."""
     profile = ctx.store.get_profile()
     system_version, system = render(
         "ask_system",
@@ -183,7 +191,9 @@ def build_request(ctx: AskContext, question: str, history: Sequence[ChatMessage]
             "mcp_config": server_config(ctx.paths.data_dir, today=pinned),
             "max_budget_usd": MAX_BUDGET_USD,
             "timeout_s": TIMEOUT_S,
-            "cache_key": ask_cache_key(ctx.store, question, history, today),
+            "cache_key": ask_cache_key(
+                ctx.store, question, history if key_history is None else key_history, today
+            ),
             "prompt_version": f"{system_version}+{version}",
         }
     )
@@ -227,12 +237,12 @@ async def ask_stream(
     store = ctx.store
     thread = thread_id or new_id("thr")
     history = store.list_chat_messages(thread) if thread_id else []
-    if ctx.llm.backend_name == "replay":
-        # the demo's answers were recorded one question at a time: there, each question is asked
-        # afresh (the thread still shows the whole conversation), so a second one replays too
-        history = []
     today = local_today(store)
-    request = build_request(ctx, question, history, today)
+    # the demo's answers were recorded one question at a time, so a replayed question is looked up
+    # without the conversation (a second one replays too); a live fallback (``demo --live``) still
+    # reads the conversation in its prompt
+    replaying = ctx.llm.backend_name == "replay"
+    request = build_request(ctx, question, history, today, key_history=[] if replaying else None)
     turn = _Turn(store, request)
     done: StreamEvent | None = None
     failure: StreamEvent | None = None
@@ -379,7 +389,9 @@ def check_turn(
 
     Citations first (:func:`valid_citation_ids`), then every sentence with a date or amount
     (:func:`ordnung.assistant.support.check_answer`); weekday names are corrected and the note is
-    made. An answer left empty becomes :data:`UNSUPPORTED_ANSWER` (or :data:`NO_ANSWER`).
+    made. An answer the check emptied becomes :data:`UNSUPPORTED_ANSWER` (in German for a German answer),
+    and its note still says what was left out and why; an answer that was empty already becomes
+    :data:`NO_ANSWER`.
     """
     person = [question, *(message.content for message in history if message.role == "user")]
     evidence = TurnEvidence.from_results(tool_results, today=today, person=person, catalog=catalog_texts())
@@ -388,8 +400,10 @@ def check_turn(
     claims = check_answer(answer, evidence, citable=valid)
     body = correct_weekdays(_EXTRA_BLANK_LINES.sub("\n\n", strip_invalid(claims.text, valid)).strip(), today)
     note = claims.note()
-    if not body:
-        body, note = (UNSUPPORTED_ANSWER if claims.removed else NO_ANSWER), None
+    if not body and claims.removed:
+        body = UNSUPPORTED_ANSWER_DE if claims.style.german else UNSUPPORTED_ANSWER
+    elif not body:
+        body, note = NO_ANSWER, None
     removed = sorted({citation.id for citation in cited} - valid)
     return AnswerCheck(body, note.removeprefix(NOTE_PREFIX).strip() if note else None, claims, removed)
 
