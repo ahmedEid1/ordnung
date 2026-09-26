@@ -718,24 +718,27 @@ export async function demoCatalog({ api, server }) {
     id: "sidebar-rail-tooltip",
     group: SH,
     route: "/",
-    how: "collapsed sidebar, hover the Inbox icon",
-    description: "Tooltip of a rail icon (with the Please-check count).",
+    how: "collapsed sidebar, hover the “Expand sidebar” button under the logo",
+    description: "Tooltip of the rail's Expand button (the rail's sections are labelled, so they have none).",
     storage: { "ordnung.sidebar.collapsed": "true" },
     run: async (c) => {
-      if (c.phone) c.notApplicable("no sidebar on phones (tab bar)");
+      if (!c.desktop) c.notApplicable("the sidebar can be collapsed on laptops only (tablets always show the labelled rail)");
       await c.goto("/");
-      await c.hover(c.page.getByRole("complementary", { name: "Main" }).getByRole("link", { name: /^Inbox/ }));
+      await c.hover(c.page.getByRole("complementary", { name: "Sidebar" }).getByRole("button", { name: "Expand sidebar" }));
     },
   });
   add({
-    id: "demo-badge-tooltip",
+    id: "demo-badge-about",
     group: SH,
     route: "/",
-    how: "open /, hover the “Demo · 28 Sep 2026” badge",
-    description: "Demo badge tooltip (simulated date).",
+    how: "open /, click the “Demo · 28 Sep 2026” badge (the flask in the phone top bar)",
+    description: "“About the demo” popover (a bottom sheet on phones): Sam Rivera's sample life, the simulated date.",
     run: async (c) => {
+      if (c.width < 360) c.notApplicable("below 360 px the top bar has no room for the demo badge");
       await c.goto("/");
-      await c.hover(c.page.locator('span[tabindex="0"]').filter({ hasText: /Demo · / }));
+      await c.click(c.page.getByRole("button", { name: /about the demo$/ }));
+      await c.page.getByRole("dialog", { name: "About the demo" }).waitFor();
+      await settle(c.page, { idle: false });
     },
   });
   add({
