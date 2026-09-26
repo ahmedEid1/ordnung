@@ -1,1 +1,0 @@
-import{c as e,d as t}from"./index-qs_24_Qg.js";import{D as n,E as r,T as i}from"./format-DLnI2gev.js";var a=t(e(),1);function o(){!r.current&&i();let[e]=(0,a.useState)(n.current);return e}export{o as t};
