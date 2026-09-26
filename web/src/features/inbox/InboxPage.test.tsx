@@ -32,9 +32,9 @@ describe("Inbox", () => {
   it("shows the New-mail tray and the letters list with sender, kind, status and to-dos", async () => {
     const { container } = renderInbox();
     const tray = await screen.findByRole("region", { name: /New mail/ });
-    expect(within(tray).getAllByRole("button", { name: "Let Ordnung read it" })).toHaveLength(3);
+    expect(within(tray).getAllByRole("button", { name: "Let Ordnung read it" })).toHaveLength(5);
     expect(within(tray).getByText("Finanzamt Musterstadt")).toBeInTheDocument();
-    expect(within(tray).getByRole("button", { name: "Read all 3" })).toBeInTheDocument();
+    expect(within(tray).getByRole("button", { name: "Read all 5" })).toBeInTheDocument();
 
     const parking = await screen.findByRole("link", { name: "Parking fine (Verwarnungsgeld)" });
     expect(parking).toHaveAttribute("href", "/documents/doc_parking");

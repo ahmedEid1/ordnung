@@ -9,7 +9,20 @@ import { ibanLooksValid, normalizeIban } from "@/lib/format";
 import { __clearToasts } from "@/components/ui/Toast";
 import LettersPage from "@/pages/LettersPage";
 import { followUpDate, objectionCheck } from "./logic";
-import { SCHUFA_ADDRESS, TEMPLATES, TEMPLATE_BY_KIND, detailsPayload, fieldError, isTemplateKind, missingFields, parseMoney, sortForTemplate } from "./templates";
+import {
+  SCHUFA_ADDRESS,
+  TEMPLATES,
+  TEMPLATE_BY_KIND,
+  detailsPayload,
+  fieldError,
+  isTemplateKind,
+  joinAnd,
+  letterDefaults,
+  missingFields,
+  nextDay,
+  parseMoney,
+  sortForTemplate,
+} from "./templates";
 
 beforeEach(() => {
   vi.stubGlobal("scrollTo", () => {});
@@ -24,7 +37,9 @@ describe("template letter helpers", () => {
     expect(parseMoney("1.234,50")).toBe(1234.5);
     expect(parseMoney("80")).toBe(80);
     expect(parseMoney("80,5")).toBe(80.5);
+    expect(parseMoney("80,-")).toBe(80);
     expect(parseMoney("1,234.50")).toBe(1234.5);
+    expect(parseMoney("1234.5")).toBe(1234.5);
     expect(parseMoney(" 50 € ")).toBe(50);
     expect(parseMoney("")).toBeNull();
     expect(parseMoney(undefined)).toBeNull();
@@ -32,13 +47,56 @@ describe("template letter helpers", () => {
     expect(parseMoney("-5")).toBeNull();
   });
 
+  it("reads a dot or comma before three digits as thousands — 1.500 is never 1,50 €", () => {
+    expect(parseMoney("1.500")).toBe(1500);
+    expect(parseMoney("1.234")).toBe(1234);
+    expect(parseMoney("12.000")).toBe(12000);
+    expect(parseMoney("1.500.000")).toBe(1500000);
+    expect(parseMoney("1,500")).toBe(1500);
+    expect(parseMoney("12,000.5")).toBe(12000.5);
+    // ambiguous or malformed: refused instead of guessed
+    expect(parseMoney("1.2345")).toBeNull();
+    expect(parseMoney("1.50.0")).toBeNull();
+    expect(parseMoney("1234.567")).toBeNull();
+    const deposit = TEMPLATE_BY_KIND.deposit_return.fields.find((f) => f.name === "amount")!;
+    expect(fieldError(deposit, { amount: "1.500" }, "2026-09-28")).toBeNull();
+    expect(detailsPayload(TEMPLATE_BY_KIND.deposit_return, { moved_out_on: "2026-09-01", amount: "1.500" })).toEqual({ moved_out_on: "2026-09-01", amount: 1500 });
+    expect(fieldError(deposit, { amount: "1.2345" }, "2026-09-28")).toMatch(/Enter an amount/);
+  });
+
+  it("checks an instalment and a new date against the letter's own amount and deadline", () => {
+    const plan = TEMPLATE_BY_KIND.payment_plan;
+    const instalment = plan.fields.find((f) => f.name === "instalment")!;
+    // "1.500" with an instalment of 50 is fine (it used to read as 1,50 €)
+    expect(fieldError(instalment, { instalment: "50", amount: "1.500" }, "2026-09-28")).toBeNull();
+    expect(fieldError(instalment, { instalment: "200" }, "2026-09-28", { deadline: null, amount: 120 })).toMatch(/more than the amount you owe/);
+    expect(fieldError(instalment, { instalment: "200", amount: "300" }, "2026-09-28", { deadline: null, amount: 120 })).toBeNull();
+    const until = TEMPLATE_BY_KIND.extension_request.fields.find((f) => f.name === "until")!;
+    expect(fieldError(until, { until: "2026-10-10" }, "2026-09-28", { deadline: "2026-10-12", amount: null })).toMatch(/after the letter's deadline/);
+    expect(fieldError(until, { until: "2026-10-20" }, "2026-09-28", { deadline: "2026-10-12", amount: null })).toBeNull();
+    expect(
+      letterDefaults([
+        { kind: "payment", status: "open", due_date: "2026-10-20", amount: 99 },
+        { kind: "payment", status: "done", due_date: "2026-10-01", amount: 5 },
+        { kind: "payment", status: "open", due_date: "2026-10-05", amount: 120 },
+        { kind: "deadline", status: "snoozed", due_date: "2026-10-12", amount: null },
+        { kind: "task", status: "open", due_date: null, amount: null },
+      ]),
+    ).toEqual({ deadline: "2026-10-12", amount: 120 });
+  });
+
   it("lists the required facts still missing, in form order", () => {
     const plan = TEMPLATE_BY_KIND.payment_plan;
-    expect(missingFields(plan, {})).toEqual(["Monthly instalment you can pay", "First instalment on"]);
-    expect(missingFields(plan, { instalment: "0" })).toEqual(["Monthly instalment you can pay", "First instalment on"]);
+    expect(missingFields(plan, {})).toEqual(["the monthly instalment", "the day of the first instalment"]);
+    expect(missingFields(plan, { instalment: "0" })).toEqual(["the monthly instalment", "the day of the first instalment"]);
     expect(missingFields(plan, { instalment: "50", first_instalment: "2026-11-01" })).toEqual([]);
     expect(missingFields(TEMPLATE_BY_KIND.data_access, {})).toEqual([]);
-    expect(missingFields(TEMPLATE_BY_KIND.withdrawal, { subject_matter: "  " })).toEqual(["What did you order or sign up for?"]);
+    expect(missingFields(TEMPLATE_BY_KIND.withdrawal, { subject_matter: "  " })).toEqual(["what you ordered"]);
+    // every required fact says in plain words what is missing
+    for (const t of TEMPLATES) for (const f of t.fields) if (f.required) expect(f.need).toMatch(/^[a-z]/);
+    expect(joinAnd(["a"])).toBe("a");
+    expect(joinAnd(["a", "b", "c"])).toBe("a, b and c");
+    expect(nextDay("2026-09-30")).toBe("2026-10-01");
   });
 
   it("flags dates on the wrong side of today and unreadable amounts", () => {
@@ -139,16 +197,23 @@ describe("composer — template letters", () => {
     await user.selectOptions(within(dialog).getByLabelText(/Or write to someone without a letter/), "pty_finanzamt");
     const write = within(dialog).getByRole("button", { name: /Write the letter/ });
     expect(write).toBeDisabled();
-    expect(within(dialog).getByText("Still needed: monthly instalment you can pay, first instalment on.")).toBeInTheDocument();
+    expect(within(dialog).getByText("Still needed: the monthly instalment and the day of the first instalment.")).toBeInTheDocument();
 
     await user.type(within(dialog).getByLabelText(/Monthly instalment you can pay/), "50");
     const first = within(dialog).getByLabelText(/First instalment on/);
+    // a future date can't be today: the picker starts tomorrow
+    expect(first).toHaveAttribute("min", "2026-09-29");
     await user.type(first, "2026-09-01");
     expect(await within(dialog).findByText("Choose a day after today.")).toBeInTheDocument();
     expect(write).toBeDisabled();
     await user.clear(first);
     await user.type(first, "2026-11-01");
     await waitFor(() => expect(write).toBeEnabled());
+    // how an amount was read is shown next to it: "1.500" is 1.500 €, not 1,50 €
+    const total = within(dialog).getByLabelText(/Total amount/);
+    await user.type(total, "1.500");
+    expect(total).toHaveAccessibleDescription(/= €1,500\.00|= 1\.500,00 €/);
+    await user.clear(total);
 
     await user.click(write);
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/letters\/drf_/));

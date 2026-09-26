@@ -25,6 +25,8 @@ import {
   sortChecks,
   versioned,
 } from "./logic";
+import { SendGuidancePanel, instantPhrase, notEnoughPhrase } from "./SendGuidancePanel";
+import { STATUTORY_OBJECTIONS } from "@/mocks/data/highStakes";
 
 /** Render `ui` at `route` under a real `:id` route pattern (so useParams works). */
 function renderAt(ui: ReactElement, pattern: string, route: string) {
@@ -144,6 +146,21 @@ describe("sending", () => {
     ],
     tips: [],
   };
+
+  it("says only what the letter's own ways allow: a court takes a fax and online, never an email", () => {
+    const court: SendGuidance = { ...STATUTORY_OBJECTIONS.court_payment_order!.guidance, send_by: "2026-10-01", must_arrive_by: "2026-10-07" };
+    expect(instantPhrase(court.channels)).toBe("online or by fax");
+    expect(notEnoughPhrase(court.channels)).toBe("An email is not enough.");
+    renderWithProviders(<SendGuidancePanel guidance={court} />);
+    expect(screen.getByText(/online or by fax you have until then/)).toBeInTheDocument();
+    expect(screen.queryByText(/fax is not enough/)).toBeNull();
+    expect(screen.getByText(/An email is not enough\./)).toBeInTheDocument();
+    // a tenancy notice on paper: neither an email nor a fax
+    expect(notEnoughPhrase([...guidance.channels, { channel: "fax", label: "Fax", allowed: false, recommended: false, note: null, citation: null }])).toBe(
+      "An email or a fax is not enough.",
+    );
+    expect(instantPhrase(guidance.channels)).toBeNull();
+  });
 
   it("ranks recommended first and not-allowed last", () => {
     expect(rankChannels(guidance.channels).map((c) => c.channel)).toEqual(["registered_letter", "letter", "email"]);

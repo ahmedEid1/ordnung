@@ -24,8 +24,8 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     ],
     "help": [
       {
-        "name": "Rechtsantragstelle at any Amtsgericht",
-        "what": "Free. Staff write down your objection for you (zu Protokoll) and explain the next steps — bring the letter and its envelope.",
+        "name": "Rechtsantragstelle at the Amtsgericht",
+        "what": "Free. Staff write down your objection for you (zu Protokoll) and explain the next steps — bring the letter and its envelope. Best at the court that issued it: at another Amtsgericht the objection only counts once their record reaches that court (§ 129a Abs. 3 S. 2 ZPO), so go early.",
         "url": "https://www.justizadressen.nrw.de/de/justiz/suche"
       },
       {
@@ -58,7 +58,7 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "urgent": true,
     "steps": [
       "Find the delivery date on the yellow envelope (or the bailiff's papers) and enter it.",
-      "To object, write to the court that issued the order — not by e-mail — or go to the Rechtsantragstelle of any Amtsgericht.",
+      "To object, write to the court that issued the order — not by e-mail — or go to its Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record reaches the issuing court, so go early.",
       "An objection doesn't stop enforcement by itself; ask for advice about suspending it.",
       "If you do owe the money, paying it stops further enforcement costs."
     ],
@@ -72,8 +72,8 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     ],
     "help": [
       {
-        "name": "Rechtsantragstelle at any Amtsgericht",
-        "what": "Free. Staff write down your objection for you (zu Protokoll) and explain the next steps — bring the letter and its envelope.",
+        "name": "Rechtsantragstelle at the Amtsgericht",
+        "what": "Free. Staff write down your objection for you (zu Protokoll) and explain the next steps — bring the letter and its envelope. Best at the court that issued it: at another Amtsgericht the objection only counts once their record reaches that court (§ 129a Abs. 3 S. 2 ZPO), so go early.",
         "url": "https://www.justizadressen.nrw.de/de/justiz/suche"
       },
       {
@@ -91,6 +91,7 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "zpo_339",
       "zpo_180",
       "zpo_222",
+      "zpo_129a",
       "bgb_195"
     ]
   },
@@ -145,7 +146,9 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "urgent": false,
     "steps": [
       "Don't agree to move out or sign anything before you have had advice.",
-      "If you object, keep proof that it arrived; a letter is safest, text form is enough since 2025."
+      "If you object, keep proof that it arrived; a letter is safest, text form is enough since 2025.",
+      "If the landlord didn't tell you in time about your right to object, its form and its deadline, you can still object at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB).",
+      "A notice without notice period (fristlos) can't be met with this objection. If it is for rent arrears, paying all of them in time can still undo it (§ 569 Abs. 3 Nr. 2 BGB) — get advice at once."
     ],
     "facts": [],
     "help": [

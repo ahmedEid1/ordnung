@@ -186,7 +186,14 @@ export const PARTIES: Party[] = [
     address: "Steuerring 10, 12345 Musterstadt",
     ibans: ["DE61300500000001122334"],
   }),
+  party({
+    id: "pty_mahngericht",
+    name: "Amtsgericht Hagen – Zentrales Mahngericht",
+    kind: "authority",
+    identifiers: [{ label: "Geschäftsnummer", value: "26-4471902-0-3" }],
+    address: "58084 Hagen",
+  }),
 ];
 
 /** Parties that only exist after a New-mail letter was opened. */
-export const TRAY_ONLY_PARTIES = new Set(["pty_finanzamt"]);
+export const TRAY_ONLY_PARTIES = new Set(["pty_finanzamt", "pty_mahngericht"]);

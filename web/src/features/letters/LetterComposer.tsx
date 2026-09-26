@@ -1,7 +1,7 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { Building2, Check, FileX, Languages, Mail, Scale, Search, Sparkles, type LucideIcon } from "lucide-react";
-import { useContracts, useCreateDraft, useDocuments, useParties, useProfile } from "@/api/hooks";
+import { useContracts, useCreateDraft, useDocument, useDocuments, useParties, useProfile } from "@/api/hooks";
 import type { Contract, Document, DraftKind, Party } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
@@ -28,6 +28,8 @@ import {
   detailsPayload,
   fieldError,
   isTemplateKind,
+  joinAnd,
+  letterDefaults,
   missingFields,
   sortForTemplate,
   type DetailValues,
@@ -167,8 +169,8 @@ function StatutoryNote({ kind, term }: { kind: Document["kind"]; term: "Einspruc
   if (kind === "landlord_notice") {
     return (
       <>
-        If moving out would be a real hardship for you or your family, the law lets you object — a <Glossary term={term} /> (§ 574 BGB). Sign it by hand and post
-        it; a tenants' association can check your reasons first.
+        If moving out would be a real hardship for you or your family, the law lets you object — a <Glossary term={term} /> (§ 574 BGB). Text form is
+        enough, so e-mail counts; a signed letter by Einwurf-Einschreiben is the safest proof. A tenants' association can check your reasons first.
       </>
     );
   }
@@ -372,7 +374,7 @@ function TemplateRecipient({
               Use SCHUFA's address
             </Button>
           </div>
-          <Field label="Or type their name and address" hint="SCHUFA gives you one free copy of your credit data a year — and more whenever you ask under Art. 15 GDPR." className="mt-2">
+          <Field label="Or type their name and address" hint="Under Art. 15 GDPR SCHUFA must send you a free copy of the data it holds about you; further copies may cost a fee." className="mt-2">
             <Textarea
               value={typed}
               onChange={(e) => {
@@ -411,6 +413,18 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const [instructions, setInstructions] = useState("");
   const [language, setLanguage] = useState<"de" | "en">("de");
   const [filter, setFilter] = useState("");
+  // opened for a chosen letter ("Withdraw", "Ask for more time" on a letter): start at step 2, not the list of kinds
+  const whichRef = useRef<HTMLElement>(null);
+  const startAtWhich = Boolean(prefill?.kind);
+  useEffect(() => {
+    if (!open || !startAtWhich) return;
+    const t = window.setTimeout(() => whichRef.current?.scrollIntoView?.({ block: "start" }), 60);
+    return () => window.clearTimeout(t);
+  }, [open, startAtWhich]);
+  // the answered letter's own deadline and amount: the server uses them when the fields are left empty
+  const needsLetter = kind === "extension_request" || kind === "payment_plan";
+  const letterQ = useDocument(needsLetter && docId ? docId : undefined);
+  const defaults = useMemo(() => letterDefaults(letterQ.data?.items ?? []), [letterQ.data]);
 
   const parties = useMemo(() => new Map((partiesQ.data ?? []).map((p) => [p.id, p])), [partiesQ.data]);
   const docs = useMemo(() => usableDocuments(docsQ.data ?? []), [docsQ.data]);
@@ -452,7 +466,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
         ...values,
       };
   const missing = template ? missingFields(template, templateValues) : [];
-  const invalid = template ? template.fields.some((f) => fieldError(f, templateValues, today)) : false;
+  const invalid = template ? template.fields.some((f) => fieldError(f, templateValues, today, defaults)) : false;
   const templateTarget = Boolean(doc || partyId || (template?.target === "party-or-typed" && typedRecipient.trim()));
 
   const ready =
@@ -521,7 +535,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
           : template && !templateTarget
             ? "Choose who the letter is for."
             : missing.length
-              ? `Still needed: ${missing.join(", ").toLowerCase()}.`
+              ? `Still needed: ${joinAnd(missing)}.`
               : invalid
                 ? "Fix the date or amount marked above."
                 : null;
@@ -532,7 +546,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
       onClose={onClose}
       size="lg"
       title="New letter"
-      description="Ordnung writes the legally important sentences from fixed templates. Claude only adds polite wording and the English translation."
+      description="The legal sentences come from fixed templates; Claude only adds polite wording and the translation."
       footer={
         <>
           {/* why the button is disabled — on phones above the buttons (the footer stacks in reverse) */}
@@ -560,7 +574,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
 
         {/* 2 · which */}
         {kind ? (
-          <section aria-labelledby="cmp-which">
+          <section ref={whichRef} aria-labelledby="cmp-which" className="scroll-mt-2">
             <StepLabel n={2} id="cmp-which">
               {whichLabel}
             </StepLabel>
@@ -745,7 +759,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
             <StepLabel n={3} id="cmp-details">
               The details
             </StepLabel>
-            <TemplateFields config={template} values={templateValues} onChange={setValues} today={today} profile={profileQ.data} />
+            <TemplateFields config={template} values={templateValues} onChange={setValues} today={today} profile={profileQ.data} defaults={defaults} />
           </section>
         ) : null}
 

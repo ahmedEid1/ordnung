@@ -111,6 +111,18 @@ export const Q = {
     consent: "benötigen wir Ihre ausdrückliche Zustimmung bis zum 30.11.2026",
   },
   // New-mail tray
+  court: {
+    title: "Mahnbescheid",
+    claim: "Hauptforderung: Abonnement-Entgelte 01/2022 – 12/2022 · 59,88 EUR",
+    period: "Sie können binnen zwei Wochen seit der Zustellung dieses Bescheids Widerspruch erheben.",
+    warning: "Nach Ablauf dieser Frist kann der Antragsteller einen Vollstreckungsbescheid erwirken und aus diesem die Zwangsvollstreckung betreiben.",
+    unchecked: "Das Gericht hat nicht geprüft, ob dem Antragsteller der geltend gemachte Anspruch zusteht.",
+    total: "Gesamtbetrag 111,88 EUR",
+  },
+  dismissal: {
+    notice: "hiermit kündigen wir das mit Ihnen bestehende Arbeitsverhältnis fristgerecht zum 31.10.2026.",
+    register: "Wir weisen Sie darauf hin, dass Sie verpflichtet sind, sich unverzüglich bei der Agentur für Arbeit arbeitsuchend zu melden (§ 38 Abs. 1 SGB III).",
+  },
   power2: {
     price: "Ihr Arbeitspreis steigt von 32,10 Cent/kWh auf 34,90 Cent/kWh (brutto).",
     abschlag: "Ihr monatlicher Abschlag erhöht sich damit ab November von 48,00 EUR auf 55,00 EUR.",
@@ -674,6 +686,61 @@ export const LETTERS: Record<string, LetterSpec> = {
   },
 
   // ---------------------------------------------------------------- New-mail tray
+  doc_mahnbescheid: {
+    brand: { name: "Amtsgericht Hagen", color: "#8a6d1f", tagline: "Zentrales Mahngericht · 58084 Hagen", mark: "eagle", serif: true },
+    senderLine: "Amtsgericht Hagen · Zentrales Mahngericht · 58084 Hagen",
+    recipient: RECIPIENT,
+    info: [
+      ["Geschäftsnummer", "26-4471902-0-3"],
+      ["Datum", "23.09.2026"],
+    ],
+    pages: [
+      {
+        subject: Q.court.title,
+        blocks: [
+          "Antragsteller: Streamline Media GmbH, Medienallee 4, 50667 Köln",
+          {
+            rows: [
+              [Q.court.claim, ""],
+              ["Zinsen und Nebenforderungen", "16,00 EUR"],
+              ["Kosten dieses Verfahrens", "36,00 EUR"],
+              [Q.court.total, ""],
+            ],
+            boldLast: true,
+          },
+          Q.court.unchecked,
+          `${Q.court.period} Soweit Sie den Anspruch für begründet halten, zahlen Sie den Gesamtbetrag an den Antragsteller.`,
+          Q.court.warning,
+          "Für den Widerspruch soll der beigefügte Vordruck verwendet werden; er ist auch online unter www.online-mahnantrag.de möglich.",
+        ],
+      },
+    ],
+    footer: ["Zugestellt durch die Post – bitte das Datum auf dem gelben Umschlag beachten."],
+  },
+
+  doc_dismissal: {
+    brand: { name: "Muster Tech GmbH", color: "#3056d3", tagline: "Software für Musterstadt", mark: "bars" },
+    senderLine: "Muster Tech GmbH · Innovationsring 17 · 12345 Musterstadt",
+    recipient: RECIPIENT,
+    info: [
+      ["Datum", "25.09.2026"],
+      ["Personalnummer", "WS-0417"],
+    ],
+    pages: [
+      {
+        subject: "Kündigung Ihres Arbeitsverhältnisses",
+        blocks: [
+          "Sehr geehrte*r Sam Rivera,",
+          Q.dismissal.notice,
+          "Ihren restlichen Urlaub gewähren wir Ihnen bis zum Ende des Arbeitsverhältnisses. Ein Arbeitszeugnis erhalten Sie mit gesonderter Post.",
+          Q.dismissal.register,
+          "Mit freundlichen Grüßen",
+          "Muster Tech GmbH · Personalabteilung",
+        ],
+      },
+    ],
+  },
+
   doc_power_price: {
     brand: { name: "Stadtwerke Musterstadt", color: "#0b7a53", tagline: "Energie für Musterstadt", mark: "circle" },
     senderLine: "Stadtwerke Musterstadt · Energieplatz 1 · 12345 Musterstadt",

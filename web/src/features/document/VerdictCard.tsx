@@ -14,6 +14,7 @@ import {
   ListChecks,
   Mail,
   PenLine,
+  Scale,
   ShieldAlert,
   TriangleAlert,
   type LucideIcon,
@@ -38,16 +39,18 @@ import {
   dayCountdown,
   decisionSuggestion,
   incomingMoney,
-  isCourtOrder,
   isOpenItem,
   isOptionalObjection,
   leadsWithDecision,
+  mustAct,
   needsArrivalDate,
   needsCheck,
+  otherLawDeadlines,
   scamSuggestion,
   type MainAction,
 } from "./verdict";
 import { icsFileName, icsHref, useItemActions, useStartDraft } from "./actions";
+import { KindPicker } from "./KindPicker";
 import { PayPanel } from "./PayPanel";
 import { GlossaryText } from "./Explained";
 import { adviceFor, WhyThisDate } from "./WhyThisDate";
@@ -106,8 +109,9 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
   const checkDate = open ? needsCheck(open) : false;
   const isAppointment = open?.kind === "appointment";
   const debit = open ? isDirectDebit(open) : false;
-  // a court order's deadline isn't optional: pay or object, or it is enforced
-  const optional = open ? isOptionalObjection(open) && !isCourtOrder(doc) : false;
+  // a court order's or a dismissal's deadline isn't optional: doing nothing has consequences
+  const optional = open ? isOptionalObjection(open) && !mustAct(doc) : false;
+  const alsoByLaw = !scam && !decision ? otherLawDeadlines(detail.items, open) : [];
   const refund = incomingMoney(detail.items);
   const refundText = refund?.amount != null ? `${formatMoney(refund.amount, { currency: refund.currency })} comes back to you` : null;
 
@@ -122,6 +126,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
         <p className="sr-only">What this is</p>
         <div className="flex flex-wrap items-center gap-1.5">
           <KindBadge docKind={doc.kind} />
+          {!scam && doc.status !== "queued" && doc.status !== "processing" ? <KindPicker doc={doc} /> : null}
           {scam ? (
             <Badge tone="danger" icon={ShieldAlert}>
               Possible scam
@@ -136,18 +141,21 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
         </h1>
         <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px] text-muted">
           {detail.party ? <PartyChip party={detail.party} /> : null}
-          {doc.doc_date ? (
+          {/* one run of text: when it wraps, no separator is left at the start of a line */}
+          {doc.doc_date || doc.received_date ? (
             <span>
-              Letter of <DateText date={doc.doc_date} style="medium" className="text-ink/85" />
+              {doc.doc_date ? (
+                <>
+                  Letter of <DateText date={doc.doc_date} style="medium" className="text-ink/85" />
+                </>
+              ) : null}
+              {doc.doc_date && doc.received_date ? ", " : null}
+              {doc.received_date ? (
+                <>
+                  {doc.doc_date ? "arrived" : "Arrived"} <DateText date={doc.received_date} style="day" className="text-ink/85" />
+                </>
+              ) : null}
             </span>
-          ) : null}
-          {doc.received_date ? (
-            <>
-              <span aria-hidden>·</span>
-              <span>
-                arrived <DateText date={doc.received_date} style="day" className="text-ink/85" />
-              </span>
-            </>
           ) : null}
         </div>
         {doc.summary ? <p className="mt-3 text-[15px] leading-relaxed text-ink/80">{doc.summary}</p> : null}
@@ -185,6 +193,25 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
               </p>
             ) : null}
             {debit ? <p className="mt-1 text-[13px] text-muted">Collected automatically by direct debit — nothing to transfer.</p> : null}
+            {alsoByLaw.length ? (
+              <ul className="mt-3 space-y-1.5" aria-label="Also due by law">
+                {alsoByLaw.map((i) => (
+                  <li key={i.id} className="flex items-start gap-2 rounded-lg bg-surface-2/70 px-3 py-2 text-[13.5px] leading-snug text-ink">
+                    <Scale className="mt-0.5 size-3.5 shrink-0 text-muted" aria-hidden />
+                    <span className="min-w-0">
+                      <span className="font-medium">Also: </span>
+                      <GlossaryText text={i.title} />
+                      {i.due_date ? (
+                        <>
+                          {" "}
+                          — by <DateText date={i.due_date} style="medium" className="font-semibold" />
+                        </>
+                      ) : null}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </>
         ) : (
           <p className="flex items-center gap-2 text-[15px] font-medium text-ink">

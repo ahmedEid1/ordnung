@@ -2334,7 +2334,8 @@ export interface components {
          * @description Facts a template letter needs besides the letter, contract or person it is about.
          *
          *     Everything is optional here; each template names the facts it requires
-         *     (:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD``, amounts in euros.
+         *     (:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused
+         *     with a clear message, never a server error), amounts in euros.
          */
         LetterDetails: {
             /**

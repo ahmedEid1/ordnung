@@ -8,8 +8,9 @@ import { Link } from "react-router";
 import { Landmark } from "lucide-react";
 import type { Profile } from "@/api/types";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui/Field";
+import { formatDate, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { fieldError, type DetailField, type DetailValues, type TemplateConfig } from "./templates";
+import { fieldError, nextDay, parseMoney, type DetailField, type DetailValues, type LetterDefaults, type TemplateConfig } from "./templates";
 
 export interface TemplateFieldsProps {
   config: TemplateConfig;
@@ -17,6 +18,8 @@ export interface TemplateFieldsProps {
   onChange: (values: DetailValues) => void;
   today: string;
   profile: Profile | undefined;
+  /** the answered letter's own deadline and amount (used when the person leaves theirs empty) */
+  defaults?: LetterDefaults;
 }
 
 /** An amount in euros: the label's id and descriptions (from {@link Field}) reach the input itself. */
@@ -31,9 +34,33 @@ function MoneyInput({ className, ...rest }: ComponentProps<"input">) {
   );
 }
 
-function FieldControl({ field, values, onChange, today }: { field: DetailField; values: DetailValues; onChange: (v: DetailValues) => void; today: string }) {
-  const error = fieldError(field, values, today);
-  const optional = field.type !== "checkbox" && !("required" in field && field.required);
+/** The hint under a field: how an amount was read ("= 1.500,00 €"), and what an empty field falls back to. */
+function hintFor(field: DetailField, value: string, defaults: LetterDefaults): string | undefined {
+  if (field.type === "money" && value.trim()) {
+    // "1.500" or "1,5": say how it was read (a plain "50" needs no echo)
+    const amount = parseMoney(value);
+    return amount !== null && /[.,]/.test(value) ? `= ${formatMoney(amount)}` : undefined;
+  }
+  if (field.name === "deadline" && defaults.deadline && !value) return `Leave empty to use the letter's deadline, ${formatDate(defaults.deadline, { style: "short" })}.`;
+  if (field.name === "amount" && defaults.amount !== null) return `Leave empty to use the letter's amount, ${formatMoney(defaults.amount)}.`;
+  return field.hint;
+}
+
+function FieldControl({
+  field,
+  values,
+  onChange,
+  today,
+  defaults,
+}: {
+  field: DetailField;
+  values: DetailValues;
+  onChange: (v: DetailValues) => void;
+  today: string;
+  defaults: LetterDefaults;
+}) {
+  const error = fieldError(field, values, today, defaults);
+  const optional = field.type !== "checkbox" && !field.required;
   if (field.type === "checkbox") {
     return (
       <Checkbox
@@ -47,21 +74,22 @@ function FieldControl({ field, values, onChange, today }: { field: DetailField; 
   }
   const value = (values[field.name] as string | undefined) ?? "";
   const set = (v: string) => onChange({ ...values, [field.name]: v });
+  const hint = hintFor(field, value, defaults);
   if (field.type === "textarea") {
     return (
-      <Field label={field.label} hint={field.hint} error={error} optional={optional} className="sm:col-span-2">
+      <Field label={field.label} hint={hint} error={error} optional={optional} className="sm:col-span-2">
         <Textarea value={value} onChange={(e) => set(e.target.value)} placeholder={field.placeholder} rows={field.name === "defect" ? 3 : 2} className="min-h-16" />
       </Field>
     );
   }
   if (field.type === "date") {
     return (
-      <Field label={field.label} hint={field.hint} error={error} optional={optional}>
+      <Field label={field.label} hint={hint} error={error} optional={optional}>
         <Input
           type="date"
           value={value}
           onChange={(e) => set(e.target.value)}
-          min={field.when === "future" ? today : undefined}
+          min={field.when === "future" ? nextDay(today) : undefined}
           max={field.when === "past" ? today : undefined}
         />
       </Field>
@@ -69,26 +97,28 @@ function FieldControl({ field, values, onChange, today }: { field: DetailField; 
   }
   if (field.type === "money") {
     return (
-      <Field label={field.label} hint={field.hint} error={error} optional={optional}>
+      <Field label={field.label} hint={hint} error={error} optional={optional}>
         <MoneyInput value={value} onChange={(e) => set(e.target.value)} />
       </Field>
     );
   }
   return (
-    <Field label={field.label} hint={field.hint} error={error} optional={optional} className={cn(field.name === "subject_matter" && "sm:col-span-2")}>
+    <Field label={field.label} hint={hint} error={error} optional={optional} className={cn(field.name === "subject_matter" && "sm:col-span-2")}>
       <Input value={value} onChange={(e) => set(e.target.value)} placeholder={field.placeholder} />
     </Field>
   );
 }
 
-export function TemplateFields({ config, values, onChange, today, profile }: TemplateFieldsProps) {
+const NO_DEFAULTS: LetterDefaults = { deadline: null, amount: null };
+
+export function TemplateFields({ config, values, onChange, today, profile, defaults = NO_DEFAULTS }: TemplateFieldsProps) {
   const iban = profile?.iban?.trim() ?? "";
   return (
     <div className="space-y-3">
       {config.fields.length ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {config.fields.map((f) => (
-            <FieldControl key={f.name} field={f} values={values} onChange={onChange} today={today} />
+            <FieldControl key={f.name} field={f} values={values} onChange={onChange} today={today} defaults={defaults} />
           ))}
         </div>
       ) : null}

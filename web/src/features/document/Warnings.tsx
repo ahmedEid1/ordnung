@@ -244,7 +244,7 @@ function ArrivalQuestion({ doc, items }: { doc: Document; items: Item[] }) {
             {served ? (
               <>
                 {items.length === 1 ? `“${items[0]!.title}” counts` : "These dates count"} from the day the court's letter was delivered —
-                the date is written on the yellow envelope (<span lang="de">Zustellungsurkunde</span>). Until you tell us, we count from
+                the postman wrote that date on the yellow envelope it came in. Until you tell us, we count from
                 the letter date{doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""}, the earliest possible.
               </>
             ) : (

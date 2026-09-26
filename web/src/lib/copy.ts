@@ -477,7 +477,7 @@ export const SEND_CHANNEL_COPY: CopyMap<SendChannelKind> = {
 
 export const SEND_FORM_COPY: CopyMap<SendForm> = {
   text_form: { label: "Text form — email or letter is fine", icon: Mail, tone: "ok" },
-  written_form: { label: "Written form — print, sign by hand and post", icon: Signature, tone: "warn" },
+  written_form: { label: "Written form — signed by hand", icon: Signature, tone: "warn" },
   any: { label: "Any form", icon: Mail, tone: "neutral" },
 };
 

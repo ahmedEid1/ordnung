@@ -49,11 +49,12 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
           <h2 id={titleId} className="mt-0.5 text-[15.5px] font-semibold leading-snug text-ink [overflow-wrap:anywhere]">
             {advice.title}
           </h2>
-          <p className="mt-1.5 text-[14px] leading-relaxed text-ink/85">{advice.summary}</p>
         </div>
       </div>
 
-      <div className="space-y-4 px-4 pb-4 pt-3 sm:px-5 @[34rem]:pl-[68px]">
+      {/* the summary lines up with the steps below it: under the title on a wide card, full width on a narrow one */}
+      <div className="space-y-4 px-4 pb-4 pt-2 sm:px-5 @[34rem]:pl-[68px]">
+        <p className="text-[14px] leading-relaxed text-ink/85">{advice.summary}</p>
         {advice.steps.length ? (
           <div>
             <h3 className={cn("text-[12px] font-semibold uppercase tracking-[0.07em]", urgent ? "text-warn-ink/85" : "text-muted")}>What to do</h3>

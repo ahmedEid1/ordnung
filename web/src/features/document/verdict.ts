@@ -131,6 +131,22 @@ export function isCourtOrder(doc: Pick<Document, "kind">): boolean {
   return COURT_ORDERS.has(doc.kind);
 }
 
+/**
+ * Letters whose law-set deadline is never "only if you disagree": a court order (pay or object, or it
+ * is enforced) and a dismissal (only a court action in time keeps the person's rights, and the
+ * registration as job-seeking is due either way).
+ */
+const MUST_ACT = new Set<Document["kind"]>([...COURT_ORDERS, "dismissal"]);
+
+export function mustAct(doc: Pick<Document, "kind">): boolean {
+  return MUST_ACT.has(doc.kind);
+}
+
+/** The other open deadlines the law sets for this letter (a dismissal's registration), earliest first. */
+export function otherLawDeadlines(items: Item[], primary: Item | null): Item[] {
+  return items.filter((i) => i.origin === "rule" && isOpenItem(i) && i.id !== primary?.id && i.due_date).sort(compareItems);
+}
+
 export type MainAction =
   | { type: "draft"; draftKind: Extract<DraftKind, "objection" | "cancellation">; label: string; item: Item | null }
   | { type: "pay"; item: Item }

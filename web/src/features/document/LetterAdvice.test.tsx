@@ -42,7 +42,9 @@ describe("the advice card of a high-stakes letter", () => {
     expect(within(card).getByText("Act now — and get advice")).toBeInTheDocument();
     expect(within(card).getAllByRole("listitem").length).toBeGreaterThan(4);
     expect(within(card).getByText("Old claims may be time-barred")).toBeInTheDocument();
-    const help = within(card).getByRole("link", { name: /Rechtsantragstelle at any Amtsgericht.*opens in a new tab/ });
+    const help = within(card).getByRole("link", { name: /Rechtsantragstelle at the Amtsgericht.*opens in a new tab/ });
+    // another court's desk only counts once its record reaches the issuing court (§ 129a Abs. 3 S. 2 ZPO)
+    expect(within(card).getByText(/§ 129a Abs\. 3 S\. 2 ZPO/)).toBeInTheDocument();
     expect(help).toHaveAttribute("target", "_blank");
     expect(help).toHaveAttribute("rel", expect.stringContaining("noopener"));
     expect(within(card).getByText(/Not legal advice/)).toBeInTheDocument();
@@ -77,7 +79,9 @@ describe("the advice card of a high-stakes letter", () => {
     const first = section.firstElementChild as HTMLElement;
     expect(within(first).getByText(/Court payment order \(Mahnbescheid\)/)).toBeInTheDocument();
     expect(screen.getByText("When was it delivered?")).toBeInTheDocument();
-    expect(screen.getByText(/yellow envelope \(/)).toBeInTheDocument();
+    // the date is on the envelope — the person never sees the Zustellungsurkunde itself
+    expect(screen.getByText(/the postman wrote that date on the yellow envelope/)).toBeInTheDocument();
+    expect(screen.queryByText(/Zustellungsurkunde/)).toBeNull();
     expect(screen.getByLabelText("Delivery date")).toBeInTheDocument();
   });
 
@@ -107,6 +111,78 @@ describe("the advice card of a high-stakes letter", () => {
     expect(screen.getByText("By when")).toBeInTheDocument();
     expect(screen.getByText("If you ignore it")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Draft objection" })).toBeInTheDocument();
+  });
+
+  it("never gives a dismissal the calm 'nothing to do' verdict, and lists the other deadline the law sets", () => {
+    const doc = makeDoc({ id: "doc_dismissal", kind: "dismissal", area: "work", title: "Dismissal", received_date: "2026-09-25" });
+    const spec = { type: "relative", anchor: "receipt", unit: "weeks", text: "", anchor_date: null, date: null, time: null, delivery_rule: "none", shift_rule: "auto" } as const;
+    const court = makeItem({
+      id: "itm_court",
+      title: "Get advice now: court action against the dismissal (Kündigungsschutzklage)",
+      action: "If you think the dismissal is wrong, talk to your union, an employment lawyer or the labour court's Rechtsantragstelle today.",
+      origin: "rule",
+      priority: "critical",
+      due_date: "2026-10-16",
+      date_spec: { ...spec, amount: 3, nature: "objection", legal_basis: "§ 4 S. 1 KSchG" },
+    });
+    const register = makeItem({
+      id: "itm_register",
+      title: "Register as job-seeking (arbeitsuchend) at the Agentur für Arbeit",
+      origin: "rule",
+      priority: "high",
+      due_date: "2026-12-31",
+      date_spec: { ...spec, amount: 3, unit: "days", nature: "declaration", legal_basis: "§ 38 Abs. 1 SGB III" },
+    });
+    renderWithProviders(<VerdictCard detail={makeDetail({ document: doc, items: [court, register] })} primary={court} onAskArrival={() => {}} />, { client: client() });
+    expect(screen.queryByText(/Nothing to do/)).toBeNull();
+    expect(screen.queryByText("Only if you disagree")).toBeNull();
+    expect(screen.getByText("By when")).toBeInTheDocument();
+    const also = screen.getByRole("list", { name: "Also due by law" });
+    expect(within(also).getByText(/Register as job-seeking/)).toBeInTheDocument();
+  });
+
+  it("lets the person say what kind of letter it is", async () => {
+    const detail = await detailFromMock("doc_parking");
+    const user = (await import("@testing-library/user-event")).default.setup();
+    const patched: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (init?.method === "PATCH") patched.push(JSON.parse(String(init.body)));
+        return new Response(JSON.stringify(detail.document), { status: 200, headers: { "Content-Type": "application/json" } });
+      }),
+    );
+    renderWithProviders(<VerdictCard detail={detail} primary={detail.items[0] ?? null} onAskArrival={() => {}} />, { client: client() });
+    await user.click(screen.getByRole("button", { name: "Change what kind of letter this is" }));
+    const dialog = await screen.findByRole("dialog", { name: "What kind of letter is this?" });
+    const select = within(dialog).getByLabelText("Kind of letter");
+    expect(within(select).getByRole("group", { name: "Letters with deadlines set by law" })).toBeInTheDocument();
+    await user.selectOptions(select, "court_payment_order");
+    expect(within(dialog).getByText(/Mahnbescheid: two weeks to pay or object/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(patched).toEqual([{ kind: "court_payment_order" }]));
+  });
+
+  it("the static demo has a Mahnbescheid and a dismissal with their cards and the deadlines the law sets", async () => {
+    const order = await detailFromMock("doc_mahnbescheid");
+    expect(order.document.kind).toBe("court_payment_order");
+    expect(order.advice?.urgent).toBe(true);
+    const [objection] = order.items;
+    expect(objection?.computation?.rule_ids).toContain("zpo_692");
+    expect(objection?.computation?.confidence).toBe("low");
+    const dismissal = await detailFromMock("doc_dismissal");
+    expect(dismissal.advice?.kind).toBe("dismissal");
+    expect(dismissal.items.map((i) => [i.slot_key, i.origin, i.due_date])).toEqual([
+      ["rule:kschg_4", "rule", "2026-10-19"],
+      ["rule:sgb3_38", "rule", "2026-10-01"],
+    ]);
+    // the envelope date recomputes the court deadline with the real rules' receipt
+    const srv = createMockServer({ staticDemo: false, latency: 0 });
+    srv.openAllMail();
+    await srv.handle("PATCH", "/documents/doc_mahnbescheid", new URLSearchParams(), { received_date: "2026-09-25" });
+    const after = (await (await srv.handle("GET", "/documents/doc_mahnbescheid", new URLSearchParams(), undefined)).json()) as DocumentDetail;
+    expect(after.items[0]?.due_date).toBe("2026-10-09");
+    expect(after.items[0]?.computation?.confidence).toBe("medium");
   });
 
   it("marks to-dos the law adds as set by law", () => {

@@ -60,6 +60,8 @@ export const MAIL_TRAY: MailTrayItem[] = [
   { id: "mail_stadtwerke", filename: "Stadtwerke_Preisanpassung.pdf", sender: "Stadtwerke Musterstadt", subject: "Preisanpassung zum 01.11.2026", kind_hint: "Price change", photo: false, opened: false, doc_id: null },
   { id: "mail_finanzamt", filename: "IMG_2044.jpg", sender: "Finanzamt Musterstadt", subject: "Bescheid für 2025 über Einkommensteuer", kind_hint: "Tax assessment (phone photo)", photo: true, opened: false, doc_id: null },
   { id: "mail_scam", filename: "Letzte_Mahnung_Rundfunk.pdf", sender: "Beitragsservice Musterstadt?", subject: "LETZTE MAHNUNG – Rundfunkbeitrag", kind_hint: "Payment demand", photo: false, opened: false, doc_id: null },
+  { id: "mail_court", filename: "Mahnbescheid_AG_Hagen.pdf", sender: "Amtsgericht Hagen", subject: "Mahnbescheid", kind_hint: "Court letter (yellow envelope)", photo: false, opened: false, doc_id: null },
+  { id: "mail_dismissal", filename: "Kuendigung_MusterTech.pdf", sender: "Muster Tech GmbH", subject: "Kündigung Ihres Arbeitsverhältnisses", kind_hint: "Letter from your employer", photo: false, opened: false, doc_id: null },
 ];
 
 /** Which document each tray letter becomes. */
@@ -67,6 +69,8 @@ export const TRAY_DOC: Record<string, string> = {
   mail_stadtwerke: "doc_power_price",
   mail_finanzamt: "doc_tax",
   mail_scam: "doc_scam",
+  mail_court: "doc_mahnbescheid",
+  mail_dismissal: "doc_dismissal",
 };
 
 export const RULES: RuleInfo[] = [

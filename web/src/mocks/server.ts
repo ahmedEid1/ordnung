@@ -41,6 +41,7 @@ import { BRIEF_TEXT, DEMO_CHECKS, RULES, USAGE } from "./data/system";
 import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
 import { CHECKS_OK, phoneGuidance } from "./data/drafts";
 import { ADVICE_BY_DOC, ADVICE_BY_KIND } from "./data/advice";
+import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { templateLetter } from "./data/templateLetters";
 import { SAM, sha } from "./data/constants";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
@@ -344,10 +345,15 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     bodyDe = `Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihr Schreiben. ${body.instructions ? "Ich habe dazu folgende Frage: …" : "Bitte teilen Sie mir mit, wie wir weiter verfahren."}\n\nMit freundlichen Grüßen\n\n${SAM.name}`;
     bodyEn = `Dear Sir or Madam,\n\nthank you for your letter. ${body.instructions ? "I have the following question: …" : "Please let me know how we proceed."}\n\nKind regards\n\n${SAM.name}`;
   }
+  const statutory = body.kind === "objection" && doc?.kind ? STATUTORY_OBJECTIONS[doc.kind] : undefined;
+  const letterDeadline = db.state.items.find((i) => i.doc_id === doc?.id && i.kind === "deadline" && i.status === "open");
   const guidance =
     contract?.id === "ctr_phone"
       ? phoneGuidance()
-      : {
+      : statutory
+        ? // a court order's or a landlord's notice's objection: the real rules' form and channels (never e-mail at a court)
+          { ...structuredClone(statutory.guidance), send_by: letterDeadline?.send_by ?? null, must_arrive_by: letterDeadline?.due_date ?? null }
+        : {
           send_by: contract?.computed?.send_by ?? db.state.items.find((i) => i.doc_id === doc?.id && i.send_by)?.send_by ?? null,
           must_arrive_by: contract?.computed?.cancel_by ?? db.state.items.find((i) => i.doc_id === doc?.id && i.kind === "deadline")?.due_date ?? null,
           form: contract?.category === "rent" || contract?.category === "employment" ? ("written_form" as const) : ("text_form" as const),
@@ -377,7 +383,7 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     body: bodyDe,
     body_translation: bodyEn,
     enclosures: body.kind === "objection" && body.instructions ? ["Bestätigung des Arbeitgebers"] : [],
-    notes_for_user: body.kind === "objection" ? ["An objection is free. It only needs to arrive in time — reasons can follow later."] : [],
+    notes_for_user: statutory ? [...statutory.notes] : body.kind === "objection" ? ["An objection is free. It only needs to arrive in time — reasons can follow later."] : [],
     checks: CHECKS_OK.map((c) => (c.id === "no_placeholders" ? { ...c, ok: !hasPlaceholder, detail: hasPlaceholder ? "Replace the … before sending." : null } : c)),
     send_guidance: guidance,
     sent_channel: null,
@@ -507,6 +513,14 @@ function recomputeParking(db: MockDb, receivedDate: string) {
   };
   const s = db.state.suggestions.find((x) => x.id === "sug_parking");
   if (s) s.status = "done";
+}
+
+/** The Mahnbescheid's objection deadline once Sam enters the envelope date (receipts computed by the real rules). */
+function recomputeCourtOrder(db: MockDb, receivedDate: string) {
+  const it = db.state.items.find((i) => i.id === "itm_court_objection");
+  const receipt = ORDER_RECEIPTS[receivedDate];
+  if (!it || !receipt) return;
+  Object.assign(it, { due_date: receipt.due_date, send_by: receipt.send_by, computation: receipt, updated_at: nowTs() });
 }
 
 const routes: [string, string, Handler][] = [
@@ -674,6 +688,13 @@ const routes: [string, string, Handler][] = [
         emit("item.updated", {});
         emit("suggestions.updated", {});
       }
+      if (patch.received_date && d.id === "doc_mahnbescheid") {
+        recomputeCourtOrder(db, patch.received_date);
+        d.warnings = [];
+        db.log("document.received_date", `You confirmed that “${d.title}” was delivered on ${patch.received_date}`, "document", d.id);
+        emit("item.updated", {});
+      }
+      if (patch.kind) db.log("document.kind", `You filed “${d.title ?? d.filename}” as “${patch.kind.replace(/_/g, " ")}”`, "document", d.id);
       return d;
     },
   ],
