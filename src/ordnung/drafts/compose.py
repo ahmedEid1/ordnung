@@ -117,7 +117,6 @@ _UNTRANSLATED: dict[LetterLanguage, str] = {
     "de": "(Ihr zusätzlicher Text ist nicht übersetzt.)",
     "en": "(Your additional text is not translated.)",
 }
-_SUSPEND_RE = re.compile(r"aussetzung der vollziehung|suspen(?:d|sion of) (?:the )?enforcement", re.I)
 _PARAGRAPH_BREAK = re.compile(r"\n\s*\n")
 _FRAME_LINE_RE = re.compile(
     r"^\s*(?:sehr geehrte|guten tag|hallo\b|liebe[rs]?\b|dear\b|mit freundlichen|freundliche grüße|"
@@ -586,7 +585,12 @@ _FINANCIAL_SERVICES = "(Contracts for financial services, such as loans or insur
 def _withdrawal_due(details: LetterDetails, profile: Profile, today: date) -> tuple[date | None, list[str]]:
     """The last day to send a withdrawal (§§ 355, 356 BGB) and notes on it, from when the goods came or
     the contract was made; ``None`` without either date. A right that has most likely run out is said
-    to have, with the exception for financial services, instead of a date in the past as a deadline."""
+    to have, with the exception for financial services, instead of a date in the past as a deadline.
+
+    While the 14 days run they are the date, even when the person says the instructions were missing
+    (``instructions_missing``): whether instructions were proper is a legal judgement, so the 12 months
+    and 14 days are only a note — the earliest plausible date is the one to act on (SPEC § 21). Only once
+    the 14 days have passed does the longer period become the date."""
     start = parse_day(details.received_on) or parse_day(details.ordered_on)
     if start is None:
         return None, [
@@ -598,13 +602,6 @@ def _withdrawal_due(details: LetterDetails, profile: Profile, today: date) -> tu
         f"and 14 days, § 356 Abs. 4 BGB), so it has most likely expired. {_FINANCIAL_SERVICES} Get advice before "
         "you send it."
     )
-    if details.instructions_missing:
-        if end < today:
-            return end, [expired]
-        return end, [
-            f"Without proper instructions on the right to withdraw, it lasts until {fmt_date(end)} at the latest "
-            "(12 months and 14 days, § 356 Abs. 4 BGB). Sending it in time is enough."
-        ]
     spec = DateSpec(
         type="relative",
         anchor="explicit_date",
@@ -617,7 +614,22 @@ def _withdrawal_due(details: LetterDetails, profile: Profile, today: date) -> tu
     receipt = compute_due(spec, RuleContext(today=today, recipient_region=profile.known_region))
     due = parse_day(receipt.due_date)
     if due is None or due >= today:
-        return due, [receipt.summary] if due else []
+        notes = [receipt.summary] if due else []
+        if due is not None and details.instructions_missing:
+            notes.append(
+                f"If you were really never properly told about the right to withdraw, it lasts until {fmt_date(end)} "
+                "at the latest (12 months and 14 days, § 356 Abs. 4 BGB). Whether the instructions were proper is "
+                f"hard to tell, so don't rely on it: send it by {fmt_date(due)}."
+            )
+        return due, notes
+    if details.instructions_missing:
+        if end < today:
+            return end, [expired]
+        return end, [
+            f"The 14 days ended on {fmt_date(due)}. Without proper instructions on the right to withdraw, it lasts "
+            f"until {fmt_date(end)} at the latest (12 months and 14 days, § 356 Abs. 4 BGB). Sending it in time is "
+            "enough — get advice if you're unsure the instructions were missing."
+        ]
     if end < today:
         return due, [f"The 14 days ended on {fmt_date(due)}. {expired}"]
     return due, [
@@ -1066,8 +1078,10 @@ _TEMPLATE_NOTES: dict[str, tuple[str, ...]] = {
 #: What an objection the law gives a letter does (the other objections: :data:`_OBJECTION_NOTE`).
 STATUTORY_OBJECTION_NOTES: dict[str, str] = {
     "court_payment_order": (
-        "The letter objects to the whole claim; no reasons are needed. The form that came with the order "
-        "does the same — use either, not both. Get advice if you're unsure."
+        "This letter objects to the whole claim; no reasons are needed. To object to only part of it (for "
+        "example only the interest or the costs), don't send this letter: use the form that came with the "
+        "order and tick how much you object to, or go to the court's Rechtsantragstelle. Send the form or "
+        "this letter, not both. Get advice if you're unsure."
     ),
     "landlord_notice": (
         "The objection only helps if moving out would be a hardship for you or your household. Talk to "
@@ -1180,17 +1194,23 @@ async def compose(
 ) -> Draft:
     """Draft, check and store a letter; raises :class:`DraftError` when it can't be drafted as asked.
 
-    ``suspend_enforcement`` (or instructions asking for "Aussetzung der Vollziehung") adds the
-    application to suspend enforcement to an objection. ``details`` are the facts a template letter
-    needs (:data:`~ordnung.drafts.template_letters.TEMPLATES`).
+    ``suspend_enforcement`` (the person ticked it; never read from the free-text wishes, where "don't
+    suspend enforcement" would read the same) adds the application to suspend enforcement to an
+    objection. ``details`` are the facts a template letter needs
+    (:data:`~ordnung.drafts.template_letters.TEMPLATES`).
     """
     draft_kind, letter_language = _validate_request(kind, language)
     store, today = ctx.store, local_today(ctx.store)
     instructions = instructions.strip()[:MAX_INSTRUCTIONS]
-    suspend = suspend_enforcement or bool(_SUSPEND_RE.search(instructions))
     sources = load_sources(store, draft_kind, doc_id=doc_id, contract_id=contract_id, party_id=party_id)
     plan = plan_letter(
-        store, draft_kind, sources, letter_language, suspend_enforcement=suspend, today=today, details=details
+        store,
+        draft_kind,
+        sources,
+        letter_language,
+        suspend_enforcement=suspend_enforcement,
+        today=today,
+        details=details,
     )
     recipient = recipient_block(draft_kind, sources, details)
     written = await write_with_model(ctx, plan, sources, recipient, instructions)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date, timedelta
 
 from hypothesis import given, settings
@@ -225,10 +226,21 @@ def test_the_highest_rent_a_cap_allows_is_within_it_and_a_cent_more_is_not(
 
 
 words = st.text(alphabet=st.characters(categories=["L", "Zs"]), max_size=40)
-#: Senders that are not courts: any name without a court's word, and the names of those attached to a
-#: court — a bailiff's letterhead ("Gerichtsvollzieher bei dem Amtsgericht …") or its cashier.
+#: A court's abbreviation as a word of its own ("AG Hagen"): random words must not spell one.
+_ABBREVIATION = re.compile(r"\b(?:AG|LG|OLG|ArbG|LAG|LSG|OVG|VGH|FG)\b")
+#: Senders that are not courts: any name without a court's word, businesses whose name ends a word in
+#: "gericht" (a dish) or carries a company's "AG", and the names of those attached to a court — a
+#: bailiff's letterhead ("Gerichtsvollzieher bei dem Amtsgericht …") or its cashier.
 not_courts = st.one_of(
-    words.filter(lambda name: "gericht" not in name.casefold()),
+    words.filter(lambda name: "gericht" not in name.casefold() and not _ABBREVIATION.search(name)),
+    st.builds(
+        "{}{} {}".format,
+        words.filter(lambda name: "gericht" not in name.casefold() and not _ABBREVIATION.search(name)),
+        st.sampled_from(
+            ["Lieblingsgericht", "Leibgericht", "Fertiggericht", "Tagesgericht", "Versicherungs-AG"]
+        ),
+        st.sampled_from(["GmbH", "Catering", "AG", "AG Hamburg", "& Co. KG"]),
+    ),
     st.builds(
         "{}{} {}{}".format,
         st.sampled_from(["", "Ober"]),
@@ -238,6 +250,22 @@ not_courts = st.one_of(
     ),
     st.builds("Amtsgericht {} – {}".format, words, st.sampled_from(["Gerichtskasse", "Zahlstelle"])),
 )
+
+
+@given(
+    st.sampled_from(
+        ["Amts", "Land", "Oberlandes", "Arbeits", "Landesarbeits", "Sozial", "Verwaltungs", "Finanz", "Mahn"]
+    ),
+    st.sampled_from(["gericht", "gerichts", "gerichtes"]),
+    st.sampled_from(["", "Geschäftsstelle des ", "Zentrales "]),
+    words.filter(lambda place: not re.search("vollzieh|kasse|zahlstelle", place, re.I)),
+)
+def test_a_court_is_recognised_in_any_case(kind: str, ending: str, prefix: str, place: str) -> None:
+    """Every kind of court, in the nominative or the genitive ("Geschäftsstelle des Amtsgerichts
+    Hagen"), is a court; a labour court is one whose orders give one week."""
+    name = f"{prefix}{kind}{ending} {place}"
+    assert routing.is_court(name)
+    assert routing.is_labour_court(name) is ("arbeits" in kind.casefold())
 
 
 @given(not_courts, st.sampled_from(["Mahnbescheid", "Vollstreckungsbescheid", "Court payment order"]))

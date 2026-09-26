@@ -11,7 +11,9 @@ from ordnung.ingest.plan import (
     ComputedDate,
     activity_message,
     compute_item,
+    end_date_grounding,
     grade_receipt,
+    needs_check,
     payment_details,
     remedy_text,
     remedy_warnings,
@@ -268,6 +270,45 @@ def test_rule_context_marks_a_courts_letter_whatever_kind_it_was_filed_as(store:
         date(2026, 9, 25),
     )
     assert not bailiff.court
+
+
+def _notice(quote: str, end: str) -> DocumentExtraction:
+    return extraction([], change={"type": "termination_by_provider", "effective_date": end, "quote": quote})
+
+
+def test_the_end_a_termination_announces_is_grounded_like_an_items_date() -> None:
+    quote = "hiermit kündigen wir das Mietverhältnis fristgerecht zum 31.03.2027."
+    page = (1, f"Hausverwaltung\nMietende: 31.03.2027\n{quote}", [], "text")
+    assert end_date_grounding(_notice(quote, "2027-03-31"), [page]) == "quote"
+    assert end_date_grounding(_notice(quote, "2027-05-31"), [page]) == "none"  # misread
+    vague = "hiermit kündigen wir das Mietverhältnis fristgerecht zum nächstmöglichen Zeitpunkt."
+    heading = (1, f"Mietende: 31.03.2027\n{vague}", [], "text")
+    assert end_date_grounding(_notice(vague, "2027-03-31"), [heading]) == "letter"
+    # a quote that states the end but isn't on the page: only the page counts
+    assert (
+        end_date_grounding(_notice(quote, "2027-03-31"), [(1, "Mietende: 31.03.2027", [], "text")])
+        == "letter"
+    )
+    assert end_date_grounding(_notice(quote, "2027-03-31"), []) == "none"  # no letter text to check
+    assert end_date_grounding(extraction([]), []) == "quote"  # no end: nothing to ground
+
+
+def test_a_rule_to_do_needs_checking_only_when_its_end_date_isnt_written(store: Store) -> None:
+    document = store.add_document(sha256="e" * 64, filename="x", mime="application/pdf", file_path="x")
+    fields: dict[str, Any] = {
+        "kind": "deadline",
+        "title": "Decide whether to object",
+        "due_date": "2027-01-29",
+        "origin": "rule",
+        "grounding": "model_read",
+    }
+    plain = store.add_item(doc_id=document.id, **fields)
+    assert not needs_check(plain)  # the law's date: nothing quoted, nothing to check
+    unwritten = Evidence(doc_id=document.id, quote="zum 31.03.2027", value_consistent=False)
+    flagged = store.add_item(doc_id=document.id, evidence=[unwritten], **fields)
+    assert needs_check(flagged)
+    confirmed = store.update_item(flagged.id, grounding="user")
+    assert not needs_check(confirmed)
 
 
 def test_remedy_warnings_and_payment_details() -> None:

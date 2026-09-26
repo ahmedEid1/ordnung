@@ -15,8 +15,9 @@ Rule           Counts from                         Last day                     
 =============  ==================================  ============================================  ===========================
 
 Arrival days follow the engine's policy (SPEC § 21): a day stated in the letter or confirmed by the
-person counts; otherwise the letter's date, the earliest plausible day, with ``low`` confidence and
-the question "when did it arrive?". When the letter also names its own date for one of these
+person counts (both: the earlier); otherwise the letter's date, the earliest plausible day, with ``low``
+confidence and the question "when did it arrive?". An end date the model read counts like a stated
+anchor only when the termination's own sentence writes it (``RuleContext.end_date_grounding``). When the letter also names its own date for one of these
 deadlines and it differs from the law's, the receipt says so; for the rent increase the law's date
 is shown (a landlord can't shorten it), for the others the earlier of the two. A withdrawal period
 the letter states that isn't 14 days (a shop may grant 30) is shown next to the law's: the earlier
@@ -68,6 +69,25 @@ def _arrival(spec: DateSpec, ctx: RuleContext, trace: Trace) -> date | None:
     return anchor.day if anchor else None
 
 
+def _check_end(trace: Trace, ctx: RuleContext, end: date, what: str) -> None:
+    """The rubric's anchor criterion for the end a termination announces (``ctx.end_date``), which the
+    model reads: only one written in the termination's own sentence may give ``high``; one written
+    elsewhere in the letter is a soft failure, one not written in it at all a hard one (SPEC § 21)."""
+    if end != ctx.end_date or ctx.end_date_grounding == "quote":
+        return
+    if ctx.end_date_grounding == "letter":
+        trace.soft(
+            f"The end of the {what} ({fmt_date(end)}) is written in the letter, but not in the sentence that "
+            "ends it — check it: this date counts from it."
+        )
+        return
+    trace.use("termination_end")
+    trace.hard(
+        f"We read {fmt_date(end)} as the end of the {what}, but that date isn't written in the letter — check "
+        "it: this date counts from it."
+    )
+
+
 def _written_date(spec: DateSpec) -> date | None:
     return parse_date(spec.date) if spec.type == "fixed" else None
 
@@ -92,6 +112,8 @@ def _registration(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -
             f"The job ends on {fmt_date(end)}; three months before that is {fmt_date(due)}", due, "sgb3_38"
         )
         why = f"three months before the job ends on {fmt_date(end)}"
+        # a later end than the real one gives a later date (three days after learning never does)
+        _check_end(trace, ctx, end, "job")
     else:
         label = "less than three months are left" if end is not None else "we don't know when the job ends"
         trace.step(f"As {label}, register within three days: by {fmt_date(due)}", due, "sgb3_38")
@@ -169,6 +191,7 @@ def _notice_objection(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: in
         )
     due = notice_objection_deadline(end)
     trace.step(f"The tenancy ends on {fmt_date(end)}", end, "bgb_574b")
+    _check_end(trace, ctx, end, "tenancy")
     trace.step(f"Two months before that, the objection must arrive by {fmt_date(due)}", due, "bgb_574b")
     if written is not None and written < due:
         _note_letter_date(trace, written, due, keep="we show the earlier")

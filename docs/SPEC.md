@@ -203,19 +203,29 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   `routing.derived_deadlines` adds the deadlines the law sets that the letter doesn't state (the
   three weeks of § 4 KSchG) as `origin="rule"` to-dos, unless one of the letter's own dates was
   computed under that rule (a date that only mentions it, like a severance "if you don't sue",
-  isn't). A court order is only one when a court's letter asks the person to answer it (a
-  Widerspruch/Einspruch remedy or an objection date) and its title or remedy says which: a
-  bailiff's letter, the court's notices to a claimant and enforcement-stage letters are not. A date
+  isn't; nor is a court order's payment date, which is only half of "pay or object"). A court order
+  is only one when a court's letter (a kind of court by name, also in the genitive or abbreviated
+  before its place — "AG Hagen" — never any word ending in "gericht") asks the person to answer it (a
+  Widerspruch/Einspruch remedy or an objection date) and its title or remedy says which — three
+  signals, no list of exceptions: a bailiff's letter, the court's notices to a claimant and
+  enforcement-stage letters state no such remedy or date. A date
   follows a letter rule only when its nature fits (an appointment is never re-dated as a
   registration; a hearing never follows the court-action rule; a withdrawal is a declaration). No
   date on a court order is ever `high`, fixed or relative, and a court order's envelope date, once
-  entered, is its start whatever anchor it was read with. Every letter from a court
+  entered, is its start whatever anchor it was read with — unless the reading names an earlier start
+  of its own, then the earlier, with a warning naming both. Deadlines the law adds that count from the
+  end a termination announces (§ 574b, § 38 SGB III) are only as sure as that end: `medium` when it is
+  written elsewhere in the letter than the notice's sentence, `low` with "Please check" when it isn't
+  written at all (`termination_end`). Every letter from a court
   (`RuleContext.court`), whatever kind it is filed as, runs from delivery — never from an authority's
   4-day fiction — and is never `high`; a labour court's orders give one week (§ 46a Abs. 3, § 59 ArbGG;
   `RuleContext.labour_court`), in their dates, to-dos, card and sending advice. A landlord's notice is
-  one without notice period only when its own quote or the title says so, not negated, only reserved
-  or "mit der gesetzlichen Frist", and the tenancy ends within two months; then there is no hardship
-  objection to-do, and the card and the composer offer no objection letter. A rent increase is a
+  one without notice period only when its own quote or the title says so, not negated, not only
+  reserved (a reservation of the notice itself) or "mit der gesetzlichen Frist", and the tenancy ends
+  within two months; then there is no hardship objection to-do, and the card and the composer offer no
+  objection letter (unless its own words give notice in the alternative). Without an objection to-do
+  (no notice period, or no end read) the landlord's card is urgent and the verdict says "get advice
+  now"; the objection is for a home only (not a garage or business premises, § 578 BGB). A rent increase is a
   consent request unless its own quote or title names another kind of increase or a quote says consent
   isn't needed. Rule to-dos are filed on read and when the person chooses the kind; a
   changed region, postal buffer or arrival day only recomputes those left, so a deleted one stays
@@ -224,9 +234,13 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   figures, words, ISO dates or months, or a billing year) and calls a statement late only when it
   certainly is: only a range the letter calls its billing period decides (any other range or a billing
   year: at most "probably"), and when the latest range found is the previous year's comparison nothing
-  is claimed. The rent cap is compared exactly, in cents. The person can correct a letter's kind on its
-  page ("What kind of letter is this?"); a kind the person chose is kept when the letter is read again,
-  a kind an older version filed — the model's, or a high-stakes kind the policy no longer gives — is not.
+  is claimed. When it calls a statement (probably) late, the letter's payment to-dos carry a "may not be
+  owed — check before you pay" warning, the card is urgent and the verdict doesn't lead with Pay;
+  nothing is dismissed. The rent cap is compared exactly, in cents. The person can correct a letter's kind on its
+  page ("What kind of letter is this?"); a kind the person chose is kept when the letter is read again
+  (the kind and its "kind chosen" entry are written together under the ledger lock, and a re-read reads
+  the letter again inside it), a kind an older version filed — the model's, or a high-stakes kind the
+  policy no longer gives — is not.
 
 ## 7. LLM layer — `llm/` (implemented; update to v2 invocation)
 
@@ -325,7 +339,12 @@ BGB), `deposit_return` (the profile's IBAN) and `address_change`, written entire
 and English sentences (`drafts/template_letters.py`) filled from `LetterDetails` (`POST /api/drafts`
 `details`); a missing required fact is refused with what to add, and so is more time against a
 deadline the law sets (a court order, a dismissal) or instalments offered to a court instead of the
-claimant (`compose.template_refusal`). A letter's title never becomes what was ordered, the
+claimant (`compose.template_refusal`). A withdrawal's date is the 14 days while they run, even when
+the person says the instructions were missing (the 12 months and 14 days are then a note). An
+objection to a court payment order objects to the whole claim (a partial one goes on the court's
+form, which the note says); the application to suspend enforcement is added only when the person
+ticks it (`suspend_enforcement`), never from the wishes, and never against a payment order.
+Single-line facts (what was ordered, the billing period) have their line breaks collapsed. A letter's title never becomes what was ordered, the
 deadline to extend is never one the law sets, and a letter whose sender isn't in Ordnung takes a
 typed recipient; letters flagged as a possible scam aren't offered. Compose → `DraftOutput
 {subject, body, body_translation, enclosures, notes_for_user}` (letter in German for German

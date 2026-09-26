@@ -24,10 +24,14 @@ from ordnung.ingest.plan import (
     compute_item,
     consistency_reasons,
     document_context,
+    is_statement,
+    late_statement_warning,
     law_deadlines,
     needs_check,
     sync_rule_items,
+    with_statement_warning,
 )
+from ordnung.ingest.verify import ground_evidence
 from ordnung.models import (
     ComputationReceipt,
     DateNature,
@@ -101,12 +105,19 @@ def recompute_document_items(
         return []
     buffer = postal_buffer(store.get_profile())
     pages = store.list_pages(document.id)
+    extraction = store.get_extraction(document.id)
+    statement = is_statement(document.kind, extraction)
+    late = late_statement_warning(statement, document.title, store.get_document_text(document.id), ctx)
     changed: list[Item] = []
     with store.tx():
         for item in store.list_items(doc_id=document.id):
             if not recomputable(item) or item.date_spec is None:
                 continue
-            result = compute_item(_verified(item, item.date_spec, pages), ctx, postal_buffer_days=buffer)
+            result = with_statement_warning(
+                compute_item(_verified(item, item.date_spec, pages), ctx, postal_buffer_days=buffer),
+                item.kind,
+                late,
+            )
             recomputed = item.model_copy(
                 update={
                     "due_date": result.due_date,
@@ -121,19 +132,37 @@ def recompute_document_items(
             fields = {name: getattr(moved, name) for name in SCHEDULE_FIELDS}
             if any(getattr(item, name) != value for name, value in fields.items()):
                 changed.append(store.update_item(item.id, **fields))
-        changed.extend(_refresh_rule_items(store, document, ctx, today, buffer, create=refile_rules))
+        changed.extend(
+            _refresh_rule_items(store, document, ctx, today, buffer, create=refile_rules, pages=pages)
+        )
     return changed
 
 
 def _refresh_rule_items(
-    store: Store, document: Document, ctx: RuleContext, today: date, buffer: int, *, create: bool
+    store: Store,
+    document: Document,
+    ctx: RuleContext,
+    today: date,
+    buffer: int,
+    *,
+    create: bool,
+    pages: Sequence[Page],
 ) -> list[Item]:
     """Recompute the deadlines the law adds to the letter's (possibly corrected) kind, filing missing
     ones only with ``create``; returns the rule to-dos that are new or whose dates changed."""
     before = {item.id: item for item in store.list_items(doc_id=document.id) if item.origin == "rule"}
-    derived = law_deadlines(document.kind, store.get_extraction(document.id), ctx)
+    extraction = store.get_extraction(document.id)
+    derived = law_deadlines(document.kind, extraction, ctx)
+    change = extraction.change if extraction is not None else None
     after = sync_rule_items(
-        store, document, derived, ctx, today=today, postal_buffer_days=buffer, create=create
+        store,
+        document,
+        derived,
+        ctx,
+        today=today,
+        postal_buffer_days=buffer,
+        create=create,
+        end_evidence=ground_evidence(document.id, change.quote, pages) if change and change.quote else None,
     )
     dates = ("due_date", "send_by")
     return [

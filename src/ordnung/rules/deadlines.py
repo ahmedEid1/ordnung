@@ -125,7 +125,10 @@ class RuleContext:
     announces. ``court``: the sender is a court (:func:`ordnung.rules.routing.is_court`) — its periods
     run from formal service, never from a delivery fiction, and none of its dates is ``high``, whatever
     kind the letter was filed as. ``labour_court``: a labour court, whose orders give one week, not two
-    (§ 46a Abs. 3, § 59 ArbGG).
+    (§ 46a Abs. 3, § 59 ArbGG). ``end_date_grounding``: where ``end_date`` is written — in the
+    termination's own sentence (``quote``, also for an end the caller knows), only elsewhere in the letter
+    (``letter``: one soft failure) or nowhere in it (``none``: the model's reading alone, like an assumed
+    anchor — ``low``); the letter rules that count from the end apply it (:mod:`ordnung.rules.letters`).
     """
 
     today: date
@@ -140,6 +143,7 @@ class RuleContext:
     end_date: date | None = None
     court: bool = False
     labour_court: bool = False
+    end_date_grounding: Literal["quote", "letter", "none"] = "quote"
 
 
 @dataclass
@@ -494,8 +498,9 @@ def _resolve_anchor(spec: DateSpec, ctx: RuleContext, trace: Trace) -> _Anchor |
         stated = parse_date(spec.anchor_date)
         if stated is not None and (ctx.document_date is None or stated >= ctx.document_date):
             # The letter itself states the delivery day (e.g. "zugestellt am …" / the date written on a
-            # Postzustellungsurkunde envelope): that is the legal start, not an assumption.
-            return _Anchor(stated, "stated_receipt")
+            # Postzustellungsurkunde envelope): that is the legal start, not an assumption — unless the
+            # person entered another day, then the earlier of the two counts.
+            return _against_entered(_Anchor(stated, "stated_receipt"), ctx, trace)
         if ctx.received_confirmed and ctx.received_date:
             return _Anchor(ctx.received_date, "receipt")
         if ctx.document_date is None:
@@ -517,6 +522,28 @@ def _resolve_anchor(spec: DateSpec, ctx: RuleContext, trace: Trace) -> _Anchor |
         trace.hard("The letter's date is missing, so this date can't be computed.")
         return None
     return _Anchor(ctx.document_date, "document_date")
+
+
+def _against_entered(named: _Anchor, ctx: RuleContext, trace: Trace) -> _Anchor:
+    """A start the reading names (a stated delivery day, a court order's explicit start) checked against
+    the day the person entered: the earlier of the two counts (SPEC § 21, the earliest plausible date),
+    and a soft warning names both — the reading may have misread a hand-written envelope date, or the
+    person may have entered the day they opened it."""
+    received = ctx.received_date if ctx.received_confirmed else None
+    if received is None or received == named.day:
+        return named
+    if received < named.day:
+        trace.soft(
+            f"You entered {fmt_date(received)} as the day it was delivered; the letter as read names "
+            f"{fmt_date(named.day)}. We count from the earlier day, the one you entered."
+        )
+        return _Anchor(received, "receipt")
+    trace.soft(
+        f"The letter as read names {fmt_date(named.day)} as the start; you entered {fmt_date(received)} as the "
+        f"day it was delivered. We count from the earlier day, {fmt_date(named.day)} — check both against "
+        "the letter (a court's letter: the date on the yellow envelope)."
+    )
+    return named
 
 
 def _today_anchor(ctx: RuleContext, trace: Trace) -> _Anchor:
@@ -640,14 +667,18 @@ def _late_receipt_note(
 
 
 def _served(spec: DateSpec, ctx: RuleContext, trace: Trace) -> _Anchor | None:
-    """The start of a period that runs from formal service, whatever anchor the letter was read with:
-    a day the letter names as its start, or as the delivery day on or after its date; else the delivery
-    day the person entered (the envelope date); else as the anchor says (the letter's date, the
-    earliest plausible start — :func:`_formal_service_note` asks for the envelope date)."""
+    """The start of a period that runs from formal service, whatever anchor the letter was read with.
+
+    The delivery day the person entered (the envelope date, § 180 ZPO) counts — unless the reading
+    names a start of its own (an explicit start, or a delivery day on or after the letter's date) that
+    is earlier: then that one, with a warning naming both (:func:`_against_entered`). Without either,
+    as the anchor says (the letter's date, the earliest plausible start — :func:`_formal_service_note`
+    asks for the envelope date)."""
+    explicit = parse_date(spec.anchor_date) if spec.anchor == "explicit_date" else None
+    if explicit is not None:
+        return _against_entered(_Anchor(explicit, "explicit"), ctx, trace)
     stated = parse_date(spec.anchor_date) if spec.anchor == "receipt" else None
-    if spec.anchor == "explicit_date" or (
-        stated is not None and (ctx.document_date is None or stated >= ctx.document_date)
-    ):
+    if stated is not None and (ctx.document_date is None or stated >= ctx.document_date):
         return _resolve_anchor(spec, ctx, trace)
     if ctx.received_confirmed and ctx.received_date:
         return _Anchor(ctx.received_date, "receipt")

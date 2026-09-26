@@ -343,6 +343,23 @@ def _rent_cap(old: float | None, new: float | None) -> AdviceFact:
     )
 
 
+#: What a late operating-cost statement's back-payment says on its to-do (Ordnung never dismisses it).
+LATE_STATEMENT_WARNING = (
+    "This back-payment may not be owed: the statement seems to have arrived after its twelve-month deadline "
+    "(§ 556 Abs. 3 S. 3 BGB — see the card on the letter). Check before you pay."
+)
+
+
+def statement_late(text: str, arrived: date | None, confirmed: bool, region: str | None) -> bool:
+    """Whether the card calls an operating-cost statement too late, or probably too late (its billing period
+    in ``text`` ended more than twelve months before ``arrived``): then its back-payment may not be owed
+    (§ 556 Abs. 3 S. 3 BGB), and its payment to-dos say so (:data:`LATE_STATEMENT_WARNING`)."""
+    period = billing_period(text, before=arrived) if arrived is not None else None
+    if period is None or arrived is None:
+        return False
+    return statement_check(period.end, arrived, confirmed=confirmed, region=region).late is True
+
+
 def _statement(text: str, arrived: date | None, confirmed: bool, region: str | None) -> AdviceFact:
     period = billing_period(text, before=arrived) if arrived is not None else None
     citation = catalog.citation("bgb_556_3")
@@ -474,6 +491,8 @@ def _labour_court_order(kind: str, today: date, delivered: str | None) -> Letter
 
 #: § 549 Abs. 2 BGB: no hardship objection (§§ 574–575) and no consent procedure (§§ 557–561) for these.
 _SHORT_LET = "a short let or a furnished room in the flat your landlord lives in (§ 549 Abs. 2 BGB)"
+#: §§ 574–574b BGB are rules for a home (Wohnraum); other premises follow § 578 BGB, without them.
+_NOT_A_HOME = "a garage, parking space or business premises let on its own (§ 578 BGB)"
 
 
 def _notice_without_period(alternative: bool) -> AdviceFact:
@@ -511,6 +530,7 @@ def letter_advice(
     extraordinary: bool = False,
     alternative: bool = False,
     labour_court: bool = False,
+    end_unknown: bool = False,
 ) -> LetterAdvice | None:
     """The card for a letter of ``kind`` (``None`` for kinds without one).
 
@@ -519,10 +539,14 @@ def letter_advice(
     ``old_amount``/``new_amount`` the rent before and after an increase as read; ``text`` the letter's
     text (for the billing period). ``extraordinary``: a landlord's notice reads as one without notice
     period, ``alternative`` with one in the alternative too — only then is a hardship objection offered.
+    ``end_unknown``: a landlord's notice whose end wasn't read, so no objection to-do carries its date.
+    A landlord's card is urgent (shown first) when no to-do carries the notice: without notice period, or
+    with its end unknown.
     ``labour_court``: a court order from a labour court, which gives one week (§ 46a Abs. 3, § 59 ArbGG).
     """
     delivered = (
-        "The period counts from the delivery date you entered — check it matches the yellow envelope."
+        "The period counts from the delivery date you entered, or from an earlier start the letter names "
+        "(see “Why this date?”) — check it matches the yellow envelope."
         if arrival_confirmed
         else None
     )
@@ -605,12 +629,19 @@ def letter_advice(
             "If you object, keep proof that it arrived; a letter is safest, text form is enough since 2025.",
             "If the landlord didn't tell you in time about your right to object, its form and its deadline, "
             "you can still object at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB).",
-            f"There is no hardship objection for {_SHORT_LET} — ask a tenants' association.",
+            f"There is no hardship objection for {_NOT_A_HOME}, nor for {_SHORT_LET} — ask a tenants' "
+            "association.",
         ]
         if not extraordinary:
             steps.append(
                 "A notice without notice period (fristlos) can't be met with this objection. If it is for rent "
                 "arrears, paying all of them in time can still undo it (§ 569 Abs. 3 Nr. 2 BGB) — get advice at once."
+            )
+        if end_unknown and not extraordinary:
+            steps.insert(
+                0,
+                "We couldn't read when your tenancy ends, so there is no to-do for the objection. Find the end in "
+                "the notice (or ask): an objection must reach the landlord two months before it (§ 574b Abs. 2 BGB).",
             )
         return LetterAdvice(
             kind=kind,
@@ -620,6 +651,7 @@ def letter_advice(
                 "out would be a hardship, you can object and ask to stay; the objection must reach the landlord "
                 "at the latest two months before the tenancy ends."
             ),
+            urgent=extraordinary or end_unknown,
             steps=steps,
             facts=[_notice_without_period(alternative)] if extraordinary else [],
             help=[TENANTS, LEGAL_AID],
@@ -645,6 +677,8 @@ def letter_advice(
             rule_ids=["bgb_558b", "bgb_558_3", "bgb_549"],
         )
     if kind == "operating_costs":
+        # a late statement's back-payment may not be owed: the card comes first and says so before "pay"
+        late = statement_late(text, arrived, arrival_confirmed, region)
         return LetterAdvice(
             kind=kind,
             title="Operating-cost statement (Betriebskostenabrechnung)",
@@ -652,7 +686,13 @@ def letter_advice(
                 "You can ask to see the receipts behind the statement, and object to mistakes within twelve "
                 "months of receiving it."
             ),
+            urgent=late,
             steps=[
+                *(
+                    ["Don't pay a back-payment before you have checked whether this statement came too late."]
+                    if late
+                    else []
+                ),
                 "Compare the costs with last year's statement and your lease.",
                 "Ask to see the receipts (Belegeinsicht) if something looks wrong — Ordnung can draft the letter.",
             ],

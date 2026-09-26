@@ -155,7 +155,8 @@ def cancellation(
 
 
 # The second sentence (reasons) and the application to suspend enforcement, per kind of decision:
-# a Widerspruch against a court payment order needs no reasons and objects to the whole claim; an
+# a Widerspruch against a court payment order needs no reasons and objects to the whole claim (a
+# partial objection is made on the court's form), and there is nothing to suspend yet; an
 # enforcement order is suspended by the court (einstweilige Einstellung, §§ 719, 707 ZPO), a tax or
 # administrative decision by the authority (Aussetzung der Vollziehung).
 _REASONS: dict[str, tuple[str, str]] = {
@@ -165,7 +166,8 @@ _REASONS: dict[str, tuple[str, str]] = {
     ),
 }
 _DEFAULT_REASONS = ("Eine Begründung reiche ich nach.", "I will submit the reasons separately.")
-_SUSPEND: dict[str, tuple[str, str]] = {
+_SUSPEND: dict[str, tuple[str, str] | None] = {
+    "court_payment_order": None,
     "enforcement_order": (
         "Ich beantrage, die Zwangsvollstreckung aus dem Vollstreckungsbescheid einstweilen einzustellen.",
         "I apply for enforcement of the order to be suspended for the time being (einstweilige Einstellung).",
@@ -192,8 +194,9 @@ def objection(
 
     Reasons are announced for later ("Eine Begründung reiche ich nach."), except against a court
     payment order, which needs none: the letter objects to the whole claim. The application to suspend
-    enforcement is added only when the person asks for it. A landlord's notice gets the tenant's
-    objection (:func:`tenancy_objection`, ``flat`` is the flat's address).
+    enforcement is added only when the person asks for it, and never against a court payment order,
+    which can't be enforced yet. A landlord's notice gets the tenant's objection
+    (:func:`tenancy_objection`, ``flat`` is the flat's address).
     """
     if document_kind == "landlord_notice":
         return tenancy_objection(
@@ -208,7 +211,7 @@ def objection(
         target = f"{target}, {reference}," if reference else target
         operative = f"hiermit lege ich {target} {remedy_label(remedy, language)} ein."
         paragraphs = [operative, reasons[0]]
-        if suspend_enforcement:
+        if suspend_enforcement and suspend is not None:
             paragraphs.append(suspend[0])
         subject = _dash(
             " ".join(part for part in (f"{_REMEDY_DE[remedy]} gegen den {decision}", dated) if part),
@@ -219,7 +222,7 @@ def objection(
         target = " ".join(part for part in (f"against the {decision}", dated) if part)
         operative = f"I hereby lodge {remedy_label(remedy, language)} {_join(target, reference)}."
         paragraphs = [operative, reasons[1]]
-        if suspend_enforcement:
+        if suspend_enforcement and suspend is not None:
             paragraphs.append(suspend[1])
         subject = _dash(
             " ".join(

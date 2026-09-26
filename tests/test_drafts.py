@@ -331,13 +331,15 @@ async def test_compose_objection(ctx: AppContext, ids: dict[str, str]) -> None:
     assert all(check.ok for check in draft.checks), [c for c in draft.checks if not c.ok]
 
 
-async def test_objection_suspension_only_when_asked(ctx: AppContext, ids: dict[str, str]) -> None:
-    draft = await compose(
-        ctx, "objection", doc_id=ids["tax"], instructions="Bitte Aussetzung der Vollziehung"
-    )
-    assert draft.body.count("Ich beantrage die Aussetzung der Vollziehung.") == 1
+async def test_objection_suspension_only_when_ticked(ctx: AppContext, ids: dict[str, str]) -> None:
+    """The application to suspend enforcement is a legally operative sentence: it is added only when the
+    person ticks it, never read from the free-text wishes, where "don't suspend enforcement" reads the
+    same as "suspend enforcement" to a keyword."""
     flagged = await compose(ctx, "objection", doc_id=ids["tax"], suspend_enforcement=True)
-    assert "Ich beantrage die Aussetzung der Vollziehung." in flagged.body
+    assert flagged.body.count("Ich beantrage die Aussetzung der Vollziehung.") == 1
+    for wishes in ("Bitte Aussetzung der Vollziehung", "I don't want to suspend enforcement"):
+        draft = await compose(ctx, "objection", doc_id=ids["tax"], instructions=wishes)
+        assert "Ich beantrage die Aussetzung der Vollziehung." not in draft.body
 
 
 @pytest.mark.parametrize(

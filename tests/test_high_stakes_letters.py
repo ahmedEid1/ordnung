@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Iterator
+from dataclasses import replace
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -16,8 +18,20 @@ import pytest
 
 from fixtures_llm import Letter, Router
 from ordnung import clock
-from ordnung.ingest.plan import corrections, filed_kind, needs_check, with_corrections
+from ordnung.api.routes import documents
+from ordnung.ingest import pipeline
+from ordnung.ingest.plan import (
+    KIND_CHOSEN,
+    corrections,
+    filed_kind,
+    is_statement,
+    late_statement_warning,
+    needs_check,
+    with_corrections,
+)
 from ordnung.models import DocumentExtraction, Item
+from ordnung.rules import RuleContext
+from ordnung.rules.advice import LATE_STATEMENT_WARNING
 from test_api_support import TODAY, Api, ApiRouter, api_for
 
 MB_QUOTE = "Sie können binnen zwei Wochen seit der Zustellung dieses Bescheids Widerspruch erheben."
@@ -169,6 +183,34 @@ STATEMENT = Letter(
     },
 )
 
+LATE_PERIOD = "Abrechnungszeitraum: 01.01.2024 - 31.12.2024"
+LATE_PAY = "Bitte überweisen Sie die Nachzahlung von 120,00 EUR bis zum 30.09.2026."
+#: A statement for 2024 dated 10 Sep 2026: after the twelve months (31 Dec 2025), with a back-payment.
+LATE_STATEMENT = Letter(
+    marker="Abrechnungszeitraum: 01.01.2024",
+    pages=(("Wohnbau Muster GmbH", "SPECIMEN", "Betriebskostenabrechnung", LATE_PERIOD, LATE_PAY),),
+    payload={
+        **STATEMENT.payload,
+        "title": "Operating-cost statement 2024",
+        "summary": "Betriebskostenabrechnung 2024 with a back-payment of 120 EUR.",
+        "items": [
+            {
+                "kind": "payment",
+                "title": "Pay the back-payment",
+                "amount": 120.0,
+                "date": {
+                    "type": "fixed",
+                    "date": "2026-09-30",
+                    "nature": "payment",
+                    "text": "bis zum 30.09.2026",
+                },
+                "quote": LATE_PAY,
+            }
+        ],
+        "key_facts": [{"label": "Billing period", "value": "2024", "quote": LATE_PERIOD}],
+    },
+)
+
 BAILIFF_QUOTE = (
     "Aus dem Vollstreckungsbescheid des Amtsgerichts Hünfeld vom 01.03.2026 fordere ich Sie auf, 612,34 EUR "
     "zu zahlen."
@@ -284,8 +326,73 @@ HILFSWEISE = _notice(
     "hiermit kündigen wir das Mietverhältnis fristlos, hilfsweise fristgerecht zum 31.03.2027.",
 )
 
+#: A notice whose end date the model misread (the letter says 31.03.2027), and one that states it
+#: only in the letter's heading, not in the sentence that gives notice.
+MISREAD_END = _notice(
+    "Kuendigung Wohnung Musterweg",
+    "hiermit kündigen wir das Mietverhältnis fristgerecht zum 31.03.2027.",
+    end="2027-05-31",
+)
+END_IN_HEADING = Letter(
+    marker="Kuendigung zum Quartalsende",
+    pages=(
+        (
+            "Hausverwaltung Muster GmbH",
+            "SPECIMEN",
+            "Kuendigung zum Quartalsende - Mietende 31.03.2027",
+            "hiermit kündigen wir das Mietverhältnis fristgerecht zum nächstmöglichen Zeitpunkt.",
+        ),
+    ),
+    payload={
+        **MISREAD_END.payload,
+        "change": {
+            "type": "termination_by_provider",
+            "effective_date": "2027-03-31",
+            "quote": "hiermit kündigen wir das Mietverhältnis fristgerecht zum nächstmöglichen Zeitpunkt.",
+        },
+    },
+)
+ON_TIME_NOTICE = _notice(
+    "Ordentliche Kuendigung Eigenbedarf",
+    "hiermit kündigen wir das Mietverhältnis wegen Eigenbedarfs fristgerecht zum 31.03.2027.",
+)
+
+MB_PAY_QUOTE = (
+    "Es fordert Sie hiermit auf, innerhalb von zwei Wochen seit der Zustellung dieses Bescheids die behauptete "
+    "Schuld zu begleichen oder dem Gericht mitzuteilen, ob Sie dem Anspruch widersprechen."
+)
+#: A Mahnbescheid whose reading has only a payment item: the official wording read as "pay".
+MB_PAYMENT_ONLY = Letter(
+    marker="Mahnbescheid Zahlungsaufforderung",
+    pages=((*MAHNBESCHEID.pages[0], MB_PAY_QUOTE, "Mahnbescheid Zahlungsaufforderung"),),
+    payload={
+        **MAHNBESCHEID.payload,
+        "items": [
+            {
+                "kind": "payment",
+                "title": "Pay 480 EUR",
+                "amount": 480.0,
+                "date": {
+                    "type": "relative",
+                    "anchor": "receipt",
+                    "amount": 2,
+                    "unit": "weeks",
+                    "nature": "payment",
+                    "text": "innerhalb von zwei Wochen seit der Zustellung dieses Bescheids",
+                },
+                "quote": MB_PAY_QUOTE,
+            }
+        ],
+    },
+)
+
 #: Routed by the first marker found: the letters that quote another's marker come first.
 LETTERS = (
+    LATE_STATEMENT,
+    MB_PAYMENT_ONLY,
+    MISREAD_END,
+    END_IN_HEADING,
+    ON_TIME_NOTICE,
     BAILIFF,
     CLAIMANT,
     SEVERANCE,
@@ -394,6 +501,56 @@ async def test_correcting_the_kind_reroutes_the_dates(data_dir: Path) -> None:
         await api.client.post(f"/api/documents/{doc_id}/reprocess")
         await api.read_all()
         assert (api.ctx.store.get_document(doc_id) or pytest.fail()).kind == "authority_letter"
+
+
+async def test_a_kind_chosen_while_the_letter_is_read_again_is_kept(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Review round 4: the person files the letter as another kind after a re-read took its snapshot of
+    the letter and before it commits. The commit reads the letter again (under the ledger lock), sees the
+    chosen kind and its "kind chosen" entry, and keeps both."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, MAHNBESCHEID)
+        real_commit = pipeline.commit_ledger
+
+        def patched_in_between(store: Any, data: Any) -> Any:
+            assert data.document.kind == "court_payment_order"  # the re-read's snapshot
+            documents._patch(store, doc_id, {"kind": "authority_letter"}, None, date.fromisoformat(TODAY))
+            return real_commit(store, data)
+
+        monkeypatch.setattr(pipeline, "commit_ledger", patched_in_between)
+        await api.client.post(f"/api/documents/{doc_id}/reprocess")
+        await api.read_all()
+        assert (api.ctx.store.get_document(doc_id) or pytest.fail()).kind == "authority_letter"
+        assert all(item.origin != "rule" for item in api.ctx.store.list_items(doc_id=doc_id))
+
+
+async def test_choosing_a_kind_writes_it_and_its_entry_together_under_the_ledger_lock(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The kind and the "kind chosen" entry are written in one transaction under the ledger lock, before
+    the dates are recomputed: no re-read can commit in between and file the letter under code's kind."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, MAHNBESCHEID)
+        lock = pipeline.ledger_lock()
+        real_apply, real_recompute = documents._apply_patch, documents.recompute_document_items
+        seen: list[str] = []
+
+        def apply_patch(store: Any, doc: str, changes: dict[str, object]) -> Any:
+            assert lock.locked()
+            seen.append("patch")
+            return real_apply(store, doc, changes)
+
+        def recompute(store: Any, document: Any, today: Any, **kw: Any) -> Any:
+            chosen = store.last_activity("document", doc_id, [KIND_CHOSEN])
+            assert chosen is not None and chosen.data["kind"] == "authority_letter"
+            seen.append("recompute")
+            return real_recompute(store, document, today, **kw)
+
+        monkeypatch.setattr(documents, "_apply_patch", apply_patch)
+        monkeypatch.setattr(documents, "recompute_document_items", recompute)
+        response = await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "authority_letter"})
+        assert response.status_code == 200 and seen == ["patch", "recompute"]
 
 
 async def test_a_letter_filed_before_ordnung_knew_its_kind_gets_it_when_read_again(data_dir: Path) -> None:
@@ -537,6 +694,54 @@ async def test_a_notice_without_notice_period_gets_no_hardship_objection(
             )
 
 
+async def test_a_payment_order_read_as_pay_still_gets_pay_or_object(data_dir: Path) -> None:
+    """A court order's payment date is only half of what it asks: the law's "pay or object" to-do is
+    filed next to it, so the to-do lists never frame it like a dunning letter."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, MB_PAYMENT_ONLY)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "court_payment_order"
+        by_origin = _by_origin(api, doc_id)
+        [payment] = by_origin["extracted"]
+        [objection] = by_origin["rule"]
+        assert payment.kind == "payment" and payment.due_date == "2026-10-05"
+        assert objection.title.startswith("Pay or object") and objection.due_date == "2026-10-05"
+
+
+@pytest.mark.parametrize(
+    ("letter", "due", "confidence", "check"),
+    [
+        (ON_TIME_NOTICE, "2027-01-31", "high", False),  # the end is written in the notice's sentence
+        (END_IN_HEADING, "2027-01-31", "medium", False),  # only in the heading: worth a second look
+        (MISREAD_END, "2027-03-31", "low", True),  # the letter says 31.03.2027: "Please check"
+    ],
+    ids=["stated", "elsewhere", "misread"],
+)
+async def test_the_objection_to_a_notice_is_only_as_sure_as_the_end_date_it_counts_from(
+    data_dir: Path, letter: Letter, due: str, confidence: str, check: bool
+) -> None:
+    """§ 574b Abs. 2 BGB counts back from the end the model read; nothing else in the letter states the
+    objection date, so the end date is checked against the letter like an item's date (SPEC § 21)."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, letter)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "landlord_notice"
+        [objection] = _by_origin(api, doc_id)["rule"]
+        assert objection.computation is not None
+        assert objection.due_date == due and objection.computation.confidence == confidence
+        assert needs_check(objection) is check
+        assert (detail["document"]["status"] == "needs_review") is check
+        if check:
+            assert any("isn't written in the letter" in w for w in objection.computation.warnings)
+            [evidence] = objection.evidence
+            assert "31.03.2027" in evidence.quote and not evidence.value_consistent
+            # confirming the date (or setting it by hand) settles it, as for any "Please check"
+            response = await api.client.post(f"/api/items/{objection.id}/confirm")
+            assert response.status_code == 200
+            doc = (await api.client.get(f"/api/documents/{doc_id}")).json()["document"]
+            assert doc["status"] == "processed"
+
+
 async def test_an_operating_cost_statement_keeps_its_kind_and_gets_its_card_on_read(data_dir: Path) -> None:
     async with api_for(data_dir, router=_router()) as api:
         doc_id = await _read(api, STATEMENT)
@@ -546,6 +751,48 @@ async def test_an_operating_cost_statement_keeps_its_kind_and_gets_its_card_on_r
         advice = detail["advice"]
         assert advice["kind"] == "operating_costs" and not advice["urgent"]
         assert advice["facts"][0]["title"] == "Probably on time"
+
+
+async def test_a_late_statements_back_payment_says_it_may_not_be_owed(data_dir: Path) -> None:
+    """Review round 4: the card says the statement came too late; its "Pay" to-do says so too (and the
+    card comes first), but stays open — the landlord may not be responsible for the delay (ADR 0006)."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, LATE_STATEMENT)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        advice = detail["advice"]
+        assert advice["kind"] == "operating_costs" and advice["urgent"]
+        assert advice["facts"][0]["title"] == "This statement came too late"
+        assert advice["steps"][0].startswith("Don't pay a back-payment before")
+        [payment] = detail["items"]
+        assert payment["status"] == "open" and payment["due_date"] == "2026-09-30"
+        assert LATE_STATEMENT_WARNING in payment["computation"]["warnings"]
+        assert "bgb_556_3" in payment["computation"]["rule_ids"]
+        # a recompute (the arrival day entered) keeps the warning, once
+        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-12"})
+        item = api.ctx.store.get_item(payment["id"])
+        assert item is not None and item.computation is not None
+        assert item.computation.warnings.count(LATE_STATEMENT_WARNING) == 1
+        assert item.computation.rule_ids.count("bgb_556_3") == 1
+
+
+def test_only_a_statement_the_card_calls_late_warns_its_payments() -> None:
+    text = "Betriebskostenabrechnung\nAbrechnungszeitraum: 01.01.2025 - 31.12.2025"
+    on_time = RuleContext(today=date(2026, 9, 25), document_date=date(2026, 9, 10))
+    assert late_statement_warning(True, "Operating-cost statement", text, on_time) is None
+    late = RuleContext(today=date(2027, 1, 20), document_date=date(2027, 1, 15))
+    assert late_statement_warning(True, "Operating-cost statement", text, late) == LATE_STATEMENT_WARNING
+    assert late_statement_warning(False, "Operating-cost statement", text, late) is None  # not a statement
+    # an arrival the person entered counts, like on the card
+    entered = RuleContext(
+        today=date(2027, 1, 20),
+        document_date=date(2026, 12, 20),
+        received_date=date(2027, 1, 5),
+        received_confirmed=True,
+    )
+    assert late_statement_warning(True, None, text, entered) == LATE_STATEMENT_WARNING
+    assert late_statement_warning(True, None, text, replace(entered, received_confirmed=False)) is None
+    assert is_statement("operating_costs", None) and not is_statement("dismissal", _reading(STATEMENT))
+    assert is_statement("utility_bill", _reading(STATEMENT)) and not is_statement("utility_bill", None)
 
 
 # ------------------------------------------------------------------------------------ corrections

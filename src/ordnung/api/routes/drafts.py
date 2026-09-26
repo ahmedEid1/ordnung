@@ -42,6 +42,13 @@ class DraftCreate(BaseModel):
     details: LetterDetails | None = Field(
         default=None, description="the facts a template letter needs (withdrawal, payment plan …)"
     )
+    suspend_enforcement: bool = Field(
+        default=False,
+        description=(
+            "an objection also applies to suspend enforcement (einstweilige Einstellung at a court, "
+            "Aussetzung der Vollziehung at an authority); ignored for other letters and a court payment order"
+        ),
+    )
 
 
 class DraftPatch(BaseModel):
@@ -88,6 +95,7 @@ async def create_draft(body: DraftCreate, ctx: CtxDep) -> Draft:
         instructions=body.instructions,
         language=body.language,
         details=body.details,
+        suspend_enforcement=body.suspend_enforcement,
     )
 
 

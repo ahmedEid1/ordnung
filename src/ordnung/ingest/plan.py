@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 from collections import Counter
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import Any, Literal
 
@@ -64,6 +64,7 @@ from ordnung.recurrence import (
     same_schedule,
 )
 from ordnung.rules import RuleContext, compute_due, scope_for_party_kind
+from ordnung.rules.advice import LATE_STATEMENT_WARNING, statement_late
 from ordnung.rules.deadlines import parse_date
 from ordnung.rules.routing import (
     DerivedDeadline,
@@ -75,6 +76,7 @@ from ordnung.rules.routing import (
     is_court,
     is_labour_court,
     letter_kind,
+    names_statement,
 )
 from ordnung.secretary.scam import iban_from_page, iban_valid, normalize_iban
 
@@ -136,15 +138,14 @@ class VerifiedItem:
 def needs_check(item: Item) -> bool:
     """An open, dated to-do whose quote was not found or does not state its values, not yet confirmed
     (a to-do marked done or "not a real to-do" leaves nothing to check). A deadline the law adds
-    (``origin="rule"``) quotes nothing, so it has nothing to check either."""
+    (``origin="rule"``) quotes nothing, so it has nothing to check — unless it counts from an end date
+    the letter doesn't write (:func:`sync_rule_items` gives it the termination's sentence as evidence,
+    not stating that date)."""
     dated = item.due_date is not None or (item.date_spec is not None and item.date_spec.type != "none")
-    if (
-        not dated
-        or item.grounding == "user"
-        or item.status not in ("open", "snoozed")
-        or item.origin == "rule"
-    ):
+    if not dated or item.grounding == "user" or item.status not in ("open", "snoozed"):
         return False
+    if item.origin == "rule":
+        return any(not evidence.value_consistent for evidence in item.evidence)
     return item.grounding == "unverified" or any(not evidence.value_consistent for evidence in item.evidence)
 
 
@@ -268,6 +269,27 @@ def remedy_text(remedy: Remedy | None) -> str:
     return " ".join(part for part in parts if part)
 
 
+def end_date_grounding(
+    extraction: DocumentExtraction, pages: Sequence[PageInput]
+) -> Literal["quote", "letter", "none"]:
+    """Where the end a termination announces (:func:`~ordnung.rules.routing.announced_end`, read by the
+    model) is written, as items' dates are checked (SPEC § 21): in the termination's own sentence, found
+    on the page (``quote``); only elsewhere in the letter (``letter``); or nowhere in it (``none``: the
+    model may have misread it, or worked it out from "gesetzliche Kündigungsfrist"). A reading without
+    an end has nothing to ground (``quote``)."""
+    end = announced_end(extraction)
+    if end is None or extraction.change is None:
+        return "quote"
+
+    def writes_end(text: str) -> bool:
+        return any(mention.as_date() == end for mention in parse_dates(text))
+
+    quote = extraction.change.quote
+    if writes_end(quote) and ground_evidence("", quote, pages).grounding != "unverified":
+        return "quote"
+    return "letter" if any(writes_end(_page_text(page)) for page in pages) else "none"
+
+
 def rule_context(
     party: Party | None,
     document: Document,
@@ -277,6 +299,7 @@ def rule_context(
     recipient_region: str | None = None,
     country: str = "DE",
     filed_as: str | None = None,
+    pages: Sequence[PageInput] = (),
 ) -> RuleContext:
     """Facts the rules engine needs besides the DateSpec (SPEC § 21).
 
@@ -287,7 +310,8 @@ def rule_context(
     AO, health insurer or social-benefits agency → SGB X, other authorities → VwVfG; see
     :func:`ordnung.rules.scope_for_party_kind`). A received date on the document was entered by the person, so
     it counts as confirmed. ``filed_as`` is the letter's kind (default: the reading's, :func:`letter_kind`),
-    which routes the dates of high-stakes letters; a termination's end date comes with it. A court's
+    which routes the dates of high-stakes letters; a termination's end date comes with it, graded against
+    the letter's ``pages`` (:func:`end_date_grounding`; without pages it counts as not written). A court's
     letter is marked as one (and a labour court's), whatever kind it was filed as: its dates never use a
     delivery fiction and are never ``high``.
     """
@@ -311,6 +335,7 @@ def rule_context(
         recipient_region=recipient_region,
         letter_kind=filed_as or letter_kind(extraction),
         end_date=announced_end(extraction),
+        end_date_grounding=end_date_grounding(extraction, pages),
         court=is_court(name),
         labour_court=is_labour_court(name),
     )
@@ -334,6 +359,7 @@ def document_context(store: Store, document: Document, today: date) -> RuleConte
         recipient_region=profile.known_region,
         country=profile.country,
         filed_as=document.kind,
+        pages=store.list_pages(document.id),
     )
 
 
@@ -371,6 +397,37 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
         "none" if receipt.due_date is None else ("fixed" if spec.type == "fixed" else "computed")
     )
     return ComputedDate(receipt=receipt, due_date=receipt.due_date, send_by=receipt.send_by, source=source)
+
+
+def is_statement(kind: str | None, extraction: DocumentExtraction | None) -> bool:
+    """Whether a letter is an operating-cost statement: filed as one, or — as its dates don't depend on its
+    kind — recognised from its reading when it isn't filed as another high-stakes kind
+    (:func:`~ordnung.rules.routing.names_statement`)."""
+    if kind == "operating_costs":
+        return True
+    return kind not in HIGH_STAKES_KINDS and extraction is not None and names_statement(extraction)
+
+
+def late_statement_warning(statement: bool, title: str | None, text: str, ctx: RuleContext) -> str | None:
+    """The warning an operating-cost statement's payment to-dos carry when the letter's card calls it too
+    late (:func:`~ordnung.rules.advice.statement_late`, from the same arrival day, Land and text): its
+    back-payment may not be owed (§ 556 Abs. 3 S. 3 BGB). The to-do stays open — the landlord may not be
+    responsible for the delay, and nothing is ever dismissed for the person (ADR 0006)."""
+    if not statement:
+        return None
+    arrived = ctx.received_date if ctx.received_confirmed and ctx.received_date else ctx.document_date
+    late = statement_late(f"{title or ''}\n{text}", arrived, ctx.received_confirmed, ctx.recipient_region)
+    return LATE_STATEMENT_WARNING if late else None
+
+
+def with_statement_warning(computed: ComputedDate, item_kind: str, warning: str | None) -> ComputedDate:
+    """A payment's receipt with the late-statement warning (:func:`late_statement_warning`) and its rule."""
+    receipt = computed.receipt
+    if warning is None or item_kind != "payment" or receipt is None:
+        return computed
+    rule_ids = receipt.rule_ids if "bgb_556_3" in receipt.rule_ids else [*receipt.rule_ids, "bgb_556_3"]
+    updated = receipt.model_copy(update={"warnings": [*receipt.warnings, warning], "rule_ids": rule_ids})
+    return replace(computed, receipt=updated)
 
 
 def remedy_warnings(remedy: Remedy | None) -> list[str]:
@@ -626,10 +683,17 @@ def write_items(
 
 #: Slot of a deadline the law adds to a letter: one per rule (:func:`sync_rule_items`).
 RULE_SLOT_PREFIX = "rule:"
+#: The rule a receipt cites when it counts from an end date the letter doesn't write.
+END_NOT_WRITTEN = "termination_end"
 
 
 def _rule_item_fields(
-    derived: DerivedDeadline, receipt: ComputationReceipt, *, document: Document, today: date
+    derived: DerivedDeadline,
+    receipt: ComputationReceipt,
+    *,
+    document: Document,
+    today: date,
+    evidence: list[Evidence],
 ) -> dict[str, Any]:
     return {
         "kind": "deadline",
@@ -644,7 +708,7 @@ def _rule_item_fields(
         "area": document.area or "other",
         "party_id": document.party_id,
         "case_id": document.case_id,
-        "evidence": [],
+        "evidence": evidence,
         # the letter's kind is Claude's reading; the date is the law's (nothing in the letter to quote)
         "grounding": "model_read",
         "due_date_source": "computed" if receipt.due_date else "none",
@@ -679,12 +743,16 @@ def sync_rule_items(
     today: date,
     postal_buffer_days: int,
     create: bool = True,
+    end_evidence: Evidence | None = None,
 ) -> list[Item]:
     """File the deadlines the law adds to a high-stakes letter as to-dos (``origin="rule"``).
 
     A deadline is left out when one of the letter's own to-dos was computed under its rule
     (:func:`~ordnung.rules.routing.computed_under`). Dates come straight from the rules engine: there
-    is no quote to grade. Rule to-dos the letter no longer has (its kind was corrected) are deleted
+    is no quote to grade — except the end a termination announces, which the model read: a to-do that
+    counts from an end the letter doesn't write (the engine cites ``termination_end``, ``low``) gets the
+    termination's sentence (``end_evidence``) as evidence that doesn't state its value, so it is marked
+    "Please check" (:func:`needs_check`). Rule to-dos the letter no longer has (its kind was corrected) are deleted
     unless the person acted on them; those the person edited are kept as they are. With ``create``
     false (a recompute after the region, buffer or arrival day changed) only the rule to-dos that still
     exist are updated: one the person deleted stays deleted — only reading the letter or choosing its
@@ -714,7 +782,11 @@ def sync_rule_items(
         if not create and slot not in existing:
             continue
         receipt = compute_due(entry.spec, ctx, postal_buffer_days=postal_buffer_days)
-        fields = _rule_item_fields(entry, receipt, document=document, today=today)
+        evidence = []
+        if END_NOT_WRITTEN in receipt.rule_ids:
+            quote = end_evidence or Evidence(doc_id=document.id, quote="", grounding="unverified")
+            evidence = [quote.model_copy(update={"value_consistent": False})]
+        fields = _rule_item_fields(entry, receipt, document=document, today=today, evidence=evidence)
         filed.append(store.upsert_item_by_slot(document.id, slot, **fields))
     return filed
 
@@ -787,6 +859,7 @@ def write_plan(
         ctx,
         today=today,
         postal_buffer_days=postal_buffer_days,
+        end_evidence=verification.change_evidence,
     )
     items = [*items, *rule_items]
     # the stored to-dos decide: one the person confirmed, paid or dismissed was kept and needs no check

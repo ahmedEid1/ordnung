@@ -785,3 +785,37 @@ async def test_rescored_run_is_shown_next_to_the_held_out_one(tmp_path: Path) ->
     assert "Social-law senders were read as authorities." in section and "`abc1234`" in section
     assert "no longer held-out" in section and "Held-out run (headline)" in section
     assert "## After the held-out run" not in report.render_markdown([held_out])
+
+
+def test_the_benchmarks_rule_context_marks_court_letters_as_the_app_does() -> None:
+    """Review round 4: like ``ingest.plan.rule_context``, a court's (or labour court's) letter is marked as
+    one from the sender's name, and the end a termination announces is graded against the pages."""
+    from evals.conditions import ordnung_rule_context
+
+    from ordnung.models import DocumentExtraction, Page
+
+    entry = next(iter(load_manifest(MANIFEST)))
+    court = DocumentExtraction.model_validate(
+        {
+            "kind": "authority_letter",
+            "title": "Mahnbescheid",
+            "summary": "",
+            "explanation": "",
+            "sender": {"name": "Arbeitsgericht Berlin", "kind": "authority"},
+        }
+    )
+    ctx = ordnung_rule_context(entry, court)
+    assert ctx.court and ctx.labour_court
+    other = court.model_copy(update={"sender": court.sender.model_copy(update={"name": "Stadtwerke"})})  # type: ignore[union-attr]
+    assert not ordnung_rule_context(entry, other).court
+    quote = "hiermit kündigen wir das Mietverhältnis fristgerecht zum 31.03.2027."
+    notice = DocumentExtraction.model_validate(
+        {
+            **court.model_dump(),
+            "change": {"type": "termination_by_provider", "effective_date": "2027-05-31", "quote": quote},
+        }
+    )
+    page = Page(
+        doc_id="x", page=1, width=1, height=1, text=quote, words=[], text_source="text", image_path=""
+    )
+    assert ordnung_rule_context(entry, notice, [page]).end_date_grounding == "none"  # misread end

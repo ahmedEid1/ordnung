@@ -1,32 +1,35 @@
 """Which rules a high-stakes letter's dates follow (ADR 0002, ADR 0007).
 
 The model reads, code decides. The extraction prompt and schema stay as they were recorded, so the
-model never names these letters itself; code recognises them from its reading with two short
-policies, and cases the policies do not decide are documented limitations, not bugs.
+model never names these letters itself; code recognises them from its reading with the three short
+written policies below, and cases they do not decide are documented limitations, not bugs.
 
 **1. The kind of letter** (:func:`classify_letter`), from structured parts of the reading first:
 
 =========================  ============================================================================
-``court_payment_order``    sent by a court (the sender's name ends a word in "gericht": Amtsgericht,
-``enforcement_order``      Mahngericht — not a bailiff, *Gerichtsvollzieher bei dem Amtsgericht …*, or a
-                           court cashier, *Gerichtskasse*), the reading names a *Mahnbescheid* or a
-                           *Vollstreckungsbescheid* (or its title an English "payment order" /
-                           "enforcement order"), and the letter asks the person to answer it as the
-                           respondent: it states a *Widerspruch* or *Einspruch* remedy, or gives an
-                           objection date. Which of the two the letter **is** is decided by its title
-                           (the order it names first), else by the remedy it states (*Widerspruch* →
-                           Mahnbescheid, *Einspruch* → Vollstreckungsbescheid, from the remedy or the
-                           objection date's own wording) — never by the order some other sentence
-                           names. A court's other letters about an order are neither: to the claimant
-                           (the other side objected, the order was served, a cost invoice, a request to
-                           fix the application, the application was withdrawn), after an objection
-                           (*Abgabenachricht*), or from enforcement (a garnishment order, a suspension)
-                           — but "der Antragsgegner hat *keinen* Widerspruch erhoben" is why an
-                           enforcement order was issued. A labour court's orders are these kinds too,
-                           with one week (§ 46a Abs. 3, § 59 ArbGG; :func:`is_labour_court`).
-                           A debt collector threatening an order is not a court, so its letter stays a
-                           reminder. Anything these signals don't decide keeps the model's kind; the
-                           person can file it as a court order on the letter's page.
+``court_payment_order``    three signals, with no list of exceptions: (a) the sender is a court
+``enforcement_order``      (:func:`is_court`: a kind of court by name, *Amtsgericht*, *des
+                           Arbeitsgerichts*, or its abbreviation before the place, *AG Hagen* — not a
+                           bailiff, *Gerichtsvollzieher bei dem Amtsgericht …*, or a court cashier);
+                           (b) the letter asks the person to answer it as the respondent: it states a
+                           *Widerspruch* or *Einspruch* remedy, or gives an objection date; (c) it names
+                           the order: its title names a *Mahnbescheid* or *Vollstreckungsbescheid* (or an
+                           English "payment order" / "enforcement order"), which decides which one it is
+                           (the order the title names first); else the reading names one and the remedy
+                           decides (*Widerspruch* → Mahnbescheid, *Einspruch* → Vollstreckungsbescheid,
+                           from the remedy or the objection date's own wording) — never the order some
+                           other sentence names. A court's other letters about an order (to the claimant,
+                           after an objection, from enforcement) state no remedy of the person's and no
+                           objection date, so (b) leaves them out. Limitation: a reading that gives such a
+                           letter one anyway, with a title naming the order, files it as that order —
+                           the safe side for a two-week Notfrist; the person can change the kind on the
+                           letter's page. A labour court's orders are these kinds too, with one week
+                           (§ 46a Abs. 3, § 59 ArbGG; :func:`is_labour_court`). A debt collector
+                           threatening an order is not a court, so its letter stays a reminder. Anything
+                           these signals don't decide keeps the model's kind; the person can file it as a
+                           court order on the letter's page. The next extraction prompt should let the
+                           model name the order itself (a ``letter_kind`` field); until then (the
+                           prompts and their recorded answers stay fixed) code decides as above.
 ``dismissal``              the reading reports a termination by the other side
                            (``termination_by_provider``) about a job (kind ``employment``, sender
                            ``employer`` or an employment contract)
@@ -69,13 +72,18 @@ and that cites no other law's withdrawal right (insurance: VVG).
 
 **3. Dates the law adds** (:func:`derived_deadlines`): these letters rarely state their most
 important deadline (a dismissal never mentions the three weeks for a court action), so each kind
-brings the deadlines the law sets, which the pipeline files as to-dos unless an extracted date
-was computed under that rule (:func:`computed_under`: routed to it, or a period counted under it —
-not a date that merely mentions it, like a severance payment "if you don't sue"). A landlord's notice
+brings the deadlines the law sets, which the pipeline files as to-dos unless an extracted objection or
+declaration date was computed under that rule (:func:`computed_under`: routed to it, or a period counted
+under it — not a date that merely mentions it, like a severance payment "if you don't sue", nor a court
+order's payment date, which would turn "pay or object" into "pay"). A landlord's notice
 without notice period (:func:`extraordinary_notice`: its own quote or the title says *fristlos*, not
-negated, only reserved or "mit der gesetzlichen Frist", and the tenancy ends within two months) gets no
-objection to-do: the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB) — unless it also
-gives notice with a notice period in the alternative (*hilfsweise fristgemäß*), which it applies to.
+negated, not only reserved — the reservation must govern the notice, "eine fristlose Kündigung behalten
+wir uns vor" — and not "mit der gesetzlichen Frist", and the tenancy ends within two months) gets no
+objection to-do: the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB) — unless its own
+quote or the title also gives notice with a notice period in the alternative (*hilfsweise fristgemäß*),
+which it applies to. The objection is for a home only (§§ 549, 574 BGB): its to-do and card say it
+isn't for a garage, parking space or business premises let on their own (§ 578 BGB) — code doesn't try
+to tell those apart.
 """
 
 from __future__ import annotations
@@ -89,8 +97,20 @@ from ordnung.models import DateNature, DateSpec, DocumentExtraction, HighStakesK
 from ordnung.rules.explain import fmt_date
 from ordnung.rules.tenancy import notice_objection_deadline
 
-_COURT_SENDER = re.compile(r"gericht\b", re.I)
-_LABOUR_COURT = re.compile(r"arbeitsgericht", re.I)
+#: The kinds of German court, in any case ("des Amtsgerichts"): never just any word ending in "gericht"
+#: (a caterer's "Leibgericht").
+_COURT_SENDER = re.compile(
+    r"\b(?:amts|land|landes|oberlandes|kammer|(?:landes|bundes)?arbeits|(?:landes|bundes)?sozial|"
+    r"(?:ober|bundes)?verwaltungs|finanz|mahn|familien|insolvenz|vollstreckungs|nachlass|betreuungs|"
+    r"register|bundes)gericht(?:e?s|shofe?s?)?\b|\bbundesfinanzhofe?s?\b",
+    re.I,
+)
+#: … or its usual abbreviation before the place ("AG Hagen", "des ArbG Berlin"), at the start of the
+#: name or after an article — never a company's "… AG".
+_COURT_ABBREVIATION = re.compile(
+    r"(?:^|[(,;/]\s*|\b(?:des|dem|der|beim|vom|am)\s+)(?:AG|LG|OLG|ArbG|LAG|LSG|OVG|VGH|FG)\s+[A-ZÄÖÜ]"
+)
+_LABOUR_COURT = re.compile(r"(?i:arbeitsgericht)|\b(?:ArbG|LAG)\s")
 #: Senders that name a court without being one: a bailiff ("Gerichtsvollzieher bei dem Amtsgericht …",
 #: "Obergerichtsvollzieherin …, Amtsgericht Köln") or a court cashier.
 _NOT_A_COURT = re.compile(r"vollzieh|kasse|zahlstelle", re.I)
@@ -103,40 +123,6 @@ _ENFORCEMENT_TITLE = re.compile(r"vollstreckungsbescheid|enforcement", re.I)
 #: The remedy an objection date's own wording names (the remedy block may be empty).
 _WIDERSPRUCH = re.compile(r"widerspr|\b69[24]\b[^§]{0,20}\bZPO\b", re.I)
 _EINSPRUCH = re.compile(r"einspruch|\b(?:339|700)\b[^§]{0,20}\bZPO\b", re.I)
-_IN_SENTENCE = r"(?:[^.!?\n]|\.(?=\d)){0,100}?"
-#: The same, with no "kein"/"nicht" in it: "Der Antragsgegner hat keinen Widerspruch erhoben" is why an
-#: enforcement order was issued, not a notice that the other side objected.
-_UNNEGATED = r"(?:(?!\bkein|\bnicht\b)(?:[^.!?\n]|\.(?=\d))){0,100}?"
-#: A court's other letters about an order, in the letter's own (German) wording.
-_FOLLOW_UP = re.compile(
-    "|".join(
-        (
-            # the objection was received, the case is handed on
-            r"abgabenachricht|\bnach\s+(?:dem\s+|ihrem\s+|erhobenem\s+)?(?:widerspruch|einspruch)\b",
-            rf"(?<!kein\s)(?<!keinen\s)\b(?:widerspruch|einspruch)\b{_IN_SENTENCE}\b(?:ist|wurde|sind)\s+"
-            r"(?:hier\s+|fristgerecht\s+|rechtzeitig\s+|am\s+\S+\s+)?(?:eingegangen|erhoben|eingelegt)\b",
-            # to the claimant: the other side objected, the order was served, costs, the application
-            rf"\b(?:antragsgegner|schuldner|gegner)\w*\s+hat\b{_UNNEGATED}(?:widerspr|einspruch)",
-            r"\b(?:nachricht|mitteilung|hinweis)\w*\s+(?:an|für)\s+(?:den|die)\s+antragsteller|"
-            r"\bsie\s+als\s+antragsteller|\bihr(?:e[mnrs]?)?\s+(?:mahn)?antr(?:ag|äge)|"
-            r"zustellungsnachricht|monierung|kostenrechnung",
-            rf"\b(?:mahn)?antrag\b{_IN_SENTENCE}\bzurückgenommen|rücknahme\s+des\s+(?:mahn)?antrags",
-            # enforcement under way: a garnishment order, a suspension
-            r"pfändungsbeschluss|überweisungsbeschluss|einstellung\s+der\s+zwangsvollstreckung|"
-            rf"zwangsvollstreckung\b{_IN_SENTENCE}\beingestellt",
-        )
-    ),
-    re.I,
-)
-#: The same letters as a reading's (English) title may call them.
-_FOLLOW_UP_TITLE = re.compile(
-    r"\babgabe|abgegeben|objection (?:was |has been )?(?:received|filed|lodged|raised)|"
-    r"\b(?:has|have|had) (?:\w+ ){0,2}objected|after (?:your|the) objection|transferred|handed (?:on|over)|"
-    r"garnish|attachment order|suspen|withdrawn|bill of costs|(?:cost|fee) invoice|invoice for (?:court )?"
-    r"(?:fees|costs)|notice of (?:service|delivery)|served on|could not be (?:served|delivered)|"
-    r"\byour application\b",
-    re.I,
-)
 #: A § 558 request asks for consent — in the letter's own (German) wording.
 _CONSENT = re.compile(r"zustimm|vergleichsmiete|mietspiegel|\b558[ab]?\b[^§]{0,20}\bBGB\b", re.I)
 #: An increase of another kind, in the increase's own quote: graduated or index rent, modernisation,
@@ -183,10 +169,19 @@ _EXTRAORDINARY = re.compile(
     r"without notice|extraordinar|\b543\b[^§]{0,20}\bBGB\b|\b569\b[^§]{0,20}\bBGB\b",
     re.I,
 )
-#: … unless it is negated or only reserved ("nicht fristlos", "eine fristlose Kündigung behalten wir uns
-#: vor"), in the same sentence.
+#: … unless it is negated ("nicht fristlos", "keine fristlose Kündigung") in its sentence, or only
+#: reserved: a reservation that governs the notice itself — before it ("wir behalten uns eine fristlose
+#: Kündigung vor", "… vor, fristlos zu kündigen") or right after it ("eine fristlose Kündigung bleibt
+#: vorbehalten") — never one of something else ("wir kündigen fristlos und behalten uns weitere
+#: Ansprüche vor").
 _NEGATED = re.compile(r"\b(?:nicht|kein\w*|not|no|never)\b[^.!?;\n]{0,30}$", re.I)
-_RESERVED = re.compile(r"vorbehalt|\bbehalten\b.*\bvor\b|\breserv", re.I)
+_NOTICE = re.compile(r"\w*\s+(?:\S+\s+){0,3}?(?:kündigung|zu\s+kündigen)\b", re.I)
+_RESERVING = re.compile(r"vorbehalt|\bbehalten\s+(?:wir\s+|ich\s+)?(?:uns|mir)\b", re.I)
+_RESERVED_AFTER = re.compile(
+    r"\s+(?:(?!und\b|oder\b)[^\s,]+\s+){0,4}?(?:behalten\s+(?:wir|ich)\s+(?:uns|mir)|bleibt|bleiben|ist|wird)"
+    r"\s+(?:\S+\s+){0,2}?vor(?:behalten)?\b",
+    re.I,
+)
 _SENTENCE_END = re.compile(r"[!?;\n]|\.(?=\s+[A-ZÄÖÜ]|\s*$)")
 #: A special termination with the statutory notice period: the hardship objection applies to it
 #: (§ 575a Abs. 2 BGB for § 573d; the buyer at a forced sale, § 57a ZVG; the insolvency administrator,
@@ -290,24 +285,23 @@ def _stated_remedy(extraction: DocumentExtraction) -> HighStakesKind | None:
 
 
 def _court_order(extraction: DocumentExtraction) -> HighStakesKind | None:
-    """Which court order a court's letter is (policy 1: respondent, title, remedy), or ``None``."""
-    text = _reading_text(extraction)
-    named = _ORDER_TITLE.search(extraction.title)
-    if named is None and not _COURT_ORDER_NAME.search(text):
-        return None
-    if _FOLLOW_UP_TITLE.search(extraction.title) or _FOLLOW_UP.search(f"{extraction.title}\n{text}"):
-        return None
+    """Which court order a court's letter is (policy 1: respondent, then title, else remedy), or ``None``."""
     if not _respondent(extraction):
         return None
+    named = _ORDER_TITLE.search(extraction.title)
     if named is not None:
         return "enforcement_order" if _ENFORCEMENT_TITLE.match(named.group()) else "court_payment_order"
+    if not _COURT_ORDER_NAME.search(_reading_text(extraction)):
+        return None
     return _stated_remedy(extraction)
 
 
 def is_court(name: str) -> bool:
-    """Whether a sender's name is a court's (policy 1): a word ending in "gericht", and no bailiff or
-    court cashier."""
-    return bool(_COURT_SENDER.search(name)) and not _NOT_A_COURT.search(name)
+    """Whether a sender's name is a court's (policy 1): it names a kind of court (*Amtsgericht*, also *des
+    Amtsgerichts*; *Zentrales Mahngericht*) or abbreviates one before its place (*AG Hagen*, *ArbG
+    Berlin*), and is no bailiff or court cashier. Not recognised: a court named only in English."""
+    court = _COURT_SENDER.search(name) or _COURT_ABBREVIATION.search(name.strip())
+    return court is not None and not _NOT_A_COURT.search(name)
 
 
 def is_labour_court(name: str) -> bool:
@@ -364,12 +358,16 @@ def names_statement(extraction: DocumentExtraction) -> bool:
 
 
 def _asserted(text: str, match: re.Match[str]) -> bool:
-    """Whether a wording in ``text`` is said, not negated or only reserved, in its sentence."""
+    """Whether a wording in ``text`` is said in its sentence: not negated, and not a notice only reserved
+    (:data:`_NOTICE` governed by a reservation before it or right after it)."""
     starts = [end.end() for end in _SENTENCE_END.finditer(text, 0, match.start())]
     after = _SENTENCE_END.search(text, match.end())
-    sentence = text[starts[-1] if starts else 0 : after.start() if after else len(text)]
     before = text[starts[-1] if starts else 0 : match.start()]
-    return not _NEGATED.search(before) and not _RESERVED.search(sentence)
+    rest = text[match.end() : after.start() if after else len(text)]
+    if _NEGATED.search(before):
+        return False
+    notice = _NOTICE.match(rest)
+    return notice is None or not (_RESERVING.search(before) or _RESERVED_AFTER.match(rest, notice.end()))
 
 
 def extraordinary_notice(extraction: DocumentExtraction, letter_date: date | None = None) -> bool:
@@ -400,8 +398,11 @@ def extraordinary_notice(extraction: DocumentExtraction, letter_date: date | Non
 
 def alternative_notice(extraction: DocumentExtraction) -> bool:
     """Whether a notice without notice period also gives notice with one in the alternative
-    (*hilfsweise fristgemäß*): the hardship objection applies to that one (§ 574 Abs. 1 S. 2 BGB)."""
-    return bool(_ALTERNATIVE_NOTICE.search(_reading_text(extraction)))
+    (*hilfsweise fristgemäß*): the hardship objection applies to that one (§ 574 Abs. 1 S. 2 BGB). Like
+    :func:`extraordinary_notice`, only the termination's own quote and the reading's title count — never
+    the model's summary ("alternatively you may pay the arrears")."""
+    own = extraction.change.quote if extraction.change is not None else ""
+    return bool(_ALTERNATIVE_NOTICE.search(f"{extraction.title}\n{own}"))
 
 
 def letter_kind(extraction: DocumentExtraction) -> LetterKind:
@@ -583,9 +584,11 @@ _REGISTER = DerivedDeadline(
     title="Register as job-seeking (arbeitsuchend) at the Agentur für Arbeit",
     action=(
         "Register online, by phone or in person. Your details and the end date of the job are enough for now. "
-        "Not needed if this ends an apprenticeship in a company (§ 38 Abs. 1 S. 4 SGB III)."
+        "Not needed if this ends an apprenticeship in a company (§ 38 Abs. 1 S. 4 SGB III). Working students "
+        "(Werkstudenten) and mini-jobbers are usually not insured against unemployment (§ 27 SGB III): they have "
+        "no benefit to lose, but registering still helps."
     ),
-    consequence="Registering late can cost you one week of unemployment benefit (Sperrzeit).",
+    consequence="If you claim unemployment benefit, registering late can cost you one week of it (Sperrzeit).",
     priority="high",
     spec=_relative(3, "days", "declaration", "§ 38 Abs. 1 SGB III", "arbeitsuchend melden"),
 )
@@ -606,7 +609,9 @@ _NOTICE_OBJECTION = DerivedDeadline(
     action=(
         "Have the notice checked by a tenants' association (form, reason, period). If moving out would be a "
         "hardship for you or your household (illness, old age, no other flat), you can also object and ask to "
-        "stay (§ 574 BGB) — not for a short let or a furnished room in your landlord's own flat (§ 549 Abs. 2 BGB)."
+        "stay (§ 574 BGB). That objection is only for a home: not for a garage, parking space or business "
+        "premises let on their own (§ 578 BGB), a short let or a furnished room in your landlord's own flat "
+        "(§ 549 Abs. 2 BGB)."
     ),
     consequence=(
         "After this day the landlord may refuse to continue the tenancy — unless they didn't tell you in time "
@@ -626,9 +631,15 @@ LETTER_RULES = ("sgb3_38", "bgb_558b", "bgb_574b", "bgb_355")
 def computed_under(spec: DateSpec, rule_ids: Sequence[str], rule_id: str) -> bool:
     """Whether a letter's own date (its DateSpec, its receipt's ``rule_ids``) was computed under
     ``rule_id``, so the deadline the law adds for that rule would repeat it (policy 3): routed to a
-    letter rule, or a period counted under a court rule. A fixed date that only cites a court rule
-    keeps the letter's day, which may not be the law's, so the law's to-do is filed next to it."""
-    return rule_id in rule_ids and (rule_id in LETTER_RULES or spec.type == "relative")
+    letter rule, or a period counted under a court rule — and it asks what the law's to-do asks, an
+    objection or a declaration. A fixed date that only cites a court rule keeps the letter's day, which
+    may not be the law's, so the law's to-do is filed next to it; and a court order's payment date
+    ("pay within two weeks") is only half of "pay *or object*", so that to-do is filed next to it too."""
+    return (
+        rule_id in rule_ids
+        and spec.nature in ("objection", "declaration")
+        and (rule_id in LETTER_RULES or spec.type == "relative")
+    )
 
 
 def derived_deadlines(

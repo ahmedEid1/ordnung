@@ -57,8 +57,10 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 | Period counted backwards ("one month before …") on a weekend/holiday | Never moves to a later day + a `safe_date` on the working day before. |
 | Implausible period (over 100 years) or a date at the end of the calendar | No date, `low` confidence, "please check" — never an error that stops the document. |
 | Arrival day of a letter needed but not confirmed | Uses the letter's date and asks when it really arrived (`low` confidence). |
+| Arrival day stated in the letter and a different one entered by the person | Uses the earlier of the two and names both (one soft failure). |
+| End of a job or tenancy (read by the model) not written in the notice's own sentence | The deadlines counted from it (objection to a landlord's notice, registering three months before the job ends) are `medium` when the date is written elsewhere in the letter, `low` with "Please check" when it isn't written in the letter at all (`termination_end`). |
 | Kind of sender (procedural law) unknown | 3rd/4th-day rule **without** the weekend shift; 3 days unless the Land is known to use 4 (portal: the day after it was made available). |
-| Court order (Mahnbescheid, Vollstreckungsbescheid) without the envelope date | Counts from the order's own date and asks for the date on the yellow envelope (`low`); court deadlines are never `high`. Once the envelope date is entered it is the start, whatever anchor the period was read with. |
+| Court order (Mahnbescheid, Vollstreckungsbescheid) without the envelope date | Counts from the order's own date and asks for the date on the yellow envelope (`low`); court deadlines are never `high`. Once the envelope date is entered it is the start, whatever anchor the period was read with — unless the reading names an earlier start of its own (a delivery day or an explicit start): then the earlier of the two, with a warning naming both. |
 | Any other letter from a court (not filed as a court order) | No 4-day fiction (counts from the letter's date or the entered delivery day) and never `high`, whatever kind it was filed as. |
 | Whether an operating-cost statement came too late | Resolved in the landlord's favour: called late only when it certainly arrived after the deadline (section 7). |
 | Letter's period differs from the statute (e.g. "6 weeks" for a tax objection) | Computes both and uses the earlier date. |
@@ -71,7 +73,7 @@ further lowers confidence for quote problems (quote not found, digits not matchi
 
 | Criterion | Fails when… | Weight |
 |---|---|---|
-| Anchor date stated in the document or confirmed by the user | anchor missing; arrival date assumed | hard → `low` |
+| Anchor date stated in the document or confirmed by the user | anchor missing; arrival date assumed; a termination's end date not written in the letter | hard → `low` |
 | Anchor date stated in the document | "today" read as the letter's date | soft |
 | Rule known and its scope verified | unknown sender type; channel assumed; letter's period ≠ statute; Land not confirmed for the 4-day rule; *Anhörungsbogen*; fine counted from the letter date; court action (*Klage*: "get advice") | soft |
 | Holiday region known | region unknown **and** a regional holiday could change this result | soft |
@@ -342,7 +344,7 @@ written policy per ADR 0007) and files them under their own kind:
 
 | Kind | Recognised when the reading … | Its dates follow | Deadlines the law adds (filed as to-dos) | Card |
 |---|---|---|---|---|
-| `court_payment_order` (*Mahnbescheid*) | comes from a court (sender's name ends a word in "gericht", and names no bailiff — *Gerichtsvollzieher bei dem Amtsgericht …* — or court cashier), names a Mahnbescheid, asks the person to answer it as the respondent, and is one (see below) | `zpo_692` (at a labour court `arbgg_46a`) | pay or object within two weeks (one week at a labour court) | get advice now |
+| `court_payment_order` (*Mahnbescheid*) | comes from a court (the sender's name is a kind of court — *Amtsgericht*, also *des Amtsgerichts*, *Zentrales Mahngericht* — or abbreviates one before its place, *AG Hagen*; never any word ending in "gericht", a bailiff — *Gerichtsvollzieher bei dem Amtsgericht …* — or a court cashier), asks the person to answer it as the respondent, and names the order (see below) | `zpo_692` (at a labour court `arbgg_46a`) | pay or object within two weeks (one week at a labour court) | get advice now |
 | `enforcement_order` (*Vollstreckungsbescheid*) | comes from a court, names a Vollstreckungsbescheid, asks the person to answer it, and is one (see below) | `zpo_339` (at a labour court `arbgg_59`) | object within two weeks (one week at a labour court) | get advice now |
 | `dismissal` | reports a termination by the other side about a job | `kschg_4`, `sgb3_38` | court action within three weeks; register as job-seeking | get advice now |
 | `landlord_notice` | reports a termination by the other side about a tenancy | `bgb_574b` | the objection, when the end of the tenancy is stated and the notice has a notice period (or gives one in the alternative) | tenants' association |
@@ -354,22 +356,25 @@ claimant (the other side objected, the order was served, a cost invoice, a reque
 application, the application was withdrawn), after an objection (the case is handed on:
 *Abgabenachricht*), and during enforcement (a garnishment order, a suspension). A bailiff's letterhead
 names the court too ("Gerichtsvollzieher bei dem Amtsgericht Frankfurt am Main"), and his letter quotes
-the order he enforces. None of them starts a two-week period for the person, so the policy is short:
+the order he enforces. None of them starts a two-week period for the person. The policy has three
+signals and **no list of exceptions** (ADR 0007: an earlier list of "later letter" wordings kept growing
+and vetoed genuine orders whose reading said "you have not objected" or "served on you"):
 
-1. **Respondent.** The letter asks the person to answer the order: its reading states a *Widerspruch* or
-   *Einspruch* remedy, or gives an objection date. A notice to the claimant, a bailiff's demand or an
-   invoice does neither.
-2. **Not a later letter.** Its wording is none of those listed above (in German anywhere in the reading:
-   "Nach Widerspruch …", "Der Antragsgegner hat … Widerspruch erhoben", *Nachricht an den Antragsteller*,
-   *Zustellungsnachricht*, *Monierung*, *Kostenrechnung*, "Antrag … zurückgenommen",
-   *Pfändungs- und Überweisungsbeschluss*, "Zwangsvollstreckung … eingestellt"; in English only in the
-   title, e.g. "objection received", "garnishment", "suspended", "notice of service"). "Der Antragsgegner
-   hat *keinen* Widerspruch erhoben" is why an enforcement order was issued, not a later letter.
+1. **A court.** The sender is a court by name (above).
+2. **Respondent.** The letter asks the person to answer the order: its reading states a *Widerspruch* or
+   *Einspruch* remedy (from the *Rechtsbehelfsbelehrung*), or gives an objection date. A notice to the
+   claimant, a bailiff's demand, an invoice or a garnishment order does neither.
 3. **Which order.** The order the title names first (German, or "payment order" / "enforcement order");
-   else the remedy the letter states (*Widerspruch* → Mahnbescheid, *Einspruch* → Vollstreckungsbescheid,
-   from the remedy or the objection date's own wording). Nothing else decides: every Mahnbescheid warns
-   that a Vollstreckungsbescheid can follow (§ 692 Abs. 1 Nr. 4 ZPO), and later letters quote the order
-   they are about.
+   else, when the reading names an order, the remedy the letter states (*Widerspruch* → Mahnbescheid,
+   *Einspruch* → Vollstreckungsbescheid, from the remedy or the objection date's own wording). Nothing
+   else decides: every Mahnbescheid warns that a Vollstreckungsbescheid can follow (§ 692 Abs. 1 Nr. 4
+   ZPO), and later letters quote the order they are about.
+
+*Limitation:* a later letter whose reading nevertheless gives the person an objection date (or a
+remedy), and whose title names the order, is filed as that order — the safe side for a two-week
+*Notfrist*. The person changes the kind on the letter's page. The next extraction prompt should let the
+model name the order itself (a `letter_kind` field with these kinds); the recorded prompt stays as it
+is until then.
 
 A debt collector threatening a Mahnbescheid is not a court, so its letter stays a payment reminder;
 text in the model's own advice (`explanation`, `warnings`) never classifies a letter. A court order
@@ -464,7 +469,9 @@ date as read ([Bundesagentur für Arbeit](https://www.arbeitsagentur.de/arbeitsl
 | Thu 1 Oct 2026 | Mon 30 Nov 2026 | Sun 4 Oct 2026 (kept; may run to Mon 5 Oct) |
 
 Registering late can cost one week of unemployment benefit (*Sperrzeit*, § 159 Abs. 1 S. 2 Nr. 9, Abs. 6
-SGB III; not with an important reason). It doesn't replace **registering as unemployed** (`sgb3_141`,
+SGB III; not with an important reason). Working students (*Werkstudenten*, § 27 Abs. 4 S. 1 Nr. 2 SGB III)
+and mini-jobbers (§ 27 Abs. 2 SGB III) are usually not insured against unemployment, so they have no
+benefit to lose; the to-do says so rather than guessing who is insured. It doesn't replace **registering as unemployed** (`sgb3_141`,
 § 141 Abs. 1, § 137 Abs. 1 SGB III): online or in person, at the latest on the first day without work (up
 to three months before is allowed) — unemployment benefit is only paid from then. The dismissal card
 says so next to the job-seeking to-do ([Bundesagentur für Arbeit](https://www.arbeitsagentur.de/arbeitslos-arbeit-finden/arbeitslosengeld/ihre-schritte-wenn-sie-arbeitslos-werden/wie-sie-sich-arbeitsuchend-melden):
@@ -505,12 +512,19 @@ arrears, to paying them in time (§ 569 Abs. 3 Nr. 2 BGB). A notice counts as on
 quote or the title** says so (*fristlos*, *außerordentlich*, "ohne Einhaltung einer Kündigungsfrist",
 § 543 or § 569 BGB) — never the model's summary or another quote, which may mention a *fristlose
 Kündigung* the landlord only reserves — and the wording is not negated ("keine fristlose Kündigung"),
-reserved ("… behalten wir uns vor") or given "mit der gesetzlichen Frist" (a special termination — § 573d,
+only reserved (a reservation of the notice itself: "eine fristlose Kündigung behalten wir uns vor", "…
+vor, fristlos zu kündigen" — not "wir kündigen fristlos und behalten uns weitere Ansprüche vor") or given
+"mit der gesetzlichen Frist" (a special termination — § 573d,
 § 575a BGB, § 57a ZVG, § 111 InsO, § 564 BGB — which the objection applies to, § 575a Abs. 2 BGB), and
 the tenancy ends within two months of the letter (or no end is stated). When unsure it is an ordinary
 notice: the to-do stays, and the card says the objection doesn't apply to a notice without notice period. A notice without
-notice period that also gives notice with one in the alternative (*hilfsweise fristgemäß*) keeps the
-to-do and the letter: the objection applies to that notice. **Not for every tenancy** (`bgb_549`, § 549
+notice period that also gives notice with one in the alternative (*hilfsweise fristgemäß*, in its own
+quote or the title — never the model's summary) keeps the to-do and the letter: the objection applies to
+that notice. When no to-do carries the notice — one without notice period, or one whose end wasn't read —
+its card is urgent and comes first, and the verdict says "get advice now", never "nothing to do". **Only
+for a home**: a garage, parking space or business premises let on its own follows § 578 BGB, without the
+hardship objection; the to-do, the card and the catalog say so, as Ordnung can't tell them from the
+letter. **Not for every tenancy** (`bgb_549`, § 549
 Abs. 2, 3 BGB): a flat let only for temporary use and a furnished room in the flat the landlord lives
 in have no hardship objection (§§ 574–575) and no consent procedure for rent increases (§§ 557–561);
 a student hall has no consent procedure either. Ordnung can't tell these from the letter, so the to-do,
@@ -542,6 +556,10 @@ and the tenant may inspect the receipts. The card's check is written so that it 
   other range or a billing year alone it is at most "probably too late — check the billing period".
 * "On time" is only said without "probably" when the weekend/holiday shift (whose use here is disputed)
   and an unknown Land didn't decide it.
+* When the card says "too late" or "probably too late", the letter's payment to-dos carry the same warning
+  in their receipt ("may not be owed … check before you pay", citing `bgb_556_3`), the card is urgent and
+  comes first, and the verdict no longer leads with "Pay". Nothing is dismissed: the landlord may not be
+  responsible for the delay (ADR 0006).
 
 | Billing period ends | Statement arrived | Deadline | Result | Source |
 |---|---|---|---|---|
@@ -569,7 +587,11 @@ an authority or a court (their *Widerruf* is a revocation) and no other law's wi
 (*14 Werktage*) — is shown next to the law's: a shop may grant more (30 days) and some contracts
 have a longer period by law (life insurance: 30 days, § 152 VVG), a shorter one doesn't count against the
 consumer. The earlier date is shown while it lasts, then the later one, so a
-right that still runs is never called "passed".
+right that still runs is never called "passed". The same holds for the withdrawal letter when the person
+ticks "I was never told about my right to withdraw": whether instructions were proper is a legal
+judgement (they are often in the terms or the order e-mail), so while the 14 days run they stay the
+send-by date and the twelve months and 14 days are only a note; only once the 14 days have passed does
+the longer period become the date, with "get advice if you're unsure".
 
 | Start | Deadline | Source |
 |---|---|---|
@@ -782,7 +804,7 @@ enforces that every id used by the engine exists here).
 | `bgb_556_3`, `bgb_536c` | Operating-cost statements; reporting defects | § 556 Abs. 3, 4 BGB; § 536c BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__556.html) |
 | `bgb_355`, `bgb_356_4`, `bgb_356a` | Withdrawal: 14 days; without instructions; withdrawal button | § 355, § 356 Abs. 2–4 BGB; Art. 10 RL 2011/83/EU; § 356a BGB | `bgb_356a` 2026-06-19 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__355.html) |
 | `ao_222` | Tax payment deferral (Stundung) | § 222 AO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/ao_1977/__222.html) |
-| `date_as_written`, `safe_date`, `postal_buffer`, `contract_as_written`, `unit_business_days` | Ordnung's own policies | — | — | — |
+| `date_as_written`, `safe_date`, `postal_buffer`, `contract_as_written`, `unit_business_days`, `termination_end` | Ordnung's own policies | — | — | — |
 
 ---
 

@@ -566,6 +566,14 @@ def _iso_day(value: str) -> str:
 IsoDay = Annotated[str, AfterValidator(_iso_day)]
 
 
+def _one_line(value: str) -> str:
+    return " ".join(value.split())
+
+
+#: Text that ends up in a letter's subject line: line breaks and runs of spaces become one space.
+OneLine = Annotated[str, AfterValidator(_one_line)]
+
+
 class LetterDetails(_Model):
     """Facts a template letter needs besides the letter, contract or person it is about.
 
@@ -574,7 +582,7 @@ class LetterDetails(_Model):
     with a clear message, never a server error), amounts in euros.
     """
 
-    subject_matter: str | None = Field(
+    subject_matter: OneLine | None = Field(
         default=None, max_length=200, description="what was ordered or agreed, e.g. 'Kaffeemaschine'"
     )
     ordered_on: IsoDay | None = Field(default=None, description="the day the contract was concluded")
@@ -590,7 +598,7 @@ class LetterDetails(_Model):
     defect: str | None = Field(default=None, max_length=1000, description="what is broken or wrong")
     noticed_on: IsoDay | None = Field(default=None, description="since when the defect exists")
     fix_by: IsoDay | None = Field(default=None, description="the day by which it should be repaired")
-    period: str | None = Field(default=None, max_length=80, description="the billing period")
+    period: OneLine | None = Field(default=None, max_length=80, description="the billing period")
     moved_out_on: IsoDay | None = Field(default=None, description="the day the flat was handed back")
     moved_on: IsoDay | None = Field(default=None, description="the day of the move")
     old_address: str | None = Field(default=None, max_length=300)

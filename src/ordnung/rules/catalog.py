@@ -160,6 +160,16 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
+        "termination_end",
+        "An end date the letter doesn't write",
+        "Ordnung safety policy (SPEC § 21)",
+        "Some deadlines count from the day a job or tenancy ends, which Ordnung reads from the notice. When "
+        "that date isn't written in the letter, the deadline is only as sure as the reading: it gets low "
+        "confidence and 'Please check'.",
+        None,
+        None,
+    ),
+    (
         "backward_no_shift",
         "Periods counted backwards never move later",
         "§ 193 BGB; Ordnung safety policy",
@@ -507,7 +517,9 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III",
         "Register with the Agentur für Arbeit at the latest three months before your job ends, or within "
         "three days of learning the end date if less time is left. A short notice with your details and the "
-        "end date keeps the deadline. Registering late can cost one week of unemployment benefit.",
+        "end date keeps the deadline. Registering late can cost one week of unemployment benefit — not an "
+        "issue for working students and mini-jobbers, who are usually not insured against unemployment "
+        "(§ 27 SGB III).",
         f"{_GII}/sgb_3/__38.html",
         None,
     ),
@@ -548,8 +560,9 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "§ 574b Abs. 1, 2 BGB; § 574 BGB",
         "If moving out would be a hardship, you can object to the notice and ask to stay. The objection "
         "must reach the landlord at the latest two months before the tenancy ends; text form is enough "
-        "since 2025. The period is counted backwards and never moves to a later day. Not for a short let "
-        "or a furnished room in the landlord's own flat (§ 549 Abs. 2 BGB).",
+        "since 2025. The period is counted backwards and never moves to a later day. Only for a home: not "
+        "for a garage, parking space or business premises let on its own (§ 578 BGB), a short let or a "
+        "furnished room in the landlord's own flat (§ 549 Abs. 2 BGB).",
         f"{_GII}/bgb/__574b.html",
         "2025-01-01",
     ),

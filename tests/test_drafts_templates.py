@@ -448,9 +448,23 @@ async def test_objection_to_a_court_order_uses_the_statutory_remedy(
     assert any(
         c.channel == "portal" and c.label == "online-mahnantrag.de" for c in draft.send_guidance.channels
     )
-    assert any("objects to the whole claim" in note for note in draft.notes_for_user)
+    [note] = [note for note in draft.notes_for_user if "objects to the whole claim" in note]
+    # a partial objection (only the interest or costs) goes on the court's form — said before it is sent
+    assert "only part of it" in note and "form that came with the order" in note
     vb = await compose(ctx, "objection", doc_id=ids["enforcement"])
-    assert "Einspruch ein." in vb.body
+    assert "Einspruch ein." in vb.body and "einstweilen einzustellen" not in vb.body
+
+
+async def test_suspending_enforcement_is_a_ticked_choice(ctx: AppContext, ids: dict[str, str]) -> None:
+    """Review round 4: the application to suspend enforcement (§§ 719, 707 ZPO) comes from the explicit
+    choice, not from keywords in the wishes; a court payment order has nothing to suspend yet."""
+    asked = await compose(ctx, "objection", doc_id=ids["enforcement"], suspend_enforcement=True)
+    assert "Zwangsvollstreckung aus dem Vollstreckungsbescheid einstweilen einzustellen" in asked.body
+    for wishes in ("I don't want to suspend enforcement", "Bitte keine einstweilige Einstellung"):
+        draft = await compose(ctx, "objection", doc_id=ids["enforcement"], instructions=wishes)
+        assert "einstweilen einzustellen" not in draft.body
+    order = await compose(ctx, "objection", doc_id=ids["order"], suspend_enforcement=True)
+    assert "einzustellen" not in order.body and "Aussetzung" not in order.body
 
 
 async def test_objection_to_a_landlords_notice(ctx: AppContext, ids: dict[str, str]) -> None:
@@ -490,6 +504,19 @@ async def test_withdrawal_draft_shows_the_period(ctx: AppContext, ids: dict[str,
         details=LetterDetails(subject_matter="Abo", ordered_on="2026-08-01", instructions_missing=True),
     )
     assert any("12 months and 14 days" in note for note in long.notes_for_user)
+    assert long.send_guidance is not None and long.send_guidance.send_by == "2027-08-15"
+
+    # ticked while the 14 days still run: they stay the date; the longer period is only a note
+    running = await compose(
+        ctx,
+        "withdrawal",
+        party_id=ids["shop"],
+        details=LetterDetails(subject_matter="Abo", received_on="2026-09-24", instructions_missing=True),
+    )
+    assert running.send_guidance is not None and running.send_guidance.send_by == "2026-10-08"
+    assert "Thu 8 Oct 2026" in running.send_guidance.tips[0] and "2027" not in running.send_guidance.tips[0]
+    [note] = [note for note in running.notes_for_user if "12 months and 14 days" in note]
+    assert "Fri 8 Oct 2027" in note and "don't rely on it: send it by Thu 8 Oct 2026" in note
 
     # received 10 Jan 2025: even the 12 months and 14 days (24 Jan 2026) are over by 28 Sep 2026
     expired = await compose(
@@ -709,6 +736,14 @@ async def test_api_drafts_a_template_letter_and_explains_what_is_missing(data_di
         assert response.json()["kind"] == "withdrawal"
         missing = await api.client.post("/api/drafts", json={"kind": "defect_notice", "party_id": party})
         assert missing.status_code == 422 and "what is broken" in missing.json()["detail"]
+        # a single-line fact never breaks the subject line
+        multi = {
+            **body,
+            "details": {"subject_matter": "Kaffee\nmaschine\r\n  X", "received_on": "2026-09-24"},
+        }
+        response = await api.client.post("/api/drafts", json=multi)
+        assert response.status_code == 201, response.text
+        assert response.json()["subject"] == "Widerruf des Vertrags über „Kaffee maschine X“"
         bad = await api.client.post(
             "/api/drafts", json={"kind": "payment_plan", "party_id": party, "details": {"instalment": -5}}
         )

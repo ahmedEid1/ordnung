@@ -39,7 +39,7 @@ from ordnung.ingest.intake import (
 )
 from ordnung.ingest.link import DUNNING_ITEM_NOTE
 from ordnung.ingest.pipeline import add_file, ledger_lock, reprocess
-from ordnung.ingest.plan import KIND_CHOSEN
+from ordnung.ingest.plan import KIND_CHOSEN, is_statement
 from ordnung.llm.replay import ReplayBackend
 from ordnung.models import (
     HIGH_STAKES_KINDS,
@@ -57,7 +57,7 @@ from ordnung.models import (
 )
 from ordnung.rules.advice import letter_advice
 from ordnung.rules.deadlines import parse_date
-from ordnung.rules.routing import alternative_notice, extraordinary_notice, is_labour_court, names_statement
+from ordnung.rules.routing import alternative_notice, announced_end, extraordinary_notice, is_labour_court
 from ordnung.secretary.triggers import Ledger
 
 router = APIRouter(tags=["documents"])
@@ -198,7 +198,7 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
     kind: str | None = document.kind
     if kind not in HIGH_STAKES_KINDS:
         # an operating-cost statement's dates don't depend on its kind: recognised on read only
-        kind = "operating_costs" if extraction is not None and names_statement(extraction) else None
+        kind = "operating_costs" if is_statement(kind, extraction) else None
     if kind is None:
         return None
     change = extraction.change if extraction is not None else None
@@ -219,6 +219,7 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
         extraordinary=notice is not None and extraordinary_notice(notice, parse_date(document.doc_date)),
         alternative=notice is not None and alternative_notice(notice),
         labour_court=is_labour_court(sender),
+        end_unknown=notice is not None and announced_end(notice) is None,
     )
 
 
@@ -381,41 +382,53 @@ def _apply_patch(store: Store, doc_id: str, changes: dict[str, object]) -> Docum
     return store.update_document(document.id, **changes) if changes else document
 
 
+def _patch(
+    store: Store, doc_id: str, changes: dict[str, object], confirmed: bool | None, today: date
+) -> tuple[Document, list[Item] | None]:
+    """Apply a patch and, when it changes the kind or confirms a date, recompute the letter's to-dos —
+    in one transaction, with the :data:`KIND_CHOSEN` entry written with the kind, so a re-read that
+    commits before or after (both under :func:`ledger_lock`) sees the person's choice and keeps it.
+    Returns the letter and the to-dos that changed (``None``: nothing to recompute)."""
+    with store.tx():
+        before = require(store.get_document(doc_id), NOT_FOUND)
+        document = _apply_patch(store, doc_id, changes)
+        kind_changed = "kind" in changes and before.kind != document.kind
+        dates_changed = bool({"received_date", "doc_date"} & changes.keys()) or confirmed is True
+        if kind_changed:
+            # a kind the person chose is kept when the letter is read again (ingest.plan.corrections)
+            store.log_activity(
+                KIND_CHOSEN,
+                f"You filed “{document.title or document.filename}” as “{(document.kind or 'other').replace('_', ' ')}”",
+                ref_type="document",
+                ref_id=doc_id,
+                data={"kind": document.kind, "was": before.kind},
+            )
+        # a chosen kind always re-routes the dates; ``received_confirmed: false`` only holds back a date change
+        if not (kind_changed or (dates_changed and confirmed is not False)):
+            return document, None
+        changed = recompute_document_items(store, document, today, refile_rules=kind_changed)
+        if "received_date" in changes and document.received_date:
+            store.log_activity(
+                "document.received_date",
+                f"You confirmed that “{document.title or document.filename}” arrived on {document.received_date}",
+                ref_type="document",
+                ref_id=doc_id,
+                data={"recomputed_items": [item.id for item in changed]},
+            )
+        return document, changed
+
+
 @router.patch("/documents/{doc_id}", response_model=Document)
 async def update_document(doc_id: str, patch: DocumentPatch, ctx: CtxDep, today: TodayDep) -> Document:
     """Correct a letter's facts; a confirmed arrival date or corrected letter date recomputes its to-dos."""
     changes = patch.model_dump(exclude_unset=True)
     confirmed = changes.pop("received_confirmed", None)
-    before = ctx.store.get_document(doc_id)
-    kind_changed = "kind" in changes and before is not None and before.kind != changes["kind"]
-    dates_changed = bool({"received_date", "doc_date"} & changes.keys()) or confirmed is True
-    document = await asyncio.to_thread(_apply_patch, ctx.store, doc_id, changes)
-    # a chosen kind always re-routes the dates; ``received_confirmed: false`` only holds back a date change
-    if not (kind_changed or (dates_changed and confirmed is not False)):
+    async with ledger_lock():
+        document, changed = await asyncio.to_thread(_patch, ctx.store, doc_id, changes, confirmed, today)
+    if changed is None:
         if changes:
             ctx.bus.publish("document.updated", doc_id=doc_id)
         return document
-    async with ledger_lock():
-        changed = await asyncio.to_thread(
-            recompute_document_items, ctx.store, document, today, refile_rules=kind_changed
-        )
-    if kind_changed:
-        # a kind the person chose is kept when the letter is read again (ingest.plan.corrections)
-        ctx.store.log_activity(
-            KIND_CHOSEN,
-            f"You filed “{document.title or document.filename}” as “{(document.kind or 'other').replace('_', ' ')}”",
-            ref_type="document",
-            ref_id=doc_id,
-            data={"kind": document.kind, "was": before.kind if before else None},
-        )
-    if "received_date" in changes and document.received_date:
-        ctx.store.log_activity(
-            "document.received_date",
-            f"You confirmed that “{document.title or document.filename}” arrived on {document.received_date}",
-            ref_type="document",
-            ref_id=doc_id,
-            data={"recomputed_items": [item.id for item in changed]},
-        )
     ctx.bus.publish("document.updated", doc_id=doc_id)
     await ledger_changed(ctx)
     return require(ctx.store.get_document(doc_id), NOT_FOUND)
