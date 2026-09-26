@@ -978,6 +978,14 @@ async def test_a_condition_added_later_keeps_the_published_numbers(tmp_path: Pat
     page = report.render_markdown([merged])
     assert "LLM + rules tool was run on 2026-09-26 (fake" in page
     assert "**What this shows.** The tool helped." in page
+    assert "(LLM + rules tool ran later, against the code of that day" in page  # next to Ordnung − tool
+    assert "Ordnung re-scored − LLM + rules tool" not in page  # no re-scored run to compare with
+    with_rescored = report.render_markdown([merged], rescored=merged)
+    assert "compare it with Ordnung re-scored after the fix" in with_rescored
+    assert "Ordnung re-scored − LLM + rules tool: accuracy" in with_rescored
+    svg = report.svg_chart(merged, rescored=merged)
+    assert "LLM + rules tool ran later, with the code of that day · Ordnung re-scored with that code:" in svg
+    assert "ran later" not in report.svg_chart(before)
 
     with pytest.raises(ValueError, match="differ in split"):
         report.add_condition(

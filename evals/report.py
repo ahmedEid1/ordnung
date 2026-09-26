@@ -441,7 +441,7 @@ def render_markdown(
         _headline(main, chart),
         _rescored_section(main, rescored) if rescored else "",
         _taxonomy_section(main),
-        _tool_section(main),
+        _tool_section(main, rescored),
         _family_section(main),
         _modality_section(main),
         _extraction_section(main),
@@ -566,12 +566,20 @@ def _headline(results: Mapping[str, Any], chart: str | None) -> str:
         rows,
     )
     comparisons = results.get("comparisons") or {}
+    added = results["meta"].get("added_conditions") or {}
     lines = []
     for key, value in comparisons.items():
         first, other = key.split("-vs-", 1)
+        later = next((c for c in (first, other) if c in added), None)
+        pointer = " — see “An agent with a calculator”" if later == TOOL_CONDITION else ""
+        caveat = (
+            f" ({_label(later)} ran later, against the code of that day{pointer})"
+            if later and "ordnung" in (first, other)
+            else ""
+        )
         lines.append(
             f"- {_label(first)} − {_label(other)}: accuracy {diff(value['due_date_accuracy_diff'])}, "
-            f"dangerous-late rate {diff(value['dangerous_late_rate_diff'])}."
+            f"dangerous-late rate {diff(value['dangerous_late_rate_diff'])}{caveat}."
         )
     paired = (
         "Paired differences (bootstrap over the same letters; an interval that excludes 0 is a clear difference):\n\n"
@@ -704,8 +712,12 @@ def _share(count: int, total: int) -> str:
     return f"{count} of {total} ({count / total * 100:.1f} %)" if total else "—"
 
 
-def _tool_section(results: Mapping[str, Any]) -> str:
-    """How the model used Ordnung's engine as a tool, and what its final dates did with the answers."""
+def _tool_section(results: Mapping[str, Any], rescored: Mapping[str, Any] | None = None) -> str:
+    """How the model used Ordnung's engine as a tool, and what its final dates did with the answers.
+
+    When the condition was added after the headline run and a re-scored run exists, the fair
+    comparison is with the re-scored Ordnung (the tool called the engine as it was on that later day).
+    """
     metrics = results["metrics"].get(TOOL_CONDITION)
     use = (metrics or {}).get("tool_use")
     if not use:
@@ -724,15 +736,16 @@ def _tool_section(results: Mapping[str, Any]) -> str:
         ["Calls the tool refused (invalid arguments)", str(use["refused_calls"])],
     ]
     labels = {
-        "tool_date": "Final date = a date the tool returned for that letter",
-        "overrode_tool": "Final date ≠ every date the tool returned (the model overrode it)",
-        "no_tool_date": "The tool returned no date for that letter",
+        "tool_date": "Final date = the date the tool returned for that obligation",
+        "overrode_tool": "Final date ≠ the tool's date for that obligation (the model overrode it)",
+        "no_tool_date": "No tool date for that obligation (not asked)",
     }
     for backing, label in labels.items():
         accuracy = use["accuracy_by_backing"][backing]
         late = use["late_by_backing"][backing]
         detail = (
-            f"{by_backing[backing]} items — right {rate(accuracy, ci=False, counts=True)}, "
+            f"{by_backing[backing]} {'item' if by_backing[backing] == 1 else 'items'} — right "
+            f"{rate(accuracy, ci=False, counts=True)}, "
             f"late {rate(late, ci=False, counts=True)}"
             if by_backing[backing]
             else "0 items"
@@ -741,19 +754,33 @@ def _tool_section(results: Mapping[str, Any]) -> str:
     table = _table(["Tool use (required items with a known date)", _label(TOOL_CONDITION)], rows)
     differs = use["final_differs_from_tool"]
     right = use["tool_returned_the_right_date"]
-    facts = [
-        f"Where the tool returned a date, the model's final date differed from it for "
-        f"{_share(by_backing['overrode_tool'], tool_dated)} of the items. Those overrides replaced a right "
-        f"tool date with a wrong one {use['overrides_breaking_a_right_tool_date']} time(s) and a wrong "
-        f"tool date with the right one {use['overrides_fixing_a_wrong_tool_date']} time(s).",
-        f"The tool itself returned the right date for {rate(right, ci=False, counts=True)} of those items. "
-        "It computes exactly what it is given, so a wrong tool date comes from the arguments the model "
-        "chose (its reading of the period, anchor, sender or region) or from one of Ordnung's documented "
-        "earliest-plausible-date policies.",
+    paragraphs = [
+        f"Where the tool had answered for an obligation, the final date differed from its answer for "
+        f"{_share(by_backing['overrode_tool'], tool_dated)}. Overrides that replaced a right tool date "
+        f"with a wrong one: {use['overrides_breaking_a_right_tool_date']}; that replaced a wrong tool "
+        f"date with the right one: {use['overrides_fixing_a_wrong_tool_date']}. The tool's own answer "
+        f"was right for {rate(right, ci=False, counts=True)} of these obligations: it computes exactly what it "
+        "is given, so a wrong tool date comes from the arguments the model chose (its reading of the "
+        "period, anchor, sender or region) or from one of Ordnung's documented earliest-plausible-date "
+        "policies. Calls carry no item id: a call counts for an obligation when the sentence the model "
+        "passed it is that obligation's sentence, or when the answer dates only one obligation.",
     ]
     if differs.get("value") is None:
-        facts = ["The tool returned no dates on this run."]
-    note = ((results["meta"].get("added_conditions") or {}).get(TOOL_CONDITION) or {}).get("note")
+        paragraphs = ["The tool returned no dates on this run."]
+    added = (results["meta"].get("added_conditions") or {}).get(TOOL_CONDITION)
+    fair = ((rescored or {}).get("comparisons") or {}).get(f"ordnung-vs-{TOOL_CONDITION}")
+    if added and fair and rescored is not None:
+        rescored_ordnung = rescored["metrics"]["ordnung"]["due_date_accuracy"]
+        paragraphs.append(
+            f"This condition ran on {added.get('date')}, after the fix described under “After the "
+            "held-out run”, so it called the fixed engine: compare it with Ordnung re-scored after the "
+            f"fix ({rate(rescored_ordnung)}), not with the held-out run. Ordnung re-scored − LLM + rules "
+            f"tool: accuracy {diff(fair['due_date_accuracy_diff'])}, dangerous-late rate "
+            f"{diff(fair['dangerous_late_rate_diff'])}."
+        )
+    note = (added or {}).get("note")
+    if note:
+        paragraphs.append(f"**What this shows.** {note}")
     return f"""## An agent with a calculator
 
 Why a fixed pipeline instead of giving the model Ordnung's rules engine as a tool? In the **LLM +
@@ -763,9 +790,7 @@ sentence saying the tools exist; when to call them and whether to trust them was
 
 {table}
 
-{" ".join(facts)} Calls carry no item id: a call counts for an obligation when the sentence the
-model passed it is that obligation's sentence, or when the answer dates only one obligation.
-{f"{chr(10)}**What this shows.** {note}" if note else ""}"""
+""" + "\n\n".join(paragraphs)
 
 
 def _family_section(results: Mapping[str, Any]) -> str:
@@ -1028,7 +1053,8 @@ visible text; for photos Ordnung transcribes while the baselines see the image),
 region, the same security framing (`<untrusted_document>` tags) and one repair attempt for invalid
 output. None has tools, except *LLM + rules tool*: its only tools are Ordnung's rules engine
 (`ordnung mcp --rules-only`, no file, web or shell access, counting from the letter's "today"), with
-a cost cap of $1 per call so a looping agent would be stopped. The holiday Land comes from the dataset for every condition (the letterhead's Land,
+a cost cap of $1 per call so a looping agent would be stopped. The holiday Land comes from the
+dataset for every condition (the letterhead's Land,
 else the person's): the baselines are told it in the prompt, Ordnung's rules engine receives it as
 the app would get it from the sender's address or the person's settings; none has to infer it. The baselines' prompts ask for step-by-step working before each date, tell the model to
 apply current German law, to choose the earliest plausible date when in doubt and to return no date
@@ -1133,27 +1159,42 @@ def chart_groups(results: Mapping[str, Any]) -> list[tuple[str, dict[str, Mappin
     return groups
 
 
-def write_chart(results: Mapping[str, Any], path: Path = CHART_PATH) -> Path:
+def write_chart(
+    results: Mapping[str, Any], path: Path = CHART_PATH, *, rescored: Mapping[str, Any] | None = None
+) -> Path:
     """The due-date accuracy chart: PNG via matplotlib, else a hand-written SVG next to ``path``."""
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        return _matplotlib_chart(results, path.with_suffix(".png"))
+        return _matplotlib_chart(results, path.with_suffix(".png"), rescored=rescored)
     except ImportError:
         svg = path.with_suffix(".svg")
-        svg.write_text(svg_chart(results), encoding="utf-8")
+        svg.write_text(svg_chart(results, rescored=rescored), encoding="utf-8")
         return svg
 
 
-def _chart_title(results: Mapping[str, Any]) -> tuple[str, str]:
+def _chart_title(
+    results: Mapping[str, Any], rescored: Mapping[str, Any] | None = None
+) -> tuple[str, str, str | None]:
+    """Title, subtitle and (for a condition added later) the note that keeps the bars comparable."""
     meta = results["meta"]
-    return (
-        "Due-date accuracy on required items",
+    subtitle = (
         f"95 % bootstrap CI · model {meta.get('model')} · {meta.get('split')} split · "
-        f"{meta.get('scored_items')} items in {meta.get('entries')} letters",
+        f"{meta.get('scored_items')} items in {meta.get('entries')} letters"
     )
+    note = None
+    later = [c for c in (meta.get("added_conditions") or {}) if c in results["metrics"]]
+    if later:
+        names = " and ".join(_label(c) for c in later)
+        note = f"{names} ran later, with the code of that day"
+        ordnung = ((rescored or {}).get("metrics") or {}).get("ordnung")
+        if ordnung is not None:
+            note += f" · Ordnung re-scored with that code: {pct(ordnung['due_date_accuracy']['value'], 0)}"
+    return "Due-date accuracy on required items", subtitle, note
 
 
-def _matplotlib_chart(results: Mapping[str, Any], path: Path) -> Path:
+def _matplotlib_chart(
+    results: Mapping[str, Any], path: Path, *, rescored: Mapping[str, Any] | None = None
+) -> Path:
     import matplotlib
 
     matplotlib.use("Agg")
@@ -1161,9 +1202,20 @@ def _matplotlib_chart(results: Mapping[str, Any], path: Path) -> Path:
 
     groups = chart_groups(results)
     conditions = _conditions(results)
+    title, subtitle, note = _chart_title(results, rescored)
+    # The header, in inches: title, subtitle, the optional note, then the legend in its own row, so a
+    # long legend never runs into the title.
+    header_lines = [
+        (title, 12.0, "bold", TEXT_PRIMARY, 0.36),
+        (subtitle, 8.5, "normal", TEXT_SECONDARY, 0.24),
+    ]
+    if note:
+        header_lines.append((note, 8.5, "normal", TEXT_SECONDARY, 0.24))
+    header = 0.14 + sum(line[4] for line in header_lines) + 0.34
     bar, gap = 0.17, 0.07
     step = len(conditions) * (bar + gap) + 0.45
-    fig, ax = plt.subplots(figsize=(8.4, 1.3 + 1.05 * len(groups)), dpi=160)
+    height = header + 0.3 + 1.05 * len(groups)
+    fig, ax = plt.subplots(figsize=(8.4, height), dpi=160)
     fig.patch.set_facecolor(SURFACE)
     ax.set_facecolor(SURFACE)
     ticks, labels = [], []
@@ -1199,28 +1251,25 @@ def _matplotlib_chart(results: Mapping[str, Any], path: Path) -> Path:
     ax.tick_params(length=0)
     for spine in ax.spines.values():
         spine.set_visible(False)
-    title, subtitle = _chart_title(results)
-    fig.text(0.012, 0.965, title, fontsize=12, fontweight="bold", color=TEXT_PRIMARY, va="top")
-    fig.text(
-        0.012, 0.965 - 0.34 / fig.get_figheight(), subtitle, fontsize=8.5, color=TEXT_SECONDARY, va="top"
-    )
+    y = 0.14
+    for text, size, weight, color, advance in header_lines:
+        fig.text(0.012, 1 - y / height, text, fontsize=size, fontweight=weight, color=color, va="top")
+        y += advance
     handles = [
         matplotlib.patches.Patch(color=CONDITION_COLORS.get(c, TEXT_SECONDARY), label=_label(c))
         for c in conditions
     ]
     fig.legend(
         handles=handles,
-        loc="upper right",
-        bbox_to_anchor=(0.99, 0.985),
+        loc="upper left",
+        bbox_to_anchor=(0.004, 1 - (y + 0.02) / height),
         ncol=len(handles),
         frameon=False,
         fontsize=8.5,
         labelcolor=TEXT_PRIMARY,
         handlelength=1.0,
     )
-    fig.subplots_adjust(
-        left=0.15, right=0.98, top=1 - 0.95 / fig.get_figheight(), bottom=0.35 / fig.get_figheight()
-    )
+    fig.subplots_adjust(left=0.15, right=0.98, top=1 - (header + 0.1) / height, bottom=0.35 / height)
     fig.savefig(path, facecolor=SURFACE, metadata={"Software": None})
     plt.close(fig)
     return path
@@ -1230,16 +1279,17 @@ def _esc(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def svg_chart(results: Mapping[str, Any]) -> str:
+def svg_chart(results: Mapping[str, Any], *, rescored: Mapping[str, Any] | None = None) -> str:
     """The same chart as a self-contained SVG (used when matplotlib is not installed)."""
     groups = chart_groups(results)
     conditions = _conditions(results)
+    title, subtitle, note = _chart_title(results, rescored)
+    shift = 17 if note else 0  # the note takes a line of its own above the legend
     width, left, right, bar, gap, group_gap = 760, 130, 60, 16, 5, 22
     plot = width - left - right
-    top = 78
+    top = 78 + shift
     group_height = len(conditions) * (bar + gap) - gap
     height = top + len(groups) * (group_height + group_gap) + 28
-    title, subtitle = _chart_title(results)
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
         'font-family="Inter, Helvetica, Arial, sans-serif">',
@@ -1247,14 +1297,16 @@ def svg_chart(results: Mapping[str, Any]) -> str:
         f'<text x="12" y="24" font-size="16" font-weight="600" fill="{TEXT_PRIMARY}">{_esc(title)}</text>',
         f'<text x="12" y="43" font-size="11" fill="{TEXT_SECONDARY}">{_esc(subtitle)}</text>',
     ]
-    x = left
+    if note:
+        parts.append(f'<text x="12" y="60" font-size="11" fill="{TEXT_SECONDARY}">{_esc(note)}</text>')
+    x = 12.0
     for condition in conditions:
         color = CONDITION_COLORS.get(condition, TEXT_SECONDARY)
-        parts.append(f'<rect x="{x}" y="54" width="10" height="10" rx="2" fill="{color}"/>')
+        parts.append(f'<rect x="{x:.1f}" y="{54 + shift}" width="10" height="10" rx="2" fill="{color}"/>')
         parts.append(
-            f'<text x="{x + 14}" y="63" font-size="11" fill="{TEXT_PRIMARY}">{_esc(_label(condition))}</text>'
+            f'<text x="{x + 14:.1f}" y="{63 + shift}" font-size="11" fill="{TEXT_PRIMARY}">{_esc(_label(condition))}</text>'
         )
-        x += 24 + 7 * len(_label(condition))
+        x += 34 + 5.6 * len(_label(condition))  # swatch, gap and an estimate of the label's width at 11 px
     axis_bottom = height - 24
     for tick in (0, 25, 50, 75, 100):
         tx = left + plot * tick / 100
@@ -1317,7 +1369,7 @@ def write_docs(
     chart: Path | None = None
     reference = None
     if runs:
-        chart = write_chart(runs[0], chart_path)
+        chart = write_chart(runs[0], chart_path, rescored=rescored)
         reference = Path(os.path.relpath(chart, docs_path.parent)).as_posix()
     docs_path.parent.mkdir(parents=True, exist_ok=True)
     docs_path.write_text(render_markdown(runs, chart=reference, rescored=rescored), encoding="utf-8")
