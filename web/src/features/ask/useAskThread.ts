@@ -56,6 +56,9 @@ export function turnsFromHistory(messages: ChatMessage[]): AskTurn[] {
         text: m.content,
         writing: false,
         note: m.note ?? null,
+        noteLabel: m.note_label ?? null,
+        // answers stored before the claim-level check (ADR 0008) are not shown as checked
+        checked: Boolean(m.checked),
         tools: toolStepsFromStored(m.tool_calls ?? []),
         citations: (m.citations ?? []) as CitationRef[],
         messageId: m.id,

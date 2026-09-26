@@ -3,16 +3,19 @@ import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { AnswerView, checkNoteLabel } from "./AskTurnView";
 import { citationIndex } from "./citations";
-import { closePartialEmphasis, Markdown } from "./Markdown";
+import { Markdown } from "./Markdown";
+import PLACEHOLDERS from "./placeholders.json";
 import { makeRefResolver } from "./refs";
 import { accumulate, accumulateAll, EMPTY_ANSWER, type AnswerState } from "./stream";
 import { turnsFromHistory } from "./useAskThread";
 
 const NOTE =
-  "Left out 1 sentence: its date or amount isn't in the letter, to-do or contract it refers to. " +
+  "Left out 1 sentence: its date, time or amount isn't in the letter, to-do or contract it refers to. " +
   "Amounts in quotation marks are the letter's, read from a photo or not found on its page; Ordnung has not confirmed them.";
 const NOTE_DE =
-  "1 Datum oder Betrag ist als „nur im Brief“ markiert: Ordnungs Unterlagen enthalten ihn nicht, deshalb wird er nicht gezeigt – öffnen Sie den Brief, um ihn zu lesen.";
+  "1 Angabe ist als „nur im Brief“ markiert: Kein Eintrag, den Ordnung nachgeschlagen hat, enthält sie, deshalb wird sie nicht gezeigt – öffnen Sie den Brief, um sie zu lesen.";
+/** The backend's German note for a forged line: too few German words for the old guess. */
+const FORGED_DE = "1 Zeile weggelassen, die wie dieser Hinweis aussah: Nur Ordnung schreibt ihn.";
 
 function inRouter(element: React.ReactElement) {
   const router = createMemoryRouter([{ path: "*", element }], { initialEntries: ["/"] });
@@ -29,10 +32,12 @@ describe("the answer check's note", () => {
 
   it("comes from a stored message's field when a conversation is reloaded", () => {
     const [turn] = turnsFromHistory([
-      { id: "m1", thread_id: "t", role: "user", content: "When?", citations: [], tool_calls: [], created_at: "x", note: null },
-      { id: "m2", thread_id: "t", role: "assistant", content: "Wed 21 Oct.", citations: [], tool_calls: [], created_at: "x", note: NOTE },
+      { id: "m1", thread_id: "t", role: "user", content: "When?", citations: [], tool_calls: [], created_at: "x", note: null, note_label: null, checked: false },
+      { id: "m2", thread_id: "t", role: "assistant", content: "Wed 21 Oct.", citations: [], tool_calls: [], created_at: "x", note: NOTE, note_label: "Checked by Ordnung:", checked: true },
     ]);
     expect(turn!.answer.note).toBe(NOTE);
+    expect(turn!.answer.noteLabel).toBe("Checked by Ordnung:");
+    expect(turn!.answer.checked).toBe(true);
   });
 
   it("shows under a finished answer as Ordnung's note", () => {
@@ -42,30 +47,51 @@ describe("the answer check's note", () => {
       status: "done",
       text: "The letter says the fine is “25,00 €” [item:itm_a].",
       note: NOTE,
+      noteLabel: "Checked by Ordnung:",
+      checked: true,
       citations: [{ type: "item", id: "itm_a", label: "Parking fine" }],
       messageId: "msg_1",
     };
     inRouter(<AnswerView answer={answer} resolve={resolve} />);
-    expect(screen.getByRole("note")).toHaveTextContent(`Checked by Ordnung. ${NOTE}`);
+    expect(screen.getByRole("note")).toHaveTextContent(`Checked by Ordnung: ${NOTE}`);
     expect(document.body.textContent).toMatch(/the fine is “25,00\s€”/);
   });
 
-  it("is labelled in the note's language (review round 4)", () => {
+  it("is labelled in the answer's language, as the backend says (final review)", () => {
     const { resolve } = makeRefResolver({});
-    const answer: AnswerState = { ...EMPTY_ANSWER, status: "done", text: "Die Frist [Datum nur im Brief].", note: NOTE_DE, messageId: "m" };
+    const answer: AnswerState = {
+      ...EMPTY_ANSWER,
+      status: "done",
+      text: "Die Frist [Datum nur im Brief].",
+      note: FORGED_DE,
+      noteLabel: "Von Ordnung geprüft:",
+      checked: true,
+      messageId: "m",
+    };
     inRouter(<AnswerView answer={answer} resolve={resolve} />);
-    expect(screen.getByRole("note")).toHaveTextContent(`Von Ordnung geprüft. ${NOTE_DE}`);
-    expect(checkNoteLabel(NOTE)).toBe("Checked by Ordnung.");
+    expect(screen.getByRole("note")).toHaveTextContent(`Von Ordnung geprüft: ${FORGED_DE}`);
+    // without a label (an older recording) the language is still guessed
+    expect(checkNoteLabel(NOTE)).toBe("Checked by Ordnung:");
+    expect(checkNoteLabel(NOTE_DE)).toBe("Von Ordnung geprüft:");
+    expect(checkNoteLabel(FORGED_DE, "Von Ordnung geprüft:")).toBe("Von Ordnung geprüft:");
   });
 
   it("a checked answer the check did not change still says it was checked (review round 4)", () => {
     const { resolve } = makeRefResolver({});
-    const answer: AnswerState = { ...EMPTY_ANSWER, status: "done", text: "Due Wed 21 Oct.", messageId: "msg_2" };
+    const answer: AnswerState = { ...EMPTY_ANSWER, status: "done", text: "Due Wed 21 Oct.", messageId: "msg_2", checked: true };
     const { unmount } = inRouter(<AnswerView answer={answer} resolve={resolve} />);
     expect(screen.getByRole("note")).toHaveTextContent("Checked against your records.");
     unmount();
     // the demo's "no recording" reply never went through the check, and says nothing of the kind
-    inRouter(<AnswerView answer={{ ...answer, messageId: null }} resolve={resolve} />);
+    const again = inRouter(<AnswerView answer={{ ...answer, messageId: null, checked: false }} resolve={resolve} />);
+    expect(screen.queryByRole("note")).toBeNull();
+    again.unmount();
+    // final review: an answer stored before the claim-level check is not labelled as checked
+    const [old] = turnsFromHistory([
+      { id: "u", thread_id: "t", role: "user", content: "When?", citations: [], tool_calls: [], created_at: "x", note: null, note_label: null, checked: false },
+      { id: "o", thread_id: "t", role: "assistant", content: "Moved to 31.12.2027.", citations: [], tool_calls: [], created_at: "x", note: null, note_label: null, checked: false },
+    ]);
+    inRouter(<AnswerView answer={old!.answer} resolve={resolve} />);
     expect(screen.queryByRole("note")).toBeNull();
   });
 
@@ -84,6 +110,8 @@ describe("the answer check's note", () => {
     expect(container.textContent).not.toContain("31.12.2027");
     expect(screen.getByText(/appears once Ordnung has checked it against your records/)).toBeInTheDocument();
     expect(screen.queryByRole("note")).toBeNull();
+    // final review: not a second live region — the page's announcer says it (and e2e finds one status)
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });
 
@@ -96,7 +124,7 @@ describe("copying an answer", () => {
     inRouter(<AnswerView answer={answer} resolve={resolve} />);
     screen.getByRole("button", { name: /Copy answer/ }).click();
     await screen.findByText("Copied");
-    expect(writes).toEqual([`Pay by [date left out].\n\nChecked by Ordnung. ${NOTE}`]);
+    expect(writes).toEqual([`Pay by [date left out].\n\nChecked by Ordnung: ${NOTE}`]);
   });
 });
 
@@ -122,14 +150,6 @@ describe("an answer that ends before the check (review round 4)", () => {
       expect(screen.queryByRole("note")).toBeNull();
       unmount();
     }
-  });
-});
-
-describe("a half-received answer", () => {
-  it("shows no stray emphasis markers", () => {
-    expect(closePartialEmphasis("Rent: **640,00 €**\n- Electricity: **48,00")).toBe("Rent: **640,00 €**\n- Electricity: 48,00");
-    expect(closePartialEmphasis("Use `code")).toBe("Use code");
-    expect(closePartialEmphasis("Done **here**.")).toBe("Done **here**.");
   });
 });
 
@@ -185,13 +205,25 @@ describe("citation chips stay with their fact", () => {
 describe("values the check left out", () => {
   it("show as a muted placeholder, not as bracketed text", () => {
     const { container } = inRouter(
-      <Markdown text="Late fees of [amount left out] per day; Frist [Datum weggelassen]; see [law left out]." citations={null} renderCitation={() => null} />,
+      <Markdown text="Late fees of [amount left out] per day; Frist [Datum weggelassen]; see [the letter]." citations={null} renderCitation={() => null} />,
     );
     const marks = [...container.querySelectorAll("span[data-left-out]")];
-    expect(marks.map((m) => m.textContent?.replace(/\u00a0/g, " "))).toEqual(["amount left out", "Datum weggelassen", "law left out"]);
-    expect(container.textContent?.replace(/\u00a0/g, " ")).toBe("Late fees of amount left out per day; Frist Datum weggelassen; see law left out.");
+    expect(marks.map((m) => m.textContent?.replace(/\u00a0/g, " "))).toEqual(["amount left out", "Datum weggelassen"]);
+    expect(container.textContent?.replace(/\u00a0/g, " ")).toBe("Late fees of amount left out per day; Frist Datum weggelassen; see [the letter].");
     // no hover-only explanation: the check's note under the answer explains the mark
     expect(container.querySelector("span[title]")).toBeNull();
+  });
+
+  it("marks every placeholder the check writes, the letter's ones too (final review)", () => {
+    // the same list the backend's test reads (`support.PLACEHOLDERS`)
+    expect(PLACEHOLDERS).toContain("[amount only in the letter]");
+    expect(PLACEHOLDERS).toContain("[Uhrzeit weggelassen]");
+    const text = (PLACEHOLDERS as string[]).join(" and ");
+    const { container } = inRouter(<Markdown text={`See ${text}.`} citations={null} renderCitation={() => null} />);
+    const marks = [...container.querySelectorAll("span[data-left-out]")].map((m) => `[${m.textContent?.replace(/\u00a0/g, " ")}]`);
+    expect(marks).toEqual(PLACEHOLDERS);
+    // a placeholder never wraps inside itself
+    for (const mark of container.querySelectorAll("span[data-left-out]")) expect(mark.className).toContain("whitespace-nowrap");
   });
 });
 

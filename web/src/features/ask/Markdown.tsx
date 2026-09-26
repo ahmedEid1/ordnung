@@ -2,24 +2,26 @@ import { Fragment, useMemo, type ReactNode } from "react";
 import { Link } from "react-router";
 import { cn } from "@/lib/utils";
 import { parseMarkdown, type Block, type Inline } from "./markdown";
-import { stripPartialMarker, type CitationRef } from "./citations";
+import type { CitationRef } from "./citations";
 import { formatInlineDates } from "@/lib/format";
+import PLACEHOLDERS from "./placeholders.json";
 
 export interface MarkdownProps {
   text: string;
-  /** Validated citations by id; `null` while streaming (all markers hidden). */
+  /** Validated citations by id; `null` hides every marker. */
   citations: ReadonlyMap<string, CitationRef> | null;
   /** Renders a validated citation chip. */
   renderCitation: (ref: CitationRef, key: string) => ReactNode;
-  /** Streaming: hide a half-received marker at the end. */
-  streaming?: boolean;
-  /** Unchecked text (streaming, stopped or failed): everything in it, bold values too, is muted. */
-  muted?: boolean;
   className?: string;
 }
 
-/** What Ordnung's answer check writes where it left a value out (`support.py`, rule 5). */
-const LEFT_OUT = /\[((?:date|amount|law)[ \u00a0]left[ \u00a0]out|(?:Datum|Betrag|Gesetz)[ \u00a0]weggelassen)\]/g;
+/** Every placeholder Ordnung's answer check writes where it left a value out (`support.py`, rule 5:
+ * "[date left out]", "[amount only in the letter]", "[Uhrzeit weggelassen]" …; the Python test reads the
+ * same list), matched with plain or no-break spaces. */
+const LEFT_OUT = new RegExp(
+  `\\[(${(PLACEHOLDERS as string[]).map((p) => p.slice(1, -1).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "[ \u00a0]")).join("|")})\\]`,
+  "g",
+);
 /** Punctuation that must not wrap onto a line of its own after a citation chip. */
 const TRAILING_PUNCT = /^[.,;:!?)\]»”“"'…]+/;
 /** The longest word that joins the chips after it (a longer one could not wrap on a phone). */
@@ -243,7 +245,8 @@ function renderBlock(b: Block, i: number, renderCitation: MarkdownProps["renderC
       return (
         <ol key={key} start={b.start} className="list-decimal space-y-1.5 pl-5 marker:font-medium marker:text-muted">
           {b.items.map((item, j) => (
-            <li key={j} className="pl-0.5">
+            // each item keeps the number the answer wrote (the check read that number, not a count)
+            <li key={j} value={b.numbers[j]} className="pl-0.5">
               {renderInline(item, renderCitation, `${key}.${j}`)}
             </li>
           ))}
@@ -253,37 +256,13 @@ function renderBlock(b: Block, i: number, renderCitation: MarkdownProps["renderC
 }
 
 /**
- * A half-received answer ("Electricity: **48,00"): an emphasis or code span still open on the last
- * line loses its opening marker, so the words show without stray asterisks until the rest arrives.
- */
-export function closePartialEmphasis(text: string): string {
-  const start = text.lastIndexOf("\n") + 1;
-  let line = text.slice(start);
-  for (const marker of ["**", "`"]) {
-    if (line.split(marker).length % 2 === 0) {
-      const at = line.lastIndexOf(marker);
-      line = line.slice(0, at) + line.slice(at + marker.length);
-    }
-  }
-  return text.slice(0, start) + line;
-}
-
-/**
  * Renders an Ask answer from the safe Markdown subset (see `markdown.ts`). Output is React
  * elements only — raw HTML is shown as text, remote images and external links are never rendered.
  */
-export function Markdown({ text, citations, renderCitation, streaming, muted, className }: MarkdownProps) {
-  const source = streaming ? closePartialEmphasis(stripPartialMarker(text)) : text;
-  const blocks = useMemo(() => parseMarkdown(source, { citations }), [source, citations]);
+export function Markdown({ text, citations, renderCitation, className }: MarkdownProps) {
+  const blocks = useMemo(() => parseMarkdown(text, { citations }), [text, citations]);
   return (
-    <div
-      data-muted={muted || undefined}
-      className={cn(
-        "space-y-3 break-words text-[15px] leading-[1.65]",
-        muted ? "text-muted [&_code]:text-muted [&_strong]:text-muted" : "text-ink/90",
-        className,
-      )}
-    >
+    <div className={cn("space-y-3 break-words text-[15px] leading-[1.65] text-ink/90", className)}>
       {blocks.map((b, i) => renderBlock(b, i, renderCitation))}
     </div>
   );

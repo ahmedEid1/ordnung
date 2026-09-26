@@ -145,11 +145,17 @@ describe("mock dataset", () => {
     expect(done.text).toContain("**“324,00 €”**");
     // the note travels in its own field, like the API's
     expect(done.text).not.toContain("Checked by Ordnung");
-    expect(done.note).toMatch(/^Left out 1 sentence: its date or amount isn't in the letter/);
+    expect(done.note).toMatch(/^Left out 1 sentence: its date, time or amount isn't in the letter/);
     const threadId = (done as { thread_id?: string }).thread_id;
     const history = await s.handle("GET", `/chat/${threadId}`, new URLSearchParams(), undefined);
-    const thread = (await history.json()) as { role: string; note: string | null }[];
+    const thread = (await history.json()) as { role: string; note: string | null; note_label: string | null; checked: boolean }[];
     expect(thread.map((m) => m.note)).toEqual([null, done.note]);
+    // like the API: the label comes with the answer, and a stored answer says it was checked
+    expect((done as { note_label?: string }).note_label).toBe("Checked by Ordnung:");
+    expect(thread.map((m) => [m.checked, m.note_label])).toEqual([
+      [false, null],
+      [true, "Checked by Ordnung:"],
+    ]);
     // the tax letter waits unopened in New mail: its records are labelled from the tray, never by id
     expect(done.citations!.map((c) => c.label)).toEqual([
       "Finanzamt Musterstadt",

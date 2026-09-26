@@ -24,7 +24,7 @@ export type Block =
   | { t: "p"; c: Inline[] }
   | { t: "h"; c: Inline[] }
   | { t: "ul"; items: Inline[][] }
-  | { t: "ol"; start: number; items: Inline[][] }
+  | { t: "ol"; start: number; numbers: number[]; items: Inline[][] }
   | { t: "pre"; v: string }
   | { t: "quote"; c: Inline[] };
 
@@ -49,7 +49,11 @@ const FENCE = /^\s{0,3}(```|~~~)/;
 const HEADING = /^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$/;
 const RULE = /^\s{0,3}([-*_])(?:\s*\1){2,}\s*$/;
 const UL = /^\s*[-*+•]\s+(.*)$/;
-const OL = /^\s*(\d{1,4})[.)]\s+(.*)$/;
+const MONTH_WORD =
+  "jan|feb|m[aä]r|apr|ma[iy]|jun|jul|aug|sep|o[ck]t|nov|de[cz]|januar|februar|märz|maerz|juni|juli|oktober|dezember|january|february|march|april|june|july|august|september|october|november|december";
+/** An ordered list item: a number, then `.` or `)` — but not a day before a month ("21. Oktober 2026",
+ * "5) Okt"): that line is a date, shown as written, as Ordnung's check reads it. */
+const OL = new RegExp(`^\\s*(\\d{1,4})[.)]\\s+(?!(?:${MONTH_WORD})\\b)(.*)$`, "i");
 const QUOTE = /^\s{0,3}>\s?(.*)$/;
 
 function startsBlock(line: string): boolean {
@@ -92,11 +96,13 @@ export function parseMarkdown(text: string, opts: ParseOptions): Block[] {
       const re = ordered ? OL : UL;
       const start = ordered ? Number(OL.exec(line)![1]) : 1;
       const items: string[] = [];
+      const numbers: number[] = [];
       while (i < lines.length) {
         const l = lines[i]!;
         const m = re.exec(l);
         if (m) {
           items.push(ordered ? m[2]! : m[1]!);
+          numbers.push(ordered ? Number(m[1]) : items.length);
           i++;
         } else if (l.trim() && /^\s+/.test(l) && !startsBlock(l.trim()) && items.length) {
           items[items.length - 1] += `\n${l.trim()}`; // indented continuation line
@@ -108,7 +114,7 @@ export function parseMarkdown(text: string, opts: ParseOptions): Block[] {
         }
       }
       const parsed = items.map(inline);
-      blocks.push(ordered ? { t: "ol", start, items: parsed } : { t: "ul", items: parsed });
+      blocks.push(ordered ? { t: "ol", start, numbers, items: parsed } : { t: "ul", items: parsed });
       continue;
     }
     if (QUOTE.test(line)) {

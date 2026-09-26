@@ -111,11 +111,6 @@ export function stripAllMarkers(text: string): string {
   return stripInvalid(text, null);
 }
 
-/** While streaming: hide a marker that has started but not finished at the end of the text. */
-export function stripPartialMarker(text: string): string {
-  return text.replace(/[ \t]*\[[a-z]*(?:\s*:[^\]\n]{0,64})?$/i, "");
-}
-
 function markerWord(type: CiteType): string {
   return type === "document" ? "doc" : type;
 }

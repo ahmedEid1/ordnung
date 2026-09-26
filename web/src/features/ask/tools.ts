@@ -37,14 +37,17 @@ export const TOOL_ICONS: Record<string, LucideIcon> = {
 export type TitleLookup = (id: string) => string | null | undefined;
 
 function str(v: unknown): string {
+  // the model's own words: every word with a digit shows as "…" (the trace is shown before the
+  // answer check, so it never shows a date or amount a letter could have put there — ADR 0008)
   const s = String(v ?? "")
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    .replace(/[^\s"“”„]*\d[^\s"“”„]*/g, "…");
   return s.length > 60 ? `${s.slice(0, 59)}…` : s;
 }
 
 function day(v: unknown): string {
-  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? formatDate(v, { style: "day" }) : str(v);
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? formatDate(v, { style: "day" }) : "…";
 }
 
 function statusWord(v: unknown): string {

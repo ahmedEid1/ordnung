@@ -326,6 +326,9 @@ function citationRefs(db: MockDb, refs: SuggestionRef[]): CitationRef[] {
   });
 }
 
+/** The check's label, as the API sends it with every checked answer (the recordings are English). */
+const CHECK_LABEL = "Checked by Ordnung:";
+
 function askStream(ctx: Ctx): Response {
   const { db } = ctx;
   const body = (ctx.body ?? {}) as { question?: string; thread_id?: string | null };
@@ -336,7 +339,8 @@ function askStream(ctx: Ctx): Response {
   const now = nowTs();
   // like the API, only an answer is stored with its question: the demo's "no recording" reply is not
   // (it never went through the check, so it carries no message id and no "checked" line)
-  if (rec) db.state.chat.push({ id: newId("msg"), thread_id: threadId, role: "user", content: question, citations: [], tool_calls: [], created_at: now, note: null });
+  if (rec)
+    db.state.chat.push({ id: newId("msg"), thread_id: threadId, role: "user", content: question, citations: [], tool_calls: [], created_at: now, note: null, note_label: null, checked: false });
   const enc = new TextEncoder();
   const signal = ctx.signal;
   const speed = ctx.opts.latency ?? 1;
@@ -378,8 +382,10 @@ function askStream(ctx: Ctx): Response {
           tool_calls: rec.tools.map((t) => ({ name: t.name, input: t.input, result: t.result })),
           created_at: nowTs(),
           note: rec.note ?? null,
+          note_label: CHECK_LABEL,
+          checked: true,
         } satisfies ChatMessage);
-        send({ type: "done", text, note: rec.note ?? null, message_id: messageId, thread_id: threadId, citations: citationRefs(db, rec.citations ?? []) });
+        send({ type: "done", text, note: rec.note ?? null, note_label: CHECK_LABEL, message_id: messageId, thread_id: threadId, citations: citationRefs(db, rec.citations ?? []) });
       } catch (err) {
         send({ type: "error", error: err instanceof Error ? err.message : "The answer was interrupted." });
       } finally {

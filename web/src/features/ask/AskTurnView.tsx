@@ -27,9 +27,11 @@ export function QuestionBubble({ text }: { text: string }) {
   );
 }
 
+/** The progress line while an answer is written. Not a live region: the page's announcer already says
+ * "Writing the answer …", and a second status in `<main>` would announce it twice. */
 function Thinking({ writing }: { writing: boolean }) {
   return (
-    <p className="flex items-center gap-2 text-[14px] text-muted" role="status">
+    <p className="flex items-center gap-2 text-[14px] text-muted">
       <span className="flex gap-1" aria-hidden>
         {[0, 1, 2].map((i) => (
           <span key={i} className="size-1.5 rounded-full bg-accent/60 animate-pulse-soft motion-reduce:animate-none" style={{ animationDelay: `${i * 180}ms` }} />
@@ -40,12 +42,16 @@ function Thinking({ writing }: { writing: boolean }) {
   );
 }
 
-/** The label the check's note is shown (and copied) under, in the note's language. */
-export const CHECK_NOTE_LABEL = "Checked by Ordnung.";
-export const CHECK_NOTE_LABEL_DE = "Von Ordnung geprüft.";
+/** The label the check's note is shown (and copied) under, as the backend stores and prints it. */
+export const CHECK_NOTE_LABEL = "Checked by Ordnung:";
+export const CHECK_NOTE_LABEL_DE = "Von Ordnung geprüft:";
 
-/** A German note (the check writes it in the answer's language) gets the German label. */
-export function checkNoteLabel(note: string): string {
+/**
+ * The note's label: the one the backend sends with the answer (it knows the answer's language);
+ * only a note without one (an older recording) has its language guessed.
+ */
+export function checkNoteLabel(note: string, label?: string | null): string {
+  if (label) return label;
   return looksGerman(note) ? CHECK_NOTE_LABEL_DE : CHECK_NOTE_LABEL;
 }
 
@@ -58,7 +64,7 @@ export const CHECKED_LINE = "Checked against your records.";
  * marks, citations it added. The text comes only from the `done` event's `note` field, never from the
  * answer. Every checked answer shows the line, so an answer without a note is visibly checked too.
  */
-export function CheckNote({ text }: { text: string | null }) {
+export function CheckNote({ text, label }: { text: string | null; label?: string | null }) {
   return (
     <p
       role="note"
@@ -68,7 +74,7 @@ export function CheckNote({ text }: { text: string | null }) {
       <span className="min-w-0 break-words">
         {text ? (
           <>
-            <span className="font-medium text-ink">{checkNoteLabel(text)}</span> {text}
+            <span className="font-medium text-ink">{checkNoteLabel(text, label)}</span> {text}
           </>
         ) : (
           <span className="font-medium text-ink">{CHECKED_LINE}</span>
@@ -97,8 +103,9 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
   const done = answer.status === "done";
   const body = done ? answer.text : "";
   const note = answer.note;
-  // an answer that went through the check (a stored one always did; the demo's "no recording" did not)
-  const checked = done && Boolean(answer.messageId) && Boolean(body.trim());
+  // an answer that went through the claim-level check: not the demo's "no recording" reply, nor an
+  // answer stored before the check existed (ADR 0008)
+  const checked = done && answer.checked && Boolean(answer.messageId) && Boolean(body.trim());
   const valid = useMemo(() => (live ? null : citationIndex(answer.citations)), [live, answer.citations]);
   const numbers = useMemo(() => (valid ? numberCitations(body, valid) : new Map<string, number>()), [valid, body]);
   const sources = useMemo(
@@ -107,7 +114,7 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
   );
   const plain = stripAllMarkers(body).trim();
   // the note travels with a copied answer: it explains its quotation marks and "[date left out]"
-  const copyText = note ? `${plain}\n\n${checkNoteLabel(note)} ${note}` : plain;
+  const copyText = note ? `${plain}\n\n${checkNoteLabel(note, answer.noteLabel)} ${note}` : plain;
   const copyId = answer.messageId ?? plain;
   const isCopied = copied === copyId;
 
@@ -126,7 +133,7 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
           <Thinking writing={answer.writing} />
         ) : null}
 
-        {checked ? <CheckNote text={note} /> : null}
+        {checked ? <CheckNote text={note} label={answer.noteLabel} /> : null}
 
         {answer.status === "stopped" ? (
           <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-muted">

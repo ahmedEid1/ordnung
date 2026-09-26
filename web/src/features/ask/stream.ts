@@ -35,6 +35,10 @@ export interface AnswerState {
   writing: boolean;
   /** what Ordnung's answer check left out or quoted (`done`), shown under the answer */
   note: string | null;
+  /** the note's label in the answer's language, from the backend ("Checked by Ordnung:") */
+  noteLabel: string | null;
+  /** the answer went through Ordnung's claim-level check (a stored answer from before did not) */
+  checked: boolean;
   tools: ToolStep[];
   citations: CitationRef[];
   messageId: string | null;
@@ -47,6 +51,8 @@ export const EMPTY_ANSWER: AnswerState = {
   text: "",
   writing: false,
   note: null,
+  noteLabel: null,
+  checked: false,
   tools: [],
   citations: [],
   messageId: null,
@@ -93,6 +99,9 @@ export function accumulate(state: AnswerState, ev: StreamEvent): AnswerState {
         // only the checked answer is ever shown (unsupported values left out, sentences removed)
         text: typeof ev.text === "string" ? ev.text : "",
         note: ev.note?.trim() || null,
+        noteLabel: ev.note_label?.trim() || null,
+        // a checked answer is stored and has an id; the demo's "no recording" reply went through no check
+        checked: Boolean(ev.message_id),
         tools: state.tools.map((t) => (t.done ? t : { ...t, done: true })),
         citations: (ev.citations as CitationRef[] | undefined) ?? [],
         messageId: ev.message_id ?? state.messageId,
