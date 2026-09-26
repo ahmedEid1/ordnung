@@ -201,9 +201,16 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   orders, § 692/§ 339 ZPO; § 38 SGB III; the end-of-month consent period, § 558b BGB; two months
   before the end, § 574b BGB; the 14-day withdrawal that only has to be sent, § 355 BGB), and
   `routing.derived_deadlines` adds the deadlines the law sets that the letter doesn't state (the
-  three weeks of § 4 KSchG) as `origin="rule"` to-dos. A date follows a letter rule only when its
-  nature fits (an appointment is never re-dated as a registration). No date on a court order is
-  ever `high`, fixed or relative. An operating-cost statement is recognised on read only; its card
+  three weeks of § 4 KSchG) as `origin="rule"` to-dos, unless one of the letter's own dates was
+  computed under that rule (a date that only mentions it, like a severance "if you don't sue",
+  isn't). A court order is only one when a court's letter asks the person to answer it (a
+  Widerspruch/Einspruch remedy or an objection date) and its title or remedy says which: a
+  bailiff's letter, the court's notices to a claimant and enforcement-stage letters are not. A date
+  follows a letter rule only when its nature fits (an appointment is never re-dated as a
+  registration; a hearing never follows the court-action rule). No date on a court order is ever
+  `high`, fixed or relative. Rule to-dos are filed on read and when the person chooses the kind; a
+  changed region, postal buffer or arrival day only recomputes those left, so a deleted one stays
+  deleted. An operating-cost statement is recognised on read only; its card
   checks the 12-month limit of § 556 Abs. 3 BGB from the latest billing period the letter names and
   calls a statement late only when it certainly is (from a billing year alone: at most "probably").
   The person can correct a letter's kind on its page ("What kind of letter is this?"); a kind the
@@ -304,14 +311,19 @@ the remedy the law gives it), `general_reply`, and the template letters `withdra
 (§ 536c BGB), `data_access` (Art. 15 GDPR, the free SCHUFA copy), `receipts_inspection` (§ 556 Abs. 4
 BGB), `deposit_return` (the profile's IBAN) and `address_change`, written entirely from fixed German
 and English sentences (`drafts/template_letters.py`) filled from `LetterDetails` (`POST /api/drafts`
-`details`); a missing required fact is refused with what to add. Compose → `DraftOutput
+`details`); a missing required fact is refused with what to add, and so is more time against a
+deadline the law sets (a court order, a dismissal) or instalments offered to a court instead of the
+claimant (`compose.template_refusal`). A letter's title never becomes what was ordered, the
+deadline to extend is never one the law sets, and a letter whose sender isn't in Ordnung takes a
+typed recipient; letters flagged as a possible scam aren't offered. Compose → `DraftOutput
 {subject, body, body_translation, enclosures, notes_for_user}` (letter in German for German
 recipients; translation in the user's language) → checks (`has_reference`, `has_dates`,
 `recipient_complete`, `sender_complete`, `no_placeholders`, `language_matches`) → DIN 5008 Form B PDF
 (fpdf2, DejaVu). `send_guidance` (rules): send-by date, channel ranking (provider's cancel button
 § 312k BGB; text form/email where allowed § 309 Nr. 13 BGB; signed paper where required: rent § 568,
 employment § 623 BGB; "Einschreiben Einwurf — keep the receipt"; the objection to a court order in
-writing or at online-mahnantrag.de, never by e-mail; a withdrawal only has to be sent in time).
+writing or at online-mahnantrag.de, never by e-mail — nor any other letter to a court; a withdrawal
+only has to be sent in time).
 Marking sent asks for channel + date and creates a follow-up item 21 days later (35 for a data access
 request, which has one month from receipt).
 

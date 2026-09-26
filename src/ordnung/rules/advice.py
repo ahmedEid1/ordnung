@@ -286,6 +286,32 @@ def _statement(text: str, arrived: date | None, confirmed: bool, region: str | N
 # -------------------------------------------------------------------------------------------- cards
 
 
+#: § 549 Abs. 2 BGB: no hardship objection (§§ 574–575) and no consent procedure (§§ 557–561) for these.
+_SHORT_LET = "a short let or a furnished room in the flat your landlord lives in (§ 549 Abs. 2 BGB)"
+
+
+def _notice_without_period(alternative: bool) -> AdviceFact:
+    """What a landlord's notice without notice period means for the hardship objection."""
+    if alternative:
+        text = (
+            "The hardship objection doesn't apply to a notice without notice period, only to the notice the "
+            "landlord gives with a notice period in the alternative (hilfsweise) — object to that one in time. "
+            "If it is for rent arrears, paying all of them in time can still undo it. Get advice at once."
+        )
+    else:
+        text = (
+            "The hardship objection doesn't apply to it, so Ordnung doesn't draft one. If it is for rent "
+            "arrears, paying all of them — at the latest two months after an eviction suit is served — can "
+            "still undo it. Get advice at once."
+        )
+    return AdviceFact(
+        title="This reads as a notice without notice period (fristlos)",
+        text=text,
+        tone="warn",
+        citation="§ 574 Abs. 1 S. 2 BGB; § 569 Abs. 3 Nr. 2 BGB",
+    )
+
+
 def letter_advice(
     kind: str | None,
     *,
@@ -296,13 +322,22 @@ def letter_advice(
     old_amount: float | None = None,
     new_amount: float | None = None,
     text: str = "",
+    extraordinary: bool = False,
+    alternative: bool = False,
 ) -> LetterAdvice | None:
     """The card for a letter of ``kind`` (``None`` for kinds without one).
 
-    ``arrived`` is the confirmed arrival day, or else the letter's date; ``region`` the person's Land;
+    ``arrived`` is the confirmed arrival day, or else the letter's date; ``arrival_confirmed`` whether
+    the person entered it (then the card doesn't ask for it again); ``region`` the person's Land;
     ``old_amount``/``new_amount`` the rent before and after an increase as read; ``text`` the letter's
-    text (for the billing period).
+    text (for the billing period). ``extraordinary``: a landlord's notice reads as one without notice
+    period, ``alternative`` with one in the alternative too — only then is a hardship objection offered.
     """
+    delivered = (
+        "The two weeks count from the delivery date you entered — check it matches the yellow envelope."
+        if arrival_confirmed
+        else None
+    )
     if kind == "court_payment_order":
         return LetterAdvice(
             kind=kind,
@@ -314,7 +349,8 @@ def letter_advice(
             ),
             urgent=True,
             steps=[
-                "Find the delivery date on the yellow envelope and enter it as the day the letter arrived.",
+                delivered
+                or "Find the delivery date on the yellow envelope and enter it as the day the letter arrived.",
                 "If you don't owe the money, or not all of it, object on the enclosed form (or online) and send "
                 "it to the court. You don't have to give reasons.",
                 "If you do owe it, pay the claimant — not the court — including the costs listed.",
@@ -334,7 +370,8 @@ def letter_advice(
             ),
             urgent=True,
             steps=[
-                "Find the delivery date on the yellow envelope (or the bailiff's papers) and enter it.",
+                delivered
+                or "Find the delivery date on the yellow envelope (or the bailiff's papers) and enter it.",
                 "To object, write to the court that issued the order — not by e-mail — or go to its "
                 "Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their "
                 "record reaches the issuing court, so go early.",
@@ -356,15 +393,32 @@ def letter_advice(
             ),
             urgent=True,
             steps=[
-                "Enter the day you received the dismissal — the three weeks count from then.",
+                "The three weeks count from the day you received it, which you entered — check it's right."
+                if arrival_confirmed
+                else "Enter the day you received the dismissal — the three weeks count from then.",
                 "Get advice today: your union, an employment lawyer or the labour court's Rechtsantragstelle.",
                 "Register as job-seeking at the Agentur für Arbeit in time (see the to-do).",
                 "Don't sign anything else, like a termination agreement, before you have had advice.",
+                "Apprentices: you don't have to register (§ 38 Abs. 1 S. 4 SGB III), and if your chamber has a "
+                "conciliation board (Schlichtungsausschuss, § 111 Abs. 2 ArbGG) it must hear the case before the "
+                "court — ask your chamber or union at once.",
             ],
             help=[UNION, EMPLOYMENT_LAWYER, LABOUR_COURT_DESK, LEGAL_AID, JOB_AGENCY],
             rule_ids=["kschg_4", "sgb3_38"],
         )
     if kind == "landlord_notice":
+        steps = [
+            "Don't agree to move out or sign anything before you have had advice.",
+            "If you object, keep proof that it arrived; a letter is safest, text form is enough since 2025.",
+            "If the landlord didn't tell you in time about your right to object, its form and its deadline, "
+            "you can still object at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB).",
+            f"There is no hardship objection for {_SHORT_LET} — ask a tenants' association.",
+        ]
+        if not extraordinary:
+            steps.append(
+                "A notice without notice period (fristlos) can't be met with this objection. If it is for rent "
+                "arrears, paying all of them in time can still undo it (§ 569 Abs. 3 Nr. 2 BGB) — get advice at once."
+            )
         return LetterAdvice(
             kind=kind,
             title="Notice from your landlord — get advice before you act",
@@ -373,16 +427,11 @@ def letter_advice(
                 "out would be a hardship, you can object and ask to stay; the objection must reach the landlord "
                 "at the latest two months before the tenancy ends."
             ),
-            steps=[
-                "Don't agree to move out or sign anything before you have had advice.",
-                "If you object, keep proof that it arrived; a letter is safest, text form is enough since 2025.",
-                "If the landlord didn't tell you in time about your right to object, its form and its deadline, "
-                "you can still object at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB).",
-                "A notice without notice period (fristlos) can't be met with this objection. If it is for rent "
-                "arrears, paying all of them in time can still undo it (§ 569 Abs. 3 Nr. 2 BGB) — get advice at once.",
-            ],
+            steps=steps,
+            facts=[_notice_without_period(alternative)] if extraordinary else [],
             help=[TENANTS, LEGAL_AID],
-            rule_ids=["bgb_574b"],
+            rule_ids=["bgb_574b", "bgb_549"],
+            draft="objection" if alternative or not extraordinary else None,
         )
     if kind == "rent_increase":
         return LetterAdvice(
@@ -395,10 +444,12 @@ def letter_advice(
             steps=[
                 "Check the new rent against your city's rent index (Mietspiegel), if it has one.",
                 "You can agree to all or part of the increase; paying the new rent can count as agreeing.",
+                f"These rules don't apply to {_SHORT_LET} or a student hall (§ 549 Abs. 3 BGB) — ask a tenants' "
+                "association.",
             ],
             facts=[_rent_cap(old_amount, new_amount)],
             help=[TENANTS],
-            rule_ids=["bgb_558b", "bgb_558_3"],
+            rule_ids=["bgb_558b", "bgb_558_3", "bgb_549"],
         )
     if kind == "operating_costs":
         return LetterAdvice(
@@ -415,6 +466,7 @@ def letter_advice(
             facts=[_statement(text, arrived, arrival_confirmed, region)],
             help=[TENANTS, CONSUMER_ADVICE],
             rule_ids=["bgb_556_3"],
+            draft="receipts_inspection",
         )
     return None
 

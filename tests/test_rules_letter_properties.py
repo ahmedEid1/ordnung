@@ -7,7 +7,7 @@ from datetime import date, timedelta
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from ordnung.models import DateSpec, DocumentExtraction, ExtractedParty
+from ordnung.models import DateSpec, DocumentExtraction, ExtractedItem, ExtractedParty, Remedy
 from ordnung.rules import calendar_de, routing
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.consumer import long_withdrawal_end, withdrawal_end
@@ -144,18 +144,40 @@ def test_a_statement_is_only_called_late_when_it_certainly_is(
     assert check.objections_by >= add_months(arrived, 12)
 
 
-names = st.text(alphabet=st.characters(categories=["L", "Zs"]), max_size=40).filter(
-    lambda name: "gericht" not in name.casefold()
+words = st.text(alphabet=st.characters(categories=["L", "Zs"]), max_size=40)
+#: Senders that are not courts: any name without a court's word, and the names of those attached to a
+#: court — a bailiff's letterhead ("Gerichtsvollzieher bei dem Amtsgericht …") or its cashier.
+not_courts = st.one_of(
+    words.filter(lambda name: "gericht" not in name.casefold()),
+    st.builds(
+        "{}{} {}{}".format,
+        st.sampled_from(["", "Ober"]),
+        st.sampled_from(["Gerichtsvollzieher", "Gerichtsvollzieherin", "gerichtsvollzieher"]),
+        st.sampled_from(["bei dem Amtsgericht ", "beim Amtsgericht ", "Amtsgericht ", ""]),
+        words,
+    ),
+    st.builds("Amtsgericht {} – {}".format, words, st.sampled_from(["Gerichtskasse", "Zahlstelle"])),
 )
 
 
-@given(names, st.sampled_from(["Mahnbescheid", "Vollstreckungsbescheid"]))
+@given(not_courts, st.sampled_from(["Mahnbescheid", "Vollstreckungsbescheid", "Court payment order"]))
 def test_only_a_court_makes_a_court_order(name: str, title: str) -> None:
+    """Whatever else the letter says — its title, its remedy, an objection date — only a court's letter
+    is a court order."""
     extraction = DocumentExtraction(
         kind="dunning",
         title=title,
         summary=title,
         explanation="",
         sender=ExtractedParty(name=name or "Inkasso", kind="company"),
+        remedy=Remedy(type="widerspruch", quote="Widerspruch"),
+        items=[
+            ExtractedItem(
+                kind="deadline",
+                title="Object",
+                date=DateSpec(type="relative", anchor="receipt", amount=2, unit="weeks", nature="objection"),
+                quote="binnen zwei Wochen Widerspruch erheben",
+            )
+        ],
     )
     assert routing.classify_letter(extraction) not in ("court_payment_order", "enforcement_order")

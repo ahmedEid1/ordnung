@@ -423,6 +423,25 @@ def _template(kind: str, party_kind: str | None) -> SendGuidance:
     return guidance
 
 
+def _court_channels() -> list[SendChannel]:
+    """How to write to a court: in writing, signed — plain e-mail isn't valid there."""
+    return [
+        _channel(
+            "letter",
+            "Signed letter",
+            "Quote the court's reference (Aktenzeichen); keep a copy.",
+            recommended=True,
+        ),
+        _channel("fax", "Fax of the signed letter", "Keep the transmission report."),
+        _channel(
+            "in_person",
+            "At the court's Rechtsantragstelle",
+            "Free: staff take it down for you; bring the court's letter.",
+        ),
+        _channel("email", "E-mail", "Not valid at a court.", allowed=False),
+    ]
+
+
 def _general_reply() -> SendGuidance:
     return SendGuidance(
         form="any",
@@ -446,11 +465,13 @@ def send_guidance(
     region: str | None = None,
     today: date,
     postal_buffer_days: int = POSTAL_BUFFER_DAYS,
+    court: bool = False,
 ) -> SendGuidance:
     """Ranked channels, form requirement and dates for sending a letter of ``kind``.
 
     ``letter_kind`` is the kind of the letter being answered: an objection to a court order or to a
-    landlord's notice has its own form. ``due`` is the day it must *arrive* (``must_arrive_by``).
+    landlord's notice has its own form. ``court``: the letter goes to a court, which takes it only in
+    writing — never by plain e-mail. ``due`` is the day it must *arrive* (``must_arrive_by``).
     ``send_by`` is the latest day to post a letter: ``postal_buffer_days`` business days before the
     last business day on or before ``due``, never before ``today``; ``None`` without a due date or
     once it has passed. A withdrawal only has to be *sent* by ``due`` (§ 355 Abs. 1 S. 5 BGB).
@@ -474,6 +495,8 @@ def send_guidance(
         guidance = _general_reply()
     else:
         guidance = _template(kind, party_kind)
+    if court and not (kind == "objection" and letter_kind in ("court_payment_order", "enforcement_order")):
+        guidance.channels = _court_channels()
     guidance.tips.append("Keep a copy of what you send and any proof of delivery.")
     if due is None:
         return guidance

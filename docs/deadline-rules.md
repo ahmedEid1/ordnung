@@ -63,7 +63,7 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 | Letter's period differs from the statute (e.g. "6 weeks" for a tax objection) | Computes both and uses the earlier date. |
 | Notice period missing from a contract | Assumes the longest notice the law allows (earliest deadline). |
 | Notice deadline on a weekend/holiday | No shift (BGH III ZR 172/04) + a `safe_date` on the working day before. |
-| 3rd *Werktag* for a tenancy notice is a Saturday | Keeps the Saturday (see section 7). |
+| 3rd *Werktag* for a tenancy notice is a Saturday | Keeps the Saturday (see section 8). |
 
 **Confidence rubric** (SPEC § 21). The engine judges the rule-related criteria; the ingest pipeline
 further lowers confidence for quote problems (quote not found, digits not matching):
@@ -341,20 +341,33 @@ written policy per ADR 0007) and files them under their own kind:
 
 | Kind | Recognised when the reading … | Its dates follow | Deadlines the law adds (filed as to-dos) | Card |
 |---|---|---|---|---|
-| `court_payment_order` (*Mahnbescheid*) | comes from a court (sender's name ends a word in "gericht", not a *Gerichtsvollzieher* or *Gerichtskasse*), names a Mahnbescheid, and is one (see below) | `zpo_692` | pay or object within two weeks | get advice now |
-| `enforcement_order` (*Vollstreckungsbescheid*) | comes from a court, names a Vollstreckungsbescheid, and is one (see below) | `zpo_339` | object within two weeks | get advice now |
+| `court_payment_order` (*Mahnbescheid*) | comes from a court (sender's name ends a word in "gericht", and names no bailiff — *Gerichtsvollzieher bei dem Amtsgericht …* — or court cashier), names a Mahnbescheid, asks the person to answer it as the respondent, and is one (see below) | `zpo_692` | pay or object within two weeks | get advice now |
+| `enforcement_order` (*Vollstreckungsbescheid*) | comes from a court, names a Vollstreckungsbescheid, asks the person to answer it, and is one (see below) | `zpo_339` | object within two weeks | get advice now |
 | `dismissal` | reports a termination by the other side about a job | `kschg_4`, `sgb3_38` | court action within three weeks; register as job-seeking | get advice now |
-| `landlord_notice` | reports a termination by the other side about a tenancy | `bgb_574b` | the objection, when the end of the tenancy is stated and the notice has a notice period | tenants' association |
+| `landlord_notice` | reports a termination by the other side about a tenancy | `bgb_574b` | the objection, when the end of the tenancy is stated and the notice has a notice period (or gives one in the alternative) | tenants' association |
 | `rent_increase` | reports a rent increase whose quoted German wording asks for consent (Zustimmung, Vergleichsmiete, Mietspiegel, § 558 BGB) and that nowhere reads as a graduated, index, modernisation or prepayment (§ 560) increase or "no consent needed", in German or English | `bgb_558b` | decide on the consent | rent cap check |
 | `operating_costs` | names an operating-cost statement in its title, or with a tenancy or a billing period, and isn't from a utility or a public body — recognised on read only, because its dates don't depend on it | ordinary 12-month period | — | late-statement check |
 
-**Which court order a court's letter is.** Every Mahnbescheid warns that a Vollstreckungsbescheid can
-follow (§ 692 Abs. 1 Nr. 4 ZPO), and a reading quotes that warning as a matter of course, so the mere
-word decides nothing. In this order: the order the letter's title names first; the remedy it states
-(*Widerspruch* → Mahnbescheid, *Einspruch* → Vollstreckungsbescheid); a Vollstreckungsbescheid named
-other than in a "… kann … ergehen / erwirken / beantragen" sentence; else a Mahnbescheid. A court's
-later letter about the order — the objection was received, the case is handed on (*Abgabenachricht*,
-"Nach Widerspruch gegen den Mahnbescheid …") — is neither and keeps the model's kind.
+**Which court order a court's letter is.** A court writes many letters that name an order: to the
+claimant (the other side objected, the order was served, a cost invoice, a request to fix the
+application, the application was withdrawn), after an objection (the case is handed on:
+*Abgabenachricht*), and during enforcement (a garnishment order, a suspension). A bailiff's letterhead
+names the court too ("Gerichtsvollzieher bei dem Amtsgericht Frankfurt am Main"), and his letter quotes
+the order he enforces. None of them starts a two-week period for the person, so the policy is short:
+
+1. **Respondent.** The letter asks the person to answer the order: its reading states a *Widerspruch* or
+   *Einspruch* remedy, or gives an objection date. A notice to the claimant, a bailiff's demand or an
+   invoice does neither.
+2. **Not a later letter.** Its wording is none of those listed above (in German anywhere in the reading:
+   "Nach Widerspruch …", "Der Antragsgegner hat … Widerspruch erhoben", *Nachricht an den Antragsteller*,
+   *Zustellungsnachricht*, *Monierung*, *Kostenrechnung*, "Antrag … zurückgenommen",
+   *Pfändungs- und Überweisungsbeschluss*, "Zwangsvollstreckung … eingestellt"; in English only in the
+   title, e.g. "objection received", "garnishment", "suspended", "notice of service").
+3. **Which order.** The order the title names first (German, or "payment order" / "enforcement order");
+   else the remedy the letter states (*Widerspruch* → Mahnbescheid, *Einspruch* → Vollstreckungsbescheid,
+   from the remedy or the objection date's own wording). Nothing else decides: every Mahnbescheid warns
+   that a Vollstreckungsbescheid can follow (§ 692 Abs. 1 Nr. 4 ZPO), and later letters quote the order
+   they are about.
 
 A debt collector threatening a Mahnbescheid is not a court, so its letter stays a payment reminder;
 text in the model's own advice (`explanation`, `warnings`) never classifies a letter. A court order
@@ -369,11 +382,18 @@ nature fits that rule: a registration is a declaration (an appointment "about yo
 or an authority's own fixed date is never re-dated as one, and the wording must say "arbeitsuchend
 melden" or cite § 38 SGB III), the consent period takes declarations and objections (the date the higher
 rent is owed from is a payment), the § 574b period takes objections only, and a withdrawal wording that
-cites another law's withdrawal right (insurance, VVG) keeps its own period. A deadline the law adds is filed as a to-do (`origin = "rule"`, one per rule)
-unless one of the letter's own dates already follows that rule; it has no quote to check, so it
-never makes a letter "Please check". Court deadlines — and every date on a court order, fixed or
-relative — are **never `high`** confidence: each carries a "get advice" note, and without the envelope
-date also the "when did it arrive?" question (`low`).
+cites another law's withdrawal right (insurance, VVG) keeps its own period. The court rules only take
+the dates they are about: the objection or court action, and for a Mahnbescheid paying instead — a
+labour-court hearing "in Sachen Kündigungsschutzklage" or a severance paid "if you don't sue" (§ 1a
+KSchG) mentions the court action but doesn't follow it. A deadline the law adds is filed as a to-do
+(`origin = "rule"`, one per rule) unless one of the letter's own dates was **computed under** that rule
+(routed to it, or a period counted under it; a fixed date that only cites a court rule keeps the
+letter's day, so the law's to-do is filed next to it); it has no quote to check, so it never makes a
+letter "Please check". Rule to-dos are filed when the letter is read and when the person chooses its
+kind; a changed region, postal buffer or arrival day only recomputes the ones that are left, so one the
+person deleted stays deleted. Court deadlines — and every date on a court order, fixed or relative — are
+**never `high`** confidence: each carries a "get advice" note, and without the envelope date also the
+"when did it arrive?" question (`low`).
 
 **Court payment order** (`zpo_692`, § 692 Abs. 1 Nr. 3, § 694 ZPO). Two weeks from delivery
 (*Zustellung*): the date the postman wrote on the yellow envelope — also a Saturday, if that is when
@@ -423,7 +443,10 @@ date as read ([Bundesagentur für Arbeit](https://www.arbeitsagentur.de/arbeitsl
 | Thu 1 Oct 2026 | Mon 30 Nov 2026 | Sun 4 Oct 2026 (kept; may run to Mon 5 Oct) |
 
 Registering late costs one week of unemployment benefit (*Sperrzeit*, § 159 Abs. 1 S. 2 Nr. 9, Abs. 6
-SGB III).
+SGB III). **Apprentices** don't have to register when a company apprenticeship ends (§ 38 Abs. 1 S. 4
+SGB III), and where their chamber has set up a conciliation board (*Schlichtungsausschuss*, § 111 Abs. 2
+ArbGG) it must hear a dispute before the labour court. Ordnung can't tell an apprenticeship from a job,
+so the to-do and the card say so instead of dropping the registration.
 
 **Rent increase request** (`bgb_558b`, § 558b Abs. 1, 2 BGB). The tenant may decide until the end of
 the second calendar month after the request arrived; only with consent is the higher rent owed, from
@@ -450,8 +473,14 @@ right to object, its form and its deadline in time (§ 568 Abs. 2 BGB), it can s
 first hearing of an eviction suit (§ 574b Abs. 2 S. 2) — the card says so, and so does the receipt once
 the date has passed; the date shown is never moved for it. A notice without notice period (*fristlos*,
 *außerordentlich*, or ending less than two months after its date) gets no objection to-do: the hardship
-objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB); the card points to advice and, for rent arrears,
-to paying them in time (§ 569 Abs. 3 Nr. 2 BGB). Examples: ends Sun 31 Oct 2027 → by Tue 31 Aug 2027; ends Fri 30 Apr 2027 → by **Sun 28 Feb
+objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB); the card says so, offers no objection letter and
+points to advice and, for rent arrears, to paying them in time (§ 569 Abs. 3 Nr. 2 BGB). A notice without
+notice period that also gives notice with one in the alternative (*hilfsweise fristgemäß*) keeps the
+to-do and the letter: the objection applies to that notice. **Not for every tenancy** (`bgb_549`, § 549
+Abs. 2, 3 BGB): a flat let only for temporary use and a furnished room in the flat the landlord lives
+in have no hardship objection (§§ 574–575) and no consent procedure for rent increases (§§ 557–561);
+a student hall has no consent procedure either. Ordnung can't tell these from the letter, so the to-do,
+the cards and the catalog say so and point to a tenants' association. Examples: ends Sun 31 Oct 2027 → by Tue 31 Aug 2027; ends Fri 30 Apr 2027 → by **Sun 28 Feb
 2027**, safe date Fri 26 Feb ([Deutscher Mieterbund](https://mieterbund.de/app/uploads/2025/02/4-Siegmund-Vortrag-Kuendigungswiderspruch-und-Fortsetzung.pdf)).
 
 **Operating-cost statement** (`bgb_556_3`, § 556 Abs. 3, 4 BGB). The statement must reach the tenant by
@@ -496,8 +525,9 @@ also be read as "12 months, then 14 days", which differs by a day or two around 
 date is used. A letter's wording routes here only when it cites §§ 355/356 BGB or names a
 *Widerrufsfrist/-recht/-belehrung*, the sender is not an authority (an authority's *Widerruf* is a
 revocation) and no other law's withdrawal right is cited (insurance: § 8, § 152 VVG). A period the letter
-states that isn't 14 days is shown next to the law's: a shop may grant more (30 days), a shorter one
-doesn't count against the consumer. The earlier date is shown while it lasts, then the later one, so a
+states that isn't 14 days is shown next to the law's: a shop may grant more (30 days) and some contracts
+have a longer period by law (life insurance: 30 days, § 152 VVG), a shorter one doesn't count against the
+consumer. The earlier date is shown while it lasts, then the later one, so a
 right that still runs is never called "passed".
 
 | Start | Deadline | Source |
@@ -627,7 +657,8 @@ Windows are not moved off weekends; `safe_date` gives the working day before.
 | Defect notice to the landlord (`bgb_536c`) | no form, but keep proof: the rent may be reduced from then on (§ 536c BGB) | Einwurf-Einschreiben, e-mail, in person, letter |
 | Reply to a rent increase request (`bgb_558b`) | none, but make consent provable; consent to part of the increase is possible, and paying the higher rent can count as consent | Einwurf-Einschreiben, e-mail, in person, letter |
 | Receipts inspection, reply to an operating-cost statement (`bgb_556_3`) | none; objections must reach the landlord within twelve months of receiving the statement (§ 556 Abs. 3 S. 5 BGB) | Einwurf-Einschreiben, e-mail, in person, letter |
-| More time, instalments, data access (Art. 15 GDPR), deposit, new address | none | ranked by proof, as for a general reply; an extension only counts once confirmed — statutory deadlines can't be extended by asking |
+| More time, instalments, data access (Art. 15 GDPR), deposit, new address | none | ranked by proof, as for a general reply; an extension only counts once confirmed — statutory deadlines can't be extended by asking, so more time against a court order or a dismissal is refused, and so are instalments offered to a court (the claimant agrees them) |
+| Any other letter to a court (sender's name ends a word in "gericht", no bailiff or cashier) | in writing | signed letter, fax of the signed letter, the court's *Rechtsantragstelle* — **never plain e-mail** |
 
 For an Einwurf-Einschreiben keep the posting receipt and request the delivery record
 (*Auslieferungsbeleg*): the online tracking status alone is no proof (BAG 2 AZR 68/24).
@@ -705,6 +736,7 @@ enforces that every id used by the engine exists here).
 | `kschg_4`, `sgb3_38` | Dismissal: court action; registering as job-seeking | § 4 S. 1, § 7 KSchG; § 38 Abs. 1, § 159 Abs. 1 S. 2 Nr. 9 SGB III | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/kschg/__4.html) |
 | `bgb_558b`, `bgb_558_3` | Rent increase request; rent cap | § 558b Abs. 1, 2 BGB; § 558 Abs. 1, 3 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__558b.html) |
 | `bgb_574b` | Objecting to a landlord's notice | §§ 574, 574b BGB | 2025-01-01 (text form) | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__574b.html) |
+| `bgb_549` | Short lets and furnished rooms in the landlord's flat: no hardship objection, no consent procedure | § 549 Abs. 2, 3 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__549.html) |
 | `bgb_556_3`, `bgb_536c` | Operating-cost statements; reporting defects | § 556 Abs. 3, 4 BGB; § 536c BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__556.html) |
 | `bgb_355`, `bgb_356_4`, `bgb_356a` | Withdrawal: 14 days; without instructions; withdrawal button | § 355, § 356 Abs. 2–4 BGB; Art. 10 RL 2011/83/EU; § 356a BGB | `bgb_356a` 2026-06-19 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__355.html) |
 | `ao_222` | Tax payment deferral (Stundung) | § 222 AO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/ao_1977/__222.html) |

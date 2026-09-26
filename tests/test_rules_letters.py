@@ -76,10 +76,20 @@ def item(quote: str, **date_fields: Any) -> ExtractedItem:
 
 
 COURT = ExtractedParty(name="Amtsgericht Hagen – Zentrales Mahngericht", kind="authority")
+#: What makes the person the respondent: the order's remedy, or an objection date.
+WIDERSPRUCH = Remedy(type="widerspruch", quote="Gegen den Anspruch können Sie Widerspruch erheben.")
+EINSPRUCH = Remedy(type="einspruch", quote="Gegen diesen Bescheid kann Einspruch eingelegt werden.")
+
+
+def objection_date(quote: str, **date_fields: Any) -> ExtractedItem:
+    """A dated objection to-do (two weeks from delivery) quoting ``quote``."""
+    fields: dict[str, Any] = {"type": "relative", "anchor": "receipt", "amount": 2, "unit": "weeks"}
+    fields |= {"nature": "objection", **date_fields}
+    return ExtractedItem(kind="deadline", title="Object", date=DateSpec(**fields), quote=quote)
 
 
 def test_a_court_payment_order_is_recognised_from_a_court_sender() -> None:
-    extraction = reading(title="Mahnbescheid", sender=COURT)
+    extraction = reading(title="Mahnbescheid", sender=COURT, remedy=WIDERSPRUCH)
     assert routing.classify_letter(extraction) == "court_payment_order"
     assert routing.letter_kind(extraction) == "court_payment_order"
 
@@ -89,6 +99,7 @@ def test_an_enforcement_order_wins_over_the_payment_order_it_mentions() -> None:
         title="Vollstreckungsbescheid",
         summary="Enforcement order after the Mahnbescheid of 1 August.",
         sender=COURT,
+        remedy=EINSPRUCH,
     )
     assert routing.classify_letter(extraction) == "enforcement_order"
 
@@ -99,24 +110,52 @@ def test_a_debt_collector_threatening_a_mahnbescheid_stays_a_reminder() -> None:
         title="Letzte Mahnung",
         sender=ExtractedParty(name="Inkasso Nord GmbH", kind="company"),
         items=[item("Andernfalls beantragen wir beim Amtsgericht einen Mahnbescheid.")],
+        remedy=WIDERSPRUCH,
     )
     assert routing.classify_letter(extraction) is None
     assert routing.letter_kind(extraction) == "dunning"
 
 
-@pytest.mark.parametrize("name", ["Gerichtsvollzieher Klein", "Gerichtskasse Hamm"])
+BAILIFF_QUOTE = (
+    "Aus dem Vollstreckungsbescheid des Amtsgerichts Hünfeld vom 01.03.2026 fordere ich Sie auf zu zahlen."
+)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Gerichtsvollzieher Klein",
+        "Gerichtskasse Hamm",
+        # the letterhead formula of a bailiff (§ 154 GVG): named after the court they are attached to
+        "Gerichtsvollzieher bei dem Amtsgericht Frankfurt am Main",
+        "Obergerichtsvollzieherin Schmidt, Amtsgericht Köln",
+        "Amtsgericht Hamm – Gerichtskasse",
+    ],
+)
 def test_bailiffs_and_court_cashiers_are_not_courts(name: str) -> None:
-    extraction = reading(title="Vollstreckungsbescheid", sender=ExtractedParty(name=name, kind="authority"))
+    assert not routing.is_court(name)
+    extraction = reading(
+        title="Vollstreckungsbescheid",
+        sender=ExtractedParty(name=name, kind="authority"),
+        key_facts=[ExtractedFact(label="Titel", value="Vollstreckungsbescheid", quote=BAILIFF_QUOTE)],
+        remedy=EINSPRUCH,  # even a (misread) remedy doesn't make a bailiff a court
+        items=[objection_date(BAILIFF_QUOTE)],
+    )
     assert routing.classify_letter(extraction) is None
 
 
 def test_a_court_letter_about_something_else_keeps_its_kind() -> None:
     assert routing.classify_letter(reading(title="Ladung zum Termin", sender=COURT)) is None
+    # a Widerspruch that isn't about an order (e.g. against an Arrest, § 924 ZPO) names no order
+    assert routing.classify_letter(reading(title="Beschluss", sender=COURT, remedy=WIDERSPRUCH)) is None
 
 
 def test_the_models_advice_prose_does_not_classify() -> None:
     extraction = reading(
-        title="Schreiben", explanation="If you don't pay, a Mahnbescheid may follow.", sender=COURT
+        title="Schreiben",
+        explanation="If you don't pay, a Mahnbescheid may follow.",
+        sender=COURT,
+        remedy=WIDERSPRUCH,
     )
     assert routing.classify_letter(extraction) is None
 
@@ -126,35 +165,39 @@ MB_WARNING = (
     "Nach Ablauf dieser Frist kann der Antragsteller ohne Widerspruch einen Vollstreckungsbescheid "
     "erwirken und aus diesem die Zwangsvollstreckung betreiben."
 )
+MB_OBJECTION = "Sie können binnen zwei Wochen seit der Zustellung dieses Bescheids Widerspruch erheben."
 
 
 @pytest.mark.parametrize(
     "extraction",
     [
         # the title names the order; the quote holds the statutory warning
-        reading(title="Mahnbescheid", sender=COURT, items=[item(MB_WARNING)]),
+        reading(title="Mahnbescheid", sender=COURT, items=[item(MB_WARNING)], remedy=WIDERSPRUCH),
         reading(
             title="Court payment order (Mahnbescheid)",
             summary="The claimant can apply for a Vollstreckungsbescheid after two weeks.",
             sender=COURT,
+            items=[objection_date(MB_OBJECTION)],
+        ),
+        # an English title alone, with the order named in the letter's own words
+        reading(
+            title="Court payment order from the Amtsgericht",
+            sender=COURT,
+            items=[objection_date(MB_WARNING)],
         ),
         # no title signal: the remedy decides
-        reading(
-            title="Letter from the court",
-            sender=COURT,
-            items=[item(MB_WARNING)],
-            remedy=Remedy(type="widerspruch", quote="Gegen den Anspruch können Sie Widerspruch erheben."),
-        ),
-        # neither: the Vollstreckungsbescheid is only named in the warning
+        reading(title="Letter from the court", sender=COURT, items=[item(MB_WARNING)], remedy=WIDERSPRUCH),
+        # … or the objection date's own wording
         reading(
             title="Letter from the court",
             summary="Mahnbescheid über 1.250,00 EUR.",
-            items=[item(MB_WARNING)],
+            items=[item(MB_WARNING), objection_date(MB_OBJECTION)],
             sender=COURT,
         ),
         reading(
             title="Letter from the court",
-            summary="A Mahnbescheid; an enforcement order (Vollstreckungsbescheid) may follow.",
+            summary="Mahnbescheid über 1.250,00 EUR.",
+            items=[objection_date("binnen zwei Wochen", legal_basis="§ 692 Abs. 1 Nr. 3 ZPO")],
             sender=COURT,
         ),
     ],
@@ -172,19 +215,26 @@ def test_a_mahnbescheid_that_warns_of_the_enforcement_order_is_a_payment_order(
             title="Vollstreckungsbescheid",
             summary="Auf Grund des Mahnbescheids vom 01.08.2026.",
             sender=COURT,
+            items=[objection_date("Einspruch binnen zwei Wochen")],
+        ),
+        reading(
+            title="Enforcement order after the payment order",
+            summary="Mahnbescheid vom 01.08.2026",
+            sender=COURT,
+            remedy=EINSPRUCH,
         ),
         reading(
             title="Letter from the court",
             summary="Mahnbescheid vom 01.08.2026",
             sender=COURT,
-            remedy=Remedy(type="einspruch", quote="Gegen diesen Bescheid kann Einspruch eingelegt werden."),
+            remedy=EINSPRUCH,
         ),
         reading(
             title="Letter from the court",
             sender=COURT,
             items=[
                 item("Dieser Vollstreckungsbescheid ergeht auf Grund des Mahnbescheids vom 01.08.2026."),
-                item("Gegen diesen Vollstreckungsbescheid kann Einspruch eingelegt werden."),
+                objection_date("Gegen diesen Vollstreckungsbescheid kann Einspruch eingelegt werden."),
             ],
         ),
     ],
@@ -196,28 +246,99 @@ def test_an_enforcement_order_is_recognised_by_what_it_is(extraction: DocumentEx
 @pytest.mark.parametrize(
     "extraction",
     [
+        # nothing asks the person to answer as the respondent: a notice to the claimant, a bailiff's
+        # quote of the order he enforces, the court's invoice
+        reading(title="Mahnbescheid", sender=COURT),
         reading(
-            title="Abgabenachricht",
+            title="Nachricht über die Zustellung des Mahnbescheids",
+            summary="The Mahnbescheid was served on the respondent on 10.09.2026.",
+            sender=COURT,
+            items=[item("Der Mahnbescheid wurde dem Antragsgegner am 10.09.2026 zugestellt.")],
+        ),
+        reading(
+            title="Payment demand",
+            summary="Pay 612 EUR from the Vollstreckungsbescheid of 01.03.2026.",
             sender=COURT,
             items=[
-                item(
-                    "Nach Widerspruch gegen den Mahnbescheid wird das Verfahren an das Landgericht Köln abgegeben."
+                ExtractedItem(
+                    kind="payment",
+                    title="Pay",
+                    date=DateSpec(
+                        type="relative", anchor="receipt", amount=2, unit="weeks", nature="payment"
+                    ),
+                    quote=BAILIFF_QUOTE,
                 )
             ],
         ),
-        reading(
-            title="Case transferred to the Landgericht",
-            summary="Your objection to the Mahnbescheid was received.",
-            sender=COURT,
-        ),
+        # the remedy isn't named by the letter: neither the remedy block nor the objection date says
         reading(
             title="Letter from the court",
+            summary="Mahnbescheid vom 01.08.2026",
             sender=COURT,
-            items=[item("Ihr Widerspruch gegen den Mahnbescheid vom 01.08.2026 ist eingegangen.")],
+            items=[objection_date("binnen zwei Wochen")],
+        ),
+        # a Vollstreckungsbescheid named outside the Mahnbescheid's warning no longer decides
+        reading(
+            title="Letter from the court",
+            summary="Zahlung aus dem Vollstreckungsbescheid vom 01.03.2025.",
+            sender=COURT,
+            items=[objection_date("binnen zwei Wochen")],
         ),
     ],
 )
-def test_a_courts_later_letter_about_the_order_is_neither(extraction: DocumentExtraction) -> None:
+def test_a_court_letter_that_doesnt_make_the_person_answer_an_order_is_neither(
+    extraction: DocumentExtraction,
+) -> None:
+    assert routing.classify_letter(extraction) is None
+
+
+#: A court's later letters about an order, each with a (misread) objection date, so only their wording
+#: decides: after an objection, to the claimant, and from enforcement.
+FOLLOW_UPS = [
+    (
+        "Abgabenachricht",
+        "Nach Widerspruch gegen den Mahnbescheid wird das Verfahren an das Landgericht Köln abgegeben.",
+    ),
+    ("Case transferred to the Landgericht", "Mahnbescheid vom 01.08.2026"),
+    ("Letter from the court", "Ihr Widerspruch gegen den Mahnbescheid vom 01.08.2026 ist eingegangen."),
+    (
+        "Mitteilung über Widerspruch",
+        "Der Antragsgegner hat gegen den Mahnbescheid vom 01.09.2026 Widerspruch erhoben.",
+    ),
+    ("Objection filed against the Mahnbescheid", "Mahnbescheid vom 01.09.2026"),
+    ("The respondent has objected to the payment order", "Mahnbescheid vom 01.09.2026"),
+    ("Mahnbescheid", "Nachricht an den Antragsteller: der Mahnbescheid wurde am 10.09.2026 zugestellt."),
+    ("Mahnbescheid", "Zustellungsnachricht zum Mahnbescheid vom 01.09.2026"),
+    (
+        "Monierung Ihres Antrags auf Erlass eines Mahnbescheids",
+        "Bitte beheben Sie die Mängel binnen eines Monats.",
+    ),
+    ("Kostenrechnung", "Gerichtskosten für das Mahnverfahren (Mahnbescheid) 36,00 EUR"),
+    (
+        "Mitteilung im Mahnverfahren",
+        "Der Antrag auf Erlass des Mahnbescheids wurde vom Antragsteller zurückgenommen.",
+    ),
+    (
+        "Pfändungs- und Überweisungsbeschluss",
+        "Wegen der Forderung aus dem Vollstreckungsbescheid des AG Hagen vom 12.03.2025 wird gepfändet.",
+    ),
+    ("Garnishment order", "Forderung aus dem Vollstreckungsbescheid vom 12.03.2025"),
+    (
+        "Beschluss",
+        "Die Zwangsvollstreckung aus dem Vollstreckungsbescheid vom 01.09.2026 wird einstweilen eingestellt.",
+    ),
+    ("Enforcement suspended", "Vollstreckungsbescheid vom 01.09.2026"),
+    ("Payment order application withdrawn", "Mahnbescheid vom 01.09.2026"),
+    ("Court fee invoice", "Mahnbescheid vom 01.09.2026"),
+    ("Notice of service of the payment order", "Mahnbescheid vom 01.09.2026"),
+]
+
+
+@pytest.mark.parametrize(("title", "quote"), FOLLOW_UPS)
+def test_a_courts_later_letter_about_the_order_is_neither(title: str, quote: str) -> None:
+    extraction = reading(
+        title=title, sender=COURT, items=[item(quote), objection_date("Widerspruch binnen zwei Wochen")]
+    )
     assert routing.classify_letter(extraction) is None
 
 
@@ -229,6 +350,7 @@ def test_a_payment_order_that_explains_the_hand_over_is_still_one() -> None:
             item(MB_WARNING),
             item("Im Falle des Widerspruchs wird das Verfahren an das Amtsgericht Köln abgegeben."),
         ],
+        remedy=WIDERSPRUCH,
     )
     assert routing.classify_letter(extraction) == "court_payment_order"
 
@@ -597,8 +719,59 @@ def test_a_fixed_date_on_a_court_order_is_never_high(letter: str, legal_basis: s
     assert receipt.due_date == "2026-10-08"
     assert receipt.confidence == "medium"
     court_rule = "zpo_692" if legal_basis or letter == "court_payment_order" else "zpo_339"
-    assert court_rule in receipt.rule_ids  # so the pipeline files no second to-do for the same rule
+    assert court_rule in receipt.rule_ids  # cited; but a fixed date wasn't computed under it:
+    assert not routing.computed_under(date_spec, receipt.rule_ids, court_rule)  # the law's to-do is filed too
     assert any("court deadline" in w for w in receipt.warnings)
+
+
+@pytest.mark.parametrize(
+    "date_spec",
+    [
+        # a labour-court hearing in the court-action case
+        DateSpec(
+            type="fixed",
+            date="2026-11-12",
+            nature="appointment",
+            text="Gütetermin in Sachen Kündigungsschutzklage am 12.11.2026",
+        ),
+        # a severance payment offered if no court action is brought (§ 1a KSchG)
+        DateSpec(
+            type="fixed",
+            date="2026-12-31",
+            nature="payment",
+            text="zum 31.12.2026 eine Abfindung, wenn Sie keine Kündigungsschutzklage erheben",
+        ),
+        DateSpec(
+            type="relative",
+            anchor="receipt",
+            amount=2,
+            unit="weeks",
+            nature="payment",
+            legal_basis="§ 1a KSchG, § 4 KSchG",
+            text="Abfindung zwei Wochen nach Ablauf der Klagefrist",
+        ),
+        # paying isn't what the enforcement order's two weeks are for
+        DateSpec(type="fixed", date="2026-10-08", nature="payment", legal_basis="§ 700 ZPO"),
+    ],
+)
+def test_a_date_that_only_mentions_a_court_rule_doesnt_follow_it(date_spec: DateSpec) -> None:
+    receipt = compute_due(
+        date_spec,
+        ctx(region="NW", document_date="2026-09-24", received_date="2026-09-25", received_confirmed=True),
+    )
+    assert not {"kschg_4", "zpo_339", "zpo_692"} & set(receipt.rule_ids)
+    assert not any("court" in w for w in receipt.warnings)
+
+
+def test_computed_under() -> None:
+    relative = spec(amount=3, legal_basis="§ 4 KSchG")
+    assert routing.computed_under(relative, ["kschg_4", "bgb_193"], "kschg_4")
+    assert not routing.computed_under(relative, ["bgb_193"], "kschg_4")
+    fixed = DateSpec(type="fixed", date="2026-10-15", nature="declaration", text="arbeitsuchend melden")
+    assert routing.computed_under(fixed, ["sgb3_38"], "sgb3_38")  # routed: the law's date was computed
+    assert not routing.computed_under(
+        fixed.model_copy(update={"nature": "objection"}), ["kschg_4"], "kschg_4"
+    )
 
 
 def test_any_date_on_a_court_order_is_never_high() -> None:
@@ -910,6 +1083,9 @@ def test_a_longer_withdrawal_period_the_letter_grants_is_shown_and_never_lost() 
     early = _stated(30, "2026-09-10")
     assert early.due_date == "2026-09-15" and early.confidence == "medium"  # the law's earlier date first
     assert any("gives you 30 days (until Thu 1 Oct 2026)" in w for w in early.warnings)
+    # the 14 days are § 355 BGB's, not "the law's": life insurance has 30 days by law (§ 152 VVG)
+    assert any("14 days of § 355 BGB" in w and "§ 152 VVG" in w for w in early.warnings)
+    assert not any("the law sets" in w for w in early.warnings)
     after_14 = _stated(30, "2026-09-26")  # the reported case: never "passed" while the 30 days run
     assert after_14.due_date == "2026-10-01" and after_14.send_by == "2026-10-01"
     assert any("you can still withdraw until Thu 1 Oct 2026" in w for w in after_14.warnings)
@@ -952,8 +1128,75 @@ def test_tenancy_cards_are_information() -> None:
     assert notice is not None and not notice.urgent and notice.help[0].name.startswith("Mieterverein")
     assert any("§ 574b Abs. 2 S. 2 BGB" in step for step in notice.steps)  # a late objection may still count
     assert any("fristlos" in step and "§ 569 Abs. 3 Nr. 2 BGB" in step for step in notice.steps)
+    assert notice.draft == "objection" and notice.facts == []
+    statement = letter_advice("operating_costs", today=TODAY)
+    assert statement is not None and statement.draft == "receipts_inspection"
     assert letter_advice("invoice", today=TODAY) is None
     assert letter_advice(None, today=TODAY) is None
+
+
+def test_short_lets_and_furnished_rooms_have_neither_objection_nor_consent_procedure() -> None:
+    """§ 549 Abs. 2, 3 BGB: said on both tenancy cards, the objection to-do and in the catalog."""
+    notice = letter_advice("landlord_notice", today=TODAY)
+    increase = letter_advice("rent_increase", today=TODAY)
+    assert notice is not None and increase is not None
+    assert any("furnished room" in step and "§ 549 Abs. 2 BGB" in step for step in notice.steps)
+    assert any("student hall (§ 549 Abs. 3 BGB)" in step for step in increase.steps)
+    assert "bgb_549" in notice.rule_ids and "bgb_549" in increase.rule_ids
+    [objection] = routing.derived_deadlines("landlord_notice", end=D("2027-10-31"))
+    assert "§ 549 Abs. 2 BGB" in objection.action
+    assert objection.action.startswith("Your tenancy ends on Sun 31 Oct 2027.")
+    assert "§ 549 Abs. 2 BGB" in catalog.get_rule("bgb_574b").summary
+
+
+@pytest.mark.parametrize("alternative", [False, True])
+def test_a_notice_without_notice_period_says_so_and_offers_no_useless_objection(alternative: bool) -> None:
+    card = letter_advice("landlord_notice", today=TODAY, extraordinary=True, alternative=alternative)
+    assert card is not None
+    [fact] = card.facts
+    assert fact.title.startswith("This reads as a notice without notice period") and fact.tone == "warn"
+    assert "§ 574 Abs. 1 S. 2 BGB" in (fact.citation or "")
+    # a hardship objection only against the notice given with a notice period in the alternative
+    assert card.draft == ("objection" if alternative else None)
+    assert ("hilfsweise" in fact.text) is alternative
+    assert not any(step.startswith("A notice without notice period") for step in card.steps)  # not twice
+
+
+def test_a_notice_hilfsweise_with_notice_period_keeps_its_objection_to_do() -> None:
+    fristlos = _termination(kind="rent_lease", summary="Fristlose Kündigung wegen Zahlungsverzugs")
+    both = _termination(
+        kind="rent_lease",
+        summary="The landlord terminates without notice, alternatively with notice to 31 Dec 2026.",
+        items=[item("kündigen wir das Mietverhältnis fristlos, hilfsweise fristgerecht zum 31.12.2026")],
+    )
+    careful = _termination(
+        kind="rent_lease", summary="Fristlose Kündigung, vorsorglich auch ordentlich zum 31.12.2026"
+    )
+    assert routing.extraordinary_notice(fristlos) and not routing.alternative_notice(fristlos)
+    assert routing.extraordinary_notice(both) and routing.alternative_notice(both)
+    assert routing.alternative_notice(careful)
+    # "vorsorglich" alone (e.g. against a tacit extension, § 545 BGB) is no alternative notice
+    tacit = _termination(
+        kind="rent_lease", summary="Einer stillschweigenden Verlängerung widersprechen wir vorsorglich."
+    )
+    assert not routing.alternative_notice(tacit)
+
+
+@pytest.mark.parametrize("kind", ["court_payment_order", "enforcement_order", "dismissal"])
+def test_a_card_doesnt_ask_for_an_arrival_day_the_person_entered(kind: str) -> None:
+    asking = letter_advice(kind, today=TODAY)
+    entered = letter_advice(kind, today=TODAY, arrived=D("2026-09-24"), arrival_confirmed=True)
+    assert asking is not None and entered is not None
+    assert asking.steps[0].startswith(("Find the delivery date", "Enter the day"))
+    assert "you entered" in entered.steps[0] and not entered.steps[0].startswith(("Find", "Enter"))
+
+
+def test_the_dismissal_card_and_registration_to_do_mention_apprentices() -> None:
+    card = letter_advice("dismissal", today=TODAY)
+    assert card is not None
+    assert any("§ 38 Abs. 1 S. 4 SGB III" in s and "§ 111 Abs. 2 ArbGG" in s for s in card.steps)
+    register = next(d for d in routing.derived_deadlines("dismissal", end=None) if d.rule_id == "sgb3_38")
+    assert "apprenticeship" in register.action and "§ 38 Abs. 1 S. 4 SGB III" in register.action
 
 
 @pytest.mark.parametrize(
@@ -1112,6 +1355,19 @@ def test_court_objections_never_by_email() -> None:
     enforcement = send_guidance("objection", letter_kind="enforcement_order", today=TODAY)
     assert "portal" not in {c.channel for c in enforcement.channels}
     assert any("doesn't stop enforcement" in tip for tip in enforcement.tips)
+
+
+@pytest.mark.parametrize(
+    "kind", ["general_reply", "extension_request", "address_change", "payment_plan", "objection"]
+)
+def test_nothing_goes_to_a_court_by_email(kind: str) -> None:
+    guidance = send_guidance(kind, party_kind="authority", today=TODAY, court=True)  # type: ignore[arg-type]
+    channels = {c.channel: c for c in guidance.channels}
+    assert not channels["email"].allowed and not channels["email"].recommended
+    assert channels["letter"].recommended
+    # a court order's objection keeps its own channels (the form, online-mahnantrag.de)
+    order = send_guidance("objection", letter_kind="court_payment_order", today=TODAY, court=True)
+    assert "portal" in {c.channel for c in order.channels}
 
 
 def test_another_courts_desk_is_offered_only_with_the_129a_catch() -> None:

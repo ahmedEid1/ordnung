@@ -8,17 +8,22 @@ policies, and cases the policies do not decide are documented limitations, not b
 
 =========================  ============================================================================
 ``court_payment_order``    sent by a court (the sender's name ends a word in "gericht": Amtsgericht,
-``enforcement_order``      Mahngericht — not a bailiff, *Gerichtsvollzieher*, or a court cashier,
-                           *Gerichtskasse*) and the reading names a *Mahnbescheid* or a
-                           *Vollstreckungsbescheid*. Which of the two the letter **is** is decided by,
-                           in this order: the one its title names first; the remedy it states
-                           (*Widerspruch* → Mahnbescheid, *Einspruch* → Vollstreckungsbescheid); a
-                           Vollstreckungsbescheid named other than in the warning every Mahnbescheid
-                           carries ("… kann ein Vollstreckungsbescheid ergehen", § 692 Abs. 1 Nr. 4
-                           ZPO); else a Mahnbescheid. A court's later letter about the order (the
-                           objection was received, the case is handed on: *Abgabenachricht*) is
-                           neither. A debt collector threatening one is not a court, so its letter
-                           stays a reminder.
+``enforcement_order``      Mahngericht — not a bailiff, *Gerichtsvollzieher bei dem Amtsgericht …*, or a
+                           court cashier, *Gerichtskasse*), the reading names a *Mahnbescheid* or a
+                           *Vollstreckungsbescheid* (or its title an English "payment order" /
+                           "enforcement order"), and the letter asks the person to answer it as the
+                           respondent: it states a *Widerspruch* or *Einspruch* remedy, or gives an
+                           objection date. Which of the two the letter **is** is decided by its title
+                           (the order it names first), else by the remedy it states (*Widerspruch* →
+                           Mahnbescheid, *Einspruch* → Vollstreckungsbescheid, from the remedy or the
+                           objection date's own wording) — never by the order some other sentence
+                           names. A court's other letters about an order are neither: to the claimant
+                           (the other side objected, the order was served, a cost invoice, a request to
+                           fix the application, the application was withdrawn), after an objection
+                           (*Abgabenachricht*), or from enforcement (a garnishment order, a suspension).
+                           A debt collector threatening an order is not a court, so its letter stays a
+                           reminder. Anything these signals don't decide keeps the model's kind; the
+                           person can file it as a court order on the letter's page.
 ``dismissal``              the reading reports a termination by the other side
                            (``termination_by_provider``) about a job (kind ``employment``, sender
                            ``employer`` or an employment contract)
@@ -56,39 +61,67 @@ revocation) and that cites no other law's withdrawal right (insurance: VVG).
 **3. Dates the law adds** (:func:`derived_deadlines`): these letters rarely state their most
 important deadline (a dismissal never mentions the three weeks for a court action), so each kind
 brings the deadlines the law sets, which the pipeline files as to-dos unless an extracted date
-already follows that rule. A landlord's notice without notice period (*fristlos*/*außerordentlich*)
-gets no objection to-do: the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB).
+was computed under that rule (:func:`computed_under`: routed to it, or a period counted under it —
+not a date that merely mentions it, like a severance payment "if you don't sue"). A landlord's notice without notice period (*fristlos*/*außerordentlich*)
+gets no objection to-do: the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB) — unless it
+also gives notice with a notice period in the alternative (*hilfsweise fristgemäß*), which it applies to.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from datetime import date
 
 from ordnung.models import DateNature, DateSpec, DocumentExtraction, HighStakesKind, LetterKind, Priority
+from ordnung.rules.explain import fmt_date
 from ordnung.rules.tenancy import notice_objection_deadline
 
 _COURT_SENDER = re.compile(r"gericht\b", re.I)
-_MAHNBESCHEID = re.compile(r"mahnbescheid", re.I)
-_VOLLSTRECKUNGSBESCHEID = re.compile(r"vollstreckungsbescheid", re.I)
+#: Senders that name a court without being one: a bailiff ("Gerichtsvollzieher bei dem Amtsgericht …",
+#: "Obergerichtsvollzieherin …, Amtsgericht Köln") or a court cashier.
+_NOT_A_COURT = re.compile(r"vollzieh|kasse|zahlstelle", re.I)
 _COURT_ORDER_NAME = re.compile(r"mahnbescheid|vollstreckungsbescheid", re.I)
-#: The warning every Mahnbescheid carries (§ 692 Abs. 1 Nr. 4 ZPO): an enforcement order *may* follow.
-_MAY = re.compile(r"\b(?:kann|können|könnte|darf|droht|could|can|may|might|will|would)\b", re.I)
-_FOLLOWS = re.compile(r"ergeh|erwirk|erlass|beantrag|\bapply\b|\bobtain|\bissued?\b|\bfollow", re.I)
-#: A court's later letter about an order: the objection was received, the case is handed on.
+#: What a court order's title calls it: German, or the English a reading may use instead.
+_ORDER_TITLE = re.compile(
+    r"mahnbescheid|vollstreckungsbescheid|payment\s+order|order\s+for\s+payment|enforcement\s+order", re.I
+)
+_ENFORCEMENT_TITLE = re.compile(r"vollstreckungsbescheid|enforcement", re.I)
+#: The remedy an objection date's own wording names (the remedy block may be empty).
+_WIDERSPRUCH = re.compile(r"widerspr|\b69[24]\b[^§]{0,20}\bZPO\b", re.I)
+_EINSPRUCH = re.compile(r"einspruch|\b(?:339|700)\b[^§]{0,20}\bZPO\b", re.I)
+_IN_SENTENCE = r"(?:[^.!?\n]|\.(?=\d)){0,100}?"
+#: A court's other letters about an order, in the letter's own (German) wording.
 _FOLLOW_UP = re.compile(
-    r"abgabenachricht|\bnach\s+(?:dem\s+|ihrem\s+|erhobenem\s+)?(?:widerspruch|einspruch)\b|"
-    r"(?<!kein\s)(?<!keinen\s)\b(?:widerspruch|einspruch)\b(?:[^.!?\n]|\.(?=\d)){0,80}?\b(?:ist|wurde|sind)\s+"
-    r"(?:hier\s+|fristgerecht\s+|rechtzeitig\s+|am\s+\S+\s+)?(?:eingegangen|erhoben|eingelegt)\b",
+    "|".join(
+        (
+            # the objection was received, the case is handed on
+            r"abgabenachricht|\bnach\s+(?:dem\s+|ihrem\s+|erhobenem\s+)?(?:widerspruch|einspruch)\b",
+            rf"(?<!kein\s)(?<!keinen\s)\b(?:widerspruch|einspruch)\b{_IN_SENTENCE}\b(?:ist|wurde|sind)\s+"
+            r"(?:hier\s+|fristgerecht\s+|rechtzeitig\s+|am\s+\S+\s+)?(?:eingegangen|erhoben|eingelegt)\b",
+            # to the claimant: the other side objected, the order was served, costs, the application
+            rf"\b(?:antragsgegner|schuldner|gegner)\w*\s+hat\b{_IN_SENTENCE}(?:widerspr|einspruch)",
+            r"\b(?:nachricht|mitteilung|hinweis)\w*\s+(?:an|für)\s+(?:den|die)\s+antragsteller|"
+            r"\bsie\s+als\s+antragsteller|\bihr(?:e[mnrs]?)?\s+(?:mahn)?antr(?:ag|äge)|"
+            r"zustellungsnachricht|monierung|kostenrechnung",
+            rf"\b(?:mahn)?antrag\b{_IN_SENTENCE}\bzurückgenommen|rücknahme\s+des\s+(?:mahn)?antrags",
+            # enforcement under way: a garnishment order, a suspension
+            r"pfändungsbeschluss|überweisungsbeschluss|einstellung\s+der\s+zwangsvollstreckung|"
+            rf"zwangsvollstreckung\b{_IN_SENTENCE}\beingestellt",
+        )
+    ),
     re.I,
 )
+#: The same letters as a reading's (English) title may call them.
 _FOLLOW_UP_TITLE = re.compile(
-    r"\babgabe|abgegeben|objection (?:was |has been )?received|after (?:your|the) objection|"
-    r"transferred|handed (?:on|over)",
+    r"\babgabe|abgegeben|objection (?:was |has been )?(?:received|filed|lodged|raised)|"
+    r"\b(?:has|have|had) (?:\w+ ){0,2}objected|after (?:your|the) objection|transferred|handed (?:on|over)|"
+    r"garnish|attachment order|suspen|withdrawn|bill of costs|(?:cost|fee) invoice|invoice for (?:court )?"
+    r"(?:fees|costs)|notice of (?:service|delivery)|served on|could not be (?:served|delivered)|"
+    r"\byour application\b",
     re.I,
 )
-_SENTENCE = re.compile(r"(?<=[.!?])\s+(?=[A-ZÄÖÜ])|\n")
 #: A § 558 request asks for consent — in the letter's own (German) wording.
 _CONSENT = re.compile(r"zustimm|vergleichsmiete|mietspiegel|\b558[ab]?\b[^§]{0,20}\bBGB\b", re.I)
 _NO_CONSENT_INCREASE = re.compile(
@@ -118,6 +151,13 @@ _NOT_A_LANDLORD = (
 _EXTRAORDINARY = re.compile(
     r"fristlos|außerordentlich|ausserordentlich|without notice|extraordinary|\b543\b[^§]{0,20}\bBGB\b|"
     r"\b569\b[^§]{0,20}\bBGB\b",
+    re.I,
+)
+
+#: A notice without notice period that also gives notice with one "in the alternative".
+_ALTERNATIVE_NOTICE = re.compile(
+    r"hilfsweise|vorsorglich\s+(?:\S+\s+){0,4}?(?:ordentlich|fristgerecht|fristgemäß)|alternatively|"
+    r"in the alternative",
     re.I,
 )
 
@@ -174,37 +214,62 @@ def _about(extraction: DocumentExtraction, markers: tuple[str, ...]) -> bool:
     return extraction.kind in markers or sender in markers or category in markers
 
 
-def _names_enforcement_order(text: str) -> bool:
-    """Whether ``text`` names a Vollstreckungsbescheid other than in the Mahnbescheid's warning that
-    one may follow (a sentence with "kann … ergehen/erwirken/beantragen", "can apply for …")."""
-    return any(
-        _VOLLSTRECKUNGSBESCHEID.search(sentence) and not (_MAY.search(sentence) and _FOLLOWS.search(sentence))
-        for sentence in _SENTENCE.split(text)
-    )
+def _objection_dates(extraction: DocumentExtraction) -> list[str]:
+    """The wording of the letter's objection dates (their text, legal basis and quote)."""
+    return [
+        f"{item.date.legal_basis or ''} {item.date.text} {item.quote}"
+        for item in extraction.items
+        if item.date.nature == "objection"
+    ]
 
 
-def _court_order(extraction: DocumentExtraction) -> HighStakesKind | None:
-    """Which court order a court's letter is (policy 1: title, remedy, wording), or ``None``."""
-    text = _reading_text(extraction)
-    if not _COURT_ORDER_NAME.search(text):
-        return None
-    if _FOLLOW_UP_TITLE.search(extraction.title) or _FOLLOW_UP.search(f"{extraction.title}\n{text}"):
-        return None
-    named = _COURT_ORDER_NAME.search(extraction.title)
-    if named is not None:
-        return "enforcement_order" if _VOLLSTRECKUNGSBESCHEID.match(named.group()) else "court_payment_order"
+def _respondent(extraction: DocumentExtraction) -> bool:
+    """Whether the letter asks the person to answer as the respondent: it states a *Widerspruch* or
+    *Einspruch* remedy, or gives an objection date (a court's notice to a claimant does neither)."""
+    remedy = extraction.remedy.type if extraction.remedy else None
+    return remedy in ("widerspruch", "einspruch") or bool(_objection_dates(extraction))
+
+
+def _stated_remedy(extraction: DocumentExtraction) -> HighStakesKind | None:
+    """The order the letter's remedy belongs to: the remedy block's, else its objection dates' wording
+    when it names only one of *Widerspruch* and *Einspruch*."""
     remedy = extraction.remedy.type if extraction.remedy else None
     if remedy == "einspruch":
         return "enforcement_order"
     if remedy == "widerspruch":
         return "court_payment_order"
-    return "enforcement_order" if _names_enforcement_order(text) else "court_payment_order"
+    wording = "\n".join(_objection_dates(extraction))
+    payment_order, enforcement = bool(_WIDERSPRUCH.search(wording)), bool(_EINSPRUCH.search(wording))
+    if payment_order == enforcement:
+        return None
+    return "court_payment_order" if payment_order else "enforcement_order"
+
+
+def _court_order(extraction: DocumentExtraction) -> HighStakesKind | None:
+    """Which court order a court's letter is (policy 1: respondent, title, remedy), or ``None``."""
+    text = _reading_text(extraction)
+    named = _ORDER_TITLE.search(extraction.title)
+    if named is None and not _COURT_ORDER_NAME.search(text):
+        return None
+    if _FOLLOW_UP_TITLE.search(extraction.title) or _FOLLOW_UP.search(f"{extraction.title}\n{text}"):
+        return None
+    if not _respondent(extraction):
+        return None
+    if named is not None:
+        return "enforcement_order" if _ENFORCEMENT_TITLE.match(named.group()) else "court_payment_order"
+    return _stated_remedy(extraction)
+
+
+def is_court(name: str) -> bool:
+    """Whether a sender's name is a court's (policy 1): a word ending in "gericht", and no bailiff or
+    court cashier."""
+    return bool(_COURT_SENDER.search(name)) and not _NOT_A_COURT.search(name)
 
 
 def classify_letter(extraction: DocumentExtraction) -> HighStakesKind | None:
     """The high-stakes kind of a letter from the model's reading, or ``None`` (policy 1 above)."""
     sender = extraction.sender
-    if sender is not None and _COURT_SENDER.search(sender.name):
+    if sender is not None and is_court(sender.name):
         court_order = _court_order(extraction)
         if court_order is not None:
             return court_order
@@ -243,6 +308,12 @@ def names_statement(extraction: DocumentExtraction) -> bool:
 def extraordinary_notice(extraction: DocumentExtraction) -> bool:
     """Whether a termination reads as one without notice period (*fristlos*, *außerordentlich*)."""
     return bool(_EXTRAORDINARY.search(_reading_text(extraction)))
+
+
+def alternative_notice(extraction: DocumentExtraction) -> bool:
+    """Whether a notice without notice period also gives notice with one in the alternative
+    (*hilfsweise fristgemäß*): the hardship objection applies to that one (§ 574 Abs. 1 S. 2 BGB)."""
+    return bool(_ALTERNATIVE_NOTICE.search(_reading_text(extraction)))
 
 
 def letter_kind(extraction: DocumentExtraction) -> LetterKind:
@@ -381,7 +452,10 @@ _COURT_ACTION = DerivedDeadline(
 _REGISTER = DerivedDeadline(
     rule_id="sgb3_38",
     title="Register as job-seeking (arbeitsuchend) at the Agentur für Arbeit",
-    action="Register online, by phone or in person. Your details and the end date of the job are enough for now.",
+    action=(
+        "Register online, by phone or in person. Your details and the end date of the job are enough for now. "
+        "Not needed if this ends an apprenticeship in a company (§ 38 Abs. 1 S. 4 SGB III)."
+    ),
     consequence="Registering late can cost you one week of unemployment benefit (Sperrzeit).",
     priority="high",
     spec=_relative(3, "days", "declaration", "§ 38 Abs. 1 SGB III", "arbeitsuchend melden"),
@@ -401,8 +475,9 @@ _NOTICE_OBJECTION = DerivedDeadline(
     rule_id="bgb_574b",
     title="Decide whether to object to the notice (Widerspruch)",
     action=(
-        "If moving out would be a hardship for you or your household (illness, old age, no other flat), you "
-        "can object and ask to stay (§ 574 BGB). Talk to a tenants' association first."
+        "Have the notice checked by a tenants' association (form, reason, period). If moving out would be a "
+        "hardship for you or your household (illness, old age, no other flat), you can also object and ask to "
+        "stay (§ 574 BGB) — not for a short let or a furnished room in your landlord's own flat (§ 549 Abs. 2 BGB)."
     ),
     consequence=(
         "After this day the landlord may refuse to continue the tenancy — unless they didn't tell you in time "
@@ -415,15 +490,28 @@ _NOTICE_OBJECTION = DerivedDeadline(
 )
 
 
+#: The letter rules (:mod:`ordnung.rules.letters`): a date routed to one was computed under it.
+LETTER_RULES = ("sgb3_38", "bgb_558b", "bgb_574b", "bgb_355")
+
+
+def computed_under(spec: DateSpec, rule_ids: Sequence[str], rule_id: str) -> bool:
+    """Whether a letter's own date (its DateSpec, its receipt's ``rule_ids``) was computed under
+    ``rule_id``, so the deadline the law adds for that rule would repeat it (policy 3): routed to a
+    letter rule, or a period counted under a court rule. A fixed date that only cites a court rule
+    keeps the letter's day, which may not be the law's, so the law's to-do is filed next to it."""
+    return rule_id in rule_ids and (rule_id in LETTER_RULES or spec.type == "relative")
+
+
 def derived_deadlines(
     letter: str | None, *, end: date | None, letter_date: date | None = None, extraordinary: bool = False
 ) -> list[DerivedDeadline]:
     """The deadlines the law adds to a kind of letter; ``end`` is the end its termination announces.
 
     The objection to a landlord's notice counts back from the end of the tenancy, so it is only
-    added when that end is known — and not for a notice without notice period (``extraordinary``, or an
-    end less than two months after the letter's date ``letter_date``): the hardship objection doesn't
-    apply to it (§ 574 Abs. 1 S. 2 BGB), and its card points to advice instead.
+    added when that end is known — and not for a notice without notice period (``extraordinary``: one
+    not also given with a notice period in the alternative, or an end less than two months after the
+    letter's date ``letter_date``): the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB),
+    and its card points to advice instead.
     """
     if letter == "court_payment_order":
         return [_COURT_ORDER]
@@ -439,5 +527,6 @@ def derived_deadlines(
         spec = _NOTICE_OBJECTION.spec.model_copy(
             update={"anchor": "explicit_date", "anchor_date": end.isoformat()}
         )
-        return [replace(_NOTICE_OBJECTION, spec=spec)]
+        action = f"Your tenancy ends on {fmt_date(end)}. {_NOTICE_OBJECTION.action}"
+        return [replace(_NOTICE_OBJECTION, spec=spec, action=action)]
     return []

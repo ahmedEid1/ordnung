@@ -12,7 +12,7 @@ goes where.
 | Original files (PDFs, photos) | `<data dir>/files/` | Never by Ordnung itself |
 | Page images, thumbnails | `<data dir>/derived/` | Only as part of a *Read* call (see below) |
 | Your ledger (letters, to-dos, contracts, ideas, drafts) | `<data dir>/ordnung.db` (SQLite) | Excerpts, when you use *Ask*, *Ideas review* or *Letters* |
-| Profile (name, address, region, the IBAN you may add for refunds) | `ordnung.db` | Name, language and region in prompts; your address and IBAN are never sent (letters that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation) |
+| Profile (name, address, region, the IBAN you may add for refunds) | `ordnung.db` | Name, language and region in prompts; the address and IBAN you enter here are never put into a prompt (a letter you add is read as printed, with the address in its window; letters Ordnung drafts that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation) |
 | Model responses | `ordnung.db` (`llm_cache`) | — (they came from Anthropic) |
 | Usage log (tokens, cost, which document) | `ordnung.db` (`llm_calls`) — **no prompt or response bodies** | Never |
 | Fonts, UI, rules engine | bundled in the package | Never (no CDN, no web fonts) |

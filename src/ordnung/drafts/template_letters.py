@@ -65,7 +65,7 @@ _FIELD_NAMES = {
 class TemplateInput:
     """Everything a template letter can use: the person's details and what the ledger knows.
 
-    ``topic`` is the contract's name or the letter's title; ``address`` the person's address from the
+    ``topic`` is the contract's name (never a letter's title); ``address`` the person's address from the
     profile; ``deadline``, ``amount`` and ``period`` are the letter's earliest open deadline, its
     payment and its billing period, used when the person gave none.
     """

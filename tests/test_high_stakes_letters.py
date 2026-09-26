@@ -128,7 +128,122 @@ STATEMENT = Letter(
     },
 )
 
-LETTERS = (MAHNBESCHEID, DISMISSAL, STATEMENT)
+BAILIFF_QUOTE = (
+    "Aus dem Vollstreckungsbescheid des Amtsgerichts Hünfeld vom 01.03.2026 fordere ich Sie auf, 612,34 EUR "
+    "zu zahlen."
+)
+#: A bailiff's payment demand under the letterhead every bailiff uses: named after the court (§ 154 GVG).
+BAILIFF = Letter(
+    marker="DR II 1234/26",
+    pages=(
+        (
+            "Gerichtsvollzieher bei dem Amtsgericht Frankfurt am Main",
+            "SPECIMEN",
+            "DR II 1234/26",
+            BAILIFF_QUOTE,
+        ),
+    ),
+    payload={
+        "kind": "authority_letter",
+        "area": "money",
+        "title": "Payment demand from the bailiff",
+        "sender": {"name": "Gerichtsvollzieher bei dem Amtsgericht Frankfurt am Main", "kind": "authority"},
+        "document_date": "2026-09-22",
+        "summary": "The bailiff demands 612.34 EUR based on an enforcement order (Vollstreckungsbescheid).",
+        "key_facts": [
+            {"label": "Title", "value": "Vollstreckungsbescheid AG Hünfeld", "quote": BAILIFF_QUOTE}
+        ],
+        "explanation": "Pay or contact the bailiff.",
+        "items": [],
+        "urgency": "high",
+    },
+)
+CLAIMANT_QUOTE = "Der Antragsgegner hat gegen den Mahnbescheid vom 01.09.2026 Widerspruch erhoben."
+#: The court's notice to the person as the claimant (a tenant chasing a deposit): the other side objected.
+CLAIMANT = Letter(
+    marker="Nachricht an den Antragsteller",
+    pages=(
+        (
+            "Amtsgericht Coburg - Zentrales Mahngericht",
+            "SPECIMEN",
+            "Nachricht an den Antragsteller",
+            CLAIMANT_QUOTE,
+        ),
+    ),
+    payload={
+        "kind": "authority_letter",
+        "area": "money",
+        "title": "Objection filed against your Mahnbescheid",
+        "sender": {"name": "Amtsgericht Coburg - Zentrales Mahngericht", "kind": "authority"},
+        "document_date": "2026-09-22",
+        "summary": "The other side objected to the Mahnbescheid; pay the further fee to continue.",
+        "key_facts": [{"label": "Objection", "value": "filed", "quote": CLAIMANT_QUOTE}],
+        "explanation": "Decide whether to continue.",
+        "items": [],
+        "urgency": "normal",
+    },
+)
+SEVERANCE_QUOTE = (
+    "Lassen Sie die Frist für eine Kündigungsschutzklage verstreichen, zahlen wir Ihnen zum 31.12.2026 eine "
+    "Abfindung."
+)
+#: A dismissal with a severance offer (§ 1a KSchG), which must mention the court action.
+SEVERANCE = Letter(
+    marker="Kündigung mit Abfindungsangebot",
+    pages=(
+        ("Café Kranz GmbH", "SPECIMEN", "Kündigung mit Abfindungsangebot", DISMISSAL_QUOTE, SEVERANCE_QUOTE),
+    ),
+    payload={
+        **DISMISSAL.payload,
+        "title": "Dismissal with a severance offer",
+        "items": [
+            {
+                "kind": "payment",
+                "title": "Severance payment (if you don't sue)",
+                "date": {
+                    "type": "fixed",
+                    "date": "2026-12-31",
+                    "nature": "payment",
+                    "text": "zum 31.12.2026 eine Abfindung, wenn Sie keine Kündigungsschutzklage erheben",
+                },
+                "quote": SEVERANCE_QUOTE,
+            }
+        ],
+    },
+)
+
+
+def _notice(marker: str, quote: str) -> Letter:
+    """A landlord's notice ending the tenancy on 31 Mar 2027, in the words of ``quote``."""
+    return Letter(
+        marker=marker,
+        pages=(("Hausverwaltung Muster GmbH", "SPECIMEN", marker, quote),),
+        payload={
+            "kind": "rent_lease",
+            "area": "home",
+            "title": "Notice from your landlord",
+            "sender": {"name": "Hausverwaltung Muster GmbH", "kind": "landlord"},
+            "document_date": "2026-09-24",
+            "summary": "Your landlord ends the tenancy.",
+            "explanation": "Get advice.",
+            "items": [],
+            "change": {"type": "termination_by_provider", "effective_date": "2027-03-31", "quote": quote},
+            "urgency": "high",
+        },
+    )
+
+
+FRISTLOS = _notice(
+    "Fristlose Kündigung",
+    "hiermit kündigen wir das Mietverhältnis fristlos wegen Zahlungsverzugs zum 31.03.2027.",
+)
+HILFSWEISE = _notice(
+    "Kündigung fristlos, hilfsweise fristgerecht",
+    "hiermit kündigen wir das Mietverhältnis fristlos, hilfsweise fristgerecht zum 31.03.2027.",
+)
+
+#: Routed by the first marker found: the letters that quote another's marker come first.
+LETTERS = (BAILIFF, CLAIMANT, SEVERANCE, MAHNBESCHEID, DISMISSAL, STATEMENT, HILFSWEISE, FRISTLOS)
 
 
 @pytest.fixture(autouse=True)
@@ -264,6 +379,83 @@ async def test_rule_to_dos_survive_re_reading_and_leave_when_the_kind_is_correct
         await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "employment"})
         left = _by_origin(api, doc_id).get("rule", [])
         assert [item.slot_key for item in left] == ["rule:sgb3_38"]  # done: kept; open: removed
+
+
+@pytest.mark.parametrize("letter", [BAILIFF, CLAIMANT], ids=["bailiff", "claimant"])
+async def test_letters_that_only_name_a_court_order_are_not_one(data_dir: Path, letter: Letter) -> None:
+    """A bailiff's letter (headed with the court's name) and the court's notice to the claimant name an
+    order without asking the person to answer it: no court order, no two-week to-do, no urgent card."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, letter)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "authority_letter"
+        assert detail["items"] == [] and detail["advice"] is None
+
+
+async def test_an_item_that_only_mentions_the_court_action_leaves_its_to_do(data_dir: Path) -> None:
+    """The severance a § 1a KSchG dismissal offers names the court action; it is a payment, not the
+    three-week deadline, so the law's to-do for the court action is still filed."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, SEVERANCE)
+        found = _by_origin(api, doc_id)
+        assert {item.slot_key for item in found["rule"]} == {"rule:kschg_4", "rule:sgb3_38"}
+        [severance] = found["extracted"]
+        assert severance.computation is not None and "kschg_4" not in severance.computation.rule_ids
+        assert not any("court action" in warning for warning in severance.computation.warnings)
+
+
+async def test_a_deleted_rule_to_do_stays_deleted_until_the_kind_is_chosen(data_dir: Path) -> None:
+    """The person already registered as job-seeking and deleted that to-do: a changed region, postal
+    buffer or arrival day recomputes the rule to-dos that are left, and never files it again."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, DISMISSAL)
+        rules = {item.slot_key: item for item in _by_origin(api, doc_id)["rule"]}
+        register, court = rules["rule:sgb3_38"], rules["rule:kschg_4"]
+        assert (await api.client.delete(f"/api/items/{register.id}")).status_code == 204
+
+        assert (await api.client.put("/api/profile", json={"region": "BE"})).status_code == 200
+        assert (await api.client.put("/api/profile", json={"postal_buffer_days": 2})).status_code == 200
+        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-25"})
+        assert api.ctx.store.get_item(register.id) is None
+        court_after = api.ctx.store.get_item(court.id)
+        assert court_after is not None and court_after.due_date == "2026-10-16"  # still recomputed
+
+        # choosing the kind is an explicit request to file the letter's deadlines again
+        await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "employment"})
+        await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "dismissal"})
+        assert api.ctx.store.get_item(register.id) is not None
+
+
+async def test_a_chosen_kind_reroutes_even_with_an_unconfirmed_arrival_day(data_dir: Path) -> None:
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, MAHNBESCHEID)
+        response = await api.client.patch(
+            f"/api/documents/{doc_id}", json={"kind": "authority_letter", "received_confirmed": False}
+        )
+        assert response.status_code == 200
+        [item] = api.ctx.store.list_items(doc_id=doc_id)
+        assert item.computation is not None and "zpo_692" not in item.computation.rule_ids
+        activity = (await api.client.get("/api/activity")).json()
+        assert any(entry["kind"] == "document.kind" for entry in activity)
+
+
+@pytest.mark.parametrize(
+    ("letter", "objection"), [(FRISTLOS, False), (HILFSWEISE, True)], ids=["fristlos", "hilfsweise"]
+)
+async def test_a_notice_without_notice_period_gets_no_hardship_objection(
+    data_dir: Path, letter: Letter, objection: bool
+) -> None:
+    """The hardship objection doesn't apply to a notice without notice period (§ 574 Abs. 1 S. 2 BGB):
+    no to-do and no letter to draft — unless it also gives notice with a notice period (hilfsweise)."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, letter)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "landlord_notice"
+        advice = detail["advice"]
+        assert advice["facts"][0]["title"].startswith("This reads as a notice without notice period")
+        assert advice["draft"] == ("objection" if objection else None)
+        rules = [item["due_date"] for item in detail["items"] if item["origin"] == "rule"]
+        assert rules == (["2027-01-31"] if objection else [])  # two months before 31 Mar 2027
 
 
 async def test_an_operating_cost_statement_keeps_its_kind_and_gets_its_card_on_read(data_dir: Path) -> None:

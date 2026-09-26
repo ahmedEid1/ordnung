@@ -57,7 +57,7 @@ from ordnung.models import (
 )
 from ordnung.rules.advice import letter_advice
 from ordnung.rules.deadlines import parse_date
-from ordnung.rules.routing import names_statement
+from ordnung.rules.routing import alternative_notice, extraordinary_notice, names_statement
 from ordnung.secretary.triggers import Ledger
 
 router = APIRouter(tags=["documents"])
@@ -203,6 +203,7 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
         return None
     change = extraction.change if extraction is not None else None
     arrived = parse_date(document.received_date) or parse_date(document.doc_date)
+    notice = extraction if kind == "landlord_notice" else None
     return letter_advice(
         kind,
         today=today,
@@ -212,6 +213,8 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
         old_amount=change.old_amount if change is not None else None,
         new_amount=change.new_amount if change is not None else None,
         text=store.get_document_text(document.id),
+        extraordinary=notice is not None and extraordinary_notice(notice),
+        alternative=notice is not None and alternative_notice(notice),
     )
 
 
@@ -381,14 +384,17 @@ async def update_document(doc_id: str, patch: DocumentPatch, ctx: CtxDep, today:
     confirmed = changes.pop("received_confirmed", None)
     before = ctx.store.get_document(doc_id)
     kind_changed = "kind" in changes and before is not None and before.kind != changes["kind"]
-    dates_changed = bool({"received_date", "doc_date"} & changes.keys()) or confirmed is True or kind_changed
+    dates_changed = bool({"received_date", "doc_date"} & changes.keys()) or confirmed is True
     document = await asyncio.to_thread(_apply_patch, ctx.store, doc_id, changes)
-    if not (dates_changed and confirmed is not False):
+    # a chosen kind always re-routes the dates; ``received_confirmed: false`` only holds back a date change
+    if not (kind_changed or (dates_changed and confirmed is not False)):
         if changes:
             ctx.bus.publish("document.updated", doc_id=doc_id)
         return document
     async with ledger_lock():
-        changed = await asyncio.to_thread(recompute_document_items, ctx.store, document, today)
+        changed = await asyncio.to_thread(
+            recompute_document_items, ctx.store, document, today, refile_rules=kind_changed
+        )
     if kind_changed:
         # a kind the person chose is kept when the letter is read again (ingest.plan.corrections)
         ctx.store.log_activity(

@@ -199,13 +199,14 @@ def _stated_period(spec: DateSpec, start: date, legal: date, region: str | None,
     period = fmt_period(spec.amount, spec.unit)
     if stated > legal:
         trace.soft(
-            f"The letter gives you {period} (until {fmt_date(stated)}), longer than the 14 days the law sets "
-            f"(until {fmt_date(legal)}). A longer period the seller grants counts — keep the letter as proof. "
-            "We show the earlier date while it lasts."
+            f"The letter gives you {period} (until {fmt_date(stated)}), longer than the 14 days of § 355 BGB "
+            f"(until {fmt_date(legal)}). A longer period counts — the seller may grant it, and some contracts "
+            "have one by law (life insurance: 30 days, § 152 VVG); keep the letter as proof. We show the earlier "
+            "date while it lasts."
         )
     else:
         trace.soft(
-            f"The letter says {period} (until {fmt_date(stated)}), but the law gives 14 days (until "
+            f"The letter says {period} (until {fmt_date(stated)}), but § 355 BGB gives 14 days (until "
             f"{fmt_date(legal)}) — a shorter period doesn't count against you. We show the earlier date while it "
             "lasts."
         )

@@ -1008,6 +1008,9 @@ class LetterAdvice(_Model):
     facts: list[AdviceFact] = Field(default_factory=list)
     help: list[HelpLink] = Field(default_factory=list)
     rule_ids: list[str] = Field(default_factory=list)
+    #: The letter the card offers to draft; ``None`` when none fits (no hardship objection to a notice
+    #: without notice period; court orders get theirs from the verdict's main button).
+    draft: DraftKind | None = None
 
 
 class DocumentDetail(_Model):

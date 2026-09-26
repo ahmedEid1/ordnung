@@ -520,9 +520,21 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "§ 574b Abs. 1, 2 BGB; § 574 BGB",
         "If moving out would be a hardship, you can object to the notice and ask to stay. The objection "
         "must reach the landlord at the latest two months before the tenancy ends; text form is enough "
-        "since 2025. The period is counted backwards and never moves to a later day.",
+        "since 2025. The period is counted backwards and never moves to a later day. Not for a short let "
+        "or a furnished room in the landlord's own flat (§ 549 Abs. 2 BGB).",
         f"{_GII}/bgb/__574b.html",
         "2025-01-01",
+    ),
+    (
+        "bgb_549",
+        "Short lets and furnished rooms in the landlord's flat",
+        "§ 549 Abs. 2, 3 BGB",
+        "The hardship objection (§§ 574–575 BGB) and the rent-increase rules (§§ 557–561 BGB) don't apply to "
+        "a flat let only for temporary use or a furnished room in the flat the landlord lives in; in a "
+        "student hall the rent-increase rules don't apply either. A tenants' association can tell which "
+        "applies to you.",
+        f"{_GII}/bgb/__549.html",
+        None,
     ),
     (
         "bgb_556_3",

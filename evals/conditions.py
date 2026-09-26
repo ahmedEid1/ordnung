@@ -83,6 +83,7 @@ from ordnung.models import ContractTerms, DocumentExtraction, DocumentKind, Item
 from ordnung.rules import RuleContext, compute_contract, scope_for_party_kind
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
+from ordnung.rules.routing import announced_end, letter_kind
 from ordnung.secretary.scam import format_iban, iban_valid, normalize_iban
 
 EVALS_DIR = Path(__file__).resolve().parent
@@ -304,8 +305,11 @@ def ordnung_rule_context(entry: Entry, extraction: DocumentExtraction) -> RuleCo
     """The rules engine's context: the entry's today and Länder, the extracted letter date and scope.
 
     The holiday region is the authority's Land when the letterhead names one (``None`` → nationwide
-    holidays only, which the dataset guarantees gives the legal date); the delivery scope follows the
-    sender's kind, name and remedy notice exactly as in the app (``ingest.plan.rule_context``).
+    holidays only, which the dataset guarantees gives the legal date). As in the app
+    (``ingest.plan.rule_context``), the delivery scope follows the sender's kind, name and remedy notice,
+    and the letter's kind and the end a termination announces route the dates of high-stakes letters
+    (``rules.routing``). Only what the app learns from the person is left out: the benchmark has no
+    confirmed arrival day and no sender record with its Land.
     """
     sender = extraction.sender
     remedy = extraction.remedy
@@ -320,6 +324,8 @@ def ordnung_rule_context(entry: Entry, extraction: DocumentExtraction) -> RuleCo
             remedy_text=remedy_text(remedy),
         ),
         recipient_region=entry.recipient_region or PERSONA_REGION,
+        letter_kind=letter_kind(extraction),
+        end_date=announced_end(extraction),
     )
 
 

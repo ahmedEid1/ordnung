@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Final, Literal
 
-from ordnung.models import ComputationReceipt, ComputationStep, Confidence, DateSpec, PeriodUnit
+from ordnung.models import ComputationReceipt, ComputationStep, Confidence, DateNature, DateSpec, PeriodUnit
 from ordnung.rules import calendar_de, catalog, routing
 from ordnung.rules.delivery import DeliveryChannel, DeliveryScope, resolve_delivery
 from ordnung.rules.explain import (
@@ -84,6 +84,14 @@ _STATUTES: list[tuple[re.Pattern[str], str, tuple[tuple[int, PeriodUnit], ...]]]
     (re.compile(r"\b4\b[^§]{0,20}\bKSchG\b|Kündigungsschutzklage", re.I), "kschg_4", _THREE_WEEKS),
 ]
 _STATUTE_PERIODS = {rule_id: periods for _, rule_id, periods in _STATUTES}
+#: The court rules only bind the dates they are about: the objection or court action (and, for a
+#: Mahnbescheid, paying instead). A hearing or a severance payment whose wording mentions the court
+#: action doesn't follow them.
+_STATUTE_NATURES: dict[str, tuple[DateNature, ...]] = {
+    "zpo_692": ("objection", "payment", "declaration"),
+    "zpo_339": ("objection", "declaration"),
+    "kschg_4": ("objection", "declaration"),
+}
 _SHIFT_RULE_BY_SCOPE: dict[DeliveryScope, str] = {
     "ao": "ao_108_3",
     "vwvfg": "vwvfg_31_3",
@@ -213,10 +221,11 @@ def parse_date(value: str | None) -> date | None:
 def _statute(
     spec: DateSpec, letter_kind: str | None = None
 ) -> tuple[str, tuple[tuple[int, PeriodUnit], ...]] | None:
-    """The statute the DateSpec cites, else the one its kind of letter gives it (court orders)."""
+    """The statute the DateSpec cites, else the one its kind of letter gives it (court orders); a court
+    rule only for a date of a nature it binds (:data:`_STATUTE_NATURES`)."""
     haystack = f"{spec.legal_basis or ''} {spec.text}"
     for pattern, rule_id, periods in _STATUTES:
-        if pattern.search(haystack):
+        if pattern.search(haystack) and spec.nature in _STATUTE_NATURES.get(rule_id, (spec.nature,)):
             return rule_id, periods
     by_kind = routing.kind_statute(letter_kind, spec)
     return (by_kind, _STATUTE_PERIODS[by_kind]) if by_kind else None
@@ -654,8 +663,9 @@ _COURT_NOTES: dict[str, str] = {
 
 def _court_notes(trace: Trace, spec: DateSpec, ctx: RuleContext) -> None:
     """Court deadlines and every date on a court order are never ``high``, whatever the DateSpec's
-    type: a soft note says why, and the court rule is recorded (the pipeline then files no second
-    to-do for it)."""
+    type: a soft note says why, and the court rule is cited. Only a date of a nature the court rule
+    binds is one (:func:`_statute`): a hearing or a severance payment that mentions the court action
+    is not."""
     statute = (_statute(spec, ctx.letter_kind) or (None, ()))[0]
     if statute in _COURT_NOTES:
         trace.use(statute)

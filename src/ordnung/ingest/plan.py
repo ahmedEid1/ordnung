@@ -66,7 +66,9 @@ from ordnung.rules import RuleContext, compute_due, scope_for_party_kind
 from ordnung.rules.deadlines import parse_date
 from ordnung.rules.routing import (
     DerivedDeadline,
+    alternative_notice,
     announced_end,
+    computed_under,
     derived_deadlines,
     extraordinary_notice,
     letter_kind,
@@ -642,12 +644,14 @@ def law_deadlines(
 ) -> list[DerivedDeadline]:
     """The deadlines the law adds to a letter of ``kind`` (:func:`ordnung.rules.routing.derived_deadlines`)
     with the facts its reading gives: the end a termination announces, the letter's date and whether
-    the notice has no notice period."""
+    the notice has no notice period (and gives none in the alternative)."""
     return derived_deadlines(
         kind,
         end=ctx.end_date,
         letter_date=ctx.document_date,
-        extraordinary=extraction is not None and extraordinary_notice(extraction),
+        extraordinary=extraction is not None
+        and extraordinary_notice(extraction)
+        and not alternative_notice(extraction),
     )
 
 
@@ -659,31 +663,44 @@ def sync_rule_items(
     *,
     today: date,
     postal_buffer_days: int,
+    create: bool = True,
 ) -> list[Item]:
     """File the deadlines the law adds to a high-stakes letter as to-dos (``origin="rule"``).
 
-    A deadline is left out when one of the letter's own to-dos already follows its rule (its receipt
-    cites the rule id). Dates come straight from the rules engine: there is no quote to grade. Rule
-    to-dos the letter no longer has (its kind was corrected) are deleted unless the person acted on
-    them; those the person edited are kept as they are. Returns the letter's rule to-dos.
+    A deadline is left out when one of the letter's own to-dos was computed under its rule
+    (:func:`~ordnung.rules.routing.computed_under`). Dates come straight from the rules engine: there
+    is no quote to grade. Rule to-dos the letter no longer has (its kind was corrected) are deleted
+    unless the person acted on them; those the person edited are kept as they are. With ``create``
+    false (a recompute after the region, buffer or arrival day changed) only the rule to-dos that still
+    exist are updated: one the person deleted stays deleted — only reading the letter or choosing its
+    kind files it again. Returns the letter's rule to-dos.
     """
-    covered = {
-        rule_id
+    own = [
+        (item.date_spec, item.computation.rule_ids)
         for item in store.list_items(doc_id=document.id)
-        if item.origin == "extracted" and item.computation is not None
-        for rule_id in item.computation.rule_ids
-    }
-    wanted = [entry for entry in derived if entry.rule_id not in covered]
+        if item.origin == "extracted" and item.date_spec is not None and item.computation is not None
+    ]
+    wanted = [
+        entry
+        for entry in derived
+        if not any(computed_under(spec, rule_ids, entry.rule_id) for spec, rule_ids in own)
+    ]
     slots = {RULE_SLOT_PREFIX + entry.rule_id for entry in wanted}
+    existing: set[str | None] = set()
     for item in store.list_items(doc_id=document.id):
-        stale = item.origin == "rule" and item.slot_key not in slots
-        if stale and item.status == "open" and not item.user_modified:
+        if item.origin != "rule":
+            continue
+        existing.add(item.slot_key)
+        if item.slot_key not in slots and item.status == "open" and not item.user_modified:
             store.delete_item(item.id)
     filed = []
     for entry in wanted:
+        slot = RULE_SLOT_PREFIX + entry.rule_id
+        if not create and slot not in existing:
+            continue
         receipt = compute_due(entry.spec, ctx, postal_buffer_days=postal_buffer_days)
         fields = _rule_item_fields(entry, receipt, document=document, today=today)
-        filed.append(store.upsert_item_by_slot(document.id, RULE_SLOT_PREFIX + entry.rule_id, **fields))
+        filed.append(store.upsert_item_by_slot(document.id, slot, **fields))
     return filed
 
 

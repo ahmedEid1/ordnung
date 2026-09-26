@@ -534,6 +534,97 @@ async def test_extension_request_defaults_to_the_letters_deadline(
     assert _check(draft, "has_reference")
 
 
+@pytest.mark.parametrize("letter", ["order", "enforcement", "dismissal"])
+async def test_no_more_time_is_asked_for_a_deadline_the_law_sets(
+    ctx: AppContext, ids: dict[str, str], letter: str
+) -> None:
+    """A court order's two weeks and a dismissal's three weeks can't be extended by asking (§ 224 ZPO,
+    § 4 KSchG): the letter is refused, and the refusal points to what helps."""
+    doc_id = ids.get(letter) or _doc(
+        ctx, "dismissal", kind="dismissal", title="Dismissal", doc_date="2026-09-24", party_id=ids["shop"]
+    )
+    with pytest.raises(DraftError, match=r"set by law|can't be extended"):
+        await compose(ctx, "extension_request", doc_id=doc_id, details=LetterDetails(until="2026-11-15"))
+
+
+async def test_instalments_are_offered_to_the_claimant_not_the_court(
+    ctx: AppContext, ids: dict[str, str]
+) -> None:
+    details = LetterDetails(instalment=20, first_instalment="2026-10-15", amount=111.88)
+    for letter in ("order", "enforcement"):
+        with pytest.raises(DraftError, match="the claimant does"):
+            await compose(ctx, "payment_plan", doc_id=ids[letter], details=details)
+    claimant = ctx.store.add_party(name="Streamline Media GmbH", kind="company").id
+    offer = await compose(ctx, "payment_plan", party_id=claimant, details=details)
+    assert offer.recipient_block.startswith("Streamline Media GmbH")
+
+
+async def test_the_current_deadline_is_never_one_the_law_sets(ctx: AppContext, ids: dict[str, str]) -> None:
+    """An objection period or a deadline the law adds is no "deadline you set me": the extension letter
+    only takes a deadline someone set (here the tax office's own reply date, not the Einspruch)."""
+    ctx.store.add_item(
+        kind="deadline",
+        title="Einspruch",
+        due_date="2026-10-01",
+        doc_id=ids["tax"],
+        party_id=ids["fa"],
+        date_spec=DateSpec(type="relative", nature="objection"),
+    )
+    draft = await compose(
+        ctx, "extension_request", doc_id=ids["tax"], details=LetterDetails(until="2026-11-15")
+    )
+    assert "bis zum 12.10.2026 gesetzte Frist" in draft.body
+    assert draft.send_guidance is not None and draft.send_guidance.must_arrive_by == "2026-10-12"
+    # with only the law's deadlines on the letter, the person names the deadline themselves
+    notice = await compose(
+        ctx, "extension_request", doc_id=ids["notice"], details=LetterDetails(until="2026-11-15")
+    )
+    assert notice.send_guidance is not None and notice.send_guidance.must_arrive_by is None
+
+
+async def test_a_letters_title_never_becomes_what_was_ordered(ctx: AppContext, ids: dict[str, str]) -> None:
+    """The title is the model's English summary of the letter: the withdrawal asks for the order itself."""
+    with pytest.raises(DraftError, match="what you ordered"):
+        await compose(ctx, "withdrawal", doc_id=ids["statement"])
+    typed = await compose(
+        ctx,
+        "withdrawal",
+        doc_id=ids["statement"],
+        details=LetterDetails(subject_matter="Kaffeemaschine KM-200"),
+    )
+    assert "Vertrag über „Kaffeemaschine KM-200“" in typed.body
+    assert "Operating-cost statement" not in typed.body
+
+
+async def test_letters_to_a_court_are_never_sent_by_email(ctx: AppContext, ids: dict[str, str]) -> None:
+    court = ctx.store.get_party(ctx.store.get_document(ids["order"]).party_id or "")  # type: ignore[union-attr]
+    assert court is not None
+    for kind, details in (
+        ("address_change", LetterDetails(moved_on="2026-10-01")),
+        ("general_reply", None),
+    ):
+        draft = await compose(ctx, kind, party_id=court.id, details=details)
+        assert draft.send_guidance is not None
+        email = next(c for c in draft.send_guidance.channels if c.channel == "email")
+        assert not email.allowed and not email.recommended
+        assert (
+            draft.send_guidance.channels[0].recommended
+            and draft.send_guidance.channels[0].channel == "letter"
+        )
+    typed = await compose(
+        ctx,
+        "data_access",
+        details=LetterDetails(recipient="Amtsgericht Hagen\nHeinitzstraße 42\n58097 Hagen"),
+    )
+    assert typed.send_guidance is not None
+    assert not next(c for c in typed.send_guidance.channels if c.channel == "email").allowed
+    # anyone else: e-mail stays the quick way
+    shop = await compose(
+        ctx, "address_change", party_id=ids["shop"], details=LetterDetails(moved_on="2026-10-01")
+    )
+    assert shop.send_guidance is not None and shop.send_guidance.channels[0].channel == "email"
+
+
 async def test_payment_plan_with_the_tax_office(ctx: AppContext, ids: dict[str, str]) -> None:
     details = LetterDetails(instalment=200, first_instalment="2026-11-01")
     draft = await compose(ctx, "payment_plan", doc_id=ids["tax"], details=details)
