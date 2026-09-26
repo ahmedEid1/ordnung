@@ -1,0 +1,95 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h4e3ff5a1",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"1b11a714b7a86b1ad7c8543043317733f83b6ab3a12a991f02b43d2aed0b12e8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-12-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-municipal_decision-D2"
+    ],
+    "prompt_head": "Today is Thursday, 2025-12-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Musterstadt · Der Oberbürgermeister · Ordnungsamt\",\"document_date\":\"2025-12-23\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.3-AB-2025-1187\"}],\"amounts\":[480],\"items\":[{\"kind\":\"task\",\"title\":\"Remove green-waste deposits from municipal land\",\"quote\":\"Ich fordere Sie gemäß § 14 OBG NRW auf, die Ablagerungen bis zum 20.01.2026 vollständig zu beseitigen.\",\"computation\":\"The letter states a fixed calendar date for compliance: 20.01.2026. This date is printed directly, so no further counting is needed. 20 January 2026 is a Tuesday, a normal working day, so it is not shifted.\",\"due_date\":\"2026-01-20\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Klage (lawsuit) with the Verwaltungsgericht against the Ordnungsverfügung\",\"quote\":\"Die Klage muss binnen eines Monats ab Bekanntgabe des Bescheids schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle erhoben werden.\",\"computation\":\"Letter dated Tue 23.12.2025, sent by an authority by ordinary post: under § 41 Abs. 2 VwVfG it counts as delivered (bekanntgegeben) on the 4th day after posting, i.e. Sat 27.12.2025; this deemed-delivery day does not shift for a weekend. Counting the one-month period starts the next day under § 187 Abs. 1 BGB, so the month runs from 28.12.2025 and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number as the delivery day, i.e. 27.01.2026 (Tuesday). That day is a normal working day in NRW, so no further shift applies. The lawsuit must reach the court by this date.\",\"due_date\":\"2026-01-27\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter threatens 'Ersatzvornahme' (substitute performance) at an estimated cost of 480,00 € if the deadline of 20.01.2026 is missed, but this amount is not yet due and no payment is currently demanded.\",\"The deemed-delivery date (27.12.2025, the 4th day after the letter's date) is an assumption based on the printed document date; if the letter was actually posted later or received later, the one-month Klage deadline of 27.01.2026 would shift accordingly — confirm the actual postmark or arrival date if possible.\",\"No Widerspruch is possible here ('ein Vorverfahren entfällt') — the only remedy is filing a Klage directly with the Verwaltungsgericht Musterstadt; get legal advice (e.g. Verbraucherzentrale or a lawyer) well before the deadline if the person wants to contest the order.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Musterstadt · Der Oberbürgermeister · Ordnungsamt",
+      "document_date": "2025-12-23",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.3-AB-2025-1187"
+        }
+      ],
+      "amounts": [
+        480
+      ],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Remove green-waste deposits from municipal land",
+          "quote": "Ich fordere Sie gemäß § 14 OBG NRW auf, die Ablagerungen bis zum 20.01.2026 vollständig zu beseitigen.",
+          "computation": "The letter states a fixed calendar date for compliance: 20.01.2026. This date is printed directly, so no further counting is needed. 20 January 2026 is a Tuesday, a normal working day, so it is not shifted.",
+          "due_date": "2026-01-20",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Klage (lawsuit) with the Verwaltungsgericht against the Ordnungsverfügung",
+          "quote": "Die Klage muss binnen eines Monats ab Bekanntgabe des Bescheids schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle erhoben werden.",
+          "computation": "Letter dated Tue 23.12.2025, sent by an authority by ordinary post: under § 41 Abs. 2 VwVfG it counts as delivered (bekanntgegeben) on the 4th day after posting, i.e. Sat 27.12.2025; this deemed-delivery day does not shift for a weekend. Counting the one-month period starts the next day under § 187 Abs. 1 BGB, so the month runs from 28.12.2025 and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number as the delivery day, i.e. 27.01.2026 (Tuesday). That day is a normal working day in NRW, so no further shift applies. The lawsuit must reach the court by this date.",
+          "due_date": "2026-01-27",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter threatens 'Ersatzvornahme' (substitute performance) at an estimated cost of 480,00 € if the deadline of 20.01.2026 is missed, but this amount is not yet due and no payment is currently demanded.",
+        "The deemed-delivery date (27.12.2025, the 4th day after the letter's date) is an assumption based on the printed document date; if the letter was actually posted later or received later, the one-month Klage deadline of 27.01.2026 would shift accordingly — confirm the actual postmark or arrival date if possible.",
+        "No Widerspruch is possible here ('ein Vorverfahren entfällt') — the only remedy is filing a Klage directly with the Verwaltungsgericht Musterstadt; get legal advice (e.g. Verbraucherzentrale or a lawyer) well before the deadline if the person wants to contest the order."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3653,
+      "cache_read_tokens": 25939,
+      "cache_creation_tokens": 6923,
+      "cost_usd": 0.0694218,
+      "duration_ms": 34764,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 74 VwGO, § 41 VwVfG NRW",
+            "text": "Die Klage muss binnen eines Monats ab Bekanntgabe des Bescheids schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle erhoben werden."
+          },
+          "document_date": "2025-12-23",
+          "sender_kind": "authority",
+          "sender_name": "Stadt Musterstadt - Ordnungsamt",
+          "remedy_type": "klage",
+          "region": "NW",
+          "recipient_region": "NW",
+          "today": "2025-12-25"
+        },
+        "result": "{\"due_date\":\"2026-01-27\",\"weekday\":\"Tuesday\",\"send_by\":\"2026-01-21\",\"summary\":\"Letter dated Tue 23 Dec 2025 counts as delivered on Sat 27 Dec (this day does not move for this kind of letter); one month later is Tue 27 Jan 2026.\",\"confidence\":\"medium\",\"warnings\":[\"This is the deadline for a court action (Klage). Ordnung can't draft or file court actions — get advice (e.g. a Verbraucherzentrale or a lawyer) well before this date.\"],\"steps\":[{\"label\":\"Posting day: Tue 23 Dec 2025 (the letter's date; the real posting day can only be later)\",\"date\":\"2025-12-23\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Sat 27 Dec 2025\",\"date\":\"2025-12-27\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"For general administrative letters this day does not move, even though it is a Saturday\",\"date\":\"2025-12-27\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"Counting starts the day after Sat 27 Dec 2025\",\"date\":\"2025-12-27\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Tue 27 Jan 2026\",\"date\":\"2026-01-27\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 27 Jan 2026 is a working day, so it stays\",\"date\":\"2026-01-27\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Wed 21 Jan 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-01-21\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"vwvfg_41_2\",\"title\":\"Authority letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__41.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"klage_1_month\",\"title\":\"Court action (Klage): one month\",\"citation\":\"§ 74 VwGO; § 47 FGO; § 87 SGG\",\"url\":\"https://www.gesetze-im-internet.de/vwgo/__74.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-12-25\",\"letter_date\":\"2025-12-23\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Nordrhein-Westfalen\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h4e3ff5a1",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"99011373acaa0971198ea3ba11e5962fc908cf79fb5cd1bbef4c66be2d35d86e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-09-21\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-fine_bussgeld-D2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-09-21 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Zentrale Bußgeldstelle Musterland\",\"document_date\":\"2025-09-16\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZBS-25-7781204\"},{\"label\":\"Kennzeichen\",\"value\":\"KS-DM 88\"}],\"amounts\":[70,25,3.5,98.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Frist: zwei Wochen nach dem Tag der Zustellung.\",\"computation\":\"The envelope's Zustellungsurkunde (page 2) records actual delivery on 19.09.2025 (Friday) via förmliche Zustellung. Per §187 Abs.1 BGB / §43 Abs.1 StPO the day of delivery itself is not counted; the two-week period starts 20.09.2025 and would end two weeks later on Friday 03.10.2025. That date is Tag der Deutschen Einheit, a nationwide public holiday, so under §43 Abs.2 StPO / §31 Abs.3 VwVfG the deadline shifts to the next working day, Monday 06.10.2025.\",\"due_date\":\"2025-10-06\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (Gesamtbetrag)\",\"quote\":\"Zahlung: Gesamtbetrag binnen zwei Wochen ab Rechtskraft auf das unten angegebene Konto\",\"computation\":\"Payment is due two weeks after the decision becomes final (Rechtskraft), which only occurs once the Einspruch period expires without an appeal being filed. Assuming no Einspruch is lodged, the Einspruch deadline (computed above) expires 06.10.2025, so Rechtskraft is reached at the end of that day. Counting the two-week payment period from the day after (§187 Abs.1 BGB), it runs from 07.10.2025 to Monday 20.10.2025 (no weekend/holiday adjustment needed, as 20.10.2025 is a normal Monday). This date is provisional: if an Einspruch is filed, Rechtskraft does not occur and this payment deadline does not apply.\",\"due_date\":\"2025-10-20\",\"confidence\":\"medium\",\"amount\":98.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (20.10.2025) assumes no Einspruch is filed by the 06.10.2025 deadline; if an Einspruch is lodged, the fine is not yet final (keine Rechtskraft) and this payment deadline does not apply — check with the Bußgeldstelle.\",\"The IBAN given for payment (DE34 5205 0000 0000 0034 34) is a valid German IBAN with a plausible bank code, but as always verify it matches official Zentrale Bußgeldstelle Musterland details before paying, since bank details from a single letter should not be trusted blindly.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Zentrale Bußgeldstelle Musterland",
+      "document_date": "2025-09-16",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZBS-25-7781204"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "KS-DM 88"
+        }
+      ],
+      "amounts": [
+        70,
+        25,
+        3.5,
+        98.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Frist: zwei Wochen nach dem Tag der Zustellung.",
+          "computation": "The envelope's Zustellungsurkunde (page 2) records actual delivery on 19.09.2025 (Friday) via förmliche Zustellung. Per §187 Abs.1 BGB / §43 Abs.1 StPO the day of delivery itself is not counted; the two-week period starts 20.09.2025 and would end two weeks later on Friday 03.10.2025. That date is Tag der Deutschen Einheit, a nationwide public holiday, so under §43 Abs.2 StPO / §31 Abs.3 VwVfG the deadline shifts to the next working day, Monday 06.10.2025.",
+          "due_date": "2025-10-06",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (Gesamtbetrag)",
+          "quote": "Zahlung: Gesamtbetrag binnen zwei Wochen ab Rechtskraft auf das unten angegebene Konto",
+          "computation": "Payment is due two weeks after the decision becomes final (Rechtskraft), which only occurs once the Einspruch period expires without an appeal being filed. Assuming no Einspruch is lodged, the Einspruch deadline (computed above) expires 06.10.2025, so Rechtskraft is reached at the end of that day. Counting the two-week payment period from the day after (§187 Abs.1 BGB), it runs from 07.10.2025 to Monday 20.10.2025 (no weekend/holiday adjustment needed, as 20.10.2025 is a normal Monday). This date is provisional: if an Einspruch is filed, Rechtskraft does not occur and this payment deadline does not apply.",
+          "due_date": "2025-10-20",
+          "confidence": "medium",
+          "amount": 98.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (20.10.2025) assumes no Einspruch is filed by the 06.10.2025 deadline; if an Einspruch is lodged, the fine is not yet final (keine Rechtskraft) and this payment deadline does not apply — check with the Bußgeldstelle.",
+        "The IBAN given for payment (DE34 5205 0000 0000 0034 34) is a valid German IBAN with a plausible bank code, but as always verify it matches official Zentrale Bußgeldstelle Musterland details before paying, since bank details from a single letter should not be trusted blindly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3926,
+      "cache_read_tokens": 27727,
+      "cache_creation_tokens": 8968,
+      "cost_usd": 0.08068940000000001,
+      "duration_ms": 39732,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§43 StPO analog, §46 OWiG",
+            "text": "Frist: zwei Wochen nach dem Tag der Zustellung."
+          },
+          "document_date": "2025-09-16",
+          "received_date": "2025-09-19",
+          "sender_kind": "authority",
+          "sender_name": "Zentrale Bußgeldstelle Musterland",
+          "remedy_type": "einspruch",
+          "region": "NW",
+          "recipient_region": "NW",
+          "today": "2025-09-21"
+        },
+        "result": "{\"due_date\":\"2025-10-06\",\"weekday\":\"Monday\",\"send_by\":\"2025-09-29\",\"summary\":\"Two weeks after the day you received it (Fri 19 Sep 2025) is Fri 3 Oct 2025, a public holiday, Tag der Deutschen Einheit, so the deadline moves to Mon 6 Oct 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Fri 19 Sep 2025\",\"date\":\"2025-09-19\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Fri 3 Oct 2025\",\"date\":\"2025-10-03\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Fri 3 Oct 2025 is a public holiday, Tag der Deutschen Einheit, so the deadline moves to Mon 6 Oct 2025\",\"date\":\"2025-10-06\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Mon 29 Sep 2025 to allow 4 business days for a letter to arrive\",\"date\":\"2025-09-29\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-09-21\",\"letter_date\":\"2025-09-16\",\"received_date\":\"2025-09-19\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Nordrhein-Westfalen\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2025,
+          "region": "NW"
+        },
+        "result": "{\"year\":2025,\"region\":\"NW\",\"calendar\":\"Nordrhein-Westfalen\",\"holidays\":[{\"date\":\"2025-01-01\",\"weekday\":\"Wednesday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2025-04-18\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2025-04-21\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2025-05-01\",\"weekday\":\"Thursday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2025-05-29\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2025-06-09\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2025-06-19\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2025-10-03\",\"weekday\":\"Friday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2025-11-01\",\"weekday\":\"Saturday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2025-12-25\",\"weekday\":\"Thursday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2025-12-26\",\"weekday\":\"Friday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "explicit_date",
+            "anchor_date": "2025-10-06",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§107 OWiG / Zahlungsfrist ab Rechtskraft",
+            "text": "Gesamtbetrag binnen zwei Wochen ab Rechtskraft auf das unten angegebene Konto"
+          },
+          "sender_kind": "authority",
+          "sender_name": "Zentrale Bußgeldstelle Musterland",
+          "region": "NW",
+          "today": "2025-09-21"
+        },
+        "result": "{\"due_date\":\"2025-10-20\",\"weekday\":\"Monday\",\"send_by\":\"2025-10-17\",\"summary\":\"Two weeks after Mon 6 Oct 2025 is Mon 20 Oct 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Mon 6 Oct 2025\",\"date\":\"2025-10-06\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Mon 20 Oct 2025\",\"date\":\"2025-10-20\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 20 Oct 2025 is a working day, so it stays\",\"date\":\"2025-10-20\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Fri 17 Oct 2025 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2025-10-17\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2025-09-21\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Nordrhein-Westfalen\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE34 5205 0000 0000 0034 34"
+        },
+        "result": "{\"iban\":\"DE34 5205 0000 0000 0034 34\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"52050000\"},\"account_number\":\"0000003434\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website before paying, and never pay to an IBAN only a new letter or e-mail gave you.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h4e3ff5a1",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"f3cd471b1eaf68281be70b33652650bc34202c62263f8dc694f149367ba3fcfe\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-10-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-municipal_decision-C1"
+    ],
+    "prompt_head": "Today is Friday, 2026-10-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Land Schleswig-Holstein · Der Landrat, Kreis Beispielförde – Fachdienst Straßenverkehr, Fahrerlaubnisse\",\"document_date\":\"2026-09-29\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"FD 3.40-FB-2026-0093\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Fahrtenbuchauflage\",\"quote\":\"Der Widerspruch muss binnen eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, schriftlich, elektronisch oder zur Niederschrift beim Kreis Beispielförde, Kreishaus, Förder Straße 3, 24103 Beispielförde, erhoben werden.\",\"computation\":\"Letter is dated Tue 29.09.2026 (posting day, real posting can only be later). Under § 41 Abs. 2 VwVfG a letter posted by a German authority counts as delivered on the 4th day after posting, i.e. Sat 03.10.2026; for this rule the day does not shift even though it falls on a Saturday/public holiday (Tag der Deutschen Einheit). The one-month Widerspruch period of § 70 VwGO then starts the following day (§ 187 Abs. 1 BGB), i.e. 04.10.2026, and ends one month later on the day with the same number, Tue 03.11.2026 (§ 188 Abs. 2 BGB). 03.11.2026 is a Tuesday and not a public holiday in Schleswig-Holstein, so no further shift applies (§ 31 Abs. 3 VwVfG).\",\"due_date\":\"2026-11-03\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Start of the six-month Fahrtenbuch (logbook) obligation\",\"quote\":\"Die Auflage beginnt mit Eintritt der Bestandskraft dieses Bescheids.\",\"computation\":\"The order becomes 'bestandskräftig' (legally final) once the Widerspruch period has expired unused, i.e. the day after the Widerspruch deadline computed above (03.11.2026), assuming no Widerspruch is filed and no other event (e.g. a later decision on a filed Widerspruch) intervenes. On that assumption the six-month logbook duty would start around 04.11.2026 and run until roughly early May 2027. If a Widerspruch is filed, Bestandskraft — and thus the start of the obligation — is postponed until that procedure (and any court case) ends, so the exact start date cannot be fixed from this letter alone.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The exact start (and therefore end) date of the six-month Fahrtenbuch obligation cannot be fixed from this letter: it depends on when the notice becomes legally final (Bestandskraft), which is only certain if no Widerspruch is filed within the deadline shown above.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Land Schleswig-Holstein · Der Landrat, Kreis Beispielförde – Fachdienst Straßenverkehr, Fahrerlaubnisse",
+      "document_date": "2026-09-29",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "FD 3.40-FB-2026-0093"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Fahrtenbuchauflage",
+          "quote": "Der Widerspruch muss binnen eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, schriftlich, elektronisch oder zur Niederschrift beim Kreis Beispielförde, Kreishaus, Förder Straße 3, 24103 Beispielförde, erhoben werden.",
+          "computation": "Letter is dated Tue 29.09.2026 (posting day, real posting can only be later). Under § 41 Abs. 2 VwVfG a letter posted by a German authority counts as delivered on the 4th day after posting, i.e. Sat 03.10.2026; for this rule the day does not shift even though it falls on a Saturday/public holiday (Tag der Deutschen Einheit). The one-month Widerspruch period of § 70 VwGO then starts the following day (§ 187 Abs. 1 BGB), i.e. 04.10.2026, and ends one month later on the day with the same number, Tue 03.11.2026 (§ 188 Abs. 2 BGB). 03.11.2026 is a Tuesday and not a public holiday in Schleswig-Holstein, so no further shift applies (§ 31 Abs. 3 VwVfG).",
+          "due_date": "2026-11-03",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Start of the six-month Fahrtenbuch (logbook) obligation",
+          "quote": "Die Auflage beginnt mit Eintritt der Bestandskraft dieses Bescheids.",
+          "computation": "The order becomes 'bestandskräftig' (legally final) once the Widerspruch period has expired unused, i.e. the day after the Widerspruch deadline computed above (03.11.2026), assuming no Widerspruch is filed and no other event (e.g. a later decision on a filed Widerspruch) intervenes. On that assumption the six-month logbook duty would start around 04.11.2026 and run until roughly early May 2027. If a Widerspruch is filed, Bestandskraft — and thus the start of the obligation — is postponed until that procedure (and any court case) ends, so the exact start date cannot be fixed from this letter alone.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The exact start (and therefore end) date of the six-month Fahrtenbuch obligation cannot be fixed from this letter: it depends on when the notice becomes legally final (Bestandskraft), which is only certain if no Widerspruch is filed within the deadline shown above."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2974,
+      "cache_read_tokens": 25614,
+      "cache_creation_tokens": 6311,
+      "cost_usd": 0.0601188,
+      "duration_ms": 33929,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 70 VwGO i.V.m. Bekanntgabe nach § 41 LVwG SH",
+            "text": "Der Widerspruch muss binnen eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, schriftlich, elektronisch oder zur Niederschrift beim Kreis Beispielförde ... erhoben werden."
+          },
+          "document_date": "2026-09-29",
+          "sender_kind": "authority",
+          "sender_name": "Kreis Beispielförde - Fachdienst Straßenverkehr",
+          "region": "SH",
+          "recipient_region": "SH",
+          "remedy_type": "widerspruch",
+          "today": "2026-10-02"
+        },
+        "result": "{\"due_date\":\"2026-11-03\",\"weekday\":\"Tuesday\",\"send_by\":\"2026-10-28\",\"summary\":\"Letter dated Tue 29 Sep 2026 counts as delivered on Sat 3 Oct (this day does not move for this kind of letter); one month later is Tue 3 Nov 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Posting day: Tue 29 Sep 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-09-29\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Sat 3 Oct 2026\",\"date\":\"2026-10-03\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"For general administrative letters this day does not move, even though it is a public holiday, Tag der Deutschen Einheit\",\"date\":\"2026-10-03\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"Counting starts the day after Sat 3 Oct 2026\",\"date\":\"2026-10-03\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Tue 3 Nov 2026\",\"date\":\"2026-11-03\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 3 Nov 2026 is a working day, so it stays\",\"date\":\"2026-11-03\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Wed 28 Oct 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-10-28\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"vwvfg_41_2\",\"title\":\"Authority letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__41.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwgo_70\",\"title\":\"Objection to an authority (Widerspruch): one month\",\"citation\":\"§ 70 Abs. 1 VwGO\",\"url\":\"https://www.gesetze-im-internet.de/vwgo/__70.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-10-02\",\"letter_date\":\"2026-09-29\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Schleswig-Holstein\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE32 2105 0170 0000 0090 90"
+        },
+        "result": "{\"iban\":\"DE32 2105 0170 0000 0090 90\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"21050170\"},\"account_number\":\"0000009090\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website before paying, and never pay to an IBAN only a new letter or e-mail gave you.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h4e3ff5a1",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"ca036a92be9ec87e205dcd6ea364f8b045c11a6f43c40aeaa4dee4249108a73e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-23\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-social_decision-C2"
+    ],
+    "prompt_head": "Today is Saturday, 2026-05-23 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Allgemeine Musterkasse\",\"document_date\":\"2026-05-21\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"A204518872\"},{\"label\":\"Beitragskonto\",\"value\":\"7700.1245.08\"}],\"amounts\":[412.65,118.2,530.85],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against contribution assessment\",\"quote\":\"Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich, elektronisch oder zur Niederschrift bei der Allgemeinen Musterkasse, Gesundheitsplatz 5, 30159 Musterstadt, zu erheben.\",\"computation\":\"Letter dated Thu 21 May 2026. For a social-law letter (§ 37 Abs. 2 SGB X), it counts as delivered on the 4th day after posting: Mon 25 May 2026 (this day does not shift even though it falls on Pfingstmontag, a public holiday, per social-law rules). The one-month objection period (§ 84 SGG) starts the next day (§ 187 Abs. 1 BGB) and ends one month later on the same-numbered day: Thu 25 June 2026 (§ 188 Abs. 1, 2 BGB). That day is a normal business day, so no further shift applies.\",\"due_date\":\"2026-06-25\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"First monthly contribution (June 2026) due by direct debit\",\"quote\":\"Die Beiträge werden jeweils zum 15. des Folgemonats per Lastschrift eingezogen.\",\"computation\":\"Voluntary membership starts 01.06.2026, so the first month covered is June 2026. Contributions are collected on the 15th of the following month, i.e. 15 July 2026. 15 July 2026 falls on a Wednesday, a normal business day, so no weekend/holiday shift is needed. Later months follow the same 15th-of-the-following-month pattern (recurring, only the first due date is given as an example).\",\"due_date\":\"2026-07-15\",\"confidence\":\"high\",\"amount\":530.85}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The contributions (530.85 € total, made up of 412.65 € health and 118.20 € nursing care insurance) are collected automatically by direct debit (Lastschrift) each month on the 15th of the following month; verify the debiting account matches your own and that no other IBAN is involved.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Allgemeine Musterkasse",
+      "document_date": "2026-05-21",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "A204518872"
+        },
+        {
+          "label": "Beitragskonto",
+          "value": "7700.1245.08"
+        }
+      ],
+      "amounts": [
+        412.65,
+        118.2,
+        530.85
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against contribution assessment",
+          "quote": "Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich, elektronisch oder zur Niederschrift bei der Allgemeinen Musterkasse, Gesundheitsplatz 5, 30159 Musterstadt, zu erheben.",
+          "computation": "Letter dated Thu 21 May 2026. For a social-law letter (§ 37 Abs. 2 SGB X), it counts as delivered on the 4th day after posting: Mon 25 May 2026 (this day does not shift even though it falls on Pfingstmontag, a public holiday, per social-law rules). The one-month objection period (§ 84 SGG) starts the next day (§ 187 Abs. 1 BGB) and ends one month later on the same-numbered day: Thu 25 June 2026 (§ 188 Abs. 1, 2 BGB). That day is a normal business day, so no further shift applies.",
+          "due_date": "2026-06-25",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "First monthly contribution (June 2026) due by direct debit",
+          "quote": "Die Beiträge werden jeweils zum 15. des Folgemonats per Lastschrift eingezogen.",
+          "computation": "Voluntary membership starts 01.06.2026, so the first month covered is June 2026. Contributions are collected on the 15th of the following month, i.e. 15 July 2026. 15 July 2026 falls on a Wednesday, a normal business day, so no weekend/holiday shift is needed. Later months follow the same 15th-of-the-following-month pattern (recurring, only the first due date is given as an example).",
+          "due_date": "2026-07-15",
+          "confidence": "high",
+          "amount": 530.85
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The contributions (530.85 € total, made up of 412.65 € health and 118.20 € nursing care insurance) are collected automatically by direct debit (Lastschrift) each month on the 15th of the following month; verify the debiting account matches your own and that no other IBAN is involved."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3556,
+      "cache_read_tokens": 25512,
+      "cache_creation_tokens": 6343,
+      "cost_usd": 0.0660464,
+      "duration_ms": 35602,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "legal_basis": "§ 84 SGG i.V.m. § 37 SGB X",
+            "text": "Die Frist dafür beträgt einen Monat ab Bekanntgabe"
+          },
+          "document_date": "2026-05-21",
+          "sender_kind": "health_insurer",
+          "sender_name": "Allgemeine Musterkasse",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "widerspruch"
+        },
+        "result": "{\"due_date\":\"2026-06-25\",\"weekday\":\"Thursday\",\"send_by\":\"2026-06-19\",\"summary\":\"Letter dated Thu 21 May 2026 counts as delivered on Mon 25 May (this day does not move for this kind of letter); one month later is Thu 25 Jun 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Posting day: Thu 21 May 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-05-21\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Mon 25 May 2026\",\"date\":\"2026-05-25\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"For social-law letters this day does not move, even though it is a public holiday, Pfingstmontag\",\"date\":\"2026-05-25\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"Counting starts the day after Mon 25 May 2026\",\"date\":\"2026-05-25\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 25 Jun 2026\",\"date\":\"2026-06-25\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 25 Jun 2026 is a working day, so it stays\",\"date\":\"2026-06-25\",\"rule_id\":\"sgbx_26_3\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\"},{\"label\":\"Send by Fri 19 Jun 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-06-19\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"sgbx_37_2\",\"title\":\"Social-law letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__37.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"sgg_84\",\"title\":\"Objection in social law (Widerspruch): one month\",\"citation\":\"§ 84 Abs. 1 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgg/__84.html\"},{\"id\":\"sgbx_26_3\",\"title\":\"Weekend and holiday shift (social law)\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__26.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-05-23\",\"letter_date\":\"2026-05-21\",\"delivery_law\":\"social law (§ 37 SGB X)\",\"holiday_calendar\":\"Nordrhein-Westfalen\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

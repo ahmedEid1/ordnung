@@ -1,0 +1,96 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h4e3ff5a1",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"40073fead6afba208c4cc03dc7e6dc49ce14fbe295c6cb05dfbbda573328b9e2\",\"mode\":\"text\",\"region\":\"SN\",\"today\":\"2025-10-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-social_decision-B1"
+    ],
+    "prompt_head": "Today is Friday, 2025-10-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen (SN), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Jobcenter Musterlingen\",\"document_date\":\"2025-10-15\",\"references\":[{\"label\":\"BG-Nummer\",\"value\":\"04701//0081542\"},{\"label\":\"Kundennummer\",\"value\":\"912D415377\"}],\"amounts\":[1126.4],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit last three months' bank statements\",\"quote\":\"Bitte reichen Sie bis zum 05.11.2025 die Kontoauszüge der letzten drei Monate ein.\",\"computation\":\"The letter states a fixed calendar date: 05.11.2025. No period to count, no weekend/holiday adjustment needed since Wed 5 Nov 2025 is a regular business day.\",\"due_date\":\"2025-11-05\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Widerspruch (objection) against the Änderungsbescheid\",\"quote\":\"Gegen diesen Bescheid kann jede betroffene Person innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.\",\"computation\":\"Letter dated Wed 15.10.2025; under § 37 Abs. 2 SGB X a posted social-law letter counts as delivered on the 4th day after posting, i.e. Sun 19.10.2025 (this day does not shift for social-law deemed delivery). Under § 187 Abs. 1 BGB the one-month period starts the next day; under § 188 Abs. 1 BGB it ends one month later on the day with the same number, i.e. Wed 19.11.2025. That day is Buß- und Bettag, a public holiday in Sachsen, so under § 26 Abs. 3 SGB X the deadline shifts to the next business day, Thu 20.11.2025.\",\"due_date\":\"2025-11-20\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter warns that benefits from December cannot be approved without the requested bank statements — make sure to send them by 05.11.2025 to avoid an interruption in payments.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Jobcenter Musterlingen",
+      "document_date": "2025-10-15",
+      "references": [
+        {
+          "label": "BG-Nummer",
+          "value": "04701//0081542"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "912D415377"
+        }
+      ],
+      "amounts": [
+        1126.4
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit last three months' bank statements",
+          "quote": "Bitte reichen Sie bis zum 05.11.2025 die Kontoauszüge der letzten drei Monate ein.",
+          "computation": "The letter states a fixed calendar date: 05.11.2025. No period to count, no weekend/holiday adjustment needed since Wed 5 Nov 2025 is a regular business day.",
+          "due_date": "2025-11-05",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch (objection) against the Änderungsbescheid",
+          "quote": "Gegen diesen Bescheid kann jede betroffene Person innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
+          "computation": "Letter dated Wed 15.10.2025; under § 37 Abs. 2 SGB X a posted social-law letter counts as delivered on the 4th day after posting, i.e. Sun 19.10.2025 (this day does not shift for social-law deemed delivery). Under § 187 Abs. 1 BGB the one-month period starts the next day; under § 188 Abs. 1 BGB it ends one month later on the day with the same number, i.e. Wed 19.11.2025. That day is Buß- und Bettag, a public holiday in Sachsen, so under § 26 Abs. 3 SGB X the deadline shifts to the next business day, Thu 20.11.2025.",
+          "due_date": "2025-11-20",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter warns that benefits from December cannot be approved without the requested bank statements — make sure to send them by 05.11.2025 to avoid an interruption in payments."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1567,
+      "cache_read_tokens": 14550,
+      "cache_creation_tokens": 4870,
+      "cost_usd": 0.038068000000000005,
+      "duration_ms": 17359,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "legal_basis": "§ 84 SGG, §§ 187, 188 BGB",
+            "text": "Gegen diesen Bescheid kann jede betroffene Person innerhalb eines Monats nach Bekanntgabe Widerspruch erheben."
+          },
+          "document_date": "2025-10-15",
+          "sender_kind": "authority",
+          "sender_name": "Jobcenter Musterlingen",
+          "recipient_region": "SN",
+          "region": "SN",
+          "remedy_type": "widerspruch",
+          "today": "2025-10-17"
+        },
+        "result": "{\"due_date\":\"2025-11-20\",\"weekday\":\"Thursday\",\"send_by\":\"2025-11-13\",\"summary\":\"Letter dated Wed 15 Oct 2025 counts as delivered on Sun 19 Oct (this day does not move for this kind of letter); one month later is Wed 19 Nov 2025, a public holiday, Buß- und Bettag, so the deadline moves to Thu 20 Nov 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Posting day: Wed 15 Oct 2025 (the letter's date; the real posting day can only be later)\",\"date\":\"2025-10-15\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Sun 19 Oct 2025\",\"date\":\"2025-10-19\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"For social-law letters this day does not move, even though it is a Sunday\",\"date\":\"2025-10-19\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"Counting starts the day after Sun 19 Oct 2025\",\"date\":\"2025-10-19\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Wed 19 Nov 2025\",\"date\":\"2025-11-19\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Wed 19 Nov 2025 is a public holiday, Buß- und Bettag, so the deadline moves to Thu 20 Nov 2025\",\"date\":\"2025-11-20\",\"rule_id\":\"sgbx_26_3\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\"},{\"label\":\"Send by Thu 13 Nov 2025 to allow 4 business days for a letter to arrive\",\"date\":\"2025-11-13\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"sgbx_37_2\",\"title\":\"Social-law letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__37.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"sgg_84\",\"title\":\"Objection in social law (Widerspruch): one month\",\"citation\":\"§ 84 Abs. 1 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgg/__84.html\"},{\"id\":\"sgbx_26_3\",\"title\":\"Weekend and holiday shift (social law)\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__26.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-10-17\",\"letter_date\":\"2025-10-15\",\"delivery_law\":\"social law (§ 37 SGB X)\",\"holiday_calendar\":\"Sachsen\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

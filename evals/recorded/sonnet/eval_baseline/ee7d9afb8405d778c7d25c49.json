@@ -1,0 +1,100 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h4e3ff5a1",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"abf90a929c7ca1398fd10f6d692c0e0066e9ca91c52bc25ae1b913d5547aa122\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-12-11\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-price_increase-D1"
+    ],
+    "prompt_head": "Today is Thursday, 2025-12-11 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Muster Mobil GmbH\",\"document_date\":\"2025-12-05\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"MM-6612004\"}],\"amounts\":[19.99,22.99],\"items\":[{\"kind\":\"expiry\",\"title\":\"Special right to terminate contract due to price increase\",\"quote\":\"Sie können binnen drei Monaten ab Zugang dieses Schreibens kostenfrei kündigen; der Vertrag endet frühestens mit Wirksamwerden der Änderung.\",\"computation\":\"The letter is dated Fri 05.12.2025 and was sent by ordinary post; the exact day it reached Mara Beispiel (Zugang) is not stated. Muster Mobil GmbH is a private company, not an authority, so the statutory 3-/4-day deemed-delivery fiction for administrative letters does not apply; instead the usual assumption for domestic post (about 1-3 days) is used, so Zugang is assumed on Mon 08.12.2025 (the earliest plausible date). Under § 187 Abs. 1 BGB the day of receipt (08.12.2025) is not counted, so the 3-month period starts running on 09.12.2025. Under § 188 Abs. 2 BGB a period of months ends on the day of the last month bearing the same number as the start day, i.e. 08.03.2026, which is a Sunday. Notice/cancellation deadlines are not extended to the next business day (BGH III ZR 172/04) - the cancellation must reach the provider by that calendar date, so to be safe it should arrive on or before Fri 06.03.2026. Because the actual delivery date of the letter is an assumption, the true deadline could fall later if the letter arrived after 08.12.2025.\",\"due_date\":\"2026-03-08\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New monthly base price takes effect\",\"quote\":\"ab dem 01.02.2026 beträgt der monatliche Grundpreis Ihres Tarifs 22,99 € (bisher 19,99 €).\",\"computation\":\"The letter states the new price applies from a fixed calendar date, 01.02.2026, so no further counting is needed.\",\"due_date\":\"2026-02-01\",\"confidence\":\"high\",\"amount\":22.99}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The exact date the letter was received (Zugang) is not stated; the 3-month special-termination deadline was computed assuming receipt on 08.12.2025 (a few days after the 05.12.2025 letter date) - confirm the actual delivery date and, if it was later, push the cancellation deadline back accordingly.\",\"The IBAN printed (DE08 3705 0198 0008 0011 22) is well-formed and belongs to a German bank, but no payment is currently due on this letter - do not send money based on this letter alone.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Muster Mobil GmbH",
+      "document_date": "2025-12-05",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "MM-6612004"
+        }
+      ],
+      "amounts": [
+        19.99,
+        22.99
+      ],
+      "items": [
+        {
+          "kind": "expiry",
+          "title": "Special right to terminate contract due to price increase",
+          "quote": "Sie können binnen drei Monaten ab Zugang dieses Schreibens kostenfrei kündigen; der Vertrag endet frühestens mit Wirksamwerden der Änderung.",
+          "computation": "The letter is dated Fri 05.12.2025 and was sent by ordinary post; the exact day it reached Mara Beispiel (Zugang) is not stated. Muster Mobil GmbH is a private company, not an authority, so the statutory 3-/4-day deemed-delivery fiction for administrative letters does not apply; instead the usual assumption for domestic post (about 1-3 days) is used, so Zugang is assumed on Mon 08.12.2025 (the earliest plausible date). Under § 187 Abs. 1 BGB the day of receipt (08.12.2025) is not counted, so the 3-month period starts running on 09.12.2025. Under § 188 Abs. 2 BGB a period of months ends on the day of the last month bearing the same number as the start day, i.e. 08.03.2026, which is a Sunday. Notice/cancellation deadlines are not extended to the next business day (BGH III ZR 172/04) - the cancellation must reach the provider by that calendar date, so to be safe it should arrive on or before Fri 06.03.2026. Because the actual delivery date of the letter is an assumption, the true deadline could fall later if the letter arrived after 08.12.2025.",
+          "due_date": "2026-03-08",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New monthly base price takes effect",
+          "quote": "ab dem 01.02.2026 beträgt der monatliche Grundpreis Ihres Tarifs 22,99 € (bisher 19,99 €).",
+          "computation": "The letter states the new price applies from a fixed calendar date, 01.02.2026, so no further counting is needed.",
+          "due_date": "2026-02-01",
+          "confidence": "high",
+          "amount": 22.99
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The exact date the letter was received (Zugang) is not stated; the 3-month special-termination deadline was computed assuming receipt on 08.12.2025 (a few days after the 05.12.2025 letter date) - confirm the actual delivery date and, if it was later, push the cancellation deadline back accordingly.",
+        "The IBAN printed (DE08 3705 0198 0008 0011 22) is well-formed and belongs to a German bank, but no payment is currently due on this letter - do not send money based on this letter alone."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 4297,
+      "cache_read_tokens": 25963,
+      "cache_creation_tokens": 7087,
+      "cost_usd": 0.0765226,
+      "duration_ms": 42917,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "months",
+            "anchor": "receipt",
+            "anchor_date": "2025-12-08",
+            "nature": "notice",
+            "legal_basis": "Sonderkündigungsrecht wegen Preiserhöhung, § 314 BGB / Vertragsklausel",
+            "text": "Sie können binnen drei Monaten ab Zugang dieses Schreibens kostenfrei kündigen"
+          },
+          "document_date": "2025-12-05",
+          "sender_kind": "telecom",
+          "sender_name": "Muster Mobil GmbH",
+          "region": "NW",
+          "recipient_region": "NW",
+          "today": "2025-12-11"
+        },
+        "result": "{\"due_date\":\"2026-03-08\",\"weekday\":\"Sunday\",\"send_by\":\"2026-03-02\",\"safe_date\":\"2026-03-06\",\"summary\":\"Three months after delivery on Mon 8 Dec 2025 (as stated on the letter) is Sun 8 Mar 2026, a Sunday; notice deadlines don't move, so aim for Fri 6 Mar 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Mon 8 Dec 2025\",\"date\":\"2025-12-08\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Three months later: Sun 8 Mar 2026\",\"date\":\"2026-03-08\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sun 8 Mar 2026 is a Sunday, but notice deadlines never move to the next working day\",\"date\":\"2026-03-08\",\"rule_id\":\"notice_no_shift\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\"},{\"label\":\"Safe date: make sure it arrives by Fri 6 Mar 2026\",\"date\":\"2026-03-06\",\"rule_id\":\"safe_date\",\"citation\":\"Ordnung safety policy\"},{\"label\":\"Send by Mon 2 Mar 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-03-02\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"notice_no_shift\",\"title\":\"Notice periods never move to Monday\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=17.02.2005&Aktenzeichen=III+ZR+172/04\"},{\"id\":\"safe_date\",\"title\":\"Safe date\",\"citation\":\"Ordnung safety policy\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-12-11\",\"letter_date\":\"2025-12-05\",\"holiday_calendar\":\"Nordrhein-Westfalen\"},\"hints\":[\"Pass received_date if you know the day the letter arrived; until then the letter's date is used (the earliest plausible start).\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE08 3705 0198 0008 0011 22"
+        },
+        "result": "{\"iban\":\"DE08 3705 0198 0008 0011 22\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0008001122\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website before paying, and never pay to an IBAN only a new letter or e-mail gave you.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

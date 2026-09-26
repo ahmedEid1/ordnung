@@ -614,7 +614,8 @@ def gate_failures(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m evals.run",
-        description="Ordnung's deadline benchmark: Ordnung vs LLM-only vs LLM + rules text (SPEC § 17).",
+        description="Ordnung's deadline benchmark: Ordnung vs LLM only, LLM + rules text and LLM + rules tool "
+        "(SPEC § 17).",
     )
     parser.add_argument("--live", action="store_true", help="call the claude CLI and record its answers")
     parser.add_argument("--refresh", action="store_true", help="with --live: record every call anew")

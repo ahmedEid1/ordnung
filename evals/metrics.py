@@ -23,6 +23,15 @@ over the letters instead (the bootstrap interval would collapse to a point).
 **No answer, no credit.** A condition that failed on a letter (invalid output, infrastructure
 error) scores as an empty answer: its items are missed and it gets no credit for letter-level fields
 — not even for a letter without a date or a remedy, where an empty answer would otherwise "agree".
+
+**Tool use** (conditions whose model had tools, ``Prediction.tools`` not ``None``). Per letter: the
+calls per tool, the calls refused for invalid arguments, and the distinct due dates
+``compute_deadline`` returned. Calls carry no item id, so a call is attributed by a written policy:
+it belongs to an answered item when its ``spec.text`` is that item's sentence (fuzzy partial match
+≥ :data:`SAME_SENTENCE_SCORE` with the item's quote), and to the only item when the answer dates
+just one. Every scored item the model dated is then ``tool_date`` (its final date is one its calls
+returned), ``overrode_tool`` (its calls returned dates, the final date is none of them) or
+``no_tool_date`` (no call of its own returned a date: not asked, or asked about another sentence).
 """
 
 from __future__ import annotations
@@ -45,6 +54,7 @@ from evals.records import (
     Entry,
     PredictedItem,
     Prediction,
+    ToolUse,
     TruthItem,
     iso_or_none,
     parse_iso,
@@ -98,6 +108,13 @@ UNCERTAINTY_RE = re.compile(
 )
 
 ItemOutcomeName = Literal["correct", "wrong", "declined", "missed", "unscored"]
+ToolBacking = Literal["tool_date", "overrode_tool", "no_tool_date"]
+TOOL_CONDITION = "llm_rules_tool"
+#: The conditions the tool condition is also compared with (it extends their prompts).
+TOOL_PEERS = ("llm_only", "llm_rules_text")
+BACKINGS: tuple[ToolBacking, ...] = ("tool_date", "overrode_tool", "no_tool_date")
+#: How alike a tool call's `spec.text` and an item's quote must be to be the same sentence.
+SAME_SENTENCE_SCORE = 80.0
 
 
 # --------------------------------------------------------------------------------------------------
@@ -363,6 +380,10 @@ class ItemOutcome:
     confidence: str | None = None
     grounding: str | None = None
     region_ignored: bool = False
+    #: Conditions with tools: how the final date relates to the letter's tool dates (see :func:`tool_backing`).
+    backing: ToolBacking | None = None
+    #: Conditions with tools: whether the tool returned the expected date for this letter at all.
+    tool_had_truth: bool | None = None
 
     @property
     def scored(self) -> bool:
@@ -404,6 +425,16 @@ class DocScore:
     calls: int
     failed: str | None
     error: str | None
+    #: The model's tool calls per tool (``None``: the condition had no tools).
+    tool_calls: dict[str, int] | None = None
+    #: Tool calls refused for invalid arguments.
+    tool_refusals: int = 0
+    #: The distinct due dates ``compute_deadline`` returned on this letter.
+    tool_dates: list[str] = field(default_factory=list)
+
+    @property
+    def deadline_calls(self) -> int:
+        return (self.tool_calls or {}).get("compute_deadline", 0)
 
     @property
     def scored_items(self) -> list[ItemOutcome]:
@@ -529,7 +560,47 @@ def _item_outcome(
         result.region_ignored = truth.due_if_region_ignored == result.predicted
         if item.spec is not None:
             result.cause = "reading" if result.reading_diffs else "computing"
+    if pred.tools is not None and item is not None and predicted is not None:
+        dates = item_tool_dates(pred, item)
+        result.backing = tool_backing(result.predicted, dates)
+        result.tool_had_truth = expected.isoformat() in dates
     return result
+
+
+def _deadline_answers(pred: Prediction) -> list[ToolUse]:
+    return [use for use in pred.tools or [] if use.name == "compute_deadline" and use.due_date]
+
+
+def tool_dates(pred: Prediction) -> list[str]:
+    """The distinct due dates ``compute_deadline`` returned on this letter, in call order."""
+    return list(dict.fromkeys(use.due_date for use in _deadline_answers(pred) if use.due_date))
+
+
+def same_sentence(spec_text: str, quote: str) -> bool:
+    """Whether a call's ``spec.text`` is (part of) an item's quote, the way a person would see it."""
+    if not spec_text.strip() or not quote.strip():
+        return False
+    score = fuzz.partial_ratio(spec_text, quote, processor=utils.default_process)
+    return float(score) >= SAME_SENTENCE_SCORE
+
+
+def item_tool_dates(pred: Prediction, item: PredictedItem) -> list[str]:
+    """The due dates of the ``compute_deadline`` calls that belong to ``item`` (module docstring)."""
+    answers = _deadline_answers(pred)
+    if sum(1 for other in pred.items if other.due_date) > 1:
+        answers = [
+            use
+            for use in answers
+            if same_sentence(str((use.input.get("spec") or {}).get("text") or ""), item.quote)
+        ]
+    return list(dict.fromkeys(use.due_date for use in answers if use.due_date))
+
+
+def tool_backing(predicted: str | None, dates: Sequence[str]) -> ToolBacking:
+    """How a final date relates to the letter's tool dates (module docstring, "Tool use")."""
+    if not dates:
+        return "no_tool_date"
+    return "tool_date" if iso_or_none(predicted) in dates else "overrode_tool"
 
 
 def _false_grounded(
@@ -703,6 +774,9 @@ def score_document(entry: Entry, pred: Prediction) -> DocScore:
         calls=len(calls),
         failed=pred.failed,
         error=pred.error,
+        tool_calls=dict(Counter(use.name for use in pred.tools)) if pred.tools is not None else None,
+        tool_refusals=sum(1 for use in pred.tools or [] if not use.ok),
+        tool_dates=tool_dates(pred),
     )
 
 
@@ -974,6 +1048,7 @@ def summarise_condition(
             "contract_dates": est(scores, lambda s: _pair(s.contract_dates)),
         },
         "grounding": None,
+        "tool_use": None,
         "adversarial": {
             key: est(scores, adversarial_metric(key))
             for key in adversarial_keys
@@ -1008,7 +1083,65 @@ def summarise_condition(
                 level: est(scores, false_grounded_metric(level)) for level in ("verified", "model_read")
             },
         }
+    if any(score.tool_calls is not None for score in scores):
+        summary["tool_use"] = tool_use_summary(scores, est)
     return summary
+
+
+def _items_with(backing: ToolBacking, predicate: Callable[[ItemOutcome], bool]) -> DocMetric:
+    """Share of the scored items with ``backing`` that satisfy ``predicate``."""
+
+    def metric(score: DocScore) -> tuple[float, float]:
+        items = [i for i in score.scored_items if i.backing == backing]
+        return _count(items, predicate), float(len(items))
+
+    return metric
+
+
+def _among_tool_dated(predicate: Callable[[ItemOutcome], bool]) -> DocMetric:
+    """Share of the dated items on letters where the tool returned a date that satisfy ``predicate``."""
+
+    def metric(score: DocScore) -> tuple[float, float]:
+        items = [i for i in score.scored_items if i.backing in ("tool_date", "overrode_tool")]
+        return _count(items, predicate), float(len(items))
+
+    return metric
+
+
+def tool_use_summary(scores: Sequence[DocScore], est: Callable[..., dict[str, Any]]) -> dict[str, Any]:
+    """How the model used its tools and how its final dates relate to them (module docstring)."""
+    dated_letters = [score for score in scores if score.scored_items]
+    by_tool: Counter[str] = Counter()
+    for score in scores:
+        by_tool.update(score.tool_calls or {})
+    items = [item for score in scores for item in score.scored_items if item.backing is not None]
+    overrides = [item for item in items if item.backing == "overrode_tool"]
+    return {
+        "letters_with_deadline_call": est(dated_letters, lambda s: (float(s.deadline_calls > 0), 1.0)),
+        "deadline_calls_per_letter": (
+            sum(s.deadline_calls for s in dated_letters) / len(dated_letters) if dated_letters else None
+        ),
+        "calls": sum(by_tool.values()),
+        "calls_by_tool": dict(sorted(by_tool.items())),
+        "refused_calls": sum(score.tool_refusals for score in scores),
+        "items_by_backing": {backing: sum(1 for i in items if i.backing == backing) for backing in BACKINGS},
+        "final_differs_from_tool": est(scores, _among_tool_dated(lambda i: i.backing == "overrode_tool")),
+        "accuracy_by_backing": {
+            backing: est(scores, _items_with(backing, lambda i: i.outcome == "correct"))
+            for backing in BACKINGS
+        },
+        "late_by_backing": {
+            backing: est(scores, _items_with(backing, lambda i: i.direction == "late"))
+            for backing in BACKINGS
+        },
+        "tool_returned_the_right_date": est(scores, _among_tool_dated(lambda i: bool(i.tool_had_truth))),
+        "overrides_breaking_a_right_tool_date": sum(
+            1 for i in overrides if i.tool_had_truth and i.outcome == "wrong"
+        ),
+        "overrides_fixing_a_wrong_tool_date": sum(
+            1 for i in overrides if not i.tool_had_truth and i.outcome == "correct"
+        ),
+    }
 
 
 def compare_conditions(
@@ -1018,7 +1151,7 @@ def compare_conditions(
     seed: int = DEFAULT_SEED,
     resamples: int = DEFAULT_RESAMPLES,
 ) -> dict[str, Any]:
-    """Paired differences (``ordnung`` minus each other condition) on the letters both answered."""
+    """Paired differences (``baseline_of`` minus each other condition) on the letters both answered."""
     if baseline_of not in scores:
         return {}
     ours = scores[baseline_of]
@@ -1071,11 +1204,11 @@ def evaluate(
         condition: summarise_condition(scores[condition], seed=seed, resamples=resamples)
         for condition in ordered
     }
-    return Evaluation(
-        scores=dict(scores),
-        metrics=metrics,
-        comparisons=compare_conditions(scores, seed=seed, resamples=resamples),
-    )
+    comparisons = compare_conditions(scores, seed=seed, resamples=resamples)
+    # Does a calculator help the model? The tool condition against the two prompts it extends.
+    peers = {c: scores[c] for c in (TOOL_CONDITION, *TOOL_PEERS) if c in scores}
+    comparisons.update(compare_conditions(peers, baseline_of=TOOL_CONDITION, seed=seed, resamples=resamples))
+    return Evaluation(scores=dict(scores), metrics=metrics, comparisons=comparisons)
 
 
 def scored_item_count(entries: Iterable[Entry]) -> int:

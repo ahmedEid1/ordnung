@@ -37,8 +37,15 @@ RESULTS_SCHEMA = 1
 GALLERY_SIZE = 8
 GALLERY_PER_FAMILY = 2
 
-#: Categorical slots 1–3 of the reference palette (validated as a set, light surface).
-CONDITION_COLORS = {"ordnung": "#2a78d6", "llm_only": "#eb6834", "llm_rules_text": "#1baf7a"}
+#: Categorical slots 1–4 of the reference palette, in this fixed order (validated as a set on the light
+#: surface for adjacent bars; aqua and yellow are below 3:1, so every bar carries its value as text).
+CONDITION_COLORS = {
+    "ordnung": "#2a78d6",
+    "llm_only": "#eb6834",
+    "llm_rules_text": "#1baf7a",
+    "llm_rules_tool": "#eda100",
+}
+TOOL_CONDITION = "llm_rules_tool"
 SURFACE = "#fcfcfb"
 TEXT_PRIMARY = "#0b0b0b"
 TEXT_SECONDARY = "#52514e"
@@ -159,6 +166,52 @@ def recompute_metrics(results: Mapping[str, Any], manifest_path: Path | None = N
     return build_results(meta=meta, entries=entries, predictions=predictions, evaluation=evaluation)
 
 
+def add_condition(
+    results: Mapping[str, Any],
+    source: Mapping[str, Any],
+    condition: str,
+    *,
+    note: str | None = None,
+    manifest_path: Path | None = None,
+) -> dict[str, Any]:
+    """``results`` with ``condition``'s predictions taken from another run on the same letters.
+
+    For a condition added after a published run (the held-out run stays as it was): both runs must
+    have the same split, model, dataset and letters, and ``source`` must have an answer for every
+    letter (a scored failure is fine, an infrastructure error is not). The other conditions'
+    predictions are kept exactly; all metrics are recomputed. Where the added predictions came from
+    (and ``note``, a finding written after looking at them) goes to ``meta.added_conditions``.
+    """
+    meta, source_meta = results["meta"], source["meta"]
+    for key in ("split", "model", "entries"):
+        if meta.get(key) != source_meta.get(key):
+            raise ValueError(f"the runs differ in {key}: {meta.get(key)!r} vs {source_meta.get(key)!r}")
+    if meta["dataset"]["manifest_sha256"] != source_meta["dataset"]["manifest_sha256"]:
+        raise ValueError("the runs used different benchmark datasets")
+    added = {row["id"]: row["conditions"].get(condition, {}).get("prediction") for row in source["entries"]}
+    missing = [
+        row["id"] for row in results["entries"] if not added.get(row["id"]) or added[row["id"]].get("error")
+    ]
+    if missing:
+        raise ValueError(f"{condition} has no answer for {len(missing)} letter(s), e.g. {missing[0]}")
+    merged: dict[str, Any] = json.loads(json.dumps(results))
+    for row in merged["entries"]:
+        row["conditions"][condition] = {"prediction": added[row["id"]], "score": None}
+    merged_meta = merged["meta"]
+    present = {*merged_meta["conditions"], condition}
+    merged_meta["conditions"] = [c for c in CONDITIONS if c in present] + sorted(present - set(CONDITIONS))
+    if "fingerprints" in merged_meta:
+        merged_meta["fingerprints"][condition] = source_meta.get("fingerprints", {}).get(condition)
+    merged_meta.setdefault("added_conditions", {})[condition] = {
+        "date": source_meta.get("date"),
+        "backend": source_meta.get("backend"),
+        "commit": source_meta.get("commit"),
+        "run_id": source_meta.get("run_id"),
+        "note": note,
+    }
+    return recompute_metrics(merged, manifest_path)
+
+
 def write_json(path: Path, data: Mapping[str, Any]) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=1, sort_keys=False) + "\n", encoding="utf-8")
@@ -266,6 +319,8 @@ def failure_gallery(
                     "quote": _clip(item.quote, 200) if item else "",
                     "failed": score.failed,
                 }
+                if score.tool_calls is not None:
+                    record["tool_dates"] = list(score.tool_dates)
                 key = (_SEVERITY.get(label or "", 9), entry.family, entry.id, outcome.index)
                 queue.append((key, record))
         queues[condition] = [record for _, record in sorted(queue, key=lambda pair: pair[0])]
@@ -386,6 +441,7 @@ def render_markdown(
         _headline(main, chart),
         _rescored_section(main, rescored) if rescored else "",
         _taxonomy_section(main),
+        _tool_section(main),
         _family_section(main),
         _modality_section(main),
         _extraction_section(main),
@@ -414,17 +470,27 @@ def _intro(results: Mapping[str, Any]) -> str:
         partial += " **Dev split** — the prompts were tuned on these letters; not the published benchmark."
     unanswered = _unanswered_note(results)
     warning = f"\n\n> **Incomplete run.** {unanswered}" if _has_errors(results) else ""
+    with_tool = TOOL_CONDITION in results["metrics"]
+    baselines = "three strong baselines" if with_tool else "two strong baselines"
+    tool_bullet = (
+        "\n- **LLM + rules tool** — the *LLM only* prompt plus Ordnung's own rules engine as MCP tools\n"
+        "  (`ordnung mcp --rules-only`): an agent with a calculator, which decides itself when to use it\n"
+        "  and whether to trust it."
+        if with_tool
+        else ""
+    )
+    added = _added_note(meta)
     return f"""# Benchmark: who gets German deadlines right?
 
 > Generated by `python -m evals.run` on {meta.get("date")} from {backend}. Model `{meta.get("model")}`,
 > split `{meta.get("split")}`: {meta.get("entries")} letters ({meta.get("photos")} phone photos,
 > {meta.get("adversarial")} adversarial), {meta.get("scored_items")} required items with a known date
-> (a phone photo repeats the items of the PDF it was made from).{partial}
+> (a phone photo repeats the items of the PDF it was made from).{partial}{added}
 > Do not edit by hand — change `evals/report.py` and regenerate.{warning}
 
 Ordnung's design bet ([ADR 0002](decisions/0002-llm-reads-code-computes.md)) is that the language
 model should **read** a letter — what it says about a date — while tested code **computes** the
-date. This benchmark checks the bet against two strong baselines with the *same* model, letters,
+date. This benchmark checks the bet against {baselines} with the *same* model, letters,
 "today" and region:
 
 - **Ordnung** — the real ingestion logic: transcribe photos → extract a `DateSpec` → verify quotes
@@ -432,7 +498,18 @@ date. This benchmark checks the bet against two strong baselines with the *same*
 - **LLM only** — the model reads the letter and computes the final due date itself, told today's
   date and the region and to apply current German law.
 - **LLM + rules text** — the same, plus a verified summary of the relevant rules pasted into the
-  prompt (4-day delivery fiction, §§ 187/188/193 BGB, holidays …)."""
+  prompt (4-day delivery fiction, §§ 187/188/193 BGB, holidays …).{tool_bullet}"""
+
+
+def _added_note(meta: Mapping[str, Any]) -> str:
+    """Conditions scored into this run later (``meta.added_conditions``), with where they came from."""
+    added = meta.get("added_conditions") or {}
+    parts = [
+        f"{_label(condition)} was run on {info.get('date')} ({info.get('backend')}, commit "
+        f"`{info.get('commit') or '?'}`) on the same letters and added to this run"
+        for condition, info in added.items()
+    ]
+    return ("\n> " + "; ".join(parts) + ".") if parts else ""
 
 
 def _has_errors(results: Mapping[str, Any]) -> bool:
@@ -491,9 +568,9 @@ def _headline(results: Mapping[str, Any], chart: str | None) -> str:
     comparisons = results.get("comparisons") or {}
     lines = []
     for key, value in comparisons.items():
-        _, other = key.split("-vs-", 1)
+        first, other = key.split("-vs-", 1)
         lines.append(
-            f"- Ordnung − {_label(other)}: accuracy {diff(value['due_date_accuracy_diff'])}, "
+            f"- {_label(first)} − {_label(other)}: accuracy {diff(value['due_date_accuracy_diff'])}, "
             f"dangerous-late rate {diff(value['dangerous_late_rate_diff'])}."
         )
     paired = (
@@ -553,8 +630,9 @@ def _rescored_section(held_out: Mapping[str, Any], rescored: Mapping[str, Any]) 
 
 The fix changed code only (no prompt, schema or model change), so the **same recorded model outputs**
 were scored again (commit `{meta.get("commit") or "?"}`). Because the test split informed the fix,
-these numbers are **no longer held-out**; the held-out run above stays the headline. The baselines
-do not use the rules engine, so their numbers cannot change.
+these numbers are **no longer held-out**; the held-out run above stays the headline. The baselines'
+numbers cannot change: they do not use the rules engine, or (LLM + rules tool) they answered from
+the tool results recorded when they ran.
 
 {table}
 
@@ -620,6 +698,74 @@ Because Ordnung's model returns *what the letter says* (a `DateSpec`: fixed date
 
 For the baselines the model does both steps in one answer, so a wrong date cannot be split.
 {fields_text}{lucky_text}"""
+
+
+def _share(count: int, total: int) -> str:
+    return f"{count} of {total} ({count / total * 100:.1f} %)" if total else "—"
+
+
+def _tool_section(results: Mapping[str, Any]) -> str:
+    """How the model used Ordnung's engine as a tool, and what its final dates did with the answers."""
+    metrics = results["metrics"].get(TOOL_CONDITION)
+    use = (metrics or {}).get("tool_use")
+    if not use:
+        return ""
+    by_backing = use["items_by_backing"]
+    tool_dated = by_backing["tool_date"] + by_backing["overrode_tool"]
+    calls = ", ".join(f"`{name}` {count}" for name, count in use["calls_by_tool"].items()) or "none"
+    per_letter = use["deadline_calls_per_letter"]
+    rows = [
+        [
+            "Letters with a dated obligation where the model called `compute_deadline`",
+            rate(use["letters_with_deadline_call"], ci=False, counts=True),
+        ],
+        ["`compute_deadline` calls per such letter", f"{per_letter:.1f}" if per_letter is not None else "—"],
+        ["Tool calls, by tool", f"{use['calls']} ({calls})"],
+        ["Calls the tool refused (invalid arguments)", str(use["refused_calls"])],
+    ]
+    labels = {
+        "tool_date": "Final date = a date the tool returned for that letter",
+        "overrode_tool": "Final date ≠ every date the tool returned (the model overrode it)",
+        "no_tool_date": "The tool returned no date for that letter",
+    }
+    for backing, label in labels.items():
+        accuracy = use["accuracy_by_backing"][backing]
+        late = use["late_by_backing"][backing]
+        detail = (
+            f"{by_backing[backing]} items — right {rate(accuracy, ci=False, counts=True)}, "
+            f"late {rate(late, ci=False, counts=True)}"
+            if by_backing[backing]
+            else "0 items"
+        )
+        rows.append([label, detail])
+    table = _table(["Tool use (required items with a known date)", _label(TOOL_CONDITION)], rows)
+    differs = use["final_differs_from_tool"]
+    right = use["tool_returned_the_right_date"]
+    facts = [
+        f"Where the tool returned a date, the model's final date differed from it for "
+        f"{_share(by_backing['overrode_tool'], tool_dated)} of the items. Those overrides replaced a right "
+        f"tool date with a wrong one {use['overrides_breaking_a_right_tool_date']} time(s) and a wrong "
+        f"tool date with the right one {use['overrides_fixing_a_wrong_tool_date']} time(s).",
+        f"The tool itself returned the right date for {rate(right, ci=False, counts=True)} of those items. "
+        "It computes exactly what it is given, so a wrong tool date comes from the arguments the model "
+        "chose (its reading of the period, anchor, sender or region) or from one of Ordnung's documented "
+        "earliest-plausible-date policies.",
+    ]
+    if differs.get("value") is None:
+        facts = ["The tool returned no dates on this run."]
+    note = ((results["meta"].get("added_conditions") or {}).get(TOOL_CONDITION) or {}).get("note")
+    return f"""## An agent with a calculator
+
+Why a fixed pipeline instead of giving the model Ordnung's rules engine as a tool? In the **LLM +
+rules tool** condition the model had the engine as MCP tools (`compute_deadline`, `german_holidays`,
+`add_working_days`, `check_iban` — `ordnung mcp --rules-only`), the *LLM only* prompt and one
+sentence saying the tools exist; when to call them and whether to trust them was its own choice.
+
+{table}
+
+{" ".join(facts)} Calls carry no item id: a call counts for an obligation when the sentence the
+model passed it is that obligation's sentence, or when the answer dates only one obligation.
+{f"{chr(10)}**What this shows.** {note}" if note else ""}"""
 
 
 def _family_section(results: Mapping[str, Any]) -> str:
@@ -786,7 +932,13 @@ def _cost_section(results: Mapping[str, Any]) -> str:
         )
         + (
             "\n\nTokens include prompt-cache reads and writes. Ordnung makes two calls for a photo "
-            "(transcribe, extract); a repair call is added only when an answer fails validation."
+            "(transcribe, extract); a repair call is added only when an answer fails validation. "
+            + (
+                "The rules-tool condition makes one call per letter in which the model takes a turn "
+                "per round of tool calls; its cost and latency include those turns."
+                if TOOL_CONDITION in metrics
+                else ""
+            )
         )
     )
 
@@ -832,6 +984,13 @@ def _gallery_section(results: Mapping[str, Any]) -> str:
         if g.get("explanation"):
             source = "Receipt" if g["condition"] == "ordnung" else "Model's working"
             lines.append(f"   - {source}: “{g['explanation']}”")
+        if "tool_dates" in g:
+            answers = ", ".join(human_date(d) for d in g["tool_dates"])
+            lines.append(
+                f"   - `compute_deadline` returned: {answers}"
+                if answers
+                else "   - The tool returned no date."
+            )
         if g.get("failed"):
             lines.append(f"   - The condition produced no usable answer: {g['failed']}")
         blocks.append("\n".join(lines))
@@ -864,15 +1023,18 @@ checks in `evals/verify_labels.py` that use only `datetime` and the `holidays` p
 [VERIFICATION.md](../evals/dataset/VERIFICATION.md). Where the law leaves room, labels follow the
 prevailing case law and the earliest plausible date.
 
-**Baseline fairness.** All three conditions use the same model, the same letter content (the same
+**Baseline fairness.** All conditions use the same model, the same letter content (the same
 visible text; for photos Ordnung transcribes while the baselines see the image), today's date, the
-region, the same security framing (`<untrusted_document>` tags), no tools and one repair attempt for
-invalid output. The holiday Land comes from the dataset for every condition (the letterhead's Land,
+region, the same security framing (`<untrusted_document>` tags) and one repair attempt for invalid
+output. None has tools, except *LLM + rules tool*: its only tools are Ordnung's rules engine
+(`ordnung mcp --rules-only`, no file, web or shell access, counting from the letter's "today"), with
+a cost cap of $1 per call so a looping agent would be stopped. The holiday Land comes from the dataset for every condition (the letterhead's Land,
 else the person's): the baselines are told it in the prompt, Ordnung's rules engine receives it as
 the app would get it from the sender's address or the person's settings; none has to infer it. The baselines' prompts ask for step-by-step working before each date, tell the model to
 apply current German law, to choose the earliest plausible date when in doubt and to return no date
 when none can be determined ([`evals/prompts`](../evals/prompts)); the rules-text prompt adds a
-verified summary of the rules condensed from [deadline-rules.md](deadline-rules.md).
+verified summary of the rules condensed from [deadline-rules.md](deadline-rules.md), and the
+rules-tool prompt one sentence naming the tools (the tools' own descriptions explain them).
 
 **Scoring.** Predicted items are matched to truth items per letter (optimal assignment over kind,
 date, amount and title/quote similarity). Due-date accuracy is exact-date agreement on required
@@ -900,7 +1062,9 @@ instructions — and the rules text, e.g. that a Familienkasse Kinderzuschlag de
 were written by people who knew the test traps (which helps the baselines at least as much as Ordnung).
 Warnings are scored with keyword patterns (scam, AI-directed text, uncertainty), which can miss
 unusual wording. Recorded outputs make the numbers reproducible, not the model deterministic: a
-fresh live run will differ somewhat."""
+fresh live run will differ somewhat. The rules-tool condition's recording includes the tool's
+answers, so a later change to the rules engine can change Ordnung's replayed numbers but not that
+condition's."""
 
 
 def _reproduce_section(meta: Mapping[str, Any]) -> str:
@@ -932,10 +1096,11 @@ def render_pending_markdown() -> str:
 > `python -m evals.run --live --split test` to call the model, record its outputs and regenerate
 > this page with numbers, tables, the chart and a failure gallery.
 
-The benchmark compares three conditions with the same model, letters, "today" and region:
+The benchmark compares four conditions with the same model, letters, "today" and region:
 **Ordnung** (the model reads a `DateSpec`, the rules engine computes the date), **LLM only** (the
-model computes the final date itself, told to apply current German law) and **LLM + rules text**
-(the same, with a verified summary of the rules in the prompt). It reports due-date accuracy with
+model computes the final date itself, told to apply current German law), **LLM + rules text**
+(the same, with a verified summary of the rules in the prompt) and **LLM + rules tool** (the same
+model with Ordnung's rules engine as MCP tools it may call). It reports due-date accuracy with
 95 % bootstrap intervals, the dangerous-late rate, an error taxonomy that separates *reading* from
 *computing* errors, per-family and text-vs-photo results, evidence grounding, adversarial robustness
 (prompt injection, hidden text, scams, conflicting or missing dates), cost and latency.""",
@@ -1176,11 +1341,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="score the stored predictions again with the current scorer and rewrite the results files",
     )
+    parser.add_argument(
+        "--add-condition",
+        action="append",
+        default=[],
+        metavar="CONDITION=RUN.json",
+        help="add a condition's predictions from a later run on the same letters to every results file "
+        "given (rewritten in place)",
+    )
+    parser.add_argument(
+        "--note", type=Path, metavar="FILE", help="with --add-condition: a written finding to show with it"
+    )
     args = parser.parse_args(argv)
     if not args.results and not args.pending:
         parser.error("give results files or --pending")
+    targets = [*args.results, *([args.rescored] if args.rescored else [])]
+    for spec in args.add_condition:
+        condition, _, source_path = spec.partition("=")
+        if not source_path:
+            parser.error("--add-condition takes CONDITION=RUN.json")
+        note = " ".join(args.note.read_text(encoding="utf-8").split()) if args.note else None
+        source = load_results(Path(source_path))
+        for path in targets:
+            write_json(path, add_condition(load_results(path), source, condition, note=note))
     if args.recompute:
-        for path in [*args.results, *([args.rescored] if args.rescored else [])]:
+        for path in targets:
             write_json(path, recompute_metrics(load_results(path)))
     runs = [] if args.pending else [load_results(path) for path in args.results]
     rescored = load_results(args.rescored) if args.rescored else None

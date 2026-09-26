@@ -1,0 +1,104 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h4e3ff5a1",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"a45a24143c98cecb7eae7aef4b66bf31e9bb3e9da9bfdf35adae5afe758c1ccd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-year_boundary-C1"
+    ],
+    "prompt_head": "Today is Monday, 2024-12-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Hauptzollamt Musterhafen\",\"document_date\":\"2024-12-27\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"K 4710 0815 22\"},{\"label\":\"Amtliches Kennzeichen\",\"value\":\"MH-BK 510\"}],\"amounts\":[186],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Kraftfahrzeugsteuerbescheid\",\"quote\":\"Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behörde schriftlich oder elektronisch einzulegen.\",\"computation\":\"Letter dated Fri 27.12.2024, sent by post by a tax authority. Under §122 Abs. 2 Nr. 1 AO (as in force in December 2024, before the 2025 change to 4 days), the letter counts as delivered on the 3rd day after posting: Fri 27.12.2024 + 3 days = Mon 30.12.2024, which is itself confirmed as the delivery/Bekanntgabe day matching the letter's own wording ('dritten Tag nach Aufgabe zur Post'). Per §187 Abs.1 BGB / §108 Abs.1 AO the day of delivery (30.12.2024) is not counted; the one-month Einspruch period under §355 AO then runs to the same numbered day one month later: Thu 30.01.2025. That day is a normal working day (no weekend/holiday shift needed under §108 Abs.3 AO), so the deadline stays 30.01.2025.\",\"due_date\":\"2025-01-30\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Annual Kraftfahrzeugsteuer collected by direct debit\",\"quote\":\"Die Steuer wird jährlich im Voraus durch Lastschrift eingezogen.\",\"computation\":\"The letter sets the annual tax at 186,00 € starting 01.01.2025 and states it will be collected 'jährlich im Voraus' (annually in advance) by direct debit (Lastschrift), but it does not print an exact collection date within the annual period beginning 01.01.2025. No action is required from the recipient other than ensuring the account has sufficient funds; the exact debit date cannot be determined from this letter.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":186}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter states the tax is collected automatically by Lastschrift (direct debit) rather than asking for a manual transfer, so the printed IBAN is for reference/verification only and no payment action is needed unless the direct debit fails; still, always compare bank details with earlier official correspondence before ever paying manually.\",\"The exact date of the annual direct-debit collection for the 186,00 € tax is not stated in the letter, only that it happens 'jährlich im Voraus' from 01.01.2025; check bank statements or contact the Hauptzollamt if this is unclear.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Hauptzollamt Musterhafen",
+      "document_date": "2024-12-27",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "K 4710 0815 22"
+        },
+        {
+          "label": "Amtliches Kennzeichen",
+          "value": "MH-BK 510"
+        }
+      ],
+      "amounts": [
+        186
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Kraftfahrzeugsteuerbescheid",
+          "quote": "Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behörde schriftlich oder elektronisch einzulegen.",
+          "computation": "Letter dated Fri 27.12.2024, sent by post by a tax authority. Under §122 Abs. 2 Nr. 1 AO (as in force in December 2024, before the 2025 change to 4 days), the letter counts as delivered on the 3rd day after posting: Fri 27.12.2024 + 3 days = Mon 30.12.2024, which is itself confirmed as the delivery/Bekanntgabe day matching the letter's own wording ('dritten Tag nach Aufgabe zur Post'). Per §187 Abs.1 BGB / §108 Abs.1 AO the day of delivery (30.12.2024) is not counted; the one-month Einspruch period under §355 AO then runs to the same numbered day one month later: Thu 30.01.2025. That day is a normal working day (no weekend/holiday shift needed under §108 Abs.3 AO), so the deadline stays 30.01.2025.",
+          "due_date": "2025-01-30",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Annual Kraftfahrzeugsteuer collected by direct debit",
+          "quote": "Die Steuer wird jährlich im Voraus durch Lastschrift eingezogen.",
+          "computation": "The letter sets the annual tax at 186,00 € starting 01.01.2025 and states it will be collected 'jährlich im Voraus' (annually in advance) by direct debit (Lastschrift), but it does not print an exact collection date within the annual period beginning 01.01.2025. No action is required from the recipient other than ensuring the account has sufficient funds; the exact debit date cannot be determined from this letter.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 186
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states the tax is collected automatically by Lastschrift (direct debit) rather than asking for a manual transfer, so the printed IBAN is for reference/verification only and no payment action is needed unless the direct debit fails; still, always compare bank details with earlier official correspondence before ever paying manually.",
+        "The exact date of the annual direct-debit collection for the 186,00 € tax is not stated in the letter, only that it happens 'jährlich im Voraus' from 01.01.2025; check bank statements or contact the Hauptzollamt if this is unclear."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3291,
+      "cache_read_tokens": 14367,
+      "cache_creation_tokens": 5187,
+      "cost_usd": 0.05653940000000001,
+      "duration_ms": 33985,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "legal_basis": "§122 AO, §355 AO",
+            "text": "Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behörde schriftlich oder elektronisch einzulegen. Bei Übermittlung durch die Post gilt der Bescheid am dritten Tag nach Aufgabe zur Post als bekannt gegeben, es sei denn, er ist später zugegangen."
+          },
+          "document_date": "2024-12-27",
+          "sender_kind": "tax_office",
+          "sender_name": "Hauptzollamt Musterhafen",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "einspruch",
+          "today": "2024-12-30"
+        },
+        "result": "{\"due_date\":\"2025-01-30\",\"weekday\":\"Thursday\",\"send_by\":\"2025-01-24\",\"summary\":\"Letter dated Fri 27 Dec 2024 counts as delivered on Mon 30 Dec; one month later is Thu 30 Jan 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Posting day: Fri 27 Dec 2024 (the letter's date; the real posting day can only be later)\",\"date\":\"2024-12-27\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 3rd day after posting: Mon 30 Dec 2024\",\"date\":\"2024-12-30\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Counting starts the day after Mon 30 Dec 2024\",\"date\":\"2024-12-30\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 30 Jan 2025\",\"date\":\"2025-01-30\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 30 Jan 2025 is a working day, so it stays\",\"date\":\"2025-01-30\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Fri 24 Jan 2025 to allow 4 business days for a letter to arrive\",\"date\":\"2025-01-24\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_355\",\"title\":\"Tax objection (Einspruch): one month\",\"citation\":\"§ 355 Abs. 1 AO; § 357 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__355.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2024-12-30\",\"letter_date\":\"2024-12-27\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Nordrhein-Westfalen\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE03 2900 0000 0029 0010 20"
+        },
+        "result": "{\"iban\":\"DE03 2900 0000 0029 0010 20\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"29000000\"},\"account_number\":\"0029001020\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website before paying, and never pay to an IBAN only a new letter or e-mail gave you.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

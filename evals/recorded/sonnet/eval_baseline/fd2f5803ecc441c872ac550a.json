@@ -1,0 +1,148 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h4e3ff5a1",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"31460712e7ac4a18827c60470539b7715f9ddf8a2b4108b351fbb3c99f9bc5f3\",\"mode\":\"text\",\"region\":\"BE\",\"today\":\"2025-12-14\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-fine_bussgeld-C2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-12-14 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Berlin (BE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Polizei Berlin (Muster) – Bußgeldstelle\",\"document_date\":\"2025-12-08\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"OWi 5114/25-VK\"},{\"label\":\"Kennzeichen\",\"value\":\"B-NM 2291\"}],\"amounts\":[70,25,3.5,98.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Er muss binnen zwei Wochen ab der Zustellung schriftlich oder zur Niederschrift bei der Polizei Berlin (Muster) – Bußgeldstelle eingelegt werden.\",\"computation\":\"Page 2 shows a scan of the formal delivery envelope (Postzustellungsurkunde, § 182 ZPO) with 'zugestellt am 11.12.2025' (Thursday). Since a formal Zustellungsurkunde with the actual delivery date is present, the two-week Einspruch period runs from the proven delivery date, not from a fictional 3-day rule. Under § 187 Abs. 1 BGB the day of delivery (11.12.2025) is not counted; the period starts 12.12.2025. Under § 188 Abs. 2 BGB a two-week period ends on the day two weeks later that corresponds by name to the day of the event: Thursday 11.12.2025 + 2 weeks = Thursday 25.12.2025. That day (Erster Weihnachtstag) and the next day, 26.12.2025 (Zweiter Weihnachtstag), are public holidays in Berlin; 27.12. and 28.12.2025 are Saturday/Sunday. Under § 193 BGB the deadline shifts to the next business day, Monday 29.12.2025.\",\"due_date\":\"2025-12-29\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (Gesamtbetrag)\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist, fällig; geben Sie bei der Überweisung bitte das Aktenzeichen an.\",\"computation\":\"The Bescheid becomes rechtskräftig (final) once the Einspruch period lapses without an objection being filed, i.e. the day after the Einspruch deadline of 29.12.2025, so on 30.12.2025 (Tuesday) — this assumes no Einspruch was filed, which cannot be confirmed from the letter alone. Under § 187 Abs. 1 BGB the day it becomes final is not counted; the two-week payment period starts 31.12.2025. Under § 188 Abs. 2 BGB it ends on the corresponding weekday two weeks later: Tuesday 30.12.2025 + 2 weeks = Tuesday 13.01.2026, which is a normal business day in Berlin, so no shift applies.\",\"due_date\":\"2026-01-13\",\"confidence\":\"medium\",\"amount\":98.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"Both computed dates (Einspruch deadline 2025-12-29 and payment due date 2026-01-13) fall well before today (2026-09-26); if no Einspruch was filed, check whether the fine was already paid or whether further enforcement/reminder letters have since arrived, since this original notice would now be outdated.\",\"The payment due date depends on the Bescheid actually having become rechtskräftig on 30.12.2025, which in turn assumes no Einspruch was filed within the deadline — this cannot be verified from the letter itself.\",\"The IBAN DE07 1005 0000 0000 9900 07 is a validly formatted German IBAN, but as with any payment instruction from a letter, the account holder should be verified independently before transferring money.\",\"This appears to be a fictional/sample document (labelled 'Muster' throughout, e.g. sender name, sample bank name, sample email domain), so it should not be treated as a real fine notice.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Polizei Berlin (Muster) – Bußgeldstelle",
+      "document_date": "2025-12-08",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "OWi 5114/25-VK"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "B-NM 2291"
+        }
+      ],
+      "amounts": [
+        70,
+        25,
+        3.5,
+        98.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Er muss binnen zwei Wochen ab der Zustellung schriftlich oder zur Niederschrift bei der Polizei Berlin (Muster) – Bußgeldstelle eingelegt werden.",
+          "computation": "Page 2 shows a scan of the formal delivery envelope (Postzustellungsurkunde, § 182 ZPO) with 'zugestellt am 11.12.2025' (Thursday). Since a formal Zustellungsurkunde with the actual delivery date is present, the two-week Einspruch period runs from the proven delivery date, not from a fictional 3-day rule. Under § 187 Abs. 1 BGB the day of delivery (11.12.2025) is not counted; the period starts 12.12.2025. Under § 188 Abs. 2 BGB a two-week period ends on the day two weeks later that corresponds by name to the day of the event: Thursday 11.12.2025 + 2 weeks = Thursday 25.12.2025. That day (Erster Weihnachtstag) and the next day, 26.12.2025 (Zweiter Weihnachtstag), are public holidays in Berlin; 27.12. and 28.12.2025 are Saturday/Sunday. Under § 193 BGB the deadline shifts to the next business day, Monday 29.12.2025.",
+          "due_date": "2025-12-29",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (Gesamtbetrag)",
+          "quote": "Der Gesamtbetrag ist zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist, fällig; geben Sie bei der Überweisung bitte das Aktenzeichen an.",
+          "computation": "The Bescheid becomes rechtskräftig (final) once the Einspruch period lapses without an objection being filed, i.e. the day after the Einspruch deadline of 29.12.2025, so on 30.12.2025 (Tuesday) — this assumes no Einspruch was filed, which cannot be confirmed from the letter alone. Under § 187 Abs. 1 BGB the day it becomes final is not counted; the two-week payment period starts 31.12.2025. Under § 188 Abs. 2 BGB it ends on the corresponding weekday two weeks later: Tuesday 30.12.2025 + 2 weeks = Tuesday 13.01.2026, which is a normal business day in Berlin, so no shift applies.",
+          "due_date": "2026-01-13",
+          "confidence": "medium",
+          "amount": 98.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "Both computed dates (Einspruch deadline 2025-12-29 and payment due date 2026-01-13) fall well before today (2026-09-26); if no Einspruch was filed, check whether the fine was already paid or whether further enforcement/reminder letters have since arrived, since this original notice would now be outdated.",
+        "The payment due date depends on the Bescheid actually having become rechtskräftig on 30.12.2025, which in turn assumes no Einspruch was filed within the deadline — this cannot be verified from the letter itself.",
+        "The IBAN DE07 1005 0000 0000 9900 07 is a validly formatted German IBAN, but as with any payment instruction from a letter, the account holder should be verified independently before transferring money.",
+        "This appears to be a fictional/sample document (labelled 'Muster' throughout, e.g. sender name, sample bank name, sample email domain), so it should not be treated as a real fine notice."
+      ]
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 7147,
+      "cache_read_tokens": 44521,
+      "cache_creation_tokens": 12308,
+      "cost_usd": 0.1296222,
+      "duration_ms": 65940,
+      "turns": 8
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "anchor": "receipt",
+            "anchor_date": "2025-12-11",
+            "amount": 2,
+            "unit": "weeks",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 187 Abs. 1, § 188 Abs. 2, § 193 BGB",
+            "text": "Er muss binnen zwei Wochen ab der Zustellung schriftlich oder zur Niederschrift bei der Polizei Berlin (Muster) – Bußgeldstelle eingelegt werden."
+          },
+          "document_date": "2025-12-08",
+          "received_date": "2025-12-11",
+          "sender_kind": "authority",
+          "sender_name": "Polizei Berlin (Muster) – Bußgeldstelle",
+          "remedy_type": "einspruch",
+          "recipient_region": "BE",
+          "region": "BE",
+          "today": "2026-09-26"
+        },
+        "result": "{\"due_date\":\"2025-12-29\",\"weekday\":\"Monday\",\"summary\":\"Two weeks after delivery on Thu 11 Dec 2025 (as stated on the letter) is Thu 25 Dec 2025, a public holiday, Erster Weihnachtstag, so the deadline moves to Mon 29 Dec 2025.\",\"confidence\":\"high\",\"warnings\":[\"This date (Mon 29 Dec 2025) has already passed.\"],\"steps\":[{\"label\":\"Counting starts the day after Thu 11 Dec 2025\",\"date\":\"2025-12-11\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Thu 25 Dec 2025\",\"date\":\"2025-12-25\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 25 Dec 2025 is a public holiday, Erster Weihnachtstag, so the deadline moves to Mon 29 Dec 2025\",\"date\":\"2025-12-29\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"}],\"assumed\":{\"today\":\"2026-09-26\",\"letter_date\":\"2025-12-08\",\"received_date\":\"2025-12-11\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Berlin\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2025,
+          "region": "BE"
+        },
+        "result": "{\"year\":2025,\"region\":\"BE\",\"calendar\":\"Berlin\",\"holidays\":[{\"date\":\"2025-01-01\",\"weekday\":\"Wednesday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2025-03-08\",\"weekday\":\"Saturday\",\"name\":\"Frauentag\",\"nationwide\":false},{\"date\":\"2025-04-18\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2025-04-21\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2025-05-01\",\"weekday\":\"Thursday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2025-05-08\",\"weekday\":\"Thursday\",\"name\":\"80. Jahrestag der Befreiung vom Nationalsozialismus und der Beendigung des Zweiten Weltkriegs in Europa\",\"nationwide\":false},{\"date\":\"2025-05-29\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2025-06-09\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2025-10-03\",\"weekday\":\"Friday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2025-12-25\",\"weekday\":\"Thursday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2025-12-26\",\"weekday\":\"Friday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2026,
+          "region": "BE"
+        },
+        "result": "{\"year\":2026,\"region\":\"BE\",\"calendar\":\"Berlin\",\"holidays\":[{\"date\":\"2026-01-01\",\"weekday\":\"Thursday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2026-03-08\",\"weekday\":\"Sunday\",\"name\":\"Frauentag\",\"nationwide\":false},{\"date\":\"2026-04-03\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2026-04-06\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2026-05-01\",\"weekday\":\"Friday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2026-05-14\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2026-05-25\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2026-10-03\",\"weekday\":\"Saturday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2026-12-25\",\"weekday\":\"Friday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2026-12-26\",\"weekday\":\"Saturday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE07 1005 0000 0000 9900 07"
+        },
+        "result": "{\"iban\":\"DE07 1005 0000 0000 9900 07\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"10050000\"},\"account_number\":\"0000990007\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website before paying, and never pay to an IBAN only a new letter or e-mail gave you.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "anchor": "explicit_date",
+            "anchor_date": "2025-12-30",
+            "amount": 2,
+            "unit": "weeks",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§ 187 Abs. 1, § 188 Abs. 2, § 193 BGB",
+            "text": "Der Gesamtbetrag ist zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist, fällig"
+          },
+          "sender_kind": "authority",
+          "sender_name": "Polizei Berlin (Muster) – Bußgeldstelle",
+          "region": "BE",
+          "today": "2026-09-26"
+        },
+        "result": "{\"due_date\":\"2026-01-13\",\"weekday\":\"Tuesday\",\"summary\":\"Two weeks after Tue 30 Dec 2025 is Tue 13 Jan 2026.\",\"confidence\":\"high\",\"warnings\":[\"This date (Tue 13 Jan 2026) has already passed.\"],\"steps\":[{\"label\":\"Counting starts the day after Tue 30 Dec 2025\",\"date\":\"2025-12-30\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Tue 13 Jan 2026\",\"date\":\"2026-01-13\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 13 Jan 2026 is a working day, so it stays\",\"date\":\"2026-01-13\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"}],\"assumed\":{\"today\":\"2026-09-26\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Berlin\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

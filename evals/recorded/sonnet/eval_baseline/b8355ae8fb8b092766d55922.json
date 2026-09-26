@@ -1,0 +1,88 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h4e3ff5a1",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"d85e0b5b3f75cd0903b699a7958efb55e36c3d5ec704a461efb8de6061013854\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-06\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-adversarial-conflicting_dates-1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-05-06 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Beispiel Bürobedarf GmbH\",\"document_date\":\"2026-04-30\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"BB-4471\"},{\"label\":\"Kundennummer\",\"value\":\"31077\"}],\"amounts\":[156.91],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice BB-4471\",\"quote\":\"Bitte zahlen Sie den Rechnungsbetrag bis zum 13.05.2026 ohne Abzug.\",\"computation\":\"The letter states two different dates for payment: 'bis zum 13.05.2026' in the body text, and a separate 'Fälligkeitsdatum: 20.05.2026' near the bank details. This is a fixed calendar date, not a period to be counted, so no BGB counting rules or holiday shifts apply to determine the day itself; 13.05.2026 is a Wednesday. Since the two stated dates contradict each other, the earlier one (13.05.2026) is used as the safe deadline, per the rule to prefer the earliest plausible date when a letter is internally inconsistent. To arrive in the seller's account by then, a transfer should be sent by around 12.05.2026 to allow for standard bank transfer time (§ 675s BGB).\",\"due_date\":\"2026-05-13\",\"confidence\":\"medium\",\"amount\":156.91}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter gives two conflicting payment dates: 'bis zum 13.05.2026' in the running text and a 'Fälligkeitsdatum: 20.05.2026' next to the bank details; the earlier date (13.05.2026) was used to be safe, but this discrepancy should be checked with the sender.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Beispiel Bürobedarf GmbH",
+      "document_date": "2026-04-30",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "BB-4471"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "31077"
+        }
+      ],
+      "amounts": [
+        156.91
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice BB-4471",
+          "quote": "Bitte zahlen Sie den Rechnungsbetrag bis zum 13.05.2026 ohne Abzug.",
+          "computation": "The letter states two different dates for payment: 'bis zum 13.05.2026' in the body text, and a separate 'Fälligkeitsdatum: 20.05.2026' near the bank details. This is a fixed calendar date, not a period to be counted, so no BGB counting rules or holiday shifts apply to determine the day itself; 13.05.2026 is a Wednesday. Since the two stated dates contradict each other, the earlier one (13.05.2026) is used as the safe deadline, per the rule to prefer the earliest plausible date when a letter is internally inconsistent. To arrive in the seller's account by then, a transfer should be sent by around 12.05.2026 to allow for standard bank transfer time (§ 675s BGB).",
+          "due_date": "2026-05-13",
+          "confidence": "medium",
+          "amount": 156.91
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter gives two conflicting payment dates: 'bis zum 13.05.2026' in the running text and a 'Fälligkeitsdatum: 20.05.2026' next to the bank details; the earlier date (13.05.2026) was used to be safe, but this discrepancy should be checked with the sender."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2666,
+      "cache_read_tokens": 24328,
+      "cache_creation_tokens": 5088,
+      "cost_usd": 0.05188960000000001,
+      "duration_ms": 25456,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2026-05-13",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "text": "Bitte zahlen Sie den Rechnungsbetrag bis zum 13.05.2026 ohne Abzug."
+          },
+          "document_date": "2026-04-30",
+          "sender_kind": "retailer",
+          "sender_name": "Beispiel Bürobedarf GmbH",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-05-13\",\"weekday\":\"Wednesday\",\"send_by\":\"2026-05-12\",\"summary\":\"The date given is Wed 13 May 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Wed 13 May 2026\",\"date\":\"2026-05-13\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Tue 12 May 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-05-12\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-05-06\",\"letter_date\":\"2026-04-30\",\"holiday_calendar\":\"Nordrhein-Westfalen\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE89 3705 0198 0004 4007 70"
+        },
+        "result": "{\"iban\":\"DE89 3705 0198 0004 4007 70\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0004400770\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website before paying, and never pay to an IBAN only a new letter or e-mail gave you.\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}
