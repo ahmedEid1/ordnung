@@ -1,0 +1,396 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "3+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"721172f412fbad6c8e571498ccbaf922e836ba9d08193b56d34379ca59f1660b\",\"question\":\"Which deadlines are coming up in October?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhich deadlines are coming up in October?\n"
+  },
+  "response": {
+    "text": "Here are the deadlines coming up in October:\n\n- **Return overdue library items** – due Fri 2 Oct 2026, with Stadtbibliothek Musterstadt [item:itm_ghq58jjdz149] [party:pty_d2ymm5s3htd0]. The letter says fees increase 0,50 € per item per opening day after the deadline, with the account blocked once fees reach 10,00 € [item:itm_ghq58jjdz149].\n\n- **Object to contribution notice (Widerspruch)** with Muster BKK – due Wed 14 Oct 2026, send by Thu 8 Oct 2026 [item:itm_v0kx33tjwnwb] [party:pty_eatxsexnt9s3]. If not filed in time, the notice becomes final.\n\n- **Tax objection deadline (Einspruchsfrist)** with Finanzamt Musterstadt – due Wed 21 Oct 2026, send by Thu 15 Oct 2026 [item:itm_ddxnhb06rr9h] [party:pty_mcq97yavgqjy]. If missed, the tax assessment becomes final and can no longer be challenged.\n\nFor the two send-by deadlines, note the send-by dates are earlier than the due dates to allow for post — plan accordingly. If in doubt about either objection, it may be worth getting advice before the send-by date.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 568,
+      "cache_read_tokens": 9462,
+      "cache_creation_tokens": 2520,
+      "cost_usd": 0.0176604,
+      "duration_ms": 9969,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "deadline",
+        "from_date": "2026-10-01",
+        "to_date": "2026-10-31"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_v0kx33tjwnwb\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"priority\":\"high\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_55pytq44yv9e\",\"contract_id\":\"ctr_myhhpjfkpydh\"},{\"id\":\"itm_ddxnhb06rr9h\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-21\",\"send_by\":\"2026-10-15\",\"date_source\":\"computed\",\"priority\":\"normal\",\"area\":\"tax\",\"party_id\":\"pty_mcq97yavgqjy\",\"doc_id\":\"doc_v741dndev13d\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_ghq58jjdz149\":{\"title\":\"Return overdue library items\",\"action\":\"Return the two overdue items (Einführung in die Statistik mit R; Deutsch im Alltag B2 – Übungsbuch) to the library, e.g. via the return box or service desk.\",\"consequence\":\"Fees increase by 0,50 € per item per opening day after the deadline, and the account is blocked for further loans once fees reach 10,00 €.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_v0kx33tjwnwb\":{\"title\":\"Object to contribution notice (Widerspruch)\",\"action\":\"File a written, electronic (per § 36a Abs. 2 SGB I) or in-person objection (Widerspruch) with Muster BKK if you disagree with the contribution amount.\",\"consequence\":\"The contribution notice becomes final if no objection is filed in time; an objection does not suspend the duty to pay the assessed amount in the meantime.\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_ddxnhb06rr9h\":{\"title\":\"Objection deadline (Einspruchsfrist)\",\"action\":\"File an objection (Einspruch) with the Finanzamt Musterstadt in writing, electronically, or to record it in person, if you disagree with the assessment.\",\"consequence\":\"If no objection is filed within the deadline, the tax assessment becomes final and can no longer be challenged.\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"}}\n</untrusted_document>"
+    },
+    {
+      "type": "text",
+      "text": "Here"
+    },
+    {
+      "type": "text",
+      "text": " are the de"
+    },
+    {
+      "type": "text",
+      "text": "adlines co"
+    },
+    {
+      "type": "text",
+      "text": "ming up in October"
+    },
+    {
+      "type": "text",
+      "text": ":\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " **Return overdue library items"
+    },
+    {
+      "type": "text",
+      "text": "** – due"
+    },
+    {
+      "type": "text",
+      "text": " F"
+    },
+    {
+      "type": "text",
+      "text": "ri "
+    },
+    {
+      "type": "text",
+      "text": "2 Oct 2026"
+    },
+    {
+      "type": "text",
+      "text": ", with"
+    },
+    {
+      "type": "text",
+      "text": " Stadtbiblioth"
+    },
+    {
+      "type": "text",
+      "text": "ek Musterstadt ["
+    },
+    {
+      "type": "text",
+      "text": "item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_ghq58"
+    },
+    {
+      "type": "text",
+      "text": "jjdz149] [party"
+    },
+    {
+      "type": "text",
+      "text": ":pty_d2ym"
+    },
+    {
+      "type": "text",
+      "text": "m5s3htd0]"
+    },
+    {
+      "type": "text",
+      "text": ". The"
+    },
+    {
+      "type": "text",
+      "text": " letter says fees increase "
+    },
+    {
+      "type": "text",
+      "text": "0,50 € per item per"
+    },
+    {
+      "type": "text",
+      "text": " opening day after the deadline"
+    },
+    {
+      "type": "text",
+      "text": ", with"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " account blocked once"
+    },
+    {
+      "type": "text",
+      "text": " fees reach 10,00"
+    },
+    {
+      "type": "text",
+      "text": " €"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_gh"
+    },
+    {
+      "type": "text",
+      "text": "q58jjdz149]."
+    },
+    {
+      "type": "text",
+      "text": "\n\n- **Object to contrib"
+    },
+    {
+      "type": "text",
+      "text": "ution notice ("
+    },
+    {
+      "type": "text",
+      "text": "Widerspruch)**"
+    },
+    {
+      "type": "text",
+      "text": " with"
+    },
+    {
+      "type": "text",
+      "text": " Muster BKK – due"
+    },
+    {
+      "type": "text",
+      "text": " Wed 14 O"
+    },
+    {
+      "type": "text",
+      "text": "ct 2026, send by"
+    },
+    {
+      "type": "text",
+      "text": " Thu 8 Oct"
+    },
+    {
+      "type": "text",
+      "text": " 2026 [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_v0kx33t"
+    },
+    {
+      "type": "text",
+      "text": "jwnwb] [party"
+    },
+    {
+      "type": "text",
+      "text": ":pty_eatxs"
+    },
+    {
+      "type": "text",
+      "text": "exnt9s3]."
+    },
+    {
+      "type": "text",
+      "text": " If not"
+    },
+    {
+      "type": "text",
+      "text": " filed in time, the not"
+    },
+    {
+      "type": "text",
+      "text": "ice becomes final."
+    },
+    {
+      "type": "text",
+      "text": "\n\n- **T"
+    },
+    {
+      "type": "text",
+      "text": "ax objection deadline ("
+    },
+    {
+      "type": "text",
+      "text": "Einspruchsfrist"
+    },
+    {
+      "type": "text",
+      "text": ")** with Finanzam"
+    },
+    {
+      "type": "text",
+      "text": "t Musterstadt –"
+    },
+    {
+      "type": "text",
+      "text": " due Wed 21 "
+    },
+    {
+      "type": "text",
+      "text": "Oct 2026, send by"
+    },
+    {
+      "type": "text",
+      "text": " Thu 15 O"
+    },
+    {
+      "type": "text",
+      "text": "ct 2026 [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_ddxnh"
+    },
+    {
+      "type": "text",
+      "text": "b06rr9h] ["
+    },
+    {
+      "type": "text",
+      "text": "party:pty_mcq"
+    },
+    {
+      "type": "text",
+      "text": "97yavgqjy]"
+    },
+    {
+      "type": "text",
+      "text": ". If miss"
+    },
+    {
+      "type": "text",
+      "text": "ed, the t"
+    },
+    {
+      "type": "text",
+      "text": "ax assessment becomes final"
+    },
+    {
+      "type": "text",
+      "text": " and"
+    },
+    {
+      "type": "text",
+      "text": " can no longer be challenged"
+    },
+    {
+      "type": "text",
+      "text": ".\n\nFor the two send"
+    },
+    {
+      "type": "text",
+      "text": "-by deadlines, note"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " send-"
+    },
+    {
+      "type": "text",
+      "text": "by d"
+    },
+    {
+      "type": "text",
+      "text": "ates are earlier than the due"
+    },
+    {
+      "type": "text",
+      "text": " dates to all"
+    },
+    {
+      "type": "text",
+      "text": "ow for"
+    },
+    {
+      "type": "text",
+      "text": " post"
+    },
+    {
+      "type": "text",
+      "text": " —"
+    },
+    {
+      "type": "text",
+      "text": " pl"
+    },
+    {
+      "type": "text",
+      "text": "an acc"
+    },
+    {
+      "type": "text",
+      "text": "ordingly."
+    },
+    {
+      "type": "text",
+      "text": " If in"
+    },
+    {
+      "type": "text",
+      "text": " doubt about either obj"
+    },
+    {
+      "type": "text",
+      "text": "ection, it may"
+    },
+    {
+      "type": "text",
+      "text": " be worth getting adv"
+    },
+    {
+      "type": "text",
+      "text": "ice before"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " send"
+    },
+    {
+      "type": "text",
+      "text": "-by date."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Here are the deadlines coming up in October:\n\n- **Return overdue library items** – due Fri 2 Oct 2026, with Stadtbibliothek Musterstadt [item:itm_ghq58jjdz149] [party:pty_d2ymm5s3htd0]. The letter says fees increase 0,50 € per item per opening day after the deadline, with the account blocked once fees reach 10,00 € [item:itm_ghq58jjdz149].\n\n- **Object to contribution notice (Widerspruch)** with Muster BKK – due Wed 14 Oct 2026, send by Thu 8 Oct 2026 [item:itm_v0kx33tjwnwb] [party:pty_eatxsexnt9s3]. If not filed in time, the notice becomes final.\n\n- **Tax objection deadline (Einspruchsfrist)** with Finanzamt Musterstadt – due Wed 21 Oct 2026, send by Thu 15 Oct 2026 [item:itm_ddxnhb06rr9h] [party:pty_mcq97yavgqjy]. If missed, the tax assessment becomes final and can no longer be challenged.\n\nFor the two send-by deadlines, note the send-by dates are earlier than the due dates to allow for post — plan accordingly. If in doubt about either objection, it may be worth getting advice before the send-by date.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 568,
+          "cache_read_tokens": 9462,
+          "cache_creation_tokens": 2520,
+          "cost_usd": 0.0176604,
+          "duration_ms": 9969,
+          "turns": 2
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude"
+      }
+    }
+  ]
+}

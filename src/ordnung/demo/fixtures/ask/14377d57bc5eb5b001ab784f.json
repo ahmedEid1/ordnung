@@ -1,0 +1,304 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "3+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"6d6cd53a1de67dd7779d855a0568f390d2649b88003fef5f9d133894d07bfa7a\",\"question\":\"Which deadlines are coming up in October?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhich deadlines are coming up in October?\n"
+  },
+  "response": {
+    "text": "Here are your deadlines due in October:\n\n- **Return overdue library items** (Stadtbibliothek Musterstadt), due **Fri 2 Oct 2026** — late fees of 0.50 € per item per opening day apply after this, per the letter [item:itm_ghq58jjdz149].\n- **Object to contribution notice (Widerspruch)** with Muster BKK, due **Wed 14 Oct 2026**, should be sent by **Thu 8 Oct 2026** [item:itm_v0kx33tjwnwb]. If not filed in time, the notice becomes final.\n- **Tax objection deadline (Einspruchsfrist)** with Finanzamt Musterstadt, due **Wed 21 Oct 2026**, should be sent by **Thu 15 Oct 2026** [item:itm_ddxnhb06rr9h]. If missed, the tax assessment becomes final.\n\nLet me know if you'd like details on any of these or want me to check other kinds of upcoming items (payments, appointments, etc.) for October too.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 543,
+      "cache_read_tokens": 9466,
+      "cache_creation_tokens": 2541,
+      "cost_usd": 0.0174952,
+      "duration_ms": 8315,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "from_date": "2026-10-01",
+        "to_date": "2026-10-31",
+        "kind": "deadline"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_v0kx33tjwnwb\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"priority\":\"high\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_55pytq44yv9e\",\"contract_id\":\"ctr_myhhpjfkpydh\"},{\"id\":\"itm_ddxnhb06rr9h\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-21\",\"send_by\":\"2026-10-15\",\"date_source\":\"computed\",\"priority\":\"normal\",\"area\":\"tax\",\"party_id\":\"pty_mcq97yavgqjy\",\"doc_id\":\"doc_v741dndev13d\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_ghq58jjdz149\":{\"title\":\"Return overdue library items\",\"action\":\"Return the two overdue items (Einführung in die Statistik mit R; Deutsch im Alltag B2 – Übungsbuch) to the library, e.g. via the return box or service desk.\",\"consequence\":\"Fees increase by 0,50 € per item per opening day after the deadline, and the account is blocked for further loans once fees reach 10,00 €.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_v0kx33tjwnwb\":{\"title\":\"Object to contribution notice (Widerspruch)\",\"action\":\"File a written, electronic (per § 36a Abs. 2 SGB I) or in-person objection (Widerspruch) with Muster BKK if you disagree with the contribution amount.\",\"consequence\":\"The contribution notice becomes final if no objection is filed in time; an objection does not suspend the duty to pay the assessed amount in the meantime.\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_ddxnhb06rr9h\":{\"title\":\"Objection deadline (Einspruchsfrist)\",\"action\":\"File an objection (Einspruch) with the Finanzamt Musterstadt in writing, electronically, or to record it in person, if you disagree with the assessment.\",\"consequence\":\"If no objection is filed within the deadline, the tax assessment becomes final and can no longer be challenged.\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"}}\n</untrusted_document>"
+    },
+    {
+      "type": "text",
+      "text": "Here are your"
+    },
+    {
+      "type": "text",
+      "text": " deadlines due"
+    },
+    {
+      "type": "text",
+      "text": " in October:\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " **Return overdue library items"
+    },
+    {
+      "type": "text",
+      "text": "** (Stadtbib"
+    },
+    {
+      "type": "text",
+      "text": "liothek Musterstad"
+    },
+    {
+      "type": "text",
+      "text": "t), due **"
+    },
+    {
+      "type": "text",
+      "text": "F"
+    },
+    {
+      "type": "text",
+      "text": "ri 2 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026** — late"
+    },
+    {
+      "type": "text",
+      "text": " f"
+    },
+    {
+      "type": "text",
+      "text": "ees of"
+    },
+    {
+      "type": "text",
+      "text": " 0.50 "
+    },
+    {
+      "type": "text",
+      "text": "€ per item per opening day ap"
+    },
+    {
+      "type": "text",
+      "text": "ply after this"
+    },
+    {
+      "type": "text",
+      "text": ", per"
+    },
+    {
+      "type": "text",
+      "text": " the letter [item"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": "itm_ghq58j"
+    },
+    {
+      "type": "text",
+      "text": "jdz149]."
+    },
+    {
+      "type": "text",
+      "text": "\n- **Object to contrib"
+    },
+    {
+      "type": "text",
+      "text": "ution notice (Wid"
+    },
+    {
+      "type": "text",
+      "text": "erspruch)** with"
+    },
+    {
+      "type": "text",
+      "text": " Muster BKK, due **"
+    },
+    {
+      "type": "text",
+      "text": "W"
+    },
+    {
+      "type": "text",
+      "text": "ed 14 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026**"
+    },
+    {
+      "type": "text",
+      "text": ", should"
+    },
+    {
+      "type": "text",
+      "text": " be sent by **Th"
+    },
+    {
+      "type": "text",
+      "text": "u 8 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026** ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_v0k"
+    },
+    {
+      "type": "text",
+      "text": "x33tjwnwb"
+    },
+    {
+      "type": "text",
+      "text": "]"
+    },
+    {
+      "type": "text",
+      "text": ". If not"
+    },
+    {
+      "type": "text",
+      "text": " filed in time, the not"
+    },
+    {
+      "type": "text",
+      "text": "ice becomes final."
+    },
+    {
+      "type": "text",
+      "text": "\n- **T"
+    },
+    {
+      "type": "text",
+      "text": "ax objection de"
+    },
+    {
+      "type": "text",
+      "text": "adline (Einspruch"
+    },
+    {
+      "type": "text",
+      "text": "sfrist)** with"
+    },
+    {
+      "type": "text",
+      "text": " Finanzamt Muster"
+    },
+    {
+      "type": "text",
+      "text": "stadt, due **W"
+    },
+    {
+      "type": "text",
+      "text": "ed 21 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026**, should be sent"
+    },
+    {
+      "type": "text",
+      "text": " by **Thu 15 "
+    },
+    {
+      "type": "text",
+      "text": "Oct 2026** ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_ddx"
+    },
+    {
+      "type": "text",
+      "text": "nhb06rr9h"
+    },
+    {
+      "type": "text",
+      "text": "]. If miss"
+    },
+    {
+      "type": "text",
+      "text": "ed, the t"
+    },
+    {
+      "type": "text",
+      "text": "ax assessment becomes final"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "text",
+      "text": "\n\nLet me know if you'd like"
+    },
+    {
+      "type": "text",
+      "text": " details on any of these or"
+    },
+    {
+      "type": "text",
+      "text": " want"
+    },
+    {
+      "type": "text",
+      "text": " me to check"
+    },
+    {
+      "type": "text",
+      "text": " other kinds of up"
+    },
+    {
+      "type": "text",
+      "text": "coming items (payments,"
+    },
+    {
+      "type": "text",
+      "text": " appointments, etc.)"
+    },
+    {
+      "type": "text",
+      "text": " for October too."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Here are your deadlines due in October:\n\n- **Return overdue library items** (Stadtbibliothek Musterstadt), due **Fri 2 Oct 2026** — late fees of 0.50 € per item per opening day apply after this, per the letter [item:itm_ghq58jjdz149].\n- **Object to contribution notice (Widerspruch)** with Muster BKK, due **Wed 14 Oct 2026**, should be sent by **Thu 8 Oct 2026** [item:itm_v0kx33tjwnwb]. If not filed in time, the notice becomes final.\n- **Tax objection deadline (Einspruchsfrist)** with Finanzamt Musterstadt, due **Wed 21 Oct 2026**, should be sent by **Thu 15 Oct 2026** [item:itm_ddxnhb06rr9h]. If missed, the tax assessment becomes final.\n\nLet me know if you'd like details on any of these or want me to check other kinds of upcoming items (payments, appointments, etc.) for October too.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 543,
+          "cache_read_tokens": 9466,
+          "cache_creation_tokens": 2541,
+          "cost_usd": 0.0174952,
+          "duration_ms": 8315,
+          "turns": 2
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude"
+      }
+    }
+  ]
+}
