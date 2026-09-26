@@ -1,0 +1,329 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "2+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"4a85e0c8ec76640ba2b5b45d464cfe05dec3de986d62c3efd848abf45645ec25\",\"question\":\"Which deadlines are coming up in October?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhich deadlines are coming up in October?\n"
+  },
+  "response": {
+    "text": "Two deadlines are coming up in October:\n\n- **Return overdue library items** — due **Thu 2 Oct 2026** [item:itm_ghq58jjdz149]\n  - Items: \"Einführung in die Statistik mit R\" and \"Deutsch im Alltag B2 – Übungsbuch\" for Stadtbibliothek Musterstadt [party:pty_d2ymm5s3htd0]\n  - Consequence: fees +€0.50 per item per opening day late; account blocked once fees hit €10.00\n\n- **Object to contribution notice (Widerspruch)** with Muster BKK — due **Wed 14 Oct 2026**, send by **Thu 8 Oct 2026** [item:itm_v0kx33tjwnwb]\n  - If you disagree with the contribution amount, file written/electronic/in-person objection\n  - Note: an objection does not suspend the duty to pay in the meantime; the notice becomes final if not filed in time\n\nLet me know if you'd like the calculation details behind either date (via explain_date) or help drafting a letter.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 571,
+      "cache_read_tokens": 7635,
+      "cache_creation_tokens": 2309,
+      "cost_usd": 0.016481,
+      "duration_ms": 8908,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__today",
+      "input": {}
+    },
+    {
+      "type": "tool_result",
+      "text": "<untrusted_document>\n{\"today\":\"2026-09-28\",\"weekday\":\"Monday\",\"simulated\":true}\n</untrusted_document>"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "deadline",
+        "from_date": "2026-10-01",
+        "to_date": "2026-10-31"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<untrusted_document>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"title\":\"Return overdue library items\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"other\",\"action\":\"Return the two overdue items (Einführung in die Statistik mit R; Deutsch im Alltag B2 – Übungsbuch) to the library, e.g. via the return box or service desk.\",\"consequence\":\"Fees increase by 0,50 € per item per opening day after the deadline, and the account is blocked for further loans once fees reach 10,00 €.\",\"party_id\":\"pty_d2ymm5s3htd0\",\"party\":\"Stadtbibliothek Musterstadt\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_v0kx33tjwnwb\",\"kind\":\"deadline\",\"title\":\"Object to contribution notice (Widerspruch)\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"priority\":\"high\",\"area\":\"health\",\"action\":\"File a written, electronic (per § 36a Abs. 2 SGB I) or in-person objection (Widerspruch) with Muster BKK if you disagree with the contribution amount.\",\"consequence\":\"The contribution notice becomes final if no objection is filed in time; an objection does not suspend the duty to pay the assessed amount in the meantime.\",\"party_id\":\"pty_eatxsexnt9s3\",\"party\":\"Muster BKK\",\"doc_id\":\"doc_55pytq44yv9e\",\"contract_id\":\"ctr_myhhpjfkpydh\"}]}\n</untrusted_document>"
+    },
+    {
+      "type": "text",
+      "text": "Two"
+    },
+    {
+      "type": "text",
+      "text": " de"
+    },
+    {
+      "type": "text",
+      "text": "adlines are co"
+    },
+    {
+      "type": "text",
+      "text": "ming up in October:\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " **Return overdue library items"
+    },
+    {
+      "type": "text",
+      "text": "** — due"
+    },
+    {
+      "type": "text",
+      "text": " **"
+    },
+    {
+      "type": "text",
+      "text": "Thu "
+    },
+    {
+      "type": "text",
+      "text": "2 "
+    },
+    {
+      "type": "text",
+      "text": "Oct 2026** ["
+    },
+    {
+      "type": "text",
+      "text": "item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_ghq58"
+    },
+    {
+      "type": "text",
+      "text": "jjdz149]"
+    },
+    {
+      "type": "text",
+      "text": "\n  - Items:"
+    },
+    {
+      "type": "text",
+      "text": " \"Ein"
+    },
+    {
+      "type": "text",
+      "text": "führung in die Statistik"
+    },
+    {
+      "type": "text",
+      "text": " mit R\" and \"De"
+    },
+    {
+      "type": "text",
+      "text": "utsch im Alltag"
+    },
+    {
+      "type": "text",
+      "text": " B2 – Übungs"
+    },
+    {
+      "type": "text",
+      "text": "buch\" for"
+    },
+    {
+      "type": "text",
+      "text": " Stadtbiblioth"
+    },
+    {
+      "type": "text",
+      "text": "ek Musterstadt ["
+    },
+    {
+      "type": "text",
+      "text": "party:pty_d2"
+    },
+    {
+      "type": "text",
+      "text": "ymm5s3htd0"
+    },
+    {
+      "type": "text",
+      "text": "]\n  - Cons"
+    },
+    {
+      "type": "text",
+      "text": "equence: fees +"
+    },
+    {
+      "type": "text",
+      "text": "€"
+    },
+    {
+      "type": "text",
+      "text": "0.50 "
+    },
+    {
+      "type": "text",
+      "text": "per item per op"
+    },
+    {
+      "type": "text",
+      "text": "ening day late"
+    },
+    {
+      "type": "text",
+      "text": ";"
+    },
+    {
+      "type": "text",
+      "text": " account blocked once"
+    },
+    {
+      "type": "text",
+      "text": " fees hit €10.00"
+    },
+    {
+      "type": "text",
+      "text": "\n\n- **Object to contrib"
+    },
+    {
+      "type": "text",
+      "text": "ution notice (Widersp"
+    },
+    {
+      "type": "text",
+      "text": "ruch)** with"
+    },
+    {
+      "type": "text",
+      "text": " Muster BKK — due"
+    },
+    {
+      "type": "text",
+      "text": " **Wed 14 "
+    },
+    {
+      "type": "text",
+      "text": "Oct 2026**"
+    },
+    {
+      "type": "text",
+      "text": ", send by **Th"
+    },
+    {
+      "type": "text",
+      "text": "u 8 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026** [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_v0kx33tj"
+    },
+    {
+      "type": "text",
+      "text": "wnwb]\n  -"
+    },
+    {
+      "type": "text",
+      "text": " If you dis"
+    },
+    {
+      "type": "text",
+      "text": "agree with the cont"
+    },
+    {
+      "type": "text",
+      "text": "ribution amount, file written"
+    },
+    {
+      "type": "text",
+      "text": "/electronic/"
+    },
+    {
+      "type": "text",
+      "text": "in-person objection"
+    },
+    {
+      "type": "text",
+      "text": "\n  - Note: an"
+    },
+    {
+      "type": "text",
+      "text": " objection does"
+    },
+    {
+      "type": "text",
+      "text": " not"
+    },
+    {
+      "type": "text",
+      "text": " suspend the duty to p"
+    },
+    {
+      "type": "text",
+      "text": "ay in"
+    },
+    {
+      "type": "text",
+      "text": " the meantime;"
+    },
+    {
+      "type": "text",
+      "text": " the notice becomes final if"
+    },
+    {
+      "type": "text",
+      "text": " not filed in time\n\nLet"
+    },
+    {
+      "type": "text",
+      "text": " me know if you'd like the"
+    },
+    {
+      "type": "text",
+      "text": " cal"
+    },
+    {
+      "type": "text",
+      "text": "culation details"
+    },
+    {
+      "type": "text",
+      "text": " behind either date"
+    },
+    {
+      "type": "text",
+      "text": " (via"
+    },
+    {
+      "type": "text",
+      "text": " explain_date) or help dr"
+    },
+    {
+      "type": "text",
+      "text": "afting a"
+    },
+    {
+      "type": "text",
+      "text": " letter."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Two deadlines are coming up in October:\n\n- **Return overdue library items** — due **Thu 2 Oct 2026** [item:itm_ghq58jjdz149]\n  - Items: \"Einführung in die Statistik mit R\" and \"Deutsch im Alltag B2 – Übungsbuch\" for Stadtbibliothek Musterstadt [party:pty_d2ymm5s3htd0]\n  - Consequence: fees +€0.50 per item per opening day late; account blocked once fees hit €10.00\n\n- **Object to contribution notice (Widerspruch)** with Muster BKK — due **Wed 14 Oct 2026**, send by **Thu 8 Oct 2026** [item:itm_v0kx33tjwnwb]\n  - If you disagree with the contribution amount, file written/electronic/in-person objection\n  - Note: an objection does not suspend the duty to pay in the meantime; the notice becomes final if not filed in time\n\nLet me know if you'd like the calculation details behind either date (via explain_date) or help drafting a letter.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 571,
+          "cache_read_tokens": 7635,
+          "cache_creation_tokens": 2309,
+          "cost_usd": 0.016481,
+          "duration_ms": 8908,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude"
+      }
+    }
+  ]
+}

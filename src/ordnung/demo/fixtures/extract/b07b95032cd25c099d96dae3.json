@@ -1,0 +1,196 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "8.7.1",
+    "cache_key": "{\"doc\":\"6e2bc26d104a0a65a62be0b30eb02d4b9e8819ec7eeebccaaa06b80632cf053e\",\"language\":\"en\",\"pages\":[[1,\"text\"],[2,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_drnw4v8g9856"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym) — Gläubiger-ID: DE25ZZZ00000104570; USt-IdNr.: DE310457828; Amtsgericht: Musterstadt HRB 31045; Mitgliedsnummer: FW-10457\n- FunkN"
+  },
+  "response": {
+    "text": "{\"area\":\"residence\",\"case_title\":\"Rental lease – Beispielweg 5, Musterstadt\",\"kind\":\"rent_lease\",\"title\":\"Rental Lease Agreement (Mietvertrag) with Wohnbau Musterstadt eG\",\"summary\":\"Wohnbau Musterstadt eG (cooperative housing association) and Sam Rivera signed a residential lease (Mietvertrag Nr. MV-2025-0412) for apartment 05-2-03 at Beispielweg 5, Musterstadt, starting 01.10.2025 for an indefinite period. Total rent is 640,00 € per month and a security deposit (Kaution) of 1.560,00 € is payable in three monthly installments.\",\"explanation\":\"This is your signed rental contract (Mietvertrag) for the apartment starting 01.10.2025. It runs indefinitely, not for a fixed term. Rent is due by the third working day of each month; keep making these payments to the landlord's account. The deposit (Kaution) of 1.560,00 € can be paid in three equal monthly installments, the first due when the tenancy begins. If you ever want to move out, note the notice period described in §2 (written notice by the third working day of a month ends the tenancy at the end of the month after next). No immediate action is required now beyond keeping up with rent and deposit payments; keep this contract for your records.\",\"language\":\"de\",\"document_date\":\"2025-09-15\",\"recipient_name\":\"Sam Rivera\",\"urgency\":\"low\",\"tax_relevant\":false,\"tax_note\":null,\"sender\":{\"name\":\"Wohnbau Musterstadt eG\",\"kind\":\"landlord\",\"address\":\"Genossenschaftsstraße 10, 12345 Musterstadt\",\"website\":\"www.wohnbau-musterstadt.example\",\"identifiers\":[{\"label\":\"Amtsgericht/GnR\",\"value\":\"Amtsgericht Musterstadt GnR 123\"}]},\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"MV-2025-0412\"},{\"label\":\"Wohnungsnummer\",\"value\":\"05-2-03\"}],\"payment\":{\"iban\":\"DE05123456000004455660\",\"iban_valid\":null,\"payee\":\"Wohnbau Musterstadt eG\",\"reference\":\"MV-2025-0412\"},\"remedy\":{\"type\":\"none\",\"addressee\":null,\"period_text\":null,\"form_text\":null,\"quote\":null},\"contract\":{\"name\":\"Mietvertrag Wohnung 05-2-03, Beispielweg 5\",\"category\":\"rent\",\"concluded_date\":\"2025-09-15\",\"start_date\":\"2025-10-01\",\"end_date\":null,\"initial_term_months\":null,\"renewal_term_months\":0,\"notice_basis\":\"end_of_month\",\"notice_value\":3,\"notice_unit\":\"months\",\"cost_amount\":640,\"cost_interval\":\"monthly\",\"customer_number\":null,\"is_basic_supply\":false,\"is_consumer\":true,\"quotes\":[\"Das Mietverhältnis beginnt am 01.10.2025 und läuft auf unbestimmte Zeit.\",\"Der Mieter kann das Mietverhältnis spätestens am dritten Werktag eines Kalendermonats zum Ablauf des übernächsten Monats kündigen (§ 573c Abs. 1 BGB).\",\"Die Gesamtmiete ist monatlich im Voraus, spätestens bis zum dritten Werktag eines jeden Monats, kostenfrei auf das Konto der Vermieterin zu zahlen.\",\"Gesamtmiete   640,00 €\"]},\"change\":null,\"key_facts\":[{\"label\":\"Grundmiete (Nettokaltmiete)\",\"value\":\"520,00 € monatlich\",\"quote\":\"Grundmiete (Nettokaltmiete)   520,00 €\"},{\"label\":\"Vorauszahlung Betriebskosten\",\"value\":\"70,00 € monatlich\",\"quote\":\"Vorauszahlung Betriebskosten (ohne Heizung und Warmwasser)   70,00 €\"},{\"label\":\"Vorauszahlung Heiz- und Warmwasserkosten\",\"value\":\"50,00 € monatlich\",\"quote\":\"Vorauszahlung Heiz- und Warmwasserkosten   50,00 €\"},{\"label\":\"Gesamtmiete\",\"value\":\"640,00 € monatlich\",\"quote\":\"Gesamtmiete   640,00 €\"},{\"label\":\"Mietsicherheit (Kaution)\",\"value\":\"1.560,00 €, zahlbar in 3 Raten\",\"quote\":\"Der Mieter leistet eine Mietsicherheit (Kaution) in Höhe von 1.560,00 € (drei Nettokaltmieten).\"},{\"label\":\"Wohnfläche\",\"value\":\"ca. 48,6 m²\",\"quote\":\"Die Wohnfläche beträgt ca. 48,6 m².\"},{\"label\":\"Mietbeginn\",\"value\":\"01.10.2025\",\"quote\":\"Das Mietverhältnis beginnt am 01.10.2025 und läuft auf unbestimmte Zeit.\"}],\"items\":[{\"kind\":\"payment\",\"title\":\"Monthly rent payment (Gesamtmiete)\",\"action\":\"Pay the total rent to the landlord's account by the third working day of each month.\",\"consequence\":null,\"amount\":640,\"currency\":\"EUR\",\"direction\":\"out\",\"priority\":\"normal\",\"recurrence\":{\"interval\":1,\"unit\":\"months\"},\"date\":{\"type\":\"none\",\"nature\":\"payment\",\"text\":\"spätestens bis zum dritten Werktag eines jeden Monats\",\"anchor\":null,\"anchor_date\":null,\"date\":null,\"time\":null,\"amount\":null,\"unit\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"auto\",\"legal_basis\":null},\"quote\":\"Die Gesamtmiete ist monatlich im Voraus, spätestens bis zum dritten Werktag eines jeden Monats, kostenfrei auf das Konto der Vermieterin zu zahlen.\"},{\"kind\":\"payment\",\"title\":\"Security deposit (Kaution)\",\"action\":\"Pay the security deposit of 1.560,00 € in three equal monthly installments, with the first installment due at the start of the tenancy and the remaining two due with the following rent payments.\",\"consequence\":null,\"amount\":1560,\"currency\":\"EUR\",\"direction\":\"out\",\"priority\":\"normal\",\"recurrence\":null,\"date\":{\"type\":\"fixed\",\"nature\":\"payment\",\"text\":\"zu Beginn des Mietverhältnisses\",\"anchor\":null,\"anchor_date\":null,\"date\":\"2025-10-01\",\"time\":null,\"amount\":null,\"unit\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"auto\",\"legal_basis\":\"§ 551 Abs. 2 BGB\"},\"quote\":\"Die erste Teilzahlung ist zu Beginn des Mietverhältnisses fällig, die weiteren Teilzahlungen werden zusammen mit den unmittelbar folgenden Mietzahlungen fällig (§ 551 Abs. 2 BGB).\"}],\"warnings\":[]}",
+    "data": {
+      "area": "residence",
+      "case_title": "Rental lease – Beispielweg 5, Musterstadt",
+      "kind": "rent_lease",
+      "title": "Rental Lease Agreement (Mietvertrag) with Wohnbau Musterstadt eG",
+      "summary": "Wohnbau Musterstadt eG (cooperative housing association) and Sam Rivera signed a residential lease (Mietvertrag Nr. MV-2025-0412) for apartment 05-2-03 at Beispielweg 5, Musterstadt, starting 01.10.2025 for an indefinite period. Total rent is 640,00 € per month and a security deposit (Kaution) of 1.560,00 € is payable in three monthly installments.",
+      "explanation": "This is your signed rental contract (Mietvertrag) for the apartment starting 01.10.2025. It runs indefinitely, not for a fixed term. Rent is due by the third working day of each month; keep making these payments to the landlord's account. The deposit (Kaution) of 1.560,00 € can be paid in three equal monthly installments, the first due when the tenancy begins. If you ever want to move out, note the notice period described in §2 (written notice by the third working day of a month ends the tenancy at the end of the month after next). No immediate action is required now beyond keeping up with rent and deposit payments; keep this contract for your records.",
+      "language": "de",
+      "document_date": "2025-09-15",
+      "recipient_name": "Sam Rivera",
+      "urgency": "low",
+      "tax_relevant": false,
+      "tax_note": null,
+      "sender": {
+        "name": "Wohnbau Musterstadt eG",
+        "kind": "landlord",
+        "address": "Genossenschaftsstraße 10, 12345 Musterstadt",
+        "website": "www.wohnbau-musterstadt.example",
+        "identifiers": [
+          {
+            "label": "Amtsgericht/GnR",
+            "value": "Amtsgericht Musterstadt GnR 123"
+          }
+        ]
+      },
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "MV-2025-0412"
+        },
+        {
+          "label": "Wohnungsnummer",
+          "value": "05-2-03"
+        }
+      ],
+      "payment": {
+        "iban": "DE05123456000004455660",
+        "iban_valid": null,
+        "payee": "Wohnbau Musterstadt eG",
+        "reference": "MV-2025-0412"
+      },
+      "remedy": {
+        "type": "none",
+        "addressee": null,
+        "period_text": null,
+        "form_text": null,
+        "quote": null
+      },
+      "contract": {
+        "name": "Mietvertrag Wohnung 05-2-03, Beispielweg 5",
+        "category": "rent",
+        "concluded_date": "2025-09-15",
+        "start_date": "2025-10-01",
+        "end_date": null,
+        "initial_term_months": null,
+        "renewal_term_months": 0,
+        "notice_basis": "end_of_month",
+        "notice_value": 3,
+        "notice_unit": "months",
+        "cost_amount": 640,
+        "cost_interval": "monthly",
+        "customer_number": null,
+        "is_basic_supply": false,
+        "is_consumer": true,
+        "quotes": [
+          "Das Mietverhältnis beginnt am 01.10.2025 und läuft auf unbestimmte Zeit.",
+          "Der Mieter kann das Mietverhältnis spätestens am dritten Werktag eines Kalendermonats zum Ablauf des übernächsten Monats kündigen (§ 573c Abs. 1 BGB).",
+          "Die Gesamtmiete ist monatlich im Voraus, spätestens bis zum dritten Werktag eines jeden Monats, kostenfrei auf das Konto der Vermieterin zu zahlen.",
+          "Gesamtmiete   640,00 €"
+        ]
+      },
+      "change": null,
+      "key_facts": [
+        {
+          "label": "Grundmiete (Nettokaltmiete)",
+          "value": "520,00 € monatlich",
+          "quote": "Grundmiete (Nettokaltmiete)   520,00 €"
+        },
+        {
+          "label": "Vorauszahlung Betriebskosten",
+          "value": "70,00 € monatlich",
+          "quote": "Vorauszahlung Betriebskosten (ohne Heizung und Warmwasser)   70,00 €"
+        },
+        {
+          "label": "Vorauszahlung Heiz- und Warmwasserkosten",
+          "value": "50,00 € monatlich",
+          "quote": "Vorauszahlung Heiz- und Warmwasserkosten   50,00 €"
+        },
+        {
+          "label": "Gesamtmiete",
+          "value": "640,00 € monatlich",
+          "quote": "Gesamtmiete   640,00 €"
+        },
+        {
+          "label": "Mietsicherheit (Kaution)",
+          "value": "1.560,00 €, zahlbar in 3 Raten",
+          "quote": "Der Mieter leistet eine Mietsicherheit (Kaution) in Höhe von 1.560,00 € (drei Nettokaltmieten)."
+        },
+        {
+          "label": "Wohnfläche",
+          "value": "ca. 48,6 m²",
+          "quote": "Die Wohnfläche beträgt ca. 48,6 m²."
+        },
+        {
+          "label": "Mietbeginn",
+          "value": "01.10.2025",
+          "quote": "Das Mietverhältnis beginnt am 01.10.2025 und läuft auf unbestimmte Zeit."
+        }
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Monthly rent payment (Gesamtmiete)",
+          "action": "Pay the total rent to the landlord's account by the third working day of each month.",
+          "consequence": null,
+          "amount": 640,
+          "currency": "EUR",
+          "direction": "out",
+          "priority": "normal",
+          "recurrence": {
+            "interval": 1,
+            "unit": "months"
+          },
+          "date": {
+            "type": "none",
+            "nature": "payment",
+            "text": "spätestens bis zum dritten Werktag eines jeden Monats",
+            "anchor": null,
+            "anchor_date": null,
+            "date": null,
+            "time": null,
+            "amount": null,
+            "unit": null,
+            "delivery_rule": "none",
+            "shift_rule": "auto",
+            "legal_basis": null
+          },
+          "quote": "Die Gesamtmiete ist monatlich im Voraus, spätestens bis zum dritten Werktag eines jeden Monats, kostenfrei auf das Konto der Vermieterin zu zahlen."
+        },
+        {
+          "kind": "payment",
+          "title": "Security deposit (Kaution)",
+          "action": "Pay the security deposit of 1.560,00 € in three equal monthly installments, with the first installment due at the start of the tenancy and the remaining two due with the following rent payments.",
+          "consequence": null,
+          "amount": 1560,
+          "currency": "EUR",
+          "direction": "out",
+          "priority": "normal",
+          "recurrence": null,
+          "date": {
+            "type": "fixed",
+            "nature": "payment",
+            "text": "zu Beginn des Mietverhältnisses",
+            "anchor": null,
+            "anchor_date": null,
+            "date": "2025-10-01",
+            "time": null,
+            "amount": null,
+            "unit": null,
+            "delivery_rule": "none",
+            "shift_rule": "auto",
+            "legal_basis": "§ 551 Abs. 2 BGB"
+          },
+          "quote": "Die erste Teilzahlung ist zu Beginn des Mietverhältnisses fällig, die weiteren Teilzahlungen werden zusammen mit den unmittelbar folgenden Mietzahlungen fällig (§ 551 Abs. 2 BGB)."
+        }
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 9285,
+      "cache_read_tokens": 6755,
+      "cache_creation_tokens": 4758,
+      "cost_usd": 0.113237,
+      "duration_ms": 81874,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

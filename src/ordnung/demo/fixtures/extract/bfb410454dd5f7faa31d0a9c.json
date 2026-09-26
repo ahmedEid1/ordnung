@@ -1,0 +1,190 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "8.7.1",
+    "cache_key": "{\"doc\":\"b285c4dc70efef3283cb2fe3b9dc93b79099baf6ca04e11779fe6166fad45e17\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_pa2w9q3gxzqk"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym) — Gläubiger-ID: DE25ZZZ00000104570; USt-IdNr.: DE310457828; Amtsgericht: Musterstadt HRB 31045; Mitgliedsnummer: FW-10457\n- FunkN"
+  },
+  "response": {
+    "text": "{\"area\":\"study\",\"case_title\":\"Global Talent Scholarship Award 2026/27\",\"title\":\"Global Talent Scholarship Award 2026/27\",\"change\":null,\"contract\":null,\"document_date\":\"2026-09-05\",\"explanation\":\"Congratulations — you have been awarded a scholarship (Stipendium) that will pay you EUR 450.00 per month from October 2026 to September 2027. To keep receiving it you must stay enrolled full-time at Hochschule Musterstadt and upload your enrolment certificate each semester to the scholarship portal, submit a signed progress report by the deadline shown, tell the foundation within two weeks whenever your address, bank details or study status change, and report any other scholarship before you accept it. The stipend is generally tax-free (§3 No. 44 EStG), but keep this letter with your tax records. No action is needed to accept the award itself, but missing the report deadline or the notification duties could jeopardise future payments — ask the foundation if anything is unclear.\",\"items\":[{\"kind\":\"payment\",\"title\":\"Monthly scholarship stipend\",\"date\":{\"type\":\"none\",\"nature\":\"payment\",\"text\":\"on or around the first working day of each month\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"quote\":\"The monthly stipend of EUR 450.00 will be paid from October 2026 to September 2027 by bank transfer on or around the first working day of each month.\",\"amount\":450,\"currency\":\"EUR\",\"direction\":\"in\",\"recurrence\":{\"interval\":1,\"unit\":\"months\"},\"priority\":\"normal\"},{\"kind\":\"task\",\"title\":\"Upload certificate of enrolment each semester\",\"date\":{\"type\":\"none\",\"nature\":\"declaration\",\"text\":\"for each semester\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"quote\":\"You remain enrolled as a full-time student at Hochschule Musterstadt throughout the funding period and upload your certificate of enrolment for each semester to the scholarship portal.\",\"action\":\"Upload your certificate of enrolment for the current semester to the scholarship portal.\",\"priority\":\"normal\"},{\"kind\":\"deadline\",\"title\":\"Submit first progress report\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-12-15\",\"nature\":\"declaration\",\"text\":\"15 December 2026\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"quote\":\"Your first progress report is due on 15 December 2026.\",\"action\":\"Submit the progress report (max. two pages, countersigned by your academic supervisor) through the scholarship portal.\",\"priority\":\"normal\"},{\"kind\":\"task\",\"title\":\"Notify foundation of changes\",\"date\":{\"type\":\"none\",\"nature\":\"declaration\",\"text\":\"within two weeks of the change\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"quote\":\"Please notify us of any change of address, bank details or study status within two weeks of the change.\",\"action\":\"Inform the foundation of any change of address, bank details or study status within two weeks of it happening.\",\"priority\":\"normal\"},{\"kind\":\"task\",\"title\":\"Report other scholarships before accepting\",\"date\":{\"type\":\"none\",\"nature\":\"declaration\",\"text\":\"before you accept them\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"quote\":\"Other scholarships or grants must be reported to us before you accept them.\",\"action\":\"Report any other scholarship or grant to the foundation before accepting it.\",\"priority\":\"normal\"},{\"kind\":\"appointment\",\"title\":\"Autumn Meeting in Berlin\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-11-07\",\"nature\":\"appointment\",\"text\":\"7 November 2026\",\"delivery_rule\":\"none\",\"shift_rule\":\"none\"},\"quote\":\"We look forward to welcoming you to our scholar community at the Autumn Meeting in Berlin on 7 November 2026.\",\"location\":\"Berlin\",\"priority\":\"normal\"}],\"key_facts\":[{\"label\":\"Monthly stipend\",\"value\":\"EUR 450.00\",\"quote\":\"The monthly stipend of EUR 450.00 will be paid from October 2026 to September 2027 by bank transfer on or around the first working day of each month.\"},{\"label\":\"Funding period\",\"value\":\"1 October 2026 – 30 September 2027 (12 months)\",\"quote\":\"Funding period: 1 October 2026 – 30 September 2027 (12 months).\"},{\"label\":\"Scholarship ID\",\"value\":\"GTSF-2026-0317\",\"quote\":\"Scholarship ID: GTSF-2026-0317 (please quote it in all correspondence).\"},{\"label\":\"Tax treatment\",\"value\":\"Generally tax-free under §3 No. 44 EStG\",\"quote\":\"It is generally tax-free under § 3 No. 44 of the German Income Tax Act (EStG); please keep this letter for your records.\"}],\"kind\":\"other\",\"language\":\"en\",\"payment\":null,\"recipient_name\":\"Sam Rivera\",\"references\":[{\"label\":\"Scholarship ID\",\"value\":\"GTSF-2026-0317\"}],\"remedy\":{\"type\":\"none\",\"addressee\":null,\"form_text\":null,\"period_text\":null,\"quote\":null},\"sender\":{\"name\":\"Global Talent Scholarship Foundation\",\"kind\":\"other\",\"address\":\"Beispielallee 20 · 12350 Berlin\",\"email\":null,\"phone\":\"+49 123 555 0317\",\"website\":null,\"identifiers\":[{\"label\":\"Foundation register\",\"value\":\"Berlin 3/GT-2011\"}]},\"summary\":\"The Global Talent Scholarship Foundation, represented by Dr. Helen Example, informs Sam Rivera that he has been awarded the Global Talent Scholarship 2026/27 (Scholarship ID GTSF-2026-0317), a monthly stipend of EUR 450.00 paid from October 2026 to September 2027. Conditions include staying enrolled at Hochschule Musterstadt, submitting a first progress report by 15 December 2026, and notifying the foundation of changes within two weeks.\",\"tax_note\":\"The letter states the scholarship is generally tax-free under §3 No. 44 EStG; keep it as documentation with your tax records in case the tax office asks about this income.\",\"tax_relevant\":true,\"transcript\":null,\"urgency\":\"normal\",\"warnings\":[]}",
+    "data": {
+      "area": "study",
+      "case_title": "Global Talent Scholarship Award 2026/27",
+      "title": "Global Talent Scholarship Award 2026/27",
+      "change": null,
+      "contract": null,
+      "document_date": "2026-09-05",
+      "explanation": "Congratulations — you have been awarded a scholarship (Stipendium) that will pay you EUR 450.00 per month from October 2026 to September 2027. To keep receiving it you must stay enrolled full-time at Hochschule Musterstadt and upload your enrolment certificate each semester to the scholarship portal, submit a signed progress report by the deadline shown, tell the foundation within two weeks whenever your address, bank details or study status change, and report any other scholarship before you accept it. The stipend is generally tax-free (§3 No. 44 EStG), but keep this letter with your tax records. No action is needed to accept the award itself, but missing the report deadline or the notification duties could jeopardise future payments — ask the foundation if anything is unclear.",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Monthly scholarship stipend",
+          "date": {
+            "type": "none",
+            "nature": "payment",
+            "text": "on or around the first working day of each month",
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "quote": "The monthly stipend of EUR 450.00 will be paid from October 2026 to September 2027 by bank transfer on or around the first working day of each month.",
+          "amount": 450,
+          "currency": "EUR",
+          "direction": "in",
+          "recurrence": {
+            "interval": 1,
+            "unit": "months"
+          },
+          "priority": "normal"
+        },
+        {
+          "kind": "task",
+          "title": "Upload certificate of enrolment each semester",
+          "date": {
+            "type": "none",
+            "nature": "declaration",
+            "text": "for each semester",
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "quote": "You remain enrolled as a full-time student at Hochschule Musterstadt throughout the funding period and upload your certificate of enrolment for each semester to the scholarship portal.",
+          "action": "Upload your certificate of enrolment for the current semester to the scholarship portal.",
+          "priority": "normal"
+        },
+        {
+          "kind": "deadline",
+          "title": "Submit first progress report",
+          "date": {
+            "type": "fixed",
+            "date": "2026-12-15",
+            "nature": "declaration",
+            "text": "15 December 2026",
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "quote": "Your first progress report is due on 15 December 2026.",
+          "action": "Submit the progress report (max. two pages, countersigned by your academic supervisor) through the scholarship portal.",
+          "priority": "normal"
+        },
+        {
+          "kind": "task",
+          "title": "Notify foundation of changes",
+          "date": {
+            "type": "none",
+            "nature": "declaration",
+            "text": "within two weeks of the change",
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "quote": "Please notify us of any change of address, bank details or study status within two weeks of the change.",
+          "action": "Inform the foundation of any change of address, bank details or study status within two weeks of it happening.",
+          "priority": "normal"
+        },
+        {
+          "kind": "task",
+          "title": "Report other scholarships before accepting",
+          "date": {
+            "type": "none",
+            "nature": "declaration",
+            "text": "before you accept them",
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "quote": "Other scholarships or grants must be reported to us before you accept them.",
+          "action": "Report any other scholarship or grant to the foundation before accepting it.",
+          "priority": "normal"
+        },
+        {
+          "kind": "appointment",
+          "title": "Autumn Meeting in Berlin",
+          "date": {
+            "type": "fixed",
+            "date": "2026-11-07",
+            "nature": "appointment",
+            "text": "7 November 2026",
+            "delivery_rule": "none",
+            "shift_rule": "none"
+          },
+          "quote": "We look forward to welcoming you to our scholar community at the Autumn Meeting in Berlin on 7 November 2026.",
+          "location": "Berlin",
+          "priority": "normal"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Monthly stipend",
+          "value": "EUR 450.00",
+          "quote": "The monthly stipend of EUR 450.00 will be paid from October 2026 to September 2027 by bank transfer on or around the first working day of each month."
+        },
+        {
+          "label": "Funding period",
+          "value": "1 October 2026 – 30 September 2027 (12 months)",
+          "quote": "Funding period: 1 October 2026 – 30 September 2027 (12 months)."
+        },
+        {
+          "label": "Scholarship ID",
+          "value": "GTSF-2026-0317",
+          "quote": "Scholarship ID: GTSF-2026-0317 (please quote it in all correspondence)."
+        },
+        {
+          "label": "Tax treatment",
+          "value": "Generally tax-free under §3 No. 44 EStG",
+          "quote": "It is generally tax-free under § 3 No. 44 of the German Income Tax Act (EStG); please keep this letter for your records."
+        }
+      ],
+      "kind": "other",
+      "language": "en",
+      "payment": null,
+      "recipient_name": "Sam Rivera",
+      "references": [
+        {
+          "label": "Scholarship ID",
+          "value": "GTSF-2026-0317"
+        }
+      ],
+      "remedy": {
+        "type": "none",
+        "addressee": null,
+        "form_text": null,
+        "period_text": null,
+        "quote": null
+      },
+      "sender": {
+        "name": "Global Talent Scholarship Foundation",
+        "kind": "other",
+        "address": "Beispielallee 20 · 12350 Berlin",
+        "email": null,
+        "phone": "+49 123 555 0317",
+        "website": null,
+        "identifiers": [
+          {
+            "label": "Foundation register",
+            "value": "Berlin 3/GT-2011"
+          }
+        ]
+      },
+      "summary": "The Global Talent Scholarship Foundation, represented by Dr. Helen Example, informs Sam Rivera that he has been awarded the Global Talent Scholarship 2026/27 (Scholarship ID GTSF-2026-0317), a monthly stipend of EUR 450.00 paid from October 2026 to September 2027. Conditions include staying enrolled at Hochschule Musterstadt, submitting a first progress report by 15 December 2026, and notifying the foundation of changes within two weeks.",
+      "tax_note": "The letter states the scholarship is generally tax-free under §3 No. 44 EStG; keep it as documentation with your tax records in case the tax office asks about this income.",
+      "tax_relevant": true,
+      "transcript": null,
+      "urgency": "normal",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 9698,
+      "cache_read_tokens": 16451,
+      "cache_creation_tokens": 10101,
+      "cost_usd": 0.1406822,
+      "duration_ms": 80038,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

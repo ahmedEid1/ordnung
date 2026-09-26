@@ -1,0 +1,309 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "2+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"3985cbd8a412814b2db896349e46e6c6de4ec9d35d59ab42871a9bb8faf4fe00\",\"question\":\"Which deadlines are coming up in October?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhich deadlines are coming up in October?\n"
+  },
+  "response": {
+    "text": "Here are the deadlines due in October:\n\n- **Return overdue library items** – due **Thu 2 Oct 2026** [item:itm_ghq58jjdz149]\n  - Two overdue books need to go back to Stadtbibliothek Musterstadt [party:pty_d2ymm5s3htd0]; fees rise €0.50/item per opening day late, and the account gets blocked once fees hit €10.\n\n- **Object to contribution notice (Widerspruch)** with Muster BKK [party:pty_eatxsexnt9s3] – due **Wed 14 Oct 2026**, but should be **sent by 8 Oct 2026** [item:itm_v0kx33tjwnwb]\n  - If you disagree with the contribution amount, the objection must reach Muster BKK by the due date; otherwise the notice becomes final (and payment is still owed in the meantime regardless).\n\nNo other items of kind \"deadline\" fall in October per your records.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 658,
+      "cache_read_tokens": 7639,
+      "cache_creation_tokens": 2338,
+      "cost_usd": 0.0174678,
+      "duration_ms": 10230,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__today",
+      "input": {}
+    },
+    {
+      "type": "tool_result",
+      "text": "<untrusted_document>\n{\"today\":\"2026-09-28\",\"weekday\":\"Monday\",\"simulated\":true}\n</untrusted_document>"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "deadline",
+        "from_date": "2026-10-01",
+        "to_date": "2026-10-31"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<untrusted_document>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"title\":\"Return overdue library items\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"other\",\"action\":\"Return the two overdue items (Einführung in die Statistik mit R; Deutsch im Alltag B2 – Übungsbuch) to the library, e.g. via the return box or service desk.\",\"consequence\":\"Fees increase by 0,50 € per item per opening day after the deadline, and the account is blocked for further loans once fees reach 10,00 €.\",\"party_id\":\"pty_d2ymm5s3htd0\",\"party\":\"Stadtbibliothek Musterstadt\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_v0kx33tjwnwb\",\"kind\":\"deadline\",\"title\":\"Object to contribution notice (Widerspruch)\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"priority\":\"high\",\"area\":\"health\",\"action\":\"File a written, electronic (per § 36a Abs. 2 SGB I) or in-person objection (Widerspruch) with Muster BKK if you disagree with the contribution amount.\",\"consequence\":\"The contribution notice becomes final if no objection is filed in time; an objection does not suspend the duty to pay the assessed amount in the meantime.\",\"party_id\":\"pty_eatxsexnt9s3\",\"party\":\"Muster BKK\",\"doc_id\":\"doc_55pytq44yv9e\",\"contract_id\":\"ctr_myhhpjfkpydh\"}]}\n</untrusted_document>"
+    },
+    {
+      "type": "text",
+      "text": "Here are the de"
+    },
+    {
+      "type": "text",
+      "text": "adlines due"
+    },
+    {
+      "type": "text",
+      "text": " in October:\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " **Return overdue library items"
+    },
+    {
+      "type": "text",
+      "text": "** –"
+    },
+    {
+      "type": "text",
+      "text": " due **"
+    },
+    {
+      "type": "text",
+      "text": "Thu "
+    },
+    {
+      "type": "text",
+      "text": "2 Oct 2026"
+    },
+    {
+      "type": "text",
+      "text": "** [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_ghq58"
+    },
+    {
+      "type": "text",
+      "text": "jjdz149]"
+    },
+    {
+      "type": "text",
+      "text": "\n  - Two"
+    },
+    {
+      "type": "text",
+      "text": " over"
+    },
+    {
+      "type": "text",
+      "text": "due books need"
+    },
+    {
+      "type": "text",
+      "text": " to go"
+    },
+    {
+      "type": "text",
+      "text": " back to Stadtbib"
+    },
+    {
+      "type": "text",
+      "text": "liothek Musterstad"
+    },
+    {
+      "type": "text",
+      "text": "t [party:pty_d"
+    },
+    {
+      "type": "text",
+      "text": "2ymm5s3ht"
+    },
+    {
+      "type": "text",
+      "text": "d0];"
+    },
+    {
+      "type": "text",
+      "text": " fees r"
+    },
+    {
+      "type": "text",
+      "text": "ise €"
+    },
+    {
+      "type": "text",
+      "text": "0.50/item per op"
+    },
+    {
+      "type": "text",
+      "text": "ening day late"
+    },
+    {
+      "type": "text",
+      "text": ", and the account g"
+    },
+    {
+      "type": "text",
+      "text": "ets blocked once"
+    },
+    {
+      "type": "text",
+      "text": " fees hit €10."
+    },
+    {
+      "type": "text",
+      "text": "\n\n- **Object to contribution"
+    },
+    {
+      "type": "text",
+      "text": " notice (Widerspru"
+    },
+    {
+      "type": "text",
+      "text": "ch)** with"
+    },
+    {
+      "type": "text",
+      "text": " Muster BKK ["
+    },
+    {
+      "type": "text",
+      "text": "party:pty_eatx"
+    },
+    {
+      "type": "text",
+      "text": "sexnt9s3]"
+    },
+    {
+      "type": "text",
+      "text": " – due **Wed 14"
+    },
+    {
+      "type": "text",
+      "text": " Oct 2026**"
+    },
+    {
+      "type": "text",
+      "text": ", but should be **"
+    },
+    {
+      "type": "text",
+      "text": "sent by 8"
+    },
+    {
+      "type": "text",
+      "text": " Oct 2026**"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_v0"
+    },
+    {
+      "type": "text",
+      "text": "kx33tjwnw"
+    },
+    {
+      "type": "text",
+      "text": "b]\n  - If you"
+    },
+    {
+      "type": "text",
+      "text": " dis"
+    },
+    {
+      "type": "text",
+      "text": "agree with the contribution am"
+    },
+    {
+      "type": "text",
+      "text": "ount, the obj"
+    },
+    {
+      "type": "text",
+      "text": "ection must re"
+    },
+    {
+      "type": "text",
+      "text": "ach Muster BKK by"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " due date;"
+    },
+    {
+      "type": "text",
+      "text": " otherwise the notice bec"
+    },
+    {
+      "type": "text",
+      "text": "omes final ("
+    },
+    {
+      "type": "text",
+      "text": "and pay"
+    },
+    {
+      "type": "text",
+      "text": "ment is still owed in"
+    },
+    {
+      "type": "text",
+      "text": " the meantime regardless)."
+    },
+    {
+      "type": "text",
+      "text": "\n\nNo"
+    },
+    {
+      "type": "text",
+      "text": " other items"
+    },
+    {
+      "type": "text",
+      "text": " of"
+    },
+    {
+      "type": "text",
+      "text": " kind \"deadline\" f"
+    },
+    {
+      "type": "text",
+      "text": "all in October per"
+    },
+    {
+      "type": "text",
+      "text": " your records"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Here are the deadlines due in October:\n\n- **Return overdue library items** – due **Thu 2 Oct 2026** [item:itm_ghq58jjdz149]\n  - Two overdue books need to go back to Stadtbibliothek Musterstadt [party:pty_d2ymm5s3htd0]; fees rise €0.50/item per opening day late, and the account gets blocked once fees hit €10.\n\n- **Object to contribution notice (Widerspruch)** with Muster BKK [party:pty_eatxsexnt9s3] – due **Wed 14 Oct 2026**, but should be **sent by 8 Oct 2026** [item:itm_v0kx33tjwnwb]\n  - If you disagree with the contribution amount, the objection must reach Muster BKK by the due date; otherwise the notice becomes final (and payment is still owed in the meantime regardless).\n\nNo other items of kind \"deadline\" fall in October per your records.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 658,
+          "cache_read_tokens": 7639,
+          "cache_creation_tokens": 2338,
+          "cost_usd": 0.0174678,
+          "duration_ms": 10230,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude"
+      }
+    }
+  ]
+}

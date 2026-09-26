@@ -1,0 +1,134 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "8.7.1",
+    "cache_key": "{\"doc\":\"2b0aaebbbfd5786de7cbbd597f37ac143f601f5a4b11d5d46c3a89ed6ec4d5b1\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_5c5axexztnw6"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster) — Beitragsnummer: 512 345 678\n- FitWell Studios GmbH (gym) — Gläubiger-ID: DE25ZZZ00000104570; USt-IdNr.: D"
+  },
+  "response": {
+    "text": "{\"area\":\"other\",\"case_title\":\"Library reminder: overdue items (1st reminder) – Stadtbibliothek Musterstadt\",\"kind\":\"dunning\",\"title\":\"Overdue library items – 1st reminder (Erinnerung: Leihfrist überschritten)\",\"summary\":\"Stadtbibliothek Musterstadt sent Sam Rivera a first reminder dated 22.09.2026 that two borrowed items are overdue. Total fees so far are 4,50 €, and the letter asks for the items to be returned by 02.10.2026.\",\"explanation\":\"This is a reminder from the city library (Stadtbibliothek) that two books you borrowed are past their due date. You already owe 4.50 € in late fees, which you can pay at the service desk or the payment machine when you return the items. Please return the items by the deadline shown in the letter: after that, fees rise by 0.50 € per item for every day the library is open, and once the total reaches 10.00 € your library account will be blocked from further borrowing. You can drop items in the 24-hour return box, or renew the loan online yourself if no one else has reserved the items. This is only a library notice, not a legal or court matter, but returning the items promptly avoids extra fees.\",\"language\":\"de\",\"document_date\":\"2026-09-22\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Stadtbibliothek Musterstadt\",\"kind\":\"authority\",\"address\":\"Bibliotheksplatz 2 · 12345 Musterstadt\",\"phone\":\"0123 400-7700\",\"email\":null,\"website\":null,\"identifiers\":[]},\"references\":[{\"label\":\"Benutzer-Nr.\",\"value\":\"0481 1123 5\"},{\"label\":\"Mediennummer\",\"value\":\"30031 004 812\"},{\"label\":\"Mediennummer\",\"value\":\"30031 017 455\"}],\"key_facts\":[{\"label\":\"Benutzernummer\",\"value\":\"0481 1123 5\",\"quote\":\"Benutzer-Nr.   0481 1123 5\"},{\"label\":\"Gesamtgebühren\",\"value\":\"4.50 EUR\",\"quote\":\"Summe der Gebühren   4,50 €\"},{\"label\":\"Rückgabefrist\",\"value\":\"2026-10-02\",\"quote\":\"Bitte geben Sie die Medien bis zum 02.10.2026 zurück.\"},{\"label\":\"Sperrschwelle\",\"value\":\"10,00 €\",\"quote\":\"ab einem Gebührenstand von 10,00 € wird Ihr Benutzerkonto für weitere Ausleihen gesperrt\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"Return overdue library items\",\"action\":\"Return the two overdue items (Einführung in die Statistik mit R; Deutsch im Alltag B2 – Übungsbuch) to the library, e.g. via the return box or service desk.\",\"consequence\":\"Fees increase by 0,50 € per item per opening day after the deadline, and the account is blocked for further loans once fees reach 10,00 €.\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-10-02\",\"text\":\"bis zum 02.10.2026\",\"nature\":\"other\",\"shift_rule\":\"none\"},\"quote\":\"Bitte geben Sie die Medien bis zum 02.10.2026 zurück.\",\"priority\":\"high\"},{\"kind\":\"payment\",\"title\":\"Pay accumulated library fees\",\"amount\":4.5,\"currency\":\"EUR\",\"direction\":\"out\",\"action\":\"Pay the 4,50 € in fees at the service desk or the payment machine, typically when returning the items.\",\"consequence\":\"Unpaid fees continue to accrue and can lead to further increases and an account block.\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-10-02\",\"text\":\"bei der Rückgabe\",\"nature\":\"payment\",\"shift_rule\":\"none\"},\"quote\":\"Die bisher entstandenen Gebühren in Höhe von 4,50 € können Sie bei der Rückgabe an der Servicetheke oder am Kassenautomaten bezahlen.\",\"priority\":\"normal\"}],\"remedy\":{\"type\":\"none\",\"addressee\":null,\"period_text\":null,\"form_text\":null,\"quote\":null},\"payment\":null,\"contract\":null,\"change\":null,\"warnings\":[],\"urgency\":\"high\",\"tax_relevant\":false,\"tax_note\":null,\"transcript\":null}",
+    "data": {
+      "area": "other",
+      "case_title": "Library reminder: overdue items (1st reminder) – Stadtbibliothek Musterstadt",
+      "kind": "dunning",
+      "title": "Overdue library items – 1st reminder (Erinnerung: Leihfrist überschritten)",
+      "summary": "Stadtbibliothek Musterstadt sent Sam Rivera a first reminder dated 22.09.2026 that two borrowed items are overdue. Total fees so far are 4,50 €, and the letter asks for the items to be returned by 02.10.2026.",
+      "explanation": "This is a reminder from the city library (Stadtbibliothek) that two books you borrowed are past their due date. You already owe 4.50 € in late fees, which you can pay at the service desk or the payment machine when you return the items. Please return the items by the deadline shown in the letter: after that, fees rise by 0.50 € per item for every day the library is open, and once the total reaches 10.00 € your library account will be blocked from further borrowing. You can drop items in the 24-hour return box, or renew the loan online yourself if no one else has reserved the items. This is only a library notice, not a legal or court matter, but returning the items promptly avoids extra fees.",
+      "language": "de",
+      "document_date": "2026-09-22",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Stadtbibliothek Musterstadt",
+        "kind": "authority",
+        "address": "Bibliotheksplatz 2 · 12345 Musterstadt",
+        "phone": "0123 400-7700",
+        "email": null,
+        "website": null,
+        "identifiers": []
+      },
+      "references": [
+        {
+          "label": "Benutzer-Nr.",
+          "value": "0481 1123 5"
+        },
+        {
+          "label": "Mediennummer",
+          "value": "30031 004 812"
+        },
+        {
+          "label": "Mediennummer",
+          "value": "30031 017 455"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Benutzernummer",
+          "value": "0481 1123 5",
+          "quote": "Benutzer-Nr.   0481 1123 5"
+        },
+        {
+          "label": "Gesamtgebühren",
+          "value": "4.50 EUR",
+          "quote": "Summe der Gebühren   4,50 €"
+        },
+        {
+          "label": "Rückgabefrist",
+          "value": "2026-10-02",
+          "quote": "Bitte geben Sie die Medien bis zum 02.10.2026 zurück."
+        },
+        {
+          "label": "Sperrschwelle",
+          "value": "10,00 €",
+          "quote": "ab einem Gebührenstand von 10,00 € wird Ihr Benutzerkonto für weitere Ausleihen gesperrt"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return overdue library items",
+          "action": "Return the two overdue items (Einführung in die Statistik mit R; Deutsch im Alltag B2 – Übungsbuch) to the library, e.g. via the return box or service desk.",
+          "consequence": "Fees increase by 0,50 € per item per opening day after the deadline, and the account is blocked for further loans once fees reach 10,00 €.",
+          "date": {
+            "type": "fixed",
+            "date": "2026-10-02",
+            "text": "bis zum 02.10.2026",
+            "nature": "other",
+            "shift_rule": "none"
+          },
+          "quote": "Bitte geben Sie die Medien bis zum 02.10.2026 zurück.",
+          "priority": "high"
+        },
+        {
+          "kind": "payment",
+          "title": "Pay accumulated library fees",
+          "amount": 4.5,
+          "currency": "EUR",
+          "direction": "out",
+          "action": "Pay the 4,50 € in fees at the service desk or the payment machine, typically when returning the items.",
+          "consequence": "Unpaid fees continue to accrue and can lead to further increases and an account block.",
+          "date": {
+            "type": "fixed",
+            "date": "2026-10-02",
+            "text": "bei der Rückgabe",
+            "nature": "payment",
+            "shift_rule": "none"
+          },
+          "quote": "Die bisher entstandenen Gebühren in Höhe von 4,50 € können Sie bei der Rückgabe an der Servicetheke oder am Kassenautomaten bezahlen.",
+          "priority": "normal"
+        }
+      ],
+      "remedy": {
+        "type": "none",
+        "addressee": null,
+        "period_text": null,
+        "form_text": null,
+        "quote": null
+      },
+      "payment": null,
+      "contract": null,
+      "change": null,
+      "warnings": [],
+      "urgency": "high",
+      "tax_relevant": false,
+      "tax_note": null,
+      "transcript": null
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5866,
+      "cache_read_tokens": 6755,
+      "cache_creation_tokens": 3214,
+      "cost_usd": 0.07287099999999999,
+      "duration_ms": 56012,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

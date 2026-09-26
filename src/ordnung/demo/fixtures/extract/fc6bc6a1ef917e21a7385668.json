@@ -1,0 +1,144 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "8.7.1",
+    "cache_key": "{\"doc\":\"d9c816d5aed846d7ce301490ca12ae3b48053187162f93bc034aac500884c7f2\",\"language\":\"en\",\"pages\":[[1,\"transcript\"],[2,\"transcript\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_v741dndev13d"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster) — Beitragsnummer: 512 345 678\n- FitWell Studios GmbH (gym) — Gläubiger-ID: DE25ZZZ00000104570; USt-IdNr.: D"
+  },
+  "response": {
+    "text": "{\"area\":\"tax\",\"case_title\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt\",\"change\":null,\"contract\":null,\"document_date\":\"2026-09-15\",\"explanation\":\"The Finanzamt Musterstadt (tax office) has assessed Sam Rivera's income tax (Einkommensteuer) and solidarity surcharge for the year 2025. The tax due is €1,234.00 and no solidarity surcharge is charged. Because €1,546.45 was already withheld from Sam's salary, the tax office owes a refund of €312.45, which will be paid automatically into the bank account on file — no action is needed to receive it. If Sam disagrees with the assessment, an objection (Einspruch) can be filed with the Finanzamt in writing, electronically, or recorded in person by the deadline shown, which the app calculates from the date this letter is deemed delivered. If no objection is filed, the assessment becomes final. Keep this notice for your records, as it may be relevant for future tax matters.\",\"items\":[{\"kind\":\"payment\",\"title\":\"Tax refund (Steuererstattung)\",\"date\":{\"type\":\"none\",\"nature\":\"payment\",\"text\":\"wird Ihnen auf das Konto ... erstattet\",\"delivery_rule\":\"none\",\"shift_rule\":\"none\"},\"quote\":\"Der Betrag von 312,45 € wird Ihnen auf das Konto DE41 1234 6700 0071 2345 00 bei der Musterbank eG erstattet.\",\"amount\":312.45,\"currency\":\"EUR\",\"direction\":\"in\",\"action\":null,\"consequence\":null,\"priority\":\"normal\"},{\"kind\":\"deadline\",\"title\":\"Objection deadline (Einspruchsfrist)\",\"date\":{\"type\":\"relative\",\"anchor\":\"deemed_delivery\",\"amount\":1,\"unit\":\"months\",\"delivery_rule\":\"de_admin_post\",\"nature\":\"objection\",\"text\":\"Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist.\",\"legal_basis\":null,\"shift_rule\":\"auto\"},\"quote\":\"Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist.\",\"action\":\"File an objection (Einspruch) with the Finanzamt Musterstadt in writing, electronically, or to record it in person, if you disagree with the assessment.\",\"consequence\":\"If no objection is filed within the deadline, the tax assessment becomes final and can no longer be challenged.\",\"priority\":\"normal\"}],\"key_facts\":[{\"label\":\"Festgesetzte Einkommensteuer\",\"value\":\"1234.00 EUR\",\"quote\":\"Die Einkommensteuer wird auf 1.234,00 € festgesetzt.\"},{\"label\":\"Solidaritätszuschlag\",\"value\":\"0.00 EUR\",\"quote\":\"Der Solidaritätszuschlag wird nicht erhoben, da die Einkommensteuer die Freigrenze nicht übersteigt.\"},{\"label\":\"Erstattungsbetrag\",\"value\":\"312.45 EUR\",\"quote\":\"verbleibende Beträge | - 312,45 € | 0,00 €\"},{\"label\":\"Bruttoarbeitslohn\",\"value\":\"23298 EUR\",\"quote\":\"Bruttoarbeitslohn | 23.298 €\"},{\"label\":\"Zu versteuerndes Einkommen\",\"value\":\"18354 EUR\",\"quote\":\"zu versteuerndes Einkommen | 18.354 €\"}],\"kind\":\"tax_assessment\",\"language\":\"de\",\"payment\":null,\"recipient_name\":\"Sam Rivera\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"123/4567/8901\"},{\"label\":\"IdNr.\",\"value\":\"57 216 480 393\"}],\"remedy\":{\"type\":\"einspruch\",\"addressee\":\"Finanzamt Musterstadt, Steuerplatz 1, 12345 Musterstadt\",\"period_text\":\"Die Frist für die Einlegung des Einspruchs beträgt einen Monat.\",\"form_text\":\"Der Einspruch ist bei dem Finanzamt Musterstadt, Steuerplatz 1, 12345 Musterstadt, schriftlich einzureichen, diesem elektronisch zu übermitteln oder dort zur Niederschrift zu erklären.\",\"quote\":\"Der Bescheid kann mit dem Einspruch angefochten werden.\"},\"sender\":{\"name\":\"Finanzamt Musterstadt\",\"kind\":\"tax_office\",\"address\":\"Steuerplatz 1 · 12345 Musterstadt\",\"email\":null,\"phone\":\"0123 887-2204\",\"website\":\"finanzamt-musterstadt.example/datenschutz\",\"identifiers\":[{\"label\":\"Steuernummer\",\"value\":\"123/4567/8901\"}]},\"summary\":\"The Finanzamt Musterstadt issued Sam Rivera's income tax assessment (Einkommensteuerbescheid) for 2025, dated 15.09.2026, setting income tax at €1,234.00 and no solidarity surcharge. Since €1,546.45 was already withheld, a refund of €312.45 will be paid to Sam's account at Musterbank eG.\",\"tax_note\":\"This is the official 2025 income tax assessment itself; keep it for your records as it confirms your final tax liability, deductions applied (Arbeitnehmer-Pauschbetrag, Vorsorgeaufwendungen, Sonderausgaben-Pauschbetrag) and the refund amount.\",\"tax_relevant\":true,\"title\":\"Income Tax Assessment 2025 (Einkommensteuerbescheid)\",\"transcript\":null,\"urgency\":\"normal\",\"warnings\":[]}",
+    "data": {
+      "area": "tax",
+      "case_title": "Income Tax Assessment 2025 – Finanzamt Musterstadt",
+      "change": null,
+      "contract": null,
+      "document_date": "2026-09-15",
+      "explanation": "The Finanzamt Musterstadt (tax office) has assessed Sam Rivera's income tax (Einkommensteuer) and solidarity surcharge for the year 2025. The tax due is €1,234.00 and no solidarity surcharge is charged. Because €1,546.45 was already withheld from Sam's salary, the tax office owes a refund of €312.45, which will be paid automatically into the bank account on file — no action is needed to receive it. If Sam disagrees with the assessment, an objection (Einspruch) can be filed with the Finanzamt in writing, electronically, or recorded in person by the deadline shown, which the app calculates from the date this letter is deemed delivered. If no objection is filed, the assessment becomes final. Keep this notice for your records, as it may be relevant for future tax matters.",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Tax refund (Steuererstattung)",
+          "date": {
+            "type": "none",
+            "nature": "payment",
+            "text": "wird Ihnen auf das Konto ... erstattet",
+            "delivery_rule": "none",
+            "shift_rule": "none"
+          },
+          "quote": "Der Betrag von 312,45 € wird Ihnen auf das Konto DE41 1234 6700 0071 2345 00 bei der Musterbank eG erstattet.",
+          "amount": 312.45,
+          "currency": "EUR",
+          "direction": "in",
+          "action": null,
+          "consequence": null,
+          "priority": "normal"
+        },
+        {
+          "kind": "deadline",
+          "title": "Objection deadline (Einspruchsfrist)",
+          "date": {
+            "type": "relative",
+            "anchor": "deemed_delivery",
+            "amount": 1,
+            "unit": "months",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist.",
+            "legal_basis": null,
+            "shift_rule": "auto"
+          },
+          "quote": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist.",
+          "action": "File an objection (Einspruch) with the Finanzamt Musterstadt in writing, electronically, or to record it in person, if you disagree with the assessment.",
+          "consequence": "If no objection is filed within the deadline, the tax assessment becomes final and can no longer be challenged.",
+          "priority": "normal"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Festgesetzte Einkommensteuer",
+          "value": "1234.00 EUR",
+          "quote": "Die Einkommensteuer wird auf 1.234,00 € festgesetzt."
+        },
+        {
+          "label": "Solidaritätszuschlag",
+          "value": "0.00 EUR",
+          "quote": "Der Solidaritätszuschlag wird nicht erhoben, da die Einkommensteuer die Freigrenze nicht übersteigt."
+        },
+        {
+          "label": "Erstattungsbetrag",
+          "value": "312.45 EUR",
+          "quote": "verbleibende Beträge | - 312,45 € | 0,00 €"
+        },
+        {
+          "label": "Bruttoarbeitslohn",
+          "value": "23298 EUR",
+          "quote": "Bruttoarbeitslohn | 23.298 €"
+        },
+        {
+          "label": "Zu versteuerndes Einkommen",
+          "value": "18354 EUR",
+          "quote": "zu versteuerndes Einkommen | 18.354 €"
+        }
+      ],
+      "kind": "tax_assessment",
+      "language": "de",
+      "payment": null,
+      "recipient_name": "Sam Rivera",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "123/4567/8901"
+        },
+        {
+          "label": "IdNr.",
+          "value": "57 216 480 393"
+        }
+      ],
+      "remedy": {
+        "type": "einspruch",
+        "addressee": "Finanzamt Musterstadt, Steuerplatz 1, 12345 Musterstadt",
+        "period_text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat.",
+        "form_text": "Der Einspruch ist bei dem Finanzamt Musterstadt, Steuerplatz 1, 12345 Musterstadt, schriftlich einzureichen, diesem elektronisch zu übermitteln oder dort zur Niederschrift zu erklären.",
+        "quote": "Der Bescheid kann mit dem Einspruch angefochten werden."
+      },
+      "sender": {
+        "name": "Finanzamt Musterstadt",
+        "kind": "tax_office",
+        "address": "Steuerplatz 1 · 12345 Musterstadt",
+        "email": null,
+        "phone": "0123 887-2204",
+        "website": "finanzamt-musterstadt.example/datenschutz",
+        "identifiers": [
+          {
+            "label": "Steuernummer",
+            "value": "123/4567/8901"
+          }
+        ]
+      },
+      "summary": "The Finanzamt Musterstadt issued Sam Rivera's income tax assessment (Einkommensteuerbescheid) for 2025, dated 15.09.2026, setting income tax at €1,234.00 and no solidarity surcharge. Since €1,546.45 was already withheld, a refund of €312.45 will be paid to Sam's account at Musterbank eG.",
+      "tax_note": "This is the official 2025 income tax assessment itself; keep it for your records as it confirms your final tax liability, deductions applied (Arbeitnehmer-Pauschbetrag, Vorsorgeaufwendungen, Sonderausgaben-Pauschbetrag) and the refund amount.",
+      "tax_relevant": true,
+      "title": "Income Tax Assessment 2025 (Einkommensteuerbescheid)",
+      "transcript": null,
+      "urgency": "normal",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4254,
+      "cache_read_tokens": 6755,
+      "cache_creation_tokens": 4740,
+      "cost_usd": 0.062855,
+      "duration_ms": 36752,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}
