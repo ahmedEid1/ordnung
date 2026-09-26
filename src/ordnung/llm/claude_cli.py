@@ -46,6 +46,7 @@ from ordnung.llm.base import (
     LLMRequest,
     LLMResponse,
     StreamEvent,
+    ToolCall,
     Usage,
 )
 
@@ -174,7 +175,14 @@ def translate(msg: dict[str, Any]) -> list[StreamEvent]:
         out = []
         for block in (msg.get("message") or {}).get("content") or []:
             if block.get("type") == "tool_use" and block.get("name") != "StructuredOutput":
-                out.append(StreamEvent(type="tool_use", name=block.get("name"), input=block.get("input")))
+                out.append(
+                    StreamEvent(
+                        type="tool_use",
+                        name=block.get("name"),
+                        input=block.get("input"),
+                        tool_use_id=block.get("id"),
+                    )
+                )
         return out
     if kind == "user":
         out = []
@@ -185,9 +193,39 @@ def translate(msg: dict[str, Any]) -> list[StreamEvent]:
                     body = block.get("content")
                     if isinstance(body, list):
                         body = "".join(c.get("text", "") for c in body if isinstance(c, dict))
-                    out.append(StreamEvent(type="tool_result", text=str(body)[:20000]))
+                    out.append(
+                        StreamEvent(
+                            type="tool_result", text=str(body)[:20000], tool_use_id=block.get("tool_use_id")
+                        )
+                    )
         return out
     return []
+
+
+class ToolTrace:
+    """Pairs ``tool_use`` and ``tool_result`` events into :class:`ToolCall` objects, in call order.
+
+    A result belongs to the call with its ``tool_use_id``: parallel calls may answer out of order.
+    A result for a call that is not traced (the CLI's own ``StructuredOutput`` tool) is dropped.
+    Events without ids (fakes, older recordings) pair with the oldest call still waiting.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[ToolCall] = []
+        self._by_id: dict[str, int] = {}
+
+    def add(self, ev: StreamEvent) -> None:
+        if ev.type == "tool_use":
+            if ev.tool_use_id:
+                self._by_id[ev.tool_use_id] = len(self.calls)
+            self.calls.append(ToolCall(name=ev.name or "", input=dict(ev.input or {})))
+        elif ev.type == "tool_result":
+            if ev.tool_use_id:
+                index = self._by_id.pop(ev.tool_use_id, None)
+            else:
+                index = next((i for i, call in enumerate(self.calls) if call.result is None), None)
+            if index is not None:
+                self.calls[index].result = ev.text
 
 
 class ClaudeCLIBackend:
@@ -273,11 +311,15 @@ class ClaudeCLIBackend:
 
     async def _complete_once(self, req: LLMRequest) -> LLMResponse:
         final: LLMResponse | None = None
+        calls = ToolTrace()
         async for ev in self._run(req, partial=False):
             if ev.type == "done":
                 final = ev.response
+            else:
+                calls.add(ev)
         if final is None:  # pragma: no cover - _run always ends with done or raises
             raise LLMError("Claude ended without a result")
+        final.tool_calls = calls.calls
         return final
 
     async def stream(self, req: LLMRequest) -> AsyncIterator[StreamEvent]:
