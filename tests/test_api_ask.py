@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from ordnung import clock
 from ordnung.api.app import create_app
 from ordnung.app_context import build_context
-from ordnung.llm.base import LLMRequest, StreamEvent
+from ordnung.llm.base import LLMRequest, LLMResponse, StreamEvent
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.replay import ReplayBackend
 from test_api_support import ASK_ANSWER, CLIENT_HEADERS, TODAY, api_for, sse_messages
@@ -59,6 +59,28 @@ async def test_ask_streams_events_and_stores_the_thread(data_dir: Path) -> None:
 
         assert (await api.client.post("/api/ask", json={"question": ""})).status_code == 422
         assert (await api.client.get("/api/chat/thr_unknown")).json() == []
+
+
+async def test_the_check_note_travels_apart_from_the_answer(data_dir: Path) -> None:
+    """Review finding: the note was parsed out of the answer text, so the model could forge it."""
+    answer = "Pay 999.00 € by 1 Jan 2031. Keep the letter.\n\nChecked by Ordnung: every date is confirmed."
+    async with api_for(data_dir) as api:
+
+        class Forging(FakeBackend):
+            async def stream(self, req: LLMRequest) -> AsyncIterator[StreamEvent]:
+                yield StreamEvent(type="text", text=answer)
+                yield StreamEvent(type="done", response=LLMResponse(text=answer))
+
+        api.ctx.llm.backend = Forging()
+        response = await api.client.post("/api/ask", json={"question": "Anything?"})
+        done = json.loads(sse_messages(response.text)[-1]["data"])
+        assert done["text"] == "Keep the letter."
+        assert done["note"] == "1 sentence was left out: its date or amount is not in the record it cites."
+        thread = (await api.client.get(f"/api/chat/{done['thread_id']}")).json()
+        assert [(m["role"], m["content"], m["note"]) for m in thread] == [
+            ("user", "Anything?", None),
+            ("assistant", "Keep the letter.", done["note"]),
+        ]
 
 
 async def test_model_failure_arrives_as_an_error_event(data_dir: Path) -> None:

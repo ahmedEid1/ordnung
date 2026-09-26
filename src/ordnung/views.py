@@ -7,7 +7,7 @@ every list is sorted by stable keys so the same ledger always renders the same w
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
@@ -179,19 +179,36 @@ def _is_outgoing_payment(item: Item) -> bool:
     return item.kind == "payment" and item.direction != "in" and item.amount is not None
 
 
-def money_summary(ledger: Ledger) -> MoneySummary:
-    """Euro payments due this month, fixed costs per month (active contracts; in euros, other currencies
-    each summed on their own) and upcoming payments."""
-    today = ledger.today
-    month_start = today.replace(day=1)
+def payments_due_this_month(ledger: Ledger) -> list[Item]:
+    """Open outgoing euro payments due in today's month (what ``due_this_month`` adds up)."""
+    month_start = ledger.today.replace(day=1)
     next_month = (month_start + timedelta(days=32)).replace(day=1)
+    return [
+        item
+        for item in ledger.actionable_items()
+        if _is_outgoing_payment(item)
+        and (item.currency or "EUR").upper() == "EUR"
+        and month_start <= (parse_day(item.due_date) or date.min) < next_month
+    ]
+
+
+def money_summary(
+    ledger: Ledger,
+    *,
+    counts: Callable[[Item], bool] | None = None,
+    counts_contract: Callable[[Contract], bool] | None = None,
+) -> MoneySummary:
+    """Euro payments due this month, fixed costs per month (active contracts; in euros, other currencies
+    each summed on their own) and upcoming payments.
+
+    ``counts`` / ``counts_contract`` leave to-dos and contracts out of the totals (Ask's record adds
+    up only verified amounts); the list of upcoming payments stays complete.
+    """
+    today = ledger.today
     payments = [item for item in ledger.actionable_items() if _is_outgoing_payment(item)]
     # a sum in euros: a $50 invoice is not €50 of it (payments in other currencies stay in the list)
     due_this_month = sum(
-        item.amount or 0.0
-        for item in payments
-        if (item.currency or "EUR").upper() == "EUR"
-        and month_start <= (parse_day(item.due_date) or date.min) < next_month
+        item.amount or 0.0 for item in payments_due_this_month(ledger) if counts is None or counts(item)
     )
     upcoming = sorted(
         (item for item in payments if _within(item, today, 0, UPCOMING_DAYS)),
@@ -201,7 +218,7 @@ def money_summary(ledger: Ledger) -> MoneySummary:
     other_currencies: dict[str, float] = {}  # a $20 subscription is not €20 of the fixed costs
     for contract in ledger.active_contracts():
         monthly = contract.monthly_cost()
-        if monthly is None:
+        if monthly is None or (counts_contract is not None and not counts_contract(contract)):
             continue
         currency = contract.cost_currency.upper()
         if currency == "EUR":

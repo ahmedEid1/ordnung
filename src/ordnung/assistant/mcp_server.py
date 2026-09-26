@@ -27,7 +27,14 @@ from typing import TYPE_CHECKING, Annotated, Any, TypeVar, get_args
 
 from pydantic import Field
 
-from ordnung.assistant.channels import LetterText, ToolAnswer, is_verified, render_tool_result
+from ordnung.assistant.channels import (
+    LetterText,
+    ToolAnswer,
+    currency_code,
+    is_verified,
+    language_code,
+    render_tool_result,
+)
 
 if TYPE_CHECKING:
     from mcp.server.mcpserver import MCPServer
@@ -391,8 +398,13 @@ class LedgerTools:
         return ToolAnswer(record, letters.by_id)
 
     def _timeline_row(self, entry: TimelineEntry, letters: LetterText) -> dict[str, Any]:
-        """Date, kind and status are the record; the amount only when its evidence is verified."""
-        letters.add(entry.ref.id, title=entry.title, subtitle=entry.subtitle, party=entry.party_name)
+        """Date, kind and status are the record; the amount only when its evidence is verified.
+
+        A record can have several entries ("X ends", "Decide on X"): the letter text keeps each one's
+        wording in a list.
+        """
+        letters.collect(entry.ref.id, titles=entry.title, subtitles=entry.subtitle)
+        letters.add(entry.ref.id, party=entry.party_name)
         row: dict[str, Any] = {
             "date": entry.date,
             "time": entry.time,
@@ -405,7 +417,7 @@ class LedgerTools:
         if entry.amount is not None:
             note = self._unverified_amount(entry.ref.type, entry.ref.id)
             if note is None:
-                row.update(amount=entry.amount, currency=entry.currency)
+                row.update(amount=entry.amount, currency=_currency(entry.currency, letters, entry.ref.id))
             else:
                 letters.add(entry.ref.id, amount=entry.amount, currency=entry.currency)
                 row["amount_unverified"] = note
@@ -424,32 +436,44 @@ class LedgerTools:
     def money_summary(self) -> ToolAnswer:
         """Payments due this month, upcoming payments and fixed costs per month (active contracts).
 
-        The totals are added up by code from the ledger's amounts, so they are record values.
+        The totals are added up by code from *verified* amounts only (ADR 0003), so they are record
+        values; how many unverified amounts they leave out is said next to them.
         """
-        from ordnung.views import money_summary
+        from ordnung.views import money_summary, payments_due_this_month
 
         ledger = self.ledger()
         summary = money_summary(ledger)
+        verified = money_summary(
+            ledger, counts=lambda item: is_verified(item.grounding), counts_contract=_terms_verified
+        )
         letters = LetterText()
         fixed = []
         for contract in ledger.active_contracts():
             if contract.monthly_cost() is None:
                 continue
             letters.add(contract.id, name=contract.name)
-            row: dict[str, Any] = {"id": contract.id, "currency": contract.cost_currency}
+            row: dict[str, Any] = {"id": contract.id}
             if _terms_verified(contract):
-                row["monthly_cost"] = contract.monthly_cost()
+                row.update(
+                    monthly_cost=contract.monthly_cost(),
+                    currency=_currency(contract.cost_currency, letters, contract.id),
+                )
             else:
-                letters.add(contract.id, monthly_cost=contract.monthly_cost())
+                letters.add(
+                    contract.id, monthly_cost=contract.monthly_cost(), currency=contract.cost_currency
+                )
                 row["terms_unverified"] = TERMS_UNVERIFIED
             fixed.append(row)
+        unverified_due = sum(1 for item in payments_due_this_month(ledger) if not is_verified(item.grounding))
+        unverified_fixed = sum(1 for row in fixed if row.get("terms_unverified"))
         record = {
             "month": ledger.today.strftime("%Y-%m"),
             "currency": "EUR",
-            "due_this_month": summary.due_this_month,
-            "fixed_costs_monthly": summary.fixed_costs_monthly,
-            "fixed_costs_monthly_other_currencies": summary.fixed_costs_monthly_other_currencies or None,
-            "fixed_costs_by_category": summary.by_category,
+            "due_this_month": verified.due_this_month,
+            "fixed_costs_monthly": verified.fixed_costs_monthly,
+            "fixed_costs_monthly_other_currencies": verified.fixed_costs_monthly_other_currencies or None,
+            "fixed_costs_by_category": verified.by_category,
+            "totals_leave_out": _left_out_note(unverified_due, unverified_fixed),
             "upcoming_payments": [_item_row(ledger, item, letters) for item in summary.upcoming_payments],
             "fixed_cost_contracts": fixed,
         }
@@ -483,12 +507,14 @@ def _document_ref(doc: Document, letters: LetterText) -> dict[str, Any]:
 def _document_head(doc: Document, letters: LetterText, ledger: Ledger) -> dict[str, Any]:
     letters.add(doc.id, tax_note=doc.tax_note)
     _add_party_name(letters, ledger, doc.party_id)
+    if language_code(doc.language) is None:  # the letter's reading, not a code: letter text
+        letters.add(doc.id, language=doc.language)
     return {
         **_document_ref(doc, letters),
         "status": "please check" if doc.status == "needs_review" else doc.status,
         "direction": doc.direction,
         "received_date": doc.received_date,
-        "language": doc.language,
+        "language": language_code(doc.language),
         "party_id": doc.party_id,
         "case_id": doc.case_id,
         "urgency": doc.urgency,
@@ -551,7 +577,7 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
     if item.amount is not None:
         note = _amount_note(item.grounding)
         if note is None:
-            row.update(amount=item.amount, currency=item.currency)
+            row.update(amount=item.amount, currency=_currency(item.currency, letters, item.id))
         else:
             letters.add(item.id, amount=item.amount, currency=item.currency)
             row["amount_unverified"] = note
@@ -570,6 +596,29 @@ TERMS_UNVERIFIED = (
     "The terms and cost were read by AI from a photo or could not be found in the letter, so they are "
     "only in the letter text: give them as what the letter says."
 )
+
+
+def _currency(value: str | None, letters: LetterText, record_id: str) -> str | None:
+    """The currency code for the record; anything that is not an ISO code goes to the letter text."""
+    code = currency_code(value)
+    if code is None and value:
+        letters.add(record_id, currency=value)
+    return code
+
+
+def _left_out_note(payments: int, contracts: int) -> str | None:
+    """What the totals leave out (written by code), or ``None`` when every amount is verified."""
+    parts = [
+        f"{count} {noun}{'' if count == 1 else 's'}"
+        for count, noun in ((payments, "payment due this month"), (contracts, "contract"))
+        if count
+    ]
+    if not parts:
+        return None
+    return (
+        f"The totals leave out {' and '.join(parts)} whose amount was not verified "
+        "(read by AI from a photo or not found on the page); see their letter text."
+    )
 
 
 def _amount_note(grounding: str | None) -> str | None:
@@ -624,13 +673,15 @@ def _contract_row(ledger: Ledger, contract: Contract, letters: LetterText) -> di
     cost = (
         {
             "amount": contract.cost_amount,
-            "currency": contract.cost_currency,
+            "currency": currency_code(contract.cost_currency),
             "interval": contract.cost_interval,
             "monthly": contract.monthly_cost(),
         }
         if contract.cost_amount is not None
         else None
     )
+    if cost is not None and currency_code(contract.cost_currency) is None:
+        letters.add(contract.id, cost_currency=contract.cost_currency)
     _terms_into(row, contract, letters, cost=cost)
     return row
 

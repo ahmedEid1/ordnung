@@ -11,15 +11,18 @@ done, code checks the answer before anyone sees it as final:
 * every citation (``[doc:ID]`` …) must name a record that exists *and* appears in the record part
   of a tool result of this turn (an id that only a letter's text mentions is not enough); others are
   stripped;
-* every sentence that states a date or amount must cite a record whose record part holds it, or be
-  framed as quoting a letter whose text holds it (then the value is shown in quotation marks);
-  other such sentences are removed (:mod:`ordnung.assistant.support`, the written policy);
-* a short note under the answer says what was left out or quoted.
+* every date and amount must be in the record part of a record its sentence cites, or be shown in
+  quotation marks as a letter's (or the person's own) words; other values are left out, and a
+  sentence with nothing left to keep is removed (:mod:`ordnung.assistant.support`, the written
+  policy);
+* a short note says what was left out or quoted. Only the check writes it: a sentence of the
+  model's that starts like it is dropped, and the note travels in its own field.
 
 Removals are logged in the activity log. The final ``done`` event (:class:`AskEvent`) carries the
-cleaned text — which replaces the streamed deltas — the validated citations with labels, and the
-ids of the stored assistant message and thread. Question and answer (with the tool trace and
-citations) are stored in ``chat_messages`` only when an answer arrives.
+checked answer — which replaces the streamed deltas — the note, the validated citations with labels,
+and the ids of the stored assistant message and thread. Question and answer (with the tool trace
+and citations) are stored in ``chat_messages`` only when an answer arrives; the stored answer ends
+with the note as its last paragraph, and :func:`stored_answer` splits it off again for the API.
 """
 
 from __future__ import annotations
@@ -45,7 +48,7 @@ from ordnung.assistant.citations import (
     tool_name,
 )
 from ordnung.assistant.mcp_server import PARTY_FIELDS, SERVER_NAME, server_config
-from ordnung.assistant.support import CheckedAnswer, TurnEvidence, check_answer
+from ordnung.assistant.support import NOTE_PREFIX, CheckedAnswer, TurnEvidence, check_answer, split_note
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.ids import new_id
@@ -93,8 +96,10 @@ class AskContext(Protocol):
 
 
 class AskEvent(StreamEvent):
-    """A stream event; the final ``done`` event also carries the answer's ids and citations."""
+    """A stream event; the final ``done`` event also carries the answer check's note (without its
+    prefix), the answer's ids and citations."""
 
+    note: str | None = None
     citations: list[CitationRef] | None = None
     message_id: str | None = None
     thread_id: str | None = None
@@ -190,7 +195,8 @@ def _history_block(history: Sequence[ChatMessage]) -> str:
     lines = []
     for message in history[-HISTORY_MESSAGES:]:
         speaker = "Person" if message.role == "user" else "Assistant"
-        lines.append(f"{speaker}: {message.content[:HISTORY_CHARS]}")
+        content = split_note(message.content)[0] if message.role == "assistant" else message.content
+        lines.append(f"{speaker}: {content[:HISTORY_CHARS]}")  # the check's notes are not the model's
     block = wrap_untrusted(_no_placeholders("\n\n".join(lines)))
     return f"Earlier in this conversation (context only):\n{block}\n\n"
 
@@ -221,6 +227,10 @@ async def ask_stream(
     store = ctx.store
     thread = thread_id or new_id("thr")
     history = store.list_chat_messages(thread) if thread_id else []
+    if ctx.llm.backend_name == "replay":
+        # the demo's answers were recorded one question at a time: there, each question is asked
+        # afresh (the thread still shows the whole conversation), so a second one replays too
+        history = []
     today = local_today(store)
     request = build_request(ctx, question, history, today)
     turn = _Turn(store, request)
@@ -318,7 +328,7 @@ def _finish(
     """Check the answer (citations, then claims), store question and answer, log what was changed."""
     checked = check_turn(store, answer, turn.results, question=question, history=history, today=today)
     text = checked.text
-    citations = citation_refs(store, parse_citations(text))
+    citations = citation_refs(store, parse_citations(checked.body))
     with store.tx():
         store.add_chat_message(thread_id, "user", question)
         message = store.add_chat_message(
@@ -329,17 +339,31 @@ def _finish(
             tool_calls=turn.calls,
         )
     _log_checks(store, message.id, thread_id, checked)
-    return AskEvent(type="done", text=text, citations=citations, message_id=message.id, thread_id=thread_id)
+    return AskEvent(
+        type="done",
+        text=checked.body,
+        note=checked.note,
+        citations=citations,
+        message_id=message.id,
+        thread_id=thread_id,
+    )
 
 
 @dataclass(frozen=True)
 class AnswerCheck:
-    """What the checks made of one answer: the final ``text`` (with its note, or a fallback), the
-    verdict on every sentence with a date, amount or § (``claims``) and the citations stripped."""
+    """What the checks made of one answer: the checked ``body`` (or a fallback), the ``note`` under it
+    (without :data:`~ordnung.assistant.support.NOTE_PREFIX`), the verdict on every sentence with a
+    date, amount or § (``claims``) and the citations stripped. ``text`` is what is stored: the body,
+    then the note as its own last paragraph."""
 
-    text: str
+    body: str
+    note: str | None
     claims: CheckedAnswer
     removed_ids: list[str]
+
+    @property
+    def text(self) -> str:
+        return f"{self.body}\n\n{NOTE_PREFIX} {self.note}" if self.note else self.body
 
 
 def check_turn(
@@ -355,7 +379,7 @@ def check_turn(
 
     Citations first (:func:`valid_citation_ids`), then every sentence with a date or amount
     (:func:`ordnung.assistant.support.check_answer`); weekday names are corrected and the note is
-    appended. An answer left empty becomes :data:`UNSUPPORTED_ANSWER` (or :data:`NO_ANSWER`).
+    made. An answer left empty becomes :data:`UNSUPPORTED_ANSWER` (or :data:`NO_ANSWER`).
     """
     person = [question, *(message.content for message in history if message.role == "user")]
     evidence = TurnEvidence.from_results(tool_results, today=today, person=person, catalog=catalog_texts())
@@ -363,12 +387,16 @@ def check_turn(
     valid = valid_citation_ids(store, cited, evidence.seen_ids)
     claims = check_answer(answer, evidence, citable=valid)
     body = correct_weekdays(_EXTRA_BLANK_LINES.sub("\n\n", strip_invalid(claims.text, valid)).strip(), today)
+    note = claims.note()
     if not body:
-        text = UNSUPPORTED_ANSWER if claims.removed else NO_ANSWER
-    else:
-        note = claims.note()
-        text = f"{body}\n\n{note}" if note else body
-    return AnswerCheck(text, claims, sorted({citation.id for citation in cited} - valid))
+        body, note = (UNSUPPORTED_ANSWER if claims.removed else NO_ANSWER), None
+    removed = sorted({citation.id for citation in cited} - valid)
+    return AnswerCheck(body, note.removeprefix(NOTE_PREFIX).strip() if note else None, claims, removed)
+
+
+def stored_answer(message: ChatMessage) -> tuple[str, str | None]:
+    """A stored message's text and, for an answer, the check's note split off it (without prefix)."""
+    return split_note(message.content) if message.role == "assistant" else (message.content, None)
 
 
 def valid_citation_ids(store: Store, cited: Iterable[Citation], seen: Collection[str]) -> set[str]:
@@ -420,27 +448,35 @@ def _log_checks(store: Store, message_id: str, thread_id: str, checked: AnswerCh
             ref_id=message_id,
             data={"thread_id": thread_id, "ids": checked.removed_ids},
         )
-    removed = checked.claims.removed
+    removed = checked.claims.removed + checked.claims.redacted
     if removed:
         store.log_activity(
             "ask.sentences_removed",
-            f"Removed {len(removed)} sentence(s) whose dates, amounts or laws are not in the records they cite",
+            f"Left out {len(removed)} sentence(s) or values whose dates, amounts or laws are not in the "
+            "records they cite",
             ref_type="chat",
             ref_id=message_id,
             data={
                 "thread_id": thread_id,
-                "unsupported": list(dict.fromkeys(value for check in removed for value in check.unsupported)),
+                "unsupported": list(dict.fromkeys(value for check in removed for value in check.left_out)),
             },
         )
     quoted = checked.claims.quoted
     if quoted:
         store.log_activity(
             "ask.letter_quotes",
-            f"Showed {len(quoted)} sentence(s) with dates or amounts only a letter states, as quotes",
+            f"Showed {len(quoted)} sentence(s) with values only a letter or the person states, as quotes",
             ref_type="chat",
             ref_id=message_id,
             data={
                 "thread_id": thread_id,
-                "quoted": list(dict.fromkeys(value for check in quoted for value in check.unsupported)),
+                "quoted": list(
+                    dict.fromkeys(
+                        value
+                        for check in quoted
+                        for value in check.unsupported
+                        if value not in check.left_out
+                    )
+                ),
             },
         )

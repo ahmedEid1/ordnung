@@ -775,19 +775,21 @@ class _AnswerPrinter:
             self.streamed.append(text)
             console.print(escape(text), end="", soft_wrap=True)
         elif kind == "done":
-            self._done(text, event.get("citations") or [])
+            self._done(text, str(event.get("note") or ""), event.get("citations") or [])
         elif kind == "error":
             self._end_line()
             self.failed = True
             err_console.print(f"[red]✗[/] {escape(str(event.get('error') or text or 'The answer stopped.'))}")
 
-    def _done(self, text: str, citations: Sequence[Mapping[str, Any]]) -> None:
+    def _done(self, text: str, note: str, citations: Sequence[Mapping[str, Any]]) -> None:
         streamed = "".join(self.streamed).strip()
         self._end_line()
         if text.strip() != streamed:
             if streamed:
                 console.rule("[dim]Checked answer[/]", style="dim")
             console.print(escape(text.strip()))
+        if note:
+            console.print(f"[dim]Checked by Ordnung: {escape(note)}[/]")
         if citations:
             console.print("[bold]Sources[/]")
             for citation in citations:

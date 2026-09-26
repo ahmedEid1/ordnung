@@ -40,6 +40,12 @@ from ordnung.assistant.mcp_server import (
 )
 from ordnung.config import Paths
 from ordnung.db.store import Store
+from ordnung.models import Evidence
+
+
+def _evidence(doc_id: str, quote: str, grounding: str) -> list[Evidence]:
+    return [Evidence.model_validate({"doc_id": doc_id, "page": 1, "quote": quote, "grounding": grounding})]
+
 
 TOOL_NAMES = {
     "search",
@@ -311,7 +317,7 @@ def test_timeline_range_ids_and_privacy(tools: LedgerTools, ids: dict[str, str])
     assert dates == sorted(dates)
     assert all("2026-09-01" <= day <= "2026-10-31" for day in dates)
     assert all("title" not in row for row in entries)
-    assert answer.letters[ids["tax_objection"]]["title"] == "Objection deadline (Einspruch)"
+    assert answer.letters[ids["tax_objection"]]["titles"] == ["Objection deadline (Einspruch)"]
     parking = next(row for row in entries if row["id"] == ids["parking_payment"])
     assert parking["amount_unverified"] == AMOUNT_NOT_FOUND and "amount" not in parking
     dunning = next(row for row in entries if row["id"] == ids["dunning_payment"])
@@ -335,7 +341,9 @@ def test_money_summary(tools: LedgerTools, ids: dict[str, str]) -> None:
     answer = tools.money_summary()
     money = answer.record
     assert money["month"] == "2026-09"
-    assert money["due_this_month"] == 119.99  # parking fine + TechMarkt reminder (not the scam letter)
+    # TechMarkt reminder; the parking fine's amount was not found on the page, the scam letter is left out
+    assert money["due_this_month"] == 94.99
+    assert money["totals_leave_out"].startswith("The totals leave out 1 payment due this month whose amount")
     assert money["fixed_costs_monthly"] == 165.89
     upcoming = {row["id"] for row in money["upcoming_payments"]}
     assert ids["dunning_payment"] in upcoming
@@ -520,3 +528,46 @@ async def test_letter_text_never_reaches_the_record_part(store: Store, ids: dict
         parsed = parse_tool_result(text)
         assert parsed.record, name
         assert all(re.fullmatch(r"[a-z]{3}_[a-z0-9]+", key) for key in parsed.letters), name  # by record id
+
+
+def test_money_totals_add_up_only_verified_amounts(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """Review finding: a contract cost read by AI from a photo reached the record through the totals."""
+    store.update_contract(
+        ids["ticket"], evidence=_evidence(ids["doc_phone"], "63,00 € monatlich", "model_read")
+    )
+    answer = tools.money_summary()
+    money = answer.record
+    assert "transport" not in money["fixed_costs_by_category"]
+    assert money["fixed_costs_monthly"] == round(165.89 - 63.0, 2)
+    assert "1 payment due this month and 1 contract" in money["totals_leave_out"]
+    ticket = next(row for row in money["fixed_cost_contracts"] if row["id"] == ids["ticket"])
+    assert ticket == {"id": ids["ticket"], "terms_unverified": TERMS_UNVERIFIED}
+    assert answer.letters[ids["ticket"]]["monthly_cost"] == 63.0
+
+
+def test_free_text_codes_from_a_letter_stay_letter_text(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """Review finding: model-read strings (a document's language, a currency) sat in the record."""
+    store.update_document(ids["doc_tax"], language="31.12.2027")
+    store.update_item(ids["dunning_payment"], currency="EUR bis 31.12.2027")
+    doc = tools.get_document(ids["doc_tax"])
+    assert doc.record["language"] is None  # dropped when rendered
+    assert doc.letters[ids["doc_tax"]]["language"] == "31.12.2027"
+    items = tools.list_items()
+    dunning = next(row for row in items.record["items"] if row["id"] == ids["dunning_payment"])
+    assert dunning["currency"] is None and dunning["amount"] == 94.99
+    assert items.letters[ids["dunning_payment"]]["currency"] == "EUR bis 31.12.2027"
+    for code in ("de", "en-GB", "de/en"):
+        store.update_document(ids["doc_tax"], language=code)
+        assert tools.get_document(ids["doc_tax"]).record["language"] == code
+
+
+def test_every_timeline_entry_keeps_its_wording(tools: LedgerTools, ids: dict[str, str]) -> None:
+    """Review finding: a contract with several timeline entries kept only the last one's title."""
+    answer = tools.timeline("2026-01-01", "2027-12-31")
+    rows = [row for row in answer.record["entries"] if row["id"] == ids["phone"]]
+    titles = answer.letters[ids["phone"]]["titles"]
+    assert len(rows) > 1 and len(titles) > 1

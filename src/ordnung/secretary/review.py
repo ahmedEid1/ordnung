@@ -136,9 +136,15 @@ _NO_BREAK_BEFORE = re.compile(
 
 def paragraphs_in(text: str) -> Iterator[tuple[str, str | None]]:
     """The § citations in ``text`` as ``(number, law or None)``: ``§ 122 Abs. 2 AO`` → ``("122", "AO")``."""
+    for number, law, _, _ in paragraph_spans(text):
+        yield number, law
+
+
+def paragraph_spans(text: str) -> Iterator[tuple[str, str | None, int, int]]:
+    """:func:`paragraphs_in` with where each citation stands: ``(number, law or None, start, end)``."""
     for match in _PARAGRAPH_RE.finditer(text):
         law = match.group("law")
-        yield match.group("num").lower(), " ".join(law.split()) if law else None
+        yield match.group("num").lower(), " ".join(law.split()) if law else None, *match.span()
 
 
 def _strings_and_numbers(data: Any) -> Iterator[str | float]:

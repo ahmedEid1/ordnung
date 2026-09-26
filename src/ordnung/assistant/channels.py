@@ -31,6 +31,7 @@ This module is imported by the MCP server at start-up, so it stays light (standa
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -56,6 +57,17 @@ class LetterText:
         kept = {key: value for key, value in fields.items() if value not in (None, "", [], {})}
         if kept:
             self.by_id.setdefault(record_id, {}).update(kept)
+
+    def collect(self, record_id: str | None, **fields: Any) -> None:
+        """Add each value to a list under its key (once), for records a result shows several times."""
+        if not record_id:
+            return
+        for key, value in fields.items():
+            if value in (None, "", [], {}):
+                continue
+            found = self.by_id.setdefault(record_id, {}).setdefault(key, [])
+            if value not in found:
+                found.append(value)
 
 
 @dataclass
@@ -129,3 +141,19 @@ def _json(text: str) -> Any | None:
 def is_verified(grounding: str | None) -> bool:
     """Whether evidence at this level puts its amount or terms into the record."""
     return grounding in VERIFIED_GROUNDING
+
+
+_LANGUAGE_CODE = re.compile(r"[a-z]{2,3}(?:-[A-Za-z]{2,4})?(?:/[a-z]{2,3}(?:-[A-Za-z]{2,4})?)*")
+_CURRENCY_CODE = re.compile(r"[A-Z]{3}")
+
+
+def language_code(value: str | None) -> str | None:
+    """``value`` when it is a language code (``de``, ``en-GB``, ``de/en``); a letter's reading can hold
+    any text."""
+    return value if value is not None and _LANGUAGE_CODE.fullmatch(value) else None
+
+
+def currency_code(value: str | None) -> str | None:
+    """``value`` (upper-cased) when it is an ISO 4217 code such as ``EUR``, else ``None``."""
+    code = (value or "").strip().upper()
+    return code if _CURRENCY_CODE.fullmatch(code) else None

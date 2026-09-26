@@ -175,6 +175,15 @@ def test_ask_in_process_streams_the_checked_answer(data_dir: Path, monkeypatch: 
     assert answers.calls[0].purpose == "ask"
 
 
+def test_ask_prints_the_check_note_apart(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    answers = FakeBackend({"ask": "Pay 999.00 € by 1 Jan 2031. Keep the letter."})
+    monkeypatch.setattr(cli, "open_context", lambda folder: build_context(folder, backend_obj=answers))
+    result = invoke("ask", "What is due?", "--data-dir", str(data_dir))
+    assert result.exit_code == 0, result.output
+    assert "Checked answer" in result.output and "Keep the letter." in result.output
+    assert "Checked by Ordnung: 1 sentence was left out" in " ".join(result.output.split())
+
+
 # --------------------------------------------------------------------------------------------------
 # talking to a running server
 # --------------------------------------------------------------------------------------------------

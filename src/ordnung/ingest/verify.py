@@ -309,13 +309,32 @@ def parse_amounts(text: str) -> list[float]:
 
 def amount_mentions(text: str) -> list[tuple[str, float]]:
     """:func:`parse_amounts` with each amount's digits as written (``("1.234,56", 1234.56)``)."""
-    amounts: list[tuple[str, float]] = []
+    return [(match.number, match.value) for match in amount_matches(text)]
+
+
+@dataclass(frozen=True, slots=True)
+class AmountMatch:
+    """An amount found by :func:`amount_matches`: its digits as written, its value, the span of the
+    digits in the *folded* text (:func:`~ordnung.ingest.normalize.fold_punctuation`) and whether a
+    currency stands next to it."""
+
+    number: str
+    value: float
+    start: int
+    end: int
+    has_currency: bool
+
+
+def amount_matches(text: str) -> list[AmountMatch]:
+    """The amounts of :func:`parse_amounts`, with where they stand and whether a currency marks them."""
+    matches: list[AmountMatch] = []
     for match in _AMOUNT_PATTERN.finditer(fold_punctuation(text)):
         has_currency = bool(match.group("pre") or match.group("post") or match.group("dash"))
         value = _amount_value(match.group("num"), has_currency)
         if value is not None:
-            amounts.append((match.group("num"), value))
-    return amounts
+            start, end = match.span("num")
+            matches.append(AmountMatch(match.group("num"), value, start, end, has_currency))
+    return matches
 
 
 def _amount_value(number: str, has_currency: bool) -> float | None:

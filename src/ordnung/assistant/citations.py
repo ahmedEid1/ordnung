@@ -110,6 +110,12 @@ def remove_markers(text: str) -> str:
     return _GROUP_RE.sub("", text)
 
 
+def marker_spans(text: str) -> list[tuple[int, int]]:
+    """Where the citation markers of ``text`` stand, each with the spaces before it (what
+    :func:`remove_markers` removes)."""
+    return [match.span() for match in _GROUP_RE.finditer(text)]
+
+
 def _pairs(body: str) -> list[tuple[str, str]]:
     return [(canonical_type(pair.group("type")), pair.group("id")) for pair in _PAIR_RE.finditer(body)]
 
