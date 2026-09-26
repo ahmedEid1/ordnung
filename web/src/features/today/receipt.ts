@@ -1,5 +1,6 @@
 /** "Why this date?" receipts in one shape, for to-dos (computed or stated by the letter) and contracts. */
 import type { ComputationStep, Confidence, Contract, Evidence, Item } from "@/api/types";
+import { isTransfer } from "@/lib/payments";
 
 /** A receipt in one shape, whether it comes from a to-do's computation or a contract's. */
 export interface ReceiptModel {
@@ -16,6 +17,13 @@ export interface ReceiptModel {
   computed: boolean;
   /** Label of the due date when there is no send-by date ("Pay by", "Due", "On"…). */
   dueLabel: string;
+  /** Label of the send-by date: "Transfer by" for money you send, else "Send by" (the default). */
+  sendByLabel?: string;
+}
+
+/** A transfer leaves your account by its send-by date; a letter is posted by it. */
+function sendByLabelFor(item: Item): string {
+  return isTransfer(item) ? "Transfer by" : "Send by";
 }
 
 function dueLabelFor(item: Item): string {
@@ -51,6 +59,7 @@ export function receiptForItem(item: Item): ReceiptModel {
       evidence,
       computed: true,
       dueLabel: dueLabelFor(item),
+      sendByLabel: sendByLabelFor(item),
     };
   }
   const warnings = evidence && (evidence.grounding === "unverified" || !evidence.value_consistent)
@@ -71,6 +80,7 @@ export function receiptForItem(item: Item): ReceiptModel {
     evidence,
     computed: false,
     dueLabel: dueLabelFor(item),
+    sendByLabel: sendByLabelFor(item),
   };
 }
 
