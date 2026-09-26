@@ -1,0 +1,334 @@
+"""``ordnung doctor``: zero-token health checks with fix hints (SPEC §7, §15).
+
+Checks that the ``claude`` CLI is installed and recent enough, that it is signed in (``claude auth
+status``, JSON), warns when ``ANTHROPIC_API_KEY`` is set (it overrides the subscription login and
+bills the API), and checks the local machine: SQLite FTS5 + trigram search, a writable data folder,
+free disk space, the bundled letter fonts and the built web app. ``probe=True`` adds one tiny live
+model call. The structured :class:`DoctorReport` feeds the CLI, ``/api/health`` (via
+:func:`claude_status`) and the Settings page.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import os
+import re
+import shutil
+import sqlite3
+import tempfile
+from pathlib import Path
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+from ordnung.config import web_dist_dir
+from ordnung.llm import claude_cli
+from ordnung.models import CheckStatus, ClaudeStatus, DoctorCheck
+
+__all__ = ["CheckStatus", "DoctorCheck"]  # re-exported: the check models live in ordnung.models
+
+MIN_CLAUDE_VERSION: tuple[int, int, int] = (2, 1, 0)
+MIN_FREE_BYTES = 100 * 1024 * 1024
+LOW_FREE_BYTES = 1024 * 1024 * 1024
+INSTALL_HINT = (
+    "Install Claude Code (npm install -g @anthropic-ai/claude-code), run `claude` once to sign in, "
+    "then run `ordnung doctor` again."
+)
+LOGIN_HINT = "Run `claude auth login` (or start `claude` and type /login), then run `ordnung doctor` again."
+UPDATE_HINT = "Update Claude Code with `claude update` (or npm install -g @anthropic-ai/claude-code)."
+API_KEY_HINT = "Unset it (`unset ANTHROPIC_API_KEY`) so Claude Code uses your Claude subscription."
+_VERSION_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
+
+
+class DoctorReport(BaseModel):
+    """All checks plus the Claude summary used by ``/api/health``."""
+
+    checks: list[DoctorCheck] = Field(default_factory=list)
+    claude: ClaudeStatus = Field(default_factory=ClaudeStatus)
+
+    @property
+    def ok(self) -> bool:
+        """No check failed (warnings are fine)."""
+        return all(check.status != "fail" for check in self.checks)
+
+    def check(self, check_id: str) -> DoctorCheck | None:
+        """The check with this id, if it ran."""
+        return next((check for check in self.checks if check.id == check_id), None)
+
+
+# --------------------------------------------------------------------------------------------------
+# Claude
+# --------------------------------------------------------------------------------------------------
+
+
+def parse_version(text: str | None) -> tuple[int, int, int] | None:
+    """``(major, minor, patch)`` from ``claude --version`` output such as ``2.1.3 (Claude Code)``."""
+    match = _VERSION_RE.search(text or "")
+    if match is None:
+        return None
+    major, minor, patch = (int(part) for part in match.groups())
+    return major, minor, patch
+
+
+def _version_check(raw: str | None) -> DoctorCheck:
+    label = "Claude Code version"
+    version = parse_version(raw)
+    if raw is None:
+        return DoctorCheck(
+            id="claude_version",
+            label=label,
+            status="fail",
+            detail="`claude --version` did not answer.",
+            fix=INSTALL_HINT,
+        )
+    if version is None:
+        return DoctorCheck(
+            id="claude_version", label=label, status="warn", detail=f"Unrecognised version: {raw}"
+        )
+    shown = ".".join(str(part) for part in version)
+    if version < MIN_CLAUDE_VERSION:
+        needed = ".".join(str(part) for part in MIN_CLAUDE_VERSION)
+        return DoctorCheck(
+            id="claude_version",
+            label=label,
+            status="fail",
+            detail=f"{shown} is too old — Ordnung needs {needed} or newer.",
+            fix=UPDATE_HINT,
+        )
+    return DoctorCheck(id="claude_version", label=label, status="ok", detail=shown)
+
+
+def _auth_check(status: dict[str, Any] | None) -> DoctorCheck:
+    label = "Claude sign-in"
+    if status is None:
+        return DoctorCheck(
+            id="claude_auth",
+            label=label,
+            status="warn",
+            detail="Couldn't read `claude auth status`.",
+            fix=LOGIN_HINT,
+        )
+    if not status.get("loggedIn"):
+        return DoctorCheck(
+            id="claude_auth",
+            label=label,
+            status="fail",
+            detail="Claude Code is not signed in.",
+            fix=LOGIN_HINT,
+        )
+    method = status.get("authMethod")
+    return DoctorCheck(
+        id="claude_auth", label=label, status="ok", detail=f"Signed in ({method})" if method else "Signed in"
+    )
+
+
+async def _probe_check(binary: str | None) -> DoctorCheck:
+    ok, text = await claude_cli.probe(binary)
+    return DoctorCheck(
+        id="claude_probe",
+        label="Live test call",
+        status="ok" if ok else "fail",
+        detail=text or ("Claude answered." if ok else "No answer."),
+        fix=None if ok else LOGIN_HINT,
+    )
+
+
+async def check_claude(
+    binary: str | None = None, *, probe: bool = False
+) -> tuple[list[DoctorCheck], ClaudeStatus]:
+    """The Claude checks (install, version, sign-in, optional live probe) and their summary."""
+    path = claude_cli.find_claude(binary)
+    if path is None:
+        missing = DoctorCheck(
+            id="claude_cli",
+            label="Claude Code installed",
+            status="fail",
+            detail="The `claude` command was not found on PATH.",
+            fix=INSTALL_HINT,
+        )
+        return [missing], ClaudeStatus(installed=False, ok=False, detail=missing.detail)
+    raw_version, auth = await asyncio.gather(claude_cli.version(path), claude_cli.auth_status(path))
+    checks = [
+        DoctorCheck(id="claude_cli", label="Claude Code installed", status="ok", detail=path),
+        _version_check(raw_version),
+        _auth_check(auth),
+    ]
+    if probe:
+        checks.append(await _probe_check(path))
+    version = parse_version(raw_version)
+    problem = next((check for check in checks if check.status == "fail"), None)
+    status = ClaudeStatus(
+        installed=True,
+        version=".".join(str(part) for part in version) if version else raw_version,
+        path=path,
+        ok=problem is None,
+        detail=problem.detail if problem else checks[2].detail,
+    )
+    return checks, status
+
+
+async def claude_status(binary: str | None = None) -> ClaudeStatus:
+    """Zero-token Claude summary for ``/api/health`` and the Settings page."""
+    _, status = await check_claude(binary)
+    return status
+
+
+def api_key_check() -> DoctorCheck:
+    """Warn when ``ANTHROPIC_API_KEY`` is set: it overrides the subscription login."""
+    label = "ANTHROPIC_API_KEY"
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return DoctorCheck(
+            id="api_key",
+            label=label,
+            status="warn",
+            detail="Set — Claude Code will use it instead of your subscription login and bill the API.",
+            fix=API_KEY_HINT,
+        )
+    return DoctorCheck(
+        id="api_key", label=label, status="ok", detail="Not set — your own Claude login is used."
+    )
+
+
+# --------------------------------------------------------------------------------------------------
+# This computer
+# --------------------------------------------------------------------------------------------------
+
+
+def sqlite_check() -> DoctorCheck:
+    """SQLite with FTS5 and the trigram tokenizer (search inside German compound words)."""
+    label = "Search (SQLite FTS5 + trigram)"
+    version = sqlite3.sqlite_version
+    fix = "Use a Python whose SQLite is 3.34 or newer with FTS5 (e.g. a python.org or uv-managed Python)."
+    try:
+        with contextlib.closing(sqlite3.connect(":memory:")) as conn:
+            conn.execute("CREATE VIRTUAL TABLE words USING fts5(body)")
+            conn.execute("CREATE VIRTUAL TABLE grams USING fts5(body, tokenize='trigram')")
+    except sqlite3.Error as exc:
+        return DoctorCheck(
+            id="sqlite_fts", label=label, status="fail", detail=f"SQLite {version}: {exc}", fix=fix
+        )
+    return DoctorCheck(id="sqlite_fts", label=label, status="ok", detail=f"SQLite {version}")
+
+
+def _existing_ancestor(path: Path) -> Path:
+    for candidate in (path, *path.parents):
+        if candidate.exists():
+            return candidate
+    return Path(path.anchor or ".")
+
+
+def data_dir_check(data_dir: Path) -> DoctorCheck:
+    """The data folder exists and is writable (or can be created)."""
+    label = "Data folder"
+    fix = "Choose another folder with --data-dir or ORDNUNG_HOME."
+    if not data_dir.exists():
+        parent = _existing_ancestor(data_dir)
+        if os.access(parent, os.W_OK):
+            return DoctorCheck(
+                id="data_dir", label=label, status="ok", detail=f"{data_dir} (will be created)"
+            )
+        return DoctorCheck(
+            id="data_dir", label=label, status="fail", detail=f"{parent} is not writable.", fix=fix
+        )
+    try:
+        with tempfile.TemporaryFile(dir=data_dir):
+            pass
+    except OSError as exc:
+        return DoctorCheck(
+            id="data_dir", label=label, status="fail", detail=f"{data_dir}: {exc.strerror or exc}", fix=fix
+        )
+    return DoctorCheck(id="data_dir", label=label, status="ok", detail=str(data_dir))
+
+
+def disk_check(data_dir: Path) -> DoctorCheck:
+    """Free space where the data folder lives."""
+    label = "Disk space"
+    free = shutil.disk_usage(_existing_ancestor(data_dir)).free
+    detail = f"{free / 1024**3:.1f} GB free"
+    if free < MIN_FREE_BYTES:
+        return DoctorCheck(
+            id="disk", label=label, status="fail", detail=detail, fix="Free some disk space for your letters."
+        )
+    if free < LOW_FREE_BYTES:
+        return DoctorCheck(
+            id="disk",
+            label=label,
+            status="warn",
+            detail=detail,
+            fix="Page images need some room — free up space.",
+        )
+    return DoctorCheck(id="disk", label=label, status="ok", detail=detail)
+
+
+def fonts_check() -> DoctorCheck:
+    """The DejaVu fonts the letter PDFs are set in."""
+    from ordnung.drafts.pdf import FONT_DIR
+
+    missing = [name for name in ("DejaVuSans.ttf", "DejaVuSans-Bold.ttf") if not (FONT_DIR / name).is_file()]
+    if missing:
+        return DoctorCheck(
+            id="fonts",
+            label="Letter fonts",
+            status="fail",
+            detail=f"Missing: {', '.join(missing)}",
+            fix="Reinstall Ordnung (pip install --force-reinstall ordnung).",
+        )
+    return DoctorCheck(id="fonts", label="Letter fonts", status="ok", detail="DejaVu Sans")
+
+
+def web_app_fix(dist: Path) -> str:
+    """How to get the web app missing from ``dist``: build it in a source checkout; a pip/pipx/uv
+    install has no ``web/`` folder or Makefile to build from, so there the answer is to reinstall."""
+    checkout = dist.parents[3]  # <checkout>/src/ordnung/web/dist
+    if (checkout / "Makefile").is_file() and (checkout / "web" / "package.json").is_file():
+        return "In the source checkout run `make build-web` (npm --prefix web run build)."
+    return (
+        "Reinstall Ordnung: `pipx reinstall ordnung`, or run your `uv tool install --reinstall …` "
+        "or `pip install --force-reinstall …` again."
+    )
+
+
+def web_ui_check() -> DoctorCheck:
+    """The built web app (``web/dist``) that ``ordnung serve`` shows."""
+    dist = web_dist_dir()
+    index = dist / "index.html"
+    if not index.is_file():
+        return DoctorCheck(
+            id="web_ui",
+            label="Web app",
+            status="warn",
+            detail="The web app is not part of this installation.",
+            fix=web_app_fix(dist),
+        )
+    return DoctorCheck(id="web_ui", label="Web app", status="ok", detail=str(index.parent))
+
+
+# --------------------------------------------------------------------------------------------------
+# All together
+# --------------------------------------------------------------------------------------------------
+
+
+def local_checks(data_dir: str | Path) -> list[DoctorCheck]:
+    """The checks of this computer (no Claude involved)."""
+    folder = Path(data_dir).expanduser()
+    return [
+        api_key_check(),
+        sqlite_check(),
+        fonts_check(),
+        web_ui_check(),
+        data_dir_check(folder),
+        disk_check(folder),
+    ]
+
+
+async def run_doctor(data_dir: str | Path, *, probe: bool = False, binary: str | None = None) -> DoctorReport:
+    """Run every check. Zero tokens unless ``probe`` is set (one tiny live call)."""
+    claude_checks, status = await check_claude(binary, probe=probe)
+    checks = await asyncio.to_thread(local_checks, data_dir)
+    return DoctorReport(checks=[*claude_checks, *checks], claude=status)
+
+
+def run_doctor_sync(data_dir: str | Path, *, probe: bool = False, binary: str | None = None) -> DoctorReport:
+    """:func:`run_doctor` for synchronous callers (the CLI)."""
+    return asyncio.run(run_doctor(data_dir, probe=probe, binary=binary))

@@ -1,0 +1,54 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"6ba53d0d1a1145046ac16981647d7117fa742706d64e87af410adf38c3e17b66\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-12-01\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-social_decision-D2"
+    ],
+    "prompt_head": "Today is Monday, 2025-12-01 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Muster-Rentenversicherung Bund\",\"document_date\":\"2025-11-27\",\"references\":[{\"label\":\"Versicherungsnummer\",\"value\":\"12 150388 B 512\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Kontenklärung decision\",\"quote\":\"Ein Widerspruch gegen diesen Bescheid ist binnen eines Monats nach dessen Bekanntgabe zulässig.\",\"computation\":\"Letter is dated 27.11.2025 (Thursday) and sent by a German social-insurance authority via ordinary post, so §37 Abs. 2 SGB X applies: it is deemed delivered (bekanntgegeben) on the third day after posting, unless proven otherwise. Counting from 27.11.2025 (day of posting not counted): 28.11. (Fri), 29.11. (Sat), 30.11. (Sun) = third day. Since the third day (30.11.2025) is a Sunday, §37 Abs. 2 SGB X shifts Bekanntgabe to the next business day, i.e. Monday 01.12.2025. The one-month Widerspruchsfrist then runs under §187 Abs. 1, §188 Abs. 2 BGB: the day of Bekanntgabe (01.12.2025) is not counted, the period starts the next day (02.12.2025) and ends on the day of the following month bearing the same number as the triggering event, i.e. 01.01.2026. 01.01.2026 (Neujahr) is a statutory public holiday in NRW (and nationwide), so under §193 BGB the deadline moves to the next business day: Friday, 02.01.2026, which is not a weekend day or holiday. Final deadline: 02.01.2026.\",\"due_date\":\"2026-01-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Muster-Rentenversicherung Bund",
+      "document_date": "2025-11-27",
+      "references": [
+        {
+          "label": "Versicherungsnummer",
+          "value": "12 150388 B 512"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Kontenklärung decision",
+          "quote": "Ein Widerspruch gegen diesen Bescheid ist binnen eines Monats nach dessen Bekanntgabe zulässig.",
+          "computation": "Letter is dated 27.11.2025 (Thursday) and sent by a German social-insurance authority via ordinary post, so §37 Abs. 2 SGB X applies: it is deemed delivered (bekanntgegeben) on the third day after posting, unless proven otherwise. Counting from 27.11.2025 (day of posting not counted): 28.11. (Fri), 29.11. (Sat), 30.11. (Sun) = third day. Since the third day (30.11.2025) is a Sunday, §37 Abs. 2 SGB X shifts Bekanntgabe to the next business day, i.e. Monday 01.12.2025. The one-month Widerspruchsfrist then runs under §187 Abs. 1, §188 Abs. 2 BGB: the day of Bekanntgabe (01.12.2025) is not counted, the period starts the next day (02.12.2025) and ends on the day of the following month bearing the same number as the triggering event, i.e. 01.01.2026. 01.01.2026 (Neujahr) is a statutory public holiday in NRW (and nationwide), so under §193 BGB the deadline moves to the next business day: Friday, 02.01.2026, which is not a weekend day or holiday. Final deadline: 02.01.2026.",
+          "due_date": "2026-01-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 5767,
+      "cache_read_tokens": 16725,
+      "cache_creation_tokens": 6267,
+      "cost_usd": 0.086095,
+      "duration_ms": 56073,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

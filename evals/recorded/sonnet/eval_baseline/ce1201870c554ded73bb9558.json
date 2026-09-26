@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"45a10eae156eae050518a11baddedb7f1e760aac0c24d82bdaa7e19ad453d956\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-23\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-year_boundary-D2"
+    ],
+    "prompt_head": "Today is Monday, 2024-12-23 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Allgemeine Musterkasse\",\"document_date\":\"2024-12-20\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"A204518872\"}],\"amounts\":[748.2],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of Zuzahlungsbefreiung\",\"quote\":\"Widerspruch gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Allgemeinen Musterkasse erhoben werden.\",\"computation\":\"Letter dated (and presumably posted) 20.12.2024, a Friday. The letter itself states the pre-2025 rule: a letter sent by ordinary post is deemed delivered on the 3rd day after posting, which matches the statutory rule for postings on or before 31.12.2024 (PostModG). 20.12.2024 + 3 days = 23.12.2024 (Monday). This sender is a statutory health insurer (social-law body), so the deemed-delivery day does not shift even though it would matter if it fell on a weekend/holiday (it does not here, it's a Monday). The one-month Widerspruch period (§ 84 SGG) then runs from 23.12.2024: the day of delivery itself is not counted (§ 187 Abs. 1 BGB analog), and the period ends on the day in the following month bearing the same number as the delivery day, i.e. 23.01.2025 (§ 188 Abs. 2 BGB analog). 23.01.2025 is a Thursday and not a public holiday in NRW, so no further shift is needed.\",\"due_date\":\"2025-01-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter is dated 20.12.2024, almost two years before today's date (2026-09-25); the computed one-month Widerspruch deadline of 23.01.2025 would already be long past if this letter is genuinely being reviewed today — double-check whether this is the correct, current letter or an old one that was already dealt with.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Allgemeine Musterkasse",
+      "document_date": "2024-12-20",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "A204518872"
+        }
+      ],
+      "amounts": [
+        748.2
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of Zuzahlungsbefreiung",
+          "quote": "Widerspruch gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Allgemeinen Musterkasse erhoben werden.",
+          "computation": "Letter dated (and presumably posted) 20.12.2024, a Friday. The letter itself states the pre-2025 rule: a letter sent by ordinary post is deemed delivered on the 3rd day after posting, which matches the statutory rule for postings on or before 31.12.2024 (PostModG). 20.12.2024 + 3 days = 23.12.2024 (Monday). This sender is a statutory health insurer (social-law body), so the deemed-delivery day does not shift even though it would matter if it fell on a weekend/holiday (it does not here, it's a Monday). The one-month Widerspruch period (§ 84 SGG) then runs from 23.12.2024: the day of delivery itself is not counted (§ 187 Abs. 1 BGB analog), and the period ends on the day in the following month bearing the same number as the delivery day, i.e. 23.01.2025 (§ 188 Abs. 2 BGB analog). 23.01.2025 is a Thursday and not a public holiday in NRW, so no further shift is needed.",
+          "due_date": "2025-01-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter is dated 20.12.2024, almost two years before today's date (2026-09-25); the computed one-month Widerspruch deadline of 23.01.2025 would already be long past if this letter is genuinely being reviewed today — double-check whether this is the correct, current letter or an old one that was already dealt with."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3525,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2014,
+      "cost_usd": 0.044416,
+      "duration_ms": 35302,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

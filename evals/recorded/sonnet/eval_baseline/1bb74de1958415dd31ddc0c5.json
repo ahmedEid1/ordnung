@@ -1,0 +1,69 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f8b69de5a8ad74a98281727cc244aef55bf9b596a6c97ca8a97457f3c2a1a74e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-01-31\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-year_boundary-C3"
+    ],
+    "prompt_head": "Today is Friday, 2025-01-31 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Neu-Musterdorf\",\"document_date\":\"2025-01-27\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"026 812 40517\"}],\"amounts\":[75],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay late-filing surcharge (Verspätungszuschlag)\",\"quote\":\"Bitte zahlen Sie den Betrag innerhalb eines Monats nach Bekanntgabe dieses Bescheids.\",\"computation\":\"Document dated 27.01.2025 (Monday), assumed also the posting date. Under §122 Abs. 2 Nr. 1 AO, a letter sent by ordinary domestic post is deemed delivered (bekannt gegeben) on the 3rd day after posting (not the 4th day as the letter incorrectly states - see warning), i.e. 27.01.2025 + 3 days = 30.01.2025 (Thursday, no weekend/holiday adjustment needed). The one-month payment period is an Ereignisfrist: per §108 AO i.V.m. §§187 Abs.1, 188 Abs.2/3 BGB, the day of Bekanntgabe (30.01.2025) is not counted, and the period ends on the day of the following month bearing the same number as the Bekanntgabe day. Since 30.02.2025 does not exist (February has 28 days in 2025, not a leap year), the period ends on the last day of February, i.e. 28.02.2025 (Friday, not a public holiday in NRW).\",\"due_date\":\"2025-02-28\",\"confidence\":\"medium\",\"amount\":75},{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the surcharge assessment\",\"quote\":\"Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behörde schriftlich oder elektronisch einzulegen.\",\"computation\":\"Same delivery-fiction calculation as above: deemed Bekanntgabe on 30.01.2025 (3rd day after the 27.01.2025 posting date per §122 Abs.2 Nr.1 AO). The one-month Einspruchsfrist under §355 Abs.1 AO is likewise an Ereignisfrist governed by §108 AO i.V.m. §§187 Abs.1, 188 Abs.2/3 BGB: excluding the Bekanntgabe day, the period runs to the matching day-number in the following month; as 30.02.2025 does not exist, it ends on the last day of February, 28.02.2025 (Friday, no NRW public holiday).\",\"due_date\":\"2025-02-28\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter states the postal delivery fiction as the 'vierten Tag' (fourth day) after posting, but the statutory rule for tax authority letters (§122 Abs. 2 Nr. 1 AO) is the 3rd day after posting; the due dates above use the correct 3-day rule, which happens to still land on 28.02.2025 either way, but the discrepancy in the letter's own wording should be double-checked.\",\"Both deadlines assume the letter was actually posted on its printed date (27.01.2025); if it was mailed later, both the deemed-delivery date and the resulting deadlines shift accordingly - check the envelope postmark if available.\",\"The IBAN given for payment (DE92 5205 0000 0001 2003 40) should be verified against official Finanzamt Neu-Musterdorf payment details before transferring funds, as a general precaution.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Neu-Musterdorf",
+      "document_date": "2025-01-27",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "026 812 40517"
+        }
+      ],
+      "amounts": [
+        75
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay late-filing surcharge (Verspätungszuschlag)",
+          "quote": "Bitte zahlen Sie den Betrag innerhalb eines Monats nach Bekanntgabe dieses Bescheids.",
+          "computation": "Document dated 27.01.2025 (Monday), assumed also the posting date. Under §122 Abs. 2 Nr. 1 AO, a letter sent by ordinary domestic post is deemed delivered (bekannt gegeben) on the 3rd day after posting (not the 4th day as the letter incorrectly states - see warning), i.e. 27.01.2025 + 3 days = 30.01.2025 (Thursday, no weekend/holiday adjustment needed). The one-month payment period is an Ereignisfrist: per §108 AO i.V.m. §§187 Abs.1, 188 Abs.2/3 BGB, the day of Bekanntgabe (30.01.2025) is not counted, and the period ends on the day of the following month bearing the same number as the Bekanntgabe day. Since 30.02.2025 does not exist (February has 28 days in 2025, not a leap year), the period ends on the last day of February, i.e. 28.02.2025 (Friday, not a public holiday in NRW).",
+          "due_date": "2025-02-28",
+          "confidence": "medium",
+          "amount": 75
+        },
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the surcharge assessment",
+          "quote": "Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behörde schriftlich oder elektronisch einzulegen.",
+          "computation": "Same delivery-fiction calculation as above: deemed Bekanntgabe on 30.01.2025 (3rd day after the 27.01.2025 posting date per §122 Abs.2 Nr.1 AO). The one-month Einspruchsfrist under §355 Abs.1 AO is likewise an Ereignisfrist governed by §108 AO i.V.m. §§187 Abs.1, 188 Abs.2/3 BGB: excluding the Bekanntgabe day, the period runs to the matching day-number in the following month; as 30.02.2025 does not exist, it ends on the last day of February, 28.02.2025 (Friday, no NRW public holiday).",
+          "due_date": "2025-02-28",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states the postal delivery fiction as the 'vierten Tag' (fourth day) after posting, but the statutory rule for tax authority letters (§122 Abs. 2 Nr. 1 AO) is the 3rd day after posting; the due dates above use the correct 3-day rule, which happens to still land on 28.02.2025 either way, but the discrepancy in the letter's own wording should be double-checked.",
+        "Both deadlines assume the letter was actually posted on its printed date (27.01.2025); if it was mailed later, both the deemed-delivery date and the resulting deadlines shift accordingly - check the envelope postmark if available.",
+        "The IBAN given for payment (DE92 5205 0000 0001 2003 40) should be verified against official Finanzamt Neu-Musterdorf payment details before transferring funds, as a general precaution."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3369,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2018,
+      "cost_usd": 0.042390399999999995,
+      "duration_ms": 33049,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

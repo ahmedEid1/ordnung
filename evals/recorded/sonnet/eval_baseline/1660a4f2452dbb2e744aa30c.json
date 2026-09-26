@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"7e43ee26bb18e2aa77b1fdff8c603c7342b65a1f7e83597310d53ad5453cdee9\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-01-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-tax_assessment-D1"
+    ],
+    "prompt_head": "Today is Monday, 2026-01-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterbach\",\"document_date\":\"2025-12-31\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"156/274/61023\"}],\"amounts\":[15130,1236],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay income tax back payment (Nachzahlung)\",\"quote\":\"Zu zahlen: 1.236,00 € – fällig am 05.02.2026\",\"computation\":\"The letter states the due date explicitly as 05.02.2026. This is a Thursday and not a Bavarian public holiday, so no adjustment under §108 Abs.3 AO / §193 BGB is needed. Due date stands as printed.\",\"due_date\":\"2026-02-05\",\"confidence\":\"high\",\"amount\":1236},{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch erhoben werden.\",\"computation\":\"Step 1 – Bekanntgabe (deemed delivery): the notice states it was 'am 02.01.2026 zur Post gegeben' and is deemed delivered on the fourth day after posting (current §122 Abs.2 Nr.1 AO, extended from 3 to 4 days). 02.01.2026 (Fri) + 4 days = 06.01.2026 (Tue). However, 06.01. (Epiphany/Heilige Drei Könige) is a public holiday in Bavaria, so under §108 Abs.3 AO the fictitious delivery date shifts to the next business day: 07.01.2026 (Wed). Step 2 – Start of the one-month period: under §108 Abs.1 AO i.V.m. §187 Abs.1 BGB, the day of the triggering event (07.01.2026) is not counted; the period starts running on 08.01.2026. Step 3 – End of the one-month period: under §108 Abs.1 AO i.V.m. §188 Abs.2 BGB, a period of one month ends with the day of the following month bearing the same number as the day of the triggering event, i.e. 07.02.2026. Step 4 – 07.02.2026 falls on a Saturday, so under §108 Abs.3 AO the deadline moves to the next working day, Monday 09.02.2026 (no intervening Bavarian holiday). Final Einspruch deadline: 09.02.2026.\",\"due_date\":\"2026-02-09\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterbach",
+      "document_date": "2025-12-31",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "156/274/61023"
+        }
+      ],
+      "amounts": [
+        15130,
+        1236
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay income tax back payment (Nachzahlung)",
+          "quote": "Zu zahlen: 1.236,00 € – fällig am 05.02.2026",
+          "computation": "The letter states the due date explicitly as 05.02.2026. This is a Thursday and not a Bavarian public holiday, so no adjustment under §108 Abs.3 AO / §193 BGB is needed. Due date stands as printed.",
+          "due_date": "2026-02-05",
+          "confidence": "high",
+          "amount": 1236
+        },
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch erhoben werden.",
+          "computation": "Step 1 – Bekanntgabe (deemed delivery): the notice states it was 'am 02.01.2026 zur Post gegeben' and is deemed delivered on the fourth day after posting (current §122 Abs.2 Nr.1 AO, extended from 3 to 4 days). 02.01.2026 (Fri) + 4 days = 06.01.2026 (Tue). However, 06.01. (Epiphany/Heilige Drei Könige) is a public holiday in Bavaria, so under §108 Abs.3 AO the fictitious delivery date shifts to the next business day: 07.01.2026 (Wed). Step 2 – Start of the one-month period: under §108 Abs.1 AO i.V.m. §187 Abs.1 BGB, the day of the triggering event (07.01.2026) is not counted; the period starts running on 08.01.2026. Step 3 – End of the one-month period: under §108 Abs.1 AO i.V.m. §188 Abs.2 BGB, a period of one month ends with the day of the following month bearing the same number as the day of the triggering event, i.e. 07.02.2026. Step 4 – 07.02.2026 falls on a Saturday, so under §108 Abs.3 AO the deadline moves to the next working day, Monday 09.02.2026 (no intervening Bavarian holiday). Final Einspruch deadline: 09.02.2026.",
+          "due_date": "2026-02-09",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3727,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2449,
+      "cost_usd": 0.04769439999999999,
+      "duration_ms": 35018,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

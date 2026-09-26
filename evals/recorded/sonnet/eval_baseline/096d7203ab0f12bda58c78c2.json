@@ -1,0 +1,56 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"3472ff240f1944063c6a2bbcc13f441350d2bc81a1ce91a127ec9ed8f4bd2e7b\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-05-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-municipal_decision-C2"
+    ],
+    "prompt_head": "Today is Monday, 2026-05-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Bezirksamt Musterbek, Freie und Hansestadt Hamburg - Fachamt Management des oeffentlichen Raumes\",\"document_date\":\"2026-04-30\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"MR 23/BS-2026-0691\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of tree-felling permit\",\"quote\":\"Der Widerspruch muss binnen eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, schriftlich, elektronisch oder zur Niederschrift beim Bezirksamt Musterbek, Musterbeker Markt 4, 22297 Hamburg, erhoben werden.\",\"computation\":\"Letter dated Thu 30.04.2026 (no separate zur Post gegeben date, so posting day = document date). Bezirksamt is a general authority, not a tax office, so the 4-day delivery fiction applies without weekend/holiday shift: 4th day after 30.04.2026 = 04.05.2026 (Mon) - counting Fri 1 May, Sat 2 May, Sun 3 May, Mon 4 May; 4 May is not a holiday in HH anyway. Deemed delivery = 04.05.2026. One-month Widerspruch period per section 187(1)/188(2) BGB: delivery day not counted, period ends on the day in the following month with the same number, i.e. 04.06.2026. That day (Thursday) is a normal working day in Hamburg (Corpus Christi falls on that date but is not a holiday in HH), so no further shift is needed. Deadline = 04.06.2026.\",\"due_date\":\"2026-06-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The sender's address details (Bezirksamt 'Musterbek', 'Musterbeker Markt', account name 'Hamburger Musterkasse', and the email domain 'musterbek.hamburg.example') look like generic placeholder/template names rather than a real Hamburg district office - verify the sender's authenticity before relying on the contact details or IBAN shown.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Bezirksamt Musterbek, Freie und Hansestadt Hamburg - Fachamt Management des oeffentlichen Raumes",
+      "document_date": "2026-04-30",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "MR 23/BS-2026-0691"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of tree-felling permit",
+          "quote": "Der Widerspruch muss binnen eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, schriftlich, elektronisch oder zur Niederschrift beim Bezirksamt Musterbek, Musterbeker Markt 4, 22297 Hamburg, erhoben werden.",
+          "computation": "Letter dated Thu 30.04.2026 (no separate zur Post gegeben date, so posting day = document date). Bezirksamt is a general authority, not a tax office, so the 4-day delivery fiction applies without weekend/holiday shift: 4th day after 30.04.2026 = 04.05.2026 (Mon) - counting Fri 1 May, Sat 2 May, Sun 3 May, Mon 4 May; 4 May is not a holiday in HH anyway. Deemed delivery = 04.05.2026. One-month Widerspruch period per section 187(1)/188(2) BGB: delivery day not counted, period ends on the day in the following month with the same number, i.e. 04.06.2026. That day (Thursday) is a normal working day in Hamburg (Corpus Christi falls on that date but is not a holiday in HH), so no further shift is needed. Deadline = 04.06.2026.",
+          "due_date": "2026-06-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The sender's address details (Bezirksamt 'Musterbek', 'Musterbeker Markt', account name 'Hamburger Musterkasse', and the email domain 'musterbek.hamburg.example') look like generic placeholder/template names rather than a real Hamburg district office - verify the sender's authenticity before relying on the contact details or IBAN shown."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 5003,
+      "cache_read_tokens": 23639,
+      "cache_creation_tokens": 6151,
+      "cost_usd": 0.07937380000000001,
+      "duration_ms": 45475,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"a84f6a9ae89c1b9d1ecfc51df8c81e57d7de26690134a0bdc5ae55ca0dec83f8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-year_boundary-A1"
+    ],
+    "prompt_head": "Today is Thursday, 2024-12-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Neu-Musterdorf\",\"document_date\":\"2024-12-17\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"026 812 40517\"}],\"amounts\":[6918,6918],\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch against amended tax assessment\",\"quote\":\"Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist. Bei Zusendung durch einfachen Brief gilt die Bekanntgabe mit dem dritten Tag nach Aufgabe zur Post als bewirkt, es sei denn, dass der Bescheid zu einem späteren Zeitpunkt zugegangen ist.\",\"computation\":\"Letter dated Tuesday 17.12.2024, sent by ordinary post. Under §122 Abs.2 Nr.1 AO, Bekanntgabe is deemed to occur on the 3rd day after posting: 17.12.2024 + 3 days = 20.12.2024 (a Friday, not a weekend/holiday, so no shift needed). The one-month Einspruchsfrist begins with the end (Ablauf) of that day, per §108 Abs.1 AO in conjunction with §187 Abs.1 BGB. Per §188 Abs.2 BGB, a period stated in months ends on the day of the last month that bears the same number as the day the period began, i.e. 20.01.2025. 20.01.2025 is a Tuesday, not a Saturday, Sunday or public holiday in NRW, so no extension under §108 Abs.3 AO applies. Deadline: 20.01.2025.\",\"due_date\":\"2025-01-20\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter states the tax amount is unchanged (6.918,00 € both before and after) with no payment due or refund, despite being labelled a 'geänderter Bescheid' — this is consistent with the stated reason (an updated employer notification that did not change the final figure), but the person should verify no other details changed.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Neu-Musterdorf",
+      "document_date": "2024-12-17",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "026 812 40517"
+        }
+      ],
+      "amounts": [
+        6918,
+        6918
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch against amended tax assessment",
+          "quote": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist. Bei Zusendung durch einfachen Brief gilt die Bekanntgabe mit dem dritten Tag nach Aufgabe zur Post als bewirkt, es sei denn, dass der Bescheid zu einem späteren Zeitpunkt zugegangen ist.",
+          "computation": "Letter dated Tuesday 17.12.2024, sent by ordinary post. Under §122 Abs.2 Nr.1 AO, Bekanntgabe is deemed to occur on the 3rd day after posting: 17.12.2024 + 3 days = 20.12.2024 (a Friday, not a weekend/holiday, so no shift needed). The one-month Einspruchsfrist begins with the end (Ablauf) of that day, per §108 Abs.1 AO in conjunction with §187 Abs.1 BGB. Per §188 Abs.2 BGB, a period stated in months ends on the day of the last month that bears the same number as the day the period began, i.e. 20.01.2025. 20.01.2025 is a Tuesday, not a Saturday, Sunday or public holiday in NRW, so no extension under §108 Abs.3 AO applies. Deadline: 20.01.2025.",
+          "due_date": "2025-01-20",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states the tax amount is unchanged (6.918,00 € both before and after) with no payment due or refund, despite being labelled a 'geänderter Bescheid' — this is consistent with the stated reason (an updated employer notification that did not change the final figure), but the person should verify no other details changed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1623,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2103,
+      "cost_usd": 0.025270400000000002,
+      "duration_ms": 16926,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

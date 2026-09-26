@@ -1,0 +1,135 @@
+/*
+ * Life lanes — bar and marker looks. Colours come from the design tokens (`--color-k-*`, status),
+ * so light and dark mode follow automatically. Marks are thin (22 px bars), softly tinted, with a
+ * 2 px surface ring around markers (dataviz mark spec); notice windows are hatched.
+ */
+
+.lane-bar {
+  --bar: var(--color-k-contract);
+  background-color: color-mix(in srgb, var(--bar) 17%, var(--color-surface));
+  color: var(--color-ink);
+}
+.dark .lane-bar {
+  background-color: color-mix(in srgb, var(--bar) 27%, var(--color-surface));
+}
+.lane-bar[data-kind="validity"] { --bar: var(--color-k-expiry); }
+.lane-bar[data-kind="period"] { --bar: var(--color-k-milestone); }
+.lane-bar[data-kind="event"] { --bar: var(--color-k-appointment); }
+
+/* Notice windows: hatched (the `.hatch` texture, a touch denser for a 22 px bar). */
+.lane-bar[data-kind="notice_window"] {
+  --bar: var(--color-k-contract);
+  color: var(--bar);
+  background-color: color-mix(in srgb, var(--bar) 12%, var(--color-surface));
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--bar) 58%, transparent) 0 1.6px,
+    transparent 1.6px 6px
+  );
+}
+.dark .lane-bar[data-kind="notice_window"] {
+  background-color: color-mix(in srgb, var(--bar) 16%, var(--color-surface));
+}
+.lane-bar[data-kind="notice_window"][data-status="attention"] { --bar: var(--color-warn); }
+.lane-bar[data-kind="notice_window"][data-status="urgent"] { --bar: var(--color-danger); }
+.lane-bar[data-overlay] {
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
+
+.lane-bar[data-status="past"] {
+  --bar: var(--color-faint);
+  color: var(--color-muted);
+}
+
+/* The part of a bar that continues outside the visible range fades out. */
+.lane-bar[data-before] {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 22px);
+  mask-image: linear-gradient(to right, transparent 0, #000 22px);
+}
+.lane-bar[data-after] {
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 22px);
+  mask-image: linear-gradient(to left, transparent 0, #000 22px);
+}
+.lane-bar[data-before][data-after] {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+}
+
+/* Status end cap: a bar that ends soon gets a warm / red end. */
+.lane-bar[data-cap]::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  right: 0;
+  width: 4px;
+  border-radius: 0 6px 6px 0;
+  background: var(--color-warn);
+}
+.lane-bar[data-cap="urgent"]::after { background: var(--color-danger); }
+
+.lane-bar:hover:not([data-status="past"]) {
+  background-color: color-mix(in srgb, var(--bar) 25%, var(--color-surface));
+}
+.dark .lane-bar:hover:not([data-status="past"]) {
+  background-color: color-mix(in srgb, var(--bar) 36%, var(--color-surface));
+}
+.lane-bar[data-kind="notice_window"]:hover {
+  background-color: color-mix(in srgb, var(--bar) 20%, var(--color-surface));
+}
+
+/* Markers */
+.lane-marker {
+  --mk: var(--color-k-task);
+  display: block;
+  width: 11px;
+  height: 11px;
+  background: var(--mk);
+  box-shadow: 0 0 0 2px var(--color-surface);
+  transition: transform 120ms ease-out;
+}
+.lane-marker[data-shape="circle"] { border-radius: 999px; }
+.lane-marker[data-shape="square"] { border-radius: 2.5px; width: 10px; height: 10px; }
+.lane-marker[data-shape="diamond"] {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+.lane-marker[data-hollow] {
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 2.25px var(--mk), 0 0 0 2px var(--color-surface);
+}
+.lane-marker[data-kind="send_by"],
+.lane-marker[data-kind="deadline"],
+.lane-marker[data-kind="cancel_by"] { --mk: var(--color-k-deadline); }
+.lane-marker[data-kind="expiry"] { --mk: var(--color-k-expiry); }
+.lane-marker[data-kind="appointment"] { --mk: var(--color-k-appointment); }
+.lane-marker[data-kind="payment"] { --mk: var(--color-k-payment); }
+.lane-marker[data-kind="renewal"] { --mk: var(--color-k-contract); }
+.lane-marker[data-past] { --mk: var(--color-faint); }
+
+.lane-mark:hover .lane-marker[data-shape="diamond"],
+.lane-mark:focus-visible .lane-marker[data-shape="diamond"] { transform: rotate(45deg) scale(1.2); }
+.lane-mark:hover .lane-marker:not([data-shape="diamond"]),
+.lane-mark:focus-visible .lane-marker:not([data-shape="diamond"]) { transform: scale(1.2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lane-marker { transition: none; }
+}
+
+/* Forced colours (Windows high contrast): keep marks visible. */
+@media (forced-colors: active) {
+  .lane-bar { border: 1px solid CanvasText; }
+  .lane-marker { background: CanvasText; }
+}
+
+/* Keyboard focus on a marker: a ring that follows the marker's own shape. */
+.lane-mark:focus-visible {
+  outline: none;
+}
+.lane-mark:focus-visible .lane-marker {
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-accent);
+}
+.lane-mark:focus-visible .lane-marker[data-hollow] {
+  box-shadow: inset 0 0 0 2.25px var(--mk), 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-accent);
+}

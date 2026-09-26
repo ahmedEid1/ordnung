@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b6eb80c811982f34b6db5d6e6ae71d56fdb17c938954cae5c09a21a2a01760a7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-dunning_fixed-A1"
+    ],
+    "prompt_head": "Today is Friday, 2026-05-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Beispiel Versand GmbH\",\"document_date\":\"2026-05-04\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"KD 1188204\"},{\"label\":\"Rechnung\",\"value\":\"BV-7790114\"}],\"amounts\":[64.98],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding invoice amount\",\"quote\":\"Bitte überweisen Sie den Betrag bis zum 15.05.2026 auf das unten genannte Konto.\",\"computation\":\"The letter states an explicit calendar due date of 15.05.2026 for the outstanding payment. 15.05.2026 is a Friday, not a weekend or public holiday in NRW, so no BGB §193 adjustment is needed. The due date stands as printed.\",\"due_date\":\"2026-05-15\",\"confidence\":\"high\",\"amount\":64.98}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Beispiel Versand GmbH",
+      "document_date": "2026-05-04",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "KD 1188204"
+        },
+        {
+          "label": "Rechnung",
+          "value": "BV-7790114"
+        }
+      ],
+      "amounts": [
+        64.98
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding invoice amount",
+          "quote": "Bitte überweisen Sie den Betrag bis zum 15.05.2026 auf das unten genannte Konto.",
+          "computation": "The letter states an explicit calendar due date of 15.05.2026 for the outstanding payment. 15.05.2026 is a Friday, not a weekend or public holiday in NRW, so no BGB §193 adjustment is needed. The due date stands as printed.",
+          "due_date": "2026-05-15",
+          "confidence": "high",
+          "amount": 64.98
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 780,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1935,
+      "cost_usd": 0.0161684,
+      "duration_ms": 8643,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

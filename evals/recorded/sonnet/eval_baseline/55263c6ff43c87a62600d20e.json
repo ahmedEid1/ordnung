@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f7ae48bbc89b54cf01e188e8575e931a74ae3baa69a0ec295ab50349241b195b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-year_boundary-B1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-02-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Muster Möbelwerkstatt GmbH\",\"document_date\":\"2026-01-30\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"RE-2026-0142\"},{\"label\":\"Kundennummer\",\"value\":\"K-10877\"}],\"amounts\":[1487.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for built-in shelf\",\"quote\":\"Bitte überweisen Sie den Rechnungsbetrag innerhalb eines Monats nach Rechnungsdatum ohne Abzug auf unser Konto (IBAN siehe unten).\",\"computation\":\"Trigger event is the invoice date (Rechnungsdatum) 30.01.2026 (a Friday). Under §187(1) BGB, since the period runs 'nach' (after) the event, counting starts the following day: 31.01.2026. Under §188(2) BGB, a one-month period ends on the day of the last month numerically corresponding to the day of the triggering event, i.e. the 30th, which would be 30.02.2026. February 2026 has only 28 days (2026 is not a leap year), so under §188(3) BGB the period ends on the last day of February: 28.02.2026. That day is a Saturday. §193 BGB extends deadlines falling on a Saturday, Sunday or public holiday to the next business day. 01.03.2026 is a Sunday, so the deadline moves to Monday 02.03.2026, which is not a public holiday in NRW.\",\"due_date\":\"2026-03-02\",\"confidence\":\"high\",\"amount\":1487.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Muster Möbelwerkstatt GmbH",
+      "document_date": "2026-01-30",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "RE-2026-0142"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "K-10877"
+        }
+      ],
+      "amounts": [
+        1487.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for built-in shelf",
+          "quote": "Bitte überweisen Sie den Rechnungsbetrag innerhalb eines Monats nach Rechnungsdatum ohne Abzug auf unser Konto (IBAN siehe unten).",
+          "computation": "Trigger event is the invoice date (Rechnungsdatum) 30.01.2026 (a Friday). Under §187(1) BGB, since the period runs 'nach' (after) the event, counting starts the following day: 31.01.2026. Under §188(2) BGB, a one-month period ends on the day of the last month numerically corresponding to the day of the triggering event, i.e. the 30th, which would be 30.02.2026. February 2026 has only 28 days (2026 is not a leap year), so under §188(3) BGB the period ends on the last day of February: 28.02.2026. That day is a Saturday. §193 BGB extends deadlines falling on a Saturday, Sunday or public holiday to the next business day. 01.03.2026 is a Sunday, so the deadline moves to Monday 02.03.2026, which is not a public holiday in NRW.",
+          "due_date": "2026-03-02",
+          "confidence": "high",
+          "amount": 1487.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2662,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2061,
+      "cost_usd": 0.0354924,
+      "duration_ms": 26076,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

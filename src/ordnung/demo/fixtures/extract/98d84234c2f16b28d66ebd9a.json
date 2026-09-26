@@ -1,0 +1,181 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "8.7.1",
+    "cache_key": "{\"doc\":\"296ded5c84f6d2e2ca3b027d3a5a0152d43cbd62673c30dc70f8b67922d4baf8\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_55pytq44yv9e"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym) — Gläubiger-ID: DE25ZZZ00000104570; USt-IdNr.: DE310457828; Amtsgericht: Musterstadt HRB 31045; Mitgliedsnummer: FW-10457\n- FunkN"
+  },
+  "response": {
+    "text": "{\"area\":\"health\",\"case_title\":\"Health insurance contribution increase – Muster BKK\",\"change\":{\"type\":\"price_increase\",\"effective_date\":\"2026-10-01\",\"old_amount\":146.29,\"new_amount\":156.55,\"cost_interval\":\"monthly\",\"quote\":\"Ab dem 01.10.2026 beträgt Ihr monatlicher Beitrag 156,55 € (bisher 146,29 €).\",\"unit_price_old\":null,\"unit_price_new\":null},\"contract\":{\"name\":\"Gesetzliche Kranken- und Pflegeversicherung bei Muster BKK\",\"category\":\"insurance\",\"is_consumer\":true,\"is_basic_supply\":false,\"concluded_date\":null,\"start_date\":null,\"end_date\":null,\"initial_term_months\":null,\"renewal_term_months\":null,\"notice_basis\":null,\"notice_value\":null,\"notice_unit\":null,\"cost_amount\":156.55,\"cost_interval\":\"monthly\",\"customer_number\":\"R482019375\",\"quotes\":[\"Sie sind bei uns als Student nach § 5 Abs. 1 Nr. 9 SGB V kranken- und pflegeversichert.\",\"Gesamtbeitrag ab 01.10.2026 (Bemessungsgrundlage 915,00 €)   156,55 €\"]},\"document_date\":\"2026-09-10\",\"explanation\":\"Your compulsory statutory health and nursing care insurance (Kranken- und Pflegeversicherung) contribution as a student is going up because the BAföG-based assessment amount used to calculate it increased. From 01.10.2026 your monthly contribution rises to €156.55, collected by direct debit as before, first at the new rate on 15.10.2026. If you think the calculation is wrong, you can file a written objection (Widerspruch) with Muster BKK by the deadline shown on the notice; note that filing an objection does not stop you from having to pay the assessed amount in the meantime. Keep this notice — statutory health and nursing care insurance contributions can be claimed as special expenses (Sonderausgaben) in your tax return.\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Object to contribution notice (Widerspruch)\",\"date\":{\"type\":\"relative\",\"anchor\":\"deemed_delivery\",\"amount\":1,\"unit\":\"months\",\"delivery_rule\":\"de_admin_post\",\"nature\":\"objection\",\"text\":\"innerhalb eines Monats nach Bekanntgabe\",\"legal_basis\":null,\"shift_rule\":\"auto\"},\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\",\"action\":\"File a written, electronic (per § 36a Abs. 2 SGB I) or in-person objection (Widerspruch) with Muster BKK if you disagree with the contribution amount.\",\"consequence\":\"The contribution notice becomes final if no objection is filed in time; an objection does not suspend the duty to pay the assessed amount in the meantime.\",\"priority\":\"high\",\"direction\":null,\"location\":null,\"recurrence\":null},{\"kind\":\"payment\",\"title\":\"Monthly health & nursing care insurance contribution\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-10-15\",\"nature\":\"payment\",\"text\":\"den neuen Betrag erstmals am 15.10.2026\",\"legal_basis\":null,\"shift_rule\":\"auto\"},\"quote\":\"Wir buchen den Beitrag wie bisher zum 15. eines Monats ab, den neuen Betrag erstmals am 15.10.2026.\",\"action\":\"Ensure sufficient funds are available for the direct debit (Lastschrift) collection each month.\",\"consequence\":null,\"amount\":156.55,\"currency\":\"EUR\",\"direction\":\"out\",\"priority\":\"normal\",\"location\":null,\"recurrence\":{\"interval\":1,\"unit\":\"months\"}}],\"key_facts\":[{\"label\":\"Versicherten-Nr.\",\"value\":\"R482019375\",\"quote\":\"Versicherten-Nr. R482019375\"},{\"label\":\"New monthly contribution (from 01.10.2026)\",\"value\":\"156,55 €\",\"quote\":\"Ab dem 01.10.2026 beträgt Ihr monatlicher Beitrag 156,55 € (bisher 146,29 €).\"},{\"label\":\"Previous monthly contribution\",\"value\":\"146,29 €\",\"quote\":\"Ab dem 01.10.2026 beträgt Ihr monatlicher Beitrag 156,55 € (bisher 146,29 €).\"},{\"label\":\"BAföG-based assessment basis (Wintersemester 2026/27)\",\"value\":\"915,00 €\",\"quote\":\"er beträgt ab dem Wintersemester 2026/27 915,00 € (bisher 855,00 €).\"}],\"kind\":\"health_insurance\",\"language\":\"de\",\"payment\":{\"iban\":\"DE18123456000006060000\",\"iban_valid\":true,\"payee\":\"Muster BKK\",\"reference\":null},\"recipient_name\":\"Sam Rivera\",\"references\":[{\"label\":\"Versicherten-Nr.\",\"value\":\"R482019375\"},{\"label\":\"Unser Zeichen\",\"value\":\"BZ-S/2026/0917\"}],\"remedy\":{\"type\":\"widerspruch\",\"addressee\":\"Muster BKK, Kassenstraße 3, 12346 Musterstadt\",\"period_text\":\"innerhalb eines Monats nach Bekanntgabe\",\"form_text\":\"schriftlich, in elektronischer Form nach § 36a Abs. 2 SGB I oder zur Niederschrift bei der Muster BKK\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\"},\"sender\":{\"name\":\"Muster BKK\",\"kind\":\"health_insurer\",\"address\":\"Kassenstraße 3, 12346 Musterstadt\",\"phone\":\"0123 6060-417\",\"email\":null,\"website\":null,\"identifiers\":[{\"label\":\"Gläubiger-ID\",\"value\":\"DE22ZZZ00000606017\"}]},\"summary\":\"Muster BKK (statutory health insurer) informs Sam Rivera, insured as a student, that the monthly contribution to health and nursing care insurance rises from €146.29 to €156.55 as of 01.10.2026, because the BAföG-based assessment basis increased to €915.00. The amount is collected by direct debit on the 15th of each month, first at the new rate on 15.10.2026, and an objection (Widerspruch) can be filed within one month of notification.\",\"tax_note\":\"Contributions to statutory health and nursing care insurance are deductible as special expenses (Sonderausgaben) in the income tax return.\",\"tax_relevant\":true,\"title\":\"Health Insurance Contribution Notice – Increase to €156.55/month (Muster BKK)\",\"urgency\":\"high\",\"warnings\":[]}",
+    "data": {
+      "area": "health",
+      "case_title": "Health insurance contribution increase – Muster BKK",
+      "change": {
+        "type": "price_increase",
+        "effective_date": "2026-10-01",
+        "old_amount": 146.29,
+        "new_amount": 156.55,
+        "cost_interval": "monthly",
+        "quote": "Ab dem 01.10.2026 beträgt Ihr monatlicher Beitrag 156,55 € (bisher 146,29 €).",
+        "unit_price_old": null,
+        "unit_price_new": null
+      },
+      "contract": {
+        "name": "Gesetzliche Kranken- und Pflegeversicherung bei Muster BKK",
+        "category": "insurance",
+        "is_consumer": true,
+        "is_basic_supply": false,
+        "concluded_date": null,
+        "start_date": null,
+        "end_date": null,
+        "initial_term_months": null,
+        "renewal_term_months": null,
+        "notice_basis": null,
+        "notice_value": null,
+        "notice_unit": null,
+        "cost_amount": 156.55,
+        "cost_interval": "monthly",
+        "customer_number": "R482019375",
+        "quotes": [
+          "Sie sind bei uns als Student nach § 5 Abs. 1 Nr. 9 SGB V kranken- und pflegeversichert.",
+          "Gesamtbeitrag ab 01.10.2026 (Bemessungsgrundlage 915,00 €)   156,55 €"
+        ]
+      },
+      "document_date": "2026-09-10",
+      "explanation": "Your compulsory statutory health and nursing care insurance (Kranken- und Pflegeversicherung) contribution as a student is going up because the BAföG-based assessment amount used to calculate it increased. From 01.10.2026 your monthly contribution rises to €156.55, collected by direct debit as before, first at the new rate on 15.10.2026. If you think the calculation is wrong, you can file a written objection (Widerspruch) with Muster BKK by the deadline shown on the notice; note that filing an objection does not stop you from having to pay the assessed amount in the meantime. Keep this notice — statutory health and nursing care insurance contributions can be claimed as special expenses (Sonderausgaben) in your tax return.",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Object to contribution notice (Widerspruch)",
+          "date": {
+            "type": "relative",
+            "anchor": "deemed_delivery",
+            "amount": 1,
+            "unit": "months",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "text": "innerhalb eines Monats nach Bekanntgabe",
+            "legal_basis": null,
+            "shift_rule": "auto"
+          },
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+          "action": "File a written, electronic (per § 36a Abs. 2 SGB I) or in-person objection (Widerspruch) with Muster BKK if you disagree with the contribution amount.",
+          "consequence": "The contribution notice becomes final if no objection is filed in time; an objection does not suspend the duty to pay the assessed amount in the meantime.",
+          "priority": "high",
+          "direction": null,
+          "location": null,
+          "recurrence": null
+        },
+        {
+          "kind": "payment",
+          "title": "Monthly health & nursing care insurance contribution",
+          "date": {
+            "type": "fixed",
+            "date": "2026-10-15",
+            "nature": "payment",
+            "text": "den neuen Betrag erstmals am 15.10.2026",
+            "legal_basis": null,
+            "shift_rule": "auto"
+          },
+          "quote": "Wir buchen den Beitrag wie bisher zum 15. eines Monats ab, den neuen Betrag erstmals am 15.10.2026.",
+          "action": "Ensure sufficient funds are available for the direct debit (Lastschrift) collection each month.",
+          "consequence": null,
+          "amount": 156.55,
+          "currency": "EUR",
+          "direction": "out",
+          "priority": "normal",
+          "location": null,
+          "recurrence": {
+            "interval": 1,
+            "unit": "months"
+          }
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Versicherten-Nr.",
+          "value": "R482019375",
+          "quote": "Versicherten-Nr. R482019375"
+        },
+        {
+          "label": "New monthly contribution (from 01.10.2026)",
+          "value": "156,55 €",
+          "quote": "Ab dem 01.10.2026 beträgt Ihr monatlicher Beitrag 156,55 € (bisher 146,29 €)."
+        },
+        {
+          "label": "Previous monthly contribution",
+          "value": "146,29 €",
+          "quote": "Ab dem 01.10.2026 beträgt Ihr monatlicher Beitrag 156,55 € (bisher 146,29 €)."
+        },
+        {
+          "label": "BAföG-based assessment basis (Wintersemester 2026/27)",
+          "value": "915,00 €",
+          "quote": "er beträgt ab dem Wintersemester 2026/27 915,00 € (bisher 855,00 €)."
+        }
+      ],
+      "kind": "health_insurance",
+      "language": "de",
+      "payment": {
+        "iban": "DE18123456000006060000",
+        "iban_valid": true,
+        "payee": "Muster BKK",
+        "reference": null
+      },
+      "recipient_name": "Sam Rivera",
+      "references": [
+        {
+          "label": "Versicherten-Nr.",
+          "value": "R482019375"
+        },
+        {
+          "label": "Unser Zeichen",
+          "value": "BZ-S/2026/0917"
+        }
+      ],
+      "remedy": {
+        "type": "widerspruch",
+        "addressee": "Muster BKK, Kassenstraße 3, 12346 Musterstadt",
+        "period_text": "innerhalb eines Monats nach Bekanntgabe",
+        "form_text": "schriftlich, in elektronischer Form nach § 36a Abs. 2 SGB I oder zur Niederschrift bei der Muster BKK",
+        "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden."
+      },
+      "sender": {
+        "name": "Muster BKK",
+        "kind": "health_insurer",
+        "address": "Kassenstraße 3, 12346 Musterstadt",
+        "phone": "0123 6060-417",
+        "email": null,
+        "website": null,
+        "identifiers": [
+          {
+            "label": "Gläubiger-ID",
+            "value": "DE22ZZZ00000606017"
+          }
+        ]
+      },
+      "summary": "Muster BKK (statutory health insurer) informs Sam Rivera, insured as a student, that the monthly contribution to health and nursing care insurance rises from €146.29 to €156.55 as of 01.10.2026, because the BAföG-based assessment basis increased to €915.00. The amount is collected by direct debit on the 15th of each month, first at the new rate on 15.10.2026, and an objection (Widerspruch) can be filed within one month of notification.",
+      "tax_note": "Contributions to statutory health and nursing care insurance are deductible as special expenses (Sonderausgaben) in the income tax return.",
+      "tax_relevant": true,
+      "title": "Health Insurance Contribution Notice – Increase to €156.55/month (Muster BKK)",
+      "urgency": "high",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 8864,
+      "cache_read_tokens": 6755,
+      "cache_creation_tokens": 3519,
+      "cost_usd": 0.10407100000000001,
+      "duration_ms": 77352,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

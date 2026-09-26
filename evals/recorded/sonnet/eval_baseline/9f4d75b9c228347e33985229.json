@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"a1522b149e33b993216c4f618e1ac4aed19618fbd7691c5d4f83fa061e478943\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-05-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-municipal_decision-A1"
+    ],
+    "prompt_head": "Today is Monday, 2025-05-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[250],\"contract\":null,\"document_date\":\"2025-05-15\",\"items\":[{\"kind\":\"task\",\"title\":\"Keep dog on a leash (max. 2m) outside own property\",\"quote\":\"ordne ich hiermit gemäß § 14 Abs. 1 OBG NRW an, dass Ihr Hund außerhalb Ihres befriedeten Besitztums ab sofort an einer höchstens zwei Meter langen Leine zu führen ist.\",\"computation\":\"The order takes effect 'ab sofort' (immediately) once the decision is communicated (bekanntgegeben). Posting date is 15.05.2025 (Thursday). This is a general (non-tax) authority (Ordnungsamt), so the statutory 4-day delivery fiction for letters posted on/after 1 Jan 2025 applies without weekend/holiday adjustment of the delivery day itself: 15.05.2025 + 4 days = 19.05.2025 (Monday). The continuous leash obligation therefore begins on 19.05.2025 and continues indefinitely (not a one-off deadline).\",\"due_date\":\"2025-05-19\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Klage (lawsuit) with the Verwaltungsgericht against the leash order\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Klage beim Verwaltungsgericht Musterstadt, Justizzentrum, Gerichtsstraße 5, 44135 Musterstadt, erhoben werden.\",\"computation\":\"Posting date printed on the letter: 15.05.2025 (Thursday). Sender is a municipal Ordnungsamt (general authority, not a tax office), so the 4-day delivery fiction for authority letters posted on/after 1 Jan 2025 applies, and the delivery day is not shifted for weekends/holidays: 15.05.2025 + 4 calendar days = 19.05.2025 (Monday) = deemed delivery (Bekanntgabe). The one-month Klage period (§74 VwGO) starts the day after delivery (§187 Abs.1 BGB) and ends on the day of the following month bearing the same number as the delivery day (§188 Abs.2 BGB): 19.06.2025. 19.06.2025 is Fronleichnam (Corpus Christi), a public holiday in Nordrhein-Westfalen, so the deadline moves to the next working day (§57 Abs.2 VwGO i.V.m. §222 Abs.2 ZPO): Friday, 20.06.2025.\",\"due_date\":\"2025-06-20\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.1-HU-2025-0417\"}],\"remedy_type\":\"klage\",\"sender_name\":\"Stadt Musterstadt – Der Oberbürgermeister, Ordnungsamt\",\"warnings\":[\"The letter threatens a Zwangsgeld (coercive fine) of 250,00 € only in case of future non-compliance with the leash order; this is not a current payment demand and has no due date of its own.\",\"No Widerspruch is possible per the letter ('Ein Widerspruchsverfahren findet nicht statt.'); only direct Klage to the Verwaltungsgericht within one month of deemed delivery is available.\"]}",
+    "data": {
+      "amounts": [
+        250
+      ],
+      "contract": null,
+      "document_date": "2025-05-15",
+      "items": [
+        {
+          "kind": "task",
+          "title": "Keep dog on a leash (max. 2m) outside own property",
+          "quote": "ordne ich hiermit gemäß § 14 Abs. 1 OBG NRW an, dass Ihr Hund außerhalb Ihres befriedeten Besitztums ab sofort an einer höchstens zwei Meter langen Leine zu führen ist.",
+          "computation": "The order takes effect 'ab sofort' (immediately) once the decision is communicated (bekanntgegeben). Posting date is 15.05.2025 (Thursday). This is a general (non-tax) authority (Ordnungsamt), so the statutory 4-day delivery fiction for letters posted on/after 1 Jan 2025 applies without weekend/holiday adjustment of the delivery day itself: 15.05.2025 + 4 days = 19.05.2025 (Monday). The continuous leash obligation therefore begins on 19.05.2025 and continues indefinitely (not a one-off deadline).",
+          "due_date": "2025-05-19",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Klage (lawsuit) with the Verwaltungsgericht against the leash order",
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Klage beim Verwaltungsgericht Musterstadt, Justizzentrum, Gerichtsstraße 5, 44135 Musterstadt, erhoben werden.",
+          "computation": "Posting date printed on the letter: 15.05.2025 (Thursday). Sender is a municipal Ordnungsamt (general authority, not a tax office), so the 4-day delivery fiction for authority letters posted on/after 1 Jan 2025 applies, and the delivery day is not shifted for weekends/holidays: 15.05.2025 + 4 calendar days = 19.05.2025 (Monday) = deemed delivery (Bekanntgabe). The one-month Klage period (§74 VwGO) starts the day after delivery (§187 Abs.1 BGB) and ends on the day of the following month bearing the same number as the delivery day (§188 Abs.2 BGB): 19.06.2025. 19.06.2025 is Fronleichnam (Corpus Christi), a public holiday in Nordrhein-Westfalen, so the deadline moves to the next working day (§57 Abs.2 VwGO i.V.m. §222 Abs.2 ZPO): Friday, 20.06.2025.",
+          "due_date": "2025-06-20",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.1-HU-2025-0417"
+        }
+      ],
+      "remedy_type": "klage",
+      "sender_name": "Stadt Musterstadt – Der Oberbürgermeister, Ordnungsamt",
+      "warnings": [
+        "The letter threatens a Zwangsgeld (coercive fine) of 250,00 € only in case of future non-compliance with the leash order; this is not a current payment demand and has no due date of its own.",
+        "No Widerspruch is possible per the letter ('Ein Widerspruchsverfahren findet nicht statt.'); only direct Klage to the Verwaltungsgericht within one month of deemed delivery is available."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4443,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2293,
+      "cost_usd": 0.054712,
+      "duration_ms": 44229,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

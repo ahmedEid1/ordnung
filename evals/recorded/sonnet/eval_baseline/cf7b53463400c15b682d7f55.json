@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"eddef6d0e26f4254e7ac11dc467f23ddaec04d663bf17b54bcd021234376d6bc\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-09-12\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-price_increase-C1"
+    ],
+    "prompt_head": "Today is Saturday, 2026-09-12 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Muster Gas GmbH\",\"document_date\":\"2026-09-10\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"MG-510 2277\"},{\"label\":\"Zählpunkt\",\"value\":\"DE0005111201000000000000000123456\"}],\"amounts\":[10.94,12.36,14.5,96,109],\"items\":[{\"kind\":\"expiry\",\"title\":\"Special termination right for gas price increase\",\"quote\":\"Sie können den Vertrag ohne Einhaltung einer Kündigungsfrist zum Wirksamwerden der Preisänderung kündigen.\",\"computation\":\"The letter grants a special right to cancel without the usual notice period, with the cancellation taking effect at the earliest when the price increase becomes effective on 01.11.2026. No explicit deadline for exercising this right is stated in the letter. Under general German practice for such special termination rights tied to a price increase (§ 41 EnWG), the customer must exercise it before the increased price actually takes effect; continuing the contract past that date is generally treated as acceptance of the new price. Counting back from the effective date (01.11.2026), the last day the cancellation should reach the provider to avoid the new price is the day before, i.e. 31.10.2026. This is a private-law deadline, not a statutory period with weekend/holiday extension rules, so no adjustment is applied.\",\"due_date\":\"2026-10-31\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter does not state an explicit deadline by which the special cancellation must reach the provider; the due date given (31.10.2026, the day before the price increase takes effect) is inferred from general practice and should be verified, e.g. by contacting the provider or cancelling as early as possible.\",\"The Grundpreis (14,50 €/Monat) is listed as unchanged despite being shown in the 'bisher → neu' comparison table.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Muster Gas GmbH",
+      "document_date": "2026-09-10",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "MG-510 2277"
+        },
+        {
+          "label": "Zählpunkt",
+          "value": "DE0005111201000000000000000123456"
+        }
+      ],
+      "amounts": [
+        10.94,
+        12.36,
+        14.5,
+        96,
+        109
+      ],
+      "items": [
+        {
+          "kind": "expiry",
+          "title": "Special termination right for gas price increase",
+          "quote": "Sie können den Vertrag ohne Einhaltung einer Kündigungsfrist zum Wirksamwerden der Preisänderung kündigen.",
+          "computation": "The letter grants a special right to cancel without the usual notice period, with the cancellation taking effect at the earliest when the price increase becomes effective on 01.11.2026. No explicit deadline for exercising this right is stated in the letter. Under general German practice for such special termination rights tied to a price increase (§ 41 EnWG), the customer must exercise it before the increased price actually takes effect; continuing the contract past that date is generally treated as acceptance of the new price. Counting back from the effective date (01.11.2026), the last day the cancellation should reach the provider to avoid the new price is the day before, i.e. 31.10.2026. This is a private-law deadline, not a statutory period with weekend/holiday extension rules, so no adjustment is applied.",
+          "due_date": "2026-10-31",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter does not state an explicit deadline by which the special cancellation must reach the provider; the due date given (31.10.2026, the day before the price increase takes effect) is inferred from general practice and should be verified, e.g. by contacting the provider or cancelling as early as possible.",
+        "The Grundpreis (14,50 €/Monat) is listed as unchanged despite being shown in the 'bisher → neu' comparison table."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2669,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2002,
+      "cost_usd": 0.035808,
+      "duration_ms": 29046,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

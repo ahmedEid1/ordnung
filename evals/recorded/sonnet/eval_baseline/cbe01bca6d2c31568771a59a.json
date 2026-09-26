@@ -1,0 +1,56 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b66a8dcd337e8970c721bba24c3e9f6592c990e35d42a96cbb4fe9f0b2caafac\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-year_boundary-D1"
+    ],
+    "prompt_head": "Today is Monday, 2026-02-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Muster BKK\",\"document_date\":\"2026-01-27\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"M482915673\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against Krankengeld denial\",\"quote\":\"Widerspruch gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Muster BKK erhoben werden.\",\"computation\":\"Letter is dated (posting day) 27.01.2026 (Tuesday), no separate 'Tag der Aufgabe zur Post' is stated, so the printed date is used as the posting date. As it was posted on/after 1 Jan 2025, delivery is fictionally on the 4th calendar day after posting: 27.01. + 4 days = 31.01.2026 (Saturday). Muster BKK is a statutory health insurer (Krankenkasse), a social-law body under § 37 Abs. 2 SGB X, so unlike tax offices the deemed-delivery day is NOT moved even though it falls on a Saturday; it stays 31.01.2026. The one-month Widerspruch period (§ 84 SGG) then runs from that delivery day and ends, per §§ 187, 188 BGB, on the day in the following month with the same number as the delivery day: 31 February does not exist, so the period ends on the last day of February 2026, i.e. 28.02.2026 (Saturday, 2026 is not a leap year). Since this end date falls on a Saturday, § 26 Abs. 3 SGB X moves it to the next working day: Sunday 01.03.2026 is not a working day either, so the deadline moves to Monday 02.03.2026.\",\"due_date\":\"2026-03-02\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The deemed delivery date (and therefore the Widerspruch deadline) was calculated assuming the printed letter date (27.01.2026) is also the actual posting date, since the letter does not separately state a 'Tag der Aufgabe zur Post'; if the envelope shows a different mailing date, the deadline shifts accordingly — the actual postmark/envelope date should be checked.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Muster BKK",
+      "document_date": "2026-01-27",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "M482915673"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against Krankengeld denial",
+          "quote": "Widerspruch gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Muster BKK erhoben werden.",
+          "computation": "Letter is dated (posting day) 27.01.2026 (Tuesday), no separate 'Tag der Aufgabe zur Post' is stated, so the printed date is used as the posting date. As it was posted on/after 1 Jan 2025, delivery is fictionally on the 4th calendar day after posting: 27.01. + 4 days = 31.01.2026 (Saturday). Muster BKK is a statutory health insurer (Krankenkasse), a social-law body under § 37 Abs. 2 SGB X, so unlike tax offices the deemed-delivery day is NOT moved even though it falls on a Saturday; it stays 31.01.2026. The one-month Widerspruch period (§ 84 SGG) then runs from that delivery day and ends, per §§ 187, 188 BGB, on the day in the following month with the same number as the delivery day: 31 February does not exist, so the period ends on the last day of February 2026, i.e. 28.02.2026 (Saturday, 2026 is not a leap year). Since this end date falls on a Saturday, § 26 Abs. 3 SGB X moves it to the next working day: Sunday 01.03.2026 is not a working day either, so the deadline moves to Monday 02.03.2026.",
+          "due_date": "2026-03-02",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The deemed delivery date (and therefore the Widerspruch deadline) was calculated assuming the printed letter date (27.01.2026) is also the actual posting date, since the letter does not separately state a 'Tag der Aufgabe zur Post'; if the envelope shows a different mailing date, the deadline shifts accordingly — the actual postmark/envelope date should be checked."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3386,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2016,
+      "cost_usd": 0.043034,
+      "duration_ms": 36271,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

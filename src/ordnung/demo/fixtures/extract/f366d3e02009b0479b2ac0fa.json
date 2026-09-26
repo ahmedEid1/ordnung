@@ -1,0 +1,179 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "8.7.1",
+    "cache_key": "{\"doc\":\"b99f7dd5b88171870999c4d7b2dbe973c53894867497373cd65e8587bb32d200\",\"language\":\"en\",\"pages\":[[1,\"text\"],[2,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_q6fqvndrg5rr"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym) — Gläubiger-ID: DE25ZZZ00000104570; USt-IdNr.: DE310457828; Amtsgericht: Musterstadt HRB 31045; Mitgliedsnummer: FW-10457\n- FunkN"
+  },
+  "response": {
+    "text": "{\"area\":\"work\",\"case_title\":\"Fixed-term working student employment contract with Muster Tech GmbH\",\"kind\":\"employment\",\"language\":\"de\",\"document_date\":\"2026-03-20\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Muster Tech GmbH\",\"kind\":\"employer\",\"address\":\"Innovationsweg 42, 12345 Musterstadt\",\"phone\":\"0123 4242-0\",\"website\":\"www.mustertech.example\",\"identifiers\":[{\"label\":\"USt-IdNr.\",\"value\":\"DE424242072\"},{\"label\":\"Amtsgericht/HRB\",\"value\":\"Musterstadt HRB 42424\"}]},\"references\":[{\"label\":\"Personalnummer\",\"value\":\"10482\"}],\"contract\":{\"name\":\"Befristeter Arbeitsvertrag für Werkstudierende\",\"category\":\"employment\",\"is_consumer\":true,\"is_basic_supply\":false,\"concluded_date\":\"2026-03-20\",\"start_date\":\"2026-04-01\",\"end_date\":\"2027-03-31\",\"initial_term_months\":12,\"renewal_term_months\":null,\"notice_basis\":\"any_time\",\"notice_value\":null,\"notice_unit\":null,\"cost_amount\":null,\"cost_interval\":null,\"customer_number\":\"10482\",\"quotes\":[\"Das Arbeitsverhältnis beginnt am 01.04.2026 und ist bis zum 31.03.2027 befristet.\",\"Es endet mit Ablauf des 31.03.2027, ohne dass es einer Kündigung bedarf.\",\"Die Befristung erfolgt ohne Sachgrund gemäß § 14 Abs. 2 TzBfG.\",\"Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit. Während der Probezeit kann das Arbeitsverhältnis von beiden Seiten mit einer Frist von zwei Wochen gekündigt werden (§ 622 Abs. 3 BGB).\",\"Nach Ablauf der Probezeit kann das Arbeitsverhältnis von beiden Seiten unter Einhaltung der gesetzlichen Kündigungsfristen (§ 622 BGB) ordentlich gekündigt werden.\",\"Die regelmäßige wöchentliche Arbeitszeit beträgt 20 Stunden.\",\"Der Arbeitnehmer erhält eine Vergütung von 16,50 € brutto je geleisteter Arbeitsstunde.\",\"Der Arbeitnehmer hat Anspruch auf 25 Arbeitstage Erholungsurlaub im Kalenderjahr, bezogen auf eine Fünf-Tage-Woche.\",\"Ansprüche aus dem Arbeitsverhältnis verfallen, wenn sie nicht innerhalb von drei Monaten nach Fälligkeit in Textform gegenüber der anderen Vertragspartei geltend gemacht werden.\",\"Die Kündigung bedarf der Schriftform (§ 623 BGB); die elektronische Form ist ausgeschlossen.\"]},\"key_facts\":[{\"label\":\"Position\",\"value\":\"Werkstudent, Data Engineering\",\"quote\":\"Der Arbeitnehmer wird als Werkstudent im Bereich Data Engineering beschäftigt.\"},{\"label\":\"Weekly working hours\",\"value\":\"20 hours\",\"quote\":\"Die regelmäßige wöchentliche Arbeitszeit beträgt 20 Stunden.\"},{\"label\":\"Hourly wage\",\"value\":\"€16.50 gross\",\"quote\":\"Der Arbeitnehmer erhält eine Vergütung von 16,50 € brutto je geleisteter Arbeitsstunde.\"},{\"label\":\"Vacation entitlement\",\"value\":\"25 working days per calendar year\",\"quote\":\"Der Arbeitnehmer hat Anspruch auf 25 Arbeitstage Erholungsurlaub im Kalenderjahr, bezogen auf eine Fünf-Tage-Woche.\"},{\"label\":\"Probation period\",\"value\":\"3 months, 2 weeks notice\",\"quote\":\"Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit. Während der Probezeit kann das Arbeitsverhältnis von beiden Seiten mit einer Frist von zwei Wochen gekündigt werden (§ 622 Abs. 3 BGB).\"},{\"label\":\"Exclusion period for claims\",\"value\":\"3 months after due date, in text form\",\"quote\":\"Ansprüche aus dem Arbeitsverhältnis verfallen, wenn sie nicht innerhalb von drei Monaten nach Fälligkeit in Textform gegenüber der anderen Vertragspartei geltend gemacht werden.\"}],\"items\":[{\"kind\":\"milestone\",\"title\":\"End of probation period (Probezeit)\",\"action\":\"During the probation period either side can terminate with only two weeks' notice; note when the probation period ends.\",\"consequence\":null,\"date\":{\"type\":\"relative\",\"nature\":\"other\",\"anchor\":\"explicit_date\",\"anchor_date\":\"2026-04-01\",\"amount\":3,\"unit\":\"months\",\"text\":\"Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit.\",\"shift_rule\":\"none\"},\"quote\":\"Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit.\",\"priority\":\"low\"},{\"kind\":\"task\",\"title\":\"Submit enrollment certificate each semester\",\"action\":\"Provide an updated certificate of enrollment (Immatrikulationsbescheinigung) at the start of every semester and immediately inform the employer if your studies end or are interrupted.\",\"consequence\":null,\"date\":{\"type\":\"none\",\"nature\":\"declaration\"},\"quote\":\"Der Arbeitnehmer versichert, an der Hochschule Musterstadt ordentlich immatrikuliert zu sein. Er legt zu Beginn jedes Semesters eine aktuelle Immatrikulationsbescheinigung vor und teilt das Ende oder eine Unterbrechung des Studiums unverzüglich mit.\",\"priority\":\"normal\"},{\"kind\":\"payment\",\"title\":\"Monthly salary payment\",\"direction\":\"in\",\"amount\":null,\"currency\":\"EUR\",\"recurrence\":{\"interval\":1,\"unit\":\"months\"},\"date\":{\"type\":\"none\",\"nature\":\"payment\"},\"quote\":\"Die Abrechnung erfolgt monatlich nach den erfassten Stunden; die Vergütung wird spätestens am letzten Bankarbeitstag des Monats auf ein vom Arbeitnehmer benanntes Konto überwiesen.\",\"priority\":\"normal\"}],\"remedy\":{\"type\":\"none\"},\"warnings\":[],\"urgency\":\"normal\",\"tax_relevant\":true,\"tax_note\":\"Salary from this working-student job (payslips) should be kept for the annual income tax return, especially to track income relevant to student exemptions and social security thresholds.\",\"title\":\"Fixed-term working student contract with Muster Tech GmbH (01.04.2026–31.03.2027)\",\"summary\":\"Muster Tech GmbH and Sam Rivera signed a fixed-term (no-reason, § 14 Abs. 2 TzBfG) working student contract for the Data Engineering team, running from 01.04.2026 to 31.03.2027 at €16.50/hour gross for up to 20 hours/week, with a 3-month probation period.\",\"explanation\":\"This is your signed employment contract as a working student (Werkstudent) at Muster Tech GmbH. It runs for exactly one year and ends automatically on the stated end date without anyone having to give notice. During the first three months (probation) either side can end it early with two weeks' notice; after that, statutory notice periods apply. Keep providing your enrollment certificate each semester and tell the employer promptly if you stop or pause your studies, since your student status is a condition of this contract. Salary is paid monthly based on hours worked. If you disagree with any term, discuss it with the employer directly, as no dispute procedure is stated here.\"}",
+    "data": {
+      "area": "work",
+      "case_title": "Fixed-term working student employment contract with Muster Tech GmbH",
+      "kind": "employment",
+      "language": "de",
+      "document_date": "2026-03-20",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Muster Tech GmbH",
+        "kind": "employer",
+        "address": "Innovationsweg 42, 12345 Musterstadt",
+        "phone": "0123 4242-0",
+        "website": "www.mustertech.example",
+        "identifiers": [
+          {
+            "label": "USt-IdNr.",
+            "value": "DE424242072"
+          },
+          {
+            "label": "Amtsgericht/HRB",
+            "value": "Musterstadt HRB 42424"
+          }
+        ]
+      },
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "10482"
+        }
+      ],
+      "contract": {
+        "name": "Befristeter Arbeitsvertrag für Werkstudierende",
+        "category": "employment",
+        "is_consumer": true,
+        "is_basic_supply": false,
+        "concluded_date": "2026-03-20",
+        "start_date": "2026-04-01",
+        "end_date": "2027-03-31",
+        "initial_term_months": 12,
+        "renewal_term_months": null,
+        "notice_basis": "any_time",
+        "notice_value": null,
+        "notice_unit": null,
+        "cost_amount": null,
+        "cost_interval": null,
+        "customer_number": "10482",
+        "quotes": [
+          "Das Arbeitsverhältnis beginnt am 01.04.2026 und ist bis zum 31.03.2027 befristet.",
+          "Es endet mit Ablauf des 31.03.2027, ohne dass es einer Kündigung bedarf.",
+          "Die Befristung erfolgt ohne Sachgrund gemäß § 14 Abs. 2 TzBfG.",
+          "Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit. Während der Probezeit kann das Arbeitsverhältnis von beiden Seiten mit einer Frist von zwei Wochen gekündigt werden (§ 622 Abs. 3 BGB).",
+          "Nach Ablauf der Probezeit kann das Arbeitsverhältnis von beiden Seiten unter Einhaltung der gesetzlichen Kündigungsfristen (§ 622 BGB) ordentlich gekündigt werden.",
+          "Die regelmäßige wöchentliche Arbeitszeit beträgt 20 Stunden.",
+          "Der Arbeitnehmer erhält eine Vergütung von 16,50 € brutto je geleisteter Arbeitsstunde.",
+          "Der Arbeitnehmer hat Anspruch auf 25 Arbeitstage Erholungsurlaub im Kalenderjahr, bezogen auf eine Fünf-Tage-Woche.",
+          "Ansprüche aus dem Arbeitsverhältnis verfallen, wenn sie nicht innerhalb von drei Monaten nach Fälligkeit in Textform gegenüber der anderen Vertragspartei geltend gemacht werden.",
+          "Die Kündigung bedarf der Schriftform (§ 623 BGB); die elektronische Form ist ausgeschlossen."
+        ]
+      },
+      "key_facts": [
+        {
+          "label": "Position",
+          "value": "Werkstudent, Data Engineering",
+          "quote": "Der Arbeitnehmer wird als Werkstudent im Bereich Data Engineering beschäftigt."
+        },
+        {
+          "label": "Weekly working hours",
+          "value": "20 hours",
+          "quote": "Die regelmäßige wöchentliche Arbeitszeit beträgt 20 Stunden."
+        },
+        {
+          "label": "Hourly wage",
+          "value": "€16.50 gross",
+          "quote": "Der Arbeitnehmer erhält eine Vergütung von 16,50 € brutto je geleisteter Arbeitsstunde."
+        },
+        {
+          "label": "Vacation entitlement",
+          "value": "25 working days per calendar year",
+          "quote": "Der Arbeitnehmer hat Anspruch auf 25 Arbeitstage Erholungsurlaub im Kalenderjahr, bezogen auf eine Fünf-Tage-Woche."
+        },
+        {
+          "label": "Probation period",
+          "value": "3 months, 2 weeks notice",
+          "quote": "Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit. Während der Probezeit kann das Arbeitsverhältnis von beiden Seiten mit einer Frist von zwei Wochen gekündigt werden (§ 622 Abs. 3 BGB)."
+        },
+        {
+          "label": "Exclusion period for claims",
+          "value": "3 months after due date, in text form",
+          "quote": "Ansprüche aus dem Arbeitsverhältnis verfallen, wenn sie nicht innerhalb von drei Monaten nach Fälligkeit in Textform gegenüber der anderen Vertragspartei geltend gemacht werden."
+        }
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "End of probation period (Probezeit)",
+          "action": "During the probation period either side can terminate with only two weeks' notice; note when the probation period ends.",
+          "consequence": null,
+          "date": {
+            "type": "relative",
+            "nature": "other",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-04-01",
+            "amount": 3,
+            "unit": "months",
+            "text": "Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit.",
+            "shift_rule": "none"
+          },
+          "quote": "Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit.",
+          "priority": "low"
+        },
+        {
+          "kind": "task",
+          "title": "Submit enrollment certificate each semester",
+          "action": "Provide an updated certificate of enrollment (Immatrikulationsbescheinigung) at the start of every semester and immediately inform the employer if your studies end or are interrupted.",
+          "consequence": null,
+          "date": {
+            "type": "none",
+            "nature": "declaration"
+          },
+          "quote": "Der Arbeitnehmer versichert, an der Hochschule Musterstadt ordentlich immatrikuliert zu sein. Er legt zu Beginn jedes Semesters eine aktuelle Immatrikulationsbescheinigung vor und teilt das Ende oder eine Unterbrechung des Studiums unverzüglich mit.",
+          "priority": "normal"
+        },
+        {
+          "kind": "payment",
+          "title": "Monthly salary payment",
+          "direction": "in",
+          "amount": null,
+          "currency": "EUR",
+          "recurrence": {
+            "interval": 1,
+            "unit": "months"
+          },
+          "date": {
+            "type": "none",
+            "nature": "payment"
+          },
+          "quote": "Die Abrechnung erfolgt monatlich nach den erfassten Stunden; die Vergütung wird spätestens am letzten Bankarbeitstag des Monats auf ein vom Arbeitnehmer benanntes Konto überwiesen.",
+          "priority": "normal"
+        }
+      ],
+      "remedy": {
+        "type": "none"
+      },
+      "warnings": [],
+      "urgency": "normal",
+      "tax_relevant": true,
+      "tax_note": "Salary from this working-student job (payslips) should be kept for the annual income tax return, especially to track income relevant to student exemptions and social security thresholds.",
+      "title": "Fixed-term working student contract with Muster Tech GmbH (01.04.2026–31.03.2027)",
+      "summary": "Muster Tech GmbH and Sam Rivera signed a fixed-term (no-reason, § 14 Abs. 2 TzBfG) working student contract for the Data Engineering team, running from 01.04.2026 to 31.03.2027 at €16.50/hour gross for up to 20 hours/week, with a 3-month probation period.",
+      "explanation": "This is your signed employment contract as a working student (Werkstudent) at Muster Tech GmbH. It runs for exactly one year and ends automatically on the stated end date without anyone having to give notice. During the first three months (probation) either side can end it early with two weeks' notice; after that, statutory notice periods apply. Keep providing your enrollment certificate each semester and tell the employer promptly if you stop or pause your studies, since your student status is a condition of this contract. Salary is paid monthly based on hours worked. If you disagree with any term, discuss it with the employer directly, as no dispute procedure is stated here."
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 8155,
+      "cache_read_tokens": 6755,
+      "cache_creation_tokens": 4176,
+      "cost_usd": 0.09960900000000002,
+      "duration_ms": 77942,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

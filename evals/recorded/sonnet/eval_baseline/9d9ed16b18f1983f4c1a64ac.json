@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"86132beb3cdf3559ac6eede79222327966697ef62c83de47df664f4b43e2de20\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-04-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-invoice_relative-D1"
+    ],
+    "prompt_head": "Today is Monday, 2026-04-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Stadtwerke Musterstadt GmbH\",\"document_date\":\"2026-04-14\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"SR-26-004187\"},{\"label\":\"Kundennummer\",\"value\":\"300 441 872\"}],\"amounts\":[105.58],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay final electricity invoice\",\"quote\":\"Der Rechnungsbetrag ist innerhalb von 30 Tagen nach dem Rechnungsdatum ohne Abzug zur Zahlung fällig.\",\"computation\":\"Start: invoice date 14.04.2026. Under § 187 Abs. 1 BGB the day of the event (invoice date) is not counted, so the 30-day period begins 15.04.2026. Counting 30 days from 14.04.2026 lands on 14.05.2026 (April 14 + 30 days = May 14, since this is a day-period, not a calendar month). 14.05.2026 is a Thursday, not a Saturday, Sunday or public holiday in NRW, so no shift under § 193 BGB is needed. This is a payment to a company, so the payer's own Land (NRW) holidays apply, and none affect this date.\",\"due_date\":\"2026-05-14\",\"confidence\":\"high\",\"amount\":105.58}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Stadtwerke Musterstadt GmbH",
+      "document_date": "2026-04-14",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "SR-26-004187"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "300 441 872"
+        }
+      ],
+      "amounts": [
+        105.58
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay final electricity invoice",
+          "quote": "Der Rechnungsbetrag ist innerhalb von 30 Tagen nach dem Rechnungsdatum ohne Abzug zur Zahlung fällig.",
+          "computation": "Start: invoice date 14.04.2026. Under § 187 Abs. 1 BGB the day of the event (invoice date) is not counted, so the 30-day period begins 15.04.2026. Counting 30 days from 14.04.2026 lands on 14.05.2026 (April 14 + 30 days = May 14, since this is a day-period, not a calendar month). 14.05.2026 is a Thursday, not a Saturday, Sunday or public holiday in NRW, so no shift under § 193 BGB is needed. This is a payment to a company, so the payer's own Land (NRW) holidays apply, and none affect this date.",
+          "due_date": "2026-05-14",
+          "confidence": "high",
+          "amount": 105.58
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1553,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2016,
+      "cost_usd": 0.024703999999999997,
+      "duration_ms": 15494,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

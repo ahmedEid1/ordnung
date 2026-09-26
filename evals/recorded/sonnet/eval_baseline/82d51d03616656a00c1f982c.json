@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"ab6ff2ff934dc90f122f4b7caf5e9f4db755b1a8fc9600252417d9d433708bd9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-english_letter-B1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-05-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Global Muster Research Institute\",\"document_date\":\"2026-05-05\",\"references\":[{\"label\":\"Reference\",\"value\":\"GMRI/ST/2026/118\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Return signed participation form\",\"quote\":\"Please return the signed participation form by 07/08/2026.\",\"computation\":\"The letter states a fixed calendar date, not a period, so no delivery-fiction or day-counting rules apply and the date is used as written. The numeric date '07/08/2026' is read as DD/MM/YYYY (day/month/year), consistent with the letter's own header date format 'Date 05/05/2026' and standard German/European letter conventions, giving 7 August 2026. As a private deadline set by the sender, it is not subject to the § 193 BGB weekend/holiday extension unless it falls on a non-working day; the calendar date is used as printed regardless.\",\"due_date\":\"2026-08-07\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The date '07/08/2026' could be read as 7 August 2026 (DD/MM/YYYY) or 8 July 2026 (MM/DD/YYYY); I used the DD/MM/YYYY reading consistent with the letter's own German-style date formatting, but the person should double-check which convention the sender intended.\",\"As of today (2026-09-25), this stated deadline (7 August 2026 or 8 July 2026 under either reading) has already passed.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Global Muster Research Institute",
+      "document_date": "2026-05-05",
+      "references": [
+        {
+          "label": "Reference",
+          "value": "GMRI/ST/2026/118"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return signed participation form",
+          "quote": "Please return the signed participation form by 07/08/2026.",
+          "computation": "The letter states a fixed calendar date, not a period, so no delivery-fiction or day-counting rules apply and the date is used as written. The numeric date '07/08/2026' is read as DD/MM/YYYY (day/month/year), consistent with the letter's own header date format 'Date 05/05/2026' and standard German/European letter conventions, giving 7 August 2026. As a private deadline set by the sender, it is not subject to the § 193 BGB weekend/holiday extension unless it falls on a non-working day; the calendar date is used as printed regardless.",
+          "due_date": "2026-08-07",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The date '07/08/2026' could be read as 7 August 2026 (DD/MM/YYYY) or 8 July 2026 (MM/DD/YYYY); I used the DD/MM/YYYY reading consistent with the letter's own German-style date formatting, but the person should double-check which convention the sender intended.",
+        "As of today (2026-09-25), this stated deadline (7 August 2026 or 8 July 2026 under either reading) has already passed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2971,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1753,
+      "cost_usd": 0.037832,
+      "duration_ms": 34897,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

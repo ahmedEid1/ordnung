@@ -1,0 +1,303 @@
+"""To-dos & dates: list, add, edit, confirm, delete, and a single to-do as ``.ics``.
+
+A due date the person sets becomes ``due_date_source="manual"`` (with a send-by date from the rules
+engine) and marks the to-do ``user_modified`` so reading the letter again never overwrites it.
+Status changes (done, snoozed until a day, dismissed …) are explicit clicks; nothing here changes a
+status on its own — except that a recurring to-do marked done moves on to its next occurrence and
+stays open, and set open again ("Undo") goes back to it (:mod:`ordnung.recurrence`). After every
+edit or deletion the letter's "Please check" is brought up to date.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from datetime import date, timedelta
+from typing import Annotated, Any, Literal
+
+from fastapi import APIRouter, HTTPException, Query, Response, status
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+
+from ordnung.api.deps import CtxDep, StoreDep, TodayDep
+from ordnung.api.routes.common import IsoDate, ledger_changed, require
+from ordnung.api.routes.dates import date_nature, manual_date_fields, refresh_review_status, schedule_spec
+from ordnung.calendar.ics import build_ics
+from ordnung.clock import now_iso
+from ordnung.db.store import Store
+from ordnung.ingest.plan import item_context
+from ordnung.models import Area, Item, ItemKind, ItemStatus, Priority, Recurrence
+from ordnung.recurrence import mark_done, replaced_occurrence, roll_item, same_rule, standing_in, undo_done
+from ordnung.secretary.triggers import postal_buffer
+
+router = APIRouter(tags=["items"])
+
+NOT_FOUND = "Unknown to-do."
+DEFAULT_SNOOZE_DAYS = 7
+_CONTENT_FIELDS = ("title", "description", "due_time", "amount", "priority", "area", "location", "recurrence")
+_TIME_PATTERN = r"^([01]\d|2[0-3]):[0-5]\d$"
+
+
+class ItemCreate(BaseModel):
+    """A to-do or date the person adds by hand."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: ItemKind
+    title: str = Field(min_length=1, max_length=300)
+    description: str | None = None
+    due_date: IsoDate | None = None
+    due_time: str | None = Field(default=None, pattern=_TIME_PATTERN)
+    amount: float | None = None
+    currency: str | None = None
+    direction: Literal["out", "in"] | None = None
+    recurrence: Recurrence | None = None
+    priority: Priority = "normal"
+    area: Area = "other"
+    party_id: str | None = None
+    case_id: str | None = None
+    contract_id: str | None = None
+    doc_id: str | None = None
+    location: str | None = None
+
+
+class ItemPatch(BaseModel):
+    """Edits to a to-do; ``notes`` is accepted as another name for ``description``."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    title: str | None = Field(default=None, min_length=1, max_length=300)
+    description: str | None = Field(default=None, validation_alias=AliasChoices("description", "notes"))
+    due_date: IsoDate | None = None
+    due_time: str | None = Field(default=None, pattern=_TIME_PATTERN)
+    amount: float | None = None
+    status: ItemStatus | None = None
+    snoozed_until: IsoDate | None = None
+    priority: Priority | None = None
+    area: Area | None = None
+    location: str | None = None
+    recurrence: Recurrence | None = None
+
+
+# --------------------------------------------------------------------------------------------------
+# reads
+# --------------------------------------------------------------------------------------------------
+
+
+@router.get("/items", response_model=list[Item])
+def list_items(
+    store: StoreDep,
+    status_: Annotated[ItemStatus | None, Query(alias="status")] = None,
+    kind: ItemKind | None = None,
+    from_: Annotated[IsoDate | None, Query(alias="from")] = None,
+    to: IsoDate | None = None,
+    area: Area | None = None,
+    party_id: str | None = None,
+    doc_id: str | None = None,
+    contract_id: str | None = None,
+    case_id: str | None = None,
+    include_undated: bool = False,
+    limit: Annotated[int | None, Query(ge=1, le=5000)] = None,
+) -> list[Item]:
+    """To-dos & dates, soonest first. With a ``from``/``to`` range undated ones are left out unless
+    ``include_undated``."""
+    ranged = from_ is not None or to is not None
+    return store.list_items(
+        status=status_,
+        kind=kind,
+        from_date=from_,
+        to_date=to,
+        area=area,
+        party_id=party_id,
+        doc_id=doc_id,
+        contract_id=contract_id,
+        case_id=case_id,
+        include_undated=include_undated or not ranged,
+        limit=limit,
+    )
+
+
+@router.get("/items/{item_id}.ics", response_class=Response)
+def item_ics(item_id: str, store: StoreDep) -> Response:
+    """One to-do as a calendar file (with its reminders)."""
+    require(store.get_item(item_id), NOT_FOUND)
+    try:
+        body = build_ics(store, only_item_id=item_id, include_done=True)
+    except ValueError as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "This to-do has no date to put in a calendar."
+        ) from exc
+    return Response(
+        body,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{item_id}.ics"', "Cache-Control": "no-store"},
+    )
+
+
+@router.get("/items/{item_id}", response_model=Item)
+def get_item(item_id: str, store: StoreDep) -> Item:
+    """One to-do (with its evidence and "Why this date?" receipt)."""
+    return require(store.get_item(item_id), NOT_FOUND)
+
+
+# --------------------------------------------------------------------------------------------------
+# writes
+# --------------------------------------------------------------------------------------------------
+
+
+def _check_links(store: Store, fields: dict[str, Any]) -> None:
+    lookups = {
+        "party_id": (store.get_party, "Unknown person or organisation."),
+        "case_id": (store.get_case, "Unknown thread."),
+        "contract_id": (store.get_contract, "Unknown contract."),
+        "doc_id": (store.get_document, "Unknown letter."),
+    }
+    for name, (lookup, message) in lookups.items():
+        if fields.get(name) is not None:
+            require(lookup(fields[name]), message)
+
+
+def _create(store: Store, body: ItemCreate, today: date) -> Item:
+    fields = body.model_dump()
+    _check_links(store, fields)
+    due = fields.pop("due_date")
+    nature = date_nature(body.kind, None)
+    dates = manual_date_fields(store, due, today, nature=nature, party_id=body.party_id)
+    if due is not None and body.recurrence is not None:
+        dates["date_spec"] = schedule_spec(due, nature)
+    item = store.add_item(
+        **{**fields, **dates, "grounding": "user", "origin": "manual", "filed_on": today.isoformat()}
+    )
+    return _follow_schedule(store, item, today)
+
+
+@router.post("/items", response_model=Item, status_code=status.HTTP_201_CREATED)
+async def create_item(body: ItemCreate, ctx: CtxDep, today: TodayDep) -> Item:
+    """Add a to-do or date by hand."""
+    item = await asyncio.to_thread(_create, ctx.store, body, today)
+    await ledger_changed(ctx, item_id=item.id)
+    return item
+
+
+def _status_fields(item: Item, changes: dict[str, Any], today: date) -> dict[str, Any]:
+    """Status, snooze and completion time for an explicit status change or snooze date."""
+    wanted = changes.get("status")
+    if wanted is None and "snoozed_until" in changes:
+        wanted = (
+            "snoozed" if changes["snoozed_until"] else ("open" if item.status == "snoozed" else item.status)
+        )
+    if wanted is None:
+        return {}
+    fields: dict[str, Any] = {"status": wanted, "snoozed_until": None}
+    if wanted == "snoozed":
+        until = changes.get("snoozed_until") or (today + timedelta(days=DEFAULT_SNOOZE_DAYS)).isoformat()
+        fields["snoozed_until"] = until
+    if wanted == "done":
+        fields["completed_at"] = item.completed_at if item.status == "done" else now_iso()
+    else:
+        fields["completed_at"] = None
+    return fields
+
+
+def _schedule_fields(item: Item, fields: dict[str, Any]) -> dict[str, Any]:
+    """Where a recurring to-do's schedule starts (recurrence.py, point 2): a to-do whose DateSpec gives
+    no date (added by hand, or undated in its letter) keeps the first date it gets as a fixed DateSpec
+    (its day of the month; the letter's words kept), and so does a to-do added by hand that starts
+    repeating or repeats by a new rule. A date moved by hand later leaves the schedule as it is: it
+    stands in for the occurrence it replaced until it passes (point 7)."""
+    recurrence = fields.get("recurrence", item.recurrence)
+    due = fields.get("due_date", item.due_date)
+    spec = item.date_spec
+    if recurrence is None or due is None:
+        return {}
+    if spec is not None and spec.type == "none":
+        return {"date_spec": spec.model_copy(update={"type": "fixed", "date": due})}
+    if spec is None or (item.origin != "extracted" and not same_rule(recurrence, item.recurrence)):
+        return {"date_spec": schedule_spec(due, date_nature(item.kind, spec))}
+    return {}
+
+
+def _follow_schedule(
+    store: Store, item: Item, today: date, *, done: bool = False, reopened: bool = False
+) -> Item:
+    """A recurring to-do follows its schedule (:mod:`ordnung.recurrence`): marked done it moves on to
+    its next occurrence and stays open, and set open again ("Undo") it goes back to the occurrence
+    marked done; a date that has passed moves on to the current occurrence."""
+    if item.recurrence is None:
+        return item
+    ctx = item_context(store, item, today)
+    buffer = postal_buffer(store.get_profile())
+    if done:
+        return mark_done(store, item, ctx, postal_buffer_days=buffer) or item
+    if reopened:
+        item = undo_done(store, item) or item
+    return roll_item(store, item, ctx, postal_buffer_days=buffer)
+
+
+def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
+    item = require(store.get_item(item_id), NOT_FOUND)
+    changes = patch.model_dump(exclude_unset=True)
+    fields: dict[str, Any] = {name: changes[name] for name in _CONTENT_FIELDS if name in changes}
+    if "recurrence" in fields:  # the rule as read, so the same rule sent again compares equal to it
+        fields["recurrence"] = patch.recurrence
+    if "due_date" in changes:
+        nature = date_nature(item.kind, item.date_spec)
+        fields |= manual_date_fields(store, changes["due_date"], today, nature=nature, party_id=item.party_id)
+        replaced = replaced_occurrence(item)
+        if item.recurrence is not None and fields["computation"] is not None and replaced is not None:
+            fields["computation"] = standing_in(fields["computation"], replaced)  # recurrence.py, point 7
+    fields |= _schedule_fields(item, fields)
+    if fields:
+        fields["user_modified"] = True
+    fields |= _status_fields(item, changes, today)
+    if not fields:
+        return item
+    # an open recurring to-do set open again: the "Undo" of marking it done, which moved it on
+    reopened = item.status == "open" and fields.get("status") == "open"
+    with store.tx():
+        updated = store.update_item(item_id, **fields)
+        updated = _follow_schedule(
+            store, updated, today, done=fields.get("status") == "done", reopened=reopened
+        )
+        refresh_review_status(store, updated.doc_id)
+    return updated
+
+
+@router.patch("/items/{item_id}", response_model=Item)
+async def update_item(item_id: str, patch: ItemPatch, ctx: CtxDep, today: TodayDep) -> Item:
+    """Edit a to-do: done / snoozed / dismissed, a date of your own, title and notes."""
+    item = await asyncio.to_thread(_update, ctx.store, item_id, patch, today)
+    await ledger_changed(ctx, item_id=item.id)
+    return item
+
+
+def _confirm(store: Store, item_id: str) -> Item:
+    require(store.get_item(item_id), NOT_FOUND)
+    with store.tx():
+        item = store.update_item(item_id, grounding="user", user_modified=True)
+        refresh_review_status(store, item.doc_id)
+    return item
+
+
+@router.post("/items/{item_id}/confirm", response_model=Item)
+async def confirm_item(item_id: str, ctx: CtxDep) -> Item:
+    """ "Yes, that's right": the person checked this to-do against the letter."""
+    item = await asyncio.to_thread(_confirm, ctx.store, item_id)
+    await ledger_changed(ctx, item_id=item.id)
+    return item
+
+
+def _delete(store: Store, item_id: str) -> None:
+    item = require(store.get_item(item_id), NOT_FOUND)
+    with store.tx():
+        store.delete_item(item_id)
+        refresh_review_status(store, item.doc_id)
+        store.log_activity(
+            "item.deleted", f"Deleted the to-do “{item.title}”", ref_type="item", ref_id=item_id
+        )
+
+
+@router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def delete_item(item_id: str, ctx: CtxDep) -> Response:
+    """Delete a to-do (an explicit click; nothing else ever deletes an obligation)."""
+    await asyncio.to_thread(_delete, ctx.store, item_id)
+    await ledger_changed(ctx, item_id=item_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

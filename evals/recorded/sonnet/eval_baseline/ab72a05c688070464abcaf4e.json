@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"6a56078730e2b2e6a3dac1e12ad96bdfa1fecc764ee4eb6d9b369339d74cccf0\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-price_increase-B1"
+    ],
+    "prompt_head": "Today is Sunday, 2026-02-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"NetzMuster GmbH\",\"document_date\":\"2026-02-16\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"NM-2291044\"}],\"amounts\":[39.99,44.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"New price takes effect\",\"quote\":\"wir investieren weiter in den Ausbau unseres Glasfasernetzes. Deshalb erhöht sich der monatliche Grundpreis Ihres Tarifs „Muster DSL 250“ ab dem 01.04.2026 von 39,99 € auf 44,99 €.\",\"computation\":\"The letter states the new price applies from the calendar date 01.04.2026, printed explicitly, so no period calculation is needed.\",\"due_date\":\"2026-04-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Exercise special termination right (Sonderkündigungsrecht) due to price increase\",\"quote\":\"Sie können Ihren Vertrag innerhalb von drei Monaten nach Zugang dieser Mitteilung ohne Einhaltung einer Frist und ohne Kosten kündigen, frühestens zum Zeitpunkt des Wirksamwerdens der Änderung (§ 57 TKG).\",\"computation\":\"NetzMuster GmbH is a private company, not an authority, so the statutory Bekanntgabefiktion (deemed-delivery rule) for authorities does not apply; the letter also states no separate posting date. The letter is dated Monday 16.02.2026 (day of the event = Zugang, not counted per § 187 Abs. 1 BGB). Since no exact delivery date is stated, ordinary domestic letter post delivery time (~3 days) is assumed, giving an estimated Zugang on Thursday 19.02.2026. Under § 188 Abs. 2 BGB a period of three months after an event ends on the day of the third following month bearing the same number as the day of the event: 19.02.2026 + 3 months = 19.05.2026 (Tuesday), which is not a Saturday, Sunday or NRW public holiday, so § 193 BGB does not shift it further. This is the last day the cancellation notice must reach NetzMuster GmbH to make use of the fee-free special termination right; the earliest effective date of such a termination would be 01.04.2026 as stated.\",\"due_date\":\"2026-05-19\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The exact delivery (Zugang) date of this letter is not stated; the deadline for the special termination right was estimated by adding ~3 days of typical postal transit to the printed letter date (16.02.2026), which is an assumption, not a fact stated in the letter — verify the actual date the letter was received and recalculate if different.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "NetzMuster GmbH",
+      "document_date": "2026-02-16",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "NM-2291044"
+        }
+      ],
+      "amounts": [
+        39.99,
+        44.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "New price takes effect",
+          "quote": "wir investieren weiter in den Ausbau unseres Glasfasernetzes. Deshalb erhöht sich der monatliche Grundpreis Ihres Tarifs „Muster DSL 250“ ab dem 01.04.2026 von 39,99 € auf 44,99 €.",
+          "computation": "The letter states the new price applies from the calendar date 01.04.2026, printed explicitly, so no period calculation is needed.",
+          "due_date": "2026-04-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Exercise special termination right (Sonderkündigungsrecht) due to price increase",
+          "quote": "Sie können Ihren Vertrag innerhalb von drei Monaten nach Zugang dieser Mitteilung ohne Einhaltung einer Frist und ohne Kosten kündigen, frühestens zum Zeitpunkt des Wirksamwerdens der Änderung (§ 57 TKG).",
+          "computation": "NetzMuster GmbH is a private company, not an authority, so the statutory Bekanntgabefiktion (deemed-delivery rule) for authorities does not apply; the letter also states no separate posting date. The letter is dated Monday 16.02.2026 (day of the event = Zugang, not counted per § 187 Abs. 1 BGB). Since no exact delivery date is stated, ordinary domestic letter post delivery time (~3 days) is assumed, giving an estimated Zugang on Thursday 19.02.2026. Under § 188 Abs. 2 BGB a period of three months after an event ends on the day of the third following month bearing the same number as the day of the event: 19.02.2026 + 3 months = 19.05.2026 (Tuesday), which is not a Saturday, Sunday or NRW public holiday, so § 193 BGB does not shift it further. This is the last day the cancellation notice must reach NetzMuster GmbH to make use of the fee-free special termination right; the earliest effective date of such a termination would be 01.04.2026 as stated.",
+          "due_date": "2026-05-19",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The exact delivery (Zugang) date of this letter is not stated; the deadline for the special termination right was estimated by adding ~3 days of typical postal transit to the printed letter date (16.02.2026), which is an assumption, not a fact stated in the letter — verify the actual date the letter was received and recalculate if different."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4582,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1949,
+      "cost_usd": 0.054726,
+      "duration_ms": 49601,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

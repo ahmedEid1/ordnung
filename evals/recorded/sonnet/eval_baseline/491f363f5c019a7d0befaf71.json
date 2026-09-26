@@ -1,0 +1,69 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"abf90a929c7ca1398fd10f6d692c0e0066e9ca91c52bc25ae1b913d5547aa122\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-12-11\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-price_increase-D1"
+    ],
+    "prompt_head": "Today is Thursday, 2025-12-11 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Muster Mobil GmbH\",\"document_date\":\"2025-12-05\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"MM-6612004\"}],\"amounts\":[19.99,22.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"New base price takes effect\",\"quote\":\"ab dem 01.02.2026 beträgt der monatliche Grundpreis Ihres Tarifs 22,99 € (bisher 19,99 €).\",\"computation\":\"The letter states the new price applies from a fixed calendar date, 01.02.2026. No counting needed.\",\"due_date\":\"2026-02-01\",\"confidence\":\"high\",\"amount\":22.99},{\"kind\":\"deadline\",\"title\":\"Exercise special right of termination (Sonderkündigungsrecht) to avoid the price increase\",\"quote\":\"Sie können binnen drei Monaten ab Zugang dieses Schreibens kostenfrei kündigen; der Vertrag endet frühestens mit Wirksamwerden der Änderung.\",\"computation\":\"The letter is dated Friday 05.12.2025 and was sent by ordinary post from a private company (no statutory delivery fiction applies as it would for an authority, e.g. § 122 AO/§ 41 VwVfG). In the absence of any other evidence, standard postal transit of about 3 days is assumed, so access (Zugang) is presumed on Monday 08.12.2025 (a normal business day, no adjustment needed for the receipt date itself). The 3-month period runs 'ab Zugang', an event-based period under § 187 Abs. 1 BGB, so the day of receipt (08.12.2025) is not counted and counting starts the next day. Under § 188 Abs. 2 BGB, an event-based period expressed in months ends with the expiry of the day in the last month bearing the same number as the day of the triggering event, i.e. 08.03.2026. That day, 08.03.2026, is a Sunday, so under § 193 BGB the deadline moves to the next business day, Monday 09.03.2026 (not a public holiday in NRW). The cancellation must reach the provider by this date to be effective at the earliest possible date (i.e., to end the contract when the price change takes effect); confidence is medium because the exact date of postal receipt is assumed rather than documented.\",\"due_date\":\"2026-03-09\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The exact date the letter reached the recipient (Zugang) is not stated; a standard 3-day postal transit from the letter's date (05.12.2025) was assumed to calculate the 3-month special-termination deadline, so the resulting due date (09.03.2026) could shift by a few days if the actual delivery date differs.\",\"This is a private commercial notice with no legal-remedy instructions (no Rechtsbehelfsbelehrung), so remedy_type is set to none rather than an objection procedure.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Muster Mobil GmbH",
+      "document_date": "2025-12-05",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "MM-6612004"
+        }
+      ],
+      "amounts": [
+        19.99,
+        22.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "New base price takes effect",
+          "quote": "ab dem 01.02.2026 beträgt der monatliche Grundpreis Ihres Tarifs 22,99 € (bisher 19,99 €).",
+          "computation": "The letter states the new price applies from a fixed calendar date, 01.02.2026. No counting needed.",
+          "due_date": "2026-02-01",
+          "confidence": "high",
+          "amount": 22.99
+        },
+        {
+          "kind": "deadline",
+          "title": "Exercise special right of termination (Sonderkündigungsrecht) to avoid the price increase",
+          "quote": "Sie können binnen drei Monaten ab Zugang dieses Schreibens kostenfrei kündigen; der Vertrag endet frühestens mit Wirksamwerden der Änderung.",
+          "computation": "The letter is dated Friday 05.12.2025 and was sent by ordinary post from a private company (no statutory delivery fiction applies as it would for an authority, e.g. § 122 AO/§ 41 VwVfG). In the absence of any other evidence, standard postal transit of about 3 days is assumed, so access (Zugang) is presumed on Monday 08.12.2025 (a normal business day, no adjustment needed for the receipt date itself). The 3-month period runs 'ab Zugang', an event-based period under § 187 Abs. 1 BGB, so the day of receipt (08.12.2025) is not counted and counting starts the next day. Under § 188 Abs. 2 BGB, an event-based period expressed in months ends with the expiry of the day in the last month bearing the same number as the day of the triggering event, i.e. 08.03.2026. That day, 08.03.2026, is a Sunday, so under § 193 BGB the deadline moves to the next business day, Monday 09.03.2026 (not a public holiday in NRW). The cancellation must reach the provider by this date to be effective at the earliest possible date (i.e., to end the contract when the price change takes effect); confidence is medium because the exact date of postal receipt is assumed rather than documented.",
+          "due_date": "2026-03-09",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The exact date the letter reached the recipient (Zugang) is not stated; a standard 3-day postal transit from the letter's date (05.12.2025) was assumed to calculate the 3-month special-termination deadline, so the resulting due date (09.03.2026) could shift by a few days if the actual delivery date differs.",
+        "This is a private commercial notice with no legal-remedy instructions (no Rechtsbehelfsbelehrung), so remedy_type is set to none rather than an objection procedure."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4279,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1942,
+      "cost_usd": 0.051186399999999986,
+      "duration_ms": 45804,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

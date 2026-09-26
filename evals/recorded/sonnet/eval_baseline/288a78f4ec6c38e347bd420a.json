@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"823aad1f0a693d0b96916cdd08884c1a71878f1f7932d73d5c39474af7529976\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-08-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-adversarial-missing_date-1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-08-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Malerbetrieb Muster\",\"document_date\":null,\"references\":[{\"label\":\"Rechnung Nr.\",\"value\":\"26/077\"}],\"amounts\":[1130.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for painting work\",\"quote\":\"Bitte überweisen Sie den Betrag innerhalb von 14 Tagen nach Erhalt dieser Rechnung auf unser Konto.\",\"computation\":\"The payment period is 14 days 'nach Erhalt dieser Rechnung' (after receipt of this invoice), not from a fixed invoice date. The letter shows no invoice date/Rechnungsdatum at all - only the completion date of the work (12.08.2026) and the invoice number are printed. Because this is a private commercial invoice, not a letter from a public authority, the statutory 3-day delivery fiction (e.g. §122 AO, §41 VwVfG) does not directly apply; receipt is governed by §130 BGB (actual arrival in the recipient's sphere and normal reading time). Without knowing when the invoice was actually sent/received by Frau Beispiel, the start of the 14-day period, and hence the exact due date, cannot be reliably determined. If one assumes (only as a rough illustration) that the invoice was sent shortly after the work was finished, e.g. around 12.08.2026-14.08.2026, and reached her a few days later, the 14-day period would already have elapsed well before today (2026-09-25). Given the missing date, the due date is left unresolved and the person should check the date actually printed on their copy of the invoice or the postmark/email date to compute 14 days from that receipt date.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":1130.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The invoice itself carries no date (no 'Rechnungsdatum'), only the work-completion date (12.08.2026); without knowing the actual date of issue/receipt, the 14-day payment deadline cannot be computed exactly — please check the date shown on your original copy, the postmark, or the email that delivered this invoice.\",\"This is a private invoice from a tradesperson, not from a public authority, so the statutory delivery-fiction rules used for official mail do not strictly apply; the payment period runs from actual receipt under §130 BGB.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Malerbetrieb Muster",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Rechnung Nr.",
+          "value": "26/077"
+        }
+      ],
+      "amounts": [
+        1130.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for painting work",
+          "quote": "Bitte überweisen Sie den Betrag innerhalb von 14 Tagen nach Erhalt dieser Rechnung auf unser Konto.",
+          "computation": "The payment period is 14 days 'nach Erhalt dieser Rechnung' (after receipt of this invoice), not from a fixed invoice date. The letter shows no invoice date/Rechnungsdatum at all - only the completion date of the work (12.08.2026) and the invoice number are printed. Because this is a private commercial invoice, not a letter from a public authority, the statutory 3-day delivery fiction (e.g. §122 AO, §41 VwVfG) does not directly apply; receipt is governed by §130 BGB (actual arrival in the recipient's sphere and normal reading time). Without knowing when the invoice was actually sent/received by Frau Beispiel, the start of the 14-day period, and hence the exact due date, cannot be reliably determined. If one assumes (only as a rough illustration) that the invoice was sent shortly after the work was finished, e.g. around 12.08.2026-14.08.2026, and reached her a few days later, the 14-day period would already have elapsed well before today (2026-09-25). Given the missing date, the due date is left unresolved and the person should check the date actually printed on their copy of the invoice or the postmark/email date to compute 14 days from that receipt date.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 1130.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The invoice itself carries no date (no 'Rechnungsdatum'), only the work-completion date (12.08.2026); without knowing the actual date of issue/receipt, the 14-day payment deadline cannot be computed exactly — please check the date shown on your original copy, the postmark, or the email that delivered this invoice.",
+        "This is a private invoice from a tradesperson, not from a public authority, so the statutory delivery-fiction rules used for official mail do not strictly apply; the payment period runs from actual receipt under §130 BGB."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 4574,
+      "cache_read_tokens": 15548,
+      "cache_creation_tokens": 5442,
+      "cost_usd": 0.07062960000000001,
+      "duration_ms": 42968,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

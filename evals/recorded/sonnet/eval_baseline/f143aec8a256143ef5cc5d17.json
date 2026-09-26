@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"ca036a92be9ec87e205dcd6ea364f8b045c11a6f43c40aeaa4dee4249108a73e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-23\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-social_decision-C2"
+    ],
+    "prompt_head": "Today is Saturday, 2026-05-23 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[412.65,118.2,530.85],\"contract\":null,\"document_date\":\"2026-05-21\",\"items\":[{\"kind\":\"milestone\",\"title\":\"Start of voluntary health/long-term care insurance membership\",\"quote\":\"ab dem 01.06.2026 sind Sie bei uns freiwillig versichert.\",\"computation\":\"Date stated explicitly in the letter as the start of the voluntary membership: 01.06.2026.\",\"due_date\":\"2026-06-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Widerspruch (objection) against the Beitragsbescheid\",\"quote\":\"Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich, elektronisch oder zur Niederschrift bei der Allgemeinen Musterkasse, Gesundheitsplatz 5, 30159 Musterstadt, zu erheben.\",\"computation\":\"Letter dated Thursday 21.05.2026, sent by ordinary post. Under § 37 Abs. 2 SGB X the notice is deemed delivered (Bekanntgabe) on the 3rd day after posting: 21.05. + 3 days = 24.05.2026, a Sunday. Because that fictional delivery day falls on a Sunday, established practice (applying the § 193 BGB / § 108 Abs. 3 AO principle analogously via § 26 SGB X) shifts the deemed delivery to the next business day, Monday 25.05.2026. The one-month Widerspruchsfrist (§ 84 SGG) then starts running the day after Bekanntgabe (§ 187 Abs. 1 BGB): 26.05.2026, and ends, per § 188 Abs. 2 BGB, on the day of the following month that numerically corresponds to the Bekanntgabe day (25th) → 25.06.2026. That day is a Thursday and not a public holiday in NRW, so no further shift is needed.\",\"due_date\":\"2026-06-25\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"First monthly contribution (health + long-term care insurance) via direct debit\",\"quote\":\"Die Beiträge werden jeweils zum 15. des Folgemonats per Lastschrift eingezogen.\",\"computation\":\"Membership starts 01.06.2026, so the first contribution month is June 2026. The letter states contributions are collected on the 15th of the following month ('Folgemonat'), i.e. for June's contribution the collection date is 15.07.2026. 15.07.2026 is a Tuesday/Wednesday (not a weekend or NRW holiday), so no adjustment is required. This collection recurs monthly thereafter on the 15th of each following month for as long as the membership continues.\",\"due_date\":\"2026-07-15\",\"confidence\":\"high\",\"amount\":530.85}],\"kind\":\"social_insurance\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"A204518872\"},{\"label\":\"Beitragskonto\",\"value\":\"7700.1245.08\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Allgemeine Musterkasse – Die Gesundheitskasse\",\"warnings\":[\"The recipient's address (44137 Musterstadt) and the sender's address (30159 Musterstadt) use the same placeholder city name but different postal codes, which is inconsistent — worth double-checking that this is genuinely from the insurer and not a mismatched/forged document.\",\"This letter's names and details (Allgemeine Musterkasse, Musterstadt, Beispiel) are generic placeholder-style data; verify the actual sender identity and contact details independently (e.g. via a known phone number) before relying on the payment/collection details or the address given for the Widerspruch.\"]}",
+    "data": {
+      "amounts": [
+        412.65,
+        118.2,
+        530.85
+      ],
+      "contract": null,
+      "document_date": "2026-05-21",
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Start of voluntary health/long-term care insurance membership",
+          "quote": "ab dem 01.06.2026 sind Sie bei uns freiwillig versichert.",
+          "computation": "Date stated explicitly in the letter as the start of the voluntary membership: 01.06.2026.",
+          "due_date": "2026-06-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Widerspruch (objection) against the Beitragsbescheid",
+          "quote": "Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich, elektronisch oder zur Niederschrift bei der Allgemeinen Musterkasse, Gesundheitsplatz 5, 30159 Musterstadt, zu erheben.",
+          "computation": "Letter dated Thursday 21.05.2026, sent by ordinary post. Under § 37 Abs. 2 SGB X the notice is deemed delivered (Bekanntgabe) on the 3rd day after posting: 21.05. + 3 days = 24.05.2026, a Sunday. Because that fictional delivery day falls on a Sunday, established practice (applying the § 193 BGB / § 108 Abs. 3 AO principle analogously via § 26 SGB X) shifts the deemed delivery to the next business day, Monday 25.05.2026. The one-month Widerspruchsfrist (§ 84 SGG) then starts running the day after Bekanntgabe (§ 187 Abs. 1 BGB): 26.05.2026, and ends, per § 188 Abs. 2 BGB, on the day of the following month that numerically corresponds to the Bekanntgabe day (25th) → 25.06.2026. That day is a Thursday and not a public holiday in NRW, so no further shift is needed.",
+          "due_date": "2026-06-25",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "First monthly contribution (health + long-term care insurance) via direct debit",
+          "quote": "Die Beiträge werden jeweils zum 15. des Folgemonats per Lastschrift eingezogen.",
+          "computation": "Membership starts 01.06.2026, so the first contribution month is June 2026. The letter states contributions are collected on the 15th of the following month ('Folgemonat'), i.e. for June's contribution the collection date is 15.07.2026. 15.07.2026 is a Tuesday/Wednesday (not a weekend or NRW holiday), so no adjustment is required. This collection recurs monthly thereafter on the 15th of each following month for as long as the membership continues.",
+          "due_date": "2026-07-15",
+          "confidence": "high",
+          "amount": 530.85
+        }
+      ],
+      "kind": "social_insurance",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "A204518872"
+        },
+        {
+          "label": "Beitragskonto",
+          "value": "7700.1245.08"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Allgemeine Musterkasse – Die Gesundheitskasse",
+      "warnings": [
+        "The recipient's address (44137 Musterstadt) and the sender's address (30159 Musterstadt) use the same placeholder city name but different postal codes, which is inconsistent — worth double-checking that this is genuinely from the insurer and not a mismatched/forged document.",
+        "This letter's names and details (Allgemeine Musterkasse, Musterstadt, Beispiel) are generic placeholder-style data; verify the actual sender identity and contact details independently (e.g. via a known phone number) before relying on the payment/collection details or the address given for the Widerspruch."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6241,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2076,
+      "cost_usd": 0.0713424,
+      "duration_ms": 60830,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

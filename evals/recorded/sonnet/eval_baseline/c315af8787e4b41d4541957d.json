@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"756cf967cf223aec0abbb1ae5d3f003eeed09021fd1088064f39c701b6e512d0\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-09-09\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-invoice_relative-D2"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-09-09 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"amounts\":[1718.36],\"contract\":null,\"document_date\":\"2026-09-07\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay moving company invoice\",\"quote\":\"Der Rechnungsbetrag ist innerhalb von 14 Tagen nach dem Rechnungsdatum ohne Abzug zur Zahlung fällig.\",\"computation\":\"Payment period runs 'innerhalb von 14 Tagen nach dem Rechnungsdatum' (Rechnungsdatum = 07.09.2026). Per § 187(1) BGB, since the period begins with an event (the invoice date), that day itself is not counted; counting starts 08.09.2026. 14 days later (per § 188(1) BGB, the period ends with the expiry of the last day) falls on 21.09.2026. 2026-09-21 is a Monday and not a public holiday in NRW, so no weekend/holiday adjustment is needed.\",\"due_date\":\"2026-09-21\",\"confidence\":\"high\",\"amount\":1718.36}],\"kind\":\"invoice\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"UM-2026-311\"},{\"label\":\"Kundennummer\",\"value\":\"U-7730\"}],\"remedy_type\":\"none\",\"sender_name\":\"Umzüge Muster KG\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        1718.36
+      ],
+      "contract": null,
+      "document_date": "2026-09-07",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay moving company invoice",
+          "quote": "Der Rechnungsbetrag ist innerhalb von 14 Tagen nach dem Rechnungsdatum ohne Abzug zur Zahlung fällig.",
+          "computation": "Payment period runs 'innerhalb von 14 Tagen nach dem Rechnungsdatum' (Rechnungsdatum = 07.09.2026). Per § 187(1) BGB, since the period begins with an event (the invoice date), that day itself is not counted; counting starts 08.09.2026. 14 days later (per § 188(1) BGB, the period ends with the expiry of the last day) falls on 21.09.2026. 2026-09-21 is a Monday and not a public holiday in NRW, so no weekend/holiday adjustment is needed.",
+          "due_date": "2026-09-21",
+          "confidence": "high",
+          "amount": 1718.36
+        }
+      ],
+      "kind": "invoice",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "UM-2026-311"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "U-7730"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Umzüge Muster KG",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1585,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1988,
+      "cost_usd": 0.0244304,
+      "duration_ms": 15493,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

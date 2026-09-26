@@ -1,0 +1,172 @@
+import type { Suggestion } from "@/api/types";
+import { ts } from "./constants";
+import { idea } from "./helpers";
+
+export const SUGGESTIONS: Suggestion[] = [
+  idea({
+    id: "sug_techmarkt",
+    kind: "risk",
+    title: "Pay TechMarkt reminder 94,99 € by Wed 30 Sep",
+    body: "The invoice for your USB-C dock is still open and a 5 € fee was added. If it stays unpaid, TechMarkt may hand it to a debt collector — that usually costs far more.",
+    rationale: "Payment reminder of 18 Sep, due in 2 days.",
+    priority: "high",
+    rule_id: "dunning_escalation",
+    due_date: "2026-09-30",
+    refs: [
+      { type: "document", id: "doc_tm_dunning" },
+      { type: "item", id: "itm_tm_dunning" },
+    ],
+    action: { type: "open", draft_kind: null, target_type: "document", target_id: "doc_tm_dunning", label: "Pay" },
+    created_at: ts("2026-09-19", "10:33"),
+  }),
+  idea({
+    id: "sug_phone",
+    kind: "deadline",
+    title: "Decide on your phone contract — send by Thu 8 Oct",
+    body: "Your FunkNetz minimum term ends on 14 Nov. If you want to switch to a cheaper plan, the cancellation must arrive by Wed 14 Oct. If you keep it, nothing happens — it simply continues month to month.",
+    rationale: "Cancellation window closes in 16 days (send-by in 10).",
+    priority: "high",
+    rule_id: "contract_cancel_window",
+    due_date: "2026-10-08",
+    refs: [
+      { type: "contract", id: "ctr_phone" },
+      { type: "item", id: "itm_phone_cancel" },
+    ],
+    action: { type: "draft", draft_kind: "cancellation", target_type: "contract", target_id: "ctr_phone", label: "Draft cancellation" },
+    created_at: ts("2026-09-01", "06:00"),
+  }),
+  idea({
+    id: "sug_passport",
+    kind: "risk",
+    title: "Renew your passport before your residence permit appointment",
+    body: "Your passport expires on 10 Feb 2027 — earlier than a new permit would run. The Ausländerbehörde can usually only extend your permit until your passport expires, which would mean another appointment in winter. Ask your embassy about a new passport now.",
+    rationale: "Passport expires within 180 days of the permit extension.",
+    priority: "high",
+    rule_id: "passport_before_permit",
+    due_date: "2026-10-14",
+    refs: [
+      { type: "document", id: "doc_passport" },
+      { type: "item", id: "itm_abh_appt" },
+      { type: "item", id: "itm_passport_expiry" },
+    ],
+    action: { type: "open", draft_kind: null, target_type: "document", target_id: "doc_passport", label: "Check passport" },
+    created_at: ts("2026-09-22", "18:07"),
+  }),
+  idea({
+    id: "sug_parking",
+    kind: "info",
+    title: "When did the parking fine arrive?",
+    body: "The fine must be paid within a week of receiving it. Until you tell us the arrival date, we count from the letter date (22 Sep) to be safe — that means paying by tomorrow.",
+    priority: "high",
+    rule_id: "please_check",
+    due_date: "2026-09-29",
+    refs: [
+      { type: "document", id: "doc_parking" },
+      { type: "item", id: "itm_parking" },
+    ],
+    action: { type: "open", draft_kind: null, target_type: "document", target_id: "doc_parking", label: "Check" },
+    created_at: ts("2026-09-24", "20:15"),
+  }),
+  idea({
+    id: "sug_ticket",
+    kind: "saving",
+    title: "You may be paying for public transport twice",
+    body: "Your semester fee includes a Deutschlandsemesterticket (176,40 €), and you also pay 63 €/month for a Deutschlandticket subscription. If the semester ticket covers you, cancelling the subscription saves about 756 € a year.",
+    rationale: "Found „Deutschlandsemesterticket“ in the re-registration letter and an active Deutschlandticket contract.",
+    source: "review",
+    savings_estimate: 756,
+    refs: [
+      { type: "document", id: "doc_uni" },
+      { type: "contract", id: "ctr_dticket" },
+    ],
+    action: { type: "draft", draft_kind: "cancellation", target_type: "contract", target_id: "ctr_dticket", label: "Draft cancellation" },
+    created_at: ts("2026-09-27", "19:02"),
+  }),
+  idea({
+    id: "sug_calendar",
+    kind: "hygiene",
+    title: "3 new dates since your last calendar update",
+    body: "Your dentist appointment, the Ausländerbehörde appointment and the library deadline aren't in your calendar yet.",
+    rule_id: "calendar_outdated",
+    refs: [
+      { type: "item", id: "itm_dentist" },
+      { type: "item", id: "itm_abh_appt" },
+      { type: "item", id: "itm_library_fee" },
+    ],
+    action: { type: "none", draft_kind: null, target_type: "calendar", target_id: null, label: "Add to my calendar" },
+    created_at: ts("2026-09-26", "09:50"),
+  }),
+  idea({
+    id: "sug_bank",
+    kind: "saving",
+    title: "Musterbank wants 6,90 €/month — compare free student accounts",
+    body: "The new fee would cost you 82,80 € a year. Many banks offer free accounts for students. You don't have to agree to the new price; if you switch, the bank's switching service moves your standing orders for you.",
+    source: "review",
+    savings_estimate: 82.8,
+    refs: [
+      { type: "document", id: "doc_bank" },
+      { type: "contract", id: "ctr_bank" },
+    ],
+    action: { type: "open", draft_kind: null, target_type: "document", target_id: "doc_bank", label: "Open letter" },
+    created_at: ts("2026-09-27", "19:02"),
+  }),
+];
+
+/** Ideas that appear once the matching New-mail letter was processed. */
+export const TRAY_SUGGESTIONS: Record<string, Suggestion[]> = {
+  doc_power_price: [
+    idea({
+      id: "sug_power_price",
+      kind: "risk",
+      title: "Stadtwerke raised prices: +84 €/year — special right to cancel until 31 Oct",
+      body: "Your electricity instalment rises from 48 € to 55 € a month from November. Because of the price increase you may leave without notice — the cancellation must reach Stadtwerke by Sat 31 Oct (email is fine). Compare offers first.",
+      rationale: "Price increase letter of 24 Sep; special right to cancel under § 41 Abs. 5 EnWG.",
+      priority: "normal",
+      rule_id: "price_increase_right",
+      due_date: "2026-10-31",
+      refs: [
+        { type: "document", id: "doc_power_price" },
+        { type: "contract", id: "ctr_power" },
+        { type: "item", id: "itm_power_cancel" },
+      ],
+      action: { type: "draft", draft_kind: "cancellation", target_type: "contract", target_id: "ctr_power", label: "Draft cancellation" },
+      created_at: ts("2026-09-28", "09:02"),
+    }),
+  ],
+  doc_tax: [
+    idea({
+      id: "sug_tax",
+      kind: "tax",
+      title: "Objection possible until Wed 21 Oct — your laptop wasn't accepted",
+      body: "The tax office did not count your laptop (1.049 €) as a work expense because proof of work use was missing. If you have proof (e.g. a note from Muster Tech), an Einspruch could raise your refund. The objection is free; a short letter is enough and reasons can follow.",
+      rationale: "Tax assessment with a remedy (Einspruch) and a rejected expense.",
+      priority: "high",
+      rule_id: "deadline_soon",
+      due_date: "2026-10-15",
+      refs: [
+        { type: "document", id: "doc_tax" },
+        { type: "item", id: "itm_tax_objection" },
+      ],
+      action: { type: "draft", draft_kind: "objection", target_type: "document", target_id: "doc_tax", label: "Draft objection" },
+      created_at: ts("2026-09-28", "09:04"),
+    }),
+  ],
+  doc_scam: [
+    idea({
+      id: "sug_scam",
+      kind: "scam",
+      title: "This looks like a scam: IBAN differs from the one Beitragsservice used before",
+      body: "The letter asks for 210 € within 3 days to a Lithuanian account (LT71 7300 …). Beitragsservice Musterstadt used DE02 4401 0046 0123 4567 89 before, and your next real payment (55,08 €) is due on 15 Nov. It also hides invisible text. Do not pay.",
+      rationale: "Payee IBAN mismatch for a known party + hidden text + 3-day pressure.",
+      priority: "critical",
+      rule_id: "scam_warning",
+      refs: [
+        { type: "document", id: "doc_scam" },
+        { type: "document", id: "doc_rundfunk" },
+        { type: "party", id: "pty_beitrag" },
+      ],
+      action: { type: "open", draft_kind: null, target_type: "document", target_id: "doc_scam", label: "See why" },
+      created_at: ts("2026-09-28", "09:06"),
+    }),
+  ],
+};

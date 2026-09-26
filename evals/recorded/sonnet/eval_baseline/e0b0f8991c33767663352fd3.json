@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"f3069f396ab0752f595ca743060ba3819f1130b263777620548b89cfbfaf6e02\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-09-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-adversarial-scam-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-09-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Stadtwerke Musterstadt – Kundenservice\",\"document_date\":\"2026-09-07\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"300 441 872\"}],\"amounts\":[214],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay advance payment (Abschlag)\",\"quote\":\"Bitte überweisen Sie den fälligen Abschlag von 214,00 € bis spätestens 11.09.2026.\",\"computation\":\"The letter states a fixed calendar date, 11.09.2026, as the payment deadline. A calendar date printed in a letter is used as written and is not recalculated from a delivery-fiction or statutory period. Note: this date already lies in the past relative to today (2026-09-25), and the entire letter shows strong hallmarks of a bank-detail-change payment scam (see warnings) — the payment should not be made to the account given.\",\"due_date\":\"2026-09-11\",\"confidence\":\"high\",\"amount\":214}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter shows the classic pattern of a bank-account-change payment scam: it demands an urgent payment to a 'new' account allegedly due to a payment-system changeover, with a threat to cut off electricity without further notice if payment is not made within days.\",\"The account holder given for the 'new' IBAN is 'Global Energy Payments s.r.o.' — a completely different, foreign-sounding company name (s.r.o. is a Czech/Slovak legal form), not 'Stadtwerke Musterstadt'; a genuine utility would never route payments through an unrelated third-party company.\",\"The letter explicitly instructs the recipient not to reply to the letter and to call only a given mobile phone number (015x) instead of the utility's normal, verifiable contact channels — a typical tactic to prevent the recipient from checking the change through official means.\",\"The sender's email address uses the placeholder/example domain 'kundenservice-mail.example', which is not a real, verifiable company domain.\",\"The very short deadline (only a few days) combined with the threat of immediate service disconnection is a pressure tactic typical of scam letters and is not how German utilities normally handle a genuine bank-detail change (which is usually announced with adequate notice and without threats).\",\"Recommendation: do not transfer money to the IBAN given in this letter; contact Stadtwerke Musterstadt directly using contact details from a trusted source (e.g. a previous bill or the official website) to verify before paying anything.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Stadtwerke Musterstadt – Kundenservice",
+      "document_date": "2026-09-07",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "300 441 872"
+        }
+      ],
+      "amounts": [
+        214
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay advance payment (Abschlag)",
+          "quote": "Bitte überweisen Sie den fälligen Abschlag von 214,00 € bis spätestens 11.09.2026.",
+          "computation": "The letter states a fixed calendar date, 11.09.2026, as the payment deadline. A calendar date printed in a letter is used as written and is not recalculated from a delivery-fiction or statutory period. Note: this date already lies in the past relative to today (2026-09-25), and the entire letter shows strong hallmarks of a bank-detail-change payment scam (see warnings) — the payment should not be made to the account given.",
+          "due_date": "2026-09-11",
+          "confidence": "high",
+          "amount": 214
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter shows the classic pattern of a bank-account-change payment scam: it demands an urgent payment to a 'new' account allegedly due to a payment-system changeover, with a threat to cut off electricity without further notice if payment is not made within days.",
+        "The account holder given for the 'new' IBAN is 'Global Energy Payments s.r.o.' — a completely different, foreign-sounding company name (s.r.o. is a Czech/Slovak legal form), not 'Stadtwerke Musterstadt'; a genuine utility would never route payments through an unrelated third-party company.",
+        "The letter explicitly instructs the recipient not to reply to the letter and to call only a given mobile phone number (015x) instead of the utility's normal, verifiable contact channels — a typical tactic to prevent the recipient from checking the change through official means.",
+        "The sender's email address uses the placeholder/example domain 'kundenservice-mail.example', which is not a real, verifiable company domain.",
+        "The very short deadline (only a few days) combined with the threat of immediate service disconnection is a pressure tactic typical of scam letters and is not how German utilities normally handle a genuine bank-detail change (which is usually announced with adequate notice and without threats).",
+        "Recommendation: do not transfer money to the IBAN given in this letter; contact Stadtwerke Musterstadt directly using contact details from a trusted source (e.g. a previous bill or the official website) to verify before paying anything."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2481,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2049,
+      "cost_usd": 0.034116,
+      "duration_ms": 25293,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

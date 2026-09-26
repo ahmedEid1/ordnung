@@ -1,0 +1,192 @@
+"""``ordnung doctor``: zero-token checks against a fake ``claude`` executable on PATH."""
+
+from __future__ import annotations
+
+import json
+import os
+import sqlite3
+import stat
+from pathlib import Path
+
+import pytest
+
+from ordnung import doctor
+from ordnung.doctor import DoctorReport, parse_version, run_doctor, run_doctor_sync
+
+
+def fake_claude(bin_dir: Path, *, version: str = "2.1.5 (Claude Code)", auth: object | None = None) -> Path:
+    """A tiny ``claude`` that answers ``--version`` and ``auth status`` (and nothing else)."""
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    status = json.dumps(auth if auth is not None else {"loggedIn": True, "authMethod": "claude.ai"})
+    script = bin_dir / "claude"
+    script.write_text(
+        "#!/bin/sh\n"
+        f'if [ "$1" = "--version" ]; then echo "{version}"; exit 0; fi\n'
+        f'if [ "$1" = "auth" ] && [ "$2" = "status" ]; then echo \'{status}\'; exit 0; fi\n'
+        'echo "unexpected call: $*" >&2; exit 2\n',
+        encoding="utf-8",
+    )
+    script.chmod(script.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    return script
+
+
+@pytest.fixture
+def isolated_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """PATH = only a fresh bin folder (plus /bin for ``sh``); no API key, no binary override."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}/bin{os.pathsep}/usr/bin")
+    monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    return bin_dir
+
+
+def statuses(report: DoctorReport) -> dict[str, str]:
+    return {check.id: check.status for check in report.checks}
+
+
+def test_parse_version() -> None:
+    assert parse_version("2.1.3 (Claude Code)") == (2, 1, 3)
+    assert parse_version("claude 10.0.12") == (10, 0, 12)
+    assert parse_version("unknown") is None
+    assert parse_version(None) is None
+
+
+def test_a_healthy_setup(isolated_path: Path, data_dir: Path) -> None:
+    script = fake_claude(isolated_path)
+    report = run_doctor_sync(data_dir)
+    found = statuses(report)
+    assert found["claude_cli"] == "ok"
+    assert found["claude_version"] == "ok"
+    assert found["claude_auth"] == "ok"
+    assert found["api_key"] == "ok"
+    assert found["sqlite_fts"] == "ok"
+    assert found["data_dir"] == "ok"
+    assert found["fonts"] == "ok"
+    assert "claude_probe" not in found  # zero tokens unless asked
+    assert report.ok
+    assert report.claude.installed and report.claude.ok
+    assert report.claude.version == "2.1.5" and report.claude.path == str(script)
+    assert report.claude.detail == "Signed in (claude.ai)"
+
+
+def test_claude_missing(isolated_path: Path, data_dir: Path) -> None:
+    report = run_doctor_sync(data_dir)
+    missing = report.check("claude_cli")
+    assert missing is not None and missing.status == "fail"
+    assert missing.fix is not None and "npm install -g @anthropic-ai/claude-code" in missing.fix
+    assert report.check("claude_auth") is None
+    assert not report.ok
+    assert not report.claude.installed and report.claude.ok is False
+
+
+def test_an_old_claude_fails_with_an_update_hint(isolated_path: Path, data_dir: Path) -> None:
+    fake_claude(isolated_path, version="2.0.9 (Claude Code)")
+    report = run_doctor_sync(data_dir)
+    old = report.check("claude_version")
+    assert old is not None and old.status == "fail"
+    assert "2.1.0" in old.detail and old.fix is not None and "claude update" in old.fix
+    assert report.claude.ok is False
+
+
+def test_signed_out(isolated_path: Path, data_dir: Path) -> None:
+    fake_claude(isolated_path, auth={"loggedIn": False})
+    report = run_doctor_sync(data_dir)
+    auth = report.check("claude_auth")
+    assert auth is not None and auth.status == "fail"
+    assert auth.fix is not None and "claude auth login" in auth.fix
+    assert not report.ok
+
+
+def test_unreadable_auth_status_is_a_warning(isolated_path: Path, data_dir: Path) -> None:
+    fake_claude(isolated_path, auth=["not", "an", "object"])
+    report = run_doctor_sync(data_dir)
+    assert statuses(report)["claude_auth"] == "warn"
+    assert report.ok
+
+
+def test_an_api_key_in_the_environment_is_flagged(
+    isolated_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_claude(isolated_path)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+    report = run_doctor_sync(data_dir)
+    key = report.check("api_key")
+    assert key is not None and key.status == "warn"
+    assert "bill" in key.detail and key.fix is not None and "unset ANTHROPIC_API_KEY" in key.fix
+    assert report.ok  # a warning, not a failure
+
+
+async def test_the_probe_is_one_live_call_only_when_asked(
+    isolated_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake_claude(isolated_path)
+    calls: list[str | None] = []
+
+    async def probe(binary: str | None = None, timeout_s: float = 60) -> tuple[bool, str]:
+        calls.append(binary)
+        return True, "OK"
+
+    monkeypatch.setattr(doctor.claude_cli, "probe", probe)
+    report = await run_doctor(data_dir, probe=True)
+    probe_check = report.check("claude_probe")
+    assert probe_check is not None and probe_check.status == "ok"
+    assert len(calls) == 1
+    await run_doctor(data_dir)
+    assert len(calls) == 1
+
+
+def test_a_data_folder_that_does_not_exist_yet_is_fine(tmp_path: Path) -> None:
+    check = doctor.data_dir_check(tmp_path / "new" / "data")
+    assert check.status == "ok" and "will be created" in check.detail
+    assert not (tmp_path / "new").exists()
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root can write anywhere")
+def test_a_read_only_data_folder_fails(tmp_path: Path) -> None:
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    locked.chmod(0o500)
+    try:
+        check = doctor.data_dir_check(locked)
+    finally:
+        locked.chmod(0o700)
+    assert check.status == "fail" and check.fix is not None
+
+
+def test_low_disk_space(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    usage = type("Usage", (), {"free": 10 * 1024 * 1024})
+    monkeypatch.setattr(doctor.shutil, "disk_usage", lambda path: usage)
+    assert doctor.disk_check(tmp_path).status == "fail"
+    usage.free = 500 * 1024 * 1024
+    assert doctor.disk_check(tmp_path).status == "warn"
+
+
+def test_missing_sqlite_features_fail(monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken(_: str) -> sqlite3.Connection:
+        raise sqlite3.OperationalError("no such module: fts5")
+
+    monkeypatch.setattr(doctor.sqlite3, "connect", broken)
+    check = doctor.sqlite_check()
+    assert check.status == "fail" and "fts5" in check.detail
+
+
+def test_web_ui_missing_is_a_warning(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """In a source checkout the fix is to build the web app; an installed package is reinstalled."""
+    (tmp_path / "web").mkdir()
+    (tmp_path / "web" / "package.json").write_text("{}")
+    (tmp_path / "Makefile").write_text("build-web:\n")
+    monkeypatch.setattr(doctor, "web_dist_dir", lambda: tmp_path / "src" / "ordnung" / "web" / "dist")
+    check = doctor.web_ui_check()
+    assert check.status == "warn" and check.fix is not None and "build-web" in check.fix
+    monkeypatch.setattr(
+        doctor, "web_dist_dir", lambda: tmp_path / "venv" / "site-packages" / "ordnung" / "web" / "dist"
+    )
+    check = doctor.web_ui_check()
+    assert check.status == "warn" and check.fix is not None and "Reinstall Ordnung" in check.fix
+
+
+async def test_claude_status_for_the_health_endpoint(isolated_path: Path) -> None:
+    fake_claude(isolated_path)
+    status = await doctor.claude_status()
+    assert status.installed and status.ok and status.version == "2.1.5"

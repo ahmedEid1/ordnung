@@ -1,0 +1,170 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "8.7.1",
+    "cache_key": "{\"doc\":\"bfa28a19ff993899ccc8ff51707815cfca5c7af2ead60f636f5697491dea2973\",\"language\":\"en\",\"pages\":[[1,\"transcript\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_qyh8m6fzk4w9"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster) — Beitragsnummer: 512 345 678\n- FitWell Studios GmbH (gym) — Gläubiger-ID: DE25ZZZ00000104570; USt-IdNr.: D"
+  },
+  "response": {
+    "text": "{\"title\":\"Traffic fine warning (Verwarnung) – 30 € Verwarnungsgeld for parking violation\",\"area\":\"mobility\",\"case_title\":\"Traffic fine warning (Verwarnung) – 30 € Verwarnungsgeld for parking violation\",\"kind\":\"fine\",\"language\":\"de\",\"document_date\":\"2026-09-23\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Stadt Musterstadt – Ordnungsamt (Bußgeldstelle)\",\"kind\":\"authority\",\"address\":\"Stadt Musterstadt · Ordnungsamt · Postfach 10 01 00 · 12345 Musterstadt\",\"phone\":\"0123 400-3290\",\"email\":null,\"website\":\"www.musterstadt.example\",\"identifiers\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.4-VW-2026-0184512\"},{\"label\":\"Kassenzeichen\",\"value\":\"5126 0184 5122\"}]},\"summary\":\"The Bußgeldstelle (fines office) of Stadt Musterstadt sent Sam Rivera a Verwarnung (formal warning) for parking without a valid ticket on 12.09.2026 at Lindenstraße 14, Musterstadt, after the vehicle owner Beispiel Carsharing GmbH named him as the driver. A Verwarnungsgeld (warning fine) of 30.00 € is requested within one week of receipt, or the enclosed Anhörungsbogen (hearing form) should be returned instead if he disagrees.\",\"explanation\":\"This is a formal traffic warning (Verwarnung), not yet a court fine. If you agree that you parked without a valid ticket, transfer the 30 € Verwarnungsgeld to the Stadtkasse account shown, quoting the Kassenzeichen, by the deadline shown. If you disagree or want to comment on the accusation, fill in and return the enclosed Anhörungsbogen (hearing form) instead of paying. If you neither pay nor respond in time, the city will open a formal Bußgeldverfahren (administrative fine proceedings), adding at least 28.50 € in extra fees and costs. If you were not the driver or dispute the facts, it may help to get advice before responding.\",\"key_facts\":[{\"label\":\"Tatzeit (time of offence)\",\"value\":\"12.09.2026, 14:37–16:05 Uhr\",\"quote\":\"Tatzeit | 12.09.2026, 14:37 Uhr bis 16:05 Uhr\"},{\"label\":\"Tatort (location)\",\"value\":\"Musterstadt, Lindenstraße 14 (gebührenpflichtiger Parkplatz)\",\"quote\":\"Tatort | Musterstadt, Lindenstraße 14 (gebührenpflichtiger Parkplatz)\"},{\"label\":\"Fahrzeug\",\"value\":\"Pkw, amtliches Kennzeichen MU-CS 482\",\"quote\":\"Fahrzeug | Pkw, amtliches Kennzeichen MU-CS 482\"},{\"label\":\"Tatvorwurf\",\"value\":\"Parked without a valid parking ticket, duration over 1 up to 2 hours\",\"quote\":\"Sie parkten ohne gültigen Parkschein. Parkdauer: länger als 1 Stunde, aber nicht länger als 2 Stunden.\"},{\"label\":\"Verwarnungsgeld\",\"value\":\"30,00 €\",\"quote\":\"Das Verwarnungsgeld beträgt 30,00 €.\"}],\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.4-VW-2026-0184512\"},{\"label\":\"Kassenzeichen\",\"value\":\"5126 0184 5122\"}],\"payment\":{\"iban\":\"DE51123456000000100017\",\"iban_valid\":true,\"payee\":\"Stadtkasse Musterstadt\",\"reference\":\"Kassenzeichen 5126 0184 5122\"},\"remedy\":{\"type\":\"none\",\"addressee\":null,\"period_text\":null,\"form_text\":null,\"quote\":null},\"contract\":null,\"change\":null,\"items\":[{\"kind\":\"payment\",\"title\":\"Pay Verwarnungsgeld (traffic fine)\",\"action\":\"Transfer the Verwarnungsgeld of 30.00 € to the Stadtkasse Musterstadt account by the deadline shown, quoting the Kassenzeichen.\",\"consequence\":\"If payment is not made in time, a Bußgeldverfahren (administrative fine proceedings) will be opened with additional fees and costs of at least 28.50 €.\",\"amount\":30,\"currency\":\"EUR\",\"direction\":\"out\",\"priority\":\"high\",\"location\":null,\"recurrence\":null,\"date\":{\"type\":\"relative\",\"nature\":\"payment\",\"anchor\":\"receipt\",\"amount\":1,\"unit\":\"weeks\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\",\"text\":\"innerhalb einer Woche nach Zugang dieses Schreibens\",\"legal_basis\":\"§ 56 OWiG\",\"date\":null,\"time\":null,\"anchor_date\":null},\"quote\":\"Die Verwarnung wird nur wirksam, wenn Sie mit ihr einverstanden sind und das Verwarnungsgeld innerhalb einer Woche nach Zugang dieses Schreibens auf das unten genannte Konto der Stadtkasse Musterstadt überweisen.\"},{\"kind\":\"task\",\"title\":\"Return Anhörungsbogen if you disagree\",\"action\":\"Fill out and return the enclosed Anhörungsbogen (hearing form) instead of paying if you disagree with the accusation or want to comment on it.\",\"consequence\":null,\"amount\":null,\"currency\":null,\"direction\":null,\"priority\":\"normal\",\"location\":null,\"recurrence\":null,\"date\":{\"type\":\"none\",\"nature\":\"other\",\"anchor\":null,\"amount\":null,\"unit\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"none\",\"text\":\"\",\"legal_basis\":null,\"date\":null,\"time\":null,\"anchor_date\":null},\"quote\":\"Wenn Sie mit der Verwarnung nicht einverstanden sind oder sich zu dem Vorwurf äußern möchten, verwenden Sie bitte den beigefügten Anhörungsbogen.\"}],\"warnings\":[],\"urgency\":\"critical\",\"tax_relevant\":false,\"tax_note\":null,\"transcript\":null}",
+    "data": {
+      "title": "Traffic fine warning (Verwarnung) – 30 € Verwarnungsgeld for parking violation",
+      "area": "mobility",
+      "case_title": "Traffic fine warning (Verwarnung) – 30 € Verwarnungsgeld for parking violation",
+      "kind": "fine",
+      "language": "de",
+      "document_date": "2026-09-23",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Stadt Musterstadt – Ordnungsamt (Bußgeldstelle)",
+        "kind": "authority",
+        "address": "Stadt Musterstadt · Ordnungsamt · Postfach 10 01 00 · 12345 Musterstadt",
+        "phone": "0123 400-3290",
+        "email": null,
+        "website": "www.musterstadt.example",
+        "identifiers": [
+          {
+            "label": "Aktenzeichen",
+            "value": "32.4-VW-2026-0184512"
+          },
+          {
+            "label": "Kassenzeichen",
+            "value": "5126 0184 5122"
+          }
+        ]
+      },
+      "summary": "The Bußgeldstelle (fines office) of Stadt Musterstadt sent Sam Rivera a Verwarnung (formal warning) for parking without a valid ticket on 12.09.2026 at Lindenstraße 14, Musterstadt, after the vehicle owner Beispiel Carsharing GmbH named him as the driver. A Verwarnungsgeld (warning fine) of 30.00 € is requested within one week of receipt, or the enclosed Anhörungsbogen (hearing form) should be returned instead if he disagrees.",
+      "explanation": "This is a formal traffic warning (Verwarnung), not yet a court fine. If you agree that you parked without a valid ticket, transfer the 30 € Verwarnungsgeld to the Stadtkasse account shown, quoting the Kassenzeichen, by the deadline shown. If you disagree or want to comment on the accusation, fill in and return the enclosed Anhörungsbogen (hearing form) instead of paying. If you neither pay nor respond in time, the city will open a formal Bußgeldverfahren (administrative fine proceedings), adding at least 28.50 € in extra fees and costs. If you were not the driver or dispute the facts, it may help to get advice before responding.",
+      "key_facts": [
+        {
+          "label": "Tatzeit (time of offence)",
+          "value": "12.09.2026, 14:37–16:05 Uhr",
+          "quote": "Tatzeit | 12.09.2026, 14:37 Uhr bis 16:05 Uhr"
+        },
+        {
+          "label": "Tatort (location)",
+          "value": "Musterstadt, Lindenstraße 14 (gebührenpflichtiger Parkplatz)",
+          "quote": "Tatort | Musterstadt, Lindenstraße 14 (gebührenpflichtiger Parkplatz)"
+        },
+        {
+          "label": "Fahrzeug",
+          "value": "Pkw, amtliches Kennzeichen MU-CS 482",
+          "quote": "Fahrzeug | Pkw, amtliches Kennzeichen MU-CS 482"
+        },
+        {
+          "label": "Tatvorwurf",
+          "value": "Parked without a valid parking ticket, duration over 1 up to 2 hours",
+          "quote": "Sie parkten ohne gültigen Parkschein. Parkdauer: länger als 1 Stunde, aber nicht länger als 2 Stunden."
+        },
+        {
+          "label": "Verwarnungsgeld",
+          "value": "30,00 €",
+          "quote": "Das Verwarnungsgeld beträgt 30,00 €."
+        }
+      ],
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.4-VW-2026-0184512"
+        },
+        {
+          "label": "Kassenzeichen",
+          "value": "5126 0184 5122"
+        }
+      ],
+      "payment": {
+        "iban": "DE51123456000000100017",
+        "iban_valid": true,
+        "payee": "Stadtkasse Musterstadt",
+        "reference": "Kassenzeichen 5126 0184 5122"
+      },
+      "remedy": {
+        "type": "none",
+        "addressee": null,
+        "period_text": null,
+        "form_text": null,
+        "quote": null
+      },
+      "contract": null,
+      "change": null,
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay Verwarnungsgeld (traffic fine)",
+          "action": "Transfer the Verwarnungsgeld of 30.00 € to the Stadtkasse Musterstadt account by the deadline shown, quoting the Kassenzeichen.",
+          "consequence": "If payment is not made in time, a Bußgeldverfahren (administrative fine proceedings) will be opened with additional fees and costs of at least 28.50 €.",
+          "amount": 30,
+          "currency": "EUR",
+          "direction": "out",
+          "priority": "high",
+          "location": null,
+          "recurrence": null,
+          "date": {
+            "type": "relative",
+            "nature": "payment",
+            "anchor": "receipt",
+            "amount": 1,
+            "unit": "weeks",
+            "delivery_rule": "none",
+            "shift_rule": "auto",
+            "text": "innerhalb einer Woche nach Zugang dieses Schreibens",
+            "legal_basis": "§ 56 OWiG",
+            "date": null,
+            "time": null,
+            "anchor_date": null
+          },
+          "quote": "Die Verwarnung wird nur wirksam, wenn Sie mit ihr einverstanden sind und das Verwarnungsgeld innerhalb einer Woche nach Zugang dieses Schreibens auf das unten genannte Konto der Stadtkasse Musterstadt überweisen."
+        },
+        {
+          "kind": "task",
+          "title": "Return Anhörungsbogen if you disagree",
+          "action": "Fill out and return the enclosed Anhörungsbogen (hearing form) instead of paying if you disagree with the accusation or want to comment on it.",
+          "consequence": null,
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "priority": "normal",
+          "location": null,
+          "recurrence": null,
+          "date": {
+            "type": "none",
+            "nature": "other",
+            "anchor": null,
+            "amount": null,
+            "unit": null,
+            "delivery_rule": "none",
+            "shift_rule": "none",
+            "text": "",
+            "legal_basis": null,
+            "date": null,
+            "time": null,
+            "anchor_date": null
+          },
+          "quote": "Wenn Sie mit der Verwarnung nicht einverstanden sind oder sich zu dem Vorwurf äußern möchten, verwenden Sie bitte den beigefügten Anhörungsbogen."
+        }
+      ],
+      "warnings": [],
+      "urgency": "critical",
+      "tax_relevant": false,
+      "tax_note": null,
+      "transcript": null
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 10473,
+      "cache_read_tokens": 17267,
+      "cache_creation_tokens": 11761,
+      "cost_usd": 0.15523540000000002,
+      "duration_ms": 87008,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"245f2f211c9b77216513c514472efc02f0960841a09216b2dbf0493bac5bb9f8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-31\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-price_increase-A1"
+    ],
+    "prompt_head": "Today is Friday, 2025-10-31 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispiel Energie AG\",\"document_date\":\"2025-10-28\",\"references\":[{\"label\":\"Vertragskonto\",\"value\":\"BE-3301 8812\"}],\"amounts\":[31.48,34.92,12.9,13.9,72,81],\"items\":[{\"kind\":\"deadline\",\"title\":\"Exercise special termination right before new price takes effect\",\"quote\":\"Sie haben das Recht, Ihren Vertrag ohne Einhaltung einer Kündigungsfrist zum Zeitpunkt des Wirksamwerdens der Preisänderung zu kündigen (§ 41 Abs. 5 EnWG).\",\"computation\":\"The letter grants a special statutory right (§ 41 Abs. 5 EnWG) to terminate the contract without observing any notice period, with effect at the moment the announced price change becomes effective. The price change takes effect on 01.01.2026. For the termination to take effect exactly at that date (and thus avoid the new, higher price), the text-form cancellation notice must reach the supplier before the new price starts, i.e. by the last day of the current price period. That last day is 31.12.2025 (the day before 01.01.2026). No specific calendar deadline is stated in the letter itself; this date is derived from the stated effective date of the price change and the nature of the special termination right, which only remains meaningful before the new terms start.\",\"due_date\":\"2025-12-31\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispiel Energie AG",
+      "document_date": "2025-10-28",
+      "references": [
+        {
+          "label": "Vertragskonto",
+          "value": "BE-3301 8812"
+        }
+      ],
+      "amounts": [
+        31.48,
+        34.92,
+        12.9,
+        13.9,
+        72,
+        81
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Exercise special termination right before new price takes effect",
+          "quote": "Sie haben das Recht, Ihren Vertrag ohne Einhaltung einer Kündigungsfrist zum Zeitpunkt des Wirksamwerdens der Preisänderung zu kündigen (§ 41 Abs. 5 EnWG).",
+          "computation": "The letter grants a special statutory right (§ 41 Abs. 5 EnWG) to terminate the contract without observing any notice period, with effect at the moment the announced price change becomes effective. The price change takes effect on 01.01.2026. For the termination to take effect exactly at that date (and thus avoid the new, higher price), the text-form cancellation notice must reach the supplier before the new price starts, i.e. by the last day of the current price period. That last day is 31.12.2025 (the day before 01.01.2026). No specific calendar deadline is stated in the letter itself; this date is derived from the stated effective date of the price change and the nature of the special termination right, which only remains meaningful before the new terms start.",
+          "due_date": "2025-12-31",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2741,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1980,
+      "cost_usd": 0.0359584,
+      "duration_ms": 29303,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

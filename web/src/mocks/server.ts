@@ -1,0 +1,987 @@
+/**
+ * Mock API: routes `/api/*` requests to handlers operating on the in-memory {@link MockDb}.
+ * Mutations change the in-memory copy so the UI is fully interactive; long-running work
+ * (uploads, New-mail letters) is simulated with realistic stage timings and SSE events.
+ */
+import { addDays, format, parseISO } from "date-fns";
+import type {
+  AppSettings,
+  Brief,
+  CaseDetail,
+  ChatMessage,
+  CitationRef,
+  Contract,
+  DataDeleted,
+  DeleteResult,
+  Document,
+  DocumentDetail,
+  Draft,
+  DraftCreate,
+  Health,
+  Item,
+  Job,
+  MailOpenResult,
+  PageInfo,
+  PartyDetail,
+  ReviewStarted,
+  StreamEvent,
+  Suggestion,
+  SuggestionRef,
+  UploadResult,
+} from "@/api/types";
+import { MockDb, letterFor, nowTs } from "./db";
+import { emit } from "./events";
+import { renderLetter, svgDataUrl, PAGE_H, PAGE_W } from "./pages";
+import { icsDataUrl, itemsToIcs } from "./ics";
+import { BRIEF_TEXT, DEMO_CHECKS, RULES, USAGE } from "./data/system";
+import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
+import { CHECKS_OK, phoneGuidance } from "./data/drafts";
+import { SAM, sha } from "./data/constants";
+import { doc as makeDoc, item as makeItem } from "./data/helpers";
+
+export interface MockOptions {
+  /** Zero-install hosted demo: actions that need Claude are refused with a friendly message. */
+  staticDemo: boolean;
+  /** Artificial latency multiplier (0 in tests). */
+  latency?: number;
+}
+
+interface Ctx {
+  db: MockDb;
+  params: Record<string, string>;
+  query: URLSearchParams;
+  body: unknown;
+  signal?: AbortSignal | null;
+  opts: MockOptions;
+}
+
+/** Explicit status + body (default: 200 with the returned value as JSON). */
+class Reply {
+  constructor(
+    readonly status: number,
+    readonly body: unknown = null,
+  ) {}
+}
+type Handler = (ctx: Ctx) => unknown | Promise<unknown>;
+
+const sleep = (ms: number, signal?: AbortSignal | null) =>
+  new Promise<void>((resolve) => {
+    const t = setTimeout(resolve, ms);
+    signal?.addEventListener("abort", () => {
+      clearTimeout(t);
+      resolve();
+    });
+  });
+
+let seq = 0;
+const newId = (prefix: string) => `${prefix}_${Date.now().toString(36)}${(++seq).toString(36).padStart(3, "0")}`;
+
+class HttpError extends Error {
+  status: number;
+  code?: string;
+  constructor(status: number, message: string, code?: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+const DEMO_TRANSLATE_MESSAGE =
+  "The demo replays recorded answers, so it can't translate your changes. Run `ordnung serve` (with Claude Code signed in) to re-translate letters you edited.";
+const DEMO_DELETE_MESSAGE = "This is the demo, so there is nothing of yours to delete. To start over with Sam's original letters, run `ordnung demo --reset`.";
+const STATIC_MESSAGE = "Install Ordnung to try this with your own letters — the online demo only replays recorded examples.";
+
+function needsClaude(ctx: Ctx) {
+  if (ctx.opts.staticDemo) throw new HttpError(403, STATIC_MESSAGE, "static_demo");
+}
+
+function notFound(what = "Not found"): never {
+  throw new HttpError(404, what);
+}
+
+// ------------------------------------------------------------------------------------------------
+// Job simulation
+// ------------------------------------------------------------------------------------------------
+
+const STAGES_TEXT = ["intake", "text", "extract", "verify", "compute", "link", "plan"] as const;
+const STAGES_PHOTO = ["intake", "transcribe", "extract", "verify", "compute", "link", "plan"] as const;
+const STAGE_MS: Record<string, number> = { intake: 650, text: 700, transcribe: 1500, extract: 1700, verify: 900, compute: 800, link: 600, plan: 600 };
+
+function makeJob(docId: string, kind: Job["kind"] = "ingest"): Job {
+  const now = nowTs();
+  return {
+    id: newId("job"),
+    kind,
+    status: "running",
+    stage: "intake",
+    progress: 0,
+    doc_id: docId,
+    attempts: 1,
+    force: kind === "reprocess",
+    not_before: null,
+    waiting_reason: null,
+    error: null,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+const activeJobs = new Map<string, Job>();
+
+async function runJob(db: MockDb, job: Job, photo: boolean, finish: () => void, speed = 1) {
+  activeJobs.set(job.id, job);
+  const stages = photo ? STAGES_PHOTO : STAGES_TEXT;
+  for (let i = 0; i < stages.length; i++) {
+    const stage = stages[i]!;
+    job.stage = stage;
+    job.progress = i / stages.length;
+    job.updated_at = nowTs();
+    emit("job.progress", { job_id: job.id, doc_id: job.doc_id, stage, progress: job.progress, status: "running" });
+    await sleep(STAGE_MS[stage]! * speed);
+  }
+  finish();
+  job.stage = "done";
+  job.status = "done";
+  job.progress = 1;
+  job.updated_at = nowTs();
+  emit("job.progress", { job_id: job.id, doc_id: job.doc_id, stage: "done", progress: 1, status: "done" });
+  if (job.doc_id) emit("document.processed", { doc_id: job.doc_id, status: db.document(job.doc_id)?.status ?? "processed" });
+  emit("suggestions.updated", {});
+  emit("item.updated", {});
+  activeJobs.delete(job.id);
+}
+
+// ------------------------------------------------------------------------------------------------
+// Views
+// ------------------------------------------------------------------------------------------------
+
+function pageInfos(db: MockDb, d: Document): PageInfo[] {
+  const letter = letterFor(d.id);
+  const n = letter ? letter.pages.length : d.pages;
+  return Array.from({ length: n }, (_, i) => ({
+    page: i + 1,
+    width: PAGE_W,
+    height: PAGE_H,
+    text_source: d.text_mode === "vision" ? "transcript" : letter || db.state.uploads[d.id] ? "text" : "none",
+  }));
+}
+
+function documentDetail(db: MockDb, id: string): DocumentDetail {
+  const d = db.document(id) ?? notFound("This letter doesn't exist (anymore).");
+  const items = db.state.items.filter((i) => i.doc_id === id);
+  const itemIds = new Set(items.map((i) => i.id));
+  const contracts = db.state.contracts.filter((c) => c.source_doc_id === id || c.evidence.some((e) => e.doc_id === id));
+  const related = d.case_id ? db.liveDocuments().filter((x) => x.case_id === d.case_id && x.id !== id) : [];
+  const suggestions = db.state.suggestions.filter(
+    (s) => s.status !== "expired" && s.refs.some((r) => (r.type === "document" && r.id === id) || (r.type === "item" && itemIds.has(r.id))),
+  );
+  return {
+    document: d,
+    pages: pageInfos(db, d),
+    items,
+    contracts,
+    party: db.party(d.party_id),
+    case: db.state.cases.find((c) => c.id === d.case_id) ?? null,
+    related: related.sort((a, b) => ((a.doc_date ?? "") < (b.doc_date ?? "") ? 1 : -1)),
+    suggestions,
+    drafts: db.state.drafts.filter((x) => x.doc_id === id),
+  };
+}
+
+function partyDetail(db: MockDb, id: string): PartyDetail {
+  const party = db.party(id) ?? notFound("Unknown person or organisation.");
+  return {
+    party,
+    documents: db.liveDocuments().filter((d) => d.party_id === id).sort((a, b) => ((a.doc_date ?? "") < (b.doc_date ?? "") ? 1 : -1)),
+    items: db.state.items.filter((i) => i.party_id === id && i.status !== "dismissed").sort((a, b) => ((a.due_date ?? "9") < (b.due_date ?? "9") ? -1 : 1)),
+    contracts: db.state.contracts.filter((c) => c.party_id === id),
+    cases: db.state.cases.filter((c) => c.party_id === id),
+  };
+}
+
+function caseDetail(db: MockDb, id: string): CaseDetail {
+  const c = db.state.cases.find((x) => x.id === id) ?? notFound("Unknown thread.");
+  return {
+    case: c,
+    party: db.party(c.party_id),
+    documents: db.liveDocuments().filter((d) => d.case_id === id).sort((a, b) => ((a.doc_date ?? "") < (b.doc_date ?? "") ? -1 : 1)),
+    items: db.state.items.filter((i) => i.case_id === id),
+    drafts: db.state.drafts.filter((d) => d.case_id === id),
+  };
+}
+
+// ------------------------------------------------------------------------------------------------
+// Drafts
+// ------------------------------------------------------------------------------------------------
+
+function composeDraft(db: MockDb, body: DraftCreate): Draft {
+  const contract = body.contract_id ? db.state.contracts.find((c) => c.id === body.contract_id) : undefined;
+  const doc = body.doc_id ? db.document(body.doc_id) : null;
+  const partyId = body.party_id ?? contract?.party_id ?? doc?.party_id ?? null;
+  const party = db.party(partyId);
+  const ref = contract?.customer_number ?? doc?.references[0]?.value ?? party?.identifiers[0]?.value ?? "";
+  const refLabel = party?.identifiers[0]?.label ?? "Referenz";
+  const now = nowTs();
+  const placeDate = `Musterstadt, ${format(parseISO(db.today), "dd.MM.yyyy")}`;
+  let subject: string;
+  let bodyDe: string;
+  let bodyEn: string;
+  const endDate = contract?.computed?.current_term_end ?? contract?.computed?.earliest_exit ?? null;
+  const endDe = endDate ? format(parseISO(endDate), "dd.MM.yyyy") : null;
+  const endEn = endDate ? format(parseISO(endDate), "d MMM yyyy") : null;
+  if (body.kind === "cancellation") {
+    subject = `Kündigung ${contract ? `– ${contract.name}` : ""}${ref ? ` – ${refLabel} ${ref}` : ""}`.trim();
+    bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit kündige ich den oben genannten Vertrag fristgerecht${endDe ? ` zum ${endDe}` : ""}, hilfsweise zum nächstmöglichen Zeitpunkt.\n\nBitte bestätigen Sie mir den Eingang dieser Kündigung und das Beendigungsdatum schriftlich.\n\nMit freundlichen Grüßen\n\n${SAM.name}`;
+    bodyEn = `Dear Sir or Madam,\n\nI hereby cancel the above contract with due notice${endEn ? ` effective ${endEn}` : ""}, or alternatively at the next possible date.\n\nPlease confirm receipt of this cancellation and the end date in writing.\n\nKind regards\n\n${SAM.name}`;
+  } else if (body.kind === "objection") {
+    const dDate = doc?.doc_date ? format(parseISO(doc.doc_date), "dd.MM.yyyy") : "…";
+    subject = `Einspruch gegen den Bescheid vom ${dDate}${ref ? ` – ${refLabel} ${ref}` : ""}`;
+    bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit lege ich gegen den Bescheid vom ${dDate}${ref ? `, ${refLabel} ${ref},` : ""} Einspruch ein. Eine Begründung reiche ich nach.\n\n${body.instructions ? "Die Aufwendungen für meinen Laptop (1.049,00 EUR) nutze ich überwiegend beruflich; eine Bestätigung meines Arbeitgebers füge ich bei.\n\n" : ""}Mit freundlichen Grüßen\n\n${SAM.name}`;
+    bodyEn = `Dear Sir or Madam,\n\nI hereby file an objection (Einspruch) against the decision of ${doc?.doc_date ? format(parseISO(doc.doc_date), "d MMM yyyy") : "…"}${ref ? `, ${refLabel} ${ref}` : ""}. I will submit my reasons separately.\n\n${body.instructions ? "I use my laptop (1,049.00 EUR) mainly for work; I enclose a confirmation from my employer.\n\n" : ""}Kind regards\n\n${SAM.name}`;
+  } else {
+    subject = `Ihr Schreiben${doc?.doc_date ? ` vom ${format(parseISO(doc.doc_date), "dd.MM.yyyy")}` : ""}${ref ? ` – ${refLabel} ${ref}` : ""}`;
+    bodyDe = `Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihr Schreiben. ${body.instructions ? "Ich habe dazu folgende Frage: …" : "Bitte teilen Sie mir mit, wie wir weiter verfahren."}\n\nMit freundlichen Grüßen\n\n${SAM.name}`;
+    bodyEn = `Dear Sir or Madam,\n\nthank you for your letter. ${body.instructions ? "I have the following question: …" : "Please let me know how we proceed."}\n\nKind regards\n\n${SAM.name}`;
+  }
+  const guidance =
+    contract?.id === "ctr_phone"
+      ? phoneGuidance()
+      : {
+          send_by: contract?.computed?.send_by ?? db.state.items.find((i) => i.doc_id === doc?.id && i.send_by)?.send_by ?? null,
+          must_arrive_by: contract?.computed?.cancel_by ?? db.state.items.find((i) => i.doc_id === doc?.id && i.kind === "deadline")?.due_date ?? null,
+          form: contract?.category === "rent" || contract?.category === "employment" ? ("written_form" as const) : ("text_form" as const),
+          form_note:
+            contract?.category === "rent" || contract?.category === "employment"
+              ? "Must be signed by hand on paper — print, sign and send by Einwurf-Einschreiben."
+              : "Text form is enough: email or letter.",
+          channels: [
+            { channel: "registered_letter" as const, label: "Einwurf-Einschreiben", allowed: true, recommended: true, note: "Keep the receipt as proof of delivery.", citation: null },
+            { channel: "email" as const, label: party?.email ? `Email to ${party.email}` : "Email", allowed: !(contract?.category === "rent" || contract?.category === "employment"), recommended: false, note: null, citation: null },
+          ],
+          tips: ["Keep a copy of what you sent."],
+        };
+  const hasPlaceholder = bodyDe.includes("…");
+  return {
+    id: newId("drf"),
+    kind: body.kind,
+    language: body.language ?? "de",
+    party_id: partyId,
+    case_id: body.case_id ?? contract?.case_id ?? doc?.case_id ?? null,
+    doc_id: body.doc_id ?? null,
+    contract_id: body.contract_id ?? null,
+    sender_block: `${SAM.name}\n${SAM.street}\n${SAM.city}\n${SAM.email}`,
+    recipient_block: party ? `${party.name}\n${(party.address ?? "").replace(/, /g, "\n")}` : "",
+    place_date: placeDate,
+    subject,
+    body: bodyDe,
+    body_translation: bodyEn,
+    enclosures: body.kind === "objection" && body.instructions ? ["Bestätigung des Arbeitgebers"] : [],
+    notes_for_user: body.kind === "objection" ? ["An objection is free. It only needs to arrive in time — reasons can follow later."] : [],
+    checks: CHECKS_OK.map((c) => (c.id === "no_placeholders" ? { ...c, ok: !hasPlaceholder, detail: hasPlaceholder ? "Replace the … before sending." : null } : c)),
+    send_guidance: guidance,
+    sent_channel: null,
+    status: "draft",
+    sent_at: null,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+// ------------------------------------------------------------------------------------------------
+// Ask (streamed)
+// ------------------------------------------------------------------------------------------------
+
+const CITABLE = new Set<string>(["document", "item", "contract", "party"]);
+
+/** Citations as the API's `done` event carries them: with the cited record's label. */
+function citationRefs(db: MockDb, refs: SuggestionRef[]): CitationRef[] {
+  const labelOf = (r: SuggestionRef): string | null => {
+    if (r.type === "document") {
+      const d = db.document(r.id);
+      return d ? (d.title ?? d.filename) : null;
+    }
+    if (r.type === "item") return db.state.items.find((i) => i.id === r.id)?.title ?? null;
+    if (r.type === "contract") return db.state.contracts.find((c) => c.id === r.id)?.name ?? null;
+    return db.party(r.id)?.name ?? null;
+  };
+  // recordings may cite letters of the New-mail tray that aren't opened yet: keep them (id as label)
+  return refs.filter((r) => CITABLE.has(r.type)).map((r) => ({ type: r.type as CitationRef["type"], id: r.id, label: labelOf(r) ?? r.id }));
+}
+
+function askStream(ctx: Ctx): Response {
+  const { db } = ctx;
+  const body = (ctx.body ?? {}) as { question?: string; thread_id?: string | null };
+  const question = (body.question ?? "").trim();
+  const threadId = body.thread_id || newId("thr");
+  const q = question.toLowerCase();
+  const rec = RECORDED.find((r) => r.question.toLowerCase() === q) ?? RECORDED.find((r) => r.match.some((group) => group.every((w) => q.includes(w))));
+  const now = nowTs();
+  db.state.chat.push({ id: newId("msg"), thread_id: threadId, role: "user", content: question, citations: [], tool_calls: [], created_at: now });
+  const enc = new TextEncoder();
+  const signal = ctx.signal;
+  const speed = ctx.opts.latency ?? 1;
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      // like the API: one default `message` event per StreamEvent, `type` inside the JSON data
+      const send = (ev: StreamEvent) => {
+        if (signal?.aborted) return;
+        controller.enqueue(enc.encode(`data: ${JSON.stringify(ev)}\n\n`));
+      };
+      try {
+        controller.enqueue(enc.encode(": connected\n\n"));
+        await sleep(250 * speed, signal);
+        const text = rec?.text ?? FALLBACK_ANSWER;
+        for (const t of rec?.tools ?? []) {
+          send({ type: "tool_use", name: t.name, input: t.input });
+          await sleep(550 * speed, signal);
+          send({ type: "tool_result", name: t.name, text: t.result });
+          await sleep(200 * speed, signal);
+        }
+        const chunks = text.match(/\S+\s*/g) ?? [text];
+        for (let i = 0; i < chunks.length; i += 3) {
+          if (signal?.aborted) break;
+          send({ type: "text", text: chunks.slice(i, i + 3).join("") });
+          await sleep(38 * speed, signal);
+        }
+        const messageId = newId("msg");
+        db.state.chat.push({
+          id: messageId,
+          thread_id: threadId,
+          role: "assistant",
+          content: text,
+          citations: rec?.citations ?? [],
+          tool_calls: (rec?.tools ?? []).map((t) => ({ name: t.name, input: t.input, result: t.result })),
+          created_at: nowTs(),
+        } satisfies ChatMessage);
+        send({ type: "done", text, message_id: messageId, thread_id: threadId, citations: citationRefs(db, rec?.citations ?? []) });
+      } catch (err) {
+        send({ type: "error", error: err instanceof Error ? err.message : "The answer was interrupted." });
+      } finally {
+        try {
+          controller.close();
+        } catch {
+          /* closed */
+        }
+      }
+    },
+  });
+  return new Response(stream, { status: 200, headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" } });
+}
+
+// ------------------------------------------------------------------------------------------------
+// Routes
+// ------------------------------------------------------------------------------------------------
+
+const ITEM_PATCHABLE = ["title", "description", "due_date", "due_time", "amount", "status", "snoozed_until", "priority", "area", "location", "recurrence"] as const;
+const DOC_PATCHABLE = ["title", "kind", "area", "doc_date", "received_date", "party_id", "case_id", "ai_private", "tags", "direction"] as const;
+
+function withoutNulls(src: unknown): Record<string, unknown> {
+  return Object.fromEntries(Object.entries((src ?? {}) as Record<string, unknown>).filter(([, v]) => v !== null && v !== undefined));
+}
+
+function pick<T extends object>(src: unknown, keys: readonly string[]): Partial<T> {
+  const out: Record<string, unknown> = {};
+  if (src && typeof src === "object") for (const k of keys) if (k in src) out[k] = (src as Record<string, unknown>)[k];
+  return out as Partial<T>;
+}
+
+function recomputeParking(db: MockDb, receivedDate: string) {
+  const it = db.state.items.find((i) => i.id === "itm_parking");
+  if (!it) return;
+  const due = format(addDays(parseISO(receivedDate), 7), "yyyy-MM-dd");
+  it.due_date = due;
+  it.grounding = "user";
+  it.updated_at = nowTs();
+  it.computation = {
+    ...(it.computation ?? { holiday_calendar: "", rule_ids: [], steps: [], summary: "", warnings: [], confidence: "high", due_date: due, send_by: null, safe_date: null }),
+    due_date: due,
+    summary: `The letter reached you on ${format(parseISO(receivedDate), "EEE d MMM")}; one week later is ${format(parseISO(due), "EEE d MMM")}.`,
+    steps: [
+      { label: "Letter arrived (confirmed by you)", date: receivedDate, rule_id: "receipt_user", citation: null },
+      { label: "One week later", date: due, rule_id: "bgb188_weeks", citation: "§ 188 Abs. 2 BGB" },
+    ],
+    warnings: [],
+    confidence: "high",
+  };
+  const s = db.state.suggestions.find((x) => x.id === "sug_parking");
+  if (s) s.status = "done";
+}
+
+const routes: [string, string, Handler][] = [
+  // system
+  [
+    "GET",
+    "/health",
+    ({ db, query }) => (query.get("probe") === "1" || query.get("probe") === "true" ? { ...db.state.health, checks: DEMO_CHECKS } : db.state.health) satisfies Health,
+  ],
+  ["GET", "/profile", ({ db }) => db.state.profile],
+  // like the API: PUT merges the fields sent (nulls change nothing; `models` merges by purpose)
+  ["PUT", "/profile", ({ db, body }) => (db.state.profile = { ...db.state.profile, ...withoutNulls(body) })],
+  ["GET", "/settings", ({ db }) => db.state.settings],
+  [
+    "PUT",
+    "/settings",
+    ({ db, body }) => {
+      const patch = withoutNulls(body) as Partial<AppSettings> & { models?: Record<string, string> };
+      for (const key of ["demo", "simulated_today"] as const) {
+        if (key in patch && patch[key] !== db.state.settings[key]) throw new HttpError(422, `“${key}” is set by how Ordnung was started.`);
+      }
+      const models = { ...db.state.settings.models, ...(patch.models ?? {}) };
+      const cleared = body && typeof body === "object" && (body as { inbox_dir?: unknown }).inbox_dir === null ? { inbox_dir: null } : {};
+      return (db.state.settings = { ...db.state.settings, ...patch, models, ...cleared });
+    },
+  ],
+  [
+    "POST",
+    "/onboarding",
+    ({ db, body }) => {
+      const b = (body ?? {}) as { profile?: object };
+      db.state.profile = { ...db.state.profile, ...(b.profile ?? {}), onboarded: true };
+      return db.state.profile;
+    },
+  ],
+  [
+    "DELETE",
+    "/data",
+    ({ db, body, opts }) => {
+      if ((body as { confirm?: unknown } | null)?.confirm !== "DELETE") throw new HttpError(422, "Type DELETE to confirm.");
+      if (opts.staticDemo) throw new HttpError(409, "This online demo keeps nothing — reload the page to start over with Sam's letters.");
+      if (db.state.health.demo) throw new HttpError(409, DEMO_DELETE_MESSAGE);
+      const st = db.state;
+      Object.assign(st, { parties: [], cases: [], documents: [], items: [], contracts: [], suggestions: [], drafts: [], activity: [], chat: [], tray: [], uploads: {} });
+      st.profile = { ...st.profile, name: "", address: "", email: "", phone: "", onboarded: false };
+      return { removed: ["derived", "drafts", "files", "ordnung.db"], kept: [] } satisfies DataDeleted;
+    },
+  ],
+
+  // documents
+  [
+    "GET",
+    "/documents",
+    ({ db, query }) => {
+      const q = query.get("q");
+      let docs = q ? db.search(q) : [...db.liveDocuments()].sort((a, b) => ((a.received_date ?? a.doc_date ?? a.created_at) < (b.received_date ?? b.doc_date ?? b.created_at) ? 1 : -1));
+      const f = (k: string) => query.get(k);
+      if (f("kind")) docs = docs.filter((d) => d.kind === f("kind"));
+      if (f("party_id")) docs = docs.filter((d) => d.party_id === f("party_id"));
+      if (f("case_id")) docs = docs.filter((d) => d.case_id === f("case_id"));
+      if (f("status")) docs = docs.filter((d) => d.status === f("status"));
+      if (f("direction")) docs = docs.filter((d) => d.direction === f("direction"));
+      if (f("private") === "true") docs = docs.filter((d) => d.ai_private);
+      const offset = Number(f("offset") ?? 0);
+      const limit = f("limit") ? Number(f("limit")) : docs.length;
+      return docs.slice(offset, offset + limit);
+    },
+  ],
+  [
+    "POST",
+    "/documents",
+    (ctx) => {
+      needsClaude(ctx);
+      const { db, body } = ctx;
+      const form = body instanceof FormData ? body : null;
+      const files = (form?.getAll("files") ?? []).filter((f): f is File => f instanceof File);
+      if (!files.length) throw new HttpError(422, "No files were uploaded.");
+      const combine = form?.get("combine") === "true";
+      const isPrivate = form?.get("private") === "true";
+      const groups: File[][] = combine ? [files] : files.map((f) => [f]);
+      const now = nowTs();
+      const documents: Document[] = [];
+      const jobs: Job[] = [];
+      for (const group of groups) {
+        const first = group[0]!;
+        const id = newId("doc");
+        const isImage = first.type.startsWith("image/");
+        db.state.uploads[id] = { name: first.name, objectUrl: isImage ? URL.createObjectURL(first) : undefined };
+        const d = makeDoc({
+          id,
+          filename: combine && group.length > 1 ? `${first.name.replace(/\.[^.]+$/, "")} (+${group.length - 1} pages)` : first.name,
+          title: null,
+          mime: combine ? "application/pdf" : first.type || "application/octet-stream",
+          pages: group.length,
+          status: isPrivate ? "processed" : "processing",
+          kind: null,
+          area: null,
+          received_date: db.today,
+          ai_private: isPrivate,
+          ai_processed_at: null,
+          processed_at: null,
+          text_mode: isImage ? "vision" : "text",
+          created_at: now,
+          updated_at: now,
+        });
+        d.sha256 = sha(id + first.name);
+        db.upsertDocument(d);
+        documents.push(d);
+        if (isPrivate) {
+          db.log("document.private", `Stored “${first.name}” privately — not sent to Claude`, "document", id);
+          continue;
+        }
+        const job = makeJob(id);
+        jobs.push(job);
+        void runJob(
+          db,
+          job,
+          isImage,
+          () => {
+            const title = first.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ");
+            db.upsertDocument({
+              ...d,
+              title: title.charAt(0).toUpperCase() + title.slice(1),
+              status: "processed",
+              kind: "other",
+              area: "other",
+              summary: "Demo mode: your file stays in this browser tab. In the installed app, Claude reads it and files every date, amount and deadline.",
+              explanation: "This is the demo, so nothing was sent anywhere. Install Ordnung to have your own letters read and explained.",
+              ai_processed_at: nowTs(),
+              processed_at: nowTs(),
+              updated_at: nowTs(),
+            });
+            db.log("document.processed", `Filed “${first.name}” (demo — not read by AI)`, "document", id);
+          },
+          ctx.opts.latency ?? 1,
+        );
+      }
+      return new Reply(201, { documents, jobs, duplicates: [], errors: [] } satisfies UploadResult);
+    },
+  ],
+  ["GET", "/documents/:id", ({ db, params }) => documentDetail(db, params.id!)],
+  [
+    "PATCH",
+    "/documents/:id",
+    ({ db, params, body }) => {
+      const d = db.document(params.id!) ?? notFound();
+      const patch = pick<Document>(body, DOC_PATCHABLE);
+      Object.assign(d, patch, { updated_at: nowTs() });
+      if (patch.received_date && d.id === "doc_parking") {
+        recomputeParking(db, patch.received_date);
+        d.status = "processed";
+        d.warnings = [];
+        db.log("document.confirmed", "You confirmed when the parking fine arrived", "document", d.id);
+        emit("item.updated", {});
+        emit("suggestions.updated", {});
+      }
+      return d;
+    },
+  ],
+  [
+    "DELETE",
+    "/documents/:id",
+    ({ db, params, query }) => {
+      const d = db.document(params.id!) ?? notFound();
+      const removed = db.state.items.filter((i) => i.doc_id === d.id && i.status === "open").length;
+      d.deleted_at = nowTs();
+      db.state.items = db.state.items.filter((i) => i.doc_id !== d.id);
+      db.log("document.deleted", `Deleted “${d.title ?? d.filename}” and everything derived from it`, "document", d.id);
+      return { id: d.id, purged: query.get("purge") === "true", removed_open_items: removed } satisfies DeleteResult;
+    },
+  ],
+  [
+    "POST",
+    "/documents/:id/reprocess",
+    (ctx) => {
+      needsClaude(ctx);
+      const d = ctx.db.document(ctx.params.id!) ?? notFound();
+      const prev = { ...d };
+      d.status = "processing";
+      const job = makeJob(d.id, "reprocess");
+      void runJob(ctx.db, job, d.text_mode === "vision", () => ctx.db.upsertDocument({ ...prev, updated_at: nowTs(), ai_processed_at: nowTs() }), (ctx.opts.latency ?? 1) * 0.6);
+      return new Reply(202, job);
+    },
+  ],
+
+  // items
+  [
+    "GET",
+    "/items",
+    ({ db, query }) => {
+      let items = [...db.state.items];
+      const f = (k: string) => query.get(k);
+      if (f("status")) items = items.filter((i) => i.status === f("status"));
+      if (f("kind")) items = items.filter((i) => i.kind === f("kind"));
+      if (f("area")) items = items.filter((i) => i.area === f("area"));
+      for (const k of ["party_id", "doc_id", "contract_id", "case_id"] as const) if (f(k)) items = items.filter((i) => i[k] === f(k));
+      if (f("from")) items = items.filter((i) => !i.due_date || i.due_date >= f("from")!);
+      if (f("to")) items = items.filter((i) => !i.due_date || i.due_date <= f("to")!);
+      if (f("include_undated") !== "true" && (f("from") || f("to"))) items = items.filter((i) => i.due_date);
+      items.sort((a, b) => ((a.send_by ?? a.due_date ?? "9999") < (b.send_by ?? b.due_date ?? "9999") ? -1 : 1));
+      return items.slice(0, Number(f("limit") ?? 1000));
+    },
+  ],
+  [
+    "POST",
+    "/items",
+    ({ db, body }) => {
+      const b = (body ?? {}) as Partial<Item>;
+      if (!b.title || !b.kind) throw new HttpError(422, "A to-do needs a title and a kind.");
+      const it = makeItem({ ...b, id: newId("itm"), kind: b.kind, title: b.title, origin: "manual", grounding: "user", due_date_source: b.due_date ? "manual" : "none", created_at: nowTs(), updated_at: nowTs() });
+      db.state.items.push(it);
+      emit("item.updated", { item_id: it.id });
+      return new Reply(201, it);
+    },
+  ],
+  [
+    "PATCH",
+    "/items/:id",
+    ({ db, params, body }) => {
+      const it = db.state.items.find((i) => i.id === params.id) ?? notFound("Unknown to-do.");
+      const patch = pick<Item>(body, ITEM_PATCHABLE);
+      Object.assign(it, patch, { updated_at: nowTs(), user_modified: true });
+      if (patch.due_date) it.due_date_source = "manual";
+      if (patch.status === "done") it.completed_at = nowTs();
+      if (patch.status === "open") it.completed_at = null;
+      return it;
+    },
+  ],
+  [
+    "DELETE",
+    "/items/:id",
+    ({ db, params }) => {
+      db.state.items = db.state.items.filter((i) => i.id !== params.id);
+      return new Reply(204);
+    },
+  ],
+  [
+    "POST",
+    "/items/:id/confirm",
+    ({ db, params }) => {
+      const it = db.state.items.find((i) => i.id === params.id) ?? notFound("Unknown to-do.");
+      it.grounding = "user";
+      it.user_modified = true;
+      it.updated_at = nowTs();
+      const d = it.doc_id ? db.document(it.doc_id) : null;
+      if (d && d.status === "needs_review" && d.id !== "doc_scam") {
+        const stillOpen = db.state.items.some((i) => i.doc_id === d.id && i.grounding === "unverified");
+        if (!stillOpen && d.id !== "doc_parking") d.status = "processed";
+      }
+      return it;
+    },
+  ],
+
+  // contracts, parties, threads
+  [
+    "GET",
+    "/contracts",
+    ({ db, query }) =>
+      db.state.contracts.filter((c) => (!query.get("status") || c.status === query.get("status")) && (!query.get("party_id") || c.party_id === query.get("party_id"))),
+  ],
+  [
+    "PATCH",
+    "/contracts/:id",
+    ({ db, params, body }) => {
+      const c = db.state.contracts.find((x) => x.id === params.id) ?? notFound("Unknown contract.");
+      Object.assign(c, pick<Contract>(body, ["name", "category", "status", "cost_amount", "cost_interval", "notice_value", "notice_unit", "end_date", "customer_number"]), { updated_at: nowTs() });
+      return c;
+    },
+  ],
+  ["GET", "/parties", ({ db }) => [...db.state.parties].sort((a, b) => a.name.localeCompare(b.name))],
+  ["GET", "/parties/:id", ({ db, params }) => partyDetail(db, params.id!)],
+  ["GET", "/cases/:id", ({ db, params }) => caseDetail(db, params.id!)],
+
+  // views
+  ["GET", "/timeline", ({ db, query }) => db.timeline(query.get("from"), query.get("to"))],
+  ["GET", "/lanes", ({ db, query }) => db.lanes(query.get("from"), query.get("to"))],
+  ["GET", "/dashboard", ({ db }) => db.dashboard()],
+
+  // ideas & brief
+  [
+    "GET",
+    "/suggestions",
+    ({ db, query }) => {
+      const st = query.get("status");
+      const list = db.state.suggestions.filter((s) => (st ? s.status === st : s.status !== "expired"));
+      const order = { new: 0, snoozed: 1, accepted: 2, done: 3, dismissed: 4, expired: 5 };
+      return list.sort((a, b) => order[a.status] - order[b.status]).slice(0, Number(query.get("limit") ?? 100));
+    },
+  ],
+  [
+    "PATCH",
+    "/suggestions/:id",
+    ({ db, params, body }) => {
+      const s = db.state.suggestions.find((x) => x.id === params.id) ?? notFound("Unknown Idea.");
+      Object.assign(s, pick<Suggestion>(body, ["status", "snoozed_until"]), { updated_at: nowTs() });
+      return s;
+    },
+  ],
+  [
+    "POST",
+    "/suggestions/review",
+    (ctx) => {
+      needsClaude(ctx);
+      ctx.db.log("review", "Weekly review: no new Ideas (demo)");
+      // like the API: the review runs in the background; its Ideas arrive with `suggestions.updated`
+      setTimeout(() => emit("suggestions.updated", { reason: "review", created: 0 }), 400 * (ctx.opts.latency ?? 1));
+      return new Reply(202, { started: true, running: true } satisfies ReviewStarted);
+    },
+  ],
+  ["GET", "/brief", ({ db }) => ({ date: db.today, text: BRIEF_TEXT, source: "llm", generated_at: "2026-09-28T05:00:00Z" }) satisfies Brief],
+  [
+    "POST",
+    "/brief",
+    (ctx) => {
+      needsClaude(ctx);
+      return { date: ctx.db.today, text: BRIEF_TEXT, source: "llm", generated_at: nowTs() } satisfies Brief;
+    },
+  ],
+
+  // ask
+  ["POST", "/ask", (ctx) => askStream(ctx)],
+  ["GET", "/chat/:thread", ({ db, params }) => db.state.chat.filter((m) => m.thread_id === params.thread)],
+
+  // drafts
+  ["GET", "/drafts", ({ db }) => [...db.state.drafts].sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))],
+  [
+    "POST",
+    "/drafts",
+    ({ db, body }) => {
+      const b = (body ?? {}) as DraftCreate;
+      if (!b.kind) throw new HttpError(422, "Choose what kind of letter to write.");
+      if (b.kind === "objection") {
+        const d = b.doc_id ? db.document(b.doc_id) : null;
+        if (!d?.remedy || !["einspruch", "widerspruch"].includes(d.remedy.type))
+          throw new HttpError(422, "An objection letter needs a decision with instructions on how to object (Rechtsbehelfsbelehrung).");
+      }
+      const draft = composeDraft(db, b);
+      db.state.drafts.unshift(draft);
+      return new Reply(201, draft);
+    },
+  ],
+  ["GET", "/drafts/:id", ({ db, params }) => db.state.drafts.find((d) => d.id === params.id) ?? notFound("Unknown letter.")],
+  [
+    "PATCH",
+    "/drafts/:id",
+    ({ db, params, body }) => {
+      const d = db.state.drafts.find((x) => x.id === params.id) ?? notFound("Unknown letter.");
+      Object.assign(d, pick<Draft>(body, ["subject", "body", "body_translation", "sender_block", "recipient_block", "place_date", "enclosures", "status"]), { updated_at: nowTs() });
+      return d;
+    },
+  ],
+  [
+    "POST",
+    "/drafts/:id/translate",
+    (ctx) => {
+      const d = ctx.db.state.drafts.find((x) => x.id === ctx.params.id) ?? notFound("Unknown letter.");
+      needsClaude(ctx);
+      // the demo backend only replays recordings, so it can't translate edits (like the real API)
+      if (ctx.db.state.health.backend === "replay") throw new HttpError(409, DEMO_TRANSLATE_MESSAGE);
+      d.body_translation = `Subject: ${d.subject}\n\n(English translation of the edited letter)\n\n${d.body}`;
+      d.updated_at = nowTs();
+      return d;
+    },
+  ],
+  [
+    "DELETE",
+    "/drafts/:id",
+    ({ db, params }) => {
+      db.state.drafts = db.state.drafts.filter((d) => d.id !== params.id);
+      return new Reply(204);
+    },
+  ],
+  [
+    "POST",
+    "/drafts/:id/sent",
+    ({ db, params, body }) => {
+      const d = db.state.drafts.find((x) => x.id === params.id) ?? notFound("Unknown letter.");
+      const b = (body ?? {}) as { channel?: string; date?: string };
+      const date = b.date ?? db.today;
+      d.status = "sent";
+      d.sent_channel = b.channel ?? "letter";
+      d.sent_at = `${date}T12:00:00Z`;
+      d.updated_at = nowTs();
+      const party = db.party(d.party_id);
+      db.state.items.push(
+        makeItem({
+          id: newId("itm"),
+          kind: "task",
+          title: `Follow up: has ${party?.name ?? "the recipient"} confirmed your letter?`,
+          description: d.subject,
+          due_date: format(addDays(parseISO(date), 21), "yyyy-MM-dd"),
+          party_id: d.party_id,
+          case_id: d.case_id,
+          contract_id: d.contract_id,
+          origin: "draft",
+          grounding: "user",
+          created_at: nowTs(),
+          updated_at: nowTs(),
+        }),
+      );
+      db.log("draft.sent", `You sent “${d.subject}”`, "draft", d.id);
+      emit("item.updated", {});
+      return d;
+    },
+  ],
+
+  // calendar, privacy, jobs
+  [
+    "POST",
+    "/calendar/exported",
+    ({ db }) => {
+      db.state.lastCalendarExport = nowTs();
+      const s = db.state.suggestions.find((x) => x.rule_id === "calendar_outdated" && x.status === "new");
+      if (s) s.status = "done";
+      db.log("calendar.exported", "Exported your dates to your calendar");
+      return { last_calendar_export_at: db.state.lastCalendarExport };
+    },
+  ],
+  ["GET", "/activity", ({ db, query }) => db.state.activity.slice(0, Number(query.get("limit") ?? 100))],
+  ["GET", "/usage", () => USAGE],
+  ["GET", "/rules", () => RULES],
+  ["GET", "/jobs", () => [...activeJobs.values()]],
+
+  // demo
+  ["GET", "/demo/tour", ({ db }) => db.state.tour],
+  ["PATCH", "/demo/tour", ({ db, body }) => (db.state.tour = { ...db.state.tour, ...(body as object) })],
+  ["GET", "/demo/mail", ({ db }) => db.state.tray],
+  ["GET", "/demo/questions", () => [...SUGGESTED_QUESTIONS]],
+  [
+    "POST",
+    "/demo/mail",
+    (ctx) => {
+      const { db, body } = ctx;
+      const id = (body as { id?: string } | null)?.id ?? "";
+      const tray = db.state.tray.find((t) => t.id === id) ?? notFound("That letter is no longer in the tray.");
+      const docId = db.trayDocFor(id)!;
+      if (tray.opened && tray.doc_id) {
+        const existing = db.document(tray.doc_id)!;
+        return { document: existing, job: { ...makeJob(existing.id), status: "done", stage: "done", progress: 1 } } satisfies MailOpenResult;
+      }
+      tray.opened = true;
+      tray.doc_id = docId;
+      const now = nowTs();
+      const placeholder = makeDoc({
+        id: docId,
+        filename: tray.filename,
+        title: null,
+        status: "processing",
+        kind: null,
+        area: null,
+        source: "demo_mail",
+        received_date: db.today,
+        text_mode: tray.photo ? "vision" : "text",
+        ai_processed_at: null,
+        processed_at: null,
+        created_at: now,
+        updated_at: now,
+      });
+      db.upsertDocument(placeholder);
+      const job = makeJob(docId);
+      void runJob(db, job, tray.photo, () => db.applyTrayDocument(docId), ctx.opts.latency ?? 1);
+      return { document: placeholder, job } satisfies MailOpenResult;
+    },
+  ],
+];
+
+/** Every mocked route as `[METHOD, "/path/:param"]` (a contract test matches them to `openapi.json`). */
+export const MOCK_ROUTES: readonly (readonly [string, string])[] = routes.map(([method, pattern]) => [method, pattern] as const);
+
+const compiled = routes.map(([method, pattern, handler]) => {
+  const keys: string[] = [];
+  const re = new RegExp(
+    "^" +
+      pattern.replace(/[.]/g, "\\.").replace(/:(\w+)/g, (_, k: string) => {
+        keys.push(k);
+        return "([^/]+)";
+      }) +
+      "$",
+  );
+  return { method, re, keys, handler };
+});
+
+// ------------------------------------------------------------------------------------------------
+// Server
+// ------------------------------------------------------------------------------------------------
+
+const json = (status: number, body: unknown) =>
+  new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+
+export interface MockServer {
+  db: MockDb;
+  /** Handle a `/api/...` request (path without the `/api` prefix). */
+  handle(method: string, path: string, query: URLSearchParams, body: unknown, signal?: AbortSignal | null): Promise<Response>;
+  /** Resolve asset paths (page images, PDFs, .ics) to data: URLs. */
+  resolveAsset(path: string): string | null;
+  /** Open all New-mail letters instantly (for `?mock=full`). */
+  openAllMail(): void;
+}
+
+export function createMockServer(opts: MockOptions): MockServer {
+  const db = new MockDb();
+  const latency = opts.latency ?? 1;
+
+  async function handle(method: string, path: string, query: URLSearchParams, body: unknown, signal?: AbortSignal | null): Promise<Response> {
+    const m = method.toUpperCase();
+    for (const r of compiled) {
+      if (r.method !== m) continue;
+      const match = r.re.exec(path);
+      if (!match) continue;
+      const params: Record<string, string> = {};
+      r.keys.forEach((k, i) => (params[k] = decodeURIComponent(match[i + 1]!)));
+      if (latency > 0) await sleep((m === "GET" ? 90 + Math.random() * 110 : 160 + Math.random() * 140) * latency);
+      try {
+        const out = await r.handler({ db, params, query, body, signal, opts });
+        if (out instanceof Response) return out;
+        if (out instanceof Reply) return json(out.status, out.body);
+        return json(200, out ?? null);
+      } catch (err) {
+        if (err instanceof HttpError) return json(err.status, { detail: err.message, code: err.code });
+        console.error("[mock] handler failed", m, path, err);
+        return json(500, { detail: "The demo hit an unexpected error." });
+      }
+    }
+    return json(404, { detail: `No mock for ${m} /api${path}` });
+  }
+
+  function resolveAsset(path: string): string | null {
+    let m = /^\/documents\/([^/]+)\/pages\/(\d+)\.jpg$/.exec(path);
+    const pageOf = (id: string, n: number) => {
+      const letter = letterFor(decodeURIComponent(id));
+      if (letter) return svgDataUrl(letter.pages[Math.min(n, letter.pages.length) - 1] ?? letter.pages[0]!);
+      const up = db.state.uploads[decodeURIComponent(id)];
+      if (up?.objectUrl) return up.objectUrl;
+      const d = db.document(decodeURIComponent(id));
+      return svgDataUrl(
+        renderLetter({
+          brand: { name: d?.filename ?? "Uploaded file", color: "#6b675f", mark: "none", tagline: "Stored on this computer" },
+          pages: [{ subject: "Demo preview", blocks: ["In the installed app you would see the real page here.", "Your file never left this browser tab."] }],
+        }).pages[0]!,
+      );
+    };
+    if (m) return pageOf(m[1]!, Number(m[2]));
+    m = /^\/documents\/([^/]+)\/(thumbnail\.jpg|file)$/.exec(path);
+    if (m) return pageOf(m[1]!, 1);
+    m = /^\/drafts\/([^/]+)\/pdf$/.exec(path);
+    if (m) {
+      const d = db.state.drafts.find((x) => x.id === decodeURIComponent(m![1]!));
+      if (!d) return null;
+      const sender = d.sender_block.split("\n");
+      const r = renderLetter({
+        brand: { name: sender[0] ?? "", color: "#1f1d1a", mark: "none", tagline: sender.slice(1, 3).join(" · ") },
+        senderLine: sender.slice(0, 3).join(" · "),
+        recipient: d.recipient_block.split("\n"),
+        info: [["Datum", d.place_date.replace(/^.*?,\s*/, "")]],
+        pages: [{ subject: d.subject, blocks: d.body.split(/\n{2,}/).map((p) => p.replace(/\n/g, " ")) }],
+      });
+      return svgDataUrl(r.pages[0]!);
+    }
+    m = /^\/items\/([^/]+)\.ics$/.exec(path);
+    if (m) {
+      const it = db.state.items.find((i) => i.id === decodeURIComponent(m![1]!));
+      return it ? icsDataUrl(itemsToIcs([it], db.state.profile.reminder_days)) : null;
+    }
+    if (path === "/calendar.ics") return icsDataUrl(itemsToIcs(db.openItems(), db.state.profile.reminder_days));
+    return null;
+  }
+
+  function openAllMail() {
+    for (const t of db.state.tray) {
+      if (t.opened) continue;
+      const docId = db.trayDocFor(t.id)!;
+      t.opened = true;
+      t.doc_id = docId;
+      db.applyTrayDocument(docId);
+    }
+  }
+
+  return { db, handle, resolveAsset, openAllMail };
+}

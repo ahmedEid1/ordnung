@@ -1,0 +1,563 @@
+# Ordnung — Product & Engineering Specification (v2)
+
+> Build contract. Every module is implemented against this document; if code and spec disagree,
+> fix one of them in the same change. v2 folds in a four-lens design review (product, engineering,
+> hiring, trust) — see §20 for what changed and why.
+
+## 1. Vision
+
+**Ordnung is a private AI secretary for life admin.** Drop in letters, bills, contracts, payslips
+and phone photos. Ordnung reads them with Claude, keeps a living record of everything you owe and
+everything that is coming (deadlines, payments, appointments, renewals, expiries), shows your life on
+a timeline, reminds you before things matter, suggests helpful actions, and drafts the formal
+replies — with every fact traceable to the sentence it came from and every date computed by tested
+legal rules, not guessed by a model.
+
+**Honest privacy statement (use this wording everywhere):** *Your files and your database stay on
+this computer. When Claude reads a letter, that letter's text or image is sent to Anthropic through
+your own Claude account (the `claude` CLI you installed and signed in to). Ordnung has no server,
+no telemetry and never sees your credentials.*
+
+### 1.1 What makes it different
+
+1. **A ledger, not a chat** — parties, threads, contracts, to-dos & dates, linked across letters.
+2. **Grounded** — every extracted fact carries evidence (page, verbatim quote, highlight box).
+   Digits must match the page exactly and values must be consistent with their quote.
+3. **LLM reads, code computes** — the model returns a `DateSpec`; a unit-tested rules engine computes
+   the date (4-day *Bekanntgabe* rule since 2025, §§ 187–193 BGB, Bundesland holidays, consumer
+   contract law) and explains it ("Why this date?").
+4. **A proactive secretary** — deterministic triggers + a weekly LLM review produce "Ideas" with
+   reasons and sources; nothing is ever sent or paid automatically.
+5. **Measured** — a benchmark separating *reading* errors from *computing* errors, LLM-only vs
+   LLM + rules, with confidence intervals and a failure gallery.
+
+### 1.2 Principles
+Local app & data · grounded or flagged · humble automation (suggest, never act) · works without AI
+(manual entry, demo replays) · not legal advice (citations + disclaimer, conservative dates).
+
+### 1.3 Persona for the demo
+**Sam Rivera**, 26, international master's student at the fictional *Hochschule Musterstadt* in
+*Musterstadt* (NRW → holidays region `NW`), Werkstudent 20 h/week, student residence permit, rented
+flat, phone contract, gym, electricity, health & liability insurance, Deutschlandticket. Reads German
+at B1, prefers English. All organisations are fictional (`Muster…`) and every sample is marked
+SPECIMEN.
+
+## 2. Release plan (definition of done)
+
+**P0 — golden path (must be flawless):**
+1. `ordnung demo` opens instantly on a prebuilt demo database with a guided tour; a *New mail* tray
+   holds 3 unopened letters that are processed live (replayed model output, visible stepper).
+2. **Today**: secretary's note, top-3 actions with countdowns, coming up, ideas, life at a glance.
+3. **Document viewer**: verdict card (what / do / by when / if ignored), highlighted evidence on the
+   page image, "Why this date?" with rule steps and citations, explained simply, key facts.
+4. **Timeline** with year-ahead *life lanes* and a month-grouped list.
+5. **Contracts** with lanes chart (notice windows, send-by markers), fixed costs per month.
+6. **Ask** with streamed answers, visible tool trace, validated citations.
+7. **Letters**: cancellation / objection / general reply → bilingual draft → DIN 5008 PDF → "how to send".
+8. `.ics` export with alarms ("Add to my calendar"), onboarding wizard, Settings incl. privacy & AI usage.
+9. Benchmark run live and published (`docs/evals.md`), README with GIF, diagram, numbers.
+10. CI green: backend, frontend, e2e (Playwright over demo mode incl. axe checks), `demo --check`.
+
+**P1 — only after P0 is green:** quick capture bar ("Add anything…" with preview), static hosted demo
+export, model/cost trade-off eval, Ask agent eval, "please check" received-date question, ⌘K search,
+per-document pipeline trace view.
+
+**Cut (v1.1+):** bank CSV/money subsystem, calendar month page, MCP write tools, watched inbox
+folder, OCR, LLM party tie-break, extra letter kinds, most CLI commands.
+
+## 3. Architecture
+
+```
+ untrusted input                      local machine (127.0.0.1)                          user's own account
+┌──────────────┐   upload   ┌───────────────────────────────────────────────────────┐
+│ letters, PDFs├──────────► │ FastAPI  ──►  ingest pipeline                          │   stdin (JSON)   ┌─────────────┐
+│ phone photos │            │   │           intake → text/transcribe → extract ──────┼────────────────► │ claude -p   │──► Anthropic
+└──────────────┘            │   │           → verify → compute (rules) → link → plan │ ◄──────────────  │ (no tools,  │
+                            │   │                                                    │  schema-checked  │  JSON schema)│
+ browser SPA ◄── REST+SSE ──┤   ├─ secretary (triggers, review, brief, daily tick)   │                  └─────────────┘
+ CLI (Typer)  ─────────────►│   ├─ drafts (compose → checks → DIN 5008 PDF)         │
+                            │   └─ assistant (Ask) ── claude -p ── MCP (read-only) ──┼──► SQLite (query_only)
+                            │  SQLite (WAL, FTS5) · files/ · derived/                │
+                            └───────────────────────────────────────────────────────┘
+```
+
+Trust boundaries: documents are **untrusted**; the extraction model has **no tools** and its output
+is schema-validated, verified against the page text and fed to deterministic code; the Ask agent can
+only call Ordnung's **read-only** MCP tools; the UI never renders model output as HTML.
+
+### 3.1 Repository layout
+```
+src/ordnung/
+  cli.py  config.py  clock.py  ids.py  models.py  events.py  app_context.py  views.py  tick.py
+  db/ (schema.sql, migrations/NNNN_*.sql, store.py)
+  llm/ (base.py, claude_cli.py, replay.py, fake.py, runtime.py, schemas.py, prompts/*.md)
+  rules/ (calendar_de.py, periods.py, delivery.py, deadlines.py, contracts.py, catalog.py, send.py)
+  ingest/ (intake.py, text.py, transcribe.py, extract.py, verify.py, link.py, plan.py, pipeline.py, worker.py)
+  secretary/ (triggers.py, review.py, brief.py)
+  assistant/ (mcp_server.py, ask.py, citations.py)
+  drafts/ (compose.py, checks.py, pdf.py, fonts/)
+  calendar/ics.py
+  demo/ (loader.py, tour.py, samples/, fixtures/, demo_db/)   # samples + fixtures ship in the wheel
+  api/ (app.py, security.py, deps.py, routes/*.py)
+  web/dist/                                                     # built SPA (generated)
+web/            React + TS + Vite + Tailwind v4 source
+scripts/        make_sample_life.py (+ scan simulation), capture_assets.py
+evals/          dataset manifest, runner, results/*.json
+docs/           SPEC, architecture, deadline-rules, privacy, evals, decisions/ (ADRs), limitations
+tests/          pytest (+ tests/bin/claude fake CLI)
+```
+
+### 3.2 Stack
+Python ≥ 3.11: FastAPI, uvicorn, Pydantic v2, Typer, Rich, sqlite3 (WAL, FTS5), pdfplumber,
+pypdfium2, Pillow + pillow-heif, holidays, python-dateutil, icalendar, fpdf2, rapidfuzz, platformdirs,
+sse-starlette, python-multipart, httpx, mcp v2 (`mcp.server.mcpserver.MCPServer`), hypothesis (dev).
+Frontend: Vite 8, React 19, TypeScript 5.9, Tailwind 4, React Router 8, TanStack Query, lucide-react,
+date-fns, recharts, motion, @fontsource (Inter, Fraunces). Tooling: uv, ruff, mypy, pytest, vitest,
+Playwright + @axe-core/playwright, GitHub Actions.
+
+## 4. Domain model — `ordnung/models.py` (implemented; the file is authoritative)
+
+Key additions in v2 (to implement in models.py):
+- `Evidence.grounding: Literal["verified","model_read","unverified","user"]` (replaces the boolean
+  semantics; keep `verified: bool` = grounding in {verified,user}), `value_consistent: bool`.
+- `DateSpec.nature: Literal["objection","payment","declaration","notice","appointment","other"] = "other"`
+  (decides whether the § 193 BGB weekend/holiday shift applies).
+- `Item.slot_key: str` (stable identity within a document), `user_modified: bool`,
+  `due_date_source: Literal["computed","fixed","manual","none"]`.
+- `SuggestionStatus` gains `"expired"`.
+- `DraftKind` = `"cancellation" | "objection" | "general_reply"`; `Draft.body_translation: str`,
+  `Draft.send_guidance: SendGuidance | None`.
+- `Document.ai_processed_at`, `Document.ai_private: bool` ("Keep private — no AI").
+- `Page.text_source: Literal["text","transcript","none"]`.
+- `LLMRequest.attachments: list[Attachment(path, media_type)]` replaces `files`;
+  `purpose: LLMPurpose` Literal.
+
+## 5. Persistence — `db/`
+
+SQLite `<data>/ordnung.db`. Every connection: `isolation_level=None` (autocommit; explicit
+transactions), `PRAGMA journal_mode=WAL; busy_timeout=5000; synchronous=NORMAL; foreign_keys=ON`.
+`Store.tx()` = `BEGIN IMMEDIATE … COMMIT/ROLLBACK` (re-entrant per thread). Migrations: `PRAGMA
+user_version` + `db/migrations/NNNN_name.sql` applied in order on open (0001 = the v1 schema).
+The MCP server opens the DB read-only (`mode=ro` URI + `PRAGMA query_only=ON`).
+
+**Deterministic IDs** (so recorded demo/replay references stay valid):
+`doc_` = b32(sha256(file bytes))[:12] · `itm_` = b32(sha1(doc_id|slot_key))[:12] ·
+`pty_` = b32(sha1(normalised first-seen name))[:12] · `ctr_` = b32(sha1(party_id|category|customer_number or source doc))[:12] ·
+`cas_` = b32(sha1(party_id|normalised reference or case title))[:12] · `sug_` = b32(sha1(fingerprint))[:12].
+Random IDs only for manual/user rows (`ids.new_id`), drafts, chat, jobs.
+
+FTS: `documents_fts` (unicode61, remove_diacritics 2) **and** `documents_trigram` (trigram tokenizer)
+for substring matches inside German compounds. User queries are escaped (each token quoted).
+`delete_document` purges items, pages, jobs, FTS rows (then `optimize`s the indexes), derived files,
+the original, `llm_cache` rows of every call that carried the document (cache rows carry `doc_sha`,
+`doc_a|doc_b` for several), the Ideas and activity entries about it, its quotes in kept contracts and
+its id in `llm_calls`; connections run with `secure_delete=ON`. `llm_calls` never stores prompt or
+response bodies.
+
+The Store API contract is Appendix A (unchanged names; additions: `tx()`, `reconcile_suggestions`,
+`upsert_item_by_slot`, `list_pages`, `set_page_text`, `purge_cache_for(sha)`, `jobs` queue methods).
+
+## 6. Rules engine — `rules/` (pure, 100 % branch-covered, Hypothesis property tests)
+
+```python
+@dataclass(frozen=True, kw_only=True)
+class RuleContext:
+    today: date; country: str = "DE"; region: str = "NW"
+    document_date: date | None = None; received_date: date | None = None
+
+compute_due(spec: DateSpec, ctx) -> ComputationReceipt
+compute_contract(terms: ContractTerms, ctx, postal_buffer_days=3) -> ContractComputation
+is_business_day(d, region) · next_business_day(d, region) · add_business_days(d, n, region)
+add_period(event_day, amount, unit, region) -> (date, steps)       # §§ 187(1), 188(2)(3) BGB
+deemed_delivery(posted, rule, region) -> (date, steps)
+send_guidance(kind, contract_category) -> SendGuidance            # channels & form requirements
+catalog: RULES[rule_id] -> RuleInfo(title, citation, url, effective_from, summary)
+```
+
+Semantics (final text follows the verified research in `docs/deadline-rules.md`):
+- **fixed** dates are returned as written (appointments never shift).
+- **relative**: anchor → optional deemed delivery → period arithmetic → § 193 BGB-type shift to the
+  next business day of `region` **only** for `nature ∈ {objection, payment, declaration}` (and
+  `shift_rule == "auto"`). Notice periods (`nature == "notice"`) never shift.
+- **deemed delivery** (`de_admin_post`): letters posted from 2025-01-01 count as delivered on the
+  4th day after posting (3rd day before 2025) — § 122 Abs. 2 Nr. 1 AO / § 41 Abs. 2 VwVfG /
+  § 37 Abs. 2 SGB X (PostModG). If that day is a Saturday, Sunday or holiday it moves to the next
+  business day (BFH IX R 68/98). If the person entered a later actual arrival date, the receipt keeps
+  the conservative (earlier) deadline and adds a note that late receipt may extend it.
+- **contracts** (cancel_by = last day the cancellation must be *received*; send_by = cancel_by minus
+  `postal_buffer_days` business days; `earliest_exit` is computed on read, not stored):
+  consumer contracts concluded on/after 2022-03-01 → after the initial term indefinite, cancellable
+  any time with ≤ 1 month notice (§ 309 Nr. 9 BGB); telecom § 56 TKG similar; older contracts use
+  their written renewal terms; tenant rent § 573c BGB (3rd business day rule); special cancellation
+  rights after price increases (§ 41 Abs. 5 EnWG, § 57 TKG) become Ideas with computed windows.
+- Every result has steps with rule ids + citations and a one-sentence plain explanation
+  (`ComputationReceipt.summary`), e.g. "Letter dated 15 Sep counts as delivered on Sat 19 Sep →
+  moved to Mon 21 Sep; one month later is Wed 21 Oct."
+
+## 7. LLM layer — `llm/` (implemented; update to v2 invocation)
+
+Invocation (verified on claude 2.1.x): no positional prompt; the request is written to **stdin** as
+one stream-json user message containing a text block plus optional base64 `image` (JPEG ≤ 1600 px) or
+`document` (PDF) blocks; then stdin is closed.
+
+```
+claude -p --input-format stream-json --output-format stream-json --verbose
+  [--include-partial-messages]  --model M  --no-session-persistence  --setting-sources ""
+  --strict-mcp-config  --system-prompt S  --tools ""  [--allowedTools …]
+  [--json-schema J]  [--mcp-config C]  [--max-budget-usd B  (Ask only)]
+```
+- Process: `create_subprocess_exec(shutil.which("claude"), …, limit=32 MiB, start_new_session=True)`;
+  timeout/cancel → `os.killpg`. Never `--bare` (breaks subscription login) and never
+  `--dangerously-skip-permissions`.
+- Errors are classified from the parsed `result` object (not the exit code): `api_error_status`
+  401/403 → `ClaudeAuthError`; 429 / usage-limit text → `ClaudeRateLimited(reset_at)`; 5xx/529 →
+  transient (retry ×2 with backoff); `error_max_budget_usd` → `LLMError`; missing or invalid
+  structured output → `ClaudeBadOutput` (1 retry); no JSON at all → `LLMError` with stderr tail.
+- **Lanes**: interactive (ask, draft, capture, brief; semaphore 1) and background (transcribe,
+  extract, review; semaphore `settings.concurrency`, default 2).
+- **Keys**: `llm_key(req) = f"{purpose}:{prompt_version}:{model}:{sha256(canonical(stable_inputs))}"`
+  — callers pass `cache_key` = canonical stable inputs (e.g. extract: file sha + page modes + language +
+  region + simulated today). Used for `llm_cache` and fixture paths `<fixtures>/<purpose>/<sha256(key)[:24]>.json`.
+- **Replay**: strict in CI/`demo --check` (miss = failure); in the interactive demo a miss becomes a
+  friendly "The demo uses recorded answers" event, never an error dialog.
+- `doctor` is zero-token: `claude --version`, `claude auth status` (JSON), warns if
+  `ANTHROPIC_API_KEY` is set (API billing overrides the subscription), optional 1-call probe.
+
+## 8. Ingestion pipeline — `ingest/`
+
+Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
+1. **intake** — size cap 50 MB, page cap 60; sha256 → dedupe; HEIC via pillow-heif; images uploaded
+   together with `combine=true` become one multi-page PDF (default when several photos are dropped at
+   once); render pages (`derived/<doc>/page-N.jpg`, 1600 px) + thumbnail; EXIF transpose.
+2. **text** — per page: pdfplumber text + words (coordinates normalised to the page box, CropBox
+   and rotation handled) → `text_source="text"` if ≥ 40 meaningful chars, else needs transcription.
+3. **transcribe** — for each page without a text layer: vision call (`purpose="transcribe"`, image
+   block, cached by page-image sha) → verbatim text → `pages.text`, `text_source="transcript"`.
+4. **extract** — one text-mode call with page-delimited text (`=== Page N ===`) + context (today,
+   language, region, name, known parties) → `DocumentExtraction`.
+5. **verify** — for each quote: normalise (with offset map) → `partial_ratio_alignment` against each
+   page; score ≥ 90 **and** every digit token of the quote present verbatim on that page →
+   located. Grounding: text page → `verified` (+ boxes from matched words); transcript page →
+   `model_read`; not found → `unverified`. `value_consistent`: dates/amounts in the DateSpec/item
+   appear in the quote (date formats `15.10.2026`, `15. Oktober 2026`, `2026-10-15`, amounts `1.234,56`).
+   Dated items with `unverified` evidence → document `needs_review` ("Please check").
+6. **compute / link / plan** — inside `store.tx()` under a process-wide ledger lock: compute receipts
+   and contract computations; resolve party (identifier → exact/alias → fuzzy ≥ 92, else new party);
+   thread into a case by reference numbers/party; link contract changes and cancellation
+   confirmations to contracts; dunning ↔ invoice supersession (a reminder takes over a bill's one-off
+   payments, never its recurring ones); upsert items by `slot_key`
+   (`sha1(kind|normalised quote)`), never overwriting `user_modified` rows; reconcile triggers.
+7. **done** — status `processed`/`needs_review`, `ai_processed_at`, activity log entry, SSE events.
+
+Rate limits pause the worker globally (`paused_until`, SSE `llm.paused` banner); jobs stay queued.
+On startup `running` jobs return to `queued`. Reprocess = `force` (skip cache read) and replaces
+non-user-modified extracted rows in one transaction. "Keep private (no AI)" skips stages 3–4.
+
+## 9. Secretary — `secretary/` + `tick.py`
+
+- **Daily tick** (startup + every 15 min, timezone-aware `clock.today()`): on day change move
+  recurring to-dos whose date has passed on to their current occurrence, run triggers + reconcile,
+  rebuild agenda; LLM brief regenerated by POST or tick
+  when enabled; weekly LLM review in background if the last one is > 7 days old. SSE `day.changed`.
+- **Triggers** (`run_triggers(store, today) -> dict[rule_id, list[Suggestion]]`, then
+  `reconcile_suggestions` expires absent ones): `deadline_soon`, `overdue`, `contract_cancel_window`
+  (send_by within 60 days), `price_increase_right`, `expiry_soon` (passport/ID 180 d, residence
+  permit 90 d — apply before expiry, § 81 Abs. 4 AufenthG), `passport_before_permit`,
+  `followup_due` (a sent letter's follow-up item became due), `please_check`, `dunning_escalation`,
+  `scam_warning`, `tax_documents` (Jan–Jul), `calendar_outdated` (new dates since last .ics export).
+  Fingerprint = rule_id + entity id + hash(triggering values). Savings are yearly-normalised.
+- **Review** — compact snapshot → ≤ 6 new Ideas with refs to existing ids (validated; duplicates by
+  fuzzy title dropped); `source="review"`.
+- **Brief** — deterministic agenda + optional 2–3 sentence prose (cached per day + agenda hash).
+
+## 10. Ask — `assistant/`
+
+MCP server (`python -m ordnung mcp --data-dir D`, read-only DB, lazy imports): `search`,
+`get_document`, `list_items`, `list_contracts`, `get_party`, `timeline`, `money_summary`,
+`get_profile`, `today`. Ask runs `claude -p` with `--tools ""`, `--allowedTools mcp__ordnung__*`,
+`--mcp-config` (absolute `sys.executable`), `--max-budget-usd 0.50`, 120 s timeout. Citations
+`[doc:ID]`, `[item:ID]`, `[contract:ID]`, `[party:ID]` are **validated**: the id must exist and
+appear in a tool result of the same turn; otherwise it is stripped and logged. The tool trace is
+streamed to the UI and persisted with the message. Markdown is rendered without raw HTML and without
+remote images.
+
+## 11. Letters — `drafts/`
+
+Kinds: `cancellation`, `objection` (Einspruch/Widerspruch), `general_reply`. Compose → `DraftOutput
+{subject, body, body_translation, enclosures, notes_for_user}` (letter in German for German
+recipients; translation in the user's language) → checks (`has_reference`, `has_dates`,
+`recipient_complete`, `sender_complete`, `no_placeholders`, `language_matches`) → DIN 5008 Form B PDF
+(fpdf2, DejaVu). `send_guidance` (rules): send-by date, channel ranking (provider's cancel button
+§ 312k BGB; text form/email where allowed § 309 Nr. 13 BGB; signed paper where required: rent § 568,
+employment § 623 BGB; "Einschreiben Einwurf — keep the receipt"). Marking sent asks for channel +
+date and creates a 21-day follow-up item.
+
+## 12. Calendar — `calendar/ics.py`
+One-click `.ics` export of open dated items + contract send_by dates, VALARMs from
+`profile.reminder_days`, stable UIDs, per-item `.ics`; guides for Google/Apple/Outlook import;
+`meta.last_calendar_export_at` drives the "3 new dates since your last calendar update" card.
+Browser notifications (Notification API) while the app is open. Local feed URL documented as
+"desktop calendar on this computer" only.
+
+## 13. HTTP API — `api/`
+
+Security: bind 127.0.0.1; `Host` allow-list; **session token** (Jupyter style: `serve` prints/opens
+`/?token=…` → HttpOnly SameSite=Strict cookie; CLI reads `<data>/server.json` {port, token, pid});
+non-GET requires header `X-Ordnung-Client`; reject `Sec-Fetch-Site` not in {same-origin, none} and
+foreign `Origin`; strict CSP on the SPA; GETs are side-effect free; originals served with `nosniff`
+and `attachment` unless PDF/JPEG/PNG/WEBP; `--no-token` for tests only.
+
+Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT), `onboarding`
+(POST), `documents` (POST upload `files[]`, `combine`, `private`; GET list), `documents/{id}`
+(GET detail / PATCH / DELETE), `documents/{id}/file`, `documents/{id}/pages/{n}.jpg`,
+`documents/{id}/thumbnail.jpg`, `documents/{id}/reprocess` (POST), `items` (GET/POST),
+`items/{id}` (PATCH/DELETE; PATCH with `due_date` sets `due_date_source=manual`, `user_modified`),
+`items/{id}/confirm` (POST: grounding=user), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
+(PATCH), `parties`, `parties/{id}`, `cases/{id}`, `timeline?from&to`, `lanes?from&to`, `dashboard`,
+`suggestions` (GET), `suggestions/{id}` (PATCH status/snooze), `suggestions/review` (POST),
+`brief` (GET cached, POST regenerate), `ask` (POST → SSE), `chat/{thread_id}`, `drafts`
+(GET/POST), `drafts/{id}` (GET/PATCH/DELETE), `drafts/{id}/pdf`, `drafts/{id}/sent` (POST),
+`drafts/{id}/translate` (POST: translate the edited letter again, purpose `draft`; 409 in the
+replay-only demo), `calendar.ics`, `calendar/exported` (POST), `activity`, `usage`, `rules`, `jobs`,
+`events` (SSE), `data` (DELETE `{"confirm": "DELETE"}`: "Delete everything" — empties the database
+in place and removes Ordnung's files, keeping the lock and `server.json`; 409 in the demo),
+`demo/tour` (GET tour state), `demo/mail` (GET tray, POST `{id}` → ingest a tray letter).
+Contracts carry `cancellable` + `cancel_hint`, worked out on read (not for the broadcasting fee,
+obligations towards authorities or a job — a job gets "Draft resignation").
+
+View models (in models.py): `Dashboard`, `TimelineEntry`, `Lane{id,label,area,bars[]}`,
+`LaneBar{id,label,start,end,kind,marker_dates[],ref}`, `DocumentDetail`, `PartyDetail`,
+`CaseDetail`, `UsageStats`, `Health`, `RuleInfo`, `TourState`, `MailTrayItem`.
+
+Contract details: list endpoints answer plain JSON arrays. `health` carries `rules_last_checked`
+(the catalog's `LAST_CHECKED`, shown as "Based on the law as of …"); `health?probe=1` ("Run check")
+adds the doctor's `checks` plus one tiny live call, at most once a minute (else `429` +
+`Retry-After`). `ask` streams default SSE `message` events whose JSON carries `type`; `done` has the
+checked answer `text`, `citations[{type,id,label}]`, `message_id`, `thread_id`. `events` payloads are
+declared per event name in `models.ServerEvents`. `web/openapi.json` (`ordnung openapi`) and the
+generated `web/src/api/schema.d.ts` are the web app's source of API types (`make openapi`); tests fail
+when they are stale, when a mock route or response differs from the schema, or when a GET endpoint's
+JSON doesn't validate against it.
+
+## 14. Web app — `web/`
+
+Navigation (6 + footer): **Today · Inbox · Timeline · Contracts · Letters · Ask**; footer:
+Settings (incl. "Privacy & AI usage" with the activity log). People & organisations open as a drawer
+from any party chip. Global drop zone; upload toast with live stepper.
+
+UI copy table (enforced by a test that rendered text never shows raw enum values):
+items → "To-dos & dates" · cases → "Threads" · parties → "People & organisations" ·
+suggestions → "Ideas" · verified → "Found in the letter ✓" · model_read → "Read by AI from the
+image" · unverified → "Couldn't find this in the letter — please check" · needs_review → "Please
+check" · computation receipt → "Why this date?" (plain sentence first; "Show the rules" reveals
+steps + citations) · German terms shown as "Einspruch (objection)" with a glossary tooltip.
+
+Pages:
+1. **Today** — (1) secretary's note; (2) top-3 this week: countdown ("send by Fri 16 Oct · in 5
+   days"), reason, one verb button (Pay · Draft letter · Mark done · Check); (3) coming up (30 days);
+   (4) ≤ 3 Ideas with action-named buttons ("Draft cancellation", "Remind me in a week", "Not
+   relevant"); (5) life at a glance (only areas with data); (6) recent letters (collapsed);
+   "All clear until Friday" empty state; "calendar outdated" card; undo toasts.
+2. **Inbox** — letters list (thumbnail, sender, kind, date, status badge), filters (All · Please
+   check · Private), New-mail tray in demo, batch-import recap screen ("I read 12 letters: 5
+   deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam").
+3. **Document viewer** — verdict card first; page images with highlight overlays (click fact → scroll
+   + pulse); "Explained simply"; key facts; to-dos with "Why this date?" popover; warnings (scam
+   banner); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
+   … · text of 2 pages" badge; 390 px layout stacks the image below the card.
+4. **Timeline** — year-ahead **life lanes** (Residence, Contracts, Tax, Study, Money, Health…) with a
+   today line; below, month-grouped list (past/future), filters.
+5. **Contracts** — lanes chart (bars, hatched notice windows, send-by marker, today line), cards,
+   fixed costs total, "Decide by" callouts.
+6. **Letters** — list + composer (kind, recipient, related letter/contract, instructions) →
+   side-by-side German letter and translation, checks, PDF preview, "How to send it", mark as sent.
+7. **Ask** — chat, streamed answer, tool-trace chips ("Searched your letters for 'Kündigung'"),
+   citation chips → viewer, suggested questions (recorded in demo).
+8. **Settings** — profile & address, region (affects holidays), language, reminders, models,
+   privacy statement + "Privacy & AI usage" (activity, tokens, API-equivalent cost, cache hits),
+   Claude status (doctor), "How dates are computed" (rules catalog), data location, disclaimer.
+9. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
+   name/address (skippable) → Claude check (copyable fixes; "Continue without AI") → drop zone +
+   "Explore the demo instead".
+10. **Demo tour**: 4 steps (New mail → Idea arrives → Ask → Timeline), skippable, tracked in meta.
+
+Design: "calm paper" tokens in `web/src/styles/index.css`; Fraunces display headings; Inter UI;
+dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighter in dark mode.
+
+## 15. CLI
+`serve [--port 8765] [--no-browser] [--no-token]` · `add FILES… [--combine] [--private]` ·
+`brief` · `ask "…"` · `demo [--serve] [--reset] [--check] [--live] [--no-browser]` · `doctor
+[--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--print-config]` · `openapi`.
+If a server is running (`server.json` + live pid) `add`/`ask`/`brief` go through its API; otherwise
+they run in-process under an exclusive data-dir lock.
+
+## 16. Demo mode
+`demo_db/` (prebuilt, committed) is copied into the demo data dir and opens instantly; the 3 *New
+mail* letters are ingested live through the real pipeline on the `ReplayBackend` (stages shown ≥
+600 ms each in demo), producing a live Idea over SSE. `simulated_today = 2026-09-28` is stored in
+`meta` (shared with the MCP subprocess). `demo --check` rebuilds the demo DB from samples with a
+strict replay backend and asserts: zero misses, stable canonical dump, all fixtures schema-valid,
+all recorded refs/citations resolve. Recording: `ORDNUNG_RECORD=1 ordnung demo --live --rebuild`.
+
+## 17. Evaluation — `evals/`
+Dataset from the generator with **template families split dev/test** (prompts tuned on dev only),
+text PDFs + simulated phone photos, German + English, plus an adversarial subset (prompt-injection
+letters, scams, conflicting dates, missing document date). Labels are the generator's parameters;
+expected dates computed by hand-checked rules (tests cross-check). Conditions: **Ordnung** (extract →
+rules) vs **LLM-only** (same model, same context incl. today/region/document date, explicit
+instruction to apply current German law) vs **LLM + rule text** (law text pasted into the prompt).
+Metrics with n and 95 % bootstrap CIs: due-date accuracy (overall and per kind), error split
+**reading** (wrong DateSpec/anchor/amount) vs **computing** (wrong arithmetic/law), classification,
+sender/reference/amount accuracy, item recall/precision, evidence grounding rate, false-verified
+rate, injection resistance, scam recall, latency p50, API-equivalent cost/doc. Output:
+`evals/results/<date>-<model>.json`, `docs/evals.md` (tables, chart, failure gallery). CI recomputes
+metrics from recorded outputs with thresholds.
+
+## 18. Quality bar
+ruff + mypy clean; pytest incl. Hypothesis properties for rules (month-end invariants, business-day
+idempotence, never landing on a holiday, deemed delivery ≥ posted + 4 from 2025, send_by ≤ cancel_by);
+fake `claude` executable tests for argv/stdin/error paths/timeouts/kill; `demo --check`; frontend
+tsc/eslint/vitest; Playwright tour e2e with axe; commit history in small, meaningful commits.
+
+## 19. Docs & README contract
+README: problem-first hero ("Drop in a German tax assessment. Get the exact objection deadline, the
+sentence it came from highlighted, and the legal calculation."), GIF of the golden path, headline
+numbers table, Mermaid diagram with trust boundaries, "Try in 60 s — zero tokens" (`uvx ordnung
+demo` / `pip install` + `ordnung demo`), features, how it works, privacy, design decisions,
+limitations, how it was built (Claude Code as pair programmer; correctness via tests, legal worked
+examples, evals), disclaimer. `docs/`: architecture, deadline-rules (with citations), privacy
+(data-flow table), evals, decisions/ADRs, limitations.
+
+## 20. Changes from v1 (review outcomes)
+Cut money/bank CSV, calendar page, MCP writes, inbox watcher, OCR, party tie-break, 4 letter kinds,
+7 CLI commands. Added: stdin content-block invocation, transcribe-then-extract, grounding levels +
+exact digit checks, deterministic IDs + strict replay, durable job queue + rate-limit pause,
+idempotent reprocess, localhost token/CSP/Fetch-Metadata defences, daily tick, onboarding, action-
+first Today & verdict card, "Please check", life lanes, bilingual letters + send guidance, calendar
+reminders, guided demo with live New mail, eval rigor (splits, baselines, CIs, error taxonomy).
+
+## Appendix A — Store API (contract for `db/store.py`)
+
+```text
+Store.open(paths) -> Store · close() · tx() (context manager; BEGIN IMMEDIATE; re-entrant)
+# meta / profile / settings
+get_meta(key) · set_meta(key, value) · get_profile() · save_profile(p) · get_settings() · save_settings(s)
+# documents & pages
+add_document(*, id, sha256, filename, mime, pages, file_path, source, direction, received_date, status, ai_private) -> Document
+get_document(id) · get_document_by_sha(sha) · update_document(id, **fields) · list_documents(q, kind, party_id, case_id, status, direction, limit, offset)
+delete_document(id) (full purge incl. derived files, original, cache rows by doc_sha)
+set_pages(doc_id, pages) · list_pages(doc_id) · get_page(doc_id, n) · set_page_text(doc_id, n, text, text_source)
+get_document_text(doc_id) (page-delimited) · get_extraction(doc_id) · reindex_document(doc_id)
+search(query, limit) -> list[SearchHit(doc_id, title, snippet, score)]  (FTS + trigram, escaped)
+# parties / cases / contracts
+add_party(**f) · get_party · update_party · list_parties · find_party_by_identifier(value) · find_parties_by_name(name) · merge_parties(keep, drop)
+add_case(**f) · get_case · update_case · list_cases(party_id) · find_case_by_reference(ref)
+add_contract(**f) · get_contract · update_contract · list_contracts(status, party_id) · find_contract(party_id, customer_number, category)
+# items
+add_item(**f) · get_item · update_item · delete_item · list_items(status, kind, from_date, to_date, area, party_id, doc_id, contract_id, case_id, include_undated, limit)
+upsert_item_by_slot(doc_id, slot_key, **fields) -> Item (never overwrites user_modified rows)
+delete_stale_extracted_items(doc_id, keep_slot_keys) -> int
+# suggestions
+upsert_suggestion(s) · get_suggestion · update_suggestion · list_suggestions(status, limit) · reconcile_suggestions(rule_ids, live_fingerprints) -> int (expired)
+# drafts / notes / chat
+add_draft · get_draft · update_draft · list_drafts · delete_draft · add_note · list_notes · add_chat_message · list_chat_messages
+# jobs (queue of record)
+enqueue_job(kind, doc_id, force=False) · claim_next_job(kinds) · update_job(id, **f) · get_job · list_jobs(active_only) · requeue_running_jobs()
+# activity / accounting / cache
+log_activity(kind, message, ref_type, ref_id, data) · list_activity(limit)
+log_llm_call(purpose, model, backend, usage, ok, error, cache_hit) · usage_stats(recent)
+cache_get(key) · cache_put(key, purpose, model, response, doc_sha=None) · purge_cache_for(doc_sha)
+counts()
+```
+
+## 21. Trust & legal-safety addendum (binding; overrides earlier sections where they conflict)
+
+**Safety policy.** Missing a deadline is far worse than acting early. When uncertain, compute the
+**earliest plausible date**, lower `confidence` and list the reasons. No LLM classification or
+document may close, cancel, dismiss, mark missed, or delete an obligation without an explicit user
+click. Overdue is computed on read (the tick never changes item status); recurring items are never
+overdue. **Recurring obligations** follow the policy in `recurrence.py` (ADR 0007): Ordnung cannot see
+payments, so a recurring item is a schedule that always shows its next occurrence; "paid" moves it to
+the next occurrence; each occurrence is dated by the rules engine; re-reading never moves it back.
+
+**Confidence rubric** (`ComputationReceipt.confidence`, starts `low`): +quote located, +DateSpec
+consistent with its quote (`spec_consistency`), +anchor date stated in the document (or confirmed by
+the user), +rule in catalog with verified scope, +holiday region known → `high` only if all hold;
+`medium` if one soft condition fails. Reasons are listed in `warnings`. The `receipt` anchor needs a
+user-confirmed arrival date; until then fall back to the document date with `low` confidence.
+
+**Periods.** `add_period(start, amount, unit, *, mode="event"|"day_start", region)` — `event`
+(§ 187 Abs. 1: event day not counted) vs `day_start` (§ 187 Abs. 2 + § 188 Abs. 2 Alt. 2, e.g. a term
+"from 01.03.2024 for 24 months" ends 28.02.2026). Units: days, weeks, months, years,
+`business_days` (Mon–Fri excl. holidays), `werktage` (Mon–Sat excl. holidays).
+
+**Holidays.** Weekend + nationwide holidays always count. Regional holidays count only when the
+region of the place of performance is known: `Party.region` (user-set or from the party's postcode
+when unambiguous) — otherwise they are ignored (earlier date). Receipts state which calendar was used.
+
+**Deemed delivery.** Day count by scope in `catalog.py` with `verified_on`: tax (AO § 122) and
+federal authorities (VwVfG § 41) and social law (SGB X § 37) = 4 days for items posted from
+2025-01-01; Land authorities (Land VwVfG) use the verified value per Land where known, otherwise the
+conservative earlier count (3 days) with `medium` confidence.
+
+**Contracts — regimes.** `compute_contract` dispatches on `regime` derived by code from category,
+party kind and dates: `bgb309_new` (consumer, concluded ≥ 2022-03-01: min term ≤ 24 months; after
+it indefinite, notice ≤ 1 month at any time), `bgb309_old` (as written, renewal ≤ 12 months, notice
+≤ 3 months), `tkg56` (telecom: after min term, 1 month any time), `vvg11` (insurance: yearly
+renewal, notice as written 1–3 months before end of insurance year), `sgbv175` (statutory health
+insurance: 12-month lock-in, effective end of the second following month), `stromgvv20`
+(Grundversorgung: 2 weeks any time), `rent573c` (tenant: notice by 3rd Werktag of month → end of the
+month after next), `employment622` (as written / statutory), `as_written` (unknown → written
+terms, `low` confidence). Notice = min(written notice, statutory cap) where a cap exists.
+`ContractTerms.concluded_date` (fallback start_date with a warning). For notice deadlines falling on
+a weekend/holiday, also show a *safe date* (previous business day). Every dated obligation gets
+`must_arrive_by` and `send_by` (postal buffer default **4** business days; channel-aware:
+online cancel button / portal / fax → 0).
+
+**Price increases.** Show "+€X/year extra cost" (interval-normalised), never "savings".
+Special-right windows are Ideas with rule citations.
+
+**Remedies & letters.** Extraction returns `remedy{type: einspruch|widerspruch|klage|none|unclear,
+addressee, period_text, form_text, quote}` from the Rechtsbehelfsbelehrung. Objection drafts are
+offered only when `type ∈ {einspruch, widerspruch}`; type and addressee come from the remedy, never
+from a model guess. `klage`/missing/unclear → a warning card ("get advice"; missing instructions may
+mean a 1-year period: § 356 Abs. 2 AO, § 58 Abs. 2 VwGO, § 66 Abs. 2 SGG) — no computed date.
+Legally operative sentences come from fixed templates (e.g. "…kündige ich den Vertrag … fristgerecht
+zum {date}, hilfsweise zum nächstmöglichen Zeitpunkt. Bitte bestätigen Sie mir den Eingang und das
+Beendigungsdatum schriftlich." / "…lege ich gegen den Bescheid vom {date}, {reference}, Einspruch ein.
+Eine Begründung reiche ich nach."). The LLM only writes optional polite free text and the
+translation. Checks: `citations_known` (every § in the body exists in the catalog or the source
+document), `no_new_identifiers` (IBANs, emails, ID numbers come from profile/party/document),
+`delivery_channel_ok` (form requirement per kind: rent § 568 and employment § 623 need a
+handwritten signature → "print, sign, send by Einwurf-Einschreiben"). No branding on letters.
+
+**Verification.** `spec_consistency`: numbers (digits and German/English number words), units
+(Tag/Woche/Monat/Werktag/day/week/month) and explicit dates parsed from the quote must match the
+DateSpec; fixed dates must parse from their quote; ambiguous numeric dates (e.g. 03/05/2026 in
+English) → `low` confidence. Mismatch → "Please check". UI never says "verified"; it says
+"Found in the letter (p. 2)" / "Read by AI from the photo" / "Couldn't find this — please check".
+
+**Injection defences.** Extraction has no tools (content blocks via stdin). All document-derived
+text in any prompt (including earlier summaries) is wrapped in `<untrusted_document>` tags. Hidden-
+text detector (pdfplumber char colour/size/position): invisible text is excluded from the prompt and
+raises a red banner. HTML e-mails follow the short written policy of `html_to_text` (ADR 0007): only
+text that is certainly hidden is excluded; when in doubt it stays visible. Brief/review/Ask free text is checked: every date, amount and § must exist in
+the agenda/ledger/catalog, else it is removed (fallback to code-generated text). Ask gets a read-only
+`explain_date(id)` tool that returns receipts. MCP is internal only (no Claude Desktop config in v1).
+
+**Scam checks (code, not model).** IBAN checksum validation; payee IBAN/name compared with those
+previously seen for the same party; mismatch → scam Idea quoting both. Copy: "No warning does not
+mean it is safe."
+
+**Review scope.** The LLM review may only produce `saving`, `hygiene`, `followup`, `opportunity`
+Ideas; legal rights and dates come only from deterministic triggers. `work_days_limit` trigger is
+replaced by a static info card with links.
+
+**Privacy.** First-run consent screen; `docs/privacy.md`; per-call "What was sent" (purpose, document
+ids, pages, byte counts — never bodies). `RecordingBackend` refuses unless the data dir is a demo dir
+and every document hash is in the samples manifest; CI checks fixtures reference only sample hashes.
+
+**Disclaimers at point of use.** Receipt popovers and letter screens: "Based on the law as of
+<last_checked>. Not legal advice. Not reviewed by a lawyer." High-stakes areas (residence, court,
+fines) link to Verbraucherzentrale / Studierendenwerk / Mieterverein advice. Ordnung is a
+template and reminder tool, never a "legal advisor".

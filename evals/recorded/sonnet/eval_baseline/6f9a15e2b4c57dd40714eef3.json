@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"21a5df1dc58bdf9cc96f01669617ee760d9da0173345e9007b9c9a7fe9b5c049\",\"mode\":\"text\",\"region\":\"HE\",\"today\":\"2026-04-14\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-social_decision-D1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-04-14 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hessen (HE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Jobcenter Beispielkreis\",\"document_date\":\"2026-04-10\",\"references\":[{\"label\":\"BG-Nummer\",\"value\":\"06433//0215771\"},{\"label\":\"Kundennummer\",\"value\":\"605C221908\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of Erstausstattung benefit\",\"quote\":\"Ein Widerspruch gegen diesen Bescheid ist binnen eines Monats nach dessen Bekanntgabe zulässig.\",\"computation\":\"Letter dated Fri 10.04.2026, no separate 'zur Post gegeben am' date, so posting day = 10.04.2026. Jobcenter is a social-law body under § 37 Abs. 2 SGB X, so the 4-day delivery fiction applies and (per the specific rule for job centers) the delivery day is NOT moved even if it falls on a weekend or holiday. Counting 4 days from the posting day (day of posting not counted): 11.04 (Sat, day1), 12.04 (Sun, day2), 13.04 (Mon, day3), 14.04 (Tue, day4) → deemed delivery = Tue 14.04.2026. One-month Widerspruch period (§ 84 SGG) runs from the day after delivery; under §§ 187 Abs.1, 188 Abs.2 BGB it ends on the day of the following month bearing the same number as the delivery day: 14.05.2026. That day (Thu 14.05.2026) is Ascension Day (Christi Himmelfahrt, a nationwide public holiday, since Easter Sunday 2026 falls on 05.04.2026 and Ascension is 39 days later). Since only the end of the period moves for a Widerspruch (§ 26 Abs. 3 SGB X), the deadline shifts to the next working day: Friday 15.05.2026.\",\"due_date\":\"2026-05-15\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Jobcenter Beispielkreis",
+      "document_date": "2026-04-10",
+      "references": [
+        {
+          "label": "BG-Nummer",
+          "value": "06433//0215771"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "605C221908"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of Erstausstattung benefit",
+          "quote": "Ein Widerspruch gegen diesen Bescheid ist binnen eines Monats nach dessen Bekanntgabe zulässig.",
+          "computation": "Letter dated Fri 10.04.2026, no separate 'zur Post gegeben am' date, so posting day = 10.04.2026. Jobcenter is a social-law body under § 37 Abs. 2 SGB X, so the 4-day delivery fiction applies and (per the specific rule for job centers) the delivery day is NOT moved even if it falls on a weekend or holiday. Counting 4 days from the posting day (day of posting not counted): 11.04 (Sat, day1), 12.04 (Sun, day2), 13.04 (Mon, day3), 14.04 (Tue, day4) → deemed delivery = Tue 14.04.2026. One-month Widerspruch period (§ 84 SGG) runs from the day after delivery; under §§ 187 Abs.1, 188 Abs.2 BGB it ends on the day of the following month bearing the same number as the delivery day: 14.05.2026. That day (Thu 14.05.2026) is Ascension Day (Christi Himmelfahrt, a nationwide public holiday, since Easter Sunday 2026 falls on 05.04.2026 and Ascension is 39 days later). Since only the end of the period moves for a Widerspruch (§ 26 Abs. 3 SGB X), the deadline shifts to the next working day: Friday 15.05.2026.",
+          "due_date": "2026-05-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2329,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2130,
+      "cost_usd": 0.03292,
+      "duration_ms": 22964,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}
