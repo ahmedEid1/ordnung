@@ -10,7 +10,8 @@ FIRST_NAME = "Sam"
 LAST_NAME = "Rivera"
 STREET = "Beispielweg 5"
 CITY = "12345 Musterstadt"
-ADDRESS = f"{STREET}, {CITY}"
+#: As the Profile asks for it: street and house number, then postcode and town, one per line.
+ADDRESS = f"{STREET}\n{CITY}"
 # Until 30.09.2025 Sam lived in a student residence; letters from that time go there.
 OLD_STREET = "Campusallee 12, App. 314"
 OLD_CITY = "12347 Musterstadt"
