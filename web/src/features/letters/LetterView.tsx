@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useBlocker, useNavigate } from "react-router";
-import { Check, Download, Ellipsis, FileCheck2, ListChecks, Save, Send, Trash2 } from "lucide-react";
+import { Check, Download, Ellipsis, FileCheck2, ListChecks, PenLine, Save, Send, Trash2 } from "lucide-react";
 import { api } from "@/api/endpoints";
-import { useDeleteDraft, useDocuments, useContracts, useMarkDraftSent, useParties, useTranslateDraft, useUpdateDraft } from "@/api/hooks";
+import { useDeleteDraft, useDocuments, useContracts, useDraftProof, useMarkDraftSent, useParties, useTranslateDraft, useUpdateDraft } from "@/api/hooks";
 import { ApiError } from "@/api/client";
 import type { Draft, SendChannelKind } from "@/api/types";
 import { Button, IconButton, buttonVariants } from "@/components/ui/Button";
@@ -10,13 +10,14 @@ import { Callout } from "@/components/ui/Callout";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DateText } from "@/components/ui/DateText";
 import { Dialog } from "@/components/ui/Dialog";
+import { Checkbox } from "@/components/ui/Field";
 import { Disclaimer } from "@/components/ui/Disclaimer";
 import { Kbd } from "@/components/ui/Kbd";
 import { Menu } from "@/components/ui/Menu";
 import { PartyChip } from "@/components/ui/PartyChip";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { toast } from "@/components/ui/Toast";
-import { DRAFT_KIND_COPY, copyFor } from "@/lib/copy";
+import { DRAFT_KIND_COPY, PROOF_KIND_COPY, copyFor } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { useHotkey } from "@/lib/hooks";
 import { useTodayISO } from "@/lib/today";
@@ -82,9 +83,13 @@ export function LetterView({ draft }: { draft: Draft }) {
   const [form, setForm] = useState<EditableFields>(saved);
   const [sentOpen, setSentOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [keepProofFiles, setKeepProofFiles] = useState(false);
   const changes = changedFields(saved, form);
   const dirty = Object.keys(changes).length > 0;
   const isSent = draft.status === "sent";
+  // a sent letter's proofs go with it when it is deleted: the dialog names them (the panel loads the same query)
+  const proofs = useDraftProof(draft.id, { enabled: isSent }).data?.proofs ?? [];
+  const proofFiles = proofs.filter((p) => p.document?.source === "proof");
 
   const party = draft.party_id ? (parties.data ?? []).find((p) => p.id === draft.party_id) ?? null : null;
   const doc = draft.doc_id ? (docs.data ?? []).find((d) => d.id === draft.doc_id) ?? null : null;
@@ -160,11 +165,14 @@ export function LetterView({ draft }: { draft: Draft }) {
   const confirmSent = async (channel: SendChannelKind, date: string, trackingNumber: string | null) => {
     try {
       if (dirty) await save();
+      const again = isSent;
       await markSent.mutateAsync({ id: draft.id, channel, date, ...(trackingNumber ? { tracking_number: trackingNumber } : {}) });
       setSentOpen(false);
-      toast.success(`We'll remind you to check for a reply on ${formatDate(followUpDate(date, draft.kind), { style: "short", today })}`, {
-        description: `Marked as sent ${sentVia(channel)} on ${formatDate(date, { style: "short", today })}.`,
-      });
+      if (again) toast.success("Changed how and when you sent it", { description: `Sent ${sentVia(channel)} on ${formatDate(date, { style: "short", today })}.` });
+      else
+        toast.success(`We'll remind you to check for a reply on ${formatDate(followUpDate(date, draft.kind), { style: "short", today })}`, {
+          description: `Marked as sent ${sentVia(channel)} on ${formatDate(date, { style: "short", today })}.`,
+        });
     } catch {
       /* the global mutation handler shows the error */
     }
@@ -223,9 +231,8 @@ export function LetterView({ draft }: { draft: Draft }) {
             <Menu
               label="More actions"
               items={[
-                ...(!isSent && draft.status !== "final"
-                  ? [{ label: "Mark as ready to send", icon: FileCheck2, onSelect: () => update.mutate({ id: draft.id, patch: { status: "final" } }) }]
-                  : []),
+                ...(!isSent && draft.status !== "final" ? [{ label: "Mark as ready to send", icon: FileCheck2, onSelect: () => update.mutate({ id: draft.id, patch: { status: "final" } }) }] : []),
+                ...(isSent ? [{ label: "Change how or when you sent it", icon: PenLine, onSelect: () => setSentOpen(true) }] : []),
                 { label: "Delete this letter", icon: Trash2, danger: true, onSelect: () => setDeleteOpen(true) },
               ]}
             >
@@ -241,7 +248,8 @@ export function LetterView({ draft }: { draft: Draft }) {
           className="mb-6"
           title={["Sent", sentVia(draft.sent_channel), "on", formatDate(draft.sent_at?.slice(0, 10) ?? today, { style: "short", today })].filter(Boolean).join(" ")}
         >
-          We'll remind you to check for a reply on {formatDate(followUpDate(draft.sent_at ?? today, draft.kind), { style: "short", today })}. Keep your proof of sending.
+          {/* what it waits for, and when Ordnung reminds, is in the proof card below */}
+          Keep your proof of sending with it below.
         </Callout>
       ) : dirty ? (
         <p className="mb-4 flex items-center gap-2 text-[12.5px] text-muted" role="status">
@@ -252,7 +260,7 @@ export function LetterView({ draft }: { draft: Draft }) {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_370px]">
         <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
-          {isSent ? <ProofPanel draft={draft} /> : null}
+          {isSent ? <ProofPanel draft={draft} onChangeSending={() => setSentOpen(true)} /> : null}
           <LetterEditor
             value={form}
             onChange={setForm}
@@ -297,14 +305,25 @@ export function LetterView({ draft }: { draft: Draft }) {
         </section>
       </div>
 
-      <MarkSentDialog key={draft.id} open={sentOpen} onClose={() => setSentOpen(false)} draft={draft} onConfirm={confirmSent} pending={markSent.isPending || update.isPending} />
+      <MarkSentDialog
+        key={`${draft.id}-${draft.status}-${sentOpen}`}
+        open={sentOpen}
+        onClose={() => setSentOpen(false)}
+        draft={draft}
+        onConfirm={confirmSent}
+        pending={markSent.isPending || update.isPending}
+      />
 
       <Dialog
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
         size="sm"
         title="Delete this letter?"
-        description="The draft and its PDF are removed from Ordnung. Letters you already sent are not affected."
+        description={
+          isSent
+            ? "The letter, its PDF and what Ordnung recorded about sending it are removed from Ordnung. Nothing is sent or withdrawn — the letter you posted stays posted."
+            : "The draft and its PDF are removed from Ordnung."
+        }
         footer={
           <>
             <Button onClick={() => setDeleteOpen(false)}>Keep it</Button>
@@ -313,20 +332,47 @@ export function LetterView({ draft }: { draft: Draft }) {
               icon={Trash2}
               loading={remove.isPending}
               onClick={() =>
-                remove.mutate(draft.id, {
-                  onSuccess: () => {
-                    setDeleteOpen(false);
-                    toast.success("Letter deleted");
-                    navigate("/letters", { replace: true });
+                remove.mutate(
+                  { id: draft.id, keepProofFiles: proofFiles.length > 0 && keepProofFiles },
+                  {
+                    onSuccess: () => {
+                      setDeleteOpen(false);
+                      toast.success("Letter deleted", { description: proofFiles.length && keepProofFiles ? "Its proof files stay in Ordnung, in your Inbox." : undefined });
+                      navigate("/letters", { replace: true });
+                    },
                   },
-                })
+                )
               }
             >
               Delete
             </Button>
           </>
         }
-      />
+      >
+        {proofFiles.length ? (
+          <div className="space-y-3 text-[14px] leading-relaxed text-ink/85">
+            <p>
+              Its {proofFiles.length === 1 ? "proof file" : `${proofFiles.length} proof files`} —{" "}
+              {proofFiles
+                .map((p) =>
+                  copyFor(PROOF_KIND_COPY, p.proof.kind)
+                    .label.replace(/\s*\(.*\)$/, "")
+                    .toLowerCase(),
+                )
+                .join(", ")}{" "}
+              — {keepProofFiles
+                ? `stay${proofFiles.length === 1 ? "s" : ""} in Ordnung as your own document${proofFiles.length === 1 ? "" : "s"}.`
+                : `${proofFiles.length === 1 ? "is" : "are"} deleted for good too.`}
+            </p>
+            <Checkbox
+              label="Keep the proof files"
+              description="They stay private in your Inbox, so you still have the receipt if they ever say the letter didn't arrive."
+              checked={keepProofFiles}
+              onChange={(e) => setKeepProofFiles(e.target.checked)}
+            />
+          </div>
+        ) : null}
+      </Dialog>
 
       <Dialog
         open={blocker.state === "blocked"}

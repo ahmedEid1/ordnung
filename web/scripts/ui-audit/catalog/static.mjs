@@ -243,6 +243,16 @@ export async function staticCatalog({ webDir }) {
       await c.click(dialog.getByText("Einwurf-Einschreiben", { exact: false }).first()); // the radio itself is visually hidden
       await c.type(dialog.getByRole("textbox", { name: /Tracking number/ }), "RT 123 456 785 DE");
     });
+    addPf("letter-proof--answered-another-way", "/letters/drf_gym", "Sent letter: “I got an answer — close this” (closed box, toast with Undo).", async (c) => {
+      await c.click(proofCard(c).getByRole("button", { name: "I got an answer — close this" }), { settleAfter: false });
+      await c.visible(c.page.getByText("Marked as answered"));
+      await settle(c.page);
+    }, { pinToasts: true });
+    addPf("letter-proof--delete", "/letters/drf_gym", "Sent letter: “Delete this letter?” names its proof file and offers to keep it.", async (c) => {
+      await c.click(inMain(c.page).getByRole("button", { name: "More actions" }));
+      await c.click(c.page.getByRole("menuitem", { name: "Delete this letter" }));
+    });
+    addPf("proof-file", "/letters/drf_gym/proofs/doc_gym_receipt", "The posting receipt on its own page, under its letter.");
     addPf("waiting", "/letters/waiting", "Waiting for: the overdue phone promise, the letters' replies and the deposit.");
     addPf("waiting--arrived", "/letters/waiting", "Waiting for: the deposit marked as arrived (toast with Undo).", async (c) => {
       await c.click(inMain(c.page).getByRole("listitem").filter({ hasText: "Deposit back" }).getByRole("button", { name: "It arrived" }), { settleAfter: false });

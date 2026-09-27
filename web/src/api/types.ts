@@ -515,6 +515,8 @@ export type ProofEntry = Schemas["ProofEntry"];
 export type ProofEvent = Schemas["ProofEvent"];
 /** `GET /api/drafts/{id}/proof`: tracking number, proofs, timeline, what's missing, what it waits for. */
 export type ProofOverview = Schemas["ProofOverview"];
+/** A sent letter a document is proof of (`DocumentDetail.proof_of`). */
+export type ProofLink = Schemas["ProofLink"];
 /** Something the person is owed — a reply, money or a callback ("Waiting for"). */
 export type WaitingEntry = Schemas["WaitingEntry"];
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DOMESTIC_NOTE, NOT_REGISTERED, WRONG_CHECK_DIGIT, checkTracking, displayTracking, normaliseTracking, s10CheckDigit } from "./tracking";
+import { DOMESTIC_NOTE, NOT_REGISTERED, WRONG_CHECK_DIGIT, asciiDigits, checkTracking, displayTracking, normaliseTracking, s10CheckDigit } from "./tracking";
 
 describe("tracking numbers (the server's policy, checked while typing)", () => {
   it("computes the S10 check digit like the server's worked examples", () => {
@@ -42,5 +42,25 @@ describe("tracking numbers (the server's policy, checked while typing)", () => {
       expect(checkTracking(text)).toMatchObject({ state: "invalid", message: expect.stringContaining("doesn't look like a tracking number") });
     }
     expect(checkTracking("   ")).toEqual({ state: "empty" });
+  });
+
+  it("reads other digits as the server does and keeps only ASCII (tests/test_tracking.py has the same rows)", () => {
+    const rows: [string, string][] = [
+      ["RR１２３４５６７８５DE", "RR123456785DE"], // full-width digits
+      ["ＲＲ１２３４５６７８５ＤＥ", "RR123456785DE"], // full-width letters too
+      ["RR١٢٣٤٥٦٧٨٥DE", "RR123456785DE"], // Arabic-Indic digits
+      ["RR۱۲۳۴۵۶۷۸۵DE", "RR123456785DE"], // Eastern Arabic-Indic (Persian)
+      ["RR १२३ ४५६ ७८५ DE", "RR123456785DE"], // Devanagari, spaced
+      ["１２３４５６７８９０１２", "123456789012"],
+      ["٠٠٣٤ ٠٤٣٤ ١٢٣٤", "003404341234"],
+    ];
+    for (const [typed, number] of rows) {
+      const check = checkTracking(typed);
+      expect(check).toMatchObject({ state: "valid", number });
+      expect(check.state === "valid" && /^[ -~]+$/.test(check.number)).toBe(true);
+    }
+    expect(checkTracking("RR١٢٣٤٥٦٧٨٤DE")).toEqual({ state: "invalid", message: WRONG_CHECK_DIGIT });
+    expect(checkTracking("РТ123456785DE").state).toBe("invalid"); // Cyrillic letters only look Latin
+    expect(asciiDigits("٠١٢٣٤٥٦٧٨٩")).toBe("0123456789");
   });
 });

@@ -632,12 +632,14 @@ export function useTranslateDraft() {
 export function useDeleteDraft() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.deleteDraft(id),
+    mutationFn: (args: string | { id: string; keepProofFiles?: boolean }) =>
+      typeof args === "string" ? api.deleteDraft(args) : api.deleteDraft(args.id, args.keepProofFiles),
     meta: { errorTitle: "Couldn't delete the letter" },
     onSuccess: () =>
       Promise.all([
         qc.invalidateQueries({ queryKey: qk.drafts.all }),
-        qc.invalidateQueries({ queryKey: qk.documents.all }), // the letter it was about lists it
+        qc.invalidateQueries({ queryKey: qk.documents.all }), // the letter it was about lists it; kept proof files join
+        qc.invalidateQueries({ queryKey: qk.waiting }),
       ]),
   });
 }
@@ -709,6 +711,20 @@ export function useRemoveProof() {
     mutationFn: ({ id, proofId }: { id: string; proofId: string }) => api.removeProof(id, proofId),
     meta: { errorTitle: "Couldn't remove the proof" },
     onSuccess: (overview) => proofChanged(qc, overview),
+  });
+}
+
+/** "It's answered" (with the letter that answered, or `null`) — and its Undo. Closes or reopens the follow-up. */
+export function useMarkAnswered() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, docId, answered }: { id: string; docId?: string | null; answered: boolean }) =>
+      answered ? api.markAnswered(id, docId ?? null) : api.unmarkAnswered(id),
+    meta: { errorTitle: "Couldn't save that" },
+    onSuccess: (overview) => {
+      proofChanged(qc, overview);
+      void qc.invalidateQueries({ queryKey: qk.items.all }); // the follow-up to-do closed or reopened
+    },
   });
 }
 

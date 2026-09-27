@@ -494,7 +494,7 @@ export const SEND_CHANNEL_COPY: CopyMap<SendChannelKind> = {
 /** Proof of a sent letter: the German term the receipt carries is in the label, what it shows is the server's. */
 export const PROOF_KIND_COPY: CopyMap<ProofKind> = {
   posting_receipt: { label: "Posting receipt (Einlieferungsbeleg)", icon: ReceiptText, tone: "contract", hint: "The slip from the post office, with the tracking number" },
-  delivery_record: { label: "Delivery record (Auslieferungsbeleg)", icon: MailCheck, tone: "ok", hint: "Deutsche Post's record of the day it was put in their letterbox" },
+  delivery_record: { label: "Delivery record (Auslieferungsbeleg)", icon: MailCheck, tone: "ok", hint: "Deutsche Post's record of the day it was delivered — into their letterbox or handed over" },
   return_receipt: { label: "Return receipt (Rückschein)", icon: Signature, tone: "ok", hint: "The card signed by whoever took the letter" },
   fax_report: { label: "Fax report (Sendebericht)", icon: Printer, tone: "neutral", hint: "The transmission report your fax printed" },
   sent_email: { label: "Sent e-mail", icon: Mail, tone: "appointment", hint: "The e-mail as it left your mailbox" },

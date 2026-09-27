@@ -9,7 +9,7 @@
  *  3. mutations  — on a second, reset demo data folder: extra drafts, a sent letter
  *  4. mail       — the New-mail letters read the way the e2e helper `openMail` does it
  */
-import { fakeApi, failApi, pinToasts, settle } from "../browser.mjs";
+import { fakeApi, failApi, holdApi, pinToasts, settle } from "../browser.mjs";
 import { inMain } from "../steps.mjs";
 import { commonSettingsSections, loadingAndErrorStates, SETTINGS_SECTIONS } from "./shared.mjs";
 
@@ -1114,6 +1114,41 @@ export async function demoCatalog({ api, server }) {
   }, { pinToasts: true });
 
   // ---------------------------------------------------------------------------------------------
+  // Proof of sending, "Waiting for" and call notes on the untouched demo (nothing sent yet)
+  // ---------------------------------------------------------------------------------------------
+  add({ id: "proof-waiting-empty", group: "proof", route: "/letters/waiting", how: "open /letters/waiting", description: "Waiting for on the untouched demo: nothing to wait for.", run: (c) => c.goto("/letters/waiting") });
+  if (bigParty) {
+    const calls = (c) => c.page.getByRole("dialog").getByRole("region", { name: /^Calls/ });
+    add({
+      id: "proof-party-calls-empty",
+      group: "proof",
+      route: `/?party=${bigParty.id}`,
+      how: "open the drawer of the party with the longest name, scroll to Calls",
+      description: "People drawer: no calls noted yet.",
+      run: async (c) => {
+        await c.goto(`/?party=${bigParty.id}`);
+        await c.centre(await c.visible(calls(c)));
+      },
+    });
+    add({
+      id: "proof-party-calls-form-long",
+      group: "proof",
+      route: `/?party=${bigParty.id}`,
+      how: "open the drawer, Note a call, type long values and a German amount, Save with “What was said” empty",
+      description: "Note a call: long German values, “1.234,56” read back, the first missing field focused.",
+      run: async (c) => {
+        await c.goto(`/?party=${bigParty.id}`);
+        await c.click(calls(c).getByRole("button", { name: "Note a call" }));
+        const form = calls(c).getByRole("form", { name: "Note a call" });
+        await form.getByRole("textbox", { name: /Who you spoke to/ }).fill("Frau Dr. Wilhelmine Sachbearbeiterin-Kundenbetreuungsabteilungsleiterin, Forderungsmanagement");
+        await form.getByRole("textbox", { name: /What they promised/ }).fill("Rückerstattungsbestätigungsschreiben über die Überzahlung aus der Nebenkostenabrechnung 2025");
+        await form.getByRole("textbox", { name: /Amount/ }).fill("1.234,56");
+        await c.click(form.getByRole("button", { name: "Save note" }));
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------------------------------
   // Phase 3: states that change data — on a second demo data folder
   // ---------------------------------------------------------------------------------------------
   const mutations = [];
@@ -1137,6 +1172,134 @@ export async function demoCatalog({ api, server }) {
   letterPage("letter-sent", "sent", "A letter marked as sent (read-only, follow-up reminder).");
   letterPage("letter-sent--menu", "sent", "The More-actions menu of a sent letter.", (c) => c.click(main(c.page).getByRole("button", { name: "More actions" })));
   mutations.push({ id: "letters-with-sent", group: "letters", route: "/letters", how: "open /letters after the audit drafted three letters and marked one as sent", description: "Letters list with in-progress and sent letters.", run: (c) => c.goto("/letters") });
+  // proof of sending on the sent letters (the FitWell Einschreiben without proof; the FunkNetz one with a
+  // lot of it: a posting receipt photo with a long name and note, a text delivery record, an undated scan)
+  const proofRegion = (c) => main(c.page).getByRole("region", { name: "Proof of sending" });
+  const proofState = (id, pick, description, run) =>
+    letterPage(id, pick, description, async (c) => {
+      if (run) await run(c);
+      else await c.centre(await c.visible(proofRegion(c)));
+    });
+  proofState("proof-sent--card", "sent", "Proof card on a real sent Einschreiben with nothing added yet (what to start with, the answer button).");
+  proofState("proof-sent--add", "sent", "Add proof: the posting receipt starts on the sending day.", (c) => c.click(proofRegion(c).getByRole("button", { name: "Add proof" })));
+  proofState("proof-sent--add-no-file", "sent", "Add proof, pressed without a file: the file field says what's missing (focused).", async (c) => {
+    await c.click(proofRegion(c).getByRole("button", { name: "Add proof" }));
+    const dialog = await c.visible(c.page.getByRole("dialog", { name: "Add proof" }));
+    await c.click(dialog.getByRole("button", { name: "Add proof" }));
+  });
+  proofState("proof-sent--tracking-typing", "sent", "Tracking number partly typed, then Save: the mistake is said.", async (c) => {
+    const field = proofRegion(c).getByRole("textbox", { name: "Tracking number" });
+    await c.type(field, "RT 123 45");
+    await c.click(proofRegion(c).getByRole("button", { name: "Save number" }));
+  });
+  proofState("proof-sent--change-sending", "sent", "“Change how or when you sent it” (from More actions), pre-filled.", async (c) => {
+    await c.click(main(c.page).getByRole("button", { name: "More actions" }));
+    await c.click(c.page.getByRole("menuitem", { name: "Change how or when you sent it" }));
+  });
+  proofState("proof-sent--delete", "sent2", "“Delete this letter?” on a sent letter with proof files: named, with “Keep the proof files”.", async (c) => {
+    await c.click(main(c.page).getByRole("button", { name: "More actions" }));
+    await c.click(c.page.getByRole("menuitem", { name: "Delete this letter" }));
+  });
+  const answeredWaiting = (w, docId) => ({
+    ...w,
+    status: "answered",
+    answered_by: { type: "document", id: docId },
+    answered_on: "2026-09-27",
+    note: "Their letter “Bestätigung Ihrer Kündigung zum 31.10.2026 — Vertragskontonummer 4711-0815-2342” of Sun 27 Sep is in the same thread. Check that it answers yours, then close this.",
+  });
+  proofState("proof-sent--answered", "sent", "A letter in the thread may have answered (faked): check it, “It's the answer — close this”.", async (c) => {
+    const docs = await c.api.get("/api/documents");
+    await fakeApi(c.page, "GET", /\/api\/drafts\/[^/]+\/proof$/, (_r, o) => ({ json: { ...o, waiting: o.waiting ? answeredWaiting(o.waiting, docs[0].id) : o.waiting } }), { passthrough: true });
+    await c.goto(`/letters/${extra.sent.id}`);
+    await c.centre(await c.visible(proofRegion(c)));
+  });
+  proofState("proof-sent--conflict", "sent2", "A receipt's day and the sending day disagree (faked): “These days don't match”.", async (c) => {
+    await fakeApi(
+      c.page,
+      "GET",
+      /\/api\/drafts\/[^/]+\/proof$/,
+      (_r, o) => ({ json: { ...o, conflicts: ["Your posting receipt says Sat 12 Sep 2026, but the letter is marked as sent on Thu 10 Sep 2026 — correct one of them, so your records agree."] } }),
+      { passthrough: true },
+    );
+    await c.goto(`/letters/${extra.sent2.id}`);
+    await c.centre(await c.visible(proofRegion(c)));
+  });
+  proofState("proof-sent--error", "sent", "The proof overview fails to load.", async (c) => {
+    await failApi(c.page, { status: 500, only: [`/api/drafts/${extra.sent.id}/proof`] });
+    await c.goto(`/letters/${extra.sent.id}`);
+    await c.wait(4000);
+    await c.centre(await c.visible(proofRegion(c)));
+  });
+  proofState("proof-sent2--card", "sent2", "Proof card with a lot on it: domestic tracking number, photo with a long name and note, a text delivery record, an undated scan.");
+  proofState("proof-sent2--top", "sent2", "The top of a sent letter: the banner (no second reminder) above the proof card.", async (c) => c.wait(200));
+  proofState("proof-sent2--edit", "sent2", "“Change this proof” dialog.", async (c) => {
+    await c.click(proofRegion(c).getByRole("button", { name: /^Actions for / }).first());
+    await c.click(c.page.getByRole("menuitem", { name: /Change what it is/ }));
+  });
+  mutations.push({
+    id: "proof-file-page",
+    group: "proof",
+    route: "/letters/…/proofs/…",
+    how: "open the posting receipt of the FunkNetz letter from its proof card",
+    description: "A proof file on its own page: under its letter (Letters in the nav), “Remove this proof”.",
+    run: async (c) => {
+      const o = await c.api.get(`/api/drafts/${extra.sent2.id}/proof`);
+      const receipt = o.proofs.find((p) => p.proof.kind === "posting_receipt") ?? o.proofs[0];
+      await c.goto(`/letters/${extra.sent2.id}/proofs/${receipt.document.id}`);
+    },
+  });
+  mutations.push({ id: "proof-waiting-with-sent", group: "proof", route: "/letters/waiting", how: "after the audit sent letters and noted calls", description: "Waiting for with sent letters and calls: every letter can be closed.", run: (c) => c.goto("/letters/waiting") });
+  mutations.push({
+    id: "proof-waiting--answered",
+    group: "proof",
+    route: "/letters/waiting",
+    how: "fake one letter as answered",
+    description: "Waiting for: “A letter may have answered” group.",
+    run: async (c) => {
+      const docs = await c.api.get("/api/documents");
+      await fakeApi(c.page, "GET", /^\/api\/waiting$/, (_r, o) => ({ json: o.map((w, i) => (w.source === "letter" && i === o.findIndex((x) => x.source === "letter") ? answeredWaiting(w, docs[0].id) : w)) }), { passthrough: true });
+      await c.goto("/letters/waiting");
+    },
+  });
+  mutations.push({
+    id: "proof-waiting--error",
+    group: "proof",
+    route: "/letters/waiting",
+    how: "fail GET /api/waiting",
+    description: "Waiting for: could not load.",
+    run: async (c) => {
+      await failApi(c.page, { status: 500, only: ["/api/waiting"] });
+      await c.goto("/letters/waiting", { heading: false, idle: false });
+      await c.wait(4000);
+      await settle(c.page);
+    },
+  });
+  mutations.push({
+    id: "proof-waiting--loading",
+    group: "proof",
+    route: "/letters/waiting",
+    how: "hold GET /api/waiting",
+    description: "Waiting for: loading.",
+    idle: false,
+    run: async (c) => {
+      await holdApi(c.page, { only: ["/api/waiting"], except: [] });
+      await c.goto("/letters/waiting", { idle: false });
+      await c.wait(600);
+      await settle(c.page, { idle: false });
+    },
+  });
+  mutations.push({ id: "proof-letters-with-waiting", group: "proof", route: "/letters", how: "after the audit sent letters", description: "Letters with the Waiting-for count (overdue in red).", run: (c) => c.goto("/letters") });
+  mutations.push({
+    id: "proof-party-calls-long",
+    group: "proof",
+    route: "/letters?party=…",
+    how: "open the FunkNetz drawer after the audit noted two calls",
+    description: "People drawer: Calls with long notes, a promise with an amount, a kept one.",
+    run: async (c) => {
+      await c.goto(`/letters?party=${extra.sent2.party_id}`);
+      await c.centre(await c.visible(c.page.getByRole("dialog").getByRole("region", { name: /^Calls/ })));
+    },
+  });
   if (objectionDoc) {
     mutations.push({
       id: `${docSlug(objectionDoc)}--with-draft`,
@@ -1265,6 +1428,44 @@ export async function demoCatalog({ api, server }) {
             const d = await api.post("/api/drafts", { kind: "cancellation", contract_id: gym.id, doc_id: gym.source_doc_id ?? null, party_id: gym.party_id ?? null, language: "en" });
             await api.post(`/api/drafts/${d.id}/sent`, { channel: "registered_letter", date: "2026-09-26" });
             extra.sent = d;
+          }
+          const phone = contracts2.find((c) => /FunkNetz/.test(c.name));
+          if (phone) {
+            const d2 = await api.post("/api/drafts", { kind: "cancellation", contract_id: phone.id, doc_id: phone.source_doc_id ?? null, party_id: phone.party_id ?? null, language: "en" });
+            await api.post(`/api/drafts/${d2.id}/sent`, { channel: "registered_letter", date: "2026-09-10", tracking_number: "1234 5678 9012" });
+            extra.sent2 = d2;
+            const upload = async (name, mimeType, buffer, kind, onDate, note) => {
+              const fd = new FormData();
+              fd.append("file", new Blob([buffer], { type: mimeType }), name);
+              fd.append("kind", kind);
+              if (onDate) fd.append("on_date", onDate);
+              if (note) fd.append("note", note);
+              const r = await fetch(`${server.base}/api/drafts/${d2.id}/proofs`, { method: "POST", headers: { Authorization: `Bearer ${server.token()}`, "X-Ordnung-Client": "web" }, body: fd });
+              if (!r.ok) throw new Error(`proof upload failed: ${r.status} ${await r.text()}`);
+            };
+            if (photoPages[0])
+              await upload(
+                "IMG_20260910_Einlieferungsbeleg_Einwurf-Einschreiben_FunkNetz_Kundenkuendigung_Vertragsnummer_998877665544.jpg",
+                "image/jpeg",
+                photoPages[0].buffer,
+                "posting_receipt",
+                "2026-09-10",
+                "Postfiliale im Hauptbahnhof, Schalter 3 — die Mitarbeiterin hat den Umschlag vor meinen Augen gewogen und abgestempelt; Zeugin: meine Nachbarin Frau Kowalczyk-Hernández.",
+              );
+            await upload("Sendungsverfolgung.txt", "text/plain", Buffer.from("Sendung zugestellt am 12.09.2026"), "delivery_record", "2026-09-12", null);
+            await upload("scan.pdf", "application/pdf", await api.raw(`/api/documents/${docs2[0].id}/file`), "other", null, "Kopie des Briefes mit Unterschrift, eingescannt, bevor er in den Umschlag kam");
+            if (phone.party_id) {
+              await api.post("/api/calls", {
+                party_id: phone.party_id,
+                called_on: "2026-09-02",
+                contact: "Herr Maximilian Kundenservicemitarbeiter-Oberreiter (Kündigungsabteilung, Durchwahl 0800-123456789)",
+                summary: "Rang wegen der Kündigung an. Er sagte, die Kündigung sei eingegangen, aber die Bestätigung komme erst nach Prüfung der Mindestvertragslaufzeit.\nEr wollte zurückrufen.",
+                promise: "Schriftliche Kündigungsbestätigung mit Beendigungsdatum und Erstattung des zu viel gezahlten Grundpreises",
+                promise_due: "2026-09-09",
+                promise_amount: 1234.56,
+              });
+              await api.post("/api/calls", { party_id: phone.party_id, called_on: "2026-09-20", summary: "Kurz nachgefragt.", promise: "Rückruf", promise_due: "2026-10-30" });
+            }
           }
         },
       },

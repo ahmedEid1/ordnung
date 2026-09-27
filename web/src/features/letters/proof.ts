@@ -2,9 +2,8 @@
  * Proof of a sent letter — the small decisions the page makes itself (what the server decides comes
  * with the overview: what each proof shows, what's missing, the timeline, what the letter waits for).
  */
-import type { Draft, ProofKind, ProofOverview, WaitingEntry, WaitingStatus } from "@/api/types";
+import type { Document, Draft, ProofKind, ProofOverview, WaitingEntry, WaitingStatus } from "@/api/types";
 import { PROOF_KINDS } from "@/api/types";
-import { firstLine } from "./logic";
 
 /** The proof kinds that fit each way of sending, most useful first (as the server's `CHANNEL_PROOFS`). */
 const CHANNEL_PROOFS: Record<string, readonly ProofKind[]> = {
@@ -36,20 +35,47 @@ export const PROOF_DAY_LABEL: Record<ProofKind, string> = {
   other: "Date it shows",
 };
 
-/** A tracking number only belongs to a letter that went by post. */
+/** Only a registered letter (Einschreiben) has a tracking number — a plain letter has none (as the server). */
 export function takesTrackingNumber(channel: string | null | undefined): boolean {
-  return channel === "registered_letter" || channel === "letter";
+  return channel === "registered_letter";
 }
 
-/** `nachweis-kuendigung-FitWell-Studios-2026-09-22.pdf`. */
-export function nachweisFileName(d: Pick<Draft, "kind" | "recipient_block" | "sent_at" | "created_at">): string {
-  const to = firstLine(d.recipient_block)
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^\w\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
-  return ["nachweis", to, (d.sent_at ?? d.created_at).slice(0, 10)].filter(Boolean).join("-") + ".pdf";
+/** The day a proof of this kind shows is the sending day (so the form starts with it). */
+export const SENDING_DAY_KINDS: readonly ProofKind[] = ["posting_receipt", "fax_report", "sent_email", "cancel_confirmation"];
+
+/**
+ * `Nachweis Kündigung Mitgliedschaft FW-4711 2026-09-10.pdf` — the same name the server gives the file
+ * (`drafts/sent.py nachweis_file_name`): the subject without characters file systems refuse, and the day.
+ */
+export function nachweisFileName(d: Pick<Draft, "subject" | "sent_at" | "created_at">): string {
+  const refused = '\\/:*?"<>|';
+  const cleaned = [...(d.subject || "Schreiben")].map((c) => (c.charCodeAt(0) < 32 || refused.includes(c) ? " " : c)).join("");
+  const words = cleaned.split(/\s+/).join(" ").slice(0, 80).trim() || "Schreiben";
+  return `Nachweis ${words} ${(d.sent_at ?? d.created_at).slice(0, 10)}.pdf`;
+}
+
+/** A proof's own page: under its letter (and Letters in the nav), never the Inbox's letter viewer. */
+export const proofFileHref = (draftId: string, docId: string) => `/letters/${draftId}/proofs/${docId}`;
+
+/** Whether the server draws a picture of the file (a photo or a PDF page); else the kind's icon is shown. */
+export function hasPicture(doc: Pick<Document, "mime">): boolean {
+  return doc.mime.startsWith("image/") || doc.mime === "application/pdf";
+}
+
+/** What to add first, by how the letter went ("your posting receipt"); `null` when nothing fits. */
+export function startWith(channel: string | null | undefined): string | null {
+  switch (channel) {
+    case "registered_letter":
+      return "a photo of your posting receipt";
+    case "fax":
+      return "your fax transmission report";
+    case "email":
+      return "the sent e-mail, saved as a file";
+    case "online_button":
+      return "the cancel button's confirmation page";
+    default:
+      return null;
+  }
 }
 
 /** How the waiting box looks for each status. */

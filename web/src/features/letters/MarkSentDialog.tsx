@@ -12,6 +12,9 @@ import { cn } from "@/lib/utils";
 import { followUpDate, sendChoices } from "./logic";
 import { takesTrackingNumber } from "./proof";
 import { TrackingField, trackingSavable } from "./TrackingField";
+import { displayTracking } from "@/lib/tracking";
+
+const TRACKING_ID = "mark-sent-tracking";
 
 export interface MarkSentDialogProps {
   open: boolean;
@@ -23,17 +26,30 @@ export interface MarkSentDialogProps {
 }
 
 /**
- * "Mark as sent": how and when (and a letter by post's tracking number, checked as it is typed) —
- * Ordnung then adds a to-do to check for a reply in 21 days.
+ * "Mark as sent": how and when (and a registered letter's tracking number, checked as it is typed) —
+ * Ordnung then adds a to-do to check for a reply in 21 days. On a sent letter it corrects how and when
+ * it went (starting from what was recorded). A mistyped number is said when the person confirms.
  */
 export function MarkSentDialog({ open, onClose, draft, onConfirm, pending }: MarkSentDialogProps) {
   const today = useTodayISO();
+  const sent = draft.status === "sent";
   const choices = useMemo(() => sendChoices(draft.send_guidance), [draft.send_guidance]);
-  const [channel, setChannel] = useState<SendChannelKind | null>(choices.find((c) => c.allowed)?.channel ?? null);
-  const [date, setDate] = useState(today);
-  const [tracking, setTracking] = useState("");
+  const recorded = sent ? (choices.find((c) => c.channel === draft.sent_channel)?.channel ?? null) : null;
+  const [channel, setChannel] = useState<SendChannelKind | null>(recorded ?? choices.find((c) => c.allowed)?.channel ?? null);
+  const [date, setDate] = useState(sent && draft.sent_at ? draft.sent_at.slice(0, 10) : today);
+  const [tracking, setTracking] = useState(sent && draft.tracking_number ? displayTracking(draft.tracking_number) : "");
+  const [tried, setTried] = useState(false);
   const withTracking = takesTrackingNumber(channel);
   const trackingOk = !withTracking || trackingSavable(tracking);
+  const confirm = () => {
+    if (!channel) return;
+    if (!trackingOk) {
+      setTried(true);
+      document.getElementById(TRACKING_ID)?.focus();
+      return;
+    }
+    onConfirm(channel, date, withTracking && tracking.trim() ? tracking : null);
+  };
   const chosen = choices.find((c) => c.channel === channel) ?? null;
   const sendBy = draft.send_guidance?.send_by ?? null;
   const mustArrive = draft.send_guidance?.must_arrive_by ?? null;
@@ -44,19 +60,17 @@ export function MarkSentDialog({ open, onClose, draft, onConfirm, pending }: Mar
     <Dialog
       open={open}
       onClose={onClose}
-      title="Mark as sent"
-      description="How and when did you send it? Ordnung adds a to-do to check for an answer — nothing is sent from here."
+      title={sent ? "Change how or when you sent it" : "Mark as sent"}
+      description={
+        sent
+          ? "Correct the way or the day you sent it. The reminder to check for an answer moves with the day."
+          : "How and when did you send it? Ordnung adds a to-do to check for an answer — nothing is sent from here."
+      }
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
-          <Button
-            variant="primary"
-            icon={Check}
-            disabled={!channel || !validDate || !trackingOk}
-            loading={pending}
-            onClick={() => channel && onConfirm(channel, date, withTracking && tracking.trim() ? tracking : null)}
-          >
-            Mark as sent
+          <Button variant="primary" icon={Check} disabled={!channel || !validDate} loading={pending} onClick={confirm}>
+            {sent ? "Save" : "Mark as sent"}
           </Button>
         </>
       }
@@ -107,11 +121,12 @@ export function MarkSentDialog({ open, onClose, draft, onConfirm, pending }: Mar
         <Input type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} className="w-48" />
       </Field>
 
-      {withTracking ? <TrackingField value={tracking} onChange={setTracking} optional className="mt-5" /> : null}
+      {withTracking ? <TrackingField id={TRACKING_ID} value={tracking} onChange={setTracking} optional showError={tried} className="mt-5" /> : null}
 
       {late ? (
         <Callout tone="warn" className="mt-3" title="That's after the send-by date">
-          It may arrive too late. Keep your proof of sending{mustArrive ? `, and if it matters, ask the recipient to confirm it arrived by ${formatDate(mustArrive, { today })}` : ""}.
+          It may arrive too late. Keep your proof of sending
+          {mustArrive ? `, and if it matters, ask the recipient to confirm it arrived by ${formatDate(mustArrive, { today })}` : ""}.
         </Callout>
       ) : null}
     </Dialog>

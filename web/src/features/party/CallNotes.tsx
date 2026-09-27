@@ -7,11 +7,13 @@ import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { Money } from "@/components/ui/Money";
+import { MoneyInput, moneyReadBack } from "@/components/ui/MoneyInput";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { useFormatDate, useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
-import { callNoteProblems, type CallNoteDraft as Draft } from "./calls";
+import { focusWhenReady } from "@/features/today/focus";
+import { CALL_FIELDS, callNoteProblems, promisedAmount, type CallNoteDraft as Draft } from "./calls";
 
 const SUMMARY_MAX = 2000;
 const PROMISE_MAX = 300;
@@ -22,6 +24,8 @@ function NoteForm({ partyId, cases, onDone }: { partyId: string; cases: Case[]; 
   const create = useCreateCall();
   const [d, setD] = useState<Draft>({ calledOn: today, contact: "", summary: "", promise: "", promiseDue: "", amount: "", caseId: "" });
   const [tried, setTried] = useState(false);
+  const ids = useId();
+  const fieldId = (k: keyof Draft) => `${ids}-${k}`;
   const problems = callNoteProblems(d, today);
   const shown = tried ? problems : {};
   const set = (k: keyof Draft) => (e: { target: { value: string } }) => setD((prev) => ({ ...prev, [k]: e.target.value }));
@@ -29,7 +33,14 @@ function NoteForm({ partyId, cases, onDone }: { partyId: string; cases: Case[]; 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     setTried(true);
-    if (Object.keys(problems).length) return;
+    const first = CALL_FIELDS.find((k) => problems[k]);
+    if (first) {
+      // the first field to fix, in the middle of the drawer (never under its header)
+      const el = document.getElementById(fieldId(first));
+      el?.scrollIntoView?.({ block: "center" });
+      el?.focus({ preventScroll: true });
+      return;
+    }
     create.mutate(
       {
         party_id: partyId,
@@ -39,7 +50,7 @@ function NoteForm({ partyId, cases, onDone }: { partyId: string; cases: Case[]; 
         summary: d.summary.trim(),
         promise: d.promise.trim() || null,
         promise_due: d.promiseDue || null,
-        promise_amount: d.amount.trim() ? Number(d.amount.replace(",", ".")) : null,
+        promise_amount: promisedAmount(d),
       },
       {
         onSuccess: (note) => {
@@ -53,31 +64,31 @@ function NoteForm({ partyId, cases, onDone }: { partyId: string; cases: Case[]; 
   };
 
   return (
-    <form onSubmit={submit} noValidate aria-label="Note a call" className="space-y-3 rounded-xl border border-line bg-surface p-3.5">
+    <form id={`${ids}-form`} onSubmit={submit} noValidate aria-label="Note a call" className="space-y-3 rounded-xl border border-line bg-surface p-3.5">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="When" error={shown.calledOn}>
-          <Input type="date" value={d.calledOn} max={today} onChange={set("calledOn")} required />
+        <Field id={fieldId("calledOn")} label="When" error={shown.calledOn}>
+          <Input type="date" value={d.calledOn} max={today} onChange={set("calledOn")} required autoFocus />
         </Field>
-        <Field label="Who you spoke to" optional>
+        <Field id={fieldId("contact")} label="Who you spoke to" optional>
           <Input value={d.contact} onChange={set("contact")} maxLength={CONTACT_MAX} placeholder="e.g. Frau Weber, billing" autoComplete="off" />
         </Field>
       </div>
-      <Field label="What was said" error={shown.summary}>
+      <Field id={fieldId("summary")} label="What was said" error={shown.summary}>
         <Textarea value={d.summary} onChange={set("summary")} maxLength={SUMMARY_MAX} rows={3} className="min-h-20" required />
       </Field>
-      <Field label="What they promised" optional error={shown.promise} hint="A promise with a day goes on your Waiting for list.">
+      <Field id={fieldId("promise")} label="What they promised" optional error={shown.promise} hint="A promise with a day goes on your Waiting for list.">
         <Input value={d.promise} onChange={set("promise")} maxLength={PROMISE_MAX} placeholder="e.g. Refund of the September fee" autoComplete="off" />
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="By" optional error={shown.promiseDue}>
+        <Field id={fieldId("promiseDue")} label="By" optional error={shown.promiseDue}>
           <Input type="date" value={d.promiseDue} min={d.calledOn || undefined} onChange={set("promiseDue")} />
         </Field>
-        <Field label="Amount (€)" optional error={shown.amount}>
-          <Input value={d.amount} onChange={set("amount")} inputMode="decimal" placeholder="29.90" autoComplete="off" />
+        <Field id={fieldId("amount")} label="Amount" optional error={shown.amount} hint={moneyReadBack(d.amount)}>
+          <MoneyInput value={d.amount} onChange={set("amount")} />
         </Field>
       </div>
       {cases.length ? (
-        <Field label="Thread" optional hint="A letter in this thread after the call is shown as a possible answer.">
+        <Field id={fieldId("caseId")} label="Thread" optional hint="A letter in this thread after the call is shown as a possible answer.">
           <Select value={d.caseId} onChange={set("caseId")}>
             <option value="">No thread</option>
             {cases.map((c) => (
@@ -124,14 +135,15 @@ function PromiseLine({ note, today }: { note: CallNote; today: string }) {
   );
 }
 
-function NoteRow({ note }: { note: CallNote }) {
+function NoteRow({ note, headingId }: { note: CallNote; headingId: string }) {
   const today = useTodayISO();
   const fmt = useFormatDate();
   const update = useUpdateCall();
   const remove = useDeleteCall();
   const [confirming, setConfirming] = useState(false);
+  const rowId = `call-note-${note.id}`;
   return (
-    <li className="rounded-xl border border-line bg-surface px-3.5 py-3">
+    <li id={rowId} className="rounded-xl border border-line bg-surface px-3.5 py-3">
       <div className="flex items-start gap-2">
         <PhoneCall className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
         <p className="min-w-0 flex-1 text-[13px] text-muted">
@@ -163,7 +175,21 @@ function NoteRow({ note }: { note: CallNote }) {
       {confirming ? (
         <div role="group" aria-label="Delete this note?" className="mt-2 flex flex-wrap items-center gap-2 border-t border-line pt-2 text-[13px]">
           <span className="text-ink">Delete this note for good?</span>
-          <Button size="sm" variant="danger" loading={remove.isPending} onClick={() => remove.mutateAsync(note.id).then(() => toast.success("Note deleted"), () => undefined)}>
+          <Button
+            size="sm"
+            variant="danger"
+            loading={remove.isPending}
+            onClick={() =>
+              remove.mutateAsync(note.id).then(
+                () => {
+                  toast.success("Note deleted");
+                  // once its row is gone, focus the section heading (never <body>)
+                  focusWhenReady(() => (document.getElementById(rowId) ? null : document.getElementById(headingId)));
+                },
+                () => undefined,
+              )
+            }
+          >
             Delete
           </Button>
           <Button size="sm" onClick={() => setConfirming(false)}>
@@ -184,7 +210,13 @@ export function CallNotes({ partyId, cases }: { partyId: string; cases: Case[] }
   const q = useCalls({ party_id: partyId });
   const [open, setOpen] = useState(false);
   const headingId = useId();
+  const noteButtonId = `${headingId}-note`;
   const notes = q.data ?? [];
+  // the form goes: back to the button that opened it
+  const close = () => {
+    setOpen(false);
+    focusWhenReady(() => document.getElementById(noteButtonId));
+  };
   return (
     <section aria-labelledby={headingId} className="mt-7 first:mt-0">
       <div className="mb-2.5 flex items-center gap-2">
@@ -193,12 +225,12 @@ export function CallNotes({ partyId, cases }: { partyId: string; cases: Case[] }
           {notes.length ? <span className="ml-1 font-medium text-muted">· {notes.length}</span> : null}
         </h3>
         {!open ? (
-          <Button size="sm" variant="soft" icon={Phone} onClick={() => setOpen(true)}>
+          <Button id={noteButtonId} size="sm" variant="soft" icon={Phone} onClick={() => setOpen(true)}>
             Note a call
           </Button>
         ) : null}
       </div>
-      {open ? <NoteForm partyId={partyId} cases={cases} onDone={() => setOpen(false)} /> : null}
+      {open ? <NoteForm partyId={partyId} cases={cases} onDone={close} /> : null}
       {q.isPending ? (
         <Skeleton className="h-16 w-full rounded-xl" />
       ) : q.isError ? (
@@ -211,7 +243,7 @@ export function CallNotes({ partyId, cases }: { partyId: string; cases: Case[] }
       ) : notes.length ? (
         <ul className={cn("space-y-2", open && "mt-3")}>
           {notes.map((n) => (
-            <NoteRow key={n.id} note={n} />
+            <NoteRow key={n.id} note={n} headingId={headingId} />
           ))}
         </ul>
       ) : !open ? (

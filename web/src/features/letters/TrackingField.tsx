@@ -6,8 +6,14 @@ import { checkTracking, TRACKING_EXAMPLE, TRACKING_MAX, type TrackingCheck } fro
 export interface TrackingFieldProps {
   value: string;
   onChange: (value: string) => void;
+  /** The input's id (to move focus to it). */
+  id?: string;
   label?: string;
   optional?: boolean;
+  /** An empty field is a mistake too (the form exists to save a number). */
+  required?: boolean;
+  /** Say what's wrong now (the person tried to save), not only once the number is complete. */
+  showError?: boolean;
   /** Focus the field when it appears (the person asked to edit the number). */
   autoFocus?: boolean;
   className?: string;
@@ -20,6 +26,7 @@ export function trackingSavable(value: string): boolean {
 
 /** An S10 number is complete at 13 characters; only then (or on leaving the field) a mistake is said. */
 const COMPLETE = 13;
+export const TRACKING_REQUIRED = "Type the tracking number from your posting receipt.";
 
 function hintFor(check: TrackingCheck) {
   if (check.state === "valid" && check.checked) {
@@ -41,21 +48,26 @@ function hintFor(check: TrackingCheck) {
       </span>
     );
   }
-  return `As printed on your posting receipt, like ${TRACKING_EXAMPLE}.`;
+  return (
+    <>
+      As printed on your posting receipt, like <span className="font-ident whitespace-nowrap">{TRACKING_EXAMPLE}</span>.
+    </>
+  );
 }
 
 /**
  * The Einschreiben's tracking number with the check the server makes, as the person types: a
- * correct check digit is confirmed, a mistake is named once the number is complete (or the field
- * is left), twelve-digit numbers are accepted with a note that they can't be checked.
+ * correct check digit is confirmed, a mistake is named once the number is complete, the field is left
+ * or the person tries to save; twelve-digit numbers are accepted with a note that they can't be
+ * checked. No placeholder: an example number in the empty field would look like a saved one.
  */
-export function TrackingField({ value, onChange, label = "Tracking number", optional, autoFocus, className }: TrackingFieldProps) {
+export function TrackingField({ value, onChange, id, label = "Tracking number", optional, required, showError, autoFocus, className }: TrackingFieldProps) {
   const [left, setLeft] = useState(false);
   const check = checkTracking(value);
   const complete = value.replace(/[\s./-]/g, "").length >= COMPLETE;
-  const error = check.state === "invalid" && (left || complete) ? check.message : undefined;
+  const error = check.state === "invalid" && (left || complete || showError) ? check.message : required && showError && check.state === "empty" ? TRACKING_REQUIRED : undefined;
   return (
-    <Field label={label} optional={optional} hint={hintFor(check)} error={error} className={className}>
+    <Field id={id} label={label} optional={optional} hint={hintFor(check)} error={error} className={className}>
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -66,7 +78,6 @@ export function TrackingField({ value, onChange, label = "Tracking number", opti
         autoCapitalize="characters"
         spellCheck={false}
         inputMode="text"
-        placeholder={TRACKING_EXAMPLE}
         autoFocus={autoFocus}
         className="font-ident tracking-wide"
       />

@@ -191,7 +191,9 @@ export const api = {
   draft: (id: string) => call("get", "/api/drafts/{draft_id}", { params: { draft_id: id } }),
   updateDraft: (id: string, patch: DraftPatch) =>
     call("patch", "/api/drafts/{draft_id}", { params: { draft_id: id }, body: patch }),
-  deleteDraft: (id: string) => call("delete", "/api/drafts/{draft_id}", { params: { draft_id: id } }),
+  /** Deletes the letter and its proofs; their files too unless `keepProofFiles` (they stay as documents). */
+  deleteDraft: (id: string, keepProofFiles = false) =>
+    call("delete", "/api/drafts/{draft_id}", { params: { draft_id: id }, query: keepProofFiles ? { keep_proof_files: true } : {} }),
   /** Translate the (edited) letter again; only `body_translation` changes. 409 in the demo. */
   translateDraft: (id: string) => call("post", "/api/drafts/{draft_id}/translate", { params: { draft_id: id } }),
   draftPdfUrl: (id: string) => assetUrl(apiRoute("/api/drafts/{draft_id}/pdf", { draft_id: id })),
@@ -218,6 +220,11 @@ export const api = {
   /** Removes the proof; its file is deleted for good unless another proof uses it. */
   removeProof: (id: string, proofId: string) =>
     call("delete", "/api/drafts/{draft_id}/proofs/{proof_id}", { params: { draft_id: id, proof_id: proofId } }),
+  /** "It's answered": by the letter `docId`, or (`null`) by phone, e-mail …; closes the follow-up. */
+  markAnswered: (id: string, docId: string | null) =>
+    call("post", "/api/drafts/{draft_id}/answered", { params: { draft_id: id }, body: { doc_id: docId } }),
+  /** Take back "it's answered" (Undo): the letter waits again and its follow-up reopens. */
+  unmarkAnswered: (id: string) => call("delete", "/api/drafts/{draft_id}/answered", { params: { draft_id: id } }),
   /** The Nachweis: summary and timeline, the letter as sent, every proof file — one PDF. */
   proofPdfUrl: (id: string) => assetUrl(apiRoute("/api/drafts/{draft_id}/proof.pdf", { draft_id: id })),
 

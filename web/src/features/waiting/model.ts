@@ -22,3 +22,12 @@ export function waitingSummary(entries: readonly WaitingEntry[]): { count: numbe
   const open = entries.filter((e) => e.status !== "closed");
   return { count: open.length, overdue: open.filter((e) => e.status === "overdue").length };
 }
+
+/** The button that closes a letter's entry: the letter that came is the answer, or it was answered another way. */
+export function closeLabel(entry: Pick<WaitingEntry, "status" | "answered_by">): string {
+  return entry.status === "answered" && entry.answered_by ? "It's the answer — close this" : "I got an answer — close this";
+}
+
+/** A button whose label may be longer than a phone's row ("I got an answer — close this"): it wraps inside
+ * itself (pass the label as an element — a plain string label is truncated by `Button`). */
+export const WRAPPING_BUTTON = "h-auto min-h-8 min-w-0 max-w-full shrink whitespace-normal py-1.5 text-left leading-snug";

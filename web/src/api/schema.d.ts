@@ -752,14 +752,16 @@ export interface paths {
         post?: never;
         /**
          * Delete Draft
-         * @description Delete a letter, with its proofs and their files.
+         * @description Delete a letter with its proofs; their files are deleted for good too unless ``keep_proof_files``
+         *     (they then stay as documents of their own).
          */
         delete: operations["delete_draft_api_drafts__draft_id__delete"];
         options?: never;
         head?: never;
         /**
          * Update Draft
-         * @description Edit the letter; the checks (placeholders, references, dates …) run again.
+         * @description Edit the letter; the checks (placeholders, references, dates …) run again. A sent letter is
+         *     refused: it stays as it went out.
          */
         patch: operations["update_draft_api_drafts__draft_id__patch"];
         trace?: never;
@@ -793,7 +795,7 @@ export interface paths {
         };
         /**
          * Draft Pdf
-         * @description The letter as a printable DIN 5008 PDF.
+         * @description The letter as a printable DIN 5008 PDF (a sent letter as it went out).
          */
         get: operations["draft_pdf_api_drafts__draft_id__pdf_get"];
         put?: never;
@@ -876,7 +878,8 @@ export interface paths {
         put?: never;
         /**
          * Add Proof
-         * @description Attach a proof file to a sent letter. The file is kept private: it is never sent to AI.
+         * @description Attach a proof file to a sent letter. The file is kept private: it is never sent to AI. A file
+         *     already in Ordnung is linked as it is, and ``notice`` says what that means for it.
          */
         post: operations["add_proof_api_drafts__draft_id__proofs_post"];
         delete?: never;
@@ -907,6 +910,30 @@ export interface paths {
          * @description Correct what a proof is, the day it shows or its note.
          */
         patch: operations["update_proof_api_drafts__draft_id__proofs__proof_id__patch"];
+        trace?: never;
+    };
+    "/api/drafts/{draft_id}/answered": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Answered
+         * @description Say the sent letter was answered (by a letter in Ordnung, or otherwise); closes its follow-up.
+         */
+        post: operations["mark_answered_api_drafts__draft_id__answered_post"];
+        /**
+         * Unmark Answered
+         * @description Take back "it's answered": the letter waits again and its follow-up reopens.
+         */
+        delete: operations["unmark_answered_api_drafts__draft_id__answered_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/drafts/{draft_id}/proof.pdf": {
@@ -1166,6 +1193,14 @@ export interface components {
             tone: "info" | "warn" | "good";
             /** Citation */
             citation: string | null;
+        };
+        /**
+         * AnsweredRequest
+         * @description The sent letter was answered — by this letter (``doc_id``), or by phone, e-mail … (``null``).
+         */
+        AnsweredRequest: {
+            /** Doc Id */
+            doc_id?: string | null;
         };
         /** AppSettings */
         AppSettings: {
@@ -1941,6 +1976,8 @@ export interface components {
             suggestions: components["schemas"]["Suggestion"][];
             /** Drafts */
             drafts: components["schemas"]["Draft"][];
+            /** Proof Of */
+            proof_of: components["schemas"]["ProofLink"][];
         };
         /**
          * DocumentPatch
@@ -2044,6 +2081,10 @@ export interface components {
             sent_at: string | null;
             /** Tracking Number */
             tracking_number: string | null;
+            /** Answered On */
+            answered_on: string | null;
+            /** Answer Doc Id */
+            answer_doc_id: string | null;
             /** Created At */
             created_at: string;
             /** Updated At */
@@ -3060,21 +3101,42 @@ export interface components {
         };
         /**
          * ProofEvent
-         * @description One line of a sent letter's timeline (the "Nachweis").
+         * @description One line of a sent letter's timeline (the "Nachweis"). ``date`` is ``None`` for a proof without a
+         *     day (listed apart, with ``added_on``: the day it was added). ``possible_answer``: a letter that may be
+         *     the answer — shown to the person, never written into the Nachweis.
          */
         ProofEvent: {
             /** Date */
-            date: string;
+            date: string | null;
             /**
              * Kind
              * @enum {string}
              */
-            kind: "created" | "sent" | "tracking" | "proof" | "delivered" | "answered";
+            kind: "created" | "sent" | "tracking" | "proof" | "delivered" | "answered" | "possible_answer";
             /** Label */
             label: string;
             /** Detail */
             detail: string | null;
             ref: components["schemas"]["RefLink"] | null;
+            /** Added On */
+            added_on: string | null;
+        };
+        /**
+         * ProofLink
+         * @description A sent letter this document is proof of (``drafts.proof``): the letter and what the proof is.
+         */
+        ProofLink: {
+            /** Draft Id */
+            draft_id: string;
+            /** Subject */
+            subject: string;
+            /** Proof Id */
+            proof_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "posting_receipt" | "delivery_record" | "return_receipt" | "fax_report" | "sent_email" | "cancel_confirmation" | "other";
         };
         /**
          * ProofOverview
@@ -3095,6 +3157,10 @@ export interface components {
             timeline: components["schemas"]["ProofEvent"][];
             /** Missing */
             missing: string[];
+            /** Conflicts */
+            conflicts: string[];
+            /** Notice */
+            notice: string | null;
             waiting: components["schemas"]["WaitingEntry"] | null;
             /**
              * Caveat
@@ -3593,7 +3659,7 @@ export interface components {
              * Format
              * @enum {string}
              */
-            format: "s10" | "domestic";
+            format: "s10" | "domestic" | "unknown";
             /** Checked */
             checked: boolean;
             /** Note */
@@ -5344,7 +5410,9 @@ export interface operations {
     };
     delete_draft_api_drafts__draft_id__delete: {
         parameters: {
-            query?: never;
+            query?: {
+                keep_proof_files?: boolean;
+            };
             header?: never;
             path: {
                 draft_id: string;
@@ -5394,6 +5462,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Draft"];
                 };
+            };
+            /** @description A sent letter's text can't be changed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5656,6 +5731,72 @@ export interface operations {
                 "application/json": components["schemas"]["ProofPatch"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_answered_api_drafts__draft_id__answered_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnsweredRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unmark_answered_api_drafts__draft_id__answered_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

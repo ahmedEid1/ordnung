@@ -104,6 +104,7 @@ export async function freshCatalog({ api }) {
   e("empty-timeline", "/timeline", "Timeline with no dates.");
   e("empty-contracts", "/contracts", "Contracts with none known.");
   e("empty-letters", "/letters", "Letters with no drafts.");
+  e("empty-waiting", "/letters/waiting", "Waiting for with nothing yet (no letter sent, no call noted).");
   e("empty-composer", "/letters?new=1", "The composer with nothing to cancel, object to or reply to.", async (c) => {
     await c.visible(c.page.getByRole("dialog"));
   });

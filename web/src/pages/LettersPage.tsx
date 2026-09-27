@@ -76,7 +76,7 @@ export default function LettersPage() {
             <Link to="/letters/waiting" className={buttonVariants({ variant: "secondary" })}>
               <Hourglass aria-hidden />
               Waiting for
-              <CountBadge count={waiting.count} tone={waiting.overdue ? "warn" : "neutral"} />
+              <CountBadge count={waiting.count} tone={waiting.overdue ? "danger" : "neutral"} />
               {waiting.overdue ? <span className="sr-only">, {waiting.overdue} overdue</span> : null}
             </Link>
             <Button variant="primary" icon={Plus} onClick={openComposer}>

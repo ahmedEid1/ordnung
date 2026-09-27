@@ -6,7 +6,8 @@ import { useMockApi } from "@/test/mockFetch";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { PartyDrawer } from "./PartyDrawer";
-import { callNoteProblems, type CallNoteDraft } from "./calls";
+import { formatMoney } from "@/lib/format";
+import { callNoteProblems, promisedAmount, type CallNoteDraft } from "./calls";
 
 beforeEach(() => {
   vi.stubGlobal("scrollTo", () => {});
@@ -40,6 +41,20 @@ describe("call note checks", () => {
     expect(callNoteProblems({ ...blank, promise: "Refund", promiseDue: "2026-09-01" }, TODAY).promiseDue).toMatch(/before the call/);
     expect(callNoteProblems({ ...blank, promise: "Refund", amount: "abc" }, TODAY).amount).toMatch(/euros/);
     expect(callNoteProblems({ ...blank, promise: "Refund", amount: "-5" }, TODAY).amount).toBeDefined();
+    expect(callNoteProblems({ ...blank, promise: "Refund", amount: "1e308" }, TODAY).amount).toBeDefined();
+    expect(callNoteProblems({ ...blank, promise: "Refund", amount: "2.000.000" }, TODAY).amount).toMatch(/up to/);
+  });
+
+  it("reads amounts the German way: 1.500 is fifteen hundred, never 1,50", () => {
+    const amount = (typed: string) => promisedAmount({ amount: typed });
+    expect(amount("1.500")).toBe(1500);
+    expect(amount("2.000")).toBe(2000);
+    expect(amount("1.234,56")).toBe(1234.56);
+    expect(amount("29,90")).toBe(29.9);
+    expect(amount("1,5")).toBe(1.5);
+    expect(amount("29.90")).toBe(29.9);
+    expect(amount("")).toBeNull();
+    expect(callNoteProblems({ ...blank, promise: "Refund", amount: "1.234,56" }, TODAY)).toEqual({});
   });
 });
 
@@ -71,17 +86,20 @@ describe("Calls in the party drawer", () => {
     const section = await screen.findByRole("region", { name: /^Calls/ });
     await user.click(within(section).getByRole("button", { name: "Note a call" }));
     const form = within(section).getByRole("form", { name: "Note a call" });
-    // nothing written yet: the form says what's missing
+    expect(within(form).getByLabelText("When")).toHaveFocus(); // the form opens where you start
+    // nothing written yet: the form says what's missing, and takes you there
     await user.clear(within(form).getByLabelText("What was said"));
     await user.click(within(form).getByRole("button", { name: "Save note" }));
     expect(within(form).getByText("Write down what was said.")).toBeInTheDocument();
+    expect(within(form).getByLabelText("What was said")).toHaveFocus();
     expect(calls.some((c) => c.method === "POST" && c.path === "/calls")).toBe(false);
 
     await user.type(within(form).getByLabelText(/Who you spoke to/), "Frau Weber");
     await user.type(within(form).getByLabelText("What was said"), "They will refund the September fee.");
     await user.type(within(form).getByLabelText(/What they promised/), "Refund of the September fee");
     await user.type(within(form).getByLabelText(/^By/), "2026-10-05");
-    await user.type(within(form).getByLabelText(/Amount/), "29,90");
+    await user.type(within(form).getByLabelText(/Amount/), "1.234,56");
+    expect(within(form).getByText(`= ${formatMoney(1234.56)}`)).toBeInTheDocument(); // how it was read
     await user.click(within(form).getByRole("button", { name: "Save note" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/calls")).toBe(true));
     expect(calls.find((c) => c.method === "POST" && c.path === "/calls")?.body).toEqual({
@@ -92,9 +110,11 @@ describe("Calls in the party drawer", () => {
       summary: "They will refund the September fee.",
       promise: "Refund of the September fee",
       promise_due: "2026-10-05",
-      promise_amount: 29.9,
+      promise_amount: 1234.56,
     });
     expect(await screen.findByText("Call noted")).toBeInTheDocument();
+    // the form is gone: back to the button that opened it
+    await waitFor(() => expect(within(section).getByRole("button", { name: "Note a call" })).toHaveFocus());
     expect(screen.getByText("Its promise is on your Waiting for list.")).toBeInTheDocument();
     expect(await within(section).findByText("They will refund the September fee.")).toBeInTheDocument();
     // the promise is waited for
@@ -114,5 +134,6 @@ describe("Calls in the party drawer", () => {
     await user.click(within(confirm).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.path === "/calls/cal_fitwell")).toBe(true));
     expect(await within(section).findByText(/No calls noted/)).toBeInTheDocument();
+    await waitFor(() => expect(within(section).getByRole("heading", { name: /^Calls/ })).toHaveFocus()); // not <body>
   });
 });

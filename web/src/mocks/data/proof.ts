@@ -26,7 +26,8 @@ export const PROOF_TEXTS: Record<ProofKind, { label: string; shows: string; does
   },
   delivery_record: {
     label: "Delivery record",
-    shows: "The day the carrier put it in their letterbox, confirmed by the carrier. With the posting receipt, courts have accepted it as prima facie proof that the letter arrived.",
+    shows:
+      "The day the carrier delivered it, as the carrier recorded it — put in their letterbox (Einwurf-Einschreiben) or handed over against a signature (Übergabe-Einschreiben). With the posting receipt, courts have accepted it as prima facie proof that the letter arrived.",
     doesNotShow: "What was in the envelope.",
     arrival: true,
   },
@@ -64,7 +65,9 @@ export const MISSING = {
   tracking: "Add the tracking number from your posting receipt (Einlieferungsbeleg).",
   posting: "Add a photo of the posting receipt — it shows the day you posted the letter.",
   delivery:
-    "Ask Deutsche Post for a copy of the delivery record (Auslieferungsbeleg) while they still issue it, or keep the return receipt (Rückschein) if you sent it with one. The online tracking status alone was not accepted as proof that a letter arrived (BAG 2 AZR 68/24).",
+    "Ask Deutsche Post for a copy of the delivery record (Auslieferungsbeleg) — they issue it only within 15 months of posting, so best right after delivery — or keep the return receipt (Rückschein) if you sent it with one. The online tracking status alone was not accepted as proof that a letter arrived (BAG 2 AZR 68/24).",
+  deliveryLate:
+    "Keep the return receipt (Rückschein) if you sent it with one. Deutsche Post issues a copy of the delivery record (Auslieferungsbeleg) only within 15 months of posting — for this letter that time has passed.",
   fax: "Keep the fax transmission report (Sendebericht): it shows the number, the time and the pages.",
   email: "Save the sent e-mail as a file or PDF, and ask them to confirm it arrived.",
   button: "Save the page the cancel button showed and the confirmation e-mail they must send you at once (§ 312k Abs. 3 and 4 BGB).",
@@ -83,9 +86,19 @@ export const WAITING_FOR: Record<string, string | null> = {
   defect_notice: "The repair of the defect",
   data_access: "A copy of your data",
   receipts_inspection: "A date to see the receipts",
-  deposit_return: "Your deposit back",
+  deposit_return: "An answer on when your deposit will be settled",
   address_change: null,
 };
+
+/** Why a kind waits for an answer on *when* (drafts/proof.py `WAITING_CONTEXT`). */
+export const WAITING_CONTEXT: Record<string, string> = {
+  deposit_return:
+    "A landlord has a reasonable time to settle the deposit after you move out — how long depends on the case and can be more than six months (BGH, 18 January 2006, VIII ZR 71/05) — but can tell you when to expect it.",
+};
+
+/** The proof kinds whose day is the sending day, and those whose day is the delivery (drafts/proof.py). */
+export const SENDING_DAY_KINDS: readonly ProofKind[] = ["posting_receipt", "fax_report", "sent_email", "cancel_confirmation"];
+export const DELIVERY_DAY_KINDS: readonly ProofKind[] = ["delivery_record", "return_receipt"];
 
 export const CHANNEL_WORDS: Record<string, string> = {
   online_button: "the online cancel button",
@@ -161,6 +174,8 @@ const GYM_DRAFT: Omit<Draft, "checks"> = {
   status: "sent",
   sent_at: ts("2026-09-22", "14:40"),
   tracking_number: "RT123456785DE",
+  answered_on: null,
+  answer_doc_id: null,
   created_at: ts("2026-09-21", "20:05"),
   updated_at: ts("2026-09-22", "14:40"),
 };

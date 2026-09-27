@@ -225,6 +225,8 @@ const CASES = {
   updateProof: { run: (ids) => api.updateProof(ids.sentDraft, ids.proof, { on_date: "2026-09-22", note: "Filiale Mitte" }) },
   removeProof: { run: (ids) => api.removeProof(ids.sentDraft, ids.proof) },
   proofPdfUrl: { run: (ids) => api.proofPdfUrl(ids.sentDraft), asset: true },
+  markAnswered: { run: (ids) => api.markAnswered(ids.sentDraft, null) },
+  unmarkAnswered: { run: (ids) => api.unmarkAnswered(ids.sentDraft) },
   waiting: { run: () => api.waiting() },
   calls: { run: (ids) => api.calls({ party_id: ids.party }) },
   createCall: {
@@ -253,11 +255,14 @@ const CASES = {
 const ORDER: (keyof Api)[] = [
   "ask",
   "chat",
+  "updateDraft", // before it is sent: a sent letter's text can't change (409)
   "markDraftSent",
   "translateDraft",
   ...(Object.keys(CASES) as (keyof Api)[]).filter(
     (name) =>
-      !["ask", "chat", "markDraftSent", "translateDraft", "deleteDraft", "deleteDocument", "deleteItem", "deleteEverything", "removeProof", "deleteCall"].includes(name),
+      !["ask", "chat", "updateDraft", "markDraftSent", "translateDraft", "deleteDraft", "deleteDocument", "deleteItem", "deleteEverything", "removeProof", "deleteCall"].includes(
+        name,
+      ),
   ),
   "removeProof",
   "deleteCall",

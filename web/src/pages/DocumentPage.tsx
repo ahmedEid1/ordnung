@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router";
+import { Link, Navigate, useParams } from "react-router";
 import { RotateCw } from "lucide-react";
 import { useDocument } from "@/api/hooks";
 import { ApiError } from "@/api/client";
@@ -10,21 +10,25 @@ import { LoadingLabel } from "@/components/ui/Skeleton";
 import { DocumentSkeleton, DocumentView } from "@/features/document/DocumentView";
 import { isReading } from "@/features/inbox/filters";
 import { useMarkLetterSeen } from "@/features/inbox/seen";
+import { proofFileHref } from "@/features/letters/proof";
 
 /** Every letter lives in the Inbox: its parent when it wasn't opened from another section. */
 const HOME = { to: "/inbox", label: "Inbox" };
 
 /**
  * `/documents/:id` — the Document viewer (verdict, evidence on the page, why this date). Its
- * breadcrumb and phone back button lead to where it was opened from (Today, Timeline, Ask…).
+ * breadcrumb and phone back button lead to where it was opened from (Today, Timeline, Ask…). A proof
+ * file belongs to the letter it proves, never to the Inbox: it opens as that proof, under its letter
+ * (`/letters/:id/proofs/:docId`).
  */
 export default function DocumentPage() {
   const { id } = useParams();
   const q = useDocument(id);
   const doc = q.data?.document;
+  const proof = doc?.source === "proof" && q.data?.proof_of.length ? q.data.proof_of[0]! : null;
   const parent = useOriginParent(HOME);
   // the Inbox's "New" badge clears once the letter itself was shown
-  useMarkLetterSeen(doc && !isReading(doc) ? doc.id : null);
+  useMarkLetterSeen(doc && !proof && !isReading(doc) ? doc.id : null);
 
   return (
     <Page title={doc ? (doc.title ?? doc.filename) : "Letter"} parent={parent} className="pt-4 md:pt-6">
@@ -61,6 +65,9 @@ export default function DocumentPage() {
             }
           />
         )
+      ) : proof ? (
+        // a proof file belongs to the letter it proves: it opens there (Letters, not the Inbox)
+        <Navigate to={proofFileHref(proof.draft_id, q.data.document.id)} replace />
       ) : (
         <DocumentView key={q.data.document.id} detail={q.data} />
       )}

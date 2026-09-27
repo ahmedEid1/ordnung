@@ -146,6 +146,11 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
           <p className="text-[13.5px] text-muted">No open to-dos come from this letter.</p>
         )}
         {detail.drafts.length ? <p className="mt-3 text-[13px] text-muted">Letters you drafted about it stay in Letters.</p> : null}
+        {detail.proof_of.length ? (
+          <p className="mt-3 rounded-xl border border-warn/25 bg-warn-soft px-4 py-3 text-[13.5px] text-warn-ink">
+            This file is also the proof of {detail.proof_of.length === 1 ? "your letter" : "your letters"} {detail.proof_of.map((l) => `“${l.subject}”`).join(", ")}: deleting it removes that proof too.
+          </p>
+        ) : null}
       </Dialog>
     </footer>
   );

@@ -241,6 +241,12 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
     related: related.sort((a, b) => ((a.doc_date ?? "") < (b.doc_date ?? "") ? 1 : -1)),
     suggestions,
     drafts: db.state.drafts.filter((x) => x.doc_id === id),
+    proof_of: db.state.proofs
+      .filter((p) => p.doc_id === id)
+      .flatMap((p) => {
+        const letter = db.state.drafts.find((x) => x.id === p.draft_id);
+        return letter ? [{ draft_id: letter.id, subject: letter.subject, proof_id: p.id, kind: p.kind }] : [];
+      }),
   };
 }
 
@@ -345,6 +351,8 @@ function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDr
     kind: body.kind,
     language: body.language ?? "de",
     tracking_number: null,
+    answered_on: null,
+    answer_doc_id: null,
     party_id: party?.id ?? null,
     case_id: contract?.case_id ?? doc?.case_id ?? null,
     doc_id: body.doc_id ?? null,
@@ -453,6 +461,8 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     kind: body.kind,
     language: body.language ?? "de",
     tracking_number: null,
+    answered_on: null,
+    answer_doc_id: null,
     party_id: partyId,
     case_id: body.case_id ?? contract?.case_id ?? doc?.case_id ?? null,
     doc_id: body.doc_id ?? null,
@@ -1088,6 +1098,8 @@ const routes: [string, string, Handler][] = [
     "/drafts/:id",
     ({ db, params, body }) => {
       const d = db.state.drafts.find((x) => x.id === params.id) ?? notFound("Unknown letter.");
+      // like the API: a sent letter stays as it went out
+      if (d.status === "sent") throw new HttpError(409, "This letter was sent: its text stays as it went out, so the PDF and the Nachweis show what you sent. To write again, start a new letter.");
       Object.assign(d, pick<Draft>(body, ["subject", "body", "body_translation", "sender_block", "recipient_block", "place_date", "enclosures", "status"]), { updated_at: nowTs() });
       d.checks = checksFor(db, d);
       return d;
@@ -1109,11 +1121,16 @@ const routes: [string, string, Handler][] = [
   [
     "DELETE",
     "/drafts/:id",
-    ({ db, params }) => {
-      // like the API: the letter's proofs and their files go with it
+    ({ db, params, query }) => {
+      // like the API: the letter's proofs go with it, and their files too unless the person keeps them
       const files = new Set(db.state.proofs.filter((p) => p.draft_id === params.id && p.doc_id).map((p) => p.doc_id!));
       db.state.proofs = db.state.proofs.filter((p) => p.draft_id !== params.id);
-      db.state.documents = db.state.documents.filter((d) => !(files.has(d.id) && d.source === "proof"));
+      const inUse = new Set(db.state.proofs.map((p) => p.doc_id));
+      if (query.get("keep_proof_files") === "true") {
+        for (const d of db.state.documents) if (files.has(d.id) && d.source === "proof" && !inUse.has(d.id)) d.source = "upload";
+      } else {
+        db.state.documents = db.state.documents.filter((d) => !(files.has(d.id) && d.source === "proof" && !inUse.has(d.id)));
+      }
       db.state.drafts = db.state.drafts.filter((d) => d.id !== params.id);
       return new Reply(204);
     },
@@ -1127,14 +1144,19 @@ const routes: [string, string, Handler][] = [
       const date = b.date ?? db.today;
       const tracking = checkTracking(b.tracking_number ?? "");
       if (tracking.state === "invalid") throw new HttpError(422, tracking.message);
+      const channel = b.channel ?? "letter";
+      // like the API: only a registered letter has a tracking number; another channel drops a stored one
+      if (tracking.state === "valid" && channel !== "registered_letter") throw new HttpError(422, "Only a registered letter (Einschreiben) has a tracking number.");
       d.status = "sent";
-      d.sent_channel = b.channel ?? "letter";
+      d.sent_channel = channel;
       d.sent_at = `${date}T12:00:00Z`;
       if (tracking.state === "valid") d.tracking_number = tracking.number;
+      else if (channel !== "registered_letter") d.tracking_number = null;
       d.updated_at = nowTs();
       d.checks = checksFor(db, d);
       const party = db.party(d.party_id);
       const followup = sentFollowup(d, date);
+      const before = db.state.items.find((i) => i.id === followup.id);
       db.state.items = db.state.items.filter((i) => i.id !== followup.id); // marking it sent again replaces it
       db.state.items.push(
         makeItem({
@@ -1149,6 +1171,8 @@ const routes: [string, string, Handler][] = [
           doc_id: d.doc_id,
           origin: "draft",
           grounding: "user",
+          // correcting how or when it went reopens nothing
+          status: before && (before.status === "done" || before.status === "dismissed") ? before.status : "open",
           created_at: nowTs(),
           updated_at: nowTs(),
         }),

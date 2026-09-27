@@ -2,7 +2,9 @@
  * Tracking numbers, checked as the person types — the same written policy as the server
  * (`src/ordnung/drafts/tracking.py`), which checks again when the number is saved:
  *
- * - spaces, dots, hyphens and slashes are dropped and letters upper-cased;
+ * - compatibility forms are folded (NFKC: full-width `ＲＴ１２３` is `RT123`), every other decimal digit
+ *   becomes its ASCII digit (Arabic-Indic `١٢٣` is `123`), spaces, dots, hyphens and slashes are
+ *   dropped and letters upper-cased — only ASCII is kept;
  * - UPU S10 (`RT 123 456 785 DE`: two letters, eight digits, a check digit, two letters) is accepted
  *   only with the right check digit (weights 8 6 4 2 3 5 9 7, 11 minus the sum modulo 11; 10 → 0,
  *   11 → 5); one that doesn't start with R is kept with a note (registered items do);
@@ -29,9 +31,25 @@ export type TrackingCheck =
   | { state: "invalid"; message: string }
   | { state: "valid"; number: string; display: string; checked: boolean; note: string | null };
 
-/** `rt 123-456 785 de` → `RT123456785DE`. */
+const DECIMAL = /\p{Nd}/u;
+
+/** Every decimal digit, of any script, as its ASCII digit. Unicode encodes each script's digits as
+ * runs of ten starting at zero, so a digit's value is its distance from the start of its run. */
+export function asciiDigits(text: string): string {
+  return text.replace(/\p{Nd}/gu, (digit) => {
+    const code = digit.codePointAt(0)!;
+    if (code < 128) return digit;
+    let start = code;
+    while (start > 0 && DECIMAL.test(String.fromCodePoint(start - 1))) start -= 1;
+    return String((code - start) % 10);
+  });
+}
+
+/** `rt 123-456 785 de` → `RT123456785DE`, `ＲＲ１２３` → `RR123`, `١٢٣` → `123`. */
 export function normaliseTracking(text: string): string {
-  return text.replace(/[\s./-]+/g, "").toUpperCase();
+  return asciiDigits(text.normalize("NFKC"))
+    .replace(/[\s./-]+/g, "")
+    .toUpperCase();
 }
 
 /** The S10 check digit of eight digits (`"12345678"` → 5). */
@@ -42,7 +60,8 @@ export function s10CheckDigit(serial: string): number {
   return check === 10 ? 0 : check === 11 ? 5 : check;
 }
 
-/** A normalised number grouped for reading (`RT 123 456 785 DE`, `1234 5678 9012`). */
+/** A normalised number grouped for reading (`RT 123 456 785 DE`, `1234 5678 9012`) with plain spaces, so it
+ * copies cleanly — show it in a `whitespace-nowrap` element so it never breaks inside. */
 export function displayTracking(number: string): string {
   if (S10.test(number)) return `${number.slice(0, 2)} ${number.slice(2, 5)} ${number.slice(5, 8)} ${number.slice(8, 11)} ${number.slice(11)}`;
   if (DOMESTIC.test(number)) return `${number.slice(0, 4)} ${number.slice(4, 8)} ${number.slice(8)}`;

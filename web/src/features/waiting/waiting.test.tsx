@@ -56,7 +56,7 @@ describe("Waiting for page", () => {
     expect(within(overdue).getByText(/Call them again and note what they say/)).toBeInTheDocument();
     const waiting = screen.getByRole("region", { name: /^Waiting/ });
     expect(within(waiting).getByText("A written confirmation of the end date")).toBeInTheDocument();
-    expect(within(waiting).getByText(/Tracking number RT 123 456 785 DE/)).toBeInTheDocument();
+    expect(within(waiting).getByText(/Tracking number RT 123 456 785 DE/)).toBeInTheDocument(); // (no-break spaces)
     expect(within(waiting).getByText("Deposit back from the student hall")).toBeInTheDocument();
     expect(within(waiting).getByText(/can't see your bank account/)).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: /A letter may have answered/ })).not.toBeInTheDocument();
@@ -76,10 +76,28 @@ describe("Waiting for page", () => {
     expect(within(answered).getByRole("link", { name: "Read their letter" })).toHaveAttribute("href", "/documents/doc_wohnbau_answer");
     // nothing is closed until the person says so
     expect(calls.some((c) => c.method === "PATCH")).toBe(false);
-    await user.click(within(answered).getByRole("button", { name: /It's answered — close this/ }));
-    await waitFor(() => expect(calls.find((c) => c.method === "PATCH" && c.path === "/items/itm_followup_wohnbau")?.body).toEqual({ status: "done" }));
-    expect(await screen.findByText("Follow-up closed")).toBeInTheDocument();
+    await user.click(within(answered).getByRole("button", { name: "It's the answer — close this" }));
+    // the person's word, naming the letter: only now does the Nachweis say "answer received"
+    await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/drafts/drf_wohnbau/answered")?.body).toEqual({ doc_id: "doc_wohnbau_answer" }));
+    expect(await screen.findByText("Marked as answered")).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("region", { name: /A letter may have answered/ })).not.toBeInTheDocument());
+    // the row is gone: focus is on the row now in its place, never on <body>
+    await waitFor(() => expect(document.activeElement?.hasAttribute("data-waiting-heading") || document.activeElement?.tagName === "H1").toBe(true));
+  });
+
+  it("closes a letter that is waiting or overdue when the answer came by phone or e-mail — with Undo", async () => {
+    const { calls } = useMockApi();
+    const user = userEvent.setup();
+    renderWaiting();
+    const letter = (await screen.findByText("A written confirmation of the end date")).closest("li")!;
+    await user.click(within(letter as HTMLElement).getByRole("button", { name: "I got an answer — close this" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/drafts/drf_gym/answered")?.body).toEqual({ doc_id: null }));
+    await waitFor(() => expect(screen.queryByText("A written confirmation of the end date")).not.toBeInTheDocument());
+    await user.click(await screen.findByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.path === "/drafts/drf_gym/answered")).toBe(true));
+    expect(await screen.findByText("A written confirmation of the end date")).toBeInTheDocument();
+    // back in its place, with focus on it
+    await waitFor(() => expect(screen.getByRole("heading", { name: "A written confirmation of the end date" })).toHaveFocus());
   });
 
   it("marks money as received and a phone promise as kept", async () => {
@@ -90,8 +108,9 @@ describe("Waiting for page", () => {
     await user.click(within(deposit as HTMLElement).getByRole("button", { name: "It arrived" }));
     await waitFor(() => expect(calls.find((c) => c.method === "PATCH" && c.path === "/items/itm_deposit_hall")?.body).toEqual({ status: "done" }));
     expect(await screen.findByText("Marked as received")).toBeInTheDocument();
-    // gone from the list (the toast still names it, with Undo)
+    // gone from the list (the toast still names it, with Undo), focus on the row now in its place
     await waitFor(() => expect(within(screen.getByRole("region", { name: /^Waiting/ })).queryByText("Deposit back from the student hall")).not.toBeInTheDocument());
+    await waitFor(() => expect(document.activeElement?.hasAttribute("data-waiting-heading")).toBe(true));
 
     const call = screen.getByText("Written confirmation of the cancellation").closest("li")!;
     await user.click(within(call as HTMLElement).getByRole("button", { name: "They kept it" }));
@@ -118,5 +137,7 @@ describe("Letters page", () => {
     expect(link).toHaveAttribute("href", "/letters/waiting");
     await waitFor(() => expect(link).toHaveTextContent("4"));
     expect(link).toHaveAccessibleName(/1 overdue/);
+    // overdue is red here as on the Waiting page (the Inbox's count does the same)
+    expect(link.querySelector("[class*='danger']")).not.toBeNull();
   });
 });

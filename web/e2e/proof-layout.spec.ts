@@ -174,3 +174,55 @@ for (const scheme of ["light", "dark"] as const) {
     await scan('[role="dialog"]', "drawer with the call form");
   });
 }
+
+test("keyboard focus never falls to <body> after the proof, Waiting-for and call actions", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const { draftId, partyId, partyName } = setup!;
+
+  // tracking number: Remove → the field (with Undo in the toast); Undo → "Change"
+  await open(page, `/letters/${draftId}`);
+  const proof = page.getByRole("region", { name: "Proof of sending" });
+  await proof.getByRole("button", { name: "Remove", exact: true }).click();
+  await expect(proof.getByRole("textbox", { name: "Tracking number" })).toBeFocused();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(proof.getByRole("button", { name: "Change", exact: true })).toBeFocused();
+  // the number never breaks inside: plain spaces in a no-wrap element, no-break spaces in running text
+  expect(await proof.getByText(TRACKING, { exact: true }).evaluate((el) => getComputedStyle(el).whiteSpace)).toBe("nowrap");
+  expect(await proof.getByRole("region", { name: "Timeline" }).getByText(/^Tracking number/).textContent()).toContain("RT 123 456 785 DE");
+
+  // "I got an answer" on the letter's box: the box keeps focus; Undo brings the button back
+  await proof.getByRole("button", { name: "I got an answer — close this" }).click();
+  await expect(page.locator("#proof-waiting")).toBeFocused();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(proof.getByRole("button", { name: "I got an answer — close this" })).toBeVisible();
+
+  // Waiting for: a closed row hands focus to the row now in its place; Undo puts it back on the row
+  await open(page, "/letters/waiting", "Waiting for");
+  const letterRow = page.getByRole("main").getByRole("listitem").filter({ hasText: "A written confirmation of the end date" });
+  await letterRow.getByRole("button", { name: "I got an answer — close this" }).click();
+  await expect(letterRow).toHaveCount(0);
+  await expect(page.locator("[data-waiting-heading]:focus, main h1:focus")).toHaveCount(1);
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByRole("heading", { name: "A written confirmation of the end date" })).toBeFocused();
+
+  // Calls: the form opens on its first field, a failed save focuses what's missing, Save and Cancel
+  // return to "Note a call", a deleted note hands focus to the section heading
+  await page.goto(`/letters?party=${partyId}`);
+  const calls = page.getByRole("dialog", { name: partyName }).getByRole("region", { name: /^Calls/ });
+  await calls.getByRole("button", { name: "Note a call" }).click();
+  const form = calls.getByRole("form", { name: "Note a call" });
+  await expect(form.getByLabel("When")).toBeFocused();
+  await form.getByRole("button", { name: "Save note" }).click();
+  await expect(form.getByLabel("What was said")).toBeFocused();
+  await form.getByRole("button", { name: "Cancel" }).click();
+  await expect(calls.getByRole("button", { name: "Note a call" })).toBeFocused();
+  await calls.getByRole("button", { name: "Note a call" }).click();
+  await form.getByLabel("What was said").fill("A quick call to check the address — nothing promised.");
+  await form.getByRole("button", { name: "Save note" }).click();
+  await expect(calls.getByRole("button", { name: "Note a call" })).toBeFocused();
+  const note = calls.getByRole("listitem").filter({ hasText: "A quick call to check the address" });
+  await note.getByRole("button", { name: /^Delete the note/ }).click();
+  await note.getByRole("group", { name: "Delete this note?" }).getByRole("button", { name: "Delete" }).click();
+  await expect(note).toHaveCount(0);
+  await expect(calls.getByRole("heading", { name: /^Calls/ })).toBeFocused();
+});
