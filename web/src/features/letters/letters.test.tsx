@@ -234,7 +234,9 @@ describe("Letters page", () => {
     const user = userEvent.setup();
     const { router } = renderWithProviders(<LettersPage />, { route: "/letters?kind=objection&doc=doc_tax" });
     const dialog = await screen.findByRole("dialog", { name: "New letter" });
-    expect(await within(dialog).findByText("Einspruch possible")).toBeInTheDocument();
+    // said on phones too: under the letter's name there, beside it from 640 px (UI audit round 1)
+    const pills = await within(dialog).findAllByText("Einspruch possible");
+    expect(pills.map((p) => p.parentElement!.className)).toEqual([expect.stringMatching(/(^| )sm:hidden( |$)/), expect.stringMatching(/(^| )hidden .*sm:inline-flex/)]);
     expect(dialog).toHaveTextContent(/To\s*FM\s*Finanzamt Musterstadt\s*Steuerring 10, 12345 Musterstadt/);
     await user.type(within(dialog).getByLabelText(/Your wishes/), "Laptop is for work");
     await user.click(within(dialog).getByRole("button", { name: /Write the letter/ }));

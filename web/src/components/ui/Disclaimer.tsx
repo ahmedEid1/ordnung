@@ -23,7 +23,10 @@ export const ADVICE_LINKS: Record<"residence" | "rent" | "consumer" | "tax" | "f
 
 /**
  * "Unsure? Get independent advice: Mieterverein (tenants' association) ↗." — the links open in a
- * new tab and are 24 px tall targets without spreading the lines of the text around them.
+ * new tab; their padding makes them taller targets without spreading the lines of the text around
+ * them. They wrap like the sentence they are in: an inline box, the icon and the full stop joined to
+ * the last word (as a block of their own they jumped to a new line on a phone, the icon at the far
+ * edge and the full stop alone under it — UI audit round 1).
  */
 export function AdviceLinks({ advice, className }: { advice: AdviceLink[]; className?: string }) {
   if (!advice.length) return null;
@@ -37,18 +40,18 @@ export function AdviceLinks({ advice, className }: { advice: AdviceLink[]; class
             href={a.href}
             target="_blank"
             rel="noreferrer noopener"
-            className="-my-0.5 inline-flex max-w-full items-center gap-1 rounded-sm py-0.5 font-medium text-accent underline-offset-2 hover:underline"
+            data-advice-link
+            className="-my-0.5 rounded-sm py-0.5 font-medium text-accent underline-offset-2 [overflow-wrap:anywhere] hover:underline"
           >
-            <span>
-              <span lang="de">{a.label}</span>
-              {a.note ? ` (${a.note})` : null}
-            </span>
-            <ExternalLink className="size-3 shrink-0" aria-hidden />
-            <span className="sr-only">(opens in a new tab)</span>
+            <span lang="de">{a.label}</span>
+            {a.note ? ` (${a.note})` : null}
+            <span className="sr-only"> (opens in a new tab)</span>
+            {"⁠"}
+            <ExternalLink className="ml-1 inline size-3 align-[-0.1em]" aria-hidden />
           </a>
         </Fragment>
       ))}
-      .
+      {"⁠."}
     </span>
   );
 }
