@@ -41,6 +41,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from ordnung import __version__
+from ordnung.assistant.mcp_install import McpClient
 from ordnung.config import REPO_DIR, Paths, default_data_dir, resolve_paths
 from ordnung.server import DEFAULT_HOST, DEFAULT_PORT, ServerInfo, advertise, generate_token, running_server
 
@@ -142,10 +143,11 @@ def main(
 # --------------------------------------------------------------------------------------------------
 
 
-def _fail(message: str, hint: str | None = None, code: int = 1) -> typer.Exit:
-    err_console.print(f"[red]✗[/] {escape(message)}")
+def _fail(message: str, hint: str | None = None, code: int = 1, *, soft_wrap: bool = False) -> typer.Exit:
+    """Print an error (and a hint); ``soft_wrap`` for a message with a path, so no line break splits it."""
+    err_console.print(f"[red]✗[/] {escape(message)}", soft_wrap=soft_wrap)
     if hint:
-        err_console.print(f"  [dim]{escape(hint)}[/]")
+        err_console.print(f"  [dim]{escape(hint)}[/]", soft_wrap=soft_wrap)
     return typer.Exit(code)
 
 
@@ -1052,25 +1054,191 @@ def eval_(ctx: typer.Context) -> None:
     raise typer.Exit(int(code or 0))
 
 
-@app.command()
+mcp_app = typer.Typer(
+    name="mcp",
+    help="Ordnung's read-only MCP tools: serve them over stdio, or install them into Claude "
+    "(the options below are for serving; `install` takes its own).",
+    add_completion=False,
+    rich_markup_mode="rich",
+)
+app.add_typer(mcp_app)
+
+RulesOnlyOption = Annotated[
+    bool,
+    typer.Option(
+        "--rules-only",
+        help="Serve only the deadline, holiday, working-day and IBAN tools: no data folder, nothing personal.",
+    ),
+]
+
+
+@mcp_app.callback(invoke_without_command=True)
 def mcp(
     ctx: typer.Context,
     data_dir: DataDirOption = None,
     print_config: Annotated[
         bool, typer.Option("--print-config", help="Print the MCP config JSON and exit.")
     ] = False,
+    rules_only: RulesOnlyOption = False,
+    ledger_only: Annotated[
+        bool,
+        typer.Option(
+            "--ledger-only",
+            hidden=True,
+            help="Only the ledger tools, without the rules tools (Ask's server: Ask never computes dates).",
+        ),
+    ] = False,
 ) -> None:
     """Serve Ordnung's read-only tools over stdio (Ask starts this; nothing else is printed)."""
+    if ctx.invoked_subcommand is not None:
+        given = [
+            name
+            for name, value in (
+                ("--data-dir", data_dir),
+                ("--print-config", print_config),
+                ("--rules-only", rules_only),
+                ("--ledger-only", ledger_only),
+            )
+            if value
+        ]
+        if given:
+            raise _fail(
+                f"{', '.join(given)} before “{ctx.invoked_subcommand}” would not be used.",
+                hint=f"Put the options after it, e.g. ordnung mcp {ctx.invoked_subcommand} --client "
+                "claude-desktop (the rules tools alone), or add --with-ledger --data-dir … for your ledger.",
+            )
+        return
+    if rules_only and ledger_only:
+        raise _fail("--rules-only and --ledger-only exclude each other.")
+    if rules_only:
+        from ordnung.assistant import rules_tools
+
+        if _chosen(ctx, data_dir) is not None:
+            raise _fail(
+                "The rules tools read no data folder, so --data-dir would not be used.",
+                hint="Leave out --data-dir, or leave out --rules-only to serve your ledger too.",
+            )
+
+        if print_config:
+            typer.echo(json.dumps(rules_tools.rules_server_config(), indent=2))
+            return
+        rules_tools.run_rules_only()
+        return
     from ordnung.assistant import mcp_server
 
     folder = _folder(ctx, data_dir)
     if print_config:
-        typer.echo(json.dumps(mcp_server.server_config(folder), indent=2))
+        typer.echo(json.dumps(mcp_server.server_config(folder, rules_tools=not ledger_only), indent=2))
         return
     try:
-        mcp_server.run(folder)
+        mcp_server.run(folder, rules_tools=not ledger_only)
     except FileNotFoundError as exc:
-        raise _fail(str(exc), hint="Pass the data folder with --data-dir.") from None
+        raise _fail(
+            str(exc), hint="Pass the data folder with --data-dir, or use --rules-only.", soft_wrap=True
+        ) from None
+
+
+@mcp_app.command("install")
+def mcp_install(
+    ctx: typer.Context,
+    client: Annotated[
+        McpClient,
+        typer.Option("--client", metavar="CLIENT", help="claude-desktop or claude-code.", show_default=False),
+    ],
+    rules_only: Annotated[
+        bool,
+        typer.Option(
+            "--rules-only/--with-ledger",
+            help="The rules tools alone (the default: no data folder, nothing personal), or also your "
+            "read-only ledger (--with-ledger), which the client and its other tools can then read.",
+        ),
+    ] = True,
+    write: Annotated[
+        bool,
+        typer.Option("--write", help="Merge the entry into the config file (the file is backed up first)."),
+    ] = False,
+    config: Annotated[
+        Path | None,
+        typer.Option(
+            "--config", help="Use this config file instead of the client's usual one.", show_default=False
+        ),
+    ] = None,
+    data_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--data-dir",
+            help="With --with-ledger: your data folder (default: ORDNUNG_HOME or your user data folder).",
+            show_default=False,
+        ),
+    ] = None,
+    remove_ledger: Annotated[
+        bool,
+        typer.Option(
+            "--remove-ledger",
+            help="With the rules tools: also take Ordnung with your data (“ordnung”) out of the config.",
+        ),
+    ] = False,
+) -> None:
+    """Add Ordnung's rules tools (or, with --with-ledger, your ledger too) to Claude Desktop or Claude Code.
+
+    Prints the entry and where it goes; --write merges it in.
+    """
+    from ordnung.assistant import mcp_install as install
+
+    folder = None
+    if rules_only:
+        if _chosen(ctx, data_dir) is not None:  # given after `install` or before `mcp`
+            raise _fail(
+                "The rules tools read no data folder, so --data-dir would not be used.",
+                hint="Add --with-ledger to give the client your ledger, or leave out --data-dir.",
+            )
+    else:
+        if remove_ledger:
+            raise _fail(
+                "--remove-ledger takes your ledger out, --with-ledger puts it in: they exclude each other.",
+                hint="Leave out --with-ledger to install the rules tools alone and remove the ledger.",
+            )
+        folder = _folder(ctx, data_dir)
+        if not Paths(folder).db.is_file():
+            raise _fail(
+                f"There is no Ordnung database in {folder}.",
+                hint="Name your data folder with --data-dir, or leave out --with-ledger for the rules tools alone.",
+                soft_wrap=True,
+            )
+    plan = install.plan_install(client, rules_only=rules_only, data_dir=folder, config=config)
+    # What the client will see, before anything is printed to copy or written.
+    other = install.other_entry_in(plan)
+    note = install.privacy_note(plan, other=other, remove_ledger=remove_ledger)
+    if rules_only and (other is None or remove_ledger):
+        console.print(f"[dim]{escape(note)}[/]", soft_wrap=True)
+    else:
+        console.print(f"[yellow]![/] {escape(note)}", soft_wrap=True)
+    if not write:
+        typer.echo(
+            install.instructions(
+                plan, data_dir=folder, config=config, remove_ledger=remove_ledger and bool(other)
+            )
+        )
+        return
+    try:
+        result = install.write_config(plan, remove_ledger=remove_ledger)
+    except install.InstallError as exc:
+        raise _fail(str(exc), soft_wrap=True) from None
+    except OSError as exc:
+        raise _fail(f"Couldn't write {plan.path}: {exc.strerror or exc}", soft_wrap=True) from None
+    console.print(f"[green]✓[/] {escape(install.written_message(plan, result))}", soft_wrap=True)
+    if result.backup is not None:
+        console.print(f"  The previous version is saved as {escape(str(result.backup))}", soft_wrap=True)
+    if remove_ledger and result.removed is None:
+        where = f"There was no “{install.FULL_SERVER_NAME}” entry in {result.path} to take out."
+        if plan.client == "claude-code":
+            full = install.Plan(
+                client=plan.client, name=install.FULL_SERVER_NAME, entry={}, path=plan.path, rules_only=False
+            )
+            where += f" One added with claude mcp add goes with: {install.claude_code_remove_command(full)}"
+        console.print(f"  {escape(where)}", soft_wrap=True)
+    if result.status != "unchanged" or result.removed is not None:
+        console.print(f"  {install.NEXT_STEP[plan.client]}")
 
 
 @app.command()

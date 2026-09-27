@@ -9,6 +9,8 @@ grundversorgung_stromgvv_gasgvv_cancellation, ``573c`` = bgb_573c_residential_le
 
 from __future__ import annotations
 
+import json
+import re
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -931,6 +933,25 @@ def test_docs_mention_every_rule_and_the_check_date() -> None:
     assert "25 September 2026" in text and catalog.LAST_CHECKED == "2026-09-25"
 
 
+def test_the_static_demo_shows_the_catalogs_texts_for_the_engines_rule_ids() -> None:
+    """Reviewer repro: the static demo's rules list (``web/src/mocks/data/system.ts``) carries entries by
+    the engine's ids; their title, citation and summary are the catalog's, word for word — the demo
+    once cited § 188 Abs. 1, 2 BGB for the month-end clause of Abs. 3."""
+    mocks = Path(__file__).resolve().parents[1] / "web" / "src" / "mocks" / "data" / "system.ts"
+    shown = {
+        found.group(1): found.group(0)
+        for found in re.finditer(
+            r'\{ id: "([a-z0-9_]+)", title: .*\},$', mocks.read_text(encoding="utf-8"), re.M
+        )
+    }
+    engine_ids = sorted(set(shown) & set(catalog.RULES))
+    assert {"bgb_187_1", "bgb_188", "bgb_193", "private_sender_arrival"} <= set(engine_ids)
+    for rule_id in engine_ids:
+        rule = catalog.get_rule(rule_id)
+        for field in (rule.title, rule.citation, rule.summary):
+            assert json.dumps(field, ensure_ascii=False) in shown[rule_id], (rule_id, field)
+
+
 def test_missing_conclusion_date_uses_start_date() -> None:
     result = compute_contract(
         terms(
@@ -986,3 +1007,36 @@ def test_energy_special_contract_mentions_section_310() -> None:
         terms(category="energy", concluded_date="2024-01-01", notice_value=1, notice_unit="months"), ctx()
     )
     assert any("§ 310 Abs. 2 BGB" in n for n in result.notes)
+
+
+def test_a_contract_notice_counted_back_over_a_partial_holiday_is_named() -> None:
+    """A gym contract in Bavaria: the letter must be posted by Fri 11 Aug 2028 to arrive by Thu 17 Aug, but
+    where Tue 15 Aug is a holiday (Munich) the post needs a working day more. A price-increase window on
+    that day itself never moves: its safe date is a working day earlier there."""
+    gym = terms(
+        category="gym",
+        party_kind="gym",
+        concluded_date="2027-09-10",
+        start_date="2027-09-18",
+        initial_term_months=12,
+        notice_value=1,
+        notice_unit="months",
+        notice_basis="end_of_term",
+    )
+    result = compute_contract(gym, ctx(today="2028-08-01", region="BY"))
+    assert (result.cancel_by, result.send_by, result.confidence) == ("2028-08-17", "2028-08-11", "high")
+    assert [w for w in result.warnings if "Mariä Himmelfahrt" in w] == [
+        "Tue 15 Aug 2028 is Mariä Himmelfahrt, a public holiday only in the communities of Bayern with more "
+        "Catholic than Protestant residents (as the Landesamt für Statistik lists them; Munich among them), "
+        "which is not counted here. Where it holds, the send-by or safe date, counted back over it, is a "
+        "working day earlier: act a working day before it to be safe."
+    ]
+    assert compute_contract(gym, ctx(today="2028-08-01", region="HH")).warnings == []
+    window = price_increase_window(
+        D("2025-08-16"), "energy", D("2025-07-01"), ctx(today="2025-07-10", region="BY")
+    )
+    assert (window.due_date, window.safe_date) == ("2025-08-15", "2025-08-15")
+    assert any(
+        "this deadline does not move off it, so the safe date is a working day earlier" in w
+        for w in window.warnings
+    )

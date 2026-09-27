@@ -69,11 +69,11 @@ describe("Ask page", () => {
     const user = userEvent.setup();
     const first = renderWithProviders(<AskPage />, { route: "/ask" });
     await user.click(screen.getByRole("button", { name: "Which deadlines are coming up in October?" }));
-    await screen.findByRole("heading", { name: "Sources" }, { timeout: 3000 });
+    await screen.findByRole("heading", { name: "Sources" }, { timeout: 6000 });
     const thread = localStorage.getItem(THREAD_STORAGE_KEY);
 
     await user.type(screen.getByLabelText("Your question"), "What do I have to pay before 15 October?{Enter}");
-    await waitFor(() => expect(screen.getAllByRole("heading", { name: "Sources" })).toHaveLength(2), { timeout: 3000 });
+    await waitFor(() => expect(screen.getAllByRole("heading", { name: "Sources" })).toHaveLength(2), { timeout: 6000 });
     expect(calls.filter((c) => c.path === "/ask")[1]?.body).toMatchObject({ thread_id: thread });
     first.unmount();
 
@@ -85,7 +85,7 @@ describe("Ask page", () => {
     await user.click(screen.getByRole("button", { name: "New chat" }));
     expect(screen.getByRole("heading", { level: 1, name: "Ask about your letters" })).toBeInTheDocument();
     expect(localStorage.getItem(THREAD_STORAGE_KEY)).toBeNull();
-  });
+  }, 20_000); // two recorded answers stream word by word: slow on a busy machine
 
   it("an unknown question in the demo gets the friendly 'install to ask your own' answer", async () => {
     useMockApi();

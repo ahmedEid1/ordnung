@@ -6,6 +6,7 @@ import { qk } from "@/api/hooks";
 import type { DocumentDetail } from "@/api/types";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { createMockServer } from "@/mocks/server";
+import { toast } from "@/components/ui/Toast";
 import { DocumentView } from "./DocumentView";
 import { DocumentWarnings } from "./Warnings";
 import { makeDetail, makeDoc, makeItem } from "./fixtures";
@@ -157,6 +158,38 @@ describe("warnings & Please check", () => {
     const [url, init] = fetchSpy.mock.calls[0]! as [string, RequestInit];
     expect(url).toBe("/api/documents/doc_parking");
     expect(JSON.parse(String(init.body))).toEqual({ received_date: "2026-09-27" });
+  });
+
+  it("says a late arrival may not move a company's date, and what saving the day did", async () => {
+    // reviewer repro: the engine still counted from the day the letter usually counts as delivered,
+    // but the toast said "Counting from <arrival>, when the letter arrived"
+    const gym = await detailFromMock("doc_gym_price");
+    const company = { ...gym, party: { ...gym.party!, kind: "company" as const } };
+    const item = company.items.find((i) => i.id === "itm_gym_price")!;
+    const late = { label: "It arrived on Sun 27 Sep 2026, later than …", date: "2026-09-21", rule_id: "private_sender_late_arrival", citation: null };
+    const recomputed = {
+      ...company,
+      items: [{ ...item, computation: { ...item.computation!, rule_ids: ["private_sender_late_arrival", "bgb_187_1"], steps: [late] } }],
+    };
+    fetchSpy.mockImplementation(async (url: string, init?: RequestInit) => {
+      const body = init?.method === "PATCH" ? company.document : url === "/api/documents/doc_gym_price" ? recomputed : {};
+      return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+    const success = vi.spyOn(toast, "success");
+    renderWithProviders(<DocumentWarnings detail={company} />, { client: client() });
+    expect(screen.getByText(/unless it took longer than letters usually do: this sender may be an authority/)).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Yesterday" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(success).toHaveBeenCalled());
+    expect(success.mock.calls[0]![1]!.description).toMatch(/^The letter arrived later than letters usually take, so to be safe we still count from Mon 21 Sep/);
+    success.mockRestore();
+  });
+
+  it("asks a gym's letter's arrival day plainly: it always counts from that day", async () => {
+    renderWithProviders(<DocumentWarnings detail={await detailFromMock("doc_gym_price")} />, { client: client() });
+    expect(screen.getByText("When did this letter arrive?")).toBeInTheDocument();
+    expect(screen.queryByText(/may be an authority/)).toBeNull();
   });
 
   it("renders nothing when all is well", () => {

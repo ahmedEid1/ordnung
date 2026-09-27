@@ -56,6 +56,14 @@ class Usage(BaseModel):
     turns: int = 0
 
 
+class ToolCall(BaseModel):
+    """One tool call the model made while answering: the tool, its arguments and the result text."""
+
+    name: str
+    input: dict[str, Any] = Field(default_factory=dict)
+    result: str | None = None
+
+
 class LLMResponse(BaseModel):
     text: str = ""
     data: dict[str, Any] | None = None
@@ -63,6 +71,8 @@ class LLMResponse(BaseModel):
     model: str = ""
     cache_hit: bool = False
     backend: str = ""
+    #: The tool calls of a ``complete`` call, in order (empty without tools; ``stream`` yields them as events).
+    tool_calls: list[ToolCall] = Field(default_factory=list)
 
 
 class StreamEvent(BaseModel):
@@ -72,6 +82,8 @@ class StreamEvent(BaseModel):
     input: dict[str, Any] | None = None
     response: LLMResponse | None = None
     error: str | None = None
+    #: Pairs a ``tool_result`` with its ``tool_use``: parallel calls may answer out of order.
+    tool_use_id: str | None = None
 
 
 class LLMError(RuntimeError):

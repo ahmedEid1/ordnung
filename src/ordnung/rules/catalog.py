@@ -316,6 +316,41 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
+        "private_sender_arrival",
+        "Letters from companies count from arrival",
+        "§ 130 Abs. 1 BGB",
+        "Deemed delivery (the 4-day rule) applies only to letters from authorities. A letter from a "
+        "company, landlord, bank or other private sender takes effect when it arrives, so a period in it "
+        "runs from that day. Without the day it arrived, Ordnung counts from the letter's date, the "
+        "earliest plausible start.",
+        f"{_GII}/bgb/__130.html",
+        None,
+    ),
+    (
+        "private_sender_late_arrival",
+        "Arriving late: the earlier, safe start",
+        "§ 130 Abs. 1 BGB; Ordnung safety policy (earliest plausible date)",
+        "Whether a sender is an authority is read from its letter, not known: a public body's Bescheid "
+        "may come from a sender filed as a company, an insurer, a utility or an employer, or name itself "
+        "in its own words. When such a letter arrived later than a letter usually counts as delivered "
+        "(a few days after posting, or the day after it was made available in a portal), and the "
+        "deadline from the day it arrived would be later, Ordnung counts from that earlier day. The later "
+        "arrival counts once it can be shown — for a private sender's letter and an authority's alike — "
+        "and the warning gives the date from the day it arrived.",
+        f"{_GII}/bgb/__130.html",
+        None,
+    ),
+    (
+        "private_sender_no_delivery",
+        "Letters from companies: no delivery days",
+        "§ 187 Abs. 1 BGB",
+        "Deemed delivery (the 4-day rule) applies only to letters from authorities. When a company's, "
+        "landlord's or other private sender's letter counts a period from its own date or another date it "
+        "names, no delivery days are added: the period runs from that date, whenever the letter arrived.",
+        f"{_GII}/bgb/__187.html",
+        None,
+    ),
+    (
         "early_receipt",
         "Arriving early changes nothing",
         "BFH X R 96/98; BSG B 14 AS 12/09 R; BVerwG 6 C 3.22",

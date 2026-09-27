@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  arrivalSavedNote,
   chooseMainAction,
   decisionSuggestion,
   incomingMoney,
@@ -125,6 +126,56 @@ describe("what needs the person's eyes", () => {
     const confirmed = { ...it1, computation: makeReceipt({ rule_ids: ["receipt_user", "bgb188_weeks"] }) };
     expect(needsArrivalDate(confirmed, { received_date: "2026-09-25" })).toBe(false);
     expect(needsArrivalDate(makeItem(), { received_date: null })).toBe(false);
+  });
+
+  it("asks for the arrival date when the engine counted a private sender's letter from its arrival", () => {
+    // read as deemed delivery, but a company's letter has none: the engine counts from arrival (§ 130 BGB)
+    const spec = { type: "relative" as const, date: null, time: null, anchor: "deemed_delivery" as const, anchor_date: null, amount: 14, unit: "days" as const, delivery_rule: "de_admin_post" as const, shift_rule: "auto" as const, nature: "payment" as const, legal_basis: null, text: "" };
+    const company = makeItem({ date_spec: spec, computation: makeReceipt({ rule_ids: ["private_sender_arrival", "bgb_187_1"], confidence: "low" }) });
+    expect(needsArrivalDate(company, { received_date: null })).toBe(true);
+    expect(needsArrivalDate(company, { received_date: "2026-09-25" })).toBe(false);
+    expect(needsArrivalDate({ ...company, status: "done" }, { received_date: null })).toBe(false);
+    // an authority's letter keeps its deemed delivery: nothing to ask
+    const authority = { ...company, computation: makeReceipt({ rule_ids: ["posting_day", "vwvfg_41_2"] }) };
+    expect(needsArrivalDate(authority, { received_date: null })).toBe(false);
+  });
+
+  it("asks for the arrival date for a private sender's letter whose date is missing too", () => {
+    // the engine could compute no date (it needs the arrival day), but still says which rule it applied
+    const spec = { type: "relative" as const, date: null, time: null, anchor: "deemed_delivery" as const, anchor_date: null, amount: 4, unit: "weeks" as const, delivery_rule: "de_admin_post" as const, shift_rule: "auto" as const, nature: "objection" as const, legal_basis: null, text: "" };
+    const undated = makeItem({ date_spec: spec, due_date: null, send_by: null, computation: makeReceipt({ due_date: null, send_by: null, rule_ids: ["private_sender_arrival"], confidence: "low" }) });
+    expect(needsArrivalDate(undated, { received_date: null })).toBe(true);
+    // the rule id asks, not the stored reading: deemed delivery alone never does
+    const silent = { ...undated, computation: makeReceipt({ due_date: null, send_by: null, rule_ids: [], confidence: "low" }) };
+    expect(needsArrivalDate(silent, { received_date: null })).toBe(false);
+  });
+
+  it("says what saving the arrival day did, from the recomputed to-dos", () => {
+    // reviewer repro: a company's letter dated Fri 18 Sep arrived Tue 22 Sep; the engine still counts
+    // from Mon 21 Sep, when it would usually count as delivered — "Counting from 22 Sep" was false
+    const late = { label: "It arrived on Tue 22 Sep 2026, later than …", date: "2026-09-21", rule_id: "private_sender_late_arrival", citation: null };
+    const capped = makeItem({ id: "itm_a", title: "Pay the invoice", computation: makeReceipt({ rule_ids: ["private_sender_late_arrival", "bgb_187_1"], steps: [late], confidence: "medium" }) });
+    const counted = makeItem({ id: "itm_b", title: "Object", computation: makeReceipt({ rule_ids: ["private_sender_arrival", "bgb_187_1"] }) });
+    expect(arrivalSavedNote("2026-09-22", [counted])).toBe("Counting from Tue 22 Sep, when the letter arrived.");
+    expect(arrivalSavedNote("2026-09-22", [capped])).toBe(
+      "The letter arrived later than letters usually take, so to be safe we still count from Mon 21 Sep, when it would usually count as delivered. See “Why this date?”.",
+    );
+    expect(arrivalSavedNote("2026-09-22", [counted, capped])).toBe(
+      "Counting from Tue 22 Sep, when the letter arrived — but for “Pay the invoice” the letter arrived later than letters usually take, so to be safe we still count from Mon 21 Sep, when it would usually count as delivered. See “Why this date?”.",
+    );
+    const other = { ...capped, id: "itm_c" };
+    expect(arrivalSavedNote("2026-09-22", [counted, capped, other])).toMatch(/^Counting from Tue 22 Sep, when the letter arrived — but for 2 of these dates the letter/);
+    // without the step's date: no made-up day
+    const bare = { ...capped, computation: makeReceipt({ rule_ids: ["private_sender_late_arrival"] }) };
+    expect(arrivalSavedNote("2026-09-22", [bare])).toContain("we still count from an earlier day, when");
+  });
+
+  it("does not ask for the arrival date when a private sender's period runs from a date the letter gives", () => {
+    // "14 days from the invoice date" read with a delivery rule: the rule goes, the invoice date stays,
+    // so the arrival day would change nothing (the engine says private_sender_no_delivery)
+    const spec = { type: "relative" as const, date: null, time: null, anchor: "document_date" as const, anchor_date: null, amount: 14, unit: "days" as const, delivery_rule: "de_admin_post" as const, shift_rule: "auto" as const, nature: "payment" as const, legal_basis: null, text: "" };
+    const invoice = makeItem({ date_spec: spec, computation: makeReceipt({ rule_ids: ["private_sender_no_delivery", "bgb_187_1"] }) });
+    expect(needsArrivalDate(invoice, { received_date: null })).toBe(false);
   });
 
   it("finds the active scam warning", () => {

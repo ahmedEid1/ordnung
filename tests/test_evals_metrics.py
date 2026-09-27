@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evals import metrics  # noqa: E402
+from evals import metrics, report  # noqa: E402
 from evals.metrics import (  # noqa: E402
     INJECTION_RE,
     SCAM_RE,
@@ -38,9 +38,10 @@ from evals.metrics import (  # noqa: E402
     sender_matches,
     summarise_condition,
     taxonomy,
+    tool_backing,
     wilson_interval,
 )
-from evals.records import Entry, PredictedItem, Prediction, TruthItem  # noqa: E402
+from evals.records import Entry, PredictedItem, Prediction, ToolUse, TruthItem  # noqa: E402
 
 # --------------------------------------------------------------------------------------------------
 # Builders
@@ -694,3 +695,268 @@ def test_warning_patterns_do_not_fire_on_ordinary_wording() -> None:
         UNCERTAINTY_RE, ["03/06/2026 could be read as 3 June or 6 March (day/month vs month/day)."]
     )
     assert not mentions(UNCERTAINTY_RE, ["The letter doesn't leave anything unclear."])
+
+
+# --------------------------------------------------------------------------------------------------
+# Tool use (a condition whose model had tools)
+# --------------------------------------------------------------------------------------------------
+
+
+def _deadline(due: str | None, *, ok: bool = True) -> ToolUse:
+    return ToolUse(name="compute_deadline", ok=ok, due_date=due, error=None if ok else "refused")
+
+
+def test_final_dates_are_classified_against_the_letters_tool_dates() -> None:
+    assert tool_backing("2026-06-05", []) == "no_tool_date"
+    assert tool_backing("2026-06-05", ["2026-06-04", "2026-06-05"]) == "tool_date"
+    assert tool_backing("2026-06-05T00:00", ["2026-06-05"]) == "tool_date"
+    assert tool_backing("2026-06-06", ["2026-06-05"]) == "overrode_tool"
+
+    entry = make_entry()  # expects 2026-06-05
+    tools = [_deadline(None, ok=False), _deadline("2026-06-04"), ToolUse(name="german_holidays")]
+    overrode = score_document(entry, prediction(entry, [item()], condition="llm_rules_tool", tools=tools))
+    (outcome,) = overrode.scored_items
+    assert (outcome.outcome, outcome.backing, outcome.tool_had_truth) == ("correct", "overrode_tool", False)
+    assert overrode.tool_calls == {"compute_deadline": 2, "german_holidays": 1}
+    assert (
+        overrode.tool_refusals == 1 and overrode.tool_dates == ["2026-06-04"] and overrode.deadline_calls == 2
+    )
+
+    trusted = score_document(
+        entry,
+        prediction(
+            entry,
+            [item("deadline", "2026-06-04")],
+            condition="llm_rules_tool",
+            tools=[_deadline("2026-06-04")],
+        ),
+    )
+    assert (trusted.scored_items[0].backing, trusted.scored_items[0].outcome) == ("tool_date", "wrong")
+
+    unused = score_document(entry, prediction(entry, [item()], condition="llm_rules_tool", tools=[]))
+    assert unused.scored_items[0].backing == "no_tool_date" and unused.tool_calls == {}
+    declined = score_document(
+        entry, prediction(entry, [item("deadline", None)], condition="llm_rules_tool", tools=[])
+    )
+    assert declined.scored_items[0].backing is None  # no final date to compare
+
+    without = score_document(entry, prediction(entry, [item()]))  # a condition without tools
+    assert without.tool_calls is None and without.scored_items[0].backing is None
+
+
+def test_calls_belong_to_the_item_whose_sentence_they_were_given() -> None:
+    """A letter with a fixed compliance date and a court-action period: the tool was asked only about
+    the period, so the fixed date is not an "override" of the tool's answer."""
+    entry = make_entry(
+        items=[truth_item("task", "2026-01-20")], optional=[truth_item("deadline", "2026-01-27")]
+    )
+    fixed = item("task", "2026-01-20", quote="Bitte räumen Sie das Grundstück bis zum 20.01.2026.")
+    period = item(
+        "deadline", "2026-01-27", quote="Die Klage muss binnen eines Monats ab Bekanntgabe erhoben werden."
+    )
+    call = ToolUse(
+        name="compute_deadline",
+        input={
+            "spec": {
+                "type": "relative",
+                "text": "Die Klage muss binnen eines Monats ab Bekanntgabe erhoben werden.",
+            }
+        },
+        due_date="2026-01-27",
+    )
+    score = score_document(
+        entry, prediction(entry, [fixed, period], condition="llm_rules_tool", tools=[call])
+    )
+    (outcome,) = score.scored_items
+    assert outcome.backing == "other_obligation" and outcome.outcome == "correct"
+    assert score.tool_dates == ["2026-01-27"]  # the letter still shows what the tool said
+    answer = prediction(entry, [fixed, period], tools=[call])
+    assert metrics.item_tool_dates(answer, period) == ["2026-01-27"]
+    assert metrics.item_tool_dates(answer, fixed) == []
+    assert metrics.same_sentence("binnen eines Monats", period.quote)
+    assert not metrics.same_sentence("", period.quote) and not metrics.same_sentence("binnen", "")
+
+
+def test_a_call_given_a_sentence_no_item_quotes_belongs_to_the_item_it_dates() -> None:
+    """Reviewer repro (test-tax_assessment-D1): the model asked about the Einspruch twice — once quoting
+    the remedy sentence (the engine's earlier date), once quoting the posting-day sentence — and answered
+    with the second call's date. That is the tool's date, not an override of it."""
+    entry = make_entry(
+        items=[truth_item("deadline", "2026-02-09")], optional=[truth_item("payment", "2026-02-05")]
+    )
+    payment = item("payment", "2026-02-05", quote="Zu zahlen: 1.236,00 € – fällig am 05.02.2026")
+    objection = item(
+        "deadline",
+        "2026-02-09",
+        quote="Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch erhoben werden.",
+    )
+
+    def call(text: str, due: str) -> ToolUse:
+        return ToolUse(name="compute_deadline", input={"spec": {"text": text}}, due_date=due)
+
+    remedy = call(objection.quote, "2026-02-05")
+    posting = call("Dieser Bescheid wurde am 02.01.2026 zur Post gegeben.", "2026-02-09")
+    answer = prediction(entry, [payment, objection], condition="llm_rules_tool", tools=[remedy, posting])
+    assert metrics.item_tool_dates(answer, objection) == ["2026-02-05", "2026-02-09"]
+    assert metrics.item_tool_dates(answer, payment) == []  # 5 Feb came from the remedy sentence's call
+    (outcome,) = score_document(entry, answer).scored_items
+    assert (outcome.backing, outcome.tool_had_truth, outcome.outcome) == ("tool_date", True, "correct")
+    # a date claimed by another item's sentence stays that item's
+    claimed = call(payment.quote, "2026-02-09")
+    other = prediction(entry, [payment, objection], condition="llm_rules_tool", tools=[remedy, claimed])
+    assert metrics.item_tool_dates(other, objection) == ["2026-02-05"]
+    assert score_document(entry, other).scored_items[0].backing == "overrode_tool"
+    # a spec that is no object has no sentence
+    odd = ToolUse(name="compute_deadline", input={"spec": "x"}, due_date="2026-02-09")
+    assert metrics.item_tool_dates(prediction(entry, [payment, objection], tools=[odd]), objection) == [
+        "2026-02-09"
+    ]
+
+
+def test_tool_use_summary() -> None:
+    entries = [make_entry(f"test-{n}") for n in range(4)]
+    answers = [
+        ([item()], [_deadline("2026-06-05")]),  # trusted the right tool date
+        ([item("deadline", "2026-06-08")], [_deadline("2026-06-05")]),  # broke a right tool date (late)
+        ([item()], [_deadline("2026-06-04")]),  # fixed a wrong tool date
+        ([item()], []),  # never asked
+    ]
+    predictions = {
+        "llm_rules_tool": {
+            e.id: prediction(e, items, condition="llm_rules_tool", tools=tools)
+            for e, (items, tools) in zip(entries, answers, strict=True)
+        },
+        "llm_only": {e.id: prediction(e, [item()]) for e in entries},
+    }
+    evaluation = evaluate(entries, predictions, resamples=100)
+    use = evaluation.metrics["llm_rules_tool"]["tool_use"]
+    assert evaluation.metrics["llm_only"]["tool_use"] is None
+    assert (use["letters_with_date_tool_call"]["k"], use["letters_with_date_tool_call"]["n"]) == (3, 4)
+    assert use["deadline_calls_per_letter"] == 0.75 and use["calls_by_tool"] == {"compute_deadline": 3}
+    assert use["items_by_backing"] == {
+        "tool_date": 1,
+        "overrode_tool": 2,
+        "other_obligation": 0,
+        "no_tool_date": 1,
+    }
+    assert use["final_differs_from_tool"]["value"] == pytest.approx(2 / 3)
+    assert use["accuracy_by_backing"]["overrode_tool"]["value"] == 0.5
+    assert use["late_by_backing"]["overrode_tool"]["value"] == 0.5
+    assert use["tool_returned_the_right_date"]["value"] == pytest.approx(2 / 3)
+    assert use["overrides_breaking_a_right_tool_date"] == 1 and use["overrides_fixing_a_wrong_tool_date"] == 1
+    # The tool condition is also compared with the prompt it extends.
+    assert evaluation.comparisons["llm_rules_tool-vs-llm_only"]["due_date_accuracy_diff"]["value"] == -0.25
+    assert (use["deadline_calls_with_other_today"], use["letters_with_other_today"]) == (0, 0)
+
+
+def test_an_item_with_differing_tool_dates_is_counted_apart() -> None:
+    """Reviewer: on test-tax_assessment-D1 the tools returned 5 Feb (given the letter's date) and 9 Feb
+    (asked again without it), and the model took the later one. That scores as "a date the tools
+    returned" and "the tools had the right date", so no override row can show the choice: such items
+    are counted apart, with how often the model took a later date than the earliest."""
+    entries = [make_entry(f"test-{n}") for n in range(3)]  # each expects 2026-06-05
+    answers = [
+        ([item()], [_deadline("2026-06-03"), _deadline("2026-06-05")]),  # took the later one (right)
+        ([item(due="2026-06-03")], [_deadline("2026-06-05"), _deadline("2026-06-03")]),  # the earlier (early)
+        ([item()], [_deadline("2026-06-05")]),  # one date: nothing to choose
+    ]
+    predictions = {
+        "llm_rules_tool": {
+            e.id: prediction(e, items, condition="llm_rules_tool", tools=tools)
+            for e, (items, tools) in zip(entries, answers, strict=True)
+        }
+    }
+    evaluation = evaluate(entries, predictions, resamples=50)
+    use = evaluation.metrics["llm_rules_tool"]["tool_use"]
+    assert use["items_by_backing"]["tool_date"] == 3 and use["tool_returned_the_right_date"]["k"] == 3
+    assert use["tool_dated_items_with_differing_dates"] == 2
+    assert use["chose_among_differing_tool_dates"] == {
+        "items": 2,
+        "chose_a_later_date": 1,
+        "correct": 1,
+        "late": 0,
+    }
+    assert (use["deadline_calls_on_dated_letters"], use["dated_letters"]) == (5, 3)
+    page = report._tool_section({"meta": {}, "metrics": evaluation.metrics})
+    assert (
+        "| ↳ the tools returned differing dates for it (asked again with other facts); the model chose one "
+        "| 2 items — a later one than the earliest: 1; right 1/2, late 0/2 |"
+    ) in page
+    # the per-letter count is not rounded into "1.0" next to a total of other letters' calls
+    assert (
+        "| `compute_deadline` calls per letter with a dated obligation | 1.67 (5 calls on 3 letters) |"
+        in page
+    )
+    assert (
+        "right for 100.0 % (3/3) of these obligations (for 2 of them the tools returned differing dates, and "
+        "it counts when one was right: which to answer with was the model's choice, a later one 1 time)"
+    ) in page
+    assert (
+        "| Final date is none of the dates the tools returned for that obligation (the model overrode" in page
+    )
+
+
+def test_calls_with_a_today_other_than_the_letters_are_counted() -> None:
+    """The claude CLI tells the model the real date; a call passing it is counted (the scorer checks
+    due dates only, which would hide a tool that called a live deadline passed)."""
+    entry = make_entry()
+    same = ToolUse(name="compute_deadline", input={"spec": {}, "today": entry.today}, due_date="2026-06-05")
+    other = ToolUse(name="compute_deadline", input={"spec": {}, "today": "2026-09-26"}, due_date="2026-06-05")
+    unset = ToolUse(name="compute_deadline", input={"spec": {}, "today": None}, due_date="2026-06-05")
+    counter = ToolUse(
+        name="add_working_days", input={"start": "2026-05-29", "days": 5, "today": "2026-09-26"}
+    )
+    tools = [same, other, other, unset, counter]
+    assert (
+        metrics.other_today_calls(entry, prediction(entry, [item()], condition="llm_rules_tool", tools=tools))
+        == 2
+    )
+    second = make_entry("test-tax-2")
+    predictions = {
+        "llm_rules_tool": {
+            entry.id: prediction(entry, [item()], condition="llm_rules_tool", tools=tools),
+            second.id: prediction(second, [item()], condition="llm_rules_tool", tools=[same]),
+        }
+    }
+    evaluation = evaluate([entry, second], predictions, resamples=50)
+    use = evaluation.metrics["llm_rules_tool"]["tool_use"]
+    assert (use["deadline_calls_with_other_today"], use["letters_with_other_today"]) == (2, 1)
+    page = report._tool_section({"meta": {}, "metrics": evaluation.metrics})
+    assert (
+        "| `compute_deadline` calls that passed a `today` other than the letter's | 2 (on 1 letter) |" in page
+    )
+    assert "In 2 `compute_deadline` calls the model passed a `today` other than the letter's" in page
+
+
+def test_the_working_day_calculator_counts_as_a_tool_date() -> None:
+    """A date computed with add_working_days is the tool's date, not "not asked"."""
+    entry = make_entry()  # expects 2026-06-05
+    counted = ToolUse(name="add_working_days", input={"start": "2026-05-29", "days": 5}, date="2026-06-05")
+    score = score_document(entry, prediction(entry, [item()], condition="llm_rules_tool", tools=[counted]))
+    assert score.scored_items[0].backing == "tool_date" and score.tool_dates == ["2026-06-05"]
+    assert score.date_tool_calls == 1 and score.deadline_calls == 0
+    other = score_document(
+        entry,
+        prediction(entry, [item("deadline", "2026-06-08")], condition="llm_rules_tool", tools=[counted]),
+    )
+    assert other.scored_items[0].backing == "overrode_tool"  # the only dated item: the date is its own
+
+    # On a letter with two dated items the calculator's date (it gets no sentence) belongs to the item
+    # whose final date it is; the other item was not asked about.
+    two = make_entry(
+        items=[truth_item("deadline", "2026-06-05")], optional=[truth_item("payment", "2026-07-01")]
+    )
+    answer = prediction(
+        two,
+        [item(), item("payment", "2026-07-01", quote="Zahlbar bis 1. Juli.")],
+        condition="llm_rules_tool",
+        tools=[counted],
+    )
+    assert metrics.item_tool_dates(answer, answer.items[0]) == ["2026-06-05"]
+    assert metrics.item_tool_dates(answer, answer.items[1]) == []
+    assert score_document(two, answer).scored_items[0].backing == "tool_date"
+
+
+def test_tool_backing_separates_another_obligation_from_no_answer() -> None:
+    assert tool_backing("2026-06-05", [], letter_dates=["2026-07-01"]) == "other_obligation"
+    assert tool_backing("2026-06-05", [], letter_dates=[]) == "no_tool_date"

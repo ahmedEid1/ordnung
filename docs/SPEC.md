@@ -204,8 +204,12 @@ one stream-json user message containing a text block plus optional base64 `image
 claude -p --input-format stream-json --output-format stream-json --verbose
   [--include-partial-messages]  --model M  --no-session-persistence  --setting-sources ""
   --strict-mcp-config  --system-prompt S  --tools ""  [--allowedTools …]
-  [--json-schema J]  [--mcp-config C]  [--max-budget-usd B  (Ask only)]
+  [--json-schema J]  [--mcp-config C]  [--max-budget-usd B  (Ask, benchmark tool condition)]
 ```
+- `complete()` returns the model's tool calls with the answer (`LLMResponse.tool_calls`: name,
+  arguments, result text), paired by `tool_use_id` because parallel calls may answer out of order;
+  the CLI's own `StructuredOutput` call is not one of them. `stream()` yields them as events
+  (carrying the same id).
 - Process: `create_subprocess_exec(shutil.which("claude"), …, limit=32 MiB, start_new_session=True)`;
   timeout/cancel → `os.killpg`. Never `--bare` (breaks subscription login) and never
   `--dangerously-skip-permissions`.
@@ -280,6 +284,72 @@ MCP server (`python -m ordnung mcp --data-dir D`, read-only DB, lazy imports): `
 appear in a tool result of the same turn; otherwise it is stripped and logged. The tool trace is
 streamed to the UI and persisted with the message. Markdown is rendered without raw HTML and without
 remote images.
+
+**Rules tools** (`assistant/rules_tools.py`, no ledger): `compute_deadline(spec, document_date?,
+sender_kind?, sender_name?, remedy_type?, region?, recipient_region?, received_date?, today?)` —
+the extractor's `DateSpec` (validated strictly: unknown keys are refused, every date must be
+`YYYY-MM-DD`, `true` is no number) → the rules engine's date with steps, rule ids, citations,
+warnings, confidence and hints naming a missing argument (never one that was given; for a holiday
+region the one the engine reads: `recipient_region` for a payment to a company or person, else
+`region`), and `assumed` (today, letter date, the arrival day the period ran from and where it came from — none
+when it did not run from one — an arrival day given but not used, the delivery law, the holiday
+calendar and which argument's Land it follows). The day a period runs
+from is checked: when it runs from arrival, the day used — a delivery day the letter states
+(`spec.anchor_date` not before the letter's date) or `received_date` — after today is refused, and
+one before the letter's date or more than 14 days after it gets a warning and one level less
+confidence (a late one the period did not run from gets the warning only: the date shown does not
+rest on it, the later date in the engine's note does); an arrival day the engine did not use is
+named. A letter dated after today gets a
+warning and one level less confidence. Whether the sender has deemed delivery at all is the
+engine's rule, as in the app (a private sender's letter counts from its arrival — for a kind a public
+body may be filed as, or a period whose words name an administrative act, never later than from
+the day a letter usually counts as delivered; an unknown one, `other` included, keeps the earliest
+plausible deemed delivery). The spec help says how to pass a
+formally served letter (yellow envelope: `anchor: receipt`, the envelope's date), and a result that
+applied deemed delivery to a posted letter says it would not apply then (a warning) and what to pass
+if it was (a hint). A stated posting or delivery day (`spec.anchor_date`) can only be checked against
+the letter's date: without `document_date` the result says so, asks for it and has one level less
+confidence. Warnings say what the person should know, in the tools' voice (the engine's "tell us"
+and "enter the envelope date" are the app's); how to call again is a hint. Holidays of only part of
+a Land are the engine's warning, as in the app. `german_holidays(year, region?)`;
+`add_working_days(start, days, day_type, region?)` (its disclaimer says it is a calendar count, not
+a deadline); `check_iban(iban)` (an invalid one gets the app's advice: misprinted, misread or fake —
+ask the sender before paying; a valid one says it tells nothing about the owner, and mentions the
+bank's payee-name check before a euro transfer only where the account's bank has to answer it by
+today — in the euro area since 9 October 2025; in CZ, DK, HU, PL, RO and SE only from 9 July 2027 and in
+Bulgaria from 1 January 2027, which the note names; elsewhere it says there may be none — and in
+every case that a check the bank reports "not possible" confirms nothing (Art. 5c(9), 16(9) Reg. (EU)
+No 260/2012 as amended by 2024/886); a printed `IBAN:` label and
+invisible characters ignored; country from the full SWIFT registry — any other two letters are not
+an IBAN — registered length, mod-97, bank code where the format shows it; pure code in
+`money/iban.py`). Unknown tool arguments are refused and argument errors are plain words. "Today" is
+the server's (`ORDNUNG_TODAY`, else the date in Germany): a result — whether a deadline has passed,
+its send-by date — is always for it; a caller's `today` within a day of it is used (a time zone
+apart), one further off only adds `for_today_given` (that day's send-by date and whether it had
+passed) and a warning, and a server started pinned (`ORDNUNG_PIN_TODAY=1`, as the benchmark starts
+it) does not use it at all. Every result carries "Information, not legal advice". The full server
+serves them next to the ledger tools (counting from the ledger's day), and its instructions and
+`compute_deadline`'s description say that a letter in the ledger keeps its stored date (quoted from
+`list_items`/`explain_date`, which may rest on a confirmed arrival day or a corrected sender) —
+except Ask's own server (`--ledger-only`): Ask quotes stored receipts and never computes a date,
+and its fact check would otherwise accept any date a rules tool echoed; `ordnung mcp --rules-only`
+serves only them — no data folder, nothing personal.
+
+**Other clients** (`assistant/mcp_install.py`). `ordnung mcp install --client claude-desktop|
+claude-code [--rules-only|--with-ledger] [--data-dir D] [--config PATH] [--write]` adds the rules
+tools (the default) or, with `--with-ledger`, the full server, which needs an existing database and
+shows the privacy warning before anything is printed to copy or written (`--data-dir` without
+`--with-ledger`, and options put before `install`, are refused rather than ignored). It prints the
+entry, the target file (Claude Desktop: macOS `~/Library/Application Support/Claude/claude_desktop_config.json`,
+Windows `%APPDATA%\Claude\…`, Linux `$XDG_CONFIG_HOME/Claude/…`) and, for Claude Code, the
+`claude mcp add` command (rules tools `--scope user` or a project `.mcp.json` entry; the full server
+`--scope local` only, never a shared `.mcp.json`) and the matching `claude mcp remove`. Printed
+commands are quoted for the platform's shell. `--write` merges only `mcpServers.<name>`
+(`ordnung_rules` or `ordnung`), backs the file up first, writes atomically, keeps its permissions,
+refuses invalid JSON or a file that is not UTF-8 without touching it, and never creates Claude
+Desktop's settings folder. When the file already has the other Ordnung server, the command says so
+(above all when the ledger stays readable next to the rules tools), and `--remove-ledger` (rules
+tools only) takes the full server's entry out in the same backed-up write.
 
 ## 11. Letters — `drafts/`
 
@@ -390,7 +460,9 @@ dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighte
 ## 15. CLI
 `serve [--port 8765] [--no-browser] [--no-token]` · `add FILES… [--combine] [--private]` ·
 `brief` · `ask "…"` · `demo [--serve] [--reset] [--check] [--live] [--no-browser]` · `doctor
-[--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--print-config]` · `openapi`.
+[--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--data-dir D] [--print-config]
+[--rules-only]` · `mcp install --client claude-desktop|claude-code [--rules-only|--with-ledger]
+[--data-dir D] [--config PATH] [--remove-ledger] [--write]` · `openapi`.
 If a server is running (`server.json` + live pid) `add`/`ask`/`brief` go through its API; otherwise
 they run in-process under an exclusive data-dir lock.
 
@@ -408,7 +480,17 @@ text PDFs + simulated phone photos, German + English, plus an adversarial subset
 letters, scams, conflicting dates, missing document date). Labels are the generator's parameters;
 expected dates computed by hand-checked rules (tests cross-check). Conditions: **Ordnung** (extract →
 rules) vs **LLM-only** (same model, same context incl. today/region/document date, explicit
-instruction to apply current German law) vs **LLM + rule text** (law text pasted into the prompt).
+instruction to apply current German law) vs **LLM + rule text** (law text pasted into the prompt) vs
+**LLM + rules tool** (the LLM-only prompt plus a three-sentence note naming the tools and inviting
+the model to use them; the `claude` CLI gets only `ordnung mcp --rules-only`, pinned to the letter's
+today — a `today` the model passes is not used — $1 cap per call — an agent with a calculator). For
+the tool condition the report adds how often the model asked a date tool (`compute_deadline`, or the
+`add_working_days` calculator), how often the final date differs from the tools' answer for that
+obligation, which obligations were dated without any tool date, the accuracy of each group, and the
+`compute_deadline` calls that passed a `today` other than the letter's; its tool calls and answers
+are part of the recording (`LLMResponse.tool_calls`). The tools' descriptions and input schemas are
+part of that condition's prompt version, so changing them needs a live re-record; until then the CI
+gate (which checks Ordnung's thresholds) leaves that condition out with a warning.
 Metrics with n and 95 % bootstrap CIs: due-date accuracy (overall and per kind), error split
 **reading** (wrong DateSpec/anchor/amount) vs **computing** (wrong arithmetic/law), classification,
 sender/reference/amount accuracy, item recall/precision, evidence grounding rate, false-verified
@@ -496,12 +578,46 @@ user-confirmed arrival date; until then fall back to the document date with `low
 
 **Holidays.** Weekend + nationwide holidays always count. Regional holidays count only when the
 region of the place of performance is known: `Party.region` (user-set or from the party's postcode
-when unambiguous) — otherwise they are ignored (earlier date). Receipts state which calendar was used.
+when unambiguous) — otherwise they are ignored (earlier date). A date counted *back* over a regional
+holiday (a period before an event, the safe date of a deadline that never moves) could be earlier
+where it holds: with the region unknown that is flagged (`medium`, "act a working day before it").
+Holidays of only part of a Land (Mariä Himmelfahrt in Bavarian communities with more Catholic than
+Protestant residents, Augsburg's Friedensfest, Fronleichnam in parts of Saxony and Thuringia) are never counted, as the community is
+not known; where a send-by or safe date, a period counted backwards in working days (or Werktage),
+or the safe date of a deadline on one passes such a holiday, the engine names it and where it holds
+in a warning ("act a working day before it"; `rules.deadlines.check_partial_holidays`, for letters
+and contracts alike). Confidence stays: the Land's calendar is the rule.
+Receipts state which calendar was used.
 
 **Deemed delivery.** Day count by scope in `catalog.py` with `verified_on`: tax (AO § 122) and
 federal authorities (VwVfG § 41) and social law (SGB X § 37) = 4 days for items posted from
 2025-01-01; Land authorities (Land VwVfG) use the verified value per Land where known, otherwise the
-conservative earlier count (3 days) with `medium` confidence.
+conservative earlier count (3 days) with `medium` confidence. It is a rule for authorities only: a
+sender of a private kind (company, landlord, bank, insurer, employer …; `rules.is_private_sender`)
+whose letter shows no administrative act gets none — a period from delivery runs from the day the
+letter arrived (§ 130 BGB; the letter's date until the person confirms the day, `low`, and the app asks
+for it, also when the letter's date is missing), and one the letter counts from its own date or another
+date it names runs from that date without delivery days (`private_sender_no_delivery`; the arrival day
+plays no part and is not asked for). That a sender is private is read from its kind and name, not
+known (a municipal utility's Gebührenbescheid, a statutory health insurer filed as a company), so for
+a kind a public body may be filed as (company, insurer, utility, employer), and for any sender whose
+period names an administrative act in its own words (the spec's text and legal basis, the item's
+quote), a confirmed arrival day after the day a letter usually counts as delivered never moves the
+date later: the period runs from that earlier day with one level less confidence (unless both days
+give the same date, a weekend or holiday between them: then it runs from the arrival), and a warning says
+that the date from arrival holds once the arrival is shown — for an authority's letter too
+(§ 41 Abs. 2 S. 3 VwVfG, § 122 Abs. 2 AO, § 37 Abs. 2 S. 3 SGB X) — and, when the earlier date has passed
+but that one has not, that the deadline may still be open (`private_sender_late_arrival`). A gym's,
+landlord's or bank's letter whose words name no administrative act counts from the day it arrived.
+Words alone never bring deemed delivery back: a firm, too, writes "nach Bekanntgabe der
+Preiserhöhung" or asks for "Ihren Rentenbescheid", and counted from arrival the date is never later.
+A letter filed as private keeps deemed delivery only when it names a remedy statute, or when an
+*Einspruch*, *Widerspruch* or *Klage* has a notice naming an administrative route (a *Bescheid* as the
+decision — "diesen Bescheid", a *Gebührenbescheid*, "Bescheid vom …", not the everyday "Bescheid
+geben" — or its *Bekanntgabe*, an administrative, social or finance court, VwGO/SGG/FGO/AO/SGB/VwVfG) —
+a Kündigungsschutzklage to the labour court (§ 4 KSchG), a Widerspruch under the BGB or VVG, or a
+firm's own "Einspruch" window (a private parking operator's, say) does not.
+An unknown sender (kind `other`) keeps the earliest plausible deemed delivery.
 
 **Contracts — regimes.** `compute_contract` dispatches on `regime` derived by code from category,
 party kind and dates: `bgb309_new` (consumer, concluded ≥ 2022-03-01: min term ≤ 24 months; after
@@ -546,7 +662,12 @@ text detector (pdfplumber char colour/size/position): invisible text is excluded
 raises a red banner. HTML e-mails follow the short written policy of `html_to_text` (ADR 0007): only
 text that is certainly hidden is excluded; when in doubt it stays visible. Brief/review/Ask free text is checked: every date, amount and § must exist in
 the agenda/ledger/catalog, else it is removed (fallback to code-generated text). Ask gets a read-only
-`explain_date(id)` tool that returns receipts. MCP is internal only (no Claude Desktop config in v1).
+`explain_date(id)` tool that returns receipts, and no tool that computes a new date. MCP is
+read-only everywhere. Besides Ask, other clients can use it: the rules tools alone (`ordnung mcp
+--rules-only`: no data folder, nothing personal) are what `ordnung mcp install` adds to Claude
+Desktop or Claude Code; the full server (`--with-ledger`) exposes the ledger to that client, and so,
+through the model, to its other tools and MCP servers (`docs/privacy.md`). `ordnung mcp install`
+prints the entry first and writes only with `--write`.
 
 **Scam checks (code, not model).** IBAN checksum validation; payee IBAN/name compared with those
 previously seen for the same party; mismatch → scam Idea quoting both. Copy: "No warning does not

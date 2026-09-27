@@ -85,6 +85,35 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   Content-Security-Policy. `ordnung serve` opens your browser through a private local page, so the
   token never appears on a command line other accounts could see.
 
+## Using Ordnung from Claude Desktop or Claude Code
+
+`ordnung mcp install` can add Ordnung's MCP server to another Claude client. What that client can
+then see depends on which server you add:
+
+| You add | The client can see | Leaves your computer? |
+|---|---|---|
+| **The rules tools** (the default) | Nothing of yours. The tools open no data folder: they compute dates, holidays, working days and IBAN checks from what the client passes them (the dates and words of a letter you shared there yourself). | Only what you type or share in that client, as always |
+| **The full server** (`--with-ledger`) | Your ledger, read-only, as *Ask* sees it: letters' titles, summaries, page text and quotes, to-dos, contracts, people and organisations, money, and your profile's name, language and Land. For letters you marked *Keep private (no AI)* the text is withheld, but the letter's date and the to-dos you added for it (their titles, dates and amounts, which can name the subject) are still listed. | Whatever Claude reads through it becomes part of that conversation, sent to Anthropic under that client's account and settings |
+
+With the full server, **every other tool of that client can see what Claude read from your
+ledger** through the model: another MCP server loaded there (web search, e-mail, files) and, in
+Claude Code, its own shell and web tools could send it on, and a prompt-injected document elsewhere
+could ask Claude to. Ordnung cannot control another client's tools or history. That is why
+`ordnung mcp install` adds only the rules tools unless you ask for your ledger with
+`--with-ledger`, and then shows this warning before it prints or writes anything. In Claude Code the
+full server is added for you and the current project only (`claude mcp add --scope local`); Ordnung
+never writes it into a project's `.mcp.json`, which is usually committed and shared. Neither server
+can change, delete, send or pay anything.
+
+`ordnung mcp install` prints the entry and the file it belongs in; only `--write` changes that file,
+after saving a copy of it next to it, and it adds or replaces only Ordnung's own entry. The two
+servers have different names (`ordnung` and `ordnung_rules`), so adding the rules tools does not
+take the full server out: if the file still has it, the command says your ledger stays readable,
+and `ordnung mcp install --client … --remove-ledger --write` removes that entry (backup first). To
+remove Ordnung altogether, delete its entries from `mcpServers` (or restore the backup); for Claude
+Code run `claude mcp remove --scope user ordnung_rules` or `claude mcp remove --scope local ordnung`
+(the install command prints both).
+
 ## Demo fixtures
 
 The repository ships recorded model outputs for the fictional sample documents so the demo runs

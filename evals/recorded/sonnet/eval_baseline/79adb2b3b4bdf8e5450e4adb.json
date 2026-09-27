@@ -1,0 +1,93 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"cb5a4fe423981b884d22242ca98207436eeb23eb63a681ab9f6453f365dbecfe\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-tax_assessment-C2"
+    ],
+    "prompt_head": "Today is Monday, 2026-05-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterhafen\",\"document_date\":\"2026-05-21\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"075/104/33871\"}],\"amounts\":[4402,793],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2025 income tax assessment\",\"quote\":\"Der Einspruch ist innerhalb eines Monats nach Bekanntgabe dieses Bescheids beim Finanzamt Musterhafen, Kaistraße 1, 27568 Musterhafen, schriftlich oder elektronisch einzulegen oder dort zur Niederschrift zu erklären.\",\"computation\":\"Letter dated Thu 21.05.2026, sent by ordinary post by a tax authority. Deemed delivery is the 4th day after posting (§ 122 Abs. 2 Nr. 1 AO) = Mon 25.05.2026, which is Pfingstmontag (public holiday, nationwide), so delivery shifts to the next working day, Tue 26.05.2026. Counting of the one-month objection period starts the following day (§ 187 Abs. 1 BGB / § 108 Abs. 1 AO), i.e. 27.05.2026, and ends one month later on the day matching the delivery date's number, Fri 26.06.2026 (§ 188 Abs. 2 BGB / § 355 AO). 26.06.2026 is a Friday and not a holiday in NW, so the deadline stays there.\",\"due_date\":\"2026-06-26\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Receive tax refund (Erstattung) to the known bank account\",\"quote\":\"Die Auszahlung erfolgt in den nächsten Tagen auf das bekannte Konto.\",\"computation\":\"The letter states only that payout will follow 'in den nächsten Tagen' (in the coming days) without a fixed calendar date, so no exact due date can be determined; this is an expected inbound payment, not an obligation on the recipient.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":793}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"No exact payout date is given for the 793,00 € refund ('in den nächsten Tagen'), so its due date could not be computed and is left as an estimate/reminder only.\",\"The IBAN printed in the letter footer (DE26 2905 0000 0008 8007 70) belongs to the Finanzamt itself for information/contact purposes — the refund goes to the taxpayer's 'bekanntes Konto' (account already on file), not to this IBAN, so it should not be used to send any payment.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterhafen",
+      "document_date": "2026-05-21",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "075/104/33871"
+        }
+      ],
+      "amounts": [
+        4402,
+        793
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2025 income tax assessment",
+          "quote": "Der Einspruch ist innerhalb eines Monats nach Bekanntgabe dieses Bescheids beim Finanzamt Musterhafen, Kaistraße 1, 27568 Musterhafen, schriftlich oder elektronisch einzulegen oder dort zur Niederschrift zu erklären.",
+          "computation": "Letter dated Thu 21.05.2026, sent by ordinary post by a tax authority. Deemed delivery is the 4th day after posting (§ 122 Abs. 2 Nr. 1 AO) = Mon 25.05.2026, which is Pfingstmontag (public holiday, nationwide), so delivery shifts to the next working day, Tue 26.05.2026. Counting of the one-month objection period starts the following day (§ 187 Abs. 1 BGB / § 108 Abs. 1 AO), i.e. 27.05.2026, and ends one month later on the day matching the delivery date's number, Fri 26.06.2026 (§ 188 Abs. 2 BGB / § 355 AO). 26.06.2026 is a Friday and not a holiday in NW, so the deadline stays there.",
+          "due_date": "2026-06-26",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Receive tax refund (Erstattung) to the known bank account",
+          "quote": "Die Auszahlung erfolgt in den nächsten Tagen auf das bekannte Konto.",
+          "computation": "The letter states only that payout will follow 'in den nächsten Tagen' (in the coming days) without a fixed calendar date, so no exact due date can be determined; this is an expected inbound payment, not an obligation on the recipient.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 793
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "No exact payout date is given for the 793,00 € refund ('in den nächsten Tagen'), so its due date could not be computed and is left as an estimate/reminder only.",
+        "The IBAN printed in the letter footer (DE26 2905 0000 0008 8007 70) belongs to the Finanzamt itself for information/contact purposes — the refund goes to the taxpayer's 'bekanntes Konto' (account already on file), not to this IBAN, so it should not be used to send any payment."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3354,
+      "cache_read_tokens": 27089,
+      "cache_creation_tokens": 6876,
+      "cost_usd": 0.0664738,
+      "duration_ms": 32922,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "legal_basis": "§ 355 AO, § 122 Abs. 2 Nr. 1 AO",
+            "text": "Der Einspruch ist innerhalb eines Monats nach Bekanntgabe dieses Bescheids beim Finanzamt Musterhafen ... schriftlich oder elektronisch einzulegen"
+          },
+          "document_date": "2026-05-21",
+          "sender_kind": "tax_office",
+          "sender_name": "Finanzamt Musterhafen",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2026-06-26\",\"weekday\":\"Friday\",\"send_by\":\"2026-06-22\",\"summary\":\"Letter dated Thu 21 May 2026 counts as delivered on Mon 25 May, moved to Tue 26 May; one month later is Fri 26 Jun 2026.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier: then pass spec.anchor receipt with that date as spec.anchor_date and spec.delivery_rule none.\"],\"steps\":[{\"label\":\"Posting day: Thu 21 May 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-05-21\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Mon 25 May 2026\",\"date\":\"2026-05-25\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Mon 25 May 2026 is a public holiday, Pfingstmontag, so delivery moves to Tue 26 May 2026\",\"date\":\"2026-05-26\",\"rule_id\":\"ao_fiction_shift\",\"citation\":\"BFH IX R 68/98; § 108 Abs. 3 AO; AEAO zu § 108 Nr. 2\"},{\"label\":\"Counting starts the day after Tue 26 May 2026\",\"date\":\"2026-05-26\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Fri 26 Jun 2026\",\"date\":\"2026-06-26\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Fri 26 Jun 2026 is a working day, so it stays\",\"date\":\"2026-06-26\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Mon 22 Jun 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-06-22\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_fiction_shift\",\"title\":\"Tax delivery day moves off weekends and holidays\",\"citation\":\"BFH IX R 68/98; § 108 Abs. 3 AO; AEAO zu § 108 Nr. 2\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BFH&Datum=14.10.2003&Aktenzeichen=IX+R+68/98\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_355\",\"title\":\"Tax objection (Einspruch): one month\",\"citation\":\"§ 355 Abs. 1 AO; § 357 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__355.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-05-25\",\"letter_date\":\"2026-05-21\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

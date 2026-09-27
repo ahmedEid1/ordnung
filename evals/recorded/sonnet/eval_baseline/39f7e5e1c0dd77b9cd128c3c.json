@@ -1,0 +1,71 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"05325ead94c062763f8a35d963458acdcd766f5bd7846a7bd0b103a1af0d3597\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-04-01\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-dunning_fixed-C2"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-04-01 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"NetzMuster GmbH\",\"document_date\":\"2026-03-26\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"NM-3380271\"}],\"amounts\":[44.99,5,49.99],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay overdue February 2026 invoice plus reminder fee (2nd dunning)\",\"quote\":\"Wir bitten Sie, den offenen Betrag (Zahlungseingang bis 07.04.2026) auszugleichen.\",\"computation\":\"The letter states a fixed calendar date for when payment must have arrived: 07.04.2026. This is an explicit deadline printed by the sender, not a period to be counted from delivery. 2026-04-07 is a Tuesday, not a weekend or public holiday in NW, so no shift applies. Due date = 2026-04-07 (payment must be received by then, per 'Zahlungseingang bis').\",\"due_date\":\"2026-04-07\",\"confidence\":\"high\",\"amount\":49.99}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a second dunning (2. Mahnung) from a private company (NetzMuster GmbH), not a court or public authority, so no statutory legal-remedy instruction or deemed-delivery rule applies; the payment date is simply the date the company itself set.\",\"The letter threatens to suspend/block the connection ('Sperre Ihres Anschlusses') for further payment delay if the amount is not settled by 07.04.2026.\",\"The IBAN DE71 3705 0198 0001 2312 31 is a valid, well-formed German IBAN (Musterbank AG, BLZ 37050198), but a valid IBAN does not prove who owns the account; verify it matches previous invoices/dunning letters from this provider before paying.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "NetzMuster GmbH",
+      "document_date": "2026-03-26",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "NM-3380271"
+        }
+      ],
+      "amounts": [
+        44.99,
+        5,
+        49.99
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay overdue February 2026 invoice plus reminder fee (2nd dunning)",
+          "quote": "Wir bitten Sie, den offenen Betrag (Zahlungseingang bis 07.04.2026) auszugleichen.",
+          "computation": "The letter states a fixed calendar date for when payment must have arrived: 07.04.2026. This is an explicit deadline printed by the sender, not a period to be counted from delivery. 2026-04-07 is a Tuesday, not a weekend or public holiday in NW, so no shift applies. Due date = 2026-04-07 (payment must be received by then, per 'Zahlungseingang bis').",
+          "due_date": "2026-04-07",
+          "confidence": "high",
+          "amount": 49.99
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a second dunning (2. Mahnung) from a private company (NetzMuster GmbH), not a court or public authority, so no statutory legal-remedy instruction or deemed-delivery rule applies; the payment date is simply the date the company itself set.",
+        "The letter threatens to suspend/block the connection ('Sperre Ihres Anschlusses') for further payment delay if the amount is not settled by 07.04.2026.",
+        "The IBAN DE71 3705 0198 0001 2312 31 is a valid, well-formed German IBAN (Musterbank AG, BLZ 37050198), but a valid IBAN does not prove who owns the account; verify it matches previous invoices/dunning letters from this provider before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2288,
+      "cache_read_tokens": 24346,
+      "cache_creation_tokens": 4149,
+      "cost_usd": 0.0443572,
+      "duration_ms": 24948,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE71 3705 0198 0001 2312 31"
+        },
+        "result": "{\"iban\":\"DE71 3705 0198 0001 2312 31\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0001231231\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying. For a euro transfer the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required since 9 October 2025): if it reports no match or only a close one, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

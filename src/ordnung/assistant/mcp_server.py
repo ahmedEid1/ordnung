@@ -68,14 +68,18 @@ class ToolInputError(ValueError):
     """A tool argument is invalid (the message tells the model how to fix the call)."""
 
 
-def server_config(data_dir: str | Path, *, today: str | None = None) -> dict[str, Any]:
+def server_config(
+    data_dir: str | Path, *, today: str | None = None, rules_tools: bool = True
+) -> dict[str, Any]:
     """The ``--mcp-config`` JSON that makes ``claude`` spawn this server for ``data_dir``.
 
-    ``today`` pins the server's date (``ORDNUNG_TODAY``) when the app runs on a simulated day.
+    ``today`` pins the server's date (``ORDNUNG_TODAY``) when the app runs on a simulated day;
+    ``rules_tools=False`` leaves the rules tools out (``--ledger-only``, Ask's server).
     """
+    args = ["-m", "ordnung", "mcp", "--data-dir", str(Path(data_dir).resolve())]
     server: dict[str, Any] = {
         "command": sys.executable,
-        "args": ["-m", "ordnung", "mcp", "--data-dir", str(Path(data_dir).resolve())],
+        "args": [*args, *([] if rules_tools else ["--ledger-only"])],
     }
     if today is not None:
         server["env"] = {"ORDNUNG_TODAY": today}
@@ -93,11 +97,11 @@ def open_read_only(data_dir: str | Path) -> Store:
     return Store.open(paths, read_only=True)
 
 
-def run(data_dir: str | Path) -> None:
+def run(data_dir: str | Path, *, rules_tools: bool = True) -> None:
     """Serve the tools over stdio until the client disconnects (``python -m ordnung mcp``)."""
     store = open_read_only(data_dir)
     try:
-        build_server(store).run("stdio")
+        build_server(store, rules_tools=rules_tools).run("stdio")
     finally:
         store.close()
 
@@ -639,16 +643,29 @@ DateArg = Annotated[str, Field(description="A date written YYYY-MM-DD")]
 OptionalDateArg = Annotated[str | None, Field(description="A date written YYYY-MM-DD, or null")]
 
 
-def build_server(store: Store, *, today: date | None = None) -> MCPServer:
-    """An ``MCPServer('ordnung')`` whose read-only tools answer from ``store``."""
+def build_server(store: Store, *, today: date | None = None, rules_tools: bool = True) -> MCPServer:
+    """An ``MCPServer('ordnung')`` whose read-only tools answer from ``store``.
+
+    ``rules_tools`` adds the ledger-free rules tools of :mod:`ordnung.assistant.rules_tools` (for
+    other clients; ``ordnung mcp --rules-only`` serves them alone), which compute new dates from what a
+    letter says. Ask's server leaves them out (``--ledger-only``): Ask quotes the ledger's stored
+    receipts and never computes a new date (SPEC § 21), and its fact check would otherwise accept any
+    date a rules tool echoed or computed.
+    """
     from mcp.server.mcpserver import MCPServer
     from mcp.server.mcpserver.exceptions import ToolError
     from mcp.types import ToolAnnotations
 
+    from ordnung.assistant.rules_tools import WITH_LEDGER_INSTRUCTIONS
+    from ordnung.assistant.rules_tools import rules_tools as rules_tools_for
     from ordnung.ingest.extract import wrap_untrusted
 
     tools = LedgerTools(store, today=today)
-    server: MCPServer = MCPServer(SERVER_NAME, instructions=INSTRUCTIONS, log_level="WARNING")
+    # The ledger-free rules tools (compute_deadline, german_holidays, …), counting from the ledger's day;
+    # for a letter in the ledger the stored date wins (WITH_LEDGER_INSTRUCTIONS).
+    extra = rules_tools_for(today=tools.current_day, with_ledger=True) if rules_tools else None
+    instructions = f"{INSTRUCTIONS} {WITH_LEDGER_INSTRUCTIONS}" if rules_tools else INSTRUCTIONS
+    server: MCPServer = MCPServer(SERVER_NAME, instructions=instructions, log_level="WARNING", tools=extra)
     read_only = ToolAnnotations(
         read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False
     )

@@ -51,6 +51,7 @@ from ordnung.rules.deadlines import (
     POSTAL_BUFFER_DAYS,
     RuleContext,
     Trace,
+    check_partial_holidays,
     check_regional_holidays,
     parse_date,
     plan_send_by,
@@ -840,6 +841,7 @@ def _compute_contract(
     send_by = _send_by(
         trace, plan.cancel_by, safe, channel, region, postal_buffer_days, today=ctx.today, late_advice=fastest
     )
+    check_partial_holidays(trace, region, plan.cancel_by, send_by=send_by, safe=safe)
     return result(_summary(plan, send_by), plan, send_by, safe)
 
 
@@ -861,6 +863,7 @@ def _window_receipt(
         if safe != due:
             trace.step(f"Safe date: make sure it arrives by {fmt_date(safe)}", safe, "safe_date")
         send_by = plan_send_by(trace, ctx.today, due, region=region, buffer=buffer)
+        check_partial_holidays(trace, region, due, send_by=send_by, safe=safe)
     return ComputationReceipt(
         due_date=_iso(due),
         send_by=_iso(send_by),

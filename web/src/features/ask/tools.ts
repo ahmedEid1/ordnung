@@ -103,6 +103,18 @@ export function fallbackToolLabel(name: string, input: Record<string, unknown> =
   }
 }
 
+/** The result next to a finished step ("Today is 2026-09-28" → "Today is 28 Sep 2026"), dates in the app's style. */
+export function toolResultText(result: string): string {
+  return formatInlineDates(result);
+}
+
+const SHORT_DATE = /\b(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) )?\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b(?: \d{4})?/g;
+
+/** ``text`` with the spaces inside its dates ("Mon 28 Sep 2026") made non-breaking, so a wrapped line never splits one. */
+export function unbreakDates(text: string): string {
+  return text.replace(SHORT_DATE, (date) => date.replace(/ /g, "\u00a0"));
+}
+
 /** The chip text for a step: the backend label when present, else the fallback. */
 export function toolLabel(step: Pick<ToolStep, "name" | "input" | "label">, titleOf?: TitleLookup): string {
   // the backend's label may carry ISO dates ("from 2026-09-28 to 2026-10-26")

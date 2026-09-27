@@ -47,7 +47,7 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 
 | Uncertainty | What Ordnung does |
 |---|---|
-| Holiday region of the sender unknown | Uses only nationwide holidays (a regional holiday could only make the deadline *later*). |
+| Holiday region of the sender unknown | Uses only nationwide holidays: counted forward, a regional holiday could only make the deadline *later*. Counted back — a period before an event, the safe date of a deadline that never moves — one could make it *earlier* there: flagged (`medium`), "act a working day before it". |
 | Payment to a company or person, payer's Land unknown | Uses only nationwide holidays (money is owed at the payer's home, §§ 269, 270 Abs. 4 BGB). |
 | Posting day unknown | Uses the date printed on the letter (the real posting day can only be the same or later). |
 | Letter arrived later than the deemed delivery day | Keeps the earlier deadline; shows the later one as "only if you can show it" (keep the envelope). |
@@ -58,6 +58,8 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 | Implausible period (over 100 years) or a date at the end of the calendar | No date, `low` confidence, "please check" — never an error that stops the document. |
 | Arrival day of a letter needed but not confirmed | Uses the letter's date and asks when it really arrived (`low` confidence). |
 | Kind of sender (procedural law) unknown | 3rd/4th-day rule **without** the weekend shift; 3 days unless the Land is known to use 4 (portal: the day after it was made available). |
+| Letter from a company, landlord, bank, employer or other private sender | No deemed delivery — it is a rule for authorities' letters: a period from delivery runs from the day the letter arrived (§ 130 Abs. 1 BGB), the letter's date until the person says when (`low`); a period the letter counts from its own date or another date it names runs from that date, with no delivery days added and no question about the arrival day (`private_sender_no_delivery`). Whether the sender is an authority is read, not known (a municipal utility's Gebührenbescheid, a statutory health insurer filed as a company), so for a kind a public body may be filed as (company, insurer, utility, employer), and for any sender whose period names an administrative act in its own words (a *Bescheid*, its *Bekanntgabe* — in the spec's text or legal basis, or the item's quote), an arrival day after the day a letter usually counts as delivered never moves the date later: it runs from that earlier day (`medium`; from the arrival when both days give the same date), and a note says the date from arrival holds once the arrival is shown — for an authority's letter too (§ 41 Abs. 2 S. 3 VwVfG) — and that the deadline may still be open when only the earlier date has passed (`private_sender_late_arrival`). A gym's, landlord's or bank's letter whose words name no administrative act counts from the day it arrived. Words alone never bring deemed delivery back (a gym, too, writes "nach Bekanntgabe der Preiserhöhung"). A sender filed as private keeps the deemed delivery only when its letter names a remedy statute, or its *Einspruch*, *Widerspruch* or *Klage* notice names an administrative route (a *Bescheid* as the decision — "diesen Bescheid", a *Gebührenbescheid*, "Bescheid vom …", not "Bescheid geben" (let us know) —, its *Bekanntgabe*, an administrative, social or finance court); a Kündigungsschutzklage (§ 4 KSchG), a Widerspruch under the BGB or VVG, or a firm's own "Einspruch" window (a private parking operator's, say) does not. An unknown sender (kind `other`) keeps the deemed delivery. |
+| A date counted back over a holiday of only part of a Land (15 August in Bavaria, Augsburg's 8 August, Fronleichnam in parts of Saxony and Thuringia) | The calendar never counts it (the community is unknown), so where it holds a send-by or safe date is a working day late: the warning names the holiday and where it holds (confidence unchanged). |
 | Letter's period differs from the statute (e.g. "6 weeks" for a tax objection) | Computes both and uses the earlier date. |
 | Notice period missing from a contract | Assumes the longest notice the law allows (earliest deadline). |
 | Notice deadline on a weekend/holiday | No shift (BGH III ZR 172/04) + a `safe_date` on the working day before. |
@@ -71,7 +73,7 @@ further lowers confidence for quote problems (quote not found, digits not matchi
 | Anchor date stated in the document or confirmed by the user | anchor missing; arrival date assumed | hard → `low` |
 | Anchor date stated in the document | "today" read as the letter's date | soft |
 | Rule known and its scope verified | unknown sender type; channel assumed; letter's period ≠ statute; Land not confirmed for the 4-day rule; *Anhörungsbogen*; fine counted from the letter date; court action (*Klage*: "get advice") | soft |
-| Holiday region known | region unknown **and** a regional holiday could change this result | soft |
+| Holiday region known | region unknown **and** a regional holiday could change this result (counted forward: the days counted or the end; counted back: the days counted back or the safe date) | soft |
 
 `high` only if every criterion holds; one soft failure → `medium`; two soft failures or any hard
 failure → `low`. The reasons are listed in `warnings` in plain English.
@@ -89,8 +91,11 @@ failure → `low`. The reasons are listed in `warnings` in plain English.
   (`holidays.Germany(subdiv=…)`). The nine nationwide holidays always count. Regional ones (e.g.
   Fronleichnam, Allerheiligen, Reformationstag, Buß- und Bettag, Frauentag in Berlin) count **only
   when the region is known**. 24 and 31 December are **not** public holidays (BFH III B 135/17), nor
-  is Rosenmontag. Municipal holidays (Augsburg, Mariä Himmelfahrt in parts of Bavaria) are not used,
-  which again can only make a date earlier.
+  is Rosenmontag. Municipal holidays (Augsburg, Mariä Himmelfahrt in parts of Bavaria, Fronleichnam
+  in parts of Saxony and Thuringia) are not used, which can only make a date counted forward earlier;
+  a date counted back over one can come out a day late, so the engine names such a holiday where a
+  send-by, safe or backward date passes it (`check_partial_holidays`; the app and the rules tools
+  alike).
 - **Whose holidays?** Those at the place where the declaration must be received — the seat of the
   authority, court or company (BAG 8 AZN 808/11, BGH VI ZA 27/11), i.e. `Party.region`. A **payment**
   to a company or person is owed at the payer's home (§§ 269, 270 Abs. 4 BGB), so § 193 BGB uses the
@@ -205,9 +210,13 @@ really landed in your letterbox. Since the Postrechtsmodernisierungsgesetz (Post
 **4th day** after posting for items posted from **1 January 2025** (3rd day before). Which rule
 applies depends on the sender (`RuleContext.delivery_scope`, derived by `scope_for_party_kind`
 from the sender's kind and, for a sender filed as a plain *authority*, its name and the letter's
-remedy notice: a job centre, the employment agency, pension, care or accident insurance, social
-welfare, a BAföG, Wohngeld or Elterngeld office, or a notice naming the Sozialgericht or the SGB means
-social law; the Familienkasse is tax law when the remedy is an *Einspruch*, social law otherwise):
+remedy notice: a job centre, the employment agency, pension, care or accident insurance, a statutory
+health insurer (a *Krankenkasse*, or by the brand of one of the largest: AOK, Die Techniker/TK,
+BARMER, DAK, IKK, BKK, KKH, hkk, HEK, SBK, VIACTIV, BIG direkt gesund, mhplus, Knappschaft — not a
+complete list; an unlisted one filed as an insurer counts from its arrival, never later than deemed
+delivery), social welfare, a BAföG, Wohngeld or Elterngeld office, or a notice naming the Sozialgericht
+or the SGB means social law; the Familienkasse is tax law when the remedy is an *Einspruch*, social law
+otherwise):
 
 | Scope | Senders | Rule | Weekend/holiday? |
 |---|---|---|---|
@@ -488,7 +497,7 @@ action, contracts, sending and form, price increases).
 | `ao_fiction_shift` | Tax delivery day moves off weekends | BFH IX R 68/98; AEAO zu § 108 Nr. 2 | — | [dejure.org](https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BFH&Datum=14.10.2003&Aktenzeichen=IX+R+68/98) |
 | `vwvfg_41_2` / `vwvfg_41_2a` / `vwvfg_land_days` | Authorities: 4th day, no shift / portal / Länder | § 41 Abs. 2, 2a VwVfG and Länder VwVfGs | 2025-01-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/vwvfg/__41.html) |
 | `sgbx_37_2` / `sgbx_37_2a` | Social law: 4th day, no shift / portal | § 37 Abs. 2, 2a SGB X; BSG B 14 AS 12/09 R | 2025-01-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/sgb_10/__37.html) |
-| `posting_day`, `early_receipt`, `late_receipt`, `pzu`, `delivery_scope_unknown` | Posting day, early/late arrival, yellow envelope, unknown sender | § 122 AO; § 41 VwVfG; § 37 SGB X; BFH X R 96/98; BFH VI R 18/22; § 3 VwZG | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/vwzg_2005/__3.html) |
+| `posting_day`, `early_receipt`, `late_receipt`, `pzu`, `delivery_scope_unknown`, `private_sender_arrival`, `private_sender_late_arrival`, `private_sender_no_delivery` | Posting day, early/late arrival, yellow envelope, unknown sender, private sender (from arrival; a late arrival no later than deemed delivery; from the date it names) | § 122 AO; § 41 VwVfG; § 37 SGB X; BFH X R 96/98; BFH VI R 18/22; § 3 VwZG; §§ 130, 187 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/vwzg_2005/__3.html) |
 | `ao_355`, `vwgo_70`, `sgg_84`, `owig_67`, `stpo_410`, `klage_1_month`, `owig_55`, `rbb_one_year` | Remedies (section 6) | see section 6 | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/ao_1977/__355.html) |
 | `bgb_309_9_new` / `bgb_309_9_old` | Consumer contracts | § 309 Nr. 9 BGB; Art. 229 § 60 EGBGB | 2022-03-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__309.html) |
 | `tkg_56` / `tkg_57` | Telecom term / price changes | §§ 56, 57 TKG | 2021-12-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/tkg_2021/__56.html) |

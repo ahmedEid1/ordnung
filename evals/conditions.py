@@ -1,4 +1,4 @@
-"""The three benchmark conditions (SPEC § 17): same model, same letter, same "today", same region.
+"""The four benchmark conditions (SPEC § 17): same model, same letter, same "today", same region.
 
 * ``ordnung`` — the ingestion pipeline's own logic without the app, the database or the global
   clock: the text layer (visible text only; invisible text is reported, never sent), transcription
@@ -11,6 +11,11 @@
   gives today, the region and an explicit instruction to apply current German law.
 * ``llm_rules_text`` — the same, plus a verified summary of the relevant rules
   (``evals/prompts/rules_text.md``, condensed from ``docs/deadline-rules.md``).
+* ``llm_rules_tool`` — the ``llm_only`` prompts plus a short note on the tools
+  (``evals/prompts/rules_tool.md``), and the ``claude`` CLI gets Ordnung's rules-only MCP server
+  (``ordnung mcp --rules-only``: ``compute_deadline``, ``german_holidays``, ``add_working_days``,
+  ``check_iban``) — an agent with a calculator. The model decides whether to call the tools and
+  what to answer; its tool calls are recorded with the answer (``Prediction.tools``).
 
 Every model call carries the benchmark entry id as its ``doc_ids`` (accounting, and the
 ``RecordingBackend`` privacy guard). A condition returns a :class:`~evals.records.Prediction`; the
@@ -22,6 +27,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import hashlib
+import json
 import re
 import time
 from collections.abc import AsyncIterator, Sequence
@@ -41,9 +47,11 @@ from evals.records import (
     PredictedContract,
     PredictedItem,
     Prediction,
+    ToolUse,
     iso_or_none,
     parse_iso,
 )
+from ordnung.assistant import rules_tools
 from ordnung.ingest.extract import (
     ExtractionError,
     ExtractionInput,
@@ -75,20 +83,28 @@ from ordnung.llm.base import (
     LLMRequest,
     LLMResponse,
     StreamEvent,
+    ToolCall,
 )
 from ordnung.llm.claude_cli import extract_json
 from ordnung.llm.runtime import LLMService
 from ordnung.llm.schemas import extraction_schema, schema_for, transcription_schema
 from ordnung.models import ContractTerms, DocumentExtraction, DocumentKind, ItemKind, Page, RemedyType
-from ordnung.rules import RuleContext, compute_contract, scope_for_party_kind
+from ordnung.rules import RuleContext, compute_contract, is_private_sender, scope_for_party_kind
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
-from ordnung.secretary.scam import format_iban, iban_valid, normalize_iban
+from ordnung.secretary.scam import iban_valid, invalid_iban_message, normalize_iban
 
 EVALS_DIR = Path(__file__).resolve().parent
 PROMPTS_DIR = EVALS_DIR / "prompts"
 BASELINE_PROMPTS = ("llm_only_system", "llm_only", "document_text", "document_image", "repair")
 RULES_PROMPT = "rules_text"
+TOOLS_PROMPT = "rules_tool"
+TOOLS_CONDITION = "llm_rules_tool"
+#: What the tool condition may call: only the rules-only server's tools (no built-in tools at all).
+TOOLS_ALLOWED = [f"mcp__{rules_tools.SERVER_NAME}__*"]
+TOOL_PREFIX = f"mcp__{rules_tools.SERVER_NAME}__"
+#: A cost cap per call, far above a normal answer, so a looping agent is stopped (an infrastructure error).
+TOOLS_BUDGET_USD = 1.0
 ORDNUNG_PROMPTS = (
     "extract_system",
     "extract",
@@ -304,22 +320,26 @@ def ordnung_rule_context(entry: Entry, extraction: DocumentExtraction) -> RuleCo
     """The rules engine's context: the entry's today and Länder, the extracted letter date and scope.
 
     The holiday region is the authority's Land when the letterhead names one (``None`` → nationwide
-    holidays only, which the dataset guarantees gives the legal date); the delivery scope follows the
-    sender's kind, name and remedy notice exactly as in the app (``ingest.plan.rule_context``).
+    holidays only, which the dataset guarantees gives the legal date); the delivery scope — and
+    whether the sender has deemed delivery at all — follows the sender's kind, name and remedy notice
+    exactly as in the app (``ingest.plan.rule_context``).
     """
     sender = extraction.sender
     remedy = extraction.remedy
+    kind = sender.kind if sender else None
+    remedy_type = remedy.type if remedy else None
+    notice = remedy_text(remedy)
+    scope = scope_for_party_kind(
+        kind, name=sender.name if sender else None, remedy_type=remedy_type, remedy_text=notice
+    )
     return RuleContext(
         today=entry.today_date,
         region=entry.authority_region,
         document_date=parse_iso(extraction.document_date),
-        delivery_scope=scope_for_party_kind(
-            sender.kind if sender else None,
-            name=sender.name if sender else None,
-            remedy_type=remedy.type if remedy else None,
-            remedy_text=remedy_text(remedy),
-        ),
+        delivery_scope=scope,
         recipient_region=entry.recipient_region or PERSONA_REGION,
+        private_sender=is_private_sender(kind, scope=scope, remedy_type=remedy_type, remedy_text=notice),
+        sender_kind=kind,
     )
 
 
@@ -387,12 +407,7 @@ def _payment_signal(extraction: DocumentExtraction) -> str | None:
     if payment is None or not payment.iban:
         return None
     iban = normalize_iban(payment.iban)
-    if iban_valid(iban):
-        return None
-    return (
-        f"The IBAN {format_iban(iban)} is not a valid account number (its check digits are wrong). "
-        "It may be misprinted, misread or fake — compare it with the letter and ask the sender before paying."
-    )
+    return None if iban_valid(iban) else invalid_iban_message(iban)
 
 
 async def run_ordnung(entry: Entry, document: PreparedDocument, llm: LLMService, *, model: str) -> Prediction:
@@ -463,7 +478,7 @@ async def run_ordnung(entry: Entry, document: PreparedDocument, llm: LLMService,
 
 
 # --------------------------------------------------------------------------------------------------
-# Conditions: llm_only and llm_rules_text
+# Conditions: llm_only, llm_rules_text and llm_rules_tool
 # --------------------------------------------------------------------------------------------------
 
 
@@ -530,13 +545,21 @@ def baseline_schema() -> dict[str, Any]:
 def baseline_request(
     entry: Entry, document: PreparedDocument, condition: ConditionName, *, model: str
 ) -> LLMRequest:
-    """The request for ``llm_only`` or ``llm_rules_text`` (``purpose="eval_baseline"``)."""
+    """The request for ``llm_only``, ``llm_rules_text`` or ``llm_rules_tool`` (``purpose="eval_baseline"``).
+
+    The tool condition's request adds the rules-only MCP server (pinned to the letter's today), the
+    permission for its tools only and a cost cap; its prompt version carries the tools' digest.
+    """
     system_version, system = load_prompt("llm_only_system")
     versions = [f"s{system_version}"]
     if condition == "llm_rules_text":
         rules_version, rules = load_prompt(RULES_PROMPT)
         system = f"{system}\n\n{rules}"
         versions.append(f"r{rules_version}")
+    if condition == TOOLS_CONDITION:
+        tools_version, note = load_prompt(TOOLS_PROMPT)
+        system = f"{system}\n\n{note}"
+        versions.append(f"t{tools_version}")
     attachments: list[Attachment] = []
     if entry.photo:
         if entry.media_type not in IMAGE_TYPES:
@@ -565,7 +588,7 @@ def baseline_request(
         region_name=REGION_NAMES.get(entry.region, entry.region),
     )
     versions += [f"u{user_version}", f"d{document_version}", f"h{baseline_prompt_digest(condition)[:8]}"]
-    return LLMRequest(
+    request = LLMRequest(
         purpose="eval_baseline",
         prompt=prompt,
         system=system,
@@ -584,6 +607,16 @@ def baseline_request(
         ),
         prompt_version=".".join([condition, *versions]),
     )
+    if condition != TOOLS_CONDITION:
+        return request
+    # The rules server counts from the letter's "today" by default, like every other condition.
+    return request.model_copy(
+        update={
+            "mcp_config": rules_tools.rules_server_config(today=entry.today),
+            "allowed_tools": list(TOOLS_ALLOWED),
+            "max_budget_usd": TOOLS_BUDGET_USD,
+        }
+    )
 
 
 def text_sha(text: str) -> str:
@@ -591,7 +624,17 @@ def text_sha(text: str) -> str:
 
 
 def baseline_prompt_names(condition: str) -> list[str]:
-    return [*BASELINE_PROMPTS, *([RULES_PROMPT] if condition == "llm_rules_text" else [])]
+    extra = {"llm_rules_text": [RULES_PROMPT], TOOLS_CONDITION: [TOOLS_PROMPT]}.get(condition, [])
+    return [*BASELINE_PROMPTS, *extra]
+
+
+@functools.cache
+def tool_definitions_digest() -> str:
+    """Digest of the rules tools as the model sees them (server instructions; names, descriptions
+    and input schemas of the tools)."""
+    return text_sha(
+        canonical_json({"instructions": rules_tools.INSTRUCTIONS, "tools": rules_tools.tool_definitions()})
+    )
 
 
 @functools.cache
@@ -603,7 +646,10 @@ def baseline_prompt_digest(condition: str) -> str:
     replayed for a prompt they were not made with.
     """
     parts = {name: load_prompt(name) for name in baseline_prompt_names(condition)}
-    return text_sha(canonical_json({"prompts": parts, "schema": baseline_schema()}))
+    basis: dict[str, Any] = {"prompts": parts, "schema": baseline_schema()}
+    if condition == TOOLS_CONDITION:
+        basis["tools"] = tool_definitions_digest()  # a changed tool description is a changed prompt
+    return text_sha(canonical_json(basis))
 
 
 def ordnung_prompt_hashes() -> dict[str, tuple[str, str]]:
@@ -643,17 +689,53 @@ def baseline_repair_request(request: LLMRequest, problems: str) -> LLMRequest:
     )
 
 
-async def complete_baseline(llm: LLMService, request: LLMRequest) -> BaselineOutput:
+async def complete_baseline(
+    llm: LLMService, request: LLMRequest, tool_calls: list[ToolCall] | None = None
+) -> BaselineOutput:
     """Run a baseline request with one repair attempt, like the extraction step gets.
 
-    Raises :class:`ValidationError` if the repaired answer is still invalid.
+    Raises :class:`ValidationError` if the repaired answer is still invalid. The model's tool calls
+    (of both attempts) are appended to ``tool_calls`` as they arrive, so they survive a failure.
     """
     response = await llm.complete(request)
+    if tool_calls is not None:
+        tool_calls.extend(response.tool_calls)
     try:
         return parse_baseline(response)
     except ValidationError as first:
         problems = validation_problems(first)
-    return parse_baseline(await llm.complete(baseline_repair_request(request, problems)))
+    repaired = await llm.complete(baseline_repair_request(request, problems))
+    if tool_calls is not None:
+        tool_calls.extend(repaired.tool_calls)
+    return parse_baseline(repaired)
+
+
+def tool_uses(calls: Sequence[ToolCall]) -> list[ToolUse]:
+    """The recorded tool calls as the scorer needs them.
+
+    Policy: a rules tool answers with a JSON object, so any other answer (the CLI's error text for
+    refused arguments, or no answer) is a failed call; the date is kept for the date tools
+    (``compute_deadline``'s ``due_date``, ``add_working_days``' ``date``).
+    """
+    uses = []
+    for call in calls:
+        name = call.name.removeprefix(TOOL_PREFIX)
+        parsed = _json_object(call.result)
+        data = parsed or {}
+        due = iso_or_none(data.get("due_date")) if name == "compute_deadline" else None
+        day = iso_or_none(data.get("date")) if name == "add_working_days" else None
+        ok = parsed is not None
+        error = None if ok else " ".join((call.result or "no answer").split())[:300]
+        uses.append(ToolUse(name=name, input=call.input, ok=ok, due_date=due, date=day, error=error))
+    return uses
+
+
+def _json_object(text: str | None) -> dict[str, Any] | None:
+    try:
+        value = json.loads(text or "")
+    except ValueError:
+        return None
+    return value if isinstance(value, dict) else None
 
 
 def baseline_prediction(entry: Entry, output: BaselineOutput, *, condition: str, model: str) -> Prediction:
@@ -697,16 +779,21 @@ def baseline_prediction(entry: Entry, output: BaselineOutput, *, condition: str,
 async def run_baseline(
     entry: Entry, document: PreparedDocument, llm: LLMService, *, model: str, condition: ConditionName
 ) -> Prediction:
-    """The ``llm_only`` / ``llm_rules_text`` condition for one letter."""
+    """The ``llm_only`` / ``llm_rules_text`` / ``llm_rules_tool`` condition for one letter."""
     if not entry.photo and not prompt_pages(document.pages):
         return Prediction(entry_id=entry.id, condition=condition, model=model, failed=NO_TEXT_ERROR)
     request = baseline_request(entry, document, condition, model=model)
+    calls: list[ToolCall] = []
     try:
-        output = await complete_baseline(llm, request)
+        output = await complete_baseline(llm, request, calls)
     except (ValidationError, ClaudeBadOutput) as exc:
         message = f"invalid answer after the repair attempt: {exc}"[:500]
-        return Prediction(entry_id=entry.id, condition=condition, model=model, failed=message)
-    return baseline_prediction(entry, output, condition=condition, model=model)
+        prediction = Prediction(entry_id=entry.id, condition=condition, model=model, failed=message)
+    else:
+        prediction = baseline_prediction(entry, output, condition=condition, model=model)
+    if condition == TOOLS_CONDITION:
+        prediction = prediction.model_copy(update={"tools": tool_uses(calls)})
+    return prediction
 
 
 # --------------------------------------------------------------------------------------------------
@@ -741,6 +828,9 @@ def _code_digest(condition: str) -> str:
         _SRC / "llm" / "schemas.py",
         *(_SRC / "ingest" / f"{name}.py" for name in ("extract", "intake", "text")),
     ]
+    if condition == TOOLS_CONDITION:  # the tools' answers come from the rules engine
+        tools = [_SRC / "assistant" / "rules_tools.py", _SRC / "money" / "iban.py"]
+        return _digest([*own, *shared, *tools, *sorted((_SRC / "rules").glob("*.py"))])
     if condition != "ordnung":
         return _digest([*own, *shared])
     ingest = [

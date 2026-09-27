@@ -15,6 +15,7 @@ import re
 import sys
 from collections import Counter
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -37,8 +38,15 @@ RESULTS_SCHEMA = 1
 GALLERY_SIZE = 8
 GALLERY_PER_FAMILY = 2
 
-#: Categorical slots 1–3 of the reference palette (validated as a set, light surface).
-CONDITION_COLORS = {"ordnung": "#2a78d6", "llm_only": "#eb6834", "llm_rules_text": "#1baf7a"}
+#: Categorical slots 1–4 of the reference palette, in this fixed order (validated as a set on the light
+#: surface for adjacent bars; aqua and yellow are below 3:1, so every bar carries its value as text).
+CONDITION_COLORS = {
+    "ordnung": "#2a78d6",
+    "llm_only": "#eb6834",
+    "llm_rules_text": "#1baf7a",
+    "llm_rules_tool": "#eda100",
+}
+TOOL_CONDITION = "llm_rules_tool"
 SURFACE = "#fcfcfb"
 TEXT_PRIMARY = "#0b0b0b"
 TEXT_SECONDARY = "#52514e"
@@ -159,6 +167,146 @@ def recompute_metrics(results: Mapping[str, Any], manifest_path: Path | None = N
     return build_results(meta=meta, entries=entries, predictions=predictions, evaluation=evaluation)
 
 
+def add_condition(
+    results: Mapping[str, Any],
+    source: Mapping[str, Any],
+    condition: str,
+    *,
+    note: str | None = None,
+    manifest_path: Path | None = None,
+) -> dict[str, Any]:
+    """``results`` with ``condition``'s predictions taken from another run on the same letters.
+
+    For a condition added after a published run (the held-out run stays as it was): both runs must
+    have the same split, model, dataset and letters, and ``source`` must have an answer for every
+    letter (a scored failure is fine, an infrastructure error is not). The other conditions'
+    predictions are kept exactly; all metrics are recomputed. Where the added predictions came from
+    (and ``note``, a finding written after looking at them) goes to ``meta.added_conditions``.
+
+    A condition the run already had from the start is refused: its numbers are the published run's
+    and must stay as they were. Replacing a condition added earlier this way is allowed, and never
+    silent: the replaced recording's date, commit and accuracy go to its ``earlier_recordings``,
+    which the headline's footnote and the chart show next to the number. Its ``recording_spend`` (what
+    every live recording of it cost, on both splits — kept by hand, see :func:`recording_spend_text`)
+    and ``recording_budget_usd`` are carried over.
+    """
+    meta, source_meta = results["meta"], source["meta"]
+    if condition in meta.get("conditions", []) and condition not in meta.get("added_conditions", {}):
+        raise ValueError(
+            f"{condition} is one of the run's own conditions: its predictions stay as published "
+            "(only a condition added later can be replaced)"
+        )
+    for key in ("split", "model", "entries"):
+        if meta.get(key) != source_meta.get(key):
+            raise ValueError(f"the runs differ in {key}: {meta.get(key)!r} vs {source_meta.get(key)!r}")
+    if meta["dataset"]["manifest_sha256"] != source_meta["dataset"]["manifest_sha256"]:
+        raise ValueError("the runs used different benchmark datasets")
+    added = {row["id"]: row["conditions"].get(condition, {}).get("prediction") for row in source["entries"]}
+    missing = [
+        row["id"] for row in results["entries"] if not added.get(row["id"]) or added[row["id"]].get("error")
+    ]
+    if missing:
+        raise ValueError(f"{condition} has no answer for {len(missing)} letter(s), e.g. {missing[0]}")
+    merged: dict[str, Any] = json.loads(json.dumps(results))
+    replaced = (meta.get("added_conditions") or {}).get(condition)
+    earlier = list((replaced or {}).get("earlier_recordings") or [])
+    if replaced is not None and condition in results.get("metrics", {}):
+        accuracy = results["metrics"][condition]["due_date_accuracy"]
+        earlier.append(
+            {
+                **{key: replaced.get(key) for key in ("date", "commit", "run_id")},
+                "k": accuracy.get("k"),
+                "n": accuracy.get("n"),
+                "value": accuracy.get("value"),
+            }
+        )
+    for row in merged["entries"]:
+        row["conditions"][condition] = {"prediction": added[row["id"]], "score": None}
+    merged_meta = merged["meta"]
+    present = {*merged_meta["conditions"], condition}
+    merged_meta["conditions"] = [c for c in CONDITIONS if c in present] + sorted(present - set(CONDITIONS))
+    if "fingerprints" in merged_meta:
+        merged_meta["fingerprints"][condition] = source_meta.get("fingerprints", {}).get(condition)
+    merged_meta.setdefault("added_conditions", {})[condition] = {
+        "date": source_meta.get("date"),
+        "backend": source_meta.get("backend"),
+        "commit": source_meta.get("commit"),
+        "run_id": source_meta.get("run_id"),
+        "note": note,
+        **({"earlier_recordings": earlier} if earlier else {}),
+        **({"recording_spend": spend} if (spend := (replaced or {}).get("recording_spend")) else {}),
+        **(
+            {"recording_budget_usd": budget}
+            if (budget := (replaced or {}).get("recording_budget_usd")) is not None
+            else {}
+        ),
+    }
+    return recompute_metrics(merged, manifest_path)
+
+
+def earlier_recordings_text(info: Mapping[str, Any], *, short: bool = False) -> str:
+    """How many times an added condition was recorded on this split, and what the earlier ones scored.
+
+    Empty for a first recording. The published number is the last recording; the earlier ones were
+    replaced after changes that looking at them motivated, so the number sits next to them.
+    """
+    earlier = info.get("earlier_recordings") or []
+    if not earlier:
+        return ""
+    ordinal = {2: "second", 3: "third", 4: "fourth"}.get(len(earlier) + 1, f"{len(earlier) + 1}th")
+    scores = [
+        f"{_num(r['value'] * 100 if r.get('value') is not None else 0)} %"
+        + (
+            ""
+            if short
+            else f" ({_num(r.get('k'))}/{_num(r.get('n'))}, {r.get('date')}, commit `{r.get('commit')}`)"
+        )
+        for r in earlier
+    ]
+    if short:
+        return f"{ordinal} recording; earlier: " + ", ".join(scores)
+    return (
+        f"This is the {ordinal} recording of it on this split, made after the tool descriptions, argument "
+        f"checks and hints were revised following a review of the earlier ones; they scored "
+        + "; ".join(scores)
+        + "."
+    )
+
+
+def recording_spend_text(info: Mapping[str, Any]) -> str:
+    """What recording an added condition cost in all, from its ``recording_spend``; empty without one.
+
+    ``recording_spend`` lists every live recording of the condition — both splits, replaced ones
+    included — as ``{"split", "commit", "calls", "cost_usd"}`` (the API-equivalent cost the Claude CLI
+    reported for its recorded answers). It is kept by hand: the replaced recordings are no longer in
+    the tree, so only the record says what they cost. Smoke runs of a few letters were not recorded
+    and their cost is unknown, so the total is a lower bound. With ``recording_budget_usd`` (the budget
+    set for recording it, to stay well under) the text says plainly when the counted spend alone came
+    within a tenth of it: the budget was then not kept.
+    """
+    spend = info.get("recording_spend") or []
+    if not spend:
+        return ""
+    total = sum(float(row.get("cost_usd") or 0) for row in spend)
+    by_split: dict[str, list[str]] = {}
+    for row in spend:
+        by_split.setdefault(str(row.get("split")), []).append(f"${float(row.get('cost_usd') or 0):.2f}")
+    parts = "; ".join(f"{split} {', '.join(costs)}" for split, costs in by_split.items())
+    text = (
+        f"Recording it cost at least ${total:.2f} (API-equivalent): {len(spend)} live recordings, in order "
+        f"{parts}, plus smoke runs of a few letters whose cost was not recorded."
+    )
+    budget = info.get("recording_budget_usd")
+    if budget is None:
+        return text
+    if total >= 0.9 * float(budget):
+        return (
+            f"{text} The budget for recording it was ${float(budget):.2f}, to stay well under: the counted "
+            "spend alone came within a tenth of it, and the smoke runs come on top, so that budget was not kept."
+        )
+    return f"{text} The budget for recording it was ${float(budget):.2f}."
+
+
 def write_json(path: Path, data: Mapping[str, Any]) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=1, sort_keys=False) + "\n", encoding="utf-8")
@@ -266,6 +414,8 @@ def failure_gallery(
                     "quote": _clip(item.quote, 200) if item else "",
                     "failed": score.failed,
                 }
+                if score.tool_calls is not None:
+                    record["tool_dates"] = list(score.tool_dates)
                 key = (_SEVERITY.get(label or "", 9), entry.family, entry.id, outcome.index)
                 queue.append((key, record))
         queues[condition] = [record for _, record in sorted(queue, key=lambda pair: pair[0])]
@@ -383,9 +533,10 @@ def render_markdown(
     meta = main["meta"]
     sections = [
         _intro(main),
-        _headline(main, chart),
+        _headline(main, chart, rescored),
         _rescored_section(main, rescored) if rescored else "",
         _taxonomy_section(main),
+        _tool_section(main, rescored),
         _family_section(main),
         _modality_section(main),
         _extraction_section(main),
@@ -414,17 +565,27 @@ def _intro(results: Mapping[str, Any]) -> str:
         partial += " **Dev split** — the prompts were tuned on these letters; not the published benchmark."
     unanswered = _unanswered_note(results)
     warning = f"\n\n> **Incomplete run.** {unanswered}" if _has_errors(results) else ""
+    with_tool = TOOL_CONDITION in results["metrics"]
+    baselines = "three strong baselines" if with_tool else "two strong baselines"
+    tool_bullet = (
+        "\n- **LLM + rules tool** — the *LLM only* prompt plus Ordnung's own rules engine as MCP tools\n"
+        "  (`ordnung mcp --rules-only`): an agent with a calculator, which decides itself when to use it\n"
+        "  and whether to trust it."
+        if with_tool
+        else ""
+    )
+    added = _added_note(meta)
     return f"""# Benchmark: who gets German deadlines right?
 
 > Generated by `python -m evals.run` on {meta.get("date")} from {backend}. Model `{meta.get("model")}`,
 > split `{meta.get("split")}`: {meta.get("entries")} letters ({meta.get("photos")} phone photos,
 > {meta.get("adversarial")} adversarial), {meta.get("scored_items")} required items with a known date
-> (a phone photo repeats the items of the PDF it was made from).{partial}
+> (a phone photo repeats the items of the PDF it was made from).{partial}{added}
 > Do not edit by hand — change `evals/report.py` and regenerate.{warning}
 
 Ordnung's design bet ([ADR 0002](decisions/0002-llm-reads-code-computes.md)) is that the language
 model should **read** a letter — what it says about a date — while tested code **computes** the
-date. This benchmark checks the bet against two strong baselines with the *same* model, letters,
+date. This benchmark checks the bet against {baselines} with the *same* model, letters,
 "today" and region:
 
 - **Ordnung** — the real ingestion logic: transcribe photos → extract a `DateSpec` → verify quotes
@@ -432,7 +593,18 @@ date. This benchmark checks the bet against two strong baselines with the *same*
 - **LLM only** — the model reads the letter and computes the final due date itself, told today's
   date and the region and to apply current German law.
 - **LLM + rules text** — the same, plus a verified summary of the relevant rules pasted into the
-  prompt (4-day delivery fiction, §§ 187/188/193 BGB, holidays …)."""
+  prompt (4-day delivery fiction, §§ 187/188/193 BGB, holidays …).{tool_bullet}"""
+
+
+def _added_note(meta: Mapping[str, Any]) -> str:
+    """Conditions scored into this run later (``meta.added_conditions``), with where they came from."""
+    added = meta.get("added_conditions") or {}
+    parts = [
+        f"{_label(condition)} was run on {info.get('date')} ({info.get('backend')}, commit "
+        f"`{info.get('commit') or '?'}`) on the same letters and added to this run"
+        for condition, info in added.items()
+    ]
+    return ("\n> " + "; ".join(parts) + ".") if parts else ""
 
 
 def _has_errors(results: Mapping[str, Any]) -> bool:
@@ -457,15 +629,24 @@ def _unanswered_note(results: Mapping[str, Any]) -> str:
     )
 
 
-def _headline(results: Mapping[str, Any], chart: str | None) -> str:
+def _later(results: Mapping[str, Any]) -> dict[str, Any]:
+    """Conditions scored into this run from a later run (``meta.added_conditions``) that have metrics."""
+    added = results["meta"].get("added_conditions") or {}
+    return {c: info for c, info in added.items() if c in results["metrics"]}
+
+
+def _headline(
+    results: Mapping[str, Any], chart: str | None, rescored: Mapping[str, Any] | None = None
+) -> str:
     metrics = results["metrics"]
+    later = _later(results)
     rows = []
     for condition in _conditions(results):
         m = metrics[condition]
         acc = m["due_date_accuracy"]
         rows.append(
             [
-                f"**{_label(condition)}**",
+                f"**{_label(condition)}**" + (" †" if condition in later else ""),
                 rate(acc),
                 f"{_num(acc['k'])}/{_num(acc['n'])}",
                 rate(m["dangerous_late_rate"], ci=False),
@@ -491,11 +672,34 @@ def _headline(results: Mapping[str, Any], chart: str | None) -> str:
     comparisons = results.get("comparisons") or {}
     lines = []
     for key, value in comparisons.items():
-        _, other = key.split("-vs-", 1)
+        first, other = key.split("-vs-", 1)
+        if "ordnung" in (first, other) and ({first, other} & set(later)):
+            continue  # a later run on changed code against the held-out Ordnung: not a fair pair (see †)
         lines.append(
-            f"- Ordnung − {_label(other)}: accuracy {diff(value['due_date_accuracy_diff'])}, "
+            f"- {_label(first)} − {_label(other)}: accuracy {diff(value['due_date_accuracy_diff'])}, "
             f"dangerous-late rate {diff(value['dangerous_late_rate_diff'])}."
         )
+    footnotes = []
+    for condition, info in later.items():
+        fair = ""
+        rescored_ordnung = ((rescored or {}).get("metrics") or {}).get("ordnung")
+        if rescored_ordnung is not None:
+            fair = (
+                f" Compare it with Ordnung re-scored on that code, {rate(rescored_ordnung['due_date_accuracy'])}"
+                " (“After the held-out run”), not with the held-out Ordnung row"
+                + (" — see “An agent with a calculator”" if condition == TOOL_CONDITION else "")
+                + "."
+            )
+        recordings = earlier_recordings_text(info)
+        spend = recording_spend_text(info)
+        footnotes.append(
+            f"† {_label(condition)} ran on {info.get('date')}, after the held-out run, against the code of "
+            f"that day — including the engine fix described under “After the held-out run” — so it is not "
+            f"held-out, and it is left out of the paired differences with Ordnung below.{fair}"
+            + (f" {recordings}" if recordings else "")
+            + (f" {spend}" if spend else "")
+        )
+    footnote = ("\n\n" + "\n\n".join(footnotes)) if footnotes else ""
     paired = (
         "Paired differences (bootstrap over the same letters; an interval that excludes 0 is a clear difference):\n\n"
         + "\n".join(lines)
@@ -511,7 +715,7 @@ def _headline(results: Mapping[str, Any], chart: str | None) -> str:
 the predicted date is **after** the true one — the person would act too late. *Early*: before the
 true date (safe, but wrong). *Missed*: the obligation was not found at all. Cost is the
 API-equivalent price reported by the Claude CLI; latency is the model time per letter (all calls).
-{_unanswered_note(results)}
+{_unanswered_note(results)}{footnote}
 
 {paired}
 
@@ -520,6 +724,7 @@ API-equivalent price reported by the Claude CLI; latency is the model time per l
 
 def _rescored_section(held_out: Mapping[str, Any], rescored: Mapping[str, Any]) -> str:
     meta = rescored["meta"]
+    later = _later(held_out)
     rows = []
     for condition in _conditions(held_out):
         before = held_out["metrics"][condition]
@@ -528,8 +733,10 @@ def _rescored_section(held_out: Mapping[str, Any], rescored: Mapping[str, Any]) 
             continue
         rows.append(
             [
-                f"**{_label(condition)}**",
-                f"{rate(before['due_date_accuracy'])}; late {rate(before['dangerous_late_rate'], ci=False)}",
+                f"**{_label(condition)}**" + (" †" if condition in later else ""),
+                "n/a (recorded after the fix)"
+                if condition in later
+                else f"{rate(before['due_date_accuracy'])}; late {rate(before['dangerous_late_rate'], ci=False)}",
                 f"{rate(after['due_date_accuracy'])}; late {rate(after['dangerous_late_rate'], ci=False)}",
             ]
         )
@@ -553,8 +760,9 @@ def _rescored_section(held_out: Mapping[str, Any], rescored: Mapping[str, Any]) 
 
 The fix changed code only (no prompt, schema or model change), so the **same recorded model outputs**
 were scored again (commit `{meta.get("commit") or "?"}`). Because the test split informed the fix,
-these numbers are **no longer held-out**; the held-out run above stays the headline. The baselines
-do not use the rules engine, so their numbers cannot change.
+these numbers are **no longer held-out**; the held-out run above stays the headline. The baselines'
+numbers cannot change: they do not use the rules engine, or (LLM + rules tool) they answered from
+the tool results recorded when they ran.
 
 {table}
 
@@ -620,6 +828,150 @@ Because Ordnung's model returns *what the letter says* (a `DateSpec`: fixed date
 
 For the baselines the model does both steps in one answer, so a wrong date cannot be split.
 {fields_text}{lucky_text}"""
+
+
+def _share(count: int, total: int) -> str:
+    return f"{count} of {total} ({count / total * 100:.1f} %)" if total else "—"
+
+
+def _tool_section(results: Mapping[str, Any], rescored: Mapping[str, Any] | None = None) -> str:
+    """How the model used Ordnung's engine as a tool, and what its final dates did with the answers.
+
+    When the condition was added after the headline run and a re-scored run exists, the fair
+    comparison is with the re-scored Ordnung (the tool called the engine as it was on that later day).
+    """
+    metrics = results["metrics"].get(TOOL_CONDITION)
+    use = (metrics or {}).get("tool_use")
+    if not use:
+        return ""
+    by_backing = use["items_by_backing"]
+    tool_dated = by_backing["tool_date"] + by_backing["overrode_tool"]
+    calls = ", ".join(f"`{name}` {count}" for name, count in use["calls_by_tool"].items()) or "none"
+    per_letter = use["deadline_calls_per_letter"]
+    per_letter_text = "—" if per_letter is None else f"{per_letter:.2f}"
+    if per_letter is not None and "deadline_calls_on_dated_letters" in use:
+        per_letter_text += (
+            f" ({use['deadline_calls_on_dated_letters']} calls on {use['dated_letters']} letters)"
+        )
+    rows = [
+        [
+            "Letters with a dated obligation where the model asked a date tool "
+            "(`compute_deadline` or `add_working_days`)",
+            rate(use["letters_with_date_tool_call"], ci=False, counts=True),
+        ],
+        ["`compute_deadline` calls per letter with a dated obligation", per_letter_text],
+        ["Tool calls, by tool", f"{use['calls']} ({calls})"],
+        ["Calls the tool refused (invalid arguments)", str(use["refused_calls"])],
+    ]
+    other_today = use.get("deadline_calls_with_other_today")
+    if other_today is not None:
+        letters = use.get("letters_with_other_today", 0)
+        rows.append(
+            [
+                "`compute_deadline` calls that passed a `today` other than the letter's",
+                f"{other_today} (on {letters} {'letter' if letters == 1 else 'letters'})",
+            ]
+        )
+    labels = {
+        "tool_date": "Final date = a date the tools returned for that obligation",
+        "overrode_tool": "Final date is none of the dates the tools returned for that obligation (the model "
+        "overrode them)",
+        "other_obligation": "No tool date for that obligation; the tools answered about another one on the letter",
+        "no_tool_date": "No date tool answered on that letter (the model dated it itself)",
+    }
+    chosen = use.get("chose_among_differing_tool_dates")
+    for backing, label in labels.items():
+        accuracy = use["accuracy_by_backing"][backing]
+        late = use["late_by_backing"][backing]
+        detail = (
+            f"{by_backing[backing]} {'item' if by_backing[backing] == 1 else 'items'} — right "
+            f"{rate(accuracy, ci=False, counts=True)}, "
+            f"late {rate(late, ci=False, counts=True)}"
+            if by_backing[backing]
+            else "0 items"
+        )
+        rows.append([label, detail])
+        if backing == "tool_date" and chosen is not None:
+            rows.append(
+                [
+                    "↳ the tools returned differing dates for it (asked again with other facts); the model "
+                    "chose one",
+                    _chosen_text(chosen),
+                ]
+            )
+    table = _table(["Tool use (required items with a known date)", _label(TOOL_CONDITION)], rows)
+    differs = use["final_differs_from_tool"]
+    right = use["tool_returned_the_right_date"]
+    several = use.get("tool_dated_items_with_differing_dates", 0)
+    choice = (
+        f" (for {several} of them the tools returned differing dates, and it counts when one was right: "
+        f"which to answer with was the model's choice, a later one {chosen['chose_a_later_date']} "
+        f"{'time' if chosen['chose_a_later_date'] == 1 else 'times'})"
+        if several and chosen is not None
+        else ""
+    )
+    paragraphs = [
+        f"Where the date tools had answered for an obligation, the final date differed from their "
+        f"answer for {_share(by_backing['overrode_tool'], tool_dated)}. Overrides that replaced a right "
+        f"tool date with a wrong one: {use['overrides_breaking_a_right_tool_date']}; that replaced a "
+        f"wrong tool date with the right one: {use['overrides_fixing_a_wrong_tool_date']}. The tools' "
+        f"own answer was right for {rate(right, ci=False, counts=True)} of these obligations{choice}: they "
+        "compute exactly what they are given, so a wrong tool date comes from the arguments the model "
+        "chose (its reading of the period, anchor, sender or region) or from one of Ordnung's documented "
+        "earliest-plausible-date policies. Calls carry no item id: every date counts for an obligation "
+        "when the answer dates only one; otherwise a `compute_deadline` date counts for the obligation "
+        "whose sentence the model passed it, and a date no obligation's sentence claims (an "
+        "`add_working_days` date, which gets no sentence, or a call given another sentence of the letter) "
+        "for an obligation whose final date it is.",
+    ]
+    if other_today:
+        paragraphs.append(
+            f"In {other_today} `compute_deadline` calls the model passed a `today` other than the "
+            "letter's (the `claude` CLI tells it the real date). A rules server that uses it reports a "
+            "live deadline as passed and drops its send-by date, and the final answer can repeat that; "
+            "the scorer checks due dates only. The benchmark's rules server has since been pinned to "
+            "the letter's `today` (`ORDNUNG_PIN_TODAY`): a recording made after that ignores such a "
+            "`today` and says so in the tool's warnings."
+        )
+    if differs.get("value") is None:
+        paragraphs = ["The tool returned no dates on this run."]
+    added = (results["meta"].get("added_conditions") or {}).get(TOOL_CONDITION)
+    fair = ((rescored or {}).get("comparisons") or {}).get(f"ordnung-vs-{TOOL_CONDITION}")
+    if added and fair and rescored is not None:
+        rescored_ordnung = rescored["metrics"]["ordnung"]["due_date_accuracy"]
+        paragraphs.append(
+            f"This condition ran on {added.get('date')}, after the fix described under “After the "
+            "held-out run”, so it called the fixed engine: compare it with Ordnung re-scored after the "
+            f"fix ({rate(rescored_ordnung)}), not with the held-out run. Ordnung re-scored − LLM + rules "
+            f"tool: accuracy {diff(fair['due_date_accuracy_diff'])}, dangerous-late rate "
+            f"{diff(fair['dangerous_late_rate_diff'])}."
+        )
+    note = (added or {}).get("note")
+    if note:
+        paragraphs.append(f"**What this shows.** {note}")
+    return f"""## An agent with a calculator
+
+Why a fixed pipeline instead of giving the model Ordnung's rules engine as a tool? In the **LLM +
+rules tool** condition the model had the engine as MCP tools (`compute_deadline`, `german_holidays`,
+`add_working_days`, `check_iban` — `ordnung mcp --rules-only`), the *LLM only* prompt and a short
+note that names the tools and invites the model to use them when they help
+([`evals/prompts/rules_tool.md`](../evals/prompts/rules_tool.md)); when to call them and whether to
+trust them was its own choice.
+
+{table}
+
+""" + "\n\n".join(paragraphs)
+
+
+def _chosen_text(chosen: Mapping[str, int]) -> str:
+    """The row on items whose tools returned differing dates (``chose_among_differing_tool_dates``)."""
+    n = chosen["items"]
+    if not n:
+        return "0 items"
+    return (
+        f"{n} {'item' if n == 1 else 'items'} — a later one than the earliest: {chosen['chose_a_later_date']}; "
+        f"right {chosen['correct']}/{n}, late {chosen['late']}/{n}"
+    )
 
 
 def _family_section(results: Mapping[str, Any]) -> str:
@@ -786,7 +1138,13 @@ def _cost_section(results: Mapping[str, Any]) -> str:
         )
         + (
             "\n\nTokens include prompt-cache reads and writes. Ordnung makes two calls for a photo "
-            "(transcribe, extract); a repair call is added only when an answer fails validation."
+            "(transcribe, extract); a repair call is added only when an answer fails validation. "
+            + (
+                "The rules-tool condition makes one call per letter in which the model takes a turn "
+                "per round of tool calls; its cost and latency include those turns."
+                if TOOL_CONDITION in metrics
+                else ""
+            )
         )
     )
 
@@ -832,6 +1190,13 @@ def _gallery_section(results: Mapping[str, Any]) -> str:
         if g.get("explanation"):
             source = "Receipt" if g["condition"] == "ordnung" else "Model's working"
             lines.append(f"   - {source}: “{g['explanation']}”")
+        if "tool_dates" in g:
+            answers = ", ".join(human_date(d) for d in g["tool_dates"])
+            lines.append(
+                f"   - The date tools returned: {answers}"
+                if answers
+                else "   - The date tools returned no date."
+            )
         if g.get("failed"):
             lines.append(f"   - The condition produced no usable answer: {g['failed']}")
         blocks.append("\n".join(lines))
@@ -864,15 +1229,21 @@ checks in `evals/verify_labels.py` that use only `datetime` and the `holidays` p
 [VERIFICATION.md](../evals/dataset/VERIFICATION.md). Where the law leaves room, labels follow the
 prevailing case law and the earliest plausible date.
 
-**Baseline fairness.** All three conditions use the same model, the same letter content (the same
+**Baseline fairness.** All conditions use the same model, the same letter content (the same
 visible text; for photos Ordnung transcribes while the baselines see the image), today's date, the
-region, the same security framing (`<untrusted_document>` tags), no tools and one repair attempt for
-invalid output. The holiday Land comes from the dataset for every condition (the letterhead's Land,
+region, the same security framing (`<untrusted_document>` tags) and one repair attempt for invalid
+output. None has tools, except *LLM + rules tool*: its only tools are Ordnung's rules engine
+(`ordnung mcp --rules-only`, no file, web or shell access), whose "today" is the letter's — a
+`today` the model passes is not used (in recordings made before that pin it was; the tool-use table
+counts those calls) — with a cost cap of $1 per call so a looping agent would be stopped. The holiday Land comes from the
+dataset for every condition (the letterhead's Land,
 else the person's): the baselines are told it in the prompt, Ordnung's rules engine receives it as
 the app would get it from the sender's address or the person's settings; none has to infer it. The baselines' prompts ask for step-by-step working before each date, tell the model to
 apply current German law, to choose the earliest plausible date when in doubt and to return no date
 when none can be determined ([`evals/prompts`](../evals/prompts)); the rules-text prompt adds a
-verified summary of the rules condensed from [deadline-rules.md](deadline-rules.md).
+verified summary of the rules condensed from [deadline-rules.md](deadline-rules.md), and the
+rules-tool prompt a three-sentence note that names the tools and invites the model to use them when
+they help (the tools' own descriptions explain them).
 
 **Scoring.** Predicted items are matched to truth items per letter (optimal assignment over kind,
 date, amount and title/quote similarity). Due-date accuracy is exact-date agreement on required
@@ -900,12 +1271,23 @@ instructions — and the rules text, e.g. that a Familienkasse Kinderzuschlag de
 were written by people who knew the test traps (which helps the baselines at least as much as Ordnung).
 Warnings are scored with keyword patterns (scam, AI-directed text, uncertainty), which can miss
 unusual wording. Recorded outputs make the numbers reproducible, not the model deterministic: a
-fresh live run will differ somewhat."""
+fresh live run will differ somewhat. The rules-tool condition's recording includes the tool's
+answers, so a later change to the rules engine can change Ordnung's replayed numbers but not that
+condition's."""
 
 
 def _reproduce_section(meta: Mapping[str, Any]) -> str:
     model = meta.get("model", "sonnet")
     split = meta.get("split", "test")
+    added = sorted(meta.get("added_conditions") or {})
+    later = "".join(
+        f"\n{_label(name)} was added after the run: it is recorded on its own (`python -m evals.run --live "
+        f"--split {split} --model {model} --conditions {name}`, which never rewrites this page) and joins "
+        f"the run with `python -m evals.report evals/results/<run>.json --rescored "
+        f"evals/results/<run>-rescored.json --add-condition {name}=evals/results/<new run>.json --note "
+        "<finding>.md` (the run's own conditions stay as published)."
+        for name in added
+    )
     return f"""## Reproduce
 
 ```bash
@@ -918,7 +1300,7 @@ Recorded outputs live in `evals/recorded/<model>/` (keyed like the app's replay 
 results with every prediction in `evals/results/`. A replay scores the recorded outputs with the
 rules engine of the checked-out commit; this run's numbers come from commit `{meta.get("commit") or "?"}`.
 The page is rendered from the results files alone:
-`python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]`."""
+`python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]`.{later}"""
 
 
 def render_pending_markdown() -> str:
@@ -932,10 +1314,11 @@ def render_pending_markdown() -> str:
 > `python -m evals.run --live --split test` to call the model, record its outputs and regenerate
 > this page with numbers, tables, the chart and a failure gallery.
 
-The benchmark compares three conditions with the same model, letters, "today" and region:
+The benchmark compares four conditions with the same model, letters, "today" and region:
 **Ordnung** (the model reads a `DateSpec`, the rules engine computes the date), **LLM only** (the
-model computes the final date itself, told to apply current German law) and **LLM + rules text**
-(the same, with a verified summary of the rules in the prompt). It reports due-date accuracy with
+model computes the final date itself, told to apply current German law), **LLM + rules text**
+(the same, with a verified summary of the rules in the prompt) and **LLM + rules tool** (the same
+model with Ordnung's rules engine as MCP tools it may call). It reports due-date accuracy with
 95 % bootstrap intervals, the dangerous-late rate, an error taxonomy that separates *reading* from
 *computing* errors, per-family and text-vs-photo results, evidence grounding, adversarial robustness
 (prompt injection, hidden text, scams, conflicting or missing dates), cost and latency.""",
@@ -968,85 +1351,174 @@ def chart_groups(results: Mapping[str, Any]) -> list[tuple[str, dict[str, Mappin
     return groups
 
 
-def write_chart(results: Mapping[str, Any], path: Path = CHART_PATH) -> Path:
+def write_chart(
+    results: Mapping[str, Any], path: Path = CHART_PATH, *, rescored: Mapping[str, Any] | None = None
+) -> Path:
     """The due-date accuracy chart: PNG via matplotlib, else a hand-written SVG next to ``path``."""
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        return _matplotlib_chart(results, path.with_suffix(".png"))
+        return _matplotlib_chart(results, path.with_suffix(".png"), rescored=rescored)
     except ImportError:
         svg = path.with_suffix(".svg")
-        svg.write_text(svg_chart(results), encoding="utf-8")
+        svg.write_text(svg_chart(results, rescored=rescored), encoding="utf-8")
         return svg
 
 
-def _chart_title(results: Mapping[str, Any]) -> tuple[str, str]:
+@dataclass(frozen=True)
+class ChartPanel:
+    """One panel of the accuracy chart: its conditions and, per group, their estimates."""
+
+    title: str | None
+    conditions: list[str]
+    groups: list[tuple[str, dict[str, Mapping[str, Any]]]]
+
+
+def chart_panels(results: Mapping[str, Any], rescored: Mapping[str, Any] | None = None) -> list[ChartPanel]:
+    """The chart's panels: one, or — for a condition added from a later run on fixed code, when the
+    re-scored run exists — the held-out run on the left and, on the right, that condition next to
+    Ordnung re-scored with the same code (the fair pair: never a later run beside the held-out bar).
+    """
+    groups = chart_groups(results)
+    conditions = _conditions(results)
+    later = [c for c in conditions if c in _later(results)]
+    fixed = ((rescored or {}).get("metrics") or {}).get("ordnung")
+    if not later or rescored is None or fixed is None:
+        return [ChartPanel(None, conditions, groups)]
+    held_out = [c for c in conditions if c not in later]
+    after = dict(chart_groups(rescored))
+    return [
+        ChartPanel(
+            "Held-out run", held_out, [(label, {c: v[c] for c in held_out if c in v}) for label, v in groups]
+        ),
+        ChartPanel(
+            "After the engine fix (not held-out)",
+            ["ordnung", *later],
+            [
+                (
+                    label,
+                    {
+                        **({"ordnung": after[label]["ordnung"]} if "ordnung" in after.get(label, {}) else {}),
+                        **{c: v[c] for c in later if c in v},
+                    },
+                )
+                for label, v in groups
+            ],
+        ),
+    ]
+
+
+def _chart_title(
+    results: Mapping[str, Any], rescored: Mapping[str, Any] | None = None
+) -> tuple[str, str, str | None]:
+    """Title, subtitle and (for a condition added later) the note that keeps the bars comparable."""
     meta = results["meta"]
-    return (
-        "Due-date accuracy on required items",
+    subtitle = (
         f"95 % bootstrap CI · model {meta.get('model')} · {meta.get('split')} split · "
-        f"{meta.get('scored_items')} items in {meta.get('entries')} letters",
+        f"{meta.get('scored_items')} items in {meta.get('entries')} letters"
     )
+    later = _later(results)
+    if not later:
+        return "Due-date accuracy on required items", subtitle, None
+    names = " and ".join(_label(c) for c in later)
+    dates = ", ".join(sorted({str(info.get("date")) for info in later.values()}))
+    if len(chart_panels(results, rescored)) > 1:
+        note = (
+            f"Right: {names}, run on {dates} against the fixed engine, next to Ordnung's held-out "
+            "outputs re-scored with it"
+        )
+    else:
+        note = (
+            f"{names} ran later ({dates}), with the code of that day — not comparable with the held-out run"
+        )
+    recordings = [
+        f"{_label(c)}: {text}"
+        for c, info in later.items()
+        if (text := earlier_recordings_text(info, short=True))
+    ]
+    return "Due-date accuracy on required items", subtitle, "\n".join([note, *recordings])
 
 
-def _matplotlib_chart(results: Mapping[str, Any], path: Path) -> Path:
+def _legend_conditions(panels: Sequence[ChartPanel]) -> list[str]:
+    seen = dict.fromkeys(c for panel in panels for c in panel.conditions)
+    return [c for c in CONDITIONS if c in seen] + [c for c in seen if c not in CONDITIONS]
+
+
+def _matplotlib_chart(
+    results: Mapping[str, Any], path: Path, *, rescored: Mapping[str, Any] | None = None
+) -> Path:
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    groups = chart_groups(results)
-    conditions = _conditions(results)
+    panels = chart_panels(results, rescored)
+    groups = panels[0].groups
+    title, subtitle, note = _chart_title(results, rescored)
+    # The header, in inches: title, subtitle, the optional note, then the legend in its own row, so a
+    # long legend never runs into the title; panel titles get a line of their own below it.
+    header_lines = [
+        (title, 12.0, "bold", TEXT_PRIMARY, 0.36),
+        (subtitle, 8.5, "normal", TEXT_SECONDARY, 0.24),
+    ]
+    for line in note.split("\n") if note else []:
+        header_lines.append((line, 8.5, "normal", TEXT_SECONDARY, 0.24))
+    titled = any(panel.title for panel in panels)
+    header = 0.14 + sum(line[4] for line in header_lines) + 0.34 + (0.3 if titled else 0)
     bar, gap = 0.17, 0.07
-    step = len(conditions) * (bar + gap) + 0.45
-    fig, ax = plt.subplots(figsize=(8.4, 1.3 + 1.05 * len(groups)), dpi=160)
+    bars = max(len(panel.conditions) for panel in panels)
+    step = bars * (bar + gap) + 0.45
+    height = header + 0.3 + (1.05 if bars >= 4 else 0.85) * len(groups)
+    fig, axes = plt.subplots(1, len(panels), figsize=(8.4, height), dpi=160, sharey=True, squeeze=False)
     fig.patch.set_facecolor(SURFACE)
-    ax.set_facecolor(SURFACE)
-    ticks, labels = [], []
-    for g, (label, values) in enumerate(groups):
-        top = -g * step
-        ticks.append(top - (len(conditions) - 1) * (bar + gap) / 2)
-        labels.append(label)
-        for i, condition in enumerate(conditions):
-            est = values.get(condition)
-            if not est or est.get("value") is None:
-                continue
-            y = top - i * (bar + gap)
-            value = est["value"] * 100
-            ax.barh(y, value, height=bar, color=CONDITION_COLORS.get(condition, TEXT_SECONDARY), zorder=2)
-            lo, hi = est.get("ci") or (None, None)
-            end = value
-            if lo is not None and hi is not None:
-                ax.plot([lo * 100, hi * 100], [y, y], color=TEXT_SECONDARY, linewidth=1.2, zorder=3)
-                ax.plot(
-                    [lo * 100] * 2, [y - bar / 4, y + bar / 4], color=TEXT_SECONDARY, linewidth=1.2, zorder=3
+    for ax, panel in zip(axes[0], panels, strict=True):
+        ax.set_facecolor(SURFACE)
+        ticks, labels = [], []
+        for g, (label, values) in enumerate(panel.groups):
+            top = -g * step
+            ticks.append(top - (bars - 1) * (bar + gap) / 2)
+            labels.append(label)
+            for i, condition in enumerate(panel.conditions):
+                est = values.get(condition)
+                if not est or est.get("value") is None:
+                    continue
+                y = top - i * (bar + gap)
+                value = est["value"] * 100
+                color = CONDITION_COLORS.get(condition, TEXT_SECONDARY)
+                ax.barh(y, value, height=bar, color=color, zorder=2)
+                lo, hi = est.get("ci") or (None, None)
+                end = value
+                if lo is not None and hi is not None:
+                    line = {"color": TEXT_SECONDARY, "linewidth": 1.2, "zorder": 3}
+                    ax.plot([lo * 100, hi * 100], [y, y], **line)
+                    ax.plot([lo * 100] * 2, [y - bar / 4, y + bar / 4], **line)
+                    ax.plot([hi * 100] * 2, [y - bar / 4, y + bar / 4], **line)
+                    end = max(end, hi * 100)
+                ax.text(
+                    end + 1.5, y, f"{value:.0f} %", va="center", ha="left", fontsize=8.5, color=TEXT_PRIMARY
                 )
-                ax.plot(
-                    [hi * 100] * 2, [y - bar / 4, y + bar / 4], color=TEXT_SECONDARY, linewidth=1.2, zorder=3
-                )
-                end = max(end, hi * 100)
-            ax.text(end + 1.2, y, f"{value:.0f} %", va="center", ha="left", fontsize=8.5, color=TEXT_PRIMARY)
-    ax.set_yticks(ticks, labels, fontsize=9.5, color=TEXT_PRIMARY)
-    ax.set_xlim(0, 112)
-    ax.set_xticks(
-        [0, 25, 50, 75, 100], ["0 %", "25 %", "50 %", "75 %", "100 %"], fontsize=8.5, color=TEXT_SECONDARY
-    )
-    ax.grid(axis="x", color=GRID, linewidth=0.8, zorder=0)
-    ax.tick_params(length=0)
-    for spine in ax.spines.values():
-        spine.set_visible(False)
-    title, subtitle = _chart_title(results)
-    fig.text(0.012, 0.965, title, fontsize=12, fontweight="bold", color=TEXT_PRIMARY, va="top")
-    fig.text(
-        0.012, 0.965 - 0.34 / fig.get_figheight(), subtitle, fontsize=8.5, color=TEXT_SECONDARY, va="top"
-    )
+        ax.set_yticks(ticks, labels, fontsize=9.5, color=TEXT_PRIMARY)
+        ax.set_xlim(0, 118)
+        ax.set_xticks(
+            [0, 25, 50, 75, 100], ["0 %", "25 %", "50 %", "75 %", "100 %"], fontsize=8.5, color=TEXT_SECONDARY
+        )
+        ax.grid(axis="x", color=GRID, linewidth=0.8, zorder=0)
+        ax.tick_params(length=0)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        if panel.title:
+            ax.set_title(panel.title, loc="left", fontsize=9.5, fontweight="bold", color=TEXT_PRIMARY, pad=8)
+    y = 0.14
+    for text, size, weight, color, advance in header_lines:
+        fig.text(0.012, 1 - y / height, text, fontsize=size, fontweight=weight, color=color, va="top")
+        y += advance
     handles = [
         matplotlib.patches.Patch(color=CONDITION_COLORS.get(c, TEXT_SECONDARY), label=_label(c))
-        for c in conditions
+        for c in _legend_conditions(panels)
     ]
     fig.legend(
         handles=handles,
-        loc="upper right",
-        bbox_to_anchor=(0.99, 0.985),
+        loc="upper left",
+        bbox_to_anchor=(0.004, 1 - (y + 0.02) / height),
         ncol=len(handles),
         frameon=False,
         fontsize=8.5,
@@ -1054,7 +1526,7 @@ def _matplotlib_chart(results: Mapping[str, Any], path: Path) -> Path:
         handlelength=1.0,
     )
     fig.subplots_adjust(
-        left=0.15, right=0.98, top=1 - 0.95 / fig.get_figheight(), bottom=0.35 / fig.get_figheight()
+        left=0.15, right=0.98, top=1 - (header + 0.1) / height, bottom=0.35 / height, wspace=0.12
     )
     fig.savefig(path, facecolor=SURFACE, metadata={"Software": None})
     plt.close(fig)
@@ -1065,16 +1537,20 @@ def _esc(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def svg_chart(results: Mapping[str, Any]) -> str:
+def svg_chart(results: Mapping[str, Any], *, rescored: Mapping[str, Any] | None = None) -> str:
     """The same chart as a self-contained SVG (used when matplotlib is not installed)."""
-    groups = chart_groups(results)
-    conditions = _conditions(results)
-    width, left, right, bar, gap, group_gap = 760, 130, 60, 16, 5, 22
-    plot = width - left - right
-    top = 78
-    group_height = len(conditions) * (bar + gap) - gap
+    panels = chart_panels(results, rescored)
+    groups = panels[0].groups
+    title, subtitle, note = _chart_title(results, rescored)
+    note_lines = note.split("\n") if note else []
+    shift = 17 * len(note_lines)  # each line of the note takes a line of its own above the legend
+    titled = 20 if any(panel.title for panel in panels) else 0
+    width, left, right, bar, gap, group_gap, gutter = 760, 130, 50, 16, 5, 22, 36
+    plot = (width - left - right - gutter * (len(panels) - 1)) / len(panels)
+    top = 78 + shift + titled
+    bars = max(len(panel.conditions) for panel in panels)
+    group_height = bars * (bar + gap) - gap
     height = top + len(groups) * (group_height + group_gap) + 28
-    title, subtitle = _chart_title(results)
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
         'font-family="Inter, Helvetica, Arial, sans-serif">',
@@ -1082,56 +1558,71 @@ def svg_chart(results: Mapping[str, Any]) -> str:
         f'<text x="12" y="24" font-size="16" font-weight="600" fill="{TEXT_PRIMARY}">{_esc(title)}</text>',
         f'<text x="12" y="43" font-size="11" fill="{TEXT_SECONDARY}">{_esc(subtitle)}</text>',
     ]
-    x = left
-    for condition in conditions:
+    for i, line in enumerate(note_lines):
+        parts.append(
+            f'<text x="12" y="{60 + 17 * i}" font-size="11" fill="{TEXT_SECONDARY}">{_esc(line)}</text>'
+        )
+    x = 12.0
+    for condition in _legend_conditions(panels):
         color = CONDITION_COLORS.get(condition, TEXT_SECONDARY)
-        parts.append(f'<rect x="{x}" y="54" width="10" height="10" rx="2" fill="{color}"/>')
+        parts.append(f'<rect x="{x:.1f}" y="{54 + shift}" width="10" height="10" rx="2" fill="{color}"/>')
         parts.append(
-            f'<text x="{x + 14}" y="63" font-size="11" fill="{TEXT_PRIMARY}">{_esc(_label(condition))}</text>'
+            f'<text x="{x + 14:.1f}" y="{63 + shift}" font-size="11" fill="{TEXT_PRIMARY}">{_esc(_label(condition))}</text>'
         )
-        x += 24 + 7 * len(_label(condition))
+        x += 34 + 5.6 * len(_label(condition))  # swatch, gap and an estimate of the label's width at 11 px
     axis_bottom = height - 24
-    for tick in (0, 25, 50, 75, 100):
-        tx = left + plot * tick / 100
-        parts.append(
-            f'<line x1="{tx:.1f}" y1="{top - 6}" x2="{tx:.1f}" y2="{axis_bottom}" stroke="{GRID}" stroke-width="1"/>'
-        )
-        parts.append(
-            f'<text x="{tx:.1f}" y="{axis_bottom + 15}" font-size="10" text-anchor="middle" fill="{TEXT_SECONDARY}">{tick} %</text>'
-        )
     y = top
-    for label, values in groups:
+    for label, _ in groups:
         parts.append(
             f'<text x="{left - 10}" y="{y + group_height / 2 + 4:.1f}" font-size="12" text-anchor="end" '
             f'fill="{TEXT_PRIMARY}">{_esc(label)}</text>'
         )
-        for i, condition in enumerate(conditions):
-            est = values.get(condition)
-            by = y + i * (bar + gap)
-            if not est or est.get("value") is None:
-                continue
-            value = est["value"]
-            w = plot * value
-            color = CONDITION_COLORS.get(condition, TEXT_SECONDARY)
-            parts.append(f'<rect x="{left}" y="{by}" width="{w:.1f}" height="{bar}" fill="{color}"/>')
-            end = w
-            lo, hi = est.get("ci") or (None, None)
-            if lo is not None and hi is not None:
-                x0, x1 = left + plot * lo, left + plot * hi
-                mid = by + bar / 2
-                parts.append(
-                    f'<line x1="{x0:.1f}" y1="{mid}" x2="{x1:.1f}" y2="{mid}" stroke="{TEXT_SECONDARY}" stroke-width="1.5"/>'
-                )
-                for cap in (x0, x1):
-                    parts.append(
-                        f'<line x1="{cap:.1f}" y1="{mid - 4}" x2="{cap:.1f}" y2="{mid + 4}" stroke="{TEXT_SECONDARY}" stroke-width="1.5"/>'
-                    )
-                end = max(end, plot * hi)
-            parts.append(
-                f'<text x="{left + end + 6:.1f}" y="{by + bar / 2 + 4:.1f}" font-size="11" fill="{TEXT_PRIMARY}">'
-                f"{value * 100:.0f} %</text>"
-            )
         y += group_height + group_gap
+    for p, panel in enumerate(panels):
+        x0 = left + p * (plot + gutter)
+        if panel.title:
+            parts.append(
+                f'<text x="{x0:.1f}" y="{top - 12}" font-size="12" font-weight="600" fill="{TEXT_PRIMARY}">'
+                f"{_esc(panel.title)}</text>"
+            )
+        scale = plot / 1.12  # 0-112 %: room for the value labels after 100 %
+        for tick in (0, 25, 50, 75, 100):
+            tx = x0 + scale * tick / 100
+            parts.append(
+                f'<line x1="{tx:.1f}" y1="{top - 6}" x2="{tx:.1f}" y2="{axis_bottom}" stroke="{GRID}" stroke-width="1"/>'
+            )
+            parts.append(
+                f'<text x="{tx:.1f}" y="{axis_bottom + 15}" font-size="10" text-anchor="middle" fill="{TEXT_SECONDARY}">{tick} %</text>'
+            )
+        y = top
+        for _, values in panel.groups:
+            for i, condition in enumerate(panel.conditions):
+                est = values.get(condition)
+                by = y + i * (bar + gap)
+                if not est or est.get("value") is None:
+                    continue
+                value = est["value"]
+                w = scale * value
+                color = CONDITION_COLORS.get(condition, TEXT_SECONDARY)
+                parts.append(f'<rect x="{x0:.1f}" y="{by}" width="{w:.1f}" height="{bar}" fill="{color}"/>')
+                end = w
+                lo, hi = est.get("ci") or (None, None)
+                if lo is not None and hi is not None:
+                    c0, c1 = x0 + scale * lo, x0 + scale * hi
+                    mid = by + bar / 2
+                    parts.append(
+                        f'<line x1="{c0:.1f}" y1="{mid}" x2="{c1:.1f}" y2="{mid}" stroke="{TEXT_SECONDARY}" stroke-width="1.5"/>'
+                    )
+                    for cap in (c0, c1):
+                        parts.append(
+                            f'<line x1="{cap:.1f}" y1="{mid - 4}" x2="{cap:.1f}" y2="{mid + 4}" stroke="{TEXT_SECONDARY}" stroke-width="1.5"/>'
+                        )
+                    end = max(end, scale * hi)
+                parts.append(
+                    f'<text x="{x0 + end + 6:.1f}" y="{by + bar / 2 + 4:.1f}" font-size="11" fill="{TEXT_PRIMARY}">'
+                    f"{value * 100:.0f} %</text>"
+                )
+            y += group_height + group_gap
     parts.append("</svg>")
     return "\n".join(parts) + "\n"
 
@@ -1152,7 +1643,7 @@ def write_docs(
     chart: Path | None = None
     reference = None
     if runs:
-        chart = write_chart(runs[0], chart_path)
+        chart = write_chart(runs[0], chart_path, rescored=rescored)
         reference = Path(os.path.relpath(chart, docs_path.parent)).as_posix()
     docs_path.parent.mkdir(parents=True, exist_ok=True)
     docs_path.write_text(render_markdown(runs, chart=reference, rescored=rescored), encoding="utf-8")
@@ -1176,11 +1667,35 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="score the stored predictions again with the current scorer and rewrite the results files",
     )
+    parser.add_argument(
+        "--add-condition",
+        action="append",
+        default=[],
+        metavar="CONDITION=RUN.json",
+        help="add a condition's predictions from a later run on the same letters to every results file "
+        "given (rewritten in place)",
+    )
+    parser.add_argument(
+        "--note", type=Path, metavar="FILE", help="with --add-condition: a written finding to show with it"
+    )
     args = parser.parse_args(argv)
     if not args.results and not args.pending:
         parser.error("give results files or --pending")
+    targets = [*args.results, *([args.rescored] if args.rescored else [])]
+    for spec in args.add_condition:
+        condition, _, source_path = spec.partition("=")
+        if not source_path:
+            parser.error("--add-condition takes CONDITION=RUN.json")
+        note = " ".join(args.note.read_text(encoding="utf-8").split()) if args.note else None
+        source = load_results(Path(source_path))
+        for path in targets:
+            try:
+                merged = add_condition(load_results(path), source, condition, note=note)
+            except ValueError as exc:
+                parser.error(f"{path}: {exc}")
+            write_json(path, merged)
     if args.recompute:
-        for path in [*args.results, *([args.rescored] if args.rescored else [])]:
+        for path in targets:
             write_json(path, recompute_metrics(load_results(path)))
     runs = [] if args.pending else [load_results(path) for path in args.results]
     rescored = load_results(args.rescored) if args.rescored else None

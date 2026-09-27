@@ -18,7 +18,7 @@ from __future__ import annotations
 import hashlib
 from collections import Counter
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import Any, Literal
 
@@ -59,7 +59,7 @@ from ordnung.recurrence import (
     same_rule,
     same_schedule,
 )
-from ordnung.rules import RuleContext, compute_due, scope_for_party_kind
+from ordnung.rules import RuleContext, compute_due, is_private_sender, scope_for_party_kind
 from ordnung.rules.deadlines import parse_date
 from ordnung.secretary.scam import iban_from_page, iban_valid, normalize_iban
 
@@ -263,12 +263,25 @@ def rule_context(
     Land they chose) and ``country`` their ``Profile.country`` (non-German → ``low`` confidence, as
     for contracts). The delivery scope follows the sender's kind, name and remedy notice (tax office →
     AO, health insurer or social-benefits agency → SGB X, other authorities → VwVfG; see
-    :func:`ordnung.rules.scope_for_party_kind`). A received date on the document was entered by the person, so
-    it counts as confirmed.
+    :func:`ordnung.rules.scope_for_party_kind`); a sender of a private kind (a company, a landlord, a
+    bank, an employer …) whose letter shows no administrative act has no deemed delivery at all
+    (:func:`ordnung.rules.is_private_sender`: an Einspruch, Widerspruch or Klage counts only with a
+    remedy notice naming an administrative route; for a kind a public body may be filed as, or a period
+    whose own words name an administrative act, a late arrival never makes the date later than deemed
+    delivery would, :func:`ordnung.rules.deadlines.may_be_public`). A received date on the document was
+    entered by the person, so it counts as confirmed.
     """
     sender = extraction.sender
     kind = party.kind if party else (sender.kind if sender else None)
     remedy = extraction.remedy
+    remedy_type = remedy.type if remedy else None
+    notice = remedy_text(remedy)
+    scope = scope_for_party_kind(
+        kind,
+        name=party.name if party else (sender.name if sender else None),
+        remedy_type=remedy_type,
+        remedy_text=notice,
+    )
     return RuleContext(
         today=today,
         country=country,
@@ -276,13 +289,10 @@ def rule_context(
         document_date=parse_date(extraction.document_date),
         received_date=parse_date(document.received_date),
         received_confirmed=document.received_date is not None,
-        delivery_scope=scope_for_party_kind(
-            kind,
-            name=party.name if party else (sender.name if sender else None),
-            remedy_type=remedy.type if remedy else None,
-            remedy_text=remedy_text(remedy),
-        ),
+        delivery_scope=scope,
         recipient_region=recipient_region,
+        private_sender=is_private_sender(kind, scope=scope, remedy_type=remedy_type, remedy_text=notice),
+        sender_kind=kind,
     )
 
 
@@ -326,10 +336,17 @@ def grade_receipt(receipt: ComputationReceipt, verified: VerifiedItem) -> Comput
 
 
 def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days: int) -> ComputedDate:
-    """Due date, send-by date and receipt of one item (no receipt for undated items)."""
+    """Due date, send-by date and receipt of one item (no receipt for undated items).
+
+    The item's quote — its whole sentence, where the spec's ``text`` holds only the date expression —
+    is the period's own words too (``RuleContext.quote``): for a sender filed as private, one naming an
+    administrative act keeps a late arrival from moving the date later, as the spec's words do
+    (:func:`ordnung.rules.deadlines.may_be_public`); it never brings deemed delivery back.
+    """
     spec = verified.item.date
     if spec.type == "none":
         return ComputedDate(receipt=None, due_date=None, send_by=None, source="none")
+    ctx = replace(ctx, quote=verified.item.quote)
     receipt = grade_receipt(compute_due(spec, ctx, postal_buffer_days=postal_buffer_days), verified)
     source: DueDateSource = (
         "none" if receipt.due_date is None else ("fixed" if spec.type == "fixed" else "computed")

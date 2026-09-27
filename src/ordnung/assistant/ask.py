@@ -174,7 +174,8 @@ def build_request(ctx: AskContext, question: str, history: Sequence[ChatMessage]
             "model": ctx.settings.models.ask,
             "tools": [],
             "allowed_tools": ALLOWED_TOOLS,
-            "mcp_config": server_config(ctx.paths.data_dir, today=pinned),
+            # Ledger tools only: Ask quotes stored receipts and never computes a date (SPEC § 21).
+            "mcp_config": server_config(ctx.paths.data_dir, today=pinned, rules_tools=False),
             "max_budget_usd": MAX_BUDGET_USD,
             "timeout_s": TIMEOUT_S,
             "cache_key": ask_cache_key(ctx.store, question, history, today),
@@ -264,12 +265,15 @@ class _Turn:
     results: list[str] = field(default_factory=list)
     deltas: list[str] = field(default_factory=list)
     _pending: deque[int] = field(default_factory=deque)
+    _by_id: dict[str, int] = field(default_factory=dict)
 
     def tool_use(self, event: StreamEvent) -> StreamEvent:
         """Label a tool call for the trace and note documents whose text is sent to the model."""
         name = tool_name(event.name)
         args = dict(event.input or {})
         label = tool_label(name, args, title_of=lambda ref_id: record_label(self.store, ref_id))
+        if event.tool_use_id:
+            self._by_id[event.tool_use_id] = len(self.calls)
         self._pending.append(len(self.calls))
         self.calls.append({"name": name, "input": args, "label": label})
         doc_id = args.get("doc_id")
@@ -288,15 +292,27 @@ class _Turn:
             self.request.doc_ids.append(doc_id)
 
     def tool_result(self, event: StreamEvent) -> StreamEvent:
-        """Keep the result for validation and summarise it for the trace (results arrive in call order)."""
+        """Keep the result for validation and summarise it for the trace.
+
+        A result belongs to the call with its ``tool_use_id`` (parallel calls may answer out of
+        order); a result without an id (fakes, older recordings) to the oldest call still waiting.
+        """
         text = event.text or ""
         self.results.append(text)
-        index = self._pending.popleft() if self._pending else None
+        index = self._call_for(event.tool_use_id)
         name = self.calls[index]["name"] if index is not None else "tool"
         summary = result_summary(name, text)
         if index is not None:
             self.calls[index]["result"] = summary
         return StreamEvent(type="tool_result", name=name, text=summary)
+
+    def _call_for(self, tool_use_id: str | None) -> int | None:
+        if tool_use_id:
+            index = self._by_id.pop(tool_use_id, None)
+            if index is not None:
+                self._pending.remove(index)
+            return index
+        return self._pending.popleft() if self._pending else None
 
 
 # --------------------------------------------------------------------------------------------------
