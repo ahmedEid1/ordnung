@@ -2,6 +2,13 @@
 
 Adds, on top of any backend: a persistent response cache (so re-processing is free), per-call usage
 accounting (tokens, API-equivalent cost, latency, cache hits) and backend selection.
+
+Every call writes one row of the usage log (never the prompt or the answer): besides the accounting,
+its replay/cache key, the prompt template and version, the model that answered and — when the caller
+passes the step it belongs to (``trace``, :mod:`ordnung.trace`) — the job, pipeline stage and span.
+The row's ``outcome`` is decided here, by one policy (:func:`call_outcome`): the caller may pass a
+``validate`` function (it raises when the answer is unusable) and, for a repair, the usage-log id of
+the call it retries (``repair_of``, from :attr:`~ordnung.llm.base.LLMResponse.call_id`).
 """
 
 from __future__ import annotations
@@ -10,11 +17,14 @@ import contextlib
 import hashlib
 import logging
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
 from ordnung.llm.base import LLMBackend, LLMError, LLMRequest, LLMResponse, StreamEvent, Usage
+from ordnung.models import CallOutcome
+from ordnung.trace.facts import model_call
+from ordnung.trace.spans import NO_SPAN, Span
 
 if TYPE_CHECKING:
     from ordnung.events import EventBus
@@ -43,7 +53,42 @@ class UsageSink(Protocol):
         doc_ids: list[str] | None = None,
         pages_sent: int = 0,
         bytes_sent: int = 0,
-    ) -> None: ...
+        *,
+        request_key: str | None = None,
+        prompt_name: str | None = None,
+        prompt_version: str | None = None,
+        served_model: str | None = None,
+        job_id: str | None = None,
+        stage: str | None = None,
+        span_id: str | None = None,
+        repair_of: int | None = None,
+        outcome: CallOutcome = "ok",
+    ) -> int | None: ...
+
+
+#: Checks a model answer: raises (``ValueError``, pydantic's ``ValidationError`` …) when it is unusable.
+Validator = Callable[[LLMResponse], object]
+
+
+def call_outcome(*, failed: bool, valid: bool, repair: bool) -> CallOutcome:
+    """How a call turned out: ``failed`` when it errored or a repair's answer was unusable too,
+    ``invalid`` when a first answer was unusable (a repair may follow), ``repaired`` when a repair's
+    answer was usable, else ``ok`` (a call nobody validates counts as usable)."""
+    if failed:
+        return "failed"
+    if not valid:
+        return "failed" if repair else "invalid"
+    return "repaired" if repair else "ok"
+
+
+def _valid(validate: Validator | None, response: LLMResponse) -> bool:
+    if validate is None:
+        return True
+    try:
+        validate(response)
+    except Exception:  # whatever the caller's check raises means "unusable"; the caller raises its own error
+        return False
+    return True
 
 
 def _bytes_sent(req: LLMRequest) -> int:
@@ -95,11 +140,22 @@ class LLMService:
         resp.cache_hit = True
         return resp
 
-    def _record(self, req: LLMRequest, resp: LLMResponse | None, error: str | None = None) -> None:
+    def _record(
+        self,
+        req: LLMRequest,
+        resp: LLMResponse | None,
+        error: str | None = None,
+        *,
+        outcome: CallOutcome | None = None,
+        trace: Span = NO_SPAN,
+        repair_of: int | None = None,
+    ) -> int | None:
+        """Write the usage-log row of a call; returns its id (``None`` without a log, or when writing
+        failed — accounting never breaks a call)."""
         if self.sink is None:
-            return
+            return None
         try:
-            self.sink.log_llm_call(
+            return self.sink.log_llm_call(
                 purpose=req.purpose,
                 model=(resp.model if resp else req.model) or req.model,
                 backend=(resp.backend if resp else self.backend.name) or self.backend.name,
@@ -110,25 +166,90 @@ class LLMService:
                 doc_ids=list(req.doc_ids),
                 pages_sent=0 if (resp and resp.cache_hit) else len(req.attachments),
                 bytes_sent=0 if (resp and resp.cache_hit) else _bytes_sent(req),
+                request_key=request_key(req),
+                prompt_name=req.prompt_name or req.purpose,
+                prompt_version=req.prompt_version,
+                served_model=(resp.model or None) if resp else None,
+                job_id=trace.job_id,
+                stage=trace.stage if trace.active else None,
+                span_id=trace.id,
+                repair_of=repair_of,
+                outcome=outcome or call_outcome(failed=error is not None, valid=True, repair=False),
             )
         except Exception:
             log.warning("llm usage logging failed", exc_info=True)
+            return None
 
-    async def complete(self, req: LLMRequest, *, use_cache: bool = True) -> LLMResponse:
+    def _describe(
+        self,
+        trace: Span,
+        req: LLMRequest,
+        resp: LLMResponse | None,
+        *,
+        call_id: int | None,
+        outcome: CallOutcome,
+        repair_of: int | None,
+    ) -> None:
+        """Describe the call on its model step (the latency its backend reported lays out the demo's)."""
+        trace.record_call(
+            recorded_ms=0 if resp is None or resp.cache_hit else resp.usage.duration_ms,
+            **model_call(
+                call_id=call_id,
+                purpose=req.purpose,
+                prompt_name=req.prompt_name or req.purpose,
+                prompt_version=req.prompt_version,
+                request_model=req.model,
+                served_model=(resp.model or None) if resp else None,
+                cache_hit=bool(resp and resp.cache_hit),
+                outcome=outcome,
+                repair_of=repair_of,
+            ),
+        )
+
+    def _settle(
+        self,
+        req: LLMRequest,
+        resp: LLMResponse,
+        *,
+        trace: Span,
+        validate: Validator | None,
+        repair_of: int | None,
+    ) -> LLMResponse:
+        """Judge an answer, log the call and describe it on its step; the answer carries its log id."""
+        outcome = call_outcome(failed=False, valid=_valid(validate, resp), repair=repair_of is not None)
+        call_id = self._record(req, resp, outcome=outcome, trace=trace, repair_of=repair_of)
+        self._describe(trace, req, resp, call_id=call_id, outcome=outcome, repair_of=repair_of)
+        return resp.model_copy(update={"call_id": call_id})
+
+    async def complete(
+        self,
+        req: LLMRequest,
+        *,
+        use_cache: bool = True,
+        trace: Span = NO_SPAN,
+        validate: Validator | None = None,
+        repair_of: int | None = None,
+    ) -> LLMResponse:
         """Run a request through cache → backend → accounting. ``use_cache=False`` forces a fresh call
-        (still written to the cache), used by *reprocess*."""
+        (still written to the cache), used by *reprocess*.
+
+        ``trace`` is the model step this call is (described with the call); ``validate`` judges the
+        answer for the log's ``outcome`` (the caller still parses it and raises its own error);
+        ``repair_of`` is the log id of the call a repair retries. The answer's
+        :attr:`~ordnung.llm.base.LLMResponse.call_id` is its usage-log row.
+        """
         key = request_key(req)
         if use_cache and req.cache_key is not None:
             cached = self._cache_get(key)
             if cached is not None:
-                self._record(req, cached)
-                return cached
+                return self._settle(req, cached, trace=trace, validate=validate, repair_of=repair_of)
         try:
             resp = await self.backend.complete(req)
         except LLMError as exc:
-            self._record(req, None, error=str(exc))
+            call_id = self._record(req, None, str(exc), outcome="failed", trace=trace, repair_of=repair_of)
+            self._describe(trace, req, None, call_id=call_id, outcome="failed", repair_of=repair_of)
             raise
-        self._record(req, resp)
+        resp = self._settle(req, resp, trace=trace, validate=validate, repair_of=repair_of)
         if req.cache_key is not None and self.sink is not None:
             try:
                 self.sink.cache_put(

@@ -159,6 +159,12 @@ ContractRegime = Literal[
 ]
 RemedyType = Literal["einspruch", "widerspruch", "klage", "none", "unclear"]
 DateNature = Literal["objection", "payment", "declaration", "notice", "appointment", "other"]
+#: How a model call's answer turned out: ``invalid`` — it did not validate (a repair may follow);
+#: ``repaired`` — a repair's answer validated; ``failed`` — the call errored or its repair was invalid too.
+CallOutcome = Literal["ok", "invalid", "repaired", "failed"]
+#: What a step of reading a letter did (``run`` is the reading itself, the root of its spans).
+SpanKind = Literal["run", "model", "ocr", "verify", "rules", "link", "plan"]
+SpanStatus = Literal["ok", "error"]
 
 
 class _Model(BaseModel):
@@ -643,6 +649,19 @@ class LLMCallRecord(_Model):
     doc_ids: list[str] = Field(default_factory=list)
     pages_sent: int = 0
     bytes_sent: int = 0
+    #: the replay and cache key (``purpose:prompt_version:model:sha256(inputs)``, ADR 0004); cleared
+    #: when a document the call carried is deleted
+    request_key: str | None = None
+    prompt_name: str | None = None
+    prompt_version: str | None = None
+    #: the model that answered, as the CLI reported it (``model`` is that model, else the one asked for)
+    served_model: str | None = None
+    job_id: str | None = None
+    stage: str | None = None
+    span_id: str | None = None
+    #: the call (``id``) this call retried with the validation problems appended
+    repair_of: int | None = None
+    outcome: CallOutcome = "ok"
 
 
 class Job(_Model):
@@ -1094,6 +1113,128 @@ class UsageStats(_Model):
     cost_usd: float = 0.0
     by_purpose: dict[str, PurposeUsage] = Field(default_factory=dict)
     recent: list[LLMCallRecord] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------------------------------
+# Traces: how a letter was read (ordnung.trace)
+# --------------------------------------------------------------------------------------------------
+
+
+class TraceSpanRecord(_Model):
+    """One stored step of one reading of a letter (``trace_spans``).
+
+    ``key`` names the step within its reading (``run/verify:quotes/verify:item:<slot>``) and is the
+    same in every reading of the letter, so two readings can be compared step by step. ``attributes``
+    hold only what code computed or decided and the ids of the records a step used or produced —
+    never letter text (the written policy is :mod:`ordnung.trace.facts`).
+    """
+
+    id: str
+    trace_id: str
+    doc_id: str
+    job_id: str | None = None
+    parent_id: str | None = None
+    key: str
+    seq: int = 0
+    kind: SpanKind
+    name: str
+    stage: str | None = None
+    started_at: str
+    ended_at: str
+    status: SpanStatus = "ok"
+    error: str | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+
+
+class TraceRun(_Model):
+    """One reading of a letter, summed up (its root span and its model calls)."""
+
+    trace_id: str
+    #: the letter's reading this was: 1 for the first, then 2, 3 … (older ones may no longer be kept)
+    reading: int = 1
+    job_id: str | None = None
+    started_at: str
+    ended_at: str
+    duration_ms: float = 0.0
+    status: SpanStatus = "ok"
+    error: str | None = None
+    trigger: Literal["read", "read_again"] = "read"
+    #: ``measured`` by the computer's clock; ``recorded`` in the demo: laid out from the recorded
+    #: model latencies, the steps of code shown without a duration
+    timing: Literal["measured", "recorded"] = "measured"
+    #: the letter's status the reading ended with (``None`` when it failed)
+    result: DocumentStatus | None = None
+    model_calls: int = 0
+    cache_hits: int = 0
+    repairs: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cost_usd: float = 0.0
+    model_ms: float = 0.0
+
+
+class TraceSpan(_Model):
+    """A step of a reading as the "How this was read" view shows it (display order, depth-first)."""
+
+    id: str
+    parent_id: str | None = None
+    depth: int = 0
+    key: str
+    kind: SpanKind
+    name: str
+    stage: str | None = None
+    #: milliseconds from the start of the reading
+    start_ms: float = 0.0
+    duration_ms: float = 0.0
+    status: SpanStatus = "ok"
+    error: str | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    #: a model step's call from the usage log (tokens, cost, prompt, outcome)
+    call: LLMCallRecord | None = None
+    #: the record the step used or produced (a to-do, the sender, the thread, a contract)
+    ref: RefLink | None = None
+    #: that record's name now (``None`` when it no longer exists)
+    label: str | None = None
+
+
+class DocumentTrace(_Model):
+    """How a letter was read: the reading shown (the latest unless another was asked for), its steps
+    and every reading Ordnung keeps (newest first)."""
+
+    doc_id: str
+    run: TraceRun | None = None
+    runs: list[TraceRun] = Field(default_factory=list)
+    spans: list[TraceSpan] = Field(default_factory=list)
+
+
+class TraceChange(_Model):
+    """One thing two readings of a letter decided differently (a date, a quote's grounding, a
+    model call's outcome …); ``before``/``after`` are ``None`` when the step is missing in that reading."""
+
+    key: str
+    kind: SpanKind
+    name: str
+    field: str
+    before: Any = None
+    after: Any = None
+    ref: RefLink | None = None
+    label: str | None = None
+
+
+class TraceComparison(_Model):
+    """What a later reading (``head``) decided differently from an earlier one (``base``)."""
+
+    doc_id: str
+    base: TraceRun
+    head: TraceRun
+    changes: list[TraceChange] = Field(default_factory=list)
+
+
+class TraceExport(_Model):
+    """Every kept reading of the letters not in the trash, as stored (for "Download your records")."""
+
+    spans: list[TraceSpanRecord] = Field(default_factory=list)
+    calls: list[LLMCallRecord] = Field(default_factory=list)
 
 
 class ClaudeStatus(_Model):

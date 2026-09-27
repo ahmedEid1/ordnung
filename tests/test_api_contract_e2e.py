@@ -152,6 +152,12 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         await _get(api, contract, "/api/documents", q="Einkommensteuer", limit=8)
         detail = await _get(api, contract, f"/api/documents/{ids['doc']}")
         assert detail["items"] and detail["pages"]
+        await api.client.post(f"/api/documents/{ids['doc']}/reprocess")
+        assert await api.read_all() == 1
+        trace = await _get(api, contract, f"/api/documents/{ids['doc']}/trace")
+        assert trace["run"]["reading"] == 2 and trace["spans"]
+        await _get(api, contract, f"/api/documents/{ids['doc']}/trace/compare")
+        await _get(api, contract, "/api/traces")
         await _get(api, contract, "/api/items", status="open", include_undated="true")
         await _get(api, contract, f"/api/items/{ids['item']}")
         await _get(api, contract, "/api/contracts")

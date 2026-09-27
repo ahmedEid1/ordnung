@@ -66,6 +66,7 @@ from ordnung.models import (
     PurposeUsage,
     SearchHit,
     Suggestion,
+    TraceSpanRecord,
     UsageStats,
 )
 
@@ -223,6 +224,7 @@ _CHAT = _Table("chat_messages", ChatMessage, "msg")
 _JOBS = _Table("jobs", Job, "job")
 _ACTIVITY = _Table("activity", Activity)
 _LLM_CALLS = _Table("llm_calls", LLMCallRecord)
+_TRACE_SPANS = _Table("trace_spans", TraceSpanRecord)
 
 _INDEXED_DOCUMENT_FIELDS = frozenset({"title", "filename", "summary", "explanation", "party_id"})
 _INDEXED_PARTY_FIELDS = frozenset({"name", "aliases"})
@@ -890,8 +892,9 @@ class Store:
         In one transaction: its items, pages, jobs and search rows (the indexes are then optimised so
         none of its terms stays in them), ``llm_cache`` rows of calls that carried it (alone or with
         other documents), the Ideas and activity entries about it or its items, its quotes in the
-        evidence of kept contracts, its id in the usage log, and the document row (contracts and
-        drafts keep existing, unlinked). Deleted rows are overwritten (``secure_delete``). After the
+        evidence of kept contracts, the traces of its readings, its id and its calls' replay keys,
+        spans and jobs in the usage log, and the document row (contracts and drafts keep existing,
+        unlinked). Deleted rows are overwritten (``secure_delete``). After the
         commit the WAL is truncated and, with ``purge_files``, the original file and
         ``derived/<id>/`` are removed. Files outside the data directory are never touched.
         """
@@ -937,7 +940,14 @@ class Store:
             "SELECT id, doc_ids FROM llm_calls WHERE doc_ids LIKE ?", (quoted,)
         ).fetchall():
             others = [value for value in json.loads(call["doc_ids"]) if value != doc_id]
-            conn.execute("UPDATE llm_calls SET doc_ids = ? WHERE id = ?", (json.dumps(others), call["id"]))
+            # the replay key hashes the letter's content and the span and job point at its trace:
+            # only the anonymous numbers stay (purpose, prompt, model, tokens, cost, outcome)
+            conn.execute(
+                "UPDATE llm_calls SET doc_ids = ?, request_key = NULL, span_id = NULL, job_id = NULL "
+                "WHERE id = ?",
+                (json.dumps(others), call["id"]),
+            )
+        conn.execute("DELETE FROM trace_spans WHERE doc_id = ?", (doc_id,))
 
     def _truncate_wal(self) -> None:
         """Checkpoint and empty the write-ahead log, so deleted pages don't linger in it."""
@@ -1676,13 +1686,26 @@ class Store:
         doc_ids: list[str] | None = None,
         pages_sent: int = 0,
         bytes_sent: int = 0,
-    ) -> None:
-        """Record one model call (never the prompt or the response — only accounting data)."""
+        *,
+        request_key: str | None = None,
+        prompt_name: str | None = None,
+        prompt_version: str | None = None,
+        served_model: str | None = None,
+        job_id: str | None = None,
+        stage: str | None = None,
+        span_id: str | None = None,
+        repair_of: int | None = None,
+        outcome: str = "ok",
+    ) -> int:
+        """Record one model call and return its id (never the prompt or the response — accounting data,
+        the replay/cache key, the prompt's name and version, and where the call belongs)."""
         with self.tx() as conn:
-            conn.execute(
+            cursor = conn.execute(
                 "INSERT INTO llm_calls (ts, purpose, model, backend, duration_ms, input_tokens, "
                 "output_tokens, cache_read_tokens, cache_creation_tokens, cost_usd, ok, error, cache_hit, "
-                "doc_ids, pages_sent, bytes_sent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "doc_ids, pages_sent, bytes_sent, request_key, prompt_name, prompt_version, served_model, "
+                "job_id, stage, span_id, repair_of, outcome) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     now_iso(),
                     purpose,
@@ -1700,8 +1723,18 @@ class Store:
                     _LLM_CALLS.encode("doc_ids", list(doc_ids or [])),
                     pages_sent,
                     bytes_sent,
+                    request_key,
+                    prompt_name,
+                    prompt_version,
+                    served_model,
+                    job_id,
+                    stage,
+                    span_id,
+                    repair_of,
+                    outcome,
                 ),
             )
+        return int(cursor.lastrowid or 0)
 
     def usage_stats(self, recent: int = 20) -> UsageStats:
         """Totals, per-purpose totals and the ``recent`` newest calls."""
@@ -1757,6 +1790,82 @@ class Store:
             ).rowcount
 
     # ---------------------------------------------------------------------------------------------
+    # traces: how a letter was read (ordnung.trace)
+    # ---------------------------------------------------------------------------------------------
+
+    def save_trace(self, spans: Sequence[TraceSpanRecord], *, keep: int) -> int:
+        """Store the spans of one reading of one letter, then delete that letter's oldest readings
+        beyond the newest ``keep``; returns how many readings were deleted (their usage-log rows stay,
+        with a span id that no longer resolves)."""
+        if not spans:
+            return 0
+        rows = [_TRACE_SPANS.row(span) for span in spans]
+        columns = list(rows[0])
+        sql = (
+            f"INSERT OR REPLACE INTO trace_spans ({', '.join(columns)}) "
+            f"VALUES ({', '.join('?' * len(columns))})"
+        )
+        with self.tx() as conn:
+            conn.executemany(sql, [[row[column] for column in columns] for row in rows])
+            readings = conn.execute(
+                f"SELECT trace_id FROM trace_spans {_TRACE_RUNS_TAIL}", (spans[0].doc_id,)
+            )
+            stale = [(row["trace_id"],) for row in readings.fetchall()[keep:]]
+            conn.executemany("DELETE FROM trace_spans WHERE trace_id = ?", stale)
+        return len(stale)
+
+    def trace_runs(self, doc_id: str) -> list[TraceSpanRecord]:
+        """The root spans of a letter's kept readings, newest first."""
+        return self._many(_TRACE_SPANS, _TRACE_RUNS_TAIL, (doc_id,))
+
+    def trace_spans(self, trace_id: str) -> list[TraceSpanRecord]:
+        """Every span of one reading in display order."""
+        return self._many(_TRACE_SPANS, "WHERE trace_id = ? ORDER BY seq", (trace_id,))
+
+    def next_trace_reading(self, doc_id: str) -> int:
+        """The number of a letter's next reading: one more than the highest kept (1 for the first)."""
+        row = (
+            self._conn()
+            .execute(
+                "SELECT MAX(CAST(json_extract(attributes, '$.reading') AS INTEGER)) FROM trace_spans "
+                "WHERE doc_id = ? AND kind = 'run'",
+                (doc_id,),
+            )
+            .fetchone()
+        )
+        return int(row[0] or 0) + 1
+
+    def count_trace_runs(self) -> int:
+        """How many readings are kept, of all letters."""
+        return int(self._conn().execute("SELECT COUNT(*) FROM trace_spans WHERE kind = 'run'").fetchone()[0])
+
+    def trace_calls(self, doc_id: str) -> dict[str, list[LLMCallRecord]]:
+        """The usage-log rows of the model steps of a letter's kept readings, by trace id."""
+        model_steps = "SELECT id, trace_id FROM trace_spans WHERE doc_id = ? AND kind = 'model'"
+        owner = {row["id"]: row["trace_id"] for row in self._conn().execute(model_steps, (doc_id,))}
+        calls: dict[str, list[LLMCallRecord]] = {}
+        for call in self._many(
+            _LLM_CALLS,
+            "WHERE span_id IN (SELECT id FROM trace_spans WHERE doc_id = ? AND kind = 'model') ORDER BY id",
+            (doc_id,),
+        ):
+            calls.setdefault(owner[call.span_id or ""], []).append(call)
+        return calls
+
+    def export_traces(self) -> tuple[list[TraceSpanRecord], list[LLMCallRecord]]:
+        """Every kept span of the letters not in the trash, and the usage-log rows of their model steps."""
+        spans = self._many(
+            _TRACE_SPANS,
+            "WHERE doc_id IN (SELECT id FROM documents WHERE deleted_at IS NULL) ORDER BY doc_id, trace_id, seq",
+        )
+        calls = self._many(
+            _LLM_CALLS,
+            "WHERE span_id IN (SELECT s.id FROM trace_spans s JOIN documents d ON d.id = s.doc_id "
+            "WHERE d.deleted_at IS NULL) ORDER BY id",
+        )
+        return spans, calls
+
+    # ---------------------------------------------------------------------------------------------
     # counts
     # ---------------------------------------------------------------------------------------------
 
@@ -1794,6 +1903,12 @@ _USAGE_AGGREGATES = (
 )
 
 _LIVE_DOCUMENT_ITEMS = "FROM items i LEFT JOIN documents d ON d.id = i.doc_id WHERE d.deleted_at IS NULL"
+
+# a letter's readings, newest first: by the reading's number (its root span's ``reading``)
+_TRACE_RUNS_TAIL = (
+    "WHERE doc_id = ? AND kind = 'run' "
+    "ORDER BY CAST(json_extract(attributes, '$.reading') AS INTEGER) DESC, started_at DESC, id"
+)
 
 _COUNT_QUERIES = {
     "documents": "SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL",

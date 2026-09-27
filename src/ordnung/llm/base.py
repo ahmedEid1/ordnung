@@ -44,6 +44,8 @@ class LLMRequest(BaseModel):
     cache_key: str | None = None
     max_budget_usd: float | None = None
     prompt_version: str = "1"
+    #: the prompt template the call is built from, for the usage log (default: the purpose)
+    prompt_name: str | None = None
 
 
 class Usage(BaseModel):
@@ -73,6 +75,9 @@ class LLMResponse(BaseModel):
     backend: str = ""
     #: The tool calls of a ``complete`` call, in order (empty without tools; ``stream`` yields them as events).
     tool_calls: list[ToolCall] = Field(default_factory=list)
+    #: The usage-log row of the call that returned this answer (set by ``LLMService``; never stored in
+    #: the cache or a recording).
+    call_id: int | None = Field(default=None, exclude=True)
 
 
 class StreamEvent(BaseModel):

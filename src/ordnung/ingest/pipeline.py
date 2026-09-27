@@ -46,12 +46,16 @@ from ordnung.ingest.intake import (
 from ordnung.ingest.link import ensure_party, link_document
 from ordnung.ingest.plan import (
     KIND_CHOSEN,
+    ComputedDate,
+    PaymentNote,
     PlanResult,
     Verification,
+    VerifiedItem,
     compute_item,
     corrections,
     filed_kind,
     law_deadlines,
+    needs_check,
     payment_details,
     payment_note,
     remedy_warnings,
@@ -65,7 +69,10 @@ from ordnung.ingest.text import PageText, detect_injection_phrases, extract_pdf_
 from ordnung.ingest.transcribe import transcribe_pages
 from ordnung.llm.base import ClaudeRateLimited, LLMError
 from ordnung.models import Document, DocumentExtraction, Job, Page
-from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
+from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS, RuleContext
+from ordnung.trace import facts
+from ordnung.trace.runs import keep_trace, start_trace
+from ordnung.trace.spans import NO_SPAN, Span
 
 if TYPE_CHECKING:
     from ordnung.app_context import AppContext
@@ -105,6 +112,10 @@ HIDDEN_TEXT_WARNING = (
 NO_TEXT_ERROR = "We couldn't find any readable text in this document."
 UNEXPECTED_ERROR = "Something went wrong while reading this document. Try “Reprocess”; if it keeps failing, please report it."
 TRASHED_ERROR = "This letter was deleted before it was read, so it was not sent to Claude."
+PAUSED_TRACE = "Paused: Claude's usage limit was reached. The letter is read again when it resets."
+STOPPED_TRACE = (
+    "Stopped: Ordnung was closed before the letter was finished. It is read again at the next start."
+)
 
 _LEDGER_LOCKS: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = (
     weakref.WeakKeyDictionary()
@@ -405,7 +416,39 @@ class LedgerInput:
     country: str = "DE"
 
 
-def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
+def compute_dates(
+    verified_items: Sequence[VerifiedItem],
+    ctx: RuleContext,
+    *,
+    postal_buffer_days: int,
+    note: PaymentNote | None,
+    trace: Span = NO_SPAN,
+) -> list[ComputedDate]:
+    """The rules engine's dates for a reading's items (with the letter's payment note); ``trace`` gets
+    a ``rules`` step with one step per dated to-do (:func:`ordnung.trace.facts.dated`)."""
+    computed = []
+    with trace.span("rules", "Compute dates", key="dates", stage="compute") as step:
+        for index, verified in enumerate(verified_items):
+            item_step = step if verified.dated else NO_SPAN
+            with item_step.span("rules", "Date", key=f"item:{verified.slot_key}") as date_step:
+                result = with_payment_note(
+                    compute_item(verified, ctx, postal_buffer_days=postal_buffer_days), verified.item, note
+                )
+                date_step.set(
+                    **facts.dated(
+                        verified.item.date,
+                        result.receipt,
+                        source=result.source,
+                        index=index,
+                        slot_key=verified.slot_key,
+                    )
+                )
+            computed.append(result)
+        step.set(items=len(computed), dated=sum(verified.dated for verified in verified_items))
+    return computed
+
+
+def commit_ledger(store: Store, data: LedgerInput, *, trace: Span = NO_SPAN) -> PlanResult:
     """Compute dates, link party/case/contract and write the plan — all in one transaction.
 
     Letter facts the person corrected (title, kind, area, letter date) win over a new reading. The
@@ -413,7 +456,8 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
     (:func:`~ordnung.ingest.plan.payment_details`), so the scam check and the sender's known IBANs
     see the account the letter shows. The letter is read again inside the transaction (the caller
     holds :func:`ledger_lock`): a kind the person chose while it was being read — the patch and its
-    :data:`KIND_CHOSEN` entry are written together under the same lock — is kept.
+    :data:`KIND_CHOSEN` entry are written together under the same lock — is kept. ``trace`` gets the
+    steps in the order they run: the sender, the dates, the links, the plan.
     """
     with store.tx():
         document = store.get_document(data.document.id) or data.document
@@ -427,7 +471,8 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
         reading = with_corrections(data.extraction, corrected)
         reading = reading.model_copy(update={"payment": payment_details(reading.payment, full_text)})
         kind = filed_kind(reading, corrected)
-        party = ensure_party(store, reading)
+        with trace.span("link", "Sender", key="sender", stage="link") as step:
+            party = ensure_party(store, reading, trace=step)
         ctx = rule_context(
             party,
             document,
@@ -439,14 +484,9 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
             pages=store.list_pages(document.id),
         )
         note = payment_note(kind, reading, reading.title, full_text, ctx)
-        computed = [
-            with_payment_note(
-                compute_item(verified, ctx, postal_buffer_days=data.postal_buffer_days),
-                verified.item,
-                note,
-            )
-            for verified in data.verification.items
-        ]
+        computed = compute_dates(
+            data.verification.items, ctx, postal_buffer_days=data.postal_buffer_days, note=note, trace=trace
+        )
         links = link_document(
             store,
             document=document,
@@ -455,6 +495,7 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
             contract_evidence=data.verification.contract_evidence,
             rule_ctx=ctx,
             postal_buffer_days=data.postal_buffer_days,
+            trace=trace,
         )
         warnings = [
             *data.warnings,
@@ -479,6 +520,7 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
             full_text=full_text,
             kind=kind,
             derived=law_deadlines(kind, reading, ctx),
+            trace=trace,
         )
 
 
@@ -519,9 +561,10 @@ def _extraction_input(ctx: AppContext, document: Document, pages: Sequence[Page]
 
 
 async def _finish_private(
-    ctx: AppContext, document: Document, layer: TextLayer, progress: StageReporter
+    ctx: AppContext, document: Document, layer: TextLayer, progress: StageReporter, trace: Span = NO_SPAN
 ) -> Document:
     """Private documents: keep the text layer for search; no model ever sees them."""
+    trace.set(**_outcome("processed", "text", layer.pages, items=0, needs_review=0, warnings=layer.warnings))
     await progress.stage("plan")
     title = document.title or document.filename
     updated = ctx.store.update_document(
@@ -545,21 +588,43 @@ async def _finish_private(
     return updated
 
 
+def _outcome(
+    status: str,
+    text_mode: str | None,
+    pages: Sequence[Page],
+    *,
+    items: int,
+    needs_review: int,
+    warnings: Sequence[str],
+) -> dict[str, object]:
+    return facts.outcome(
+        result=status,
+        text_mode=text_mode,
+        pages=len(pages),
+        items=items,
+        needs_check=needs_review,
+        warnings=len(warnings),
+    )
+
+
 async def _run_stages(
-    ctx: AppContext, document: Document, progress: StageReporter, *, force: bool
+    ctx: AppContext, document: Document, progress: StageReporter, *, force: bool, trace: Span = NO_SPAN
 ) -> Document:
     store, models = ctx.store, ctx.settings.models
+    trace.set(private=document.ai_private)
     await progress.stage("intake")
     pages = await _ensure_pages(store, document)
     await progress.stage("text")
-    layer = await asyncio.to_thread(read_text_layer, store, document, pages)
+    with trace.span("ocr", "Text layer", key="text", stage="text") as step:
+        layer = await asyncio.to_thread(read_text_layer, store, document, pages)
+        step.set(**facts.text_layer(layer.pages, layer.hidden))
     if document.ai_private:
-        return await _finish_private(ctx, document, layer, progress)
+        return await _finish_private(ctx, document, layer, progress, trace)
     _refuse_trashed(store, document.id)
     await progress.stage("transcribe")
     warnings = [*layer.warnings]
     warnings += await transcribe_pages(
-        ctx.llm, store, document.id, layer.pages, model=models.transcribe, use_cache=not force
+        ctx.llm, store, document.id, layer.pages, model=models.transcribe, use_cache=not force, trace=trace
     )
     pages = store.list_pages(document.id)
     if not prompt_pages(pages):
@@ -568,10 +633,14 @@ async def _run_stages(
     _refuse_trashed(store, document.id)
     await progress.stage("extract")
     extraction = await extract_document(
-        ctx.llm, _extraction_input(ctx, document, pages), model=models.extract, use_cache=not force
+        ctx.llm,
+        _extraction_input(ctx, document, pages),
+        model=models.extract,
+        use_cache=not force,
+        trace=trace,
     )
     await progress.stage("verify")
-    verification = await asyncio.to_thread(verify_extraction, document.id, extraction, pages)
+    verification = await asyncio.to_thread(verify_extraction, document.id, extraction, pages, trace=trace)
     await progress.stage("compute")
     profile = store.get_profile()
     data = LedgerInput(
@@ -587,7 +656,17 @@ async def _run_stages(
         country=profile.country,
     )
     async with ledger_lock():
-        result = await asyncio.to_thread(commit_ledger, store, data)
+        result = await asyncio.to_thread(commit_ledger, store, data, trace=trace)
+    trace.set(
+        **_outcome(
+            result.document.status,
+            data.text_mode,
+            pages,
+            items=len(result.items),
+            needs_review=sum(needs_check(item) for item in result.items),
+            warnings=result.document.warnings,
+        )
+    )
     await progress.stage("link")
     await progress.stage("plan")
     await progress.done()
@@ -624,25 +703,38 @@ async def ingest_document(
     async. With ``job_id`` the job row follows the stages and ends ``done`` or ``failed``.
     On failure the document becomes ``failed`` with a readable ``error`` and the exception is
     re-raised — except a rate limit, which puts the document back to ``queued`` for the worker.
+    Every reading, however it ends, is kept as a trace (:mod:`ordnung.trace.runs`).
     """
     store = ctx.store
     progress = StageReporter(ctx, doc_id, job_id, on_stage)
+    tracer = start_trace(store, doc_id, job_id=job_id, again=force, recorded=ctx.settings.demo)
     try:
         document = store.get_document(doc_id)
         if document is None:
             raise NotFoundError(f"documents: no row with id {doc_id!r}")
         _refuse_trashed(store, doc_id)
         store.update_document(doc_id, status="processing", error=None)
-        document = await _run_stages(ctx, document, progress, force=force)
-    except (ClaudeRateLimited, asyncio.CancelledError):
+        document = await _run_stages(ctx, document, progress, force=force, trace=tracer.root)
+    except ClaudeRateLimited:
         _set_status_quietly(store, doc_id, "queued")
+        tracer.finish(error=PAUSED_TRACE)
+        keep_trace(store, tracer)
+        raise
+    except asyncio.CancelledError:
+        _set_status_quietly(store, doc_id, "queued")
+        tracer.finish(error=STOPPED_TRACE)
+        keep_trace(store, tracer)
         raise
     except Exception as exc:
         message = describe_error(exc)
         log.warning("reading document %s failed: %s", doc_id, message, exc_info=message == UNEXPECTED_ERROR)
         _mark_failed(store, doc_id, message)
         progress.failed(message)
+        tracer.finish(error=message, result="failed")
+        keep_trace(store, tracer)
         raise
+    tracer.finish()
+    keep_trace(store, tracer)
     ctx.bus.publish("document.processed", doc_id=doc_id, status=document.status)
     return document
 

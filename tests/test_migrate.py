@@ -63,10 +63,10 @@ def _write(directory: Path, files: dict[str, str]) -> Path:
 # --- the shipped schema ----------------------------------------------------------------------------
 
 
-def test_fresh_database_gets_the_initial_schema(conn: sqlite3.Connection) -> None:
+def test_fresh_database_gets_the_whole_schema(conn: sqlite3.Connection) -> None:
     assert current_version(conn) == 0
-    assert migrate(conn) == 1
-    assert current_version(conn) == 1
+    assert migrate(conn) == latest_version()
+    assert current_version(conn) == latest_version()
     assert EXPECTED_TABLES <= _tables(conn)
 
 
@@ -74,15 +74,16 @@ def test_migrate_is_idempotent(conn: sqlite3.Connection) -> None:
     migrate(conn)
     before = _schema(conn)
     conn.execute("INSERT INTO meta (key, value) VALUES ('k', 'v')")
-    assert migrate(conn) == 1
-    assert migrate(conn) == 1
+    assert migrate(conn) == latest_version()
+    assert migrate(conn) == latest_version()
     assert _schema(conn) == before
     assert conn.execute("SELECT value FROM meta WHERE key = 'k'").fetchone() == ("v",)
 
 
 def test_shipped_migrations_are_discovered() -> None:
     found = discover(MIGRATIONS_DIR)
-    assert [m.version for m in found] == list(range(1, len(found) + 1))
+    versions = [m.version for m in found]
+    assert versions == sorted(set(versions)) and versions[0] == 1
     assert found[0] == Migration(1, "initial", MIGRATIONS_DIR / "0001_initial.sql")
     assert latest_version() == found[-1].version
 
@@ -156,9 +157,9 @@ def test_empty_directory_means_version_zero(tmp_path: Path, conn: sqlite3.Connec
 @pytest.mark.parametrize(
     "files",
     [
-        {"0001_a.sql": "", "0003_c.sql": ""},  # gap
         {"0002_b.sql": ""},  # does not start at 1
         {"0001_a.sql": "", "0001_b.sql": ""},  # duplicate
+        {"0001_a.sql": "", "0003_c.sql": "", "0003_d.sql": ""},  # duplicate after a gap
         {"1_a.sql": ""},  # bad name
         {"0001_Bad-Name.sql": ""},  # bad name
     ],
@@ -166,6 +167,20 @@ def test_empty_directory_means_version_zero(tmp_path: Path, conn: sqlite3.Connec
 def test_discover_rejects_bad_numbering(tmp_path: Path, files: dict[str, str]) -> None:
     with pytest.raises(ValueError):
         discover(_write(tmp_path / "m", files))
+
+
+def test_a_gap_in_the_numbering_is_allowed(tmp_path: Path, conn: sqlite3.Connection) -> None:
+    """Numbers are handed out per piece of work: 0003 may be merged before (or without) 0002."""
+    directory = _write(
+        tmp_path / "m",
+        {
+            "0001_a.sql": "CREATE TABLE log (step TEXT);",
+            "0003_c.sql": "INSERT INTO log (step) VALUES ('three');",
+        },
+    )
+    assert [m.version for m in discover(directory)] == [1, 3]
+    assert migrate(conn, directory=directory) == 3
+    assert conn.execute("SELECT step FROM log").fetchall() == [("three",)]
 
 
 def test_discover_ignores_non_sql_files(tmp_path: Path) -> None:
