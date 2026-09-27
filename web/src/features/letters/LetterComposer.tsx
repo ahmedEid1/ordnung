@@ -21,7 +21,16 @@ import { useTodayISO } from "@/lib/today";
 import { keepCitations } from "@/lib/glue";
 import { cn } from "@/lib/utils";
 import { offersEndingLetter } from "@/features/contracts/links";
-import { canSuspend, cancellableContracts, objectionCheck, objectionDocuments, usableDocuments, type ComposerPrefill } from "./logic";
+import {
+  canSuspend,
+  cancellableContracts,
+  mayBeCourt,
+  needsTypedCourt,
+  objectionCheck,
+  objectionDocuments,
+  usableDocuments,
+  type ComposerPrefill,
+} from "./logic";
 import {
   SCHUFA_ADDRESS,
   TEMPLATES,
@@ -291,6 +300,13 @@ export function LetterComposer({ open, onClose, prefill }: LetterComposerProps) 
   return <ComposerDialog key={session.n} open={open && sig !== null} onClose={onClose} prefill={session.prefill} />;
 }
 
+/** `docs` with the letters of `kinds` first, each group in its own order. */
+function fittingFirst(docs: Document[], kinds: readonly Document["kind"][] | undefined): Document[] {
+  if (!kinds?.length) return docs;
+  const fits = (d: Document) => kinds.includes(d.kind);
+  return [...docs.filter(fits), ...docs.filter((d) => !fits(d))];
+}
+
 /** Recipient step of a template letter: a letter it answers, a person or organisation, or a typed address. */
 function TemplateRecipient({
   config,
@@ -327,11 +343,16 @@ function TemplateRecipient({
   const byId = useMemo(() => new Map(parties.map((p) => [p.id, p])), [parties]);
   const shown = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    const base = docs.filter((d) => d.direction !== "outgoing");
+    // the letters whose kind fits the template come first (a withdrawal's orders and contracts, a statement's
+    // statements), the rest after them: any letter can still be chosen (review round 3 of phase 2)
+    const base = fittingFirst(
+      docs.filter((d) => d.direction !== "outgoing"),
+      config.letterKinds,
+    );
     if (q) return base.filter((d) => [d.title, d.filename, byId.get(d.party_id ?? "")?.name].some((s) => s?.toLowerCase().includes(q)));
     const first = pinned ? base.find((d) => d.id === pinned) : undefined;
     return first ? [first, ...base.filter((d) => d.id !== pinned).slice(0, 29)] : base.slice(0, 30);
-  }, [docs, filter, byId, pinned]);
+  }, [docs, filter, byId, pinned, config.letterKinds]);
   const noticeRef = useRef<HTMLDivElement>(null);
   const hasNotice = Boolean(notice);
   useEffect(() => {
@@ -352,6 +373,7 @@ function TemplateRecipient({
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
             <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find a letter…" aria-label="Find a letter" className="pl-9" />
           </div>
+          {config.letterHint ? <p className="text-[12.5px] leading-5 text-muted">{config.letterHint}</p> : null}
           {loading ? (
             <ListSkeleton />
           ) : (
@@ -382,6 +404,8 @@ function TemplateRecipient({
             <Field
               label="The claimant (Antragsteller)"
               hint="The court order names who claims the money — type their name and address as the order shows them. The letter goes to them, not to the court."
+              // the court is no claimant: the server refuses an offer to it (review round 3 of phase 2)
+              error={mayBeCourt(typed) ? "That's a court — type the claimant the order names as the Antragsteller." : undefined}
             >
               <Textarea
                 data-claimant-recipient
@@ -393,7 +417,9 @@ function TemplateRecipient({
               />
             </Field>
           ) : null}
-          {unknownSender ? (
+          {/* only when the letter can be answered this way, and never next to the claimant's box (both would
+              write the same text: review round 3 of phase 2) */}
+          {unknownSender && !claimant && !notice ? (
             <Field label="Who is it for?" hint="This letter's sender isn't in Ordnung — type their name and address as the letter shows them.">
               <Textarea
                 value={typed}
@@ -532,7 +558,13 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
 
   // an offer to a court order's claimant stays linked to the order, but goes to the claimant typed in
   const claimantMode = toClaimant && Boolean(doc) && template?.kind === "payment_plan";
-  const recipientId = kind === "cancellation" ? contract?.party_id ?? null : claimantMode ? null : doc?.party_id ?? partyId;
+  // an objection to a court order whose sender (as filed) is no court goes to the court, typed in — never to
+  // the claimant, where it wouldn't stop the order (§ 694, § 700 ZPO; review round 3 of phase 2)
+  const letterParty = doc?.party_id ? parties.get(doc.party_id) ?? null : null;
+  const courtTyped = kind === "objection" && check.ok && needsTypedCourt(doc, letterParty);
+  const courtOk = !courtTyped || mayBeCourt(typedRecipient);
+  const recipientId =
+    kind === "cancellation" ? contract?.party_id ?? null : claimantMode || courtTyped ? null : doc?.party_id ?? partyId;
   const recipient = recipientId ? parties.get(recipientId) ?? null : null;
   const replyDocs = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -558,7 +590,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const invalid = template ? template.fields.some((f) => fieldError(f, templateValues, today, defaults)) : false;
   const typedTo = Boolean(typedRecipient.trim());
   const templateTarget = claimantMode
-    ? typedTo
+    ? typedTo && !mayBeCourt(typedRecipient)
     : Boolean((doc && (doc.party_id || typedTo)) || partyId || (template?.target === "party-or-typed" && typedTo));
   const refusal = template && doc ? templateRefusal(template.kind, doc.kind, claimantMode) : null;
   // the claimant's box takes focus once the person chose to write to them (review round 2: focus fell to <body>)
@@ -575,7 +607,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
     kind === "cancellation"
       ? Boolean(contract) && !contractBlocked
       : kind === "objection"
-        ? Boolean(doc) && check.ok && !(needsCard && letterQ.isPending)
+        ? Boolean(doc) && check.ok && !(needsCard && letterQ.isPending) && courtOk
         : kind === "general_reply"
           ? Boolean(doc || partyId)
           : template
@@ -609,7 +641,11 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
         instructions: instructions.trim() || undefined,
         language,
         suspend_enforcement: kind === "objection" && canSuspend(doc) ? suspend : undefined,
-        details: template ? detailsPayload(template, templateValues, recipientId ? null : typedRecipient) : undefined,
+        details: template
+          ? detailsPayload(template, templateValues, recipientId ? null : typedRecipient)
+          : courtTyped
+            ? { recipient: typedRecipient.trim() }
+            : undefined,
       },
       {
         onSuccess: (draft) => {
@@ -631,7 +667,9 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
         : "Choose the contract to cancel."
       : kind === "objection"
         ? doc
-          ? null
+          ? courtOk
+            ? null
+            : "Type the court's name and address — the objection goes to the court that issued the order."
           : "Choose the decision you object to."
         : kind === "general_reply"
           ? doc || partyId
@@ -749,6 +787,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                           onSelect={() => {
                             setDocId(d.id);
                             setSuspend(false);
+                            setTypedRecipient("");
                           }}
                         >
                           <DocOption
@@ -783,6 +822,23 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                       </span>
                     ) : null}
                   </p>
+                ) : null}
+                {courtTyped ? (
+                  <Field
+                    className="mt-3"
+                    label="The court that sent the order"
+                    hint={`As the order and its yellow envelope show it (for a Mahnbescheid usually a central Mahngericht). The objection goes to the court${letterParty ? `, not to ${letterParty.name}` : ""}.`}
+                    error={typedRecipient.trim() && !courtOk ? "This doesn't look like a court's name — type it as the order shows it (e.g. “Amtsgericht Hünfeld”)." : undefined}
+                  >
+                    <Textarea
+                      data-court-recipient
+                      value={typedRecipient}
+                      onChange={(e) => setTypedRecipient(e.target.value)}
+                      rows={4}
+                      className="min-h-24"
+                      placeholder={"Amtsgericht …\nStreet and number\nPostcode and town"}
+                    />
+                  </Field>
                 ) : null}
                 {doc && check.ok && canSuspend(doc) ? (
                   <Checkbox
@@ -888,7 +944,8 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                             Write to the claimant instead
                           </Button>
                         ) : refusal.seeCard && doc ? (
-                          <Link to={`/documents/${doc.id}`} className={buttonVariants({ size: "sm" })}>
+                          // the letter's advice card, scrolled to and its title focused (review round 3 of phase 2)
+                          <Link to={`/documents/${doc.id}`} state={{ focus: "advice" }} className={buttonVariants({ size: "sm" })}>
                             Open the letter's card
                           </Link>
                         ) : undefined

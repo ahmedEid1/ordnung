@@ -11,8 +11,14 @@ import { useStableId } from "./internal";
 const control =
   "w-full rounded-lg border border-control-border bg-surface px-3 text-base text-ink shadow-[inset_0_1px_1px_rgb(0_0_0/0.03)] " +
   "placeholder:text-muted transition-[border-color,box-shadow] hover:border-muted " +
-  "focus-visible:border-accent focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/20 " +
-  "disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-danger aria-invalid:ring-danger/15";
+  // focus-within, not focus-visible: a date field's calendar button is a Tab stop of its own, and while it
+  // has focus the field matches neither :focus nor :focus-visible (Chromium), so the ring would vanish
+  "focus-within:border-accent focus-within:outline-none focus-within:ring-3 focus-within:ring-accent/20 " +
+  "disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-danger " +
+  // an invalid field keeps a visible focus indicator: its red border alone looks the same focused or not (WCAG
+  // 2.4.7; review round 3 of phase 2 — the old 15 % ring vanished on a warning background)
+  "aria-invalid:focus-within:ring-danger/25 aria-invalid:focus-within:outline-2 aria-invalid:focus-within:outline-offset-1 " +
+  "aria-invalid:focus-within:outline-solid aria-invalid:focus-within:outline-danger";
 
 /** Classes of a text field (`Input`), for fields built by hand (e.g. a search box with an icon). */
 export function controlClasses(className?: string): string {

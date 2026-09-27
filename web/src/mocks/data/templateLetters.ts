@@ -246,7 +246,16 @@ export function templateLetter(kind: TemplateDraftKind, ctx: TemplateContext): T
           `Regarding your claim${amount !== null ? ` of ${moneyEn(amount)}` : ""}${ctx.courtOrder ? ` in the court order (${ctx.courtOrder})${ctx.docDate ? ` of ${en(ctx.docDate)}` : ""}` : ctx.docDate ? ` in your letter of ${en(ctx.docDate)}` : ""}, I offer ${offerEn}`,
           "Please confirm the instalment plan in writing.",
         ],
-        notes: ["Until they agree, the full amount stays due.", ACKNOWLEDGES_CLAIM],
+        notes: [
+          // an offer doesn't stop the order: its own deadline still runs (compose.court_order_note, review round 3)
+          ...(ctx.courtOrder === "Mahnbescheid"
+            ? ["This offer doesn't stop the Mahnbescheid: pay or object by the court's deadline all the same — otherwise the claimant can apply for an enforcement order (Vollstreckungsbescheid) and enforce it (§ 699 ZPO)."]
+            : ctx.courtOrder
+              ? ["This offer doesn't stop the Vollstreckungsbescheid: it can be enforced already, and an objection is only possible by the court's deadline (§§ 339, 700 ZPO)."]
+              : []),
+          "Until they agree, the full amount stays due.",
+          ACKNOWLEDGES_CLAIM,
+        ],
         guidance: generalGuidance("No special form is needed. Until they agree, the full amount stays due."),
       };
     }

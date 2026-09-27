@@ -302,6 +302,15 @@ async function popoverLayout(panel: Locator, trigger: Locator) {
 }
 const fits = { innerScroll: false, underTopBar: false, overTrigger: false, inViewport: true };
 
+/** Scroll the page so `trigger` sits a third of the way down the viewport (as far as the page can scroll). */
+async function pinInView(page: Page, trigger: Locator): Promise<void> {
+  await trigger.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    window.scrollBy({ top: r.top - innerHeight / 3, behavior: "instant" });
+  });
+  await settle(page);
+}
+
 for (const height of [800, 720]) {
   test.describe(`laptop 1280×${height}: popovers`, () => {
     test.use({ viewport: { width: 1280, height } });
@@ -309,6 +318,10 @@ for (const height of [800, 720]) {
     test("Today's Pay panel shows everything, clear of the top bar and its trigger; Tab out moves on", async ({ page }) => {
       await open(page, "/", /Sam/);
       const pay = page.getByRole("main").getByRole("button", { name: /^Pay: / }).first();
+      // a fixed place for the trigger — a third of the way down — whatever the shared demo's earlier tests left
+      // on Today and wherever the click would scroll it (review round 3 of phase 2: a run with the trigger near
+      // the top left no room to make below it, and the panel scrolled inside)
+      await pinInView(page, pay);
       await pay.click();
       const panel = page.getByRole("dialog", { name: /^Pay: / });
       await expect(panel.getByRole("button", { name: "Mark as paid" })).toBeVisible();

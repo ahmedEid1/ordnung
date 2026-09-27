@@ -232,7 +232,7 @@ function LetterRow({
             {isNew ? newBadge : null}
             {status}
             {doc.kind ? <KindBadge docKind={doc.kind} /> : null}
-            {reading ? null : <ArrivalDate doc={doc} className="text-sm text-muted" />}
+            {reading ? null : <ArrivalDate doc={doc} served={open?.served} className="text-sm text-muted" />}
             {open?.count ? <TodoCount open={open} urgent={urgent} /> : null}
           </div>
           {urgent && next && action ? (
@@ -245,7 +245,7 @@ function LetterRow({
         </div>
         <div className="hidden min-w-0 @4xl:block">{doc.kind ? <KindBadge docKind={doc.kind} /> : null}</div>
         <div className="hidden text-right text-sm text-muted @4xl:block">
-          <ArrivalDate doc={doc} />
+          <ArrivalDate doc={doc} served={open?.served} />
         </div>
         <div className="hidden justify-end @4xl:flex">{open?.count ? <TodoCount open={open} urgent={urgent} /> : null}</div>
       </div>
@@ -257,9 +257,9 @@ function LetterRow({
  * When the letter arrived ("26 Sep") — the date its group is built from — with the letter's own
  * date in the tooltip ("Arrived Sat 26 Sep · letter dated Thu 24 Sep").
  */
-function ArrivalDate({ doc, className }: { doc: Document; className?: string }) {
+function ArrivalDate({ doc, served, className }: { doc: Document; served?: boolean; className?: string }) {
   const today = useTodayISO();
-  const { date, verb, docDate } = inboxDateInfo(doc);
+  const { date, verb, docDate } = inboxDateInfo(doc, served);
   const tip = `${verb} ${formatDate(date, { today })}${docDate ? ` · letter dated ${formatDate(docDate, { today })}` : ""}`;
   return (
     <span title={tip} className={cn("whitespace-nowrap", className)}>

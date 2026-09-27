@@ -57,7 +57,7 @@ import {
 } from "./verdict";
 import { icsFileName, icsHref, useItemActions, useStartDraft } from "./actions";
 import { KindPicker } from "./KindPicker";
-import { canSuspend } from "@/features/letters/logic";
+import { canSuspend, needsTypedCourt } from "@/features/letters/logic";
 import { composerHref } from "@/features/today/selection";
 import { PayPanel } from "./PayPanel";
 import { GlossaryText } from "./Explained";
@@ -118,6 +118,14 @@ const ADVICE_NOW: Record<string, string> = {
 const SEE_THE_CARD = "see the card on this page";
 
 /** A verdict line that points to the advice card: "see the card on this page" links to it. */
+/** An action longer than this reads as a paragraph, not a headline (:func:`longAction`). */
+const HEADLINE_CHARS = 140;
+
+/** Whether a to-do's action is a paragraph (the law behind it) rather than a line to act on. */
+function longAction(item: Pick<Item, "action" | "title">): boolean {
+  return Boolean(item.action && item.title && item.action !== item.title && item.action.length > HEADLINE_CHARS);
+}
+
 function CardLink({ text, docId }: { text: string; docId: string }) {
   const at = text.indexOf(SEE_THE_CARD);
   if (at < 0) return <>{text}</>;
@@ -252,14 +260,29 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
           </>
         ) : open ? (
           <>
-            <p className="text-[16px] font-medium leading-snug text-ink">
-              {looksGerman(open.action) ? <LetterText text={open.action!} /> : <GlossaryText text={open.action ?? open.title} />}
-            </p>
-            {open.action && open.title !== open.action ? (
-              <p className="mt-1 text-[13px] text-muted">
-                <GlossaryText text={open.title} />
-              </p>
-            ) : null}
+            {longAction(open) ? (
+              // a paragraph of law (a landlord's notice's objection) is no headline: the title leads and the
+              // action follows as body text (review round 3 of phase 2: 12 lines of 16 px above the date)
+              <>
+                <p className="text-[16px] font-medium leading-snug text-ink">
+                  <GlossaryText text={open.title} />
+                </p>
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink/80">
+                  {looksGerman(open.action) ? <LetterText text={open.action!} /> : <GlossaryText text={open.action!} />}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[16px] font-medium leading-snug text-ink">
+                  {looksGerman(open.action) ? <LetterText text={open.action!} /> : <GlossaryText text={open.action ?? open.title} />}
+                </p>
+                {open.action && open.title !== open.action ? (
+                  <p className="mt-1 text-[13px] text-muted">
+                    <GlossaryText text={open.title} />
+                  </p>
+                ) : null}
+              </>
+            )}
             {debit ? <p className="mt-1 text-[13px] text-muted">Collected automatically by direct debit — nothing to transfer.</p> : null}
             {notOwed === "if_agreed" ? (
               // decided, but Ordnung doesn't know which way: a plain note, not a warning
@@ -507,7 +530,9 @@ function Actions({ detail, main, primary, optional }: { detail: DocumentDetail; 
       case "draft":
         // an objection that may ask to suspend enforcement: the composer asks (an explicit choice, §§ 719,
         // 707 ZPO / Aussetzung der Vollziehung) — never drafted without the question
-        if (main.draftKind === "objection" && canSuspend(doc)) {
+        // … and one to a court order filed from a sender that is no court: the composer asks for the court
+        // (the objection never goes to the claimant — review round 3 of phase 2)
+        if (main.draftKind === "objection" && (canSuspend(doc) || needsTypedCourt(doc, detail.party))) {
           return (
             <Link to={composerHref("objection", { docId: doc.id })} className={buttonVariants({ variant: optional ? "secondary" : "primary" })}>
               <PenLine aria-hidden />

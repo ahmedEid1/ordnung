@@ -156,6 +156,7 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
           <Markdown
             text={body}
             citations={valid}
+            language={answer.noteLabel === CHECK_NOTE_LABEL_DE ? "de" : "en"}
             renderCitation={(ref, key) => <CitationMarker key={key} info={resolve(ref)} n={numbers.get(ref.id) ?? 0} />}
           />
         ) : live ? (

@@ -323,12 +323,12 @@ describe("tool trace labels", () => {
     ];
     render(<ToolTrace steps={steps} live />);
     const label = screen.getByTestId("tool-step-label");
-    // wraps below `lg` (a cut-off "until 1…" hid the date, also at 640–1024 px: review round 1) and is
-    // truncated only from `lg` up, with its whole text as its title
-    expect(label.className.split(" ")).toEqual(expect.arrayContaining(["break-words", "lg:truncate"]));
-    expect(label.className.split(" ")).not.toContain("truncate");
-    expect(label.className.split(" ")).not.toContain("sm:truncate");
-    expect(label.getAttribute("title")).toMatch(/^Listed your open to-dos & dates until .*15 Oct/);
+    // wraps at every width (a cut-off "until 1…" hid the date: review round 1 below lg, review round 3 of
+    // phase 2 from lg up, where only a hover-only title held the rest)
+    expect(label.className.split(" ")).toContain("break-words");
+    expect(label.className).not.toMatch(/truncate|line-clamp/);
+    expect(label.getAttribute("title")).toBeNull();
+    expect(label.textContent).toMatch(/^Listed your open to-dos & dates until .*15\u00a0Oct/);
     // the result is on its own line on a phone, not hidden there
     const result = screen.getByTestId("tool-step-result");
     expect(result.className.split(" ")).not.toContain("hidden");

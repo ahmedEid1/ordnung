@@ -45,6 +45,11 @@ import { draftChecks, phoneGuidance } from "./data/drafts";
 import { ADVICE_ARRIVED_BY_KIND, ADVICE_BY_DOC, ADVICE_BY_KIND } from "./data/advice";
 import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
+import { mayBeCourt, needsTypedCourt } from "@/features/letters/logic";
+
+/** Mirrors compose.COURT_OBJECTION_RECIPIENT. */
+const COURT_OBJECTION_RECIPIENT =
+  "An objection to a court order goes to the court that issued it — sent to the claimant, it doesn't stop the order (§ 694, § 700 ZPO). This letter's sender isn't a court in Ordnung: type the court's name and address as the order and its yellow envelope show them (for a Mahnbescheid usually a central Mahngericht).";
 import { SAM, sha } from "./data/constants";
 import { TRAY_DOCUMENTS } from "./data/documents";
 import { TRAY_ITEMS } from "./data/items";
@@ -313,7 +318,9 @@ function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDr
   const details = body.details ?? {};
   // instalments on a court order offered to its claimant, typed in: linked to the order, never to the court
   const orderName = doc?.kind === "court_payment_order" ? "Mahnbescheid" : doc?.kind === "enforcement_order" ? "Vollstreckungsbescheid" : null;
-  const toClaimant = body.kind === "payment_plan" && orderName !== null && Boolean(details.recipient?.trim());
+  // a typed court is no claimant (compose.to_claimant, review round 3 of phase 2)
+  const toClaimant =
+    body.kind === "payment_plan" && orderName !== null && Boolean(details.recipient?.trim()) && !mayBeCourt(details.recipient);
   const partyId = toClaimant ? null : body.party_id ?? contract?.party_id ?? doc?.party_id ?? null;
   const party = db.party(partyId);
   const refusal = templateRefusal(body.kind, doc?.kind, toClaimant);
@@ -390,7 +397,9 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
   // a notice without notice period has no hardship objection: its card offers none (compose.objection_remedy)
   const card = doc && body.kind === "objection" && doc.kind === "landlord_notice" ? adviceFor(db, doc) : null;
   if (card && card.draft === null) throw new HttpError(422, card.facts[0]?.text ?? "There is no hardship objection against this notice.");
-  const partyId = body.party_id ?? contract?.party_id ?? doc?.party_id ?? null;
+  // an objection to a court order whose sender isn't a court goes to the court the person typed
+  const typedCourt = body.kind === "objection" && doc !== null && needsTypedCourt(doc, db.party(doc.party_id));
+  const partyId = typedCourt ? null : body.party_id ?? contract?.party_id ?? doc?.party_id ?? null;
   const party = db.party(partyId);
   const ref = contract?.customer_number ?? doc?.references[0]?.value ?? party?.identifiers[0]?.value ?? "";
   const refLabel = party?.identifiers[0]?.label ?? "Referenz";
@@ -456,6 +465,7 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
           tips: ["Keep a copy of what you sent."],
         };
   if (!statutory && isCourtName(party?.name)) guidance.channels = courtChannels();
+  if (typedCourt) guidance.channels = courtChannels();
   const draft: Draft = {
     id: newId("drf"),
     kind: body.kind,
@@ -465,7 +475,7 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     doc_id: body.doc_id ?? null,
     contract_id: body.contract_id ?? null,
     sender_block: `${SAM.name}\n${SAM.street}\n${SAM.city}\n${SAM.email}`,
-    recipient_block: party ? `${party.name}\n${(party.address ?? "").replace(/, /g, "\n")}` : "",
+    recipient_block: party ? `${party.name}\n${(party.address ?? "").replace(/, /g, "\n")}` : (body.details?.recipient ?? "").trim(),
     place_date: placeDate,
     subject,
     body: bodyDe,
@@ -1096,6 +1106,9 @@ const routes: [string, string, Handler][] = [
         const statutory = Boolean(d?.kind && STATUTORY_REMEDY[d.kind]);
         if (!statutory && (!d?.remedy || !["einspruch", "widerspruch"].includes(d.remedy.type)))
           throw new HttpError(422, "An objection letter needs a decision with instructions on how to object (Rechtsbehelfsbelehrung).");
+        // an objection to a court order goes to the court, typed in when its sender isn't one
+        // (compose.objection_to_typed_court, review round 3 of phase 2)
+        if (d && needsTypedCourt(d, db.party(d.party_id)) && !mayBeCourt(b.details?.recipient)) throw new HttpError(422, COURT_OBJECTION_RECIPIENT);
       }
       const draft = composeDraft(db, b);
       db.state.drafts.unshift(draft);

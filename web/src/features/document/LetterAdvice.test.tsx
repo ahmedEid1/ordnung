@@ -94,7 +94,7 @@ describe("the advice card of a high-stakes letter", () => {
     renderWithProviders(<DocumentWarnings detail={detail} />, { client: client() });
     const section = screen.getByRole("region", { name: "Warnings and things to check" });
     const first = section.firstElementChild as HTMLElement;
-    expect(within(first).getByText(/Court payment order \(Mahnbescheid\)/)).toBeInTheDocument();
+    expect(within(first).getByRole("heading", { name: /Court payment order \(Mahnbescheid\)/ })).toBeInTheDocument();
     expect(screen.getByText("When was it delivered?")).toBeInTheDocument();
     // the date is on the envelope — the person never sees the Zustellungsurkunde itself
     expect(screen.getByText(/the postman wrote that date on the yellow envelope/)).toBeInTheDocument();
@@ -168,11 +168,23 @@ describe("the advice card of a high-stakes letter", () => {
       due_date: "2026-10-06",
       date_spec: { type: "relative", anchor: "receipt", amount: 2, unit: "weeks", nature: "objection", text: "", anchor_date: null, date: null, time: null, legal_basis: "§ 692 ZPO", delivery_rule: "none", shift_rule: "auto" },
     });
-    renderWithProviders(<VerdictCard detail={makeDetail({ document: courtDoc, items: [item] })} primary={item} onAskArrival={() => {}} />, { client: client() });
+    const court = { id: "pty_ag", name: "Amtsgericht Hagen", kind: "authority" } as unknown as DocumentDetail["party"];
+    const filed = { ...courtDoc, party_id: "pty_ag" };
+    const view = renderWithProviders(<VerdictCard detail={makeDetail({ document: filed, items: [item], party: court })} primary={item} onAskArrival={() => {}} />, { client: client() });
     expect(screen.queryByText(/Nothing to do/)).toBeNull();
     expect(screen.getByText("By when")).toBeInTheDocument();
     expect(screen.getByText("If you ignore it")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Draft objection" })).toBeInTheDocument();
+    view.unmount();
+    // review round 3 of phase 2: filed from a sender that is no court (the claimant), the objection goes through
+    // the composer, which asks for the court — never straight to the claimant
+    const claimant = { id: "pty_tm", name: "TechMarkt Online GmbH", kind: "retailer" } as unknown as DocumentDetail["party"];
+    renderWithProviders(
+      <VerdictCard detail={makeDetail({ document: { ...courtDoc, party_id: "pty_tm" }, items: [item], party: claimant })} primary={item} onAskArrival={() => {}} />,
+      { client: client() },
+    );
+    const link = screen.getByRole("link", { name: "Draft objection" });
+    expect(link.getAttribute("href")).toMatch(/\/letters\?kind=objection&doc=doc_court/);
   });
 
   it("never gives a dismissal the calm 'nothing to do' verdict, and lists the other deadline the law sets", () => {

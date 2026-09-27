@@ -61,7 +61,7 @@ export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
     arrival.length || detail.advice?.handled ? warnings.filter((w) => !REPEATS_ARRIVAL_QUESTION.test(w)) : warnings;
 
   // a high-stakes letter's own card replaces the generic "get advice" one; urgent cards go first
-  const advice = detail.advice && !scam ? <LetterAdviceCard key="letter-advice" advice={detail.advice} doc={doc} /> : null;
+  const advice = detail.advice && !scam ? <LetterAdviceCard key="letter-advice" advice={detail.advice} doc={doc} party={detail.party} /> : null;
   const urgent = Boolean(detail.advice?.urgent);
 
   const blocks = [
@@ -245,12 +245,18 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
   const [date, setDate] = useState(doc.received_date ?? (served || highStakes ? "" : todayISO));
   const min = doc.doc_date ?? undefined;
   const valid = Boolean(date) && date <= todayISO && (!min || date >= min);
-  // an invalid day is said, not only shown in red (WCAG 3.3.1)
+  // an invalid day is said, not only shown in red (WCAG 3.3.1) — in the words of the question: a court's letter
+  // is delivered, its date is on the envelope; the letter's date has its year when it isn't this year's
+  const letterDate = min ? formatDate(min, { style: "day", today: todayISO }) : "";
   const problem = !date || valid
     ? null
     : date > todayISO
-      ? "That day is after today — enter the day it actually arrived."
-      : `That day is before the letter's own date (${formatDate(min!, { style: "day" })}) — a letter can't arrive before it was written. Check the day again, or whether the letter's date was read right.`;
+      ? served
+        ? "That day is after today — enter the date on the yellow envelope."
+        : "That day is after today — enter the day it actually arrived."
+      : served
+        ? `That day is before the letter's own date (${letterDate}) — a letter can't be delivered before it was written. Check the date on the envelope again, or whether the letter's date was read right.`
+        : `That day is before the letter's own date (${letterDate}) — a letter can't arrive before it was written. Check the day again, or whether the letter's date was read right.`;
   const quick = served
     ? []
     : [0, 1, 2]
@@ -269,41 +275,44 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
     ? " — unless it took longer than letters usually do: this sender may be an authority, so we then still count from the day it would usually have arrived"
     : "";
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!valid) return;
-    update.mutate(
-      { id: doc.id, patch: { received_date: date } },
-      {
-        onSuccess: async () => {
-          // the question goes away once answered: keyboard focus moves to the verdict and its new date
-          document.getElementById("verdict-title")?.focus();
-          if (served) {
-            // a start the letter itself names counts when it is earlier (see "Why this date?")
-            toast.success("Thanks — dates updated", {
-              description: `Counting from ${formatDate(date, { style: "short" })}, the delivery date on the envelope — or from an earlier start the letter names.`,
-            });
-            return;
-          }
-          // the items as recomputed with the arrival day: they say what the date now counts from
-          const fresh = await qc
-            .fetchQuery({ queryKey: qk.documents.detail(doc.id), queryFn: () => api.document(doc.id), staleTime: 5_000 })
-            .catch(() => undefined);
-          const asked = new Set(items.map((i) => i.id));
-          const recomputed = (fresh?.items ?? []).filter((i) => asked.has(i.id));
-          // a delivery day the letter states counts when it is earlier than the one entered
-          const named = recomputed.some((i) => i.date_spec?.anchor === "receipt" && Boolean(i.date_spec.anchor_date));
-          const note = recomputed.length ? arrivalSavedNote(date, recomputed) : "See “Why this date?” for what each date counts from.";
-          toast.success("Thanks — dates updated", {
-            description: named ? `${note} Where the letter names an earlier delivery day, that day counts.` : note,
-          });
-        },
-      },
-    );
+    // Awaited here, not in mutate()'s own onSuccess: the hook refetches the letter first, which answers the
+    // question and unmounts this form — TanStack Query then drops a per-call callback, so the toast and the
+    // focus never came (review round 3 of phase 2). This closure outlives the form.
+    try {
+      await update.mutateAsync({ id: doc.id, patch: { received_date: date } });
+    } catch {
+      return; // the mutation's own error toast says what went wrong; the form stays for another try
+    }
+    // the question goes away once answered: keyboard focus moves to the verdict and its new date, in view
+    const title = document.getElementById("verdict-title");
+    title?.focus({ preventScroll: true });
+    title?.scrollIntoView({ block: "start" });
+    if (served) {
+      // a start the letter itself names counts when it is earlier (see "Why this date?")
+      toast.success("Thanks — dates updated", {
+        description: `Counting from ${formatDate(date, { style: "short" })}, the delivery date on the envelope — or from an earlier start the letter names.`,
+      });
+      return;
+    }
+    // the items as recomputed with the arrival day: they say what the date now counts from
+    const fresh = await qc
+      .fetchQuery({ queryKey: qk.documents.detail(doc.id), queryFn: () => api.document(doc.id), staleTime: 5_000 })
+      .catch(() => undefined);
+    const asked = new Set(items.map((i) => i.id));
+    const recomputed = (fresh?.items ?? []).filter((i) => asked.has(i.id));
+    // a delivery day the letter states counts when it is earlier than the one entered
+    const named = recomputed.some((i) => i.date_spec?.anchor === "receipt" && Boolean(i.date_spec.anchor_date));
+    const note = recomputed.length ? arrivalSavedNote(date, recomputed) : "See “Why this date?” for what each date counts from.";
+    toast.success("Thanks — dates updated", {
+      description: named ? `${note} Where the letter names an earlier delivery day, that day counts.` : note,
+    });
   };
 
   return (
-    <form id="arrival-question" onSubmit={submit} className="rounded-2xl border border-warn/30 bg-warn-soft px-4 py-4 sm:px-5">
+    <form id="arrival-question" onSubmit={(e) => void submit(e)} className="rounded-2xl border border-warn/30 bg-warn-soft px-4 py-4 sm:px-5">
       <div className="flex gap-3">
         <CalendarCheck className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
         <div className="min-w-0 flex-1">

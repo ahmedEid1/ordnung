@@ -12,11 +12,14 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, CircleCheck, CircleCheckBig, FileSearch, Info, PenLine, Scale, TriangleAlert, type LucideIcon } from "lucide-react";
 import type { AdviceFact, Document, DraftKind, LetterAdvice } from "@/api/types";
 import { useUpdateDocument } from "@/api/hooks";
-import { Button } from "@/components/ui/Button";
+import { Link } from "react-router";
+import { Button, buttonVariants } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import { keepCitations } from "@/lib/glue";
 import { cn } from "@/lib/utils";
 import { useStartDraft } from "./actions";
+import { needsTypedCourt } from "@/features/letters/logic";
+import { composerHref } from "@/features/today/selection";
 
 /** The tag a letter carries once the person said they dealt with a card no to-do can close (the server's `DEALT_WITH_TAG`). */
 export const DEALT_WITH_TAG = "dealt-with";
@@ -78,7 +81,43 @@ function DealtWith({ advice, doc, onDone }: { advice: LetterAdvice; doc: Pick<Do
   );
 }
 
-export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: Pick<Document, "id" | "party_id" | "case_id" | "tags"> }) {
+/**
+ * A card title whose German term stays whole or breaks where German breaks it: "Operating-cost statement
+ * (Betriebskostenabrechnung)" broke as "(Betriebskostenabrechnun" / "g)" at 320 px (review round 3 of phase 2).
+ * The term in brackets is marked German (hyphenated as German, read in a German voice), and the soft hyphens
+ * after the parts of a long compound let it break there even where no German hyphenation is installed.
+ */
+function AdviceTitle({ title }: { title: string }) {
+  const found = /^(.*?)\s*\(([^()]+)\)(.*)$/.exec(title);
+  if (!found) return <>{title}</>;
+  const [, head, term, tail] = found;
+  return (
+    <>
+      {head}{" "}
+      <span lang="de" className="hyphens-manual">
+        ({softHyphens(term!)})
+      </span>
+      {tail}
+    </>
+  );
+}
+
+/** The heads of German compounds in the card titles' terms, after which a long word may break. */
+const COMPOUND_HEADS = /(Betriebskosten|Heizkosten|Nebenkosten|Vollstreckungs|Kündigungs|Kappungs|Miet|Mahn)(?=\p{Ll}{4,})/gu;
+
+function softHyphens(term: string): string {
+  return term.length < 16 ? term : term.replace(COMPOUND_HEADS, "$1\u00ad");
+}
+
+export function LetterAdviceCard({
+  advice,
+  doc,
+  party,
+}: {
+  advice: LetterAdvice;
+  doc: Pick<Document, "id" | "party_id" | "case_id" | "tags" | "kind" | "remedy">;
+  party?: { name: string } | null;
+}) {
   const draft = useStartDraft();
   const urgent = advice.urgent;
   // a handled letter has nothing left to object to in time: no letter to draft
@@ -117,7 +156,7 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
             {urgent ? "Act now — and get advice" : "Know your rights"}
           </p>
           <h2 id={titleId} ref={headingRef} tabIndex={-1} className="mt-0.5 scroll-mt-24 text-[15.5px] font-semibold leading-snug text-ink outline-none [overflow-wrap:anywhere]">
-            {advice.title}
+            <AdviceTitle title={advice.title} />
           </h2>
         </div>
       </div>
@@ -233,15 +272,23 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
 
         {action && draftKind ? (
           <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              icon={action.icon}
-              loading={draft.pending}
-              onClick={() => draft.start(draftKind, { doc_id: doc.id, party_id: doc.party_id, case_id: doc.case_id })}
-            >
-              {action.label}
-            </Button>
+            {draftKind === "objection" && needsTypedCourt(doc, party) ? (
+              // the letter's sender (as filed) is no court: the composer asks for the court it goes to
+              <Link to={composerHref("objection", { docId: doc.id })} className={buttonVariants({ size: "sm", variant: "secondary" })}>
+                <action.icon aria-hidden />
+                {action.label}
+              </Link>
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={action.icon}
+                loading={draft.pending}
+                onClick={() => draft.start(draftKind, { doc_id: doc.id, party_id: doc.party_id, case_id: doc.case_id })}
+              >
+                {action.label}
+              </Button>
+            )}
           </div>
         ) : null}
         {advice.closable ? <DealtWith advice={advice} doc={doc} onDone={(dealt) => (focusAfter.current = dealt ? "status" : "title")} /> : null}

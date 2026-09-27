@@ -443,18 +443,25 @@ const WEEKDAY_BEFORE =
 const INLINE_ISO = new RegExp(`\\b${WEEKDAY_BEFORE}(\\d{4}-\\d{2}-\\d{2})(?:[ T](\\d{2}:\\d{2})(?::\\d{2})?Z?)?\\b`, "g");
 
 /**
- * ISO dates inside running text ("from 2026-09-28 to 2026-10-26") → "Mon 28 Sep". A weekday written
- * just before the date ("due Wed 2026-09-30") is part of it: the formatted date brings its own, so it
- * never reads "Wed Wed 30 Sep".
+ * ISO dates inside running text ("from 2026-09-28 to 2026-10-26") → "Mon 28 Sep" (German: "Mo. 28.09.2026").
+ * A weekday written just before the date ("due Wed 2026-09-30") is part of it: the formatted date brings its
+ * own, so it never reads "Wed Wed 30 Sep".
  */
-export function formatInlineDates(text: string, today?: DateInput): string {
+export function formatInlineDates(text: string, today?: DateInput, language: "en" | "de" = "en"): string {
   return text.replace(INLINE_ISO, (whole, day: string, time?: string) => {
-    if (!tryParseDate(day)) return whole;
-    // without "today" the year can't be left out safely
-    const date = formatDate(day, { style: "short", today, withYear: today ? "auto" : "always" });
+    const parsed = tryParseDate(day);
+    if (!parsed) return whole;
+    // a German answer's dates as Ordnung's German check note writes them ("Do. 15.10.2026")
+    const date =
+      language === "de"
+        ? `${GERMAN_WEEKDAYS[parsed.getDay()]} ${fnsFormat(parsed, "dd.MM.yyyy")}`
+        : // without "today" the year can't be left out safely
+          formatDate(day, { style: "short", today, withYear: today ? "auto" : "always" });
     return time ? `${date}, ${formatTime(time)}` : date;
   });
 }
+
+const GERMAN_WEEKDAYS = ["So.", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa."];
 
 // ------------------------------------------------------------------------------------------------
 // Running text: keep units together

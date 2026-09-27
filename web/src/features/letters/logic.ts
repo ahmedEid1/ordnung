@@ -343,3 +343,39 @@ export function sendChoices(guidance: Draft["send_guidance"]): SendChoice[] {
 export function canSuspend(doc: Pick<Document, "kind"> | null): boolean {
   return Boolean(doc) && doc!.kind !== "court_payment_order" && doc!.kind !== "landlord_notice";
 }
+
+const COURT_NAME =
+  /(?:amts|land|landes|oberlandes|kammer|arbeits|sozial|verwaltungs|finanz|mahn|familien|insolvenz|vollstreckungs|nachlass|betreuungs|register|verfassungs|staats|bundes)gericht(?:e?s|shofe?s?)?\b|\bbundesfinanzhofe?s?\b/i;
+const COURT_ABBREVIATION =
+  /(?:^|[(,;/]\s*|\b(?:des|dem|der|beim|vom|am)\s+)(?:AG|LG|OLG|ArbG|LAG|SG|LSG|VG|OVG|VGH|FG|BGH|BFH|BSG|BAG|BVerwG|BVerfG)(?:\s+\p{Lu}|\s*$|\s*[-–—,;/(])/u;
+const LEGAL_FORM = /\b(?:GmbH|mbH|AG|SE|KGaA|KG|OHG|UG|GbR|eG|e\.\s?V|Ltd|Inc|LLC)(?![\p{L}\d])/u;
+const NOT_A_COURT = /vollzieh|kasse(?:n(?:stelle)?)?\b|zahlstelle/i;
+
+/**
+ * Whether a name may be a court's (`routing.may_be_court`): it names a kind of court ("Amtsgericht Hünfeld",
+ * "Zentrales Mahngericht") or abbreviates one before its place ("AG Hagen") — no company ("LG Electronics GmbH"),
+ * bailiff or court cashier. The server decides for sure; this only tells when to ask for the court.
+ */
+export function mayBeCourt(name: string | null | undefined): boolean {
+  const text = (name ?? "").trim();
+  if (!text || NOT_A_COURT.test(text)) return false;
+  if (COURT_NAME.test(text)) return true;
+  const firstLine = text.split("\n")[0]!;
+  return COURT_ABBREVIATION.test(firstLine) && !LEGAL_FORM.test(firstLine.replace(/^\s*(?:AG|LG|OLG)\b/, ""));
+}
+
+/**
+ * Whether an objection to this letter needs the court typed in: a court order whose sender, as filed, is no
+ * court (a Mahnbescheid re-filed from what was read as the claimant's reminder) and whose instructions name
+ * none. An objection goes to the court that issued the order — sent to the claimant it doesn't stop the order
+ * (§ 694, § 700 ZPO); the server refuses to address it to anyone else (drafts/compose.py
+ * `objection_to_typed_court`, review round 3 of phase 2).
+ */
+export function needsTypedCourt(
+  doc: Pick<Document, "kind" | "remedy"> | null,
+  party: { name: string } | null | undefined,
+): boolean {
+  if (!doc || (doc.kind !== "court_payment_order" && doc.kind !== "enforcement_order")) return false;
+  if (party && mayBeCourt(party.name)) return false;
+  return !mayBeCourt(doc.remedy?.addressee ?? null);
+}

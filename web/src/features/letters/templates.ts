@@ -40,6 +40,10 @@ export interface TemplateConfig {
   whichLabel: string;
   /** party kinds listed first in the recipient picker */
   preferredParties?: PartyKind[];
+  /** letter kinds listed first among the letters a template can answer (the rest follow) */
+  letterKinds?: Document["kind"][];
+  /** says which letters come first (shown above the list) */
+  letterHint?: string;
   fields: DetailField[];
   /** the placeholder of the "your wishes" box */
   wishes: string;
@@ -54,6 +58,8 @@ export const TEMPLATES: TemplateConfig[] = [
     target: "letter-or-party",
     whichLabel: "Which order or contract?",
     preferredParties: ["retailer", "company", "telecom", "gym"],
+    letterKinds: ["invoice", "receipt", "contract", "contract_change"],
+    letterHint: "Invoices, receipts and contracts come first; any letter about the order can be chosen.",
     fields: [
       { name: "subject_matter", type: "text", label: "What did you order or sign up for?", placeholder: "e.g. Kaffeemaschine KM-200", required: true, need: "what you ordered" },
       { name: "ordered_on", type: "date", label: "Ordered or signed on", when: "past" },
@@ -82,6 +88,22 @@ export const TEMPLATES: TemplateConfig[] = [
     icon: HandCoins,
     target: "letter-or-party",
     whichLabel: "Which bill or decision?",
+    letterKinds: [
+      "invoice",
+      "dunning",
+      "tax_assessment",
+      "tax_letter",
+      "court_payment_order",
+      "enforcement_order",
+      "fine",
+      "utility_bill",
+      "operating_costs",
+      "broadcasting_fee",
+      "health_insurance",
+      "social_insurance",
+      "authority_letter",
+    ],
+    letterHint: "Bills, reminders, tax and court letters come first.",
     fields: [
       { name: "instalment", type: "money", label: "Monthly instalment you can pay", required: true, need: "the monthly instalment" },
       { name: "first_instalment", type: "date", label: "First instalment on", required: true, need: "the day of the first instalment", when: "future" },
@@ -122,6 +144,8 @@ export const TEMPLATES: TemplateConfig[] = [
     target: "letter-or-party",
     whichLabel: "Which statement?",
     preferredParties: ["landlord", "company"],
+    letterKinds: ["operating_costs", "utility_bill"],
+    letterHint: "Operating-cost and utility statements come first.",
     fields: [{ name: "period", type: "text", label: "Billing period", placeholder: "01.01.2025 – 31.12.2025", hint: "Leave empty to use the period the statement names." }],
     wishes: "e.g. Please send scans of the heating and water bills.",
   },
@@ -231,7 +255,7 @@ const COURT_ORDERS = new Set<Document["kind"]>(["court_payment_order", "enforcem
  */
 /** What an offer of instalments to a court order's claimant still says (the letter stays linked to the order). */
 export const CLAIMANT_NOTE =
-  "Still pay or object by the court's deadline — an offer to pay in instalments doesn't stop the order. Offering instalments acknowledges the claim: the limitation period starts again (§ 212 Abs. 1 Nr. 1 BGB) and it is hard to dispute later.";
+  "Still pay or object by the court's deadline — an offer to pay in instalments doesn't stop the order. Offering instalments acknowledges the claim: the limitation period starts again (§ 212 Abs. 1 Nr. 1 BGB) and it is hard to dispute later — and money paid on a time-barred claim can't be reclaimed (§ 214 Abs. 2 BGB). If you think the claim is wrong or time-barred, object or get debt advice first.";
 
 export interface TemplateRefusal {
   title: string;
@@ -259,6 +283,8 @@ export function templateRefusal(
         letterKind === "enforcement_order"
           ? "The period to object to an enforcement order is a Notfrist (two weeks, § 339 ZPO; one week at a labour court, § 59 ArbGG) — no one can extend it. Object in time instead, or get advice at once."
           : "The period to pay or object to a court payment order is set by law (two weeks, § 692 ZPO; one week at a labour court, § 46a ArbGG) — no one can extend it by being asked. Object in time instead, or get advice at the court's Rechtsantragstelle.",
+      // the letter's card names the Rechtsantragstelle and how to object (review round 3 of phase 2)
+      seeCard: true,
     };
   }
   if (kind === "extension_request" && letterKind === "dismissal") {

@@ -12,7 +12,15 @@ export interface MarkdownProps {
   citations: ReadonlyMap<string, CitationRef> | null;
   /** Renders a validated citation chip. */
   renderCitation: (ref: CitationRef, key: string) => ReactNode;
+  /** The answer's language (its check note's label says it): a German answer's ISO dates read German. */
+  language?: "en" | "de";
   className?: string;
+}
+
+/** How an answer's pieces are rendered: its citation chips and its dates. */
+interface Render {
+  cite: MarkdownProps["renderCitation"];
+  dates: (text: string) => string;
 }
 
 /** Every placeholder Ordnung's answer check writes where it left a value out (`support.py`, rule 5:
@@ -47,20 +55,21 @@ export function keepTogether(text: string): string {
 }
 
 /** Text nodes as they will be shown (ISO dates formatted, values kept together), before grouping. */
-function prepare(nodes: Inline[]): Inline[] {
+function prepare(nodes: Inline[], dates: Render["dates"]): Inline[] {
   return nodes.map((n) =>
     n.t === "text"
-      ? { t: "text", v: keepTogether(formatInlineDates(n.v)) }
+      ? { t: "text", v: keepTogether(dates(n.v)) }
       : n.t === "strong" || n.t === "em" || n.t === "link"
-        ? { ...n, c: prepare(n.c) }
+        ? { ...n, c: prepare(n.c, dates) }
         : n,
   );
 }
 
-function renderText(v: string, key: string): ReactNode {
-  // answers quote dates from the ledger as ISO ("due 2026-10-01"): show them like the rest of the app
+function renderText(v: string, key: string, dates: Render["dates"]): ReactNode {
+  // answers quote dates from the ledger as ISO ("due 2026-10-01"): show them like the rest of the app — in
+  // the answer's language (review round 3 of phase 2: a German answer read "bis Thu 15 Oct 2026 fällig")
   const parts = v.split(LEFT_OUT);
-  if (parts.length === 1) return <Fragment key={key}>{keepTogether(formatInlineDates(v))}</Fragment>;
+  if (parts.length === 1) return <Fragment key={key}>{keepTogether(dates(v))}</Fragment>;
   return (
     <Fragment key={key}>
       {parts.map((part, i) =>
@@ -70,7 +79,7 @@ function renderText(v: string, key: string): ReactNode {
             {part}
           </span>
         ) : (
-          <Fragment key={i}>{keepTogether(formatInlineDates(part))}</Fragment>
+          <Fragment key={i}>{keepTogether(dates(part))}</Fragment>
         ),
       )}
     </Fragment>
@@ -166,17 +175,17 @@ function groupChips(nodes: Inline[]): Piece[] {
   return pieces;
 }
 
-function renderInline(nodes: Inline[], renderCitation: MarkdownProps["renderCitation"], prefix: string): ReactNode[] {
-  return groupChips(prepare(nodes)).map((piece, i) => {
+function renderInline(nodes: Inline[], r: Render, prefix: string): ReactNode[] {
+  return groupChips(prepare(nodes, r.dates)).map((piece, i) => {
     const key = `${prefix}.${i}`;
-    if (piece.t === "node") return renderNode(piece.n, key, renderCitation);
+    if (piece.t === "node") return renderNode(piece.n, key, r);
     return (
       <span key={key} className="whitespace-nowrap">
-        {piece.word.map((w, j) => renderNode(w, `${key}.w${j}`, renderCitation))}
+        {piece.word.map((w, j) => renderNode(w, `${key}.w${j}`, r))}
         {piece.refs.map((ref, j) => (
           <Fragment key={`${key}.c${j}`}>
             {j ? "\u00a0" : null}
-            {renderCitation(ref, `${key}.c${j}`)}
+            {r.cite(ref, `${key}.c${j}`)}
           </Fragment>
         ))}
         {piece.punct}
@@ -185,10 +194,10 @@ function renderInline(nodes: Inline[], renderCitation: MarkdownProps["renderCita
   });
 }
 
-function renderNode(n: Inline, key: string, renderCitation: MarkdownProps["renderCitation"]): ReactNode {
+function renderNode(n: Inline, key: string, r: Render): ReactNode {
   switch (n.t) {
     case "text":
-      return renderText(n.v, key);
+      return renderText(n.v, key, r.dates);
     case "br":
       return <br key={key} />;
     case "code":
@@ -200,37 +209,37 @@ function renderNode(n: Inline, key: string, renderCitation: MarkdownProps["rende
     case "strong":
       return (
         <strong key={key} className="font-semibold text-ink">
-          {renderInline(n.c, renderCitation, key)}
+          {renderInline(n.c, r, key)}
         </strong>
       );
     case "em":
-      return <em key={key}>{renderInline(n.c, renderCitation, key)}</em>;
+      return <em key={key}>{renderInline(n.c, r, key)}</em>;
     case "link":
       return (
         <Link key={key} to={n.to} className="font-medium text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent">
-          {renderInline(n.c, renderCitation, key)}
+          {renderInline(n.c, r, key)}
         </Link>
       );
     case "cite":
-      return renderCitation(n.ref, key);
+      return r.cite(n.ref, key);
   }
 }
 
-function renderBlock(b: Block, i: number, renderCitation: MarkdownProps["renderCitation"]): ReactNode {
+function renderBlock(b: Block, i: number, r: Render): ReactNode {
   const key = `b${i}`;
   switch (b.t) {
     case "p":
-      return <p key={key}>{renderInline(b.c, renderCitation, key)}</p>;
+      return <p key={key}>{renderInline(b.c, r, key)}</p>;
     case "h":
       return (
         <p key={key} className="font-semibold text-ink">
-          {renderInline(b.c, renderCitation, key)}
+          {renderInline(b.c, r, key)}
         </p>
       );
     case "quote":
       return (
         <blockquote key={key} className="border-l-2 border-line-strong pl-3 text-muted">
-          {renderInline(b.c, renderCitation, key)}
+          {renderInline(b.c, r, key)}
         </blockquote>
       );
     case "pre":
@@ -244,7 +253,7 @@ function renderBlock(b: Block, i: number, renderCitation: MarkdownProps["renderC
         <ul key={key} className="list-disc space-y-1.5 pl-5 marker:text-faint">
           {b.items.map((item, j) => (
             <li key={j} className="pl-0.5">
-              {renderInline(item, renderCitation, `${key}.${j}`)}
+              {renderInline(item, r, `${key}.${j}`)}
             </li>
           ))}
         </ul>
@@ -255,7 +264,7 @@ function renderBlock(b: Block, i: number, renderCitation: MarkdownProps["renderC
           {b.items.map((item, j) => (
             // each item keeps the number the answer wrote (the check read that number, not a count)
             <li key={j} value={b.numbers[j]} className="pl-0.5">
-              {renderInline(item, renderCitation, `${key}.${j}`)}
+              {renderInline(item, r, `${key}.${j}`)}
             </li>
           ))}
         </ol>
@@ -267,11 +276,12 @@ function renderBlock(b: Block, i: number, renderCitation: MarkdownProps["renderC
  * Renders an Ask answer from the safe Markdown subset (see `markdown.ts`). Output is React
  * elements only — raw HTML is shown as text, remote images and external links are never rendered.
  */
-export function Markdown({ text, citations, renderCitation, className }: MarkdownProps) {
+export function Markdown({ text, citations, renderCitation, language = "en", className }: MarkdownProps) {
   const blocks = useMemo(() => parseMarkdown(text, { citations }), [text, citations]);
+  const r: Render = { cite: renderCitation, dates: (v) => formatInlineDates(v, undefined, language) };
   return (
-    <div className={cn("space-y-3 break-words text-[15px] leading-[1.65] text-ink/90", className)}>
-      {blocks.map((b, i) => renderBlock(b, i, renderCitation))}
+    <div lang={language === "de" ? "de" : undefined} className={cn("space-y-3 break-words text-[15px] leading-[1.65] text-ink/90", className)}>
+      {blocks.map((b, i) => renderBlock(b, i, r))}
     </div>
   );
 }

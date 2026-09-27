@@ -52,13 +52,19 @@ export function inboxDate(d: Document): string {
 
 /**
  * The date a row shows — the one its month group is built from ({@link inboxDate}) — and what it
- * is: "Arrived" (the letter's arrival date; "Delivered" for a court order) or "Added" (no arrival date: when it was added). The
- * letter's own date goes along when it differs ("dated 31 Aug").
+ * is: "Arrived" (the letter's arrival date; "Delivered" for a letter served formally) or "Added" (no arrival
+ * date: when it was added). The letter's own date goes along when it differs ("dated 31 Aug"). `served`: an
+ * open to-do of the letter counts from formal service ({@link OpenSummary.served}) — as its page says (review
+ * round 3 of phase 2: a court letter filed as another kind read "delivered" there and "Arrived" here); a court
+ * order is served whatever its to-dos.
  */
-export function inboxDateInfo(d: Document): { date: string; verb: "Arrived" | "Delivered" | "Added"; docDate: string | null } {
+export function inboxDateInfo(
+  d: Document,
+  served = false,
+): { date: string; verb: "Arrived" | "Delivered" | "Added"; docDate: string | null } {
   const date = inboxDate(d);
   // a court order's day is the one on the yellow envelope: "delivered", as everywhere (review round 2)
-  const arrived = d.kind === "court_payment_order" || d.kind === "enforcement_order" ? "Delivered" : "Arrived";
+  const arrived = served || d.kind === "court_payment_order" || d.kind === "enforcement_order" ? "Delivered" : "Arrived";
   return { date, verb: d.received_date ? arrived : "Added", docDate: d.doc_date && d.doc_date !== date ? d.doc_date : null };
 }
 
@@ -138,6 +144,8 @@ export interface OpenSummary {
   count: number;
   /** earliest open dated item (send-by first) */
   next: Item | null;
+  /** an open to-do counts from formal service (the rules engine's `zpo_180`): the letter was delivered */
+  served?: boolean;
 }
 
 /** Items further back than this are history, not something overdue to act on. */
@@ -163,6 +171,7 @@ export function openItemsByDoc(items: Item[], today?: string): Map<string, OpenS
     if (!i.doc_id || (i.status !== "open" && i.status !== "missed")) continue;
     const s = out.get(i.doc_id) ?? { count: 0, next: null };
     s.count += 1;
+    if (i.computation?.rule_ids.includes("zpo_180")) s.served = true;
     const d = i.send_by ?? i.due_date;
     const nd = s.next ? (s.next.send_by ?? s.next.due_date) : null;
     if (d && isNextCandidate(i, today) && (!nd || d < nd)) s.next = i;

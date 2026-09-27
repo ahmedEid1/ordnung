@@ -94,7 +94,7 @@ function AddLead({ kind, label, existing, onAdd }: { kind: ItemKind; label: stri
           onBlur={() => !value.trim() && close(false)}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${id}-err` : undefined}
-          className="h-7 w-20 rounded-full border border-control-border bg-surface pl-3 pr-10 text-[12.5px] tabular-nums text-ink outline-none transition-[border-color,box-shadow] focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/20 aria-invalid:border-danger aria-invalid:ring-danger/15"
+          className="h-7 w-20 rounded-full border border-control-border bg-surface pl-3 pr-10 text-[12.5px] tabular-nums text-ink outline-none transition-[border-color,box-shadow] focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/20 aria-invalid:border-danger aria-invalid:focus-visible:ring-danger/25 aria-invalid:focus-visible:outline-2 aria-invalid:focus-visible:outline-offset-1 aria-invalid:focus-visible:outline-solid aria-invalid:focus-visible:outline-danger"
         />
         <span aria-hidden className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[12px] text-muted">
           days

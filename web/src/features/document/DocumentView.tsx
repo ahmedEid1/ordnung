@@ -6,7 +6,8 @@
  * Panel order: verdict → warnings / Please check → Explained simply → To-dos & dates → Key facts →
  * Thread, contract, drafts, Ideas → provenance + Reprocess / Download / Delete.
  */
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { useLocation } from "react-router";
 import { useReducedMotion } from "motion/react";
 import type { DocumentDetail } from "@/api/types";
 import { SkeletonCard, SkeletonText } from "@/components/ui/Skeleton";
@@ -36,6 +37,19 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const scam = Boolean(scamSuggestion(detail));
   const busy = doc.status === "queued" || doc.status === "processing" || doc.status === "failed";
   const neverRead = busy && !doc.kind && !doc.title;
+
+  // opened for its advice card ("Open the letter's card" in the composer): scroll to it and focus its title
+  // (review round 3 of phase 2: the page opened at its top, focus on <main>, the card 1250 px below)
+  const location = useLocation();
+  const toCard = (location.state as { focus?: string } | null)?.focus === "advice" && !neverRead;
+  useEffect(() => {
+    if (!toCard) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`advice-card-${doc.id}`)?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+      document.getElementById(`advice-${doc.id}`)?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [toCard, doc.id, reduced]);
 
   const askArrival = useCallback(() => {
     const el = document.getElementById("arrival-question");

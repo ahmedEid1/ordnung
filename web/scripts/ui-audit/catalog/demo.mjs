@@ -1269,9 +1269,29 @@ export async function demoCatalog({ api, server }) {
       });
     }
     if (kind === "court_payment_order") {
-      at("objection-letter", "create its objection (POST /api/drafts) and open the letter", `${kind}: the objection to the court and how to send it (e-mail isn't valid at a court).`, async (c, id) => {
-        const draft = await c.api.post("/api/drafts", { kind: "objection", doc_id: id, language: "en" });
+      // the re-filed reminder's sender is the claimant, not a court: the objection goes to the court typed in
+      // (review round 3 of phase 2 — it went to the claimant)
+      const court = "Amtsgericht Hünfeld\nZentrales Mahngericht\n36088 Hünfeld";
+      at("objection-letter", "create its objection to the court typed in (POST /api/drafts) and open the letter", `${kind}: the objection to the court and how to send it (e-mail isn't valid at a court).`, async (c, id) => {
+        const draft = await c.api.post("/api/drafts", { kind: "objection", doc_id: id, language: "en", details: { recipient: court } });
         await c.goto(`/letters/${draft.id}`);
+      });
+      at("objection-court-typed", "open the composer's objection for it and type the court", `${kind}: the objection asks for the court (its sender, as filed, is the claimant) — typed in.`, async (c, id) => {
+        await c.goto(`/letters?kind=objection&doc=${id}`);
+        const d = await c.visible(c.page.getByRole("dialog", { name: "New letter" }));
+        const box = d.getByLabel("The court that sent the order");
+        if (!(await c.exists(box))) c.notApplicable("no court field (the letter's sender is a court)");
+        await box.fill(court);
+        await settle(c.page);
+      });
+      at("objection-court-wrong", "open the composer's objection for it and type the claimant as the court", `${kind}: a typed name that is no court is refused before anything is written.`, async (c, id) => {
+        await c.goto(`/letters?kind=objection&doc=${id}`);
+        const d = await c.visible(c.page.getByRole("dialog", { name: "New letter" }));
+        const box = d.getByLabel("The court that sent the order");
+        if (!(await c.exists(box))) c.notApplicable("no court field (the letter's sender is a court)");
+        await box.fill("TechMarkt Online GmbH");
+        await box.focus();
+        await settle(c.page);
       });
     }
     if (kind === "landlord_notice") {

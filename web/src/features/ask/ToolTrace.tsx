@@ -27,13 +27,13 @@ function StepChip({ step, titleOf }: { step: ToolStep; titleOf?: TitleLookup }) 
       >
         <Icon className="size-3.5" />
       </span>
-      {/* the result goes under the label up to lg (a date range's end or a letter's title must not be cut
-          off at 640–1024 px); from lg up they share a line, the label truncated with its full text as a title */}
-      <span className="flex min-w-0 flex-col pt-0.5 lg:flex-row lg:items-center lg:gap-2 lg:pt-0">
+      {/* the label wraps at every width — a date range's end or a letter's title is never cut off, and no
+          hover-only title holds what keyboard and touch can't reach (review round 3 of phase 2); from lg up
+          the result follows on the same line when there is room */}
+      <span className="flex min-w-0 flex-col pt-0.5 lg:flex-row lg:flex-wrap lg:items-baseline lg:gap-x-2 lg:pt-0">
         <span
           data-testid="tool-step-label"
-          title={label}
-          className={cn("min-w-0 break-words lg:truncate", step.done ? "text-ink/80" : "text-ink")}
+          className={cn("min-w-0 break-words", step.done ? "text-ink/80" : "text-ink")}
         >
           {unbreakDates(label)}
         </span>

@@ -167,6 +167,13 @@ describe("values copied from letters", () => {
     expect(formatInlineDates("from 2026-09-28 to 2026-10-26", "2026-09-28")).toBe("from Mon 28 Sep to Mon 26 Oct");
   });
 
+  it("formats a German answer's dates the German way (review round 3 of phase 2)", () => {
+    expect(formatInlineDates("Die Nachzahlung ist bis 2026-10-15 fällig", undefined, "de")).toBe(
+      "Die Nachzahlung ist bis Do. 15.10.2026 fällig",
+    );
+    expect(formatInlineDates("Termin Mi. 2026-10-14 10:00", undefined, "de")).toBe("Termin Mi. 14.10.2026, 10:00");
+  });
+
   it("keeps one weekday when the text writes one before an ISO date", () => {
     // review finding: a recorded answer's "due Wed 2026-09-30" showed as "due Wed Wed 30 Sep 2026"
     expect(formatInlineDates("due Wed 2026-09-30", "2026-09-28")).toBe("due Wed 30 Sep");

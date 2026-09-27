@@ -8,9 +8,10 @@
  *   announced as ready).
  * - The composer: the template tiles are a named group, and a letter opened for a chosen recipient
  *   scrolls its body, never the dialog (its title and Close stay in view).
- * - A court order calls its one date "delivered" and its advice card fits (every demo letter has its
- *   arrival day, so the delivery question itself is the static demo's and the unit tests'); the kind
- *   picker's phone sheet names itself once; a landlord's notice card keeps its first steps and its
+ * - A court order calls its one date "delivered" and its advice card fits; saving the arrival or delivery day
+ *   (cleared on a re-filed letter) shows its toast and moves focus to the verdict; a day before the
+ *   letter keeps a visible focus outline on every Tab stop of the field; "Open the letter's card" lands
+ *   on the card; the kind picker's phone sheet names itself once; a landlord's notice card keeps its first steps and its
  *   actions in view; a dismissal's law deadlines carry their countdowns; nothing scrolls sideways.
  *
  * Runs last, in a project of its own: like the audit it re-files real demo letters (PATCH kind), which
@@ -216,6 +217,70 @@ test.describe.serial("high-stakes letters", () => {
     await expect(steps).toHaveCount(all);
     await expect(card.getByRole("button", { name: "Show fewer steps" })).toHaveAttribute("aria-expanded", "true");
     await expectNoSideways(page, "landlord's notice 320px");
+  });
+
+  // Review round 3 of phase 2: after saving the day, the question unmounted before its toast and focus ran —
+  // no feedback, focus on <body>, and the page left where the form had been.
+  for (const [file, kind, width] of [
+    [/^07_arbeitsvertrag/, "dismissal", 390],
+    [/^15_mahnung_techmarkt/, "court_payment_order", 1280],
+  ] as const) {
+    test(`saving the arrival day of a ${kind} at ${width}px says so and moves focus to the verdict`, async ({ page }) => {
+      await page.setViewportSize({ width, height: width < 768 ? 844 : 800 });
+      await open(page, "/");
+      const id = await refile(page, file, kind);
+      const doc = await apiPatch<{ doc_date: string | null }>(page, `/api/documents/${id}`, { received_date: null });
+      await open(page, `/documents/${id}`);
+      const question = page.locator("#arrival-question");
+      await expect(question).toBeVisible();
+      await question.locator("#arrival-date").fill(doc.doc_date!);
+      await question.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByText("Thanks — dates updated")).toBeVisible({ timeout: 5_000 });
+      await expect(question).toHaveCount(0);
+      await expect(page.locator("#verdict-title")).toBeFocused();
+      await expect(page.locator("#verdict-title")).toBeInViewport();
+    });
+  }
+
+  test("an arrival day before the letter keeps a visible focus outline at each of the field's Tab stops", async ({ page }) => {
+    // review round 3 of phase 2: the invalid field's red border looked the same focused or not, and while the
+    // date field's own calendar button had focus the field matched neither :focus nor :focus-visible
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page, "/");
+    const id = await refile(page, /^07_arbeitsvertrag/, "dismissal");
+    const doc = await apiPatch<{ doc_date: string | null }>(page, `/api/documents/${id}`, { received_date: null });
+    await open(page, `/documents/${id}`);
+    const input = page.locator("#arrival-date");
+    const early = new Date(`${doc.doc_date!}T12:00:00Z`);
+    early.setUTCDate(early.getUTCDate() - 3);
+    await input.fill(early.toISOString().slice(0, 10));
+    await expect(input).toHaveAttribute("aria-invalid", "true");
+    await input.focus();
+    let stops = 0;
+    while (stops < 6 && (await input.evaluate((el) => el === document.activeElement))) {
+      stops += 1;
+      const outline = await input.evaluate((el) => {
+        const s = getComputedStyle(el);
+        return `${s.outlineStyle} ${s.outlineWidth}`;
+      });
+      expect(outline, `Tab stop ${stops} of the date field`).toBe("solid 2px");
+      await page.keyboard.press("Tab");
+    }
+    expect(stops, "the date field's Tab stops").toBeGreaterThanOrEqual(3);
+  });
+
+  test("'Open the letter's card' from a refused request lands on the card, its title focused", async ({ page }) => {
+    // review round 3 of phase 2: it opened the letter at its top, focus on <main>, the card 1250 px below
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page, "/");
+    const id = await refile(page, /^07_arbeitsvertrag/, "dismissal");
+    await page.goto(`/letters?kind=extension_request&doc=${id}`);
+    const dialog = page.getByRole("dialog", { name: "New letter" });
+    await dialog.getByRole("link", { name: "Open the letter's card" }).click();
+    await expect(page).toHaveURL(new RegExp(`/documents/${id}$`));
+    const title = page.locator(`#advice-${id}`);
+    await expect(title).toBeFocused();
+    await expect(title).toBeInViewport();
   });
 
   for (const width of WIDTHS) {
