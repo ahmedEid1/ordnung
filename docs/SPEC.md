@@ -349,8 +349,10 @@ non-user-modified extracted rows in one transaction. "Keep private (no AI)" skip
   `followup_due` (a sent letter's follow-up item became due), `please_check`, `dunning_escalation`,
   `scam_warning`, `tax_documents` (Jan–Jul), `calendar_outdated` (new dates since last .ics export),
   `proof_missing` (a cancellation or objection sent by Einschreiben has no tracking number and no
-  proof two days on — not once it has a *confirmed* answer, the follow-up was closed, or 15 months
-  passed (Deutsche Post no longer issues the delivery record); expires when either is added).
+  proof two days on — not once an answer *from them* shows it arrived, the person closed the
+  follow-up themselves, or 15 months passed (Deutsche Post no longer issues the delivery record); the
+  person's own "I got an answer" keeps it, as it shows nothing about arrival; expires when either is
+  added).
   `followup_due` and `confirm_cancellation` read the letter's proof: a recorded delivery day and the
   tracking number are named for the reminder; a later letter of the thread is asked about ("is it
   the answer?"), a confirmation of the cancellation is named as one; without proof they say what
@@ -562,9 +564,13 @@ goes) takes an Einschreiben tracking number, when marking it sent or later: norm
 decimal digit of any script as ASCII, spaces, dots, hyphens, slashes dropped; upper case; only ASCII
 stored; shown grouped with no-break spaces so it never breaks inside), UPU S10
 (`RT 123 456 785 DE`) accepted only with the right check digit (weights 8 6 4 2 3 5 9 7, 11 − sum mod
-11; 10 → 0, 11 → 5), not starting with R kept with a note, Deutsche Post's twelve-digit numbers kept
-unchecked with a note, anything else refused with what a number looks like; the web app checks the
-same as the person types. Proofs (`posting_receipt`, `delivery_record`, `return_receipt`,
+11; 10 → 0, 11 → 5), not starting with R kept with a note; an Einschreiben bought online
+(Internetmarke) has the 20 characters next to the stamp's square code (`A0 0123 45D6 0000 123C EC`,
+digits and A–F), kept unchecked with a note; twelve digits kept unchecked with a note; anything else
+refused with what a number looks like; the web app checks the same as the person types (an online
+stamp's number isn't called a mistake before its 20 characters are typed). *Change how or when you
+sent it* with the number field emptied removes the number (`tracking_number: ""`; left out, it is
+kept), and a sending day after a recorded delivery is refused. Proofs (`posting_receipt`, `delivery_record`, `return_receipt`,
 `fax_report`, `sent_email`, `cancel_confirmation`, `other`; ≤ 20 per letter, each file once; a day
 that isn't in the future and — for a delivery record or return receipt — not before the sending; a
 note) are files uploaded through the normal intake as documents with direction `outgoing`,
@@ -573,25 +579,35 @@ letters (Inbox, search, Today and its letter count, timeline, life areas; filter
 their own page under their letter (`/letters/{id}/proofs/{doc}`), deleted with their letter unless the
 person keeps the files (`DELETE drafts/{id}?keep_proof_files=true`: they become their own private
 documents). A file already in Ordnung (the same bytes) is linked as it is and said to be so: made
-private now if no model read it yet, else named as read by AI (`notice`) — "kept private" is never
-claimed for it; the same file uploaded to the Inbox again says which letter it is proof of. A proof of
+private now if no model call ever carried it (`llm_calls`, a cached answer or a transcribed page —
+also a reading that failed, or paused on a rate limit, after the model had it), else named as given
+to AI (`notice`) — "kept private" is never claimed for it, also not when it was marked private
+later; the same file uploaded to the Inbox again says which letter it is proof of. Removing a proof
+(or deleting its letter without keeping the files) deletes the file for good, after a confirmation
+that names it and offers to download it first (ADR 0014). A proof of
 the sending (posting receipt, fax report, sent e-mail, cancel page) whose day differs from the sending
-day is pointed out (`conflicts`: one of them is wrong), and the upload form starts it on the sending
-day. Each kind states what it shows and
+day is pointed out (`conflicts`: one of them is wrong), as is a delivery before the sending; the
+upload form starts it on the sending day. Each kind states what it shows and
 what it doesn't; *What would make it stronger* depends on the channel (Einschreiben: tracking number,
 posting receipt, and the delivery record or return receipt — the posting receipt with the online
-status alone was not accepted as prima facie proof of arrival, BAG 30.01.2025 2 AZR 68/24; fax: the
+status alone was not accepted as prima facie proof of arrival, BAG 30.01.2025 2 AZR 68/24; bought
+online: no posting receipt exists, so a printout of the online stamp, and for a deadline the post
+office counter; fax: the
 transmission report; e-mail: the sent message; cancel button: the saved page and the provider's
 confirmation, § 312k Abs. 3/4 BGB; a plain letter: nothing shows arrival, said once). The delivery
 record is suggested only within 15 months of posting (Deutsche Post issues it that long); after that
-only the return receipt is mentioned. Only a **confirmed answer** counts as proof of arrival: a
-confirmation of the cancelled contract, or the person's word ("I got an answer — close this", `POST
-drafts/{id}/answered {doc_id|null}`, stored as `answered_on`/`answer_doc_id`, closes the follow-up;
-`DELETE` takes it back and reopens it). A later letter that is merely in the same thread is a
+only the return receipt is mentioned. Only an **answer from them** counts as a sign of arrival: a
+confirmation of the cancelled contract, or a letter the person names as the answer. The person's word
+alone ("I got an answer — close this", `POST drafts/{id}/answered {doc_id|null}`, stored as
+`answered_on`/`answer_doc_id`, closes the follow-up; `DELETE` takes it back and reopens it) closes the
+wait but shows nothing about arrival: the delivery record is still suggested while it can be had, and
+the timeline and Nachweis say "marked as answered" ("Als beantwortet vermerkt (Angabe des
+Absenders)") on the day they said so. A later letter that is merely in the same thread is a
 *possible* answer: shown to the person (a "?" line on the timeline), never counted as arrival, never in
 the Nachweis. The timeline lists only what the person recorded (drafted, sent, tracking number, each
 proof on its day, the confirmed answer); a proof without a day is listed apart with the day it was
-added, never put on that day. **Nachweis** (`GET drafts/{id}/proof.pdf`, named `Nachweis <subject>
+added, never put on that day; the days a letter was drafted and a proof added are the person's local
+days (their time zone), never after today. **Nachweis** (`GET drafts/{id}/proof.pdf`, named `Nachweis <subject>
 <day>.pdf`, `drafts/pdf.render_nachweis`): a German summary page with the timeline, the proofs without
 a day apart, and the caveat (kept on one page), then the letter, then every proof file (PDF pages
 merged, images placed on a page; pypdfium2 under the intake lock, fpdf2). The letter is "as sent": the
@@ -606,14 +622,19 @@ court to decide.
 **Waiting for** (`secretary/waiting.py`, derived on read, `views.waiting`, `GET waiting`): (1) each
 sent letter waits for what its kind asks for (an address change for nothing; a deposit letter for an
 answer on *when* the deposit will be settled — a landlord may take more than six months, BGH VIII ZR
-71/05, and the entry says so) until the date of its follow-up to-do, and is closed by the person's
+71/05, and the entry says so; an objection for the acknowledgement — an authority's decision often
+takes months, and an action for failure to act is as a rule possible only after three months, § 75
+VwGO, § 88 Abs. 2 SGG, or six against the tax office, § 46 Abs. 1 FGO, which the entry says unless
+the objection answers a court or a landlord) until the date of its follow-up to-do, and is closed by the person's
 word that it was answered (also by phone or e-mail); (2) open one-off payments to the person (to-dos of kind payment, direction `in`, no
 recurrence — a deposit, a refund; not from a scam-flagged letter) until marked received; (3) call
 notes' promises with a day. Status: *overdue* after the day, *answered* when a linked letter arrived
 (same thread on or after the sending/call day, or the confirmation of the cancelled contract) — the
 entry names it and says so, but closing stays the person's click (ADR 0006) — *closed* once the
 follow-up is done/dismissed, the letter marked answered or the promise marked kept (then not listed).
-Order: overdue, waiting by day (undated last), answered.
+Order: overdue, waiting by day (undated last), answered. An entry carries its thread (`case_id`), so
+"call them — and note what they say" comes with *Note a call*: the person's drawer opens with the form
+and that thread chosen (`?party=…&call=<thread|new>`).
 
 **Call notes** (Gesprächsnotizen, `secretary/calls.py`, `GET/POST calls`, `PATCH/DELETE calls/{id}`):
 when, with whom, what was said, what was promised (with a day and an amount), for a person or
@@ -649,7 +670,7 @@ Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT
 replay-only demo), `drafts/{id}/proof` (GET the proof overview), `drafts/{id}/tracking` (PUT
 `{tracking_number}`, `null` removes; 422 with the reason for a wrong check digit), `drafts/{id}/proofs`
 (POST multipart `file`, `kind`, `on_date`, `note` → 201), `drafts/{id}/proofs/{proof_id}`
-(PATCH kind/day/note, DELETE), `drafts/{id}/proof.pdf` (the Nachweis), `drafts/{id}/answered` (POST
+(PATCH kind/day/note — `null` removes the day or the note —, DELETE), `drafts/{id}/proof.pdf` (the Nachweis), `drafts/{id}/answered` (POST
 `{doc_id}` / DELETE), `waiting` (GET), `calls`
 (GET `?party_id&case_id` / POST), `calls/{id}` (PATCH `{kept}` / DELETE),
 `calendar.ics`, `calendar/exported` (POST), `activity`, `usage`, `rules`, `jobs`,
@@ -717,8 +738,10 @@ Pages:
    (`/letters/waiting`, linked from Letters with its count, overdue in red) lists replies, money and
    phone promises: overdue → waiting → "a letter may have answered"; every letter entry can be closed
    (*I got an answer — close this*), *It arrived*, *They kept it* (each with Undo; focus moves to the
-   row now in its place). The People & organisations drawer has **Calls**: the noted calls and a form
-   to note one (amounts typed German style, "1.500" is 1 500 €, read back).
+   row now in its place); an overdue letter or promise offers *Note a call* (also in the letter's
+   box), which opens the drawer's form. After *Mark as sent* focus moves to the "Sent …" banner. The
+   People & organisations drawer has **Calls**: the noted calls and a form to note one (amounts typed
+   German style, "1.500" is 1 500 €, read back).
 7. **Ask** — chat, streamed tool-trace chips ("Searched your letters for 'Kündigung'"),
    citation chips → viewer, suggested questions (recorded in demo).
 8. **Settings** — profile & address, region (affects holidays), language, reminders, models,

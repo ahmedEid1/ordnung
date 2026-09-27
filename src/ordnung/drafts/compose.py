@@ -31,7 +31,7 @@ from ordnung.clock import now_iso
 from ordnung.db.store import NotFoundError, Store
 from ordnung.drafts import templates
 from ordnung.drafts.checks import CheckContext, run_checks
-from ordnung.drafts.proof import followup_item_id
+from ordnung.drafts.proof import DELIVERY_DAY_KINDS, followup_item_id, kind_info
 from ordnung.drafts.template_letters import (
     ADDRESS_FRAMES,
     TEMPLATES,
@@ -1436,6 +1436,19 @@ def _save_followup(store: Store, draft: Draft, fields: dict[str, object]) -> Ite
     return store.update_item(item_id, **fields)
 
 
+def _delivered_before(store: Store, draft_id: str, day: date) -> str | None:
+    """Why a sent letter can't be marked as sent on ``day``: a delivery its proof records before it."""
+    for proof in store.list_proofs(draft_id):
+        delivered = parse_day(proof.on_date) if proof.kind in DELIVERY_DAY_KINDS else None
+        if delivered is not None and delivered < day:
+            label = kind_info(proof.kind).label.lower()
+            return (
+                f"Your {label} says it was delivered on {fmt_date(delivered)} — a letter can't be sent "
+                f"after it was delivered. Correct the {label}'s day first, or choose an earlier day."
+            )
+    return None
+
+
 def mark_sent(
     ctx: AppContext,
     draft_id: str,
@@ -1448,11 +1461,14 @@ def mark_sent(
 
     The checks are re-run with the channel, so a rent or employment notice sent by e-mail is flagged.
     Marking the same letter again corrects how and when it went and updates its follow-up instead of
-    adding another one (a closed follow-up stays closed). Only a registered letter has a tracking number
-    (checked by :func:`ordnung.drafts.tracking.parse_tracking_number`; a refused one raises
-    :class:`DraftError` before anything is saved): marked again with another channel, the letter's stored
-    number goes. The first marking keeps what the PDF shows of the sender (:class:`SentSigner`), so the
-    letter prints as it went out even after the profile changes.
+    adding another one (a closed follow-up stays closed); a sending day after a delivery the letter's
+    proof records is refused (a delivery can't be before the sending — ``drafts.proof`` policy 5). Only
+    a registered letter has a tracking number (checked by
+    :func:`ordnung.drafts.tracking.parse_tracking_number`; a refused one raises :class:`DraftError`
+    before anything is saved): ``None`` keeps the stored number, an empty one (the person emptied the
+    field) removes it, and marked again with another channel the letter's stored number goes. The first
+    marking keeps what the PDF shows of the sender (:class:`SentSigner`), so the letter prints as it
+    went out even after the profile changes.
     """
     store = ctx.store
     draft = store.get_draft(draft_id)
@@ -1465,6 +1481,8 @@ def mark_sent(
         raise DraftError(f"“{sent_on}” is not a date.")
     if day > local_today(store):  # the person's today, as in the app (not the computer's date)
         raise DraftError("The sending date can't be in the future.")
+    if draft.status == "sent" and (delivered := _delivered_before(store, draft.id, day)) is not None:
+        raise DraftError(delivered)
     tracking = None
     if tracking_number and tracking_number.strip():
         if channel != "registered_letter":
@@ -1479,7 +1497,7 @@ def mark_sent(
     extra: dict[str, object] = {}
     if tracking:
         extra["tracking_number"] = tracking
-    elif channel != "registered_letter":
+    elif channel != "registered_letter" or tracking_number is not None:
         extra["tracking_number"] = None
     if store.get_sent_signer(draft_id) is None:
         profile = store.get_profile()

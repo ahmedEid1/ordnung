@@ -1218,10 +1218,11 @@ PROOF_WATCHED_KINDS = frozenset({"cancellation", "objection"})
 def proof_missing(ledger: Ledger) -> list[Suggestion]:
     """A cancellation or objection sent by Einschreiben has no tracking number and no proof two days on.
 
-    Not raised when the letter has a confirmed answer (:meth:`Ledger.answer_of` — a later letter that is
-    merely in the same thread is not one), when the person closed its follow-up, or once Deutsche Post no
-    longer issues the delivery record (15 months after posting). Once a tracking number or a proof is
-    added the Idea expires.
+    Not raised when an answer from them shows it arrived (:meth:`Ledger.answer_of` — a later letter that
+    is merely in the same thread is not one, and the person's word that it was answered shows nothing
+    about arrival: ``drafts.proof`` policy 3), when the person closed its follow-up themselves, or once
+    Deutsche Post no longer issues the delivery record (15 months after posting). Once a tracking
+    number or a proof is added the Idea expires.
     """
     ideas: list[Suggestion] = []
     today = ledger.today
@@ -1234,21 +1235,26 @@ def proof_missing(ledger: Ledger) -> list[Suggestion]:
             or (today - sent).days < PROOF_GRACE_DAYS
             or draft.tracking_number
             or ledger.proofs_of(draft.id)
-            or ledger.answer_of(draft) is not None
             or not delivery_record_obtainable(draft, today)
         ):
             continue
+        answer = ledger.answer_of(draft)
+        if answer is not None and answer.how != "noted":
+            continue
         followup = ledger.followup_item(draft)
-        if followup is not None and followup.status in ("done", "dismissed"):
+        # "I got an answer" closes the follow-up too, but says nothing about arrival
+        if answer is None and followup is not None and followup.status in ("done", "dismissed"):
             continue
         who = ledger.party_name(draft.party_id) or "the recipient"
         what = "cancellation" if draft.kind == "cancellation" else "objection"
         body = _sentences(
             f"You sent “{draft.subject}” on {day_label(sent, today)} by Einschreiben, but Ordnung has no "
             "tracking number or receipt for it.",
-            "Add the tracking number and a photo of the posting receipt (Einlieferungsbeleg), and ask "
-            "Deutsche Post for the delivery record (Auslieferungsbeleg) — they issue it only within 15 "
-            "months of posting: if they ever say it didn't arrive, that is what shows it did.",
+            "Add the tracking number and a photo of the posting receipt (Einlieferungsbeleg) — or, for an "
+            "Einschreiben bought online, the number next to the stamp's square code — and ask Deutsche "
+            "Post for the delivery record (Auslieferungsbeleg); they issue it only within 15 months of "
+            "posting. Together with the posting receipt, that is what courts have accepted as a sign "
+            "that a letter arrived — never as proof of what was inside.",
         )
         refs = [_ref("draft", draft.id)]
         if draft.contract_id:

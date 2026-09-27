@@ -9625,7 +9625,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ProofPatch",
-        "description": "Corrections to a proof: what it is, the day it shows (``null`` removes it) and a note."
+        "description": "Corrections to a proof: what it is, the day it shows and a note (``null`` or empty removes them)."
       },
       "PublicHealth": {
         "properties": {
@@ -10942,6 +10942,7 @@
             "type": "string",
             "enum": [
               "s10",
+              "online_stamp",
               "domestic",
               "unknown"
             ],
@@ -11316,6 +11317,17 @@
               }
             ],
             "title": "Doc Id"
+          },
+          "case_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
           }
         },
         "type": "object",
@@ -11337,7 +11349,8 @@
           "answered_by",
           "answered_on",
           "followup_item_id",
-          "doc_id"
+          "doc_id",
+          "case_id"
         ],
         "title": "WaitingEntry",
         "description": "Something the person is owed — a reply, money or a callback (``secretary.waiting``), worked out on\nread. ``answered``: a letter linked to it arrived (``answered_by``); nothing is closed for the person,\nclosing the follow-up to-do (``followup_item_id``) or marking the money received is their click."

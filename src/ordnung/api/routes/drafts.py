@@ -162,6 +162,7 @@ async def delete_draft(draft_id: str, ctx: CtxDep, keep_proof_files: bool = Fals
     (they then stay as documents of their own)."""
     require(ctx.store.get_draft(draft_id), NOT_FOUND)
     await asyncio.to_thread(partial(sent.delete_letter, keep_files=keep_proof_files), ctx.store, draft_id)
+    await ledger_changed(ctx)  # Ideas about the letter (its proof, its follow-up) go with it
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

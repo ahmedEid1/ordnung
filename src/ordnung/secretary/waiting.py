@@ -4,14 +4,15 @@ promises made on the phone — worked out on read from a :class:`~ordnung.secret
 Policy (ADR 0006, 0007):
 
 1. **Sent letters.** A letter marked as sent waits for what its kind asks for
-   (:data:`ordnung.drafts.proof.WAITING_FOR`; an address change waits for nothing), expected by the
-   date of its follow-up to-do (the person may move it). It is *closed* once the person said it was
+   (:data:`ordnung.drafts.proof.WAITING_FOR`; an address change waits for nothing, an objection for
+   the acknowledgement — the decision often takes months), expected by the date of its follow-up to-do
+   (the person may move it). It is *closed* once the person said it was
    answered (``Draft.answered_on``) or closed or deleted the follow-up, *answered* while
    :meth:`~ordnung.secretary.triggers.Ledger.reply_to` finds a letter that may answer it (same thread,
    or a confirmation of the cancelled contract) — for the person to check —, *overdue* after the
    expected day, else *waiting*. A kind whose own wait is longer than the follow-up (a deposit: the
-   landlord may take months to settle it) waits for an answer on when, and says why
-   (:data:`ordnung.drafts.proof.WAITING_CONTEXT`).
+   landlord may take months to settle it; an authority deciding an objection) waits for an answer on
+   when, or for the acknowledgement, and says why (:func:`ordnung.drafts.proof.waiting_context`).
 2. **Money.** An open one-off payment to the person — a to-do of kind payment with direction ``in``
    and no recurrence, from a letter or typed in: a deposit or tax refund, a service-charge credit.
    Ordnung can't see a bank account, so it is waited for until the person marks it received (the
@@ -35,7 +36,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from ordnung.drafts.proof import WAITING_CONTEXT, channel_label, kind_info, waits_for
+from ordnung.drafts.proof import channel_label, kind_info, waiting_context, waits_for
 from ordnung.drafts.tracking import tracking_info
 from ordnung.models import Area, CallNote, Document, Draft, Item, RefLink, WaitingEntry, WaitingStatus
 from ordnung.secretary.triggers import (
@@ -103,9 +104,11 @@ def _letter_note(ledger: Ledger, draft: Draft, status: WaitingStatus, reply: Doc
     if status == "closed":
         answered = parse_day(draft.answered_on)
         if answered is not None:
-            return f"{sent_words}. You said it was answered on {day_label(answered, today)}."
+            return f"{sent_words}. You marked it as answered on {day_label(answered, today)}."
         return f"{sent_words}. You closed the follow-up."
-    context = f" {WAITING_CONTEXT[draft.kind]}" if draft.kind in WAITING_CONTEXT else ""
+    answers = ledger.document(draft.doc_id)
+    why = waiting_context(draft.kind, answers.kind if answers is not None else None)
+    context = f" {why}" if why else ""
     delivered = _delivered_on(ledger, draft)
     proof = f" Your proof shows it was delivered on {day_label(delivered, today)}." if delivered else ""
     tracking = tracking_info(draft.tracking_number)
@@ -150,6 +153,7 @@ def letter_entry(ledger: Ledger, draft: Draft) -> WaitingEntry | None:
             "answered_on": (day.isoformat() if (day := _letter_day(reply)) else None) if reply else None,
             "followup_item_id": followup.id if followup is not None else None,
             "doc_id": draft.doc_id if ledger.document(draft.doc_id) else None,
+            "case_id": draft.case_id,
         }
     )
 
@@ -259,6 +263,7 @@ def call_entry(ledger: Ledger, call: CallNote) -> WaitingEntry | None:
             "ref": RefLink(type="call", id=call.id),
             "answered_by": RefLink(type="document", id=answer.id) if answer else None,
             "answered_on": (day.isoformat() if (day := _letter_day(answer)) else None) if answer else None,
+            "case_id": call.case_id,
         }
     )
 

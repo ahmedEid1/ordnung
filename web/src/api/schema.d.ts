@@ -3170,7 +3170,7 @@ export interface components {
         };
         /**
          * ProofPatch
-         * @description Corrections to a proof: what it is, the day it shows (``null`` removes it) and a note.
+         * @description Corrections to a proof: what it is, the day it shows and a note (``null`` or empty removes them).
          */
         ProofPatch: {
             /** Kind */
@@ -3659,7 +3659,7 @@ export interface components {
              * Format
              * @enum {string}
              */
-            format: "s10" | "domestic" | "unknown";
+            format: "s10" | "online_stamp" | "domestic" | "unknown";
             /** Checked */
             checked: boolean;
             /** Note */
@@ -3798,6 +3798,8 @@ export interface components {
             followup_item_id: string | null;
             /** Doc Id */
             doc_id: string | null;
+            /** Case Id */
+            case_id: string | null;
         };
         /**
          * BriefUpdatedEvent

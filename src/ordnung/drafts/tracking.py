@@ -11,8 +11,14 @@
   modulo 11 and the check digit is 11 minus the remainder, where 10 becomes 0 and 11 becomes 5. A wrong
   check digit is refused (a digit was mistyped, or two were swapped). A number that does not start
   with ``R`` (registered items do) is kept with a note.
-* **Twelve digits** — Deutsche Post also prints purely numeric numbers. Ordnung knows no published
-  check rule for them, so they are kept as typed, with a note to compare them with the receipt.
+* **Online stamps** — an Einschreiben bought online (Internetmarke, the Post & DHL app) has a
+  20-character number printed next to the square Data Matrix code (``A0 0123 45D6 0000 123C EC``:
+  digits and the letters A–F); it is what Deutsche Post's tracking page takes for such a letter. Ordnung
+  knows no published check rule for it, so it is kept as typed, with a note to compare it with the
+  printout of the stamp.
+* **Twelve digits** — some numbers are printed as digits only (DHL's parcel numbers look like this).
+  Ordnung knows no published check rule for them, so they are kept as typed, with a note to compare
+  them with the receipt; the person is never asked for one.
 * **Anything else is refused**, with what a number looks like. Something shaped like S10 (letters at
   both ends) of the wrong length is a typo, never "some other format".
 
@@ -21,7 +27,7 @@ in running text; the stored number has no spaces at all.
 
 Limits: a valid check digit shows the number is well-formed, not that it belongs to this letter; the
 S10 check misses some mistakes (remainders 0 and 6 both give 5); the country letters are not checked
-against a list of countries; twelve-digit numbers are not checked at all.
+against a list of countries; online-stamp and twelve-digit numbers are not checked at all.
 """
 
 from __future__ import annotations
@@ -37,14 +43,16 @@ _SEPARATORS = re.compile(r"[\s.\-/]+")
 _S10 = re.compile(r"^([A-Z]{2})([0-9]{8})([0-9])([A-Z]{2})$", re.ASCII)
 _S10_SHAPE = re.compile(r"^[A-Z]{2}[0-9]+[A-Z]{2}$", re.ASCII)
 _DOMESTIC = re.compile(r"^[0-9]{12}$", re.ASCII)
+_ONLINE_STAMP = re.compile(r"^[0-9A-F]{20}$", re.ASCII)
 _SERIAL = re.compile(r"[0-9]{8}", re.ASCII)
 #: joins the groups of a displayed number (no-break space: it never breaks inside the number)
 GROUP_SEPARATOR = "\u00a0"
 
 EXAMPLE = "RT 123 456 785 DE"
 NOT_A_NUMBER = (
-    f"This doesn't look like a tracking number. Type it as it is on your posting receipt: two letters, "
-    f"nine digits and two letters (like {EXAMPLE}), or the 12 digits Deutsche Post prints."
+    f"This doesn't look like a tracking number. Type it as it is on your posting receipt — two letters, "
+    f"nine digits and two letters (like {EXAMPLE}) — or, for an Einschreiben bought online, the 20 "
+    "characters next to the square code on the stamp."
 )
 WRONG_LENGTH = (
     "A number like this has two letters, nine digits and two letters (like {example}) — "
@@ -58,6 +66,10 @@ NOT_REGISTERED = (
     "Numbers of registered letters (Einschreiben) usually start with R — check that this is the right one."
 )
 DOMESTIC_NOTE = "Ordnung can't check this kind of number — compare it digit by digit with your receipt."
+ONLINE_STAMP_NOTE = (
+    "The number of an online stamp (Internetmarke) — Ordnung can't check it, so compare it with the "
+    "printout of your stamp."
+)
 
 
 class TrackingError(ValueError):
@@ -89,10 +101,13 @@ def s10_check_digit(serial: str) -> int:
 
 
 def display(number: str) -> str:
-    """A normalised number grouped for reading: ``RT 123 456 785 DE`` or ``1234 5678 9012`` (the
-    groups joined by :data:`GROUP_SEPARATOR`)."""
+    """A normalised number grouped for reading: ``RT 123 456 785 DE``, ``A0 0123 45D6 0000 123C EC``
+    (as printed on an online stamp) or ``1234 5678 9012`` (the groups joined by
+    :data:`GROUP_SEPARATOR`)."""
     if _S10.match(number):
         groups = [number[:2], number[2:5], number[5:8], number[8:11], number[11:]]
+    elif _ONLINE_STAMP.match(number):
+        groups = [number[:2], *(number[i : i + 4] for i in range(2, 18, 4)), number[18:]]
     elif _DOMESTIC.match(number):
         groups = [number[i : i + 4] for i in range(0, 12, 4)]
     else:
@@ -115,6 +130,14 @@ def parse_tracking_number(text: str) -> TrackingInfo:
     if _DOMESTIC.match(number):
         return TrackingInfo(
             number=number, display=display(number), format="domestic", checked=False, note=DOMESTIC_NOTE
+        )
+    if _ONLINE_STAMP.match(number):
+        return TrackingInfo(
+            number=number,
+            display=display(number),
+            format="online_stamp",
+            checked=False,
+            note=ONLINE_STAMP_NOTE,
         )
     if _S10_SHAPE.match(number):
         digits = sum(character.isdigit() for character in number)

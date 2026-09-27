@@ -97,8 +97,20 @@ def _had(*kinds: str, day: str | None = None) -> list[proof.RecordedProof]:
     return [proof.RecordedProof(kind, day, "2026-09-05", None, None) for kind in kinds]
 
 
-def _missing(draft: Draft, kinds: list[str], *, answered: bool, today: date = TODAY) -> list[str]:
-    return proof.missing(draft, _had(*kinds), answered=answered, today=today)
+_CONFIRMED = proof.RecordedAnswer("2026-09-20", None, "letter")
+_NOTED = proof.RecordedAnswer("2026-09-28", None, "noted")
+
+
+def _missing(
+    draft: Draft,
+    kinds: list[str],
+    *,
+    answered: bool,
+    today: date = TODAY,
+    answer: proof.RecordedAnswer | None = None,
+) -> list[str]:
+    answer = answer or (_CONFIRMED if answered else None)
+    return proof.missing(draft, _had(*kinds), answer=answer, today=today)
 
 
 def test_a_registered_letter_wants_its_number_the_receipt_and_the_delivery_record() -> None:
@@ -132,6 +144,31 @@ def test_a_confirmed_answer_shows_the_letter_arrived() -> None:
     assert _missing(_draft(sent_channel="fax"), [], answered=True) == []
 
 
+def test_the_persons_word_that_it_was_answered_shows_nothing_about_arrival() -> None:
+    """The person's "I got an answer" closes the wait; the delivery record is still worth asking for."""
+    numbered = _draft(tracking_number="RT123456785DE")
+    assert _missing(numbered, ["posting_receipt"], answered=False, answer=_NOTED) == [proof.MISSING_DELIVERY]
+    # once Deutsche Post no longer issues it, a noted answer asks for nothing more
+    late = date(2027, 12, 2)
+    assert _missing(numbered, ["posting_receipt"], answered=False, answer=_NOTED, today=late) == []
+    assert _missing(numbered, ["posting_receipt"], answered=False, today=late) == [
+        proof.MISSING_DELIVERY_LATE
+    ]
+    # a plain letter the person says was answered isn't sent again
+    assert _missing(_draft(sent_channel="letter"), [], answered=False, answer=_NOTED) == []
+
+
+def test_an_einschreiben_bought_online_wants_the_printout_of_its_stamp() -> None:
+    online = _draft(tracking_number="A0012345D60000123CEC")
+    assert _missing(online, [], answered=False) == [proof.MISSING_ONLINE_STAMP, proof.MISSING_DELIVERY]
+    assert "no posting receipt" in proof.MISSING_ONLINE_STAMP and "post office counter" in (
+        proof.MISSING_ONLINE_STAMP
+    )
+    assert _missing(online, ["other"], answered=False) == [proof.MISSING_DELIVERY]
+    assert _missing(online, ["posting_receipt", "delivery_record"], answered=False) == []
+    assert "square code of an online stamp" in proof.MISSING_TRACKING
+
+
 @pytest.mark.parametrize("kind", sorted(proof.SENDING_DAY_KINDS))
 def test_a_sending_proof_on_another_day_than_the_sending_is_pointed_out(kind: str) -> None:
     draft = _draft()  # sent 2026-09-01
@@ -141,6 +178,15 @@ def test_a_sending_proof_on_another_day_than_the_sending_is_pointed_out(kind: st
     assert "Thu 3 Sep 2026" in said and "Tue 1 Sep 2026" in said and "correct one of them" in said
     assert proof.conflicts(draft, _had("delivery_record", day="2026-09-03")) == []
     assert proof.conflicts(_draft(status="draft", sent_at=None), _had(kind, day="2026-09-03")) == []
+
+
+@pytest.mark.parametrize("kind", sorted(proof.DELIVERY_DAY_KINDS))
+def test_a_delivery_before_the_sending_day_is_pointed_out(kind: str) -> None:
+    draft = _draft(sent_at="2026-09-10")
+    (said,) = proof.conflicts(draft, _had(kind, day="2026-09-03"))
+    assert "delivered on Thu 3 Sep 2026, before" in said and "Thu 10 Sep 2026" in said
+    assert proof.conflicts(draft, _had(kind, day="2026-09-10")) == []
+    assert proof.conflicts(draft, _had(kind, day="2026-09-12")) == []
 
 
 @pytest.mark.parametrize(
@@ -226,13 +272,32 @@ def test_only_a_confirmed_answer_is_stated_and_a_possible_one_stays_a_hint() -> 
     assert confirmed[-1].german == "Antwort erhalten: „Beitragsrechnung“"
     assert all(e.kind != "possible_answer" for e in confirmed)
     noted = proof.timeline(draft, None, [], proof.RecordedAnswer("2026-09-20", None, "noted"), invoice)
-    assert (noted[-1].date, noted[-1].kind, noted[-1].english) == (
+    assert (noted[-1].date, noted[-1].kind, noted[-1].english, noted[-1].german) == (
         "2026-09-20",
         "answered",
-        "Answered — as you noted",
+        "You marked it as answered",
+        "Als beantwortet vermerkt (Angabe des Absenders)",
     )
     confirmation = proof.timeline(draft, None, [], proof.RecordedAnswer(None, invoice, "confirmation"))
     assert confirmation[-1].german.startswith("Kündigung bestätigt")
+
+
+def test_the_nachweis_dates_what_was_recorded_by_the_persons_day(ctx: AppContext, gym: Gym) -> None:
+    """Stamps are UTC: a letter drafted at 00:30 in Berlin is of that day, not the day before."""
+    day = sent._local_days(ctx.store, TODAY)
+    assert day("2026-09-10T22:30:00Z") == "2026-09-11"  # 00:30 in Berlin (summer time)
+    assert day("2026-01-10T23:30:00Z") == "2026-01-11"  # 00:30 in Berlin (winter time)
+    assert day("2026-09-10T21:30:00Z") == "2026-09-10"
+    assert day("2026-09-28T23:30:00Z") == "2026-09-28"  # never after today (the demo's pinned day)
+    assert day("2026-09-10") == "2026-09-10" and day("not a stamp") == "not a stamp"[:10]
+    ctx.store.save_profile(ctx.store.get_profile().model_copy(update={"timezone": "America/New_York"}))
+    assert sent._local_days(ctx.store, TODAY)("2026-09-11T02:30:00Z") == "2026-09-10"
+
+
+def test_the_timeline_starts_on_the_day_it_was_drafted_where_the_person_is() -> None:
+    draft = _draft(created_at="2026-08-30T22:30:00Z")
+    assert proof.timeline(draft, None, [], None)[0].date == "2026-08-30"
+    assert proof.timeline(draft, None, [], None, created_day="2026-08-31")[0].date == "2026-08-31"
 
 
 def test_a_letter_recorded_after_it_was_sent_starts_with_its_sending() -> None:

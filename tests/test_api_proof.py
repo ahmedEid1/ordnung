@@ -14,7 +14,8 @@ import helpers_proof
 from helpers_docs import letter_pdf, photo
 from ordnung import clock
 from ordnung.drafts.proof import PROOF_SOURCE
-from test_api_support import TODAY, Api, api_for
+from ordnung.llm.base import ClaudeRateLimited
+from test_api_support import TODAY, Api, ApiRouter, api_for
 
 SENT_ON = "2026-09-10"
 
@@ -176,6 +177,21 @@ async def test_correcting_and_removing_a_proof(data_dir: Path) -> None:
         assert [e["kind"] for e in patched.json()["timeline"]][-1] == "delivered"
         cleared = await api.client.patch(f"/api/drafts/{draft_id}/proofs/{proof_id}", json={"on_date": None})
         assert cleared.json()["proofs"][0]["proof"]["on_date"] is None
+        noted = await api.client.patch(
+            f"/api/drafts/{draft_id}/proofs/{proof_id}", json={"note": "Post office Hauptstr."}
+        )
+        assert noted.json()["proofs"][0]["proof"]["note"] == "Post office Hauptstr."
+        # the form sends null for an emptied note: it goes (as in the demo), it isn't kept
+        unnoted = await api.client.patch(
+            f"/api/drafts/{draft_id}/proofs/{proof_id}",
+            json={"kind": "delivery_record", "on_date": "2026-09-12", "note": None},
+        )
+        assert unnoted.status_code == 200 and unnoted.json()["proofs"][0]["proof"]["note"] is None
+        assert all(event["detail"] is None for event in unnoted.json()["timeline"])
+        blank = await api.client.patch(f"/api/drafts/{draft_id}/proofs/{proof_id}", json={"note": "x"})
+        assert blank.json()["proofs"][0]["proof"]["note"] == "x"
+        blank = await api.client.patch(f"/api/drafts/{draft_id}/proofs/{proof_id}", json={"note": " "})
+        assert blank.json()["proofs"][0]["proof"]["note"] is None
         assert (
             await api.client.patch(f"/api/drafts/{draft_id}/proofs/{proof_id}", json={"colour": "red"})
         ).status_code == 422
@@ -211,6 +227,24 @@ async def test_deleting_a_letter_deletes_its_proof_files(data_dir: Path) -> None
         doc_id = overview["proofs"][0]["document"]["id"]
         assert (await api.client.delete(f"/api/drafts/{draft_id}")).status_code == 204
         assert (await api.client.get(f"/api/documents/{doc_id}")).status_code == 404
+
+
+def _about(ideas: list[Any], draft_id: str) -> list[str]:
+    return [
+        idea["title"]
+        for idea in ideas
+        if (idea.get("action") or {}).get("target_id") == draft_id
+        or any(ref["id"] == draft_id for ref in idea.get("refs", []))
+    ]
+
+
+async def test_deleting_a_letter_takes_its_ideas_with_it(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        draft_id, _ = await _sent(api)  # registered, no number, no proof: "Keep the proof …"
+        before = _about((await api.client.get("/api/suggestions")).json(), draft_id)
+        assert any("Keep the proof of your cancellation" in title for title in before)
+        assert (await api.client.delete(f"/api/drafts/{draft_id}")).status_code == 204
+        assert _about((await api.client.get("/api/suggestions")).json(), draft_id) == []
 
 
 async def test_waiting_for_and_call_notes(data_dir: Path) -> None:
@@ -290,7 +324,8 @@ async def test_a_proof_without_a_day_is_never_dated_by_its_upload(data_dir: Path
         dated = [event for event in overview["timeline"] if event["date"] is not None]
         assert all(event["date"] != TODAY for event in dated)
         (undated,) = [event for event in overview["timeline"] if event["date"] is None]
-        added = overview["proofs"][0]["proof"]["created_at"][:10]
+        # the day it was added, in the person's time zone and never after today (the clock is pinned)
+        added = min(overview["proofs"][0]["proof"]["created_at"][:10], TODAY)
         assert (undated["label"], undated["added_on"]) == ("Posting receipt", added)
         assert all(event["date"] != added for event in dated)
         text = await _nachweis(api, draft_id)
@@ -342,8 +377,18 @@ async def test_it_is_answered_without_a_letter(data_dir: Path) -> None:
         draft_id, _ = await _sent(api)
         answered = await api.client.post(f"/api/drafts/{draft_id}/answered", json={})
         assert answered.json()["waiting"]["status"] == "closed"
-        assert answered.json()["timeline"][-1]["label"] == "Answered — as you noted"
-        assert "Beantwortet (laut Angabe des Absenders)" in await _nachweis(api, draft_id)
+        # the person's word, on the day they said so: never "answered" as if a letter showed it
+        assert answered.json()["timeline"][-1] == {
+            "date": TODAY,
+            "kind": "answered",
+            "label": "You marked it as answered",
+            "detail": None,
+            "ref": None,
+            "added_on": None,
+        }
+        assert any("Auslieferungsbeleg" in line for line in answered.json()["missing"])
+        text = await _nachweis(api, draft_id)
+        assert "Als beantwortet vermerkt (Angabe des Absenders)" in text and "Beantwortet (laut" not in text
         gone = await api.client.post(f"/api/drafts/{draft_id}/answered", json={"doc_id": "doc_missing"})
         assert gone.status_code == 422 and "isn't in Ordnung" in gone.json()["detail"]
 
@@ -372,10 +417,68 @@ async def test_a_known_file_ai_already_read_is_never_called_private(data_dir: Pa
         await api.client.post("/api/documents", files={"files": ("letter.pdf", data)})
         await api.read_all()  # read by the model
         added = await _add(api, draft_id, "letter.pdf", data, kind="other")
-        assert added["notice"] and "AI has read it" in added["notice"]
+        assert added["notice"] and "given to AI to read" in added["notice"]
         assert added["proofs"][0]["document"]["ai_private"] is False
         logged = [entry.message for entry in api.ctx.store.list_activity(20) if entry.kind == "draft.proof"]
-        assert logged and "not sent to AI" not in logged[0] and "AI has read" in logged[0]
+        assert logged and "not sent to AI" not in logged[0] and "given to AI" in logged[0]
+
+
+def _logged_proof(api: Api) -> str:
+    return next(entry.message for entry in api.ctx.store.list_activity(20) if entry.kind == "draft.proof")
+
+
+async def test_a_file_whose_reading_failed_after_the_model_had_it_is_never_called_unread(
+    data_dir: Path,
+) -> None:
+    # the model transcribes the photo but finds no text: the reading fails, yet the photo went to AI
+    async with api_for(data_dir) as api:
+        draft_id, _ = await _sent(api)
+        data = photo("JPEG", size=(336, 446))
+        uploaded = (await api.client.post("/api/documents", files={"files": ("receipt.jpg", data)})).json()
+        await api.read_all()
+        doc_id = uploaded["documents"][0]["id"]
+        failed = api.ctx.store.get_document(doc_id)
+        assert failed is not None and failed.status == "failed" and failed.ai_processed_at is None
+        added = await _add(api, draft_id, "receipt.jpg", data)
+        assert added["notice"] and "given to AI to read" in added["notice"]
+        assert "not yet read" not in added["notice"]
+        assert added["proofs"][0]["document"]["ai_private"] is False
+        assert "not sent to AI" not in _logged_proof(api)
+
+
+async def test_a_file_paused_by_a_rate_limit_after_transcription_is_never_called_unread(
+    data_dir: Path,
+) -> None:
+    router = ApiRouter()
+    router.transcript = "Einlieferungsbeleg Deutsche Post RT 123 456 785 DE"
+    router.errors["extract"] = lambda: ClaudeRateLimited("Usage limit reached", reset_at="3pm")
+    async with api_for(data_dir, router=router) as api:
+        draft_id, _ = await _sent(api)
+        data = photo("JPEG", size=(337, 447))
+        uploaded = (await api.client.post("/api/documents", files={"files": ("receipt.jpg", data)})).json()
+        await api.read_all()
+        doc_id = uploaded["documents"][0]["id"]
+        paused = api.ctx.store.get_document(doc_id)
+        assert paused is not None and paused.ai_processed_at is None
+        assert [call.purpose for call in api.backend.calls if doc_id in call.doc_ids][:1] == ["transcribe"]
+        added = await _add(api, draft_id, "receipt.jpg", data)
+        assert added["notice"] and "given to AI to read" in added["notice"]
+        assert added["proofs"][0]["document"]["ai_private"] is False
+        assert "not sent to AI" not in _logged_proof(api)
+
+
+async def test_a_letter_marked_private_after_ai_read_it_is_never_called_private(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        draft_id, _ = await _sent(api)
+        data = letter_pdf()
+        uploaded = (await api.client.post("/api/documents", files={"files": ("letter.pdf", data)})).json()
+        await api.read_all()
+        doc_id = uploaded["documents"][0]["id"]
+        patched = await api.client.patch(f"/api/documents/{doc_id}", json={"ai_private": True})
+        assert patched.status_code == 200, patched.text
+        added = await _add(api, draft_id, "letter.pdf", data, kind="other")
+        assert added["notice"] and "given to AI to read" in added["notice"]
+        assert "not sent to AI" not in _logged_proof(api)
 
 
 async def test_a_proof_file_uploaded_to_the_inbox_says_where_it_is(data_dir: Path) -> None:
@@ -424,6 +527,51 @@ async def test_a_delivery_before_the_sending_is_refused_and_a_mismatch_said(data
             json={"kind": "delivery_record", "on_date": "2026-09-01"},
         )
         assert moved.status_code == 422
+
+
+async def test_the_sending_day_cant_move_past_a_recorded_delivery(data_dir: Path) -> None:
+    """Changing how or when it was sent never makes the Nachweis show a delivery before the sending."""
+    async with api_for(data_dir) as api:
+        draft_id, _ = await _sent(api, tracking_number="RT123456785DE")  # sent 10 Sep
+        await _add(api, draft_id, "d.jpg", photo("JPEG"), kind="delivery_record", on_date="2026-09-12")
+        later = await api.client.post(
+            f"/api/drafts/{draft_id}/sent", json={"channel": "registered_letter", "date": "2026-09-14"}
+        )
+        assert later.status_code == 422
+        assert "delivered on Sat 12 Sep 2026" in later.json()["detail"]
+        draft = (await api.client.get(f"/api/drafts/{draft_id}")).json()
+        assert draft["sent_at"].startswith(SENT_ON)
+        same_day = await api.client.post(
+            f"/api/drafts/{draft_id}/sent", json={"channel": "registered_letter", "date": "2026-09-12"}
+        )
+        assert same_day.status_code == 200
+        assert (await api.client.get(f"/api/drafts/{draft_id}/proof")).json()["conflicts"] == []
+
+
+async def test_emptying_the_number_when_changing_how_it_was_sent_removes_it(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        draft_id, _ = await _sent(api, tracking_number="RT123456785DE")
+        kept = await api.client.post(
+            f"/api/drafts/{draft_id}/sent", json={"channel": "registered_letter", "date": SENT_ON}
+        )
+        assert kept.json()["tracking_number"] == "RT123456785DE"  # not sent: the number stays
+        emptied = await api.client.post(
+            f"/api/drafts/{draft_id}/sent",
+            json={"channel": "registered_letter", "date": SENT_ON, "tracking_number": ""},
+        )
+        assert emptied.status_code == 200 and emptied.json()["tracking_number"] is None
+        assert (await api.client.get(f"/api/drafts/{draft_id}/proof")).json()["tracking"] is None
+
+
+async def test_an_einschreiben_bought_online_is_recorded_with_its_stamps_number(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        draft_id, _ = await _sent(api, tracking_number="A0 0123 45D6 0000 123C EC")
+        overview = (await api.client.get(f"/api/drafts/{draft_id}/proof")).json()
+        assert overview["tracking"]["format"] == "online_stamp" and not overview["tracking"]["checked"]
+        assert not any("photo of the posting receipt" in line for line in overview["missing"])
+        assert any("printout or screenshot of the online stamp" in line for line in overview["missing"])
+        text = await _nachweis(api, draft_id)
+        assert "A0 0123 45D6 0000 123C EC" in text.replace("\u00a0", " ") and "Prüfziffer" not in text
 
 
 async def test_a_sent_letter_stays_as_it_went_out(data_dir: Path) -> None:

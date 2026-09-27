@@ -11,14 +11,20 @@ Policy:
    (Einlieferungsbeleg) and the delivery record (Auslieferungsbeleg) or return receipt (Rückschein): the
    posting receipt with the online tracking status alone was not accepted as prima facie proof that a
    letter arrived (BAG, 30 January 2025, 2 AZR 68/24), while courts have accepted it together with a copy
-   of the delivery record (BGH V ZR 203/22, cited there). A fax wants its transmission report, an
-   e-mail the sent message, the cancel button (§ 312k BGB) its saved page and the provider's
-   confirmation. A plain letter leaves nothing that shows it arrived, which is said once.
+   of the delivery record (BGH V ZR 203/22, cited there). An Einschreiben bought online (its number is
+   an online stamp's, :mod:`ordnung.drafts.tracking`) comes with no posting receipt: its printout is
+   asked for instead, with the note that a letter handed in at a post office counter gets one. A fax
+   wants its transmission report, an e-mail the sent message, the cancel button (§ 312k BGB) its saved
+   page and the provider's confirmation. A plain letter leaves nothing that shows it arrived, which is
+   said once.
    The delivery record can be asked for only within :data:`DELIVERY_RECORD_MONTHS` months of posting
    (Deutsche Post's Einschreiben FAQ); after that it is no longer suggested.
-3. **Only a confirmed answer is proof of arrival** (:class:`RecordedAnswer`): a confirmation of the
-   cancelled contract, or a letter — or just the word — of the person that the letter was answered.
-   Then nothing about arrival is asked for any more. A later letter that is merely in the same thread
+3. **Only an answer from them shows the letter arrived** (:class:`RecordedAnswer`): a confirmation of
+   the cancelled contract, or a letter the person names as the answer. Then nothing about arrival is
+   asked for any more. The person's word alone ("I got an answer", by phone or just to tidy up) closes
+   the wait but shows nothing about arrival, and its day is the day they said so: a registered letter
+   still wants its delivery record while Deutsche Post issues it, and the Nachweis says "marked as
+   answered". A later letter that is merely in the same thread
    (:meth:`ordnung.secretary.triggers.Ledger.reply_to`) is only a *possible* answer: it is shown to
    the person as one, never counted as arrival and never written into the Nachweis.
 4. **The timeline lists only what the person recorded**: drafted, sent (channel), tracking number,
@@ -28,7 +34,8 @@ Policy:
 5. **Days that contradict each other are said** (:func:`conflicts`): a posting receipt, fax report,
    sent e-mail or cancel-button page shows the sending day, so another day than the one the letter is
    marked as sent on is pointed out (one of them is wrong); a delivery can't be before the sending
-   (:mod:`ordnung.drafts.sent` refuses it).
+   (:mod:`ordnung.drafts.sent` refuses such a proof, and marking the letter as sent after its
+   delivery is refused), and one recorded that way anyway is pointed out too.
 
 Limits: the channel is what the person said; a proof's kind and day are what they chose, not read from
 the file (proof files are never sent to a model).
@@ -41,6 +48,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Literal
 
+from ordnung.drafts.tracking import tracking_info
 from ordnung.ids import content_id
 from ordnung.models import PROOF_SOURCE as MODEL_PROOF_SOURCE
 from ordnung.models import Document, Draft, ProofEvent, ProofKind, RefLink, TrackingInfo
@@ -130,7 +138,7 @@ PROOF_KINDS: dict[ProofKind, ProofKindInfo] = {
         "Other proof",
         "sonstiger Nachweis",
         "What it shows — describe it in the note.",
-        "Ordnung can't tell; proof files are never read by AI.",
+        "Ordnung can't tell — say what it shows in the note.",
     ),
 }
 
@@ -165,7 +173,8 @@ CHANNEL_LABELS: dict[str, tuple[str, str]] = {
 #: What a sent letter of each kind waits for (``None``: nothing — an address change only informs).
 WAITING_FOR: dict[str, str | None] = {
     "cancellation": "A written confirmation of the end date",
-    "objection": "A decision on your objection",
+    # a decision often takes months: what is due by the follow-up is that they received it
+    "objection": "An acknowledgement of your objection",
     "general_reply": "An answer to your letter",
     "withdrawal": "Your money back after the withdrawal",
     "extension_request": "An answer to your request for more time",
@@ -185,10 +194,28 @@ WAITING_CONTEXT: dict[str, str] = {
         "on the case and can be more than six months (BGH, 18 January 2006, VIII ZR 71/05) — but can "
         "tell you when to expect it."
     ),
+    "objection": (
+        "The decision itself often takes months. If an authority doesn't decide, an action for failure "
+        "to act (Untätigkeitsklage) is as a rule possible only after three months (§ 75 VwGO, § 88 "
+        "Abs. 2 SGG) — against the tax office after six (§ 46 Abs. 1 FGO)."
+    ),
 }
+#: Letters an objection may answer that come from a court or a landlord: no authority decides on it.
+NOT_FROM_AN_AUTHORITY: frozenset[str] = frozenset(
+    {"court_payment_order", "enforcement_order", "landlord_notice"}
+)
 
-MISSING_TRACKING = "Add the tracking number from your posting receipt (Einlieferungsbeleg)."
+MISSING_TRACKING = (
+    "Add the tracking number — from your posting receipt (Einlieferungsbeleg), or next to the square "
+    "code of an online stamp."
+)
 MISSING_POSTING = "Add a photo of the posting receipt — it shows the day you posted the letter."
+MISSING_ONLINE_STAMP = (
+    "An Einschreiben bought online comes with no posting receipt: keep a printout or screenshot of the "
+    "online stamp with its number (add it as other proof). When a deadline depends on a letter, hand it "
+    "in at a post office counter instead — you get a posting receipt with the day, which courts have "
+    "looked at together with the delivery record (BAG 2 AZR 68/24)."
+)
 MISSING_DELIVERY = (
     "Ask Deutsche Post for a copy of the delivery record (Auslieferungsbeleg) — they issue it only within "
     "15 months of posting, so best right after delivery — or keep the return receipt (Rückschein) if you "
@@ -246,6 +273,14 @@ def waits_for(kind: str) -> str | None:
     return WAITING_FOR.get(kind, WAITING_FOR["general_reply"])
 
 
+def waiting_context(kind: str, answers: str | None = None) -> str | None:
+    """Why a sent letter of ``kind`` — answering a letter of kind ``answers`` — waits longer than its
+    follow-up (:data:`WAITING_CONTEXT`); an objection to a court or a landlord gets none."""
+    if kind == "objection" and answers in NOT_FROM_AN_AUTHORITY:
+        return None
+    return WAITING_CONTEXT.get(kind)
+
+
 def sent_day(draft: Draft) -> date | None:
     """The day a sent letter went out (``None`` for one not sent, or without a readable day)."""
     if draft.status != "sent" or not draft.sent_at:
@@ -263,24 +298,32 @@ def delivery_record_obtainable(draft: Draft, today: date) -> bool:
     return sent is None or today <= add_months(sent, DELIVERY_RECORD_MONTHS)
 
 
-def missing(draft: Draft, proofs: Sequence[RecordedProof], *, answered: bool, today: date) -> list[str]:
+def missing(
+    draft: Draft, proofs: Sequence[RecordedProof], *, answer: RecordedAnswer | None, today: date
+) -> list[str]:
     """What would make the proof of a sent letter stronger, by the channel it went by (policy 2 and 3).
-    ``answered``: a confirmed answer (:class:`RecordedAnswer`), never a merely possible one."""
+    ``answer``: the confirmed answer (:class:`RecordedAnswer`), never a merely possible one — the
+    person's word alone (``noted``) closes the wait but shows nothing about arrival."""
     if draft.status != "sent":
         return []
     have = {proof.kind for proof in proofs}
-    arrived = answered or any(kind_info(kind).arrival for kind in have)
+    answered = answer is not None
+    arrived = (answer is not None and answer.how != "noted") or any(kind_info(k).arrival for k in have)
     found: list[str] = []
     channel = draft.sent_channel
     if channel == "registered_letter":
-        if not draft.tracking_number:
+        tracking = tracking_info(draft.tracking_number)
+        online = tracking is not None and tracking.format == "online_stamp"
+        if tracking is None:
             found.append(MISSING_TRACKING)
-        if "posting_receipt" not in have:
+        if online and not have & {"posting_receipt", "other"}:
+            found.append(MISSING_ONLINE_STAMP)
+        elif not online and "posting_receipt" not in have:
             found.append(MISSING_POSTING)
-        if not arrived:
-            found.append(
-                MISSING_DELIVERY if delivery_record_obtainable(draft, today) else MISSING_DELIVERY_LATE
-            )
+        if not arrived and delivery_record_obtainable(draft, today):
+            found.append(MISSING_DELIVERY)
+        elif not arrived and not answered:
+            found.append(MISSING_DELIVERY_LATE)
     elif channel == "fax" and "fax_report" not in have and not answered:
         found.append(MISSING_FAX)
     elif channel == "email" and "sent_email" not in have:
@@ -300,12 +343,17 @@ def conflicts(draft: Draft, proofs: Sequence[RecordedProof]) -> list[str]:
     found: list[str] = []
     for proof in proofs:
         day = _day(proof.on_date)
-        if day is None or proof.kind not in SENDING_DAY_KINDS or day == sent:
-            continue
-        found.append(
-            f"Your {kind_info(proof.kind).label.lower()} says {fmt_date(day)}, but the letter is marked as "
-            f"sent on {fmt_date(sent)} — correct one of them, so your records agree."
-        )
+        label = kind_info(proof.kind).label.lower()
+        if day is not None and proof.kind in SENDING_DAY_KINDS and day != sent:
+            found.append(
+                f"Your {label} says {fmt_date(day)}, but the letter is marked as sent on {fmt_date(sent)} — "
+                "correct one of them, so your records agree."
+            )
+        elif day is not None and proof.kind in DELIVERY_DAY_KINDS and day < sent:
+            found.append(
+                f"Your {label} says it was delivered on {fmt_date(day)}, before the day the letter is "
+                f"marked as sent ({fmt_date(sent)}) — correct one of them, so your records agree."
+            )
     return found
 
 
@@ -404,8 +452,14 @@ def _answer_event(answer: RecordedAnswer) -> TimelineEvent | None:
         return None
     ref = RefLink(type="document", id=doc.id) if doc is not None else None
     if answer.how == "noted" or doc is None:
+        # the day the person said so, not the day of the answer: a note, never proof of arrival
         return TimelineEvent(
-            day, "answered", "Answered — as you noted", "Beantwortet (laut Angabe des Absenders)", None, ref
+            day,
+            "answered",
+            "You marked it as answered",
+            "Als beantwortet vermerkt (Angabe des Absenders)",
+            None,
+            ref,
         )
     if answer.how == "confirmation":
         return TimelineEvent(
@@ -427,12 +481,15 @@ def timeline(
     proofs: Sequence[RecordedProof],
     answer: RecordedAnswer | None,
     possible: Document | None = None,
+    *,
+    created_day: str | None = None,
 ) -> list[TimelineEvent]:
     """The letter's timeline (policy 4), oldest first, then the proofs without a day. A letter drafted
     in Ordnung after the day the person says it went out (recorded afterwards) starts with its sending.
     ``possible`` is a letter that may be the answer: listed (last of the dated ones) only while no answer
-    is confirmed, and never in the Nachweis (:attr:`TimelineEvent.in_nachweis`)."""
-    created = draft.created_at[:10]
+    is confirmed, and never in the Nachweis (:attr:`TimelineEvent.in_nachweis`). ``created_day``: the
+    day the letter was drafted in the person's time zone (default: the day of its UTC timestamp)."""
+    created = created_day or draft.created_at[:10]
     sent_on = draft.sent_at[:10] if draft.status == "sent" and draft.sent_at else None
     events = []
     if sent_on is None or created <= sent_on:

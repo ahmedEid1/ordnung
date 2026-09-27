@@ -45,7 +45,7 @@ class AnsweredRequest(BaseModel):
 
 
 class ProofPatch(BaseModel):
-    """Corrections to a proof: what it is, the day it shows (``null`` removes it) and a note."""
+    """Corrections to a proof: what it is, the day it shows and a note (``null`` or empty removes them)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -110,6 +110,7 @@ async def update_proof(
         on_date=fields.get("on_date"),
         note=fields.get("note"),
         clear_date="on_date" in fields and fields["on_date"] is None,
+        clear_note="note" in fields and fields["note"] is None,
     )
     await ledger_changed(ctx)
     return sent.overview(ctx.store, draft_id, today)

@@ -70,6 +70,7 @@ async def test_a_sent_letter_is_waited_for_until_its_follow_up_day(ctx: AppConte
     assert (entry.since, entry.expected_by) == ("2026-09-20", "2026-10-11")
     assert entry.followup_item_id == followup_item_id(letter.id)
     assert entry.ref.type == "draft" and entry.ref.id == letter.id
+    assert entry.case_id == letter.case_id == gym.case  # a call noted about it goes to its thread
     assert "Ordnung reminds you on Sun 11 Oct" in entry.note
 
 
@@ -191,7 +192,7 @@ async def test_answered_in_the_persons_words_closes_the_entry_and_undo_reopens_i
     sent.mark_answered(ctx.store, letter.id, TODAY)
     assert _entries(ctx) == []
     (closed,) = _entries(ctx, include_closed=True)
-    assert "You said it was answered on Mon 28 Sep" in closed.note
+    assert "You marked it as answered on Mon 28 Sep" in closed.note
     assert ctx.store.get_item(followup_item_id(letter.id)).status == "done"  # type: ignore[union-attr]
     sent.unmark_answered(ctx.store, letter.id)
     assert _only(ctx).status == "overdue"
@@ -214,6 +215,27 @@ async def test_a_deposit_letter_waits_for_when_not_for_the_money(ctx: AppContext
     assert entry.status == "overdue" and entry.title == "An answer on when your deposit will be settled"
     assert "VIII ZR 71/05" in entry.note and "more than six months" in entry.note
     assert "Your deposit back" not in entry.note
+
+
+@pytest.mark.parametrize(
+    ("answers", "context"),
+    [("tax_assessment", True), (None, True), ("court_payment_order", False), ("landlord_notice", False)],
+)
+async def test_an_objection_waits_for_its_acknowledgement_not_the_decision(
+    ctx: AppContext, gym: Gym, answers: str | None, context: bool
+) -> None:
+    """A decision takes months (an action for failure to act only after 3 or 6 months): three weeks on,
+    what is due is the acknowledgement — and only an authority's decision gets the paragraphs."""
+    letter = await helpers_proof.sent_letter(ctx, gym)
+    doc_id = (
+        incoming(ctx, "decision", kind=answers, title="Bescheid", doc_date="2026-08-20") if answers else None
+    )
+    ctx.store.update_draft(letter.id, kind="objection", doc_id=doc_id)
+    entry = _only(ctx)
+    assert entry.status == "overdue" and entry.title == "An acknowledgement of your objection"
+    said = ("§ 75 VwGO" in entry.note, "§ 88 Abs. 2 SGG" in entry.note, "§ 46 Abs. 1 FGO" in entry.note)
+    assert said == (context, context, context)
+    assert ("often takes months" in entry.note) is context
 
 
 async def test_an_address_change_waits_for_nothing(ctx: AppContext, gym: Gym) -> None:
@@ -306,6 +328,20 @@ def test_a_dated_promise_on_the_phone_is_waited_for(ctx: AppContext, gym: Gym) -
     assert _only(ctx).status == "overdue"
 
 
+def test_merging_two_parties_keeps_their_call_notes(ctx: AppContext, gym: Gym) -> None:
+    duplicate = ctx.store.add_party(name="FitWell", kind="company").id
+    note = calls.add_call_note(
+        ctx.store,
+        today=TODAY,
+        called_on="2026-09-20",
+        summary="They said it's cancelled.",
+        party_id=duplicate,
+    )
+    ctx.store.merge_parties(gym.party, duplicate)
+    assert ctx.store.get_call_note(note.id).party_id == gym.party  # type: ignore[union-attr]
+    assert [call.id for call in ctx.store.list_call_notes(party_id=gym.party)] == [note.id]
+
+
 def test_a_letter_in_the_calls_thread_answers_its_promise(ctx: AppContext, gym: Gym) -> None:
     calls.add_call_note(
         ctx.store,
@@ -317,6 +353,7 @@ def test_a_letter_in_the_calls_thread_answers_its_promise(ctx: AppContext, gym: 
         promise_due="2026-10-10",
     )
     assert _only(ctx).status == "waiting" and _only(ctx).party_id == gym.party  # the thread brings its sender
+    assert _only(ctx).case_id == gym.case
     incoming(
         ctx,
         "refund",
@@ -470,6 +507,22 @@ async def test_proof_missing_not_when_answered_or_closed(ctx: AppContext, gym: G
     assert len(_ideas(ctx, "proof_missing")) == 1
     sent.mark_answered(ctx.store, letter.id, TODAY, doc_id=reply)
     assert _ideas(ctx, "proof_missing") == []
+
+
+async def test_proof_missing_stays_when_the_person_only_says_it_was_answered(
+    ctx: AppContext, gym: Gym
+) -> None:
+    """The person's "I got an answer" (by phone, or to tidy up) shows nothing about arrival: the delivery
+    record is still worth asking for, and the Idea stays until Deutsche Post no longer issues it."""
+    letter = await helpers_proof.sent_letter(ctx, gym)
+    sent.mark_answered(ctx.store, letter.id, TODAY)
+    assert ctx.store.get_item(followup_item_id(letter.id)).status == "done"  # type: ignore[union-attr]
+    (idea,) = _ideas(ctx, "proof_missing")
+    assert "courts have accepted as a sign" in idea.body and "that is what shows it did" not in idea.body
+    assert _ideas(ctx, "proof_missing", today=date(2027, 12, 2)) == []
+    overview = sent.overview(ctx.store, letter.id, TODAY)
+    assert any("Auslieferungsbeleg" in line for line in overview.missing)
+    assert overview.timeline[-1].label == "You marked it as answered"
 
 
 async def test_proof_missing_not_after_a_confirmation_of_the_cancellation(ctx: AppContext, gym: Gym) -> None:

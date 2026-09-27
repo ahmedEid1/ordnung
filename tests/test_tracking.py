@@ -8,8 +8,11 @@ from hypothesis import strategies as st
 
 from ordnung.drafts.tracking import (
     DOMESTIC_NOTE,
+    EXAMPLE,
     GROUP_SEPARATOR,
+    NOT_A_NUMBER,
     NOT_REGISTERED,
+    ONLINE_STAMP_NOTE,
     TrackingError,
     display,
     normalise,
@@ -126,6 +129,31 @@ def test_twelve_digits_are_kept_unchecked_with_a_note() -> None:
         False,
         DOMESTIC_NOTE,
     )
+
+
+@pytest.mark.parametrize(
+    "typed", ["A0 0123 45D6 0000 123C EC", "a0012345d60000123cec", "A0-0123-45D6-0000-123C-EC"]
+)
+def test_the_number_of_an_online_stamp_is_kept_unchecked_with_a_note(typed: str) -> None:
+    """An Einschreiben bought online (Internetmarke) has the 20 characters next to its square code."""
+    info = parse_tracking_number(typed)
+    assert (info.number, info.display, info.format, info.checked, info.note) == (
+        "A0012345D60000123CEC",
+        f"A0{NB}0123{NB}45D6{NB}0000{NB}123C{NB}EC",
+        "online_stamp",
+        False,
+        ONLINE_STAMP_NOTE,
+    )
+
+
+@pytest.mark.parametrize("text", ["A0012345D60000123CE", "A0012345D60000123CEC0", "G0012345D60000123CEC"])
+def test_an_online_stamp_number_of_another_length_or_letter_is_refused(text: str) -> None:
+    with pytest.raises(TrackingError, match="20 characters next to the square code"):
+        parse_tracking_number(text)
+
+
+def test_the_refusal_names_the_formats_a_person_can_find() -> None:
+    assert "12 digits" not in NOT_A_NUMBER and "online" in NOT_A_NUMBER and EXAMPLE in NOT_A_NUMBER
 
 
 @pytest.mark.parametrize(

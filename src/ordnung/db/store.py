@@ -950,6 +950,25 @@ class Store:
             others = [value for value in json.loads(call["doc_ids"]) if value != doc_id]
             conn.execute("UPDATE llm_calls SET doc_ids = ? WHERE id = ?", (json.dumps(others), call["id"]))
 
+    def given_to_model(self, doc_id: str) -> bool:
+        """Whether a model call ever carried the document: a logged call (a failed one too — the
+        file may have reached the model before the call failed), a cached answer tagged with it,
+        or a page a model transcribed. Used before telling the person a file was never read."""
+        conn = self._conn()
+        row = conn.execute("SELECT sha256 FROM documents WHERE id = ?", (doc_id,)).fetchone()
+        sha = row["sha256"] if row is not None else doc_id
+        called = conn.execute(
+            "SELECT 1 FROM llm_calls WHERE doc_ids LIKE ? LIMIT 1", (f'%"{doc_id}"%',)
+        ).fetchone()
+        cached = conn.execute(  # tagged as in delete_document: the id, the file's hash, or "doc_a|doc_b"
+            "SELECT 1 FROM llm_cache WHERE doc_sha IN (?, ?) OR instr(? || doc_sha || ?, ?) > 0 LIMIT 1",
+            (doc_id, sha, _CACHE_TAG_SEP, _CACHE_TAG_SEP, f"{_CACHE_TAG_SEP}{doc_id}{_CACHE_TAG_SEP}"),
+        ).fetchone()
+        transcribed = conn.execute(
+            "SELECT 1 FROM pages WHERE doc_id = ? AND text_source = 'transcript' LIMIT 1", (doc_id,)
+        ).fetchone()
+        return any(row is not None for row in (called, cached, transcribed))
+
     def _truncate_wal(self) -> None:
         """Checkpoint and empty the write-ahead log, so deleted pages don't linger in it."""
         with contextlib.suppress(sqlite3.Error):
@@ -1173,7 +1192,7 @@ class Store:
     def merge_parties(self, keep_id: str, drop_id: str) -> Party:
         """Fold ``drop`` into ``keep`` and delete ``drop``.
 
-        Documents, cases, contracts, items and drafts are re-pointed; names become aliases;
+        Documents, cases, contracts, items, drafts and call notes are re-pointed; names become aliases;
         identifiers and IBANs are united; empty contact fields of ``keep`` are filled from ``drop``.
         """
         if keep_id == drop_id:
@@ -1182,7 +1201,7 @@ class Store:
             keep = self._require(_PARTIES, keep_id)
             drop = self._require(_PARTIES, drop_id)
             now = now_iso()
-            for table in ("documents", "cases", "contracts", "items", "drafts"):
+            for table in ("documents", "cases", "contracts", "items", "drafts", "call_notes"):
                 conn.execute(
                     f"UPDATE {table} SET party_id = ?, updated_at = ? WHERE party_id = ?",
                     (keep_id, now, drop_id),

@@ -193,7 +193,7 @@ erDiagram
   CASE ||--o{ CALL_NOTE : "in thread"
   DRAFT {
     string status "draft|final|sent"
-    string tracking_number "checked S10 / 12 digits"
+    string tracking_number "checked S10 / online stamp / 12 digits"
     json sent_profile "sender as the PDF showed it when sent"
     date answered_on "the person's word"
     string answer_doc_id "the letter they named"
@@ -237,7 +237,10 @@ normalised name), so re-processing is idempotent and recorded demo outputs stay 
 counts as an answer), `drafts/sent.py` stores proofs and makes the Nachweis (`drafts/pdf.py`
 `render_nachweis`), `secretary/waiting.py` works out *Waiting for* on read and `secretary/calls.py`
 keeps call notes. Proof files are documents with `source="proof"` and *Keep private* on: the Store
-leaves them out of letter lists and counts in SQL, and the ledger never sees them.
+leaves them out of letter lists and counts in SQL, and the ledger never sees them. Whether a file
+already in Ordnung was given to a model is `Store.given_to_model` (a logged call, a cached answer or a
+transcribed page), never the document's status; removing a proof deletes its file for good
+([ADR 0014](decisions/0014-proof-files-are-deleted-for-good.md)).
 
 **Migrations** (`db/migrate.py`): numbered SQL files, applied once each and recorded in
 `schema_migrations`, so work merged in any order (a 0003 after a 0004) still reaches every database.

@@ -1125,9 +1125,10 @@ class TrackingInfo(_Model):
     number: str
     #: grouped for reading, the groups joined by no-break spaces (never breaks inside the number)
     display: str
+    #: ``online_stamp``: the 20 characters next to an online stamp's square code (Internetmarke);
     #: ``unknown``: a stored number the current policy no longer accepts (shown as typed)
-    format: Literal["s10", "domestic", "unknown"]
-    #: The check digit was verified (UPU S10); a domestic number has no check Ordnung knows.
+    format: Literal["s10", "online_stamp", "domestic", "unknown"]
+    #: The check digit was verified (UPU S10); the other formats have no check Ordnung knows.
     checked: bool
     note: str | None = None
 
@@ -1183,6 +1184,8 @@ class WaitingEntry(_Model):
     followup_item_id: str | None = None
     #: the letter it comes from: the one a sent letter answers, or the one that promised the money
     doc_id: str | None = None
+    #: the thread it belongs to (a sent letter's, a call's): a call noted about it goes there
+    case_id: str | None = None
 
 
 class ProofOverview(_Model):

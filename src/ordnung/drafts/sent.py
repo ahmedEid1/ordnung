@@ -5,8 +5,9 @@ stores and reads.
 * **Proof files are private.** They go through the normal intake (every size and expansion limit) as
   documents with direction ``outgoing``, ``source="proof"`` and "Keep private — no AI" on, so no model
   ever sees them. A file already in Ordnung (the same bytes) is linked as it is, and what is said about
-  it is true of *that* file (:func:`add_proof`): one no model has read yet is made private now; one a
-  model already read is said to be so — "kept private" is never claimed for it.
+  it is true of *that* file (:func:`add_proof`): one no model has had yet is made private now; one a
+  model call ever carried — read, or failed or paused after the model had it — is said to have been
+  given to AI, also when it was marked private later: "kept private" is never claimed for it.
 * **Only sent letters take proof**, at most :data:`~ordnung.drafts.proof.MAX_PROOFS` of them, each file
   once per letter; a proof's day can't be in the future, and a delivery can't be before the sending.
 * **An answer is the person's word** (:func:`mark_answered`): the day, and the letter that answered if
@@ -15,17 +16,20 @@ stores and reads.
   sender (:class:`~ordnung.models.SentSigner`), so the PDF and the Nachweis show that even after the
   profile changed; the text of a sent letter can't be edited (the API refuses it). A letter "sent" by a
   cancel button, portal or e-mail went out as text, not as this letter — the Nachweis says so.
-* **Delete means delete.** Removing a proof deletes its file for good when it was added as proof and no
-  other proof uses it; deleting a letter deletes its proofs and their files the same way, unless the
-  person keeps the files (they become their own documents).
+* **Delete means delete** (ADR 0014). Removing a proof deletes its file for good when it was added as
+  proof and no other proof uses it; deleting a letter deletes its proofs and their files the same way,
+  unless the person keeps the files (they become their own documents). The web app's confirmation
+  names the file and offers to download it first.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ordnung.db.store import NotFoundError, Store
 from ordnung.drafts.compose import NO_TRACKING, DraftError
@@ -85,8 +89,8 @@ MADE_PRIVATE_NOTICE = (
     "This file was already in Ordnung, not yet read. It is kept private from now on — AI won't read it."
 )
 READ_NOTICE = (
-    "This file was already in Ordnung as a letter, and AI has read it. It is linked as proof and stays "
-    "where it was."
+    "This file was already in Ordnung as a letter, and it was already given to AI to read. It is linked "
+    "as proof and stays where it was."
 )
 
 
@@ -185,23 +189,27 @@ class AddedProof:
         return self.proof.doc_id
 
 
-def _unread(document: Document) -> bool:
-    """No model has read the file and none is reading it now (queued, or failed before a model ran)."""
-    return document.ai_processed_at is None and document.status in ("queued", "failed")
+def _given_to_model(store: Store, document: Document) -> bool:
+    """Whether a model had the file: it was read, or any model call carried it
+    (:meth:`~ordnung.db.store.Store.given_to_model` — a reading that failed after the model transcribed
+    it, or was queued again after a rate limit, did), whatever its "Keep private" says now."""
+    return document.ai_processed_at is not None or store.given_to_model(document.id)
 
 
 def _keep_private(store: Store, document: Document) -> tuple[Document, str | None, str]:
-    """Make a file already in Ordnung private if no model read it yet; returns it, the notice for the
-    person and the words for the activity log (see the module docstring)."""
-    if document.ai_private:
+    """Make a file already in Ordnung private if no model had it yet and none is reading it now (it
+    waits to be read, or failed before a model had it); returns it, the notice for the person and the
+    words for the activity log (see the module docstring)."""
+    given = _given_to_model(store, document)
+    if document.ai_private and not given:
         return document, None, PRIVATE
-    if _unread(document):
+    if not given and document.status in ("queued", "failed"):
         return (
             store.update_document(document.id, ai_private=True),
             MADE_PRIVATE_NOTICE,
             f"already in Ordnung, now {PRIVATE}",
         )
-    return document, READ_NOTICE, "already in Ordnung as a letter that AI has read"
+    return document, READ_NOTICE, "already in Ordnung as a letter that was given to AI"
 
 
 async def add_proof(
@@ -253,8 +261,10 @@ def update_proof(
     on_date: str | None = None,
     note: str | None = None,
     clear_date: bool = False,
+    clear_note: bool = False,
 ) -> Proof:
-    """Change a proof's kind, day or note (``clear_date`` removes the day)."""
+    """Change a proof's kind, day or note (``clear_date`` removes the day, ``clear_note`` or an empty
+    ``note`` the note)."""
     current = _proof(store, draft_id, proof_id)
     day = _checked(kind, on_date, note, today)
     kept_day = None if clear_date else (day or parse_day(current.on_date))
@@ -267,7 +277,9 @@ def update_proof(
         changes["on_date"] = None
     elif day is not None:
         changes["on_date"] = day.isoformat()
-    if note is not None:
+    if clear_note:
+        changes["note"] = None
+    elif note is not None:
         changes["note"] = note.strip() or None
     return store.update_proof(proof_id, **changes) if changes else _proof(store, draft_id, proof_id)
 
@@ -378,12 +390,35 @@ def letter_profile(store: Store, draft: Draft) -> Profile:
 # --------------------------------------------------------------------------------------------------
 
 
-def _recorded(proofs: list[Proof], documents: dict[str, Document]) -> list[RecordedProof]:
+def _local_days(store: Store, today: date) -> Callable[[str], str]:
+    """The day of a stored UTC timestamp in the person's time zone — a letter drafted or a proof added
+    at 00:30 in Berlin is of that day, not the day before, in the Nachweis too — never after ``today``
+    (the demo stamps its pinned day with the time of day it is run)."""
+    try:
+        zone = ZoneInfo(store.get_profile().timezone)
+    except (ZoneInfoNotFoundError, ValueError):
+        zone = None
+
+    def day(stamp: str) -> str:
+        try:
+            moment = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+        except ValueError:
+            return stamp[:10]
+        if zone is None or moment.tzinfo is None:
+            return stamp[:10]
+        return min(moment.astimezone(zone).date(), today).isoformat()
+
+    return day
+
+
+def _recorded(
+    proofs: list[Proof], documents: dict[str, Document], local_day: Callable[[str], str]
+) -> list[RecordedProof]:
     return [
         RecordedProof(
             kind=proof.kind,
             on_date=proof.on_date,
-            created_day=proof.created_at[:10],
+            created_day=local_day(proof.created_at),
             note=proof.note,
             document=documents.get(proof.doc_id or ""),
         )
@@ -405,7 +440,8 @@ def overview(store: Store, draft_id: str, today: date) -> ProofOverview:
     documents = _files(store, proofs)
     tracking = tracking_info(draft.tracking_number)
     answer = ledger.answer_of(draft)
-    recorded = _recorded(proofs, documents)
+    local_day = _local_days(store, today)
+    recorded = _recorded(proofs, documents, local_day)
     entries = [
         ProofEntry(
             proof=proof,
@@ -416,7 +452,9 @@ def overview(store: Store, draft_id: str, today: date) -> ProofOverview:
         )
         for proof in proofs
     ]
-    events = timeline(draft, tracking, recorded, answer, ledger.reply_to(draft))
+    events = timeline(
+        draft, tracking, recorded, answer, ledger.reply_to(draft), created_day=local_day(draft.created_at)
+    )
     return ProofOverview(
         draft_id=draft.id,
         sent=draft.status == "sent",
@@ -424,7 +462,7 @@ def overview(store: Store, draft_id: str, today: date) -> ProofOverview:
         tracking=tracking,
         proofs=entries,
         timeline=[event.event() for event in events],
-        missing=missing(draft, recorded, answered=answer is not None, today=today),
+        missing=missing(draft, recorded, answer=answer, today=today),
         conflicts=conflicts(draft, recorded),
         waiting=letter_entry(ledger, draft),
         caveat=CAVEAT,
@@ -483,9 +521,12 @@ def nachweis_pdf(store: Store, draft_id: str, today: date) -> bytes:
     proofs = ledger.proofs_of(draft.id)
     documents = _files(store, proofs)
     tracking = tracking_info(draft.tracking_number)
+    local_day = _local_days(store, today)
+    recorded = _recorded(proofs, documents, local_day)
+    answer = ledger.answer_of(draft)
     events = [
         event
-        for event in timeline(draft, tracking, _recorded(proofs, documents), ledger.answer_of(draft))
+        for event in timeline(draft, tracking, recorded, answer, created_day=local_day(draft.created_at))
         if event.in_nachweis
     ]
     lines = [
