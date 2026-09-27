@@ -15,6 +15,9 @@ import type {
   ApiQuery,
   ApiResponse,
   AskRequest,
+  CalendarSyncConnect,
+  CalendarSyncFind,
+  CalendarSyncMode,
   ContractListParams,
   ContractPatch,
   DesktopMode,
@@ -203,6 +206,16 @@ export const api = {
     const res = await requestRaw(apiRoute("/api/backup"), { method: "POST", body, signal });
     return res.blob();
   },
+
+  // -- calendar sync (CalDAV) --------------------------------------------------------------------
+  calendarSync: () => call("get", "/api/calendar/sync"),
+  calendarSyncPreview: (mode: CalendarSyncMode) => call("get", "/api/calendar/sync/preview", { query: { mode } }),
+  /** The calendars that take events at or under an address (nothing is stored). */
+  discoverCalendars: (body: CalendarSyncFind) => call("post", "/api/calendar/sync/discover", { body }),
+  /** Connect (or change the mode of) the calendar; the app password goes to this computer's keyring only. */
+  connectCalendarSync: (body: CalendarSyncConnect) => call("put", "/api/calendar/sync", { body }),
+  runCalendarSync: () => call("post", "/api/calendar/sync/run"),
+  disconnectCalendarSync: (removeEvents: boolean) => call("post", "/api/calendar/sync/disconnect", { body: { remove_events: removeEvents } }),
 
   // -- privacy & AI usage ------------------------------------------------------------------------
   activity: (limit = 100) => call("get", "/api/activity", { query: { limit } }),

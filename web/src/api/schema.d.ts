@@ -863,6 +863,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/calendar/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Calendar Sync Status
+         * @description Whether calendar sync can be used here, the connected calendar and the last sync.
+         */
+        get: operations["calendar_sync_status_api_calendar_sync_get"];
+        /**
+         * Calendar Sync Connect
+         * @description Connect a calendar (checked with its server first) and send the events; or change the mode.
+         */
+        put: operations["calendar_sync_connect_api_calendar_sync_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/sync/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Calendar Sync Preview
+         * @description Every event exactly as calendar sync would send it in ``mode`` (nothing is sent).
+         */
+        get: operations["calendar_sync_preview_api_calendar_sync_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/sync/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calendar Sync Discover
+         * @description The calendars that take events at or under ``url`` (the account's calendar home, found the
+         *     way calendar apps find it). Nothing is stored or written.
+         */
+        post: operations["calendar_sync_discover_api_calendar_sync_discover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/sync/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calendar Sync Run
+         * @description Send what changed now (the report is in ``last_sync``; a paused sync resumes).
+         */
+        post: operations["calendar_sync_run_api_calendar_sync_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/sync/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calendar Sync Disconnect
+         * @description Forget the calendar and its app password — first removing Ordnung's events if asked (only those).
+         */
+        post: operations["calendar_sync_disconnect_api_calendar_sync_disconnect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reminders/desktop": {
         parameters: {
             query?: never;
@@ -1263,12 +1368,206 @@ export interface components {
             generated_at: string | null;
         };
         /**
+         * CalendarChoice
+         * @description A calendar that takes events.
+         */
+        CalendarChoice: {
+            /** Url */
+            url: string;
+            /** Name */
+            name?: string | null;
+        };
+        /**
+         * CalendarEventPreview
+         * @description One event exactly as calendar sync would send it.
+         */
+        CalendarEventPreview: {
+            /** Uid */
+            uid: string;
+            /** Summary */
+            summary: string;
+            /** Start */
+            start: string;
+            /** All Day */
+            all_day: boolean;
+            /** Description */
+            description: string;
+            /** Location */
+            location: string | null;
+            /** Alarms */
+            alarms: string[];
+        };
+        /**
          * CalendarExportResult
          * @description When the person last exported their dates.
          */
         CalendarExportResult: {
             /** Last Calendar Export At */
             last_calendar_export_at: string;
+        };
+        /**
+         * CalendarSyncConnect
+         * @description The calendar to connect; ``password: null`` keeps the saved app password (to change the mode).
+         */
+        CalendarSyncConnect: {
+            /** Url */
+            url: string;
+            /** Username */
+            username: string;
+            /** Password */
+            password?: string | null;
+            /**
+             * Mode
+             * @default discreet
+             * @enum {string}
+             */
+            mode?: "discreet" | "full";
+        };
+        /**
+         * CalendarSyncDisconnect
+         * @description Whether to remove Ordnung's events from the calendar before forgetting it.
+         */
+        CalendarSyncDisconnect: {
+            /**
+             * Remove Events
+             * @default true
+             */
+            remove_events?: boolean;
+        };
+        /**
+         * CalendarSyncDisconnected
+         * @description How many of Ordnung's events were removed from the calendar.
+         */
+        CalendarSyncDisconnected: {
+            /** Removed */
+            removed: number;
+        };
+        /**
+         * CalendarSyncFind
+         * @description Where to look for calendars, and the account to look with (nothing is stored).
+         */
+        CalendarSyncFind: {
+            /** Url */
+            url: string;
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
+        /**
+         * CalendarSyncFound
+         * @description The calendars Ordnung could write into (the address itself first, when it is one).
+         */
+        CalendarSyncFound: {
+            /** Calendars */
+            calendars: components["schemas"]["CalendarChoice"][];
+        };
+        /**
+         * CalendarSyncPreview
+         * @description Exactly what each event would contain in ``mode``.
+         */
+        CalendarSyncPreview: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "discreet" | "full";
+            /** Events */
+            events: components["schemas"]["CalendarEventPreview"][];
+        };
+        /**
+         * CalendarSyncReport
+         * @description What one calendar sync did (:mod:`ordnung.calendar.caldav`).
+         */
+        CalendarSyncReport: {
+            /** At */
+            at: string;
+            /**
+             * Sent
+             * @default 0
+             */
+            sent: number;
+            /**
+             * Removed
+             * @default 0
+             */
+            removed: number;
+            /**
+             * Unchanged
+             * @default 0
+             */
+            unchanged: number;
+            /**
+             * Failed
+             * @default 0
+             */
+            failed: number;
+            /** Error */
+            error: string | null;
+            /** Error Kind */
+            error_kind: ("address" | "auth" | "forbidden" | "not_found" | "not_calendar" | "network" | "tls" | "conflict" | "server" | "unavailable") | null;
+        };
+        /**
+         * CalendarSyncStatus
+         * @description What Settings shows about calendar sync.
+         */
+        CalendarSyncStatus: {
+            /**
+             * Available
+             * @description Calendar sync can be used on this computer
+             */
+            available: boolean;
+            /**
+             * Unavailable
+             * @description Why not, in words
+             */
+            unavailable: string | null;
+            /**
+             * Install Command
+             * @description The command that makes it available
+             */
+            install_command: string | null;
+            /** Connected */
+            connected: boolean;
+            /** Url */
+            url: string | null;
+            /** Username */
+            username: string | null;
+            /**
+             * Calendar Name
+             * @description The calendar's name on the server
+             */
+            calendar_name: string | null;
+            /**
+             * Mode
+             * @default discreet
+             * @enum {string}
+             */
+            mode: "discreet" | "full";
+            /**
+             * Password Saved
+             * @description The app password is in this computer's keyring
+             * @default false
+             */
+            password_saved: boolean;
+            /**
+             * Paused
+             * @description Automatic syncing waits after a refused password
+             * @default false
+             */
+            paused: boolean;
+            /**
+             * Events
+             * @description How many events the calendar gets now
+             */
+            events: number;
+            /**
+             * Synced
+             * @description How many of Ordnung's events are in the calendar
+             * @default 0
+             */
+            synced: number;
+            last_sync: components["schemas"]["CalendarSyncReport"] | null;
         };
         /** Case */
         Case: {
@@ -5329,6 +5628,233 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CalendarExportResult"];
                 };
+            };
+        };
+    };
+    calendar_sync_status_api_calendar_sync_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncStatus"];
+                };
+            };
+        };
+    };
+    calendar_sync_connect_api_calendar_sync_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarSyncConnect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncStatus"];
+                };
+            };
+            /** @description Not connected, connected elsewhere, the demo, or no password store on this computer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address, user name or app password can't be used (``code`` says which) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The calendar server couldn't be reached or answered with an error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    calendar_sync_preview_api_calendar_sync_preview_get: {
+        parameters: {
+            query?: {
+                mode?: "discreet" | "full";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    calendar_sync_discover_api_calendar_sync_discover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarSyncFind"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncFound"];
+                };
+            };
+            /** @description Not connected, connected elsewhere, the demo, or no password store on this computer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address, user name or app password can't be used (``code`` says which) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The calendar server couldn't be reached or answered with an error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    calendar_sync_run_api_calendar_sync_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncStatus"];
+                };
+            };
+            /** @description Not connected, connected elsewhere, the demo, or no password store on this computer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address, user name or app password can't be used (``code`` says which) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The calendar server couldn't be reached or answered with an error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    calendar_sync_disconnect_api_calendar_sync_disconnect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarSyncDisconnect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncDisconnected"];
+                };
+            };
+            /** @description Not connected, connected elsewhere, the demo, or no password store on this computer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address, user name or app password can't be used (``code`` says which) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The calendar server couldn't be reached or answered with an error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

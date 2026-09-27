@@ -5,6 +5,8 @@
  */
 import { addDays, format, parseISO } from "date-fns";
 import type {
+  CalendarSyncConnect,
+  CalendarSyncFind,
   AppSettings,
   Brief,
   CaseDetail,
@@ -59,6 +61,15 @@ import {
   mockNotification,
 } from "./data/reminders";
 import { TRAY_ITEMS } from "./data/items";
+import {
+  CalendarSyncRefusal,
+  mockCalendarPreview,
+  mockCalendarSyncStatus,
+  mockConnectCalendar,
+  mockDisconnectCalendar,
+  mockDiscoverCalendars,
+  mockRunCalendarSync,
+} from "./data/calendarSync";
 import { PARTIES } from "./data/parties";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
 import { isOpenItem } from "@/features/document/verdict";
@@ -109,6 +120,16 @@ class HttpError extends Error {
     super(message);
     this.status = status;
     this.code = code;
+  }
+}
+
+/** A calendar-sync refusal as the API answers it (`code` names the field). */
+function calendarRefusals<T>(work: () => T): T {
+  try {
+    return work();
+  } catch (err) {
+    if (err instanceof CalendarSyncRefusal) throw new HttpError(err.status, err.message, err.code);
+    throw err;
   }
 }
 
@@ -1167,6 +1188,25 @@ const routes: [string, string, Handler][] = [
       db.log("calendar.exported", "Exported your dates to your calendar");
       return { last_calendar_export_at: db.state.lastCalendarExport };
     },
+  ],
+  // calendar sync (CalDAV): `?mock=1` pretends a calendar answers; the static demo can't reach one
+  ["GET", "/calendar/sync", ({ db, opts }) => mockCalendarSyncStatus(db, opts.staticDemo)],
+  [
+    "GET",
+    "/calendar/sync/preview",
+    ({ db, query }) => {
+      const mode = query.get("mode") ?? "discreet";
+      if (mode !== "discreet" && mode !== "full") throw new HttpError(422, "Choose discreet or full.");
+      return { mode, events: mockCalendarPreview(db, mode) };
+    },
+  ],
+  ["POST", "/calendar/sync/discover", ({ body, opts }) => calendarRefusals(() => mockDiscoverCalendars(body as CalendarSyncFind, opts.staticDemo))],
+  ["PUT", "/calendar/sync", ({ db, body, opts }) => calendarRefusals(() => mockConnectCalendar(db, body as CalendarSyncConnect, opts.staticDemo))],
+  ["POST", "/calendar/sync/run", ({ db, opts }) => calendarRefusals(() => mockRunCalendarSync(db, opts.staticDemo))],
+  [
+    "POST",
+    "/calendar/sync/disconnect",
+    ({ db, body }) => mockDisconnectCalendar(db, (body as { remove_events?: boolean } | null)?.remove_events ?? true),
   ],
   // reminders outside the browser & the encrypted backup (a browser tab can do neither for real)
   ["GET", "/reminders/desktop", ({ db }) => mockDesktopReminders(db)],

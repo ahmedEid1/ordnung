@@ -514,6 +514,20 @@ export type DesktopTestResult = Schemas["DesktopTestResult"];
 export type DesktopMode = NonNullable<Schemas["DesktopTestRequest"]["mode"]>;
 /** `GET /api/backup`: what an encrypted backup made now would hold. */
 export type BackupInfo = Schemas["BackupInfo"];
+/** `GET /api/calendar/sync`: calendar sync (CalDAV) — available here, the connected calendar, the last sync. */
+export type CalendarSyncStatus = Schemas["CalendarSyncStatus"];
+export type CalendarSyncReport = Schemas["CalendarSyncReport"];
+/** One event exactly as calendar sync would send it. */
+export type CalendarEventPreview = Schemas["CalendarEventPreview"];
+export type CalendarSyncPreview = Schemas["CalendarSyncPreview"];
+/** What the calendar gets: dates and alarms only (`discreet`), or the calendar file's events (`full`). */
+export type CalendarSyncMode = CalendarSyncStatus["mode"];
+/** `PUT /api/calendar/sync` (`password: null` keeps the saved app password). */
+export type CalendarSyncConnect = Schemas["CalendarSyncConnect"];
+/** `POST /api/calendar/sync/discover`: where to look for calendars, with which account. */
+export type CalendarSyncFind = Schemas["CalendarSyncFind"];
+/** A calendar that takes events, as discovery found it. */
+export type CalendarChoice = Schemas["CalendarChoice"];
 
 // ------------------------------------------------------------------------------------------------
 // Requests

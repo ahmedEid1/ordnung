@@ -19,6 +19,9 @@ import {
 import { api, type UploadOptions } from "./endpoints";
 import { ApiError } from "./client";
 import type {
+  CalendarSyncConnect,
+  CalendarSyncFind,
+  CalendarSyncMode,
   ContractListParams,
   ContractPatch,
   DesktopMode,
@@ -672,6 +675,62 @@ export function useDownloadBackup() {
   return useMutation({
     mutationFn: ({ passphrase, signal }: { passphrase: string; signal?: AbortSignal }) => api.downloadBackup(passphrase, signal),
     meta: { silent: true },
+  });
+}
+
+const CALENDAR_SYNC_KEY = ["calendar", "sync"] as const;
+
+/** Calendar sync: whether it can be used here, the connected calendar and the last sync. */
+export function useCalendarSync() {
+  return useQuery({ queryKey: CALENDAR_SYNC_KEY, queryFn: api.calendarSync, staleTime: 30_000 });
+}
+
+/** Exactly what each event would contain in `mode` (nothing is sent). */
+export function useCalendarSyncPreview(mode: CalendarSyncMode, enabled = true) {
+  return useQuery({ queryKey: [...CALENDAR_SYNC_KEY, "preview", mode] as const, queryFn: () => api.calendarSyncPreview(mode), staleTime: 30_000, enabled });
+}
+
+/** Find the calendars of an account; errors are shown next to the field they concern (`ApiError.code`). */
+export function useDiscoverCalendars() {
+  return useMutation({ mutationFn: (body: CalendarSyncFind) => api.discoverCalendars(body), meta: { silent: true } });
+}
+
+/** Connect or change the mode; errors are shown next to the field they concern (`ApiError.code`). */
+export function useConnectCalendarSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CalendarSyncConnect) => api.connectCalendarSync(body),
+    meta: { silent: true },
+    onSuccess: (status) => {
+      qc.setQueryData(CALENDAR_SYNC_KEY, status);
+      void qc.invalidateQueries({ queryKey: qk.activity });
+    },
+  });
+}
+
+/** "Sync now" (the answer's `last_sync` says what happened, errors included). */
+export function useRunCalendarSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.runCalendarSync(),
+    meta: { errorTitle: "Couldn't sync the calendar" },
+    onSuccess: (status) => {
+      qc.setQueryData(CALENDAR_SYNC_KEY, status);
+      void qc.invalidateQueries({ queryKey: qk.activity });
+    },
+  });
+}
+
+/** Forget the calendar (and its app password), removing Ordnung's events first if asked. */
+export function useDisconnectCalendarSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (removeEvents: boolean) => api.disconnectCalendarSync(removeEvents),
+    meta: { silent: true },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: CALENDAR_SYNC_KEY });
+      void qc.invalidateQueries({ queryKey: qk.activity });
+    },
   });
 }
 

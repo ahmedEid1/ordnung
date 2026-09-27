@@ -219,6 +219,14 @@ const CASES = {
 
   calendarIcsUrl: { run: () => api.calendarIcsUrl(), asset: true },
   calendarExported: { run: () => api.calendarExported() },
+  calendarSync: { run: () => api.calendarSync() },
+  calendarSyncPreview: { run: () => api.calendarSyncPreview("full") },
+  discoverCalendars: { run: () => api.discoverCalendars({ url: "https://cloud.example.org/", username: "sam", password: "abcd-efgh-ijkl-mnop" }) },
+  connectCalendarSync: {
+    run: () => api.connectCalendarSync({ url: "https://cloud.example.org/remote.php/dav/calendars/sam/ordnung/", username: "sam", password: "abcd-efgh-ijkl-mnop", mode: "discreet" }),
+  },
+  runCalendarSync: { run: () => api.runCalendarSync() },
+  disconnectCalendarSync: { run: () => api.disconnectCalendarSync(true) },
 
   desktopReminders: { run: () => api.desktopReminders() },
   testDesktopNotification: { run: () => api.testDesktopNotification("full") },

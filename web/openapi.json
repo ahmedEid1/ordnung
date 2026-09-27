@@ -2556,6 +2556,228 @@
         }
       }
     },
+    "/api/calendar/sync": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Calendar Sync Status",
+        "description": "Whether calendar sync can be used here, the connected calendar and the last sync.",
+        "operationId": "calendar_sync_status_api_calendar_sync_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSyncStatus"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Calendar Sync Connect",
+        "description": "Connect a calendar (checked with its server first) and send the events; or change the mode.",
+        "operationId": "calendar_sync_connect_api_calendar_sync_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarSyncConnect"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSyncStatus"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not connected, connected elsewhere, the demo, or no password store on this computer"
+          },
+          "422": {
+            "description": "The address, user name or app password can't be used (``code`` says which)"
+          },
+          "502": {
+            "description": "The calendar server couldn't be reached or answered with an error"
+          }
+        }
+      }
+    },
+    "/api/calendar/sync/preview": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Calendar Sync Preview",
+        "description": "Every event exactly as calendar sync would send it in ``mode`` (nothing is sent).",
+        "operationId": "calendar_sync_preview_api_calendar_sync_preview_get",
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "discreet",
+                "full"
+              ],
+              "type": "string",
+              "default": "discreet",
+              "title": "Mode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSyncPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/calendar/sync/discover": {
+      "post": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Calendar Sync Discover",
+        "description": "The calendars that take events at or under ``url`` (the account's calendar home, found the\nway calendar apps find it). Nothing is stored or written.",
+        "operationId": "calendar_sync_discover_api_calendar_sync_discover_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarSyncFind"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSyncFound"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not connected, connected elsewhere, the demo, or no password store on this computer"
+          },
+          "422": {
+            "description": "The address, user name or app password can't be used (``code`` says which)"
+          },
+          "502": {
+            "description": "The calendar server couldn't be reached or answered with an error"
+          }
+        }
+      }
+    },
+    "/api/calendar/sync/run": {
+      "post": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Calendar Sync Run",
+        "description": "Send what changed now (the report is in ``last_sync``; a paused sync resumes).",
+        "operationId": "calendar_sync_run_api_calendar_sync_run_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSyncStatus"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not connected, connected elsewhere, the demo, or no password store on this computer"
+          },
+          "422": {
+            "description": "The address, user name or app password can't be used (``code`` says which)"
+          },
+          "502": {
+            "description": "The calendar server couldn't be reached or answered with an error"
+          }
+        }
+      }
+    },
+    "/api/calendar/sync/disconnect": {
+      "post": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Calendar Sync Disconnect",
+        "description": "Forget the calendar and its app password — first removing Ordnung's events if asked (only those).",
+        "operationId": "calendar_sync_disconnect_api_calendar_sync_disconnect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarSyncDisconnect"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarSyncDisconnected"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not connected, connected elsewhere, the demo, or no password store on this computer"
+          },
+          "422": {
+            "description": "The address, user name or app password can't be used (``code`` says which)"
+          },
+          "502": {
+            "description": "The calendar server couldn't be reached or answered with an error"
+          }
+        }
+      }
+    },
     "/api/reminders/desktop": {
       "get": {
         "tags": [
@@ -3348,6 +3570,85 @@
         "title": "Brief",
         "description": "The daily note served by ``GET /api/brief``."
       },
+      "CalendarChoice": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "CalendarChoice",
+        "description": "A calendar that takes events."
+      },
+      "CalendarEventPreview": {
+        "properties": {
+          "uid": {
+            "type": "string",
+            "title": "Uid"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "start": {
+            "type": "string",
+            "title": "Start"
+          },
+          "all_day": {
+            "type": "boolean",
+            "title": "All Day"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "alarms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Alarms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uid",
+          "summary",
+          "start",
+          "all_day",
+          "description",
+          "location",
+          "alarms"
+        ],
+        "title": "CalendarEventPreview",
+        "description": "One event exactly as calendar sync would send it."
+      },
       "CalendarExportResult": {
         "properties": {
           "last_calendar_export_at": {
@@ -3361,6 +3662,350 @@
         ],
         "title": "CalendarExportResult",
         "description": "When the person last exported their dates."
+      },
+      "CalendarSyncConnect": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2048,
+            "title": "Url"
+          },
+          "username": {
+            "type": "string",
+            "maxLength": 256,
+            "title": "Username"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "discreet",
+              "full"
+            ],
+            "title": "Mode",
+            "default": "discreet"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "url",
+          "username"
+        ],
+        "title": "CalendarSyncConnect",
+        "description": "The calendar to connect; ``password: null`` keeps the saved app password (to change the mode)."
+      },
+      "CalendarSyncDisconnect": {
+        "properties": {
+          "remove_events": {
+            "type": "boolean",
+            "title": "Remove Events",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CalendarSyncDisconnect",
+        "description": "Whether to remove Ordnung's events from the calendar before forgetting it."
+      },
+      "CalendarSyncDisconnected": {
+        "properties": {
+          "removed": {
+            "type": "integer",
+            "title": "Removed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "removed"
+        ],
+        "title": "CalendarSyncDisconnected",
+        "description": "How many of Ordnung's events were removed from the calendar."
+      },
+      "CalendarSyncFind": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2048,
+            "title": "Url"
+          },
+          "username": {
+            "type": "string",
+            "maxLength": 256,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "url",
+          "username",
+          "password"
+        ],
+        "title": "CalendarSyncFind",
+        "description": "Where to look for calendars, and the account to look with (nothing is stored)."
+      },
+      "CalendarSyncFound": {
+        "properties": {
+          "calendars": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarChoice"
+            },
+            "type": "array",
+            "title": "Calendars"
+          }
+        },
+        "type": "object",
+        "required": [
+          "calendars"
+        ],
+        "title": "CalendarSyncFound",
+        "description": "The calendars Ordnung could write into (the address itself first, when it is one)."
+      },
+      "CalendarSyncPreview": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "discreet",
+              "full"
+            ],
+            "title": "Mode"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarEventPreview"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "events"
+        ],
+        "title": "CalendarSyncPreview",
+        "description": "Exactly what each event would contain in ``mode``."
+      },
+      "CalendarSyncReport": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "sent": {
+            "type": "integer",
+            "title": "Sent",
+            "default": 0
+          },
+          "removed": {
+            "type": "integer",
+            "title": "Removed",
+            "default": 0
+          },
+          "unchanged": {
+            "type": "integer",
+            "title": "Unchanged",
+            "default": 0
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed",
+            "default": 0
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "error_kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "address",
+                  "auth",
+                  "forbidden",
+                  "not_found",
+                  "not_calendar",
+                  "network",
+                  "tls",
+                  "conflict",
+                  "server",
+                  "unavailable"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "sent",
+          "removed",
+          "unchanged",
+          "failed",
+          "error",
+          "error_kind"
+        ],
+        "title": "CalendarSyncReport",
+        "description": "What one calendar sync did (:mod:`ordnung.calendar.caldav`)."
+      },
+      "CalendarSyncStatus": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "description": "Calendar sync can be used on this computer"
+          },
+          "unavailable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable",
+            "description": "Why not, in words"
+          },
+          "install_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Install Command",
+            "description": "The command that makes it available"
+          },
+          "connected": {
+            "type": "boolean",
+            "title": "Connected"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "calendar_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Name",
+            "description": "The calendar's name on the server"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "discreet",
+              "full"
+            ],
+            "title": "Mode",
+            "default": "discreet"
+          },
+          "password_saved": {
+            "type": "boolean",
+            "title": "Password Saved",
+            "description": "The app password is in this computer's keyring",
+            "default": false
+          },
+          "paused": {
+            "type": "boolean",
+            "title": "Paused",
+            "description": "Automatic syncing waits after a refused password",
+            "default": false
+          },
+          "events": {
+            "type": "integer",
+            "title": "Events",
+            "description": "How many events the calendar gets now"
+          },
+          "synced": {
+            "type": "integer",
+            "title": "Synced",
+            "description": "How many of Ordnung's events are in the calendar",
+            "default": 0
+          },
+          "last_sync": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalendarSyncReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "available",
+          "unavailable",
+          "install_command",
+          "connected",
+          "url",
+          "username",
+          "calendar_name",
+          "mode",
+          "password_saved",
+          "paused",
+          "events",
+          "synced",
+          "last_sync"
+        ],
+        "title": "CalendarSyncStatus",
+        "description": "What Settings shows about calendar sync."
       },
       "Case": {
         "properties": {

@@ -9,6 +9,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { toast } from "@/components/ui/Toast";
 import { CALENDAR_GUIDES, downloadCalendarFile, reminderSentence, type CalendarApp } from "@/features/timeline/calendar";
 import { CalendarGuideSteps } from "@/features/timeline/CalendarExport";
+import { CalendarSyncCard } from "./CalendarSyncCard";
 import { SectionHeading, SettingsCard } from "./SettingsCard";
 
 /**
@@ -89,6 +90,8 @@ export function CalendarSection() {
             </li>
           </ul>
         </SettingsCard>
+
+        <CalendarSyncCard />
 
         <SettingsCard title="How to import it" id="set-cal-guide">
           <SegmentedControl label="Your calendar app" value={app} onChange={setApp} options={CALENDAR_GUIDES.map((g) => ({ value: g.app, label: g.label }))} />

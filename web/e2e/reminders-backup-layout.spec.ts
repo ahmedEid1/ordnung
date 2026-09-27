@@ -1,8 +1,9 @@
 /**
- * Settings → Reminders → "Desktop notification each morning" and Settings → Data → "Encrypted
- * backup" on the real demo, where jsdom can't look: nothing scrolls sideways at 320 px, the
- * notification preview wraps inside its card, focus is never hidden under the fixed bars, the
- * passphrase dialog fits a phone as a sheet, both pass axe in light and dark mode — and a backup
+ * Settings → Reminders → "Desktop notification each morning", Settings → Calendar → "Sync with
+ * your own calendar" and Settings → Data → "Encrypted backup" on the real demo, where jsdom can't
+ * look: nothing scrolls sideways at 320 px, the notification preview and long calendar addresses
+ * wrap inside their cards, focus is never hidden under the fixed bars, the passphrase and
+ * disconnect dialogs fit a phone as a sheet, all pass axe in light and dark mode — and a backup
  * made through the browser really is an Ordnung backup file.
  */
 import { readFile } from "node:fs/promises";
@@ -105,6 +106,68 @@ for (const [width, height] of [
   });
 }
 
+/** Calendar sync connected to a long iCloud address (the demo itself never connects). */
+const CONNECTED = {
+  available: true,
+  unavailable: null,
+  install_command: null,
+  connected: true,
+  url: "https://p142-caldav.icloud.com:443/11837429562/calendars/9F3B6E1A-4C2D-4F7B-9A1E-6D2C8B5E7F10/",
+  username: "samantha.rivera-musterfrau@icloud.com",
+  calendar_name: "Ordnung — Fristen und Termine",
+  mode: "discreet",
+  password_saved: true,
+  paused: false,
+  events: 32,
+  synced: 32,
+  last_sync: { at: "2026-09-28T07:58:00Z", sent: 2, removed: 1, unchanged: 29, failed: 0, error: null, error_kind: null },
+};
+
+async function connectedCalendar(page: Page): Promise<void> {
+  await page.route(
+    (url) => url.pathname === "/api/calendar/sync",
+    (route) => (route.request().method() === "GET" ? route.fulfill({ json: CONNECTED }) : route.fallback()),
+  );
+}
+
+for (const [width, height] of [
+  [320, 640],
+  [390, 844],
+  [1280, 800],
+]) {
+  test(`calendar sync at ${width}×${height}: the demo's preview and a connected calendar fit their card`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await open(page, "/settings?section=calendar", "Settings");
+    let card = page.getByRole("region", { name: "Sync with your own calendar" });
+    // the demo never sends Sam's dates anywhere, and says so — the preview still shows what would go
+    await expect(card.getByRole("note")).toContainText("The demo doesn't send Sam's dates anywhere");
+    const events = card.getByRole("list", { name: "Events, discreet" });
+    await expect(events.getByRole("listitem").first()).toContainText(/Ordnung: (deadline|payment|appointment)/);
+    await inside(events, card);
+    await card.getByRole("radio", { name: "With details" }).click();
+    await inside(card.getByRole("list", { name: "Events, with details" }), card);
+    await noSidewaysScroll(page);
+
+    await connectedCalendar(page);
+    await page.reload();
+    card = page.getByRole("region", { name: "Sync with your own calendar" });
+    await expect(card.getByText("Connected to Ordnung — Fristen und Termine")).toBeVisible();
+    await inside(card.getByText(/p142-caldav\.icloud\.com/), card);
+    await noSidewaysScroll(page);
+    await card.getByRole("button", { name: "Sync now" }).focus();
+    await focusStaysVisible(page, 6);
+    await card.getByRole("button", { name: "Disconnect…" }).click();
+    const dialog = page.getByRole("dialog", { name: "Disconnect Ordnung — Fristen und Termine?" });
+    await expect(dialog.getByRole("checkbox", { name: /Also remove Ordnung's 32 events/ })).toBeChecked();
+    const box = (await dialog.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width + 0.5);
+    await expect(dialog.getByRole("button", { name: "Disconnect" })).toBeInViewport();
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
+  });
+}
+
 test("a backup made in the browser is an encrypted Ordnung backup", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await open(page, "/settings?section=data", "Settings");
@@ -140,6 +203,20 @@ for (const scheme of ["light", "dark"] as const) {
       expect(blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
       await card.getByRole("button", { name: "Discard" }).click();
     });
+
+    for (const connected of [false, true]) {
+      test(`calendar sync ${connected ? "connected" : "in the demo"}`, async ({ page }) => {
+        if (connected) await connectedCalendar(page);
+        await open(page, "/settings?section=calendar", "Settings");
+        const card = page.getByRole("region", { name: "Sync with your own calendar" });
+        await expect(card.getByRole("list", { name: "Events, discreet" })).toBeVisible();
+        await card.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 72));
+        await settle(page);
+        const results = await new AxeBuilder({ page }).include('section[aria-labelledby="set-cal-sync"]').withTags(AXE_TAGS).analyze();
+        const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
+        expect(blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+      });
+    }
 
     test("the backup dialog with its errors", async ({ page }, testInfo) => {
       await open(page, "/settings?section=data", "Settings");
