@@ -32,7 +32,7 @@ log = logging.getLogger(__name__)
 
 DEMO_MESSAGE = (
     "This is the demo, so there is nothing of yours to delete. "
-    "To start over with Sam's original letters, run `ordnung demo --reset`."
+    "To start over with Sam's original letters, run “ordnung demo --reset”."
 )
 KEPT_FILES = frozenset({LOCK_NAME, SERVER_FILE})
 _DB_SUFFIXES = ("", "-wal", "-shm", "-journal")

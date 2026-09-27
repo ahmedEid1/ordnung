@@ -143,7 +143,7 @@ describe("filters", () => {
       { value: "deadline", label: "Deadlines", count: 2 },
       { value: "payment", label: "Payments", count: 2 },
     ]);
-    expect(o.areas.map((a) => a.label)).toEqual(["Home", "Residence", "Tax"]);
+    expect(o.areas.map((a) => a.label)).toEqual(["Home", "Residence permit", "Tax"]);
     expect(o.parties.map((p) => `${p.label} (${p.count})`)).toEqual(["Ausländerbehörde (1)", "Wohnbau Musterstadt eG (2)"]);
   });
 

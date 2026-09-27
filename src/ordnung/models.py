@@ -1160,6 +1160,10 @@ class LaneBar(_Model):
     status: Literal["ok", "attention", "urgent", "past"] = "ok"
     markers: list[TimelineMarker] = Field(default_factory=list)
     ref: RefLink | None = None
+    #: the life area of what the bar stands for (the Contracts lane holds contracts of every area)
+    area: Area | None = None
+    #: no end date (an open-ended contract): ``end`` is only where the lanes stop drawing it
+    open_end: bool = False
 
 
 class TimelineMarker(_Model):
@@ -1168,6 +1172,9 @@ class TimelineMarker(_Model):
     kind: Literal[
         "deadline", "send_by", "cancel_by", "renewal", "expiry", "payment", "appointment", "other"
     ] = "other"
+    #: the life area and the to-do or contract the date belongs to (to filter the lanes and open it)
+    area: Area | None = None
+    ref: RefLink | None = None
 
 
 class Lane(_Model):
@@ -1200,6 +1207,8 @@ class MailTrayItem(_Model):
     photo: bool = False
     opened: bool = False
     doc_id: str | None = None
+    #: the day the letter arrived (ISO date), for the tray's postmark
+    received_date: str | None = None
 
 
 LaneBar.model_rebuild()

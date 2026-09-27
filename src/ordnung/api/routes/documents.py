@@ -356,7 +356,7 @@ async def _read(upload: UploadFile) -> tuple[str, bytes]:
 
 DEMO_UPLOAD_MESSAGE = (
     "The demo uses recorded answers for Sam's sample letters, so it can't read new ones. "
-    "Run `ordnung serve` (with Claude Code signed in) to use Ordnung with your own letters."
+    "Run “ordnung serve” (with Claude Code signed in) to use Ordnung with your own letters."
 )
 
 

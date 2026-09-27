@@ -313,7 +313,7 @@ export const AREA_COPY: CopyMap<Area> = {
   study: { label: "Study", icon: GraduationCap, tone: "milestone" },
   health: { label: "Health", icon: HeartPulse, tone: "appointment" },
   money: { label: "Money", icon: Wallet, tone: "payment" },
-  residence: { label: "Residence", icon: Stamp, tone: "expiry" },
+  residence: { label: "Residence permit", icon: Stamp, tone: "expiry" },
   tax: { label: "Tax", icon: Landmark, tone: "expiry" },
   mobility: { label: "Getting around", icon: TramFront, tone: "appointment" },
   insurance: { label: "Insurance", icon: Shield, tone: "contract" },
@@ -546,7 +546,7 @@ export type PipelineStepId = (typeof PIPELINE_STEPS)[number]["id"];
 export const JOB_STAGE_COPY: Record<JobStage, EnumCopy & { step: number }> = {
   intake: { label: "Opening the file", icon: CloudUpload, tone: "accent", step: 0 },
   text: { label: "Reading the text", icon: FileText, tone: "accent", step: 0 },
-  transcribe: { label: "Reading the photo", icon: ScanText, tone: "accent", step: 0 },
+  transcribe: { label: "Reading the photo or scan", icon: ScanText, tone: "accent", step: 0 },
   extract: { label: "Understanding the letter", icon: BookOpen, tone: "accent", step: 1 },
   verify: { label: "Checking every fact against the page", icon: CircleCheck, tone: "accent", step: 2 },
   compute: { label: "Computing dates with the rules", icon: Scale, tone: "accent", step: 3 },

@@ -57,11 +57,11 @@ export const SETTINGS: AppSettings = {
 export const TOUR: TourState = { active: true, step: 0, completed: false };
 
 export const MAIL_TRAY: MailTrayItem[] = [
-  { id: "mail_stadtwerke", filename: "Stadtwerke_Preisanpassung.pdf", sender: "Stadtwerke Musterstadt", subject: "Preisanpassung zum 01.11.2026", kind_hint: "Price change", photo: false, opened: false, doc_id: null },
-  { id: "mail_finanzamt", filename: "IMG_2044.jpg", sender: "Finanzamt Musterstadt", subject: "Bescheid für 2025 über Einkommensteuer", kind_hint: "Tax assessment (phone photo)", photo: true, opened: false, doc_id: null },
-  { id: "mail_scam", filename: "Letzte_Mahnung_Rundfunk.pdf", sender: "Beitragsservice Musterstadt?", subject: "LETZTE MAHNUNG – Rundfunkbeitrag", kind_hint: "Payment demand", photo: false, opened: false, doc_id: null },
-  { id: "mail_court", filename: "Mahnbescheid_AG_Hagen.pdf", sender: "Amtsgericht Hagen", subject: "Mahnbescheid", kind_hint: "Court letter (yellow envelope)", photo: false, opened: false, doc_id: null },
-  { id: "mail_dismissal", filename: "Kuendigung_MusterTech.pdf", sender: "Muster Tech GmbH", subject: "Kündigung Ihres Arbeitsverhältnisses", kind_hint: "Letter from your employer", photo: false, opened: false, doc_id: null },
+  { id: "mail_stadtwerke", filename: "Stadtwerke_Preisanpassung.pdf", sender: "Stadtwerke Musterstadt", subject: "Preisanpassung zum 01.11.2026", kind_hint: "Price change", photo: false, opened: false, doc_id: null, received_date: "2026-09-28" },
+  { id: "mail_finanzamt", filename: "IMG_2044.jpg", sender: "Finanzamt Musterstadt", subject: "Bescheid für 2025 über Einkommensteuer", kind_hint: "Tax assessment (phone photo)", photo: true, opened: false, doc_id: null, received_date: "2026-09-28" },
+  { id: "mail_scam", filename: "Letzte_Mahnung_Rundfunk.pdf", sender: "Beitragsservice Musterstadt?", subject: "LETZTE MAHNUNG – Rundfunkbeitrag", kind_hint: "Payment demand", photo: false, opened: false, doc_id: null, received_date: "2026-09-28" },
+  { id: "mail_court", filename: "Mahnbescheid_AG_Hagen.pdf", sender: "Amtsgericht Hagen", subject: "Mahnbescheid", kind_hint: "Court letter (yellow envelope)", photo: false, opened: false, doc_id: null, received_date: null },
+  { id: "mail_dismissal", filename: "Kuendigung_MusterTech.pdf", sender: "Muster Tech GmbH", subject: "Kündigung Ihres Arbeitsverhältnisses", kind_hint: "Letter from your employer", photo: false, opened: false, doc_id: null, received_date: "2026-09-28" },
 ];
 
 /** Which document each tray letter becomes. */
@@ -93,7 +93,7 @@ export const RULES: RuleInfo[] = [
   { id: "rent573c", title: "Tenant's notice", citation: "§ 573c Abs. 1 BGB", summary: "Notice by the 3rd working day of a month ends the tenancy at the end of the month after next.", url: "https://www.gesetze-im-internet.de/bgb/__573c.html", effective_from: null, topic: "Contracts and notice" },
   { id: "bgb556b", title: "Rent is due by the 3rd working day", citation: "§ 556b Abs. 1 BGB", summary: "Rent must be paid in advance, at the latest by the third working day of each month.", url: "https://www.gesetze-im-internet.de/bgb/__556b.html", effective_from: null, topic: "Contracts and notice" },
   { id: "aufenthg81_4", title: "Apply for an extension before your permit expires", citation: "§ 81 Abs. 4 AufenthG", summary: "If you apply for an extension before your permit expires, it continues to count as valid until the office decides (Fiktionsbescheinigung).", url: "https://www.gesetze-im-internet.de/aufenthg_2004/__81.html", effective_from: null, topic: null },
-  { id: "postal_buffer", title: "Send-by date", citation: "Ordnung safety policy; § 18 PostG (delivery targets)", summary: "Deadlines are about when a letter arrives, not when it is sent. The post must deliver 95 % of letters by the 3rd and 99 % by the 4th working day after posting, so Ordnung suggests posting 4 business days before the last business day on or before the deadline (0 for online buttons, portals, fax and e-mail where allowed).", url: null, effective_from: null, topic: "Counting periods" },
+  { id: "postal_buffer", title: "Send-by date", citation: "Ordnung safety policy; § 18 PostG (delivery targets)", summary: "Deadlines are about when a letter arrives, not when it is sent. The post must deliver 95 % of letters by the 3rd and 99 % by the 4th working day after posting, so Ordnung suggests posting 4 business days before the last business day on or before the deadline (0 for online buttons, portals, fax and email where allowed).", url: null, effective_from: null, topic: "Counting periods" },
 ];
 
 const d = (date: string, time: string) => ts(date, time);

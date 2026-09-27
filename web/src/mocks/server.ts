@@ -109,8 +109,8 @@ class HttpError extends Error {
 }
 
 const DEMO_TRANSLATE_MESSAGE =
-  "The demo replays recorded answers, so it can't translate your changes. Run `ordnung serve` (with Claude Code signed in) to re-translate letters you edited.";
-const DEMO_DELETE_MESSAGE = "This is the demo, so there is nothing of yours to delete. To start over with Sam's original letters, run `ordnung demo --reset`.";
+  "The demo replays recorded answers, so it can't translate your changes. Run “ordnung serve” (with Claude Code signed in) to re-translate letters you edited.";
+const DEMO_DELETE_MESSAGE = "This is the demo, so there is nothing of yours to delete. To start over with Sam's original letters, run “ordnung demo --reset”.";
 const STATIC_MESSAGE = "Install Ordnung to try this with your own letters — the online demo only replays recorded examples.";
 
 function needsClaude(ctx: Ctx) {

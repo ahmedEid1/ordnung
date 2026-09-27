@@ -56,7 +56,7 @@ def _status_detail(installed: bool, signed_in: bool | None) -> str:
     if not installed:
         return "The claude command-line tool was not found. Install Claude Code and sign in to let Ordnung read letters."
     if signed_in is False:
-        return "Claude is installed but not signed in. Run `claude` once in a terminal and log in."
+        return "Claude is installed but not signed in. Run “claude” once in a terminal and sign in."
     detail = "Signed in with your Claude account." if signed_in else "Claude is installed."
     if os.environ.get("ANTHROPIC_API_KEY"):
         detail += (

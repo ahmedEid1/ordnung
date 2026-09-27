@@ -12,7 +12,7 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "Find the delivery date on the yellow envelope and enter it where this page asks when it was delivered.",
       "If you don't owe the money, or not all of it, object on the enclosed form (or online) and send it to the court. You don't have to give reasons.",
       "If you do owe it, pay the claimant — not the court — including the costs listed.",
-      "Check it's real: a genuine order comes from a court in a yellow envelope, never by e-mail."
+      "Check it's real: a genuine order comes from a court in a yellow envelope, never by email."
     ],
     "facts": [
       {
@@ -61,7 +61,7 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "urgent": true,
     "steps": [
       "Find the delivery date on the yellow envelope (or the bailiff's papers) and enter it.",
-      "To object, write to the court that issued the order — not by e-mail — or go to its Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record reaches the issuing court, so go early.",
+      "To object, write to the court that issued the order — not by email — or go to its Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record reaches the issuing court, so go early.",
       "An objection doesn't stop enforcement by itself; ask for advice about suspending it.",
       "If you do owe the money, paying it stops further enforcement costs."
     ],
@@ -267,7 +267,7 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "The period counts from the delivery date you entered, or from an earlier start the letter names (see “Why this date?”) — check it matches the yellow envelope.",
       "If you don't owe the money, or not all of it, object on the enclosed form (or online) and send it to the court. You don't have to give reasons.",
       "If you do owe it, pay the claimant — not the court — including the costs listed.",
-      "Check it's real: a genuine order comes from a court in a yellow envelope, never by e-mail."
+      "Check it's real: a genuine order comes from a court in a yellow envelope, never by email."
     ],
     "facts": [
       {
@@ -316,7 +316,7 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "urgent": true,
     "steps": [
       "The period counts from the delivery date you entered, or from an earlier start the letter names (see “Why this date?”) — check it matches the yellow envelope.",
-      "To object, write to the court that issued the order — not by e-mail — or go to its Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record reaches the issuing court, so go early.",
+      "To object, write to the court that issued the order — not by email — or go to its Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record reaches the issuing court, so go early.",
       "An objection doesn't stop enforcement by itself; ask for advice about suspending it.",
       "If you do owe the money, paying it stops further enforcement costs."
     ],

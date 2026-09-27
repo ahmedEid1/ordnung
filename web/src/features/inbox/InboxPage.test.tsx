@@ -69,6 +69,18 @@ describe("Inbox", () => {
     assertNoRawEnumsInElement(container);
   });
 
+  it("stamps each New-mail envelope with the day it arrived, and says it in words (R1-inbox-b-10)", async () => {
+    renderInbox();
+    const tray = await screen.findByRole("region", { name: /New mail/ });
+    const card = within(tray).getByText("Stadtwerke Musterstadt").closest("li")!;
+    expect(within(card).getByText("Arrived Mon 28 Sep")).toBeInTheDocument();
+    expect(within(card).getByTestId("postmark-date")).toHaveTextContent("28SEP");
+    // a letter without a known arrival day gets a postmark without a date, never today's
+    const court = within(tray).getByText("Amtsgericht Hagen").closest("li")!;
+    expect(within(court).queryByTestId("postmark-date")).toBeNull();
+    expect(within(court).queryByText(/^Arrived/)).toBeNull();
+  });
+
   it("filters to the letters that need checking", async () => {
     renderInbox();
     await screen.findByRole("link", { name: "Parking fine (Verwarnungsgeld)" });

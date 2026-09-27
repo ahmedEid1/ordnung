@@ -1447,7 +1447,7 @@ def test_check_iban(tools: RulesTools) -> None:
     # the app's advice for an invalid IBAN, not the note on who owns a valid one
     assert bad["note"] == INVALID_IBAN_ADVICE and "ask the sender before paying" in bad["note"]
     assert INVALID_IBAN_ADVICE in invalid_iban_message("DE89 3704 0044 0532 0130 01")
-    assert "if a letter or e-mail says the account has changed" in good["note"]
+    assert "if a letter or email says the account has changed" in good["note"]
     foreign = tools.check_iban("BR15 0000 0000 0000 1093 2840 814P 2")
     assert foreign["valid"] is True and foreign["country"] == {"code": "BR", "name": "Brazil"}
     assert good["note"] == rules_tools.IBAN_NOTE and tools.check_iban("FR14 2004 1010 0505 0001 3M02 606")[

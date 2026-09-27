@@ -56,7 +56,7 @@ describe("Timeline page", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Timeline" })).toBeInTheDocument();
     const lanesRegion = screen.getByRole("region", { name: "Your year ahead" });
     expect(lanesRegion).toHaveAttribute("data-tour", "timeline-lanes");
-    expect(laneNames(lanesRegion)).toEqual(expect.arrayContaining(["Residence", "Passport", "Tax", "Phone · FunkNetz", "Study", "Money"]));
+    expect(laneNames(lanesRegion)).toEqual(expect.arrayContaining(["Residence permit", "Passport", "Tax", "Phone · FunkNetz", "Study", "Money"]));
     expect(within(lanesRegion).getByRole("button", { name: /^Residence permit\..*Opens the letter/ })).toBeInTheDocument();
     expect(within(lanesRegion).getByText(/Not legal advice/)).toBeInTheDocument();
 
@@ -77,9 +77,9 @@ describe("Timeline page", () => {
     const client = await seededClient();
     renderWithProviders(<TimelineView />, { client, route: "/timeline?area=residence" });
     const lanesRegion = screen.getByRole("region", { name: "Your year ahead" });
-    expect(laneNames(lanesRegion)).toEqual(expect.arrayContaining(["Residence", "Passport"]));
+    expect(laneNames(lanesRegion)).toEqual(expect.arrayContaining(["Residence permit", "Passport"]));
     expect(laneNames(lanesRegion)).not.toContain("Study");
-    expect(within(lanesRegion).getByText(/showing Residence only/)).toBeInTheDocument();
+    expect(within(lanesRegion).getByText(/showing Residence permit only/)).toBeInTheDocument();
     const list = screen.getByRole("region", { name: "Every date" });
     expect(within(list).getByRole("combobox", { name: "Life area" })).toHaveValue("residence");
     expect(within(list).queryByText("Rent for October")).not.toBeInTheDocument();

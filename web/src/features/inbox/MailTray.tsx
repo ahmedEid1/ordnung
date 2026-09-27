@@ -16,6 +16,7 @@ import type { MailTrayItem } from "@/api/types";
 import { useHealth, useMailTray, useOpenMail, useReprocessDocument } from "@/api/hooks";
 import { dismissJob, seedJob, useEvents, useServerEvent, type JobProgress } from "@/api/sse";
 import { JOB_STAGE_COPY, PIPELINE_STEPS, copyFor, stageToStep } from "@/lib/copy";
+import { formatDate } from "@/lib/format";
 import { cn, initials, plural } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -200,6 +201,8 @@ function Envelope({ item, state, index, onOpen }: { item: MailTrayItem; state: C
           ? "Filed — everything is on your timeline"
           : "";
   const Kind = item.photo ? Camera : FileText;
+  // the day it arrived (the postmark, and the chip that says it in words)
+  const arrived = item.received_date ? formatDate(item.received_date, { style: "short" }) : null;
   const docId = state.kind === "done" || state.kind === "failed" ? state.docId : state.kind === "reading" ? state.job.doc_id : item.doc_id;
 
   return (
@@ -229,13 +232,23 @@ function Envelope({ item, state, index, onOpen }: { item: MailTrayItem; state: C
             opacity={0.9}
           />
         </svg>
-        {/* postmark (a ring with wavy cancel lines — no date: the tray doesn't know the arrival day) + stamp */}
+        {/* postmark (a ring with wavy cancel lines and the day the letter arrived) + stamp */}
         <div className="absolute right-4 top-2.5 flex items-start">
           <svg viewBox="0 0 48 36" className="-mr-2 mt-2 h-9 w-12 -rotate-6 text-muted/60" fill="none" stroke="currentColor" strokeWidth="1.2">
             <circle cx="30" cy="18" r="14" strokeDasharray="2.5 2" />
             <path d="M0 12 q4 -3 8 0 t8 0 t8 0 t8 0 t8 0" />
             <path d="M0 18 q4 -3 8 0 t8 0 t8 0 t8 0 t8 0" />
             <path d="M0 24 q4 -3 8 0 t8 0 t8 0 t8 0 t8 0" />
+            {item.received_date ? (
+              <text textAnchor="middle" fill="currentColor" stroke="none" fontWeight="700" data-testid="postmark-date">
+                <tspan x="30" y="18.5" fontSize="9">
+                  {formatDate(item.received_date, { style: "numeric" }).slice(0, 2)}
+                </tspan>
+                <tspan x="30" y="25.5" fontSize="5.5" letterSpacing="0.4">
+                  {formatDate(item.received_date, { style: "month" }).slice(0, 3).toUpperCase()}
+                </tspan>
+              </text>
+            ) : null}
           </svg>
           <span className="relative grid h-11 w-9 place-items-center rounded-[3px] border-2 border-dotted border-accent/40 bg-accent-soft text-[11px] font-bold text-accent">
             {initials(item.sender.replace(/\?$/, ""))}
@@ -254,6 +267,12 @@ function Envelope({ item, state, index, onOpen }: { item: MailTrayItem; state: C
             <Kind className="size-3" aria-hidden />
             {item.photo ? "Phone photo" : "PDF"}
           </span>
+          {arrived ? (
+            <span className="inline-flex h-[22px] items-center gap-1 whitespace-nowrap rounded-full bg-surface-2 px-2 text-xs font-medium text-muted">
+              <Mailbox className="size-3" aria-hidden />
+              Arrived {arrived}
+            </span>
+          ) : null}
         </div>
 
         <div className="mt-auto pt-4">

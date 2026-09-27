@@ -1,5 +1,6 @@
 """The ingestion pipeline (SPEC § 8, § 21): intake → text → transcribe → extract → verify →
-compute → link → plan → done.
+compute → link → plan → done. A stage that doesn't happen isn't reported: a photo has no "text"
+stage, a PDF whose every page has its own text no "transcribe".
 
 * :func:`add_file` validates an upload, stores the original content-addressed (the document id is
   derived from its SHA-256, so a re-upload is a no-op), renders the pages and queues an ingest job.
@@ -63,7 +64,7 @@ from ordnung.ingest.plan import (
     write_plan,
 )
 from ordnung.ingest.text import PageText, detect_injection_phrases, extract_pdf_pages, text_file_pages
-from ordnung.ingest.transcribe import transcribe_pages
+from ordnung.ingest.transcribe import pages_to_transcribe, transcribe_pages
 from ordnung.llm.base import ClaudeRateLimited, LLMError
 from ordnung.models import Document, DocumentExtraction, Job, Page
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
@@ -337,6 +338,11 @@ class TextLayer:
     warnings: list[str]
 
 
+def has_text_layer(document: Document) -> bool:
+    """A PDF or a text/e-mail file may carry its own text; a photo never does."""
+    return document.mime == "application/pdf" or document.mime in TEXT_TYPES
+
+
 def _page_texts(store: Store, document: Document, pages: Sequence[Page]) -> list[PageText]:
     original = store.get_document_file(document.id)
     if original is None:
@@ -555,12 +561,16 @@ async def _run_stages(
     store, models = ctx.store, ctx.settings.models
     await progress.stage("intake")
     pages = await _ensure_pages(store, document)
-    await progress.stage("text")
+    # the stepper says what really happens: a PDF's own text is read, a photo (or a page without text)
+    # is transcribed — never "Reading the photo" for a PDF with text, nor "Reading the text" for a photo
+    if has_text_layer(document):
+        await progress.stage("text")
     layer = await asyncio.to_thread(read_text_layer, store, document, pages)
     if document.ai_private:
         return await _finish_private(ctx, document, layer, progress)
     _refuse_trashed(store, document.id)
-    await progress.stage("transcribe")
+    if pages_to_transcribe(layer.pages):
+        await progress.stage("transcribe")
     warnings = [*layer.warnings]
     warnings += await transcribe_pages(
         ctx.llm, store, document.id, layer.pages, model=models.transcribe, use_cache=not force

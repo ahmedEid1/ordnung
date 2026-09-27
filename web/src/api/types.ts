@@ -469,19 +469,29 @@ export type Health = Schemas["Health"];
 export type PublicHealth = Schemas["PublicHealth"];
 /** An entry of the legal rules catalog ("How dates are computed"). */
 export type RuleInfo = Schemas["RuleInfo"];
-export type TimelineMarker = Schemas["TimelineMarker"];
+/**
+ * A date on the life lanes. The API sends each one's life `area` and the to-do or contract it
+ * stands for (`ref`); both are optional here because the web app also builds lanes itself
+ * (`contractLanes`).
+ */
+export type TimelineMarker = Omit<Schemas["TimelineMarker"], "area" | "ref"> & { area?: Area | null; ref?: RefLink | null };
 /**
  * A bar on the life lanes. `open_end` marks a bar with no end date (an open-ended contract, or
  * "cancellable any time" after a minimum term): its `end` is only where the chart stops drawing
- * it, so it is never shown as a date. Set by the contract lanes the web app builds itself
- * (`contractLanes`) and by the static demo; the server does not send it yet.
+ * it, so it is never shown as a date. `area` is the life area of what the bar stands for (the
+ * Contracts lane holds contracts of every area). The API sends both; they are optional here
+ * because the web app also builds lanes itself (`contractLanes`).
  */
-export type LaneBar = Schemas["LaneBar"] & { open_end?: boolean };
-/** A "life lane" (Residence, Contracts, Tax, Study, …) on the year-ahead timeline. */
-export type Lane = Omit<Schemas["Lane"], "bars"> & { bars: LaneBar[] };
+export type LaneBar = Omit<Schemas["LaneBar"], "area" | "open_end" | "markers"> & {
+  area?: Area | null;
+  open_end?: boolean;
+  markers: TimelineMarker[];
+};
+/** A "life lane" (Residence permit, Contracts, Tax, Study, …) on the year-ahead timeline. */
+export type Lane = Omit<Schemas["Lane"], "bars" | "markers"> & { bars: LaneBar[]; markers: TimelineMarker[] };
 export type SearchHit = Schemas["SearchHit"];
 export type TourState = Schemas["TourState"];
-/** A letter waiting in the demo's "New mail" tray. */
+/** A letter waiting in the demo's "New mail" tray; `received_date` is the day it arrived (the postmark). */
 export type MailTrayItem = Schemas["MailTrayItem"];
 
 // ------------------------------------------------------------------------------------------------

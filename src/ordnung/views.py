@@ -20,6 +20,7 @@ from ordnung.models import (
     ContractComputation,
     Dashboard,
     DashboardStats,
+    Document,
     Item,
     Lane,
     LaneBar,
@@ -29,6 +30,7 @@ from ordnung.models import (
     TimelineEntry,
     TimelineMarker,
 )
+from ordnung.payments import is_collected_or_incoming, pays_on_site
 from ordnung.rules.deadlines import sending_time_passed
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.triggers import (
@@ -48,14 +50,18 @@ from ordnung.tick import local_today, simulated_day
 ATTENTION_DAYS = 7
 UPCOMING_DAYS = 30
 DECISION_DAYS = 60
-URGENT_DAYS = 3
-AREA_ATTENTION_DAYS = 14
+#: A life area's status follows the app's one urgency scale (``urgencyOf`` in ``web/src/lib/format.ts``):
+#: overdue, today and tomorrow are urgent, the rest of the week needs attention. Direct debits, money
+#: coming in and appointments never turn urgent — there is nothing to send (the web's ``cap: "warn"``).
+URGENT_DAYS = 1
+AREA_ATTENTION_DAYS = 7
 RECENT_DOCUMENTS = 6
-LARGE_PAYMENT_EUR = 50.0
 NOTICE_WINDOW_LEAD_DAYS = 30
 
+#: The life areas' names, as ``AREA_COPY`` in ``web/src/lib/copy.ts`` says them. "residence" is the
+#: residence-permit area: a flat, its rent and running costs are "home".
 AREA_LABELS: dict[str, str] = {
-    "residence": "Residence",
+    "residence": "Residence permit",
     "tax": "Tax",
     "study": "Study",
     "work": "Work",
@@ -63,7 +69,7 @@ AREA_LABELS: dict[str, str] = {
     "money": "Money",
     "health": "Health",
     "insurance": "Insurance",
-    "mobility": "Mobility",
+    "mobility": "Getting around",
     "leisure": "Leisure",
     "family": "Family",
     "other": "Other",
@@ -103,6 +109,42 @@ _MARKER_KINDS = {
     "expiry": "expiry",
 }
 _TYPE_RANK = {"deadline": 0, "payment": 1, "expiry": 2, "appointment": 3, "contract": 4, "task": 5}
+
+#: Letters about the home: the lease, the landlord's letters and statements, running costs and the
+#: broadcasting fee (one per flat). The model sometimes reads them under "residence" — the
+#: residence-permit area — so the read models show them and their to-dos under "home" (contracts:
+#: :func:`~ordnung.secretary.triggers.contract_area`).
+HOME_LETTER_KINDS = frozenset(
+    {"rent_lease", "utility_bill", "landlord_notice", "rent_increase", "operating_costs", "broadcasting_fee"}
+)
+_HOME_PARTY_KINDS = frozenset({"landlord", "utility"})
+
+
+# --------------------------------------------------------------------------------------------------
+# life areas
+# --------------------------------------------------------------------------------------------------
+
+
+def _home_letter(ledger: Ledger, doc: Document | None) -> bool:
+    if doc is None:
+        return False
+    party = ledger.parties.get(doc.party_id) if doc.party_id else None
+    return doc.kind in HOME_LETTER_KINDS or (party is not None and party.kind in _HOME_PARTY_KINDS)
+
+
+def document_area(ledger: Ledger, doc: Document) -> Area:
+    """The life area a letter is shown under: its own, but a letter about the home is never shown under
+    the residence permit (UI audit R1-backend-2)."""
+    area: Area = doc.area or "other"
+    return "home" if area == "residence" and _home_letter(ledger, doc) else area
+
+
+def item_area(ledger: Ledger, item: Item) -> Area:
+    """The life area a to-do is shown under: its own, but the rent or a back payment from a letter about
+    the home is never shown under the residence permit."""
+    if item.area == "residence" and _home_letter(ledger, ledger.document(item.doc_id)):
+        return "home"
+    return item.area
 
 
 # --------------------------------------------------------------------------------------------------
@@ -236,52 +278,83 @@ def money_summary(
     )
 
 
+@dataclass(frozen=True, order=True)
+class _AreaDate:
+    day: date  # the day to act (a direct debit's or money coming in: the day it moves)
+    what: str
+    capped: bool = False  # nothing to send (an appointment, a payment nobody sends by bank): never urgent
+
+
 @dataclass
 class _AreaFacts:
     items: list[Item] = field(default_factory=list)
-    dates: list[tuple[date, str]] = field(default_factory=list)  # (day to act, what)
+    dates: list[_AreaDate] = field(default_factory=list)
     overdue: list[Item] = field(default_factory=list)
     contracts: int = 0
     documents: int = 0
+
+
+def _no_transfer(item: Item) -> bool:
+    """A payment nobody sends by bank: a direct debit, money coming in, or paid in person on site."""
+    return is_collected_or_incoming(item) or pays_on_site(item)
+
+
+def _nothing_to_send(item: Item) -> bool:
+    """A date to know, not to act by: an appointment, or a payment nobody sends by bank."""
+    return item.kind == "appointment" or _no_transfer(item)
+
+
+def area_day(item: Item) -> date | None:
+    """The day a to-do is listed under in its life area: the day to act — but a payment nobody sends by
+    bank (a direct debit, money coming in, a fee paid by card at the appointment) by its due day: its
+    "send by" is a transfer's and means nothing there, as the to-do itself shows it (``isDirectDebit``
+    in ``web/src/lib/payments.ts``, ``paysOnSite`` in ``web/src/features/document/item-meta.ts``)."""
+    return parse_day(item.due_date) if _no_transfer(item) else action_day(item)
 
 
 def _collect_areas(ledger: Ledger) -> dict[str, _AreaFacts]:
     today = ledger.today
     facts: dict[str, _AreaFacts] = {}
     for doc in ledger.documents.values():
-        facts.setdefault(doc.area or "other", _AreaFacts()).documents += 1
+        facts.setdefault(document_area(ledger, doc), _AreaFacts()).documents += 1
     for item in ledger.actionable_items():
-        area = facts.setdefault(item.area, _AreaFacts())
+        area = facts.setdefault(item_area(ledger, item), _AreaFacts())
         area.items.append(item)
-        day = action_day(item)
+        day = area_day(item)
         if is_overdue(item, today):
             area.overdue.append(item)
         elif day is not None and (parse_day(item.due_date) or day) >= today:
-            area.dates.append((max(day, today), item.title))
+            area.dates.append(_AreaDate(max(day, today), item.title, _nothing_to_send(item)))
     for contract in ledger.active_contracts():
         area = facts.setdefault(contract_area(contract), _AreaFacts())
         area.contracts += 1
         comp = ledger.computation(contract)
         send = parse_day(comp.send_by)
         if is_decision(comp) and send is not None:
-            area.dates.append((send, f"Decide on {contract.name}"))
+            area.dates.append(_AreaDate(send, f"Decide on {contract.name}"))
     return facts
+
+
+_STATUS_RANK = {"ok": 0, "attention": 1, "urgent": 2}
+
+
+def _date_status(entry: _AreaDate, today: date) -> str:
+    days = (entry.day - today).days
+    if days <= URGENT_DAYS and not entry.capped:
+        return "urgent"
+    return "attention" if days <= AREA_ATTENTION_DAYS else "ok"
 
 
 def _area_status(area: Area, facts: _AreaFacts, today: date) -> AreaStatus:
     upcoming = sorted(facts.dates)
     first = upcoming[0] if upcoming else None
-    days = (first[0] - today).days if first else None
-    if facts.overdue or (days is not None and days <= URGENT_DAYS):
-        status = "urgent"
-    elif days is not None and days <= AREA_ATTENTION_DAYS:
-        status = "attention"
-    else:
-        status = "ok"
+    # overdue is urgent; else the loudest of its dates (a direct debit tomorrow only needs attention)
+    levels = ["urgent"] if facts.overdue else [_date_status(entry, today) for entry in upcoming]
+    status = max(levels, key=_STATUS_RANK.__getitem__, default="ok")
     if facts.overdue:
         headline = f"Overdue: {facts.overdue[0].title}"
     elif first is not None:
-        headline = f"{first[1]} — {day_label(first[0], today)}"
+        headline = f"{first.what} — {day_label(first.day, today)}"
     elif facts.contracts:
         headline = f"{facts.contracts} active contract{'s' if facts.contracts != 1 else ''}"
     else:
@@ -292,7 +365,7 @@ def _area_status(area: Area, facts: _AreaFacts, today: date) -> AreaStatus:
             "label": AREA_LABELS[area],
             "status": status,
             "headline": headline,
-            "next_date": first[0].isoformat() if first else None,
+            "next_date": first.day.isoformat() if first else None,
             "count": len(facts.items),
         }
     )
@@ -322,6 +395,12 @@ def _new_ideas(store: Store, today: date) -> list[Suggestion]:
     return sorted(ideas, key=lambda idea: (priority_rank(idea.priority), idea.due_date or "9999", idea.id))
 
 
+def recent_letter_key(doc: Document) -> tuple[str, str]:
+    """Recent letters newest first by the day each one is listed under: when it arrived, else its own
+    date, else when it was added (the day the Today page shows, so 20 Sep never lists above 21 Sep)."""
+    return (doc.received_date or doc.doc_date or doc.created_at[:10], doc.id)
+
+
 def dashboard(store: Store, today: date) -> Dashboard:
     """The Today page: attention (overdue, due within 7 days, needs review), coming up (8–30 days),
     decisions (contracts with send-by within 60 days), money, life areas, new Ideas, recent letters
@@ -330,11 +409,7 @@ def dashboard(store: Store, today: date) -> Dashboard:
     attention = _attention(ledger)
     counts = store.counts()
     first_name = ledger.profile.name.split()[0] if ledger.profile.name.strip() else ""
-    recent = sorted(
-        ledger.documents.values(),
-        key=lambda doc: (doc.doc_date or doc.received_date or "", doc.id),
-        reverse=True,
-    )[:RECENT_DOCUMENTS]
+    recent = sorted(ledger.documents.values(), key=recent_letter_key, reverse=True)[:RECENT_DOCUMENTS]
     return Dashboard(
         today=today.isoformat(),
         greeting_name=first_name,
@@ -375,7 +450,7 @@ def _document_entries(ledger: Ledger) -> list[TimelineEntry]:
                     "subtitle": doc.summary,
                     "status": doc.status,
                     "priority": doc.urgency or "normal",
-                    "area": doc.area or "other",
+                    "area": document_area(ledger, doc),
                     "ref": RefLink(type="document", id=doc.id),
                     "party_name": ledger.party_name(doc.party_id),
                 }
@@ -390,12 +465,14 @@ def _item_entries(ledger: Ledger) -> list[TimelineEntry]:
         if item.due_date is None or item.status == "dismissed":
             continue
         status = "overdue" if is_overdue(item, ledger.today) else item.status
+        # a fee paid by card at the appointment has no day to transfer by: its own words say how to pay
+        send_by = None if pays_on_site(item) else item.send_by
         subtitle = (
             # the usual time to post has passed: a letter posted today may arrive too late (review round 4)
             f"Must arrive by {day_label(parse_day(item.due_date) or ledger.today, ledger.today)}"
-            if item.send_by and sending_time_passed(item.computation)
-            else f"Send by {day_label(parse_day(item.send_by) or ledger.today, ledger.today)}"
-            if item.send_by
+            if send_by and sending_time_passed(item.computation)
+            else f"Send by {day_label(parse_day(send_by) or ledger.today, ledger.today)}"
+            if send_by
             else None
         )
         # a scam letter's demand is no bill: no amount (it isn't "to pay") and no "send by"
@@ -413,7 +490,7 @@ def _item_entries(ledger: Ledger) -> list[TimelineEntry]:
                     "subtitle": subtitle or item.action,
                     "status": status,
                     "priority": "normal" if suspicious else item.priority,
-                    "area": item.area,
+                    "area": item_area(ledger, item),
                     "ref": RefLink(type="item", id=item.id),
                     "party_name": ledger.party_name(item.party_id),
                     "amount": None if suspicious else item.amount,
@@ -569,12 +646,22 @@ def _status_for(day: date, today: date, urgent_days: int, attention_days: int) -
     return "attention" if days <= attention_days else "ok"
 
 
-def _marker(day: str, label: str, kind: str) -> TimelineMarker:
-    return TimelineMarker.model_validate({"date": day, "label": label, "kind": kind})
+def _marker(
+    day: str, label: str, kind: str, *, area: Area | None = None, ref: RefLink | None = None
+) -> TimelineMarker:
+    return TimelineMarker.model_validate(
+        {"date": day, "label": label, "kind": kind, "area": area, "ref": ref}
+    )
 
 
-def _item_marker(item: Item) -> TimelineMarker:
-    return _marker(item.due_date or "", item.title, _MARKER_KINDS.get(item.kind, "other"))
+def _item_marker(item: Item, area: Area) -> TimelineMarker:
+    return _marker(
+        item.due_date or "",
+        item.title,
+        _MARKER_KINDS.get(item.kind, "other"),
+        area=area,
+        ref=RefLink(type="item", id=item.id),
+    )
 
 
 def _residence_bar(ledger: Ledger, item: Item, klass: str, lanes: _Lanes) -> None:
@@ -584,10 +671,18 @@ def _residence_bar(ledger: Ledger, item: Item, klass: str, lanes: _Lanes) -> Non
     doc = ledger.document(item.doc_id)
     start = parse_day(doc.doc_date) if doc else None
     permit = klass == "permit"
-    markers = [_marker(expiry.isoformat(), "Expires", "expiry")]
+    ref = RefLink(type="item", id=item.id)
+    markers = [_marker(expiry.isoformat(), "Expires", "expiry", area="residence", ref=ref)]
     if permit:
         markers.insert(
-            0, _marker(expiry.isoformat(), "Apply before this date (§ 81 Abs. 4 AufenthG)", "deadline")
+            0,
+            _marker(
+                expiry.isoformat(),
+                "Apply before this date (§ 81 Abs. 4 AufenthG)",
+                "deadline",
+                area="residence",
+                ref=ref,
+            ),
         )
     lanes.bar(
         "residence",
@@ -600,7 +695,8 @@ def _residence_bar(ledger: Ledger, item: Item, klass: str, lanes: _Lanes) -> Non
                 "kind": "validity",
                 "status": _status_for(expiry, ledger.today, 30, 90 if permit else 180),
                 "markers": markers,
-                "ref": RefLink(type="item", id=item.id),
+                "ref": ref,
+                "area": "residence",
             }
         ),
     )
@@ -612,9 +708,10 @@ def _tax_bar(ledger: Ledger, item: Item, lanes: _Lanes) -> None:
     start = (parse_day(doc.doc_date) if doc else None) or parse_day(item.created_at) or due
     if due is None or start is None:
         return
-    markers = [_marker(due.isoformat(), "Must arrive by", "deadline")]
+    ref = RefLink(type="item", id=item.id)
+    markers = [_marker(due.isoformat(), "Must arrive by", "deadline", area="tax", ref=ref)]
     if item.send_by:
-        markers.insert(0, _marker(item.send_by, "Send by", "send_by"))
+        markers.insert(0, _marker(item.send_by, "Send by", "send_by", area="tax", ref=ref))
     lanes.bar(
         "tax",
         LaneBar.model_validate(
@@ -628,31 +725,27 @@ def _tax_bar(ledger: Ledger, item: Item, lanes: _Lanes) -> None:
                 if item.status != "open" and due < ledger.today
                 else _status_for(due, ledger.today, 7, 30),
                 "markers": markers,
-                "ref": RefLink(type="item", id=item.id),
+                "ref": ref,
+                "area": "tax",
             }
         ),
     )
 
 
 def _route_item(ledger: Ledger, item: Item, lanes: _Lanes) -> None:
-    """Each dated item goes to exactly one lane (bars for validity and objection windows)."""
-    if item.kind == "expiry" and item.area == "residence":
+    """Each dated item goes to exactly one lane — its life area's (bars for validity and objection
+    windows); every bar and marker says its area and to-do, so the lanes can be filtered and opened."""
+    area = item_area(ledger, item)
+    if item.kind == "expiry" and area == "residence":
         klass = expiry_class(item, ledger.document(item.doc_id))
         if klass in ("permit", "identity"):
             _residence_bar(ledger, item, klass, lanes)
             return
-    if item.area == "tax" and item.kind == "deadline":
+    if area == "tax" and item.kind == "deadline":
         _tax_bar(ledger, item, lanes)
         return
-    if item.area in ("residence", "tax", "study", "work"):
-        lanes.marker(item.area, _item_marker(item))
-        return
-    if item.kind == "payment":
-        if (item.amount or 0.0) >= LARGE_PAYMENT_EUR:
-            lanes.marker("money", _item_marker(item))
-        return
-    lane = item.area if item.area in LANE_ORDER else "other"
-    lanes.marker(lane, _item_marker(item))
+    # payments too, whatever the amount: the rent in Home, the Deutschlandticket in Getting around
+    lanes.marker(area if area in LANE_ORDER else "other", _item_marker(item, area))
 
 
 #: Regimes under which a contract that isn't cancelled simply runs on, cancellable at any time.
@@ -808,12 +901,16 @@ def _contract_bars(ledger: Ledger, contract: Contract, lanes: _Lanes) -> None:
     comp = ledger.computation(contract)
     today = ledger.today
     begin = parse_day(contract.start_date) or parse_day(contract.concluded_date) or lanes.start
-    finish = parse_day(comp.current_term_end) or parse_day(contract.end_date) or lanes.end
+    known_end = parse_day(comp.current_term_end) or parse_day(contract.end_date)
+    finish = known_end or lanes.end
     employment = contract.category == "employment"
     lane = "work" if employment else "contracts"
+    area = contract_area(contract)
+    ref = RefLink(type="contract", id=contract.id)
     markers = []
     if comp.next_renewal:
-        markers.append(_marker(comp.next_renewal, _continuation_label(contract, comp), "renewal"))
+        label = _continuation_label(contract, comp)
+        markers.append(_marker(comp.next_renewal, label, "renewal", area=area, ref=ref))
     send, cancel = parse_day(comp.send_by), parse_day(comp.cancel_by)
     decision = is_decision(comp) and send is not None and cancel is not None
     lanes.bar(
@@ -827,7 +924,9 @@ def _contract_bars(ledger: Ledger, contract: Contract, lanes: _Lanes) -> None:
                 "kind": "contract",
                 "status": _status_for(send, today, 14, DECISION_DAYS) if decision and send else "ok",
                 "markers": markers,
-                "ref": RefLink(type="contract", id=contract.id),
+                "ref": ref,
+                "area": area,
+                "open_end": known_end is None,
             }
         ),
     )
@@ -844,20 +943,23 @@ def _contract_bars(ledger: Ledger, contract: Contract, lanes: _Lanes) -> None:
                 "kind": "notice_window",
                 "status": _status_for(send, today, 14, DECISION_DAYS),
                 "markers": [
-                    _marker(send.isoformat(), "Send by", "send_by"),
-                    _marker(cancel.isoformat(), "Must arrive by", "cancel_by"),
+                    _marker(send.isoformat(), "Send by", "send_by", area=area, ref=ref),
+                    _marker(cancel.isoformat(), "Must arrive by", "cancel_by", area=area, ref=ref),
                 ],
-                "ref": RefLink(type="contract", id=contract.id),
+                "ref": ref,
+                "area": area,
             }
         ),
     )
 
 
 def lanes(store: Store, start: date, end: date, *, today: date | None = None) -> list[Lane]:
-    """Year-ahead life lanes between ``start`` and ``end``: Residence (permit and passport validity,
-    "apply before" marker), Contracts (term bars, notice windows with send-by/must-arrive-by markers),
-    Tax (objection windows), Study, Work (employment term), Home, Money (payments ≥ €50), Health,
-    Insurance, Mobility, Other. Only lanes with data, in that order; bars are clipped to the range."""
+    """Year-ahead life lanes between ``start`` and ``end``: Residence permit (permit and passport
+    validity, "apply before" marker), Contracts (term bars, notice windows with send-by/must-arrive-by
+    markers), Tax (objection windows), Study, Work (employment term), Home, Money, Health, Insurance,
+    Getting around, Other — each dated to-do in its life area's lane, payments of any amount too. Only
+    lanes with data, in that order; bars are clipped to the range (``open_end``: a contract with no end
+    date). Every bar and marker carries its life area and the to-do or contract it stands for."""
     day = today or local_today(store)
     ledger = Ledger(store, day)
     collected = _Lanes(start=start, end=end, today=day)

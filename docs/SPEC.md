@@ -328,7 +328,9 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   — callers pass `cache_key` = canonical stable inputs (e.g. extract: file sha + page modes + language +
   region + simulated today). Used for `llm_cache` and fixture paths `<fixtures>/<purpose>/<sha256(key)[:24]>.json`.
 - **Replay**: strict in CI/`demo --check` (miss = failure); in the interactive demo a miss becomes a
-  friendly "The demo uses recorded answers" event, never an error dialog.
+  friendly note, never an error dialog: Ask's one `demo_miss` event (`error_code: "demo_miss"`, one
+  message in `assistant/ask.py`), other model calls one plain message ("The demo replays recorded
+  answers only …"). API messages are plain text (commands in “quotes”, never Markdown).
 - `doctor` is zero-token: `claude --version`, `claude auth status` (JSON), warns if
   `ANTHROPIC_API_KEY` is set (API billing overrides the subscription), optional 1-call probe.
 
@@ -357,6 +359,10 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    payments, never its recurring ones); upsert items by `slot_key`
    (`sha1(kind|normalised quote)`), never overwriting `user_modified` rows; reconcile triggers.
 7. **done** — status `processed`/`needs_review`, `ai_processed_at`, activity log entry, SSE events.
+
+Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
+**transcribe** ("Reading the photo or scan"), a PDF whose pages all have text skips **transcribe**
+("Reading the text"); a scanned PDF shows both.
 
 Rate limits pause the worker globally (`paused_until`, SSE `llm.paused` banner); jobs stay queued.
 On startup `running` jobs return to `queued`. Reprocess = `force` (skip cache read) and replaces
@@ -677,7 +683,10 @@ Pages:
 1. **Today** — (1) secretary's note; (2) top-3 this week: countdown ("send by Fri 16 Oct · in 5
    days"), reason, one verb button (Pay · Draft letter · Mark done · Check); (3) coming up (30 days);
    (4) ≤ 3 Ideas with action-named buttons ("Draft cancellation", "Remind me in a week", "Not
-   relevant"); (5) life at a glance (only areas with data); (6) recent letters (collapsed);
+   relevant"); (5) life at a glance (only areas with data; an area's status follows the app's one
+   urgency scale — overdue, today or tomorrow is urgent, the week needs attention, and a direct debit,
+   money coming in, a fee paid on site or an appointment never turns urgent); (6) recent letters
+   (collapsed; newest first by the day each was received, else dated, else added);
    "All clear until Friday" empty state; "calendar outdated" card; undo toasts.
 2. **Inbox** — letters list (thumbnail, sender, kind, date, status badge), filters (All · Please
    check · Private), New-mail tray in demo, batch-import recap screen ("I read 12 letters: 5
@@ -686,13 +695,18 @@ Pages:
    + pulse); "Explained simply"; key facts; to-dos with "Why this date?" popover; warnings (scam
    banner); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
    … · text of 2 pages" badge; 390 px layout stacks the image below the card.
-4. **Timeline** — year-ahead **life lanes** (Residence, Contracts, Tax, Study, Money, Health…) with a
-   today line; below, month-grouped list (past/future), filters.
+4. **Timeline** — year-ahead **life lanes** (Residence permit, Contracts, Tax, Study, Home, Money,
+   Health, Getting around…) with a today line — each dated to-do in its life area's lane, payments of
+   any amount too; every bar and marker carries its area and the to-do or contract it stands for, and a
+   contract with no end says so (`open_end`); below, month-grouped list (past/future), filters. Letters
+   about the flat (lease, landlord, running costs, broadcasting fee) are shown under Home even when
+   they were read under "residence", which is the residence-permit area.
 5. **Contracts** — lanes chart (bars, hatched notice windows, send-by marker, today line), cards,
    fixed costs total, "Decide by" callouts.
 6. **Letters** — list + composer (kind, recipient, related letter/contract, instructions) →
    side-by-side German letter and translation, checks, PDF preview, "How to send it", mark as sent.
-7. **Ask** — chat, streamed tool-trace chips ("Searched your letters for 'Kündigung'"),
+7. **Ask** — chat, streamed tool-trace chips ("Searched your letters for “Kündigung”", dates as
+   "Mon 28 Sep 2026"),
    citation chips → viewer, suggested questions (recorded in demo).
 8. **Settings** — profile & address, region (affects holidays), language, reminders, models,
    privacy statement + "Privacy & AI usage" (activity, tokens, API-equivalent cost, cache hits),

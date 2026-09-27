@@ -16,7 +16,7 @@ import { isDirectDebit, isIncomingMoney } from "@/lib/payments";
 
 export type ItemDateRole = "scam" | "debit" | "on_site" | "transfer" | "event" | "due" | "undated";
 
-/** Paid in person — at the appointment, the service desk or a machine, by card or in cash. */
+/** Paid in person — at the appointment, the service desk or a machine, by card or in cash (as `pays_on_site` in `ordnung/payments.py`). */
 const ON_SITE =
   /\bon[ -]site\b|\bat the appointment\b|\bat the (?:service )?(?:desk|counter)\b|\bpayment machine\b|\bgirocard\b|\bEC[ -]card\b|\bcash\b|\bvor Ort\b|\bin bar\b|\bbar (?:be)?zahlen\b|\bEC-Karte\b|\bam (?:Kassen|Zahl)automaten\b|\ban der Kasse\b/i;
 const TRANSFER = /\btransfer|überweis/i;

@@ -35,7 +35,7 @@ test.describe("pages", () => {
     const year = page.getByRole("region", { name: "Your year ahead" });
     const lanes = year.getByRole("list", { name: "Lanes" }).getByRole("listitem");
     await expect(lanes.first()).toBeVisible();
-    for (const area of ["Residence", "Contracts", "Study", "Money", "Health"]) {
+    for (const area of ["Residence permit", "Contracts", "Study", "Money", "Health", "Home", "Getting around"]) {
       await expect(year.getByRole("listitem", { name: area, exact: true })).toBeVisible();
     }
     await expect(year.getByTestId("lanes-today")).toHaveText("Today");

@@ -7178,6 +7178,36 @@
                 "type": "null"
               }
             ]
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "work",
+                  "study",
+                  "health",
+                  "money",
+                  "residence",
+                  "tax",
+                  "mobility",
+                  "insurance",
+                  "leisure",
+                  "family",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area"
+          },
+          "open_end": {
+            "type": "boolean",
+            "title": "Open End",
+            "default": false
           }
         },
         "type": "object",
@@ -7189,7 +7219,9 @@
           "kind",
           "status",
           "markers",
-          "ref"
+          "ref",
+          "area",
+          "open_end"
         ],
         "title": "LaneBar"
       },
@@ -7598,6 +7630,17 @@
               }
             ],
             "title": "Doc Id"
+          },
+          "received_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received Date"
           }
         },
         "type": "object",
@@ -7609,7 +7652,8 @@
           "kind_hint",
           "photo",
           "opened",
-          "doc_id"
+          "doc_id",
+          "received_date"
         ],
         "title": "MailTrayItem"
       },
@@ -9545,13 +9589,50 @@
             ],
             "title": "Kind",
             "default": "other"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "work",
+                  "study",
+                  "health",
+                  "money",
+                  "residence",
+                  "tax",
+                  "mobility",
+                  "insurance",
+                  "leisure",
+                  "family",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RefLink"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
         "required": [
           "date",
           "label",
-          "kind"
+          "kind",
+          "area",
+          "ref"
         ],
         "title": "TimelineMarker"
       },

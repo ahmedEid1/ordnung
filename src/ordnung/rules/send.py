@@ -6,15 +6,15 @@ Form rules (SPEC § 11, § 21):
   BGB). Contracts that could be concluded on a website must offer a cancellation button, which counts
   the moment it is pressed (§ 312k BGB) — not for insurance or bank contracts.
 * Tenancy (§ 568 BGB) and employment (§ 623 BGB) notices need a hand-signed letter.
-* Tax objections: in writing, electronically (ELSTER, e-mail) or in person for the record (§ 357 AO).
+* Tax objections: in writing, electronically (ELSTER, email) or in person for the record (§ 357 AO).
 * Other objections (§ 70 VwGO, § 84 SGG): in writing (signed; a fax of the signed letter counts), a
-  qualified electronic form or in person for the record — a plain e-mail is not enough.
+  qualified electronic form or in person for the record — a plain email is not enough.
 * Court orders: the objection to a court payment order goes to the court in writing, best on the
   enclosed form, or online at online-mahnantrag.de (§ 694 ZPO; § 692 Abs. 1 Nr. 5 ZPO); the objection
   to an enforcement order in writing to the court (§ 700, § 340 ZPO). Any Amtsgericht's
   Rechtsantragstelle takes either down for the record (§ 702, § 129a ZPO), but at a court other than
   the issuing one it only counts once the record reaches the issuing court (§ 129a Abs. 3 S. 2 ZPO),
-  so the channel says to go early (by the send-by date, as for a letter). Never by e-mail. A labour
+  so the channel says to go early (by the send-by date, as for a letter). Never by email. A labour
   court's orders are answered at that court, in writing or for the record at its office (§ 46a ArbGG,
   § 59 S. 2 ArbGG) — not at online-mahnantrag.de, and within one week.
 * A tenant's objection to the landlord's notice: text form since 2025 (§ 574b Abs. 1 BGB); a signed
@@ -75,10 +75,10 @@ def _signed_letter_channels(rule_id: str, what: str) -> list[SendChannel]:
             recommended=True,
         ),
         _channel("in_person", "Hand it over in person", "Take a witness who has read the letter.", rule_id),
-        _channel("letter", "Signed letter by normal post", "Works, but you can't prove it arrived.", rule_id),
-        _channel("email", "E-mail", not_valid, rule_id, allowed=False),
+        _channel("letter", "Signed letter by post", "Works, but you can't prove it arrived.", rule_id),
+        _channel("email", "Email", not_valid, rule_id, allowed=False),
         _channel("fax", "Fax", not_valid, rule_id, allowed=False),
-        _channel("online_button", "Online cancellation button", not_valid, "bgb_312k", allowed=False),
+        _channel("online_button", "Cancel button on their website", not_valid, "bgb_312k", allowed=False),
     ]
 
 
@@ -131,12 +131,12 @@ def _cancellation(contract_category: ContractCategory | None, party_kind: str | 
     )
     return SendGuidance(
         form="text_form",
-        form_note="Text form is enough — e-mail, fax or letter, no signature needed; the company can't insist "
+        form_note="Text form is enough — email, fax or letter, no signature needed; the company can't insist "
         "on more (§ 309 Nr. 13 BGB).",
         channels=[
             _channel(
                 "online_button",
-                "Online cancellation button",
+                "Cancel button on their website",
                 button_note,
                 "bgb_312k",
                 recommended=not financial,
@@ -151,11 +151,11 @@ def _cancellation(contract_category: ContractCategory | None, party_kind: str | 
             _channel("fax", "Fax", "Keep the transmission report.", "bgb_309_13"),
             _channel(
                 "email",
-                "E-mail",
+                "Email",
                 "Valid (text form); ask for a written confirmation of the end date as proof.",
                 "bgb_309_13",
             ),
-            _channel("letter", "Letter by normal post", "Works, but you can't prove it arrived.", "bgb_130"),
+            _channel("letter", "Letter by post", "Works, but you can't prove it arrived.", "bgb_130"),
         ],
         tips=[
             "For contracts from before October 2016 the terms may still require a signed letter — send one to be safe."
@@ -167,7 +167,7 @@ def _objection(party_kind: str | None) -> SendGuidance:
     if party_kind == "tax_office":
         return SendGuidance(
             form="text_form",
-            form_note="In writing or electronically — ELSTER, e-mail or fax are fine — or in person for the "
+            form_note="In writing or electronically — ELSTER, email or fax are fine — or in person for the "
             "record (§ 357 Abs. 1 AO).",
             channels=[
                 _channel(
@@ -178,11 +178,9 @@ def _objection(party_kind: str | None) -> SendGuidance:
                     recommended=True,
                 ),
                 _channel("fax", "Fax", "Keep the transmission report.", "ao_357"),
-                _channel("email", "E-mail", "Allowed for tax objections; ask for a confirmation.", "ao_357"),
+                _channel("email", "Email", "Allowed for tax objections; ask for a confirmation.", "ao_357"),
                 _channel("registered_letter", "Letter by Einwurf-Einschreiben", _EINSCHREIBEN, "ao_357"),
-                _channel(
-                    "letter", "Letter by normal post", "Works, but you can't prove it arrived.", "ao_357"
-                ),
+                _channel("letter", "Letter by post", "Works, but you can't prove it arrived.", "ao_357"),
                 _channel(
                     "in_person",
                     "In person at the tax office",
@@ -199,7 +197,7 @@ def _objection(party_kind: str | None) -> SendGuidance:
     )
     return SendGuidance(
         form="written_form",
-        form_note="In writing and signed, or in person for the record; a plain e-mail is not enough "
+        form_note="In writing and signed, or in person for the record; a plain email is not enough "
         f"({catalog.citation(rule_id)}).{extra}",
         channels=[
             _channel(
@@ -213,16 +211,14 @@ def _objection(party_kind: str | None) -> SendGuidance:
                 "fax", "Fax of the signed letter", "Counts as written; keep the transmission report.", rule_id
             ),
             _channel("in_person", "In person", "They write it down for you (zur Niederschrift).", rule_id),
-            _channel(
-                "letter", "Signed letter by normal post", "Works, but you can't prove it arrived.", rule_id
-            ),
+            _channel("letter", "Signed letter by post", "Works, but you can't prove it arrived.", rule_id),
             _channel(
                 "portal",
                 "The authority's online form",
                 "Only if the letter offers one with ID login (BundID/eID).",
                 rule_id,
             ),
-            _channel("email", "Plain e-mail", "Not enough for an objection.", rule_id, allowed=False),
+            _channel("email", "Plain email", "Not enough for an objection.", rule_id, allowed=False),
         ],
         tips=[
             "Use exactly the remedy and addressee named in the letter's instructions (Rechtsbehelfsbelehrung)."
@@ -247,12 +243,12 @@ def _labour_court_objection(letter_kind: str) -> SendGuidance:
             rule,
         ),
         _channel("fax", "Fax of the signed letter", "Counts as written; keep the transmission report."),
-        _channel("letter", "Signed letter by normal post", "Works, but you can't prove it arrived."),
-        _channel("email", "E-mail", "Not valid at a court.", allowed=False),
+        _channel("letter", "Signed letter by post", "Works, but you can't prove it arrived."),
+        _channel("email", "Email", "Not valid at a court.", allowed=False),
     ]
     note = (
         f"Your {remedy} must reach the labour court that issued the order within one week (§ 46a Abs. 3, § 59 "
-        "ArbGG) — in writing or for the record at its office; not by e-mail."
+        "ArbGG) — in writing or for the record at its office; not by email."
     )
     return SendGuidance(
         form="written_form",
@@ -283,8 +279,8 @@ def _court_objection(letter_kind: str) -> SendGuidance:
             "zpo_129a",
         ),
         _channel("fax", "Fax of the signed letter", "Counts as written; keep the transmission report."),
-        _channel("letter", "Signed letter by normal post", "Works, but you can't prove it arrived."),
-        _channel("email", "E-mail", "Not valid at a court.", allowed=False),
+        _channel("letter", "Signed letter by post", "Works, but you can't prove it arrived."),
+        _channel("email", "Email", "Not valid at a court.", allowed=False),
     ]
     if payment_order:
         channels.insert(
@@ -297,12 +293,12 @@ def _court_objection(letter_kind: str) -> SendGuidance:
         )
         note = (
             "In writing to the court that issued the order (§ 694 ZPO) — best on the form that came with it (tick "
-            "how much you object to and sign it), or online. No reasons are needed; e-mail is not valid."
+            "how much you object to and sign it), or online. No reasons are needed; email is not valid."
         )
         tips = ["Keep a copy of the form you send and the envelope with the delivery date."]
     else:
         note = (
-            "In writing to the court that issued the order (§ 700, § 340 ZPO; not by e-mail), or for the record at its "
+            "In writing to the court that issued the order (§ 700, § 340 ZPO; not by email), or for the record at its "
             "Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record "
             "reaches the issuing court (§ 129a Abs. 3 S. 2 ZPO) — go early. The period can't be extended."
         )
@@ -326,10 +322,8 @@ def _tenancy_objection() -> SendGuidance:
             _channel(
                 "in_person", "Hand it over in person", "Take a witness who has read the letter.", "bgb_574b"
             ),
-            _channel(
-                "email", "E-mail", "Valid (text form); ask the landlord to confirm receipt.", "bgb_574b"
-            ),
-            _channel("letter", "Letter by normal post", "Works, but you can't prove it arrived.", "bgb_574b"),
+            _channel("email", "Email", "Valid (text form); ask the landlord to confirm receipt.", "bgb_574b"),
+            _channel("letter", "Letter by post", "Works, but you can't prove it arrived.", "bgb_574b"),
         ],
         tips=["Get advice from a tenants' association before you send it."],
     )
@@ -343,8 +337,8 @@ def _withdrawal() -> SendGuidance:
         channels=[
             _channel(
                 "email",
-                "E-mail",
-                "Valid; keep the sent e-mail as proof of when you sent it.",
+                "Email",
+                "Valid; keep the sent email as proof of when you sent it.",
                 "bgb_355",
                 recommended=True,
             ),
@@ -357,9 +351,7 @@ def _withdrawal() -> SendGuidance:
             ),
             _channel("registered_letter", "Letter by Einwurf-Einschreiben", _EINSCHREIBEN, "bgb_355"),
             _channel("fax", "Fax", "Keep the transmission report.", "bgb_355"),
-            _channel(
-                "letter", "Letter by normal post", "Valid, but you can't prove when you sent it.", "bgb_355"
-            ),
+            _channel("letter", "Letter by post", "Valid, but you can't prove when you sent it.", "bgb_355"),
         ],
         tips=["Send the goods back separately, as the shop's instructions say."],
     )
@@ -369,7 +361,7 @@ def _payment_plan(party_kind: str | None) -> SendGuidance:
     if party_kind == "tax_office":
         return SendGuidance(
             form="any",
-            form_note="No special form: ELSTER, fax, e-mail or a letter all work (§ 222 AO). Until the tax office "
+            form_note="No special form: ELSTER, fax, email or a letter all work (§ 222 AO). Until the tax office "
             "agrees, the full amount stays due.",
             channels=[
                 _channel(
@@ -380,8 +372,8 @@ def _payment_plan(party_kind: str | None) -> SendGuidance:
                     recommended=True,
                 ),
                 _channel("fax", "Fax", "Keep the transmission report.", "ao_222"),
-                _channel("email", "E-mail", "Ask for a confirmation.", "ao_222"),
-                _channel("letter", "Letter", "Keep a copy.", "ao_222"),
+                _channel("email", "Email", "Ask for a confirmation.", "ao_222"),
+                _channel("letter", "Letter by post", "Keep a copy.", "ao_222"),
             ],
         )
     guidance = _general_reply()
@@ -401,11 +393,11 @@ def _to_landlord(note: str, rule_id: str | None = None) -> SendGuidance:
                 rule_id,
                 recommended=True,
             ),
-            _channel("email", "E-mail", "Quick; keep the sent message and ask for a confirmation.", rule_id),
+            _channel("email", "Email", "Quick; keep the sent message and ask for a confirmation.", rule_id),
             _channel(
                 "in_person", "Hand it over in person", "Take a witness who has read the letter.", rule_id
             ),
-            _channel("letter", "Letter by normal post", "Works, but you can't prove it arrived.", rule_id),
+            _channel("letter", "Letter by post", "Works, but you can't prove it arrived.", rule_id),
         ],
     )
 
@@ -418,7 +410,7 @@ _STATEMENT_OBJECTIONS = (
 
 def _rent_increase_reply() -> SendGuidance:
     guidance = _to_landlord(
-        "Agreeing needs no special form, but make it provable: a letter by Einwurf-Einschreiben, or an e-mail the "
+        "Agreeing needs no special form, but make it provable: a letter by Einwurf-Einschreiben, or an email the "
         "landlord confirms. You can agree to all of the increase or only part of it.",
         "bgb_558b",
     )
@@ -462,23 +454,23 @@ _SENT_TO_A_COURT: tuple[GuidanceKind, ...] = ("objection", "general_reply", "ext
 
 
 def _court_channels(*, unsure: bool = False) -> list[SendChannel]:
-    """How to write to a court: in writing, signed — plain e-mail isn't valid there. ``unsure``: the
+    """How to write to a court: in writing, signed — plain email isn't valid there. ``unsure``: the
     recipient only may be a court (a name typed in that starts like one, "AG Hagen", "LG Electronics"),
-    so e-mail stays allowed with that caveat."""
+    so email stays allowed with that caveat."""
     email = (
         _channel(
             "email",
-            "E-mail",
+            "Email",
             "Not valid if this is a court (AG, LG … before a place) — then send the signed letter. Fine for a "
             "company whose name only starts like one.",
         )
         if unsure
-        else _channel("email", "E-mail", "Not valid at a court.", allowed=False)
+        else _channel("email", "Email", "Not valid at a court.", allowed=False)
     )
     return [
         _channel(
             "letter",
-            "Signed letter",
+            "Signed letter by post",
             "Quote the court's reference (Aktenzeichen); keep a copy.",
             recommended=True,
         ),
@@ -497,9 +489,9 @@ def _general_reply() -> SendGuidance:
         form="any",
         form_note="No special form is needed.",
         channels=[
-            _channel("email", "E-mail", "Quick; keep the sent message.", recommended=True),
+            _channel("email", "Email", "Quick; keep the sent message.", recommended=True),
             _channel("portal", "The sender's online portal", "If the letter mentions one."),
-            _channel("letter", "Letter", "Keep a copy."),
+            _channel("letter", "Letter by post", "Keep a copy."),
             _channel("fax", "Fax", "Keep the transmission report."),
         ],
     )
@@ -523,10 +515,10 @@ def send_guidance(
 
     ``letter_kind`` is the kind of the letter being answered: an objection to a court order or to a
     landlord's notice has its own form. ``court``: the letter goes to a court, which takes it only in
-    writing — never by plain e-mail; ``labour_court``: it is a labour court, whose orders are answered
+    writing — never by plain email; ``labour_court``: it is a labour court, whose orders are answered
     there within one week; ``court_unsure``: the recipient's name only may be a court's (a name typed in,
     :func:`~ordnung.rules.routing.may_be_court`): a letter people send to a court (an objection, a reply,
-    a request for more time) then gets the court's channels, a signed letter first, with e-mail last and
+    a request for more time) then gets the court's channels, a signed letter first, with email last and
     allowed only for the case it isn't a court; other letters (a withdrawal to "LG Electronics") keep their
     own. ``due`` is the day it must *arrive* (``must_arrive_by``).
     ``send_by`` is the latest day to post a letter: ``postal_buffer_days`` business days before the

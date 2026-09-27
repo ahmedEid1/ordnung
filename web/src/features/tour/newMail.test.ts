@@ -23,9 +23,9 @@ const idea = (p: Partial<Suggestion> & Pick<Suggestion, "id">): Suggestion => ({
 });
 
 const tray: MailTrayItem[] = [
-  { id: "tax", filename: "a.jpg", sender: "Finanzamt", subject: "Bescheid", kind_hint: "tax_assessment", photo: true, opened: true, doc_id: "doc_tax" },
-  { id: "power", filename: "b.pdf", sender: "Stadtwerke", subject: "Preise", kind_hint: "price_increase", photo: false, opened: true, doc_id: "doc_power" },
-  { id: "scam", filename: "c.pdf", sender: "Zahlungszentrale", subject: "Mahnung", kind_hint: "dunning", photo: false, opened: false, doc_id: null },
+  { id: "tax", filename: "a.jpg", sender: "Finanzamt", subject: "Bescheid", kind_hint: "tax_assessment", photo: true, opened: true, doc_id: "doc_tax", received_date: "2026-09-17" },
+  { id: "power", filename: "b.pdf", sender: "Stadtwerke", subject: "Preise", kind_hint: "price_increase", photo: false, opened: true, doc_id: "doc_power", received_date: "2026-09-26" },
+  { id: "scam", filename: "c.pdf", sender: "Zahlungszentrale", subject: "Mahnung", kind_hint: "dunning", photo: false, opened: false, doc_id: null, received_date: "2026-09-28" },
 ];
 
 describe("Ideas from the new mail (the tour's 'An idea just arrived')", () => {

@@ -37,6 +37,8 @@ import { ACTIVITY, HEALTH, MAIL_TRAY, PROFILE, SETTINGS, TOUR, TRAY_DOC } from "
 import { LETTERS } from "./data/letters";
 import { renderLetter, type RenderedLetter } from "./pages";
 import { TODAY } from "./data/constants";
+import { isDirectDebit, isIncomingMoney } from "@/lib/payments";
+import { paysOnSite } from "@/features/document/item-meta";
 
 const clone = <T>(v: T): T => (typeof structuredClone === "function" ? structuredClone(v) : JSON.parse(JSON.stringify(v)));
 
@@ -70,6 +72,8 @@ function resolveDoc(d: Document): Document {
 }
 
 const daysFrom = (a: string, b: string) => differenceInCalendarDays(parseISO(a), parseISO(b));
+/** The day a recent letter is listed under: when it arrived, else its date, else when it was added. */
+const recentDay = (d: Document) => d.received_date ?? d.doc_date ?? d.created_at.slice(0, 10);
 const iso = (d: Date) => format(d, "yyyy-MM-dd");
 const nowTs = () => new Date().toISOString().replace(/\.\d+Z$/, "Z");
 
@@ -277,7 +281,8 @@ export class MockDb {
       },
       areas: this.areas(),
       suggestions: this.state.suggestions.filter((s) => s.status === "new").sort((a, b) => prio(b.priority) - prio(a.priority)),
-      recent_documents: [...this.liveDocuments()].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, 6),
+      // like views.py: newest first by the day each letter is listed under (arrived, else dated, else added)
+      recent_documents: [...this.liveDocuments()].sort((a, b) => recentDay(b).localeCompare(recentDay(a)) || b.id.localeCompare(a.id)).slice(0, 6),
       stats: {
         documents: this.liveDocuments().length,
         open_items: this.openItems().length,
@@ -291,7 +296,7 @@ export class MockDb {
   areas(): AreaStatus[] {
     const today = this.today;
     const labels: Partial<Record<Area, string>> = {
-      residence: "Residence",
+      residence: "Residence permit",
       home: "Home",
       money: "Money",
       study: "Study",
@@ -304,20 +309,31 @@ export class MockDb {
     };
     const out: AreaStatus[] = [];
     for (const area of Object.keys(labels) as Area[]) {
+      // like views.py: a payment nobody sends by bank (a direct debit, money coming in, a fee paid on
+      // site) by its due day; the app's one urgency scale — overdue, today and tomorrow urgent, the week
+      // attention — where such a payment or an appointment never turns urgent (nothing to send)
+      const noTransfer = (i: Item) => isDirectDebit(i) || isIncomingMoney(i) || paysOnSite(i);
+      const day = (i: Item) => (noTransfer(i) ? i.due_date : this.eff(i))!;
+      const capped = (i: Item) => i.kind === "appointment" || noTransfer(i);
       const items = this.openItems()
         .filter((i) => i.area === area && i.due_date)
-        .sort((a, b) => (this.eff(a)! < this.eff(b)! ? -1 : 1));
+        .sort((a, b) => (day(a) < day(b) ? -1 : 1));
       const hasData = items.length || this.liveDocuments().some((d) => d.area === area);
       if (!hasData) continue;
       const next = items[0];
-      const days = next ? daysFrom(this.eff(next)!, today) : 999;
-      const status: AreaStatus["status"] = days <= 3 ? "urgent" : days <= 14 ? "attention" : "ok";
+      const rank = { ok: 0, attention: 1, urgent: 2 } as const;
+      const levelOf = (i: Item): AreaStatus["status"] => {
+        const days = daysFrom(day(i), today);
+        if (days <= 1 && !capped(i)) return "urgent";
+        return days <= 7 ? "attention" : "ok";
+      };
+      const status = items.map(levelOf).reduce<AreaStatus["status"]>((a, b) => (rank[b] > rank[a] ? b : a), "ok");
       out.push({
         area,
         label: labels[area]!,
         status,
         headline: next ? next.title : "Nothing coming up",
-        next_date: next ? this.eff(next) : null,
+        next_date: next ? day(next) : null,
         count: items.length,
       });
     }
@@ -436,7 +452,7 @@ export class MockDb {
     const lanes: Lane[] = [
       {
         id: "lane_residence",
-        label: "Residence",
+        label: "Residence permit",
         area: "residence",
         bars: [
           bar({ id: "bar_permit", label: "Residence permit", start: "2024-12-01", end: "2026-11-30", kind: "validity", ref: { type: "document", id: "doc_abh" }, markers: [m("2026-10-14", "Appointment 10:30", "appointment"), m("2026-11-30", "Permit expires", "expiry")] }),
@@ -454,7 +470,7 @@ export class MockDb {
         id: "lane_home",
         label: "Home",
         area: "home",
-        bars: [bar({ id: "bar_lease", label: "Lease Beispielweg 5 (open-ended)", start: "2025-10-01", end: "2027-12-31", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_rent" } })],
+        bars: [bar({ id: "bar_lease", label: "Lease Beispielweg 5", start: "2025-10-01", end: "2027-12-31", kind: "contract", status: "ok", open_end: true, ref: { type: "contract", id: "ctr_rent" } })],
         markers: [m("2026-10-05", "Rent", "payment"), m("2026-10-09", "Utility back payment €184.30", "payment"), m("2026-11-15", "Broadcasting fee", "payment")],
       },
       {
@@ -464,7 +480,7 @@ export class MockDb {
         bars: [
           bar({ id: "bar_phone_term", label: "Minimum term", start: "2024-11-15", end: "2026-11-14", kind: "contract", ref: { type: "contract", id: "ctr_phone" }, markers: [m("2026-11-14", "Minimum term ends", "renewal")] }),
           bar({ id: "bar_phone_notice", label: "Time to cancel", start: "2026-08-15", end: "2026-10-14", kind: "notice_window", ref: { type: "contract", id: "ctr_phone" }, markers: [m("2026-10-08", "Send by", "send_by"), m("2026-10-14", "Cancel by", "cancel_by")] }),
-          bar({ id: "bar_phone_after", label: "Month to month", start: "2026-11-15", end: "2027-12-31", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_phone" } }),
+          bar({ id: "bar_phone_after", label: "Month to month", start: "2026-11-15", end: "2027-12-31", kind: "contract", status: "ok", open_end: true, ref: { type: "contract", id: "ctr_phone" } }),
         ],
         markers: [],
       },
@@ -473,7 +489,7 @@ export class MockDb {
         label: "Electricity · Stadtwerke",
         area: "home",
         bars: [
-          bar({ id: "bar_power", label: "MusterStrom Natur", start: "2025-10-01", end: "2027-12-31", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_power" } }),
+          bar({ id: "bar_power", label: "MusterStrom Natur", start: "2025-10-01", end: "2027-12-31", kind: "contract", status: "ok", open_end: true, ref: { type: "contract", id: "ctr_power" } }),
           ...(has("itm_power_cancel")
             ? [bar({ id: "bar_power_right", label: "Special right to cancel", start: "2026-09-28", end: "2026-10-31", kind: "notice_window", ref: { type: "document", id: "doc_power_price" }, markers: [m("2026-10-27", "Send by (post)", "send_by"), m("2026-10-31", "Cancel by", "cancel_by")] })]
             : []),
@@ -525,13 +541,23 @@ export class MockDb {
         markers: [],
       });
     }
-    if (!from && !to) return lanes;
+    // like the API: every bar and date says its life area and what it stands for (a date here
+    // with no to-do behind it has no `ref`), and a bar with no end date says so
+    const complete: Lane[] = lanes.map((l) => ({
+      ...l,
+      bars: l.bars.map((b) => {
+        const area = b.area ?? l.area;
+        return { ...b, area, open_end: b.open_end ?? false, markers: b.markers.map((mk) => ({ ...mk, area: mk.area ?? area, ref: mk.ref ?? b.ref })) };
+      }),
+      markers: l.markers.map((mk) => ({ ...mk, area: mk.area ?? l.area, ref: mk.ref ?? null })),
+    }));
+    if (!from && !to) return complete;
     const f = from ?? "0000-01-01";
     const t = to ?? "9999-12-31";
     // like the API: bars are clipped to the range (the chart then says "started before" /
     // "continues after" instead of showing an edge as a date), markers outside it are dropped
     const inRange = (mk: TimelineMarker) => mk.date >= f && mk.date <= t;
-    return lanes
+    return complete
       .map((l) => ({
         ...l,
         bars: l.bars

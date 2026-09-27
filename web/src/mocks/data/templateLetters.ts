@@ -104,22 +104,22 @@ function generalGuidance(note = "No special form is needed."): SendGuidance {
     form: "any",
     form_note: note,
     channels: [
-      channel("email", "E-mail", "Quick; keep the sent message.", null, true),
+      channel("email", "Email", "Quick; keep the sent message.", null, true),
       channel("portal", "The sender's online portal", "If the letter mentions one."),
-      channel("letter", "Letter", "Keep a copy."),
+      channel("letter", "Letter by post", "Keep a copy."),
       channel("fax", "Fax", "Keep the transmission report."),
     ],
     tips: ["Keep a copy of what you send and any proof of delivery."],
   };
 }
 
-/** A court takes letters in writing only — never plain e-mail (`send.py` `_court_channels`). */
+/** A court takes letters in writing only — never plain email (`send.py` `_court_channels`). */
 export function courtChannels(): SendChannel[] {
   return [
-    channel("letter", "Signed letter", "Quote the court's reference (Aktenzeichen); keep a copy.", null, true),
+    channel("letter", "Signed letter by post", "Quote the court's reference (Aktenzeichen); keep a copy.", null, true),
     channel("fax", "Fax of the signed letter", "Keep the transmission report."),
     channel("in_person", "At the court's Rechtsantragstelle", "Free: staff take it down for you; bring the court's letter."),
-    channel("email", "E-mail", "Not valid at a court.", null, false, false),
+    channel("email", "Email", "Not valid at a court.", null, false, false),
   ];
 }
 
@@ -147,9 +147,9 @@ function landlordGuidance(note: string): SendGuidance {
     ...generalGuidance(note),
     channels: [
       channel("registered_letter", "Letter by Einwurf-Einschreiben", EINSCHREIBEN, null, true),
-      channel("email", "E-mail", "Quick; keep the sent message and ask for a confirmation."),
+      channel("email", "Email", "Quick; keep the sent message and ask for a confirmation."),
       channel("in_person", "Hand it over in person", "Take a witness who has read the letter."),
-      channel("letter", "Letter by normal post", "Works, but you can't prove it arrived."),
+      channel("letter", "Letter by post", "Works, but you can't prove it arrived."),
     ],
   };
 }
@@ -233,7 +233,7 @@ export function templateLetter(kind: TemplateDraftKind, ctx: TemplateContext): T
           subjectEn: dash("Application for deferral under § 222 AO", ctx.reference),
           paragraphsEn: [`I hereby apply for a deferral (Stundung) of the tax${amount !== null ? ` of ${moneyEn(amount)}` : ""} under § 222 AO.`, `I offer ${offerEn}`, "Paying the full amount at once would be a considerable hardship for me."],
           notes: ["The tax office usually charges interest on a deferral."],
-          guidance: generalGuidance("No special form: ELSTER, fax, e-mail or a letter all work (§ 222 AO). Until the tax office agrees, the full amount stays due."),
+          guidance: generalGuidance("No special form: ELSTER, fax, email or a letter all work (§ 222 AO). Until the tax office agrees, the full amount stays due."),
         };
       }
       return {

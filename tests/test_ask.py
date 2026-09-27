@@ -28,6 +28,7 @@ from ordnung.assistant.ask import (
     ask_cache_key,
     ask_stream,
     check_turn,
+    demo_miss_event,
     ledger_fingerprint,
     stored_answer,
 )
@@ -155,9 +156,9 @@ async def test_ask_streams_trace_and_validated_answer(
     ]
     uses = [e for e in events if e.type == "tool_use"]
     assert [(e.name, e.text) for e in uses] == [
-        ("search", 'Searched your letters for "tax"'),
-        ("get_document", 'Read "Income tax assessment 2025"'),
-        ("explain_date", 'Checked how "Objection deadline (Einspruch)" was worked out'),
+        ("search", "Searched your letters for “tax”"),
+        ("get_document", "Read “Income tax assessment 2025”"),
+        ("explain_date", "Checked how “Objection deadline (Einspruch)” was worked out"),
     ]
     results = [e for e in events if e.type == "tool_result"]
     assert [(e.name, e.text) for e in results] == [
@@ -557,7 +558,10 @@ async def test_parallel_tool_calls_are_paired_with_results_in_order(
     ctx = make_ctx(paths, store, ScriptedBackend(script))
     events = await collect(ctx, "How many contracts do I have?")
     results = [(e.name, e.text) for e in events if e.type == "tool_result"]
-    assert results == [("today", "Today is 2026-09-28"), ("list_contracts", "Found 5 contracts")]
+    assert results == [
+        ("today", "Today is Mon 28 Sep 2026 (demo date)"),
+        ("list_contracts", "Found 5 contracts"),
+    ]
 
 
 async def test_parallel_tool_calls_answered_out_of_order_are_paired_by_id(
@@ -578,11 +582,14 @@ async def test_parallel_tool_calls_answered_out_of_order_are_paired_by_id(
     ctx = make_ctx(paths, store, ScriptedBackend(script))
     events = await collect(ctx, "How many contracts do I have?")
     results = [(e.name, e.text) for e in events if e.type == "tool_result"]
-    assert results[:2] == [("list_contracts", "Found 5 contracts"), ("today", "Today is 2026-09-28")]
+    assert results[:2] == [
+        ("list_contracts", "Found 5 contracts"),
+        ("today", "Today is Mon 28 Sep 2026 (demo date)"),
+    ]
     assert results[2][0] == "tool"
     (_, answer) = store.list_chat_messages(done_event(events).thread_id or "")
     assert [(call["name"], call["result"]) for call in answer.tool_calls] == [
-        ("today", "Today is 2026-09-28"),
+        ("today", "Today is Mon 28 Sep 2026 (demo date)"),
         ("list_contracts", "Found 5 contracts"),
     ]
 
@@ -812,15 +819,17 @@ async def test_the_live_demo_fallback_reads_the_conversation(
     assert '"history":null' in (follow_up.cache_key or "")
 
 
-async def test_demo_replay_miss_is_a_friendly_answer(
+async def test_demo_replay_miss_is_one_coded_note(
     paths: Paths, store: Store, ids: dict[str, str], tmp_path: Path
 ) -> None:
+    """UI audit R1-backend-9: a question the demo has no recording for gets the one ``demo_miss`` event
+    (the same message and code as the demo's server sends), never an "answer" to copy."""
     ctx = make_ctx(paths, store, ReplayBackend(tmp_path / "empty"))
     events = await collect(ctx, "Something nobody recorded?")
-    assert [e.type for e in events] == ["done"]
-    done = done_event(events)
-    assert done.text == DEMO_MISS
-    assert done.message_id is None
+    assert [e.type for e in events] == ["error"]
+    assert events[0] == demo_miss_event()
+    assert (events[0].error, events[0].error_code) == (DEMO_MISS, "demo_miss")
+    assert "`" not in DEMO_MISS
     assert store.counts()["chat_messages"] == 0
 
 

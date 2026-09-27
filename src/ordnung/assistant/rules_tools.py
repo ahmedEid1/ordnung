@@ -140,7 +140,7 @@ DISCLAIMER_TEMPLATE = (
 )
 IBAN_ADVICE = (
     "A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or "
-    "the sender's official website; if a letter or e-mail says the account has changed, confirm that "
+    "the sender's official website; if a letter or email says the account has changed, confirm that "
     "through contact details you already know before paying."
 )
 #: The note on a well-formed IBAN whose bank has to answer the check of the payee's name before a euro

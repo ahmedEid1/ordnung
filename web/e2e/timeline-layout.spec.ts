@@ -91,7 +91,9 @@ test("Timeline at 1280px: the card opens at Today, exactly under its header, and
 
 test("a lane marker highlights its own row, not another bill of the same day", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await open(page, "/timeline", "Timeline");
+  // payments only: the health contribution stands alone in its Health lane (unfiltered, it merges with the
+  // objection deadline a day earlier), while the electricity instalment is due the same day in Home
+  await open(page, "/timeline?type=payment", "Timeline");
   await lanes(page)
     .getByRole("button", { name: /Monthly health & nursing care insurance contribution/ })
     .first()
@@ -101,15 +103,15 @@ test("a lane marker highlights its own row, not another bill of the same day", a
   await expect(row).toContainText("Monthly health & nursing care insurance contribution");
 });
 
-test("the area filter judges each mark by its own area: Getting around shows its contract and payment", async ({ page }) => {
+test("the area filter judges each mark by its own area: Getting around shows its contract and its payments in its own lane", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await open(page, "/timeline?area=mobility", "Timeline");
   const year = lanes(page);
   await expect(year).toContainText("showing Getting around only");
   await expect(year.getByRole("listitem", { name: "Contracts", exact: true })).toBeVisible();
-  await expect(year.getByRole("listitem", { name: "Money", exact: true })).toBeVisible();
+  await expect(year.getByRole("listitem", { name: "Getting around", exact: true })).toBeVisible();
   await expect(year.getByText(/Nothing for/)).toHaveCount(0);
-  await expect(year.getByRole("listitem", { name: "Residence", exact: true })).toHaveCount(0);
+  await expect(year.getByRole("listitem", { name: "Residence permit", exact: true })).toHaveCount(0);
 });
 
 for (const width of [1024, 1280]) {

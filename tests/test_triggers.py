@@ -379,6 +379,32 @@ def test_scam_warning_quotes_both_accounts(store: Store, ids: dict[str, str]) ->
     assert idea.action is not None and idea.action.label == "See why"
 
 
+def test_scam_warning_title_says_it_once_in_the_apps_words(store: Store, ids: dict[str, str]) -> None:
+    """UI audit R1-backend-7: "This may be a scam: Suspicious "Last Warning …" … (Likely Scam)" said it
+    three times, with straight quotes. The Idea says "Possible scam:" and the reading's verdict goes."""
+    title = 'Suspicious "Last Warning Before Seizure" Letter Demanding Broadcasting Fee Payment (Likely Scam)'
+    store.update_document(ids["doc_scam"], title=title)
+    (idea,) = ideas(store, "scam_warning")
+    assert idea.title == (
+        "Possible scam: Suspicious “Last Warning Before Seizure” Letter Demanding Broadcasting Fee Payment"
+    )
+
+
+def test_a_public_bodys_reminder_never_threatens_a_court_payment_order(
+    store: Store, ids: dict[str, str]
+) -> None:
+    """UI audit R1-backend-7: a €4.50 library fee warned of a Mahnbescheid. A public body collects its own
+    fees (administrative enforcement); only a company's claim goes to a debt collector or a court."""
+    (company,) = ideas(store, "dunning_escalation")
+    assert "Mahnbescheid" in company.body and "administrative enforcement" not in company.body
+    library = store.add_party(name="Stadtbibliothek Musterstadt", kind="authority").id
+    store.update_document(ids["doc_dunning"], party_id=library)
+    (public,) = ideas(store, "dunning_escalation")
+    assert public.title == company.title.replace("TechMarkt", "Stadtbibliothek Musterstadt")
+    assert "Mahnbescheid" not in public.body and "debt collector" not in public.body
+    assert "administrative enforcement" in public.body
+
+
 def test_scam_warning_is_quiet_for_ordinary_letters(store: Store, ids: dict[str, str]) -> None:
     store.update_document(ids["doc_scam"], hidden_text=False, warnings=[], payment=None)
     assert ideas(store, "scam_warning") == []

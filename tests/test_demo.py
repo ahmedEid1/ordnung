@@ -26,6 +26,7 @@ from fixtures_llm import (
 from helpers_docs import photo
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
+from ordnung.assistant.ask import DEMO_MISS
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.demo import DemoError, load_manifest, tour
@@ -533,7 +534,7 @@ async def test_recorded_questions_replay_after_opening_tray_letters(life: Sample
             event async for event in tour.demo_safe_stream(ask_stream(ctx, "Anything free?"), demo=True)
         ]
         assert [event.type for event in missed] == ["error"]
-        assert missed[0].error == tour.DEMO_MISS_MESSAGE
+        assert missed[0].error == DEMO_MISS
         assert getattr(missed[0], "error_code", None) == "demo_miss"
     finally:
         ctx.close()
@@ -551,7 +552,7 @@ async def test_demo_safe_stream_passes_everything_through_outside_the_demo() -> 
 
 def test_friendly_llm_error() -> None:
     miss = ReplayMiss("no recorded response for draft (k)")
-    assert tour.friendly_llm_error(miss, demo=True) == tour.DEMO_MISS_MESSAGE
+    assert tour.friendly_llm_error(miss, demo=True) == tour.DEMO_UNRECORDED_MESSAGE
     assert tour.friendly_llm_error(miss, demo=False) == str(miss)
     assert tour.friendly_llm_error(LLMError("Claude is busy"), demo=True) == "Claude is busy"
 
