@@ -22,11 +22,12 @@ Policies:
   own words (``text``, ``legal_basis``) stand in for the letter's remedy notice. So a company's,
   landlord's or employer's letter runs from its arrival even when a model asks for deemed delivery
   (the engine's rule, :func:`ordnung.rules.deadlines.from_arrival`; a period it counts from its own
-  date or another it names keeps that date; for a kind a public body may be filed as, an arrival
-  after the day an authority's letter would count as delivered never makes it later) — naming an *Einspruch*, *Klage* or *Widerspruch* changes
-  that only with a notice naming an administrative route, and so do the period's own words naming
-  one (a *Bescheid*, its *Bekanntgabe* …) — and an unknown sender (none, ``other``) keeps the
-  earliest plausible deemed delivery. Missing facts are never guessed: the engine uses the
+  date or another it names keeps that date; for a kind a public body may be filed as, or a period
+  whose own words name an administrative act — a *Bescheid*, its *Bekanntgabe* … —, an arrival after
+  the day a letter usually counts as delivered never makes it later,
+  :func:`ordnung.rules.deadlines.may_be_public`) — naming an *Einspruch*, *Klage* or *Widerspruch*
+  changes that only with a notice naming an administrative route, words in the period never do — and
+  an unknown sender (none, ``other``) keeps the earliest plausible deemed delivery. Missing facts are never guessed: the engine uses the
   earliest plausible date and says so, and ``hints`` name the argument that would settle it (and
   never one that was given).
 * **Formal service.** A letter served in a yellow envelope has no deemed delivery; the spec help

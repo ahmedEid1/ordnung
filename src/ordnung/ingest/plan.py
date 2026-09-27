@@ -61,7 +61,6 @@ from ordnung.recurrence import (
 )
 from ordnung.rules import RuleContext, compute_due, is_private_sender, scope_for_party_kind
 from ordnung.rules.deadlines import parse_date
-from ordnung.rules.delivery import shows_administrative_act
 from ordnung.secretary.scam import iban_from_page, iban_valid, normalize_iban
 
 DueDateSource = Literal["computed", "fixed", "manual", "none"]
@@ -267,8 +266,9 @@ def rule_context(
     :func:`ordnung.rules.scope_for_party_kind`); a sender of a private kind (a company, a landlord, a
     bank, an employer …) whose letter shows no administrative act has no deemed delivery at all
     (:func:`ordnung.rules.is_private_sender`: an Einspruch, Widerspruch or Klage counts only with a
-    remedy notice naming an administrative route; a period whose own words name one keeps its deemed
-    delivery too, :func:`ordnung.rules.deadlines.from_arrival`). A received date on the document was
+    remedy notice naming an administrative route; for a kind a public body may be filed as, or a period
+    whose own words name an administrative act, a late arrival never makes the date later than deemed
+    delivery would, :func:`ordnung.rules.deadlines.may_be_public`). A received date on the document was
     entered by the person, so it counts as confirmed.
     """
     sender = extraction.sender
@@ -339,15 +339,14 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
     """Due date, send-by date and receipt of one item (no receipt for undated items).
 
     The item's quote — its whole sentence, where the spec's ``text`` holds only the date expression —
-    is the period's own words too: one naming an administrative act (a *Bescheid*, its *Bekanntgabe* …,
-    :func:`ordnung.rules.delivery.shows_administrative_act`) keeps the deemed delivery for a sender
-    filed as private, as the engine does for the spec's words (:func:`ordnung.rules.deadlines.from_arrival`).
+    is the period's own words too (``RuleContext.quote``): for a sender filed as private, one naming an
+    administrative act keeps a late arrival from moving the date later, as the spec's words do
+    (:func:`ordnung.rules.deadlines.may_be_public`); it never brings deemed delivery back.
     """
     spec = verified.item.date
     if spec.type == "none":
         return ComputedDate(receipt=None, due_date=None, send_by=None, source="none")
-    if ctx.private_sender and shows_administrative_act(verified.item.quote):
-        ctx = replace(ctx, private_sender=False)
+    ctx = replace(ctx, quote=verified.item.quote)
     receipt = grade_receipt(compute_due(spec, ctx, postal_buffer_days=postal_buffer_days), verified)
     source: DueDateSource = (
         "none" if receipt.due_date is None else ("fixed" if spec.type == "fixed" else "computed")

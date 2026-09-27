@@ -84,14 +84,20 @@ _REFINABLE_KINDS = frozenset({"authority", "university", "insurer", "company", "
 
 #: Senders that decide under the Social Code, so § 37 SGB X governs delivery (§ 1 SGB X; the benefits
 #: of § 68 SGB I such as BAföG, Wohngeld, Elterngeld and Kinderzuschlag included). Letters and readers
-#: usually call them just "authority".
+#: usually call them just "authority". Statutory health insurers that go by their brand rather than
+#: "Krankenkasse" are named for the largest ones (together most of the insured): the AOKs, Die Techniker
+#: (TK), BARMER, DAK-Gesundheit, the IKKs and BKKs, KKH, hkk, HEK, SBK, VIACTIV, BIG direkt gesund,
+#: mhplus, Knappschaft and SVLFG. The list is not complete: an unlisted one filed as an ``insurer`` or a
+#: ``company`` counts as private, but a late arrival never makes its date later than an authority's
+#: letter would count as delivered (:data:`MAY_BE_PUBLIC_KINDS`), so it errs early, never late.
 _SOCIAL_SENDER = re.compile(
     r"jobcenter|agentur\s+f(?:ü|ue)r\s+arbeit|arbeitsagentur|rentenversicherung|pflegekasse|"
     r"krankenkasse|unfallkasse|berufsgenossenschaft|sozialamt|sozialhilfe|versorgungsamt|"
     r"bafög|bafoeg|ausbildungsförderung|wohngeld|elterngeld|"
-    # statutory health insurers that go by their brand, not "Krankenkasse" (AOK, BARMER, DAK-Gesundheit …)
-    r"\bAOK\b|\bbarmer\b|\bDAK\b|\bIKK\b|\bBKK\b|\bKKH\b|\bhkk\b|knappschaft|gesundheitskasse|"
-    r"ersatzkasse|\bSVLFG\b",
+    r"\bAOK\b|die\s+techniker\b|\bbarmer\b|\bDAK\b|\bIKK\b|\bBKK\b|\bKKH\b|\bhkk\b|viactiv|"
+    r"\bBIG\s+direkt\b|\bmhplus\b|knappschaft|gesundheitskasse|ersatzkasse|\bSVLFG\b|"
+    # short brands other firms share (TK Maxx, SBK Immobilien): only as the whole name or in brackets
+    r"(?-i:^\s*(?:TK|HEK|SBK)\s*$|\((?:TK|HEK|SBK)\))",
     re.IGNORECASE,
 )
 
@@ -124,8 +130,9 @@ PRIVATE_KINDS: frozenset[str] = frozenset(
 #: Private kinds a public body may be filed as: a municipal utility (a Stadtwerk's or Zweckverband's
 #: Gebührenbescheid), a statutory insurer whose name gives no sign, a civil servant's Dienstherr as an
 #: ``employer``, any ``company``. For them that the sender is no authority is only inferred, so a late
-#: arrival never makes a date later than deemed delivery would (``private_sender_late_arrival`` in
-#: :mod:`ordnung.rules.deadlines`). A gym, a landlord, a bank or a shop issues no Bescheid.
+#: arrival never makes a date later than deemed delivery would (``private_sender_late_arrival``,
+#: :func:`ordnung.rules.deadlines.may_be_public`). A gym, a landlord, a bank or a shop issues no
+#: Bescheid: its letter counts from the day it arrived, unless the period's own words name one.
 MAY_BE_PUBLIC_KINDS: frozenset[str] = frozenset({"company", "insurer", "utility", "employer"})
 
 #: *Einspruch*, *Widerspruch* and *Klage* lie against an administrative act (a tax office or a statutory
@@ -155,7 +162,9 @@ _ADMINISTRATIVE_ROUTE = re.compile(
 
 def shows_administrative_act(text: str | None) -> bool:
     """Whether ``text`` (a remedy notice, a period's own sentence) names an administrative route
-    (:data:`_ADMINISTRATIVE_ROUTE`): then the letter is an authority's decision, whoever it was filed as."""
+    (:data:`_ADMINISTRATIVE_ROUTE`). A remedy notice that does makes an *Einspruch*, *Widerspruch* or
+    *Klage* an authority's (:func:`is_private_sender`); a period's own words only show that the sender
+    may be one (:func:`ordnung.rules.deadlines.may_be_public`) — a firm too may write "Bekanntgabe"."""
     return bool(text and _ADMINISTRATIVE_ROUTE.search(text))
 
 
@@ -173,7 +182,7 @@ def scope_for_party_kind(
     ``university``, ``insurer``, ``company``, ``other``) is refined by its name and the letter's remedy
     notice:
     job centres, pension, care and accident insurance, statutory health insurers (a "Krankenkasse", or
-    by their brand: AOK, BARMER, DAK, IKK, BKK, Knappschaft …), social welfare and the § 68 SGB I
+    by their brand: AOK, Die Techniker, BARMER, DAK, IKK, BKK …), social welfare and the § 68 SGB I
     benefit offices, or a notice naming the Sozialgericht or the SGB → ``sgbx``; the Familienkasse →
     ``ao`` when the remedy is an *Einspruch*, otherwise ``sgbx``.
     """
@@ -203,8 +212,8 @@ def is_private_sender(
     notice (``remedy_text``) naming an administrative route — an employer's letter naming the
     Kündigungsschutzklage, or a parking firm's "Einspruch" window, stays private. An unknown sender
     (``None``, ``other``) is not known to be private: it keeps the earliest plausible deemed delivery.
-    A period whose own words show an administrative act keeps it too, whatever this says
-    (:func:`ordnung.rules.deadlines.from_arrival`).
+    A period whose own words show an administrative act still counts from arrival, but a late arrival
+    never makes its date later than deemed delivery would (:func:`ordnung.rules.deadlines.may_be_public`).
     """
     if scope is not None or kind not in PRIVATE_KINDS:
         return False

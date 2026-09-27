@@ -316,6 +316,16 @@ def test_private_senders_have_no_deemed_delivery(
         "hkk",
         "Verband der Ersatzkassen",
         "SVLFG",
+        "Die Techniker",
+        "TK",
+        "Techniker Krankenkasse (TK)",
+        "VIACTIV Krankenkasse",
+        "Viactiv",
+        "BIG direkt gesund",
+        "HEK",
+        "Hanseatische Krankenkasse (HEK)",
+        "SBK",
+        "mhplus",
     ],
 )
 def test_statutory_health_insurers_by_their_brand_are_social_law(name: str) -> None:
@@ -326,11 +336,23 @@ def test_statutory_health_insurers_by_their_brand_are_social_law(name: str) -> N
 
 
 @pytest.mark.parametrize(
-    "name", ["Allianz Versicherungs-AG", "HUK-COBURG", "Barmenia Krankenversicherung AG"]
+    "name",
+    [
+        "Allianz Versicherungs-AG",
+        "HUK-COBURG",
+        "Barmenia Krankenversicherung AG",
+        # short brands other firms share count only as the whole name or in brackets
+        "TK Maxx",
+        "TK Elevator GmbH",
+        "SBK Immobilien GmbH",
+        "Stark TK Bau",
+        "Big Direktvertrieb GmbH",
+    ],
 )
 def test_private_insurers_stay_private(name: str) -> None:
-    scope = scope_for_party_kind("insurer", name=name)
-    assert scope is None and is_private_sender("insurer", scope=scope) is True
+    for kind in ("insurer", "company"):
+        scope = scope_for_party_kind(kind, name=name)
+        assert scope is None and is_private_sender(kind, scope=scope) is True
 
 
 def test_the_administrative_route_needs_the_codes_written_as_codes() -> None:

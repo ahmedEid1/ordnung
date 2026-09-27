@@ -494,10 +494,43 @@ def test_a_firms_let_us_know_is_no_bescheid() -> None:
     assert assumed["received_date_not_used"] is None and not _hint(fine, "Pass region")
 
 
+def test_a_private_senders_bekanntgabe_counts_from_the_day_it_arrived() -> None:
+    """Reviewer repro: a gym's "nach Bekanntgabe der Beitragserhöhung", an employer's "§ 38 Abs. 1 SGB III".
+    Such words are no proof of an authority's decision: the period still runs from the day the letter
+    arrived (§ 130 Abs. 1 BGB), the earliest plausible start — deemed delivery would give Thu 8 Oct, the
+    arrival day given would be reported as unused and the hints would ask for "the Land of the authority"."""
+    tools = at("2026-09-08")
+    spec = {
+        **POSTED,
+        "amount": 4,
+        "unit": "weeks",
+        "text": "Sie können der Beitragserhöhung innerhalb von vier Wochen nach Bekanntgabe widersprechen.",
+    }
+    for kind in ("gym", "landlord", "bank", "telecom", "company"):
+        arrived = tools.compute_deadline(
+            spec, document_date="2026-09-07", sender_kind=kind, received_date="2026-09-08"
+        )
+        assert arrived["due_date"] == "2026-10-06", kind
+        assert arrived["steps"][0]["rule_id"] == "private_sender_arrival"
+        assert not any(step["rule_id"] in ("posting_day", "early_receipt") for step in arrived["steps"])
+        assert arrived["assumed"]["received_date"] == "2026-09-08"
+        assert arrived["assumed"]["received_date_not_used"] is None and not _hint(arrived, "Pass region")
+        undated = tools.compute_deadline(spec, document_date="2026-09-07", sender_kind=kind)
+        assert undated["due_date"] == "2026-10-05" and _hint(undated, "Pass received_date")
+    certificate = tools.compute_deadline(
+        {**spec, "amount": 2, "legal_basis": "§ 38 Abs. 1 SGB III", "text": "innerhalb von zwei Wochen"},
+        document_date="2026-09-07",
+        sender_kind="employer",
+        received_date="2026-09-08",
+    )
+    assert certificate["due_date"] == "2026-09-22"  # not Thu 24 Sep
+
+
 def test_a_late_arrival_never_makes_a_private_senders_date_later() -> None:
     """Reviewer repro: that a sender is private is read from its kind — a statutory insurer or a
     municipal utility may be filed as a company. A late arrival must not move the date past the one an
-    authority's letter gives (Mon 5 Oct), at high confidence; the warning names the date from arrival."""
+    authority's letter gives (Mon 5 Oct); the warning names the date from arrival, which the law gives
+    either kind of sender once the arrival is shown, and the confidence is one level lower."""
     tools = at("2026-09-26")
     spec = {**POSTED, "text": "Einspruch innerhalb eines Monats"}
     args = {
@@ -509,11 +542,14 @@ def test_a_late_arrival_never_makes_a_private_senders_date_later() -> None:
     company = tools.compute_deadline(spec, sender_kind="company", **args)
     authority = tools.compute_deadline(spec, sender_kind="authority", **args)
     assert company["due_date"] == authority["due_date"] == "2026-10-05"  # not Thu 15 Oct
-    assert any(
-        w.startswith("The letter arrived on Tue 15 Sep 2026") and "the deadline may be Thu 15 Oct 2026" in w
-        for w in company["warnings"]
+    assert (company["confidence"], authority["confidence"]) == ("medium", "high")
+    assert company["warnings"][0] == (
+        "The letter arrived on Tue 15 Sep 2026, later than a letter dated Tue 1 Sep 2026 usually counts as "
+        "delivered (Sat 5 Sep 2026). If you can show that (keep the envelope), the deadline may be Thu 15 Oct "
+        "2026 — for an authority's letter too; we show the earlier, safe date."
     )
-    assert any(step["rule_id"] == "private_sender_late_arrival" for step in company["steps"])
+    assert PRIVATE_SENDER_WARNING not in company["warnings"]
+    assert [step["rule_id"] for step in company["steps"]][:2] == ["private_sender_late_arrival", "bgb_187_1"]
     # the period did not run from the arrival day given
     assert company["assumed"]["received_date"] is None
     assert company["assumed"]["received_date_not_used"] == "2026-09-15"
@@ -524,7 +560,7 @@ def test_a_late_arrival_never_makes_a_private_senders_date_later() -> None:
     # a gym issues no Bescheid: its letter counts from the day it arrived (§ 130 BGB)
     gym = tools.compute_deadline(spec, sender_kind="gym", **args)
     assert gym["due_date"] == "2026-10-15" and gym["assumed"]["received_date"] == "2026-09-15"
-    # a municipal utility's Gebührenbescheid is an authority's decision by its own words
+    # a municipal utility's Gebührenbescheid counts no later than an authority's letter either
     fee = {
         **POSTED,
         "nature": "payment",

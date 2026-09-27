@@ -299,8 +299,10 @@ from is checked: when it runs from arrival, the day used — a delivery day the 
 one before the letter's date or more than 14 days after it gets a warning and one level less
 confidence; an arrival day the engine did not use is named. A letter dated after today gets a
 warning and one level less confidence. Whether the sender has deemed delivery at all is the
-engine's rule, as in the app (a private sender's letter counts from its arrival; an unknown one,
-`other` included, keeps the earliest plausible deemed delivery). The spec help says how to pass a
+engine's rule, as in the app (a private sender's letter counts from its arrival — for a kind a public
+body may be filed as, or a period whose words name an administrative act, never later than an
+authority's letter would count as delivered; an unknown one, `other` included, keeps the earliest
+plausible deemed delivery). The spec help says how to pass a
 formally served letter (yellow envelope: `anchor: receipt`, the envelope's date), and a result that
 applied deemed delivery to a posted letter says it would not apply then (a warning) and what to pass
 if it was (a hint). A stated posting or delivery day (`spec.anchor_date`) can only be checked against
@@ -593,16 +595,22 @@ for it, also when the letter's date is missing), and one the letter counts from 
 date it names runs from that date without delivery days (`private_sender_no_delivery`; the arrival day
 plays no part and is not asked for). That a sender is private is read from its kind and name, not
 known (a municipal utility's Gebührenbescheid, a statutory health insurer filed as a company), so for
-a kind a public body may be filed as (company, insurer, utility, employer) a confirmed arrival day
-after the day an authority's letter would count as delivered never moves the date later: the period
-runs from that earlier day and a warning gives the date from arrival (`private_sender_late_arrival`);
-a gym's, landlord's or bank's letter counts from the day it arrived. A letter shows an administrative act when it names a remedy statute,
-when the period's own words name one, or when an *Einspruch*, *Widerspruch* or *Klage* has a notice
-naming an administrative route (a *Bescheid* as the decision — "diesen Bescheid", a
-*Gebührenbescheid*, "Bescheid vom …", not the everyday "Bescheid geben" — or its *Bekanntgabe*, an
-administrative, social or finance court, VwGO/SGG/FGO/AO/SGB/VwVfG) — a Kündigungsschutzklage to the
-labour court (§ 4 KSchG), a Widerspruch under the BGB or VVG, or a firm's own "Einspruch" window (a
-private parking operator's, say) does not.
+a kind a public body may be filed as (company, insurer, utility, employer), and for any sender whose
+period names an administrative act in its own words (the spec's text and legal basis, the item's
+quote), a confirmed arrival day after the day a letter usually counts as delivered never moves the
+date later: the period runs from that earlier day with one level less confidence, and a warning says
+that the date from arrival holds once the arrival is shown — for an authority's letter too
+(§ 41 Abs. 2 S. 3 VwVfG, § 122 Abs. 2 AO, § 37 Abs. 2 S. 3 SGB X) — and, when the earlier date has passed
+but that one has not, that the deadline may still be open (`private_sender_late_arrival`). A gym's,
+landlord's or bank's letter whose words name no administrative act counts from the day it arrived.
+Words alone never bring deemed delivery back: a firm, too, writes "nach Bekanntgabe der
+Preiserhöhung" or asks for "Ihren Rentenbescheid", and counted from arrival the date is never later.
+A letter filed as private keeps deemed delivery only when it names a remedy statute, or when an
+*Einspruch*, *Widerspruch* or *Klage* has a notice naming an administrative route (a *Bescheid* as the
+decision — "diesen Bescheid", a *Gebührenbescheid*, "Bescheid vom …", not the everyday "Bescheid
+geben" — or its *Bekanntgabe*, an administrative, social or finance court, VwGO/SGG/FGO/AO/SGB/VwVfG) —
+a Kündigungsschutzklage to the labour court (§ 4 KSchG), a Widerspruch under the BGB or VVG, or a
+firm's own "Einspruch" window (a private parking operator's, say) does not.
 An unknown sender (kind `other`) keeps the earliest plausible deemed delivery.
 
 **Contracts — regimes.** `compute_contract` dispatches on `regime` derived by code from category,

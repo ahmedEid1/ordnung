@@ -11,6 +11,7 @@ rechtsbehelfsbelehrung_fehlerhaft_1_jahr, ``owig67`` = owig_einspruch_bussgeldbe
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from typing import Any
 
@@ -1079,35 +1080,75 @@ def test_a_private_senders_letter_without_a_date_still_asks_for_the_arrival_day(
     assert receipt.steps[0].citation == "§ 130 Abs. 1 BGB"
 
 
+def test_the_periods_own_words_never_bring_deemed_delivery_back() -> None:
+    """Reviewer repro: words that may name an administrative act are no proof — a gym writes "nach
+    Bekanntgabe der Preiserhöhung", an employer's certificate cites "§ 38 Abs. 1 SGB III". A sender filed
+    as private keeps counting from the day it arrived, the earliest plausible start: deemed delivery
+    would make these dates 3 days late (Mon 19 Oct)."""
+    arrived = {"received_date": D("2026-10-02"), "received_confirmed": True}
+    gym = notice_spec(
+        amount=2,
+        unit="weeks",
+        nature="declaration",
+        delivery_rule="none",
+        text="innerhalb von zwei Wochen nach Bekanntgabe der Preiserhöhung",
+    )
+    context = ctx(today="2026-10-05", document_date="2026-10-01", private_sender=True, sender_kind="gym")
+    assert from_arrival(gym, context) is not gym
+    receipt = compute_due(gym, replace(context, **arrived))
+    assert receipt.due_date == "2026-10-16" and receipt.warnings == [PRIVATE_SENDER_WARNING]
+    assert receipt.steps[0].rule_id == "private_sender_arrival"
+    assert not {"posting_day", "early_receipt"} & set(receipt.rule_ids)
+    assert compute_due(gym, context).due_date == "2026-10-15"  # the letter's date until it is given
+    employer = gym.model_copy(
+        update={"legal_basis": "§ 38 Abs. 1 SGB III", "text": "innerhalb von zwei Wochen"}
+    )
+    certificate = compute_due(employer, replace(context, sender_kind="employer", **arrived))
+    assert certificate.due_date == "2026-10-16" and "private_sender_arrival" in certificate.rule_ids
+    # a remedy statute is more than a word: it names the authority's own procedure, which keeps its rule
+    statute = notice_spec(legal_basis="§ 70 VwGO")
+    assert from_arrival(statute, context) is statute
+
+
 @pytest.mark.parametrize(
-    "text",
+    ("words", "quote"),
     [
-        "Die Gebühr ist innerhalb eines Monats nach Bekanntgabe dieses Bescheides zu zahlen.",
-        "Gegen den Gebührenbescheid vom 1. September kann innerhalb eines Monats Widerspruch erhoben werden.",
+        ("Die Gebühr ist innerhalb eines Monats nach Bekanntgabe dieses Bescheides zu zahlen.", None),
+        (
+            "innerhalb eines Monats",
+            "Gegen den Gebührenbescheid vom 1. September kann Widerspruch erhoben werden.",
+        ),
     ],
 )
-def test_the_periods_own_words_show_an_authoritys_decision(text: str) -> None:
-    """Reviewer repro: a municipal utility's Gebührenbescheid filed as a ``utility`` (a private kind).
-    Its own sentence names a Bescheid and its Bekanntgabe: the earliest plausible deemed delivery stays,
-    whatever the remedy — never the arrival day."""
-    spec = notice_spec(nature="payment", text=text)
-    context = ctx(
+def test_words_naming_a_bescheid_keep_a_late_arrival_from_moving_the_date(
+    words: str, quote: str | None
+) -> None:
+    """A municipal office's Gebührenbescheid filed under a kind no public body goes by (a ``landlord``):
+    it counts from the day it arrived, but its words — the spec's, or the sentence it was read from
+    (``quote``) — show it may be an authority's, so an arrival after the day it would usually count as
+    delivered does not make the date later (Mon 5 Oct, not Wed 14 Oct)."""
+    spec = notice_spec(nature="payment", text=words)
+    late = ctx(
+        today="2026-09-20",
         document_date="2026-09-01",
         received_date="2026-09-14",
         received_confirmed=True,
         region="NW",
         private_sender=True,
+        sender_kind="landlord",
+        quote=quote,
     )
-    assert from_arrival(spec, context) is spec
-    receipt = compute_due(spec, context)
-    assert receipt.due_date == "2026-10-05"  # delivered Sat 5 Sep (4th day, NW), not from Mon 14 Sep
-    assert "posting_day" in receipt.rule_ids and PRIVATE_SENDER_WARNING not in receipt.warnings
-    assert any(w.startswith("You told us it arrived on Mon 14 Sep 2026") for w in receipt.warnings)
-    # everyday German is no Bescheid: "let us know" keeps a firm's letter a private one
-    firm = notice_spec(
-        text="Wenn Sie Einspruch einlegen möchten, geben Sie uns innerhalb von 14 Tagen Bescheid."
+    receipt = compute_due(spec, late)
+    assert receipt.due_date == "2026-10-05"  # usually delivered Sat 5 Sep (4th day, NW)
+    assert "private_sender_late_arrival" in receipt.rule_ids and "posting_day" not in receipt.rule_ids
+    # arriving by then, it counts from the day it arrived: the earlier start
+    early = compute_due(spec, replace(late, received_date=D("2026-09-02")))
+    assert early.due_date == "2026-10-02" and "private_sender_arrival" in early.rule_ids
+    # without such words a landlord's letter counts from the day it arrived, however late
+    plain = compute_due(
+        notice_spec(nature="payment", text="innerhalb eines Monats"), replace(late, quote=None)
     )
-    assert from_arrival(firm, context) is not firm
+    assert plain.due_date == "2026-10-14" and "private_sender_late_arrival" not in plain.rule_ids
 
 
 def _late(received: str, **kw: Any) -> RuleContext:
@@ -1123,20 +1164,29 @@ def test_a_private_senders_late_arrival_never_makes_the_date_later() -> None:
     authority = compute_due(spec, ctx(today="2026-10-01", document_date="2026-09-14"))
     assert authority.due_date == "2026-10-01"  # delivered Thu 17 Sep (3rd day, the Land unknown)
     late = compute_due(spec, _late("2026-09-25"))
-    assert late.due_date == authority.due_date and late.confidence == "high"
+    assert late.due_date == authority.due_date and late.confidence == "medium"
     assert "private_sender_late_arrival" in late.rule_ids and "late_receipt" not in late.rule_ids
-    assert late.steps[1].label == (
-        "That is after the day an authority's letter posted on Mon 14 Sep 2026 would count as delivered, "
-        "Thu 17 Sep 2026: in case the sender is one after all, we count from that earlier day"
+    # one step, in place of "runs from the day you received it" — the period does not run from there
+    assert "private_sender_arrival" not in late.rule_ids
+    assert late.steps[0].label == (
+        "It arrived on Fri 25 Sep 2026, later than a letter dated Mon 14 Sep 2026 usually counts as "
+        "delivered (Thu 17 Sep 2026): we count from that earlier, safe day"
     )
-    assert late.steps[1].date == "2026-09-17"
-    assert late.summary.startswith("14 days after the day an authority's letter would count as delivered")
-    assert (
-        "You told us it arrived on Fri 25 Sep 2026, after the day an authority's letter would count as "
-        "delivered (Thu 17 Sep 2026). A private sender's letter takes effect when it arrives, so if this "
-        "sender is not an authority the deadline may be Fri 9 Oct 2026 (keep the envelope) — we show the "
-        "earlier date in case it is one after all."
-    ) in late.warnings
+    assert late.steps[0].date == "2026-09-17"
+    assert late.summary.startswith("14 days after the day it would usually count as delivered (Thu 17 Sep")
+    # the law counts a later arrival for an authority's letter too, once it is shown (§ 41 Abs. 2 S. 3
+    # VwVfG): the note says so instead of "the period runs from the day the letter arrived"
+    assert late.warnings[0] == (
+        "You told us it arrived on Fri 25 Sep 2026, later than a letter dated Mon 14 Sep 2026 usually counts "
+        "as delivered (Thu 17 Sep 2026). If you can show that (keep the envelope), the deadline may be Fri 9 "
+        "Oct 2026 — for an authority's letter too; we show the earlier, safe date."
+    )
+    assert PRIVATE_SENDER_WARNING not in late.warnings
+    # a posting day the letter states is named as such
+    posted = compute_due(spec.model_copy(update={"anchor_date": "2026-09-11"}), _late("2026-09-25"))
+    assert posted.steps[0].label.startswith(
+        "It arrived on Fri 25 Sep 2026, later than a letter posted on Fri 11"
+    )
     # arriving by the deemed day, the letter counts from the day it arrived: the earlier start
     for received, due in (("2026-09-15", "2026-09-29"), ("2026-09-17", "2026-10-01")):
         early = compute_due(spec, _late(received))
@@ -1148,8 +1198,8 @@ def test_a_private_senders_late_arrival_never_makes_the_date_later() -> None:
     assert undated.due_date == "2026-10-09" and "private_sender_late_arrival" not in undated.rule_ids
     # a period counted back from delivery is capped too, with no date from arrival to name
     back = compute_due(spec.model_copy(update={"amount": -3}), _late("2026-09-25"))
-    assert "private_sender_late_arrival" in back.rule_ids
-    assert not any("the deadline may be" in w for w in back.warnings)
+    assert "private_sender_late_arrival" in back.rule_ids and back.confidence == "medium"
+    assert any("the deadline may be later — for an authority's letter too" in w for w in back.warnings)
     # a company, insurer, utility or employer may be a public body filed so: capped too
     assert compute_due(spec, _late("2026-09-25", sender_kind="company")).due_date == "2026-10-01"
     # a gym, a landlord or a bank issues no Bescheid: its letter counts from the day it arrived
@@ -1158,7 +1208,35 @@ def test_a_private_senders_late_arrival_never_makes_the_date_later() -> None:
         assert plain.due_date == "2026-10-09" and "private_sender_late_arrival" not in plain.rule_ids
     # a notice deadline does not move off a weekend, from the arrival day either (Sat 10 Oct)
     notice = compute_due(spec.model_copy(update={"nature": "notice"}), _late("2026-09-26"))
-    assert any("the deadline may be Sat 10 Oct 2026 (keep the envelope)" in w for w in notice.warnings)
+    assert any("the deadline may be Sat 10 Oct 2026 — for" in w for w in notice.warnings)
+
+
+def test_a_late_arrival_note_says_when_the_later_date_may_still_be_open() -> None:
+    """Reviewer repro: a company's letter dated Tue 1 Sep arrived Fri 25 Sep; on Thu 1 Oct the date
+    shown (Fri 18 Sep, from the usual delivery day) has passed, the one from arrival (Fri 9 Oct) has
+    not. The note must not let a probably live deadline read as missed."""
+    spec = notice_spec(amount=14, unit="days")
+    open_ = compute_due(spec, _late("2026-09-25", document_date="2026-09-01", sender_kind="company"))
+    assert open_.due_date == "2026-09-18" and open_.confidence == "medium"
+    assert open_.warnings[0].endswith(
+        "we show the earlier, safe date. The earlier date has passed, the later one has not: the deadline "
+        "may still be open."
+    )
+    assert "This date (Fri 18 Sep 2026) has already passed." in open_.warnings
+    # both passed, or neither: nothing to add
+    for today in ("2026-10-10", "2026-09-17"):
+        received = "2026-09-17" if today == "2026-09-17" else "2026-09-25"
+        context = replace(_late(received, document_date="2026-09-01"), today=D(today))
+        assert not any("may still be open" in w for w in compute_due(spec, context).warnings)
+    # an authority's letter shown to have arrived late says the same
+    authority = ctx(
+        today="2026-10-01", document_date="2026-09-01", received_date="2026-09-25", received_confirmed=True
+    )
+    assert any(
+        w.startswith("You told us it arrived on Fri 25 Sep 2026")
+        and w.endswith("the deadline may still be open.")
+        for w in compute_due(spec, authority).warnings
+    )
 
 
 def test_period_problem_says_why_nothing_was_computed() -> None:
