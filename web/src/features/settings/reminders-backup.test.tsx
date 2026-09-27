@@ -8,7 +8,7 @@ import { useMockApi } from "@/test/mockFetch";
 import type { DesktopReminders } from "@/api/types";
 import { mockNotification } from "@/mocks/data/reminders";
 import { createMockServer } from "@/mocks/server";
-import { backupSummary, passphraseProblem, restoreCommand, suggestPassphrase } from "./backup";
+import { backupSummary, failureSentence, passphraseProblem, restoreCommand, suggestPassphrase } from "./backup";
 import { autostartLabel, previewFor, testMode, testOutcome, timeError } from "./desktop";
 
 class RO {
@@ -96,6 +96,13 @@ describe("backup helpers", () => {
     expect(backupSummary({ letters: 22, files: 1071, bytes: 10_600_000 })).toBe("22 letters · 1,071 files · about 10 MB");
     expect(restoreCommand("ordnung-backup-2026-09-28.ordnung-backup")).toBe("ordnung restore ordnung-backup-2026-09-28.ordnung-backup");
   });
+
+  it("turns a failure into a sentence the dialog can continue", () => {
+    expect(failureSentence(new Error("Something went wrong"))).toBe("Something went wrong.");
+    expect(failureSentence(new Error("There is no Ordnung database in /x."))).toBe("There is no Ordnung database in /x.");
+    expect(failureSentence(new Error("  "))).toBe("Ordnung didn't answer. Is it still running?");
+    expect(failureSentence("not an error")).toBe("Ordnung didn't answer. Is it still running?");
+  });
 });
 
 describe("the demo's notification preview", () => {
@@ -129,15 +136,22 @@ async function openDesktopCard() {
 }
 
 describe("desktop notification card", () => {
-  it("is off until chosen; discreet shows a count, details show what is due; saving stores both", async () => {
+  const switchOn = async (user: ReturnType<typeof userEvent.setup>, card: HTMLElement) => {
+    await user.click(within(card).getByRole("switch", { name: /Notify me each morning on this computer/ }));
+    return within(card).getByRole("radiogroup", { name: "What the desktop notification shows" });
+  };
+
+  it("is off until switched on, which starts discreet; details show what is due; saving stores both", async () => {
     const { srv, calls } = useMockApi();
     const user = userEvent.setup();
     const card = await openDesktopCard();
-    const modes = within(card).getByRole("radiogroup", { name: "What the desktop notification shows" });
-    expect(within(modes).getByRole("radio", { name: "Off" })).toBeChecked();
+    expect(within(card).getByRole("switch", { name: /Notify me each morning/ })).toHaveAttribute("aria-checked", "false");
+    expect(within(card).queryByRole("radiogroup")).not.toBeInTheDocument();
     expect(within(card).queryByLabelText("Show it from")).not.toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: "Show a test notification" })).not.toBeInTheDocument();
 
-    await user.click(within(modes).getByRole("radio", { name: "Discreet" }));
+    const modes = await switchOn(user, card);
+    expect(within(modes).getByRole("radio", { name: "Discreet" })).toBeChecked();
     expect(within(card).getByText(/no names or amounts/)).toBeInTheDocument();
     const preview = await within(card).findByRole("figure");
     await waitFor(() => expect(preview).toHaveTextContent(/Ordnung.*due this week/));
@@ -155,13 +169,19 @@ describe("desktop notification card", () => {
     expect(await within(card).findByText("Saved.")).toBeInTheDocument();
     expect(calls.find((c) => c.method === "PUT" && c.path === "/settings")?.body).toEqual({ desktop_notifications: "full", desktop_notify_time: "07:30" });
     expect(srv.db.state.settings.desktop_notifications).toBe("full");
+
+    // switched off again, it saves only the mode (the time is kept for next time)
+    await user.click(within(card).getByRole("switch", { name: /Notify me each morning/ }));
+    await user.click(within(card).getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(srv.db.state.settings.desktop_notifications).toBe("off"));
+    expect(srv.db.state.settings.desktop_notify_time).toBe("07:30");
   });
 
   it("won't save an empty time", async () => {
     const { calls } = useMockApi();
     const user = userEvent.setup();
     const card = await openDesktopCard();
-    await user.click(within(card).getByRole("radio", { name: "Discreet" }));
+    await switchOn(user, card);
     await user.clear(within(card).getByLabelText("Show it from"));
     await user.click(within(card).getByRole("button", { name: "Save changes" }));
     expect(within(card).getByText("Choose a time, like 08:00")).toBeInTheDocument();
@@ -172,7 +192,7 @@ describe("desktop notification card", () => {
     const { calls } = useMockApi();
     const user = userEvent.setup();
     const card = await openDesktopCard();
-    await user.click(within(card).getByRole("radio", { name: "With details" }));
+    await user.click(within(await switchOn(user, card)).getByRole("radio", { name: "With details" }));
     await user.click(await within(card).findByRole("button", { name: "Show a test notification" }));
     expect(await screen.findByText("Test notification sent")).toBeInTheDocument();
     expect(calls.find((c) => c.path === "/reminders/desktop/test")?.body).toEqual({ mode: "full" });

@@ -3,15 +3,14 @@ import type { AppSettings, DesktopMode, DesktopReminders, NotificationText } fro
 
 export type DesktopSetting = AppSettings["desktop_notifications"];
 
-export const DESKTOP_MODES: { value: DesktopSetting; label: string; shortLabel?: string }[] = [
-  { value: "off", label: "Off" },
+/** What a switched-on notification shows; switching it on starts with `discreet`. */
+export const DESKTOP_MODES: { value: DesktopMode; label: string; shortLabel?: string }[] = [
   { value: "discreet", label: "Discreet" },
   { value: "full", label: "With details", shortLabel: "Details" },
 ];
 
 /** What each choice means, in one line under the choice. */
-export const MODE_HINTS: Record<DesktopSetting, string> = {
-  off: "No desktop notification. Ordnung still reminds you in the app and through your calendar file.",
+export const MODE_HINTS: Record<DesktopMode, string> = {
   discreet: "Only a count, like “2 things due this week” — no names or amounts, so nothing private shows on a lock screen.",
   full: "What is due, with amounts and the day to act. Anyone who can see your screen can read it.",
 };

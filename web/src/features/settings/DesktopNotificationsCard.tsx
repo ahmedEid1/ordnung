@@ -6,7 +6,7 @@ import { LogoMark } from "@/components/shell/Logo";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
-import { Field, Input } from "@/components/ui/Field";
+import { Field, Input, Switch } from "@/components/ui/Field";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
@@ -133,7 +133,7 @@ function Editor({ settings }: { settings: AppSettings }) {
     <SettingsCard
       title="Desktop notification each morning"
       id="set-desktop"
-      description="One short note a day on this computer — also while the browser is closed, as long as Ordnung runs. Ordnung writes it from your dates; no AI, and nothing leaves this computer."
+      description="Ordnung writes it from your dates on this computer — no AI, and nothing is sent anywhere."
       footer={
         <SaveBar
           dirty={dirty}
@@ -152,29 +152,38 @@ function Editor({ settings }: { settings: AppSettings }) {
         />
       }
     >
-      <p aria-hidden className="mb-2 text-sm font-medium text-ink">
-        What it shows
-      </p>
-      <SegmentedControl label="What the desktop notification shows" value={mode} onChange={setMode} options={DESKTOP_MODES} fill="phone" />
-      <p className="mt-2 text-sm leading-5 text-muted">{MODE_HINTS[mode]}</p>
+      <Switch
+        checked={mode !== "off"}
+        // switched on, it starts discreet: nothing private on a lock screen unless chosen
+        onCheckedChange={(on) => setMode(on ? "discreet" : "off")}
+        label="Notify me each morning on this computer"
+        description="One short note a day, also with the browser closed — as long as Ordnung runs."
+      />
 
       {mode !== "off" ? (
-        <div className="mt-5 grid gap-5 sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
-          <Field id="desktop-time" label="Show it from" hint="Within 15 minutes of this time — or when Ordnung starts, if later." error={showError ? error : undefined}>
-            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} step={60} required className="tabular-nums" />
-          </Field>
-          {status.isError ? (
-            <div role="alert" className="min-w-0">
-              <p className="text-sm font-medium text-ink">Today it would say</p>
-              <p className="mt-1.5 text-[13px] leading-5 text-danger-ink">Couldn't load the preview — is Ordnung still running?</p>
-              <Button size="sm" variant="ghost" icon={RotateCw} className="mt-1" onClick={() => void status.refetch()} loading={status.isFetching}>
-                Try again
-              </Button>
-            </div>
-          ) : (
-            <NotificationPreview text={previewFor(data, mode)} loading={status.isPending} />
-          )}
-        </div>
+        <>
+          <p aria-hidden className="mb-2 mt-5 text-sm font-medium text-ink">
+            What it shows
+          </p>
+          <SegmentedControl label="What the desktop notification shows" value={mode} onChange={setMode} options={DESKTOP_MODES} fill="phone" />
+          <p className="mt-2 text-sm leading-5 text-muted">{MODE_HINTS[mode]}</p>
+          <div className="mt-5 grid gap-5 sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
+            <Field id="desktop-time" label="Show it from" hint="Within 15 minutes of this time — or when Ordnung starts, if later." error={showError ? error : undefined}>
+              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} step={60} required className="tabular-nums" />
+            </Field>
+            {status.isError ? (
+              <div role="alert" className="min-w-0">
+                <p className="text-sm font-medium text-ink">Today it would say</p>
+                <p className="mt-1.5 text-[13px] leading-5 text-danger-ink">Couldn't load the preview — is Ordnung still running?</p>
+                <Button size="sm" variant="ghost" icon={RotateCw} className="mt-1" onClick={() => void status.refetch()} loading={status.isFetching}>
+                  Try again
+                </Button>
+              </div>
+            ) : (
+              <NotificationPreview text={previewFor(data, mode)} loading={status.isPending} />
+            )}
+          </div>
+        </>
       ) : null}
 
       {staticDemo ? (
@@ -185,7 +194,7 @@ function Editor({ settings }: { settings: AppSettings }) {
         <Callout tone="warn" title="This computer can't show it yet" className="mt-5">
           {data.missing} Your calendar alarms still work.
         </Callout>
-      ) : (
+      ) : mode === "off" ? null : (
         <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
           <Button size="sm" variant="secondary" icon={BellRing} onClick={sendTest} loading={test.isPending} disabled={status.isPending}>
             Show a test notification

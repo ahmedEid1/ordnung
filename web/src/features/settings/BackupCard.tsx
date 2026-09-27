@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { formatFileSize } from "@/lib/format";
 import { isStaticDemo } from "@/mocks/mode";
-import { backupSummary, MIN_PASSPHRASE, passphraseProblem, restoreCommand, saveBlob, suggestPassphrase, type PassphraseProblem } from "./backup";
+import { backupSummary, failureSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, saveBlob, suggestPassphrase, type PassphraseProblem } from "./backup";
 import { SettingsCard } from "./SettingsCard";
 
 /** The backup the browser just saved (what the card confirms). */
@@ -181,7 +181,7 @@ function BackupDialog({
         </div>
         {failed ? (
           <Callout tone="danger" title="Couldn't make the backup" alert>
-            {download.error instanceof Error ? download.error.message : "Ordnung didn't answer. Is it still running?"} Nothing was saved.
+            {failureSentence(download.error)} Nothing was saved.
           </Callout>
         ) : null}
       </form>

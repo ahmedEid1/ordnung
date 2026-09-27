@@ -46,6 +46,12 @@ export function backupSummary(info: Pick<BackupInfo, "letters" | "files" | "byte
   return [count(info.letters, "letter", "letters"), count(info.files, "file", "files"), `about ${formatFileSize(info.bytes)}`].join(" · ");
 }
 
+/** Why the backup couldn't be made, as a sentence the dialog can continue ("… Nothing was saved."). */
+export function failureSentence(error: unknown): string {
+  const text = error instanceof Error && error.message.trim() ? error.message.trim() : "Ordnung didn't answer. Is it still running?";
+  return /[.!?…]$/.test(text) ? text : `${text}.`;
+}
+
 /** The command that restores the downloaded file (from the folder it was saved in). */
 export function restoreCommand(fileName: string): string {
   return `ordnung restore ${fileName}`;

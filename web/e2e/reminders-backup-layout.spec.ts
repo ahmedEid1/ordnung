@@ -61,6 +61,10 @@ for (const [width, height] of [
     await open(page, "/settings?section=reminders", "Settings");
     const card = page.getByRole("region", { name: "Desktop notification each morning" });
     await card.scrollIntoViewIfNeeded();
+    const on = card.getByRole("switch", { name: /Notify me each morning/ });
+    await expect(on).toHaveAttribute("aria-checked", "false");
+    await on.click();
+    await expect(card.getByRole("radio", { name: "Discreet" })).toBeChecked();
     await card.getByRole("radio", { name: "With details" }).click();
     await settle(page);
     await expect(card.getByLabel("Show it from")).toHaveValue("08:00");
@@ -75,7 +79,8 @@ for (const [width, height] of [
     await card.getByRole("radio", { name: "With details" }).focus();
     await focusStaysVisible(page, 8);
     await card.getByRole("button", { name: "Discard" }).click();
-    await expect(card.getByRole("radio", { name: "Off" })).toBeChecked();
+    await expect(on).toHaveAttribute("aria-checked", "false");
+    await expect(card.getByRole("radiogroup")).toHaveCount(0);
   });
 
   test(`backup dialog at ${width}×${height}: fits the screen and takes a suggested passphrase`, async ({ page }) => {
@@ -124,7 +129,7 @@ for (const scheme of ["light", "dark"] as const) {
     test("the desktop notification card with a preview", async ({ page }) => {
       await open(page, "/settings?section=reminders", "Settings");
       const card = page.getByRole("region", { name: "Desktop notification each morning" });
-      await card.getByRole("radio", { name: "Discreet" }).click();
+      await card.getByRole("switch", { name: /Notify me each morning/ }).click();
       await expect(card.getByRole("figure")).toContainText("Today it would say");
       // the whole card on screen, just below the top bar: nothing of it under a sticky bar (a
       // page scan would count whatever else the scroll position puts half under the top bar)

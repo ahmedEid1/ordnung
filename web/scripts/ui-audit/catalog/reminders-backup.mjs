@@ -13,6 +13,7 @@ const DATA = "/settings?section=data";
 
 const card = (c, name) => inMain(c.page).getByRole("region", { name });
 const desktopCard = (c) => card(c, "Desktop notification each morning");
+const SWITCH = /Notify me each morning on this computer/;
 const backupCard = (c) => card(c, "Encrypted backup");
 
 /** A long, realistic preview (a German title that doesn't break easily) and a Linux setup. */
@@ -46,7 +47,9 @@ async function openDesktop(c, status = desktopStatus(), mode = null) {
   await fakeApi(c.page, "GET", /^\/api\/reminders\/desktop$/, async () => ({ json: status }));
   await c.goto(REMINDERS);
   const box = await c.visible(desktopCard(c));
-  if (mode) await c.click(box.getByRole("radio", { name: mode }));
+  // switched on it starts discreet; "With details" is a second choice
+  if (mode) await c.click(box.getByRole("switch", { name: SWITCH }));
+  if (mode && mode !== "Discreet") await c.click(box.getByRole("radio", { name: mode }));
   // the card is the section's last: at the page's end its save bar sits where it belongs, not over
   // the card (the pinned bar over half-scrolled content is the save bar's own, audited elsewhere)
   await c.page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
@@ -70,41 +73,37 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
     id: "reminders-desktop-off",
     route: REMINDERS,
     how: "open Settings → Reminders, scroll to “Desktop notification each morning” (off; GET /api/reminders/desktop answered by the audit)",
-    description: "Desktop notification switched off: the three choices, what off means, start at login.",
+    description: "Desktop notification switched off: the switch, nothing else to choose, start at login.",
     run: (c) => openDesktop(c),
   });
   add({
     id: "reminders-desktop-discreet",
     route: REMINDERS,
-    how: "open Settings → Reminders, choose “Discreet” (unsaved)",
+    how: "open Settings → Reminders, switch the morning notification on (discreet; unsaved)",
     description: "Discreet mode: the time, the preview with a count only, the test button, the save bar.",
     run: (c) => openDesktop(c, desktopStatus(), "Discreet"),
   });
   add({
     id: "reminders-desktop-full",
     route: REMINDERS,
-    how: "open Settings → Reminders, choose “With details” (unsaved; a long preview)",
+    how: "open Settings → Reminders, switch it on, choose “With details” (unsaved; a long preview)",
     description: "Details mode: a long preview with titles, amounts and days, the warning about screens.",
     run: (c) => openDesktop(c, desktopStatus(), "With details"),
   });
   add({
     id: "reminders-desktop-nothing-due",
     route: REMINDERS,
-    how: "open Settings → Reminders, choose “Discreet”, with nothing due this week (answered by the audit)",
+    how: "open Settings → Reminders, switch it on (discreet), with nothing due this week (answered by the audit)",
     description: "Discreet mode when nothing is due: the preview says there is no notification today.",
     run: (c) => openDesktop(c, desktopStatus({ preview: { discreet: null, full: null } }), "Discreet"),
   });
   add({
     id: "reminders-desktop-no-tool",
     route: REMINDERS,
-    how: "open Settings → Reminders, choose “Discreet”, on a computer without notify-send (answered by the audit)",
-    description: "No notification tool: the warning with what to install instead of the test button.",
+    how: "open Settings → Reminders on a computer without notify-send (answered by the audit)",
+    description: "No notification tool: the warning with what to install, shown before it is switched on (no test button).",
     run: (c) =>
-      openDesktop(
-        c,
-        desktopStatus({ tool: null, missing: "No notification tool was found: install notify-send (the libnotify-bin or libnotify package)." }),
-        "Discreet",
-      ),
+      openDesktop(c, desktopStatus({ tool: null, missing: "No notification tool was found: install notify-send (the libnotify-bin or libnotify package)." })),
   });
   add({
     id: "reminders-desktop-autostart-on",
@@ -138,7 +137,7 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
   add({
     id: "reminders-desktop-test-toast",
     route: REMINDERS,
-    how: "choose “With details”, “Show a test notification” (answered by the audit: shown)",
+    how: "switch it on, choose “With details”, “Show a test notification” (answered by the audit: shown)",
     description: "The toast after a test notification was shown.",
     pinToasts: true,
     run: async (c) => {
@@ -241,7 +240,7 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
 export function staticRemindersBackupStates(add) {
   add("settings-reminders-desktop", "/settings?section=reminders", "Static demo: the desktop notification card (it can't notify from the online demo).", async (c) => {
     const box = await c.visible(desktopCard(c));
-    await c.click(box.getByRole("radio", { name: "Discreet" }));
+    await c.click(box.getByRole("switch", { name: SWITCH }));
     await c.centre(box);
   });
   add("settings-data-backup", "/settings?section=data", "Static demo: the encrypted backup card (nothing to back up in the online demo).", async (c) => {
