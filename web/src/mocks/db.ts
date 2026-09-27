@@ -161,7 +161,7 @@ export class MockDb {
           cancel_by: "2026-10-31",
           send_by: "2026-10-27",
           safe_date: "2026-10-30",
-          warnings: ["Price increase from 1 Nov: 55,00 €/month (+84 €/year). Special right to cancel until 31 Oct."],
+          warnings: ["Price increase from 1 Nov: €55.00/month (+€84/year). Special right to cancel until 31 Oct."],
         };
         c.updated_at = now;
       }
@@ -432,8 +432,8 @@ export class MockDb {
         id: "lane_home",
         label: "Home",
         area: "home",
-        bars: [bar({ id: "bar_lease", label: "Lease Musterweg 12 (open-ended)", start: "2025-10-01", end: "2027-12-31", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_rent" } })],
-        markers: [m("2026-10-05", "Rent", "payment"), m("2026-10-09", "Utility back payment 184,30 €", "payment"), m("2026-11-15", "Broadcasting fee", "payment")],
+        bars: [bar({ id: "bar_lease", label: "Lease Beispielweg 5 (open-ended)", start: "2025-10-01", end: "2027-12-31", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_rent" } })],
+        markers: [m("2026-10-05", "Rent", "payment"), m("2026-10-09", "Utility back payment €184.30", "payment"), m("2026-11-15", "Broadcasting fee", "payment")],
       },
       {
         id: "lane_phone",
@@ -456,7 +456,7 @@ export class MockDb {
             ? [bar({ id: "bar_power_right", label: "Special right to cancel", start: "2026-09-28", end: "2026-10-31", kind: "notice_window", ref: { type: "document", id: "doc_power_price" }, markers: [m("2026-10-27", "Send by (post)", "send_by"), m("2026-10-31", "Cancel by", "cancel_by")] })]
             : []),
         ],
-        markers: has("itm_power_new") ? [m("2026-11-01", "Price rises (+84 €/year)", "other")] : [],
+        markers: has("itm_power_new") ? [m("2026-11-01", "Price rises (+€84/year)", "other")] : [],
       },
       {
         id: "lane_insurance",
@@ -464,7 +464,7 @@ export class MockDb {
         area: "insurance",
         bars: [
           bar({ id: "bar_liab_2026", label: "Insurance year", start: "2025-12-01", end: "2026-11-30", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_liability" } }),
-          bar({ id: "bar_liab_2027", label: "Insurance year (renewed)", start: "2026-12-01", end: "2027-11-30", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_liability" }, markers: [m("2026-12-01", "Renews · 59,90 €", "renewal")] }),
+          bar({ id: "bar_liab_2027", label: "Insurance year (renewed)", start: "2026-12-01", end: "2027-11-30", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_liability" }, markers: [m("2026-12-01", "Renews · €59.90", "renewal")] }),
           bar({ id: "bar_liab_notice", label: "Time to cancel", start: "2027-06-01", end: "2027-08-31", kind: "notice_window", ref: { type: "contract", id: "ctr_liability" }, markers: [m("2027-08-25", "Send by", "send_by"), m("2027-08-31", "Cancel by", "cancel_by")] }),
         ],
         markers: [],
@@ -477,7 +477,7 @@ export class MockDb {
           bar({ id: "bar_ws", label: "Winter semester 2026/27", start: "2026-10-01", end: "2027-03-31", kind: "period", status: "ok", ref: { type: "document", id: "doc_uni" } }),
           bar({ id: "bar_ss", label: "Summer semester 2027", start: "2027-04-01", end: "2027-09-30", kind: "period", status: "ok", ref: { type: "document", id: "doc_uni" } }),
         ],
-        markers: [m("2026-12-15", "Scholarship report", "deadline"), m("2027-01-15", "Semester fee 312,40 €", "payment")],
+        markers: [m("2026-12-15", "Scholarship report", "deadline"), m("2027-01-15", "Semester fee €312.40", "payment")],
       },
       {
         id: "lane_work",
@@ -491,7 +491,7 @@ export class MockDb {
         label: "Money",
         area: "money",
         bars: [],
-        markers: [m("2026-09-30", "TechMarkt 94,99 €", "payment"), m("2026-11-30", "Bank fee decision", "deadline"), m("2026-12-01", "Liability 59,90 €", "payment")],
+        markers: [m("2026-09-30", "TechMarkt €94.99", "payment"), m("2026-11-30", "Bank fee decision", "deadline"), m("2026-12-01", "Liability €59.90", "payment")],
       },
     ];
     if (has("itm_tax_objection")) {

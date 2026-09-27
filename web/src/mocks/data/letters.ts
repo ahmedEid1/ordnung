@@ -144,14 +144,14 @@ export const LETTERS: Record<string, LetterSpec> = {
     info: [
       ["Datum", "15.09.2025"],
       ["Mieternummer", "12-0412-07"],
-      ["Objekt", "Musterweg 12, Whg. 12"],
+      ["Objekt", "Beispielweg 5, Whg. 12"],
     ],
     pages: [
       {
         subject: "Mietvertrag über Wohnraum",
         blocks: [
           { text: "§ 1 Mietsache", bold: true },
-          "Vermietet wird die Wohnung Nr. 12, 2. OG links, Musterweg 12, 12345 Musterstadt (1 Zimmer, Küche, Bad, ca. 34 m²).",
+          "Vermietet wird die Wohnung Nr. 12, 2. OG links, Beispielweg 5, 12345 Musterstadt (1 Zimmer, Küche, Bad, ca. 34 m²).",
           { text: "§ 2 Mietzeit", bold: true },
           Q.lease.start,
           { text: "§ 3 Miete", bold: true },

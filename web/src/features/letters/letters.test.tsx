@@ -232,7 +232,7 @@ describe("Letter editor", () => {
     expect(screen.getByText(/I hereby cancel my mobile contract/)).toBeInTheDocument();
     expect(screen.getByText(/For your understanding only/)).toBeInTheDocument();
     // checks
-    expect(screen.getByText("All 8 checks passed")).toBeInTheDocument();
+    expect(screen.getByText("All 9 checks passed")).toBeInTheDocument();
     // how to send it
     const send = screen.getByRole("region", { name: "How to send it" });
     expect(within(send).getByText("Send it by")).toBeInTheDocument();
