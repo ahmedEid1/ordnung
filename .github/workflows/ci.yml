@@ -91,6 +91,11 @@ jobs:
           uv venv .venv
           uv pip install -e ".[dev]"
           cd web && npm ci && npx playwright install --with-deps chromium
+      - name: The static demo's My numbers and weekly session match the Python code
+        # needs both toolchains (node + web/node_modules and the Python package): only this job has them
+        env:
+          ORDNUNG_REQUIRE_MOCK_CHECK: "1"
+        run: .venv/bin/pytest -q tests/test_mock_numbers.py
       - name: Build UI
         run: cd web && npm run build
       - name: Playwright (demo server, tour, pages, axe light + dark, phone)
