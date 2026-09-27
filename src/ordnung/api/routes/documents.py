@@ -60,6 +60,7 @@ from ordnung.rules.advice import letter_advice, settles
 from ordnung.rules.deadlines import parse_date
 from ordnung.rules.routing import alternative_notice, announced_end, extraordinary_notice, is_labour_court
 from ordnung.rules.tenancy import notice_objection_deadline
+from ordnung.secretary.girocode_gate import document_girocodes
 from ordnung.secretary.triggers import Ledger
 
 router = APIRouter(tags=["documents"])
@@ -254,7 +255,8 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
 
 def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
     """The document viewer's data: the letter, its pages, to-dos, contracts, sender, thread, related
-    letters, Ideas, drafts and, for a high-stakes letter, its "get advice" card."""
+    letters, Ideas, drafts, a GiroCode (or why there is none) per payment and, for a high-stakes
+    letter, its "get advice" card."""
     document = require(store.get_document(doc_id), NOT_FOUND)
     items = _with_reminder_notes(store, store.list_items(doc_id=doc_id), today)
     linked = {item.contract_id for item in items if item.contract_id}
@@ -276,6 +278,7 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         related=_related(store, document),
         suggestions=_ideas_about(store, doc_id, items),
         drafts=store.list_drafts(doc_id=doc_id),
+        girocodes=document_girocodes(store, document, items, today),
     )
 
 

@@ -421,6 +421,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/items/{item_id}/girocode/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Girocode
+         * @description "These match the letter": the person compared a payment's details with the paper letter.
+         */
+        post: operations["confirm_girocode_api_items__item_id__girocode_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/contracts": {
         parameters: {
             query?: never;
@@ -1683,6 +1703,8 @@ export interface components {
             suggestions: components["schemas"]["Suggestion"][];
             /** Drafts */
             drafts: components["schemas"]["Draft"][];
+            /** Girocodes */
+            girocodes: (components["schemas"]["GiroCodeReady"] | components["schemas"]["GiroCodeBlocked"])[];
         };
         /**
          * DocumentPatch
@@ -1896,6 +1918,65 @@ export interface components {
             score: number;
             /** Boxes */
             boxes: components["schemas"]["Box"][];
+        };
+        /**
+         * GiroCodeBlocked
+         * @description Why a payment has no GiroCode, in plain words (``message``). For ``check_letter``, ``to_check``
+         *     names the details to compare with the paper letter and ``values`` are the ones to confirm.
+         */
+        GiroCodeBlocked: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "blocked";
+            /** Item Id */
+            item_id: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "incoming" | "direct_debit" | "settled" | "replaced" | "several" | "scam" | "currency" | "no_amount" | "no_iban" | "invalid_iban" | "no_payee" | "invalid" | "check_letter";
+            /** Message */
+            message: string;
+            /** To Check */
+            to_check: ("amount" | "iban" | "reference")[];
+            values: components["schemas"]["TransferValues"] | null;
+        };
+        /**
+         * GiroCodeConfirm
+         * @description The transfer details the person compared with the paper letter, exactly as they were shown.
+         */
+        GiroCodeConfirm: {
+            /** Payee */
+            payee?: string | null;
+            /** Iban */
+            iban?: string | null;
+            /** Reference */
+            reference?: string | null;
+            /** Amount */
+            amount?: number | null;
+        };
+        /**
+         * GiroCodeReady
+         * @description A GiroCode for one payment: ``payload`` is the EPC069-12 text to show as a QR code at error
+         *     correction level M. ``checked``: the person compared these details with the paper letter.
+         */
+        GiroCodeReady: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "ready";
+            /** Item Id */
+            item_id: string;
+            /** Payload */
+            payload: string;
+            /**
+             * Checked
+             * @default false
+             */
+            checked: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -3219,6 +3300,20 @@ export interface components {
             completed: boolean;
         };
         /**
+         * TransferValues
+         * @description The transfer details a GiroCode carries — what the person compares with the paper letter.
+         */
+        TransferValues: {
+            /** Payee */
+            payee: string | null;
+            /** Iban */
+            iban: string | null;
+            /** Reference */
+            reference: string | null;
+            /** Amount */
+            amount: number | null;
+        };
+        /**
          * UploadError
          * @description A file that was not accepted, with the reason written for the person.
          */
@@ -4376,6 +4471,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Item"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_girocode_api_items__item_id__girocode_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GiroCodeConfirm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GiroCodeReady"] | components["schemas"]["GiroCodeBlocked"];
                 };
             };
             /** @description Validation Error */

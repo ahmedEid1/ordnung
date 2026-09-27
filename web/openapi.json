@@ -1491,6 +1491,74 @@
         }
       }
     },
+    "/api/items/{item_id}/girocode/confirm": {
+      "post": {
+        "tags": [
+          "items"
+        ],
+        "summary": "Confirm Girocode",
+        "description": "\"These match the letter\": the person compared a payment's details with the paper letter.",
+        "operationId": "confirm_girocode_api_items__item_id__girocode_confirm_post",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GiroCodeConfirm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/GiroCodeReady"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GiroCodeBlocked"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "status",
+                    "mapping": {
+                      "ready": "#/components/schemas/GiroCodeReady",
+                      "blocked": "#/components/schemas/GiroCodeBlocked"
+                    }
+                  },
+                  "title": "Response Confirm Girocode Api Items  Item Id  Girocode Confirm Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/contracts": {
       "get": {
         "tags": [
@@ -5137,6 +5205,27 @@
             },
             "type": "array",
             "title": "Drafts"
+          },
+          "girocodes": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/GiroCodeReady"
+                },
+                {
+                  "$ref": "#/components/schemas/GiroCodeBlocked"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "status",
+                "mapping": {
+                  "blocked": "#/components/schemas/GiroCodeBlocked",
+                  "ready": "#/components/schemas/GiroCodeReady"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Girocodes"
           }
         },
         "type": "object",
@@ -5150,7 +5239,8 @@
           "case",
           "related",
           "suggestions",
-          "drafts"
+          "drafts",
+          "girocodes"
         ],
         "title": "DocumentDetail"
       },
@@ -5846,6 +5936,160 @@
         ],
         "title": "Evidence",
         "description": "Where a fact came from.\n\n``grounding``: ``verified`` — quote located in the PDF text layer with all digits matching;\n``model_read`` — located only in the AI transcription of a scan/photo; ``unverified`` — not found;\n``user`` — confirmed by the person."
+      },
+      "GiroCodeBlocked": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "blocked",
+            "title": "Status",
+            "default": "blocked"
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "incoming",
+              "direct_debit",
+              "settled",
+              "replaced",
+              "several",
+              "scam",
+              "currency",
+              "no_amount",
+              "no_iban",
+              "invalid_iban",
+              "no_payee",
+              "invalid",
+              "check_letter"
+            ],
+            "title": "Reason"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "to_check": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "amount",
+                "iban",
+                "reference"
+              ]
+            },
+            "type": "array",
+            "title": "To Check"
+          },
+          "values": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransferValues"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "item_id",
+          "reason",
+          "message",
+          "to_check",
+          "values"
+        ],
+        "title": "GiroCodeBlocked",
+        "description": "Why a payment has no GiroCode, in plain words (``message``). For ``check_letter``, ``to_check``\nnames the details to compare with the paper letter and ``values`` are the ones to confirm."
+      },
+      "GiroCodeConfirm": {
+        "properties": {
+          "payee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payee"
+          },
+          "iban": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iban"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "GiroCodeConfirm",
+        "description": "The transfer details the person compared with the paper letter, exactly as they were shown."
+      },
+      "GiroCodeReady": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ready",
+            "title": "Status",
+            "default": "ready"
+          },
+          "item_id": {
+            "type": "string",
+            "title": "Item Id"
+          },
+          "payload": {
+            "type": "string",
+            "title": "Payload"
+          },
+          "checked": {
+            "type": "boolean",
+            "title": "Checked",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "item_id",
+          "payload",
+          "checked"
+        ],
+        "title": "GiroCodeReady",
+        "description": "A GiroCode for one payment: ``payload`` is the EPC069-12 text to show as a QR code at error\ncorrection level M. ``checked``: the person compared these details with the paper letter."
       },
       "HTTPValidationError": {
         "properties": {
@@ -9560,6 +9804,63 @@
           "completed"
         ],
         "title": "TourState"
+      },
+      "TransferValues": {
+        "properties": {
+          "payee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payee"
+          },
+          "iban": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iban"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "payee",
+          "iban",
+          "reference",
+          "amount"
+        ],
+        "title": "TransferValues",
+        "description": "The transfer details a GiroCode carries — what the person compares with the paper letter."
       },
       "UploadError": {
         "properties": {
