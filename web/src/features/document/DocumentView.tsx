@@ -87,12 +87,12 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
           ) : (
             <>
               <ExplainedSimply doc={doc} />
-              <ItemsList items={detail.items} docId={doc.id} />
+              <ItemsList items={detail.items} docId={doc.id} pages={doc.pages} scam={scam} />
               <KeyFacts doc={doc} scam={scam} />
               <ThreadSection detail={detail} />
               <ContractsSection contracts={detail.contracts} />
               <DraftsSection drafts={detail.drafts} />
-              <IdeasSection suggestions={lead ? detail.suggestions.filter((s) => s.id !== lead.id) : detail.suggestions} />
+              <IdeasSection suggestions={lead ? detail.suggestions.filter((s) => s.id !== lead.id) : detail.suggestions} docId={doc.id} items={detail.items} primaryId={primary?.id} />
             </>
           )}
           <DocumentFooter detail={detail} />

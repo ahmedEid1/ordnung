@@ -337,14 +337,17 @@ describe("the advice card of a high-stakes letter", () => {
     expect(back.items.map((i) => i.slot_key)).toEqual(["rule:kschg_4", "rule:sgb3_38"]);
   });
 
-  it("keeps the 'This letter' badge outside a long, truncated title in the thread", async () => {
+  it("keeps the 'This letter' badge outside a long, clamped title in the thread", async () => {
     const detail = await detailFromMock("doc_dismissal");
     expect(detail.related.length).toBeGreaterThan(0);
     renderWithProviders(<ThreadSection detail={detail} />, { client: client() });
     const badge = screen.getByText("This letter");
-    expect(badge.closest(".truncate")).toBeNull();
+    expect(badge.closest(".line-clamp-2")).toBeNull();
     expect(badge).toHaveClass("shrink-0");
-    expect(screen.getByText(detail.document.title!)).toHaveClass("truncate");
+    // two lines, the whole title in the tooltip (UI audit round 1: cut to one line with no way to read it)
+    const title = screen.getByText(detail.document.title!);
+    expect(title).toHaveClass("line-clamp-2");
+    expect(title).toHaveAttribute("title", detail.document.title!);
   });
 
   it("never breaks a citation after its § sign", () => {
