@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import re
 import sys
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, TypeVar, get_args
@@ -173,12 +173,22 @@ class LedgerTools:
         wanted = _clamp(limit, 1, MAX_SEARCH_HITS)
         letters = LetterText()
         hits: list[dict[str, Any]] = []
+        ledger = self.ledger()
         for hit in self.store.search(query, limit=wanted * 2):
             doc = self.store.get_document(hit.doc_id)
             if doc is None or not _shareable(doc):
                 continue
-            hits.append({"id": doc.id, "kind": doc.kind, "date": doc.doc_date, "party_id": doc.party_id})
-            letters.add(doc.id, title=hit.title, snippet=hit.snippet)
+            scam = ledger.scam_reasons(doc)
+            hits.append(
+                {
+                    "id": doc.id,
+                    "kind": doc.kind,
+                    "date": doc.doc_date,
+                    "party_id": doc.party_id,
+                    "scam_warning": bool(scam) or None,
+                }
+            )
+            letters.add(doc.id, title=hit.title, snippet=hit.snippet, scam_signs=scam)
             self._party_name(letters, doc.party_id)
             if len(hits) == wanted:
                 break
@@ -292,7 +302,10 @@ class LedgerTools:
             )
             letter = self.store.get_document(item.doc_id) if item.doc_id else None
             return _explain_item(
-                item, in_person=in_person, withheld=letter is not None and not _shareable(letter)
+                item,
+                in_person=in_person,
+                withheld=letter is not None and not _shareable(letter),
+                scam=_scam_signs(self.ledger(), item),
             )
         if ref_id.startswith("ctr_"):
             contract = self.store.get_contract(ref_id)
@@ -412,7 +425,8 @@ class LedgerTools:
             if not (entry.ref.type == "document" and entry.ref.id in private)
         ]
         letters = LetterText()
-        rows = [self._timeline_row(entry, letters) for entry in entries[:MAX_TIMELINE_ENTRIES]]
+        ledger = self.ledger()
+        rows = [self._timeline_row(entry, letters, ledger) for entry in entries[:MAX_TIMELINE_ENTRIES]]
         record = {
             "today": today.isoformat(),
             "entries": rows,
@@ -420,14 +434,21 @@ class LedgerTools:
         }
         return ToolAnswer(record, letters.by_id)
 
-    def _timeline_row(self, entry: TimelineEntry, letters: LetterText) -> dict[str, Any]:
+    def _timeline_row(self, entry: TimelineEntry, letters: LetterText, ledger: Ledger) -> dict[str, Any]:
         """Date, kind and status are the record; the amount only when its evidence is verified.
 
         A record can have several entries ("X ends", "Decide on X"): the letter text keeps each one's
-        wording in a list.
+        wording in a list. A to-do or letter with scam signs is flagged (``scam_warning``) as
+        ``list_items`` and ``get_document`` flag it — the timeline's code-written "Possible scam" line is
+        that flag, not letter text — and a to-do keeps its ``payment_note``, so the answer check's notes
+        follow "what's due this week?" too (review round 3 of phase 2).
         """
-        letters.collect(entry.ref.id, titles=entry.title, subtitles=entry.subtitle)
-        letters.add(entry.ref.id, party=entry.party_name)
+        item = self.store.get_item(entry.ref.id) if entry.ref.type == "item" else None
+        doc = ledger.document(entry.ref.id) if entry.ref.type == "document" else None
+        scam = _scam_signs(ledger, item) if item is not None else ledger.scam_reasons(doc) if doc else []
+        subtitle = None if item is not None and ledger.is_suspicious_item(item) else entry.subtitle
+        letters.collect(entry.ref.id, titles=entry.title, subtitles=subtitle)
+        letters.add(entry.ref.id, party=entry.party_name, scam_signs=scam)
         row: dict[str, Any] = {
             "date": entry.date,
             "time": _clock_time(entry.time, letters, entry.ref.id),
@@ -436,8 +457,8 @@ class LedgerTools:
             "ref_type": entry.ref.type,
             "id": entry.ref.id,
             "past": entry.past or None,
+            "scam_warning": bool(scam) or None,
         }
-        item = self.store.get_item(entry.ref.id) if entry.ref.type == "item" else None
         row["payment_note"] = payment_note(item) if item is not None else None
         if entry.amount is not None:
             note = self._unverified_amount(entry.ref.type, entry.ref.id)
@@ -633,8 +654,7 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
     """
     from ordnung.secretary.triggers import is_overdue
 
-    doc = ledger.document(item.doc_id)
-    scam = ledger.scam_reasons(doc) if doc is not None and item.status == "open" else []
+    scam = _scam_signs(ledger, item)
     letters.add(
         item.id,
         title=item.title,
@@ -671,6 +691,15 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
             letters.add(item.id, amount=item.amount, currency=item.currency)
             row["amount_unverified"] = note
     return row
+
+
+def _scam_signs(ledger: Ledger, item: Item) -> list[str]:
+    """The scam signs of a to-do's letter while the to-do is still to be acted on — open, or snoozed (a
+    woken-up one is listed under ``do_not_pay`` too): every tool that returns the to-do flags it, so the
+    answer check's scam note follows it (review round 3 of phase 2: a snoozed demand whose snooze had passed
+    was unflagged)."""
+    doc = ledger.document(item.doc_id)
+    return ledger.scam_reasons(doc) if doc is not None and item.status in ("open", "snoozed") else []
 
 
 def paid_at_appointment(ledger: Ledger, item: Item) -> bool:
@@ -846,11 +875,15 @@ def _cites_document(contract: Contract, doc_id: str) -> bool:
     return contract.source_doc_id == doc_id or any(ev.doc_id == doc_id for ev in contract.evidence)
 
 
-def _explain_item(item: Item, *, in_person: bool = False, withheld: bool = False) -> ToolAnswer:
+def _explain_item(
+    item: Item, *, in_person: bool = False, withheld: bool = False, scam: Sequence[str] = ()
+) -> ToolAnswer:
     """The receipt, how the date was made and the rules are code; the wording and quotes are letter text.
     ``in_person``: a payment made at an appointment (:func:`paid_at_appointment`) gets no send-by date.
     ``withheld``: the to-do's letter is private (or in the trash) — its wording and quotes are left out, as
-    ``get_document`` leaves out its text (review round 2 of phase 2)."""
+    ``get_document`` leaves out its text (review round 2 of phase 2). ``scam``: the scam signs of its letter
+    (:func:`_scam_signs`) — flagged like ``list_items`` flags it, with its ``payment_note``, so the answer
+    check's notes follow a "why that date?" too (review round 3 of phase 2)."""
     receipt = item.computation
     spec = item.date_spec
     letters = LetterText()
@@ -862,6 +895,7 @@ def _explain_item(item: Item, *, in_person: bool = False, withheld: bool = False
             title=item.title,
             as_written=spec.text if spec is not None else None,
             evidence=[{"doc_id": ev.doc_id, "page": ev.page, "quote": ev.quote} for ev in item.evidence],
+            scam_signs=list(scam),
         )
     record = {
         "id": item.id,
@@ -873,6 +907,8 @@ def _explain_item(item: Item, *, in_person: bool = False, withheld: bool = False
         "how": _DATE_SOURCES[item.due_date_source],
         "grounding": [ev.grounding for ev in item.evidence],
         "needs_check": item.grounding == "unverified" or None,
+        "scam_warning": bool(scam) or None,
+        "payment_note": payment_note(item),
         "receipt": _receipt(receipt) if receipt is not None else None,
         "rules": _rules(receipt.rule_ids, receipt.steps) if receipt is not None else [],
         "disclaimer": _disclaimer(),

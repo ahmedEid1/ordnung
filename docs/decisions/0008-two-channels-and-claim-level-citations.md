@@ -25,7 +25,10 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
    leaving out rows, and the check reads the whole result the model read.
 2. **Claim-level support, as a written policy** (`assistant/support.py`, ADR 0007). Its closed core:
    a date, time or amount of the answer is *Ordnung's* only when it is in the code-written record part
-   of a record its sentence cites (or inherits from its line or its list's lead line); a sentence without
+   of a record its sentence cites (or inherits from its line or its list's lead line) — today's date, too, is
+   no exception there: it supports only a sentence that cites no record, so "the deadline passed today
+   [item:…]" is left out and the note gives the record's own date; a year that stands in no other value is
+   the cited record's only when it holds a date in that year; a sentence without
    citations of its own may state a value of a record the answer cites, and the check then adds that
    record's citation (never a scam record's, never several). A cited record's flagged amount and the
    person's own words are shown in quotation marks as unconfirmed. Everything else is left out, whatever
@@ -39,10 +42,15 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
    and German month names) is unreadable, never supported; so is a clock time moved by words ("halb 10
    Uhr") and a day in words before a month. A slash date that reads two ways (`03/11/2027`) is Ordnung's
    only when the record holds both readings, and an amount written with a currency only when the record's
-   amount is in that currency. The form lists decide only what counts as a value; what they leave unread
+   amount is in that currency — any currency: a sign of Unicode's category Sc, an ISO code or a currency's name
+   in any offered language; cents after its currency make an amount unreadable, and so does a part of the day
+   or a time zone near a clock time that the check can't place. The form lists decide only what counts as a value; what they leave unread
    is named in the policy's limits. A kept sentence that states or cites a payment the app says to decide
    on first (a rent increase's new rent, a late statement's back-payment) — through any record linked to it
-   — or a record with scam signs gets the app's own warning in the note, first (ADR 0006).
+   — or a record with scam signs gets the app's own warning in the note, first (ADR 0006); every tool that
+   returns such a record (`list_items`, `timeline`, `explain_date`, `money_summary`, `get_document`,
+   `get_party`, and `search` for a letter) carries its `scam_warning` and `payment_note`, so the notes follow
+   the record whichever tool the model used.
 3. **Only the check writes its note, and nobody reads an unchecked word.** The note travels in its own
    field of the `done` event and the stored thread, under its label in the answer's language, and says
    only what is true of every case it covers, in words a non-expert reads ("isn't among the dates and
@@ -95,8 +103,16 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
   were added the same way, and the Ask page's generated numbers are now checked in CI (`--check-docs`).
   Review round 2 of phase 2 found more again (values glued to Chinese signs, colon look-alikes, parts of
   the day, cent and scale words, months with "of", US month/day pairs, locative month names, other
-  currencies' symbols); they were added the same way. The smaller policy ADR 0007 asks for is the
-  next step: the prompt requires Ordnung's own formats ("Wed 21 Oct 2026", "640.00 €", "10:30"), and
+  currencies' symbols); they were added the same way. Review round 3 of phase 2 found more (currency names of
+  11 of the 14 answer languages, euros followed by cents as a second number, parts of the day after another
+  language's hour word or in brackets, year ends, spaced month and year, doubled marks, list numbers). This
+  time the fixes are closed rules rather than forms: any currency sign, code or name makes a number an amount;
+  anything after a currency that can be cents makes it unreadable; every clock time is read with a part of the
+  day or time zone in its clause; digit groups joined to a year by any marks are unreadable; and in a sentence
+  that cites a record any year no cited record has a date in is left out. The last one costs correct answers a
+  year that names a letter's period ("Income Tax Assessment 2025"): on the benchmark 7 of 173 sentences kept
+  a placeholder for such a year and 2 were removed, with answer accuracy unchanged. The smaller policy ADR
+  0007 asks for is the next step: the prompt requires Ordnung's own formats ("Wed 21 Oct 2026", "640.00 €", "10:30"), and
   every other digit run in a sentence that could be a date, time or amount is left out. It needs a
   prompt version, a re-recording and a new measurement of what it costs correct answers, so it is not
   part of this decision.

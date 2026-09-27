@@ -464,8 +464,9 @@ HTML and without remote images.
   words are lists both test suites read.
 - **What stays.** Each date, time or amount must be in the record part of a record its sentence cites
   (a letter's includes its to-dos, a contract's its letter, a person's their to-dos; a sentence without
-  citations takes its line's, a list item its lead line's). Today needs no citation; Ordnung's totals
-  only in a sentence without a citation of its own. A sentence without citations of its own may state a
+  citations takes its line's, a list item its lead line's). Today only in a sentence that cites no record,
+  not even one it inherits; Ordnung's totals only in a sentence without a citation of its own; a year that
+  stands in no other value only when a cited record has a date in it. A sentence without citations of its own may state a
   value of a record the answer cites; when its values belong to one record, the check adds that record's
   citation (never a scam record's; none for several) — counted in the note only when the sentence did not
   already inherit it. A cited record's flagged, unverified amount and a value the person typed are shown

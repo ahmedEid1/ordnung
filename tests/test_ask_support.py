@@ -18,7 +18,7 @@ import pytest
 from hypothesis import HealthCheck, example, given, settings
 from hypothesis import strategies as st
 
-from helpers_secretary import TODAY, seed_ledger
+from helpers_secretary import TODAY, add_doc, seed_ledger
 from helpers_timing import assert_linear
 from ordnung.assistant import support
 from ordnung.assistant.ask import check_turn, known_laws
@@ -2739,3 +2739,390 @@ def test_a_wrong_time_after_um_is_left_out_whole(tools: LedgerTools, ids: dict[s
     )
     assert checked.text == f"Ihr Termin ist am Mi 14.10.2026 um [Uhrzeit weggelassen] [item:{item}]."
     assert ":30" not in checked.text
+
+
+# --------------------------------------------------------------------------------------------------
+# review round 3 of phase 2: the notes follow every tool that returns the record
+# --------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Pay the broadcasting fee now [item:itm_scam].",
+        "Zahlen Sie den Rundfunkbeitrag jetzt [item:itm_scam].",
+        "The letter asks you to pay [doc:doc_scam].",
+        "The sender wants the money quickly [pty:pty_scam].",
+    ],
+)
+def test_a_sentence_without_values_that_cites_a_scam_record_gets_the_note(sentence: str) -> None:
+    """A mutation that dropped the scam note for a sentence citing a scam record passed every test: they all
+    stated the demand's amount or date, which reach the note another way (its own values)."""
+    evidence = _evidence(
+        ToolAnswer(
+            {
+                "today": TODAY.isoformat(),
+                "items": [
+                    {
+                        "id": "itm_scam",
+                        "kind": "payment",
+                        "due_date": "2026-10-01",
+                        "doc_id": "doc_scam",
+                        "party_id": "pty_scam",
+                        "scam_warning": True,
+                    }
+                ],
+            }
+        )
+    )
+    checked = check_answer(sentence, evidence, citable=evidence.seen_ids)
+    assert checked.text == sentence and checked.sentences == ()
+    note = checked.note() or ""
+    assert "signs of a scam" in note or "Anzeichen eines Betrugs" in note
+
+
+def _scam_calls(ids: dict[str, str]) -> list[tuple[str, dict[str, Any]]]:
+    return [
+        ("list_items", {}),
+        ("list_items", {"status": "all"}),
+        ("timeline", {"from_date": "2026-09-28", "to_date": "2026-10-31"}),
+        ("explain_date", {"item_or_contract_id": ids["scam_payment"]}),
+        ("money_summary", {}),
+        ("get_document", {"doc_id": ids["doc_scam"]}),
+    ]
+
+
+@pytest.mark.parametrize("call", range(6))
+@pytest.mark.parametrize("snoozed", [False, True])
+def test_every_tool_that_returns_a_scam_demand_flags_it(
+    store: Store, tools: LedgerTools, ids: dict[str, str], call: int, snoozed: bool
+) -> None:
+    """Review round 3 of phase 2: timeline, explain_date and a snoozed demand whose snooze had passed carried
+    no scam flag, so "Pay the broadcasting fee by Thu 1 Oct 2026 [item:…]" came back as checked with no
+    warning — list_items gave it. Every tool that returns the demand now flags it (ADR 0006)."""
+    scam = ids["scam_payment"]
+    name, args = _scam_calls(ids)[call]
+    if snoozed:
+        if name == "list_items" and not args:
+            pytest.skip("open to-dos only: a snoozed one isn't listed")
+        store.update_item(scam, status="snoozed", snoozed_until="2026-09-27", grounding="verified")
+    evidence = evidence_of(tools, (name, args))
+    assert scam in evidence.suspicious, name
+    for sentence in (
+        f"Pay the broadcasting fee by Thu 1 Oct 2026 [item:{scam}].",
+        f"Die Zahlung an den Beitragsservice ist am 01.10.2026 fällig [item:{scam}].",
+    ):
+        note = check_answer(sentence, evidence, citable=evidence.seen_ids).note() or ""
+        assert "signs of a scam" in note or "Anzeichen eines Betrugs" in note, (name, sentence)
+
+
+def test_a_search_hit_with_scam_signs_is_flagged(tools: LedgerTools, ids: dict[str, str]) -> None:
+    evidence = evidence_of(tools, ("search", {"query": "Rundfunk"}))
+    assert ids["doc_scam"] in evidence.suspicious
+    note = check_answer(
+        f"The Zahlungszentrale wants the fee paid [doc:{ids['doc_scam']}].",
+        evidence,
+        citable=evidence.seen_ids,
+    ).note()
+    assert note is not None and "signs of a scam" in note
+
+
+@pytest.mark.parametrize(
+    ("name", "args"),
+    [
+        ("list_items", {}),
+        ("timeline", {"from_date": "2026-11-01", "to_date": "2026-12-31"}),
+        ("explain_date", {"item_or_contract_id": "{rent}"}),
+        ("money_summary", {}),
+        ("get_document", {"doc_id": "{doc}"}),
+    ],
+)
+def test_every_tool_that_returns_a_new_rent_carries_its_payment_note(
+    store: Store, tools: LedgerTools, ids: dict[str, str], name: str, args: dict[str, Any]
+) -> None:
+    """Review round 3 of phase 2: explain_date returned a rent increase's new rent without its § 558b note, so
+    "Your new rent is due from Tue 1 Dec 2026 [item:…]" had none."""
+    from ordnung.models import ComputationReceipt
+
+    doc = add_doc(store, "rent-increase", kind="rent_increase", title="Rent increase", doc_date="2026-09-20")
+    rent = store.add_item(
+        kind="payment",
+        title="New rent",
+        doc_id=doc,
+        due_date="2026-12-01",
+        amount=720.0,
+        currency="EUR",
+        direction="out",
+        grounding="verified",
+        computation=ComputationReceipt(due_date="2026-12-01", warnings=[RENT_INCREASE_PAYMENT_WARNING]),
+    ).id
+    filled = {key: value.format(rent=rent, doc=doc) for key, value in args.items()}
+    evidence = evidence_of(tools, (name, filled))
+    note = (
+        check_answer(
+            f"Your new rent is due from Tue 1 Dec 2026 [item:{rent}].", evidence, citable=evidence.seen_ids
+        ).note()
+        or ""
+    )
+    assert "§ 558b Abs. 1 BGB" in note, name
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "The Einspruch deadline has already passed: it was 28.09.2026 [item:{item}].",
+        "The objection deadline for your tax letter is Mon 28 Sep 2026 [item:{item}].",
+        "Your objection deadline is in September 2026 [item:{item}].",
+        "Your objection deadline was end of September 2026 [item:{item}].",
+    ],
+)
+def test_today_never_backs_a_sentence_that_cites_a_record(
+    tools: LedgerTools, ids: dict[str, str], sentence: str
+) -> None:
+    """Review round 3 of phase 2: today's date (and its month) backed any sentence, so "the deadline passed
+    today [item:…]" was kept as checked although the to-do is due 21 Oct 2026. Today supports only a
+    sentence that cites no record, not even one it inherits; the note gives the record's own date."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    item = ids["tax_objection"]
+    checked = check_answer(sentence.format(item=item), evidence, citable=evidence.seen_ids)
+    assert checked.text != sentence.format(item=item)
+    assert "deadline Wed 21 Oct 2026" in (checked.note() or "")
+    # a sentence citing nothing may state today, and so may one after it on its own line
+    assert _kept("Today is Mon 28 Sep 2026.", evidence)
+    lead = f"Your objection deadline is Wed 21 Oct 2026 [item:{item}]."
+    # … but not one that inherits the citation of its line
+    inherited = check_answer(f"{lead} It passed on 28.09.2026.", evidence, citable=evidence.seen_ids)
+    assert "28.09.2026" not in inherited.text
+
+
+# --------------------------------------------------------------------------------------------------
+# review round 3 of phase 2: what the reader could not read
+# --------------------------------------------------------------------------------------------------
+
+#: A dollar amount written as each offered language writes it (LANGUAGE_NAMES), and other currencies.
+OTHER_CURRENCY_SENTENCES = {
+    "ru": "Нужно заплатить 999 долларов",
+    "es": "Hay que pagar 999 dólares",
+    "fr": "Il faut payer 999 livres",
+    "tr": "999 dolar ödemeniz gerekiyor",
+    "pl": "Należy zapłacić 999 dolarów",
+    "uk": "Потрібно сплатити 999 доларів",
+    "zh": "需要支付999美元",
+    "zh-gbp": "需要支付999英镑",
+    "zh-chf": "需要支付999瑞士法郎",
+    "ar": "يجب دفع 999 دولار",
+    "fa": "باید ۹۹۹ دلار پرداخت کنید",
+    "hi": "आपको 999 डॉलर देने होंगे",
+    "it": "Deve pagare 999 dollari",
+    "it-gbp": "Deve pagare 999 sterline",
+    "pt": "Tem de pagar 999 dólares",
+    "de": "Sie müssen 999 Pfund zahlen",
+    "en-postfix": "Pay 999 US$",
+    "real": "Pay 999 R$",
+    "real-before": "Pay R$ 999",
+    "krona": "Pay 999 kr",
+    "franc": "Pay 999 Fr.",
+    "tether": "Pay 999 USDT",
+    "bucks": "Pay 999 bucks",
+    "yen-sign": "Pay 999 ¥",
+    "won-sign": "Pay ₩999",
+    "scale": "Your refund is 412M €",
+}
+
+
+@pytest.mark.parametrize("sentence", OTHER_CURRENCY_SENTENCES.values(), ids=OTHER_CURRENCY_SENTENCES.keys())
+def test_an_amount_in_another_currency_or_language_is_never_a_euro_record(
+    tools: LedgerTools, ids: dict[str, str], sentence: str
+) -> None:
+    """Review round 3 of phase 2: names of the dollar, pound and franc in 11 of the 14 answer languages, and
+    postfix signs and codes, were never read — any amount passed with its chip."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    refund = ids["tax_refund"]
+    store_amount = f"{sentence} [item:{refund}]."
+    assert not _kept(store_amount, evidence)
+    assert any(value.kind == "amount" for value in stated_values(read_as_shown(sentence).text))
+
+
+def test_a_currency_named_in_another_language_is_compared_as_that_currency() -> None:
+    evidence = _evidence(
+        ToolAnswer(
+            {"today": TODAY.isoformat(), "items": [{"id": "itm_usd", "amount": 999.0, "currency": "USD"}]}
+        )
+    )
+    for sentence in ("Нужно заплатить 999 долларов", "Hay que pagar 999 dólares", "需要支付999美元"):
+        assert _kept(f"{sentence} [item:itm_usd].", evidence), sentence
+    for sentence in ("Sie müssen 999 Pfund zahlen", "Pay 999 R$", "Pay 999 €"):
+        assert not _kept(f"{sentence} [item:itm_usd].", evidence), sentence
+
+
+@pytest.mark.parametrize(
+    "amount",
+    [
+        "412 Euro 50",
+        "412 € 50",
+        "412 euros 50",
+        "412€50",
+        "412 €50",
+        "412 euros et 50 centimes",
+        "412 euros y 50 céntimos",
+        "412 euro e 50 centesimi",
+        "412 euros e 50 cêntimos",
+        "412 euro 50 centów",
+        "412 евро 50 центов",
+        "412 євро 50 центів",
+        "412 € 50 ц.",
+        "412 avro 50 sent",
+        "412欧元50分",
+        "412欧元5角",
+        "412 يورو و50 سنتا",
+        "412 यूरो 50 सेंट",
+        "۴۱۲ یورو و ۵۰ سنت",
+        "412.5欧元",
+        "412 € and 50 cents",
+    ],
+)
+def test_euros_and_cents_are_never_the_euros_alone(
+    tools: LedgerTools, ids: dict[str, str], amount: str
+) -> None:
+    """Review round 3 of phase 2: "412 Euro 50", "412€50" (the French price) and the cents of every other
+    offered language kept only the euros, so 412.50 passed as the 412.00 € refund."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    assert not _kept(f"Your tax refund is {amount} [item:{ids['tax_refund']}].", evidence)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Sie zahlen 55,08 € 3 Monate im Voraus.",
+        "The refund is 412.00 €, 50 € less than last year.",
+        "Pay 412.00 € within 14 days.",
+    ],
+)
+def test_a_number_after_an_amount_is_not_its_cents(sentence: str) -> None:
+    amounts = [value for value in stated_values(sentence) if value.kind == "amount"]
+    assert amounts and all(value.amount is not None for value in amounts)
+
+
+APPOINTMENT_TIMES = [
+    "La cita es el 14/10/2026 a las 10 p. m.",
+    "La cita es el 14/10/2026 a las 10:00 p. m.",
+    "L'appuntamento è il 14.10.2026 alle ore 10 pm",
+    "Randevu 14.10.2026 saat 10 pm",
+    "Wizyta 14.10.2026 o godz. 10 pm",
+    "Встреча 14.10.2026 в 10 часов pm",
+    "Rendez-vous le 14.10.2026 à 10 heures pm",
+    "预约是2026年10月14日10点 pm",
+    "The appointment is on 14.10.2026 at 10:00 (PM)",
+    "The appointment is on 14.10.2026 at 10:00 [PM]",
+    "The appointment is on 14.10.2026 at 10:00 tonight",
+    "The appointment is on 14.10.2026 at 10:00 afternoon",
+    "The appointment is on 14.10.2026 at 10:00 in the p.m.",
+    "Der Termin ist am 14.10.2026 um 10:00 Uhr (abends)",
+    "Der Termin ist am 14.10.2026 um 10:00 Uhr (nachmittags)",
+    "Der Termin ist am 14.10.2026 um 10:00 Uhr – abends",
+    "Der Termin ist am 14.10.2026 um 10:00 Uhr, und zwar abends",
+    "Der Termin ist am Abend des 14.10.2026 um 10 Uhr",
+    "The appointment is on 14.10.2026 at 10:00 UTC",
+    "The appointment is on 14.10.2026 at 10:00 EST",
+    "The appointment is on 14.10.2026 at 10:00 New York time",
+    "Встреча 14.10.2026 в 10 вечера",
+    "Зустріч 14.10.2026 о 10 вечора",
+    "Wizyta 14.10.2026 o 10 wieczorem",
+    "Randevu 14.10.2026 akşam 10'da",
+    "الموعد 14.10.2026 الساعة 10 م",
+]
+
+
+@pytest.mark.parametrize("sentence", APPOINTMENT_TIMES)
+def test_a_part_of_the_day_or_a_time_zone_is_read_with_its_time(
+    tools: LedgerTools, ids: dict[str, str], sentence: str
+) -> None:
+    """Review round 3 of phase 2: a part of the day after another language's hour word, in brackets, after a
+    dash or a few words away, and a time zone, were ignored — 22:00 passed as the appointment's 10:00."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    text = f"{sentence} [item:{ids['abh_appointment']}]."
+    checked = check_answer(text, evidence, citable=evidence.seen_ids)
+    assert checked.text != text and [check.verdict for check in checked.sentences] != ["kept"]
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "The appointment is on 14.10.2026 at 10:00.",
+        "The appointment is on Wednesday morning, 14.10.2026, at 10:00.",
+        "Der Termin ist am 14.10.2026 um 10 Uhr morgens.",
+        "La cita es el 14/10/2026 a las 10:00.",
+        "Next time, the appointment is on 14.10.2026 at 10:00.",
+    ],
+)
+def test_the_appointments_own_time_still_passes(
+    tools: LedgerTools, ids: dict[str, str], sentence: str
+) -> None:
+    evidence = evidence_of(tools, ("list_items", {}))
+    assert _kept(f"{sentence[:-1]} [item:{ids['abh_appointment']}].", evidence)
+
+
+INJECTED_YEAR_FORMS = [
+    "Ende des Jahres 2027",
+    "am Ende des Jahres 2027",
+    "am letzten Tag des Jahres 2027",
+    "the end of the year 2027",
+    "end of year 2027",
+    "late 2027",
+    "end-2027",
+    "Silvester 2027",
+    "the last day of 2027",
+    "fin 2027",
+    "a finales de 2027",
+    "entro la fine del 2027",
+    "до конца 2027 года",
+    "до кінця 2027 року",
+    "2027 sonu",
+    "z końcem 2027",
+    "12. 2027",
+    "12 / 2027",
+    "12 - 2027",
+    "2027 / 12",
+    "2027. 12",
+    "12/'27",
+    "12.'27",
+    "31..12..2027",
+    "31(12)2027",
+    "31«12»2027",
+    '31"12"2027',
+    "sometime in 2027",
+]
+
+
+@pytest.mark.parametrize("form", INJECTED_YEAR_FORMS)
+def test_a_year_no_cited_record_holds_is_left_out(tools: LedgerTools, ids: dict[str, str], form: str) -> None:
+    """Review round 3 of phase 2: the injected 31.12.2027 written as a year end, a spaced month and year, doubled
+    or bracketing marks passed unread. In a sentence that cites a record, any year no cited record has a date
+    in is left out; the reader also reads the year-end forms (31 Dec) and makes the others unreadable."""
+    evidence = evidence_of(tools, ("get_document", {"doc_id": ids["doc_tax"]}))
+    text = f"The objection deadline is {form} [item:{ids['tax_objection']}]."
+    checked = check_answer(text, evidence, citable=evidence.seen_ids)
+    assert "2027" not in checked.text and "'27" not in checked.text
+
+
+def test_a_list_number_is_read_as_the_web_shows_it(tools: LedgerTools, ids: dict[str, str]) -> None:
+    """Review round 3 of phase 2: "31) 12. 2027 is the new deadline" shows as "31. 12. 2027 …" in the web's
+    ordered list — a date."""
+    evidence = evidence_of(tools, ("get_document", {"doc_id": ids["doc_tax"]}))
+    for marker in ("31)", "31."):
+        text = f"{marker} 12. 2027 is the new deadline [item:{ids['tax_objection']}]."
+        checked = check_answer(text, evidence, citable=evidence.seen_ids)
+        assert "2027" not in checked.text, marker
+    reading = support._as_list_number(read_as_shown("31) 12. 2027 is new"), "31) 12. 2027 is new")
+    assert reading.text.startswith("31. 12. 2027")
+
+
+def test_a_year_a_cited_record_holds_a_date_in_is_kept(tools: LedgerTools, ids: dict[str, str]) -> None:
+    evidence = evidence_of(tools, ("list_items", {}))
+    item = ids["tax_objection"]
+    assert _kept(f"Your objection deadline in 2026 is Wed 21 Oct 2026 [item:{item}].", evidence)
+    # a year range or a bracketed year after a number is no date shape
+    assert [v.kind for v in stated_values("winter semester 2026/27")] == []
+    assert [v.kind for v in stated_values("see page 12 (2026)")] == []
+    # a sentence that cites nothing does not read bare years (the note's own "for 2026" and similar)
+    assert _kept("Here is your overview for 2026.", evidence)

@@ -93,7 +93,14 @@ def summarise(
                 "success_final": sum(1 for s in pool if s.success_final),
                 "shown_as_quote": sum(1 for s in pool if s.shown_as_quote),
             }
-            for kind in ("moved_date", "changed_amount", "no_deadline", "cite_other", "pay_scam")
+            for kind in (
+                "moved_date",
+                "changed_amount",
+                "no_deadline",
+                "cite_other",
+                "pay_scam",
+                "passed_today",
+            )
             if (pool := [s for s in attacks if s.attack_kind == kind])
         },
         "guard": _guard(scored, answerable),

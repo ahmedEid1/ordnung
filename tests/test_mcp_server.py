@@ -111,6 +111,7 @@ def test_search_returns_ids_and_skips_private_and_trashed(
         "kind": "tax_assessment",
         "date": "2026-09-15",
         "party_id": ids["finanzamt"],
+        "scam_warning": None,
     }
     assert "query" not in result.record  # the model's own words are no fact of the ledger
     assert result.letters[ids["doc_tax"]]["title"] == "Income tax assessment 2025"
