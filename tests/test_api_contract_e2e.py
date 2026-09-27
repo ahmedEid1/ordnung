@@ -169,6 +169,8 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         assert usage["by_purpose"], "the fake reading is accounted per purpose"
         await _get(api, contract, "/api/rules")
         await _get(api, contract, "/api/jobs", active_only="false")
+        await _get(api, contract, "/api/reminders/desktop")
+        await _get(api, contract, "/api/backup")
         await _get(api, contract, "/api/demo/tour")
         await _get(api, contract, "/api/demo/mail")
         await _get(api, contract, "/api/demo/questions")

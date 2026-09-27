@@ -1264,6 +1264,113 @@ def mcp_install(
 
 
 # --------------------------------------------------------------------------------------------------
+# autostart
+# --------------------------------------------------------------------------------------------------
+
+autostart_app = typer.Typer(
+    name="autostart",
+    help="Start Ordnung when you log in, so reminders reach you while the browser is closed.",
+    no_args_is_help=True,
+    add_completion=False,
+    rich_markup_mode="rich",
+)
+app.add_typer(autostart_app)
+
+
+@autostart_app.command("enable")
+def autostart_enable(
+    ctx: typer.Context,
+    data_dir: DataDirOption = None,
+    port: Annotated[int, typer.Option(help="Port Ordnung listens on.")] = DEFAULT_PORT,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Only print what would be written, and where.")
+    ] = False,
+) -> None:
+    """Start Ordnung (without opening the browser) every time you log in."""
+    from ordnung import autostart
+    from ordnung.demo.loader import is_demo_dir
+
+    with _friendly():
+        folder = _folder(ctx, data_dir)
+        if is_demo_dir(folder):
+            raise _fail(
+                "The demo doesn't start at login.", hint="Start it with `ordnung demo` when you want it."
+            )
+        try:
+            entry = autostart.plan(folder, port=port)
+        except autostart.AutostartError as exc:
+            raise _fail(str(exc), soft_wrap=True) from None
+        console.print(
+            f"Ordnung for [bold]{escape(str(folder))}[/] starts at login as a {entry.kind}, from this file:",
+            soft_wrap=True,
+        )
+        console.print(f"  [bold]{escape(str(entry.path))}[/]", soft_wrap=True)
+        console.print(escape(entry.content.replace("\r\n", "\n")).rstrip("\n"), style="dim", soft_wrap=True)
+        if entry.link is not None:
+            console.print(
+                f"  and the link {escape(str(entry.link))} (what `systemctl --user enable` makes)",
+                soft_wrap=True,
+            )
+        if dry_run:
+            console.print("Nothing was written (--dry-run).")
+            return
+        status = autostart.enable(entry)
+    done = {
+        "added": "Written.",
+        "updated": "Updated the earlier entry.",
+        "unchanged": "Already set up like this.",
+    }
+    console.print(f"[green]✓[/] {done[status]} Ordnung starts at your next login.")
+    console.print(f"  Start it now: {escape(entry.start_now)}", soft_wrap=True)
+    console.print("  Open the app any time with: ordnung serve (it finds the running Ordnung)")
+    console.print("  Undo with: ordnung autostart disable")
+
+
+@autostart_app.command("disable")
+def autostart_disable() -> None:
+    """Stop starting Ordnung at login (removes only the entry `enable` wrote)."""
+    from ordnung import autostart
+
+    with _friendly():
+        entry = autostart.location()
+        removed = autostart.disable(entry)
+    if not removed:
+        console.print(
+            f"Ordnung doesn't start at login: there is no {escape(str(entry.path))}.", soft_wrap=True
+        )
+        return
+    for path in removed:
+        console.print(f"[green]✓[/] Removed {escape(str(path))}", soft_wrap=True)
+    console.print("  Ordnung won't start at your next login.")
+    console.print(f"  If it is running now, stop it with: {escape(entry.stop_now)}", soft_wrap=True)
+
+
+@autostart_app.command("status")
+def autostart_status(ctx: typer.Context, data_dir: DataDirOption = None) -> None:
+    """Whether Ordnung starts at login, for which data folder, and whether it is running now."""
+    from ordnung import autostart
+
+    with _friendly():
+        folder = _folder(ctx, data_dir)
+        state = autostart.state(folder)
+        running = reachable_server(folder) is not None
+    if not state.enabled:
+        console.print("Starts at login: [bold]no[/] — turn it on with: ordnung autostart enable")
+    else:
+        console.print(f"Starts at login: [bold]yes[/] ({state.kind})")
+        console.print(f"  {escape(str(state.path))}", soft_wrap=True)
+        if state.data_dir is not None:
+            console.print(f"  Data folder: {escape(str(state.data_dir))}", soft_wrap=True)
+        if not state.current:
+            console.print(
+                "[yellow]![/] The entry doesn't start this Ordnung for this folder (Ordnung or the folder "
+                "moved). Run `ordnung autostart enable` again to update it.",
+                soft_wrap=True,
+            )
+    console.print(f"Running now: [bold]{'yes' if running else 'no'}[/]")
+
+
+# --------------------------------------------------------------------------------------------------
 # backup and restore
 # --------------------------------------------------------------------------------------------------
 

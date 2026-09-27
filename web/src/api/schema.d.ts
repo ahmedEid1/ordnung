@@ -863,6 +863,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reminders/desktop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Desktop Reminders
+         * @description The desktop notification's tool, today's text in each mode, and the start-at-login entry.
+         */
+        get: operations["desktop_reminders_api_reminders_desktop_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reminders/desktop/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Desktop Test
+         * @description Show today's notification now (a sample when nothing is due); the morning one still comes.
+         */
+        post: operations["desktop_test_api_reminders_desktop_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Backup Info
+         * @description What an encrypted backup would hold now, and how long its passphrase must be.
+         */
+        get: operations["backup_info_api_backup_get"];
+        put?: never;
+        /**
+         * Create Backup
+         * @description An encrypted backup of everything (database, letters, page images, letter PDFs) as a download.
+         */
+        post: operations["create_backup_api_backup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events": {
         parameters: {
             query?: never;
@@ -1018,6 +1082,17 @@ export interface components {
              */
             llm_review: boolean;
             /**
+             * Desktop Notifications
+             * @default off
+             * @enum {string}
+             */
+            desktop_notifications: "off" | "discreet" | "full";
+            /**
+             * Desktop Notify Time
+             * @default 08:00
+             */
+            desktop_notify_time: string;
+            /**
              * Demo
              * @default false
              */
@@ -1059,6 +1134,78 @@ export interface components {
             question: string;
             /** Thread Id */
             thread_id?: string | null;
+        };
+        /**
+         * AutostartInfo
+         * @description Whether ``ordnung autostart`` starts Ordnung at login, and for which data folder.
+         */
+        AutostartInfo: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Kind
+             * @description systemd user service, LaunchAgent or Startup folder
+             */
+            kind: string;
+            /**
+             * Path
+             * @description The entry's file
+             */
+            path: string;
+            /**
+             * Points Here
+             * @description The entry starts this data folder
+             */
+            points_here: boolean;
+            /**
+             * Command
+             * @default ordnung autostart enable
+             */
+            command: string;
+        };
+        /**
+         * BackupInfo
+         * @description What a backup made now would hold.
+         */
+        BackupInfo: {
+            /**
+             * Letters
+             * @description Letters (not counting the trash)
+             */
+            letters: number;
+            /**
+             * Files
+             * @description Originals, page images and letter PDFs
+             */
+            files: number;
+            /**
+             * Bytes
+             * @description Their size plus the database's, before encryption
+             */
+            bytes: number;
+            /**
+             * File Name
+             * @description The name the download gets
+             */
+            file_name: string;
+            /**
+             * Min Passphrase
+             * @default 12
+             */
+            min_passphrase: number;
+            /**
+             * Format Version
+             * @default 1
+             */
+            format_version: number;
+        };
+        /**
+         * BackupRequest
+         * @description The passphrase that protects the backup (checked against the policy by the route).
+         */
+        BackupRequest: {
+            /** Passphrase */
+            passphrase: string;
         };
         /** Body_upload_documents_api_documents_post */
         Body_upload_documents_api_documents_post: {
@@ -1545,6 +1692,67 @@ export interface components {
             purged: boolean;
             /** Removed Open Items */
             removed_open_items: number;
+        };
+        /**
+         * DesktopPreview
+         * @description Today's notification in each mode (``null``: nothing is due, so none would be shown).
+         */
+        DesktopPreview: {
+            discreet: components["schemas"]["NotificationText"] | null;
+            full: components["schemas"]["NotificationText"] | null;
+        };
+        /**
+         * DesktopReminders
+         * @description What Settings shows about the morning desktop notification.
+         */
+        DesktopReminders: {
+            /**
+             * System
+             * @enum {string}
+             */
+            system: "linux" | "macos" | "windows";
+            /**
+             * Tool
+             * @description notify-send, osascript or powershell (null: none found)
+             */
+            tool: string | null;
+            /**
+             * Missing
+             * @description Why no notification can be shown, if so
+             */
+            missing: string | null;
+            preview: components["schemas"]["DesktopPreview"];
+            /**
+             * Last Shown On
+             * @description The last day the morning notification was tried
+             */
+            last_shown_on: string | null;
+            autostart: components["schemas"]["AutostartInfo"];
+        };
+        /**
+         * DesktopTestRequest
+         * @description Which mode to show the test notification in.
+         */
+        DesktopTestRequest: {
+            /**
+             * Mode
+             * @default discreet
+             * @enum {string}
+             */
+            mode?: "discreet" | "full";
+        };
+        /**
+         * DesktopTestResult
+         * @description Whether the test notification was shown, and what it said.
+         */
+        DesktopTestResult: {
+            /** Shown */
+            shown: boolean;
+            /** Tool */
+            tool: string | null;
+            notification: components["schemas"]["NotificationText"];
+            /** Detail */
+            detail: string | null;
         };
         /**
          * DoctorCheck
@@ -2561,6 +2769,16 @@ export interface components {
             };
         };
         /**
+         * NotificationText
+         * @description What a desktop notification says.
+         */
+        NotificationText: {
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+        };
+        /**
          * OnboardingRequest
          * @description The first-run wizard's answers.
          */
@@ -2948,6 +3166,13 @@ export interface components {
             llm_brief?: boolean | null;
             /** Llm Review */
             llm_review?: boolean | null;
+            /** Desktop Notifications */
+            desktop_notifications?: ("off" | "discreet" | "full") | null;
+            /**
+             * Desktop Notify Time
+             * @description Local time of day, HH:MM (24 h)
+             */
+            desktop_notify_time?: string | null;
             /** Demo */
             demo?: boolean | null;
             /** Simulated Today */
@@ -5104,6 +5329,110 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CalendarExportResult"];
                 };
+            };
+        };
+    };
+    desktop_reminders_api_reminders_desktop_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopReminders"];
+                };
+            };
+        };
+    };
+    desktop_test_api_reminders_desktop_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesktopTestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopTestResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    backup_info_api_backup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupInfo"];
+                };
+            };
+        };
+    };
+    create_backup_api_backup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupRequest"];
+            };
+        };
+        responses: {
+            /** @description The encrypted backup file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description The passphrase is too short or too long (the rule, never the value) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

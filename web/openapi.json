@@ -2556,6 +2556,121 @@
         }
       }
     },
+    "/api/reminders/desktop": {
+      "get": {
+        "tags": [
+          "reminders"
+        ],
+        "summary": "Desktop Reminders",
+        "description": "The desktop notification's tool, today's text in each mode, and the start-at-login entry.",
+        "operationId": "desktop_reminders_api_reminders_desktop_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesktopReminders"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reminders/desktop/test": {
+      "post": {
+        "tags": [
+          "reminders"
+        ],
+        "summary": "Desktop Test",
+        "description": "Show today's notification now (a sample when nothing is due); the morning one still comes.",
+        "operationId": "desktop_test_api_reminders_desktop_test_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesktopTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesktopTestResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backup": {
+      "get": {
+        "tags": [
+          "backup"
+        ],
+        "summary": "Backup Info",
+        "description": "What an encrypted backup would hold now, and how long its passphrase must be.",
+        "operationId": "backup_info_api_backup_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupInfo"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "backup"
+        ],
+        "summary": "Create Backup",
+        "description": "An encrypted backup of everything (database, letters, page images, letter PDFs) as a download.",
+        "operationId": "create_backup_api_backup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The encrypted backup file",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "422": {
+            "description": "The passphrase is too short or too long (the rule, never the value)"
+          }
+        }
+      }
+    },
     "/api/events": {
       "get": {
         "tags": [
@@ -2871,6 +2986,21 @@
             "title": "Llm Review",
             "default": true
           },
+          "desktop_notifications": {
+            "type": "string",
+            "enum": [
+              "off",
+              "discreet",
+              "full"
+            ],
+            "title": "Desktop Notifications",
+            "default": "off"
+          },
+          "desktop_notify_time": {
+            "type": "string",
+            "title": "Desktop Notify Time",
+            "default": "08:00"
+          },
           "demo": {
             "type": "boolean",
             "title": "Demo",
@@ -2896,6 +3026,8 @@
           "ocr",
           "llm_brief",
           "llm_review",
+          "desktop_notifications",
+          "desktop_notify_time",
           "demo",
           "simulated_today"
         ],
@@ -2994,6 +3126,104 @@
         ],
         "title": "AskRequest",
         "description": "A question, optionally continuing an earlier thread."
+      },
+      "AutostartInfo": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "description": "systemd user service, LaunchAgent or Startup folder"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path",
+            "description": "The entry's file"
+          },
+          "points_here": {
+            "type": "boolean",
+            "title": "Points Here",
+            "description": "The entry starts this data folder"
+          },
+          "command": {
+            "type": "string",
+            "title": "Command",
+            "default": "ordnung autostart enable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "kind",
+          "path",
+          "points_here",
+          "command"
+        ],
+        "title": "AutostartInfo",
+        "description": "Whether ``ordnung autostart`` starts Ordnung at login, and for which data folder."
+      },
+      "BackupInfo": {
+        "properties": {
+          "letters": {
+            "type": "integer",
+            "title": "Letters",
+            "description": "Letters (not counting the trash)"
+          },
+          "files": {
+            "type": "integer",
+            "title": "Files",
+            "description": "Originals, page images and letter PDFs"
+          },
+          "bytes": {
+            "type": "integer",
+            "title": "Bytes",
+            "description": "Their size plus the database's, before encryption"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name",
+            "description": "The name the download gets"
+          },
+          "min_passphrase": {
+            "type": "integer",
+            "title": "Min Passphrase",
+            "default": 12
+          },
+          "format_version": {
+            "type": "integer",
+            "title": "Format Version",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "letters",
+          "files",
+          "bytes",
+          "file_name",
+          "min_passphrase",
+          "format_version"
+        ],
+        "title": "BackupInfo",
+        "description": "What a backup made now would hold."
+      },
+      "BackupRequest": {
+        "properties": {
+          "passphrase": {
+            "type": "string",
+            "title": "Passphrase"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "passphrase"
+        ],
+        "title": "BackupRequest",
+        "description": "The passphrase that protects the backup (checked against the policy by the route)."
       },
       "Body_upload_documents_api_documents_post": {
         "properties": {
@@ -4604,6 +4834,162 @@
         ],
         "title": "DeleteResult",
         "description": "What ``DELETE /api/documents/{id}`` did."
+      },
+      "DesktopPreview": {
+        "properties": {
+          "discreet": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NotificationText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "full": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NotificationText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "discreet",
+          "full"
+        ],
+        "title": "DesktopPreview",
+        "description": "Today's notification in each mode (``null``: nothing is due, so none would be shown)."
+      },
+      "DesktopReminders": {
+        "properties": {
+          "system": {
+            "type": "string",
+            "enum": [
+              "linux",
+              "macos",
+              "windows"
+            ],
+            "title": "System"
+          },
+          "tool": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool",
+            "description": "notify-send, osascript or powershell (null: none found)"
+          },
+          "missing": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing",
+            "description": "Why no notification can be shown, if so"
+          },
+          "preview": {
+            "$ref": "#/components/schemas/DesktopPreview"
+          },
+          "last_shown_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Shown On",
+            "description": "The last day the morning notification was tried"
+          },
+          "autostart": {
+            "$ref": "#/components/schemas/AutostartInfo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "system",
+          "tool",
+          "missing",
+          "preview",
+          "last_shown_on",
+          "autostart"
+        ],
+        "title": "DesktopReminders",
+        "description": "What Settings shows about the morning desktop notification."
+      },
+      "DesktopTestRequest": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "discreet",
+              "full"
+            ],
+            "title": "Mode",
+            "default": "discreet"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DesktopTestRequest",
+        "description": "Which mode to show the test notification in."
+      },
+      "DesktopTestResult": {
+        "properties": {
+          "shown": {
+            "type": "boolean",
+            "title": "Shown"
+          },
+          "tool": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool"
+          },
+          "notification": {
+            "$ref": "#/components/schemas/NotificationText"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shown",
+          "tool",
+          "notification",
+          "detail"
+        ],
+        "title": "DesktopTestResult",
+        "description": "Whether the test notification was shown, and what it said."
       },
       "DoctorCheck": {
         "properties": {
@@ -7690,6 +8076,25 @@
         ],
         "title": "MoneySummary"
       },
+      "NotificationText": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "body"
+        ],
+        "title": "NotificationText",
+        "description": "What a desktop notification says."
+      },
       "OnboardingRequest": {
         "properties": {
           "profile": {
@@ -8751,6 +9156,35 @@
               }
             ],
             "title": "Llm Review"
+          },
+          "desktop_notifications": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "off",
+                  "discreet",
+                  "full"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desktop Notifications"
+          },
+          "desktop_notify_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desktop Notify Time",
+            "description": "Local time of day, HH:MM (24 h)"
           },
           "demo": {
             "anyOf": [

@@ -725,6 +725,9 @@ class ModelSettings(_Model):
     bank: str = "haiku"
 
 
+DesktopNotifyMode = Literal["off", "discreet", "full"]
+
+
 class AppSettings(_Model):
     models: ModelSettings = Field(default_factory=ModelSettings)
     concurrency: int = 2
@@ -732,6 +735,10 @@ class AppSettings(_Model):
     ocr: bool = True
     llm_brief: bool = True
     llm_review: bool = True
+    #: The morning desktop notification (:mod:`ordnung.notify.desktop`): off, a count only, or the details.
+    desktop_notifications: DesktopNotifyMode = "off"
+    #: Local time (``HH:MM``) from which the day's desktop notification is shown.
+    desktop_notify_time: str = "08:00"
     demo: bool = False
     simulated_today: str | None = None
 

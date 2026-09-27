@@ -37,7 +37,7 @@ import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
-from typing import IO, BinaryIO
+from typing import IO, Any, BinaryIO
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -202,6 +202,84 @@ def _add(tar: tarfile.TarFile, name: str, data: bytes, mtime: float) -> Manifest
     return ManifestFile(path=name, size=len(data), sha256=hashlib.sha256(data).hexdigest())
 
 
+class _Drain(io.RawIOBase):
+    """Where the encrypted bytes collect between two steps of :class:`BackupStream`."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._parts: list[bytes] = []
+
+    def writable(self) -> bool:
+        return True
+
+    def write(self, data: Any) -> int:
+        chunk = bytes(data)
+        self._parts.append(chunk)
+        return len(chunk)
+
+    def take(self) -> bytes:
+        taken, self._parts = b"".join(self._parts), []
+        return taken
+
+
+class BackupStream:
+    """The encrypted backup of ``data_dir`` as an iterator of byte chunks (one step per file).
+
+    Pull-based, so a web response can send it as it is made and a client that goes away simply
+    stops it (the generator is closed: the last chunk is never sealed). :attr:`contents` is set
+    once the iteration finished.
+    """
+
+    def __init__(
+        self,
+        data_dir: Path,
+        passphrase: str,
+        *,
+        kdf: KdfParams = DEFAULT_KDF,
+        created_at: str | None = None,
+    ) -> None:
+        self.data_dir = data_dir
+        self.contents: BackupContents | None = None
+        self._snapshot = snapshot_database(
+            data_dir / DB_NAME
+        )  # a missing database fails here, before any byte
+        self._stamp = created_at or real_now_iso()
+        self._drain = _Drain()
+        self._writer = EncryptedWriter(self._drain, passphrase, kdf=kdf)
+
+    def __iter__(self) -> Iterator[bytes]:
+        drain, writer, snapshot = self._drain, self._writer, self._snapshot
+        try:
+            with tarfile.open(fileobj=writer, mode="w|", format=tarfile.PAX_FORMAT) as tar:
+                database = _add(tar, DB_NAME, snapshot.data, time.time())
+                yield drain.take()
+                entries: list[ManifestFile] = []
+                for name, path in iter_data_files(self.data_dir):
+                    try:
+                        data, mtime = path.read_bytes(), path.stat().st_mtime
+                    except FileNotFoundError:
+                        continue  # deleted while the backup ran
+                    entries.append(_add(tar, name, data, mtime))
+                    yield drain.take()
+                manifest = Manifest(
+                    format=ARCHIVE_FORMAT,
+                    app_version=__version__,
+                    created_at=self._stamp,
+                    schema_version=snapshot.schema_version,
+                    database=database,
+                    tables=snapshot.tables,
+                    files=entries,
+                )
+                text = manifest.model_dump_json(indent=2).encode("utf-8")
+                tar.addfile(_tar_info(MANIFEST_NAME, len(text), time.time()), io.BytesIO(text))
+        except BaseException:
+            writer.abort()
+            raise
+        writer.close()
+        self.contents = BackupContents(manifest)
+        yield drain.take()
+
+
 def write_backup(
     data_dir: Path,
     out: BinaryIO,
@@ -214,35 +292,11 @@ def write_backup(
 
     If anything fails, the last chunk is never sealed, so what was written reads as incomplete.
     """
-    snapshot = snapshot_database(data_dir / DB_NAME)
-    stamp = created_at or real_now_iso()
-    writer = EncryptedWriter(out, passphrase, kdf=kdf)
-    try:
-        with tarfile.open(fileobj=writer, mode="w|", format=tarfile.PAX_FORMAT) as tar:
-            database = _add(tar, DB_NAME, snapshot.data, time.time())
-            entries: list[ManifestFile] = []
-            for name, path in iter_data_files(data_dir):
-                try:
-                    data, mtime = path.read_bytes(), path.stat().st_mtime
-                except FileNotFoundError:
-                    continue  # deleted while the backup ran
-                entries.append(_add(tar, name, data, mtime))
-            manifest = Manifest(
-                format=ARCHIVE_FORMAT,
-                app_version=__version__,
-                created_at=stamp,
-                schema_version=snapshot.schema_version,
-                database=database,
-                tables=snapshot.tables,
-                files=entries,
-            )
-            text = manifest.model_dump_json(indent=2).encode("utf-8")
-            tar.addfile(_tar_info(MANIFEST_NAME, len(text), time.time()), io.BytesIO(text))
-    except BaseException:
-        writer.abort()
-        raise
-    writer.close()
-    return BackupContents(manifest)
+    stream = BackupStream(data_dir, passphrase, kdf=kdf, created_at=created_at)
+    for chunk in stream:
+        out.write(chunk)
+    assert stream.contents is not None
+    return stream.contents
 
 
 def estimate(data_dir: Path) -> tuple[int, int]:

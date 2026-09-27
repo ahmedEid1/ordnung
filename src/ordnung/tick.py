@@ -6,6 +6,8 @@ recurring to-dos whose date has passed on to their current occurrence (:mod:`ord
 runs the triggers and expires stale Ideas, rebuilds the agenda and the brief (model-written only when
 ``settings.llm_brief`` is on and the backend can answer), starts the weekly review in the background
 if the last one is more than 7 days old, and announces ``day.changed`` and ``suggestions.updated``.
+On every check (not only when the day changed) it shows the morning desktop notification once it is
+due (:mod:`ordnung.notify.desktop`: once a day, at or after the chosen time, only when switched on).
 
 It never changes an item's status: overdue is computed on read.
 """
@@ -15,7 +17,8 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -26,6 +29,7 @@ from ordnung.ingest.pipeline import ledger_lock
 from ordnung.ingest.plan import item_context
 from ordnung.llm.base import LLMError
 from ordnung.llm.runtime import LLMService
+from ordnung.notify import desktop
 from ordnung.recurrence import roll_forward
 from ordnung.secretary.brief import Brief, generate_brief
 from ordnung.secretary.review import LAST_REVIEW_KEY, run_review
@@ -94,14 +98,25 @@ class TickResult:
     triggers: TriggerRun | None = None
     brief: Brief | None = None
     review_started: bool = False
+    #: the morning desktop notification this check showed or tried (``None``: it wasn't due)
+    desktop: desktop.Outcome | None = None
 
 
 class DailyTick:
     """Runs the secretary once per local day (checked on startup and every ``interval_s`` seconds)."""
 
-    def __init__(self, ctx: TickContext, *, interval_s: float = TICK_INTERVAL_S) -> None:
+    def __init__(
+        self,
+        ctx: TickContext,
+        *,
+        interval_s: float = TICK_INTERVAL_S,
+        now: Callable[[Store], datetime] = desktop.local_now,
+        notifier: Callable[[desktop.Notification], desktop.SendResult] = desktop.send,
+    ) -> None:
         self.ctx = ctx
         self.interval_s = interval_s
+        self._now = now
+        self._notifier = notifier
         self._task: asyncio.Task[None] | None = None
         self._review: asyncio.Task[None] | None = None
 
@@ -120,12 +135,19 @@ class DailyTick:
         return None if llm is None or replay_miss_prone(llm) else llm
 
     async def check(self) -> TickResult:
-        """Run the day's work if the local date changed since the last tick."""
+        """Run the day's work if the local date changed since the last tick, then the desktop
+        notification if it is due."""
         store = self.ctx.store
         today = local_today(store)
         previous = store.get_meta(LAST_TICK_KEY)
         if previous == today.isoformat():
-            return TickResult(today=today, day_changed=False)
+            result = TickResult(today=today, day_changed=False)
+        else:
+            result = await self._new_day(today, previous)
+        return replace(result, desktop=await self._desktop(today))
+
+    async def _new_day(self, today: date, previous: str | None) -> TickResult:
+        store = self.ctx.store
         async with ledger_lock():  # the pipeline links and reconciles under the same lock
             await asyncio.to_thread(roll_forward, store, today, item_context)
             run = await asyncio.to_thread(run_and_reconcile, store, today)
@@ -135,6 +157,18 @@ class DailyTick:
         brief = await self._refresh_brief(today)
         started = self._start_review(today)
         return TickResult(today=today, day_changed=True, triggers=run, brief=brief, review_started=started)
+
+    async def _desktop(self, today: date) -> desktop.Outcome | None:
+        """The morning desktop notification, if due; a failure is logged, never fatal."""
+        store = self.ctx.store
+        try:
+            clock_time = self._now(store).time()
+            return await asyncio.to_thread(
+                desktop.morning_notification, store, today, clock_time, sender=self._notifier
+            )
+        except Exception:
+            log.exception("desktop notification failed")
+            return None
 
     async def _refresh_brief(self, today: date) -> Brief:
         store = self.ctx.store

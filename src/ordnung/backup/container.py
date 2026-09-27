@@ -45,7 +45,7 @@ import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import BinaryIO
+from typing import Any, BinaryIO, Protocol
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives import hashes
@@ -70,6 +70,14 @@ _PARAMS = struct.Struct(">BBBB16s7sI")
 HEADER_BYTES = len(MAGIC) + 1 + _PARAMS.size + MAC_BYTES
 _DATA_INFO = b"ordnung-backup v1 data key"
 _HEADER_INFO = b"ordnung-backup v1 header key"
+
+
+class Sink(Protocol):
+    """Where :class:`EncryptedWriter` writes (a file, a buffer)."""
+
+    def write(self, data: bytes, /) -> Any: ...
+
+    def flush(self) -> Any: ...
 
 
 class BackupError(RuntimeError):
@@ -227,7 +235,7 @@ class EncryptedWriter(io.RawIOBase):
 
     def __init__(
         self,
-        out: BinaryIO,
+        out: Sink,
         passphrase: str,
         *,
         kdf: KdfParams = DEFAULT_KDF,
