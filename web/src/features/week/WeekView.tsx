@@ -1,14 +1,15 @@
 /**
- * "This week": the guided weekly admin session (`GET /api/week`, `ordnung/secretary/week.py`) — seven
- * short steps, one at a time, then "All clear until …". Nothing is paid, sent or closed for the person:
- * each row links to where they act (Pay and Confirm right here). "Finish" remembers the session.
- * URL state: `?step=new|check|pay|post|waiting|decide|file`.
+ * "This week": the guided weekly admin session (`GET /api/week`, `ordnung/secretary/week.py`) — short
+ * steps, one at a time (seven, and "Act now" first when something is overdue or due today), then "All
+ * clear until …", "N things to do today" or "N things are overdue". Nothing is paid, sent or closed for
+ * the person: each row links to where they act (Pay and Confirm right here). "Finish" remembers the session.
+ * URL state: `?step=now|new|check|pay|post|waiting|decide|file`.
  */
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowLeft, ArrowRight, Check, CircleCheck, Plus, Sparkles, TriangleAlert } from "lucide-react";
 import { useWeek, useWeekDone } from "@/api/hooks";
-import type { WeekStep, WeeklySession } from "@/api/types";
+import type { WeekEntry, WeekStep, WeeklySession } from "@/api/types";
 import { useAddLetters } from "@/components/shell/AddLetters";
 import { PageHeader } from "@/components/shell/Page";
 import { Button, buttonVariants } from "@/components/ui/Button";
@@ -25,7 +26,8 @@ import { cn, prefersReducedMotion } from "@/lib/utils";
 import { STEP_META, entryHref, stepCount, type StepId } from "./steps";
 import { WeekEntryRow } from "./WeekEntryRow";
 
-const DESCRIPTION = "About ten minutes: seven short steps through your paperwork. Nothing is paid, sent or closed for you.";
+/** The header's line: how long, not how many steps — "Act now" comes and goes (the card says "Step 1 of 8"). */
+export const describeSession = (minutes = 10) => `About ${minutes} minutes, one short step at a time through your paperwork. Nothing is paid, sent or closed for you.`;
 /** The step list beside the step once the page is wide enough (measured on the page, not the window). */
 const LAYOUT = "grid grid-cols-1 items-start gap-6 @[52rem]:grid-cols-[15rem_minmax(0,1fr)]";
 
@@ -139,6 +141,56 @@ export function nextPromptText(week: Pick<WeeklySession, "next_prompt">, formatD
   return week.next_prompt ? `Today suggests the next one on ${formatDate(week.next_prompt)}` : "Today suggests the next one when it is due";
 }
 
+/** Rows that are things to do today (not overdue; not an event, a letter added or something done). */
+const TODAY_ROLES = new Set<NonNullable<WeekEntry["date_role"]>>(["due", "by", "on", "send_by", "transfer_by", "pay_by", "act_today", "at_appointment", "decide_by", "reply_by"]);
+/** What the session's counts cover (`week.overdue_count`, `week.deadlines`): to-dos — not a reply awaited
+ * when overdue — and contract decisions; not a letter to send (its deadline is the to-do), nor Please
+ * check, which lists a to-do again beside its own step. */
+const COUNTED_OVERDUE = new Set<string>(["deadline", "payment", "task"]);
+
+export const isCountedOverdue = (entry: WeekEntry, step: WeekStep): boolean =>
+  entry.overdue && entry.ref.type === "item" && COUNTED_OVERDUE.has(entry.kind) && step.id !== "waiting" && step.id !== "check";
+
+export const isCountedToday = (entry: WeekEntry, step: WeekStep, today: string): boolean =>
+  !entry.overdue &&
+  entry.date === today &&
+  entry.date_role !== null &&
+  TODAY_ROLES.has(entry.date_role) &&
+  (entry.ref.type === "item" || entry.ref.type === "contract") &&
+  step.id !== "check";
+
+/** The steps holding rows that match, with how many each holds (in the session's order). */
+export function stepsWith(week: Pick<WeeklySession, "steps">, match: (entry: WeekEntry, step: WeekStep) => boolean): { step: WeekStep; count: number }[] {
+  return week.steps.map((step) => ({ step, count: step.entries.filter((entry) => match(entry, step)).length })).filter((found) => found.count > 0);
+}
+
+/** "See them" (one step) or "See them: Act now (3) · Pay this week (2)" — a way to each step that holds them. */
+function StepLinks({ found, many, onShow }: { found: { step: WeekStep; count: number }[]; many: boolean; onShow: (step: StepId) => void }) {
+  const link = "inline min-h-6 rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent";
+  const [only] = found;
+  if (!only) return null;
+  if (found.length === 1) {
+    return (
+      <button type="button" onClick={() => onShow(only.step.id)} className={link}>
+        See {many ? "them" : "it"}
+      </button>
+    );
+  }
+  return (
+    <>
+      See them:{" "}
+      {found.map(({ step, count }, i) => (
+        <Fragment key={step.id}>
+          {i ? <span aria-hidden>{"\u00a0· "}</span> : null}
+          <button type="button" onClick={() => onShow(step.id)} className={cn(link, "whitespace-nowrap")}>
+            {step.title} ({count})
+          </button>
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
 function AllClear({ week, onShow }: { week: WeeklySession; onShow: (step: StepId) => void }) {
   const formatDate = useFormatDate();
   const next = week.next_deadline;
@@ -146,14 +198,20 @@ function AllClear({ week, onShow }: { week: WeeklySession; onShow: (step: StepId
   // the card replaces the step the person finished: the focus (and a screen reader) goes to it
   useEffect(() => heading.current?.focus(), []);
   const overdue = week.overdue;
-  const overdueStep = week.steps.find((s) => s.entries.some((e) => e.overdue));
+  const today = !overdue && Boolean(next?.date && next.date <= week.today);
+  // the backend counts every day to act that is today (`due_today`); the next one is always among them
+  const todayCount = today ? Math.max(1, week.due_today) : 0;
   const title = overdue
     ? `${overdue} ${overdue === 1 ? "thing is" : "things are"} overdue`
-    : next?.date
-      ? next.date <= week.today
+    : today
+      ? todayCount === 1
         ? "One thing to do today"
-        : `All clear until ${formatDate(next.date)}`
-      : "All clear";
+        : `${todayCount} things to do today`
+      : next?.date
+        ? `All clear until ${formatDate(next.date)}`
+        : "All clear";
+  const overdueSteps = overdue ? stepsWith(week, isCountedOverdue) : [];
+  const todaySteps = todayCount > 1 ? stepsWith(week, (e, step) => isCountedToday(e, step, week.today)) : [];
   return (
     <Card as="section" padding="lg" aria-labelledby="week-done-title" className="flex flex-col items-center text-center">
       {overdue ? (
@@ -169,25 +227,21 @@ function AllClear({ week, onShow }: { week: WeeklySession; onShow: (step: StepId
       {overdue ? (
         <p className="mt-2 max-w-md text-[14.5px] leading-relaxed text-muted">
           {overdue === 1 ? "Its date has passed: act on it first" : "Their dates have passed: act on them first"}, or contact the sender if you
-          can't.{" "}
-          {overdueStep ? (
-            <button
-              type="button"
-              onClick={() => onShow(overdueStep.id)}
-              className="inline min-h-6 rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent"
-            >
-              See {overdue === 1 ? "it" : "them"}
-            </button>
-          ) : null}
+          can't. <StepLinks found={overdueSteps} many={overdue > 1} onShow={onShow} />
         </p>
       ) : null}
       {next?.date ? (
         <p className="mt-2 max-w-md text-[14.5px] leading-relaxed text-muted">
-          Next:{" "}
+          {todayCount > 1 ? "First:" : "Next:"}{" "}
           <Link to={entryHref(next)} className="rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent [overflow-wrap:anywhere]">
             {glueText(next.title)}
           </Link>
           <span aria-hidden>{"\u00a0·"}</span> <Countdown date={next.date} className="text-[14.5px]" />
+          {todaySteps.length ? (
+            <span className="block">
+              <StepLinks found={todaySteps} many onShow={onShow} />
+            </span>
+          ) : null}
         </p>
       ) : !overdue ? (
         <p className="mt-2 max-w-md text-[14.5px] leading-relaxed text-muted">Nothing is due from today on.</p>
@@ -210,7 +264,7 @@ function NothingToReview({ week }: { week: WeeklySession }) {
       <EmptyState
         illustration="letter"
         title="Nothing to review yet"
-        description="Add your letters: each week this review walks you through what they ask of you — new mail, payments, replies and decisions — in about ten minutes."
+        description="Add your letters: each week this review walks you through what they ask of you — new mail, payments, replies and decisions — in about 10 minutes."
         action={
           <>
             <Button variant="primary" icon={Plus} onClick={openPicker} loading={uploading}>
@@ -305,7 +359,7 @@ export function WeekView() {
       title="This week"
       description={
         <>
-          {DESCRIPTION}
+          {describeSession(week?.minutes)}
           {week?.last_session ? <span className="block text-[13.5px]">Last session: {formatDate(week.last_session)}.</span> : null}
         </>
       }

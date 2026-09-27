@@ -3,11 +3,12 @@
  * secretary's note and — where the person can act right here — Pay (the Pay panel) or Confirm.
  *
  * The day reads as Today words it (`ordnung/secretary/week.py`, "The day on a row"): "Transfer by …",
- * "Send by …", an appointment on its day, "Expires …" — and "Act today" with the due date beside it once
- * the day to post or transfer has passed.
+ * "Send by …", an appointment on its day, "Expires …", money coming in "Expected …" — and "Act today"
+ * with the due date beside it once the day to post or transfer has passed.
  */
 import { Link } from "react-router";
 import { Check, Landmark } from "lucide-react";
+import { useMemo } from "react";
 import { useConfirmItem } from "@/api/hooks";
 import type { WeekEntry } from "@/api/types";
 import { Button } from "@/components/ui/Button";
@@ -15,9 +16,9 @@ import { Countdown } from "@/components/ui/Countdown";
 import { KindIcon, type KindSource } from "@/components/ui/KindBadge";
 import { Money } from "@/components/ui/Money";
 import { toast } from "@/components/ui/Toast";
-import { focusAfterLeaving } from "@/features/today/focus";
+import { focusAfterLeaving, focusWhenReady } from "@/features/today/focus";
 import { actionFromItem } from "@/features/today/selection";
-import { PayPopover } from "@/features/today/TopThree";
+import { PayFocusProvider, PayPopover, type TopFocus } from "@/features/today/TopThree";
 import { glueText } from "@/lib/format";
 import { NBSP } from "@/lib/glue";
 import { useFormatDate, useTodayISO } from "@/lib/today";
@@ -42,13 +43,14 @@ const COUNTDOWN_PREFIX: Partial<Record<Role, string>> = {
   transfer_by: "Transfer by",
   pay_by: "Pay by",
   collected: "Collected",
+  expected: "Expected",
   decide_by: "Decide by",
   reply_by: "Reply expected by",
   expires: "Expires",
   at_appointment: "Pay at the appointment",
 };
-/** Events: past means "2 days ago", never "overdue", and never red. */
-const EVENT_ROLES = new Set<Role>(["on", "collected", "expires", "at_appointment"]);
+/** Events: past means "2 days ago", never "overdue", and never red (money coming in is one). */
+const EVENT_ROLES = new Set<Role>(["on", "collected", "expires", "at_appointment", "expected"]);
 /** Things that happened: a plain date. */
 const EVENT_PREFIX: Partial<Record<Role, string>> = {
   added: "Added",
@@ -58,6 +60,15 @@ const EVENT_PREFIX: Partial<Record<Role, string>> = {
 
 /** The DOM id of a row's link (focus moves to the next one when a row leaves the step). */
 export const rowLinkId = (key: string) => `week-row-${key}`;
+
+/** A row leaves its step (confirmed, paid): the focus goes on to the row now in its place, else the step's heading. */
+function focusAfterRow(step: StepId, key: string): void {
+  focusAfterLeaving(
+    () => Array.from(document.querySelectorAll<HTMLElement>(`[data-week-row="${step}"]`)),
+    rowLinkId(key),
+    `week-step-${step}`,
+  );
+}
 
 function kindSource(entry: WeekEntry): KindSource {
   if (entry.ref.type === "document") return { docKind: entry.kind as DocumentKind };
@@ -128,13 +139,23 @@ export function paysHere(entry: Pick<WeekEntry, "ref" | "date_role">): boolean {
 function PayButton({ entry }: { entry: WeekEntry }) {
   const today = useTodayISO();
   const action = entry.item ? actionFromItem(entry.item, { today }) : null;
+  // "Mark as paid" takes the row off the step: the focus goes on as after "Looks right", and back on Undo
+  const focus = useMemo<TopFocus>(
+    () => ({
+      leaving: () => focusAfterRow("pay", entry.key),
+      returning: () => focusWhenReady(() => document.getElementById(rowLinkId(entry.key))),
+    }),
+    [entry.key],
+  );
   if (!action) return null;
   return (
-    <PayPopover action={action}>
-      <Button size="sm" variant="secondary" icon={Landmark} aria-label={`Pay: ${entry.title}`}>
-        Pay
-      </Button>
-    </PayPopover>
+    <PayFocusProvider value={focus}>
+      <PayPopover action={action}>
+        <Button size="sm" variant="secondary" icon={Landmark} aria-label={`Pay: ${entry.title}`}>
+          Pay
+        </Button>
+      </PayPopover>
+    </PayFocusProvider>
   );
 }
 
@@ -146,17 +167,13 @@ function ConfirmButton({ entry, step }: { entry: WeekEntry; step: StepId }) {
       variant="secondary"
       icon={Check}
       loading={confirm.isPending}
-      aria-label={`Confirm: ${entry.title}`}
+      // the accessible name starts with the visible words, WCAG 2.5.3
+      aria-label={`Looks right: ${entry.title}`}
       onClick={() =>
         confirm.mutate(entry.ref.id, {
           onSuccess: () => {
             toast({ tone: "success", title: "Confirmed", description: `${entry.title} — marked as checked by you.` });
-            // the row leaves the step: the focus goes on to the row now in its place, else the step's heading
-            focusAfterLeaving(
-              () => Array.from(document.querySelectorAll<HTMLElement>(`[data-week-row="${step}"]`)),
-              rowLinkId(entry.key),
-              `week-step-${step}`,
-            );
+            focusAfterRow(step, entry.key);
           },
         })
       }

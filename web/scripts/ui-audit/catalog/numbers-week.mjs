@@ -140,6 +140,110 @@ export function numbersAndWeekDemoStates() {
       await c.click(main(c.page).getByRole("button", { name: /^Finish/ }));
     },
   });
+  // endings the demo's today doesn't reach on its own: the rows are the demo's, their days moved
+  const today = (week) => week.today;
+  const endWith = (id, description, shape) =>
+    add({
+      id,
+      group: WEEK,
+      route: "/week?step=file",
+      how: "open the last step, press “Finish” (GET /api/week and the POST answered by the audit with the demo's rows, their days moved)",
+      description,
+      run: async (c) => {
+        await fakeApi(c.page, "GET", /^\/api\/week$/, async (_req, original) => ({ json: shape(original) }), { passthrough: true });
+        // the page's own GET goes through the shape above
+        await fakeApi(c.page, "POST", /^\/api\/week\/done$/, async (_req) => ({ json: await weekAfter(c) }));
+        await pinToasts(c.page);
+        await c.goto("/week?step=file");
+        await c.click(main(c.page).getByRole("button", { name: /^Finish/ }));
+      },
+    });
+  endWith("week-ending-today", "The ending when several things are to do today: “3 things to do today”, the first one, and a way to each step that holds them.", (week) => {
+    const pay = week.steps.find((s) => s.id === "pay");
+    const moved = pay.entries.slice(0, 2).map((e) => ({ ...e, date: today(week), date_role: "transfer_by", overdue: false, tone: "neutral", note: null }));
+    const steps = week.steps.map((s) => (s.id === "pay" ? { ...s, entries: [...moved, ...s.entries.slice(2)] } : s));
+    const form = { ...moved[0], key: "item:audit-form", ref: { type: "item", id: "audit-form" }, title: "Hand in the Anmeldung form at the Bürgeramt", kind: "deadline", date_role: "due", amount: null, item: null };
+    const now = { id: "now", title: "Act now", summary: "1 to do today", entries: [form], more: 0, total: null, total_other_currencies: {} };
+    return { ...week, steps: [now, ...steps], overdue: 0, next_deadline: form, due_today: 3 };
+  });
+  endWith("week-ending-overdue-steps", "The ending with overdue rows in two steps: “2 things are overdue” and a way to each step.", (week) => {
+    const pay = week.steps.find((s) => s.id === "pay");
+    const late = { ...pay.entries[0], date: "2026-09-20", overdue: true, tone: "danger" };
+    const steps = week.steps.map((s) => (s.id === "pay" ? { ...s, entries: [late, ...s.entries.slice(1)] } : s));
+    const task = { ...late, key: "item:audit-task", ref: { type: "item", id: "audit-task" }, title: "Send the documents to the Jobcenter", kind: "task", date_role: "by", amount: null, item: null };
+    const now = { id: "now", title: "Act now", summary: "1 overdue", entries: [task], more: 0, total: null, total_other_currencies: {} };
+    return { ...week, steps: [now, ...steps], overdue: 2 };
+  });
+  add({
+    id: "week-post-act-today",
+    group: WEEK,
+    route: "/week?step=post",
+    how: "open /week?step=post (GET /api/week answered with the demo's letter as on a day after its send-by day)",
+    description: "A letter whose day to post has passed but that can still arrive in time: “Act today — due …”, not overdue.",
+    run: async (c) => {
+      await fakeApi(
+        c.page,
+        "GET",
+        /^\/api\/week$/,
+        async (_req, week) => ({
+          json: {
+            ...week,
+            steps: week.steps.map((s) =>
+              s.id === "post"
+                ? { ...s, entries: s.entries.map((e, i) => (i === 0 ? { ...e, date: week.today, date_role: "act_today", due_date: e.due_date ?? e.date, overdue: false, note: "The last safe day to post it has passed, but the due date is still ahead: hand it in today, or send it a way that arrives in time (fax, or an online form the sender accepts). Then mark it as sent." } : e)) }
+                : s,
+            ),
+          },
+        }),
+        { passthrough: true },
+      );
+      await c.goto("/week?step=post");
+    },
+  });
+  add({
+    id: "numbers-cases-late",
+    group: NUMBERS,
+    route: "/numbers?tab=cases",
+    how: "open /numbers, tab “Open cases” (GET /api/numbers answered with the first case's day to act passed and the second one's due date passed)",
+    description: "Open cases whose next step is to act on today (the send-by day passed) and one that is overdue.",
+    run: async (c) => {
+      await fakeApi(
+        c.page,
+        "GET",
+        /^\/api\/numbers$/,
+        async (_req, numbers) => {
+          const day = (n) => new Date(Date.parse(`${numbers.today}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+          const late = (c2, i) =>
+            !c2.next_item || i > 1 ? c2 : { ...c2, next_item: { ...c2.next_item, kind: i === 0 ? "deadline" : "payment", at_appointment: false, send_by: day(i === 0 ? -2 : -16), due_date: day(i === 0 ? 3 : -14) } };
+          return { json: { ...numbers, open_cases: numbers.open_cases.map(late) } };
+        },
+        { passthrough: true },
+      );
+      await c.goto("/numbers?tab=cases");
+    },
+  });
+  add({
+    id: "numbers-long-label",
+    group: NUMBERS,
+    route: "/numbers?tab=organisations",
+    how: "open /numbers, tab “Organisations” (GET /api/numbers answered with a long compound German label on the first number)",
+    description: "A number whose title is the letter's own long German label: it wraps inside its card.",
+    run: async (c) => {
+      await fakeApi(
+        c.page,
+        "GET",
+        /^\/api\/numbers$/,
+        async (_req, numbers) => {
+          const label = "Rentenversicherungsnummer/Sozialversicherungsnummer/Versicherungsnummer";
+          const [first, ...rest] = numbers.organisations;
+          const [n, ...more] = first.numbers;
+          return { json: { ...numbers, organisations: [{ ...first, numbers: [{ ...n, kind: "other", name: "Your number", label }, ...more] }, ...rest] } };
+        },
+        { passthrough: true },
+      );
+      await c.goto("/numbers?tab=organisations");
+    },
+  });
   add({
     id: "today-weekly-dismissed",
     group: "today",
@@ -174,12 +278,28 @@ export function numbersAndWeekEmptyStates(group) {
   ];
 }
 
-/** The static demo (hash routes). */
+/** Pay the first transfer of the static demo's session, then go on to the last step and press Finish. */
+async function payFirstThenFinish(c) {
+  const main = inMain(c.page);
+  await c.click(main.getByRole("button", { name: /^Pay: / }).first());
+  await c.click(c.page.getByRole("dialog").getByRole("button", { name: "Mark as paid" }));
+  for (let i = 0; i < 8; i += 1) {
+    const next = main.getByRole("button", { name: /^Next: / });
+    if (!(await c.exists(next))) break;
+    await c.click(next);
+  }
+  await c.click(main.getByRole("button", { name: /^Finish/ }));
+  // the mock answers after a short delay: capture the ending, not the pending button
+  await main.getByRole("heading", { level: 2, name: /^(All clear|One thing|\d+ things)/ }).waitFor({ timeout: 15_000 });
+}
+
+/** The static demo (hash routes; a fourth element: what to do there). */
 export function numbersAndWeekStaticPaths() {
   return [
     ["numbers", "/numbers", "Static demo: My numbers."],
     ["numbers-organisations", "/numbers?tab=organisations", "Static demo: My numbers → Organisations."],
     ["week", "/week", "Static demo: the weekly session."],
     ["week-pay", "/week?step=pay", "Static demo: the weekly session, “Pay this week”."],
+    ["week-paid-finish", "/week?step=pay", "Static demo: the first transfer marked paid, then Finish — the ending moves on to the next day to act.", payFirstThenFinish],
   ];
 }

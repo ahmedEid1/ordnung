@@ -12,7 +12,7 @@ import { KindIcon } from "@/components/ui/KindBadge";
 import { mailtoUrl, websiteUrl } from "@/features/party/timeline";
 import { usePartyDrawer } from "@/lib/party-drawer";
 import { glueText } from "@/lib/format";
-import { useFormatDate } from "@/lib/today";
+import { useFormatDate, useTodayISO } from "@/lib/today";
 import { cn, plural } from "@/lib/utils";
 import { NumberRow, Sep } from "./NumberRow";
 
@@ -101,21 +101,61 @@ function Unconfirmed({ what, className }: { what: string; className?: string }) 
   );
 }
 
-/** "Next: Pay the fine · by Thu 1 Oct" (a fee paid at the appointment: on its day). */
-function NextStep({ item }: { item: NonNullable<OpenCase["next_item"]> }) {
+type CaseStep = NonNullable<OpenCase["next_item"]>;
+
+/** To-dos that can be overdue (`triggers.OVERDUE_KINDS`); an appointment or reminder that passed just happened. */
+const OVERDUE_KINDS = new Set<CaseStep["kind"]>(["deadline", "payment", "task"]);
+
+/**
+ * The day a case's next step shows, by the weekly session's rule (`secretary/week.py`, "The day on a
+ * row"): an appointment — and a fee paid at it — *on* its day; else *by* the day to act (the send-by day
+ * when it comes first); once that day has passed but the due date has not, *act today* with the due
+ * date; once the due date has passed, *overdue*, counted from the due date.
+ */
+export type NextWhen =
+  | { kind: "on" | "by" | "past"; date: string }
+  | { kind: "act_today"; due: string | null }
+  | { kind: "overdue"; due: string };
+
+export function nextStepWhen(item: Pick<CaseStep, "kind" | "due_date" | "send_by" | "at_appointment">, today: string): NextWhen | null {
+  const { due_date: due, send_by: send } = item;
+  if (item.kind === "appointment" || item.kind === "reminder" || item.at_appointment) return due ? { kind: "on", date: due } : null;
+  if (due && due < today) return OVERDUE_KINDS.has(item.kind) ? { kind: "overdue", due } : { kind: "past", date: due };
+  if (send && send < today) return { kind: "act_today", due };
+  const day = send && (!due || send <= due) ? send : due;
+  return day ? { kind: "by", date: day } : null;
+}
+
+function NextDay({ when }: { when: NextWhen }) {
   const formatDate = useFormatDate();
-  const day = item.send_by && (!item.due_date || item.send_by <= item.due_date) ? item.send_by : item.due_date;
-  const on = item.kind === "appointment" || (item.kind === "payment" && !item.send_by);
+  switch (when.kind) {
+    case "overdue":
+      return <Countdown date={when.due} prefix="due" className="text-[13px]" />;
+    case "act_today":
+      return when.due ? <Countdown date={when.due} prefix="act today — due" className="text-[13px]" /> : <span className="font-medium text-danger-ink">act today</span>;
+    case "past":
+      return <Countdown date={when.date} mode="event" showDate className="text-[13px]" />;
+    default:
+      return (
+        <span className="whitespace-nowrap text-muted">
+          {when.kind} {formatDate(when.date)}
+        </span>
+      );
+  }
+}
+
+/** "Next: Pay the fine · by Thu 1 Oct" (a fee paid at the appointment: on its day; "act today — due …" once the day to act passed; overdue from the due date). */
+function NextStep({ item }: { item: CaseStep }) {
+  const today = useTodayISO();
+  const when = nextStepWhen(item, today);
   return (
     <>
       <p className="text-[13px] leading-5 text-ink/85">
         <span className="font-medium text-ink">Next:</span> <span className="[overflow-wrap:anywhere]">{glueText(item.title)}</span>
-        {day ? (
+        {when ? (
           <>
             <Sep />
-            <span className="whitespace-nowrap text-muted">
-              {on ? "on" : "by"} {formatDate(day)}
-            </span>
+            <NextDay when={when} />
           </>
         ) : null}
       </p>

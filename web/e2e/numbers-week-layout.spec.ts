@@ -12,7 +12,11 @@ test.beforeEach(async ({ page }) => {
   await setTour(page, null);
 });
 
-/** No horizontal page scroll, and every card's content inside its card. */
+/**
+ * No horizontal page scroll, and every card's content inside its card — also text that runs past its
+ * own box (a block's box does not grow with a word too long for it, so its scroll width is compared;
+ * text cut on purpose with an ellipsis is fine).
+ */
 async function outOfBounds(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const out: string[] = [];
@@ -24,6 +28,9 @@ async function outOfBounds(page: Page): Promise<string[]> {
       for (const el of card.querySelectorAll<HTMLElement>("p, h2, h3, button, a")) {
         const e = el.getBoundingClientRect();
         if (e.width && (e.right > r.right + 0.5 || e.left < r.left - 0.5)) out.push(`"${el.textContent?.slice(0, 30)}" sticks out of its card`);
+        const style = getComputedStyle(el);
+        const cut = style.textOverflow === "ellipsis" || style.overflowX === "hidden" || style.overflowX === "clip";
+        if (el.clientWidth && !cut && el.scrollWidth > el.clientWidth + 1) out.push(`"${el.textContent?.slice(0, 30)}" runs past its box`);
       }
     }
     return out;
@@ -69,6 +76,20 @@ for (const width of [320, 390, 768, 1280, 1920]) {
     }
   });
 }
+
+test("a long German label wraps inside its card at 320px", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  const label = "Rentenversicherungsnummer/Sozialversicherungsnummer/Versicherungsnummer";
+  await page.route("**/api/numbers", async (route) => {
+    const numbers = await (await route.fetch()).json();
+    const [first, ...rest] = numbers.organisations;
+    const [n, ...more] = first.numbers;
+    await route.fulfill({ json: { ...numbers, organisations: [{ ...first, numbers: [{ ...n, kind: "other", name: "Your number", label }, ...more] }, ...rest] } });
+  });
+  await open(page, "/numbers?tab=organisations", "My numbers");
+  await expect(page.getByRole("main").getByText(label, { exact: true })).toBeVisible();
+  expect(await outOfBounds(page)).toEqual([]);
+});
 
 test("Next takes the focus to the new step's heading, clear of the top bar", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

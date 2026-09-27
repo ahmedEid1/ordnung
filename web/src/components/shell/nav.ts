@@ -18,7 +18,7 @@ export interface NavItem {
 
 /** Primary navigation (SPEC §14): Today · Inbox · Timeline · Contracts · My numbers · Letters · Ask. */
 export const NAV_ITEMS: NavItem[] = [
-  { to: "/", label: "Today", icon: Sun, end: true },
+  { to: "/", label: "Today", icon: Sun, end: true, match: ["/week"] },
   { to: "/inbox", label: "Inbox", icon: Inbox, badge: "please-check", match: ["/documents"] },
   { to: "/timeline", label: "Timeline", icon: ChartNoAxesGantt },
   { to: "/contracts", label: "Contracts", icon: Signature },

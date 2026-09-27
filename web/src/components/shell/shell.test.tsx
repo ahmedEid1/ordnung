@@ -78,12 +78,15 @@ describe("nav: which item is current", () => {
   const inbox = NAV_ITEMS.find((i) => i.to === "/inbox")!;
   const today = NAV_ITEMS.find((i) => i.to === "/")!;
 
-  it("makes Inbox the home of every letter page, and Today only of /", () => {
+  it("makes Inbox the home of every letter page, and Today of / and the weekly session", () => {
     expect(isNavItemActive(inbox, "/documents/doc_1")).toBe(true);
     expect(isNavItemActive(inbox, "/inbox")).toBe(true);
     expect(isNavItemActive(inbox, "/documentsx")).toBe(false);
     expect(isNavItemActive(today, "/")).toBe(true);
+    expect(isNavItemActive(today, "/week")).toBe(true);
+    expect(isNavItemActive(today, "/weekly")).toBe(false);
     expect(isNavItemActive(today, "/documents/doc_1")).toBe(false);
+    expect(NAV_ITEMS.filter((item) => isNavItemActive(item, "/week"))).toEqual([today]);
   });
 
   it("knows the section pages by their exact path", () => {

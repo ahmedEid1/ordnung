@@ -32,7 +32,7 @@ export async function staticCatalog({ webDir }) {
   add("ask", "/ask", "Static demo: Ask.");
   add("settings", "/settings", "Static demo: Settings → Profile.");
   add("settings-privacy", "/settings?section=privacy", "Static demo: Settings → Privacy & AI usage.");
-  for (const [id, path, description] of numbersAndWeekStaticPaths()) add(id, path, description);
+  for (const [id, path, description, run] of numbersAndWeekStaticPaths()) add(id, path, description, run);
   add("not-found", "/no-such-page", "Static demo: unknown route.");
   add("welcome", "/welcome", "Static demo: the onboarding wizard.");
   for (const id of ["doc_lease", "doc_nebenkosten", "doc_passport", "doc_tm_dunning"].filter(pick)) {

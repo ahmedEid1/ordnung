@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { api } from "@/api/endpoints";
-import type { MyNumbers } from "@/api/types";
+import type { MyNumbers, OpenCase } from "@/api/types";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { mockNumbers } from "@/mocks/numbers";
@@ -16,6 +16,7 @@ import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { hiddenLabel, maskValue, visibleTail } from "./mask";
 import { NumbersView, matchesSheet, sheetMatch } from "./NumbersView";
+import { OpenCaseCard, nextStepWhen } from "./cards";
 import { numberTitle, printedLabel } from "./NumberRow";
 
 beforeEach(() => {
@@ -63,6 +64,55 @@ describe("masking", () => {
     expect(printedLabel(n)).toBe("Steuerliche Identifikationsnummer");
     expect(printedLabel({ kind: "tax_id", name: "Tax ID (Steuer-ID)", label: "Steuer-ID" })).toBeNull();
     expect(numberTitle({ kind: "other", name: "Your number", label: "Scholarship ID" })).toBe("Scholarship ID");
+  });
+});
+
+describe("an open case's next step", () => {
+  const today = "2026-09-28";
+  const step = (fields: Partial<NonNullable<OpenCase["next_item"]>>) => ({ kind: "deadline" as const, due_date: null, send_by: null, at_appointment: false, ...fields });
+
+  it("reads its day by the weekly session's rule", () => {
+    // ahead: by the day to act (the send-by day when it comes first)
+    expect(nextStepWhen(step({ due_date: "2026-10-14", send_by: "2026-10-08" }), today)).toEqual({ kind: "by", date: "2026-10-08" });
+    expect(nextStepWhen(step({ kind: "payment", due_date: "2026-10-02" }), today)).toEqual({ kind: "by", date: "2026-10-02" }); // a transfer: never "on"
+    // the send-by day passed, the due date has not: act today, with the due date
+    expect(nextStepWhen(step({ due_date: "2026-09-30", send_by: "2026-09-25" }), today)).toEqual({ kind: "act_today", due: "2026-09-30" });
+    expect(nextStepWhen(step({ due_date: today, send_by: "2026-09-27" }), today)).toEqual({ kind: "act_today", due: today });
+    // the due date passed: overdue, counted from the due date (not the send-by day)
+    expect(nextStepWhen(step({ kind: "payment", due_date: "2026-09-26", send_by: "2026-09-24" }), today)).toEqual({ kind: "overdue", due: "2026-09-26" });
+    // on its day: an appointment, and a fee paid at it
+    expect(nextStepWhen(step({ kind: "appointment", due_date: "2026-10-14" }), today)).toEqual({ kind: "on", date: "2026-10-14" });
+    expect(nextStepWhen(step({ kind: "payment", due_date: "2026-10-14", at_appointment: true }), today)).toEqual({ kind: "on", date: "2026-10-14" });
+    expect(nextStepWhen(step({}), today)).toBeNull();
+  });
+
+  const found = (next: Partial<NonNullable<OpenCase["next_item"]>>): OpenCase => ({
+    key: "case",
+    case_id: null,
+    title: "Contribution notice",
+    party_id: null,
+    party_name: "Muster BKK",
+    references: [],
+    next_item: { id: "itm_1", title: "Object to contribution notice", needs_check: false, ...step(next) },
+    open_items: 1,
+    letter: null,
+  });
+
+  it("says “act today” once the day to post has passed, and overdue once the due date has", () => {
+    const { unmount } = renderWithProviders(<OpenCaseCard found={found({ due_date: "2026-10-01", send_by: "2026-09-25" })} />);
+    const act = screen.getByText("act today — due").closest("time")!;
+    expect(act).toHaveTextContent("act today — due Thu 1 Oct · in 3 days");
+    expect(screen.queryByText(/by Fri 25 Sep/)).toBeNull();
+    unmount();
+    renderWithProviders(<OpenCaseCard found={found({ kind: "payment", due_date: "2026-09-26", send_by: "2026-09-24" })} />);
+    const late = screen.getByText("due").closest("time")!;
+    expect(late).toHaveTextContent("due Sat 26 Sep · 2 days overdue");
+    expect(late).toHaveAttribute("data-urgency", "danger");
+  });
+
+  it("keeps “by” for a day still ahead", () => {
+    renderWithProviders(<OpenCaseCard found={found({ due_date: "2026-10-14", send_by: "2026-10-08" })} />);
+    expect(screen.getByText("by Thu 8 Oct")).toBeInTheDocument();
   });
 });
 
@@ -128,7 +178,7 @@ describe("the page", () => {
     expect(within(docs).getByRole("heading", { name: "Passport" })).toBeInTheDocument();
     expect(within(docs).getAllByText((_, el) => el?.textContent === "Valid until 10 Feb 2027").length).toBeGreaterThan(0);
     expect(within(docs).getAllByText("Renew soon").length).toBe(2);
-    expect(within(docs).getByText(/§ 81 Abs\. 4 S\. 1 AufenthG/)).toBeInTheDocument();
+    expect(within(docs).getByText(/§ 81 Abs\. 4 S\. 1–2 AufenthG; not for a Schengen visa/)).toBeInTheDocument();
     // the passport's expiry was read by AI from a photo: the card says to compare it
     const passport = within(docs).getByRole("heading", { name: "Passport" }).closest("article")!;
     expect(within(passport).getByText(/Compare this date with the letter/)).toBeInTheDocument();
