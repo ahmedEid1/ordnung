@@ -578,25 +578,22 @@ function askStream(ctx: Ctx): Response {
         // like the real API: the tool trace, one `text` event without text while the answer is
         // written (its words — `raw` — are never sent before the check), then `done` with the checked
         // answer, which may leave a value or a sentence out, and Ordnung's note in its own field.
-        // The online demo's Ask page explains a question without a recording in a note of its own.
-        const text = rec?.text ?? (ctx.opts.staticDemo ? "" : FALLBACK_ANSWER);
-        const written = rec?.raw ?? text;
-        for (const t of rec?.tools ?? []) {
+        // A question without a recording gets the demo's `demo_miss` error, as from the local demo: the
+        // Ask page shows it as a note, not as a failure to retry.
+        if (!rec) {
+          send({ type: "error", error: FALLBACK_ANSWER, text: FALLBACK_ANSWER, error_code: "demo_miss" });
+          return;
+        }
+        const text = rec.text;
+        const written = rec.raw ?? text;
+        for (const t of rec.tools) {
           send({ type: "tool_use", name: t.name, input: t.input });
           await sleep(550 * speed, signal);
           send({ type: "tool_result", name: t.name, text: t.result });
           await sleep(200 * speed, signal);
         }
-        if (!rec && !text) {
-          send({ type: "done", text, note: null, thread_id: threadId, citations: [] });
-          return;
-        }
         send({ type: "text" });
         await sleep(Math.min(2500, 4 * written.length) * speed, signal);
-        if (!rec) {
-          send({ type: "done", text, note: null, thread_id: threadId, citations: [] });
-          return;
-        }
         const messageId = newId("msg");
         db.state.chat.push({
           id: messageId,

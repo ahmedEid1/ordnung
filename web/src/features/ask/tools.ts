@@ -77,6 +77,17 @@ function statusWord(v: unknown): string {
   }
 }
 
+/** `list_items(kind=…)` in a label, as `citations.py::_ITEM_KINDS` says it. */
+const ITEM_KINDS: Record<string, string> = {
+  deadline: "deadlines",
+  payment: "payments",
+  appointment: "appointments",
+  task: "tasks",
+  expiry: "expiry dates",
+  reminder: "reminders",
+  milestone: "milestones",
+};
+
 /** A human label for a tool call (without the backend's label). */
 export function fallbackToolLabel(name: string, input: Record<string, unknown> = {}, titleOf?: TitleLookup): string {
   const id = (input.doc_id ?? input.id ?? input.item_or_contract_id ?? input.party_id_or_name) as unknown;
@@ -91,7 +102,9 @@ export function fallbackToolLabel(name: string, input: Record<string, unknown> =
     case "list_items": {
       const from = input.from ?? input.from_date;
       const to = input.to ?? input.to_date;
-      const scope = `your ${statusWord(input.status)}to-dos & dates`;
+      // a kind filter names the kind, so two filtered calls ("open deadlines", "open payments") read apart
+      const what = (typeof input.kind === "string" && ITEM_KINDS[input.kind]) || "to-dos & dates";
+      const scope = `your ${statusWord(input.status)}${what}`;
       if (from && to) return `Listed ${scope} from ${day(from)} to ${day(to)}`;
       if (to) return `Listed ${scope} until ${day(to)}`;
       return `Listed ${scope}`;
@@ -130,8 +143,24 @@ export function unbreakDates(text: string): string {
   return text.replace(SHORT_DATE, (date) => date.replace(/ /g, "\u00a0"));
 }
 
+/** Straight double quotes around a phrase ("Kündigung") as the app writes them (“Kündigung”). */
+export function curlyQuotes(text: string): string {
+  return text.replace(/"([^"\n]*)"/g, "“$1”");
+}
+
 /** The chip text for a step: the backend label when present, else the fallback. */
 export function toolLabel(step: Pick<ToolStep, "name" | "input" | "label">, titleOf?: TitleLookup): string {
-  // the backend's label may carry ISO dates ("from 2026-09-28 to 2026-10-26")
-  return step.label ? formatInlineDates(step.label) : fallbackToolLabel(step.name, step.input, titleOf);
+  // the backend's label may carry ISO dates ("from 2026-09-28 to 2026-10-26") and straight quotes
+  // ('Searched your letters for "Kündigung"'); the fallback's are curly: one style in the trace
+  return step.label ? curlyQuotes(formatInlineDates(step.label)) : fallbackToolLabel(step.name, step.input, titleOf);
+}
+
+/**
+ * What a folded trace says: how many steps looked at the person's records — "Checked today's date"
+ * is not one of them (UI audit round 1: "Looked at 2 things" when one of them was today's date).
+ */
+export function traceSummary(steps: readonly Pick<ToolStep, "name">[]): string {
+  const n = steps.filter((s) => s.name !== "today").length;
+  if (!n) return "Checked today's date";
+  return n === 1 ? "Looked at 1 thing in your records" : `Looked at ${n} things in your records`;
 }

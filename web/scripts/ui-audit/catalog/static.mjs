@@ -50,7 +50,7 @@ export async function staticCatalog({ webDir }) {
   for (const id of draftIds.slice(0, 2)) add(id.replace(/_/g, "-"), `/letters/${id}`, `Static demo: draft ${id}.`);
   add("ask-answer", "/ask", "Static demo: a suggested question answered from the mock data.", async (c) => {
     await c.click(c.page.getByRole("list", { name: "Suggested questions" }).getByRole("button").first(), { settleAfter: false });
-    await c.page.getByRole("main").getByRole("status").filter({ hasText: /Answer ready|could not be completed|Stopped/ }).waitFor({ timeout: 60_000 });
+    await c.page.getByRole("main").getByRole("status").filter({ hasText: /Answer ready|could not be completed|No recorded answer|Stopped/ }).waitFor({ timeout: 60_000 });
     const trace = inMain(c.page).getByRole("button", { name: /^Looked at \d+ things?/ });
     if (await c.exists(trace)) await c.click(trace.last());
     await settle(c.page);

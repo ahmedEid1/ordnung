@@ -3010,6 +3010,11 @@ export interface components {
             /** Error */
             error?: string | null;
             /**
+             * Error Code
+             * @description why there is no answer (error), when asking again can't help: demo_miss — the demo has no recorded answer for this question
+             */
+            error_code?: "demo_miss" | null;
+            /**
              * Note
              * @description what the answer check left out or quoted (done); shown apart from the text
              */

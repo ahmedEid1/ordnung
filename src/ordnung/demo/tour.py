@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from ordnung.assistant.ask import DEMO_MISS as ASK_DEMO_MISS
+from ordnung.assistant.ask import AskEvent
 from ordnung.config import PACKAGE_DIR
 from ordnung.db.store import Store
 from ordnung.demo import DemoError, Manifest, SampleDocument, load_manifest, samples_root
@@ -286,8 +287,9 @@ def is_replay_miss(event: StreamEvent) -> bool:
 
 
 def demo_miss_event() -> StreamEvent:
-    """The one event shown instead of an answer the demo has no recording for."""
-    return StreamEvent(type="error", error=DEMO_MISS_MESSAGE, text=DEMO_MISS_MESSAGE)
+    """The one event shown instead of an answer the demo has no recording for: an error with the code
+    ``demo_miss``, which the web app shows as a note (asking again can't help) instead of a failure."""
+    return AskEvent(type="error", error=DEMO_MISS_MESSAGE, text=DEMO_MISS_MESSAGE, error_code="demo_miss")
 
 
 async def demo_safe_stream(events: AsyncIterator[StreamEvent], *, demo: bool) -> AsyncIterator[StreamEvent]:

@@ -393,6 +393,7 @@ describe("Markdown component", () => {
   it("is accessible text for screen readers (lists keep their structure)", () => {
     renderMd("- **Rent** 640,00 € [doc:doc_phone]");
     const list = screen.getByRole("list");
-    expect(within(list).getByRole("listitem")).toHaveTextContent("Rent 640,00 € [document]");
+    // the marker follows its fact like a footnote, without a space (its own name says "Source 1: …")
+    expect(within(list).getByRole("listitem")).toHaveTextContent("Rent 640,00 €[document]");
   });
 });

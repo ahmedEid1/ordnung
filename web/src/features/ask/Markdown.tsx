@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { parseMarkdown, type Block, type Inline } from "./markdown";
 import type { CitationRef } from "./citations";
 import { formatInlineDates } from "@/lib/format";
+import { keepCitations, protectRefs } from "@/lib/glue";
 import PLACEHOLDERS from "./placeholders.json";
 
 export interface MarkdownProps {
@@ -47,12 +48,18 @@ const KEEP_TOGETHER: [RegExp, string][] = [
   [new RegExp(`\\b(${MONTH})[ \\t]+(\\d{4})\\b`, "g"), "$1\u00a0$2"],
 ];
 
-/** `text` with no-break spaces inside amounts, dates and the check's placeholders, so none of them is
- * split across two lines. */
+/** `text` with no-break spaces inside amounts, dates, law references (the section sign and its number,
+ * "Abs. 3", "Art. 6") and the check's placeholders, and no-break hyphens inside reference numbers
+ * ("TM-2026-0048213"), so none of them is split across two lines (UI audit round 1: a line broke between
+ * the section sign and "56" at 320 px). Display only: a copied answer is the stored text, selected text
+ * loses the glue (`copyWithoutGlue`). */
 export function keepTogether(text: string): string {
   const joined = KEEP_TOGETHER.reduce((out, [pattern, nbsp]) => out.replace(pattern, nbsp), text);
-  return joined.replace(LEFT_OUT, (mark) => mark.replace(/ /g, "\u00a0"));
+  return protectRefs(keepCitations(joined)).replace(LEFT_OUT, (mark) => mark.replace(/ /g, "\u00a0"));
 }
+
+/** U+2060 WORD JOINER: no line break between the text before a citation marker and the marker. */
+const WORD_JOINER = "\u2060";
 
 /** Text nodes as they will be shown (ISO dates formatted, values kept together), before grouping. */
 function prepare(nodes: Inline[], dates: Render["dates"]): Inline[] {
@@ -141,7 +148,8 @@ function isPlaceholder(word: Inline[]): boolean {
 /**
  * Inline nodes with every run of citation chips grouped with the word before it and the
  * punctuation after it: the group never wraps, so a chip never starts a line on its own ("…for
- * 2025 ²:" moves to the next line as a whole). A word too long to wrap stays outside the group.
+ * 2025²:" moves to the next line as a whole). A word too long to wrap stays outside the group (a
+ * word joiner keeps the chip on its line).
  */
 function groupChips(nodes: Inline[]): Piece[] {
   const pieces: Piece[] = [];
@@ -181,6 +189,9 @@ function renderInline(nodes: Inline[], r: Render, prefix: string): ReactNode[] {
     if (piece.t === "node") return renderNode(piece.n, key, r);
     return (
       <span key={key} className="whitespace-nowrap">
+        {/* a word too long to join the group: the marker still never starts a line (it follows the word
+            without a space, and an inline-grid box is a break opportunity of its own) */}
+        {piece.word.length ? null : WORD_JOINER}
         {piece.word.map((w, j) => renderNode(w, `${key}.w${j}`, r))}
         {piece.refs.map((ref, j) => (
           <Fragment key={`${key}.c${j}`}>
@@ -280,7 +291,9 @@ export function Markdown({ text, citations, renderCitation, language = "en", cla
   const blocks = useMemo(() => parseMarkdown(text, { citations }), [text, citations]);
   const r: Render = { cite: renderCitation, dates: (v) => formatInlineDates(v, undefined, language) };
   return (
-    <div lang={language === "de" ? "de" : undefined} className={cn("space-y-3 break-words text-[15px] leading-[1.65] text-ink/90", className)}>
+    // a long compound ("Wohnungsgeberbestätigung") or reference wraps anywhere rather than widen the page,
+    // inside any flex or grid parent too (UI audit round 1: 344 px wide at 320)
+    <div lang={language === "de" ? "de" : undefined} className={cn("space-y-3 text-[15px] leading-[1.65] text-ink/90 [overflow-wrap:anywhere]", className)}>
       {blocks.map((b, i) => renderBlock(b, i, r))}
     </div>
   );

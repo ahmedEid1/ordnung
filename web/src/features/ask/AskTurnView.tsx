@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { useClipboard } from "@/features/today/clipboard";
 import { looksGerman } from "@/lib/format";
+import { isStaticDemo } from "@/mocks/mode";
 import { citationIndex, numberCitations, stripAllMarkers } from "./citations";
 import { CitationChip, CitationMarker } from "./CitationChip";
 import { Markdown } from "./Markdown";
@@ -17,13 +18,18 @@ import type { AskTurn } from "./useAskThread";
 import type { CitationRef } from "./citations";
 import type { TitleLookup } from "./tools";
 
+/**
+ * The question, as a heading of its turn: screen readers can jump from question to question, and each
+ * answer's "Sources" (h3) sits under its question instead of straight under the page's h1 (UI audit
+ * round 1). A long word or an IBAN wraps inside the bubble instead of widening the page.
+ */
 export function QuestionBubble({ text }: { text: string }) {
   return (
     <div className="flex justify-end">
-      <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-accent-soft px-4 py-2.5 text-[15px] leading-relaxed text-ink">
+      <h2 className="min-w-0 max-w-[85%] whitespace-pre-line rounded-2xl rounded-br-md bg-accent-soft px-4 py-2.5 text-[15px] font-normal leading-relaxed text-ink [overflow-wrap:anywhere]">
         <span className="sr-only">You asked: </span>
         {text}
-      </p>
+      </h2>
     </div>
   );
 }
@@ -120,17 +126,30 @@ export interface AnswerViewProps {
   resolve: (ref: CitationRef) => RefInfo;
   titleOf?: TitleLookup;
   onRetry?: () => void;
-  /** Shown under a finished answer in the zero-install demo for questions without a recording. */
-  demoNote?: boolean;
+}
+
+/**
+ * What the demo shows for a question it has no recorded answer for (`error_code: "demo_miss"`): a note,
+ * not a failure — "Try again" could never work (UI audit round 1). The same words in the local demo and
+ * the online one, which also says how to ask about your own letters.
+ */
+export function DemoMissNote() {
+  return (
+    <Callout tone="info" className="mt-2" title="No recorded answer for this question">
+      The demo replays answers recorded for its sample letters — try one of the suggested questions.
+      {isStaticDemo() ? " To ask about your own letters, install Ordnung." : null}
+    </Callout>
+  );
 }
 
 /**
  * One answer: tool trace, the checked text with citation chips, the check's line, sources and actions.
  * While the answer streams only the trace and a "writing" line show: its words appear once checked.
  */
-export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: AnswerViewProps) {
+export function AnswerView({ answer, resolve, titleOf, onRetry }: AnswerViewProps) {
   const { copy, copied } = useClipboard();
   const live = answer.status === "streaming";
+  const demoMiss = answer.status === "error" && answer.errorCode === "demo_miss";
   const done = answer.status === "done";
   const body = done ? answer.text : "";
   const note = answer.note;
@@ -150,8 +169,9 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
   const isCopied = copied === copyId;
 
   return (
-    <div className="flex gap-3">
-      <LogoMark className="mt-0.5 size-7 rounded-lg" />
+    // on phones a smaller mark and gap leave the answer 12 px more of its narrow column (UI audit round 1)
+    <div className="flex gap-2 sm:gap-3">
+      <LogoMark className="mt-1 size-5 rounded-md sm:mt-0.5 sm:size-7 sm:rounded-lg" />
       <div className="min-w-0 flex-1" aria-busy={live || undefined}>
         <ToolTrace steps={answer.tools} live={live} titleOf={titleOf} />
         {body ? (
@@ -173,7 +193,9 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
           </p>
         ) : null}
 
-        {answer.status === "error" ? (
+        {demoMiss ? (
+          <DemoMissNote />
+        ) : answer.status === "error" ? (
           <Callout
             tone="warn"
             className="mt-2"
@@ -193,20 +215,15 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
         {sources.length ? (
           <div className="mt-4">
             <h3 className="mb-1.5 text-[11.5px] font-semibold uppercase tracking-[0.07em] text-muted">Sources</h3>
-            <ul className="flex flex-wrap gap-1.5">
+            {/* phones: one source per line, the whole width for its title; wider: chips side by side */}
+            <ul className="grid gap-1.5 sm:flex sm:flex-wrap">
               {sources.map((s) => (
-                <li key={s.info.id} className="max-w-full">
-                  <CitationChip info={s.info} n={s.n} />
+                <li key={s.info.id} className="flex min-w-0 sm:max-w-full">
+                  <CitationChip info={s.info} n={s.n} className="w-full sm:w-auto" />
                 </li>
               ))}
             </ul>
           </div>
-        ) : null}
-
-        {demoNote && answer.status === "done" ? (
-          <Callout tone="info" className="mt-3" title="This online demo replays recorded answers">
-            Try one of the suggested questions — or install Ordnung to ask anything about your own letters.
-          </Callout>
         ) : null}
 
         {answer.status === "done" && plain ? (
@@ -235,13 +252,11 @@ export function AskTurnView({
   resolve,
   titleOf,
   onRetry,
-  demoNote,
 }: {
   turn: AskTurn;
   resolve: AnswerViewProps["resolve"];
   titleOf?: TitleLookup;
   onRetry?: () => void;
-  demoNote?: boolean;
 }) {
   const reduce = useReducedMotion();
   return (
@@ -254,7 +269,7 @@ export function AskTurnView({
       data-turn={turn.key}
     >
       {turn.question ? <QuestionBubble text={turn.question} /> : null}
-      <AnswerView answer={turn.answer} resolve={resolve} titleOf={titleOf} onRetry={onRetry} demoNote={demoNote} />
+      <AnswerView answer={turn.answer} resolve={resolve} titleOf={titleOf} onRetry={onRetry} />
     </motion.article>
   );
 }

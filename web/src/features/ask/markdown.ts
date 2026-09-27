@@ -210,9 +210,13 @@ export function parseInline(src: string, citations: ReadonlyMap<string, Citation
           return ok;
         });
         if (kept.length) {
-          // one no-break space before the marker; <Markdown> keeps it with the word before it
+          // the marker follows its word like a footnote, without a space (UI audit round 1: a space before
+          // it read "GmbH [1] ."); <Markdown> keeps it with that word
           const last = out[out.length - 1];
-          if (last?.t === "text") last.v = last.v.replace(/[ \t]+$/, "\u00a0");
+          if (last?.t === "text") {
+            last.v = last.v.replace(/[ \t]+$/, "");
+            if (!last.v) out.pop(); // only spaces between two markers: they join as one run
+          }
           for (const r of kept) out.push({ t: "cite", ref: citations!.get(r.id)! });
         } else {
           // drop the marker together with the spaces before it: "fact [doc:x]." → "fact."

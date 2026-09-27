@@ -1,18 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useReducedMotion } from "motion/react";
-import { Lock, MessagesSquare, SquarePen } from "lucide-react";
-import { useHealth } from "@/api/hooks";
+import { Lock, MessagesSquare, Plus, RotateCw, SquarePen } from "lucide-react";
+import { useDocuments, useHealth } from "@/api/hooks";
 import { isStaticDemo } from "@/mocks/mode";
 import { Page } from "@/components/shell/Page";
+import { useOptionalAddLetters } from "@/components/shell/AddLetters";
 import { Button } from "@/components/ui/Button";
+import { Callout } from "@/components/ui/Callout";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton, SkeletonText, LoadingLabel } from "@/components/ui/Skeleton";
+import { dismissToast, toast } from "@/components/ui/Toast";
 import { AskComposer } from "@/features/ask/AskComposer";
 import { AskTurnView } from "@/features/ask/AskTurnView";
 import { SuggestedQuestions } from "@/features/ask/SuggestedQuestions";
-import { isSuggestedQuestion } from "@/features/ask/suggestions";
 import { useAskThread } from "@/features/ask/useAskThread";
 import { useRefResolver } from "@/features/ask/refs";
+
+/** The "Started a new chat" toast (asking the next question closes it: its Undo would drop that question). */
+const NEW_CHAT_TOAST = "ask-new-chat";
+/** Said (and shown under the question box) when Enter is pressed while an answer is still being written. */
+const BUSY_NOTE ="Wait for this answer, or press Stop to ask something else.";
+
+/** Keyboard and mouse users keep typing in the question box; on touch screens focusing it would pop up the keyboard. */
+const finePointer = () => Boolean(window.matchMedia?.("(pointer: fine)").matches);
 
 /** `/ask` — questions about your letters, answered with a visible tool trace and cited sources. */
 export default function AskPage() {
@@ -20,10 +31,17 @@ export default function AskPage() {
   const { resolve, titleOf } = useRefResolver();
   const [params, setParams] = useSearchParams();
   const [draft, setDraft] = useState(() => params.get("q") ?? "");
+  const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const startRef = useRef<HTMLHeadingElement | null>(null);
   const reduce = useReducedMotion();
   const health = useHealth();
+  const demo = isStaticDemo() || Boolean(health.data?.demo);
   const replayDemo = isStaticDemo() || health.data?.backend === "replay";
+  const documents = useDocuments();
+  const adder = useOptionalAddLetters();
+  // nothing to ask about yet: offer to add letters instead of questions about someone else's (UI audit round 1)
+  const noLetters = !demo && documents.data?.length === 0;
 
   // `?q=` (e.g. "Ask about them" in the People drawer) pre-fills the question once
   useEffect(() => {
@@ -40,12 +58,35 @@ export default function AskPage() {
   }, [params, setParams]);
 
   const send = (q: string) => {
+    dismissToast(NEW_CHAT_TOAST);
+    setBusy(false);
     void thread.ask(q);
     setDraft("");
     // a chip that started the question disappears — keep keyboard focus in the question box
-    // (not on touch screens, where focusing would pop up the keyboard)
-    if (window.matchMedia?.("(pointer: fine)").matches) inputRef.current?.focus({ preventScroll: true });
+    if (finePointer()) inputRef.current?.focus({ preventScroll: true });
   };
+
+  // "New chat" can be undone, and leaves focus where the next question is typed (UI audit round 1: the
+  // conversation was gone at once and focus fell back to the page)
+  const startNewChat = () => {
+    const undo = thread.newChat();
+    setDraft("");
+    const focusStart = () => requestAnimationFrame(() => (finePointer() ? inputRef.current?.focus({ preventScroll: true }) : startRef.current?.focus()));
+    focusStart();
+    toast({
+      id: NEW_CHAT_TOAST,
+      title: "Started a new chat",
+      description: "Your last conversation is closed.",
+      undo: () => {
+        undo();
+        requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
+      },
+    });
+  };
+  useEffect(() => () => dismissToast(NEW_CHAT_TOAST), []);
+
+  // the "wait for this answer" note goes when the answer does (and is reset by the next question)
+  const busyShown = busy && thread.streaming;
 
   const last = thread.turns[thread.turns.length - 1];
   const lastKey = last?.key;
@@ -97,25 +138,32 @@ export default function AskPage() {
     if (overflow > 0 && room > 0) window.scrollBy({ top: Math.min(overflow, room) });
   }, [lastLen, lastSteps, lastWriting, lastStatus, thread.streaming, lastKey]);
 
-  // stored conversation: start at its end
+  // a stored conversation opens at its last question, clear of the top bar (the page's scroll-padding), with
+  // as much of its answer as fits (UI audit round 1: scrolled to the very end, the question sat under the bar)
   const hadHistory = thread.past.length > 0;
   useEffect(() => {
-    if (hadHistory) window.scrollTo({ top: document.documentElement.scrollHeight });
+    if (!hadHistory) return;
+    const turns = document.querySelectorAll<HTMLElement>("[data-turn]");
+    turns[turns.length - 1]?.scrollIntoView?.({ block: "start" });
   }, [hadHistory]);
 
   const empty = !thread.all.length && !thread.loadingHistory;
   const asked = thread.all.map((t) => t.question);
-  const announce = last
-    ? last.answer.status === "streaming"
-      ? last.answer.writing
-        ? "Writing the answer — it appears once Ordnung has checked it."
-        : "Looking through your records…"
-      : last.answer.status === "done"
-        ? "Answer ready."
-        : last.answer.status === "error"
-          ? "The answer could not be completed."
-          : "Stopped."
-    : "";
+  const announce = busyShown
+    ? BUSY_NOTE
+    : last
+      ? last.answer.status === "streaming"
+        ? last.answer.writing
+          ? "Writing the answer — it appears once Ordnung has checked it."
+          : "Looking through your records…"
+        : last.answer.status === "done"
+          ? "Answer ready."
+          : last.answer.status === "error"
+            ? last.answer.errorCode === "demo_miss"
+              ? "No recorded answer for this question."
+              : "The answer could not be completed."
+            : "Stopped."
+      : "";
 
   return (
     <Page title="Ask" width="narrow" className="flex flex-1 flex-col pb-0 md:pb-0">
@@ -125,31 +173,75 @@ export default function AskPage() {
 
       {empty ? (
         <section aria-labelledby="ask-title" className="flex flex-1 flex-col justify-center pb-6 pt-4 sm:pt-10">
+          {thread.historyError ? (
+            <Callout
+              tone="warn"
+              className="mb-6"
+              title="Couldn't load your last conversation"
+              action={
+                <>
+                  <Button size="sm" icon={RotateCw} onClick={thread.retryHistory}>
+                    Try again
+                  </Button>
+                  <Button size="sm" variant="ghost" icon={SquarePen} onClick={() => thread.newChat()}>
+                    Start a new chat
+                  </Button>
+                </>
+              }
+            >
+              Try again in a moment, or start a new chat.
+            </Callout>
+          ) : null}
           <div className="text-center">
             <span className="mx-auto mb-5 grid size-12 place-items-center rounded-2xl bg-accent-soft text-accent">
               <MessagesSquare className="size-6" aria-hidden />
             </span>
-            <h1 id="ask-title" className="display text-[30px] font-semibold leading-tight text-ink sm:text-[38px]">
+            <h1 id="ask-title" ref={startRef} tabIndex={-1} className="display text-[30px] font-semibold leading-tight text-ink outline-none sm:text-[38px]">
               Ask about your letters
             </h1>
             <p className="mx-auto mt-2.5 max-w-md text-[15px] leading-relaxed text-muted">
               Plain-English answers from your own records. Every answer shows what it looked at and links to the letter it comes from.
             </p>
           </div>
-          <SuggestedQuestions className="mt-8" onPick={send} />
-          <p className="mx-auto mt-6 flex max-w-lg items-start justify-center gap-2 text-center text-[12.5px] leading-5 text-muted">
-            <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>
-              Claude searches your records with read-only tools. Only the letters it opens are sent to Anthropic, through your own Claude account.
-            </span>
+          {noLetters ? (
+            <>
+              <EmptyState
+                className="mt-8"
+                size="sm"
+                illustration="inbox"
+                title="Add a few letters first"
+                description="Ask answers from your own letters. Add a PDF or a phone photo of one — Ordnung reads it and files every date and amount."
+                action={
+                  adder ? (
+                    <Button variant="primary" icon={Plus} onClick={adder.openPicker}>
+                      Add letters
+                    </Button>
+                  ) : undefined
+                }
+              />
+              <p className="mt-6 text-center text-[13px] text-muted">Once they are in, you can ask things like:</p>
+              <SuggestedQuestions className="mt-3" onPick={send} disabled />
+            </>
+          ) : (
+            <SuggestedQuestions className="mt-8" onPick={send} />
+          )}
+          {replayDemo ? (
+            <p className="mx-auto mt-5 max-w-lg text-balance text-center text-[12.5px] leading-5 text-muted">
+              Demo: the suggested questions replay answers recorded for the sample letters.
+            </p>
+          ) : null}
+          {/* the lock sits in the line, beside the words it is about (not floating left of a centred block) */}
+          <p className={`mx-auto max-w-lg text-balance text-center text-[12.5px] leading-5 text-muted ${replayDemo ? "mt-2" : "mt-6"}`}>
+            <Lock className="mr-1.5 inline size-3.5 align-[-0.15em]" aria-hidden />
+            Claude searches your records with read-only tools. Only the letters it opens are sent to Anthropic, through your own Claude account.
           </p>
         </section>
       ) : (
         <div className="flex-1">
-          <div className="mb-6 flex items-center gap-3">
-            <h1 className="display min-w-0 flex-1 truncate text-[22px] font-semibold text-ink">Ask about your letters</h1>
-            {/* on the narrowest phones the title needs the room: the button keeps its icon and name */}
-            <Button size="sm" variant="ghost" icon={SquarePen} onClick={thread.newChat} disabled={thread.loadingHistory} title="New chat">
+          <div className="mb-6 flex items-start gap-3">
+            {/* the title wraps rather than cut off ("Ask about you…"); on the narrowest phones the button is its icon */}
+            <h1 className="display min-w-0 flex-1 text-balance pt-0.5 text-[22px] font-semibold leading-tight text-ink">Ask about your letters</h1>
+            <Button size="sm" variant="ghost" icon={SquarePen} onClick={startNewChat} disabled={thread.loadingHistory} title="New chat">
               <span className="max-[359px]:sr-only">New chat</span>
             </Button>
           </div>
@@ -160,8 +252,8 @@ export default function AskPage() {
               {[0, 1].map((i) => (
                 <div key={i} className="space-y-4">
                   <Skeleton className="ml-auto h-10 w-2/3 rounded-2xl" />
-                  <div className="flex gap-3">
-                    <Skeleton className="size-7 rounded-lg" />
+                  <div className="flex gap-2 sm:gap-3">
+                    <Skeleton className="size-5 rounded-md sm:size-7 sm:rounded-lg" />
                     <SkeletonText lines={3} className="flex-1" />
                   </div>
                 </div>
@@ -176,8 +268,8 @@ export default function AskPage() {
                 turn={turn}
                 resolve={resolve}
                 titleOf={titleOf}
-                onRetry={thread.turns.includes(turn) ? () => thread.retry(turn.key) : undefined}
-                demoNote={isStaticDemo() && !isSuggestedQuestion(turn.question)}
+                // a question the demo has no recording for can't be answered by asking it again
+                onRetry={thread.turns.includes(turn) && turn.answer.errorCode !== "demo_miss" ? () => thread.retry(turn.key) : undefined}
               />
             ))}
           </div>
@@ -193,11 +285,30 @@ export default function AskPage() {
       {/* on phones the demo tour's bar sits above the tab bar: the composer stays above both */}
       {/* opaque down to the screen's edge (under the see-through tab bar too), so the answer never
           shows around the tour's bar or through the tab bar */}
-      <div ref={composerRef} data-ask-composer className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-6 bg-linear-to-t from-canvas from-80% to-transparent px-4 pb-[calc(0.75rem+var(--ordnung-toast-lift,0px))] pt-6 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[calc(4rem+env(safe-area-inset-bottom))] after:bg-canvas sm:-mx-6 sm:px-6 md:bottom-0 md:pb-[calc(1.25rem+var(--ordnung-toast-lift,0px))] md:after:hidden lg:-mx-10 lg:px-10">
-        <AskComposer value={draft} onChange={setDraft} onSubmit={send} onStop={thread.stop} streaming={thread.streaming} textareaRef={inputRef} />
+      {/* on phones it keeps to the essentials — less fade above it, a one-line hint — so the answer has
+          the screen (UI audit round 1: box, hint, tour bar and tab bar took half of a 320 × 640 screen) */}
+      <div ref={composerRef} data-ask-composer className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-6 bg-linear-to-t from-canvas from-80% to-transparent px-4 pb-[calc(0.75rem+var(--ordnung-toast-lift,0px))] pt-3 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[calc(4rem+env(safe-area-inset-bottom))] after:bg-canvas sm:-mx-6 sm:px-6 sm:pt-6 md:bottom-0 md:pb-[calc(1.25rem+var(--ordnung-toast-lift,0px))] md:after:hidden lg:-mx-10 lg:px-10">
+        <AskComposer
+          value={draft}
+          onChange={(v) => {
+            setDraft(v);
+            setBusy(false);
+          }}
+          onSubmit={send}
+          onStop={thread.stop}
+          onBusy={() => setBusy(true)}
+          streaming={thread.streaming}
+          textareaRef={inputRef}
+        />
         <p id="ask-hint" className="mt-2 text-center text-[12px] leading-5 text-muted">
-          {replayDemo ? "Demo: suggested questions replay recorded answers. " : null}
-          Answers can be wrong — check the source. Not legal advice.
+          {busyShown ? (
+            <span className="font-medium text-ink">{BUSY_NOTE}</span>
+          ) : (
+            <>
+              <span className="sm:hidden">Answers can be wrong — not legal advice.</span>
+              <span className="max-sm:hidden">Answers can be wrong — check the source. Not legal advice.</span>
+            </>
+          )}
         </p>
       </div>
     </Page>

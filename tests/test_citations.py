@@ -135,6 +135,15 @@ def test_tool_labels() -> None:
         tool_label("list_items", {"to_date": "2026-10-31"})
         == "Checked your open to-dos & dates until 2026-10-31"
     )
+    # two calls filtered by kind read apart (UI audit round 1: both were "Checked your open to-dos & dates")
+    assert tool_label("list_items", {"kind": "deadline", "to_date": "2026-10-31"}) == (
+        "Checked your open deadlines until 2026-10-31"
+    )
+    assert tool_label("list_items", {"kind": "payment", "status": "all"}) == "Checked your payments"
+    assert (
+        tool_label("list_items", {"kind": "expiry", "status": "done"}) == "Checked your finished expiry dates"
+    )
+    assert tool_label("list_items", {"kind": "nonsense"}) == "Checked your open to-dos & dates"
     assert tool_label("get_party", {"party_id_or_name": PARTY}, title_of) == 'Looked up "Finanzamt"'
     assert tool_label("get_party", {"party_id_or_name": "Stadtwerke"}, title_of) == 'Looked up "Stadtwerke"'
     assert (

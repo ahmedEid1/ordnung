@@ -165,7 +165,9 @@ export const RECORDED: RecordedAnswer[] = [
     text:
       "Your FunkNetz contract's 24-month minimum term ends on **Sat 14 Nov 2026** [contract:ctr_phone]. With one month's notice, FunkNetz must **receive** your cancellation by **Wed 14 Oct** — if you post it, send it by **Thu 8 Oct** [item:itm_phone_cancel].\n\n" +
       "The quickest way is the cancel button in „Mein FunkNetz“ (they must offer one, § 312k BGB). If you miss the date, nothing bad happens: the contract continues month to month and you can cancel any time with one month's notice [doc:doc_phone].\n\n" +
-      "Want me to draft the cancellation letter?",
+      // an offer the page can keep: a link to the composer, filled in for this contract (UI audit round 1:
+      // "Want me to draft the cancellation letter?" had no way to say yes)
+      "[Draft the cancellation letter](/letters?kind=cancellation&contract=ctr_phone) — Ordnung fills in the contract and its dates.",
     citations: [
       { type: "contract", id: "ctr_phone" },
       { type: "item", id: "itm_phone_cancel" },
@@ -222,9 +224,9 @@ export const RECORDED: RecordedAnswer[] = [
 ];
 
 /**
- * The answer to a question without a recording in mock mode (`?mock=1`). The zero-install demo
- * answers with no text at all: the Ask page explains it in a note under the question ("This online
- * demo replays recorded answers"), which the text would only repeat.
+ * The message of the `demo_miss` error a question without a recording gets (like the local demo's
+ * `tour.DEMO_MISS_MESSAGE`). The Ask page shows its own note for the code ("No recorded answer for this
+ * question"); the message is for anything else that reads the stream.
  */
 export const FALLBACK_ANSWER =
   "The demo uses recorded answers, so I can only replay a few questions here. Try one of the suggestions — or install Ordnung to ask anything about your own letters.";
