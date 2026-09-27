@@ -187,9 +187,13 @@ letter" (`POST /api/items/{id}/girocode/confirm`) is refused unless the gate is 
 that comparison and the posted values are the current ones; it is stored as a `payment.checked`
 activity entry naming the letter (`data.doc_id`, so deleting the letter deletes it even after the
 to-do is gone), so no migration and no change to the model-facing `PaymentDetails` schema (which would
-invalidate the recorded model answers). A refusal shows in the GiroCode block (not a toast, which waits
-behind a phone's sheet) and refetches the letter; `item.updated` events refetch letters too, so a code
-follows an amount changed elsewhere. The web app draws the QR with `uqr` (level M, version ≤ 13,
+invalidate the recorded model answers). A refusal — and a failed "Read the letter again", whose
+mutation is silent for the same reason — shows in the GiroCode block (not a toast, which waits behind a
+phone's sheet or covers a popover's footer), scrolled clear of the panel's sticky footer, with focus
+back on its button once the answer is rendered; a refusal refetches the letter; `item.updated` events
+refetch letters too, so a code follows an amount changed elsewhere. Whether a payment is a transfer at
+all is `ordnung/payments.py`'s written wording policy, which the whole app shares (Today, the triggers,
+the party view) and `web/src/lib/payments.ts` mirrors for the to-do's words. The web app draws the QR with `uqr` (level M, version ≤ 13,
 quiet zone of four modules), dark on white in both themes. The static demo's codes are generated from
 the same gate and builder (`scripts/gen_mock_girocodes.py`; a test keeps them current).
 
