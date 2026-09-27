@@ -1703,6 +1703,8 @@ export interface components {
             suggestions: components["schemas"]["Suggestion"][];
             /** Drafts */
             drafts: components["schemas"]["Draft"][];
+            /** Set Aside */
+            set_aside: components["schemas"]["ItemAside"][];
         };
         /**
          * DocumentPatch

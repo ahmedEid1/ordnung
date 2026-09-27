@@ -41,7 +41,9 @@ describe("Document viewer — tax assessment (phone photo, Einspruch)", () => {
     expect(within(verdict).getByText("Tax assessment")).toBeInTheDocument();
     expect(within(verdict).getByText(/Decide whether to object/)).toBeInTheDocument();
     expect(within(verdict).getByText("Wed 21 Oct")).toBeInTheDocument();
-    expect(within(verdict).getByText("in 23 days")).toBeInTheDocument();
+    // the app's one countdown formatter, as in the to-do list and on Today (UI audit round 1: "in 23 days" here,
+    // "in 3 weeks" everywhere else)
+    expect(within(verdict).getByText("in 3 weeks")).toBeInTheDocument();
     expect(within(verdict).getByRole("button", { name: /Why this date\?/ })).toBeInTheDocument();
     expect(within(verdict).getByText(/can hardly be changed/)).toBeInTheDocument();
     // an objection that may ask to suspend payment opens the composer, which asks (review round 1)

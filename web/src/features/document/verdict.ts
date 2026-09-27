@@ -3,12 +3,19 @@
  * button does, and which items need the person's eyes ("Please check", "When did it arrive?").
  * Pure functions, unit-tested in `verdict.test.ts`.
  */
-import type { Document, DocumentDetail, DraftKind, Item, ItemKind, PartyKind, Priority, Suggestion } from "@/api/types";
-import { daysUntil, formatDate, formatRelativeDays, type DateInput } from "@/lib/format";
+import type { Document, DocumentDetail, Draft, DraftKind, Item, ItemAside, ItemKind, PartyKind, Priority, Suggestion } from "@/api/types";
+import { formatDate, formatMoney } from "@/lib/format";
 import { isDirectDebit, isIncomingMoney } from "@/lib/payments";
+import { isGermanText } from "./fact-text";
 
 const PRIORITY_RANK: Record<Priority, number> = { critical: 0, high: 1, normal: 2, low: 3 };
 const KIND_RANK: Record<ItemKind, number> = { deadline: 0, payment: 1, appointment: 2, expiry: 3, task: 4, reminder: 5, milestone: 6 };
+/**
+ * What a to-do asks of the person: a deadline or a payment is an obligation, anything else (an
+ * appointment, an expiry, a task) is not — of two dated to-dos of the same priority, the obligation
+ * is "the thing to do" (a scholarship's report deadline, not its optional autumn meeting).
+ */
+const OBLIGATION: ReadonlySet<ItemKind> = new Set<ItemKind>(["deadline", "payment"]);
 
 /** Still something to act on (missed and snoozed items count — they are not closed). */
 export function isOpenItem(i: Item): boolean {
@@ -22,8 +29,9 @@ export function actionDate(i: Item): string | null {
 
 /**
  * Order to-dos by how much they matter now: open first, then priority, one-off before recurring
- * (the rent is not "the thing to do" about a letter), dated before undated, earliest first,
- * then by kind (deadline > payment > appointment > …), then title for stability.
+ * (the rent is not "the thing to do" about a letter), dated before undated, obligations (a deadline,
+ * a payment) before the rest (an appointment, an expiry, a task), earliest first, then by kind
+ * (deadline > payment > appointment > …), then title for stability.
  */
 export function compareItems(a: Item, b: Item): number {
   const open = Number(isOpenItem(b)) - Number(isOpenItem(a));
@@ -36,6 +44,8 @@ export function compareItems(a: Item, b: Item): number {
   const db = actionDate(b);
   if (da && !db) return -1;
   if (!da && db) return 1;
+  const ob = Number(OBLIGATION.has(b.kind)) - Number(OBLIGATION.has(a.kind));
+  if (ob) return ob;
   if (da && db && da !== db) return da < db ? -1 : 1;
   const kr = (KIND_RANK[a.kind] ?? 9) - (KIND_RANK[b.kind] ?? 9);
   if (kr) return kr;
@@ -44,12 +54,40 @@ export function compareItems(a: Item, b: Item): number {
 
 /**
  * The primary to-do of a letter (drives the verdict card). Null when nothing is open. Money coming
- * in (a tax refund) is never "what you need to do" — see {@link incomingMoney}.
+ * in (a tax refund) is never "what you need to do" — see {@link incomingMoney} — and neither is a
+ * to-do the server set aside (`DocumentDetail.set_aside`, the same rules as Today): an invoice payment
+ * its payment reminder took over, a date that was long past when the letter was read (an archived
+ * lease's deposit, "362 days overdue"), a scam letter's demand.
  */
-export function selectPrimaryItem(items: Item[]): Item | null {
-  const open = items.filter((i) => isOpenItem(i) && !isIncomingMoney(i));
+export function selectPrimaryItem(items: Item[], setAside: readonly Pick<ItemAside, "item_id">[] = []): Item | null {
+  const aside = new Set(setAside.map((a) => a.item_id));
+  const open = items.filter((i) => isOpenItem(i) && !isIncomingMoney(i) && !aside.has(i.id));
   if (!open.length) return null;
   return [...open].sort(compareItems)[0] ?? null;
+}
+
+/** An open to-do the server set aside, with why (see {@link selectPrimaryItem}). */
+export interface AsideItem {
+  item: Item;
+  aside: ItemAside;
+}
+
+/**
+ * The letter's open to-dos that are not one to act on, as the verdict lists them quietly under what to
+ * do: replaced by a payment reminder ("pay that one, not both"), or history ("Still open?"). A scam
+ * letter's are left out — its verdict already says "Don't pay".
+ */
+export function asideItems(detail: Pick<DocumentDetail, "items" | "set_aside">): AsideItem[] {
+  const why = new Map((detail.set_aside ?? []).map((a) => [a.item_id, a]));
+  return detail.items.flatMap((item) => {
+    const aside = why.get(item.id);
+    return aside && isOpenItem(item) && aside.reason !== "suspicious" ? [{ item, aside }] : [];
+  });
+}
+
+/** The payment reminder that replaced this letter's payment (a document id), if any. */
+export function replacedBy(detail: Pick<DocumentDetail, "items" | "set_aside">): string | null {
+  return asideItems(detail).find((a) => a.aside.reason === "replaced")?.aside.replaced_by ?? null;
 }
 
 /** An open payment coming to the person with this letter (a refund), if any. */
@@ -261,13 +299,16 @@ export type MainAction =
   | { type: "done"; item: Item }
   | { type: "scam"; realDocId: string | null }
   | { type: "decide"; suggestion: Suggestion }
+  /** The payment reminder that took over this letter's payment: open it (and pay that one). */
+  | { type: "reminder"; docId: string }
   | { type: "none" };
 
 /**
  * The one main button of the verdict card:
  * scam → never "Pay" (offer to compare with a real letter) · Einspruch/Widerspruch → draft the
  * objection (type comes from the Rechtsbehelfsbelehrung, never a guess), unless the person has dealt
- * with the letter ({@link isLetterSettled}) · a notice deadline on a
+ * with the letter ({@link isLetterSettled}) or every open to-do was set aside (an archived letter) · an
+ * invoice a payment reminder replaced → open the reminder (never Pay twice) · a notice deadline on a
  * contract → draft the cancellation · a payment → Pay (not when it may not be owed, see
  * {@link mayNotBeOwed}) · a dated to-do → Add to calendar · otherwise Mark done.
  */
@@ -279,11 +320,15 @@ export function chooseMainAction(detail: DocumentDetail, primary: Item | null): 
   }
   const remedy = detail.document.remedy?.type;
   const courtOrder = isCourtOrder(detail.document);
+  const aside = asideItems(detail);
+  const allAside = aside.length > 0 && !primary;
   // once the person dealt with the letter (objected, or paid), it is settled: no objection to draft
-  const stillOpen = primary ? isOpenItem(primary) : !isLetterSettled(detail);
+  const stillOpen = primary ? isOpenItem(primary) : !allAside && !isLetterSettled(detail);
   if ((remedy === "einspruch" || remedy === "widerspruch" || courtOrder) && stillOpen) {
     return { type: "draft", draftKind: "objection", label: "Draft objection", item: primary };
   }
+  const reminder = replacedBy(detail);
+  if (!primary && reminder) return { type: "reminder", docId: reminder };
   if (!primary || !isOpenItem(primary)) return { type: "none" };
   if (primary.date_spec?.nature === "notice" && primary.contract_id) {
     return { type: "draft", draftKind: "cancellation", label: "Draft cancellation", item: primary };
@@ -308,14 +353,149 @@ export function openItemCounts(items: Item[]): { kind: ItemKind; count: number }
 }
 
 /**
- * Countdown for the verdict's big date, precise in days up to three months ("in 23 days" rather
- * than "in 3 weeks"): the exact number matters when a deadline is legal.
+ * The draft of this kind the person already started about the letter (the newest), if any: the
+ * verdict then offers to continue it instead of drafting a second one.
  */
-export function dayCountdown(date: string, today: DateInput, mode: "due" | "event" = "due"): string {
-  const n = daysUntil(date, today);
-  if (n === 0) return "today";
-  if (n === 1) return "tomorrow";
-  if (n < 0) return mode === "due" ? (n === -1 ? "1 day overdue" : `${-n} days overdue`) : formatRelativeDays(date, today, "event");
-  if (n <= 90) return `in ${n} days`;
-  return formatRelativeDays(date, today, mode);
+export function existingDraft(drafts: readonly Draft[], kind: DraftKind): Draft | null {
+  return [...drafts].filter((d) => d.kind === kind).sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))[0] ?? null;
+}
+
+/**
+ * Rules that apply no law — the letter's own date, Ordnung's safety margin for the post, a date an
+ * authority set — so a date computed only with them needs no "Based on the law as of …" disclaimer
+ * (a passport's expiry, a dentist's appointment).
+ */
+const NO_LAW = new Set(["date_as_written", "authority_deadline", "postal_buffer"]);
+/** A bank's execution time (§ 675s BGB) — nothing to transfer for a direct debit. */
+const TRANSFER_TIME = "bgb_675s";
+
+/** Whether the to-do's date was worked out with a legal rule (then the verdict shows the legal disclaimer). */
+export function usesLaw(item: Pick<Item, "computation" | "kind" | "title" | "action" | "description">): boolean {
+  const debit = isDirectDebit(item);
+  return (item.computation?.rule_ids ?? []).some((r) => !NO_LAW.has(r) && !(debit && r === TRANSFER_TIME));
+}
+
+// ------------------------------------------------------------------------------------------------
+// Words: the verdict leads in English, the letter's German follows as a quote
+// ------------------------------------------------------------------------------------------------
+
+/** A title word longer than this (a German compound) gets the smaller headline size on phones. */
+const LONG_WORD = 20;
+
+/** Whether a title has a word too long for the big headline at 320 px ("(Immatrikulationsbescheinigung)"). */
+export function hasLongWord(title: string): boolean {
+  return title.split(/\s+/).some((w) => w.length > LONG_WORD);
+}
+
+/** An action longer than this reads as a paragraph (the law behind it), not a headline. */
+export const HEADLINE_CHARS = 140;
+
+export interface VerdictWords {
+  /** The headline — always English. */
+  lead: string;
+  /** A paragraph-long English action under the headline, or null. */
+  body: string | null;
+  /** The to-do's own title under the headline when it adds something (it may be German: marked so). */
+  sub: string | null;
+  /** The letter's German words, shown under the English as "The letter says: …", or null. */
+  quote: string | null;
+}
+
+const PER: Partial<Record<string, string>> = { "1 months": " a month", "1 years": " a year", "3 months": " a quarter", "1 weeks": " a week" };
+
+/**
+ * An English headline from what the to-do is — for when the reading gave the action and the title only
+ * in German ("Semesterbeitrag von 312,40 € rechtzeitig überweisen"): "Pay €312.40 to Hochschule
+ * Musterstadt", "Keep €63.00 a month in your account for the direct debit", "Go to the appointment".
+ */
+export function plainLead(item: Item, party?: string | null): string {
+  const money = item.amount != null ? formatMoney(item.amount, { currency: item.currency }) : null;
+  const per = item.recurrence ? (PER[`${item.recurrence.interval} ${item.recurrence.unit}`] ?? "") : "";
+  switch (item.kind) {
+    case "payment":
+      if (item.direction === "in") return money ? `${money}${per} comes to you` : "Money comes to you";
+      if (isDirectDebit(item)) return `Keep ${money ? `${money}${per}` : "the money"} in your account for the direct debit`;
+      return money ? `Pay ${money}${per}${party ? ` to ${party}` : ""}` : `Pay what the letter asks for${party ? ` to ${party}` : ""}`;
+    case "appointment":
+      return "Go to the appointment";
+    case "expiry":
+      return "Renew it in time if you still need it";
+    case "deadline":
+      switch (item.date_spec?.nature) {
+        case "objection":
+          return "Object in time if you disagree";
+        case "notice":
+          return "Cancel in time if you want to";
+        case "payment":
+          return money ? `Pay ${money} in time` : "Pay in time";
+        case "declaration":
+          return "Send what the letter asks for in time";
+        default:
+          return "Do what the letter asks in time";
+      }
+    default:
+      return "Do what the letter asks";
+  }
+}
+
+/**
+ * What the verdict says to do, always led by English: the reading's action when it is English, else
+ * the to-do's English title, else {@link plainLead} — with the letter's German below it as a quote, never
+ * as the headline (UI audit round 1: "WHAT YOU NEED TO DO — Semesterbeitrag … überweisen"). An
+ * appointment without an action says where to go ("Go to: Autumn Meeting in Berlin").
+ */
+export function verdictWords(item: Item, party?: string | null): VerdictWords {
+  const action = item.action?.trim() || null;
+  const title = item.title.trim();
+  const titleEnglish = title && !isGermanText(title) ? title : null;
+  const english = (): string => {
+    if (!titleEnglish) return plainLead(item, party);
+    return item.kind === "appointment" && !action && !titleEnglish.includes(":") ? `Go to: ${titleEnglish}` : titleEnglish;
+  };
+  if (action && !isGermanText(action)) {
+    if (action.length > HEADLINE_CHARS && action !== title) {
+      // a paragraph of law is no headline: the title leads, the action follows as body text
+      return { lead: english(), body: action, sub: null, quote: titleEnglish ? null : title };
+    }
+    return { lead: action, body: null, sub: action !== title ? title : null, quote: null };
+  }
+  const quote = action ?? (titleEnglish ? null : title);
+  return { lead: english(), body: null, sub: null, quote: quote || null };
+}
+
+/** German words in a consequence and what they mean ("Säumnisgebühr" → "a late fee"), in the order they are said. */
+const CONSEQUENCES: [RegExp, string][] = [
+  [/Säumnis(?:gebühr|zuschlag)|Verspätungszuschlag/i, "a late fee"],
+  [/Mahn(?:gebühr|kosten)/i, "reminder fees"],
+  [/Verzugszins|Zinsen/i, "interest"],
+  [/Inkasso/i, "debt collection"],
+  [/(?:weitere|zusätzliche|Mehr)\s*[Kk]osten|Kosten entstehen/i, "extra costs"],
+  [/Mahnbescheid|(?<!außer)gerichtlich|Klage/i, "court action"],
+  [/Vollstreckung|Pfändung/i, "enforcement"],
+  [/Exmatrikulation|exmatrikuliert/i, "losing your place at the university"],
+  [/Kündigung|gekündigt|kündigen/i, "the contract being ended"],
+  [/Sperr(?:e|ung)|gesperrt/i, "a block"],
+  [/bestandskräftig|rechtskräftig|unanfechtbar/i, "the decision becoming final"],
+  [/Bußgeld/i, "a fine"],
+  [/Schufa/i, "an entry with the credit agency (SCHUFA)"],
+  [/Versicherungsschutz/i, "losing your insurance cover"],
+];
+
+const joinList = (parts: string[]): string =>
+  parts.length < 2 ? (parts[0] ?? "") : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+
+/**
+ * "If you ignore it", in English first: an English consequence as it is; a German one as what it warns
+ * of ("The letter warns of a late fee and being de-registered from the university.") with the letter's
+ * words below as a quote.
+ */
+export function consequenceWords(text: string): { lead: string; quote: string | null } {
+  const t = text.trim();
+  if (!isGermanText(t)) return { lead: t, quote: null };
+  const found = CONSEQUENCES.filter(([re]) => re.test(t))
+    .map(([re, en]) => ({ en, at: t.search(re) }))
+    .sort((a, b) => a.at - b.at)
+    .map((c) => c.en);
+  const warns = [...new Set(found)];
+  return { lead: warns.length ? `The letter warns of ${joinList(warns)}.` : "The letter names what happens then:", quote: t };
 }

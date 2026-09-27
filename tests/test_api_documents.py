@@ -12,7 +12,11 @@ from fastapi import FastAPI
 
 from fixtures_llm import INVOICE_LETTER, TAX_LETTER
 from helpers_docs import photo
+from helpers_secretary import TODAY as TODAY_DATE
+from helpers_secretary import add_doc, add_item
 from ordnung import clock
+from ordnung.api.routes.documents import document_detail
+from ordnung.db.store import Store
 from ordnung.llm.base import ClaudeAuthError, ClaudeRateLimited
 from ordnung.models import DocumentDetail
 from test_api_support import FINE_LETTER, TODAY, Api, api_for, lifespan
@@ -342,3 +346,93 @@ async def test_demo_refuses_uploads_that_would_need_claude(tmp_path) -> None:  #
         private = await client.post("/api/documents", files=files, data={"private": "true"}, headers=headers)
         assert private.status_code == 201
     ctx.close()
+
+
+# --------------------------------------------------------------------------------------------------
+# to-dos set aside on the letter page (the same rules as Today and the party drawer)
+# --------------------------------------------------------------------------------------------------
+
+
+def test_the_letter_detail_sets_aside_what_is_not_to_act_on(store: Store) -> None:
+    """The verdict never leads with an invoice its reminder replaced or a date that was history when the
+    letter was read ("Pay €89.99 · 25 days overdue", "Pay €1,560 deposit · 362 days overdue")."""
+    party = store.add_party(name="TechMarkt Online GmbH", kind="retailer").id
+    case = store.add_case(title="Invoice TM-4711", party_id=party, reference="TM-4711")
+    refs = [{"label": "Rechnungsnummer", "value": "TM-4711"}]
+    invoice = add_doc(
+        store,
+        "invoice",
+        kind="invoice",
+        doc_date="2026-08-20",
+        party_id=party,
+        case_id=case.id,
+        references=refs,
+    )
+    reminder = add_doc(
+        store,
+        "reminder",
+        kind="dunning",
+        doc_date="2026-09-10",
+        party_id=party,
+        case_id=case.id,
+        references=refs,
+    )
+    by_reminder = add_item(
+        store,
+        kind="payment",
+        title="Pay the invoice",
+        due_date="2026-09-03",
+        filed_on="2026-08-21",
+        amount=89.99,
+        direction="out",
+        party_id=party,
+        doc_id=invoice,
+    )
+    add_item(
+        store,
+        kind="payment",
+        title="Pay the reminder",
+        due_date="2026-09-30",
+        filed_on="2026-09-11",
+        amount=94.99,
+        direction="out",
+        party_id=party,
+        doc_id=reminder,
+    )
+    lease = add_doc(store, "lease", kind="rent_lease", doc_date="2025-09-15", party_id=party)
+    deposit = add_item(
+        store,
+        kind="payment",
+        title="Security deposit (Kaution)",
+        due_date="2025-10-01",
+        filed_on=TODAY_DATE.isoformat(),
+        amount=1560.0,
+        direction="out",
+        party_id=party,
+        doc_id=lease,
+    )
+    rent = add_item(
+        store,
+        kind="payment",
+        title="Monthly rent",
+        due_date="2025-10-01",
+        filed_on=TODAY_DATE.isoformat(),
+        amount=640.0,
+        direction="out",
+        recurrence={"interval": 1, "unit": "months"},
+        party_id=party,
+        doc_id=lease,
+    )
+
+    replaced = document_detail(store, invoice, TODAY_DATE)
+    assert [(a.item_id, a.reason, a.replaced_by) for a in replaced.set_aside] == [
+        (by_reminder, "replaced", reminder)
+    ]
+    assert [item.id for item in replaced.items] == [by_reminder]  # the list stays complete
+    assert (
+        document_detail(store, reminder, TODAY_DATE).set_aside == []
+    )  # the reminder's payment is the one to act on
+
+    archived = document_detail(store, lease, TODAY_DATE)
+    assert [(a.item_id, a.reason) for a in archived.set_aside] == [(deposit, "history")]
+    assert rent in {item.id for item in archived.items}  # a schedule shows its next date instead

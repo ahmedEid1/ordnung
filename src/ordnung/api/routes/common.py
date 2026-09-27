@@ -14,8 +14,8 @@ from ordnung.app_context import AppContext
 from ordnung.db.store import Store
 from ordnung.ingest.pipeline import run_triggers
 from ordnung.llm.replay import ReplayBackend
-from ordnung.models import Contract, Party, Profile
-from ordnung.secretary.triggers import contract_computation
+from ordnung.models import Contract, Item, ItemAside, Party, Profile
+from ordnung.secretary.triggers import Ledger, contract_computation, was_history_when_filed
 
 T = TypeVar("T")
 
@@ -97,6 +97,30 @@ def contracts_with_computations(store: Store, contracts: list[Contract], today: 
         party = parties.get(party_id) if party_id else None
         result.append(with_computation(contract, party, today, profile))
     return result
+
+
+def item_aside(ledger: Ledger, item: Item) -> ItemAside | None:
+    """Why an open to-do is not one to act on (the same rules as Today), or ``None``: its letter shows
+    scam signs, a payment reminder took over its invoice payment, or its date had long passed when the
+    letter was read (a one-off; a schedule shows its next date)."""
+    if item.status in ("done", "dismissed"):
+        return None
+    if ledger.is_suspicious_item(item):
+        return ItemAside(item_id=item.id, reason="suspicious")
+    if ledger.is_superseded_by_reminder(item):
+        reminder = ledger.covering_reminders()[item.doc_id or ""]
+        return ItemAside(item_id=item.id, reason="replaced", replaced_by=reminder.id)
+    if item.recurrence is None and was_history_when_filed(item):
+        return ItemAside(item_id=item.id, reason="history")
+    return None
+
+
+def set_aside(store: Store, items: list[Item], today: date) -> list[ItemAside]:
+    """The to-dos among ``items`` that are not one to act on, with why (:func:`item_aside`)."""
+    if not any(item.status not in ("done", "dismissed") for item in items):
+        return []
+    ledger = Ledger(store, today)
+    return [aside for item in items if (aside := item_aside(ledger, item)) is not None]
 
 
 def replay_only(ctx: AppContext) -> bool:
