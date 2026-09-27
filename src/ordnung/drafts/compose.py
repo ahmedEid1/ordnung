@@ -307,9 +307,12 @@ def _objection_recipient(remedy: Remedy | None, party: Party | None) -> list[str
 
 
 def recipient_block(kind: str, sources: Sources, details: LetterDetails | None = None) -> str:
-    """Name and address of the recipient; for objections the addressee named in the remedy; for a
-    template letter to someone not in Ordnung yet, the name and address the person typed."""
+    """Name and address of the recipient; for objections the addressee named in the remedy (or the court the
+    person typed for a court order whose sender isn't one: :func:`objection_to_typed_court`); for a template
+    letter to someone not in Ordnung yet, the name and address the person typed."""
     if kind == "objection":
+        if sources.party is None and details is not None and details.recipient:
+            return "\n".join(address_lines(details.recipient))
         return "\n".join(_objection_recipient(sources.remedy, sources.party))
     if sources.party is None and kind in TEMPLATES and details is not None and details.recipient:
         return "\n".join(address_lines(details.recipient))
@@ -497,6 +500,35 @@ _COURT_INSTALMENTS = (
 
 
 _COURT_ORDERS = ("court_payment_order", "enforcement_order")
+#: An objection to a court order goes to the court that issued it (§ 694 Abs. 1, § 700 Abs. 1, § 340 ZPO): sent to
+#: the claimant, it doesn't stop the two weeks, and a Vollstreckungsbescheid follows.
+COURT_OBJECTION_RECIPIENT = (
+    "An objection to a court order goes to the court that issued it — sent to the claimant, it doesn't stop the "
+    "order (§ 694, § 700 ZPO). This letter's sender isn't a court in Ordnung: type the court's name and address "
+    "as the order and its yellow envelope show them (for a Mahnbescheid usually a central Mahngericht)."
+)
+
+
+def objection_to_typed_court(kind: str, sources: Sources, details: LetterDetails | None) -> bool:
+    """Whether an objection to a court order goes to a court the person typed in (review round 3 of phase 2):
+    the letter's sender isn't a court — a Mahnbescheid re-filed from what was read as the claimant's reminder —
+    and neither is the addressee its instructions name. Such an objection is never addressed to the sender:
+    without a typed court (:func:`~ordnung.rules.routing.may_be_court`) it raises :class:`DraftError`."""
+    document = sources.document
+    if kind != "objection" or document is None or document.kind not in _COURT_ORDERS:
+        return False
+    party = sources.party
+    if party is not None and is_court(party.name, party.kind):
+        return False
+    addressee = _clean_addressee(sources.remedy.addressee or "") if sources.remedy is not None else ""
+    if addressee and may_be_court(typed_name(addressee)):
+        return False
+    name = typed_name(details.recipient if details is not None else None)
+    if name and may_be_court(name):
+        return True
+    raise DraftError(COURT_OBJECTION_RECIPIENT)
+
+
 _ORDER_NAMES = {"court_payment_order": "Mahnbescheid", "enforcement_order": "Vollstreckungsbescheid"}
 
 
@@ -511,17 +543,53 @@ def template_refusal(kind: str, letter_kind: str | None, *, to_claimant: bool = 
     return None
 
 
+_ADDRESS_FORMULA = re.compile(r"^(?:an|to)(?:\s+(?:das|den|die|the))?\s*:?$", re.I)
+
+
+def typed_name(recipient: str | None) -> str:
+    """The name in a recipient typed into a template letter: its first line — the next one after a line
+    that only says "An das" or "To" (German letters address a court as "An das / Amtsgericht …")."""
+    lines = [line.strip() for line in (recipient or "").split("\n") if line.strip()]
+    while len(lines) > 1 and _ADDRESS_FORMULA.match(lines[0]):
+        lines = lines[1:]
+    return lines[0] if lines else ""
+
+
 def to_claimant(kind: str, sources: Sources, details: LetterDetails | None) -> bool:
     """Whether a letter offering instalments on a court order goes to its claimant, typed in (review round 2
     of phase 2): it stays linked to the order — its reference number (Geschäftsnummer) and date — and the
-    typed claimant, never the court, is its recipient."""
+    typed claimant, never the court, is its recipient. A typed recipient that is or may be a court
+    (:func:`~ordnung.rules.routing.may_be_court`: "Amtsgericht Hünfeld", "AG Hagen") is no claimant — the
+    offer is refused as one to the court (review round 3 of phase 2)."""
     document = sources.document
+    name = typed_name(details.recipient if details is not None else None)
     return (
         kind == "payment_plan"
         and document is not None
         and document.kind in _COURT_ORDERS
-        and details is not None
-        and bool((details.recipient or "").strip())
+        and bool(name)
+        and not may_be_court(name)
+    )
+
+
+def court_order_note(store: Store, sources: Sources) -> str | None:
+    """What an offer of instalments on a court order must not let the person forget (review round 3 of
+    phase 2): the order's own deadline still runs — an offer doesn't stop it (§§ 692, 694, 699, 700 ZPO) —,
+    named with the order's earliest open date."""
+    document = sources.document
+    if document is None or document.kind not in _COURT_ORDERS:
+        return None
+    item = _earliest_open(store, sources, ("deadline", "payment"))
+    day = parse_day(item.due_date) if item is not None else None
+    by = f"by {fmt_date(day)}" if day is not None else "by the court's deadline"
+    if document.kind == "court_payment_order":
+        return (
+            f"This offer doesn't stop the Mahnbescheid: pay or object {by} all the same — otherwise the "
+            "claimant can apply for an enforcement order (Vollstreckungsbescheid) and enforce it (§ 699 ZPO)."
+        )
+    return (
+        f"This offer doesn't stop the Vollstreckungsbescheid: it can be enforced already, and an objection is "
+        f"only possible {by} (§§ 339, 700 ZPO)."
     )
 
 
@@ -726,6 +794,8 @@ def plan_letter(
     end_date, due = _letter_due(store, kind, sources, today)
     facts = details or LetterDetails()
     notes: list[str] = []
+    if kind == "payment_plan" and (order := court_order_note(store, sources)) is not None:
+        notes.append(order)
     if kind == "withdrawal":
         due, notes = _withdrawal_due(facts, sources.profile, today)
     elif kind == "extension_request":
@@ -749,7 +819,7 @@ def plan_letter(
     party = sources.party
     # a recipient typed in has no kind: only a court's full name makes it one; "AG Hagen" (or "LG
     # Electronics", which can't be told apart) may be one, so it gets a court's channels and a note
-    recipient = party.name if party else (facts.recipient or "").strip().split("\n")[0]
+    recipient = party.name if party else typed_name(facts.recipient)
     court = is_court(recipient, party.kind if party else None)
     unsure = party is None and not court and may_be_court(recipient)
     guidance = send_guidance(
@@ -1259,6 +1329,8 @@ async def compose(
     sources = load_sources(store, draft_kind, doc_id=doc_id, contract_id=contract_id, party_id=party_id)
     if to_claimant(draft_kind, sources, details):
         sources = replace(sources, party=None)  # the order's sender is the court, not who the letter goes to
+    if objection_to_typed_court(draft_kind, sources, details):
+        sources = replace(sources, party=None)  # the order's sender (as filed) isn't the court it goes to
     plan = plan_letter(
         store,
         draft_kind,

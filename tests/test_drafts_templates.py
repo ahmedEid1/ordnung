@@ -659,6 +659,79 @@ async def test_an_offer_to_the_claimant_stays_linked_to_the_order(
     assert ACKNOWLEDGES_CLAIM in offer.notes_for_user
 
 
+@pytest.mark.parametrize(
+    "court",
+    [
+        "Amtsgericht Hünfeld\nZentrales Mahngericht\n36088 Hünfeld",
+        "An das\nAmtsgericht Hünfeld\n36088 Hünfeld",
+        "AG Hagen\nHeinitzstr. 42\n58097 Hagen",
+    ],
+)
+async def test_typing_the_court_as_the_claimant_is_still_refused(
+    ctx: AppContext, ids: dict[str, str], court: str
+) -> None:
+    """Review round 3 of phase 2: any typed recipient counted as the claimant, so typing the court addressed
+    an offer of instalments to the Amtsgericht and the refusal never fired."""
+    details = LetterDetails(instalment=20, first_instalment="2026-10-15", amount=111.88, recipient=court)
+    with pytest.raises(DraftError, match="the claimant does"):
+        await compose(ctx, "payment_plan", doc_id=ids["order"], details=details)
+
+
+async def test_an_offer_on_a_court_order_says_its_deadline_still_runs(
+    ctx: AppContext, ids: dict[str, str]
+) -> None:
+    """Review round 3 of phase 2: the offer's notes lost the refusal's key sentence — pay or object by the
+    court's deadline, or an enforcement order can follow."""
+    details = LetterDetails(
+        instalment=20,
+        first_instalment="2026-10-15",
+        amount=111.88,
+        recipient="Streamline Media GmbH\nHauptstr. 1\n10115 Berlin",
+    )
+    offer = await compose(ctx, "payment_plan", doc_id=ids["order"], details=details)
+    [note] = [note for note in offer.notes_for_user if "doesn't stop the Mahnbescheid" in note]
+    assert "pay or object by" in note and "Vollstreckungsbescheid" in note
+    ctx.store.add_item(kind="deadline", title="Widerspruch", due_date="2026-10-05", doc_id=ids["order"])
+    dated = await compose(ctx, "payment_plan", doc_id=ids["order"], details=details)
+    assert any("pay or object by Mon 5 Oct 2026" in note for note in dated.notes_for_user)
+    enforcement = await compose(ctx, "payment_plan", doc_id=ids["enforcement"], details=details)
+    assert any("can be enforced already" in note for note in enforcement.notes_for_user)
+    # an offer on another letter gets no such note
+    invoice = await compose(ctx, "payment_plan", party_id=ids["shop"], details=details)
+    assert not any("doesn't stop" in note for note in invoice.notes_for_user)
+
+
+async def test_an_objection_to_a_court_order_never_goes_to_a_sender_that_isnt_a_court(
+    ctx: AppContext, ids: dict[str, str]
+) -> None:
+    """Review round 3 of phase 2: a Mahnbescheid re-filed from what was read as the claimant's reminder kept
+    the claimant as its sender, and the objection was addressed to them — it doesn't stop the order there
+    (§ 694 ZPO). Such an objection is refused unless the court is typed in, and then goes to the court."""
+    order = _doc(
+        ctx,
+        "refiled-order",
+        kind="court_payment_order",
+        title="Mahnbescheid",
+        doc_date="2026-09-21",
+        party_id=ids["shop"],
+    )
+    with pytest.raises(DraftError, match="goes to the court that issued it"):
+        await compose(ctx, "objection", doc_id=order, party_id=ids["shop"])
+    with pytest.raises(DraftError, match="goes to the court that issued it"):  # a typed name that is no court
+        await compose(ctx, "objection", doc_id=order, details=LetterDetails(recipient="Technik Versand GmbH"))
+    typed = "Amtsgericht Hünfeld\nZentrales Mahngericht\n36088 Hünfeld"
+    draft = await compose(
+        ctx, "objection", doc_id=order, party_id=ids["shop"], details=LetterDetails(recipient=typed)
+    )
+    assert draft.recipient_block.startswith("Amtsgericht Hünfeld") and "Technik" not in draft.recipient_block
+    assert draft.party_id is None and draft.doc_id == order
+    assert draft.send_guidance is not None
+    assert not any(channel.channel == "email" and channel.allowed for channel in draft.send_guidance.channels)
+    # an order whose sender is a court goes there as before
+    court_order = await compose(ctx, "objection", doc_id=ids["order"])
+    assert "Amtsgericht" in court_order.recipient_block
+
+
 async def test_a_tax_deferral_is_no_acknowledgement_note(ctx: AppContext, ids: dict[str, str]) -> None:
     draft = await compose(
         ctx,

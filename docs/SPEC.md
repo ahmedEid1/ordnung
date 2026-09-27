@@ -586,7 +586,12 @@ and English sentences (`drafts/template_letters.py`) filled from `LetterDetails`
 deadline the law sets (a court order, a dismissal) or instalments offered to a court instead of the
 claimant (`compose.template_refusal`). Instalments on a court order go to its claimant, typed in: the
 letter stays linked to the order (its Geschäftsnummer and date, "aus dem Mahnbescheid vom …"), the typed
-claimant — never the court — is its recipient (`compose.to_claimant`). A withdrawal's date is the 14 days while they run, even when
+claimant — never the court — is its recipient (`compose.to_claimant`: a typed name that is or may be a court
+is refused like the court), and the offer's notes say the order's own deadline still runs, with its date
+(`compose.court_order_note`). An objection to a court order goes to the court: when the letter's sender, as
+filed, is no court (a Mahnbescheid re-filed from what was read as the claimant's reminder) and its
+instructions name none, the person types the court and the letter is refused without it
+(`compose.objection_to_typed_court`, § 694, § 700 ZPO). A withdrawal's date is the 14 days while they run, even when
 the person says the instructions were missing (the 12 months and 14 days are then a note). An
 objection to a court payment order objects to the whole claim (a partial one goes on the court's
 form, which the note says); the application to suspend enforcement is added only when the person
