@@ -684,6 +684,19 @@ export async function demoCatalog({ api, server }) {
       trace,
       "The stream ends after “writing” without a checked answer (a dropped connection or a server restart).",
     );
+    askState(
+      "check-note-payment",
+      "Do I have to pay the new rent from November?",
+      [
+        ...trace,
+        done(
+          `The new rent of 712.40 € is due from 2026-11-01 ${citeItem}. Your landlord asks you to agree by 2026-11-30 ${cite}.`,
+          "Added 1 source to a sentence that gave a date, time or amount without one. For the records concerned, Ordnung has on file: the to-do “Neue monatliche Miete (Vorauszahlungen)”, due Sun 1 Nov 2026, 712.40 €; the letter “Mieterhöhungsverlangen nach § 558 BGB”, dated Fri 18 Sep 2026. The new rent is only owed once you agree to the increase, and paying it can count as agreeing (§ 558b Abs. 1 BGB) — decide before you pay.",
+          "Checked by Ordnung:",
+        ),
+      ],
+      "A checked answer about a rent increase: the check's note repeats the app's payment note (§ 558b Abs. 1 BGB, decide before you pay).",
+    );
   }
 
   // the kind picker ("What kind of letter is this?") on a real letter, not saved
@@ -698,6 +711,15 @@ export async function demoCatalog({ api, server }) {
   composer("templates-deposit", `kind=deposit_return${landlord ? `&to=${landlord.id}` : ""}`, "Composer: “Get your deposit back” for the landlord, no IBAN in the profile.");
   composer("templates-withdrawal", "kind=withdrawal", "Composer: “Withdraw from a purchase” with the letter list and facts.");
   if (payDoc) composer("templates-payment-plan", `kind=payment_plan&doc=${payDoc.id}`, "Composer: “Pay in instalments” for the payment reminder (amount default hint).");
+  if (payDoc) composer("templates-extension", `kind=extension_request&doc=${payDoc.id}`, "Composer: “Ask for more time” for the payment reminder (the letter's deadline as the default).");
+  composer("templates-defect", `kind=defect_notice${landlord ? `&to=${landlord.id}` : ""}`, "Composer: “Report a defect” for the landlord (long description field and dates).");
+  composer("templates-data-access", "kind=data_access", "Composer: “Ask for your data” with SCHUFA's address filled in.", async (c) => {
+    const b = c.page.getByRole("dialog").getByRole("button", { name: "Use SCHUFA's address" });
+    if (await c.exists(b)) await c.click(b);
+    else c.note("no SCHUFA button");
+  });
+  if (replyDoc) composer("templates-receipts", `kind=receipts_inspection&doc=${replyDoc.id}`, "Composer: “See the receipts” for the operating-cost statement.");
+  composer("templates-address-change", "kind=address_change", "Composer: “Share a new address” with the profile's address.");
   if (objectionDoc) {
     composer("objection-suspend", `kind=objection&doc=${objectionDoc.id}`, "Composer: objection to an authority's decision with “Also ask to suspend enforcement” ticked.", async (c) => {
       const box = c.page.getByRole("dialog").getByRole("checkbox", { name: /suspend enforcement/ });
@@ -1233,6 +1255,65 @@ export async function demoCatalog({ api, server }) {
         await settle(c.page);
       });
     }
+    if (kind === "landlord_notice") {
+      at("all-steps", "click “Show all … steps” on the advice card", `${kind}: the advice card unfolded to all its steps.`, async (c) => {
+        const b = main(c.page).getByRole("button", { name: /^Show all \d+ steps$/ });
+        if (!(await c.exists(b))) c.notApplicable("the card has no folded steps");
+        await c.click(b);
+      });
+    }
+    if (kind === "court_payment_order") {
+      at("payment-plan", "open “Pay in instalments” for it", `${kind}: “Pay in instalments” refused for the court (offer them to the claimant).`, async (c, id) => {
+        await c.goto(`/letters?kind=payment_plan&doc=${id}`);
+        await c.visible(c.page.getByRole("dialog", { name: "New letter" }));
+        await settle(c.page);
+      });
+      at("payment-plan-claimant", "open “Pay in instalments” for it, then “Write to the claimant instead”", `${kind}: instalments to the claimant — the typed claimant field.`, async (c, id) => {
+        await c.goto(`/letters?kind=payment_plan&doc=${id}`);
+        const d = await c.visible(c.page.getByRole("dialog", { name: "New letter" }));
+        const b = d.getByRole("button", { name: "Write to the claimant instead" });
+        if (!(await c.exists(b))) c.notApplicable("no “Write to the claimant instead”");
+        await c.click(b);
+      });
+    }
+  }
+  /** A fresh demo folder with the HS_KINDS letters re-filed by the kind picker's PATCH. */
+  const setUpHighStakes = async (restart) => {
+    await restart("high-stakes");
+    await setTour(api, null);
+    const docs3 = await api.get("/api/documents");
+    for (const [re, kind] of HS_KINDS) {
+      const d = docs3.find((x) => re.test(x.filename ?? ""));
+      if (d) {
+        await api.patch(`/api/documents/${d.id}`, { kind });
+        hsDocs[kind] = d.id;
+      }
+    }
+  };
+  // "I've dealt with this" changes the letter: one capture at a time, each starting from the untouched card
+  const hsDealt = [];
+  const landlordRe = HS_KINDS.find(([, k]) => k === "landlord_notice")?.[0];
+  if (landlordRe && docs.some((x) => landlordRe.test(x.filename ?? ""))) {
+    hsDealt.push({
+      id: "hs-landlord-notice--dealt-with",
+      group: "high-stakes",
+      route: "/documents/…",
+      how: "the lease re-filed as landlord_notice, its tags cleared, open it, click “I've dealt with this”",
+      description: "landlord_notice: marked as dealt with (the handled card, “Not dealt with yet”, the toast).",
+      pinToasts: true,
+      run: async (c) => {
+        const id = hsDocs.landlord_notice;
+        if (!id) throw new Error("landlord_notice was not set up");
+        await c.api.patch(`/api/documents/${id}`, { tags: [] });
+        await c.goto(`/documents/${id}`);
+        const b = main(c.page).getByRole("button", { name: "I've dealt with this" });
+        if (!(await c.exists(b))) c.notApplicable("the card can't be closed by the person");
+        await c.click(b, { settleAfter: false });
+        await c.page.getByText("You marked this letter as dealt with").first().waitFor({ timeout: 10_000 });
+        await settle(c.page);
+        await pinToasts(c.page);
+      },
+    });
   }
 
   return {
@@ -1273,18 +1354,14 @@ export async function demoCatalog({ api, server }) {
         name: "high-stakes",
         parallel: true,
         states: hsStates,
-        before: async ({ restart }) => {
-          await restart("high-stakes");
-          await setTour(api, null);
-          const docs3 = await api.get("/api/documents");
-          for (const [re, kind] of HS_KINDS) {
-            const d = docs3.find((x) => re.test(x.filename ?? ""));
-            if (d) {
-              await api.patch(`/api/documents/${d.id}`, { kind });
-              hsDocs[kind] = d.id;
-            }
-          }
-        },
+        before: async ({ restart }) => setUpHighStakes(restart),
+      },
+      {
+        name: "high-stakes-dealt-with",
+        parallel: false,
+        states: hsDealt,
+        // run on its own (--only), the high-stakes phase's setup was skipped
+        before: async ({ restart }) => (hsDocs.landlord_notice ? undefined : setUpHighStakes(restart)),
       },
     ],
   };
