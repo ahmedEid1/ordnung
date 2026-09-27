@@ -40,6 +40,7 @@ import { receiptForContract, receiptForItem } from "./receipt";
 import { ReadMore } from "./ReadMore";
 import { WhyThisDate } from "./WhyThisDate";
 import { LetterText } from "@/components/ui/LetterText";
+import { GiroCodeSection } from "@/features/girocode/GiroCode";
 
 const VERB: Record<ActionVerb, { label: string; icon: LucideIcon }> = {
   pay: { label: "Pay", icon: Wallet },
@@ -173,7 +174,10 @@ function CopyRow({ label, value, display, copyId, ident }: { label: string; valu
   );
 }
 
-/** "Pay": the transfer details from the letter (copyable) and "Mark as paid" (with undo). */
+/**
+ * "Pay": the transfer details from the letter (copyable), the GiroCode folded behind "Show code"
+ * (or why there is none) and "Mark as paid" (with undo).
+ */
 function PayPanel({ action, close }: { action: TodayAction; close: () => void }) {
   const doc = useDocument(action.docId ?? undefined);
   const update = useUpdateItem();
@@ -181,6 +185,7 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
   const focus = useContext(TopFocusContext);
   const pay = doc.data?.document.payment;
   const item = action.item;
+  const code = item ? doc.data?.girocodes.find((g) => g.item_id === item.id) : undefined;
 
   const markPaid = () => {
     if (!item) return;
@@ -239,6 +244,8 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
           The IBAN's check digits are valid — that only rules out typos, not fraud.
         </p>
       ) : null}
+
+      {action.docId ? <GiroCodeSection code={code} docId={action.docId} collapsible className="mt-3" /> : null}
 
       {/*
         stays in view at the bottom of the panel, however far its details scroll: it covers the

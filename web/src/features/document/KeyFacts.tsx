@@ -1,9 +1,10 @@
 /**
  * Key facts (label, value, where it was found — click to see it on the page), reference numbers
- * and bank details, with copy buttons. For a suspected scam the bank account is flagged.
+ * and bank details, with copy buttons. For a suspected scam the bank account is flagged, and says
+ * why there is no GiroCode to scan.
  */
-import { Copy, Hash, Landmark, ShieldAlert, Sparkle } from "lucide-react";
-import type { Document } from "@/api/types";
+import { Copy, Hash, Landmark, QrCode, ShieldAlert, Sparkle } from "lucide-react";
+import type { Document, GiroCode } from "@/api/types";
 import { cn } from "@/lib/utils";
 import { formatFactValue, formatIban } from "@/lib/format";
 import { EvidenceChip } from "./EvidenceChip";
@@ -25,8 +26,10 @@ function CopyButton({ value, what }: { value: string; what: string }) {
   );
 }
 
-export function KeyFacts({ doc, scam }: { doc: Document; scam: boolean }) {
+export function KeyFacts({ doc, scam, girocodes = [] }: { doc: Document; scam: boolean; girocodes?: GiroCode[] }) {
   const { hover, selected, hovered } = useEvidence();
+  // a scam letter has no Pay button: its bank details say why there is no code to scan
+  const scamCode = scam ? girocodes.find((g) => g.status === "blocked" && g.reason === "scam") : undefined;
   const facts = doc.key_facts;
   const p = doc.payment;
   const hasPayment = Boolean(p && (p.iban || p.payee));
@@ -118,6 +121,15 @@ export function KeyFacts({ doc, scam }: { doc: Document; scam: boolean }) {
                 </li>
               ) : null}
             </ul>
+            {scamCode?.status === "blocked" ? (
+              <p className="mt-2 flex items-start gap-1.5 text-[12.5px] leading-5 text-danger-ink">
+                <QrCode className="mt-[3px] size-3.5 shrink-0" aria-hidden />
+                <span>
+                  <span className="font-semibold">GiroCode (EPC-QR): </span>
+                  {scamCode.message}
+                </span>
+              </p>
+            ) : null}
             {p.iban_valid === false ? (
               <p className={cn("mt-2 text-[12.5px] font-medium", scam ? "text-danger-ink" : "text-warn-ink")}>
                 This IBAN doesn't pass the bank check — most likely a misprint. Compare it with the paper letter before you pay.

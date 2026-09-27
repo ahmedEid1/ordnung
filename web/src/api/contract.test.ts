@@ -184,6 +184,10 @@ const CASES = {
   updateItem: { run: (ids) => api.updateItem(ids.item, { status: "done" }) },
   deleteItem: { run: (ids) => api.deleteItem(ids.otherItem) },
   confirmItem: { run: (ids) => api.confirmItem(ids.item) },
+  // the photographed parking fine waits for the person to compare it with the paper letter
+  confirmGiroCode: {
+    run: () => api.confirmGiroCode("itm_parking", { payee: "Stadtkasse Musterstadt", iban: "DE51123456000000100017", reference: "OA-VW-2026-55012", amount: 30 }),
+  },
   itemIcsUrl: { run: (ids) => api.itemIcsUrl(ids.item), asset: true },
 
   contracts: { run: () => api.contracts({ status: "active" }) },
@@ -235,8 +239,10 @@ const ORDER: (keyof Api)[] = [
   "chat",
   "markDraftSent",
   "translateDraft",
+  "confirmGiroCode", // before a later case marks the parking fine paid
   ...(Object.keys(CASES) as (keyof Api)[]).filter(
-    (name) => !["ask", "chat", "markDraftSent", "translateDraft", "deleteDraft", "deleteDocument", "deleteItem", "deleteEverything"].includes(name),
+    (name) =>
+      !["ask", "chat", "markDraftSent", "translateDraft", "confirmGiroCode", "deleteDraft", "deleteDocument", "deleteItem", "deleteEverything"].includes(name),
   ),
   "deleteDraft",
   "deleteItem",

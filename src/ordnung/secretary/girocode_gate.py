@@ -496,6 +496,11 @@ class CheckRefused(Exception):
     """Why the person's comparison with the paper letter can't unlock a code (plain words)."""
 
 
+NOT_A_PAYMENT = "This to-do isn't a payment from a letter."
+NOTHING_TO_COMPARE = "There is nothing to compare for this payment."
+DETAILS_CHANGED = "The payment details changed since you looked at them. Please compare them again."
+
+
 def record_check(store: Store, item: Item, values: TransferValues, today: date) -> GiroCode:
     """Record that the person compared ``values`` with the paper letter and return the new code.
 
@@ -505,15 +510,11 @@ def record_check(store: Store, item: Item, values: TransferValues, today: date) 
     """
     current = item_girocode(store, item, today)
     if current is None:
-        raise CheckRefused("This to-do isn't a payment from a letter.")
+        raise CheckRefused(NOT_A_PAYMENT)
     if not isinstance(current, GiroCodeBlocked) or current.reason != "check_letter":
-        raise CheckRefused(
-            "There is nothing to compare for this payment."
-            if isinstance(current, GiroCodeReady)
-            else current.message
-        )
+        raise CheckRefused(NOTHING_TO_COMPARE if isinstance(current, GiroCodeReady) else current.message)
     if current.values is None or not same_values(values, current.values):
-        raise CheckRefused("The payment details changed since you looked at them. Please compare them again.")
+        raise CheckRefused(DETAILS_CHANGED)
     store.log_activity(
         CHECKED,
         f"You compared the transfer details of “{item.title}” with the paper letter",

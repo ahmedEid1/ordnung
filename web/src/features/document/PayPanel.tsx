@@ -1,12 +1,14 @@
 /**
  * "Pay" — Ordnung never pays for you. It lays out exactly what to type into your banking app
- * (payee, IBAN, reference, amount) with copy buttons, and lets you mark the payment as done.
+ * (payee, IBAN, reference, amount) with copy buttons, the GiroCode to scan when the server offers
+ * one (or why there is none), and lets you mark the payment as done.
  */
 import { Check, Copy, Landmark, ShieldAlert } from "lucide-react";
-import type { Document, Item } from "@/api/types";
+import type { Document, GiroCode, Item } from "@/api/types";
 import { formatIban, formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
+import { GiroCodeSection } from "@/features/girocode/GiroCode";
 import { copyText } from "./actions";
 
 function Row({ label, value, copy, mono }: { label: string; value: string; copy?: string; mono?: boolean }) {
@@ -31,7 +33,20 @@ function Row({ label, value, copy, mono }: { label: string; value: string; copy?
   );
 }
 
-export function PayPanel({ item, doc, onPaid, close }: { item: Item; doc: Document; onPaid: () => void; close?: () => void }) {
+export function PayPanel({
+  item,
+  doc,
+  code,
+  onPaid,
+  close,
+}: {
+  item: Item;
+  doc: Document;
+  /** The payment's GiroCode, or why there is none (`DocumentDetail.girocodes`). */
+  code?: GiroCode;
+  onPaid: () => void;
+  close?: () => void;
+}) {
   const p = doc.payment;
   const amount = item.amount != null ? formatMoney(item.amount, { currency: item.currency }) : null;
   return (
@@ -65,6 +80,8 @@ export function PayPanel({ item, doc, onPaid, close }: { item: Item; doc: Docume
           This IBAN fails its checksum. Don't pay until you've confirmed the account with the sender.
         </p>
       ) : null}
+
+      <GiroCodeSection code={code} docId={doc.id} className="mt-3" />
 
       <p className="mt-3 text-[12.5px] leading-5 text-muted">
         Ordnung never pays for you — use your banking app. Compare the IBAN with an earlier letter from this sender.

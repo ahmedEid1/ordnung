@@ -4508,6 +4508,20 @@ export interface operations {
                     "application/json": components["schemas"]["GiroCodeReady"] | components["schemas"]["GiroCodeBlocked"];
                 };
             };
+            /** @description Unknown to-do. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nothing to compare: the details changed since they were shown, the payment has a code already, or it has no code for another reason (the reason is the detail). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {

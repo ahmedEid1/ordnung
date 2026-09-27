@@ -120,7 +120,7 @@ describe("the Pay panel", () => {
       expect(Array.from(row.children).map((c) => c.tagName)).toEqual(["DT", "DD", "DD"]);
     }
     const value = (label: string) => within(list).getByText(label).nextElementSibling!;
-    expect(value("IBAN")).toHaveTextContent(formatIban("DE72860555920090123456"));
+    expect(value("IBAN")).toHaveTextContent(formatIban("DE70123478000048213000"));
     expect(value("Reference")).toHaveTextContent("RE-2026-084213");
     // identifiers wrap, they are never cut
     expect(list.querySelector(".truncate")).toBeNull();
@@ -130,7 +130,7 @@ describe("the Pay panel", () => {
     await user.click(within(list).getByRole("button", { name: "Copy Amount" }));
     expect(await navigator.clipboard.readText()).toBe("94,99");
     await user.click(within(list).getByRole("button", { name: "Copy IBAN" }));
-    expect(await navigator.clipboard.readText()).toBe("DE72860555920090123456");
+    expect(await navigator.clipboard.readText()).toBe("DE70123478000048213000");
 
     expect(within(panel).getByText("The IBAN's check digits are valid — that only rules out typos, not fraud.")).toBeInTheDocument();
     expect(within(panel).queryByText(/No warning does not mean/)).toBeNull();

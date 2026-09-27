@@ -444,6 +444,12 @@ export type DashboardStats = Schemas["DashboardStats"];
 export type Dashboard = Schemas["Dashboard"];
 export type PageInfo = Schemas["PageInfo"];
 export type DocumentDetail = Schemas["DocumentDetail"];
+/** A GiroCode (EPC QR) for one payment — or why there is none — worked out on read by the server. */
+export type GiroCode = DocumentDetail["girocodes"][number];
+export type GiroCodeReady = Schemas["GiroCodeReady"];
+export type GiroCodeBlocked = Schemas["GiroCodeBlocked"];
+/** The transfer details a GiroCode carries, as the person compares them with the paper letter. */
+export type TransferValues = Schemas["TransferValues"];
 /** The "get advice" card of a high-stakes letter (court order, dismissal, tenancy …), worked out on read. */
 export type LetterAdvice = Schemas["LetterAdvice"];
 export type AdviceFact = Schemas["AdviceFact"];

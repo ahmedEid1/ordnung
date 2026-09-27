@@ -1546,6 +1546,12 @@
               }
             }
           },
+          "404": {
+            "description": "Unknown to-do."
+          },
+          "409": {
+            "description": "Nothing to compare: the details changed since they were shown, the payment has a code already, or it has no code for another reason (the reason is the detail)."
+          },
           "422": {
             "description": "Validation Error",
             "content": {

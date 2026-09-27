@@ -21,6 +21,7 @@ import { ApiError } from "./client";
 import type {
   ContractListParams,
   ContractPatch,
+  DocumentDetail,
   DocumentListParams,
   DocumentPatch,
   DraftCreate,
@@ -37,6 +38,7 @@ import type {
   SuggestionPatch,
   SuggestionRef,
   TourPatch,
+  TransferValues,
 } from "./types";
 
 // ------------------------------------------------------------------------------------------------
@@ -321,6 +323,24 @@ export function useDeleteItem() {
 export function useConfirmItem() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (id: string) => api.confirmItem(id), meta: { errorTitle: "Couldn't confirm the date" }, onSuccess: () => invalidateLedger(qc) });
+}
+
+/**
+ * "These match the letter": the person compared a payment's transfer details with the paper letter,
+ * which unlocks its GiroCode. The letter's detail is updated in place with the answer (and refetched).
+ */
+export function useConfirmGiroCode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, values }: { itemId: string; docId: string; values: TransferValues }) => api.confirmGiroCode(itemId, values),
+    meta: { errorTitle: "Couldn't confirm the payment details" },
+    onSuccess: (code, { docId }) => {
+      qc.setQueryData<DocumentDetail>(qk.documents.detail(docId), (detail) =>
+        detail ? { ...detail, girocodes: detail.girocodes.map((g) => (g.item_id === code.item_id ? code : g)) } : detail,
+      );
+      return qc.invalidateQueries({ queryKey: qk.documents.detail(docId) });
+    },
+  });
 }
 
 // ------------------------------------------------------------------------------------------------

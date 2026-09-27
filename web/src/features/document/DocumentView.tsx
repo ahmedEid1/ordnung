@@ -74,7 +74,7 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
             <>
               <ExplainedSimply doc={doc} />
               <ItemsList items={detail.items} docId={doc.id} />
-              <KeyFacts doc={doc} scam={scam} />
+              <KeyFacts doc={doc} scam={scam} girocodes={detail.girocodes} />
               <ThreadSection detail={detail} />
               <ContractsSection contracts={detail.contracts} />
               <DraftsSection drafts={detail.drafts} />

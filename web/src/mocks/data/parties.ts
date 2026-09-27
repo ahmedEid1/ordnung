@@ -32,7 +32,7 @@ export const PARTIES: Party[] = [
     email: "vermietung@wohnbau-musterstadt.example",
     phone: "+49 1234 5566-0",
     website: "wohnbau-musterstadt.example",
-    ibans: ["DE44500105175407324931"],
+    ibans: ["DE05123456000004455660"],
   }),
   party({
     id: "pty_funknetz",
@@ -89,7 +89,7 @@ export const PARTIES: Party[] = [
     kind: "public_broadcaster",
     identifiers: [{ label: "Beitragsnummer", value: "457 812 309" }],
     address: "Freimersdorfer Weg 6, 12340 Musterstadt",
-    ibans: ["DE02440100460123456789"],
+    ibans: ["DE57123489000055081836"],
     notes: "Collects the Rundfunkbeitrag (broadcasting fee).",
   }),
   party({
@@ -109,7 +109,7 @@ export const PARTIES: Party[] = [
     identifiers: [{ label: "Matrikelnummer", value: "2231847" }],
     address: "Campusallee 1, 12345 Musterstadt",
     email: "studierendenservice@hs-musterstadt.example",
-    ibans: ["DE93250500000004455667"],
+    ibans: ["DE10123456000007700220"],
   }),
   party({
     id: "pty_mustertech",
@@ -126,7 +126,7 @@ export const PARTIES: Party[] = [
     identifiers: [{ label: "Kundennummer", value: "TM-883120" }],
     address: "Handelsstraße 50, 12341 Musterstadt",
     email: "buchhaltung@techmarkt.example",
-    ibans: ["DE72860555920090123456"],
+    ibans: ["DE70123478000048213000"],
     region: null,
   }),
   party({
@@ -159,7 +159,7 @@ export const PARTIES: Party[] = [
     kind: "authority",
     identifiers: [{ label: "Aktenzeichen", value: "OA-VW-2026-55012" }],
     address: "Rathausplatz 1, 12345 Musterstadt",
-    ibans: ["DE47700202700015893521"],
+    ibans: ["DE51123456000000100017"],
   }),
   party({
     id: "pty_scholarship",

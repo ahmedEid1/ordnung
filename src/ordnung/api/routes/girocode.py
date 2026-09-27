@@ -46,7 +46,17 @@ def _confirm(store: Store, item_id: str, body: GiroCodeConfirm, today: date) -> 
     return code, item.doc_id
 
 
-@router.post("/items/{item_id}/girocode/confirm", response_model=GiroCode)
+@router.post(
+    "/items/{item_id}/girocode/confirm",
+    response_model=GiroCode,
+    responses={
+        404: {"description": "Unknown to-do."},
+        409: {
+            "description": "Nothing to compare: the details changed since they were shown, the payment has "
+            "a code already, or it has no code for another reason (the reason is the detail)."
+        },
+    },
+)
 async def confirm_girocode(item_id: str, body: GiroCodeConfirm, ctx: CtxDep, today: TodayDep) -> GiroCode:
     """ "These match the letter": the person compared a payment's details with the paper letter."""
     async with ledger_lock():

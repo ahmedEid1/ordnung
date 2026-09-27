@@ -156,7 +156,7 @@ export const TRAY_SUGGESTIONS: Record<string, Suggestion[]> = {
       id: "sug_scam",
       kind: "scam",
       title: "This looks like a scam: IBAN differs from the one Beitragsservice used before",
-      body: "The letter asks for €210 within 3 days to a Lithuanian account (LT71 7300 …). Beitragsservice Musterstadt used DE02 4401 0046 0123 4567 89 before, and your next real payment (€55.08) is due on 15 Nov. It also hides invisible text. Do not pay.",
+      body: "The letter asks for €210 within 3 days to a Lithuanian account (LT71 7300 …). Beitragsservice Musterstadt used DE57 1234 8900 0055 0818 36 before, and your next real payment (€55.08) is due on 15 Nov. It also hides invisible text. Do not pay.",
       rationale: "Payee IBAN mismatch for a known party + hidden text + 3-day pressure.",
       priority: "critical",
       rule_id: "scam_warning",
