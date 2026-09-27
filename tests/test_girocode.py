@@ -152,7 +152,9 @@ def test_an_account_outside_the_eea_needs_a_bic() -> None:
     swiss = make_iban("CH", "00762011623852957")
     gb = make_iban("GB", "NWBK60161331926819")
     for account in (swiss, gb):
-        with pytest.raises(GiroCodeError, match="outside the EEA, so the GiroCode would need its bank's BIC"):
+        with pytest.raises(
+            GiroCodeError, match=r"outside the European Economic Area .* would need its bank's BIC"
+        ):
             epc_payload(Transfer(name="A", iban=account))
     assert epc_payload(Transfer(name="A", iban=swiss, bic="ubsw chzh 80a")).splitlines()[4] == "UBSWCHZH80A"
     for eea in (
@@ -210,7 +212,9 @@ def test_a_valid_rf_reference_is_structured_and_the_text_element_stays_empty() -
 
 def test_an_rf_reference_with_wrong_check_digits_is_refused_not_passed_on_as_text() -> None:
     assert looks_like_creditor_reference("RF19539007547034")
-    with pytest.raises(GiroCodeError, match="looks like an RF creditor reference, but its check digits"):
+    with pytest.raises(
+        GiroCodeError, match=r"a creditor reference \(starting with RF\), but its check digits"
+    ):
         epc_payload(Transfer(name="A", iban=GERMAN_IBAN, reference="RF19 5390 0754 7034"))
 
 

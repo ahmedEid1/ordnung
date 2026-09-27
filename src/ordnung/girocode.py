@@ -199,7 +199,8 @@ def _bic(bic: str, iban: str, version: str) -> str:
     if not value and iban[:2] not in EEA_COUNTRIES:
         country = IBAN_COUNTRIES[iban[:2]].name
         raise GiroCodeError(
-            f"An account in {country} is outside the EEA, so the GiroCode would need its bank's BIC."
+            f"An account in {country} is outside the European Economic Area (the EU, Iceland, Liechtenstein "
+            "and Norway), so the GiroCode would need its bank's BIC."
         )
     return value
 
@@ -219,8 +220,8 @@ def remittance(reference: str | None) -> tuple[str, str]:
     if looks_like_creditor_reference(text):
         if not creditor_reference_valid(text):
             raise GiroCodeError(
-                f"The reference {text} looks like an RF creditor reference, but its check digits don't "
-                "match — a character is wrong, missing or swapped."
+                f"The reference {text} looks like a creditor reference (starting with RF), but its check "
+                "digits don't match — a character is wrong, missing or swapped."
             )
         return compact(text), ""
     if len(text) > MAX_REMITTANCE:

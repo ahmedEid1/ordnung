@@ -12,6 +12,7 @@ import pytest
 
 from fixtures_llm import iban as make_iban
 from helpers_secretary import add_doc, add_item
+from ordnung.api.routes.items import ItemPatch, _confirm, _update
 from ordnung.db.store import Store
 from ordnung.models import (
     Evidence,
@@ -32,10 +33,12 @@ from ordnung.secretary.girocode_gate import (
     decide,
     document_girocodes,
     item_girocode,
+    known_iban,
     record_check,
     same_values,
     value_grounding,
 )
+from ordnung.secretary.triggers import Ledger
 
 TODAY = date(2026, 9, 28)
 KNOWN_IBAN = make_iban("DE", "100100100123456789")
@@ -133,12 +136,31 @@ def test_the_standards_limits_are_reasons_too() -> None:
     swiss = blocked(ready_facts(iban=make_iban("CH", "00762011623852957")))
     assert swiss.reason == "invalid"
     assert swiss.message == (
-        "No code: An account in Switzerland is outside the EEA, so the GiroCode would need its bank's BIC."
+        "No code: an account in Switzerland is outside the European Economic Area (the EU, Iceland, "
+        "Liechtenstein and Norway), so the GiroCode would need its bank's BIC. Copy the details by hand."
     )
     rf = blocked(ready_facts(reference="RF19 5390 0754 7034"))
     assert rf.reason == "invalid" and "check digits don't match" in rf.message
     assert blocked(ready_facts(payee="x" * 71)).reason == "invalid"
     assert isinstance(decide(ready_facts(reference="RF18 5390 0754 7034")), GiroCodeReady)
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"amount": 0.001}, "No code: a GiroCode carries amounts from €0.01 to €999,999,999.99."),
+        ({"reference": "x" * 141}, "No code: the reference is longer than the 140 characters"),
+        ({"payee": "x" * 71}, "No code: the payee's name is longer than the 70 characters"),
+        ({"reference": "RF19 5390 0754 7034"}, "No code: the reference RF19 5390 0754 7034 looks like"),
+    ],
+)
+def test_the_builders_refusals_read_on_after_no_code_and_say_what_to_do(
+    changes: dict[str, Any], message: str
+) -> None:
+    code = blocked(ready_facts(**changes))
+    assert code.reason == "invalid"
+    assert code.message.startswith(message)
+    assert code.message.endswith(" Copy the details by hand.")
 
 
 @pytest.mark.parametrize(
@@ -280,8 +302,42 @@ def test_a_reference_must_be_whole_words_of_the_page() -> None:
     assert value_grounding("oa-vw-2026-55012", [page(text)]) == "verified"
     assert value_grounding("12", [page(text)]) == "unverified"  # only inside longer numbers
     assert value_grounding("5126 0184 5123", [page(text)]) == "unverified"  # one digit misread
-    assert value_grounding("Kassenzeichen 5126", [page(text)]) == "verified"
     assert value_grounding("zeichen 5126", [page(text)]) == "unverified"
+
+
+@pytest.mark.parametrize(
+    ("value", "text"),
+    [
+        ("2026-0815", "Rechnungsnummer 2026-0815-77 vom 01.09.2026"),  # cut at a dash
+        ("0815-77", "Rechnungsnummer 2026-0815-77 vom 01.09.2026"),  # its start missing
+        ("Kassenzeichen 5126", "Kassenzeichen: 5126 0184-5122 · Datum 2012"),  # another digit group follows
+        ("5126 0184", "Kassenzeichen: 5126 0184-5122 · Datum 2012"),
+        ("0184 5122", "Kassenzeichen: 5126 0184 5122"),
+        ("OA/VW/2026", "Aktenzeichen OA/VW/2026/55012"),  # cut at a slash
+        ("12.345", "Az. 12.345.678"),  # cut at a dot
+    ],
+)
+def test_a_reference_cut_short_is_not_found(value: str, text: str) -> None:
+    assert value_grounding(value, [page(text)]) == "unverified"
+    assert value_grounding(value, [page(text, "transcript")]) == "unverified"
+
+
+def test_a_whole_reference_next_to_other_words_is_found() -> None:
+    assert (
+        value_grounding("2026-0815-77", [page("Rechnungsnummer 2026-0815-77 vom 01.09.2026")]) == "verified"
+    )
+    # the end of a sentence, a line break or a table's columns end it
+    assert value_grounding("5126 0184", [page("Kassenzeichen 5126 0184. Bitte zahlen Sie.")]) == "verified"
+    assert value_grounding("5126 0184", [page("Kassenzeichen 5126 0184\n2012 Musterstadt")]) == "verified"
+    assert value_grounding("R-2026-0815", [page("R-2026-0815   01.09.2026   49,99 €")]) == "verified"
+
+
+def test_an_iban_counts_as_printed_before_other_digits() -> None:
+    """A footer's columns run into each other; a cut-off IBAN fails its length and check digits anyway."""
+    grouped = " ".join(KNOWN_IBAN[i : i + 4] for i in range(0, 22, 4))
+    footer = f"IBAN {grouped} 10115 Berlin"
+    assert value_grounding(KNOWN_IBAN, [page(footer)], whole=False) == "verified"
+    assert value_grounding(KNOWN_IBAN, [page(footer)]) == "unverified"
 
 
 def todo(amount: float | None, *evidence: tuple[str, str], grounding: str = "verified") -> Item:
@@ -313,7 +369,21 @@ def test_the_amount_is_grounded_by_a_verified_sentence_that_states_it() -> None:
     assert amount_grounding(todo(49.99, ("Die Verwarnung wird wirksam.", "model_read"))) == "model_read"
     assert amount_grounding(todo(49.99, ("Bitte zahlen Sie 49,99 EUR.", "unverified"))) == "unverified"
     assert amount_grounding(todo(None, ("Bitte zahlen Sie 49,99 EUR.", "verified"))) == "unverified"
-    assert amount_grounding(todo(49.99, grounding="user")) == "user"
+
+
+def test_a_to_dos_user_grounding_is_about_its_date_not_its_amount() -> None:
+    """``grounding="user"`` comes from moving the date or "Correct" on a Please-check card: neither is
+    the person reading the amount off the letter."""
+    assert amount_grounding(todo(49.99, grounding="user")) == "unverified"
+    assert (
+        amount_grounding(todo(49.99, ("Zahlbar in 14 Tagen.", "verified"), grounding="user")) == "unverified"
+    )
+    assert amount_grounding(
+        todo(49.99, ("Die Verwarnung wird wirksam.", "model_read"), grounding="user")
+    ) == ("model_read")
+    assert amount_grounding(todo(49.99, ("Bitte zahlen Sie 49,99 EUR.", "verified"), grounding="user")) == (
+        "verified"
+    )
 
 
 # --------------------------------------------------------------------------------------------------
@@ -457,7 +527,7 @@ def test_a_photo_letter_waits_for_the_paper_then_holds_only_while_the_values_sta
     ready = record_check(store, item, code.values, TODAY)
     assert ready == GiroCodeReady(item_id=item_id, payload=PAYLOAD.format(iban=KNOWN_IBAN), checked=True)
     entry = store.last_activity("item", item_id, [CHECKED])
-    assert entry is not None and entry.data == code.values.model_dump()
+    assert entry is not None and entry.data == {**code.values.model_dump(), "doc_id": doc_id}
     assert entry.message == "You compared the transfer details of “Pay photo” with the paper letter"
     with pytest.raises(CheckRefused, match="nothing to compare"):
         record_check(store, item, code.values, TODAY)
@@ -501,6 +571,65 @@ def test_an_iban_not_printed_on_the_page_needs_the_paper(store: Store) -> None:
     assert code.message.startswith("No code yet: the IBAN wasn't found in the letter's text.")
 
 
+def test_the_check_is_deleted_with_the_letter_even_after_its_to_do(store: Store) -> None:
+    """docs/privacy.md: deleting the letter deletes the saved comparison (payee, IBAN, reference)."""
+    doc_id, item_id = letter(store, "photo", telecom(store), source="transcript")
+    code = code_for(store, item_id)
+    assert isinstance(code, GiroCodeBlocked) and code.values is not None
+    item = store.get_item(item_id)
+    assert item is not None
+    record_check(store, item, code.values, TODAY)
+    store.delete_item(item_id)  # "Delete to-do", or a re-read dropping it
+    assert store.last_activity("item", item_id, [CHECKED]) is not None
+    store.delete_document(doc_id)
+    assert store.last_activity("item", item_id, [CHECKED]) is None
+
+
+def unstated_amount(store: Store, source: str = "text") -> tuple[str, str]:
+    """A letter whose to-do has an amount its sentence doesn't state (so only the person can vouch)."""
+    return letter(
+        store, "unstated", telecom(store), source=source, amount=499.9, quote="Zahlbar bis zum 15.09.2026."
+    )
+
+
+def test_moving_the_date_never_vouches_for_the_amount(store: Store) -> None:
+    _, item_id = unstated_amount(store)
+    before = code_for(store, item_id)
+    assert isinstance(before, GiroCodeBlocked) and before.to_check == ["amount"]
+    moved = _update(store, item_id, ItemPatch(due_date="2026-10-15"), TODAY)
+    assert moved.grounding == "user"  # the date is the person's now …
+    after = code_for(store, item_id)  # … the amount still isn't
+    assert isinstance(after, GiroCodeBlocked) and after.reason == "check_letter"
+    assert after.to_check == ["amount"]
+    assert after.message.startswith("No code yet: the amount wasn't found in the letter's text.")
+
+
+def test_correct_on_a_please_check_card_never_vouches_for_the_amount(store: Store) -> None:
+    _, item_id = unstated_amount(store)
+    _confirm(store, item_id)
+    code = code_for(store, item_id)
+    assert isinstance(code, GiroCodeBlocked) and code.to_check == ["amount"]
+
+
+def test_on_a_photo_letter_moving_the_date_keeps_the_amount_to_compare(store: Store) -> None:
+    _, item_id = letter(store, "photo", telecom(store), source="transcript")
+    _update(store, item_id, ItemPatch(due_date="2026-10-15"), TODAY)
+    code = code_for(store, item_id)
+    assert isinstance(code, GiroCodeBlocked) and code.to_check == ["amount", "iban", "reference"]
+    assert code.message.startswith("No code yet: the amount, the IBAN and the reference were read by AI")
+
+
+def test_an_amount_the_person_typed_is_compared_with_the_paper_like_any_other(store: Store) -> None:
+    _, item_id = letter(store, "invoice", telecom(store))
+    assert isinstance(code_for(store, item_id), GiroCodeReady)
+    typed = _update(store, item_id, ItemPatch(amount=59.99), TODAY)
+    code = code_for(store, item_id)
+    assert isinstance(code, GiroCodeBlocked) and code.to_check == ["amount"]
+    assert code.values is not None and code.values.amount == 59.99
+    ready = record_check(store, typed, code.values, TODAY)
+    assert isinstance(ready, GiroCodeReady) and ready.checked and "\nEUR59.99\n" in ready.payload
+
+
 def test_a_letter_asking_for_two_transfers_gets_no_code_until_one_is_paid(store: Store) -> None:
     party = telecom(store)
     doc_id, first = letter(store, "two", party)
@@ -530,11 +659,162 @@ def test_a_letter_asking_for_two_transfers_gets_no_code_until_one_is_paid(store:
     assert isinstance(code_for(store, first), GiroCodeReady)
 
 
-def test_a_debit_in_the_quoted_sentence_blocks_even_when_the_todo_reads_like_a_transfer(store: Store) -> None:
-    quote = "Der Monatsbeitrag von 29,90 € wird zum 1. eines Monats per SEPA-Lastschrift eingezogen."
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "Der Monatsbeitrag von 29,90 € wird zum 1. eines Monats per SEPA-Lastschrift eingezogen.",
+        "Der Monatsbeitrag von 29,90 € wird per Bankeinzug von Ihrem Konto eingezogen.",
+        "Den Betrag von 29,90 € ziehen wir am 01.10.2026 von Ihrem Konto ein (Mandatsreferenz M-4711).",
+        "Der Betrag von 29,90 € wird wie gewohnt von Ihrem Konto DE12 3456 eingezogen.",
+        "Den Betrag von 29,90 € buchen wir am 15.10. ab.",
+        "Wir buchen den Beitrag von 29,90 € wie bisher zum 15. eines Monats ab, erstmals am 15.10.2026.",
+        "Der Beitrag von 29,90 € wird am 01.10.2026 abgebucht (Gläubiger-ID DE98ZZZ09999999999).",
+        "Eine Überweisung ist nicht nötig: den Betrag von 29,90 € ziehen wir ein.",
+    ],
+)
+def test_a_debit_in_the_quoted_sentence_blocks_even_when_the_todo_reads_like_a_transfer(
+    store: Store, quote: str
+) -> None:
     _, item_id = letter(store, "gym", telecom(store), amount=29.9, quote=quote)
     code = code_for(store, item_id)
-    assert isinstance(code, GiroCodeBlocked) and code.reason == "direct_debit"
+    assert isinstance(code, GiroCodeBlocked) and code.reason == "direct_debit", quote
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        # a returned debit: now the person has to transfer (and fees follow)
+        "Ihre Lastschrift wurde von Ihrer Bank zurückgegeben. Bitte überweisen Sie 49,99 EUR bis zum 15.09.2026.",
+        "Rücklastschrift: bitte zahlen Sie 49,99 EUR bis zum 15.09.2026.",
+        "Der Betrag von 49,99 EUR konnte nicht von Ihrem Konto abgebucht werden.",
+        # a mandate offered as the alternative to the transfer asked for
+        "Bitte überweisen Sie 49,99 EUR bis zum 15.09.2026 oder erteilen Sie uns ein SEPA-Lastschriftmandat.",
+    ],
+)
+def test_a_returned_debit_or_a_transfer_asked_for_is_no_direct_debit(store: Store, quote: str) -> None:
+    _, item_id = letter(store, "reminder", telecom(store), quote=quote)
+    assert code_for(store, item_id) == GiroCodeReady(item_id=item_id, payload=PAYLOAD.format(iban=KNOWN_IBAN))
+
+
+def test_a_new_monthly_amount_on_the_same_letter_doesnt_compete_with_its_back_payment(store: Store) -> None:
+    """A utility statement asks for its back-payment and sets new monthly advance payments (§ 560 Abs.
+    4 BGB): the back-payment gets its code, the monthly amount — paid by standing order — doesn't."""
+    party = telecom(store)
+    doc_id, back_payment = letter(store, "statement", party)
+    advance = add_item(
+        store,
+        kind="payment",
+        title="Update your standing order to the new monthly amount",
+        amount=670.0,
+        currency="EUR",
+        direction="out",
+        doc_id=doc_id,
+        recurrence={"freq": "monthly", "interval": 1},
+        evidence=[Evidence(doc_id=doc_id, quote="Ihre Gesamtmiete beträgt ab dem 01.11.2026 670,00 €.")],
+    )
+    assert code_for(store, back_payment) == GiroCodeReady(
+        item_id=back_payment, payload=PAYLOAD.format(iban=KNOWN_IBAN)
+    )
+    # the letter's reference is the back-payment's: none for the monthly amount, paid or not
+    for status in ("open", "done"):
+        store.update_item(back_payment, status=status)
+        code = code_for(store, advance)
+        assert isinstance(code, GiroCodeBlocked) and code.reason == "several", status
+    # set aside ("not a real to-do"), the back-payment no longer counts
+    store.update_item(back_payment, status="dismissed")
+    assert isinstance(code_for(store, advance), GiroCodeBlocked)
+    assert code_for(store, advance).reason != "several"  # type: ignore[union-attr]
+
+
+def test_two_monthly_payments_on_one_letter_get_no_code(store: Store) -> None:
+    party = telecom(store)
+    doc_id, _ = letter(store, "lease", party)
+    monthly = {"freq": "monthly", "interval": 1}
+    rent, parking = (
+        add_item(
+            store,
+            kind="payment",
+            title=title,
+            amount=amount,
+            direction="out",
+            doc_id=doc_id,
+            recurrence=monthly,
+        )
+        for title, amount in (("Rent", 640.0), ("Parking space", 40.0))
+    )
+    for item_id in (rent, parking):
+        code = code_for(store, item_id)
+        assert isinstance(code, GiroCodeBlocked) and code.reason == "several"
+
+
+def test_the_reference_goes_into_the_code_without_its_label(store: Store) -> None:
+    """The cashier matches the Kassenzeichen; "Kassenzeichen" itself only takes room in the 140."""
+    _, item_id = letter(store, "fine", telecom(store), reference="Kassenzeichen 5126 0184 5122")
+    code = code_for(store, item_id)
+    assert isinstance(code, GiroCodeReady)
+    assert code.payload.splitlines()[-1] == "5126 0184 5122"
+    _, photo_id = letter(
+        store, "photo-fine", telecom(store), reference="Kassenzeichen: 5126 0184 5122", source="transcript"
+    )
+    photo = code_for(store, photo_id)
+    assert isinstance(photo, GiroCodeBlocked) and photo.values is not None
+    assert photo.values.reference == "5126 0184 5122"
+
+
+def test_a_reference_read_cut_short_needs_the_paper(store: Store) -> None:
+    _, item_id = letter(store, "cut", telecom(store), reference="2026-0815")
+    store.set_pages(
+        store.list_documents()[0].id,
+        [
+            {
+                "page": 1,
+                "width": 100,
+                "height": 100,
+                "image_path": "derived/cut.jpg",
+                "text": f"Rechnungsnummer 2026-0815-77\nBitte überweisen Sie 49,99 EUR bis zum 15.09.2026.\n"
+                f"IBAN: {KNOWN_IBAN}",
+                "text_source": "text",
+            }
+        ],
+    )
+    code = code_for(store, item_id)
+    assert isinstance(code, GiroCodeBlocked) and code.to_check == ["reference"]
+
+
+def test_a_scam_letter_teaches_no_known_iban_and_marks_its_iban(store: Store) -> None:
+    """A letter with hidden text still teaches its sender its IBAN (ingest checks only the payment):
+    a later letter from that sender asking for the same account must not count it as known — and gets
+    no code at all, however clean it looks on its own."""
+    party = telecom(store, ibans=[ATTACKER_IBAN])
+    scam_id, _ = letter(store, "hidden", party, iban=ATTACKER_IBAN, hidden_text=True)
+    photo_id, photo_item = letter(store, "follow-up", party, iban=ATTACKER_IBAN, source="transcript")
+    stored = store.get_party(party)
+    assert stored is not None
+    assert not known_iban(Ledger(store, TODAY), stored, ATTACKER_IBAN, photo_id)
+    _, text_item = letter(store, "text-follow-up", party, iban=ATTACKER_IBAN)
+    for item_id in (photo_item, text_item):
+        code = code_for(store, item_id)
+        assert isinstance(code, GiroCodeBlocked) and code.reason == "scam"
+        assert code.message == (
+            "No code: this IBAN is also in “hidden.pdf”, a letter that shows signs of a scam. Check with the "
+            "sender using contact details you already have, not the ones in this letter."
+        )
+    # the scam letter in the trash still counts; deleted for good, it is forgotten
+    store.update_document(scam_id, deleted_at="2026-09-27T10:00:00Z")
+    assert getattr(code_for(store, text_item), "reason", None) == "scam"
+    store.delete_document(scam_id)
+    assert isinstance(code_for(store, text_item), GiroCodeReady)
+
+
+def test_a_letter_in_the_trash_makes_no_iban_known(store: Store) -> None:
+    party = telecom(store, ibans=[KNOWN_IBAN])
+    earlier, _ = letter(store, "earlier", party)
+    photo_id, _ = letter(store, "photo", party, source="transcript")
+    stored = store.get_party(party)
+    assert stored is not None
+    assert known_iban(Ledger(store, TODAY), stored, KNOWN_IBAN, photo_id)
+    store.update_document(earlier, deleted_at="2026-09-27T10:00:00Z")
+    assert not known_iban(Ledger(store, TODAY), stored, KNOWN_IBAN, photo_id)
 
 
 def test_an_invoice_a_reminder_took_over(store: Store) -> None:

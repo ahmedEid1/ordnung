@@ -67,7 +67,8 @@ library bundled into the app. No online QR service is ever asked, nothing about 
 Claude or anywhere else, and the code is not stored — it is worked out again each time you open a
 letter. When you confirm "These match the letter", the details you compared are written to the
 activity log in your database (they are what the letter says), so the code stays unlocked until the
-letter is read differently; deleting the letter deletes that entry too. Scanning the code hands its
+letter is read differently; deleting the letter deletes that entry too (also when you deleted the
+to-do first). Scanning the code hands its
 text to your banking app on your phone, like typing it would.
 
 ## Hardening built into every model call
