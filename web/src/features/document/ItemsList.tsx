@@ -80,9 +80,11 @@ function ItemRow({ item, docId }: { item: Item; docId: string }) {
         <Check className="size-3" strokeWidth={3.5} aria-hidden />
       </button>
       <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-3">
-          <p className={cn("text-[14.5px] font-medium leading-snug", open ? "text-ink" : "text-muted line-through decoration-muted/50")}>{item.title}</p>
-          {item.amount != null ? <Money amount={item.amount} currency={item.currency} tone={item.direction === "in" ? "in" : "default"} className="text-[14px]" /> : null}
+        {/* a long German word breaks where it must, and on a phone the amount goes under the title rather than
+            past its column (review round 2: "…Betriebskostenabrechnung)" and "€670.00" overflowed at 320 px) */}
+        <div className="flex flex-col items-start gap-0.5 sm:flex-row sm:justify-between sm:gap-3">
+          <p className={cn("min-w-0 text-[14.5px] font-medium leading-snug [overflow-wrap:anywhere] hyphens-auto", open ? "text-ink" : "text-muted line-through decoration-muted/50")}>{item.title}</p>
+          {item.amount != null ? <Money amount={item.amount} currency={item.currency} tone={item.direction === "in" ? "in" : "default"} className="shrink-0 text-[14px]" /> : null}
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[12.5px]">
           <KindBadge kind={item.kind} direction={item.direction} />

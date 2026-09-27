@@ -56,12 +56,16 @@ describe("scroll padding (focus and jumps stay clear of the fixed bars — WCAG 
     expect(html).toMatch(/scroll-padding-top:\s*4\.5rem;/);
   });
 
-  it("keeps targets above the phone tab bar, the home indicator and the tour bar", () => {
-    expect(html).toMatch(/scroll-padding-bottom:\s*calc\(5rem \+ env\(safe-area-inset-bottom, 0px\) \+ var\(--ordnung-tour-bar, 0px\)\);/);
+  it("keeps targets above the phone tab bar, the home indicator, the tour bar and the Ask question box", () => {
+    expect(html).toMatch(
+      /scroll-padding-bottom:\s*calc\(\s*5rem \+ env\(safe-area-inset-bottom, 0px\) \+ var\(--ordnung-tour-bar, 0px\) \+ var\(--ask-composer-h, 0px\)\s*\);/,
+    );
   });
 
-  it("from tablets up (no tab bar) only leaves room for the tour card", () => {
-    expect(html).toMatch(/@variant md\s*{\s*scroll-padding-bottom:\s*calc\(1\.5rem \+ var\(--ordnung-tour-clearance, 0px\)\);/);
+  it("from tablets up (no tab bar) only leaves room for the tour card and the Ask question box", () => {
+    expect(html).toMatch(
+      /@variant md\s*{\s*scroll-padding-bottom:\s*calc\(1\.5rem \+ var\(--ordnung-tour-clearance, 0px\) \+ var\(--ask-composer-h, 0px\)\);/,
+    );
   });
 });
 

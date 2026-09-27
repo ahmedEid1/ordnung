@@ -34,7 +34,9 @@ function ChannelRow({ c, n }: { c: SendChannel; n: number }) {
   const Icon = copy.icon;
   const t = TONES[c.allowed ? copy.tone : "neutral"];
   return (
-    <li className={cn("flex gap-3 py-3 first:pt-0 last:pb-0", !c.allowed && "opacity-70")}>
+    // a channel that isn't allowed is said in full-contrast text (review round 2: the faded row failed WCAG
+    // 1.4.3 — and a court's letter depends on this row to say that e-mail is invalid): only its name is struck
+    <li className="flex gap-3 py-3 first:pt-0 last:pb-0">
       <span className="relative mt-0.5 shrink-0">
         <span className={cn("grid size-8 place-items-center rounded-lg", t.soft, t.icon)}>
           <Icon className="size-4" aria-hidden />
@@ -47,19 +49,19 @@ function ChannelRow({ c, n }: { c: SendChannel; n: number }) {
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className={cn("text-[14px] font-medium", c.allowed ? "text-ink" : "text-muted line-through decoration-muted/50")}>{c.label || copy.label}</span>
+          <span className={cn("text-[14px] font-medium", c.allowed ? "text-ink" : "text-ink/80 line-through decoration-ink/40")}>{c.label || copy.label}</span>
           {c.recommended && c.allowed ? (
             <Badge tone="ok" size="sm">
               Recommended
             </Badge>
           ) : null}
           {!c.allowed ? (
-            <Badge tone="neutral" size="sm">
+            <Badge tone="warn" size="sm">
               Not enough for this letter
             </Badge>
           ) : null}
         </div>
-        {c.note ? <p className="mt-0.5 text-[13px] leading-5 text-muted">{c.note}</p> : null}
+        {c.note ? <p className={cn("mt-0.5 text-[13px] leading-5", c.allowed ? "text-muted" : "text-ink/80")}>{c.note}</p> : null}
         {c.citation ? (
           <p className="mt-1 inline-flex rounded-md bg-surface-2 px-1.5 py-px text-[11.5px] font-medium text-muted" title="Legal basis">
             {c.citation}

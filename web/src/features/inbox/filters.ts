@@ -52,12 +52,14 @@ export function inboxDate(d: Document): string {
 
 /**
  * The date a row shows — the one its month group is built from ({@link inboxDate}) — and what it
- * is: "Arrived" (the letter's arrival date) or "Added" (no arrival date: when it was added). The
+ * is: "Arrived" (the letter's arrival date; "Delivered" for a court order) or "Added" (no arrival date: when it was added). The
  * letter's own date goes along when it differs ("dated 31 Aug").
  */
-export function inboxDateInfo(d: Document): { date: string; verb: "Arrived" | "Added"; docDate: string | null } {
+export function inboxDateInfo(d: Document): { date: string; verb: "Arrived" | "Delivered" | "Added"; docDate: string | null } {
   const date = inboxDate(d);
-  return { date, verb: d.received_date ? "Arrived" : "Added", docDate: d.doc_date && d.doc_date !== date ? d.doc_date : null };
+  // a court order's day is the one on the yellow envelope: "delivered", as everywhere (review round 2)
+  const arrived = d.kind === "court_payment_order" || d.kind === "enforcement_order" ? "Delivered" : "Arrived";
+  return { date, verb: d.received_date ? arrived : "Added", docDate: d.doc_date && d.doc_date !== date ? d.doc_date : null };
 }
 
 export interface LetterGroup {

@@ -317,7 +317,9 @@ describe("Receipt", () => {
       />,
     );
     const caption = screen.getByText(/What the law says/);
-    expect(caption).toHaveTextContent("What the law says (§ 4 S. 1 KSchG, in short)");
+    // review round 2: one parenthesis at most, and the law's words without the letter's yellow marker
+    expect(caption).toHaveTextContent("What the law says, in short — § 4 S. 1 KSchG");
     expect(screen.queryByText(/What the letter says/)).toBeNull();
+    expect(screen.getByText(/innerhalb von drei Wochen/).className).not.toMatch(/\bmarker\b/);
   });
 });

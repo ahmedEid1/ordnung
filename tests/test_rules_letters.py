@@ -2586,6 +2586,32 @@ def test_a_cost_items_or_the_tenants_period_never_makes_a_statement_late(text: s
     assert card.facts[0].title == "Probably on time"
 
 
+#: The demo's statement (and most real ones) writes the tenant's own time beside the billing period.
+BESIDE = "Betriebskostenabrechnung 2025\nAbrechnungszeitraum 01.01.–31.12.2025 · Ihr Nutzungszeitraum 01.10.–31.12.2025 (92 Tage)\nNachzahlung 184,30 €"
+BESIDE_FIRST = "Betriebskostenabrechnung 2025\nIhr Nutzungszeitraum: 01.10.–31.12.2025 · Abrechnungszeitraum 01.01.–31.12.2025\nNachzahlung 184,30 €"
+
+
+@pytest.mark.parametrize("text", [BESIDE, BESIDE_FIRST], ids=["tenant-after", "tenant-before"])
+def test_the_tenants_period_written_beside_the_billing_period_leaves_it_the_billing_period(text: str) -> None:
+    """Review round 2 of phase 2 (found by the UI audit of the fix for the move-out period): a tenant marker
+    that labels a range of its own says the other range is *not* the tenant's — the demo's statement lost its
+    billing period ("doesn't call it the billing period") and was only "probably" on time."""
+    period = BillingPeriod(D("2025-12-31"), True, "01.01.2025 – 31.12.2025", True)
+    assert billing_period(text, before=D("2026-09-10")) == period
+    card = letter_advice(
+        "operating_costs", today=D("2026-09-27"), arrived=D("2026-09-10"), arrival_confirmed=True, text=text
+    )
+    assert card is not None and card.facts[0].title == "On time"
+    # … and a statement that arrives after 31 Dec 2026 is certainly late
+    assert statement_late(text, D("2027-01-15"), True, None) is True
+
+
+def test_a_marker_before_its_own_range_still_marks_it_after_a_gap() -> None:
+    """The marker's dates may follow a colon and "vom": the tenant's range is never the billing period."""
+    text = "Abrechnungsjahr 2025\nMietdauer: vom 01.01.2025 bis 30.04.2025\nNachzahlung 20,00 €"
+    assert billing_period(text, before=D("2026-07-15")) == BillingPeriod(D("2025-12-31"), False, "2025")
+
+
 def test_a_labelled_move_out_period_alone_is_at_most_probably_late() -> None:
     text = "Abrechnungszeitraum: 01.01.2025 – 30.04.2025 (Auszug)\nNachzahlung 20,00 €"
     card = letter_advice(
@@ -3336,7 +3362,14 @@ def test_a_card_is_no_longer_urgent_once_the_person_closed_every_to_do(
     assert card.urgent and not handled.urgent and handled.handled and not card.handled
     asks = kind != "operating_costs"  # the court orders and the dismissal ask for the delivery day first
     assert handled.steps == (card.steps[1:] if asks else card.steps)
-    assert handled.model_copy(update={"urgent": True, "handled": False, "steps": card.steps}) == card
+    assert (
+        handled.model_copy(
+            update={"urgent": True, "handled": False, "steps": card.steps, "title": card.title}
+        )
+        == card
+    )
+    # review round 2 of phase 2: the title names the letter, never the deadline it no longer urges
+    assert handled.title == f"{card.title.split(' — ')[0]} — you've dealt with it"
 
 
 @pytest.mark.parametrize(
@@ -3361,7 +3394,10 @@ def test_a_landlords_notice_no_to_do_carries_is_never_handled(facts: dict[str, A
     assert card.closable and not ordinary.closable
     dealt = letter_advice("landlord_notice", today=TODAY, dealt_with=True, **facts)
     assert dealt is not None and dealt.handled and not dealt.urgent and dealt.closable
-    assert dealt.model_copy(update={"urgent": True, "handled": False}) == card
+    assert dealt.model_copy(update={"urgent": True, "handled": False, "title": card.title}) == card
+    # review round 2 of phase 2: a handled card no longer urges what it did
+    assert dealt.title == "Notice from your landlord — you've dealt with it"
+    assert ordinary.title == "Notice from your landlord — you've dealt with it"
     # the tag means nothing on a card its to-dos settle
     other = letter_advice("landlord_notice", today=TODAY, dealt_with=True)
     assert other is not None and not other.handled

@@ -212,14 +212,18 @@ export function Receipt({
           <figcaption className="mb-1 flex items-start gap-1.5 text-xs font-medium text-muted">
             <Quote className="mt-0.5 size-3.5 shrink-0" aria-hidden />
             <span>
+              {/* one parenthesis at most (review round 2: "(§ 692 …, in short) (in German — …)") */}
               {quote.source === "law"
-                ? `What the law says${quote.citation ? ` (${quote.citation}, in short)` : " (in short)"}`
+                ? `What the law says, in short${quote.citation ? ` — ${quote.citation}` : ""}`
                 : "What the letter says"}
               {german ? " (in German — the sentence above says it in English)" : ""}
             </span>
           </figcaption>
           <blockquote lang={german ? "de" : undefined} className="text-sm leading-relaxed text-ink">
-            <span className="marker box-decoration-clone px-0.5">{formatInlineText(quote.text, { rewrite: false })}</span>
+            {/* the yellow marker is the page image's sign for words found in the letter — never the law's */}
+            <span className={cn(quote.source === "law" ? "" : "marker box-decoration-clone px-0.5")}>
+              {formatInlineText(quote.text, { rewrite: false })}
+            </span>
           </blockquote>
           {quote.grounding ? <GroundingBadge grounding={quote.grounding} page={quote.page} className="mt-2" /> : null}
         </figure>

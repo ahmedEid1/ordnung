@@ -229,14 +229,29 @@ const COURT_ORDERS = new Set<Document["kind"]>(["court_payment_order", "enforcem
  * `template_refusal`): more time against a deadline the law sets (a court order, a dismissal), or
  * instalments offered to a court instead of the claimant.
  */
+/** What an offer of instalments to a court order's claimant still says (the letter stays linked to the order). */
+export const CLAIMANT_NOTE =
+  "Still pay or object by the court's deadline — an offer to pay in instalments doesn't stop the order. Offering instalments acknowledges the claim: the limitation period starts again (§ 212 Abs. 1 Nr. 1 BGB) and it is hard to dispute later.";
+
 export interface TemplateRefusal {
   title: string;
   body: string;
   /** Instalments offered to a court: the letter can go to the claimant instead (a typed recipient). */
   toClaimant?: boolean;
+  /** The refusal points to the letter's "get advice" card: the composer links to it. */
+  seeCard?: boolean;
 }
 
-export function templateRefusal(kind: TemplateDraftKind, letterKind: Document["kind"] | null | undefined): TemplateRefusal | null {
+/**
+ * Why a template letter can't answer a letter of `letterKind` (mirrors `drafts.compose.template_refusal`):
+ * `toClaimant` — instalments on a court order go to its claimant, typed in, and the letter stays linked to
+ * the order (its reference and date), so there is no refusal.
+ */
+export function templateRefusal(
+  kind: TemplateDraftKind,
+  letterKind: Document["kind"] | null | undefined,
+  toClaimant = false,
+): TemplateRefusal | null {
   if (kind === "extension_request" && letterKind && COURT_ORDERS.has(letterKind)) {
     return {
       title: "A court's deadline can't be extended",
@@ -250,9 +265,10 @@ export function templateRefusal(kind: TemplateDraftKind, letterKind: Document["k
     return {
       title: "The three weeks can't be extended",
       body: "The three weeks for a court action against a dismissal are set by law (§ 4 KSchG) — your employer can't extend them. Get advice now (see the card on the letter).",
+      seeCard: true,
     };
   }
-  if (kind === "payment_plan" && letterKind && COURT_ORDERS.has(letterKind)) {
+  if (kind === "payment_plan" && letterKind && COURT_ORDERS.has(letterKind) && !toClaimant) {
     return {
       title: "Offer instalments to the claimant, not the court",
       body: "A court doesn't agree instalments — the claimant does: write to them instead (the order names them as the Antragsteller), and still pay or object by the court's deadline — an offer to pay in instalments doesn't stop the order. Offering instalments acknowledges the claim: the limitation period starts again (§ 212 Abs. 1 Nr. 1 BGB) and it is hard to dispute later — and money paid on a time-barred claim can't be reclaimed (§ 214 Abs. 2 BGB). If you think the claim is wrong or time-barred, object or get debt advice first.",

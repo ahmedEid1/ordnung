@@ -126,7 +126,9 @@ describe("chooseMainAction", () => {
     const rent = makeItem({ kind: "payment", amount: 670, due_date: "2026-12-01", recurrence: { interval: 1, unit: "months" }, computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
     expect(notOwedReason(rent, null)).toBe("consent");
     const card = { kind: "rent_increase", urgent: false } as NonNullable<Parameters<typeof mayNotBeOwed>[1]>;
-    expect(notOwedReason(makeItem({ kind: "payment", amount: 670 }), card)).toBe("consent");
+    // review round 2: the note is the server's, on the new rent alone (dated or not) — never the current rent
+    expect(notOwedReason(makeItem({ kind: "payment", amount: 670, computation: makeReceipt({ rule_ids: ["bgb_558b"] }) }), card)).toBe("consent");
+    expect(notOwedReason(makeItem({ kind: "payment", amount: 640, recurrence: { interval: 1, unit: "months" } }), card)).toBeNull();
     expect(notOwedReason(makeItem({ kind: "payment", amount: 30, direction: "in" }), card)).toBeNull();
     expect(chooseMainAction(makeDetail({ items: [rent] }), rent).type).toBe("calendar");
   });

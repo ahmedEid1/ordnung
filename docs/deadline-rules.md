@@ -476,7 +476,10 @@ The letter never states this deadline, so a dismissal always brings it as a to-d
 advice" card (union, employment lawyer, the labour court's *Rechtsantragstelle*). Ordnung never drafts
 a court action. **From any employer** — a city, a university or a Land too: a dismissal is a declaration
 under private law that takes effect when it arrives (§ 130 BGB), so an authority's delivery fiction never
-applies to it, and the three weeks are counted by §§ 187, 188 BGB alone. The action may be filed at the labour
+applies to it, and the three weeks are counted by §§ 187, 188 BGB alone. It arrives when it is put in the
+letterbox or handed over, even when the person is away or opens it later: the letter's page asks for that
+day with no date filled in (never today, as for a landlord's notice, a rent increase or a statement) and
+says so; until then the three weeks count from the letter's own date, the earliest possible. The action may be filed at the labour
 court of the employer's seat or of the place of work (§ 48 Abs. 1a ArbGG), which may be in another Land: a
 regional holiday moves the end only when it holds both at the employer's seat and where the person lives
 (the place of work's stand-in), else nationwide holidays only — the earlier date, with the warning that a
@@ -659,7 +662,9 @@ and the tenant may inspect the receipts. The card's check is written so that it 
   own name ("Heizkostenabrechnung\nZeitraum: …"), and even then it never makes a named billing year end
   earlier. The tenant's own time in the flat ("Nutzungszeitraum", "Mietdauer … (Auszug)", "Mietende" on the
   next line) is never the billing period, even when the letter labels it so: a tenant who moved out mid-year
-  gets the landlord's period all the same, so such a range decides at most "probably". A date
+  gets the landlord's period all the same, so such a range decides at most "probably". A range with the
+  tenant's own range written beside it ("Abrechnungszeitraum 01.01.–31.12.2025 · Ihr Nutzungszeitraum
+  01.10.–31.12.2025", as most statements do) is not the tenant's: the marker labels its own dates. A date
   near the ends of the calendar (a misread year such as 9999) claims nothing. The previous year's comparison (next to "Vorjahr", "Vergleich"; a heating statement must show
   it, § 6a Abs. 3 S. 1 Nr. 5 HeizkostenV) never decides: when it is the latest range found, the
   statement's own period was missed and nothing is claimed.

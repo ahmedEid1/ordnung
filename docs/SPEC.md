@@ -252,7 +252,7 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   to-do for the notice in the alternative. Once the person has closed every to-do that carries a high-stakes letter's legal deadline (the
   law's, or one citing a rule of its card — never the arrears a notice demands or a handover appointment)
   its card is no longer urgent and says so (`advice.handled`, which the verdict uses; never by a recurring
-  to-do), stops asking for the delivery day and offers no letter, and the verdict says it is filed; a
+  to-do; its title then reads "… — you've dealt with it" instead of the urgent one), stops asking for the delivery day and offers no letter, and the verdict says it is filed; a
   landlord's notice no objection to-do carries is `closable` instead: the person files it with "I've dealt
   with this" (the letter's `dealt-with` tag, undoable). The objection is for a home only (not a garage or business premises, § 578
   BGB). A rent increase is a
@@ -284,7 +284,8 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   letter calls its billing period with an "Abrechnungs…" word, or a split year's own months) — never to a
   cost item's service period (a bare "Zeitraum" is no label) or the tenant's own time in the flat
   ("Nutzungszeitraum", "Mietdauer … (Auszug)", "Mietende"), which is never the billing period, even when
-  labelled so (at most "probably"): a tenant who moved out mid-year gets the landlord's period (§ 556 Abs. 3
+  labelled so (at most "probably") — though a range with the tenant's own range written beside it
+  ("Abrechnungszeitraum 01.01.–31.12.2025 · Ihr Nutzungszeitraum 01.10.–31.12.2025") is not the tenant's: a tenant who moved out mid-year gets the landlord's period (§ 556 Abs. 3
   S. 2 BGB). A
   date near the end of the calendar (a mistyped year 9999) claims nothing, never an error. When it calls a statement (probably) late, the letter's one-off back-payments (never a
   credit or the new monthly prepayment) carry a "may not be owed — check before you pay" warning, the card
@@ -292,7 +293,9 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   page ("What kind of letter is this?"); a kind the person chose is kept when the letter is read again
   (the kind and its "kind chosen" entry are written together under the ledger lock, and a re-read reads
   the letter again inside it), a kind an older version filed — the model's, or a high-stakes kind the
-  policy no longer gives — is not.
+  policy no longer gives — is not. A statement the person filed under another kind (even the kind it was
+  stored under) is never recognised as a statement again: no card, no late-statement check, no payment note
+  (`plan.kind_chosen`).
 
 ## 7. LLM layer — `llm/` (implemented; update to v2 invocation)
 
@@ -575,7 +578,9 @@ BGB), `deposit_return` (the profile's IBAN) and `address_change`, written entire
 and English sentences (`drafts/template_letters.py`) filled from `LetterDetails` (`POST /api/drafts`
 `details`); a missing required fact is refused with what to add, and so is more time against a
 deadline the law sets (a court order, a dismissal) or instalments offered to a court instead of the
-claimant (`compose.template_refusal`). A withdrawal's date is the 14 days while they run, even when
+claimant (`compose.template_refusal`). Instalments on a court order go to its claimant, typed in: the
+letter stays linked to the order (its Geschäftsnummer and date, "aus dem Mahnbescheid vom …"), the typed
+claimant — never the court — is its recipient (`compose.to_claimant`). A withdrawal's date is the 14 days while they run, even when
 the person says the instructions were missing (the 12 months and 14 days are then a note). An
 objection to a court payment order objects to the whole claim (a partial one goes on the court's
 form, which the note says); the application to suspend enforcement is added only when the person

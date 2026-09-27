@@ -219,6 +219,38 @@ describe("warnings & Please check", () => {
     expect(screen.queryByText(/may be an authority/)).toBeNull();
   });
 
+  it("never fills in a day for a dismissal, and says when a letter counts as received (review round 2)", async () => {
+    // a dismissal uploaded after a holiday saved "today" — § 4 KSchG runs from Zugang: the day it was put in the letterbox
+    const doc = makeDoc({ kind: "dismissal", doc_date: "2026-09-20", received_date: null });
+    const item = makeItem({
+      kind: "deadline",
+      date_spec: { type: "relative", anchor: "receipt", amount: 3, unit: "weeks", nature: "objection" } as never,
+      computation: { due_date: "2026-10-11", rule_ids: ["kschg_4", "private_sender_arrival"], steps: [], warnings: [], confidence: "medium", summary: "", holiday_calendar: "", send_by: null, safe_date: null },
+    });
+    // an employer may be a public body, but a dismissal is a declaration under private law: its three weeks
+    // count from the day it really arrived, never capped at the day a letter usually counts as delivered
+    const employer = { ...(await detailFromMock("doc_gym_price")).party!, kind: "employer" as const };
+    renderWithProviders(<DocumentWarnings detail={makeDetail({ document: doc, items: [item], party: employer })} />, { client: client() });
+    expect(screen.getByText(/put in your letterbox or handed to you, even if you\s+were away/)).toBeInTheDocument();
+    expect(screen.queryByText(/may be an authority/)).toBeNull();
+    expect(screen.getByLabelText("Arrival date")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("says why a day before the letter's own date can't be saved (WCAG 3.3.1)", async () => {
+    const doc = makeDoc({ kind: "invoice", doc_date: "2026-09-23", received_date: null });
+    const item = makeItem({ date_spec: { type: "relative", anchor: "receipt", amount: 2, unit: "weeks", nature: "payment" } as never });
+    renderWithProviders(<DocumentWarnings detail={makeDetail({ document: doc, items: [item] })} />, { client: client() });
+    const input = screen.getByLabelText("Arrival date");
+    const user = userEvent.setup();
+    await user.clear(input);
+    await user.type(input, "2026-09-20");
+    const problem = screen.getByText(/before the letter's own date/);
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input.getAttribute("aria-describedby")).toBe(problem.id);
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
   it("renders nothing when all is well", () => {
     const { container } = renderWithProviders(<DocumentWarnings detail={makeDetail()} />, { client: client() });
     expect(container.querySelector("section")).toBeNull();

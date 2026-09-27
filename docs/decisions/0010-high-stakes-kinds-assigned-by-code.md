@@ -17,7 +17,8 @@ means reading some German wording in code — the kind of clause parsing ADR 000
    a letter under one of them from the reading (`rules/routing.py`), one short written policy per kind in
    the module docstring; the person can change the kind on the letter's page, and a kind the person
    chose is kept when the letter is read again. An operating-cost statement is only recognised on read
-   (its dates don't depend on its kind), never from a reminder about an old statement.
+   (its dates don't depend on its kind), never from a reminder about an old statement, and never against a
+   kind the person chose for the letter.
 2. **Court orders: three signals, no list of exceptions.** The sender is a court (its name names a kind of
    court, or abbreviates one before a place from a sender read as an authority or of no particular kind —
    a company whose name starts like "LG" or "AG" is none, nor a recipient typed in without its kind unless

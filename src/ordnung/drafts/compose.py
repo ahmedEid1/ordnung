@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from typing import TYPE_CHECKING, cast, get_args
 
@@ -496,14 +496,33 @@ _COURT_INSTALMENTS = (
 )
 
 
-def template_refusal(kind: str, letter_kind: str | None) -> str | None:
+_COURT_ORDERS = ("court_payment_order", "enforcement_order")
+_ORDER_NAMES = {"court_payment_order": "Mahnbescheid", "enforcement_order": "Vollstreckungsbescheid"}
+
+
+def template_refusal(kind: str, letter_kind: str | None, *, to_claimant: bool = False) -> str | None:
     """Why a template letter can't answer a letter of ``letter_kind``, or ``None``: more time against a
-    deadline the law sets (a court order, a dismissal), instalments offered to a court."""
+    deadline the law sets (a court order, a dismissal), instalments offered to a court — not to the
+    order's claimant, typed in (``to_claimant``: the letter still answers the order, with its reference)."""
     if kind == "extension_request" and letter_kind in _NO_EXTENSION:
         return _NO_EXTENSION[letter_kind]
-    if kind == "payment_plan" and letter_kind in ("court_payment_order", "enforcement_order"):
+    if kind == "payment_plan" and letter_kind in _COURT_ORDERS and not to_claimant:
         return _COURT_INSTALMENTS
     return None
+
+
+def to_claimant(kind: str, sources: Sources, details: LetterDetails | None) -> bool:
+    """Whether a letter offering instalments on a court order goes to its claimant, typed in (review round 2
+    of phase 2): it stays linked to the order — its reference number (Geschäftsnummer) and date — and the
+    typed claimant, never the court, is its recipient."""
+    document = sources.document
+    return (
+        kind == "payment_plan"
+        and document is not None
+        and document.kind in _COURT_ORDERS
+        and details is not None
+        and bool((details.recipient or "").strip())
+    )
 
 
 def template_input(
@@ -531,6 +550,9 @@ def template_input(
         deadline=parse_day(deadline.due_date) if deadline else None,
         amount=payment.amount if payment else None,
         period=billing_period_text(text, before=sources.doc_date) if text else None,
+        court_order=_ORDER_NAMES.get(document.kind or "")
+        if document is not None and kind == "payment_plan"
+        else None,
     )
 
 
@@ -694,7 +716,11 @@ def plan_letter(
     details: LetterDetails | None = None,
 ) -> Plan:
     """The code-written frame, reference translation and send guidance of a letter."""
-    refusal = template_refusal(kind, sources.document.kind if sources.document else None)
+    refusal = template_refusal(
+        kind,
+        sources.document.kind if sources.document else None,
+        to_claimant=to_claimant(kind, sources, details),
+    )
     if refusal is not None:
         raise DraftError(refusal)
     end_date, due = _letter_due(store, kind, sources, today)
@@ -1231,6 +1257,8 @@ async def compose(
     store, today = ctx.store, local_today(ctx.store)
     instructions = instructions.strip()[:MAX_INSTRUCTIONS]
     sources = load_sources(store, draft_kind, doc_id=doc_id, contract_id=contract_id, party_id=party_id)
+    if to_claimant(draft_kind, sources, details):
+        sources = replace(sources, party=None)  # the order's sender is the court, not who the letter goes to
     plan = plan_letter(
         store,
         draft_kind,

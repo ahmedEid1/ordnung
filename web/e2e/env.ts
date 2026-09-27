@@ -18,8 +18,16 @@ export const WEB_DIR = resolve(here, "..");
 export const PORT = Number(process.env.ORDNUNG_E2E_PORT ?? 8799);
 export const BASE_URL = `http://127.0.0.1:${PORT}`;
 export const DATA_DIR = resolve(process.env.ORDNUNG_E2E_DATA ?? join(tmpdir(), "ordnung-e2e"));
+/**
+ * Where a run keeps its own files: next to its data folder when one is given, so two runs on two ports never
+ * share a session or a results folder (review round 2: a second run overwrote the first one's session token);
+ * else the defaults CI uploads from.
+ */
+const RUN_DIR = process.env.ORDNUNG_E2E_DATA ? `${DATA_DIR}-playwright` : null;
 /** Cookie jar written by `global-setup.ts` (the session token from `<data>/server.json`). */
-export const STORAGE_STATE = join(here, ".auth", "state.json");
+export const STORAGE_STATE = RUN_DIR ? join(RUN_DIR, "auth", "state.json") : join(here, ".auth", "state.json");
+/** Playwright's output folder (traces, screenshots of failures). */
+export const OUTPUT_DIR = RUN_DIR ? join(RUN_DIR, "test-results") : join(WEB_DIR, "test-results");
 
 function ordnungBin(): string {
   if (process.env.ORDNUNG_BIN) return process.env.ORDNUNG_BIN;

@@ -200,12 +200,15 @@
     /*
      * Whatever gets focus or is scrolled to (Tab, anchor jumps, scrollIntoView) stops clear of the
      * sticky top bar (h-14) and, on phones, of the fixed tab bar (h-16 + home indicator) and the
-     * demo tour bar — WCAG 2.4.11. The tour sets --ordnung-tour-bar / --ordnung-tour-clearance.
+     * demo tour bar — WCAG 2.4.11. The tour sets --ordnung-tour-bar / --ordnung-tour-clearance; the Ask
+     * page sets --ask-composer-h, the height of its sticky question box.
      */
     scroll-padding-top: 4.5rem;
-    scroll-padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px) + var(--ordnung-tour-bar, 0px));
+    scroll-padding-bottom: calc(
+      5rem + env(safe-area-inset-bottom, 0px) + var(--ordnung-tour-bar, 0px) + var(--ask-composer-h, 0px)
+    );
     @variant md {
-      scroll-padding-bottom: calc(1.5rem + var(--ordnung-tour-clearance, 0px));
+      scroll-padding-bottom: calc(1.5rem + var(--ordnung-tour-clearance, 0px) + var(--ask-composer-h, 0px));
     }
   }
   html.dark {

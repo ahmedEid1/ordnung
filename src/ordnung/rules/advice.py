@@ -52,11 +52,12 @@ Computed facts, each with the policy that keeps it honest:
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
+from functools import wraps
 from itertools import pairwise
-from typing import NamedTuple
+from typing import NamedTuple, ParamSpec
 
 from ordnung.models import AdviceFact, HelpLink, Item, LetterAdvice
 from ordnung.rules import catalog
@@ -276,14 +277,39 @@ def _label_context(text: str, start: int) -> str:
     return text[max(above, start - 120) : start]
 
 
-def _near_tenant(text: str, context: str, second_end: int) -> bool:
+#: What may stand between a tenant marker and the dates it labels: "Ihr Nutzungszeitraum: vom 01.10. …".
+_MARKER_GAP = re.compile(r"[^\S\n]*[:=(]?\s*(?:(?:vom|von|from)\s+)?", re.I)
+
+
+def _labels_another_range(text: str, marker_end: int, first_start: int) -> bool:
+    """Whether the tenant marker ending at ``marker_end`` labels a range of its own that isn't the one
+    starting at ``first_start``: the tenant's time written beside the billing period ("Abrechnungszeitraum
+    01.01.–31.12.2025 · Ihr Nutzungszeitraum 01.10.–31.12.2025", the demo's statement, review round 2) says
+    the other range is not the tenant's. A marker with no dates after it ("(Auszug)"), with one date
+    ("Mietende: 30.04.2025") or with the range itself after it still marks the range."""
+    first = _DATE_TOKEN.match(text, next(_MARKER_GAP.finditer(text, marker_end)).end())
+    if first is None or first.start() == first_start:
+        return False
+    second = _DATE_TOKEN.search(text, first.end())
+    return second is not None and _RANGE_SEPARATOR.fullmatch(text, first.end(), second.start()) is not None
+
+
+def _near_tenant(text: str, first_start: int, second_end: int) -> bool:
     """Whether a range stands next to the tenant's own time in the flat (:data:`_TENANT_PERIOD`): before
-    it, after it on its line or on the next line ("Mietende: 30.04.2025" below it)."""
+    it (:func:`_before_range`), after it on its line or on the next line ("Mietende: 30.04.2025" below
+    it) — unless that marker labels another range (:func:`_labels_another_range`)."""
+    context = _before_range(text, first_start)
     line_end = text.find("\n", second_end)
-    after = text[second_end : line_end if line_end >= 0 else len(text)][:30]
-    next_end = text.find("\n", line_end + 1) if line_end >= 0 else -1
-    below = text[line_end + 1 : next_end if next_end >= 0 else len(text)][:40] if line_end >= 0 else ""
-    return any(_TENANT_PERIOD.search(part) for part in (context, after, below))
+    after_end = min(line_end if line_end >= 0 else len(text), second_end + 30)
+    parts = [(first_start - len(context), first_start), (second_end, after_end)]
+    if line_end >= 0:
+        next_end = text.find("\n", line_end + 1)
+        parts.append((line_end + 1, min(next_end if next_end >= 0 else len(text), line_end + 41)))
+    return any(
+        not _labels_another_range(text, marker.end(), first_start)
+        for start, end in parts
+        for marker in _TENANT_PERIOD.finditer(text, start, end)
+    )
 
 
 def _ranges(text: str, before: date | None) -> list[_Candidate]:
@@ -311,7 +337,7 @@ def _ranges(text: str, before: date | None) -> list[_Candidate]:
         context = _before_range(text, first.start())
         named = bool(_PERIOD_LABEL.search(context))
         labelled = named or bool(_STATEMENT_PERIOD.search(_label_context(text, first.start())))
-        if _near_tenant(text, context, second.end()):
+        if _near_tenant(text, first.start(), second.end()):
             if not labelled:
                 continue  # the tenant's time in the flat, never the billing period
             labelled = named = False
@@ -860,6 +886,28 @@ def settles(card: LetterAdvice, items: Sequence[Item]) -> bool:
     return bool(carrying) and not any(item.status in _OPEN for item in carrying)
 
 
+#: What a card says once the person has dealt with the letter, after what the letter is (review round 2 of
+#: phase 2: a handled card still said "act within two weeks").
+HANDLED_TITLE = "you've dealt with it"
+
+_P = ParamSpec("_P")
+
+
+def _handled_titles(build: Callable[_P, LetterAdvice | None]) -> Callable[_P, LetterAdvice | None]:
+    """A handled card's title names what the letter is, not the deadline it no longer urges ("Court payment
+    order (Mahnbescheid) — you've dealt with it")."""
+
+    @wraps(build)
+    def card(*args: _P.args, **kwargs: _P.kwargs) -> LetterAdvice | None:
+        advice = build(*args, **kwargs)
+        if advice is None or not advice.handled:
+            return advice
+        return advice.model_copy(update={"title": f"{advice.title.split(' — ', 1)[0]} — {HANDLED_TITLE}"})
+
+    return card
+
+
+@_handled_titles
 def letter_advice(
     kind: str | None,
     *,
@@ -984,7 +1032,8 @@ def letter_advice(
                     handled,
                     "The three weeks count from the day you received it, which you entered — check it's right."
                     if arrival_confirmed
-                    else "Enter the day you received the dismissal — the three weeks count from then.",
+                    else "Enter the day the dismissal reached you — the day it was put in your letterbox or handed "
+                    "to you, even if you were away or opened it later: the three weeks count from then (§ 4 KSchG).",
                 ),
                 "Get advice today: your union, an employment lawyer or the labour court's Rechtsantragstelle.",
                 "Register as job-seeking at the Agentur für Arbeit in time (see the to-do).",

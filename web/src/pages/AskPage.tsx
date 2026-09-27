@@ -50,6 +50,28 @@ export default function AskPage() {
   const last = thread.turns[thread.turns.length - 1];
   const lastKey = last?.key;
   const lastLen = last?.answer.text.length ?? 0;
+  // the answer's words only come once checked (ADR 0008): while it is worked on, the trace's steps and the
+  // "Writing the answer" line are what grows (review round 2: they grew behind the composer on phones)
+  const lastSteps = last?.answer.tools.length ?? 0;
+  const lastWriting = last?.answer.writing ?? false;
+  const lastStatus = last?.answer.status;
+
+  // the sticky composer covers the bottom of the screen: its height is published (--ask-composer-h) so that
+  // whatever gets focus or is scrolled to stops clear of it, as of the tab bar (WCAG 2.4.11, review round 2)
+  const composerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = composerRef.current;
+    const root = document.documentElement;
+    if (!el) return;
+    const publish = () => root.style.setProperty("--ask-composer-h", `${Math.ceil(el.getBoundingClientRect().height)}px`);
+    publish();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(publish);
+    observer?.observe(el);
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty("--ask-composer-h");
+    };
+  }, []);
 
   // a new question scrolls into view at the top
   useEffect(() => {
@@ -58,17 +80,19 @@ export default function AskPage() {
     el?.scrollIntoView?.({ block: "start", behavior: reduce ? "auto" : "smooth" });
   }, [lastKey, reduce]);
 
-  // while it streams, keep the growing answer visible — but never scroll the question away
+  // while it is worked on — and when it arrives — keep the growing turn visible above the composer (and, on
+  // phones, the tab bar), but never scroll the question away
   useEffect(() => {
-    if (!thread.streaming || !lastKey) return;
+    if (!lastKey || (!thread.streaming && lastStatus !== "done")) return;
     const el = document.querySelector<HTMLElement>(`[data-turn="${lastKey}"]`);
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const composerSpace = window.innerWidth < 768 ? 190 : 130;
-    const overflow = rect.bottom - (window.innerHeight - composerSpace);
+    const composer = composerRef.current?.getBoundingClientRect();
+    const covered = composer ? window.innerHeight - composer.top : window.innerWidth < 768 ? 190 : 130;
+    const overflow = rect.bottom - (window.innerHeight - covered);
     const room = rect.top - 72;
     if (overflow > 0 && room > 0) window.scrollBy({ top: Math.min(overflow, room) });
-  }, [lastLen, thread.streaming, lastKey]);
+  }, [lastLen, lastSteps, lastWriting, lastStatus, thread.streaming, lastKey]);
 
   // stored conversation: start at its end
   const hadHistory = thread.past.length > 0;
@@ -166,7 +190,7 @@ export default function AskPage() {
       {/* on phones the demo tour's bar sits above the tab bar: the composer stays above both */}
       {/* opaque down to the screen's edge (under the see-through tab bar too), so the answer never
           shows around the tour's bar or through the tab bar */}
-      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-6 bg-linear-to-t from-canvas from-80% to-transparent px-4 pb-[calc(0.75rem+var(--ordnung-toast-lift,0px))] pt-6 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[calc(4rem+env(safe-area-inset-bottom))] after:bg-canvas sm:-mx-6 sm:px-6 md:bottom-0 md:pb-[calc(1.25rem+var(--ordnung-toast-lift,0px))] md:after:hidden lg:-mx-10 lg:px-10">
+      <div ref={composerRef} data-ask-composer className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-6 bg-linear-to-t from-canvas from-80% to-transparent px-4 pb-[calc(0.75rem+var(--ordnung-toast-lift,0px))] pt-6 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[calc(4rem+env(safe-area-inset-bottom))] after:bg-canvas sm:-mx-6 sm:px-6 md:bottom-0 md:pb-[calc(1.25rem+var(--ordnung-toast-lift,0px))] md:after:hidden lg:-mx-10 lg:px-10">
         <AskComposer value={draft} onChange={setDraft} onSubmit={send} onStop={thread.stop} streaming={thread.streaming} textareaRef={inputRef} />
         <p id="ask-hint" className="mt-2 text-center text-[12px] leading-5 text-muted">
           {replayDemo ? "Demo: suggested questions replay recorded answers. " : null}

@@ -228,7 +228,8 @@ export function consentDecided(items: Item[]): boolean {
  * Why money the person would pay may not be owed, or null: the back-payment of an operating-cost statement
  * that came after its twelve-month deadline (§ 556 Abs. 3 BGB; the server cites `bgb_556_3`, and the card
  * is urgent — so even an undated one is caught; never a credit or the new monthly prepayment), or a rent
- * increase's new rent, only owed once the person agrees (§ 558b Abs. 1 BGB; the server cites `bgb_558b`):
+ * increase's new rent, only owed once the person agrees (§ 558b Abs. 1 BGB; the server cites `bgb_558b` on the
+ * new rent alone, dated or not — never on the current rent):
  * "decide first" until they closed the decision to-do among the letter's `items` ({@link consentDecided}),
  * then "only if you agreed" — Ordnung doesn't know which way they decided, and paying the higher rent can
  * count as agreeing, so it never leads with "Pay" for it.
@@ -237,7 +238,9 @@ export function consentDecided(items: Item[]): boolean {
 export function notOwedReason(i: Item, advice: DocumentDetail["advice"], items: Item[] = []): NotOwed | null {
   if (i.kind !== "payment" || i.direction === "in") return null;
   const cites = (rule: string) => Boolean(i.computation?.rule_ids.includes(rule));
-  if (cites("bgb_558b") || advice?.kind === "rent_increase") return consentDecided(items) ? "if_agreed" : "consent";
+  // only the new rent cites § 558b for its note — never the current rent, which is owed as ever (holding it back
+  // risks arrears, § 543 Abs. 2 Nr. 3 BGB): the server marks the new rent, dated or not (review round 2)
+  if (cites("bgb_558b")) return consentDecided(items) ? "if_agreed" : "consent";
   if (i.recurrence) return null;
   return cites("bgb_556_3") || (advice?.kind === "operating_costs" && advice.urgent) ? "late_statement" : null;
 }

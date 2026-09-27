@@ -439,7 +439,8 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
             filed_as=kind,
             pages=store.list_pages(document.id),
         )
-        note = payment_note(kind, reading, reading.title, full_text, ctx)
+        chosen_as_filed = chosen is not None and chosen.data.get("kind") == kind
+        note = payment_note(kind, reading, reading.title, full_text, ctx, chosen=chosen_as_filed)
         computed = [
             with_payment_note(
                 compute_item(

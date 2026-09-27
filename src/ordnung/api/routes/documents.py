@@ -40,7 +40,7 @@ from ordnung.ingest.intake import (
 )
 from ordnung.ingest.link import DUNNING_ITEM_NOTE
 from ordnung.ingest.pipeline import add_file, ledger_lock, reprocess
-from ordnung.ingest.plan import KIND_CHOSEN, is_statement
+from ordnung.ingest.plan import KIND_CHOSEN, is_statement, kind_chosen
 from ordnung.llm.replay import ReplayBackend
 from ordnung.models import (
     HIGH_STAKES_KINDS,
@@ -212,7 +212,9 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
     kind: str | None = document.kind
     if kind not in HIGH_STAKES_KINDS:
         # an operating-cost statement's dates don't depend on its kind: recognised on read only
-        kind = "operating_costs" if is_statement(kind, extraction) else None
+        kind = (
+            "operating_costs" if is_statement(kind, extraction, chosen=kind_chosen(store, document)) else None
+        )
     if kind is None:
         return None
     change = extraction.change if extraction is not None else None
@@ -423,7 +425,9 @@ def _patch(
     with store.tx():
         before = require(store.get_document(doc_id), NOT_FOUND)
         document = _apply_patch(store, doc_id, changes)
-        kind_changed = "kind" in changes and before.kind != document.kind
+        # any kind the person sends is their choice, also the one it is filed as (a statement recognised on
+        # read and filed as a utility bill stays one only until the person says so — review round 2)
+        kind_changed = "kind" in changes and (before.kind != document.kind or not kind_chosen(store, before))
         dates_changed = bool({"received_date", "doc_date"} & changes.keys()) or confirmed is True
         if kind_changed:
             # a kind the person chose is kept when the letter is read again (ingest.plan.corrections)

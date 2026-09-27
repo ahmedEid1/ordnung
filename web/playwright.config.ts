@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { BASE_URL, DATA_DIR, ORDNUNG_BIN, PORT, STORAGE_STATE } from "./e2e/env";
+import { BASE_URL, DATA_DIR, ORDNUNG_BIN, OUTPUT_DIR, PORT, STORAGE_STATE } from "./e2e/env";
 
 /**
  * End-to-end tests against the real demo (FastAPI + the built UI from `npm run build`, recorded
@@ -11,6 +11,7 @@ import { BASE_URL, DATA_DIR, ORDNUNG_BIN, PORT, STORAGE_STATE } from "./e2e/env"
  */
 export default defineConfig({
   testDir: "./e2e",
+  outputDir: OUTPUT_DIR,
   // `e2e/*.ts` helpers import the app's own copy tables (`@/lib/copy`)
   tsconfig: "./tsconfig.node.json",
   timeout: 60_000,

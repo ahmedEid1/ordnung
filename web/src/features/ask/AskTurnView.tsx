@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Check, Copy, Info, RotateCw, Square } from "lucide-react";
+import { Check, Copy, Info, RotateCw, Square, TriangleAlert } from "lucide-react";
 import { LogoMark } from "@/components/shell/Logo";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
@@ -12,6 +12,7 @@ import { Markdown } from "./Markdown";
 import type { RefInfo } from "./refs";
 import type { AnswerState } from "./stream";
 import { ToolTrace } from "./ToolTrace";
+import PAYMENT_NOTES from "./paymentNotes.json";
 import type { AskTurn } from "./useAskThread";
 import type { CitationRef } from "./citations";
 import type { TitleLookup } from "./tools";
@@ -68,23 +69,47 @@ export const CHECKED_LINE_DE = "Daten und Beträge mit Ihren Unterlagen abgeglic
  * marks, citations it added. The text comes only from the `done` event's `note` field, never from the
  * answer. Every checked answer shows the line, so an answer without a note is visibly checked too.
  */
+/**
+ * The check's note split into what to decide before paying — a rent increase's new rent, a late statement's
+ * back-payment, a demand with scam signs (`support._PAYMENT_NOTES`; a Python test keeps the file equal) — and
+ * the check's bookkeeping. The backend writes those first; an answer stored before had them last.
+ */
+export function splitCheckNote(text: string): { warnings: string[]; rest: string } {
+  const warnings = (PAYMENT_NOTES as string[]).filter((note) => text.includes(note));
+  const rest = warnings.reduce((left, note) => left.replace(note, ""), text).replace(/\s{2,}/g, " ").trim();
+  return { warnings, rest };
+}
+
 export function CheckNote({ text, label }: { text: string | null; label?: string | null }) {
+  const { warnings, rest } = text ? splitCheckNote(text) : { warnings: [], rest: "" };
+  const shownLabel = text ? checkNoteLabel(text, label) : label;
   return (
-    <p
-      role="note"
-      className="mt-3 flex items-start gap-2 rounded-lg border border-line bg-surface-2/60 px-3 py-2 text-[13px] leading-5 text-muted"
-    >
-      <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
-      <span className="min-w-0 break-words">
-        {text ? (
-          <>
-            <span className="font-medium text-ink">{checkNoteLabel(text, label)}</span> {text}
-          </>
-        ) : (
-          <span className="font-medium text-ink">{label === CHECK_NOTE_LABEL_DE ? CHECKED_LINE_DE : CHECKED_LINE}</span>
-        )}
-      </span>
-    </p>
+    <div className="mt-3 space-y-2">
+      {/* what to decide before paying comes first, in the warning tone — under an answer that says the new rent
+          "is due" it was the last sentence of the grey note (review round 2) */}
+      {warnings.length ? (
+        <p role="note" className="flex items-start gap-2 rounded-lg border border-warn/30 bg-warn-soft px-3 py-2 text-[13.5px] leading-5 text-ink">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
+          <span className="min-w-0 break-words">
+            <span className="font-medium text-warn-ink">{shownLabel}</span> {warnings.join(" ")}
+          </span>
+        </p>
+      ) : null}
+      {rest || !warnings.length ? (
+        <p role="note" className="flex items-start gap-2 rounded-lg border border-line bg-surface-2/60 px-3 py-2 text-[13px] leading-5 text-muted">
+          <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+          <span className="min-w-0 break-words">
+            {rest ? (
+              <>
+                {warnings.length ? null : <span className="font-medium text-ink">{shownLabel}</span>} {rest}
+              </>
+            ) : (
+              <span className="font-medium text-ink">{label === CHECK_NOTE_LABEL_DE ? CHECKED_LINE_DE : CHECKED_LINE}</span>
+            )}
+          </span>
+        </p>
+      ) : null}
+    </div>
   );
 }
 

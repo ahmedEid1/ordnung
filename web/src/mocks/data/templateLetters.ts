@@ -20,6 +20,8 @@ export interface TemplateContext {
   taxOffice: boolean;
   schufa: boolean;
   today: string;
+  /** the court order an offer to its claimant answers ("Mahnbescheid"), as `TemplateInput.court_order` */
+  courtOrder?: string | null;
 }
 
 export interface TemplateLetter {
@@ -122,18 +124,19 @@ export function courtChannels(): SendChannel[] {
 
 /** A court's name (`routing.is_court`): a word ending in "gericht", and no bailiff or court cashier. */
 export function isCourtName(name: string | null | undefined): boolean {
-  return /gericht\b/i.test(name ?? "") && !/vollzieh|kasse|zahlstelle/i.test(name ?? "");
+  // a cashier ("Gerichtskasse") is no court — a court in Kassel is (review round 2)
+  return /gericht\b/i.test(name ?? "") && !/vollzieh|kasse(?:n(?:stelle)?)?\b|zahlstelle/i.test(name ?? "");
 }
 
 /** Template letters the server refuses for a kind of letter (`compose.py` `template_refusal`). */
-export function templateRefusal(kind: TemplateDraftKind, letterKind: string | null | undefined): string | null {
+export function templateRefusal(kind: TemplateDraftKind, letterKind: string | null | undefined, toClaimant = false): string | null {
   if (kind === "extension_request" && letterKind === "court_payment_order")
     return "The period to pay or object to a court payment order is set by law (two weeks, § 692 ZPO; one week at a labour court, § 46a ArbGG), and no one can extend it by being asked. Object in time instead — the letter's page offers the objection — or get advice at the court's Rechtsantragstelle.";
   if (kind === "extension_request" && letterKind === "enforcement_order")
     return "The period to object to an enforcement order can't be extended (Notfrist: two weeks, § 339 ZPO; one week at a labour court, § 59 ArbGG). Object in time instead — the letter's page offers the objection — or get advice at once.";
   if (kind === "extension_request" && letterKind === "dismissal")
     return "The three weeks for a court action against a dismissal are set by law (§ 4 KSchG) — your employer can't extend them. Get advice now (see the card on the letter).";
-  if (kind === "payment_plan" && (letterKind === "court_payment_order" || letterKind === "enforcement_order"))
+  if (kind === "payment_plan" && (letterKind === "court_payment_order" || letterKind === "enforcement_order") && !toClaimant)
     return "A court doesn't agree instalments — the claimant does. Write to the claimant instead (the order names them as the Antragsteller), and still pay or object by the court's deadline: an offer to pay in instalments doesn't stop the order. Offering instalments acknowledges the claim: the limitation period starts again (§ 212 Abs. 1 Nr. 1 BGB) and it is hard to dispute later — and money paid on a time-barred claim can't be reclaimed (§ 214 Abs. 2 BGB). If you think the claim is wrong or time-barred, object or get debt advice first.";
   return null;
 }
@@ -234,9 +237,15 @@ export function templateLetter(kind: TemplateDraftKind, ctx: TemplateContext): T
       }
       return {
         subject: dash("Bitte um Ratenzahlung", ctx.reference),
-        paragraphs: [`zu Ihrer Forderung${ctx.docDate ? ` aus Ihrem Schreiben vom ${de(ctx.docDate)}` : ""}${amount !== null ? ` in Höhe von ${moneyDe(amount)}` : ""} biete ich Ihnen an, ${offerDe}`, "Bitte bestätigen Sie mir die Ratenzahlung schriftlich."],
+        paragraphs: [
+          `zu Ihrer Forderung${ctx.courtOrder ? ` aus dem ${ctx.courtOrder}${ctx.docDate ? ` vom ${de(ctx.docDate)}` : ""}` : ctx.docDate ? ` aus Ihrem Schreiben vom ${de(ctx.docDate)}` : ""}${amount !== null ? ` in Höhe von ${moneyDe(amount)}` : ""} biete ich Ihnen an, ${offerDe}`,
+          "Bitte bestätigen Sie mir die Ratenzahlung schriftlich.",
+        ],
         subjectEn: dash("Request to pay in instalments", ctx.reference),
-        paragraphsEn: [`Regarding your claim${amount !== null ? ` of ${moneyEn(amount)}` : ""}, I offer ${offerEn}`, "Please confirm the instalment plan in writing."],
+        paragraphsEn: [
+          `Regarding your claim${amount !== null ? ` of ${moneyEn(amount)}` : ""}${ctx.courtOrder ? ` in the court order (${ctx.courtOrder})${ctx.docDate ? ` of ${en(ctx.docDate)}` : ""}` : ctx.docDate ? ` in your letter of ${en(ctx.docDate)}` : ""}, I offer ${offerEn}`,
+          "Please confirm the instalment plan in writing.",
+        ],
         notes: ["Until they agree, the full amount stays due.", ACKNOWLEDGES_CLAIM],
         guidance: generalGuidance("No special form is needed. Until they agree, the full amount stays due."),
       };

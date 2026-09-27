@@ -202,7 +202,7 @@ function settles(card: LetterAdvice, items: Item[]): boolean {
 const DEALT_WITH_TAG = "dealt-with";
 
 /** The steps that ask for the delivery (or receipt) day, which a handled card leaves out (`advice._unless`). */
-const ASKS_FOR_DELIVERY = /^(Find the delivery date|Enter the day you received|The period counts from the delivery date|The three weeks count from the day you received)/;
+const ASKS_FOR_DELIVERY = /^(Find the delivery date|Enter the day the dismissal reached you|The period counts from the delivery date|The three weeks count from the day you received)/;
 
 /**
  * The letter's "get advice" card as the real app works it out on read: a card from the letter itself
@@ -211,14 +211,19 @@ const ASKS_FOR_DELIVERY = /^(Find the delivery date|Enter the day you received|T
  */
 function adviceFor(db: MockDb, d: Document): LetterAdvice | null {
   const own = ADVICE_BY_DOC[d.id];
-  const card = own && d.kind === db.seedKind(d.id) ? own : isHighStakes(d.kind) ? (d.received_date ? ADVICE_ARRIVED_BY_KIND : ADVICE_BY_KIND)[d.kind] : null;
+  // a card recognised on read (an operating-cost statement filed as a utility bill) goes once the person chose
+  // another kind for the letter — also the kind it is stored as (review round 2: "Utility bill" kept the card)
+  const chosen = db.state.activity.some((a) => a.kind === "document.kind" && a.ref_id === d.id);
+  const ownStands = own && d.kind === db.seedKind(d.id) && !(chosen && own.kind !== d.kind);
+  const card = ownStands ? own : isHighStakes(d.kind) ? (d.received_date ? ADVICE_ARRIVED_BY_KIND : ADVICE_BY_KIND)[d.kind] : null;
   // as on the server: once the person dealt with the letter, its card is no longer urgent and says so (the
   // demo's landlord cards are ordinary notices with an objection to-do, which can settle); a card no to-do
   // can close once the person marked it dealt with
   const dealt = card?.closable ? d.tags.includes(DEALT_WITH_TAG) : card ? settles(card, db.state.items.filter((i) => i.doc_id === d.id)) : false;
   if (!card || !dealt) return card;
   const steps = card.kind === "operating_costs" ? card.steps : card.steps.filter((s) => !ASKS_FOR_DELIVERY.test(s));
-  return { ...card, urgent: false, handled: true, steps };
+  // as `advice.HANDLED_TITLE`: the title names the letter, not the deadline it no longer urges
+  return { ...card, urgent: false, handled: true, steps, title: `${card.title.split(" — ")[0]} — you've dealt with it` };
 }
 
 function documentDetail(db: MockDb, id: string): DocumentDetail {
@@ -305,10 +310,13 @@ const isTemplateKind = (kind: string): kind is TemplateDraftKind => TEMPLATE_KIN
 function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDraftKind }): Draft {
   const contract = body.contract_id ? db.state.contracts.find((c) => c.id === body.contract_id) : undefined;
   const doc = body.doc_id ? db.document(body.doc_id) : null;
-  const partyId = body.party_id ?? contract?.party_id ?? doc?.party_id ?? null;
-  const party = db.party(partyId);
   const details = body.details ?? {};
-  const refusal = templateRefusal(body.kind, doc?.kind);
+  // instalments on a court order offered to its claimant, typed in: linked to the order, never to the court
+  const orderName = doc?.kind === "court_payment_order" ? "Mahnbescheid" : doc?.kind === "enforcement_order" ? "Vollstreckungsbescheid" : null;
+  const toClaimant = body.kind === "payment_plan" && orderName !== null && Boolean(details.recipient?.trim());
+  const partyId = toClaimant ? null : body.party_id ?? contract?.party_id ?? doc?.party_id ?? null;
+  const party = db.party(partyId);
+  const refusal = templateRefusal(body.kind, doc?.kind, toClaimant);
   if (refusal) throw new HttpError(422, refusal);
   if (!party && !details.recipient) throw new HttpError(422, "Choose who the letter is for, or type their name and address.");
   const firstRef = doc?.references[0];
@@ -332,6 +340,7 @@ function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDr
       taxOffice: party?.kind === "tax_office",
       schufa: /schufa/i.test(party?.name ?? details.recipient ?? ""),
       today: db.today,
+      courtOrder: body.kind === "payment_plan" ? orderName : null,
     });
   } catch (err) {
     throw new HttpError(422, err instanceof Error ? err.message : String(err));

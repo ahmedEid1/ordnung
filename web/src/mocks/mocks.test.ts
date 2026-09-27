@@ -137,6 +137,15 @@ describe("mock dataset", () => {
     expect(doc.warnings.filter((w) => w.startsWith("Online demo:"))).toEqual([]);
   });
 
+  it("drops a statement's card once the person files it as the utility bill it is stored as (review round 2)", async () => {
+    const s = srv();
+    const before = await get<DocumentDetail>(s, "/documents/doc_nebenkosten");
+    expect(before.document.kind).toBe("utility_bill");
+    expect(before.advice?.kind).toBe("operating_costs");
+    await s.handle("PATCH", "/documents/doc_nebenkosten", new URLSearchParams(), { kind: "utility_bill" });
+    expect((await get<DocumentDetail>(s, "/documents/doc_nebenkosten")).advice).toBeNull();
+  });
+
   it("asks when a company's letter arrived, and counts from the day given", async () => {
     // read as deemed delivery, but the engine counted FitWell's letter from its arrival (§ 130 BGB)
     const s = srv();

@@ -1134,6 +1134,30 @@ async def test_a_notice_without_an_end_or_only_extraordinary_keeps_its_objection
         assert drafted.status_code != 422, drafted.text
 
 
+async def test_a_statement_filed_by_the_person_as_its_stored_kind_loses_its_card(data_dir: Path) -> None:
+    """Review round 2 of phase 2: a statement recognised on read (stored as a utility bill) kept its card and
+    its "may not be owed" note when the person chose "Utility bill" — the kind it is stored as, so nothing
+    was recorded or worked out again."""
+    from ordnung.ingest.plan import KIND_CHOSEN
+
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, LATE_STATEMENT)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "utility_bill" and detail["advice"]["kind"] == "operating_costs"
+        response = await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "utility_bill"})
+        assert response.status_code == 200
+        after = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert after["advice"] is None
+        [payment] = after["items"]
+        assert LATE_STATEMENT_WARNING not in payment["computation"]["warnings"]
+        assert api.ctx.store.last_activity("document", doc_id, [KIND_CHOSEN]) is not None
+        # filing it as a statement brings both back
+        await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "operating_costs"})
+        again = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert again["advice"]["kind"] == "operating_costs"
+        assert LATE_STATEMENT_WARNING in again["items"][0]["computation"]["warnings"]
+
+
 async def test_a_payment_order_read_as_pay_still_gets_pay_or_object(data_dir: Path) -> None:
     """A court order's payment date is only half of what it asks: the law's "pay or object" to-do is
     filed next to it, so the to-do lists never frame it like a dunning letter."""

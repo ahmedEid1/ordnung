@@ -107,7 +107,7 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "summary": "If you think this dismissal is wrong, only a court action at the labour court (Kündigungsschutzklage) within three weeks of receiving it keeps your rights. After that it counts as valid, even if it wasn't.",
     "urgent": true,
     "steps": [
-      "Enter the day you received the dismissal — the three weeks count from then.",
+      "Enter the day the dismissal reached you — the day it was put in your letterbox or handed to you, even if you were away or opened it later: the three weeks count from then (§ 4 KSchG).",
       "Get advice today: your union, an employment lawyer or the labour court's Rechtsantragstelle.",
       "Register as job-seeking at the Agentur für Arbeit in time (see the to-do).",
       "That doesn't replace registering as unemployed (arbeitslos melden): do that too, online or in person, at the latest on your first day without work — unemployment benefit is only paid from then (§ 141 SGB III).",

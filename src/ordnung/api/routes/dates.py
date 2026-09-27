@@ -26,6 +26,7 @@ from ordnung.ingest.plan import (
     document_context,
     for_item,
     kept_payment_note,
+    kind_chosen,
     law_deadlines,
     needs_check,
     payment_note,
@@ -107,7 +108,14 @@ def recompute_document_items(
     buffer = postal_buffer(store.get_profile())
     pages = store.list_pages(document.id)
     extraction = store.get_extraction(document.id)
-    note = payment_note(document.kind, extraction, document.title, store.get_document_text(document.id), ctx)
+    note = payment_note(
+        document.kind,
+        extraction,
+        document.title,
+        store.get_document_text(document.id),
+        ctx,
+        chosen=kind_chosen(store, document),
+    )
     changed: list[Item] = []
     with store.tx():
         for item in store.list_items(doc_id=document.id):

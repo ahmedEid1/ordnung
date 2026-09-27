@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { AnswerView, checkNoteLabel } from "./AskTurnView";
+import { AnswerView, checkNoteLabel, splitCheckNote } from "./AskTurnView";
 import { citationIndex } from "./citations";
 import { Markdown } from "./Markdown";
+import PAYMENT_NOTES from "./paymentNotes.json";
 import PLACEHOLDERS from "./placeholders.json";
 import { makeRefResolver } from "./refs";
 import { accumulate, accumulateAll, EMPTY_ANSWER, type AnswerState } from "./stream";
@@ -55,6 +56,29 @@ describe("the answer check's note", () => {
     inRouter(<AnswerView answer={answer} resolve={resolve} />);
     expect(screen.getByRole("note")).toHaveTextContent(`Checked by Ordnung: ${NOTE}`);
     expect(document.body.textContent).toMatch(/the fine is “25,00\s€”/);
+  });
+
+  it("shows what to decide before paying first, in the warning tone (review round 2)", () => {
+    // the § 558b note was the last sentence of the grey note, below an answer that says the new rent "is due"
+    const payment = (PAYMENT_NOTES as string[])[2]!; // the rent increase's, in English
+    const note = `Added 1 source to a sentence that gave a date, time or amount without one. ${payment}`;
+    expect(splitCheckNote(note)).toEqual({ warnings: [payment], rest: "Added 1 source to a sentence that gave a date, time or amount without one." });
+    const { resolve } = makeRefResolver({});
+    const answer: AnswerState = {
+      ...EMPTY_ANSWER,
+      status: "done",
+      text: "The new rent of 712.40 € is due from Sun 1 Nov 2026 [item:itm_a].",
+      note,
+      noteLabel: "Checked by Ordnung:",
+      checked: true,
+      messageId: "msg_3",
+    };
+    inRouter(<AnswerView answer={answer} resolve={resolve} />);
+    const [first, second] = screen.getAllByRole("note");
+    expect(first).toHaveTextContent(`Checked by Ordnung: ${payment}`);
+    expect(first!.className).toMatch(/bg-warn-soft/);
+    expect(second).toHaveTextContent("Added 1 source");
+    expect(first!.compareDocumentPosition(second!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("is labelled in the answer's language, as the backend says (final review)", () => {

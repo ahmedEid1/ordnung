@@ -2,7 +2,9 @@
 
 A fixed limit in seconds fails on a slow CI runner or under the coverage tracer (which slows Python
 code several times), so these checks compare the machine with itself: reading an input four times as
-long may take at most ``MAX_GROWTH`` times as long. Linear work grows about 4×, quadratic work 16×.
+long may take at most ``MAX_GROWTH`` times as long. Linear work grows about 4×, quadratic work 16×; the
+limit sits between them with room for a busy machine (a run beside three browsers measured 8.2× for linear
+work, whose readings grow 4.5× on an idle one).
 The garbage collector is paused while a reading runs: a full collection scans every object the test
 session holds, so one that happens to fall into the larger reading (and not the smaller) measures the
 suite's heap, not the parser — it made this check fail or pass depending on which tests were collected.
@@ -16,7 +18,7 @@ from collections.abc import Callable
 
 from ordnung.ingest.text import html_to_text
 
-MAX_GROWTH = 8.0
+MAX_GROWTH = 10.0
 #: Below this a reading is timer noise; the larger input may then take up to MAX_GROWTH × this.
 NOISE_FLOOR_SECONDS = 0.005
 

@@ -66,6 +66,8 @@ describe("inbox filters", () => {
     expect(inboxDateInfo(makeDoc({ received_date: "2026-09-02", doc_date: "2026-08-31" }))).toEqual({ date: "2026-09-02", verb: "Arrived", docDate: "2026-08-31" });
     expect(inboxDateInfo(makeDoc({ received_date: "2026-09-02", doc_date: "2026-09-02" }))).toEqual({ date: "2026-09-02", verb: "Arrived", docDate: null });
     expect(inboxDateInfo(makeDoc({ received_date: null, doc_date: null, created_at: "2026-09-26T08:00:00Z" }))).toEqual({ date: "2026-09-26", verb: "Added", docDate: null });
+    // review round 2: a court order's day is the one it was delivered, as everywhere else
+    expect(inboxDateInfo(makeDoc({ kind: "court_payment_order", received_date: "2026-09-24", doc_date: "2026-09-21" })).verb).toBe("Delivered");
   });
 
   it("counts open to-dos per letter and finds the next one", () => {

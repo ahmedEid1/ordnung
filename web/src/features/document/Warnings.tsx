@@ -23,12 +23,15 @@ import { Glossary } from "@/components/ui/Glossary";
 import { Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { arrivalSavedNote, isServed, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
+import { HIGH_STAKES_KINDS } from "@/api/types";
 import { useItemActions } from "./actions";
 import { useEvidence } from "./EvidenceContext";
 import { LetterAdviceCard } from "./LetterAdvice";
 import { DEMO_NOTE } from "@/mocks/mode";
 
 export const SAFE_NOTE = "No warning does not mean it is safe.";
+
+const HIGH_STAKES = new Set<string>(HIGH_STAKES_KINDS);
 
 const isHiddenTextWarning = (w: string) => /invisible text|hidden text/i.test(w);
 
@@ -235,10 +238,19 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
   const served = isServed(doc, items);
   const update = useUpdateDocument();
   // A court's letter counts from the date the postman wrote on the envelope, often days before it was
-  // opened: nothing is filled in for it, so one Save can never move a court deadline later by mistake.
-  const [date, setDate] = useState(doc.received_date ?? (served ? "" : todayISO));
+  // opened — and a dismissal, a landlord's notice or a rent increase from the day it was put in the letterbox,
+  // even if the person was away: nothing is filled in for these, so one Save can never move a deadline the law
+  // sets later by mistake (review round 2 of phase 2: a dismissal uploaded after a holiday saved "today").
+  const highStakes = HIGH_STAKES.has(doc.kind ?? "");
+  const [date, setDate] = useState(doc.received_date ?? (served || highStakes ? "" : todayISO));
   const min = doc.doc_date ?? undefined;
   const valid = Boolean(date) && date <= todayISO && (!min || date >= min);
+  // an invalid day is said, not only shown in red (WCAG 3.3.1)
+  const problem = !date || valid
+    ? null
+    : date > todayISO
+      ? "That day is after today — enter the day it actually arrived."
+      : `That day is before the letter's own date (${formatDate(min!, { style: "day" })}) — a letter can't arrive before it was written. Check the day again, or whether the letter's date was read right.`;
   const quick = served
     ? []
     : [0, 1, 2]
@@ -250,8 +262,10 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
         .filter((d) => !min || d >= min);
 
   const subject = items.length === 1 ? `“${items[0]!.title}” counts` : "These dates count";
-  // a letter that may be an authority's never counts from later than it would usually count as delivered
-  const unlessLate = mayBePublic && !served
+  // a letter that may be an authority's never counts from later than it would usually count as delivered —
+  // but a high-stakes letter is a declaration under private law (a dismissal from a city too): the law's dates
+  // count from the day it really arrived (§ 130 BGB, § 4 KSchG), whoever sent it (review round 2 of phase 2)
+  const unlessLate = mayBePublic && !served && !highStakes
     ? " — unless it took longer than letters usually do: this sender may be an authority, so we then still count from the day it would usually have arrived"
     : "";
 
@@ -303,7 +317,8 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
               </>
             ) : (
               <>
-                {subject} from the day the letter reached you{unlessLate}. Until you tell us, we count from the letter date
+                {subject} from the day the letter reached you — the day it was put in your letterbox or handed to you, even if you
+                were away or opened it later{unlessLate}. Until you tell us, we count from the letter date
                 {doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""} — the earliest possible, so you're never late.
               </>
             )}
@@ -335,12 +350,18 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
               onChange={(e) => setDate(e.target.value)}
               className="h-8 w-auto bg-surface"
               // an empty field (a court's envelope date isn't prefilled) is not an error: Save waits for a date
-              aria-invalid={(Boolean(date) && !valid) || undefined}
+              aria-invalid={problem ? true : undefined}
+              aria-describedby={problem ? "arrival-date-problem" : undefined}
             />
             <Button type="submit" size="sm" variant="primary" loading={update.isPending} disabled={!valid}>
               Save
             </Button>
           </div>
+          {problem ? (
+            <p id="arrival-date-problem" className="mt-2 text-[13px] leading-5 text-danger-ink">
+              {problem}
+            </p>
+          ) : null}
         </div>
       </div>
     </form>

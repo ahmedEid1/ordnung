@@ -1843,6 +1843,13 @@ def test_the_placeholders_are_shared_with_the_web() -> None:
     assert tuple(json.loads(PLACEHOLDER_FILE.read_text(encoding="utf-8"))) == PLACEHOLDERS
 
 
+def test_the_notes_before_paying_are_shared_with_the_web() -> None:
+    """Review round 2 of phase 2: the web shows the decide-first and scam notes first, in the warning tone —
+    it finds them in the note by the texts this file holds."""
+    shared = json.loads((PLACEHOLDER_FILE.parent / "paymentNotes.json").read_text(encoding="utf-8"))
+    assert shared == [text for pair in support._PAYMENT_NOTES.values() for text in pair]
+
+
 # --------------------------------------------------------------------------------------------------
 # final review 2
 # --------------------------------------------------------------------------------------------------

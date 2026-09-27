@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Building2, Check, FileX, Languages, Mail, Scale, Search, Sparkles, type LucideIcon } from "lucide-react";
 import { useContracts, useCreateDraft, useDocument, useDocuments, useParties, useProfile, useSuggestions } from "@/api/hooks";
 import type { Contract, Document, DraftKind, Party } from "@/api/types";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
@@ -37,6 +37,7 @@ import {
   templateRefusal,
   type DetailValues,
   type TemplateConfig,
+  CLAIMANT_NOTE,
 } from "./templates";
 import { TemplateFields } from "./TemplateFields";
 
@@ -160,7 +161,10 @@ function DocOption({ d, party, extra }: { d: Document; party?: Party; extra?: Re
     <>
       <KindIcon docKind={d.kind} size="md" />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[14px] font-medium text-ink">{d.title ?? d.filename}</span>
+        {/* the whole title on hover and for screen readers: two statements for two years differ only at the end */}
+        <span className="block truncate text-[14px] font-medium text-ink" title={d.title ?? d.filename}>
+          {d.title ?? d.filename}
+        </span>
         <span className="flex min-w-0 items-center gap-1.5 truncate text-[12.5px] text-muted">
           <span className="truncate">{party?.name ?? documentKindLabel(d.kind)}</span>
           {d.doc_date ? (
@@ -380,6 +384,7 @@ function TemplateRecipient({
               hint="The court order names who claims the money — type their name and address as the order shows them. The letter goes to them, not to the court."
             >
               <Textarea
+                data-claimant-recipient
                 value={typed}
                 onChange={(e) => setTyped(e.target.value)}
                 rows={4}
@@ -525,7 +530,9 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const objectionBlocked = kind === "objection" && Boolean(doc) && !check.ok;
   const noObjectable = !docsQ.isPending && objectable.length === 0 && !(doc && check.ok);
 
-  const recipientId = kind === "cancellation" ? contract?.party_id ?? null : doc?.party_id ?? partyId;
+  // an offer to a court order's claimant stays linked to the order, but goes to the claimant typed in
+  const claimantMode = toClaimant && Boolean(doc) && template?.kind === "payment_plan";
+  const recipientId = kind === "cancellation" ? contract?.party_id ?? null : claimantMode ? null : doc?.party_id ?? partyId;
   const recipient = recipientId ? parties.get(recipientId) ?? null : null;
   const replyDocs = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -550,10 +557,17 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const missing = template ? missingFields(template, templateValues) : [];
   const invalid = template ? template.fields.some((f) => fieldError(f, templateValues, today, defaults)) : false;
   const typedTo = Boolean(typedRecipient.trim());
-  const templateTarget = Boolean(
-    (doc && (doc.party_id || typedTo)) || partyId || (template?.target === "party-or-typed" && typedTo) || (toClaimant && !doc && typedTo),
-  );
-  const refusal = template && doc ? templateRefusal(template.kind, doc.kind) : null;
+  const templateTarget = claimantMode
+    ? typedTo
+    : Boolean((doc && (doc.party_id || typedTo)) || partyId || (template?.target === "party-or-typed" && typedTo));
+  const refusal = template && doc ? templateRefusal(template.kind, doc.kind, claimantMode) : null;
+  // the claimant's box takes focus once the person chose to write to them (review round 2: focus fell to <body>)
+  useEffect(() => {
+    if (!claimantMode) return;
+    // after the dialog's focus guard has handled the removed button (it would move focus to the dialog)
+    const t = window.setTimeout(() => document.querySelector<HTMLElement>("[data-claimant-recipient]")?.focus(), 0);
+    return () => window.clearTimeout(t);
+  }, [claimantMode]);
   // a request for more time can't move the deadlines the law sets: say so before it is written
   const lawDeadlines = kind === "extension_request" && !refusal ? statutoryDeadlines(letterQ.data?.items ?? []) : [];
 
@@ -840,8 +854,8 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                 docs={templateDocs}
                 docId={docId}
                 setDocId={(id) => {
+                  if (id !== docId) setToClaimant(false);
                   setDocId(id);
-                  if (id) setToClaimant(false);
                 }}
                 partyId={partyId}
                 setPartyId={(id) => {
@@ -852,7 +866,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                 loading={docsQ.isPending}
                 typed={typedRecipient}
                 setTyped={setTypedRecipient}
-                claimant={toClaimant && !doc}
+                claimant={claimantMode}
                 notice={
                   refusal ? (
                     <Callout
@@ -860,22 +874,31 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                       title={refusal.title}
                       action={
                         refusal.toClaimant ? (
+                          // the letter stays linked to the order (its reference and date): only who it goes to changes
                           <Button
                             size="sm"
                             icon={Mail}
+                            className="h-auto min-h-8 max-w-full whitespace-normal py-1 text-left"
                             onClick={() => {
                               setToClaimant(true);
-                              setDocId(null);
                               setPartyId(null);
                               setTypedRecipient("");
                             }}
                           >
                             Write to the claimant instead
                           </Button>
+                        ) : refusal.seeCard && doc ? (
+                          <Link to={`/documents/${doc.id}`} className={buttonVariants({ size: "sm" })}>
+                            Open the letter's card
+                          </Link>
                         ) : undefined
                       }
                     >
                       {keepCitations(refusal.body)}
+                    </Callout>
+                  ) : claimantMode ? (
+                    <Callout tone="info" title="The letter goes to the claimant">
+                      {keepCitations(CLAIMANT_NOTE)}
                     </Callout>
                   ) : null
                 }
@@ -898,7 +921,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
               </Callout>
             ) : null}
 
-            {recipient && !objectionBlocked ? (
+            {recipient && !objectionBlocked && !refusal ? (
               // the whole name and address, wrapped: on a phone an ellipsis would hide where the letter goes
               <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-surface-2/70 px-3 py-2.5 text-[13px]">
                 <span className="text-muted">To</span>

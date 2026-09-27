@@ -82,6 +82,9 @@ class TemplateInput:
     deadline: date | None = None
     amount: float | None = None
     period: str | None = None
+    court_order: str | None = None
+    """The court order an offer to its claimant answers (``"Mahnbescheid"``, ``"Vollstreckungsbescheid"``):
+    the claim is the order's, not a letter of the claimant's."""
 
 
 def _day(value: str | None, what: str) -> date | None:
@@ -222,7 +225,14 @@ def _payment_plan(language: LetterLanguage, inp: TemplateInput) -> LetterParts:
             )
             subject = _dash("Antrag auf Stundung nach § 222 AO", inp.reference)
         else:
-            dated = f" aus Ihrem Schreiben vom {format_date(inp.doc_date, language)}" if inp.doc_date else ""
+            on = f" vom {format_date(inp.doc_date, language)}" if inp.doc_date else ""
+            dated = (
+                f" aus dem {inp.court_order}{on}"
+                if inp.court_order
+                else f" aus Ihrem Schreiben vom {format_date(inp.doc_date, language)}"
+                if inp.doc_date
+                else ""
+            )
             paragraphs = (
                 f"zu Ihrer Forderung{dated}{total} biete ich Ihnen an, {offer}",
                 "Bitte bestätigen Sie mir die Ratenzahlung schriftlich.",
@@ -242,7 +252,14 @@ def _payment_plan(language: LetterLanguage, inp: TemplateInput) -> LetterParts:
             )
             subject = _dash("Application for deferral under § 222 AO", inp.reference)
         else:
-            dated = f" in your letter of {format_date(inp.doc_date, language)}" if inp.doc_date else ""
+            on = f" of {format_date(inp.doc_date, language)}" if inp.doc_date else ""
+            dated = (
+                f" in the court order ({inp.court_order}){on}"
+                if inp.court_order
+                else f" in your letter of {format_date(inp.doc_date, language)}"
+                if inp.doc_date
+                else ""
+            )
             paragraphs = (
                 f"Regarding your claim{total}{dated}, I offer {offer}",
                 "Please confirm the instalment plan in writing.",

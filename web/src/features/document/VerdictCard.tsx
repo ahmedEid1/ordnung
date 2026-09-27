@@ -31,7 +31,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
-import { Disclaimer } from "@/components/ui/Disclaimer";
+import { ADVICE_LINKS, Disclaimer } from "@/components/ui/Disclaimer";
 import { KindBadge } from "@/components/ui/KindBadge";
 import { PartyChip } from "@/components/ui/PartyChip";
 import { Popover } from "@/components/ui/Popover";
@@ -433,11 +433,25 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
 
       {!scam && (open?.due_date || decision) ? (
         <div className="px-5 pb-4 sm:px-6">
-          <Disclaimer advice={open && (open.priority === "high" || open.priority === "critical") ? adviceFor(open.area) : undefined} />
+          <Disclaimer advice={open && (open.priority === "high" || open.priority === "critical") ? verdictAdvice(detail.advice, open.area) : undefined} />
         </div>
       ) : null}
     </article>
   );
+}
+
+/** Letters about a tenancy: their advice is the tenants' association's, whatever area the letter was read under. */
+const TENANCY_KINDS = new Set(["landlord_notice", "rent_increase", "operating_costs"]);
+
+/**
+ * The verdict's "Unsure? Get independent advice" link: a high-stakes letter's from its card's kind — the
+ * tenants' association for a tenancy letter, none for the others (the card lists its own help: a court's
+ * desk, a union) — never the area's (review round 2: a statement read under "residence" pointed to the
+ * Studierendenwerk while its card listed the Mieterverein); any other letter's from its area.
+ */
+function verdictAdvice(advice: DocumentDetail["advice"], area: Item["area"]) {
+  if (advice) return TENANCY_KINDS.has(advice.kind) ? ADVICE_LINKS.rent : undefined;
+  return adviceFor(area);
 }
 
 /** "Keep it": the person decided not to cancel — the decision Idea goes (with undo). */

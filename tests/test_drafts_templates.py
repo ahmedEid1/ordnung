@@ -638,6 +638,27 @@ async def test_instalments_are_offered_to_the_claimant_not_the_court(
     assert ACKNOWLEDGES_CLAIM in offer.notes_for_user
 
 
+async def test_an_offer_to_the_claimant_stays_linked_to_the_order(
+    ctx: AppContext, ids: dict[str, str]
+) -> None:
+    """Review round 2 of phase 2: "Write to the claimant instead" unlinked the order, so the offer lost its
+    Geschäftsnummer and date. Linked to the order with the claimant typed in, it keeps them, goes to the
+    claimant (never the court) and still says what it acknowledges."""
+    details = LetterDetails(
+        instalment=20,
+        first_instalment="2026-10-15",
+        amount=111.88,
+        recipient="Streamline Media GmbH\nHauptstr. 1\n10115 Berlin",
+    )
+    offer = await compose(ctx, "payment_plan", doc_id=ids["order"], details=details)
+    assert offer.recipient_block.startswith("Streamline Media GmbH")
+    assert "Amtsgericht" not in offer.recipient_block
+    assert "26-1234567-0-8" in offer.subject
+    assert "aus dem Mahnbescheid vom 21.09.2026" in offer.body and "Ihrem Schreiben" not in offer.body
+    assert offer.doc_id == ids["order"] and offer.party_id is None
+    assert ACKNOWLEDGES_CLAIM in offer.notes_for_user
+
+
 async def test_a_tax_deferral_is_no_acknowledgement_note(ctx: AppContext, ids: dict[str, str]) -> None:
     draft = await compose(
         ctx,

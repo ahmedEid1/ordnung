@@ -697,6 +697,19 @@ export async function demoCatalog({ api, server }) {
       ],
       "A checked answer about a rent increase: the check's note repeats the app's payment note (§ 558b Abs. 1 BGB, decide before you pay).",
     );
+    askState(
+      "check-note-scam",
+      "Should I pay the Rundfunk letter?",
+      [
+        ...trace,
+        done(
+          `The letter asks for 254.35 € by 2026-09-30 ${cite}.`,
+          "A letter this answer refers to shows signs of a scam: don't pay its demand before you have checked with the sender, using contact details you already know (not the ones in the letter). Added 1 source to a sentence that gave a date, time or amount without one.",
+          "Checked by Ordnung:",
+        ),
+      ],
+      "A checked answer about a letter with scam signs: the warning comes first, in the warning tone, the check's bookkeeping below it.",
+    );
   }
 
   // the kind picker ("What kind of letter is this?") on a real letter, not saved
@@ -1255,6 +1268,12 @@ export async function demoCatalog({ api, server }) {
         await settle(c.page);
       });
     }
+    if (kind === "court_payment_order") {
+      at("objection-letter", "create its objection (POST /api/drafts) and open the letter", `${kind}: the objection to the court and how to send it (e-mail isn't valid at a court).`, async (c, id) => {
+        const draft = await c.api.post("/api/drafts", { kind: "objection", doc_id: id, language: "en" });
+        await c.goto(`/letters/${draft.id}`);
+      });
+    }
     if (kind === "landlord_notice") {
       at("all-steps", "click “Show all … steps” on the advice card", `${kind}: the advice card unfolded to all its steps.`, async (c) => {
         const b = main(c.page).getByRole("button", { name: /^Show all \d+ steps$/ });
@@ -1307,11 +1326,54 @@ export async function demoCatalog({ api, server }) {
         await c.api.patch(`/api/documents/${id}`, { tags: [] });
         await c.goto(`/documents/${id}`);
         const b = main(c.page).getByRole("button", { name: "I've dealt with this" });
-        if (!(await c.exists(b))) c.notApplicable("the card can't be closed by the person");
+        if (!(await c.exists(b))) c.notApplicable("the card can't be closed by the person (its objection to-do closes it: hs-landlord-notice--handled)");
         await c.click(b, { settleAfter: false });
         await c.page.getByText("You marked this letter as dealt with").first().waitFor({ timeout: 10_000 });
         await settle(c.page);
         await pinToasts(c.page);
+      },
+    });
+    hsDealt.push({
+      id: "hs-landlord-notice--handled",
+      group: "high-stakes",
+      route: "/documents/…",
+      how: "the lease re-filed as landlord_notice, its law to-dos marked done (PATCH status), open it",
+      description: "landlord_notice: every to-do with the law's deadline done — the card is no longer urgent and its title says so.",
+      run: async (c) => {
+        const id = hsDocs.landlord_notice;
+        if (!id) throw new Error("landlord_notice was not set up");
+        const items = await c.api.get(`/api/items?doc_id=${id}`);
+        const law = items.filter((i) => i.origin === "rule" && i.status === "open");
+        if (!law.length && !items.some((i) => i.origin === "rule")) c.notApplicable("the letter has no to-do with the law's deadline");
+        for (const i of law) await c.api.patch(`/api/items/${i.id}`, { status: "done" });
+        await c.goto(`/documents/${id}`);
+      },
+    });
+  }
+  // the arrival question: the letter's arrival day is cleared (the demo's letters have one), then a day before
+  // the letter's own date is entered — the field says why it can't be saved (WCAG 3.3.1)
+  const dismissalRe = HS_KINDS.find(([, k]) => k === "dismissal")?.[0];
+  if (dismissalRe && docs.some((x) => dismissalRe.test(x.filename ?? ""))) {
+    hsDealt.push({
+      id: "hs-dismissal--arrival-before-letter",
+      group: "high-stakes",
+      route: "/documents/…",
+      how: "the work contract re-filed as dismissal, its arrival day cleared (PATCH received_date), open it, enter a day three days before the letter's date",
+      description: "dismissal: nothing filled in, the Zugang wording, and the message for a day before the letter's own date.",
+      run: async (c) => {
+        const id = hsDocs.dismissal;
+        if (!id) throw new Error("dismissal was not set up");
+        await c.api.patch(`/api/documents/${id}`, { received_date: null });
+        await c.goto(`/documents/${id}`);
+        const input = c.page.locator("#arrival-date");
+        if (!(await c.exists(input))) c.notApplicable("no arrival question");
+        const min = await input.getAttribute("min");
+        if (!min) c.notApplicable("the letter has no date");
+        const day = new Date(`${min}T12:00:00Z`);
+        day.setUTCDate(day.getUTCDate() - 3);
+        await input.fill(day.toISOString().slice(0, 10));
+        await c.centre(input);
+        await settle(c.page);
       },
     });
   }
@@ -1361,7 +1423,7 @@ export async function demoCatalog({ api, server }) {
         parallel: false,
         states: hsDealt,
         // run on its own (--only), the high-stakes phase's setup was skipped
-        before: async ({ restart }) => (hsDocs.landlord_notice ? undefined : setUpHighStakes(restart)),
+        before: async ({ restart }) => (Object.keys(hsDocs).length ? undefined : setUpHighStakes(restart)),
       },
     ],
   };

@@ -309,6 +309,13 @@ describe("composer — template letters", () => {
     await user.click(await within(dialog).findByRole("button", { name: "Write to the claimant instead" }));
     const claimant = within(dialog).getByLabelText(/The claimant \(Antragsteller\)/);
     expect(within(dialog).queryByText("Offer instalments to the claimant, not the court")).toBeNull();
+    // review round 2: focus goes to the claimant's box, the order stays chosen, and the court's deadline and
+    // the acknowledgement are still said; no "To <court>" card
+    await waitFor(() => expect(claimant).toHaveFocus());
+    expect(within(dialog).getByRole("radio", { name: /Mahnbescheid|payment order/i, checked: true })).toBeInTheDocument();
+    expect(within(dialog).getByText("The letter goes to the claimant")).toBeInTheDocument();
+    expect(within(dialog).getByText(/Still pay or object by the court's deadline/)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/^To$/)).toBeNull();
     await user.type(claimant, "Streamline Media GmbH{Enter}Musterweg 1{Enter}12345 Berlin");
     await user.type(within(dialog).getByLabelText(/Monthly instalment/), "20");
     await user.type(within(dialog).getByLabelText(/First instalment on/), "2026-10-15");
@@ -317,7 +324,7 @@ describe("composer — template letters", () => {
     await user.click(write);
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/letters\/drf_/));
     const post = calls.find((c) => c.method === "POST" && c.path === "/drafts");
-    expect(post?.body).toMatchObject({ kind: "payment_plan", doc_id: null, party_id: null, details: { recipient: "Streamline Media GmbH\nMusterweg 1\n12345 Berlin" } });
+    expect(post?.body).toMatchObject({ kind: "payment_plan", doc_id: "doc_mahnbescheid", party_id: null, details: { recipient: "Streamline Media GmbH\nMusterweg 1\n12345 Berlin" } });
   });
 
   it("asks who a letter is for when its sender isn't in Ordnung, and starts a withdrawal with nothing guessed", async () => {

@@ -425,16 +425,26 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
     return ComputedDate(receipt=receipt, due_date=receipt.due_date, send_by=receipt.send_by, source=source)
 
 
-def is_statement(kind: str | None, extraction: DocumentExtraction | None) -> bool:
+def is_statement(kind: str | None, extraction: DocumentExtraction | None, *, chosen: bool = False) -> bool:
     """Whether a letter is an operating-cost statement: filed as one, or — as its dates don't depend on its
     kind — recognised from its reading when it isn't filed as another high-stakes kind or as a reminder
     (:func:`~ordnung.rules.routing.names_statement`: only the statement itself, never a reminder about
-    an old statement's back-payment)."""
+    an old statement's back-payment), and the person didn't choose its kind (``chosen``: a letter they filed
+    as a utility bill is one — review round 2 of phase 2: the recognition overrode their choice)."""
     if kind == "operating_costs":
         return True
     return (
-        kind not in (*HIGH_STAKES_KINDS, "dunning") and extraction is not None and names_statement(extraction)
+        not chosen
+        and kind not in (*HIGH_STAKES_KINDS, "dunning")
+        and extraction is not None
+        and names_statement(extraction)
     )
+
+
+def kind_chosen(store: Store, document: Document) -> bool:
+    """Whether the person chose the letter's kind as it is filed (its newest :data:`KIND_CHOSEN` entry)."""
+    entry = store.last_activity("document", document.id, [KIND_CHOSEN])
+    return entry is not None and entry.data.get("kind") == document.kind
 
 
 def late_statement_warning(statement: bool, title: str | None, text: str, ctx: RuleContext) -> str | None:
@@ -519,14 +529,20 @@ UNDATED_NOTE_SUMMARY = "The letter gives no date for this payment."
 
 
 def payment_note(
-    kind: str | None, extraction: DocumentExtraction | None, title: str | None, text: str, ctx: RuleContext
+    kind: str | None,
+    extraction: DocumentExtraction | None,
+    title: str | None,
+    text: str,
+    ctx: RuleContext,
+    *,
+    chosen: bool = False,
 ) -> PaymentNote | None:
     """The note a letter's payments carry: a rent increase's new rent is only owed once the person
     agrees (§ 558b Abs. 1 BGB); a late statement's back-payment may not be owed
-    (:func:`late_statement_warning`)."""
+    (:func:`late_statement_warning`; ``chosen``: the person chose the letter's kind, :func:`is_statement`)."""
     if kind == "rent_increase":
         return rent_increase_note(kind, extraction)
-    warning = late_statement_warning(is_statement(kind, extraction), title, text, ctx)
+    warning = late_statement_warning(is_statement(kind, extraction, chosen=chosen), title, text, ctx)
     return PaymentNote(warning, "bgb_556_3", recurring=False) if warning else None
 
 
