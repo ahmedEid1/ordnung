@@ -51,7 +51,8 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
 - **The watched folder waits for you** — files your scanner or phone app saves into the watched folder
   are stored and read on this computer only, and wait in the Inbox ("From your folder — waiting for
   you") until you choose *Read these* or *Keep private* ([details](#the-watched-folder)). *Keep
-  private* can be undone (the toast's *Undo*, or *Undo "Keep private"* on the letter).
+  private* can be undone (the toast's *Undo*, or *Undo "Keep private"* on the letter — for an e-mail,
+  its attachments kept private with it wait again too).
 - **E-mail attachments follow the e-mail** — each PDF or photo attached to an e-mail you add becomes
   a letter of its own with the e-mail's choice: attachments of a private e-mail stay private, those of
   a waiting e-mail wait with it.
@@ -80,7 +81,8 @@ into — best a folder just for letters. It is off until you choose one.
 - **"Read new files with Claude straight away"** skips the waiting for files that **arrive** in the
   folder from then on: each one is sent to Claude as soon as it appears. The files that were already in
   the folder when you chose it always wait — choosing a busy folder like *Downloads* never sends what
-  is already there — and so do files already waiting: a copy of a waiting file arriving in the folder
+  is already there, also when you choose it again after *Stop watching* (what landed in it meanwhile
+  waits too) — and so do files already waiting: a copy of a waiting file arriving in the folder
   never answers for it. Only you do, by choosing *Read* or *Keep private*, or by adding the same file by
   hand.
 - **Ordnung's own drafts are not letters you received.** A letter Ordnung drafted for you (with your

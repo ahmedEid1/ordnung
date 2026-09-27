@@ -1077,6 +1077,9 @@ class DocumentDetail(_Model):
     attachments_more: int = 0
     #: The e-mail this letter came attached to (``None``: it did not, or that e-mail is gone).
     email: Document | None = None
+    #: Whether its "Keep private" can be undone: it was kept private while it waited for the person,
+    #: and nothing was read since (:func:`ordnung.ingest.held.was_kept_from_waiting`).
+    can_wait_again: bool = False
 
 
 class ItemAside(_Model):

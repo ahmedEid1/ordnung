@@ -353,11 +353,17 @@ shown on it, with the number of parts past the 50 listed; an attachment shows th
 with. Each letter threads by its **own** references first — a payment reminder attached to an e-mail
 joins its invoice's thread, so "pay once, not twice" still holds — and joins its e-mail family's thread
 only instead of opening a new one (`link.thread_case(family=…)`); an e-mail read first and still alone
-in its thread follows its attachment's thread (`link.follow_attachment`). An e-mail whose body repeats
-its attached bill's payment (the same invoice number, or the same amount, currency, direction and due
-date) keeps its to-do, but the bill's takes it over on read (`link.attachment_repeats`,
-`Ledger.is_covered_by_attachment`: left out of Today, the totals and the Ideas, noted on the e-mail,
-set aside as `attached` on the party) — deleting the bill brings it back. An e-mail nested too deeply
+in its thread follows its attachment's thread (`link.follow_attachment`), and the thread it leaves —
+empty now — is deleted, so its reference draws no later letter into it. An e-mail whose body repeats
+its attached bill's payment (the same direction and currency, and the same amount and due date, or
+the same invoice number and amount — or no amount in the e-mail) keeps its to-do, but the bill's
+takes it over on read (`link.attachment_repeats`, `Ledger.is_covered_by_attachment`: left out of
+Today, the totals and the Ideas, noted on the e-mail, set aside as `attached` on the party and in
+Ask's record) — deleting the bill brings it back. The bill counts as the e-mail's attachment also
+when Ordnung had it before (`known`: uploaded, from the folder or another e-mail), and only its
+payments no payment reminder took over count: a reminder e-mail with its invoice attached (or with
+the Mahnung PDF of the day before) takes the invoice's payment over as the later reminder and keeps
+its own — the two never set each other aside, so one payment to act on always stays. An e-mail nested too deeply
 for the parser is refused with a reason. An e-mail title is its subject and sender while it is private
 or held (no model). Adding a trashed e-mail again restores its attachments too; adding an e-mail again
 whose adding was stopped before its attachments adds them.
@@ -384,10 +390,12 @@ whose adding was stopped before its attachments adds them.
   `source="folder"`; a name that is not UTF-8 is shown as Windows-1252. By default it is **held**:
   private and `held`, stored and read on this computer only, never sent to Claude until the person
   answers — *Read these N* (`release`: no longer private, queued for reading) or *Keep private*
-  (`keep_private`: as "Keep private — no AI"; undone by `back_to_waiting`), for an e-mail with its held
-  attachments (`ingest/held.py`). With `inbox_auto_read` files that **arrive** later are read at
-  once; the files in the folder's first listing (meta `inbox_baseline`, per folder) always wait, and in
-  the replay-only demo every file waits. Only adding a held file again **by hand** (`answer_held`: the
+  (`keep_private`: as "Keep private — no AI"; undone by `back_to_waiting`, an e-mail with the
+  attachments kept private with it), for an e-mail with its held attachments (`ingest/held.py`). With
+  `inbox_auto_read` files that **arrive** later are read at once; the files in the folder's first
+  listing after it was chosen (meta `inbox_baseline`, dropped whenever `inbox_dir` changes — also by
+  *Stop watching* — so a folder chosen again counts as chosen then; a restart keeps it) always wait,
+  and in the replay-only demo every file waits. Only adding a held file again **by hand** (`answer_held`: the
   upload route, the CLI) answers for it — a copy in the folder never does. A held letter keeps waiting
   whatever happens to its local reading (stopped: stored next time; failed: `error`, still `held`).
   A PDF Ordnung itself rendered (a draft, remembered by SHA-256 when served) is refused, never added.
@@ -416,7 +424,10 @@ whose adding was stopped before its attachments adds them.
   Fingerprint = rule_id + entity id + hash(triggering values). Savings are yearly-normalised.
 - **Review** — compact snapshot → ≤ 6 new Ideas with refs to existing ids (validated; duplicates by
   fuzzy title dropped); `source="review"`.
-- **Brief** — deterministic agenda + optional 2–3 sentence prose (cached per day + agenda hash).
+- **Brief** — deterministic agenda + optional 2–3 sentence prose (cached per day + agenda hash). The
+  code-written note is served as the ledger stands (a stored one only while it still says the same),
+  and while letters from the watched folder wait unread it never says "all clear": "Nothing is due in
+  the next 7 days from the letters that were read." (the count is not sent to the model).
 
 ## 10. Ask — `assistant/`
 
@@ -449,7 +460,8 @@ HTML and without remote images.
 - **What the record says.** `money_summary` lists open payments with no stored due date and, apart, the
   demands of letters with scam signs (`do_not_pay`: not to be paid until the person has checked with
   the sender — a real sender whose bank details changed shows the same signs), with `today` and each
-  fixed-cost contract's category. `list_contracts` names a letter that says a contract is cancelled
+  fixed-cost contract's category. A to-do of an e-mail whose attached bill asks for the same payment
+  says so in its record (`set_aside`, with the bill's id): one payment, counted once. `list_contracts` names a letter that says a contract is cancelled
   only as `cancellation_letter` (pending the person's confirmation). `if_not_cancelled` (also in
   `explain_date` for a fixed-term job or flat let) says a job ends by itself on its date (§ 15 Abs. 1
   TzBfG); ending it earlier by ordinary notice needs an agreed notice clause (§ 15 Abs. 4 TzBfG), and a
@@ -637,7 +649,7 @@ Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT
 `items/{id}/confirm` (POST: grounding=user), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
 (PATCH), `parties`, `parties/{id}`, `cases/{id}`, `timeline?from&to`, `lanes?from&to`, `dashboard`,
 `suggestions` (GET), `suggestions/{id}` (PATCH status/snooze), `suggestions/review` (POST),
-`brief` (GET cached, POST regenerate), `ask` (POST → SSE), `chat/{thread_id}`, `drafts`
+`brief` (GET cached — a code-written note current —, POST regenerate), `ask` (POST → SSE), `chat/{thread_id}`, `drafts`
 (GET/POST), `drafts/{id}` (GET/PATCH/DELETE), `drafts/{id}/pdf`, `drafts/{id}/sent` (POST),
 `drafts/{id}/translate` (POST: translate the edited letter again, purpose `draft`; 409 in the
 replay-only demo), `calendar.ics`, `calendar/exported` (POST), `activity`, `usage`, `rules`, `jobs`,
@@ -650,7 +662,8 @@ wait, the suggested `<data>/inbox`, the last files it brought in), `documents/he
 letters they saw, a held e-mail's held attachments included; ids that no longer wait come back as
 `skipped`; *read* is `409` in the replay-only demo; the web app sends more ids in several requests),
 `documents/held/wait` (POST `{doc_ids}`: undo *Keep private* — letters kept private from waiting,
-never read since, wait again). `settings` takes `inbox_auto_read`; a waiting letter can't
+never read since, wait again; an e-mail with the attachments kept private with it; a letter's
+`DocumentDetail.can_wait_again` says whether it can). `settings` takes `inbox_auto_read`; a waiting letter can't
 be reprocessed or made non-private by `PATCH` (`409`) — only an answer changes it.
 Contracts carry `cancellable` + `cancel_hint`, worked out on read (not for the broadcasting fee,
 obligations towards authorities or a job — a job gets "Draft resignation").

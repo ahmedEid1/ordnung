@@ -11,11 +11,12 @@ from ordnung.db.store import Store
 from ordnung.llm.base import LLMError, LLMRequest, LLMResponse
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService
-from ordnung.models import Profile
+from ordnung.models import AppSettings, Profile
 from ordnung.secretary.brief import (
     Agenda,
     agenda_text,
     brief_cache_key,
+    brief_request,
     brief_text,
     build_agenda,
     generate_brief,
@@ -87,6 +88,15 @@ def test_agenda_text_is_plain_and_complete(store: Store, ids: dict[str, str]) ->
 
 def test_agenda_text_all_clear() -> None:
     assert agenda_text(Agenda(date="2026-09-28")) == "All clear — nothing is due in the next 7 days."
+
+
+def test_agenda_text_is_never_all_clear_while_letters_wait() -> None:
+    """Letters from the watched folder that wait unread may ask for anything: only what was read is
+    clear (the count stays out of what the model sees and of the facts its note is checked against)."""
+    agenda = Agenda(date="2026-09-28", waiting=2)
+    assert agenda_text(agenda) == "Nothing is due in the next 7 days from the letters that were read."
+    unread = Agenda(date="2026-09-28")
+    assert brief_request(agenda, Profile(), AppSettings()) == brief_request(unread, Profile(), AppSettings())
 
 
 def test_grounded_note_rejects_invented_facts(store: Store, ids: dict[str, str]) -> None:

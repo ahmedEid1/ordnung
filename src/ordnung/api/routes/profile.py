@@ -25,6 +25,7 @@ from ordnung.api.routes.dates import recompute_all_items
 from ordnung.app_context import AppContext
 from ordnung.config import Paths, private_dir
 from ordnung.ingest.pipeline import ledger_lock
+from ordnung.ingest.watcher import folder_chosen
 from ordnung.models import AppSettings, Profile
 from ordnung.rules import normalize_region
 from ordnung.secretary.scam import iban_valid, normalize_iban
@@ -223,6 +224,8 @@ def _merge_settings(ctx: AppContext, patch: SettingsPatch) -> AppSettings:
     if "inbox_dir" in changes:
         merged["inbox_dir"] = changes["inbox_dir"]
     ctx.store.save_settings(merged)
+    if merged["inbox_dir"] != current.inbox_dir:  # chosen now: what is in it waits (also re-chosen)
+        folder_chosen(ctx.store)
     return ctx.reload_settings()
 
 

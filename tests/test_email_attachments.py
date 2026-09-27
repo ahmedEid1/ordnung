@@ -20,6 +20,7 @@ from PIL import Image
 from fixtures_llm import (
     ALL_LETTERS,
     DUNNING_LETTER,
+    DUNNING_PAY_QUOTE,
     INVOICE_LETTER,
     INVOICE_PAY_QUOTE,
     TODAY,
@@ -32,6 +33,7 @@ from ordnung import clock
 from ordnung.api.routes.documents import document_detail
 from ordnung.api.routes.parties import get_party
 from ordnung.app_context import AppContext, build_context
+from ordnung.assistant.mcp_server import SET_ASIDE_ATTACHED, LedgerTools
 from ordnung.ingest import attachments as attachments_module
 from ordnung.ingest import held
 from ordnung.ingest.attachments import (
@@ -48,7 +50,7 @@ from ordnung.ingest.link import ATTACHMENT_ITEM_NOTE, attachment_repeats
 from ordnung.ingest.pipeline import add_file, ingest_document, release_held
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import Document, Identifier, Item
-from ordnung.secretary.triggers import Ledger
+from ordnung.secretary.triggers import Ledger, dunning_escalation
 from ordnung.views import dashboard
 
 EMAIL_MARKER = "Rechnungs-E-Mail September"
@@ -335,17 +337,29 @@ def test_an_attached_bill_takes_over_the_payment_its_email_repeats() -> None:
     bill = document("doc_bill", source=email_source("doc_mail"), references=("R-1",))
     same = dict(amount=49.99, currency="EUR", direction="out", due_date="2026-09-15")
     asked = item(mail, **same)
-    assert attachment_repeats(mail, asked, bill, [item(bill, amount=50.0)])  # the same invoice number
+    later = {**same, "due_date": "2026-09-16"}
+    assert attachment_repeats(mail, asked, bill, [item(bill, **later)])  # the same invoice and amount
+    assert attachment_repeats(mail, item(mail, **{**same, "amount": None}), bill, [item(bill, **same)])
     unnumbered = mail.model_copy(update={"references": []})
     assert attachment_repeats(unnumbered, asked, bill, [item(bill, **same)])  # the same amount and day
+    assert not attachment_repeats(unnumbered, asked, bill, [item(bill, **later)])
     assert not attachment_repeats(unnumbered, asked, bill, [item(bill, **{**same, "amount": 59.99})])
-    assert not attachment_repeats(unnumbered, asked, bill, [item(bill, **{**same, "due_date": "2026-10-15"})])
     assert not attachment_repeats(unnumbered, asked, bill, [item(bill, **{**same, "direction": "in"})])
+    assert not attachment_repeats(mail, asked, bill, [item(bill, **{**same, "currency": "USD"})])
     assert not attachment_repeats(mail, asked, bill, [])  # the bill asks for nothing
     assert not attachment_repeats(mail, asked, bill, [item(bill, kind="deadline")])
-    stranger = document("doc_other", references=("R-1",))  # not attached to this e-mail
-    assert not attachment_repeats(mail, asked, stranger, [item(stranger, **same)])
     assert not attachment_repeats(mail, item(mail, kind="deadline"), bill, [item(bill, **same)])
+    assert not attachment_repeats(mail, asked, mail, [asked])  # never the e-mail itself
+
+
+def test_a_different_amount_is_never_the_same_payment() -> None:
+    """A reminder e-mail with its invoice attached names the same invoice number and asks for more
+    (fees): the invoice never takes the reminder's payment over."""
+    mail = document("doc_mail", references=("R-1",))
+    invoice = document("doc_bill", source=email_source("doc_mail"), references=("R-1",))
+    reminder = item(mail, amount=54.99, currency="EUR", direction="out", due_date="2026-09-30")
+    invoice_payment = item(invoice, amount=49.99, currency="EUR", direction="out", due_date="2026-09-15")
+    assert not attachment_repeats(mail, reminder, invoice, [invoice_payment])
 
 
 # --------------------------------------------------------------------------------------------------
@@ -452,6 +466,9 @@ async def test_attachments_of_a_private_email_stay_private(ctx: AppContext) -> N
     await ctx.worker.run_until_idle()
     assert backend(ctx).calls == []  # no model ever saw the e-mail or its bill
     assert {doc.status for doc in ctx.store.list_documents()} == {"processed"}
+    # kept private when added, never waiting: its page offers no "Undo “Keep private”"
+    for doc in (parent, child):
+        assert not document_detail(ctx.store, doc.id, clock.today()).can_wait_again
 
 
 async def test_attachments_of_a_waiting_email_wait_and_are_answered_with_it(ctx: AppContext) -> None:
@@ -479,6 +496,31 @@ async def test_keeping_a_waiting_email_private_keeps_its_attachments_private(ctx
     assert [doc.id for doc in answer.documents] == [parent.id, child.id]
     assert all(doc.status == "processed" and doc.ai_private for doc in ctx.store.list_documents())
     assert held.waiting(ctx.store) == [] and backend(ctx).calls == []
+    for doc in (parent, child):
+        assert document_detail(ctx.store, doc.id, clock.today()).can_wait_again
+
+    # "Undo" on the e-mail's page sends its id only: what was kept private with it waits again too
+    undone = held.back_to_waiting(ctx.store, [parent.id])
+    assert [doc.id for doc in undone.documents] == [parent.id, child.id] and undone.skipped == []
+    assert [doc.id for doc in held.waiting(ctx.store)] == [parent.id, child.id]
+    release_held(ctx, [parent.id])  # so "Read it" reads the bill it brought as well
+    await ctx.worker.run_until_idle()
+    child = ctx.store.get_document(child.id)  # type: ignore[assignment]
+    assert child is not None and child.status == "processed" and not child.ai_private
+
+
+async def test_undo_brings_back_only_what_was_kept_private_with_the_email(ctx: AppContext) -> None:
+    """An attachment read since (or never kept private) stays as it is when its e-mail waits again."""
+    parent = await add_file(ctx, emailed_bill(), "rechnung.eml", hold=True, source="folder")
+    (child,) = attachments_of(ctx, parent)
+    await ctx.worker.run_until_idle()
+    release_held(ctx, [child.id])  # the bill was read on its own first
+    await ctx.worker.run_until_idle()
+    held.keep_private(ctx.store, [parent.id])
+    undone = held.back_to_waiting(ctx.store, [parent.id, child.id])
+    assert [doc.id for doc in undone.documents] == [parent.id] and undone.skipped == [child.id]
+    child = ctx.store.get_document(child.id)  # type: ignore[assignment]
+    assert child is not None and child.status == "processed" and not child.ai_private
 
 
 async def test_a_known_attachment_is_linked_not_added_again(ctx: AppContext) -> None:
@@ -539,11 +581,19 @@ async def test_a_payment_reminder_attached_to_an_email_joins_its_invoices_thread
         attach(message, DUNNING_LETTER.pdf(), "application/pdf", "Mahnung.pdf")
         parent = await add_file(context, message.as_bytes(), "mahnung.eml")
         (reminder,) = attachments_of(context, parent)
-        for doc_id in (parent.id, reminder.id):  # the e-mail first
-            await ingest_document(context, doc_id)
+        await ingest_document(context, parent.id)  # the e-mail first: it opens a thread of its own
+        opened = context.store.get_document(parent.id).case_id  # type: ignore[union-attr]
+        assert opened is not None
+        await ingest_document(context, reminder.id)
         invoice, parent, reminder = (context.store.get_document(d.id) for d in (invoice, parent, reminder))
         assert invoice is not None and parent is not None and reminder is not None
         assert reminder.case_id == invoice.case_id and parent.case_id == invoice.case_id
+        # the thread the e-mail left is gone: a later letter citing its reference joins the real one
+        assert opened != invoice.case_id and context.store.get_case(opened) is None
+        assert [case.id for case in context.store.list_cases()] == [invoice.case_id]
+        for reference in references:
+            found = context.store.find_case_by_reference(reference["value"])
+            assert found is None or found.id == invoice.case_id
         assert any("Pay the amount asked here once" in warning for warning in reminder.warnings)
         ledger = Ledger(context.store, clock.today())
         (invoice_payment,) = context.store.list_items(doc_id=invoice.id, kind="payment")
@@ -592,10 +642,110 @@ async def test_an_email_that_repeats_its_attached_bill_is_counted_once(data_dir:
         assert [(a.item_id, a.reason, a.replaced_by) for a in party.set_aside] == [
             (mail_payment.id, "attached", bill.id)
         ]
+        # Ask's record says so too: one payment, not two of 49.99 (ADR 0008, computed by code)
+        rows = {
+            row["id"]: row for row in LedgerTools(context.store, today=today).list_items().record["items"]
+        }
+        assert rows[mail_payment.id]["set_aside"] == SET_ASIDE_ATTACHED
+        assert rows[mail_payment.id]["set_aside_by"] == bill.id
+        assert "set_aside" not in rows[bill_payment.id] and "set_aside_by" not in rows[bill_payment.id]
 
         context.store.trash_document(bill.id)  # the bill goes: the e-mail's to-do counts again
         assert dashboard(context.store, today).money.due_this_month == pytest.approx(49.99)
         assert not Ledger(context.store, today).is_covered_by_attachment(mail_payment)
+    finally:
+        context.close()
+
+
+REMINDER_MAIL_MARKER = "Offener Betrag Kundenkonto Oktober"
+
+
+@pytest.mark.parametrize(
+    ("attached", "mail_date"),
+    [(INVOICE_LETTER, "2026-09-20"), (DUNNING_LETTER, "2026-09-21")],
+    ids=["its-invoice-attached", "the-reminder-pdf-a-day-older"],
+)
+async def test_a_reminder_email_and_its_attachment_never_set_each_other_aside(
+    data_dir: Path, attached: Letter, mail_date: str
+) -> None:
+    """A payment reminder e-mail ("anbei nochmals Ihre Rechnung") with the invoice attached, or with the
+    Mahnung PDF dated the day before the e-mail: the e-mail takes the attachment's payment over as the
+    later reminder, and the attachment never takes the e-mail's — one payment to act on stays."""
+    payload = DUNNING_LETTER.extraction()
+    payload.update(document_date=mail_date, title="Reminder e-mail", case_title="Reminder e-mail")
+    letters = (Letter(REMINDER_MAIL_MARKER, ((),), payload), *ALL_LETTERS)
+    context = build_context(data_dir, backend_obj=fake_backend(Router(letters=letters)))
+    try:
+        message = email(
+            subject=REMINDER_MAIL_MARKER,
+            body=f"Guten Tag,\nleider ist Ihr Konto noch offen.\n{DUNNING_PAY_QUOTE}\nAnbei das Schreiben.\n",
+        )
+        attach(message, attached.pdf(), "application/pdf", "Anhang.pdf")
+        parent = await add_file(context, message.as_bytes(), "mahnung.eml")
+        await context.worker.run_until_idle()
+        (child,) = attachments_of(context, parent)
+        (mail_payment,) = context.store.list_items(doc_id=parent.id, kind="payment")
+        (child_payment,) = context.store.list_items(doc_id=child.id, kind="payment")
+
+        today = clock.today()
+        ledger = Ledger(context.store, today)
+        assert ledger.is_superseded_by_reminder(child_payment)
+        assert not ledger.is_covered_by_attachment(mail_payment)
+        assert [i.id for i in ledger.actionable_items() if i.kind == "payment"] == [mail_payment.id]
+        assert dashboard(context.store, today).money.due_this_month == pytest.approx(54.99)
+        (idea,) = dunning_escalation(ledger)
+        assert any(ref.id == mail_payment.id for ref in idea.refs)
+    finally:
+        context.close()
+
+
+async def test_a_bill_already_in_ordnung_is_counted_once_when_its_email_comes(data_dir: Path) -> None:
+    """The bill was saved from the e-mail (into the watched folder, or uploaded) before the e-mail came:
+    the attachment is recorded as known and keeps its own source, and it still takes over the payment
+    the e-mail repeats — so it does for a second e-mail that sends the same bill again. An e-mail that
+    did not bring the bill keeps its own to-do."""
+    marker = "Ihre Mobilfunkrechnung ist da"
+    repeated = INVOICE_LETTER.extraction()
+    repeated.update(
+        title="Phone bill e-mail", summary="The bill is attached.", case_title="Phone bill e-mail"
+    )
+    letters = (Letter(marker, ((),), repeated), *ALL_LETTERS)
+    context = build_context(data_dir, backend_obj=fake_backend(Router(letters=letters)))
+    try:
+        bill = await add_file(context, INVOICE_LETTER.pdf(), "Rechnung_0925.pdf", source="folder")
+        await context.worker.run_until_idle()
+        mails = []
+        for number in (1, 2):
+            message = email(
+                subject=marker,
+                body=f"Guten Tag ({number}),\nIhre Rechnung Nr. R-2026-0815.\n{INVOICE_PAY_QUOTE}\n",
+            )
+            attach(message, INVOICE_LETTER.pdf(), "application/pdf", "Rechnung_0925.pdf")
+            mails.append(await add_file(context, message.as_bytes(), f"rechnung-{number}.eml"))
+        await context.worker.run_until_idle()
+        for mail in mails:
+            assert attachments_of(context, mail) == []
+            detail = document_detail(context.store, mail.id, clock.today())
+            assert [(a.outcome, a.doc_id) for a in detail.attachments] == [("known", bill.id)]
+        stored_bill = context.store.get_document(bill.id)
+        assert stored_bill is not None and stored_bill.source == "folder"
+
+        today = clock.today()
+        (bill_payment,) = context.store.list_items(doc_id=bill.id, kind="payment")
+        ledger = Ledger(context.store, today)
+        for mail in mails:
+            (mail_payment,) = context.store.list_items(doc_id=mail.id, kind="payment")
+            assert ledger.covering_attachments()[mail_payment.id].id == bill.id
+        assert [i.id for i in ledger.actionable_items() if i.kind == "payment"] == [bill_payment.id]
+        assert dashboard(context.store, today).money.due_this_month == pytest.approx(49.99)
+
+        alone = email(
+            subject=marker, body=f"Guten Tag,\nIhre Rechnung Nr. R-2026-0815.\n{INVOICE_PAY_QUOTE}\n"
+        )
+        lone = await add_file(context, alone.as_bytes(), "ohne-anhang.eml")
+        await context.worker.run_until_idle()
+        (lone_payment,) = context.store.list_items(doc_id=lone.id, kind="payment")
+        assert not Ledger(context.store, today).is_covered_by_attachment(lone_payment)
     finally:
         context.close()
 

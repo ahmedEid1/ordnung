@@ -16,9 +16,11 @@ import pytest
 from fixtures_llm import INVOICE_LETTER, TAX_LETTER
 from ordnung import clock
 from ordnung.api.deps import ApiState
+from ordnung.api.routes import data as data_routes
 from ordnung.ingest.intake import TOO_DEEP
 from ordnung.ingest.pipeline import add_file
 from ordnung.llm.replay import ReplayBackend
+from ordnung.secretary.brief import brief_key
 from test_api_support import TODAY, Api, api_for, lifespan
 
 
@@ -90,6 +92,32 @@ async def test_a_folder_set_in_settings_is_watched_and_its_files_wait(data_dir: 
         cleared = await api.client.put("/api/settings", json={"inbox_dir": None})
         assert cleared.json()["inbox_dir"] is None
         assert (await api.client.get("/api/folder")).json()["state"] == "off"
+
+
+async def test_a_folder_chosen_again_counts_as_chosen_now(data_dir: Path, tmp_path: Path) -> None:
+    """*Stop watching*, then choosing the same folder again with "read new files" on: what landed in it
+    meanwhile was already there when it was chosen, so it waits (the switch promises that); files that
+    arrive afterwards are read at once."""
+    downloads = tmp_path / "Downloads"
+    downloads.mkdir()
+    async with api_for(data_dir) as api, lifespan(api.app):
+        api.app.state.ordnung.folder.settle_s = 0.2
+        api.app.state.ordnung.folder.tick_ms = 50
+        chosen = {"inbox_dir": str(downloads), "inbox_auto_read": True}
+        assert (await api.client.put("/api/settings", json=chosen)).status_code == 200
+        await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
+        await api.client.put("/api/settings", json={"inbox_dir": None})  # Stop watching
+        assert (await api.client.get("/api/folder")).json()["state"] == "off"
+
+        (downloads / "kontoauszug.pdf").write_bytes(TAX_LETTER.pdf())  # downloaded while not watched
+        assert (await api.client.put("/api/settings", json=chosen)).status_code == 200
+        status = await eventually_json(api, "/api/folder", lambda body: body["waiting"] == 1)
+        assert [pickup["filename"] for pickup in status["recent"]] == ["kontoauszug.pdf"]
+
+        (downloads / "rechnung.pdf").write_bytes(INVOICE_LETTER.pdf())  # arrives now: read at once
+        status = await eventually_json(api, "/api/folder", lambda body: len(body["recent"]) == 2)
+        by_name = {pickup["filename"]: pickup["status"] for pickup in status["recent"]}
+        assert by_name["kontoauszug.pdf"] == "held" and by_name["rechnung.pdf"] != "held"
 
 
 async def test_keep_private_and_ids_that_no_longer_wait(data_dir: Path) -> None:
@@ -196,6 +224,25 @@ async def test_delete_everything_stops_watching(data_dir: Path, tmp_path: Path) 
         assert (await api.client.get("/api/documents")).json() == []
 
 
+async def test_when_delete_everything_fails_the_folder_is_watched_again(
+    data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    scans = tmp_path / "Scans"
+    scans.mkdir()
+
+    def locked(ctx: Any) -> None:
+        raise OSError("a file is locked")
+
+    async with api_for(data_dir) as api, lifespan(api.app):
+        await api.client.put("/api/settings", json={"inbox_dir": str(scans)})
+        await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
+        monkeypatch.setattr(data_routes, "wipe_data_dir", locked)
+        with pytest.raises(OSError, match="locked"):
+            await api.client.request("DELETE", "/api/data", json={"confirm": "DELETE"})
+        status = await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
+        assert status["folder"] == str(scans.resolve())
+
+
 async def test_keep_private_can_be_undone(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         doc_id = await waiting_letter(api, INVOICE_LETTER.pdf(), "rechnung.pdf")
@@ -219,6 +266,27 @@ async def test_today_says_letters_wait_and_files_them_nowhere_else(data_dir: Pat
         assert "other" not in [area["area"] for area in today["areas"]]  # not filed as "Other"
         await api.client.post("/api/documents/held/keep-private", json={"doc_ids": [doc_id]})
         assert (await api.client.get("/api/dashboard")).json()["waiting"] == 0
+
+
+async def test_the_code_written_note_is_never_all_clear_while_letters_wait(data_dir: Path) -> None:
+    """A fresh install whose folder brought two scans: Ordnung's own note says nothing is due from what
+    was read — not "all clear" — and it follows each pickup and answer, even once one was stored."""
+    async with api_for(data_dir) as api:
+        stored = (await api.client.post("/api/brief")).json()  # the morning's note, nothing waiting yet
+        assert stored["source"] == "template" and stored["text"].startswith("All clear")
+        assert (await api.client.get("/api/brief")).json() == stored  # still the same: kept, with its time
+
+        first = await waiting_letter(api, TAX_LETTER.pdf(), "scan-1.pdf")
+        await waiting_letter(api, INVOICE_LETTER.pdf(), "scan-2.pdf")
+        note = (await api.client.get("/api/brief")).json()
+        assert note["text"] == "Nothing is due in the next 7 days from the letters that were read."
+        assert "All clear" not in note["text"] and note["generated_at"] is None
+        assert api.ctx.store.get_meta(brief_key(clock.today())) is not None  # GET stored nothing new
+
+        await api.client.post("/api/documents/held/keep-private", json={"doc_ids": [first]})
+        assert "All clear" not in (await api.client.get("/api/brief")).json()["text"]  # one still waits
+        waiting = (await api.client.get("/api/folder")).json()["waiting"]
+        assert waiting == 1
 
 
 async def test_an_email_nested_too_deeply_is_refused_with_a_reason(data_dir: Path) -> None:

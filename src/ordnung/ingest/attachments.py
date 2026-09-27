@@ -27,7 +27,8 @@ e-mail's attachments are read like letters dropped in. The policy, which decides
   (:data:`TOO_DEEP`).
 * An e-mail whose body repeats what its attached bill says ("49,99 EUR, fällig am 15.09.") gets its
   to-do like any letter; the bill's own to-do takes it over on read
-  (:func:`ordnung.ingest.link.attachment_repeats`), so the payment is counted once.
+  (:func:`ordnung.ingest.link.attachment_repeats`), so the payment is counted once — also when the bill
+  was in Ordnung before the e-mail came (an attachment recorded as ``known``, :func:`attachment_ids`).
 """
 
 from __future__ import annotations
@@ -44,7 +45,7 @@ from urllib.parse import unquote
 
 from ordnung.db.store import Store
 from ordnung.ingest.intake import IMAGE_TYPES, TOO_DEEP, IntakeError, image_size, safe_filename, sniff_mime
-from ordnung.models import AttachmentOutcome, Document, EmailAttachment
+from ordnung.models import Activity, AttachmentOutcome, Document, EmailAttachment
 
 MAX_ATTACHMENTS = 10
 MAX_LISTED = 50
@@ -263,22 +264,48 @@ def is_email(document: Document) -> bool:
     return document.mime == EMAIL_MIME
 
 
+def _rows(entry: Activity | None) -> list[EmailAttachment]:
+    """The attachments an ``email.attachments`` entry records (rows that don't parse are left out)."""
+    rows = entry.data.get("attachments", []) if entry is not None else []
+    recorded: list[EmailAttachment] = []
+    for row in rows if isinstance(rows, list) else []:
+        try:
+            recorded.append(EmailAttachment.model_validate(row))
+        except ValueError:
+            continue
+    return recorded
+
+
+def _recorded(store: Store, document: Document) -> list[EmailAttachment]:
+    """The e-mail's attachments as recorded when it was added."""
+    if not is_email(document):
+        return []
+    return _rows(store.last_activity("document", document.id, [ATTACHMENTS_ACTIVITY]))
+
+
+def attachment_ids(store: Store) -> dict[str, list[str]]:
+    """E-mail id → the ids of the letters its attachments are, as recorded when it was added (one read
+    of the activity log for every e-mail, the newest record of each): those it added and those Ordnung
+    already had (``known`` — the same file uploaded, dropped in the watched folder or attached to
+    another e-mail before; such a letter keeps its own ``source``)."""
+    found: dict[str, list[str]] = {}
+    for entry in store.list_activity(None, kinds=[ATTACHMENTS_ACTIVITY]):
+        if entry.ref_type != "document" or not entry.ref_id or entry.ref_id in found:
+            continue
+        found[entry.ref_id] = [
+            row.doc_id for row in _rows(entry) if row.doc_id and row.outcome in ("added", "known")
+        ]
+    return found
+
+
 def attachment_listing(store: Store, document: Document) -> list[EmailAttachment]:
     """What became of an e-mail's attachments, as recorded when it was added.
 
     A letter an attachment became is linked (with its status now) only while it exists and is not in
     the trash.
     """
-    if not is_email(document):
-        return []
-    entry = store.last_activity("document", document.id, [ATTACHMENTS_ACTIVITY])
-    rows = entry.data.get("attachments", []) if entry is not None else []
     listing: list[EmailAttachment] = []
-    for row in rows if isinstance(rows, list) else []:
-        try:
-            attachment = EmailAttachment.model_validate(row)
-        except ValueError:
-            continue
+    for attachment in _recorded(store, document):
         linked = store.get_document(attachment.doc_id) if attachment.doc_id else None
         live = linked if linked is not None and linked.deleted_at is None else None
         listing.append(

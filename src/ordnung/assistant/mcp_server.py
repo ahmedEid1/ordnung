@@ -581,7 +581,9 @@ def _key_fact(fact: KeyFact) -> dict[str, Any]:
 
 
 def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]:
-    """Dates, status and flags are the record; the amount only with verified evidence (ADR 0003).
+    """Dates, status and flags are the record; the amount only with verified evidence (ADR 0003). An
+    e-mail's payment its attached bill asks for too says so (``set_aside``, the bill's id in
+    ``set_aside_by``): it is not a second payment.
 
     Title, action, consequence and location are the model's words from the letter; an amount read by
     AI from a photo or not found on the page is letter text too (``amount_unverified`` says so).
@@ -617,6 +619,9 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
         "needs_check": item.grounding == "unverified" or None,
         "scam_warning": bool(scam) or None,
     }
+    bill = ledger.covering_attachments().get(item.id)
+    if bill is not None:  # the pay-once relation Today and the totals follow (ADR 0008: code-computed)
+        row.update(set_aside=SET_ASIDE_ATTACHED, set_aside_by=bill.id)
     if item.amount is not None:
         note = _amount_note(item.grounding)
         if note is None:
@@ -651,6 +656,10 @@ CANCELLATION_PENDING = (
     "A letter says this contract is cancelled, but the person has not confirmed it in Ordnung yet, so "
     "the contract is still active here and its dates stand; the end date the letter gives is only in "
     "the letter text."
+)
+SET_ASIDE_ATTACHED = (
+    "Not a payment of its own: the bill that came attached to this e-mail (set_aside_by) asks for the same "
+    "payment, so it is counted and paid once, as the bill says — never add the two up."
 )
 TERMS_UNVERIFIED = (
     "The terms and cost were read by AI from a photo or could not be found in the letter, so they are "

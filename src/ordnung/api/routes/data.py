@@ -121,6 +121,11 @@ async def delete_everything(body: DeleteEverything, state: StateDep) -> DataDele
     await ctx.worker.stop(grace=WORKER_GRACE_S)
     try:
         result = await asyncio.to_thread(wipe_data_dir, ctx)
+    except BaseException:
+        with contextlib.suppress(Exception):  # what stays is watched again, as its settings say
+            ctx.reload_settings()
+            await state.folder.reconfigure()
+        raise
     finally:
         if worker_was_running:
             with contextlib.suppress(Exception):

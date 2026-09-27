@@ -15,7 +15,8 @@ never sent to Claude until the person says so. The policy:
   e-mail answers for its held attachments as well. Only letters that are still held change; any other
   id is reported back as skipped (it was answered already, deleted, or never waited).
 * **Undo** (:func:`back_to_waiting`): letters kept private this way — and never read by Claude —
-  can wait again, so one mis-tap on "Keep private" is not final.
+  can wait again, so one mis-tap on "Keep private" is not final; an e-mail brings back the attachments
+  kept private with it.
 * Adding a held file again **by hand** (an upload, the command line) answers the question the same
   way: an upload is "read", a "Keep private" upload is "keep private"
   (:func:`ordnung.ingest.pipeline.add_file`, ``answer_held``). A copy arriving in the watched folder,
@@ -161,14 +162,24 @@ def was_kept_from_waiting(store: Store, document: Document) -> bool:
 
 def back_to_waiting(store: Store, doc_ids: Iterable[str]) -> ConsentResult:
     """Undo "Keep private": letters kept private by answering their wait wait again (``held``), as
-    they were. Any other id is skipped (never waited, read since, deleted)."""
+    they were — an e-mail with its attachments that were kept private with it (never read since), as
+    it was answered for them (:func:`answered_together`). Any other id is skipped (never waited, read
+    since, deleted)."""
     with store.tx():
         result = ConsentResult()
+        chosen: dict[str, Document] = {}
         for doc_id in dict.fromkeys(doc_ids):
             document = store.get_document(doc_id)
             if document is None or not was_kept_from_waiting(store, document):
                 result.skipped.append(doc_id)
                 continue
+            chosen.setdefault(document.id, document)
+            if is_email(document):
+                attachments = store.list_documents(source=email_source(document.id))
+                for attachment in sorted(attachments, key=lambda doc: (doc.created_at, doc.id)):
+                    if was_kept_from_waiting(store, attachment):
+                        chosen.setdefault(attachment.id, attachment)
+        for document in chosen.values():
             result.documents.append(store.update_document(document.id, status=HELD))
             store.log_activity(
                 "document.waiting",

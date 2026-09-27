@@ -67,7 +67,7 @@ flowchart LR
 | Watched folder → Ordnung | Only files directly in the folder with a type Ordnung reads; symbolic links never followed (`O_NOFOLLOW`), sub-folders not entered, partial and temporary files ignored; at most 50 MB + 1 byte read, then the upload checks below. The folder is never written to. A new file is **held** — private and read on this computer only, never sent to a model — until the person answers in the Inbox (`ingest/held.py`), unless they turned on reading new files at once |
 | E-mail → attachments | Each attached PDF or photo (decided by its bytes) passes the upload checks below as a document of its own, at most 10 per e-mail, with the e-mail's privacy choice; pictures inside the e-mail are skipped, other types listed, a forwarded e-mail never opened (`ingest/attachments.py`) |
 | Upload → machine | Checked before anything decodes it: PDF stream expansion, image pixels and text pages are capped; the data folder is private to the account (`0700`, files `0600`) |
-| Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs |
+| Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs (one bounded exception: downloading a drafted letter's PDF records its SHA-256 among the last 200, so the watched folder never takes the download for a letter received — the fingerprint must be of the exact bytes handed out, which depend on the profile at download time) |
 | Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence` |
 
 ## Reading a letter
@@ -120,15 +120,16 @@ and pauses for *Delete everything* (`ingest/watcher.py`; policy in its docstring
 file by a hash of folder, name, size and modification time while the file is there — once its pickup
 is over, never halfway — so nothing is picked up twice: not after a restart, not after its letter was
 deleted. With `inbox_auto_read` files that arrive later skip the waiting; the files that were in the
-folder when it was chosen always wait, and a copy of a waiting file never answers for it (only an
+folder when it was chosen (or chosen again, after *Stop watching*) always wait, and a copy of a waiting file never answers for it (only an
 upload or the CLI does, `answer_held`). A held letter stays held whatever happens to its local job.
 Refused files and folder problems go to the activity log; `GET /api/folder` reports the state, how
 many letters wait and the last files it brought in; Today and the Inbox's count say how many wait.
 
 An e-mail's attachments thread by their own references first (a payment reminder joins its
 invoice's thread) and only fall back to the e-mail's thread; a bill that repeats its e-mail's payment
-takes it over on read (`Ledger.is_covered_by_attachment`), like a payment reminder takes over its
-invoice's.
+takes it over on read (`Ledger.is_covered_by_attachment`; a bill Ordnung already had counts, from
+the e-mail's recorded listing), like a payment reminder takes over its invoice's — and only while no
+reminder took the bill's own payment over, so the two relations never hide each other's payment.
 
 ## Asking a question
 

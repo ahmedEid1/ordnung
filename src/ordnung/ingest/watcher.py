@@ -31,8 +31,9 @@ The policy, which decides every case:
 * **Consent** — unless ``settings.inbox_auto_read`` is on, a file is *held*: stored and read on this
   computer only, never sent to Claude until the person answers (:mod:`ordnung.ingest.held`). With it
   on, files that **arrive** after the folder was chosen are read at once; the files that were already
-  in it when it was first watched always wait (choosing ``~/Downloads`` must not send every file in it
-  to Claude). Where letters can't be read at all (the zero-token demo), files are always held. A copy
+  in it when it was chosen always wait (choosing ``~/Downloads`` must not send every file in it to
+  Claude). Choosing a folder again — after "Stop watching" or another folder — counts as choosing it
+  (:func:`folder_chosen`): what came in meanwhile waits too; a restart does not. Where letters can't be read at all (the zero-token demo), files are always held. A copy
   of a waiting file never answers for it.
 * **Read-only** — the folder is only listed and read (``O_NOFOLLOW``): nothing in it is ever written,
   moved or deleted.
@@ -292,6 +293,13 @@ def recent_pickups(store: Store, limit: int = RECENT) -> list[FolderPickup]:
 # --------------------------------------------------------------------------------------------------
 # The watcher
 # --------------------------------------------------------------------------------------------------
+
+
+def folder_chosen(store: Store) -> None:
+    """The person chose another watched folder, or none (Settings): the next watch lists its folder as
+    chosen now — the files in it then wait, even when it is the folder watched before. Called by the
+    settings route whenever ``inbox_dir`` changes."""
+    store.set_meta(BASELINE_META_KEY, None)
 
 
 class FolderWatcher:
@@ -584,8 +592,9 @@ class FolderWatcher:
             self._save_baseline(self.folder)
 
     def _load_baseline(self, folder: Path) -> bool:
-        """Load the files still to be picked up that were in ``folder`` when it was first watched;
-        ``True`` when this folder was not watched before (its first listing is that set)."""
+        """Load the files still to be picked up that were in ``folder`` when it was chosen; ``True``
+        when it was chosen since it was last watched (its first listing is that set,
+        :func:`folder_chosen`)."""
         try:
             stored = json.loads(self.ctx.store.get_meta(BASELINE_META_KEY) or "{}")
         except ValueError:

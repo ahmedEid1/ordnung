@@ -1205,6 +1205,11 @@ class Store:
         """Update case fields; returns the updated model."""
         return self._update(_CASES, id, fields)
 
+    def delete_case(self, id: str) -> bool:
+        """Delete a case (thread); ``False`` if it did not exist. Letters, to-dos, contracts and drafts
+        still in it stay, unthreaded (``ON DELETE SET NULL``)."""
+        return self._delete(_CASES, id)
+
     def list_cases(self, party_id: str | None = None) -> list[Case]:
         """Cases (threads), most recently updated first."""
         where = _Where()
@@ -1655,17 +1660,24 @@ class Store:
         )
 
     def list_activity(
-        self, limit: int = 50, *, kinds: Sequence[str] | None = None, data: Mapping[str, str] | None = None
+        self,
+        limit: int | None = 50,
+        *,
+        kinds: Sequence[str] | None = None,
+        data: Mapping[str, str] | None = None,
     ) -> list[Activity]:
-        """The newest activity entries first; ``kinds`` keeps those kinds, ``data`` the entries whose
-        data has these values (``{"source": "folder"}``; keys are plain names)."""
+        """The newest activity entries first (``limit`` ``None``: all); ``kinds`` keeps those kinds,
+        ``data`` the entries whose data has these values (``{"source": "folder"}``; keys are plain names)."""
         where = _Where()
         where.within("kind", None if kinds is None else list(kinds))
         for key, value in (data or {}).items():
             if not key.isidentifier():
                 raise ValueError(f"not a data key: {key!r}")
             where.add(f"json_extract(data, '$.{key}') = ?", value)
-        return self._many(_ACTIVITY, f"{where.sql()} ORDER BY id DESC LIMIT ?", [*where.params, limit])
+        paging, paging_params = _paging(limit)
+        return self._many(
+            _ACTIVITY, f"{where.sql()} ORDER BY id DESC{paging}", [*where.params, *paging_params]
+        )
 
     def last_activity(self, ref_type: str, ref_id: str, kinds: Sequence[str]) -> Activity | None:
         """The newest activity entry of one of ``kinds`` about a row (``None``: there is none)."""

@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
+from ordnung.ingest.held import is_held
 from ordnung.llm.base import LLMError, LLMRequest
 from ordnung.llm.prompts import render
 from ordnung.llm.runtime import LLMService
@@ -73,6 +74,9 @@ class Agenda(BaseModel):
     payments_total_other_currencies: dict[str, float] = Field(default_factory=dict)
     decisions: list[AgendaEntry] = Field(default_factory=list)
     new_ideas: list[AgendaEntry] = Field(default_factory=list)
+    #: Letters from the watched folder that wait for the person: not read, so nothing of them is above
+    #: (never sent to the model; the code-written note then never says "all clear").
+    waiting: int = 0
 
     def entries(self) -> list[AgendaEntry]:
         """Every entry of every section."""
@@ -215,6 +219,7 @@ def build_agenda(store: Store, today: date) -> Agenda:
         },
         decisions=_decisions(ledger),
         new_ideas=[_idea_entry(idea) for idea in ideas],
+        waiting=sum(1 for doc in ledger.documents.values() if is_held(doc)),
     )
 
 
@@ -272,7 +277,13 @@ def agenda_text(agenda: Agenda) -> str:
             f"{count} new idea{'s' if count != 1 else ''}: {_listing(agenda.new_ideas, today, with_date=False)}."
         )
     if not (agenda.overdue or agenda.today or agenda.next_7_days):
-        parts.insert(0, "All clear — nothing is due in the next 7 days.")
+        # letters that wait unread may ask for anything: only what was read is clear
+        parts.insert(
+            0,
+            "Nothing is due in the next 7 days from the letters that were read."
+            if agenda.waiting
+            else "All clear — nothing is due in the next 7 days.",
+        )
     return " ".join(parts)
 
 
@@ -342,7 +353,7 @@ def grounded_note(text: str, agenda: Agenda) -> bool:
     """Whether a model note is acceptable: short, and every date/amount/§ it mentions is in the agenda."""
     if not text.strip() or len(text) > MAX_BRIEF_CHARS:
         return False
-    return not Facts.from_data(agenda.model_dump()).unsupported(text)
+    return not Facts.from_data(agenda.model_dump(exclude={"waiting"})).unsupported(text)
 
 
 def _note_from(data: dict[str, object] | None, text: str) -> str:
@@ -385,6 +396,21 @@ def get_brief(store: Store, day: date) -> Brief | None:
     """The stored brief of ``day`` (``None`` if none was generated yet)."""
     raw = store.get_meta(brief_key(day))
     return Brief.model_validate_json(raw) if raw else None
+
+
+def current_brief(store: Store, day: date) -> Brief:
+    """The note to show for ``day``: the stored one written by the model, else the code-written note
+    as the ledger stands now — the stored one (with the time it was written) while it still says the
+    same. A code-written note costs nothing to write again, so it never goes stale: a letter picked up
+    from the watched folder or answered since changes it at once."""
+    stored = get_brief(store, day)
+    if stored is not None and stored.source == "llm":
+        return stored
+    agenda = build_agenda(store, day)
+    text = agenda_text(agenda)
+    if stored is not None and stored.text == text:
+        return stored
+    return Brief(date=agenda.date, text=text, source="template")
 
 
 async def generate_brief(store: Store, llm: LLMService | None, today: date) -> Brief:

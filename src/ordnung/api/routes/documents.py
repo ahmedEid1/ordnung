@@ -28,7 +28,7 @@ from ordnung.api.routes.dates import recompute_document_items
 from ordnung.app_context import AppContext
 from ordnung.db.store import Store
 from ordnung.ingest.attachments import attachment_listing, email_of, parts_not_listed
-from ordnung.ingest.held import is_held
+from ordnung.ingest.held import is_held, was_kept_from_waiting
 from ordnung.ingest.intake import (
     IMAGE_TYPES,
     MAX_BYTES,
@@ -286,6 +286,7 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         attachments=attachment_listing(store, document),
         attachments_more=parts_not_listed(store, document),
         email=email_of(store, document),
+        can_wait_again=was_kept_from_waiting(store, document),
     )
 
 

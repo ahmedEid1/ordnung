@@ -10,7 +10,8 @@
   (:func:`email_family_case`): each letter threads by its **own** references first — so a payment
   reminder attached to an e-mail still joins its invoice's thread — and joins its family's thread only
   instead of opening a new one. An e-mail read before its attachment that is still alone in its thread
-  follows the attachment into the thread the attachment's references found (:func:`follow_attachment`).
+  follows the attachment into the thread the attachment's references found, and the thread it leaves
+  is deleted (:func:`follow_attachment`).
 * **Contracts** — an extracted contract is upserted; a change (price increase …) or a cancellation
   confirmation is linked to the party's contract and recorded, never applied (§ 21 "no silent
   closing"): the triggers engine turns it into an Idea and only the person's click changes it.
@@ -366,8 +367,9 @@ def email_family_case(store: Store, document: Document) -> Case | None:
 def follow_attachment(store: Store, document: Document, case: Case) -> Document | None:
     """An attachment was threaded into ``case``: its e-mail follows it there when the e-mail is alone
     in a thread of its own (it was read first and its references found nothing better). Its to-dos
-    move with it. An e-mail whose thread holds another letter, a contract or a draft stays where it
-    is. Returns the e-mail if it moved."""
+    move with it, and the thread it leaves — empty now — is deleted, so its reference (a Kundennummer)
+    no longer draws later letters into an empty thread. An e-mail whose thread holds another letter, a
+    contract or a draft stays where it is. Returns the e-mail if it moved."""
     parent_id = attached_to(document)
     parent = store.get_document(parent_id) if parent_id else None
     if parent is None or parent.deleted_at is not None or parent.case_id in (None, case.id):
@@ -383,7 +385,10 @@ def follow_attachment(store: Store, document: Document, case: Case) -> Document 
     for item in store.list_items(doc_id=parent.id):
         if item.case_id == old:
             store.update_item(item.id, case_id=case.id)
-    return store.update_document(parent.id, case_id=case.id)
+    moved = store.update_document(parent.id, case_id=case.id)
+    if not store.list_items(case_id=old):  # a to-do the person added to the thread keeps it
+        store.delete_case(old)
+    return moved
 
 
 # --------------------------------------------------------------------------------------------------
@@ -598,30 +603,36 @@ def attachment_repeats(
     email: Document, item: Item, attachment: Document, attachment_items: Iterable[Item]
 ) -> bool:
     """Whether the e-mail's payment to-do ``item`` repeats a payment of ``attachment``, a letter that
-    came attached to that e-mail (a bill whose e-mail says "49,99 EUR, fällig am 15.09."): the
-    attachment asks for a payment, and either both letters name the same invoice number
-    (Rechnungsnummer), or one of the attachment's payments has the same amount, currency, direction
-    and due date. The attachment is the bill, so the e-mail's to-do is the one set aside.
+    came attached to that e-mail (a bill whose e-mail says "49,99 EUR, fällig am 15.09."): one of the
+    attachment's payments has the same direction and currency, and either the same amount and due date,
+    or the same amount (or the e-mail names none) where both letters name the same invoice number
+    (Rechnungsnummer). The attachment is the bill, so the e-mail's to-do is the one set aside.
 
-    Pure: callers decide which attachments count (live ones without scam signs), so deleting the
-    attachment brings the e-mail's to-do back.
+    A different amount is never the same payment: a payment reminder e-mail with its invoice attached
+    asks for the invoice's amount plus fees (the reminder takes the invoice over instead, see
+    :func:`reminder_covers`).
+
+    Pure: callers decide which letters count as the e-mail's attachments and which of their payments
+    count (live letters without scam signs; payments no payment reminder took over — so the reminder
+    e-mail itself never loses its to-do to the invoice it took over), so deleting the attachment brings
+    the e-mail's to-do back.
     """
-    if item.kind != "payment" or item.doc_id != email.id or attached_to(attachment) != email.id:
+    if item.kind != "payment" or item.doc_id != email.id or attachment.id == email.id:
         return False
-    payments = [
-        other for other in attachment_items if other.kind == "payment" and other.doc_id == attachment.id
-    ]
-    if not payments:
-        return False
-    if invoice_numbers(email.references) & invoice_numbers(attachment.references):
-        return True
-    return any(
-        _same_amount(other.amount, item.amount)
-        and (other.currency or "EUR") == (item.currency or "EUR")
-        and other.direction == item.direction
-        and other.due_date == item.due_date
-        for other in payments
-    )
+    same_bill = bool(invoice_numbers(email.references) & invoice_numbers(attachment.references))
+    for other in attachment_items:
+        if (
+            other.kind != "payment"
+            or other.doc_id != attachment.id
+            or other.direction != item.direction
+            or (other.currency or "EUR") != (item.currency or "EUR")
+        ):
+            continue
+        if same_bill and (item.amount is None or _same_amount(other.amount, item.amount)):
+            return True
+        if _same_amount(other.amount, item.amount) and other.due_date == item.due_date:
+            return True
+    return False
 
 
 def link_dunning(store: Store, case: Case, extraction: DocumentExtraction, doc_id: str) -> list[str]:
