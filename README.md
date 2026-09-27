@@ -220,8 +220,8 @@ model, and the held-out run is kept as it was in `evals/results/`.
 ## Privacy
 
 Your files and your database stay on this computer. When Claude reads a letter, that letter's text
-or image is sent to Anthropic through your own Claude account (the `claude` CLI you installed and
-signed in to). Ordnung has no server, no telemetry and never sees your credentials.
+or image is sent to Anthropic through your own Claude account (Claude Code, the Claude program you
+installed and signed in to). Ordnung has no server, no telemetry and never sees your credentials.
 
 The web server listens on `127.0.0.1` by default (another `--host` prints a warning and still needs
 the token) and requires a per-session token, a known `Host` header and same-origin requests. Settings

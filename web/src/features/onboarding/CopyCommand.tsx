@@ -1,17 +1,30 @@
+import { Fragment } from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useClipboard } from "@/features/today/clipboard";
 
-/** A terminal command with a copy button ("Copied" is announced to screen readers). */
+/**
+ * A terminal command with a copy button ("Copied" is announced to screen readers). A long command
+ * wraps instead of scrolling out of sight: at spaces, after a "/" of a package name, and only as
+ * a last resort inside a word — the whole command is always visible (and copied exactly).
+ */
 export function CopyCommand({ command, label, className }: { command: string; label?: string; className?: string }) {
   const { copy, copied } = useClipboard();
   const done = copied === command;
+  const parts = command.split(/(?<=\/)/);
   return (
-    <div className={cn("flex items-center gap-2 rounded-xl border border-line bg-[#1d1b16] py-1.5 pl-3.5 pr-1.5 text-[#f2efe7] dark:bg-canvas", className)}>
-      <span aria-hidden className="select-none font-mono text-[13px] text-[#9a937f]">
+    <div className={cn("flex items-start gap-2 rounded-xl border border-line bg-[#1d1b16] py-1.5 pl-3.5 pr-1.5 text-[#f2efe7] dark:bg-canvas", className)}>
+      <span aria-hidden className="select-none py-1.5 font-mono text-[13px] leading-5 text-[#9a937f]">
         $
       </span>
-      <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-[13px] scrollbar-thin">{command}</code>
+      <code className="min-w-0 flex-1 whitespace-pre-wrap py-1.5 font-mono text-[13px] leading-5 [overflow-wrap:anywhere]">
+        {parts.map((p, i) => (
+          <Fragment key={i}>
+            {i > 0 ? <wbr /> : null}
+            {p}
+          </Fragment>
+        ))}
+      </code>
       <button
         type="button"
         onClick={() => void copy(command)}

@@ -48,9 +48,12 @@ export const LANGUAGES: readonly LanguageOption[] = [
   { code: "fr", label: "Français", en: "French" },
 ];
 
-/** SPEC §1 — use this wording everywhere. */
+/**
+ * SPEC §1 — use this wording everywhere. The program is called Claude Code ("the Claude program
+ * on this computer"), never "the Claude app" (a different product) or "the claude CLI" (jargon).
+ */
 export const PRIVACY_STATEMENT =
-  "Your files and your database stay on this computer. When Claude reads a letter, that letter's text or image is sent to Anthropic through your own Claude account (the claude CLI you installed and signed in to). Ordnung has no server, no telemetry and never sees your credentials.";
+  "Your files and your database stay on this computer. When Claude reads a letter, that letter's text or image is sent to Anthropic through your own Claude account (Claude Code, the Claude program you installed and signed in to). Ordnung has no server, no telemetry and never sees your credentials.";
 
 export const CLAUDE_INSTALL_CMD = "npm install -g @anthropic-ai/claude-code";
 export const CLAUDE_LOGIN_CMD = "claude";

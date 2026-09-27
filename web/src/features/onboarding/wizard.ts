@@ -2,15 +2,31 @@
 import type { ClaudeStatus, OnboardingRequest, Profile } from "@/api/types";
 import { BUNDESLAENDER, LANGUAGES } from "./options";
 
+/** The four steps: `label` for the progress dots, `heading` is the step's h1 (and the tab title). */
 export const WIZARD_STEPS = [
-  { id: "welcome", label: "Welcome" },
-  { id: "region", label: "Where you live" },
-  { id: "address", label: "Your name & address" },
-  { id: "claude", label: "Claude check" },
+  { id: "welcome", label: "Welcome", heading: "Welcome to Ordnung" },
+  { id: "region", label: "Where you live", heading: "Where do you live?" },
+  { id: "address", label: "Your name & address", heading: "Your name and address" },
+  { id: "claude", label: "Claude check", heading: "Is Claude ready?" },
 ] as const;
 
 /** Index of the "you're all set — add your first letters" screen after the four steps. */
 export const DONE_STEP = WIZARD_STEPS.length;
+
+/** Step 1's heading when someone who has already set Ordnung up opens the wizard again. */
+export const REVISIT_HEADING = "Change your setup";
+
+/** "Step 2 of 4" — the eyebrow above a step's heading. */
+export function stepLabel(step: number): string {
+  return `Step ${step + 1} of ${WIZARD_STEPS.length}`;
+}
+
+/** The browser tab's title: "Step 2 of 4: Where do you live? · Ordnung", then "Setup complete · Ordnung". */
+export function wizardTitle(step: number, opts: { revisit?: boolean } = {}): string {
+  if (step >= DONE_STEP) return "Setup complete · Ordnung";
+  const heading = step === 0 && opts.revisit ? REVISIT_HEADING : WIZARD_STEPS[Math.max(0, step)]!.heading;
+  return `${stepLabel(step)}: ${heading} · Ordnung`;
+}
 
 export interface OnboardingDraft {
   /** Bundesland code ("NW"); empty until chosen */
@@ -35,6 +51,11 @@ export function initialDraft(profile?: Partial<Profile> | null): OnboardingDraft
   };
 }
 
+/** Nothing typed on the name & address step: its button reads "Skip for now" instead of "Continue". */
+export function addressEmpty(draft: Pick<OnboardingDraft, "name" | "address">): boolean {
+  return !draft.name.trim() && !draft.address.trim();
+}
+
 /** Can the person continue from `step`? (Only the state is required — it decides holidays.) */
 export function canContinue(step: number, draft: OnboardingDraft): boolean {
   if (step === 1) return BUNDESLAENDER.some((b) => b.code === draft.region);
@@ -42,7 +63,7 @@ export function canContinue(step: number, draft: OnboardingDraft): boolean {
 }
 
 /**
- * The `POST /api/onboarding` body. Empty name/address are left out (so "Skip for now" never
+ * The `POST /api/onboarding` body. Empty name/address are left out (so skipping them never
  * overwrites what is stored); an unanswered permit question counts as "no".
  */
 export function buildOnboardingRequest(draft: OnboardingDraft, opts: { skipAi?: boolean } = {}): OnboardingRequest {
@@ -76,4 +97,22 @@ export function claudeState(c: ClaudeStatus | null | undefined): ClaudeState {
   if (c.ok === true) return "ready";
   if (c.ok === false) return "signed_out";
   return "unchecked";
+}
+
+/**
+ * The Claude step's state, adding "the health answer isn't here yet" (`checking`) and "Ordnung
+ * didn't answer" (`unknown`) — neither of them means Claude isn't installed.
+ */
+export type ClaudeView = ClaudeState | "checking" | "unknown";
+
+export function claudeView(c: ClaudeStatus | null | undefined, health: { pending: boolean; failed: boolean }): ClaudeView {
+  if (c) return claudeState(c);
+  if (health.pending) return "checking";
+  if (health.failed) return "unknown";
+  return "missing";
+}
+
+/** Claude can read letters (or will be checked with the first one): the wizard offers "Finish setup". */
+export function claudeUsable(view: ClaudeView): boolean {
+  return view === "ready" || view === "unchecked";
 }
