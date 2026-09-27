@@ -285,7 +285,8 @@ HTML and without remote images.
 `assistant/support.py`, the measurement `python -m evals.ask`, [evals-ask](evals-ask.md)).
 
 - **Two channels.** Every tool result has Ordnung's record (`<ordnung_record>`: ids, types, statuses,
-  due and send-by dates, a to-do's time only as a clock time, rules-engine contract dates, letter dates,
+  due and send-by dates — none for a payment made at an appointment, whose send-by date would be a bank
+  transfer's —, a to-do's time only as a clock time, rules-engine contract dates, letter dates,
   amounts and terms with verified or person-given evidence, totals of verified amounts, code-written
   receipts and notes) and the letters' text by record id (`<untrusted_document>`: titles, summaries,
   names, quotes, warnings, payment details, page text, and amounts or terms read by AI from a photo or
@@ -299,11 +300,17 @@ HTML and without remote images.
   only as `cancellation_letter` (pending the person's confirmation). `if_not_cancelled` (also in
   `explain_date` for a fixed-term job or flat let) says a job ends by itself on its date (§ 15 Abs. 1
   TzBfG); ending it earlier by ordinary notice needs an agreed notice clause (§ 15 Abs. 4 TzBfG), and a
-  written agreement (§ 623 BGB) or notice for cause (§ 626 BGB) end it early without one; whoever may
-  claim unemployment benefit registers as job-seeking 3 months before the end (§ 38 Abs. 1 SGB III). A
-  flat let's record says notice may still be needed (§ 575 Abs. 1 BGB, with the § 549 Abs. 2 and 3 BGB
-  exceptions as examples), and `explain_date` notes that the catalog's `fixed_term` rule applies to a
-  flat let only where § 575 or § 549 allows it.
+  written agreement (§ 623 BGB) or notice for cause (§ 626 BGB) end it early without one; everyone whose
+  job ends must register as job-seeking 3 months before the end (§ 38 Abs. 1 SGB III, not in a company
+  apprenticeship) — the record puts it as advice for whoever may claim unemployment benefit, since a late
+  registration blocks the benefit for a week (§ 159 Abs. 1 S. 2 Nr. 7 and Abs. 6 SGB III). A flat let's
+  record says notice may still be needed (§ 575 Abs. 1 BGB, with the § 549 Abs. 2 and 3 BGB exceptions
+  as examples) and that courts often read the agreed end date as a waiver of ordinary notice until then
+  (BGH VIII ZR 388/12), so leaving earlier may not be possible; `explain_date` notes that the catalog's
+  `fixed_term` rule applies to a flat let only where § 575 or § 549 allows it. Once the end date of an
+  active job or flat let has passed, the record never says it "ended": it may continue by conduct
+  (§ 15 Abs. 6 TzBfG, § 545 BGB), and a flat let without a written reason never had a fixed term (§ 575
+  Abs. 1 S. 2 BGB).
 - **Release blocker (rules workstream).** The contract page still prints the rules engine's "ends by
   itself — no cancellation needed" (`rules/explain.py`) for a fixed-term flat let, and the catalog's
   `fixed_term` rule is titled "Fixed-term contracts end by themselves". The rules text must say what
@@ -316,9 +323,12 @@ HTML and without remote images.
   closed: if it cannot read an answer, the stream ends with an error and nothing of it is shown.
 - **What the check reads.** The answer as it will be shown (bidirectional controls removed; Markdown,
   escapes and invisible characters dropped; soft-wrapped lines joined where a value spans the break; a
-  line starting with a day read whole), with every date, time and amount form of the policy. A run of
-  digit groups shaped like a date that is no calendar date (`31.02.2027`, year 0) and a number too long
-  to be an amount are *unreadable* and never supported — never an exception. What stays unread is listed
+  line starting with a day read whole; digits of any script read as digits), with every date, time and
+  amount form of the policy. A run of digit groups shaped like a date that is no calendar date
+  (`31.02.2027`, year 0), a number too long to be an amount, a day, one word and a year whose word is no
+  month the check knows (`31 décembre 2027`: Ask answers in the question's language, the check knows
+  English and German month names), a day in words before a month, and a clock time moved by words
+  (`halb 10 Uhr`) are *unreadable* and never supported — never an exception. What stays unread is listed
   in the policy's limits. The date forms the web formats inside an answer, its placeholders and its month
   words are lists both test suites read.
 - **What stays.** Each date, time or amount must be in the record part of a record its sentence cites
@@ -334,18 +344,21 @@ HTML and without remote images.
   whatever the wording, and otherwise as "[date left out]" / "[time left out]" / "[amount left out]". The
   edit replaces only the value — the sentence's full stop and a citation after it stay. A sentence that
   keeps no value is removed unless all it leaves out is its letter's (a warning about injected text); a
-  § that is not in the rules catalog, among `IDEA_LAWS` or in a record removes its sentence. Within its
+  § — or a law cited in words ("section 999", "Paragraf 999 AO", "Art. 99 EGAO") — that is not in the
+  rules catalog, among `IDEA_LAWS` or in a record removes its sentence. Within its
   sentence a left-out value is never shown; another sentence without a citation of its own can still
   state the same date when a cited record holds it anywhere in its record part (literal support, listed
   in the limits).
 - **The note.** What was left out, quoted or cited, the citations removed and the weekday names
-  corrected, and why — worded as what is true ("isn't in Ordnung's record of what its sentence cites";
-  "a letter's text has it") — and, for the records concerned, their own dates or amounts on file (never
+  corrected, and why — worded as what is true, for a non-expert ("isn't among the dates and amounts
+  Ordnung saved for the linked letter, to-do or contract"; "a letter's text has it") — and, for the records concerned, their own dates or amounts on file (never
   a demand not to pay), in the answer's language under its label ("Checked by Ordnung:" / "Von Ordnung
   geprüft:", sent as `note_label`). It travels in its own `note` field of the `done` event and the stored
-  thread; the UI shows only that field. An answer the check did not change says "Checked against your
-  records". A checked answer is stored with the label (alone when nothing changed), so an answer stored
-  before this check is never shown as checked; a model sentence that starts like the note is left out.
+  thread; the UI shows only that field. An answer the check did not change says "Dates and amounts
+  checked against your records" ("Daten und Beträge mit Ihren Unterlagen abgeglichen" under a German
+  label) — what was checked, not every claim. A checked answer is stored with the label (alone when
+  nothing changed), so an answer stored before this check is never shown as checked; a model sentence
+  that starts like the note — also with look-alike letters or across a soft line break — is left out.
 - **The prompt** (`ask_system` version 5) says what the check does: a value only a letter holds is not
   stated (it would be shown as "[… only in the letter]"), each sentence and list item cites its own
   record, the record's legal statements keep their hedges, German answers use "Sie", and a `do_not_pay`
