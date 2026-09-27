@@ -160,6 +160,10 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         await _get(api, contract, f"/api/cases/{ids['case']}")
         await _get(api, contract, "/api/timeline", **{"from": "2026-01-01", "to": "2026-12-31"})
         await _get(api, contract, "/api/lanes")
+        numbers = await _get(api, contract, "/api/numbers")
+        assert numbers["organisations"], "the tax office and the gym get a call sheet"
+        week = await _get(api, contract, "/api/week")
+        assert len(week["steps"]) == 7
         await _get(api, contract, "/api/suggestions")
         await _get(api, contract, f"/api/chat/{ids['thread']}")
         await _get(api, contract, "/api/drafts")

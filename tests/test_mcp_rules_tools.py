@@ -63,6 +63,7 @@ LEDGER_TOOLS = {
     "money_summary",
     "explain_date",
     "get_profile",
+    "get_my_numbers",
     "today",
 }
 READ_TODAY = date(2026, 9, 20)
