@@ -788,6 +788,7 @@ def law_deadlines(
         extraordinary=extraction is not None
         and extraordinary_notice(extraction, ctx.document_date)
         and not alternative_notice(extraction),
+        alternative=extraction is not None and alternative_notice(extraction),
     )
 
 
@@ -805,7 +806,9 @@ def sync_rule_items(
     """File the deadlines the law adds to a high-stakes letter as to-dos (``origin="rule"``).
 
     A deadline is left out when one of the letter's own to-dos was computed under its rule
-    (:func:`~ordnung.rules.routing.computed_under`). Dates come straight from the rules engine: there
+    (:func:`~ordnung.rules.routing.computed_under`) — unless that to-do's date is later than the law's
+    (or has none): the law's own date is then filed next to it, never hidden behind a later one (the
+    earliest plausible date, SPEC § 21). Dates come straight from the rules engine: there
     is no quote to grade — except the end a termination announces, which the model read: a to-do that
     counts from an end the letter doesn't write (the engine cites ``termination_end``, ``low``) gets the
     termination's sentence (``end_evidence``) as evidence that doesn't state its value, so it is marked
@@ -816,14 +819,22 @@ def sync_rule_items(
     kind files it again. Returns the letter's rule to-dos.
     """
     own = [
-        (item.date_spec, item.computation.rule_ids)
+        (item.date_spec, item.computation.rule_ids, item.due_date)
         for item in store.list_items(doc_id=document.id)
         if item.origin == "extracted" and item.date_spec is not None and item.computation is not None
     ]
+    receipts = {
+        entry.rule_id: compute_due(entry.spec, ctx, postal_buffer_days=postal_buffer_days)
+        for entry in derived
+    }
     wanted = [
         entry
         for entry in derived
-        if not any(computed_under(spec, rule_ids, entry.rule_id) for spec, rule_ids in own)
+        if not any(
+            computed_under(spec, rule_ids, entry.rule_id)
+            and not _later_than_the_law(due, receipts[entry.rule_id].due_date)
+            for spec, rule_ids, due in own
+        )
     ]
     slots = {RULE_SLOT_PREFIX + entry.rule_id for entry in wanted}
     existing: set[str | None] = set()
@@ -838,7 +849,7 @@ def sync_rule_items(
         slot = RULE_SLOT_PREFIX + entry.rule_id
         if not create and slot not in existing:
             continue
-        receipt = compute_due(entry.spec, ctx, postal_buffer_days=postal_buffer_days)
+        receipt = receipts[entry.rule_id]
         evidence = []
         if END_NOT_WRITTEN in receipt.rule_ids:
             quote = end_evidence or Evidence(doc_id=document.id, quote="", grounding="unverified")
@@ -846,6 +857,11 @@ def sync_rule_items(
         fields = _rule_item_fields(entry, receipt, document=document, today=today, evidence=evidence)
         filed.append(store.upsert_item_by_slot(document.id, slot, **fields))
     return filed
+
+
+def _later_than_the_law(own: str | None, law: str | None) -> bool:
+    """Whether a letter's own date for a deadline the law adds is later than the law's (or missing)."""
+    return law is not None and (own is None or own > law)
 
 
 def activity_message(title: str, items: Sequence[Item], party_name: str | None) -> str:

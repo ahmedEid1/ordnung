@@ -22,6 +22,7 @@ from ordnung.app_context import AppContext, build_context
 from ordnung.drafts import templates
 from ordnung.drafts.checks import unknown_citations
 from ordnung.drafts.compose import (
+    ACKNOWLEDGES_CLAIM,
     DraftError,
     Sources,
     _masked,
@@ -625,11 +626,26 @@ async def test_instalments_are_offered_to_the_claimant_not_the_court(
 ) -> None:
     details = LetterDetails(instalment=20, first_instalment="2026-10-15", amount=111.88)
     for letter in ("order", "enforcement"):
-        with pytest.raises(DraftError, match="the claimant does"):
+        with pytest.raises(DraftError, match="the claimant does") as refused:
             await compose(ctx, "payment_plan", doc_id=ids[letter], details=details)
+        assert "§ 212 Abs. 1 Nr. 1 BGB" in str(
+            refused.value
+        )  # review round 1: an offer acknowledges the claim
     claimant = ctx.store.add_party(name="Streamline Media GmbH", kind="company").id
     offer = await compose(ctx, "payment_plan", party_id=claimant, details=details)
     assert offer.recipient_block.startswith("Streamline Media GmbH")
+    # review round 1: the offer restarts the limitation period and gives up disputing the claim
+    assert ACKNOWLEDGES_CLAIM in offer.notes_for_user
+
+
+async def test_a_tax_deferral_is_no_acknowledgement_note(ctx: AppContext, ids: dict[str, str]) -> None:
+    draft = await compose(
+        ctx,
+        "payment_plan",
+        doc_id=ids["tax"],
+        details=LetterDetails(instalment=200, first_instalment="2026-11-01"),
+    )
+    assert ACKNOWLEDGES_CLAIM not in draft.notes_for_user
 
 
 async def test_the_current_deadline_is_never_one_the_law_sets(ctx: AppContext, ids: dict[str, str]) -> None:

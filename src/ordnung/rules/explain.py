@@ -162,8 +162,30 @@ def contract_exit_sentence(exit_day: date, cancel_by: date, send_by: date | None
     return f"To leave on {fmt_date(exit_day)}, your notice must arrive by {fmt_date(cancel_by)}{extra}{send}."
 
 
-def contract_fixed_end_sentence(end: date, *, past: bool) -> str:
-    """Summary for a fixed-term contract that ends by itself."""
+def contract_fixed_end_sentence(end: date, *, past: bool, regime: str | None = None) -> str:
+    """Summary for a fixed-term contract with an end date.
+
+    Most end by themselves. A flat let (``rent573c``) only where the lease gives a legal reason for its
+    fixed term in writing — otherwise it counts as open-ended and ending it needs notice (§ 575 Abs. 1 S. 2
+    BGB) — and a lease or job used on after its end may continue (§ 545 BGB, § 15 Abs. 6 TzBfG): an active
+    one past its end date may not have ended, never "ended".
+    """
+    if regime == "rent573c":
+        if past:
+            return (
+                f"This lease's fixed-term end date, {fmt_date(end)}, has passed. If you still live there, it may "
+                "not have ended (§ 575 Abs. 1 S. 2, § 545 BGB) — check the lease or get advice."
+            )
+        return (
+            f"This lease's fixed term ends on {fmt_date(end)}. It ends then without notice only if the lease "
+            "gives a legal reason for the fixed term in writing (§ 575 Abs. 1 BGB); otherwise it counts as "
+            "open-ended and ending it needs notice — check the lease or ask a tenants' association."
+        )
+    if past and regime == "employment622":
+        return (
+            f"This job's fixed-term end date, {fmt_date(end)}, has passed. If you still work there with the "
+            "employer's knowledge, it may continue with no fixed term (§ 15 Abs. 6 TzBfG)."
+        )
     if past:
         return f"This contract ended on {fmt_date(end)}."
     return f"This contract ends by itself on {fmt_date(end)} — no cancellation needed."

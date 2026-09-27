@@ -299,7 +299,25 @@ def test_fixed_term_employment_is_a_milestone() -> None:
     assert result.summary == "This contract ends by itself on Wed 31 Mar 2027 — no cancellation needed."
     assert "fixed_term" in result.rule_ids
     past = compute_contract(terms(category="employment", end_date="2026-03-31"), ctx())
-    assert past.summary == "This contract ended on Tue 31 Mar 2026."
+    # never "ended": a job the person still works in may continue with no fixed term (§ 15 Abs. 6 TzBfG)
+    assert past.summary.startswith("This job's fixed-term end date, Tue 31 Mar 2026, has passed.")
+    assert "§ 15 Abs. 6 TzBfG" in past.summary
+    gym = compute_contract(terms(category="gym", end_date="2026-03-31"), ctx())
+    assert gym.summary == "This contract ended on Tue 31 Mar 2026."
+
+
+def test_a_fixed_term_flat_let_may_still_need_notice() -> None:
+    """Release blocker (ADR 0008), resolved in review round 1: a flat let's fixed term needs a written legal
+    reason, or the lease counts as open-ended (§ 575 Abs. 1 S. 2 BGB) — never "ends by itself, no
+    cancellation needed" — and one used on after its end may continue (§ 545 BGB): never "ended"."""
+    lease = compute_contract(terms(category="rent", start_date="2025-04-01", end_date="2027-03-31"), ctx())
+    assert lease.regime == "rent573c" and "fixed_term" in lease.rule_ids
+    assert "no cancellation needed" not in lease.summary and "§ 575 Abs. 1 BGB" in lease.summary
+    assert lease.summary.startswith("This lease's fixed term ends on Wed 31 Mar 2027.")
+    past = compute_contract(terms(category="rent", end_date="2026-03-31"), ctx())
+    assert "ended on" not in past.summary and "§ 545 BGB" in past.summary
+    rule = catalog.get_rule("fixed_term")
+    assert "end by themselves" not in rule.title and "§ 575" in rule.summary
 
 
 @pytest.mark.parametrize(

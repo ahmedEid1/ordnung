@@ -7,7 +7,9 @@ deadline, the three weeks for a court action (§ 4 KSchG), is an ordinary period
 Policy: register at the latest three months before the job ends; if less than three months are left
 when the person learns the end date, within three days of learning it. "Three months before" is
 counted backwards from the job's last day (ends 30 September → by 30 June; ends 31 December → by
-30 September — some guides say 1 October, the earlier day is used). The three days are calendar days
+30 September — some guides say 1 October, the earlier day is used). On that other reading, a person who
+learns the end on that day (1 October) still had three months, so the first rule gives that very day —
+earlier than three days later: the day they learned it is used (``boundary``). The three days are calendar days
 and are not moved off weekends: § 26 Abs. 3 SGB X may extend them, but registering online or by
 phone works on any day, so the earlier date is kept (SPEC § 21). Without a known end date the
 three-day rule is used — the earlier of the two.
@@ -23,7 +25,7 @@ from ordnung.rules.periods import latest_receipt_for
 REGISTRATION_DAYS = 3
 REGISTRATION_MONTHS = 3
 
-RegistrationBasis = Literal["before_end", "after_learning"]
+RegistrationBasis = Literal["before_end", "boundary", "after_learning"]
 
 
 def registration_deadline(learned: date, end: date | None) -> tuple[date, RegistrationBasis]:
@@ -36,4 +38,6 @@ def registration_deadline(learned: date, end: date | None) -> tuple[date, Regist
         before_end = latest_receipt_for(end, REGISTRATION_MONTHS, "months")
         if learned <= before_end:
             return before_end, "before_end"
+        if learned == before_end + timedelta(days=1):
+            return learned, "boundary"
     return learned + timedelta(days=REGISTRATION_DAYS), "after_learning"

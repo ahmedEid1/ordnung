@@ -871,3 +871,31 @@ def test_a_payment_made_at_an_appointment_has_no_transfer_date(store: Store, ids
     assert rows[appointment]["due_time"] == "10:30"
     store.update_item(appointment, kind="task")
     assert LedgerTools(store, today=TODAY).explain_date(fee).record["send_by"] == "2026-10-13"
+
+
+def test_explain_date_keeps_an_unverified_contracts_steps_out_of_the_record(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """Review round 1: the steps repeat the terms they start from ("The first term runs from Wed 1 Jan 2025
+    …"). For a contract whose terms were read from a photo they are letter text, like the terms themselves
+    (ADR 0008 point 1): an AI-read start date cited to the contract passed the check as Ordnung's record
+    through explain_date, but not through list_contracts."""
+    store.update_contract(
+        ids["gym_contract"], evidence=_evidence(ids["doc_gym_confirm"], "24,90 €", "model_read")
+    )
+    explained = tools.explain_date(ids["gym_contract"])
+    assert explained.record["terms_unverified"] == TERMS_UNVERIFIED
+    assert "steps" not in explained.record["computation"]
+    assert explained.record["computation"]["cancel_by"]  # the engine's own dates stay the record
+    steps = explained.letters[ids["gym_contract"]]["steps"]
+    assert any("1 Jan 2025" in step for step in steps)
+    answer = f"Your gym membership started on Wed 1 Jan 2025 [contract:{ids['gym_contract']}]."
+    for result in (explained, tools.list_contracts()):
+        evidence = TurnEvidence.from_results([render_result(result)], today=TODAY, catalog=known_laws())
+        checked = check_answer(answer, evidence, citable={ids["gym_contract"]})
+        assert "1 Jan 2025" not in checked.text and "[date only in the letter]" in checked.text
+    # a verified contract keeps its steps in the record
+    store.update_contract(
+        ids["gym_contract"], evidence=_evidence(ids["doc_gym_confirm"], "24,90 €", "verified")
+    )
+    assert "steps" in tools.explain_date(ids["gym_contract"]).record["computation"]

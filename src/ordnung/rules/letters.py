@@ -9,7 +9,11 @@ Rule           Counts from                         Last day                     
 ``sgb3_38``    the day the person learned the end  3 months before the end, or 3 days after      kept (registering online
                (the dismissal's arrival)           learning it when less time is left            works any day)
 ``bgb_558b``   the day the request arrived         end of the 2nd calendar month after           next working day (§ 193 BGB)
-``bgb_574b``   the day the tenancy ends            2 months before (counted backwards)           never later; safe date
+               (the new rent: its first payment)   (the new rent: start of the 3rd month, or     (a payment: none)
+                                                   the later start the letter names)
+``bgb_574b``   the day the tenancy ends (a notice  2 months before (counted backwards)           never later; safe date
+               too short for its period: the
+               earliest end it can have, § 573c)
 ``bgb_355``    the contract, or the goods'         14 days later; sending in time is enough      next working day at the
                arrival                                                                            consumer's home (§ 193 BGB)
 =============  ==================================  ============================================  ===========================
@@ -29,8 +33,9 @@ date for a landlord's notice says when the tenant may still object (§ 574b Abs.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
-from datetime import date
+from datetime import date, timedelta
 
 from ordnung.models import ComputationReceipt, DateSpec
 from ordnung.rules import calendar_de
@@ -43,14 +48,16 @@ from ordnung.rules.deadlines import (
     _resolve_anchor,
     _safe_date,
     _same_period,
+    _send_by,
     check_regional_holidays,
     parse_date,
+    place_region,
     plan_send_by,
 )
 from ordnung.rules.employment import registration_deadline
 from ordnung.rules.explain import fmt_date, fmt_period, month_name
 from ordnung.rules.periods import add_period, shift_to_business_day
-from ordnung.rules.tenancy import consent_period, notice_objection_deadline
+from ordnung.rules.tenancy import consent_period, next_permissible_end, notice_objection_deadline
 
 _Compute = Callable[[DateSpec, RuleContext, Trace, int], ComputationReceipt]
 
@@ -125,6 +132,16 @@ def _registration(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -
         why = f"three months before the job ends on {fmt_date(end)}"
         # a later end than the real one gives a later date (three days after learning never does)
         _check_end(trace, ctx, end, "job")
+    elif basis == "boundary" and end is not None:
+        trace.step(
+            f"The job ends on {fmt_date(end)}; three months before that is {fmt_date(due - timedelta(days=1))} "
+            f"or, as some read it, {fmt_date(due)} — the day you learned it: on that reading three months were "
+            "still left, so the deadline is that same day (the earlier date)",
+            due,
+            "sgb3_38",
+        )
+        why = f"three months before the job ends on {fmt_date(end)}, the day you learned it"
+        _check_end(trace, ctx, end, "job")
     else:
         label = "less than three months are left" if end is not None else "we don't know when the job ends"
         trace.step(f"As {label}, register within three days: by {fmt_date(due)}", due, "sgb3_38")
@@ -186,7 +203,88 @@ def _consent(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -> Com
     return _receipt(trace, ctx, due=due, summary=summary, send_by=send_by, region=region)
 
 
+def _new_rent(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -> ComputationReceipt:
+    """The first payment of a rent increase's higher rent: never before the law allows it — the start of
+    the third calendar month after the request arrived (§ 558b Abs. 1 BGB), and only once the person agrees
+    (the payment's note says so). A later start the letter names is kept; an earlier one is noted."""
+    arrived = _arrival(spec, ctx, trace)
+    if arrived is None:
+        return _receipt(trace, ctx, due=None, summary="No date could be computed: the start date is missing.")
+    rent_from = consent_period(arrived)[1]
+    trace.step(f"The request arrived on {fmt_date(arrived)}", arrived, "bgb_558b")
+    trace.step(
+        f"The start of the third calendar month after {month_name(arrived)}: the higher rent can be owed from "
+        f"{fmt_date(rent_from)} at the earliest, and only if you agree",
+        rent_from,
+        "bgb_558b",
+    )
+    due = rent_from
+    written = _written_date(spec)
+    if written is not None and written > rent_from:
+        trace.step(
+            f"The letter asks for it from {fmt_date(written)}, later than the law allows", written, "bgb_558b"
+        )
+        due = written
+    elif written is not None and written < rent_from:
+        _note_letter_date(
+            trace,
+            written,
+            rent_from,
+            keep="a landlord can't ask for the higher rent earlier, so the law's date is shown",
+        )
+    region = place_region(spec, ctx)
+    send_by = _send_by(trace, ctx, due, "payment", region, buffer)
+    summary = f"If you agree to the increase, the higher rent is owed from {fmt_date(due)}."
+    return _receipt(trace, ctx, due=due, summary=summary, send_by=send_by, region=region)
+
+
+def _rent_increase(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -> ComputationReceipt:
+    """A rent increase's dates: the new rent's first payment, else the decision (§ 558b BGB)."""
+    return (_new_rent if spec.nature == "payment" else _consent)(spec, ctx, trace, buffer)
+
+
+#: A notice whose end is the next permissible date: the objection counts back from the earliest one.
+_NEXT_END = re.compile(r"\b573c\b[^§]{0,20}\bBGB\b|nächstmöglich", re.I)
+NEXT_END_WARNING = (
+    "The notice's end is too early for a landlord's notice period, or it gives none that fits: a notice with "
+    "a notice period usually ends the tenancy at the next date the law allows — the end of the month after "
+    "next when it arrived by the third working day of a month, later after five or eight years of tenancy "
+    "(§ 573c Abs. 1 BGB). This date counts back from the earliest such end; get advice on the real one."
+)
+
+
+def _objection_before_next_end(
+    spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int
+) -> ComputationReceipt:
+    """The objection to a notice that ends the tenancy at the next permissible date (a notice too short
+    for its period, or given in the alternative "zum nächstmöglichen Termin"): two months before the
+    earliest such end after the notice arrived (:func:`~ordnung.rules.tenancy.next_permissible_end`)."""
+    region = calendar_de.normalize_region(ctx.region)
+    arrived = _arrival(spec, ctx, trace)
+    if arrived is None:
+        return _no_date(trace, ctx, "We need the day the notice arrived to count from it.")
+    end = next_permissible_end(arrived, calendar_de.normalize_region(ctx.recipient_region))
+    trace.step(f"The notice arrived on {fmt_date(arrived)}", arrived, "bgb_573c_landlord")
+    trace.step(
+        f"The earliest end a notice with a notice period can have: {fmt_date(end)}", end, "bgb_573c_landlord"
+    )
+    trace.soft(NEXT_END_WARNING)
+    due = notice_objection_deadline(end)
+    trace.step(f"Two months before that, the objection must arrive by {fmt_date(due)}", due, "bgb_574b")
+    safe = _safe_date(trace, due, region, backward=True)
+    send_by = plan_send_by(trace, ctx.today, safe, region=region, buffer=buffer)
+    if due < ctx.today:
+        trace.warnings.append(LATE_NOTICE_OBJECTION)
+    summary = (
+        f"If the notice ends your tenancy at the earliest date the law allows ({fmt_date(end)}), your objection "
+        f"must reach the landlord by {fmt_date(due)}."
+    )
+    return _receipt(trace, ctx, due=due, summary=summary, send_by=send_by, safe_date=safe, region=region)
+
+
 def _notice_objection(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -> ComputationReceipt:
+    if spec.anchor != "explicit_date" and _NEXT_END.search(f"{spec.legal_basis or ''} {spec.text}"):
+        return _objection_before_next_end(spec, ctx, trace, buffer)
     region = calendar_de.normalize_region(ctx.region)
     end = parse_date(spec.anchor_date) if spec.anchor == "explicit_date" else None
     end = end or ctx.end_date
@@ -310,7 +408,7 @@ def _withdrawal(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -> 
 
 _RULES: dict[str, _Compute] = {
     "sgb3_38": _registration,
-    "bgb_558b": _consent,
+    "bgb_558b": _rent_increase,
     "bgb_574b": _notice_objection,
     "bgb_355": _withdrawal,
 }

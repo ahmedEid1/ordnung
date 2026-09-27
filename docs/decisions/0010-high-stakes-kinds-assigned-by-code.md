@@ -43,7 +43,12 @@ means reading some German wording in code — the kind of clause parsing ADR 000
    only calls a statement late when it certainly is, and never counts from a later letter's date: a date
    the letter gives a statement without its year may be the statement a later letter is about (a reply
    repeats the billing period too) or an enclosure's, so it never lets the statement be called late when
-   it would make it on time; the card says both readings. Another year's statement's date never counts.
+   it would make it on time; the card says both readings. Another year's statement's date never counts,
+   and a named billing year gives way only to a range that says which months it covers — never to the
+   tenant's own time in the flat or a cost item's service period (they would end it earlier: the harmful
+   direction). A notice whose end is too early for its period (or a notice in the alternative with no end
+   of its own) keeps an objection to-do, `low`, from the earliest end the law allows (§ 573c Abs. 1 BGB):
+   such a notice usually ends the tenancy then.
 5. **The prompt change is deferred, not dropped.** The next extraction prompt should let the model name
    the letter kind itself (a `letter_kind` field with these kinds); the wording rules then become a check
    on the model's answer rather than the decision.
@@ -51,7 +56,8 @@ means reading some German wording in code — the kind of clause parsing ADR 000
 ## Consequences
 - The recorded answers, the demo and the benchmark stay valid; every high-stakes kind is testable
   without a model call.
-- Accepted misses, documented in `routing.py`: a court named only in English; a court order whose
+- Accepted misses, documented in `routing.py`: a court named only in English; a club "SG …" or "VG Wort"
+  read as an authority (or `other`) counts as a court (the safe side: earlier dates, never `high`); a court order whose
   reading has no remedy and no objection date (filed under the model's kind — the person can change
   it); a later court letter whose reading gives the person an objection date anyway (filed as the
   order: the safe side for a two-week *Notfrist*); "Hilfsweise behalten wir uns eine ordentliche

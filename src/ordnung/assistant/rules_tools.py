@@ -27,7 +27,12 @@ Policies:
   the day a letter usually counts as delivered never makes it later,
   :func:`ordnung.rules.deadlines.may_be_public`) — naming an *Einspruch*, *Klage* or *Widerspruch*
   changes that only with a notice naming an administrative route, words in the period never do — and
-  an unknown sender (none, ``other``) keeps the earliest plausible deemed delivery. Missing facts are
+  an unknown sender (none, ``other``) keeps the earliest plausible deemed delivery. A court is a court
+  by its name, as in the app (:func:`ordnung.rules.routing.is_court` and ``is_labour_court``; a court
+  is no ``PartyKind``, so a model passes ``authority`` or ``other``): its
+  periods run from formal service, never from a delivery fiction, are never ``high``, and a labour
+  court's order gives one week; a court order is recognised from the remedy and the period's own words
+  by the app's policy (:func:`court_order_kind`). Missing facts are
   never guessed: the engine uses the earliest plausible date and says so, and ``hints`` name the
   argument that would settle it (and never one that was given).
 * **Formal service.** A letter served in a yellow envelope has no deemed delivery; the spec help
@@ -204,6 +209,10 @@ TOOL_VOICE: dict[str, str] = {
     "printed on it — the earliest plausible start.",
     "needs_arrival": "The period runs from the day the letter arrived, and neither that day nor the letter's "
     "date was given.",
+    "assumed_delivery": "The day the letter was delivered (the date on the yellow envelope) was not given, so the "
+    "period was counted from the date printed on it — the earliest plausible start.",
+    "needs_delivery": "The period runs from the day the letter was delivered (the date on the yellow envelope), and "
+    "neither that day nor the letter's date was given.",
     "told_arrival": "The letter arrived on",
     "enter_envelope_date": "the envelope's date gives the exact deadline",
 }
@@ -237,6 +246,8 @@ _DELIVERY_LAW = {
     "vwvfg": "general administrative law (§ 41 VwVfG)",
     "sgbx": "social law (§ 37 SGB X)",
 }
+#: A court's letter (``ordnung.rules.routing.is_court``) has no deemed delivery, whatever its sender kind.
+COURT_DELIVERY_LAW = "a court's letter: formal service (§ 180 ZPO), no deemed delivery"
 _WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 
@@ -322,6 +333,7 @@ class RulesTools:
         """The date a ``DateSpec`` describes, computed by the rules engine, with its receipt."""
         from ordnung.rules import RuleContext, compute_due, is_private_sender, scope_for_party_kind
         from ordnung.rules.deadlines import from_arrival, period_problem
+        from ordnung.rules.routing import is_court, is_labour_court
 
         parsed = parse_spec(spec)
         _check_choice("sender_kind", sender_kind, get_args(PartyKind))
@@ -340,6 +352,9 @@ class RulesTools:
         scope = scope_for_party_kind(
             sender_kind, name=sender_name, remedy_type=remedy_type, remedy_text=notice
         )
+        # A court is a court by its name, as in the app (ingest.plan.rule_context): no delivery fiction,
+        # never high, a labour court's one week — whatever kind the model passed it as.
+        court = is_court(sender_name or "", sender_kind)
         context = RuleContext(
             today=day,
             region=_region("region", region),
@@ -352,6 +367,9 @@ class RulesTools:
                 sender_kind, scope=scope, remedy_type=remedy_type, remedy_text=notice
             ),
             sender_kind=sender_kind,
+            letter_kind=court_order_kind(parsed, sender_name, sender_kind, remedy_type) if court else None,
+            court=court,
+            labour_court=is_labour_court(sender_name or "", sender_kind),
         )
         # A period that can't be read is not computed at all: nothing runs from an arrival day.
         unreadable = parsed.type == "relative" and period_problem(parsed) is not None
@@ -370,10 +388,18 @@ class RulesTools:
         formal = formal_service_warning(counted, receipt)
         # a private sender's late arrival did not move the start: the engine counted from an earlier day
         late = "private_sender_late_arrival" in receipt.rule_ids
+        # a court's period that ran from formal service runs from the day it was delivered: that day is
+        # checked (and asked for) like an arrival day, whatever anchor the model passed
+        served = court and "zpo_180" in receipt.rule_ids and counted.anchor != "explicit_date"
+        checked = (
+            counted.model_copy(update={"anchor": "receipt", "anchor_date": None, "delivery_rule": "none"})
+            if served and counted.anchor != "receipt"
+            else counted
+        )
         found: list[tuple[str, bool]] = []
         if not unreadable:
             found += arrival_warnings(
-                counted, letter_day=letter_day, received=received, stated=stated, capped=late
+                checked, letter_day=letter_day, received=received, stated=stated, capped=late
             )
         found += [(w, True) for w in _future_letter_warning(counted, letter_day, day)]
         found += [(w, True) for w in unchecked_day_warning(counted, letter_day)]
@@ -383,7 +409,7 @@ class RulesTools:
         arrival, arrival_from = (
             (None, None)
             if unreadable or late
-            else arrival_day(counted, receipt, letter_day=letter_day, received=received, stated=stated)
+            else arrival_day(checked, receipt, letter_day=letter_day, received=received, stated=stated)
         )
         other = compute_due(parsed, replace(context, today=other_day)) if other_day is not None else None
         return {
@@ -406,12 +432,12 @@ class RulesTools:
                 "received_date_not_used": received.isoformat()
                 if received is not None and received != arrival
                 else None,
-                "delivery_law": _DELIVERY_LAW.get(scope or ""),
+                "delivery_law": COURT_DELIVERY_LAW if court else _DELIVERY_LAW.get(scope or ""),
                 "holiday_calendar": receipt.holiday_calendar,
                 "holidays_from": None if counted.type == "none" else _holidays_from(payer_pays),
             },
             "hints": deadline_hints(
-                counted,
+                checked,
                 receipt,
                 letter_day=letter_day,
                 received=received,
@@ -423,6 +449,7 @@ class RulesTools:
                 counted_from_arrival=counted is not parsed,
                 formally_served_may_apply=bool(formal),
                 period_unreadable=unreadable,
+                served_by_court=served,
             ),
             "for_today_given": for_other_day(other, receipt, other_day),
             "disclaimer": disclaimer(),
@@ -624,9 +651,11 @@ def tool_voice(warning: str) -> str:
     exactly or not at all (then it is passed on unchanged).
     """
     from ordnung.rules.deadlines import (
+        ASSUMED_DELIVERY_WARNING,
         ASSUMED_RECEIPT_WARNING,
         ENTER_ENVELOPE_DATE,
         NEEDS_ARRIVAL_WARNING,
+        NEEDS_DELIVERY_WARNING,
         TOLD_ARRIVAL,
     )
 
@@ -634,6 +663,10 @@ def tool_voice(warning: str) -> str:
         return TOOL_VOICE["assumed_receipt"]
     if warning == NEEDS_ARRIVAL_WARNING:
         return TOOL_VOICE["needs_arrival"]
+    if warning == ASSUMED_DELIVERY_WARNING:
+        return TOOL_VOICE["assumed_delivery"]
+    if warning == NEEDS_DELIVERY_WARNING:
+        return TOOL_VOICE["needs_delivery"]
     return warning.replace(TOLD_ARRIVAL, TOOL_VOICE["told_arrival"]).replace(
         ENTER_ENVELOPE_DATE, TOOL_VOICE["enter_envelope_date"]
     )
@@ -735,6 +768,29 @@ def arrival_day(
     if received is not None and counted_from(receipt) == received:
         return received, "received_date: it arrived before the letter's date, so the period runs from it"
     return None, None
+
+
+def court_order_kind(
+    spec: DateSpec, sender_name: str | None, sender_kind: str | None, remedy_type: str | None
+) -> str | None:
+    """The court order a court's period belongs to, by the app's own policy
+    (:func:`ordnung.rules.routing.classify_letter`) read from what the tool is given: the remedy and the
+    period's own words stand in for the letter's reading (its title is not given, so the words must name
+    the order). ``None`` when they don't: the court's letter is then dated as a court's, without an
+    order's statutory period."""
+    from ordnung.models import DocumentExtraction, ExtractedItem, ExtractedParty, Remedy
+    from ordnung.rules.routing import classify_letter
+
+    reading = DocumentExtraction(
+        kind="other",
+        title="",
+        summary="",
+        explanation="",
+        sender=ExtractedParty(name=sender_name or "", kind=sender_kind or "other"),
+        items=[ExtractedItem(kind="deadline", title="", date=spec, quote="")],
+        remedy=Remedy(type=remedy_type) if remedy_type else None,
+    )
+    return classify_letter(reading)
 
 
 def counted_from(receipt: ComputationReceipt) -> date | None:
@@ -925,6 +981,7 @@ def deadline_hints(
     counted_from_arrival: bool = False,
     formally_served_may_apply: bool = False,
     period_unreadable: bool = False,
+    served_by_court: bool = False,
 ) -> list[str]:
     """Which missing argument would settle what the engine had to assume (empty when none).
 
@@ -934,7 +991,9 @@ def deadline_hints(
     how to get it instead of asking for the kind again. The situations come from the engine's
     warnings, by the words :mod:`ordnung.rules.deadlines` shares for them (``REGION_UNKNOWN`` …). A
     period the engine could not read (``period_unreadable``) gets only the hint to fix it: nothing was
-    computed, so no arrival day, sender or region would settle anything yet.
+    computed, so no arrival day, sender or region would settle anything yet. A court's period that ran
+    from formal service (``served_by_court``, passed with ``anchor: receipt``) asks for the envelope's date,
+    and never for a sender kind: a court is recognised by its name.
     """
     from ordnung.rules.deadlines import HOME_HOLIDAY, REGION_EARLIER, REGION_UNKNOWN, TAX_OFFICE_HOLIDAY
 
@@ -956,7 +1015,13 @@ def deadline_hints(
             )
         elif letter_day is None and unchecked_day_warning(spec, letter_day):
             hints.append(UNCHECKED_DAY_HINT)
-        if from_letter:
+        if from_letter and served_by_court:
+            hints.append(
+                "Pass received_date: the delivery date written on the yellow envelope (a court's letter "
+                "runs from formal service, § 180 ZPO); until then the letter's date is used (the earliest "
+                "plausible start)."
+            )
+        elif from_letter:
             hints.append(
                 "Pass received_date if you know the day the letter arrived; until then the letter's date "
                 "is used (the earliest plausible start)."
@@ -972,6 +1037,7 @@ def deadline_hints(
         )
     elif (
         spec.type == "relative"
+        and not served_by_court
         and scope is None
         and sender_kind in (None, "other")
         and (delivered or spec.anchor == "deemed_delivery")

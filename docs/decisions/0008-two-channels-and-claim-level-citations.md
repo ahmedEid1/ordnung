@@ -85,14 +85,18 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
   lines). The core of the policy is closed (rule 3: a value is Ordnung's only when a cited record holds
   it); the reader is not, because "what counts as a value" has no closed definition in free text. Final
   review 3 turned the reader toward failing closed — an unknown form that looks like a date or time is
-  unreadable, not unread — but the list of forms remains. The smaller policy ADR 0007 asks for is the
+  unreadable, not unread — but the list of forms remains. Review round 1 of phase 2 found more unread
+  forms in the other offered languages (marked dates such as `31-dic-2027`, month and year in those
+  languages, other calendars, `31/12`, scales glued to a currency, other currencies, hour words); they
+  were added the same way, and the Ask page's generated numbers are now checked in CI (`--check-docs`). The smaller policy ADR 0007 asks for is the
   next step: the prompt requires Ordnung's own formats ("Wed 21 Oct 2026", "640.00 €", "10:30"), and
   every other digit run in a sentence that could be a date, time or amount is left out. It needs a
   prompt version, a re-recording and a new measurement of what it costs correct answers, so it is not
   part of this decision.
-- **Release blocker outside Ask:** the contract page and the rules catalog's `fixed_term` rule still
-  say a fixed-term flat let "ends by itself" (the rules workstream's text; § 575 Abs. 1 S. 2 BGB), and
-  the engine's summary says an active one past its end date "ended". Ask's record says notice may still
-  be needed (and that courts often read the end date as a waiver of notice until then, BGH VIII ZR
-  388/12), that an active flat let or job past its end date may still run (§ 575 Abs. 1 S. 2 and § 545
-  BGB, § 15 Abs. 6 TzBfG), and annotates the rule for a flat let.
+- **Release blocker outside Ask — resolved:** the contract page and the rules catalog's `fixed_term` rule
+  said a fixed-term flat let "ends by itself" (§ 575 Abs. 1 S. 2 BGB), and the engine's summary said an
+  active one past its end date "ended". Since review round 1 of phase 2 the engine and the catalog say what
+  Ask's record says: notice may still be needed without a written reason, and an active flat let or job
+  past its end date may still run (§ 575 Abs. 1 S. 2 and § 545 BGB, § 15 Abs. 6 TzBfG). Ask's record keeps
+  its own text (the courts' reading of the end date as a waiver of notice, BGH VIII ZR 388/12) and its note
+  on the rule for a flat let.

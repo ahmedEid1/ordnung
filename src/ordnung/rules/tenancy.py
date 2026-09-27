@@ -9,7 +9,9 @@ Pure date functions; :mod:`ordnung.rules.letters` turns them into receipts.
 * **Objection to the landlord's notice** (§ 574b Abs. 2 BGB): it must reach the landlord at the
   latest two months before the tenancy ends. The period is counted backwards from the end day
   (:func:`~ordnung.rules.periods.latest_receipt_for`): ends 31 October → by 31 August. A period
-  counted backwards never moves to a later day.
+  counted backwards never moves to a later day. A notice whose end is too early for its notice
+  period usually ends the tenancy at the next permissible date (:func:`next_permissible_end`, § 573c
+  Abs. 1 BGB): the objection then counts back from that one.
 * **Operating-cost statement** (§ 556 Abs. 3 BGB): it must reach the tenant by the end of the twelfth
   month after the billing period ends, else a back-payment is no longer owed unless the landlord was
   not responsible for the delay; the tenant's objections are due twelve months after it arrived.
@@ -48,6 +50,38 @@ def consent_period(received: date) -> tuple[date, date]:
     """
     last = month_end(add_months(received.replace(day=1), 2))
     return last, last + timedelta(days=1)
+
+
+#: A landlord's ordinary notice (§ 573c Abs. 1 S. 1 BGB): received by the third working day of a month, it
+#: ends the tenancy at the end of the month after next.
+NOTICE_GRACE_WERKTAGE = 3
+
+
+def next_permissible_end(received: date, region: str | None = None) -> date:
+    """The earliest end of a landlord's ordinary notice that arrived on ``received`` (§ 573c Abs. 1 BGB).
+
+    The end of the month after next when it arrived by the third working day of its month (*Werktag*:
+    Saturday counts, BGH VIII ZR 206/04 — but a Saturday third day may run on to the next working day,
+    § 193 BGB, as some courts hold), else the end of the month after that. Without the tenant's Land
+    (``region``) a holiday of any Land doesn't count as a working day. Each doubt makes the grace days
+    longer and so the end earlier: the safe side for an objection that counts back two months from it. A
+    notice with too short a period, or one "zum nächstmöglichen Termin", usually ends the tenancy on this
+    day; after five and eight years of tenancy the period is three and six months longer (S. 2), which
+    only makes the end later.
+    """
+    day, counted = received.replace(day=1), 0
+    while True:
+        if calendar_de.is_werktag(day, region) and not (
+            region is None and calendar_de.regional_holiday_lands(day)
+        ):
+            counted += 1
+            if counted == NOTICE_GRACE_WERKTAGE:
+                break
+        day += timedelta(days=1)
+    if day.weekday() == 5:
+        day = calendar_de.next_business_day(day, region)
+    months = 2 if received <= day else 3
+    return month_end(add_months(received.replace(day=1), months))
 
 
 def notice_objection_deadline(tenancy_end: date) -> date:

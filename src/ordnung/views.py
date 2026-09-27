@@ -710,9 +710,8 @@ earlier may not be possible — except where § 575 does not apply (§ 549 Abs. 
 or youth halls, temporary use, a furnished room in the landlord's flat not let for lasting use with a
 family or partner, housing a public body or welfare organisation lets on to people in urgent need). The
 rules engine reads none of these clauses (it applies ``fixed_term`` to every such contract with an end
-date), so for a flat let Ask's record says notice may still be needed. The contract page still prints
-the engine's "ends by itself — no cancellation needed" (``rules/explain.py``) for a flat let: a release
-blocker for the rules workstream (docs/SPEC.md §10)."""
+date), so for a flat let Ask's record says notice may still be needed; the engine's own summary for a
+flat let says so too (``rules/explain.py``, :func:`~ordnung.rules.explain.contract_fixed_end_sentence`)."""
 
 
 _FIXED_TERM_PAST = {

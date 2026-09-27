@@ -27,8 +27,13 @@ computed, the person confirmed or the pipeline filed with verified evidence) and
      month. Groups shaped like a date that are no calendar date (``31.02.2027``, year 0) are *unreadable*:
      never supported. So is a day, one word and a year when the word is no month the check knows
      (``31 décembre 2027``, ``31 de diciembre de 2027``, ``31 Aralık 2027``: Ask answers in the language of
-     the question, and the check knows English and German month names only — it fails closed), and a
-     day in words before a month (``the thirty-first of October``; ``31. des Monats Oktober`` is a date).
+     the question, and the check knows English and German month names only — it fails closed), joined by
+     spaces, by one mark twice or by none, in any order (``31-dic-2027``, ``dic-31-2027``, ``2027-dic-31``,
+     ``31dic2027``, ``dic. 31, 2027``); a month and a year, or a month before its day, in another offered
+     language (``décembre 2027``, ``diciembre 31, 2027``, ``दिसंबर 2027``); a date of the Islamic or Solar
+     Hijri calendar (``1 رجب 1449``, ``۱۴۰۶/۱۰/۱۰``); a month in Chinese numerals (``十二月三十一日``); a day
+     and a month joined by a slash with no year (``31/12``); and a day in words before or after a month
+     (``the thirty-first of October``, ``December thirty-first 2027``; ``31. des Monats Oktober`` is a date).
      A time right after a date belongs to it (``2027-12-31T23:59``). A run after a label (``Tel.``,
      ``Wohnung``, ``Az.``) is a number;
    - a month with a year and no day (``December 2027``, ``Dec '27``, ``12/2027``, ``2027-12``), and a
@@ -37,8 +42,11 @@ computed, the person confirmed or the pipeline filed with verified evidence) and
      20th) or beginning (``Anfang``, ``early``: the 1st to 10th). Without a year, "may", "march" and
      "mar" are months only when capitalised ("paying late may add a fee" is the verb);
    - a clock time: ``16:00``, ``4 pm``, ``4:30 p.m.``, ``10 Uhr``, ``10 Uhr 45``, ``14h``, ``14 h``,
-     ``14h30``, ``14 h 30``, and ``10.30`` with its unit after it or after the other end of its range
-     (``8.00–12.00 Uhr``). A time moved by words before it (``halb 10 Uhr`` is 9:30, ``Viertel nach``,
+     ``14h30``, ``14 h 30``, ``T15:30``, ``1530 hrs``, a number with an hour word of another offered language
+     (``15 heures``, ``a las 15 horas``, ``alle ore 15``, ``saat 15``, ``15 часов``, ``15時30分``, ``3 बजे``), and
+     ``10.30`` with its unit after it or after the other end of its range (``8.00–12.00 Uhr``). An hour next
+     to a part of the day of another language (``下午3点``, ``الساعة 3 مساءً``) and German "um 15" without its
+     unit are *unreadable*. A time moved by words before it (``halb 10 Uhr`` is 9:30, ``Viertel nach``,
      ``quarter past``, ``5 nach``) or followed by a bare number (``10 am 45``) is *unreadable*. In an
      English answer a lower-case "am" after a number is the time; otherwise, before a number or a
      capitalised word it is the German word — except before an English weekday or month (``4 am
@@ -47,10 +55,14 @@ computed, the person confirmed or the pipeline filed with verified evidence) and
      word, thousands groups joined by a space or an apostrophe as one number (``1 094,99 €``, ``1'094.99
      CHF``; other groups next to a currency are unreadable: ``1 09,99 €``), one decimal or ``.-`` next to
      a currency (``18,4 €``), glued to a code (``999EUR``), cents
-     (``999 ct``), a scale word (``1,5k €``, ``1 Mio. €``), or a bare two-decimal number that is neither
+     (``999 ct``), a scale word (``1,5k €``, ``1 Mio. Euro``) or a scale glued to the currency (``412 T€``,
+     ``412 KEUR``, ``€412M``), the euro's name in another offered language (``1412 евро``, ``1412 欧元``), or
+     a bare two-decimal number that is neither
      a label number (``Raum 2.14``) nor a clock time with its unit — "from 18.36 to 21.50" and "at 23.59"
      are money (when in doubt it is money). A rate (``2,90 %``) is no amount; a number next to a currency
-     too long to be one (16 digits or more) is *unreadable*.
+     too long to be one (16 digits or more), next to another currency (``1412 zł``, ``₹1412``, ``Fr. 1412``)
+     or with another language's scale word before a currency (``412 mil €``, ``412 тыс. €``) is
+     *unreadable*.
 
    A sentence that starts like Ordnung's own note (:data:`NOTE_LABELS`) is left out, and the note says so —
    read with look-alike letters as Latin ones (``Оrdnung`` with a Cyrillic О) and across a soft line
@@ -170,6 +182,8 @@ category's fixed costs are such a total: two contracts can share a category (hea
 so the category's sum is neither's cost, and a category of one contract adds nothing to its own cost."""
 DO_NOT_PAY = "do_not_pay"
 """The ``money_summary`` list of payment demands in letters with scam signs (ADR 0006)."""
+PAYMENT_NOTE_KEY = "payment_note"
+"""A to-do's code-written note that it may not be owed yet (``mcp_server.payment_note``)."""
 UNVERIFIED_FLAGS = ("amount_unverified", "terms_unverified")
 """Record flags saying a record's amounts are only in its letter text (policy rule 4)."""
 RECORD_LABELS: Mapping[str, tuple[str, str]] = {
@@ -194,11 +208,12 @@ the model's to write (rule 1)."""
 
 ABBREVIATION = re.compile(
     r"(?:\b\d{1,2}|\b[^\W\d_]|[Ss]tr|\b(?:Abs|Nr|Nrn|Art|Kap|Anm|Tel|Dr|Prof|Hr|Hrn|St|Mr|Mrs|Ms|Rm|Zi|"
-    r"(?i:ca|bzw|ggf|vgl|evtl|inkl|zzgl|bspw|sog|ff|approx|incl|excl|vs)|Mon|Tue|Tues|Wed|Thu|Thur|Thurs|Fri|"
-    r"Sat|Sun|Mo|Di|Mi|Do|Fr|Sa|So))\.$"
+    r"(?i:ca|bzw|ggf|vgl|evtl|inkl|zzgl|bspw|sog|ff|approx|incl|excl|vs|mio|mrd|tsd|mill|тыс|млн|млрд|тис|"
+    r"руб|грн|godz)|Mon|Tue|Tues|Wed|Thu|Thur|Thurs|Fri|Sat|Sun|Mo|Di|Mi|Do|Fr|SFr|Sa|So))\.$"
 )
 """Words after whose full stop a sentence never ends: one letter (``z. B.``, ``p.``, ``e.g.``), German
-ordinal days (``21. Oktober``), and listed abbreviations of German and English answers."""
+ordinal days (``21. Oktober``), and listed abbreviations of German and English answers — a scale word
+among them (``412 Mio. Euro`` is one amount, never "412 Mio." and a sentence "Euro")."""
 
 Verdict = Literal["kept", "quoted", "redacted", "removed"]
 ValueKind = Literal["date", "time", "amount", "unreadable"]
@@ -304,12 +319,82 @@ _ANY_WORD = r"[^\s\d!-/:-@\[-`{-~]+"
 """A word of any script, with its marks: no space, digit or ASCII punctuation."""
 _OTHER_NAMED_DATE = re.compile(
     rf"(?<![\w.,/-])(?P<d>0?[1-9]|[12]\d|3[01])(?:\.|°|-?[^\W\d_]{{1,3}}\.?)?\s+(?:(?:de|of|the)\s+)?"
-    rf"(?P<w>{_ANY_WORD})\.?,?\s+(?:(?:de|del|of)\s+)?(?P<y>(?:19|20)\d{{2}})(?!\d)",
+    rf"(?P<w>{_ANY_WORD})\.?,?\s+(?:(?:de|del|of)\s+)?(?P<y>(?:1[34]|19|20)\d{{2}})(?!\d)",
     re.IGNORECASE,
 )
 """A day, one word and a year (``31 décembre 2027``, ``31 de diciembre de 2027``, ``31 grudnia 2027 r.``,
 ``31 Aralık 2027``, ``31 декабря 2027``): a date in a language whose month names the check does not
-know — *unreadable* unless the word is a month it knows (rule 1: fail closed)."""
+know — *unreadable* unless the word is a month it knows (rule 1: fail closed). A year of the Islamic or
+the Solar Hijri calendar (13xx, 14xx: ``1 رجب 1449``, ``10 دی 1406``) makes one too."""
+_DATE_MARK = r"[-/.–—·|_]"
+_MARK_WORD = r"[^\s\d!-/:-@\[-`{-~–—·]{2,15}"
+"""A word of any script between marks: no space, digit, ASCII punctuation or date mark."""
+_MARKED_NAMED_DATE = re.compile(
+    rf"(?<![\w.,/-])(?P<d>0?[1-9]|[12]\d|3[01])(?P<s>{_DATE_MARK}?)(?P<w>{_MARK_WORD}?)\.?(?P=s)"
+    rf"(?P<y>(?:1[34]|19|20)\d{{2}})(?!\d)"
+    rf"|(?<![\w])(?P<w2>{_MARK_WORD}?)\.?(?P<s2>{_DATE_MARK})(?P<d2>0?[1-9]|[12]\d|3[01])(?P=s2)"
+    rf"(?P<y2>(?:1[34]|19|20)\d{{2}})(?!\d)"
+    rf"|(?<![\w.,/-])(?P<y3>(?:1[34]|19|20)\d{{2}})(?P<s3>{_DATE_MARK})(?P<w3>{_MARK_WORD}?)\.?(?P=s3)"
+    rf"(?P<d3>0?[1-9]|[12]\d|3[01])(?![\d]|[.,]\d)",
+    re.IGNORECASE,
+)
+"""A day, a word and a year joined by one mark twice or by none, in any order (``31-dic-2027``,
+``31/dic/2027``, ``31dic2027``, ``dic-31-2027``, ``2027-dic-31``, ``31–дек–2027``): a date when the word is
+a month the check knows, else *unreadable* (review round 1: only a space was read between them)."""
+#: Month names of the other languages Ask answers in (French, Spanish, Italian, Portuguese, Polish, Turkish,
+#: Russian, Ukrainian, Arabic, Persian, Hindi), in the forms that stand before a year — the check reads
+#: English and German only, so a month and year in one of these is *unreadable*, never unread (rule 1).
+_FOREIGN_MONTHS = (
+    "janvier|février|fevrier|avril|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre|"
+    "enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|"
+    "gennaio|febbraio|aprile|maggio|giugno|luglio|settembre|ottobre|dicembre|"
+    "janeiro|fevereiro|março|marco|maio|junho|julho|setembro|outubro|novembro|dezembro|"
+    "styczeń|styczen|luty|marzec|kwiecień|kwiecien|maj|czerwiec|lipiec|sierpień|sierpien|wrzesień|wrzesien|"
+    "październik|pazdziernik|listopad|grudzień|grudzien|stycznia|lutego|marca|kwietnia|maja|czerwca|lipca|"
+    "sierpnia|września|wrzesnia|października|pazdziernika|listopada|grudnia|"
+    "ocak|şubat|subat|mart|nisan|mayıs|mayis|haziran|temmuz|ağustos|agustos|eylül|eylul|ekim|kasım|kasim|"
+    "aralık|aralik|"
+    "январь|февраль|март|апрель|май|июнь|июль|август|сентябрь|октябрь|ноябрь|декабрь|января|февраля|марта|"
+    "апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря|"
+    "січень|лютий|березень|квітень|травень|червень|липень|серпень|вересень|жовтень|листопад|грудень|січня|"
+    "лютого|березня|квітня|травня|червня|липня|серпня|вересня|жовтня|листопада|грудня|"
+    "يناير|فبراير|مارس|أبريل|ابريل|إبريل|مايو|يونيو|يوليو|أغسطس|اغسطس|سبتمبر|أكتوبر|اكتوبر|نوفمبر|ديسمبر|"
+    "كانون|شباط|آذار|نيسان|أيار|حزيران|تموز|آب|أيلول|تشرين|محرم|صفر|ربيع|جمادى|رجب|شعبان|رمضان|شوال|ذو|"
+    "ژانویه|فوریه|آوریل|مه|ژوئن|ژوئیه|اوت|سپتامبر|اکتبر|نوامبر|دسامبر|فروردین|اردیبهشت|خرداد|تیر|مرداد|"
+    "شهریور|مهر|آبان|آذر|دی|بهمن|اسفند|"
+    "जनवरी|फ़रवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|सितम्बर|अक्टूबर|अक्तूबर|नवंबर|नवम्बर|दिसंबर|"
+    "दिसम्बर"
+)
+_FOREIGN_MONTH_YEAR = re.compile(
+    rf"(?<![\w\u0900-\u097F\u0600-\u06FF])(?:{_FOREIGN_MONTHS})(?![\w\u0900-\u097F\u0600-\u06FF])\.?,?\s*"
+    r"(?:\(?(?:de|del|di|of|r\.|года|г\.|року|р\.)\)?\s+|\s*[-/]\s*)?(?:\S+\s+)?"
+    r"(?P<y>(?:1[34]|19|20)\d{2})(?!\d)",
+    re.IGNORECASE,
+)
+"""A month and a year in another offered language (``décembre 2027``, ``diciembre (de) 2027``, ``Aralık
+2027``, ``декабрь 2027``, ``ديسمبر 2027``, ``दिसंबर 2027``, ``كانون الأول 2027``): *unreadable* (rule 1)."""
+_FOREIGN_WORD_FIRST = re.compile(
+    rf"(?<![\w])(?:{_FOREIGN_MONTHS})\.?\s+(?P<d>0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th|\.)?,?\s+"
+    r"(?P<y>(?:1[34]|19|20)\d{2})(?!\d)",
+    re.IGNORECASE,
+)
+"""Another offered language's month before its day and year (``diciembre 31, 2027``): *unreadable*."""
+_ANY_WORD_FIRST = re.compile(
+    r"(?<![\w])(?P<w>[^\W\d_]{2,12})\.\s?(?P<d>0?[1-9]|[12]\d|3[01]),\s+(?P<y>(?:19|20)\d{2})(?!\d)"
+)
+"""An abbreviated word, a day, a comma and a year (``dic. 31, 2027``): a date when the word is a month
+the check knows, else *unreadable*."""
+_ZH_NUMERALS = "〇零一二三四五六七八九十两"
+_ZH_WORD_DATE = re.compile(
+    rf"(?:\d{{4}}\s?年\s?)?[{_ZH_NUMERALS}]{{1,3}}\s?月(?:\s?[{_ZH_NUMERALS}]{{1,4}}\s?[日号])?"
+    rf"|(?:\d{{4}}\s?年\s?)?\d{{1,2}}\s?月\s?[{_ZH_NUMERALS}]{{1,4}}\s?[日号]"
+)
+"""A month (and day) in Chinese numerals (``2027年十二月三十一日``, ``十二月``): *unreadable*."""
+_DAY_MONTH_PAIR = re.compile(
+    r"(?<![\w.,/·-])(?P<d>0?[1-9]|[12]\d|3[01])/(?P<m>0?[1-9]|1[0-2])(?![\w/]|[.,]\d|\s?(?:%|€))"
+)
+"""A day and a month joined by a slash with no year (``31/12``, the short form of French, Spanish, Italian,
+Portuguese, Polish, Turkish and Russian): *unreadable* — ``31.12.`` and ``Dec 31`` are read as dates."""
 _CJK_DATE = re.compile(
     r"(?<!\d)(?:(?P<y>\d{4})\s?年\s?)?(?P<m>0?[1-9]|1[0-2])\s?月(?:\s?(?P<d>0?[1-9]|[12]\d|3[01])\s?[日号])?"
 )
@@ -319,7 +404,7 @@ _PART_WORDS = (
     r"|mitte|early|(?:the\s+)?(?:beginning|start)\s+of|anfang|beginn|monatsanfang"
 )
 _MONTH_YEAR = re.compile(
-    rf"\b(?:(?P<part>{_PART_WORDS})\s*)?(?P<m>{_MONTH_NAME})\b\.?,?\s*"
+    rf"\b(?:(?P<part>{_PART_WORDS})\s*)?(?P<m>{_MONTH_NAME})\b\.?(?:,?\s*|[-/–]\s?)"
     rf"(?:(?P<y>{_YEAR4})|'(?P<ay>\d{{2}}))(?![\dOoIlZ])"
     rf"|\b(?:end\s+of|ende|year-end|jahresende)\s+(?P<ey>{_YEAR4})(?![\dOoIlZ])"
     rf"|\b(?P<ypart>{_PART_WORDS})\s*(?P<ym>{_MONTH_NAME})\b\.?",
@@ -342,15 +427,22 @@ _NUMBER_WORD = (
     r"|(?:drei|vier|fünf|sech|sieb|acht|neun)zehnte)[nrms]?"
     rf"|eins|{_DE_UNITS}|zehn|elf|zwölf|(?:drei|vier|fünf|sech|sieb|acht|neun)zehn)"
 )
+_ORDINAL_WORD = (
+    r"(?:(?:twenty|thirty)[-\s]?(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth)|twentieth|thirtieth"
+    r"|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth"
+    r"|(?:thir|four|fif|six|seven|eigh|nine)teenth)"
+)
 _WORD_DAY = re.compile(
     rf"\b(?:(?P<w>{_NUMBER_WORD})\s+(?:of\s+(?:the\s+month\s+of\s+)?)?"
     rf"|(?P<n>0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th|\.)?\s+(?:of\s+the\s+month\s+of|des\s+Monats|im\s+Monat)\s+)"
-    rf"(?P<m>{_MONTH_NAME})\b(?!['’]\w)\.?(?:,?\s*(?P<y>{_YEAR4})(?![\dOoIlZ]))?",
+    rf"(?P<m>{_MONTH_NAME})\b(?!['’]\w)\.?(?:,?\s*(?P<y>{_YEAR4})(?![\dOoIlZ]))?"
+    rf"|\b(?P<m2>{_MONTH_NAME})\.?\s+(?:the\s+)?(?P<w2>{_ORDINAL_WORD})\b(?:,?\s*(?P<y2>{_YEAR4})(?![\dOoIlZ]))?",
     re.IGNORECASE,
 )
 """A day before a month name that the other forms do not read: in words (``the thirty-first of October
 2026``, ``einunddreißigsten Oktober``) — *unreadable*, never read as the month (a day ten days late would
-pass as a date in it) —, or in digits with "des Monats" (``31. des Monats Oktober 2026``: a date)."""
+pass as a date in it) —, or in digits with "des Monats" (``31. des Monats Oktober 2026``: a date); and an
+ordinal day in words after the month (``December thirty-first 2027``): *unreadable* too."""
 _VERB_MONTHS = frozenset({"may", "march", "mar"})
 """Month names that are also English verbs: after a part word and with no year, only capitalised ones
 are months ("late May", never "filed late may be rejected")."""
@@ -404,6 +496,57 @@ _DOT_TIME = re.compile(r"(?<![\w.,])(?P<h>[01]?\d|2[0-4])[.,](?P<m>[0-5]\d)(?!\d
 Uhr``). A lower-case "am" before a number or a capitalised word is the German word (``3 am 14.10.``,
 ``4 am Montag``, ``3 am Bahnhof``), not a time — except before an English weekday or month (``4 am
 Wednesday``, ``4 am Oct 14``): English capitalises those."""
+_HOUR_WORD_AFTER = re.compile(
+    r"(?<![\d.,:])(?<![A-Za-zÀ-ÖØ-öø-ÿ])(?P<h>[01]?\d|2[0-4])(?:[:.h](?P<m>[0-5]\d))?\s?"
+    r"(?:heures?\b|horas?\b|ore\b|godz\w*|часов|часа|час\b|годин\w*|点|點|時|时|बजे)(?:\s?(?P<zm>[0-5]?\d)\s?分)?"
+)
+"""A clock time with an hour word of another offered language after it (``15 heures``, ``15 horas``,
+``15 часов``, ``15 годині``, ``15点``, ``15時30分``, ``3 बजे``) — review round 1: only English and German units
+were read."""
+_HOUR_WORD_BEFORE = re.compile(
+    r"(?:\balle\s+ore|\ba\s+las|\bo\s+godzinie|\bgodz\.|\bsaat|الساعة|ساعت)\s+"
+    r"(?P<h>[01]?\d|2[0-4])(?:[:.](?P<m>[0-5]\d))?(?![\d:]|[.,]\d)",
+    re.IGNORECASE,
+)
+"""A clock time after an hour word of another offered language (``alle ore 15``, ``o godzinie 15``, ``saat
+15'te``, ``الساعة 3``, ``ساعت ۳``)."""
+_DAY_PART = re.compile(
+    r"下午|晚上|上午|早上|中午|凌晨|मध्याह्न|दोपहर|शाम|सुबह|रात|مساء|صباح|ظهر|عصر|بعدازظهر|بعد از ظهر|صبح|شب|"
+    r"après-midi|du soir|du matin|de la tarde|de la mañana|de la noche|del pomeriggio|di sera|di mattina|"
+    r"da tarde|da manhã|da noite|po południu|wieczorem|rano|öğleden sonra|akşam|sabah|вечера|утра|дня|ночи|"
+    r"вечора|ранку|пополудні",
+    re.IGNORECASE,
+)
+"""A part of the day next to an hour (``下午3点`` is 15:00, ``الساعة 3 مساءً``): the check cannot place it,
+so such a time is *unreadable*."""
+_UM_HOUR = re.compile(
+    r"\bum\s+(?P<h>[01]?\d|2[0-4])(?=\s*(?:$|[.,;:!?)\]]|\s(?:und|oder|bis|am|im|an|in|zum|zur)\b))"
+)
+"""German "um 15" at the end of a clause: a time with its unit left out — *unreadable* ("um 15 %", "um 15
+Tage" are no times)."""
+_T_TIME = re.compile(r"(?<![\w])T(?P<h>[01]\d|2[0-3]):(?P<m>[0-5]\d)(?::[0-5]\d)?(?![\d:])")
+"""An ISO time without its date (``T15:30``)."""
+_MILITARY_TIME = re.compile(r"(?<![\w.,:])(?P<h>[01]\d|2[0-3])(?P<m>[0-5]\d)\s?hrs?\b", re.IGNORECASE)
+"""Four digits and "hrs" (``1530 hrs``): 15:30."""
+
+
+def _other_times(plain: str) -> Iterator[Value]:
+    """Clock times with another offered language's hour word (:data:`_HOUR_WORD_AFTER`,
+    :data:`_HOUR_WORD_BEFORE`), ``T15:30`` and ``1530 hrs``; with a part of the day next to them, or German
+    "um 15" without its unit, *unreadable* (a time value without a clock, never supported)."""
+    for pattern in (_HOUR_WORD_AFTER, _HOUR_WORD_BEFORE, _T_TIME, _MILITARY_TIME):
+        for match in pattern.finditer(plain):
+            start, end = match.span()
+            groups = match.groupdict()
+            minutes = groups.get("m") or groups.get("zm")
+            near = plain[max(0, start - 12) : min(len(plain), end + 12)]
+            placed = _DAY_PART.search(near) is None
+            clock = (int(match.group("h")), int(minutes or 0)) if placed else None
+            yield Value(match.group(), "time", start, end, clock=clock)
+    for match in _UM_HOUR.finditer(plain):
+        yield Value(match.group(), "time", *match.span())
+
+
 _ENGLISH_AFTER_AM = re.compile(
     r"(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tues?|Wed|Thur?s?|Fri|Sat|Sun|January|"
     r"February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|"
@@ -750,10 +893,35 @@ _SCALED_AMOUNT = re.compile(
 )
 """An amount with a scale word and a currency: ``1,5k €``, ``1 Mio. €``, ``€2.5 million``."""
 _SCALES = {
-    **dict.fromkeys(("k", "tsd", "tausend", "thousand"), 1_000),
-    **dict.fromkeys(("mio", "mill", "millionen", "million"), 1_000_000),
+    **dict.fromkeys(("k", "t", "tsd", "tausend", "thousand"), 1_000),
+    **dict.fromkeys(("m", "mio", "mill", "millionen", "million"), 1_000_000),
     **dict.fromkeys(("mrd", "milliarden", "milliarde", "billion", "bn"), 1_000_000_000),
 }
+_GLUED_SCALE = re.compile(
+    r"(?<![\w.,])(?P<num>\d{1,4}(?:[.,]\d{1,3})?)\s?(?P<scale>[TtKkMm])(?:€|EUR\b)"
+    r"|(?:€|EUR|US\$|\$|USD|£|GBP|CHF)\s?(?P<num2>\d{1,4}(?:[.,]\d{1,3})?)"
+    r"(?P<scale2>[KkMm]|bn|BN|Mrd|Mio|Tsd)(?![\w])"
+)
+"""A scale glued to a currency (``412,00 T€``, ``412 TEUR``, ``412 KEUR``, ``412 M€``) or to a number after
+one (``€412M``, ``$3k``): thousands and millions, never the bare number (review round 1: ``412,00 T€`` passed
+as 412 €)."""
+_FOREIGN_EURO = re.compile(r"(?<![\w.,])(?P<num>\d[\d.,]*\d|\d)\s?(?:евро|євро|يورو|یورو|यूरो|欧元)")
+"""An amount with the euro's name in another offered language (``1412 евро``, ``1412 يورو``, ``1412 欧元``)."""
+_OTHER_CURRENCY = re.compile(
+    r"(?<![\w.,])\d(?:[\d.,'’]|\s(?=\d)){0,24}\s?(?:zł|złotych|zlotych|PLN|₺|TL\b|TRY\b|₽|RUB\b|руб\.?|рубл\w*|₴|грн\.?|"
+    r"гривень|гривні|гривн\w*|UAH\b|₹|INR\b|रुपये|रुपए|रु\.|元|人民币|CNY\b|RMB\b|¥|JPY\b|﷼|ریال|تومان|ريال|"
+    r"درهم|جنيه|ليرة|lira\b|lire\b|lirası)"
+    r"|(?:₺|₽|₴|₹|¥|﷼|PLN|RUB|UAH|INR|CNY|RMB|JPY|TRY|zł)\s?\d[\d.,'’]*"
+)
+"""A number with another currency's sign, code or name (``1412 zł``, ``₹1412``, ``1412 грн``): *unreadable*
+— Ordnung's amounts are in euros (and the few codes it reads), so it is never supported (review round 1)."""
+_FOREIGN_SCALE = re.compile(
+    r"(?<![\w.,])\d[\d.,]*\s?(?:mil|mille|mila|milioni?|millones?|milhões|milhão|miliony|milion|mln|mld|tys\.?|"
+    r"тыс\.?|тысяч\w*|млн\.?|млрд\.?|тис\.?|тисяч\w*|bin|milyon|milyar|万|萬|千|亿|億|هزار|میلیون|ألف|آلاف|مليون|"
+    r"हज़ार|हजार|लाख|करोड़|करोड)(?![\w])\.?\s?(?:€|EUR\b|euros?\b|евро|євро|يورو|یورو|यूरो|欧元)"
+)
+"""A scale word of another offered language before a currency (``412 mil €``, ``412 тыс. €``, ``412万 €``):
+*unreadable* — its number is not the amount."""
 _LONG_AMOUNT = re.compile(
     r"(?:€|EUR|US\$|\$|USD|£|GBP|CHF)\s?\d{16,}|(?<![\w.,])\d{16,}(?:[.,]\d+)?\s?(?:€|EUR\b|Euro\b|euros?\b|USD\b)",
     re.IGNORECASE,
@@ -801,9 +969,44 @@ def _decimal(number: str) -> float:
     return float(number.replace(",", "."))
 
 
+_FRANCS = re.compile(r"(?<![\w])S?Fr\.\s?(?P<num>\d[\d'’]*(?:[.,]\d{2})?)(?![\d'’]|[.,]\d)")
+"""Swiss francs before the number (``Fr. 1412``) — but "Fr." before a day is Friday (``Fr. 16.10.``,
+``Fr. 16. Oktober``): only a number that can't be a day, or has cents, is an amount."""
+
+
+def _unreadable_amounts(plain: str) -> Iterator[tuple[int, int]]:
+    """``(start, end)`` of the amounts in another currency or with another language's scale word
+    (:data:`_OTHER_CURRENCY`, :data:`_FOREIGN_SCALE`, :data:`_FRANCS`): shaped like money, but never
+    Ordnung's."""
+    for pattern in (_FOREIGN_SCALE, _OTHER_CURRENCY):
+        for match in pattern.finditer(plain):
+            if any(char.isdigit() for char in match.group()):
+                yield match.span()
+    for match in _FRANCS.finditer(plain):
+        number = match.group("num")
+        if re.fullmatch(r"\d{1,2}(?:\.\d{1,2})?", number) and int(number.split(".")[0]) <= 31:
+            continue  # "Fr. 16.10.": a Friday
+        yield match.span()
+
+
 def _more_amounts(plain: str) -> Iterator[tuple[int, int, float]]:
     """``(start, end, value)`` of the amounts :func:`~ordnung.ingest.verify.amount_matches` does not
-    read: glued to a currency code, in cents, or with a scale word next to a currency."""
+    read: glued to a currency code, in cents, with a scale word next to a currency (or glued to it:
+    :data:`_GLUED_SCALE`), or with another offered language's word for the euro."""
+    for match in _GLUED_SCALE.finditer(plain):
+        number, scale = (
+            (match.group("num"), match.group("scale"))
+            if match.group("num")
+            else (
+                match.group("num2"),
+                match.group("scale2"),
+            )
+        )
+        yield match.start(), match.end(), _decimal(number) * _SCALES[scale.casefold()]
+    for match in _FOREIGN_EURO.finditer(plain):
+        found = amount_matches(f"{match.group('num')} €")
+        if found:
+            yield match.start("num"), match.end(), found[0].value
     for match in _GLUED_AMOUNT.finditer(plain):
         group = "num" if match.group("num") else "num2"
         found = amount_matches(f"{match.group(group)} €")
@@ -1000,6 +1203,18 @@ def _date_shaped(first: str, second: str, third: str, marks: tuple[str, str]) ->
     return "dmy" if mark in "./-" or (1 <= int(first) <= 31 and 1 <= int(second) <= 12) else None
 
 
+def _other_calendar(first: str, second: str, third: str) -> bool:
+    """Three groups shaped like a date whose four-digit year is of another calendar (``1406/10/10``: the
+    Solar Hijri calendar a Persian answer may use; ``10.10.1449``: the Islamic one) — *unreadable*."""
+
+    def short(group: str, top: int) -> bool:
+        return len(group) <= 2 and 1 <= int(group) <= top
+
+    if len(first) == 4 and first[:2] in ("13", "14") and short(second, 12) and short(third, 31):
+        return True
+    return len(third) == 4 and third[:2] in ("13", "14") and short(first, 31) and short(second, 12)
+
+
 def _year(group: str) -> int:
     """A year as written: two digits are read as :func:`~ordnung.ingest.verify.parse_dates` does."""
     year = int(group)
@@ -1024,6 +1239,8 @@ def _run_values(plain: str, match: re.Match[str]) -> list[Value]:
         else:
             marks.append(part.group("mark").rstrip("'’"))  # "31/12/'27": the apostrophe marks a year
     values: list[Value] = []
+    if len(groups) == 3 and _other_calendar(*(group for group, _, _ in groups)):
+        return [Value(plain[groups[0][1] : groups[2][2]], "unreadable", groups[0][1], groups[2][2])]
     index = 0
     while index + 2 < len(groups):
         (first, start, _), (second, _, _), (third, _, end) = groups[index : index + 3]
@@ -1087,11 +1304,15 @@ def stated_values(plain: str, *, german: bool | None = None) -> list[Value]:
 
     for match in _LONG_AMOUNT.finditer(plain):
         claim(Value(match.group(), "unreadable", *match.span()))
+    for start, end in _unreadable_amounts(plain):
+        claim(Value(plain[start:end], "amount", start, end))  # an amount never supported
     for start, end, grouped in _grouped_amounts(plain):
         claim(Value(plain[start:end], "amount", start, end, amount=grouped))
     for start, end, worth in (*_short_amounts(plain), *_more_amounts(plain)):
         claim(Value(plain[start:end], "amount", start, end, amount=worth))
     for value in _dotted_times(plain):
+        claim(value)
+    for value in _other_times(plain):
         claim(value)
     for pattern, reading in _DATE_FORMS[:_FIRST_FORMS]:
         for value in _form_values(plain, pattern, reading):
@@ -1134,18 +1355,28 @@ def stated_values(plain: str, *, german: bool | None = None) -> list[Value]:
 
 
 def _other_named_values(plain: str) -> Iterator[Value]:
-    """:data:`_OTHER_NAMED_DATE`: a date when the word is a month the check knows, else *unreadable*."""
-    for match in _OTHER_NAMED_DATE.finditer(plain):
-        if _after_label(match):
-            continue
-        start, end = match.span()
-        month = MONTH_NUMBERS.get(match.group("w").casefold())
-        readings = (
-            _valid_mention(plain[start:end], int(match.group("d")), month, int(match.group("y")))
-            if month
-            else []
-        )
-        yield Value(plain[start:end], "date" if readings else "unreadable", start, end, dates=tuple(readings))
+    """A day, a word and a year (:data:`_OTHER_NAMED_DATE`, :data:`_MARKED_NAMED_DATE`,
+    :data:`_ANY_WORD_FIRST`): a date when the word is a month the check knows, else *unreadable*; and
+    what is shaped like a date in another offered language or calendar (:data:`_FOREIGN_MONTH_YEAR`,
+    :data:`_FOREIGN_WORD_FIRST`, :data:`_ZH_WORD_DATE`, :data:`_DAY_MONTH_PAIR`): *unreadable* (rule 1)."""
+    for pattern in (_OTHER_NAMED_DATE, _MARKED_NAMED_DATE, _ANY_WORD_FIRST):
+        for match in pattern.finditer(plain):
+            if _after_label(match):
+                continue
+            found = {key: value for key, value in match.groupdict().items() if value is not None}
+            word = next((found[key] for key in ("w", "w2", "w3") if key in found), "")
+            day = next(found[key] for key in ("d", "d2", "d3") if key in found)
+            year = next(found[key] for key in ("y", "y2", "y3") if key in found)
+            start, end = match.span()
+            month = MONTH_NUMBERS.get(word.casefold().rstrip("."))
+            readings = _valid_mention(plain[start:end], int(day), month, int(year)) if month else []
+            yield Value(
+                plain[start:end], "date" if readings else "unreadable", start, end, dates=tuple(readings)
+            )
+    for pattern in (_FOREIGN_MONTH_YEAR, _FOREIGN_WORD_FIRST, _ZH_WORD_DATE, _DAY_MONTH_PAIR):
+        for match in pattern.finditer(plain):
+            if not _after_label(match):
+                yield Value(match.group(), "unreadable", *match.span())
 
 
 def _cjk_values(plain: str) -> Iterator[Value]:
@@ -1166,11 +1397,11 @@ def _cjk_values(plain: str) -> Iterator[Value]:
 def _word_day_values(plain: str) -> Iterator[Value]:
     """:data:`_WORD_DAY`: a day in words is *unreadable*; a day in digits with "des Monats" a date."""
     for match in _WORD_DAY.finditer(plain):
-        name = match.group("m")
+        name = match.group("m") or match.group("m2")
         if name.casefold() in _VERB_MONTHS and not name[0].isupper():
             continue  # "one may object": the verb
         start, end = match.span()
-        if match.group("w"):
+        if match.group("w") or match.group("w2"):
             yield Value(plain[start:end], "unreadable", start, end)
             continue
         year = _digits(match.group("y")) if match.group("y") else None
@@ -1478,7 +1709,9 @@ class TurnEvidence:
     ``seen_ids``: every citable id in a record part; ``paragraphs``: the § citations of the rules
     catalog and the record parts; ``suspicious``: the records with scam signs (a to-do or letter
     flagged ``scam_warning`` or listed in ``do_not_pay``, and its letter and sender), whose citation
-    the check never adds and whose own values the note never gives (ADR 0006).
+    the check never adds and whose own values the note never gives (ADR 0006); ``payment_notes``: the
+    to-dos whose record carries a ``payment_note`` (and their letters), by the note's kind — the note
+    repeats it under an answer that cites one.
     """
 
     record: Mapping[str, FactSet]
@@ -1493,6 +1726,7 @@ class TurnEvidence:
     totals: FactSet = field(default_factory=FactSet)
     record_index: _Index = field(default_factory=_Index, compare=False)
     suspicious: frozenset[str] = frozenset()
+    payment_notes: Mapping[str, frozenset[str]] = field(default_factory=dict)
 
     @classmethod
     def from_results(
@@ -1547,7 +1781,13 @@ class TurnEvidence:
             totals=collector.totals,
             record_index=records,
             suspicious=frozenset(collector.suspicious),
+            payment_notes={ref: frozenset(kinds) for ref, kinds in collector.noted.items()},
         )
+
+    def payment_notes_of(self, cited: Iterable[str]) -> list[str]:
+        """The payment notes (:data:`_PAYMENT_NOTES`) of the cited records — a to-do the app says to decide
+        on before paying, or its letter — in a stable order."""
+        return sorted({kind for ref in cited for kind in self.payment_notes.get(ref, ())})
 
     def supports(self, value: Value, cited: Collection[str], *, totals: bool | None = None) -> bool:
         """Policy rule 3: today; an overview total in a sentence with no citation of its own (``totals``,
@@ -1617,6 +1857,7 @@ class _Collector:
         self.own: dict[str, set[RecordValue]] = defaultdict(set)
         self.flagged: set[str] = set()
         self.suspicious: set[str] = set()
+        self.noted: dict[str, set[str]] = defaultdict(set)
         self.context = FactSet()
         self.totals = FactSet()
         self.seen: set[str] = set()
@@ -1646,6 +1887,12 @@ class _Collector:
                     self.credit[linked].update((linked, own))
                 if any(node.get(flag) for flag in UNVERIFIED_FLAGS):
                     self.flagged.add(own)
+                note = node.get(PAYMENT_NOTE_KEY)
+                kind = payment_note_kind(note) if isinstance(note, str) else None
+                if kind is not None:
+                    for ref in (own, node.get("doc_id")):
+                        if isinstance(ref, str) and CITABLE_ID.fullmatch(ref):
+                            self.noted[ref].add(kind)
                 if node.get("scam_warning") is True or key == DO_NOT_PAY:
                     self.suspicious.update(
                         ref
@@ -1942,6 +2189,32 @@ _RECORD_LEAD = (
     "For the records concerned, Ordnung has on file",
     "Zu den betroffenen Einträgen hat Ordnung gespeichert",
 )
+#: What the note repeats under an answer that cites a payment the app says to decide on first (review round
+#: 1): the answer may present it as due like any other, so only the check can make sure it is said. Keyed by
+#: the record's ``payment_note`` (the app's own warning, :mod:`ordnung.rules.advice`).
+_PAYMENT_NOTES: Mapping[str, tuple[str, str]] = {
+    "rent_increase": (
+        "The new rent is only owed once you agree to the increase, and paying it can count as agreeing "
+        "(§ 558b Abs. 1 BGB) — decide before you pay.",
+        "Die neue Miete ist erst geschuldet, wenn Sie der Erhöhung zustimmen, und sie zu zahlen kann als "
+        "Zustimmung gelten (§ 558b Abs. 1 BGB) — entscheiden Sie vor dem Zahlen.",
+    ),
+    "late_statement": (
+        "This operating-cost statement seems to have come too late, so its back-payment may not be owed "
+        "(§ 556 Abs. 3 S. 3 BGB) — check before you pay.",
+        "Diese Betriebskostenabrechnung kam wohl zu spät, die Nachzahlung ist dann möglicherweise nicht "
+        "geschuldet (§ 556 Abs. 3 S. 3 BGB) — prüfen Sie das vor dem Zahlen.",
+    ),
+}
+
+
+def payment_note_kind(note: str) -> str | None:
+    """Which of :data:`_PAYMENT_NOTES` a record's ``payment_note`` is (``None``: none the check repeats)."""
+    from ordnung.rules.advice import LATE_STATEMENT_WARNING, RENT_INCREASE_PAYMENT_WARNING
+
+    return {RENT_INCREASE_PAYMENT_WARNING: "rent_increase", LATE_STATEMENT_WARNING: "late_statement"}.get(
+        note
+    )
 
 
 def _counted(key: str, count: int, style: Style) -> str | None:
@@ -2015,6 +2288,7 @@ class CheckedAnswer:
     forged_notes: int = 0
     record_values: tuple[str, ...] = ()
     style: Style = ENGLISH
+    payment_notes: tuple[str, ...] = ()
 
     @property
     def removed(self) -> list[SentenceCheck]:
@@ -2060,6 +2334,7 @@ class CheckedAnswer:
         if self.record_values:
             lead = _RECORD_LEAD[1] if style.german else _RECORD_LEAD[0]
             parts.append(f"{lead}: {'; '.join(self.record_values)}.")
+        parts += [_PAYMENT_NOTES[kind][1 if style.german else 0] for kind in self.payment_notes]
         shown = [part for part in parts if part]
         return f"{style.note_prefix} {' '.join(shown)}" if shown else None
 
@@ -2077,6 +2352,7 @@ def check_answer(
     checks: list[SentenceCheck] = []
     forged = 0
     lead: list[str] = []  # the records the line leading a list cites (rule 2)
+    noted: dict[str, None] = {}  # the payment notes of the records the kept sentences cite
     for unit in _units(text.splitlines(), german=german):
         line = unit[0]
         start = _line_prefix(line)
@@ -2107,10 +2383,12 @@ def check_answer(
             )
             if check is None:
                 kept.append(sentence)
+                noted.update(dict.fromkeys(evidence.payment_notes_of(cited)))
                 continue
             checks.append(check)
             if check.result:
                 kept.append(check.result)
+                noted.update(dict.fromkeys(evidence.payment_notes_of([*cited, *check.added])))
         if kept:
             lines.append(start + " ".join(kept).replace("\n", "\n" + continuation))
         line_ids = list(dict.fromkeys(ref for ids in own for ref in ids))
@@ -2119,7 +2397,7 @@ def check_answer(
         elif not item:
             lead = []
     return CheckedAnswer(
-        "\n".join(lines), tuple(checks), forged, _record_values(checks, evidence, style), style
+        "\n".join(lines), tuple(checks), forged, _record_values(checks, evidence, style), style, tuple(noted)
     )
 
 

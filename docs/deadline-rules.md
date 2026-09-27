@@ -353,10 +353,10 @@ written policy per ADR 0007, and ADR 0010 for why code assigns these kinds) and 
 
 | Kind | Recognised when the reading … | Its dates follow | Deadlines the law adds (filed as to-dos) | Card |
 |---|---|---|---|---|
-| `court_payment_order` (*Mahnbescheid*) | comes from a court (the sender's name is a kind of court — *Amtsgericht*, also *des Amtsgerichts*, *Zentrales Mahngericht* — or abbreviates one before a place of a word or two, *AG Hagen*, from a sender read as an authority (or of no particular kind) — a recipient typed into a template letter, whose kind is unknown, only by the court's full name; never any word ending in "gericht", a company whose name starts like one — *LG Electronics Deutschland GmbH*, *OLG Immobilien* —, a bailiff — *Gerichtsvollzieher bei dem Amtsgericht …* — or a court cashier), asks the person to answer it as the respondent, and names the order (see below) | `zpo_692` (at a labour court `arbgg_46a`) | pay or object within two weeks (one week at a labour court) | get advice now |
+| `court_payment_order` (*Mahnbescheid*) | comes from a court (the sender's name is a kind of court — *Amtsgericht*, also *des Amtsgerichts*, *Zentrales Mahngericht*, *Verfassungsgerichtshof* — or abbreviates one before a place of a word or two, *AG Hagen*, *SG Berlin*, *VG Minden* — a federal court's needs no place, *BGH*, *BSG* —, from a sender read as an authority (or of no particular kind; a club "SG …" or "VG Wort" read so counts as a court, the safe side) — a recipient typed into a template letter, whose kind is unknown, only by the court's full name; never any word ending in "gericht", a company whose name starts like one — *LG Electronics Deutschland GmbH*, *OLG Immobilien* —, a bailiff — *Gerichtsvollzieher bei dem Amtsgericht …* — or a court cashier), asks the person to answer it as the respondent, and names the order (see below) | `zpo_692` (at a labour court `arbgg_46a`) | pay or object within two weeks (one week at a labour court) | get advice now |
 | `enforcement_order` (*Vollstreckungsbescheid*) | comes from a court, names a Vollstreckungsbescheid, asks the person to answer it, and is one (see below) | `zpo_339` (at a labour court `arbgg_59`) | object within two weeks (one week at a labour court) | get advice now |
 | `dismissal` | reports a termination by the other side about a job — what it ends is decided by the contract it names (an employment contract; any other category but "other", like a job ticket, is neither), then the letter's kind, and only then the sender's (an employer) | `kschg_4`, `sgb3_38` | court action within three weeks; register as job-seeking | get advice now |
-| `landlord_notice` | reports a termination by the other side about a tenancy, in the same order (a rent contract, a tenancy letter, a landlord): an employer ending the lease of a company flat gives a landlord's notice, not a dismissal | `bgb_574b` | the objection, when the end of the tenancy is stated, the objection date hadn't passed when the notice was written, and the notice has a notice period (or gives one in the alternative) | tenants' association |
+| `landlord_notice` | reports a termination by the other side about a tenancy, in the same order (a rent contract, a tenancy letter, a landlord): an employer ending the lease of a company flat gives a landlord's notice, not a dismissal | `bgb_574b` | the objection, when the notice has a notice period (or gives one in the alternative): two months before its stated end — or before the earliest end the law allows (`bgb_573c_landlord`) when the stated end is too early for it or a notice in the alternative names none | tenants' association |
 | `rent_increase` | reports a rent increase whose quoted German wording asks for consent (Zustimmung, Vergleichsmiete, Mietspiegel, § 558 BGB), unless the increase's own quote or the title names another kind of increase (graduated, index, modernisation, prepayments; §§ 557a, 557b, 559, 560 BGB) or a quote says consent isn't needed — what happens *without* consent ("Sollten Sie Ihre Zustimmung nicht erteilen …"), the prepayment in the new total and a Mietspiegel feature ("Bad modernisiert") never veto it | `bgb_558b` | decide on the consent | rent cap check |
 | `operating_costs` | names an operating-cost statement in its title, or with a tenancy or a billing period, isn't a reminder (a reminder about an old statement's back-payment quotes the statement without being it) and isn't from a utility or a public body — recognised on read only, because its dates don't depend on it | ordinary 12-month period | — | late-statement check |
 
@@ -399,7 +399,12 @@ never get an authority's 4-day delivery fiction (they run from the letter's date
 start, or the delivery day the person entered) and are never `high`: each carries a note that a court's
 periods usually run from the date on the yellow envelope, and every period that doesn't count from a day
 the letter names cites § 180 ZPO (`zpo_180`), so the letter's page asks "When was it delivered?" with no
-date filled in — never "When did it arrive?" with today. A court's own period that the letter counts
+date filled in — never "When did it arrive?" with today; its receipt counts from "the day it was
+delivered", and its warnings ask for the date the postman wrote on the yellow envelope. A court's periods
+are counted by §§ 187, 188 BGB through § 222 Abs. 1 ZPO — at a labour court through § 46 Abs. 2 ArbGG —
+and their receipts cite them so, never the AO's, the VwVfG's or the SGG's counting rules. The rules tools the
+assistant can call (`compute_deadline`, ADR 0009) treat a sender they name as a court the same way: the
+court order's kind from the remedy, the same start, the same question. A court's own period that the letter counts
 from its own date ("binnen zwei Wochen ab dem Datum dieses Schreibens", "ab heute") is the exception: a
 court may set another start than delivery (§ 221 ZPO), so it counts from the letter's date, the envelope
 date entered never moves it later, and it doesn't cite § 180 ZPO. When the letter's date wasn't read, the
@@ -436,7 +441,7 @@ letter "Please check". Rule to-dos are filed when the letter is read and when th
 kind; a changed region, postal buffer or arrival day only recomputes the ones that are left, so one the
 person deleted stays deleted. Court deadlines — and every date on a court order, fixed or relative — are
 **never `high`** confidence: each carries a "get advice" note, and without the envelope date also the
-"when did it arrive?" question (`low`).
+"when was it delivered?" question (`low`).
 
 **Court payment order** (`zpo_692`, § 692 Abs. 1 Nr. 3, § 694 ZPO). Two weeks from delivery
 (*Zustellung*): the date the postman wrote on the yellow envelope — also a Saturday, if that is when
@@ -467,13 +472,20 @@ another court early — by the send-by date, as for a letter.
 dismissal; afterwards the dismissal counts as valid. The end moves off weekends and holidays (§ 193 BGB).
 The letter never states this deadline, so a dismissal always brings it as a to-do, with the "get
 advice" card (union, employment lawyer, the labour court's *Rechtsantragstelle*). Ordnung never drafts
-a court action. Examples: received Mon 6 Jan 2025 → Mon 27 Jan 2025; received Fri 11 Dec 2026 (Berlin)
+a court action. **From any employer** — a city, a university or a Land too: a dismissal is a declaration
+under private law that takes effect when it arrives (§ 130 BGB), so an authority's delivery fiction never
+applies to it, and the three weeks are counted by §§ 187, 188 BGB alone. The action may be filed at the labour
+court of the employer's seat or of the place of work (§ 48 Abs. 1a ArbGG), which may be in another Land: a
+regional holiday moves the end only when it holds both at the employer's seat and where the person lives
+(the place of work's stand-in), else nationwide holidays only — the earlier date, with the warning that a
+Land's holiday may make it later. Examples: received Mon 6 Jan 2025 → Mon 27 Jan 2025; received Fri 11 Dec 2026 (Berlin)
 → Fri 1 Jan → **Mon 4 Jan 2027** ([Arbeitsgericht Hamburg](https://justiz.hamburg.de/gerichte/arbeitsgericht-hamburg/informationen-merkblaetter-und-klagevordrucke-641146)).
 
 **Registering as job-seeking** (`sgb3_38`, § 38 Abs. 1 SGB III). At the latest three months before the
 job ends; when less than three months are left, within three days of learning the end date. "Three
 months before" counts back from the last day (ends 30 Sep → by 30 Jun; ends 31 Dec → by 30 Sep; some
-guides say 1 Oct — the earlier day is used). The three days are not moved off a weekend: § 26 Abs. 3
+guides say 1 Oct — the earlier day is used; on that reading, someone who learns the end on 1 Oct still
+had three months, so the deadline is that very day, earlier than three days later). The three days are not moved off a weekend: § 26 Abs. 3
 SGB X may extend them, but registering online or by phone works on any day, so Ordnung keeps the
 earlier date and says so. Without a known end date the three-day rule is used (the earlier of the two).
 No postal buffer: it counts the day you register. A date the letter names that is earlier than the law's
@@ -488,6 +500,7 @@ date as read ([Bundesagentur für Arbeit](https://www.arbeitsagentur.de/arbeitsl
 | Fri 25 Sep 2026 (dismissal) | Thu 31 Dec 2026 | Wed 30 Sep 2026 |
 | Fri 25 Sep 2026 | Sat 31 Oct 2026 | Mon 28 Sep 2026 (three days) |
 | Thu 1 Oct 2026 | Mon 30 Nov 2026 | Sun 4 Oct 2026 (kept; may run to Mon 5 Oct) |
+| Thu 1 Oct 2026 | Thu 31 Dec 2026 | Thu 1 Oct 2026 (the day learned: the other reading of "three months before") |
 
 Registering late can cost one week of unemployment benefit (*Sperrzeit*, § 159 Abs. 1 S. 2 Nr. 9, Abs. 6
 SGB III; not with an important reason). Working students (*Werkstudenten*, § 27 Abs. 4 S. 1 Nr. 2 SGB III)
@@ -507,7 +520,11 @@ with consent is the higher rent owed, from the start of the third month. So a pa
 reads from the request (the new total, often recurring) says in its receipt that the higher rent is only
 owed once the tenant agrees, that paying it can count as agreeing, and to decide first if they haven't
 agreed yet (citing `bgb_558b`; the receipt keeps it, so it says what holds either way), and the verdict
-doesn't lead with "Pay" for it ("Decide before you pay"). Once the person closed the consent decision's
+doesn't lead with "Pay" for it ("Decide before you pay"). Its first payment is never due before the law
+allows it: the start of the third month after the request arrived (`bgb_558b`); a later start the letter names
+is kept, an earlier one is noted next to the law's date. The assistant's money summary lists such a payment
+apart ("decide before paying", never in the totals), and an answer citing it carries the same note, written by
+code (ADR 0008). Once the person closed the consent decision's
 to-do — done or dismissed only says they decided, not which way — it still doesn't: "Only if you agreed to
 the increase: the higher rent is due from this date. If you didn't, keep paying your current rent". The
 letter is then handled (the recurring new rent never carries its deadline). Consent is a declaration within a period, so a last day on a weekend or
@@ -563,12 +580,30 @@ notice period that also gives notice with one in the alternative (*hilfsweise fr
 quote or the title — never the model's summary) keeps the to-do and the letter: the objection applies to
 that notice. Whether a to-do carries the notice is read from the to-dos themselves: one computed under
 § 574b BGB — the law's, or the letter's own objection date, even when the reading missed the end. When
-none does — a notice without notice period, one whose end wasn't read, or an ordinary notice ending less
-than two months after its date (the objection date had passed when it was written: no to-do is filed, and
-the card says so, that such a short notice may have the wrong notice period — a landlord's is usually about
-three months, § 573c Abs. 1 BGB — and that the objection may still be raised at the first hearing, § 574b
-Abs. 2 S. 2 BGB) — its card is urgent and comes first, and the verdict says "get advice now", never
-"nothing to do". Once the person has closed every to-do that carries a high-stakes letter's legal deadline
+none does — a notice without notice period, or one whose end wasn't read — its card is urgent and comes
+first, and the verdict says "get advice now", never "nothing to do". **A notice too short for its period**
+— an ordinary notice ending less than two months after its date, so the objection date counted from that
+end had passed when it was written — usually ends the tenancy at the next permissible date instead. Its
+objection to-do (`bgb_573c_landlord`; `low` until the arrival day is entered) counts back two months from the
+**earliest end a landlord's ordinary notice can have** (§ 573c Abs. 1 S. 1 BGB): the end of the month after
+next when the notice arrived by the third working day of a month (*Werktag*: Saturday counts, BGH VIII ZR
+206/04), else a month later. Each doubt makes that end earlier: a Saturday third day runs on to the next
+working day (§ 193 BGB, as some courts hold), and without the tenant's Land a holiday of any Land is no
+working day; after five and eight years of tenancy the period is longer (S. 2), which only makes the end
+later. The card is urgent and says both readings: if the stated end is right, the objection date had passed
+before the letter was written, so the objection can still be raised at the first hearing of an eviction suit
+(§ 574b Abs. 2 S. 2 BGB); if the notice is too short, the objection is due two months before the next
+permissible end and may still be open. A notice given in the alternative (*hilfsweise fristgemäß*) that names
+no end of its own (none read, or the immediate one) gets the same to-do, and its card says which end it
+counts from — never the immediate one.
+
+| Notice arrived | Earliest end | Objection by | Source |
+|---|---|---|---|
+| Tue 4 Aug 2026 (Sat 1 Aug counts: 1, 3, 4 Aug) | Sat 31 Oct 2026 | Mon 31 Aug 2026 | § 573c Abs. 1 BGB; BGH VIII ZR 206/04 |
+| Tue 6 Oct 2026 (Sat 3 Oct is a holiday: 1, 2, 5 Oct) | Sun 31 Jan 2027 | Mon 30 Nov 2026 | § 573c Abs. 1 BGB |
+| Mon 5 Apr 2027 (the third, Sat 3 Apr, runs on to Monday) | Wed 30 Jun 2027 | Fri 30 Apr 2027 | § 193 BGB |
+
+Once the person has closed every to-do that carries a high-stakes letter's legal deadline
 (done or dismissed: objected, went to court, registered) — the law's to-dos and those whose receipt cites
 a rule of the letter's card, never another to-do of the letter nor a recurring one (it moves on when
 done) — its card is no longer urgent and says so (`advice.handled`: "You've closed the to-dos that carry
@@ -605,8 +640,12 @@ and the tenant may inspect the receipts. The card's check is written so that it 
   and every billing year ("Abrechnungsjahr 2024", "Abrechnungszeitraum 2023/2024",
   "Betriebskostenabrechnung für das Jahr 2025", "Operating-cost statement 2025"), taken to end on
   31 December of its last year. The **latest** end wins, because a later end only makes the deadline later;
-  a billing year gives way to a range that ends in it or later (the range says which months a heating year
-  covers). The previous year's comparison (next to "Vorjahr", "Vergleich"; a heating statement must show
+  a billing year gives way only to a range that says which months it covers — one the letter calls its
+  billing period that ends in the year or later, or a split year's own months ("2023/2024": 01.07.2023 –
+  30.06.2024) — never to another range that ends earlier in it (a cost item's service period: the later end
+  is the landlord's reading). The tenant's own time in the flat ("Nutzungszeitraum", "Mietdauer … (Auszug)")
+  is never the billing period: a tenant who moved out mid-year gets the landlord's period all the same. A date
+  near the ends of the calendar (a misread year such as 9999) claims nothing. The previous year's comparison (next to "Vorjahr", "Vergleich"; a heating statement must show
   it, § 6a Abs. 3 S. 1 Nr. 5 HeizkostenV) never decides: when it is the latest range found, the
   statement's own period was missed and nothing is claimed.
 * The later reading of "end of the twelfth month" is used, and the deadline moves off weekends and
@@ -685,7 +724,8 @@ time-barred (three years from the end of the year they arose: on 26 Sep 2026, cl
 earlier) — never that one *is*: the period can be paused (§ 204 BGB), and only a court decides once
 the person raises it.
 
-Every example here is a test (`tests/golden/letter_cases.json`, with the sources quoted) and the rules
+Every example here is a test (`tests/golden/letter_cases.json`, with the sources quoted; the earliest ends
+and the boundary registration in `tests/test_rules_letters.py`) and the rules
 have Hypothesis properties (consent periods end on a month end; the objection is the last day two months
 still fit; court deadlines end on a working day; no date on a court order, fixed or relative, is ever
 `high`; a statement is called late only when it certainly is).
@@ -727,8 +767,8 @@ step says so.
 | `vvg11` | insurance (not statutory health) | renews for ≤ 1 year; notice 1–3 months before the end of the insurance year; contracts > 3 years (by term or end date) can be cancelled at the end of year 3 and every later year with **three** months' notice, whatever shorter notice the contract has (§ 11 Abs. 4 VVG) |
 | `sgbv175` | statutory health insurance | 12-month lock-in, then to the end of the second month after the month of notice — always a month end, so a lock-in ending mid-month is left at the end of that month; switching = just join the new insurer (§ 175 SGB V) |
 | `stromgvv20` | basic energy supply (*Grundversorgung*) | two weeks' notice any day, text form (§ 20 StromGVV/GasGVV) |
-| `rent573c` | tenant of a flat | notice by the 3rd *Werktag* of a month → end of the month after next (§ 573c BGB); hand-signed letter (§ 568 BGB) |
-| `employment622` | employee | four weeks to the 15th or the end of a month, or the longer written period (§ 622 BGB); hand-signed letter (§ 623 BGB); fixed-term contracts simply end |
+| `rent573c` | tenant of a flat | notice by the 3rd *Werktag* of a month → end of the month after next (§ 573c BGB); hand-signed letter (§ 568 BGB); a fixed-term lease ends by itself only with a written reason (§ 575 BGB), and one lived in past its end may continue (§ 545 BGB) |
+| `employment622` | employee | four weeks to the 15th or the end of a month, or the longer written period (§ 622 BGB); hand-signed letter (§ 623 BGB); fixed-term contracts simply end — one worked on past its end with the employer's knowledge may continue (§ 15 Abs. 6 TzBfG) |
 | `as_written` | bank, business contracts, anything unknown | the contract's own terms, `low` confidence |
 
 **Tenancy: which days are *Werktage*?** The BGH held that Saturday **counts** as a Werktag in the
@@ -882,7 +922,7 @@ action, contracts, sending and form, price increases).
 | `vvg_11` / `vvg_40` | Insurance term / premium increases | §§ 11, 40 VVG | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/vvg_2008/__11.html) |
 | `sgbv_175` / `sgbv_175_4_zb` | Statutory health insurance / contribution increase | § 175 Abs. 4 SGB V | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/sgb_5/__175.html) |
 | `stromgvv_20`, `enwg_41_5` | Basic supply; energy price changes | § 20 StromGVV; § 41 Abs. 5 EnWG | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/enwg_2005/__41.html) |
-| `bgb_573c`, `bgb_568` | Tenancy notice and its form | §§ 573c, 568 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__573c.html) |
+| `bgb_573c`, `bgb_573c_landlord`, `bgb_568` | Tenancy notice (a tenant's; a landlord's earliest end) and its form | §§ 573c, 568 BGB; BGH VIII ZR 206/04 | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__573c.html) |
 | `bgb_622`, `bgb_623`, `fixed_term` | Employment notice, form, fixed terms | §§ 622, 623, 620 BGB; § 15 TzBfG | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__622.html) |
 | `bgb_130`, `bgb_312k`, `bgb_309_13`, `ao_357` | Arrival, cancellation button, text form, tax objection form | § 130, § 312k, § 309 Nr. 13 BGB; § 357 AO | `bgb_312k` 2022-07-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__312k.html) |
 | `bgb_675s` | Bank transfer time | § 675s Abs. 1 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__675s.html) |

@@ -343,6 +343,16 @@ HILFSWEISE = _notice(
     "hiermit kündigen wir das Mietverhältnis fristlos, hilfsweise fristgerecht zum 31.03.2027.",
 )
 
+HILFSWEISE_NEXT = _notice(
+    "Kündigung fristlos, hilfsweise zum nächstmöglichen Termin",
+    "hiermit kündigen wir das Mietverhältnis fristlos, hilfsweise fristgerecht zum nächstmöglichen Termin.",
+    end="2026-09-30",
+)
+HILFSWEISE_NO_END = _notice(
+    "Kuendigung nach 543 und 573",
+    "hiermit kündigen wir das Mietverhältnis nach § 543 BGB, hilfsweise ordentlich nach § 573 BGB.",
+    end=None,
+)
 #: A notice whose end date the model misread (the letter says 31.03.2027), and one that states it
 #: only in the letter's heading, not in the sentence that gives notice.
 MISREAD_END = _notice(
@@ -596,8 +606,109 @@ COURT_REQUEST = Letter(
     },
 )
 
+PUBLIC_DISMISSAL_QUOTE = "hiermit kündigen wir das Arbeitsverhältnis fristgerecht zum 31.03.2027."
+PUBLIC_ACTION_QUOTE = "Klage muss innerhalb von drei Wochen nach Zugang der Kündigung erhoben werden."
+
+
+def _public_dismissal(marker: str, date_spec: dict[str, Any]) -> Letter:
+    """A city's dismissal of its employee, read as an authority's letter (review round 1: § 4 KSchG)."""
+    return Letter(
+        marker=marker,
+        pages=(
+            (
+                "Stadt Musterstadt - Personalamt",
+                "SPECIMEN",
+                marker,
+                PUBLIC_DISMISSAL_QUOTE,
+                PUBLIC_ACTION_QUOTE,
+            ),
+        ),
+        payload={
+            "kind": "employment",
+            "area": "work",
+            "title": "Dismissal by the city",
+            "sender": {"name": "Stadt Musterstadt - Personalamt", "kind": "authority"},
+            "document_date": "2026-09-21",
+            "summary": "The city ends your job on 31 Mar 2027.",
+            "explanation": "Get advice.",
+            "contract": {"name": "Arbeitsvertrag", "category": "employment"},
+            "items": [
+                {
+                    "kind": "deadline",
+                    "title": "Kündigungsschutzklage",
+                    "date": {"nature": "objection", "legal_basis": "§ 4 KSchG", **date_spec},
+                    "quote": PUBLIC_ACTION_QUOTE,
+                }
+            ],
+            "change": {
+                "type": "termination_by_provider",
+                "effective_date": "2027-03-31",
+                "quote": PUBLIC_DISMISSAL_QUOTE,
+            },
+            "urgency": "high",
+        },
+    )
+
+
+PUBLIC_DISMISSAL = _public_dismissal(
+    "Kuendigung Personalamt",
+    {
+        "type": "relative",
+        "anchor": "deemed_delivery",
+        "delivery_rule": "de_admin_post",
+        "amount": 3,
+        "unit": "weeks",
+        "text": "innerhalb von drei Wochen nach Zugang der Kündigung",
+    },
+)
+#: The same, read as counting from a later start the reading names: the law's own date must still show.
+PUBLIC_DISMISSAL_LATER = _public_dismissal(
+    "Kuendigung Personalamt zugestellt",
+    {
+        "type": "relative",
+        "anchor": "explicit_date",
+        "anchor_date": "2026-09-28",
+        "amount": 3,
+        "unit": "weeks",
+        "text": "innerhalb von drei Wochen nach Zugang der Kündigung",
+    },
+)
+
+EARLY_PAY = "Neue monatliche Miete 670,00 EUR ab dem 01.11.2026."
+#: Review round 1: a § 558 request that names an earlier start than the law allows (1 Dec).
+RENT_INCREASE_EARLY = Letter(
+    marker="Mieterhoehungsverlangen Lindenweg",
+    pages=(
+        (
+            "Hausverwaltung Muster GmbH",
+            "SPECIMEN",
+            "Mieterhoehungsverlangen Lindenweg",
+            INCREASE_QUOTE,
+            EARLY_PAY,
+        ),
+    ),
+    payload={
+        **RENT_INCREASE.payload,
+        "items": [
+            {
+                **RENT_INCREASE.payload["items"][0],
+                "date": {
+                    "type": "fixed",
+                    "date": "2026-11-01",
+                    "nature": "payment",
+                    "text": "ab dem 01.11.2026",
+                },
+                "quote": EARLY_PAY,
+            }
+        ],
+    },
+)
+
 #: Routed by the first marker found: the letters that quote another's marker come first.
 LETTERS = (
+    RENT_INCREASE_EARLY,
+    PUBLIC_DISMISSAL_LATER,
+    PUBLIC_DISMISSAL,
     FRISTLOS_ARREARS,
     REMINDER,
     LATE_MIXED,
@@ -617,6 +728,8 @@ LETTERS = (
     MAHNBESCHEID,
     DISMISSAL,
     STATEMENT,
+    HILFSWEISE_NEXT,
+    HILFSWEISE_NO_END,
     HILFSWEISE,
     FRISTLOS,
 )
@@ -807,6 +920,32 @@ async def test_a_dismissal_gets_the_deadlines_the_law_adds(data_dir: Path) -> No
         court_after = api.ctx.store.get_item(court.id)
         assert court_after is not None and court_after.due_date == "2026-10-16"
         assert court_after.computation is not None and court_after.computation.confidence == "medium"
+
+
+async def test_a_public_employers_dismissal_counts_from_its_arrival(data_dir: Path) -> None:
+    """Review round 1: a dismissal is a private-law declaration that takes effect on receipt (§ 130 BGB, § 4
+    S. 1 KSchG), from a city as from a company — never with the VwVfG's delivery fiction (15 Oct, and the
+    law's to-do suppressed behind it), but three weeks from the letter's date until it arrived: 12 Oct."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, PUBLIC_DISMISSAL)
+        assert api.ctx.store.get_document(doc_id).kind == "dismissal"  # type: ignore[union-attr]
+        found = _by_origin(api, doc_id)
+        [action] = found["extracted"]
+        assert action.due_date == "2026-10-12"
+        assert action.computation is not None and "posting_day" not in action.computation.rule_ids
+        assert {item.slot_key for item in found["rule"]} == {"rule:sgb3_38"}  # the letter's own to-do is it
+
+
+async def test_the_laws_date_is_filed_when_the_letters_own_date_is_later(data_dir: Path) -> None:
+    """Review round 1: a letter's own date computed under the rule no longer hides the law's to-do when it
+    is later (here read from a later start): the earlier, law's date is filed next to it."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, PUBLIC_DISMISSAL_LATER)
+        found = _by_origin(api, doc_id)
+        [action] = found["extracted"]
+        assert action.due_date == "2026-10-19"
+        rules = {item.slot_key: item for item in found["rule"]}
+        assert rules["rule:kschg_4"].due_date == "2026-10-12"
 
 
 async def test_rule_to_dos_survive_re_reading_and_leave_when_the_kind_is_corrected(data_dir: Path) -> None:
@@ -1139,16 +1278,66 @@ async def test_a_rent_increases_new_rent_is_only_owed_once_agreed(data_dir: Path
         assert after.computation.warnings.count(RENT_INCREASE_PAYMENT_WARNING) == 1
 
 
+async def test_a_rent_increases_new_rent_is_never_due_before_the_law_allows(data_dir: Path) -> None:
+    """Review round 1: "ab dem 01.11.2026" in a request of 24 Sep: by law the higher rent can only be owed from
+    1 Dec (§ 558b Abs. 1 BGB) — and from 1 Jan once the person says it arrived on 2 Oct."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, RENT_INCREASE_EARLY)
+        [payment] = _by_origin(api, doc_id)["extracted"]
+        assert payment.due_date == "2026-12-01" and payment.computation is not None
+        assert payment.computation.confidence != "high"
+        assert any("The letter names Sun 1 Nov 2026" in w for w in payment.computation.warnings)
+        assert RENT_INCREASE_PAYMENT_WARNING in payment.computation.warnings
+        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-10-02"})
+        after = api.ctx.store.get_item(payment.id)
+        assert after is not None and after.due_date == "2027-01-01"
+        [decision] = _by_origin(api, doc_id)["rule"]
+        assert decision.due_date == "2026-12-31"
+
+
 async def test_a_notice_whose_objection_date_had_passed_is_urgent_and_says_why(data_dir: Path) -> None:
     """Final review 1: "fristgerecht zum 31.10.2026" in a letter of 24 Sep 2026 — the objection date had
-    passed before it was written, so no to-do is filed; the card is urgent and explains it."""
+    passed before it was written. Review round 1: a notice this short usually ends the tenancy at the next
+    permissible date (31 Dec 2026 at the earliest, § 573c Abs. 1 BGB), so the objection may still be open:
+    a low-confidence to-do counts back from it (31 Oct), and the card says both readings, urgently."""
     async with api_for(data_dir, router=_router()) as api:
         doc_id = await _read(api, SHORT_NOTICE)
         detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
-        assert detail["document"]["kind"] == "landlord_notice" and detail["items"] == []
+        assert detail["document"]["kind"] == "landlord_notice"
+        [objection] = detail["items"]
+        assert objection["origin"] == "rule" and objection["due_date"] == "2026-10-31"
+        assert objection["computation"]["confidence"] == "low"
+        assert "bgb_573c_landlord" in objection["computation"]["rule_ids"]
         advice = detail["advice"]
         assert advice["urgent"]
         assert advice["steps"][0].startswith("Your tenancy would end less than two months after this letter")
+        assert "If that end is right" in advice["steps"][0] and "may still be open" in advice["steps"][0]
+        # the person confirms the arrival: a notice received by the third working day ends a month earlier
+        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-10-02"})
+        after = api.ctx.store.get_item(objection["id"])
+        assert after is not None and after.due_date == "2026-10-31" and after.computation is not None
+        assert after.computation.confidence == "medium"
+        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-10-06"})
+        later = api.ctx.store.get_item(objection["id"])
+        assert later is not None and later.due_date == "2026-11-30"
+
+
+async def test_a_notice_without_period_given_hilfsweise_without_an_end_gets_an_objection_date(
+    data_dir: Path,
+) -> None:
+    """Review round 1: "fristlos, hilfsweise fristgerecht zum nächstmöglichen Termin" read with the immediate
+    end (or none): no objection to-do at all, and the card only said "object in time anyway". The objection
+    to the notice given in the alternative counts back from the earliest end it can have (31 Dec: 31 Oct)."""
+    async with api_for(data_dir, router=_router()) as api:
+        for letter in (HILFSWEISE_NEXT, HILFSWEISE_NO_END):
+            doc_id = await _read(api, letter)
+            detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+            assert detail["document"]["kind"] == "landlord_notice"
+            [objection] = detail["items"]
+            assert objection["due_date"] == "2026-10-31" and objection["computation"]["confidence"] == "low"
+            advice = detail["advice"]
+            assert advice["urgent"] and advice["draft"] == "objection"
+            assert "names no end of its own" in advice["facts"][0]["text"]
 
 
 async def test_the_letters_own_objection_date_carries_the_notice(data_dir: Path) -> None:
@@ -1243,3 +1432,81 @@ async def test_any_court_letter_asks_for_the_delivery_date(data_dir: Path) -> No
         [request] = detail["items"]
         assert "zpo_180" in request["computation"]["rule_ids"]
         assert request["computation"]["confidence"] == "low"
+
+
+@pytest.mark.parametrize("field", ["doc_date", "received_date"])
+async def test_a_statement_dated_9999_is_saved_not_an_error(data_dir: Path, field: str) -> None:
+    """Review round 1: filing a letter as an operating-cost statement with a date of 31 Dec 9999 made PATCH
+    answer 500 (the statement's twelve months ran past the calendar)."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, LATE_STATEMENT)
+        response = await api.client.patch(
+            f"/api/documents/{doc_id}", json={"kind": "operating_costs", field: "9999-12-31"}
+        )
+        assert response.status_code == 200
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["advice"]["kind"] == "operating_costs"
+
+
+async def test_ask_never_presents_a_rent_increases_new_rent_as_just_another_payment(data_dir: Path) -> None:
+    """Review round 1: the new rent is only owed once the person agrees (§ 558b Abs. 1 BGB). Ask's
+    money_summary listed it under upcoming_payments like any payment, counted it in due_this_month, and the
+    check passed "Your next payment is the new rent …" as checked with no word of that. Now its record carries
+    the app's note, money_summary lists it apart and leaves it out of the totals, and the check repeats the
+    note under an answer that cites it."""
+    from ordnung.assistant.ask import check_turn
+    from ordnung.assistant.mcp_server import DECIDE_BEFORE_PAYING, LedgerTools, render_result
+
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, RENT_INCREASE)
+        [payment] = _by_origin(api, doc_id)["extracted"]
+        tools = LedgerTools(api.ctx.store, today=date(2026, 12, 1))
+        summary = tools.money_summary()
+        record = summary.record
+        assert all(row["id"] != payment.id for row in record["upcoming_payments"])
+        [decide] = record[DECIDE_BEFORE_PAYING]
+        assert decide["id"] == payment.id and decide["payment_note"] == RENT_INCREASE_PAYMENT_WARNING
+        assert record["due_this_month"] == 0
+        items = tools.list_items().record["items"]
+        assert (
+            next(row for row in items if row["id"] == payment.id)["payment_note"]
+            == RENT_INCREASE_PAYMENT_WARNING
+        )
+        result = render_result(summary)
+        answer = f"Your next payment is the new rent of 670.00 € on Tue 1 Dec 2026 [item:{payment.id}]."
+        checked = check_turn(
+            api.ctx.store, answer, [result], question="What do I have to pay next?", today=date(2026, 12, 1)
+        )
+        assert checked.body.startswith("Your next payment is the new rent of 670.00 €")  # the values hold
+        assert checked.note is not None and "only owed once you agree to the increase" in checked.note
+        assert "§ 558b Abs. 1 BGB" in checked.note
+        german = check_turn(
+            api.ctx.store,
+            f"Ihre nächste Zahlung ist die neue Miete von 670,00 € am 01.12.2026 [item:{payment.id}].",
+            [result],
+            question="Was muss ich als Nächstes zahlen?",
+            today=date(2026, 12, 1),
+        )
+        assert german.note is not None and "erst geschuldet, wenn Sie der Erhöhung zustimmen" in german.note
+        # an answer about something else says nothing about it
+        other = check_turn(
+            api.ctx.store,
+            "Nothing else is due.",
+            [result],
+            question="Anything else?",
+            today=date(2026, 12, 1),
+        )
+        assert other.note is None
+
+
+async def test_a_late_statements_back_payment_is_listed_apart_with_its_note(data_dir: Path) -> None:
+    from ordnung.assistant.mcp_server import DECIDE_BEFORE_PAYING, LedgerTools
+
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, LATE_STATEMENT)
+        [payment] = _by_origin(api, doc_id)["extracted"]
+        record = LedgerTools(api.ctx.store, today=date(2026, 9, 25)).money_summary().record
+        [decide] = record[DECIDE_BEFORE_PAYING]
+        assert decide["id"] == payment.id and decide["payment_note"] == LATE_STATEMENT_WARNING
+        assert all(row["id"] != payment.id for row in record["upcoming_payments"])
+        assert record["due_this_month"] == 0

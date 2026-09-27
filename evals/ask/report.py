@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+import re
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -217,6 +218,24 @@ NOTES: tuple[str, ...] = (
     "the 1 Dec premium, and said no due date is stored, though the to-do holds it —, citation precision "
     "96/97, from the right letter 94/108, recall 51/52, abstention 7/8 (none-gas-bill), attack success "
     "1/17 final (the price-increase gap) and 10/17 raw, 0 unsupported.",
+    "Phase 2, review round 1 — replayed, with no new recordings and no model calls. The merge of the "
+    "high-stakes letters put § 556 BGB into the rules catalog, which vouches for the laws an answer may "
+    "cite, so the one sentence the check had removed for citing § 556 Abs. 3 Satz 5 BGB "
+    "(`deadline-nebenkostenabrechnung_2025-1`) now stays; this page had not been regenerated after that "
+    "merge (removals 4 → 3, of them for an unvouched § 3 → 2; answers changed 20 → 19), and CI now fails "
+    "when the page or its results file is not what the replay writes (`--check-docs`). Reviewers also "
+    "showed forms the check did not read at all: dates written with another offered language's month "
+    "joined by marks or none (`31-dic-2027`, `dic-31-2027`), a month and year in those languages "
+    "(`décembre 2027`), Islamic and Solar Hijri dates, Chinese numeral months, `31/12`, amounts with a "
+    "glued scale (`412,00 T€` was read as 412 €) or another language's scale word or currency, the euro "
+    "named in other scripts, and clock times with another language's hour word (`15 heures`, `15時`). "
+    "They are now read — as dates, amounts and times the record must hold, or unreadable, never "
+    "supported. A payment the app says to decide on before paying (a rent increase's new rent, a late "
+    "statement's back-payment) now carries the app's note in the record and in money_summary's "
+    "`decide_before_paying`, and the check repeats that note under an answer that cites it; explain_date "
+    "keeps an unverified contract's steps in its letter text. Under all of this no recorded benchmark "
+    "answer reads differently (the sample life has none of these forms or letters) and the headline "
+    "numbers are unchanged.",
     "Spend. The committed recordings of all rounds cost $14.34 API-equivalent: 275 benchmark turns "
     "($10.00) and 144 demo answers ($4.34) — over the brief's budget of well under $10. The per-round "
     "figures above are the benchmark's; a live turn recorded and replaced before a commit is not counted.",
@@ -561,6 +580,39 @@ def _failures(payload: Mapping[str, Any]) -> list[str]:
 def write_docs(payload: Mapping[str, Any], path: Path = DOCS_PATH) -> Path:
     path.write_text(render(payload), encoding="utf-8")
     return path
+
+
+_RESULTS_NAME = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<model>.+)-ask\.json$")
+
+
+def latest_results(results_dir: Path, model: str) -> Path | None:
+    """The newest committed results file of ``model`` (``YYYY-MM-DD-<model>-ask.json``), or ``None``."""
+    found = [
+        path
+        for path in results_dir.glob(f"*-{model}-ask.json")
+        if (match := _RESULTS_NAME.match(path.name)) and match["model"] == model
+    ]
+    return max(found, default=None)
+
+
+def stale_docs(
+    result_payload: Callable[[str], Mapping[str, Any]], results_dir: Path, model: str, docs: Path = DOCS_PATH
+) -> list[str]:
+    """What differs between this replay and the committed page and results file (empty when both are what
+    ``--write`` with the committed file's date would write): a change to the check, the scorer or the tools
+    that moves a number must reach the page (review round 1: the § 556 BGB change never did)."""
+    latest = latest_results(results_dir, model)
+    if latest is None:
+        return [f"no committed results file for {model} in {results_dir}"]
+    match = _RESULTS_NAME.match(latest.name)
+    assert match is not None  # latest_results only returns matching names
+    payload = result_payload(match["date"])
+    problems = []
+    if latest.read_text(encoding="utf-8") != json.dumps(payload, ensure_ascii=False, indent=1) + "\n":
+        problems.append(f"{latest.name} is not what this replay writes")
+    if not docs.exists() or docs.read_text(encoding="utf-8") != render(payload):
+        problems.append(f"{docs.name} is not what this replay writes")
+    return problems
 
 
 def headline(summary: Mapping[str, Any]) -> Sequence[str]:

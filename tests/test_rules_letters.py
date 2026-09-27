@@ -42,12 +42,20 @@ from ordnung.rules.advice import (
     statement_late,
 )
 from ordnung.rules.consumer import latest_barred_year, limitation_end, long_withdrawal_end, withdrawal_end
-from ordnung.rules.deadlines import ASSUMED_RECEIPT_WARNING, RuleContext, compute_due
+from ordnung.rules.deadlines import (
+    ASSUMED_DELIVERY_WARNING,
+    ASSUMED_RECEIPT_WARNING,
+    NEEDS_DELIVERY_WARNING,
+    RuleContext,
+    compute_due,
+)
 from ordnung.rules.employment import registration_deadline
 from ordnung.rules.explain import fmt_date
+from ordnung.rules.letters import LATE_NOTICE_OBJECTION, NEXT_END_WARNING
 from ordnung.rules.tenancy import (
     consent_period,
     month_end,
+    next_permissible_end,
     notice_objection_deadline,
     rent_increase_percent,
     statement_check,
@@ -448,10 +456,54 @@ def test_courts_are_recognised_by_their_kind_in_any_case_or_abbreviated(name: st
         "Allianz Versicherungs-AG, Berlin",
         "VG Wort",
         "SG Dynamo Dresden",
+        "BAG Wohnungslosenhilfe e.V.",
     ],
 )
 def test_business_names_are_not_courts(name: str) -> None:
     assert not routing.is_court(name)
+    for kind in ("company", "gym", "retailer"):  # an abbreviation counts only from an authority (or other)
+        assert not routing.is_court(name, kind)
+
+
+@pytest.mark.parametrize(
+    ("name", "labour"),
+    [
+        ("SG Berlin", False),
+        ("VG Minden", False),
+        ("Geschäftsstelle des VG Berlin", False),
+        ("BGH", False),
+        ("BSG, 1. Senat", False),
+        ("BVerwG Leipzig", False),
+        ("BAG", True),
+        ("Bundesverfassungsgericht", False),
+        ("Verfassungsgerichtshof des Landes Berlin", False),
+        ("Staatsgerichtshof des Landes Hessen", False),
+    ],
+)
+def test_social_administrative_federal_and_constitutional_courts_are_courts(name: str, labour: bool) -> None:
+    """Review round 1: "SG Berlin" and "VG Minden" read as authorities got the VwVfG delivery fiction and a
+    later date than the court's own (a Gerichtsbescheid served on 15 Sep: 15 Oct, not 19 Oct)."""
+    assert routing.is_court(name, "authority") and routing.is_court(name, "other")
+    assert routing.is_labour_court(name, "authority") is labour
+    spec = DateSpec(
+        type="relative",
+        anchor="deemed_delivery",
+        amount=1,
+        unit="months",
+        delivery_rule="de_admin_post",
+        nature="objection",
+        text="Berufung innerhalb eines Monats nach Zustellung",
+    )
+    ctx = RuleContext(
+        today=date(2026, 9, 20),
+        document_date=date(2026, 9, 14),
+        delivery_scope="vwvfg",
+        sender_kind="authority",
+        court=routing.is_court(name, "authority"),
+    )
+    receipt = compute_due(spec, ctx)
+    assert receipt.due_date == "2026-10-14" and receipt.confidence != "high"
+    assert "posting_day" not in receipt.rule_ids and "zpo_180" in receipt.rule_ids
 
 
 def test_a_payment_order_that_explains_the_hand_over_is_still_one() -> None:
@@ -982,7 +1034,9 @@ def test_court_orders_give_their_relative_dates_the_court_rule() -> None:
         ),
         (spec(legal_basis="§ 558b BGB", nature="declaration"), None, False, "bgb_558b"),
         (spec(nature="declaration"), "rent_increase", False, "bgb_558b"),
-        (spec(nature="payment"), "rent_increase", False, None),
+        # review round 1: the new rent is never owed before the third month after the request arrived
+        (spec(nature="payment"), "rent_increase", False, "bgb_558b"),
+        (spec(nature="payment", legal_basis="§ 558b BGB"), None, False, None),
         (  # the date the higher rent is owed from is a payment, not the consent period
             DateSpec(
                 type="fixed",
@@ -1068,9 +1122,13 @@ def test_derived_deadlines_per_kind() -> None:
     assert routing.derived_deadlines("landlord_notice", end=None) == []  # counts back from the end
     # no hardship objection to a notice without notice period (§ 574 Abs. 1 S. 2 BGB)
     assert routing.derived_deadlines("landlord_notice", end=D("2027-10-31"), extraordinary=True) == []
-    assert (
-        routing.derived_deadlines("landlord_notice", end=D("2026-10-31"), letter_date=D("2026-09-20")) == []
-    )
+    # review round 1: a notice too short for its period, or given in the alternative without an end of its
+    # own, counts back from the next permissible end (§ 573c Abs. 1 BGB)
+    [short] = routing.derived_deadlines("landlord_notice", end=D("2026-10-31"), letter_date=D("2026-09-20"))
+    [alternative] = routing.derived_deadlines("landlord_notice", end=None, alternative=True)
+    for next_end in (short, alternative):
+        assert next_end.rule_id == "bgb_574b" and next_end.spec.anchor == "receipt"
+        assert "nächstmöglichen" in next_end.spec.text and "§ 573c" in (next_end.spec.legal_basis or "")
     [kept] = routing.derived_deadlines("landlord_notice", end=D("2026-12-31"), letter_date=D("2026-09-20"))
     assert "first court hearing" in kept.consequence
     [notice] = routing.derived_deadlines("landlord_notice", end=D("2027-10-31"))
@@ -1109,8 +1167,23 @@ def test_without_the_envelope_date_the_letters_date_is_used_and_confidence_is_lo
     )
     assert receipt.due_date == "2026-10-05"
     assert receipt.confidence == "low"
-    assert ASSUMED_RECEIPT_WARNING in receipt.warnings
-    assert not any("yellow envelope" in w for w in receipt.warnings)  # asked once, not twice
+    # review round 1: a served letter's one date is "delivered", never "arrived" or "received"
+    assert ASSUMED_DELIVERY_WARNING in receipt.warnings and ASSUMED_RECEIPT_WARNING not in receipt.warnings
+    delivered = compute_due(
+        spec(),
+        ctx(
+            region="NW",
+            document_date="2026-09-21",
+            received_date="2026-09-23",
+            received_confirmed=True,
+            letter_kind="court_payment_order",
+        ),
+    )
+    assert "after the day it was delivered (Wed 23 Sep 2026)" in delivered.summary
+    assert "received" not in delivered.summary
+    undated = compute_due(spec(), ctx(letter_kind="court_payment_order"))
+    assert NEEDS_DELIVERY_WARNING in undated.warnings
+    assert sum("yellow envelope" in w for w in receipt.warnings) == 1  # asked once, not twice
 
 
 def test_a_court_order_read_as_deemed_delivery_still_runs_from_formal_service() -> None:
@@ -1415,8 +1488,28 @@ def test_the_dismissal_court_action_moves_off_a_holiday_and_is_never_high() -> N
 def test_registration_three_months_before_the_end() -> None:
     assert registration_deadline(D("2026-05-02"), D("2026-09-30")) == (D("2026-06-30"), "before_end")
     assert registration_deadline(D("2026-06-30"), D("2026-09-30")) == (D("2026-06-30"), "before_end")
-    assert registration_deadline(D("2026-07-01"), D("2026-09-30")) == (D("2026-07-04"), "after_learning")
+    assert registration_deadline(D("2026-07-02"), D("2026-09-30")) == (D("2026-07-05"), "after_learning")
     assert registration_deadline(D("2026-07-01"), None) == (D("2026-07-04"), "after_learning")
+
+
+def test_registration_on_the_boundary_day_uses_the_earlier_reading() -> None:
+    """Review round 1: three months before 31 Dec is 30 Sep — or 1 Oct, as some guides read it. On that
+    reading, a person who learns the end on 1 Oct still had three months, so sentence 1 gives 1 Oct itself,
+    earlier than three days later (4 Oct)."""
+    assert registration_deadline(D("2026-10-01"), D("2026-12-31")) == (D("2026-10-01"), "boundary")
+    assert registration_deadline(D("2026-07-01"), D("2026-09-30")) == (D("2026-07-01"), "boundary")
+    assert registration_deadline(D("2026-10-02"), D("2026-12-31")) == (D("2026-10-05"), "after_learning")
+    receipt = compute_due(
+        spec(amount=3, unit="days", nature="declaration", legal_basis="§ 38 SGB III"),
+        ctx(
+            document_date="2026-09-29",
+            received_date="2026-10-01",
+            received_confirmed=True,
+            end_date="2026-12-31",
+        ),
+    )
+    assert receipt.due_date == "2026-10-01"
+    assert any("as some read it, Thu 1 Oct 2026" in step.label for step in receipt.steps)
 
 
 def test_registration_receipts() -> None:
@@ -2211,6 +2304,50 @@ def test_billing_period() -> None:
 )
 def test_billing_period_takes_the_latest_end_of_every_period_named(text: str, period: BillingPeriod) -> None:
     assert billing_period(text, before=D("2025-12-01")) == period
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # the tenant moved out mid-year: their time in the flat is not the landlord's billing period
+        "Betriebskostenabrechnung 2024\nAbrechnungsjahr 2024\nIhr Nutzungszeitraum: 01.01.2024 - 30.06.2024\n"
+        "Nachzahlung 95,00 EUR",
+        "Betriebskostenabrechnung 2024\nMietdauer 01.01.2024 bis 30.06.2024 (Auszug)\nNachzahlung 95,00 EUR",
+        # a cost item's service period ends earlier in the named year, and is no split year's own months
+        "Operating-cost statement 2024\nWartung Heizung 01.03.2023 - 28.02.2024\nNachzahlung 95,00 EUR",
+    ],
+)
+def test_a_shorter_range_never_makes_a_named_billing_year_end_earlier(text: str) -> None:
+    """Review round 1: § 556 Abs. 3 S. 2 BGB counts from the end of the landlord's billing period (31 Dec
+    2024: due by 31 Dec 2025), not from a move-out — the card called a statement that arrived on 15 Nov 2025
+    "probably too late" and its back-payment "may not be owed"."""
+    assert billing_period(text, before=D("2025-11-15")) == BillingPeriod(D("2024-12-31"), False, "2024")
+    assert not statement_late(text, D("2025-11-15"), True, None)
+    card = letter_advice(
+        "operating_costs", today=D("2025-11-20"), arrived=D("2025-11-15"), arrival_confirmed=True, text=text
+    )
+    assert card is not None and not card.urgent
+    assert "too late" not in card.facts[0].title.casefold()
+
+
+def test_a_split_billing_year_gives_way_to_its_own_months_only() -> None:
+    """A split year ("2023/2024") gives way to a range that starts in its first year and ends in its last (its
+    own months: a heating year), never to another range that ends in it (a cost item's service period)."""
+    own = "Heizkostenabrechnung 2023/2024\nHeizung 01.07.2023 - 30.06.2024\nNachzahlung 95,00 EUR"
+    assert billing_period(own, before=D("2025-11-15")) == BillingPeriod(
+        D("2024-06-30"), True, "01.07.2023 – 30.06.2024", False
+    )
+    other = "Heizkostenabrechnung 2023/2024\nWartung 01.03.2022 - 28.02.2024\nNachzahlung 95,00 EUR"
+    assert billing_period(other, before=D("2025-11-15")) == BillingPeriod(D("2024-12-31"), False, "2023/2024")
+
+
+def test_a_tenants_own_period_alone_is_no_billing_period() -> None:
+    assert billing_period("Ihr Nutzungszeitraum: 01.01.2024 - 30.06.2024", before=D("2025-11-15")) is None
+    assert billing_period("Mietdauer 01.01.2024 bis 30.06.2024 (Auszug)", before=D("2025-11-15")) is None
+    # … but a range the letter calls its billing period stays one, whatever else the line says
+    assert billing_period(
+        "Abrechnungszeitraum 01.01.2024 - 31.12.2024 (Auszug 30.06.2024)", before=D("2025-11-15")
+    ) == BillingPeriod(D("2024-12-31"), True, "01.01.2024 – 31.12.2024", True)
 
 
 @pytest.mark.parametrize(
@@ -3121,3 +3258,203 @@ def test_a_court_period_counted_from_the_letters_own_date_ignores_the_envelope_d
     # … and so does a court's own period that names no start (§ 221 ZPO: delivery)
     no_start = compute_due(spec(anchor=None, nature="declaration", text="binnen zwei Wochen"), entered)
     assert no_start.due_date == "2026-09-18" and "zpo_180" in no_start.rule_ids
+
+
+@pytest.mark.parametrize("kind", ["authority", "university", "other", None, "employer"])
+def test_the_kschg_period_counts_from_arrival_whoever_the_employer_is(kind: str | None) -> None:
+    """Review round 1: a dismissal takes effect on receipt (§ 130 BGB, § 4 S. 1 KSchG) — a city's or a
+    university's too; the VwVfG's delivery fiction made it 15 Oct (16 Oct in NW) instead of 12 Oct."""
+    from ordnung.rules import is_private_sender, scope_for_party_kind
+
+    spec = DateSpec(
+        type="relative",
+        anchor="deemed_delivery",
+        delivery_rule="de_admin_post",
+        amount=3,
+        unit="weeks",
+        nature="objection",
+        legal_basis="§ 4 KSchG",
+        text="innerhalb von drei Wochen nach Zugang der Kündigung",
+    )
+    scope = scope_for_party_kind(kind, name="Stadt Musterstadt - Personalamt")
+    for region in (None, "NW"):
+        ctx = RuleContext(
+            today=date(2026, 9, 27),
+            document_date=date(2026, 9, 21),
+            region=region,
+            delivery_scope=scope,
+            sender_kind=kind,
+            private_sender=is_private_sender(kind, scope=scope),
+            letter_kind="dismissal",
+        )
+        receipt = compute_due(spec, ctx)
+        assert receipt.due_date == "2026-10-12" and "posting_day" not in receipt.rule_ids
+        assert "private_sender_arrival" in receipt.rule_ids
+    court_letter = compute_due(spec, replace(ctx, court=True))  # a court's letter keeps formal service
+    assert "private_sender_arrival" not in court_letter.rule_ids
+
+
+def test_the_kschg_period_counts_a_regional_holiday_only_where_the_action_may_be_filed() -> None:
+    """Review round 1: the action may be filed at the labour court of the place of work (§ 48 Abs. 1a
+    ArbGG), maybe in another Land than the employer's seat: 1 Nov (All Saints' Day in Bavaria) moves the
+    end only when the person lives in the employer's Land too; otherwise it stays, with a warning."""
+    spec = DateSpec(
+        type="relative",
+        anchor="receipt",
+        amount=3,
+        unit="weeks",
+        nature="objection",
+        legal_basis="§ 4 KSchG",
+        text="innerhalb von drei Wochen nach Zugang der Kündigung",
+    )
+    ctx = RuleContext(
+        today=date(2027, 10, 12),
+        document_date=date(2027, 10, 8),
+        received_date=date(2027, 10, 11),
+        received_confirmed=True,
+        region="BY",
+        sender_kind="employer",
+        private_sender=True,
+        letter_kind="dismissal",
+    )
+    for home in (None, "BE"):
+        elsewhere = compute_due(spec, replace(ctx, recipient_region=home))
+        assert elsewhere.due_date == "2027-11-01" and elsewhere.confidence != "high"
+        assert any("1 Nov 2027 is a public holiday in some Länder" in w for w in elsewhere.warnings)
+    same_land = compute_due(spec, replace(ctx, recipient_region="BY"))
+    assert same_land.due_date == "2027-11-02"
+
+
+def test_a_statement_dated_at_the_end_of_the_calendar_claims_nothing() -> None:
+    """Review round 1: a statement dated 31 Dec 9999 (a mistyped year) made PATCH answer 500: its twelve
+    months run past the calendar. Nothing is claimed about it instead."""
+    text = "Betriebskostenabrechnung\nAbrechnungszeitraum: 01.01.2024 - 31.12.2024\nNachzahlung 120,00 EUR"
+    end = D("9999-12-31")
+    assert not statement_late(text, end, True, None)
+    assert not statement_late(text, end, False, None, named=end)
+    card = letter_advice("operating_costs", today=TODAY, arrived=end, letter_date=end, text=text)
+    assert card is not None and not card.urgent
+    assert "couldn't find the billing period" in card.facts[0].text
+    named = "Abrechnungszeitraum: 01.01.2023 - 31.12.2023\nIhre Abrechnung vom 31.12.9999"
+    assert statement_late(named, D("2025-06-01"), True, None, named=end)  # that date never makes it on time
+
+
+@pytest.mark.parametrize(
+    ("letter_date", "arrived", "written", "due"),
+    [
+        # the review's case: "ab dem 01.11.2026" in a request of 24 Sep 2026 — the law says 1 Dec
+        ("2026-09-24", None, "2026-11-01", "2026-12-01"),
+        # it arrived after the month turned: 1 Jan, whatever the letter says
+        ("2026-09-29", "2026-10-02", "2026-12-01", "2027-01-01"),
+        # a later start the letter names is kept
+        ("2026-09-24", "2026-09-25", "2027-02-01", "2027-02-01"),
+        # a period, not a date: the law's date
+        ("2026-09-24", "2026-09-25", None, "2026-12-01"),
+    ],
+)
+def test_a_rent_increases_new_rent_is_never_due_before_the_law_allows(
+    letter_date: str, arrived: str | None, written: str | None, due: str
+) -> None:
+    """Review round 1: the payment to-do kept the letter's earlier date with confidence high (§ 558b Abs. 1
+    BGB: owed from the start of the third calendar month after the request arrived)."""
+    date_spec = (
+        DateSpec(type="fixed", date=written, nature="payment", text=f"ab dem {written}")
+        if written
+        else DateSpec(type="relative", anchor="receipt", amount=3, unit="months", nature="payment")
+    )
+    context = ctx(document_date=letter_date, letter_kind="rent_increase")
+    if arrived:
+        context = replace(context, received_date=D(arrived), received_confirmed=True)
+    receipt = compute_due(date_spec, context)
+    assert receipt.due_date == due and "bgb_558b" in receipt.rule_ids
+    assert receipt.send_by is not None and receipt.send_by < due  # a bank transfer, a working day ahead
+    if written and written < due:
+        assert any(f"by law the date is {fmt_date(D(due))}" in warning for warning in receipt.warnings)
+    if arrived is None:
+        assert receipt.confidence == "low"  # the real arrival day may move it later: asked for
+
+
+def test_a_rent_increases_new_rent_without_a_date_to_count_from() -> None:
+    receipt = compute_due(
+        DateSpec(type="fixed", date="2026-12-01", nature="payment"), ctx(letter_kind="rent_increase")
+    )
+    assert receipt.due_date is None
+
+
+@pytest.mark.parametrize(
+    ("received", "region", "end"),
+    [
+        ("2026-09-24", None, "2026-12-31"),  # after the third working day: a month more
+        ("2026-10-02", None, "2026-12-31"),  # 1 Oct, 2 Oct, (3 Oct: a holiday), 5 Oct
+        ("2026-10-05", None, "2026-12-31"),
+        ("2026-10-06", None, "2027-01-31"),
+        ("2026-08-04", None, "2026-10-31"),  # 1 Aug is a Saturday and counts: 1, 3, 4 Aug
+        ("2026-08-05", None, "2026-11-30"),
+        # a Saturday third working day runs on to Monday (§ 193 BGB, as some courts hold): the earlier end
+        ("2027-04-05", None, "2027-06-30"),  # 1 Apr Thu, 2 Apr Fri, 3 Apr Sat → Mon 5 Apr
+        ("2027-04-06", None, "2027-07-31"),
+        ("2027-05-03", None, "2027-07-31"),  # 1 May holiday, 3 May Mon, 4 Tue, 5 Wed
+        ("2025-11-03", None, "2026-01-31"),  # 1 Nov (Sat, a holiday in some Länder), 3 Nov, 4 Nov
+        ("2025-11-04", None, "2026-01-31"),
+        ("2025-11-05", "BE", "2026-02-28"),  # 1 Nov Sat counts in Berlin: 1, 3, 4 Nov
+        ("2025-11-05", None, "2026-01-31"),  # any Land's holiday on 1 Nov doesn't count: 3, 4, 5 Nov
+        ("2026-02-28", "BY", "2026-05-31"),
+    ],
+)
+def test_next_permissible_end_of_a_landlords_notice(received: str, region: str | None, end: str) -> None:
+    """§ 573c Abs. 1 BGB: received by the third working day (Saturday counts, BGH VIII ZR 206/04) of a
+    month, a landlord's notice ends the tenancy at the end of the month after next — the earliest end, for
+    an objection that counts back from it."""
+    assert next_permissible_end(D(received), region) == D(end)
+
+
+def test_a_short_notices_objection_counts_back_from_the_next_permissible_end() -> None:
+    notice = spec(
+        amount=-2,
+        unit="months",
+        nature="objection",
+        legal_basis="§ 574b Abs. 2, § 573c Abs. 1 BGB",
+        text="spätestens zwei Monate vor dem nächstmöglichen Kündigungstermin",
+    )
+    context = ctx(document_date="2026-09-24", end_date="2026-10-31", letter_kind="landlord_notice")
+    receipt = compute_due(notice, context)
+    assert receipt.due_date == "2026-10-31" and receipt.confidence == "low"
+    assert "bgb_573c_landlord" in receipt.rule_ids and NEXT_END_WARNING in receipt.warnings
+    assert receipt.summary.startswith("If the notice ends your tenancy at the earliest date the law allows")
+    confirmed = compute_due(notice, replace(context, received_date=D("2026-10-06"), received_confirmed=True))
+    assert confirmed.due_date == "2026-11-30" and confirmed.confidence == "medium"
+    passed = compute_due(notice, replace(context, today=D("2026-12-15")))
+    assert LATE_NOTICE_OBJECTION in passed.warnings
+    undated = compute_due(notice, ctx(end_date="2026-10-31", letter_kind="landlord_notice"))
+    assert undated.due_date is None
+    # an objection date the letter gives from its own end is not one of these
+    own = spec(type="fixed", date="2026-08-31", nature="objection", text="bis zum 31.08.2026")
+    assert "bgb_573c_landlord" not in compute_due(own, context).rule_ids
+
+
+def test_a_court_deadlines_receipt_cites_the_court_counting_rules() -> None:
+    """Review round 1: "Why this date?" on a Mahnbescheid and a Kündigungsschutzklage cited the counting
+    rules of the AO, the VwVfG, the StPO and the SGG next to §§ 187, 188 BGB."""
+    counted = spec(text="binnen zwei Wochen")
+    court = compute_due(
+        counted, ctx(document_date="2026-09-21", letter_kind="court_payment_order", court=True)
+    )
+    citations = {step.rule_id: step.citation for step in court.steps}
+    assert citations["bgb_187_1"] == "§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB"
+    assert citations["bgb_188"] == "§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB"
+    labour = compute_due(
+        counted,
+        ctx(document_date="2026-09-21", letter_kind="court_payment_order", court=True, labour_court=True),
+    )
+    assert {step.rule_id: step.citation for step in labour.steps}["bgb_187_1"].startswith("§ 46 Abs. 2 ArbGG")
+    action = compute_due(
+        spec(amount=3, legal_basis="§ 4 KSchG", text="Kündigungsschutzklage"),
+        ctx(document_date="2026-09-21", sender_kind="employer", private_sender=True, letter_kind="dismissal"),
+    )
+    assert {step.rule_id: step.citation for step in action.steps}["bgb_187_1"] == "§ 187 Abs. 1 BGB"
+    # an authority's period keeps the catalog's citation, which names its own law too
+    tax = compute_due(
+        spec(anchor="deemed_delivery", amount=1, unit="months"),
+        ctx(document_date="2026-09-21", delivery_scope="ao"),
+    )
+    assert {step.rule_id: step.citation for step in tax.steps}["bgb_187_1"] == catalog.citation("bgb_187_1")

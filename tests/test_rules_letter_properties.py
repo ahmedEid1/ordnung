@@ -52,6 +52,9 @@ def test_registration_is_never_later_than_either_rule_allows(learned: date, days
     due, basis = registration_deadline(learned, end)
     if basis == "before_end":
         assert end is not None and learned <= due and add_months(due, 3) <= end
+    elif basis == "boundary":
+        # the day after "three months before": on the other reading three months were still left that day
+        assert end is not None and due == learned == latest_receipt_for(end, 3, "months") + timedelta(days=1)
     else:
         assert due == learned + timedelta(days=3)
         assert end is None or learned > latest_receipt_for(end, 3, "months")

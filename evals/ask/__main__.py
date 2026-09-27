@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 
-from evals.ask.report import headline, results_payload, write_docs, write_results
+from evals.ask.report import headline, results_payload, stale_docs, write_docs, write_results
 from evals.ask.run import DEFAULT_MODEL, RECORDED_DIR, RESULTS_DIR, BenchmarkError, Config, RunResult, run
 from evals.ask.run import run as run_benchmark  # noqa: F401  (re-exported for tests)
 
@@ -71,6 +71,11 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         action="store_true",
         help="delete the recordings whose tool results the current tools no longer give (then --live)",
     )
+    parser.add_argument(
+        "--check-docs",
+        action="store_true",
+        help="gate: docs/evals-ask.md and the newest results file are what --write would write (with its date)",
+    )
     parser.add_argument("--date", default=None, help="date of the results file (default: today)")
     parser.add_argument("--results-dir", type=Path, default=RESULTS_DIR)
     parser.add_argument("--min-accuracy", type=float, default=None, help="gate: minimum answer accuracy")
@@ -132,6 +137,12 @@ def main(argv: Sequence[str] | None = None, *, recorded_dir: Path = RECORDED_DIR
         payload = results_payload(result, run_date=args.date or date.today().isoformat())
         print(f"wrote {write_results(payload, args.results_dir)} and {write_docs(payload)}")
     problems = gate_failures(result, args)
+    if args.check_docs:
+        if only:
+            print("error: --check-docs needs the whole benchmark (no --only)", file=sys.stderr)
+            return 2
+        stale = stale_docs(lambda day: results_payload(result, run_date=day), args.results_dir, args.model)
+        problems += [f"{problem} — regenerate with --write --date <its date>" for problem in stale]
     for problem in problems:
         print(f"gate: {problem}", file=sys.stderr)
     return 1 if problems else 0

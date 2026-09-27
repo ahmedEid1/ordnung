@@ -10,7 +10,9 @@ written policies below, and cases they do not decide are documented limitations,
 ``court_payment_order``    three signals, with no list of exceptions: (a) the sender is a court
 ``enforcement_order``      (:func:`is_court`: a kind of court by name, *Amtsgericht*, *des
                            Arbeitsgerichts*, or its abbreviation before a place of a word or two, *AG
-                           Hagen*, from a sender read as an authority (or ``other``) — not a company,
+                           Hagen*, *SG Berlin*, *VG Minden*, or a federal court's alone, *BGH*, from a
+                           sender read as an authority (or ``other``: a club "SG …" or "VG Wort" of that
+                           kind counts as one, the safe side) — not a company,
                            *LG Electronics Deutschland GmbH*, *OLG Immobilien*, a bailiff,
                            *Gerichtsvollzieher bei dem Amtsgericht …*, or a court cashier);
                            (b) the letter asks the person to answer it as the respondent: it states a
@@ -75,8 +77,9 @@ declaration is never a registration, an appointment never re-dated); if it cites
 order's objection, payment and declaration dates follow the court rule (two weeks from delivery; one
 week at a labour court, :func:`is_labour_court`), a
 rent increase's declarations and objections the consent period and a landlord's notice's objections
-the § 574b period. Wordings that decide on their own: "Kündigungsschutzklage", "arbeitsuchend
-melden" (a declaration, and not an authority's own fixed date), and a consumer "Widerrufsfrist/
+the § 574b period, and a rent increase's payments (the new rent) the start of the third month after the
+request arrived (§ 558b Abs. 1 BGB) at the earliest. Wordings that decide on their own:
+"Kündigungsschutzklage", "arbeitsuchend melden" (a declaration, and not an authority's own fixed date), and a consumer "Widerrufsfrist/
 -recht/-belehrung" on a declaration (the withdrawal itself — not a cancellation or a payment that
 mentions it) from a sender that is not an authority or a court (their *Widerruf* is a revocation)
 and that cites no other law's withdrawal right (insurance: VVG).
@@ -123,14 +126,19 @@ from ordnung.rules.tenancy import notice_objection_deadline
 _COURT_SENDER = re.compile(
     r"\b(?:amts|land|landes|oberlandes|kammer|(?:landes|bundes)?arbeits|(?:landes|bundes)?sozial|"
     r"(?:ober|bundes)?verwaltungs|finanz|mahn|familien|insolvenz|vollstreckungs|nachlass|betreuungs|"
-    r"register|bundes)gericht(?:e?s|shofe?s?)?\b|\bbundesfinanzhofe?s?\b",
+    r"register|(?:landes|bundes)?verfassungs|staats|bundes)gericht(?:e?s|shofe?s?)?\b|\bbundesfinanzhofe?s?\b",
     re.I,
 )
-#: … or its usual abbreviation before the place ("AG Hagen", "des ArbG Berlin"), at the start of the
-#: name or after an article — never a company's "… AG" (the rest must name a place, :func:`_names_a_place`).
+#: Where a court's abbreviation starts: the start of the name, after a separator or after an article.
+_ABBREVIATION_START = r"(?:^|[(,;/]\s*|\b(?:des|dem|der|beim|vom|am)\s+)"
+#: … or its usual abbreviation before the place ("AG Hagen", "SG Berlin", "des ArbG Berlin") — never a
+#: company's "… AG" (the rest must name a place, :func:`_names_a_place`).
 _COURT_ABBREVIATION = re.compile(
-    r"(?:^|[(,;/]\s*|\b(?:des|dem|der|beim|vom|am)\s+)(?:AG|LG|OLG|ArbG|LAG|LSG|OVG|VGH|FG)\s+"
-    r"(?P<rest>[A-ZÄÖÜ].*)"
+    rf"{_ABBREVIATION_START}(?:AG|LG|OLG|ArbG|LAG|SG|LSG|VG|OVG|VGH|FG)\s+(?P<rest>[A-ZÄÖÜ].*)"
+)
+#: A federal court's abbreviation, which needs no place (there is one of each): "BGH", "BSG, 1. Senat".
+_FEDERAL_COURT_ABBREVIATION = re.compile(
+    rf"{_ABBREVIATION_START}(?:BGH|BFH|BSG|BAG|BVerwG|BVerfG)(?:\s*$|\s*[-–—,;/(]|\s+(?P<rest>[A-ZÄÖÜ].*))"
 )
 #: A company's legal form: "LG Electronics Deutschland GmbH", "FG Finanz-Service AG" are no courts.
 _LEGAL_FORM = re.compile(
@@ -143,7 +151,7 @@ _PLACE_JOINER = re.compile(r"am|an|der|im|in|bei|ob|vor|a\.|d\.|i\.|[IVX]+", re.
 #: recipient typed in: "LG Electronics", "AG Hausverwaltung Müller" are no courts; only a court's full
 #: name makes one).
 _COURT_KINDS = ("authority", "other")
-_LABOUR_COURT = re.compile(r"(?i:arbeitsgericht)|\b(?:ArbG|LAG)\s")
+_LABOUR_COURT = re.compile(r"(?i:arbeitsgericht)|\b(?:ArbG|LAG)\s|\bBAG\b")
 #: Senders that name a court without being one: a bailiff ("Gerichtsvollzieher bei dem Amtsgericht …",
 #: "Obergerichtsvollzieherin …, Amtsgericht Köln") or a court cashier.
 _NOT_A_COURT = re.compile(r"vollzieh|kasse|zahlstelle", re.I)
@@ -351,16 +359,23 @@ def _names_a_place(rest: str) -> bool:
 
 
 def _abbreviates_court(name: str) -> bool:
-    """Whether ``name`` abbreviates a court before its place (*AG Hagen*, *ArbG Berlin*, *LG Köln*): no
-    company's legal form, and a place of a word or two (:func:`_names_a_place`)."""
+    """Whether ``name`` abbreviates a court before its place (*AG Hagen*, *ArbG Berlin*, *SG Berlin*,
+    *VG Minden*): no company's legal form, and a place of a word or two (:func:`_names_a_place`) — or a
+    federal court's, whose place may be left out (*BGH*, *BSG, 1. Senat*)."""
     abbreviation = _COURT_ABBREVIATION.search(name.strip())
-    return abbreviation is not None and _names_a_place(abbreviation.group("rest"))
+    if abbreviation is not None and _names_a_place(abbreviation.group("rest")):
+        return True
+    federal = _FEDERAL_COURT_ABBREVIATION.search(name.strip())
+    if federal is None or _LEGAL_FORM.search(name):
+        return False
+    return federal.group("rest") is None or _names_a_place(federal.group("rest"))
 
 
 def is_court(name: str, kind: str | None = None) -> bool:
     """Whether a sender's name is a court's (policy 1): it names a kind of court (*Amtsgericht*, also *des
-    Amtsgerichts*; *Zentrales Mahngericht*), or abbreviates one before its place (*AG Hagen*, *ArbG
-    Berlin*) when the sender's ``kind`` is an authority or ``other`` — a retailer "LG Electronics", a
+    Amtsgerichts*; *Zentrales Mahngericht*, *Verfassungsgerichtshof*), or abbreviates one before its place
+    (*AG Hagen*, *ArbG Berlin*, *SG Berlin*, *VG Minden*; a federal court's needs none, *BGH*) when the
+    sender's ``kind`` is an authority or ``other`` — a retailer "LG Electronics", a
     landlord "OLG Immobilien", or a name of unknown kind (``None``: a recipient typed in, see
     :func:`may_be_court`) is no court — and is no bailiff or court cashier. Not recognised: a court named
     only in English."""
@@ -565,6 +580,10 @@ def special_rule(spec: DateSpec, letter: str | None, *, authority: bool) -> str 
         _BGB_558B.search(haystack) or letter == "rent_increase"
     ):
         return "bgb_558b"
+    if spec.nature == "payment" and letter == "rent_increase":
+        return (
+            "bgb_558b"  # the new rent is owed from the third month after the request arrived at the earliest
+        )
     if spec.nature == "objection" and (_BGB_574B.search(haystack) or letter == "landlord_notice"):
         return "bgb_574b"
     if (
@@ -733,6 +752,24 @@ _NOTICE_OBJECTION = DerivedDeadline(
 )
 
 
+#: A notice whose own end is too early for an objection (a notice too short for its period), or given in the
+#: alternative with no end of its own: it usually ends the tenancy at the next permissible date (§ 573c Abs. 1
+#: BGB), so the objection counts back from the earliest one (:mod:`ordnung.rules.letters`), with less confidence.
+_NEXT_END_OBJECTION = replace(
+    _NOTICE_OBJECTION,
+    action=(
+        "The notice's own end is too early for its notice period, or it gives none: it usually ends your tenancy "
+        f"at the next date the law allows, and this date counts back from the earliest one. {_NOTICE_OBJECTION.action}"
+    ),
+    spec=_relative(
+        -2,
+        "months",
+        "objection",
+        "§ 574b Abs. 2, § 573c Abs. 1 BGB",
+        "spätestens zwei Monate vor dem nächstmöglichen Kündigungstermin",
+    ),
+)
+
 #: The letter rules (:mod:`ordnung.rules.letters`): a date routed to one was computed under it.
 LETTER_RULES = ("sgb3_38", "bgb_558b", "bgb_574b", "bgb_355")
 
@@ -758,15 +795,19 @@ def derived_deadlines(
     letter_date: date | None = None,
     extraordinary: bool = False,
     labour_court: bool = False,
+    alternative: bool = False,
 ) -> list[DerivedDeadline]:
     """The deadlines the law adds to a kind of letter; ``end`` is the end its termination announces.
     A court order from a labour court (``labour_court``) gives one week (§ 46a Abs. 3, § 59 ArbGG).
 
-    The objection to a landlord's notice counts back from the end of the tenancy, so it is only
-    added when that end is known — and not for a notice without notice period (``extraordinary``: one
-    not also given with a notice period in the alternative, or an end less than two months after the
-    letter's date ``letter_date``): the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB),
-    and its card points to advice instead.
+    The objection to a landlord's notice counts back from the end of the tenancy — not for a notice
+    without notice period (``extraordinary``: one not also given with a notice period in the alternative):
+    the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB), and its card points to advice
+    instead. When the end is too early for the objection (less than two months after the letter's date
+    ``letter_date``: a notice too short for its period) or the notice is given in the ``alternative`` without
+    an end of its own (none read, or the immediate one), the objection counts back from the earliest end a
+    notice with a notice period can have (§ 573c Abs. 1 BGB) — such a notice usually ends the tenancy at
+    the next permissible date. An ordinary notice whose end wasn't read gets none: its card asks for it.
     """
     if letter == "court_payment_order":
         return [_LABOUR_COURT_ORDER if labour_court else _COURT_ORDER]
@@ -776,9 +817,9 @@ def derived_deadlines(
         return [_COURT_ACTION, _REGISTER]
     if letter == "rent_increase":
         return [_CONSENT_DECISION]
-    if letter == "landlord_notice" and end is not None and not extraordinary:
-        if letter_date is not None and notice_objection_deadline(end) < letter_date:
-            return []
+    if letter == "landlord_notice" and not extraordinary and (end is not None or alternative):
+        if end is None or (letter_date is not None and notice_objection_deadline(end) < letter_date):
+            return [_NEXT_END_OBJECTION]
         spec = _NOTICE_OBJECTION.spec.model_copy(
             update={"anchor": "explicit_date", "anchor_date": end.isoformat()}
         )

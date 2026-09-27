@@ -770,6 +770,17 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
+        "bgb_573c_landlord",
+        "A landlord's notice: its earliest end",
+        "§ 573c Abs. 1 BGB; BGH VIII ZR 206/04",
+        "A landlord's ordinary notice on a flat that arrives by the 3rd working day (Werktag, Saturday counts) "
+        "of a month ends the tenancy at the end of the month after next — after five and eight years of "
+        "tenancy three and six months later. A notice with too short a period usually ends the tenancy at "
+        "the next date the law allows.",
+        f"{_GII}/bgb/__573c.html",
+        None,
+    ),
+    (
         "bgb_622",
         "Employee's notice",
         "§ 622 Abs. 1, 3, 6 BGB",
@@ -780,9 +791,12 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
     ),
     (
         "fixed_term",
-        "Fixed-term contracts end by themselves",
+        "Fixed-term contracts",
         "§ 542 Abs. 2 BGB; § 620 Abs. 1 BGB; § 15 Abs. 1 TzBfG",
-        "A contract agreed for a fixed period ends on its end date without notice.",
+        "A contract agreed for a fixed period ends on its end date without notice — a flat let only where the "
+        "lease gives a legal reason for the fixed term in writing (§ 575 Abs. 1 BGB), otherwise it counts as "
+        "open-ended and ending it needs notice. A lease or job used on after its end may continue (§ 545 BGB, "
+        "§ 15 Abs. 6 TzBfG).",
         f"{_GII}/bgb/__620.html",
         None,
     ),

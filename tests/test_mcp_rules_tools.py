@@ -1532,3 +1532,148 @@ def test_importing_the_rules_tools_stays_light() -> None:
     )
     out = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, check=True)
     assert out.stdout.strip() == "[]"
+
+
+# --------------------------------------------------------------------------------------------------
+# a court's letter: the same date, confidence and rules as the app
+# --------------------------------------------------------------------------------------------------
+
+COURT_NAMES = (
+    "Amtsgericht Hünfeld - Zentrales Mahngericht",
+    "Amtsgericht Coburg",
+    "AG Hagen",
+    "Arbeitsgericht Berlin",
+    "ArbG Berlin",
+    "Sozialgericht Berlin",
+)
+COURT_SPECS: tuple[dict[str, Any], ...] = (
+    {
+        "type": "relative",
+        "anchor": "deemed_delivery",
+        "amount": 2,
+        "unit": "weeks",
+        "delivery_rule": "de_admin_post",
+        "nature": "objection",
+        "text": "Sie können gegen den Anspruch innerhalb von zwei Wochen ab Zustellung Widerspruch erheben.",
+    },
+    {**RECEIPT, "legal_basis": "§ 692 ZPO", "text": "Widerspruch binnen zwei Wochen"},
+    {**RECEIPT, "legal_basis": "§ 700 ZPO", "text": "Einspruch binnen zwei Wochen"},
+    {**RECEIPT, "text": "Einspruch gegen den Vollstreckungsbescheid binnen zwei Wochen"},
+    {
+        **RECEIPT,
+        "anchor": "document_date",
+        "text": "Stellungnahme binnen zwei Wochen ab dem Datum dieses Schreibens",
+    },
+)
+
+
+def _app_receipt(
+    spec: dict[str, Any], name: str, kind: str | None, remedy: str | None, received: str | None
+) -> Any:
+    """What the app computes for the same facts (``ingest.plan.rule_context`` over the same reading)."""
+    from ordnung.ingest.plan import rule_context
+    from ordnung.models import Document, DocumentExtraction, ExtractedItem, ExtractedParty, Remedy
+    from ordnung.rules import compute_due
+
+    parsed = DateSpec.model_validate(spec)
+    reading = DocumentExtraction(
+        kind="other",
+        title="",
+        summary="",
+        explanation="",
+        document_date="2026-09-15",
+        sender=ExtractedParty(name=name, kind=kind or "other"),  # type: ignore[arg-type]
+        items=[ExtractedItem(kind="deadline", title="", date=parsed, quote="")],
+        remedy=Remedy(type=remedy) if remedy else None,  # type: ignore[arg-type]
+    )
+    document = Document.model_construct(received_date=received)
+    return compute_due(parsed, rule_context(None, document, reading, date(2026, 9, 28)))
+
+
+@pytest.mark.parametrize("name", COURT_NAMES)
+def test_a_courts_period_gets_the_apps_date_confidence_and_rules(name: str) -> None:
+    """ADR 0009: a tool and the app give the same date for the same facts — a court is a court by its
+    name, whatever kind the model passed it as (a court is no PartyKind: ``authority`` or ``other``)."""
+    tools = RulesTools(today=lambda: date(2026, 9, 28))
+    for kind in ("authority", "other"):
+        for spec in COURT_SPECS:
+            for remedy in ("widerspruch", "einspruch", None):
+                for received in (None, "2026-09-16"):
+                    got = tools.compute_deadline(
+                        spec,
+                        document_date="2026-09-15",
+                        sender_kind=kind,
+                        sender_name=name,
+                        remedy_type=remedy,
+                        received_date=received,
+                    )
+                    app = _app_receipt(spec, name, kind, remedy, received)
+                    case = (kind, spec["text"], remedy, received)
+                    assert got["due_date"] == app.due_date, case
+                    assert got["confidence"] == app.confidence != "high", case
+                    assert [rule["id"] for rule in got["rules"]] == app.rule_ids, case
+                    assert "posting_day" not in app.rule_ids, case  # never a delivery fiction
+
+
+def test_a_court_order_never_gets_an_administrative_delivery_fiction(tools: RulesTools) -> None:
+    """The review's cases: a Mahnbescheid read with deemed delivery, and a labour court's enforcement
+    order (one week, § 59 ArbGG) — the tool's date was days late on a Notfrist."""
+    at_court = RulesTools(today=lambda: date(2026, 9, 28))
+    order = at_court.compute_deadline(
+        COURT_SPECS[0],
+        document_date="2026-09-15",
+        sender_kind="authority",
+        sender_name="Amtsgericht Coburg",
+        remedy_type="widerspruch",
+        received_date="2026-09-16",
+    )
+    assert order["due_date"] == "2026-09-30" and order["confidence"] == "medium"
+    assert (
+        order["assumed"]["delivery_law"] == "a court's letter: formal service (§ 180 ZPO), no deemed delivery"
+    )
+    assert order["assumed"]["received_date"] == "2026-09-16"  # the delivery day the period ran from
+    assert {"zpo_180", "zpo_222"} <= {rule["id"] for rule in order["rules"]}
+    assert not {"posting_day", "vwvfg_31_3"} & {rule["id"] for rule in order["rules"]}
+    labour = at_court.compute_deadline(
+        COURT_SPECS[2],
+        document_date="2026-09-15",
+        sender_kind="authority",
+        sender_name="Arbeitsgericht Berlin",
+        remedy_type="einspruch",
+        received_date="2026-09-16",
+    )
+    assert labour["due_date"] == "2026-09-23" and labour["confidence"] != "high"
+    assert "arbgg_59" in {rule["id"] for rule in labour["rules"]}
+    # without the envelope date the hint asks for it, never for the sender's kind
+    unknown = tools.compute_deadline(
+        COURT_SPECS[0], document_date="2026-09-14", sender_kind="other", sender_name="AG Hagen"
+    )
+    assert unknown["due_date"] == "2026-09-28" and unknown["confidence"] != "high"
+    assert any("yellow envelope" in hint for hint in unknown["hints"])
+    assert not any("sender_kind" in hint for hint in unknown["hints"])
+    # a named Mahnbescheid gets the court rule and its note (§ 694 ZPO) though no § is cited
+    named = tools.compute_deadline(
+        {**RECEIPT, "text": "Widerspruch gegen diesen Mahnbescheid binnen zwei Wochen"},
+        document_date="2026-09-14",
+        sender_kind="authority",
+        sender_name="Amtsgericht Hagen",
+        remedy_type="widerspruch",
+        received_date="2026-09-15",
+    )
+    assert "zpo_692" in {rule["id"] for rule in named["rules"]} and named["confidence"] != "high"
+    assert any("§ 694 ZPO" in warning for warning in named["warnings"])
+
+
+def test_a_pinned_server_ignores_a_callers_today_one_day_off() -> None:
+    """The benchmark's server keeps its letter's day even for a today a time zone apart (which an
+    unpinned server would use), and gives no view for it."""
+    pinned = RulesTools(today=lambda: date(2026, 4, 14), pin_today=True)
+    spec = {"type": "relative", "anchor": "today", "amount": 10, "unit": "days", "nature": "payment"}
+    for given in ("2026-04-13", "2026-04-15"):
+        result = pinned.compute_deadline(spec, document_date="2026-04-14", today=given)
+        assert result["assumed"]["today"] == "2026-04-14" and result["for_today_given"] is None
+        assert result["assumed"]["today_given"] == given
+    unpinned = RulesTools(today=lambda: date(2026, 4, 14)).compute_deadline(
+        spec, document_date="2026-04-14", today="2026-04-15"
+    )
+    assert unpinned["assumed"]["today"] == "2026-04-15"

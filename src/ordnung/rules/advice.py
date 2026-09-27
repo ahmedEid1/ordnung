@@ -23,8 +23,12 @@ Computed facts, each with the policy that keeps it honest:
   "2025-01-01 bis 2025-12-31", "Januar bis Dezember 2025"), and every billing year ("Abrechnungsjahr
   2024", "Abrechnungszeitraum 2023/2024", "Betriebskostenabrechnung für das Jahr 2025", in the reading's
   title "Operating-cost statement 2025"), taken to end on 31 December of its last year. The latest end
-  wins, because a later end only makes the deadline later; a billing year gives way to a range that ends
-  in it or later (the range says which months the year covers). A range written next to "Vorjahr" or
+  wins, because a later end only makes the deadline later; a billing year gives way only to a range that
+  says which months it covers — one the letter calls its billing period, or a split year's own months
+  ("2023/2024": 01.07.2023 – 30.06.2024) — never to another range that ends earlier in it (a cost item's
+  service period: the later end is the landlord's reading). The tenant's own time in the flat
+  ("Nutzungszeitraum", "Mietdauer … (Auszug)") is never the billing period: a tenant who moved out mid-year
+  gets the landlord's period all the same (§ 556 Abs. 3 S. 2 BGB). A range written next to "Vorjahr" or
   "Vergleich" is the previous year's comparison (§ 6a HeizkostenV): when it is the latest, this
   statement's own period was missed, and nothing is claimed. A statement is called late only when it
   certainly is: only a range the letter calls its billing period ("Abrechnungszeitraum", "für den
@@ -58,6 +62,7 @@ from ordnung.rules.explain import fmt_date
 from ordnung.rules.tenancy import (
     RENT_CAP_PERCENT,
     RENT_CAP_TIGHT_MARKET_PERCENT,
+    StatementCheck,
     cap_limit,
     exceeds_cap,
     month_end,
@@ -201,6 +206,17 @@ class BillingPeriod:
 class _Candidate:
     period: BillingPeriod
     comparison: bool  # written next to "Vorjahr", "Vergleich": the previous year's figures
+    start: date | None = None  # a range's first day
+    split_from: int | None = None  # a split billing year's first year ("2023/2024" → 2023)
+
+
+#: What names a range as the tenant's own time in the flat, not the billing period: a tenant who moved out
+#: mid-year gets the landlord's billing period all the same (§ 556 Abs. 3 S. 2 BGB counts from its end).
+_TENANT_PERIOD = re.compile(
+    r"(?:nutzungs|wohn|miet|bewohnungs|belegungs)(?:zeitraum|zeit|dauer|periode)|\b(?:ein|aus)zug|"
+    r"mietende|mietbeginn|usage period|period of (?:use|occupancy|tenancy)|occupancy|moved (?:in|out)|move-(?:in|out)",
+    re.I,
+)
 
 
 #: What a later letter writes before the date of the statement it is about: "Betriebskostenabrechnung 2023
@@ -256,10 +272,13 @@ def _ranges(text: str, before: date | None) -> list[_Candidate]:
         if start >= end or (before is not None and end > before):
             continue
         context = _before_range(text, first.start())
-        period = BillingPeriod(
-            end, True, f"{start:%d.%m.%Y} – {end:%d.%m.%Y}", labelled=bool(_PERIOD_LABEL.search(context))
-        )
-        found.append(_Candidate(period, bool(_COMPARISON.search(context[-45:]))))
+        labelled = bool(_PERIOD_LABEL.search(context))
+        line_end = text.find("\n", second.end())
+        after = text[second.end() : line_end if line_end >= 0 else len(text)][:30]
+        if not labelled and (_TENANT_PERIOD.search(context) or _TENANT_PERIOD.search(after)):
+            continue  # the tenant's time in the flat, never the billing period
+        period = BillingPeriod(end, True, f"{start:%d.%m.%Y} – {end:%d.%m.%Y}", labelled=labelled)
+        found.append(_Candidate(period, bool(_COMPARISON.search(context[-45:])), start=start))
     return found
 
 
@@ -273,8 +292,28 @@ def _years(text: str) -> list[_Candidate]:
             continue  # "2024/12" is not a split year
         context = _before_range(text, match.start())[-25:] + match.group()
         period = BillingPeriod(date(last, 12, 31), False, f"{first}/{second}" if second else first)
-        found.append(_Candidate(period, bool(_COMPARISON.search(context))))
+        found.append(
+            _Candidate(period, bool(_COMPARISON.search(context)), split_from=int(first) if second else None)
+        )
     return found
+
+
+def _gives_way(year: _Candidate, ranges: Sequence[_Candidate]) -> bool:
+    """Whether a billing year gives way to a range that says which months it covers (policy above): one
+    the letter calls its billing period that ends in the year or later, or a split year's own range (starts
+    in its first year, ends in its last). Any other range — a cost item's service period — never makes the
+    year end earlier: the later end is the landlord's reading (:mod:`ordnung.rules.tenancy`)."""
+    end = year.period.end
+    for candidate in ranges:
+        if candidate.comparison:
+            continue
+        period, start = candidate.period, candidate.start
+        if period.labelled and period.end.year >= end.year:
+            return True
+        split = year.split_from
+        if split is not None and start is not None and start.year == split and period.end.year == end.year:
+            return True
+    return False
 
 
 def billing_period(text: str, *, before: date | None = None) -> BillingPeriod | None:
@@ -285,11 +324,7 @@ def billing_period(text: str, *, before: date | None = None) -> BillingPeriod | 
     the letter names is the previous year's comparison: then this statement's own period wasn't found.
     """
     ranges = _ranges(text, before)
-    years = [
-        year
-        for year in _years(text)
-        if not any(r.period.end.year >= year.period.end.year and not r.comparison for r in ranges)
-    ]
+    years = [year for year in _years(text) if not _gives_way(year, ranges)]
     candidates = [*ranges, *years]
     if not candidates:
         return None
@@ -450,10 +485,22 @@ RENT_INCREASE_PAYMENT_WARNING = (
 )
 
 
+def _checked(
+    period_end: date, arrived: date, *, confirmed: bool, region: str | None
+) -> StatementCheck | None:
+    """:func:`~ordnung.rules.tenancy.statement_check`, or ``None`` for dates near the ends of the calendar (a
+    misread or mistyped year such as 9999): then nothing is claimed about the statement, never an error."""
+    try:
+        return statement_check(period_end, arrived, confirmed=confirmed, region=region)
+    except (OverflowError, ValueError):
+        return None
+
+
 def _earlier_on_time(period: BillingPeriod, named: date | None, region: str | None) -> bool:
     """Whether a date the letter also gives a statement (:attr:`StatementArrival.named`) would make it on
     time, or probably on time: then it is never called late."""
-    return named is not None and not statement_check(period.end, named, confirmed=False, region=region).late
+    check = _checked(period.end, named, confirmed=False, region=region) if named is not None else None
+    return check is not None and not check.late
 
 
 def statement_late(
@@ -464,17 +511,18 @@ def statement_late(
     it, ``named``, wouldn't make it on time — :func:`statement_arrival`): then its back-payment may not be
     owed (§ 556 Abs. 3 S. 3 BGB), and its payment to-dos say so (:data:`LATE_STATEMENT_WARNING`)."""
     period = billing_period(text, before=arrived) if arrived is not None else None
-    if period is None or arrived is None:
+    check = _checked(period.end, arrived, confirmed=confirmed, region=region) if period and arrived else None
+    if period is None or check is None:
         return False
-    late = statement_check(period.end, arrived, confirmed=confirmed, region=region).late is True
-    return late and not _earlier_on_time(period, named, region)
+    return check.late is True and not _earlier_on_time(period, named, region)
 
 
 def _statement(text: str, arrival: StatementArrival, region: str | None) -> AdviceFact:
     arrived, confirmed, named = arrival
     period = billing_period(text, before=arrived) if arrived is not None else None
     citation = catalog.citation("bgb_556_3")
-    if period is None or arrived is None:
+    check = _checked(period.end, arrived, confirmed=confirmed, region=region) if period and arrived else None
+    if period is None or check is None:
         return AdviceFact(
             title="Was it on time?",
             text=(
@@ -483,7 +531,6 @@ def _statement(text: str, arrival: StatementArrival, region: str | None) -> Advi
             ),
             citation=citation,
         )
-    check = statement_check(period.end, arrived, confirmed=confirmed, region=region)
     deadline = fmt_date(check.deadline)
     assumed = (
         f"The letter names the period {period.text} but doesn't call it the billing period. If it is, "
@@ -574,7 +621,7 @@ def _labour_court_order(kind: str, today: date, delivered: str | None, *, handle
         if handled
         else [
             delivered
-            or "Find the delivery date on the yellow envelope and enter it as the day the letter arrived."
+            or "Find the delivery date on the yellow envelope and enter it where this page asks when it was delivered."
         ]
     )
     if kind == "court_payment_order":
@@ -651,14 +698,27 @@ HARDSHIP_EXCLUDED = (
 )
 
 
-def _notice_without_period(alternative: bool) -> AdviceFact:
+#: A notice given in the alternative whose own end isn't known (none, or the immediate one): its end is the
+#: next permissible date (§ 573c Abs. 1 BGB), which the objection to-do counts back from.
+ALTERNATIVE_END = (
+    "The notice given in the alternative names no end of its own: like any notice with a notice period, it "
+    "usually ends the tenancy at the next date the law allows — at the earliest the end of the month after "
+    "next, later after five or eight years of tenancy (§ 573c Abs. 1 BGB). The objection to-do counts back "
+    "two months from that earliest end, not from the immediate one."
+)
+
+
+def _notice_without_period(alternative: bool, next_end: bool = False) -> AdviceFact:
     """What a landlord's notice without notice period means for the hardship objection: none against it,
     and against a notice given in the alternative only if the grounds for it didn't exist
-    (:data:`HARDSHIP_EXCLUDED`) — the objection letter is still offered for that one, the safe side."""
+    (:data:`HARDSHIP_EXCLUDED`) — the objection letter is still offered for that one, the safe side. When the
+    notice in the alternative names no end of its own (``next_end``), the card says which end the objection
+    counts from (:data:`ALTERNATIVE_END`)."""
     if alternative:
         text = (
             "The landlord also gives notice with a notice period in the alternative (hilfsweise). "
-            f"{HARDSHIP_EXCLUDED} If it is for rent arrears, {ARREARS_CURE}."
+            f"{ALTERNATIVE_END + ' ' if next_end else ''}{HARDSHIP_EXCLUDED} If it is for rent arrears, "
+            f"{ARREARS_CURE}."
         )
         citation = "§ 574 Abs. 1 S. 2 BGB; BGH VIII ZR 323/18; § 569 Abs. 3 Nr. 2 BGB"
     else:
@@ -675,16 +735,26 @@ def _notice_without_period(alternative: bool) -> AdviceFact:
     )
 
 
+#: A notice whose end is less than two months after it was written (review round 1): said conditionally —
+#: a notice too short for its period usually ends the tenancy at the next permissible date instead.
+SHORT_NOTICE = (
+    "Your tenancy would end less than two months after this letter was written. If that end is right, the day "
+    "an objection had to reach the landlord (two months before the end) had passed before the letter was "
+    "written — so the landlord can't have told you in time about your right to object, and you can still "
+    "object at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB). But a notice this short may "
+    "have the wrong notice period (a landlord's is usually about three months, § 573c Abs. 1 BGB), and a "
+    "notice that is too short usually ends the tenancy at the next date the law allows instead: then the "
+    "objection is due two months before that, and may still be open. The to-do counts back from the earliest "
+    "such end. Get advice now."
+)
+
+
 def _no_objection_todo(end_unknown: bool, passed: bool) -> str:
-    """The step of a landlord's card when no to-do carries the objection (and the notice has a period)."""
+    """The step of a landlord's card about its objection when the notice's own end doesn't give one: too
+    short (``passed``: :data:`SHORT_NOTICE`, whose to-do counts from the next permissible end), not read, or
+    no to-do for a reason Ordnung doesn't know (the notice has a period)."""
     if passed:
-        return (
-            "Your tenancy would end less than two months after this letter was written, so the day an objection "
-            "had to reach the landlord (two months before the end) had already passed: there is no to-do for it. "
-            "A notice this short may have the wrong notice period (a landlord's is usually about three months, "
-            "§ 573c Abs. 1 BGB). If the landlord didn't tell you in time about your right to object, you can still object "
-            "at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB). Get advice now."
-        )
+        return SHORT_NOTICE
     if end_unknown:
         return (
             "We couldn't read when your tenancy ends, so there is no to-do for the objection. Find the end in "
@@ -802,7 +872,8 @@ def letter_advice(
                 *_unless(
                     handled,
                     delivered
-                    or "Find the delivery date on the yellow envelope and enter it as the day the letter arrived.",
+                    or "Find the delivery date on the yellow envelope and enter it where this page asks when it was "
+                    "delivered.",
                 ),
                 "If you don't owe the money, or not all of it, object on the enclosed form (or online) and send "
                 "it to the court. You don't have to give reasons.",
@@ -887,7 +958,7 @@ def letter_advice(
                 f"rent arrears (§ 569 Abs. 3 Nr. 2 BGB), {ARREARS_CURE}. Object in time anyway if you think "
                 "there were no such grounds, and get advice at once."
             )
-        if not objection_todo and not extraordinary:
+        if (objection_passed or not objection_todo) and not extraordinary:
             steps.insert(0, _no_objection_todo(end_unknown, objection_passed))
         return LetterAdvice(
             kind=kind,
@@ -897,11 +968,13 @@ def letter_advice(
                 "out would be a hardship, you can object and ask to stay; the objection must reach the landlord "
                 "at the latest two months before the tenancy ends."
             ),
-            urgent=(extraordinary or not objection_todo) and not handled,
+            urgent=(extraordinary or not objection_todo or objection_passed) and not handled,
             handled=handled,
             closable=closable,
             steps=steps,
-            facts=[_notice_without_period(alternative)] if extraordinary else [],
+            facts=[_notice_without_period(alternative, end_unknown or objection_passed)]
+            if extraordinary
+            else [],
             help=[TENANTS, LEGAL_AID],
             rule_ids=["bgb_574b", "bgb_549"],
             draft="objection" if alternative or not extraordinary else None,

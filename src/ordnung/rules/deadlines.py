@@ -57,6 +57,14 @@ ASSUMED_RECEIPT_WARNING: Final = (
     "We assumed the letter arrived on the date printed on it — tell us when it actually arrived."
 )
 NEEDS_ARRIVAL_WARNING: Final = "We need the day the letter arrived — tell us when it actually arrived."
+#: A letter served formally (a court's, a fine's): one date, "delivered" — the date on the yellow envelope.
+ASSUMED_DELIVERY_WARNING: Final = (
+    "We assumed the letter was delivered on the date printed on it — tell us the delivery date the postman "
+    "wrote on the yellow envelope."
+)
+NEEDS_DELIVERY_WARNING: Final = (
+    "We need the day the letter was delivered — the date the postman wrote on the yellow envelope."
+)
 PRIVATE_SENDER_WARNING: Final = (
     "No delivery days were added: the rule that a letter counts as delivered a few days after posting "
     "is only for authorities' letters, and this sender is not an authority. The period runs from the "
@@ -121,9 +129,9 @@ _STATUTES: list[tuple[re.Pattern[str], str, tuple[tuple[int, PeriodUnit], ...]]]
     (re.compile(r"\b4\b[^§]{0,20}\bKSchG\b|Kündigungsschutzklage", re.I), "kschg_4", _THREE_WEEKS),
 ]
 _STATUTE_PERIODS = {rule_id: periods for _, rule_id, periods in _STATUTES}
-#: Statutes a private sender's letter may name whose periods run from its arrival (§ 130 BGB): the
-#: three weeks for a Kündigungsschutzklage run from the dismissal's receipt (§ 4 S. 1 KSchG), never
-#: from a delivery fiction (:func:`from_arrival`).
+#: Statutes whose periods run from a letter's arrival (§ 130 BGB) whoever sent it: the three weeks for a
+#: Kündigungsschutzklage run from the dismissal's receipt (§ 4 S. 1 KSchG) — a public employer's too —,
+#: never from a delivery fiction (:func:`from_arrival`).
 _PRIVATE_LAW_STATUTES = ("kschg_4",)
 #: The court rules only bind the dates they are about: the objection or court action (and, for a
 #: Mahnbescheid, paying instead). A hearing or a severance payment whose wording mentions the court
@@ -135,6 +143,17 @@ _STATUTE_NATURES: dict[str, tuple[DateNature, ...]] = {
     "arbgg_59": ("objection", "declaration"),
     "kschg_4": ("objection", "declaration"),
 }
+#: How a court's period is counted (review round 1: its receipt cited the counting rules of the AO, the
+#: VwVfG, the StPO and the SGG): § 222 Abs. 1 ZPO points to §§ 187, 188 BGB — at a labour court through
+#: § 46 Abs. 2 ArbGG. A Kündigungsschutzklage's three weeks are a period of substantive law: the BGB's alone.
+_COURT_COUNTING = {
+    "bgb_187_1": "§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB",
+    "bgb_188": "§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB",
+}
+_LABOUR_COURT_COUNTING = {
+    rule: f"§ 46 Abs. 2 ArbGG; {citation}" for rule, citation in _COURT_COUNTING.items()
+}
+_BGB_COUNTING = {"bgb_187_1": "§ 187 Abs. 1 BGB", "bgb_188": "§ 188 Abs. 1, 2 BGB"}
 _SHIFT_RULE_BY_SCOPE: dict[DeliveryScope, str] = {
     "ao": "ao_108_3",
     "vwvfg": "vwvfg_31_3",
@@ -207,6 +226,9 @@ class Trace:
     soft_failures: int = 0
     hard_failure: bool = False
     region_flagged: bool = False
+    #: A step's citation by the procedure its deadline follows, where the catalog's names several (a court's
+    #: period is counted under § 222 ZPO, not the AO or the VwVfG: :data:`_COURT_COUNTING`).
+    cite: dict[str, str] = field(default_factory=dict)
 
     def step(self, label: str, d: date | None, rule_id: str) -> None:
         self.steps.append(
@@ -214,13 +236,18 @@ class Trace:
                 label=label,
                 date=d.isoformat() if d else None,
                 rule_id=rule_id,
-                citation=catalog.citation(rule_id),
+                citation=self.cite.get(rule_id) or catalog.citation(rule_id),
             )
         )
         self.use(rule_id)
 
     def extend(self, steps: list[ComputationStep]) -> None:
-        self.steps.extend(steps)
+        self.steps.extend(
+            step.model_copy(update={"citation": self.cite[step.rule_id]})
+            if step.rule_id in self.cite
+            else step
+            for step in steps
+        )
         for rule_id in [s.rule_id for s in steps if s.rule_id]:
             self.use(rule_id)
 
@@ -249,6 +276,8 @@ class Trace:
 class _Anchor:
     day: date
     source: Literal["document_date", "posted", "explicit", "receipt", "stated_receipt", "today", "deemed"]
+    #: the letter was served formally: its arrival is "the day it was delivered" (the envelope's date)
+    served: bool = False
 
     @property
     def phrase(self) -> str:
@@ -257,7 +286,9 @@ class _Anchor:
             "document_date": f"the letter's date ({fmt_date(self.day)})",
             "posted": f"posting on {fmt_date(self.day)}",
             "explicit": fmt_date(self.day),
-            "receipt": f"the day you received it ({fmt_date(self.day)})",
+            "receipt": f"the day it was delivered ({fmt_date(self.day)})"
+            if self.served
+            else f"the day you received it ({fmt_date(self.day)})",
             "stated_receipt": f"delivery on {fmt_date(self.day)} (as stated on the letter)",
             "today": f"today ({fmt_date(self.day)})",
             "deemed": f"the day it would usually count as delivered ({fmt_date(self.day)})",
@@ -408,11 +439,23 @@ def place_region(spec: DateSpec, ctx: RuleContext) -> str | None:
 
     The sender's (``ctx.region``: the authority's or company's seat), except for a payment to a
     private creditor: money is owed at the debtor's home (§§ 269, 270 Abs. 4 BGB), so § 193 BGB uses
-    the payer's holidays (``ctx.recipient_region``; unknown → nationwide only, the earlier date).
+    the payer's holidays (``ctx.recipient_region``; unknown → nationwide only, the earlier date). A
+    Kündigungsschutzklage may be filed at the labour court of the employer's seat or of the place of work
+    (§ 48 Abs. 1a ArbGG), which may be in another Land: a regional holiday counts only where it holds at
+    the employer's seat and where the person lives (the place of work's stand-in), else nationwide
+    holidays only — the earlier date, with the warning that a Land's holiday may make it later.
     """
     if spec.nature == "payment" and ctx.delivery_scope is None:
         return calendar_de.normalize_region(ctx.recipient_region)
-    return calendar_de.normalize_region(ctx.region)
+    region = calendar_de.normalize_region(ctx.region)
+    statute = _statute(spec, ctx.letter_kind, labour_court=ctx.labour_court)
+    if (
+        statute is not None
+        and statute[0] == "kschg_4"
+        and region != calendar_de.normalize_region(ctx.recipient_region)
+    ):
+        return None
+    return region
 
 
 def _receipt(
@@ -589,7 +632,9 @@ def _compute_fixed(
     return _receipt(trace, ctx, due=due, summary=summary, send_by=send_by, safe_date=safe, region=region)
 
 
-def _resolve_anchor(spec: DateSpec, ctx: RuleContext, trace: Trace) -> _Anchor | None:
+def _resolve_anchor(
+    spec: DateSpec, ctx: RuleContext, trace: Trace, *, served: bool = False
+) -> _Anchor | None:
     anchor = spec.anchor
     if anchor is None:
         if ctx.document_date is None:
@@ -616,11 +661,11 @@ def _resolve_anchor(spec: DateSpec, ctx: RuleContext, trace: Trace) -> _Anchor |
             # person entered another day, then the earlier of the two counts.
             return _against_entered(_Anchor(stated, "stated_receipt"), ctx, trace)
         if ctx.received_confirmed and ctx.received_date:
-            return _Anchor(ctx.received_date, "receipt")
+            return _Anchor(ctx.received_date, "receipt", served=served)
         if ctx.document_date is None:
-            trace.hard(NEEDS_ARRIVAL_WARNING)
+            trace.hard(NEEDS_DELIVERY_WARNING if served else NEEDS_ARRIVAL_WARNING)
             return None
-        trace.hard(ASSUMED_RECEIPT_WARNING)
+        trace.hard(ASSUMED_DELIVERY_WARNING if served else ASSUMED_RECEIPT_WARNING)
         return _Anchor(ctx.document_date, "document_date")
     if anchor == "deemed_delivery":
         posted = parse_date(spec.anchor_date)
@@ -642,9 +687,11 @@ def from_arrival(spec: DateSpec, ctx: RuleContext) -> DateSpec:
     """The period :func:`compute_due` counts: without deemed delivery when the sender is no authority.
 
     For ``ctx.private_sender`` (and a relative period whose letter names none of the remedy statutes,
-    which only authorities' decisions and courts' orders have — a private-law period such as the
-    Kündigungsschutzklage's, :data:`_PRIVATE_LAW_STATUTES`, runs from arrival too — nor a court rule its
-    kind of letter gives it; never for a court's letter), ``anchor: deemed_delivery`` becomes ``receipt`` — a
+    which only authorities' decisions and courts' orders have, nor a court rule its kind of letter gives
+    it; never for a court's letter) — and for a private-law period such as the Kündigungsschutzklage's
+    (:data:`_PRIVATE_LAW_STATUTES`) whoever sent it: a dismissal is a declaration under private law that
+    takes effect when it arrives (§ 130 BGB, § 4 S. 1 KSchG), from a city or a university as from a
+    company —, ``anchor: deemed_delivery`` becomes ``receipt`` — a
     posting day in ``anchor_date`` is no arrival day, so it is dropped — and a delivery rule on a period
     from the letter's or another date is dropped: that period keeps its date (the letter says it runs
     from there), so its arrival day is never asked for. Without a confirmed arrival day a period from
@@ -656,12 +703,8 @@ def from_arrival(spec: DateSpec, ctx: RuleContext) -> DateSpec:
     (and by the anchor, which of the two).
     """
     statute = _statute(spec, ctx.letter_kind, labour_court=ctx.labour_court)
-    if (
-        not ctx.private_sender
-        or ctx.court
-        or spec.type != "relative"
-        or (statute is not None and statute[0] not in _PRIVATE_LAW_STATUTES)
-    ):
+    private_law = statute is not None and statute[0] in _PRIVATE_LAW_STATUTES
+    if ctx.court or spec.type != "relative" or not (private_law or (ctx.private_sender and statute is None)):
         return spec
     if spec.anchor == "deemed_delivery":
         return spec.model_copy(update={"anchor": "receipt", "anchor_date": None, "delivery_rule": "none"})
@@ -683,7 +726,7 @@ def _against_entered(named: _Anchor, ctx: RuleContext, trace: Trace) -> _Anchor:
             f"You entered {fmt_date(received)} as the day it was delivered; the letter as read names "
             f"{fmt_date(named.day)}. We count from the earlier day, the one you entered."
         )
-        return _Anchor(received, "receipt")
+        return _Anchor(received, "receipt", served=True)
     trace.soft(
         f"The letter as read names {fmt_date(named.day)} as the start; you entered {fmt_date(received)} as the "
         f"day it was delivered. We count from the earlier day, {fmt_date(named.day)} — check both against "
@@ -842,12 +885,12 @@ def _served(spec: DateSpec, ctx: RuleContext, trace: Trace) -> _Anchor | None:
         return _against_entered(_Anchor(explicit, "explicit"), ctx, trace)
     stated = parse_date(spec.anchor_date) if spec.anchor == "receipt" else None
     if stated is not None and (ctx.document_date is None or stated >= ctx.document_date):
-        return _resolve_anchor(spec, ctx, trace)
+        return _resolve_anchor(spec, ctx, trace, served=True)
     if ctx.received_confirmed and ctx.received_date:
         if spec.anchor in _OWN_DATE_ANCHORS and ctx.document_date is None:
             trace.hard(_undated_note(ctx.received_date))
-        return _Anchor(ctx.received_date, "receipt")
-    return _resolve_anchor(spec, ctx, trace)
+        return _Anchor(ctx.received_date, "receipt", served=True)
+    return _resolve_anchor(spec, ctx, trace, served=True)
 
 
 def _undated_note(received: date) -> str:
@@ -1088,6 +1131,11 @@ def _compute_relative(
     if no_delivery and late is None:
         trace.warnings.append(PRIVATE_SENDER_WARNING if from_receipt else PRIVATE_SENDER_DATED_WARNING)
     statute, statutory_periods = _statute(spec, ctx.letter_kind, labour_court=ctx.labour_court) or (None, ())
+    if statute == "kschg_4":
+        trace.cite.update(_BGB_COUNTING)
+    elif statute in _CIVIL_COURT or ctx.court:
+        labour = ctx.labour_court or statute in ("arbgg_46a", "arbgg_59")
+        trace.cite.update(_LABOUR_COURT_COUNTING if labour else _COURT_COUNTING)
     # Fines, penal orders and a court's letters run from formal service (yellow envelope, § 4 VwZG,
     # § 180 ZPO), never from the 4th-day fiction of ordinary authority letters: without the envelope
     # date the letter's own date is the earliest plausible start (legal research

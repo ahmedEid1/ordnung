@@ -33,7 +33,15 @@ from evals.ask.questions import (  # noqa: E402
     load_truth,
     truth_values,
 )
-from evals.ask.report import pct, render, results_payload  # noqa: E402
+from evals.ask.report import (  # noqa: E402
+    latest_results,
+    pct,
+    render,
+    results_payload,
+    stale_docs,
+    write_docs,
+    write_results,
+)
 from evals.ask.run import Config, run  # noqa: E402
 from evals.ask.score import (  # noqa: E402
     SUSPICION,
@@ -521,6 +529,21 @@ def test_a_run_records_then_replays_exactly(tmp_path: Path) -> None:
     missing = run(Config(only=only, recorded_dir=tmp_path / "nothing-recorded"), work_dir=tmp_path)
     assert len(missing.misses) == 4 and missing.summary["not_answered"] == 4
     assert not replayed.stale
+
+    # review round 1: the committed page must be what the replay writes (--check-docs)
+    results_dir, docs = tmp_path / "results", tmp_path / "evals-ask.md"
+    make = lambda day: results_payload(replayed, run_date=day)  # noqa: E731
+    assert stale_docs(make, results_dir, "sonnet", docs) == [
+        f"no committed results file for sonnet in {results_dir}"
+    ]
+    written = write_results(make("2026-09-26"), results_dir)
+    write_docs(make("2026-09-26"), docs)
+    assert latest_results(results_dir, "sonnet") == written
+    assert stale_docs(make, results_dir, "sonnet", docs) == []
+    docs.write_text(
+        docs.read_text(encoding="utf-8").replace("## Headline", "## Old headline"), encoding="utf-8"
+    )
+    assert stale_docs(make, results_dir, "sonnet", docs) == ["evals-ask.md is not what this replay writes"]
 
 
 def test_a_replay_fails_when_the_tools_would_answer_differently(tmp_path: Path) -> None:

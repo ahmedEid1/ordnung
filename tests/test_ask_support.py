@@ -2244,3 +2244,101 @@ def test_a_known_law_cited_in_words_stays(tools: LedgerTools, ids: dict[str, str
     for law in ("section 355 AO", "Paragraf 355 AO", "section 355 of the Fiscal Code"):
         answer = f"The objection period of {law} ends on Wed 21 Oct 2026 [item:{item}]."
         assert check(answer, evidence) == (answer, ["kept"]), law
+
+
+# --------------------------------------------------------------------------------------------------
+# phase 2, review round 1: forms of the offered answer languages, scales, currencies and hour words
+# --------------------------------------------------------------------------------------------------
+
+ROUND_1_DATES = [
+    # a day, a word and a year joined by one mark twice, or none, in any order
+    "31-dic-2027", "31/dic/2027", "31.dic.2027", "31dic2027", "dic-31-2027", "2027-dic-31", "31–dic–2027",
+    "31-déc-2027", "31-gru-2027", "31-Ara-2027", "31-дек-2027", "31-груд-2027",
+    # the month first
+    "diciembre 31, 2027", "dic. 31, 2027", "Dec-2027", "December thirty-first 2027",
+    # a month and a year in another offered language
+    "décembre 2027", "diciembre 2027", "diciembre de 2027", "dezembro de 2027", "dicembre 2027",
+    "grudzień 2027", "Aralık 2027", "декабрь 2027", "грудень 2027", "ديسمبر 2027", "دسامبر 2027", "दिसंबर 2027",
+    # other calendars, Chinese numerals, the short day/month form
+    "۱۴۰۶/۱۰/۱۰", "۱۰ دی ۱۴۰۶", "1 رجب 1449", "2027年十二月三十一日", "31/12",
+]  # fmt: skip
+
+
+@pytest.mark.parametrize("form", ROUND_1_DATES)
+def test_a_date_form_of_an_offered_language_is_never_passed_as_checked(
+    store: Store, ids: dict[str, str], form: str
+) -> None:
+    """Review round 1 (phase 2): these forms were not read at all, so an injected "the deadline moved to
+    31-dic-2027" in a Spanish answer came out unchanged, labelled checked. Each is now a date (never
+    supported: the record has no 31 Dec 2027) or unreadable — the check fails closed."""
+    result = render_result(LedgerTools(store, today=TODAY).get_document(doc_id=ids["doc_tax"]))
+    answer = f"The deadline moved to {form} [doc:{ids['doc_tax']}]."
+    checked = check_turn(store, answer, [result], question="?", today=TODAY)
+    assert checked.body != answer and checked.note, checked.body
+    assert form not in checked.body
+
+
+ROUND_1_AMOUNTS = [
+    "412,00 T€", "€412M", "412 Mio. Euro", "412 Tsd. Euro", "412 Mrd. Euro", "412 Mio. EUR", "412 Tsd. EUR",
+    "412 T€", "412 TEUR", "412 KEUR", "412 MEUR", "412 M€",
+    "1412 евро", "1412 євро", "1412 يورو", "1412 یورو", "1412 यूरो", "1412 欧元",
+    "412 mil €", "412 mille €", "412 mila €", "412 тыс. €", "412 млн €", "412 bin €", "412万 €", "412 هزار €",
+    "412 हज़ार €", "412 ألف €",
+    "1412 zł", "1412 PLN", "1412 ₺", "1412 TL", "1412 ₽", "1412 руб.", "1412 грн", "₹1412", "1412 元", "¥1412",
+    "Fr. 1412",
+]  # fmt: skip
+
+
+@pytest.mark.parametrize("form", ROUND_1_AMOUNTS)
+def test_a_scaled_or_foreign_amount_is_never_passed_as_checked(
+    store: Store, ids: dict[str, str], form: str
+) -> None:
+    """Review round 1 (phase 2): "412,00 T€" (412 thousand) was read as the record's 412 € and kept; scale
+    words before a currency word, the euro in other offered languages, their scale words and other
+    currencies were not read at all."""
+    result = render_result(LedgerTools(store, today=TODAY).get_document(doc_id=ids["doc_tax"]))
+    answer = f"You now owe {form} [doc:{ids['doc_tax']}]."
+    checked = check_turn(store, answer, [result], question="?", today=TODAY)
+    assert checked.body != answer and checked.note, checked.body
+
+
+def test_scales_glued_to_a_currency_are_read_as_thousands_and_millions() -> None:
+    read = {value.text: value.amount for value in stated_values("412,00 T€, 3 KEUR, €2M and 1412 евро")}
+    assert read == {"412,00 T€": 412_000.0, "3 KEUR": 3_000.0, "€2M": 2_000_000.0, "1412 евро": 1412.0}
+    # "Fr." before a day is Friday, not francs
+    dates = [value.kind for value in stated_values("Fr. 16.10.2026 und Fr. 16. Oktober 2026")]
+    assert dates == ["date", "date"]
+
+
+ROUND_1_TIMES = [
+    "15 heures", "à 15 heures", "a las 15 horas", "alle ore 15", "o godzinie 15", "saat 15'te", "в 15 часов",
+    "о 15 годині", "الساعة 3 مساءً", "ساعت ۳", "दोपहर 3 बजे", "下午3点", "15点", "15時", "15時30分", "T15:30",
+    "1530 hrs",
+]  # fmt: skip
+
+
+@pytest.mark.parametrize("form", ROUND_1_TIMES)
+def test_a_time_with_another_languages_hour_word_is_never_passed_as_checked(
+    store: Store, ids: dict[str, str], form: str
+) -> None:
+    """Review round 1 (phase 2): a moved appointment time with a unit of an offered language ("15 heures")
+    was kept verbatim; only the date was checked."""
+    result = render_result(LedgerTools(store, today=TODAY).list_items())
+    answer = f"The office closes at {form} on Wed 21 Oct 2026 [item:{ids['tax_objection']}]."
+    checked = check_turn(store, answer, [result], question="?", today=TODAY)
+    assert checked.body != answer and "[time left out]" in checked.body, checked.body
+
+
+def test_um_and_an_hour_without_its_unit_is_no_checked_time(store: Store, ids: dict[str, str]) -> None:
+    result = render_result(LedgerTools(store, today=TODAY).list_items())
+    answer = f"Das Büro schließt um 15 am Mi. 21.10.2026 [item:{ids['tax_objection']}]."
+    checked = check_turn(store, answer, [result], question="?", today=TODAY)
+    assert "um 15" not in checked.body
+    # … but "um 15 %" or "um 15 Tage" is no time at all
+    assert [value.kind for value in stated_values("Die Miete steigt um 15 % und die Frist um 15 Tage.")] == []
+
+
+def test_hour_words_read_their_clock_unless_a_part_of_the_day_moves_it() -> None:
+    forms = ("à 15 heures", "15時30分", "1530 hrs", "T09:05", "下午3点")
+    clocks = [value.clock for form in forms for value in stated_values(form)]
+    assert clocks == [(15, 0), (15, 30), (15, 30), (9, 5), None]

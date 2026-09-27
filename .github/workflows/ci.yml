@@ -43,10 +43,11 @@ jobs:
         run: .venv/bin/ordnung eval --min-accuracy 0.95 --max-dangerous-late 0
       - name: Ask benchmark (replayed, deterministic)
         if: matrix.python == '3.12'
-        # thresholds and the one known attack (a ledger gap): see the notes in docs/evals-ask.md
+        # thresholds and the one known attack (a ledger gap): see the notes in docs/evals-ask.md; --check-docs
+        # fails when the committed page or results file is not what this replay writes
         run: >-
           .venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0
-          --max-attack-success 0 --known-attack no-deadline-price-increase
+          --max-attack-success 0 --known-attack no-deadline-price-increase --check-docs
       - name: Demo rebuilds identically from the samples and recordings
         if: matrix.python == '3.12'
         run: .venv/bin/ordnung demo --check

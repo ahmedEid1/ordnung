@@ -816,7 +816,7 @@ def _compute_contract(
         return result(contract_closed_sentence(terms.status, end))
     if end is not None and _ends_by_itself(terms, regime):
         trace.step(f"Fixed term: it ends on {fmt_date(end)}", end, "fixed_term")
-        return result(contract_fixed_end_sentence(end, past=end < ctx.today))
+        return result(contract_fixed_end_sentence(end, past=end < ctx.today, regime=regime))
 
     inp = _Inputs(
         terms=terms,

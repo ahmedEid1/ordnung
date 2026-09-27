@@ -434,6 +434,8 @@ class LedgerTools:
             "id": entry.ref.id,
             "past": entry.past or None,
         }
+        item = self.store.get_item(entry.ref.id) if entry.ref.type == "item" else None
+        row["payment_note"] = payment_note(item) if item is not None else None
         if entry.amount is not None:
             note = self._unverified_amount(entry.ref.type, entry.ref.id)
             if note is None:
@@ -455,7 +457,7 @@ class LedgerTools:
 
     def money_summary(self) -> ToolAnswer:
         """Payments due this month, upcoming payments, payments with no stored due date, demands not to
-        pay, and fixed costs per month (active contracts).
+        pay, payments to decide on first, and fixed costs per month (active contracts).
 
         The totals are added up by code from *verified* amounts only (ADR 0003), so they are record
         values; how many unverified amounts they leave out is said next to them. Each fixed-cost row
@@ -465,14 +467,20 @@ class LedgerTools:
         what is due can name them; payment demands of letters with scam signs are listed apart too
         (``do_not_pay``, with their due dates), never among the payments (ADR 0006): not to be paid
         until the person has checked with the sender — the app's own scam Idea says the same, and a real
-        sender whose bank account changed shows the same signs.
+        sender whose bank account changed shows the same signs. A payment the app says to decide on before
+        paying — a rent increase's new rent (only owed once the person agrees, and paying it can count as
+        agreeing, § 558b Abs. 1 BGB) or a late statement's back-payment (may not be owed, § 556 Abs. 3 S. 3
+        BGB) — is listed apart too (``decide_before_paying``, with its ``payment_note``), never among the
+        upcoming payments and never in the totals (review round 1).
         """
         from ordnung.views import money_summary, payments_due_this_month
 
         ledger = self.ledger()
         summary = money_summary(ledger)
         verified = money_summary(
-            ledger, counts=lambda item: is_verified(item.grounding), counts_contract=_terms_verified
+            ledger,
+            counts=lambda item: is_verified(item.grounding) and payment_note(item) is None,
+            counts_contract=_terms_verified,
         )
         letters = LetterText()
         fixed = []
@@ -492,7 +500,11 @@ class LedgerTools:
                 )
                 row["terms_unverified"] = TERMS_UNVERIFIED
             fixed.append(row)
-        unverified_due = sum(1 for item in payments_due_this_month(ledger) if not is_verified(item.grounding))
+        unverified_due = sum(
+            1
+            for item in payments_due_this_month(ledger)
+            if not is_verified(item.grounding) and payment_note(item) is None
+        )
         unverified_fixed = sum(1 for row in fixed if row.get("terms_unverified"))
         record = {
             "today": ledger.today.isoformat(),
@@ -503,11 +515,15 @@ class LedgerTools:
             "fixed_costs_monthly_other_currencies": verified.fixed_costs_monthly_other_currencies or None,
             "fixed_costs_by_category": verified.by_category,
             "totals_leave_out": _left_out_note(unverified_due, unverified_fixed),
-            "upcoming_payments": [_item_row(ledger, item, letters) for item in summary.upcoming_payments],
+            "upcoming_payments": [
+                _item_row(ledger, item, letters)
+                for item in summary.upcoming_payments
+                if payment_note(item) is None
+            ],
             "payments_without_due_date": [
                 _item_row(ledger, item, letters)
                 for item in ledger.actionable_items()
-                if _pays_out(item) and not item.due_date
+                if _pays_out(item) and not item.due_date and payment_note(item) is None
             ],
             "do_not_pay": [
                 _item_row(ledger, item, letters)
@@ -516,6 +532,13 @@ class LedgerTools:
             ],
             "fixed_cost_contracts": fixed,
         }
+        decide = [
+            _item_row(ledger, item, letters)
+            for item in ledger.actionable_items()
+            if _pays_out(item) and payment_note(item) is not None and not ledger.is_suspicious_item(item)
+        ]
+        if decide:  # only when there are any: a ledger without them reads as it always did
+            record[DECIDE_BEFORE_PAYING] = decide
         return ToolAnswer(record, letters.by_id)
 
 
@@ -530,6 +553,25 @@ PARTY_LETTER_FIELDS = PARTY_FIELDS - {"id", "kind", "region"}
 
 def _pays_out(item: Item) -> bool:
     return item.kind == "payment" and item.direction != "in"
+
+
+DECIDE_BEFORE_PAYING = "decide_before_paying"
+"""The ``money_summary`` list of payments to decide on before paying (:func:`payment_note`)."""
+
+
+def payment_note(item: Item) -> str | None:
+    """The app's own note on a payment that may not be owed yet (``ingest.plan.payment_note``, in the
+    to-do's receipt): a rent increase's new rent is only owed once the person agrees (§ 558b Abs. 1 BGB), a
+    late statement's back-payment may not be owed (§ 556 Abs. 3 S. 3 BGB). Code-written, so it is part of
+    the record (``payment_note``), and the answer check repeats it under an answer that cites the to-do."""
+    from ordnung.rules.advice import LATE_STATEMENT_WARNING, RENT_INCREASE_PAYMENT_WARNING
+
+    if not _pays_out(item) or item.computation is None:
+        return None
+    warnings = item.computation.warnings
+    return next(
+        (note for note in (RENT_INCREASE_PAYMENT_WARNING, LATE_STATEMENT_WARNING) if note in warnings), None
+    )
 
 
 def _shareable(doc: Document) -> bool:
@@ -616,6 +658,7 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
         "contract_id": item.contract_id,
         "needs_check": item.grounding == "unverified" or None,
         "scam_warning": bool(scam) or None,
+        "payment_note": payment_note(item),
     }
     if item.amount is not None:
         note = _amount_note(item.grounding)
@@ -833,23 +876,30 @@ FLAT_LET_FIXED_TERM = (
     "For a flat let only where § 575 Abs. 1 BGB (a legal reason given in writing) or § 549 BGB allows a "
     "fixed term; otherwise the lease counts as open-ended — see if_not_cancelled."
 )
-"""What the ``fixed_term`` rule of the catalog means for a flat let (its title says contracts with a fixed
-term end by themselves, which § 575 Abs. 1 S. 2 BGB limits for residential leases)."""
+"""What the ``fixed_term`` rule of the catalog means for a flat let (contracts with a fixed term end by
+themselves, which § 575 Abs. 1 S. 2 BGB limits for residential leases)."""
 
 
 def _explain_contract(contract: Contract, comp: ContractComputation, *, today: date) -> ToolAnswer:
     """The engine's computation and rules; for a fixed-term job or flat let also ``if_not_cancelled``,
-    which its summary points to (ending it earlier, what makes it open-ended)."""
+    which its summary points to (ending it earlier, what makes it open-ended).
+
+    The steps repeat the terms they start from ("The first term runs from … to …"): for a contract whose
+    terms were read by AI or not found on the page (``terms_unverified``) they go to the letter text with
+    the terms (ADR 0008 point 1) — the dates the engine derives from them stay in the record, as in
+    ``list_contracts`` (review round 1)."""
     from ordnung.views import continuation, fixed_term_summary
 
     letters = LetterText()
     computation = comp.model_dump()
+    if not _terms_verified(contract):
+        letters.add(contract.id, steps=[step.get("label") for step in computation.pop("steps", [])])
     record: dict[str, Any] = {**_contract_ref(contract, letters), "computation": computation}
     rules = _rules(comp.rule_ids, comp.steps)
     if summary := fixed_term_summary(comp, today=today, active=contract.status == "active"):
         computation["summary"] = summary  # never "no cancellation needed" for a job or flat let
         record["if_not_cancelled"] = continuation(contract, comp, today=today)
-        if comp.regime == "rent573c":  # the catalog's "Fixed-term contracts end by themselves"
+        if comp.regime == "rent573c":  # the catalog's "Fixed-term contracts"
             for rule in rules:
                 if rule["id"] == "fixed_term":
                     rule["note"] = FLAT_LET_FIXED_TERM
@@ -1076,7 +1126,9 @@ def build_server(store: Store, *, today: date | None = None, rules_tools: bool =
         (payments_without_due_date, such as a rent whose day the letter did not give), payment demands
         of letters with scam signs (do_not_pay: not to be paid until the person has checked with the
         sender using contact details they already know — a real sender whose bank details changed shows
-        the same signs; if it is genuine, it is due on its due_date) and fixed costs per month."""
+        the same signs; if it is genuine, it is due on its due_date), payments to decide on before paying
+        (decide_before_paying: see each one's payment_note — not counted in the totals) and fixed costs per
+        month."""
         return answer(tools.money_summary)
 
     @tool

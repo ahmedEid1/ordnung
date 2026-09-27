@@ -202,10 +202,18 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   before the end, § 574b BGB; the 14-day withdrawal that only has to be sent, § 355 BGB), and
   `routing.derived_deadlines` adds the deadlines the law sets that the letter doesn't state (the
   three weeks of § 4 KSchG) as `origin="rule"` to-dos, unless one of the letter's own dates was
-  computed under that rule (a date that only mentions it, like a severance "if you don't sue",
-  isn't; nor is a court order's payment date, which is only half of "pay or object"). A court order
+  computed under that rule and is not later than the law's (a date that only mentions it, like a
+  severance "if you don't sue", isn't; nor is a court order's payment date, which is only half of "pay or
+  object"; a letter's own date later than the law's never hides the law's to-do). The three weeks of § 4
+  KSchG run from the dismissal's arrival whoever the employer is — a city or a university too, never with
+  an authority's delivery fiction — and a regional holiday moves their end only where it holds both at
+  the employer's seat and where the person lives (the action may be filed at the court of the place of
+  work, § 48 Abs. 1a ArbGG). Registering as job-seeking takes the earlier reading on the boundary day:
+  learning on 1 Oct of a job ending 31 Dec gives 1 Oct (three months still left on the reading that three
+  months before 31 Dec is 1 Oct), not three days later. A court order
   is only one when a court's letter (a kind of court by name, also in the genitive or abbreviated
-  before its place — "AG Hagen" — never any word ending in "gericht") asks the person to answer it (a
+  before its place — "AG Hagen", "SG Berlin", "VG Minden", a federal court's alone, "BGH" — never any word
+  ending in "gericht") asks the person to answer it (a
   Widerspruch/Einspruch remedy or an objection date) and its title or remedy says which — three
   signals, no list of exceptions: a bailiff's letter, the court's notices to a claimant and
   enforcement-stage letters state no such remedy or date. A date
@@ -219,7 +227,10 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   written at all (`termination_end`). Every letter from a court
   (`RuleContext.court`), whatever kind it is filed as, runs from delivery — never from an authority's
   4-day fiction — and is never `high`; a labour court's orders give one week (§ 46a Abs. 3, § 59 ArbGG;
-  `RuleContext.labour_court`), in their dates, to-dos, card and sending advice. A landlord's notice is
+  `RuleContext.labour_court`), in their dates, to-dos, card and sending advice. A served letter's one date
+  is "delivered" in its summary, warnings and card (the date on the yellow envelope), and its receipt cites
+  the court's counting rules (§ 222 Abs. 1 ZPO with §§ 187, 188 BGB; at a labour court through § 46 Abs. 2
+  ArbGG), not the AO's or the VwVfG's. A landlord's notice is
   one without notice period only when its own quote or the title says so, not negated, not only
   reserved (a reservation of the notice itself) or "mit (der) gesetzlichen / gesetzlicher Frist" (§ 573d BGB;
   "with statutory notice" in the title) said of the notice itself — not denied ("without statutory notice")
@@ -228,9 +239,14 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   objection letter (unless its own words give notice in the alternative — then the card and the letter's
   note say the objection is excluded against that one too when the grounds for the notice without notice
   period existed, BGH VIII ZR 323/18, so object anyway only if they didn't). Without a to-do computed under
-  § 574b (no notice period, no end read, or an ordinary notice whose objection date had passed when it was
-  written — the card then says so) the landlord's card is urgent and the verdict says "get advice
-  now"; once the person has closed every to-do that carries a high-stakes letter's legal deadline (the
+  § 574b (no notice period, or no end read) the landlord's card is urgent and the verdict says "get advice
+  now". An ordinary notice whose objection date had passed when it was written (an end too early for the
+  notice period) usually ends the tenancy at the next permissible date (§ 573c Abs. 1 BGB), so the
+  objection may still be open: a `low` to-do counts back two months from the earliest such end after the
+  notice arrived (`bgb_573c_landlord`), and the urgent card says both readings — if the end is right, the
+  landlord can't have told the tenant in time, so § 574b Abs. 2 S. 2 BGB applies; a notice without notice
+  period that gives notice *hilfsweise* with no end of its own (or only the immediate one) gets the same
+  to-do for the notice in the alternative. Once the person has closed every to-do that carries a high-stakes letter's legal deadline (the
   law's, or one citing a rule of its card — never the arrears a notice demands or a handover appointment)
   its card is no longer urgent and says so (`advice.handled`, which the verdict uses; never by a recurring
   to-do), stops asking for the delivery day and offers no letter, and the verdict says it is filed; a
@@ -239,7 +255,8 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   BGB). A rent increase is a
   consent request unless its own quote or title names another kind of increase or a quote says consent
   isn't needed; its payment to-dos say the higher rent is only owed once the person agrees (§ 558b Abs. 1
-  BGB), and the verdict never leads with "Pay" for it: "Decide before you pay" until the person closed the
+  BGB) and are never due before the start of the third calendar month after the request arrived (an
+  earlier start the letter names is noted, a later one kept), and the verdict never leads with "Pay" for it: "Decide before you pay" until the person closed the
   consent decision (which handles the letter), then "Only if you agreed …" — closing it doesn't say which
   way they decided. What a termination ends is decided by its contract, then the letter's kind, then the sender's (an
   employer's company flat is a landlord's notice); a court's abbreviation ("AG Hagen") counts only before a
@@ -260,7 +277,11 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   figures, words, ISO dates or months, or a billing year) and calls a statement late only when it
   certainly is: only a range the letter calls its billing period decides (any other range or a billing
   year: at most "probably"), and when the latest range found is the previous year's comparison nothing
-  is claimed. When it calls a statement (probably) late, the letter's one-off back-payments (never a
+  is claimed. A named billing year gives way only to a range that says which months it covers (one the
+  letter calls its billing period, or a split year's own months) — never to a cost item's service period
+  or the tenant's own time in the flat ("Nutzungszeitraum", "Mietdauer … (Auszug)"), which is never the
+  billing period: a tenant who moved out mid-year gets the landlord's period (§ 556 Abs. 3 S. 2 BGB). A
+  date near the end of the calendar (a mistyped year 9999) claims nothing, never an error. When it calls a statement (probably) late, the letter's one-off back-payments (never a
   credit or the new monthly prepayment) carry a "may not be owed — check before you pay" warning, the card
   is urgent and the verdict doesn't lead with Pay; nothing is dismissed. The rent cap is compared exactly, in cents. The person can correct a letter's kind on its
   page ("What kind of letter is this?"); a kind the person chose is kept when the letter is read again
@@ -379,7 +400,13 @@ HTML and without remote images.
 - **What the record says.** `money_summary` lists open payments with no stored due date and, apart, the
   demands of letters with scam signs (`do_not_pay`: not to be paid until the person has checked with
   the sender — a real sender whose bank details changed shows the same signs), with `today` and each
-  fixed-cost contract's category. `list_contracts` names a letter that says a contract is cancelled
+  fixed-cost contract's category. A payment the app says to decide on before paying — a rent increase's
+  new rent (only owed once the person agrees, and paying it can count as agreeing, § 558b Abs. 1 BGB) or
+  a late statement's back-payment (may not be owed, § 556 Abs. 3 S. 3 BGB) — carries the app's note in
+  its record (`payment_note`, in every row and timeline entry) and is listed apart too
+  (`decide_before_paying`), never among the upcoming payments or in the totals; the answer check repeats
+  the note, in the answer's language, under an answer that cites the to-do or its letter. `explain_date`
+  keeps an unverified contract's steps (which repeat its terms) in its letter text, like the terms. `list_contracts` names a letter that says a contract is cancelled
   only as `cancellation_letter` (pending the person's confirmation). `if_not_cancelled` (also in
   `explain_date` for a fixed-term job or flat let) says a job ends by itself on its date (§ 15 Abs. 1
   TzBfG); ending it earlier by ordinary notice needs an agreed notice clause (§ 15 Abs. 4 TzBfG), and a
@@ -394,11 +421,12 @@ HTML and without remote images.
   active job or flat let has passed, the record never says it "ended": it may continue by conduct
   (§ 15 Abs. 6 TzBfG, § 545 BGB), and a flat let without a written reason never had a fixed term (§ 575
   Abs. 1 S. 2 BGB).
-- **Release blocker (rules workstream).** The contract page still prints the rules engine's "ends by
-  itself — no cancellation needed" (`rules/explain.py`) for a fixed-term flat let, and the catalog's
-  `fixed_term` rule is titled "Fixed-term contracts end by themselves". The rules text must say what
-  Ask's record says before release (the sample life has no fixed-term lease, so neither the demo nor
-  the benchmark shows it).
+- **The contract page says the same** (resolved in review round 1 of phase 2): the rules engine's summary
+  of a fixed-term flat let says it ends without notice only with a written legal reason (§ 575 Abs. 1
+  BGB), else it counts as open-ended and needs notice; an active flat let or job past its end date "may not
+  have ended" (§ 575 Abs. 1 S. 2, § 545 BGB; § 15 Abs. 6 TzBfG), never "ended" (`rules/explain.py`); the
+  catalog's `fixed_term` rule is titled "Fixed-term contracts" and its text names § 575 BGB and the
+  continuation rules. The sample life has no fixed-term lease, so neither the demo nor the benchmark shows it.
 - **Nothing unchecked is shown.** The answer's words are never streamed: the UI and the CLI show only
   the tool trace (which tools ran, the words searched for with every word of a value the check reads —
   any word with a digit, a part of a month — shown as "…", and the date range looked at) and "Writing
@@ -410,8 +438,15 @@ HTML and without remote images.
   amount form of the policy. A run of digit groups shaped like a date that is no calendar date
   (`31.02.2027`, year 0), a number too long to be an amount, a day, one word and a year whose word is no
   month the check knows (`31 décembre 2027`: Ask answers in the question's language, the check knows
-  English and German month names), a day in words before a month, and a clock time moved by words
-  (`halb 10 Uhr`) are *unreadable* and never supported — never an exception. What stays unread is listed
+  English and German month names) — also joined by marks or none, or with the word first (`31-dic-2027`,
+  `dic-31-2027`) —, a month and year or a month before its day in another offered language (`décembre
+  2027`), an Islamic or Solar Hijri date, a month in Chinese numerals, a day and month joined by a slash
+  with no year (`31/12`), a day in words before or after a month, an amount in another currency or with
+  another language's scale word (`1412 zł`, `412 mil €`), an hour next to another language's part of the
+  day (`下午3点`), and a clock time moved by words (`halb 10 Uhr`) are *unreadable* and never supported —
+  never an exception. A scale glued to a currency (`412 T€`, `€412M`), the euro named in another script
+  (`1412 евро`) and an hour word of another offered language (`15 heures`, `15時30分`) are read as the
+  amount and time they are. What stays unread is listed
   in the policy's limits. The date forms the web formats inside an answer, its placeholders and its month
   words are lists both test suites read.
 - **What stays.** Each date, time or amount must be in the record part of a record its sentence cites
@@ -467,7 +502,11 @@ warning and one level less confidence. Whether the sender has deemed delivery at
 engine's rule, as in the app (a private sender's letter counts from its arrival — for a kind a public
 body may be filed as, or a period whose words name an administrative act, never later than from
 the day a letter usually counts as delivered; an unknown one, `other` included, keeps the earliest
-plausible deemed delivery). The spec help says how to pass a
+plausible deemed delivery). A court is a court by its name, as in the app (`routing.is_court`, whatever
+`sender_kind` the model passed — a court is no `PartyKind`): its periods run from formal service, never
+from a delivery fiction, are never `high`, a labour court's order gives one week, and a court order is
+recognised from the remedy and the period's own words by the app's policy; `assumed.delivery_law` then
+names formal service (§ 180 ZPO) and the hint asks for the envelope's date. The spec help says how to pass a
 formally served letter (yellow envelope: `anchor: receipt`, the envelope's date), and a result that
 applied deemed delivery to a posted letter says it would not apply then (a warning) and what to pass
 if it was (a hint). A stated posting or delivery day (`spec.anchor_date`) can only be checked against

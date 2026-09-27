@@ -34,7 +34,9 @@ Claude reads through it also reaches every other MCP server loaded there, throug
   name an administrative act, never later than from the day a letter usually counts as delivered; an
   unknown sender's keeps the earliest plausible deemed delivery; and an *Einspruch*, *Widerspruch* or
   *Klage* makes a letter an authority's only with a notice naming an administrative route — a
-  period's words alone never do), and which
+  period's words alone never do; a court is a court by its name, whatever kind a model passes it as —
+  formal service, never a delivery fiction or `high`, a labour court's one week, and a court order read
+  from the remedy and the period's own words by the app's own policy), and which
   holidays of only part of a Land a date is counted back over, are the engine's rules, under its
   coverage gate, so a tool and the app give the same date and the same warnings for
   the same facts. What the tools add is about the caller, not the law: checks on the arrival day,

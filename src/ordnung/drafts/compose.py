@@ -482,10 +482,18 @@ _NO_EXTENSION: dict[str, str] = {
         "can't extend them. Get advice now (see the card on the letter)."
     ),
 }
+#: An offer to pay in instalments acknowledges the claim (review round 1): the limitation period starts again
+#: (§ 212 Abs. 1 Nr. 1 BGB), the claim is hard to dispute later, and a payment on a time-barred claim can't be
+#: reclaimed (§ 214 Abs. 2 BGB) — the card of a court order says old claims may be time-barred.
+ACKNOWLEDGES_CLAIM = (
+    "Offering instalments acknowledges the claim: the limitation period starts again (§ 212 Abs. 1 Nr. 1 BGB) "
+    "and it is hard to dispute later — and money paid on a time-barred claim can't be reclaimed (§ 214 Abs. 2 "
+    "BGB). If you think the claim is wrong or time-barred, object or get debt advice first."
+)
 _COURT_INSTALMENTS = (
-    "A court doesn't agree instalments — the claimant does. Write to the claimant instead (choose them as the "
-    "recipient, without the letter), and still pay or object by the court's deadline: an offer to pay in "
-    "instalments doesn't stop the order."
+    "A court doesn't agree instalments — the claimant does. Write to the claimant instead (the order names them "
+    "as the Antragsteller), and still pay or object by the court's deadline: an offer to pay in instalments "
+    f"doesn't stop the order. {ACKNOWLEDGES_CLAIM}"
 )
 
 
@@ -1122,10 +1130,10 @@ def _kind_notes(plan: Plan, sources: Sources) -> list[str]:
     notes = list(_TEMPLATE_NOTES.get(plan.kind, ()))
     if plan.kind == "payment_plan":
         tax = sources.party is not None and sources.party.kind == "tax_office"
-        notes.append(
-            "The tax office usually charges interest on a deferral."
+        notes += (
+            ["The tax office usually charges interest on a deferral."]
             if tax
-            else "Until they agree, the full amount stays due."
+            else ["Until they agree, the full amount stays due.", ACKNOWLEDGES_CLAIM]
         )
     if plan.kind == "deposit_return" and not sources.profile.iban:
         notes.append("Add your IBAN in Settings → Profile, or type it where the letter says [IBAN].")
