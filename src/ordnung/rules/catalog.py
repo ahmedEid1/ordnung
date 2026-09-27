@@ -595,12 +595,35 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
     ),
 ]
 
-RULES: dict[str, RuleInfo] = {
-    rid: RuleInfo(
-        id=rid, title=title, citation=citation, summary=summary, url=url, effective_from=effective_from
-    )
-    for rid, title, citation, summary, url, effective_from in _RULES
+#: The groups of the "How dates are computed" screen: each starts at its rule and runs to the next.
+TOPIC_STARTS: dict[str, str] = {
+    "bgb_187_1": "Counting periods",
+    "ao_122_2_1": "When a letter counts as delivered",
+    "ao_355": "Objections and court action",
+    "bgb_309_9_new": "Contracts and notice",
+    "bgb_130": "Sending and form",
+    "enwg_41_5": "Price increases",
 }
+
+
+def _with_topics() -> dict[str, RuleInfo]:
+    rules: dict[str, RuleInfo] = {}
+    topic: str | None = None
+    for rid, title, citation, summary, url, effective_from in _RULES:
+        topic = TOPIC_STARTS.get(rid, topic)
+        rules[rid] = RuleInfo(
+            id=rid,
+            title=title,
+            citation=citation,
+            summary=summary,
+            url=url,
+            effective_from=effective_from,
+            topic=topic,
+        )
+    return rules
+
+
+RULES: dict[str, RuleInfo] = _with_topics()
 
 
 def list_rules() -> list[RuleInfo]:

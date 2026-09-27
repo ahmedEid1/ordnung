@@ -414,10 +414,12 @@ def _parsed(result: str) -> Any:
 def _log_removals(
     store: Store, message_id: str, thread_id: str, removed_ids: list[str], unsupported: list[str]
 ) -> None:
+    # the activity log reads without the chat next to it: say which answer ("in Ask") and why
     if removed_ids:
+        sources = "1 source" if len(removed_ids) == 1 else f"{len(removed_ids)} sources"
         store.log_activity(
             "ask.citations_removed",
-            f"Removed {len(removed_ids)} citation(s) from an answer: not found in what Ask looked up",
+            f"Checked an answer in Ask: took out {sources} it hadn't looked up",
             ref_type="chat",
             ref_id=message_id,
             data={"thread_id": thread_id, "ids": removed_ids},
@@ -425,7 +427,7 @@ def _log_removals(
     if unsupported:
         store.log_activity(
             "ask.sentences_removed",
-            "Removed sentences with dates, amounts or laws that are not in your records",
+            "Checked an answer in Ask: took out sentences with dates, amounts or laws not in your records",
             ref_type="chat",
             ref_id=message_id,
             data={"thread_id": thread_id, "unsupported": list(dict.fromkeys(unsupported))},

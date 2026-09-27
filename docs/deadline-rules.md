@@ -464,7 +464,9 @@ which is slightly more cautious than counting Saturday deliveries.
 ## 10. Rule catalog
 
 Every receipt step cites one of these rule ids (`catalog.RULES`, served at `/api/rules`; a test
-enforces that every id used by the engine exists here).
+enforces that every id used by the engine exists here). Settings → "How dates are computed" lists
+them under the topics of `catalog.TOPIC_STARTS` (counting periods, delivery, objections and court
+action, contracts, sending and form, price increases).
 
 | Id | Title | Citation | In force from | Link |
 |---|---|---|---|---|

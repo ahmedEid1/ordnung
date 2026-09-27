@@ -8089,6 +8089,18 @@
               }
             ],
             "title": "Effective From"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic",
+            "description": "The group it is listed under (“Counting periods”, “Price increases” …)"
           }
         },
         "type": "object",
@@ -8098,7 +8110,8 @@
           "citation",
           "summary",
           "url",
-          "effective_from"
+          "effective_from",
+          "topic"
         ],
         "title": "RuleInfo"
       },

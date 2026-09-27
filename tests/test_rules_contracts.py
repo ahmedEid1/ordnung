@@ -902,6 +902,16 @@ def test_catalog_entries_are_complete() -> None:
         catalog.get_rule("nope")
 
 
+def test_every_rule_is_listed_under_a_topic_in_one_run() -> None:
+    """The settings screen groups the rules by topic: every rule has one and each topic is one block."""
+    assert set(catalog.TOPIC_STARTS) <= set(catalog.RULES)
+    topics = [rule.topic for rule in catalog.list_rules()]
+    assert None not in topics
+    runs = [topic for i, topic in enumerate(topics) if i == 0 or topic != topics[i - 1]]
+    assert runs == list(catalog.TOPIC_STARTS.values())
+    assert catalog.get_rule("tkg_57").topic == "Price increases"
+
+
 def test_rule_maps_only_use_catalog_ids() -> None:
     """Rule ids are validated when used (Trace.use, catalog.citation); the static maps are checked here."""
     from ordnung.rules import contracts, deadlines, delivery
