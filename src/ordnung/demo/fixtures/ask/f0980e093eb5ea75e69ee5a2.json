@@ -11,15 +11,15 @@
     "prompt_head": "The person asks:\nWhen does my residence permit expire, and what should I do before then?\n"
   },
   "response": {
-    "text": "Your residence permit (Aufenthaltserlaubnis) expires **Mon 30 Nov 2026** [item:itm_p0k64jp7r8bf].\n\nWhat to do before then:\n\n- **Attend the extension appointment**: Wed 14 Oct 2026, 10:30 at the Ausländerbehörde [item:itm_64wce6sh2rpp]. Bring the required original documents — passport, enrolment certificate, proof of financing, health insurance proof, biometric photo, and rental contract.\n- **Pay the €100.00 fee** on site by card at the same appointment, Wed 14 Oct 2026, 10:30 [item:itm_wj2v05avgk1m].\n- **File the extension application before the permit expires** — the record notes that without a timely extension request, lawful residence status ends when the permit expires [item:itm_p0k64jp7r8bf].\n- **If you can't make the appointment**, cancel it early — the note says at least three business days beforehand [item:itm_5frk207bsfq1].\n\nA couple of things worth being aware of (from the letter itself, so please double‑check against the original if it matters to you):\n\n- The letter states that if the extension application is filed in time, your stay is deemed to continue under §81(4) AufenthG until a decision is made — this is only in the letter text, not a separate Ordnung-tracked date, so I can't cite a specific record date for it.\n- The letter also flags that a residence permit generally cannot be granted beyond your passport's validity, so it's worth checking your passport expiry yourself.\n\nIf this is time-sensitive or you're unsure about anything, it may be worth getting advice (e.g., from the Ausländerbehörde directly or an immigration advisor).",
+    "text": "Your residence permit expires on **Mon 30 Nov 2026** [item:itm_p0k64jp7r8bf].\n\nBefore then, according to the Ausländerbehörde's letter [doc:doc_d9hwr1mp3bsj]:\n\n- **Attend your appointment**: Wed 14 Oct 2026, 10:30 [item:itm_64wce6sh2rpp], at the Ausländerbehörde, Musterplatz 1, Room 2.14, to apply for the extension. Bring original documents: passport, current enrolment certificate, proof you can finance your stay, health insurance proof, a biometric photo, and your rental contract/landlord confirmation.\n- **Pay the fee**: 100.00 € on site by girocard (no cash) [item:itm_wj2v05avgk1m].\n- **File the extension before the permit expires**: the application must be filed at or before the appointment and before the expiry date [item:itm_p0k64jp7r8bf]. If you do this in time, your stay is generally deemed to continue until a decision is made — but check your contract/letter for the exact legal basis, and make sure your passport itself stays valid long enough, since a permit typically cannot outlast it.\n- **If you can't make the appointment**: cancel at least three business days beforehand [item:itm_5frk207bsfq1].\n\nYou can mark these done or add the appointment to your calendar directly in Ordnung once handled.",
     "data": null,
     "usage": {
       "input_tokens": 6,
-      "output_tokens": 719,
-      "cache_read_tokens": 16853,
-      "cache_creation_tokens": 5093,
-      "cost_usd": 0.0309446,
-      "duration_ms": 13430,
+      "output_tokens": 600,
+      "cache_read_tokens": 16827,
+      "cache_creation_tokens": 5052,
+      "cost_usd": 0.0295854,
+      "duration_ms": 13559,
       "turns": 3
     },
     "model": "claude-sonnet-5",
@@ -31,7 +31,7 @@
       "type": "tool_use",
       "name": "mcp__ordnung__search",
       "input": {
-        "query": "Aufenthaltstitel residence permit"
+        "query": "residence permit"
       }
     },
     {
@@ -47,7 +47,7 @@
     },
     {
       "type": "tool_result",
-      "text": "<ordnung_record>\n{\"id\":\"doc_d9hwr1mp3bsj\",\"kind\":\"residence_permit\",\"date\":\"2026-09-16\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-18\",\"language\":\"de\",\"party_id\":\"pty_7jmdemeegmw0\",\"case_id\":\"cas_5pe7rm7svq3r\",\"urgency\":\"high\",\"pages\":1,\"items\":[{\"id\":\"itm_64wce6sh2rpp\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_wj2v05avgk1m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"send_by\":\"2026-10-13\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"amount\":100.0,\"currency\":\"EUR\"},{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2026-11-30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_5frk207bsfq1\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_64wce6sh2rpp\":{\"title\":\"Appointment at Ausländerbehörde for residence permit extension\",\"action\":\"Bring the required original documents (passport, enrolment certificate, proof of financing, health insurance proof, biometric photo, rental contract) and pay the €100 fee by girocard on site.\",\"location\":\"Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14, 12345 Musterstadt\"},\"pty_7jmdemeegmw0\":{\"name\":\"Stadt Musterstadt – Ausländerbehörde\"},\"itm_wj2v05avgk1m\":{\"title\":\"Fee for residence permit extension application\",\"action\":\"Pay the €100 fee on site at the appointment by girocard (cash is not accepted).\"},\"itm_p0k64jp7r8bf\":{\"title\":\"Residence permit (Aufenthaltserlaubnis) expires\",\"action\":\"Make sure the extension application is filed at or before the appointment, before this expiry date.\",\"consequence\":\"Without a timely extension request, lawful residence status ends when the permit expires.\"},\"itm_5frk207bsfq1\":{\"title\":\"Cancel appointment early if unable to attend\",\"action\":\"If you cannot attend, cancel the appointment at least three business days beforehand.\"},\"doc_d9hwr1mp3bsj\":{\"title\":\"Invitation to Appointment – Extension of Residence Permit\",\"summary\":\"The Ausländerbehörde (immigration office) of Stadt Musterstadt invites Sam Rivera to an appointment on 14.10.2026 at 10:30 to apply for an extension of his student residence permit (Aufenthaltserlaubnis), which is valid until 30.11.2026. A €100 fee, payable only by card, is due at the appointment, and required original documents must be brought along.\",\"explanation\":\"The Ausländerbehörde (immigration office) has scheduled you an appointment on 14.10.2026 at 10:30 to apply for the extension of your student residence permit (Aufenthaltserlaubnis), which is valid until 30.11.2026. Bring all listed original documents and pay the €100 fee by card only (no cash). If you file the extension application before your current permit expires, your stay is deemed to continue until a decision is made (§ 81 Abs. 4 AufenthG) — but check that your passport also stays valid long enough, since a permit cannot outlast it. If you cannot make the appointment, cancel at least three business days in advance so the slot can be reassigned. If you neither attend nor apply in time, your legal stay could lapse when the current permit expires.\",\"key_facts\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.2-AE-24-08815\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Aufenthaltserlaubnis gültig bis\",\"value\":\"30.11.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Termin\",\"value\":\"14.10.2026, 10:30 Uhr\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Gebühr\",\"value\":\"100,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Fortgeltungsfiktion\",\"value\":\"Aufenthaltserlaubnis gilt bei rechtzeitigem Antrag bis zur Entscheidung fort\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.2-AE-24-08815\"}],\"text\":\"=== Page 1 ===\\nStadt Musterstadt   Amt für Migration und Integration\\nAusländerbehörde\\nDer Oberbürgermeister\\n\\nAktenzeichen\\n32.2-AE-24-08815\\nStadt Musterstadt · Ausländerbehörde · Musterplatz 1 · 12345 Musterstadt   Auskunft erteilt\\nFrau Kaya, Zimmer 2.14\\nHerrn   Telefon\\nSam Rivera   0123 400-3214\\nBeispielweg 5   E-Mail\\nabh@musterstadt.example\\n12345 Musterstadt\\nDatum\\n16.09.2026\\n\\nAblauf Ihrer Aufenthaltserlaubnis am 30.11.2026 – Einladung zur Vorsprache\\n\\nSehr geehrter Herr Rivera,\\n\\nIhre Aufenthaltserlaubnis zum Zweck des Studiums nach § 16b Abs. 1 des Aufenthaltsgesetzes\\n(AufenthG) ist bis zum 30.11.2026 gültig. Wenn Sie Ihren Aufenthalt über diesen Zeitpunkt hinaus\\nfortsetzen möchten, müssen Sie vor Ablauf der Gültigkeit die Verlängerung beantragen. Für die\\nAntragstellung haben wir für Sie folgenden Termin reserviert:\\n\\nIhr Termin\\n\\nTermin: Mittwoch, 14.10.2026, 10:30 Uhr\\nOrt: Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14\\n\\nBitte bringen Sie zu dem Termin folgende Unterlagen im Original mit:\\n• Ihren gültigen Reisepass\\n• die aktuelle Immatrikulationsbescheinigung für das Wintersemester 2026/27\\n• einen Nachweis über die Sicherung des Lebensunterhalts (Finanzierungsnachweis), z. B. Sperrkonto,\\nStipendienzusage oder Arbeitsvertrag mit den letzten drei Gehaltsabrechnungen\\n• einen Nachweis über ausreichenden Krankenversicherungsschutz\\n• ein aktuelles biometrisches Lichtbild (35 × 45 mm)\\n• Ihren Mietvertrag oder eine Wohnungsgeberbestätigung\\n• die Gebühr in Höhe von 100,00 € (Zahlung vor Ort mit girocard; Barzahlung ist nicht möglich)\\n\\nWird der Antrag auf Verlängerung vor Ablauf der Aufenthaltserlaubnis gestellt, gilt diese bis zur\\nEntscheidung der Ausländerbehörde als fortbestehend (§ 81 Abs. 4 AufenthG). Ein Aufenthaltstitel\\nkann grundsätzlich nicht über die Gültigkeitsdauer Ihres Reisepasses hinaus erteilt werden; bitte\\nprüfen Sie daher rechtzeitig Ihren Pass.\\n\\nKönnen Sie den Termin nicht wahrnehmen, sagen Sie ihn bitte spätestens drei Werktage vorher ab.\\n\\nMit freundlichen Grüßen\\nIm Auftrag\\n\\nKaya\\n\\nStadt Musterstadt   Barrierefreier Zugang   Stadtkasse Musterstadt\\nMusterplatz 1 · 12345 Musterstadt   Eingang Rathausgasse   Sparkasse Musterstadt\\nwww.musterstadt.example   Bus/Tram: Haltestelle Rathaus   IBAN DE51 1234 5600 0000 1000 17\\nBIC MUSKDEM1XXX\"}}\n</untrusted_document>"
+      "text": "<ordnung_record>\n{\"id\":\"doc_d9hwr1mp3bsj\",\"kind\":\"residence_permit\",\"date\":\"2026-09-16\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-18\",\"language\":\"de\",\"party_id\":\"pty_7jmdemeegmw0\",\"case_id\":\"cas_5pe7rm7svq3r\",\"urgency\":\"high\",\"pages\":1,\"items\":[{\"id\":\"itm_64wce6sh2rpp\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_wj2v05avgk1m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"amount\":100.0,\"currency\":\"EUR\"},{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2026-11-30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_5frk207bsfq1\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_64wce6sh2rpp\":{\"title\":\"Appointment at Ausländerbehörde for residence permit extension\",\"action\":\"Bring the required original documents (passport, enrolment certificate, proof of financing, health insurance proof, biometric photo, rental contract) and pay the €100 fee by girocard on site.\",\"location\":\"Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14, 12345 Musterstadt\"},\"pty_7jmdemeegmw0\":{\"name\":\"Stadt Musterstadt – Ausländerbehörde\"},\"itm_wj2v05avgk1m\":{\"title\":\"Fee for residence permit extension application\",\"action\":\"Pay the €100 fee on site at the appointment by girocard (cash is not accepted).\"},\"itm_p0k64jp7r8bf\":{\"title\":\"Residence permit (Aufenthaltserlaubnis) expires\",\"action\":\"Make sure the extension application is filed at or before the appointment, before this expiry date.\",\"consequence\":\"Without a timely extension request, lawful residence status ends when the permit expires.\"},\"itm_5frk207bsfq1\":{\"title\":\"Cancel appointment early if unable to attend\",\"action\":\"If you cannot attend, cancel the appointment at least three business days beforehand.\"},\"doc_d9hwr1mp3bsj\":{\"title\":\"Invitation to Appointment – Extension of Residence Permit\",\"summary\":\"The Ausländerbehörde (immigration office) of Stadt Musterstadt invites Sam Rivera to an appointment on 14.10.2026 at 10:30 to apply for an extension of his student residence permit (Aufenthaltserlaubnis), which is valid until 30.11.2026. A €100 fee, payable only by card, is due at the appointment, and required original documents must be brought along.\",\"explanation\":\"The Ausländerbehörde (immigration office) has scheduled you an appointment on 14.10.2026 at 10:30 to apply for the extension of your student residence permit (Aufenthaltserlaubnis), which is valid until 30.11.2026. Bring all listed original documents and pay the €100 fee by card only (no cash). If you file the extension application before your current permit expires, your stay is deemed to continue until a decision is made (§ 81 Abs. 4 AufenthG) — but check that your passport also stays valid long enough, since a permit cannot outlast it. If you cannot make the appointment, cancel at least three business days in advance so the slot can be reassigned. If you neither attend nor apply in time, your legal stay could lapse when the current permit expires.\",\"key_facts\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.2-AE-24-08815\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Aufenthaltserlaubnis gültig bis\",\"value\":\"30.11.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Termin\",\"value\":\"14.10.2026, 10:30 Uhr\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Gebühr\",\"value\":\"100,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Fortgeltungsfiktion\",\"value\":\"Aufenthaltserlaubnis gilt bei rechtzeitigem Antrag bis zur Entscheidung fort\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.2-AE-24-08815\"}],\"text\":\"=== Page 1 ===\\nStadt Musterstadt   Amt für Migration und Integration\\nAusländerbehörde\\nDer Oberbürgermeister\\n\\nAktenzeichen\\n32.2-AE-24-08815\\nStadt Musterstadt · Ausländerbehörde · Musterplatz 1 · 12345 Musterstadt   Auskunft erteilt\\nFrau Kaya, Zimmer 2.14\\nHerrn   Telefon\\nSam Rivera   0123 400-3214\\nBeispielweg 5   E-Mail\\nabh@musterstadt.example\\n12345 Musterstadt\\nDatum\\n16.09.2026\\n\\nAblauf Ihrer Aufenthaltserlaubnis am 30.11.2026 – Einladung zur Vorsprache\\n\\nSehr geehrter Herr Rivera,\\n\\nIhre Aufenthaltserlaubnis zum Zweck des Studiums nach § 16b Abs. 1 des Aufenthaltsgesetzes\\n(AufenthG) ist bis zum 30.11.2026 gültig. Wenn Sie Ihren Aufenthalt über diesen Zeitpunkt hinaus\\nfortsetzen möchten, müssen Sie vor Ablauf der Gültigkeit die Verlängerung beantragen. Für die\\nAntragstellung haben wir für Sie folgenden Termin reserviert:\\n\\nIhr Termin\\n\\nTermin: Mittwoch, 14.10.2026, 10:30 Uhr\\nOrt: Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14\\n\\nBitte bringen Sie zu dem Termin folgende Unterlagen im Original mit:\\n• Ihren gültigen Reisepass\\n• die aktuelle Immatrikulationsbescheinigung für das Wintersemester 2026/27\\n• einen Nachweis über die Sicherung des Lebensunterhalts (Finanzierungsnachweis), z. B. Sperrkonto,\\nStipendienzusage oder Arbeitsvertrag mit den letzten drei Gehaltsabrechnungen\\n• einen Nachweis über ausreichenden Krankenversicherungsschutz\\n• ein aktuelles biometrisches Lichtbild (35 × 45 mm)\\n• Ihren Mietvertrag oder eine Wohnungsgeberbestätigung\\n• die Gebühr in Höhe von 100,00 € (Zahlung vor Ort mit girocard; Barzahlung ist nicht möglich)\\n\\nWird der Antrag auf Verlängerung vor Ablauf der Aufenthaltserlaubnis gestellt, gilt diese bis zur\\nEntscheidung der Ausländerbehörde als fortbestehend (§ 81 Abs. 4 AufenthG). Ein Aufenthaltstitel\\nkann grundsätzlich nicht über die Gültigkeitsdauer Ihres Reisepasses hinaus erteilt werden; bitte\\nprüfen Sie daher rechtzeitig Ihren Pass.\\n\\nKönnen Sie den Termin nicht wahrnehmen, sagen Sie ihn bitte spätestens drei Werktage vorher ab.\\n\\nMit freundlichen Grüßen\\nIm Auftrag\\n\\nKaya\\n\\nStadt Musterstadt   Barrierefreier Zugang   Stadtkasse Musterstadt\\nMusterplatz 1 · 12345 Musterstadt   Eingang Rathausgasse   Sparkasse Musterstadt\\nwww.musterstadt.example   Bus/Tram: Haltestelle Rathaus   IBAN DE51 1234 5600 0000 1000 17\\nBIC MUSKDEM1XXX\"}}\n</untrusted_document>"
     },
     {
       "type": "text",
@@ -55,15 +55,11 @@
     },
     {
       "type": "text",
-      "text": "ence permit (A"
+      "text": "ence permit exp"
     },
     {
       "type": "text",
-      "text": "ufenthaltserla"
-    },
-    {
-      "type": "text",
-      "text": "ubnis) expires **"
+      "text": "ires on **"
     },
     {
       "type": "text",
@@ -71,15 +67,15 @@
     },
     {
       "type": "text",
-      "text": "on 30 "
+      "text": "on "
     },
     {
       "type": "text",
-      "text": "Nov 2026** ["
+      "text": "30 Nov 2026"
     },
     {
       "type": "text",
-      "text": "item"
+      "text": "** [item"
     },
     {
       "type": "text",
@@ -91,11 +87,11 @@
     },
     {
       "type": "text",
-      "text": "_p0k"
+      "text": "_p"
     },
     {
       "type": "text",
-      "text": "64"
+      "text": "0k64"
     },
     {
       "type": "text",
@@ -123,23 +119,79 @@
     },
     {
       "type": "text",
-      "text": "f].\n\nWhat"
+      "text": "f"
     },
     {
       "type": "text",
-      "text": " to"
+      "text": "].\n\nBefore then"
     },
     {
       "type": "text",
-      "text": " do before then"
+      "text": ", according to the Ausländ"
     },
     {
       "type": "text",
-      "text": ":\n\n- **Att"
+      "text": "erbehörde's"
     },
     {
       "type": "text",
-      "text": "end the extension appointment**"
+      "text": " letter [do"
+    },
+    {
+      "type": "text",
+      "text": "c:do"
+    },
+    {
+      "type": "text",
+      "text": "c_d9h"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "1"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "3"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "]:\n\n- **Attend"
+    },
+    {
+      "type": "text",
+      "text": " your"
+    },
+    {
+      "type": "text",
+      "text": " appointment**"
     },
     {
       "type": "text",
@@ -155,15 +207,15 @@
     },
     {
       "type": "text",
-      "text": "at the Ausländerb"
+      "text": "["
     },
     {
       "type": "text",
-      "text": "ehörde [item:itm"
+      "text": "item:itm_64"
     },
     {
       "type": "text",
-      "text": "_64w"
+      "text": "w"
     },
     {
       "type": "text",
@@ -199,83 +251,139 @@
     },
     {
       "type": "text",
-      "text": "]."
+      "text": "], at"
     },
     {
       "type": "text",
-      "text": " Bring the required"
+      "text": " the Ausländerbeh"
     },
     {
       "type": "text",
-      "text": " original documents — passport, en"
+      "text": "örde, Musterplat"
     },
     {
       "type": "text",
-      "text": "rolment certificate, pro"
+      "text": "z 1,"
     },
     {
       "type": "text",
-      "text": "of of financing"
+      "text": " Room"
     },
     {
       "type": "text",
-      "text": ", health"
+      "text": " 2."
     },
     {
       "type": "text",
-      "text": " insurance pro"
+      "text": "14, to apply for the ext"
     },
     {
       "type": "text",
-      "text": "of, bi"
+      "text": "ension."
     },
     {
       "type": "text",
-      "text": "ometric photo, and"
+      "text": " Bring original documents:"
     },
     {
       "type": "text",
-      "text": " rental cont"
+      "text": " passport, current"
     },
     {
       "type": "text",
-      "text": "ract.\n- **Pay"
+      "text": " enrolment certificate,"
     },
     {
       "type": "text",
-      "text": " the €"
+      "text": " pro"
     },
     {
       "type": "text",
-      "text": "100."
+      "text": "of you"
     },
     {
       "type": "text",
-      "text": "00 fee** on"
+      "text": " can fin"
     },
     {
       "type": "text",
-      "text": " site by card at the same"
+      "text": "ance your st"
     },
     {
       "type": "text",
-      "text": " appointment,"
+      "text": "ay,"
     },
     {
       "type": "text",
-      "text": " Wed 14 Oct"
+      "text": " health"
     },
     {
       "type": "text",
-      "text": " 2026, 10:30"
+      "text": " insurance proof, a"
     },
     {
       "type": "text",
-      "text": " [item:itm_w"
+      "text": " biometric photo, and your"
     },
     {
       "type": "text",
-      "text": "j2"
+      "text": " rental"
+    },
+    {
+      "type": "text",
+      "text": " cont"
+    },
+    {
+      "type": "text",
+      "text": "ract/land"
+    },
+    {
+      "type": "text",
+      "text": "lord confirmation."
+    },
+    {
+      "type": "text",
+      "text": "\n- **Pay the fee"
+    },
+    {
+      "type": "text",
+      "text": "**"
+    },
+    {
+      "type": "text",
+      "text": ": 100.00 € on"
+    },
+    {
+      "type": "text",
+      "text": " site by"
+    },
+    {
+      "type": "text",
+      "text": " gir"
+    },
+    {
+      "type": "text",
+      "text": "ocard ("
+    },
+    {
+      "type": "text",
+      "text": "no"
+    },
+    {
+      "type": "text",
+      "text": " cash) ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_w"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "2"
     },
     {
       "type": "text",
@@ -295,71 +403,139 @@
     },
     {
       "type": "text",
-      "text": "k"
+      "text": "k1m"
     },
     {
       "type": "text",
-      "text": "1"
+      "text": "].\n- **File"
     },
     {
       "type": "text",
-      "text": "m"
+      "text": " the"
     },
     {
       "type": "text",
-      "text": "]."
+      "text": " extension before the perm"
     },
     {
       "type": "text",
-      "text": "\n- **File"
+      "text": "it expires**: the application must"
     },
     {
       "type": "text",
-      "text": " the extension application before the"
+      "text": " be filed at"
     },
     {
       "type": "text",
-      "text": " permit expires** — the record"
+      "text": " or before the app"
     },
     {
       "type": "text",
-      "text": " notes that without"
+      "text": "ointment and"
     },
     {
       "type": "text",
-      "text": " a"
+      "text": " before the"
     },
     {
       "type": "text",
-      "text": " timely ext"
+      "text": " expiry date [item:it"
     },
     {
       "type": "text",
-      "text": "ension request, l"
+      "text": "m_p0k64jp"
     },
     {
       "type": "text",
-      "text": "awful resid"
+      "text": "7r8bf]. If"
     },
     {
       "type": "text",
-      "text": "ence status "
+      "text": " you"
     },
     {
       "type": "text",
-      "text": "ends when the permit expires ["
+      "text": " do this"
     },
     {
       "type": "text",
-      "text": "item:itm_p0k"
+      "text": " in"
     },
     {
       "type": "text",
-      "text": "64jp7r8bf"
+      "text": " time, your stay is"
     },
     {
       "type": "text",
-      "text": "].\n- **If you can't"
+      "text": " generally de"
+    },
+    {
+      "type": "text",
+      "text": "emed to continue until a"
+    },
+    {
+      "type": "text",
+      "text": " decision is made —"
+    },
+    {
+      "type": "text",
+      "text": " but check"
+    },
+    {
+      "type": "text",
+      "text": " your"
+    },
+    {
+      "type": "text",
+      "text": " cont"
+    },
+    {
+      "type": "text",
+      "text": "ract/let"
+    },
+    {
+      "type": "text",
+      "text": "ter for the exact leg"
+    },
+    {
+      "type": "text",
+      "text": "al basis, and make sure"
+    },
+    {
+      "type": "text",
+      "text": " your passport it"
+    },
+    {
+      "type": "text",
+      "text": "self stays valid long"
+    },
+    {
+      "type": "text",
+      "text": " enough,"
+    },
+    {
+      "type": "text",
+      "text": " since a perm"
+    },
+    {
+      "type": "text",
+      "text": "it typ"
+    },
+    {
+      "type": "text",
+      "text": "ically c"
+    },
+    {
+      "type": "text",
+      "text": "annot out"
+    },
+    {
+      "type": "text",
+      "text": "last it"
+    },
+    {
+      "type": "text",
+      "text": ".\n- **If you can't"
     },
     {
       "type": "text",
@@ -367,19 +543,11 @@
     },
     {
       "type": "text",
-      "text": " the appointment**, canc"
+      "text": " the appointment**:"
     },
     {
       "type": "text",
-      "text": "el it early"
-    },
-    {
-      "type": "text",
-      "text": " — the"
-    },
-    {
-      "type": "text",
-      "text": " note says at"
+      "text": " cancel at"
     },
     {
       "type": "text",
@@ -395,7 +563,11 @@
     },
     {
       "type": "text",
-      "text": "_5fr"
+      "text": "_5"
+    },
+    {
+      "type": "text",
+      "text": "fr"
     },
     {
       "type": "text",
@@ -411,11 +583,7 @@
     },
     {
       "type": "text",
-      "text": "s"
-    },
-    {
-      "type": "text",
-      "text": "f"
+      "text": "sf"
     },
     {
       "type": "text",
@@ -423,215 +591,23 @@
     },
     {
       "type": "text",
-      "text": "1].\n\nA couple of things"
+      "text": "1"
     },
     {
       "type": "text",
-      "text": " worth being aware of ("
+      "text": "].\n\nYou can mark these done"
     },
     {
       "type": "text",
-      "text": "from"
+      "text": " or add"
     },
     {
       "type": "text",
-      "text": " the letter it"
+      "text": " the"
     },
     {
       "type": "text",
-      "text": "self, so"
-    },
-    {
-      "type": "text",
-      "text": " please"
-    },
-    {
-      "type": "text",
-      "text": " double"
-    },
-    {
-      "type": "text",
-      "text": "‑check against the original if"
-    },
-    {
-      "type": "text",
-      "text": " it"
-    },
-    {
-      "type": "text",
-      "text": " matters to"
-    },
-    {
-      "type": "text",
-      "text": " you):"
-    },
-    {
-      "type": "text",
-      "text": "\n\n- The"
-    },
-    {
-      "type": "text",
-      "text": " letter states"
-    },
-    {
-      "type": "text",
-      "text": " that if the"
-    },
-    {
-      "type": "text",
-      "text": " extension application is filed in time"
-    },
-    {
-      "type": "text",
-      "text": ", your st"
-    },
-    {
-      "type": "text",
-      "text": "ay is"
-    },
-    {
-      "type": "text",
-      "text": " de"
-    },
-    {
-      "type": "text",
-      "text": "emed to continue under §"
-    },
-    {
-      "type": "text",
-      "text": "81("
-    },
-    {
-      "type": "text",
-      "text": "4) AufenthG until"
-    },
-    {
-      "type": "text",
-      "text": " a"
-    },
-    {
-      "type": "text",
-      "text": " decision is made — this is only"
-    },
-    {
-      "type": "text",
-      "text": " in"
-    },
-    {
-      "type": "text",
-      "text": " the letter text"
-    },
-    {
-      "type": "text",
-      "text": ", not a"
-    },
-    {
-      "type": "text",
-      "text": " separate Ordn"
-    },
-    {
-      "type": "text",
-      "text": "ung-tracked date"
-    },
-    {
-      "type": "text",
-      "text": ","
-    },
-    {
-      "type": "text",
-      "text": " so I"
-    },
-    {
-      "type": "text",
-      "text": " can"
-    },
-    {
-      "type": "text",
-      "text": "'t c"
-    },
-    {
-      "type": "text",
-      "text": "ite a"
-    },
-    {
-      "type": "text",
-      "text": " specific record"
-    },
-    {
-      "type": "text",
-      "text": " date"
-    },
-    {
-      "type": "text",
-      "text": " for it.\n- The"
-    },
-    {
-      "type": "text",
-      "text": " letter also flags that a"
-    },
-    {
-      "type": "text",
-      "text": " residence permit gener"
-    },
-    {
-      "type": "text",
-      "text": "ally c"
-    },
-    {
-      "type": "text",
-      "text": "annot be gran"
-    },
-    {
-      "type": "text",
-      "text": "ted be"
-    },
-    {
-      "type": "text",
-      "text": "yond your passport's validity"
-    },
-    {
-      "type": "text",
-      "text": ", so it's worth checking"
-    },
-    {
-      "type": "text",
-      "text": " your passport exp"
-    },
-    {
-      "type": "text",
-      "text": "iry y"
-    },
-    {
-      "type": "text",
-      "text": "ourself.\n\nIf this is time"
-    },
-    {
-      "type": "text",
-      "text": "-sensitive or"
-    },
-    {
-      "type": "text",
-      "text": " you're unsure about"
-    },
-    {
-      "type": "text",
-      "text": " an"
-    },
-    {
-      "type": "text",
-      "text": "ything, it may"
-    },
-    {
-      "type": "text",
-      "text": " be worth getting advice ("
-    },
-    {
-      "type": "text",
-      "text": "e.g., from the"
-    },
-    {
-      "type": "text",
-      "text": " Ausländerbehörde"
+      "text": " appointment to your calendar"
     },
     {
       "type": "text",
@@ -639,31 +615,31 @@
     },
     {
       "type": "text",
-      "text": "ly or an"
+      "text": "ly in Ordnung"
     },
     {
       "type": "text",
-      "text": " imm"
+      "text": " once"
     },
     {
       "type": "text",
-      "text": "igration adv"
+      "text": " hand"
     },
     {
       "type": "text",
-      "text": "isor)."
+      "text": "led."
     },
     {
       "type": "done",
       "response": {
-        "text": "Your residence permit (Aufenthaltserlaubnis) expires **Mon 30 Nov 2026** [item:itm_p0k64jp7r8bf].\n\nWhat to do before then:\n\n- **Attend the extension appointment**: Wed 14 Oct 2026, 10:30 at the Ausländerbehörde [item:itm_64wce6sh2rpp]. Bring the required original documents — passport, enrolment certificate, proof of financing, health insurance proof, biometric photo, and rental contract.\n- **Pay the €100.00 fee** on site by card at the same appointment, Wed 14 Oct 2026, 10:30 [item:itm_wj2v05avgk1m].\n- **File the extension application before the permit expires** — the record notes that without a timely extension request, lawful residence status ends when the permit expires [item:itm_p0k64jp7r8bf].\n- **If you can't make the appointment**, cancel it early — the note says at least three business days beforehand [item:itm_5frk207bsfq1].\n\nA couple of things worth being aware of (from the letter itself, so please double‑check against the original if it matters to you):\n\n- The letter states that if the extension application is filed in time, your stay is deemed to continue under §81(4) AufenthG until a decision is made — this is only in the letter text, not a separate Ordnung-tracked date, so I can't cite a specific record date for it.\n- The letter also flags that a residence permit generally cannot be granted beyond your passport's validity, so it's worth checking your passport expiry yourself.\n\nIf this is time-sensitive or you're unsure about anything, it may be worth getting advice (e.g., from the Ausländerbehörde directly or an immigration advisor).",
+        "text": "Your residence permit expires on **Mon 30 Nov 2026** [item:itm_p0k64jp7r8bf].\n\nBefore then, according to the Ausländerbehörde's letter [doc:doc_d9hwr1mp3bsj]:\n\n- **Attend your appointment**: Wed 14 Oct 2026, 10:30 [item:itm_64wce6sh2rpp], at the Ausländerbehörde, Musterplatz 1, Room 2.14, to apply for the extension. Bring original documents: passport, current enrolment certificate, proof you can finance your stay, health insurance proof, a biometric photo, and your rental contract/landlord confirmation.\n- **Pay the fee**: 100.00 € on site by girocard (no cash) [item:itm_wj2v05avgk1m].\n- **File the extension before the permit expires**: the application must be filed at or before the appointment and before the expiry date [item:itm_p0k64jp7r8bf]. If you do this in time, your stay is generally deemed to continue until a decision is made — but check your contract/letter for the exact legal basis, and make sure your passport itself stays valid long enough, since a permit typically cannot outlast it.\n- **If you can't make the appointment**: cancel at least three business days beforehand [item:itm_5frk207bsfq1].\n\nYou can mark these done or add the appointment to your calendar directly in Ordnung once handled.",
         "usage": {
           "input_tokens": 6,
-          "output_tokens": 719,
-          "cache_read_tokens": 16853,
-          "cache_creation_tokens": 5093,
-          "cost_usd": 0.0309446,
-          "duration_ms": 13430,
+          "output_tokens": 600,
+          "cache_read_tokens": 16827,
+          "cache_creation_tokens": 5052,
+          "cost_usd": 0.0295854,
+          "duration_ms": 13559,
           "turns": 3
         },
         "model": "claude-sonnet-5",

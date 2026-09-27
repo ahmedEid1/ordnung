@@ -346,5 +346,23 @@ def test_a_fixed_term_contract_ends_by_itself(category: str, notice: str, caveat
     else:
         assert text == "It ends by itself on Wed 31 Mar 2027; no cancellation is needed."
         assert summary is None
-    assert continuation(contract, comp, today=date(2027, 4, 2)) == "Its fixed term ended on Wed 31 Mar 2027."
-    assert fixed_term_summary(comp, today=date(2027, 4, 2)) is None
+    later = date(2027, 4, 2)
+    past = continuation(contract, comp, today=later)
+    past_summary = fixed_term_summary(comp, today=later)
+    if not notice:
+        assert past == "Its fixed term ended on Wed 31 Mar 2027." and past_summary is None
+        return
+    # final review 3: an active job or flat let past its end date was recorded as "ended", with none of
+    # the caveats — though it may never have ended (§ 575 Abs. 1 S. 2 BGB) or continue by conduct
+    assert past.startswith("Its fixed term's end date, Wed 31 Mar 2027, has passed. If you still ")
+    assert "ended on Wed 31 Mar 2027." not in past
+    assert ("(§ 15 Abs. 6 TzBfG)" if category == "employment" else "(§ 545 BGB)") in past
+    assert past_summary is not None and "has passed" in past_summary and "may" in past_summary
+    assert "ended on" not in past_summary
+    if category == "rent":
+        assert "(§ 575 Abs. 1 S. 2 BGB)" in past and "Check the contract or get advice." in past
+        # final review 3: a fixed term that fails § 575 is often read as a waiver of notice until its end
+        assert "VIII ZR 388/12" in text and "may not be possible" in text
+        assert summary is not None and "or earlier" not in summary
+    # a contract that is no longer active keeps the engine's "ended"
+    assert fixed_term_summary(comp, today=later, active=False) is None

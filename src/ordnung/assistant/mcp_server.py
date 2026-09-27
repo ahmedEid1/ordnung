@@ -281,7 +281,12 @@ class LedgerTools:
         ref_id = item_or_contract_id.strip()
         if ref_id.startswith("itm_"):
             item = self.store.get_item(ref_id)
-            return _not_found("item", ref_id) if item is None else _explain_item(item)
+            if item is None:
+                return _not_found("item", ref_id)
+            in_person = (
+                item.kind == "payment" and bool(item.due_time) and paid_at_appointment(self.ledger(), item)
+            )
+            return _explain_item(item, in_person=in_person)
         if ref_id.startswith("ctr_"):
             contract = self.store.get_contract(ref_id)
             if contract is None:
@@ -597,7 +602,7 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
         "overdue": is_overdue(item, ledger.today) or None,
         "due_date": item.due_date,
         "due_time": _clock_time(item.due_time, letters, item.id),
-        "send_by": item.send_by,
+        "send_by": None if paid_at_appointment(ledger, item) else item.send_by,
         "date_source": item.due_date_source if item.due_date else None,
         "direction": item.direction,
         "priority": item.priority,
@@ -616,6 +621,18 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
             letters.add(item.id, amount=item.amount, currency=item.currency)
             row["amount_unverified"] = note
     return row
+
+
+def paid_at_appointment(ledger: Ledger, item: Item) -> bool:
+    """Whether a payment is made in person at an appointment: it has a clock time, and its letter sets an
+    appointment on the same day. Its send-by date is a bank transfer's (§ 675s BGB), which means nothing
+    there, so Ask's record leaves it out — the model gave it as the day to cancel the appointment by."""
+    if item.kind != "payment" or not item.due_time or item.doc_id is None:
+        return False
+    return any(
+        other.kind == "appointment" and other.doc_id == item.doc_id and other.due_date == item.due_date
+        for other in ledger.items
+    )
 
 
 AMOUNT_READ_BY_AI = (
@@ -727,7 +744,7 @@ def _contract_row(ledger: Ledger, contract: Contract, letters: LetterText) -> di
         else None,
         "source_doc_id": contract.source_doc_id,
     }
-    if summary := fixed_term_summary(comp, today=ledger.today):
+    if summary := fixed_term_summary(comp, today=ledger.today, active=contract.status == "active"):
         row["dates"]["summary"] = summary
     cost = (
         {
@@ -779,8 +796,9 @@ def _cites_document(contract: Contract, doc_id: str) -> bool:
     return contract.source_doc_id == doc_id or any(ev.doc_id == doc_id for ev in contract.evidence)
 
 
-def _explain_item(item: Item) -> ToolAnswer:
-    """The receipt, how the date was made and the rules are code; the wording and quotes are letter text."""
+def _explain_item(item: Item, *, in_person: bool = False) -> ToolAnswer:
+    """The receipt, how the date was made and the rules are code; the wording and quotes are letter text.
+    ``in_person``: a payment made at an appointment (:func:`paid_at_appointment`) gets no send-by date."""
     receipt = item.computation
     spec = item.date_spec
     letters = LetterText()
@@ -795,7 +813,7 @@ def _explain_item(item: Item) -> ToolAnswer:
         "kind": item.kind,
         "due_date": item.due_date,
         "due_time": _clock_time(item.due_time, letters, item.id),
-        "send_by": item.send_by,
+        "send_by": None if in_person else item.send_by,
         "doc_id": item.doc_id,
         "how": _DATE_SOURCES[item.due_date_source],
         "grounding": [ev.grounding for ev in item.evidence],
@@ -824,7 +842,7 @@ def _explain_contract(contract: Contract, comp: ContractComputation, *, today: d
     computation = comp.model_dump()
     record: dict[str, Any] = {**_contract_ref(contract, letters), "computation": computation}
     rules = _rules(comp.rule_ids, comp.steps)
-    if summary := fixed_term_summary(comp, today=today):
+    if summary := fixed_term_summary(comp, today=today, active=contract.status == "active"):
         computation["summary"] = summary  # never "no cancellation needed" for a job or flat let
         record["if_not_cancelled"] = continuation(contract, comp, today=today)
         if comp.regime == "rent573c":  # the catalog's "Fixed-term contracts end by themselves"

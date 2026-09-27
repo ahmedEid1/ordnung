@@ -17,7 +17,7 @@ from mcp.client import Client
 from mcp.client.stdio import StdioServerParameters
 from mcp.server.mcpserver.exceptions import ToolError
 
-from helpers_secretary import TODAY, seed_ledger
+from helpers_secretary import TODAY, add_item, seed_ledger
 from ordnung.assistant import mcp_server
 from ordnung.assistant.ask import known_laws
 from ordnung.assistant.channels import (
@@ -808,3 +808,60 @@ def test_a_flat_lets_fixed_term_rule_says_what_it_needs(store: Store, ids: dict[
     (rule,) = [rule for rule in record["rules"] if rule["id"] == "fixed_term"]
     assert rule["note"] == mcp_server.FLAT_LET_FIXED_TERM
     assert "§ 575 Abs. 1 BGB" in record["if_not_cancelled"]
+
+
+@pytest.mark.parametrize(
+    ("category", "law"), [("rent", "(§ 545 BGB)"), ("employment", "(§ 15 Abs. 6 TzBfG)")]
+)
+def test_an_active_fixed_term_past_its_end_is_never_recorded_as_ended(
+    store: Store, ids: dict[str, str], category: str, law: str
+) -> None:
+    """Final review 3: an active flat let or job past its end date was recorded as "Its fixed term ended
+    on … This contract ended on …" — though a flat let without a written reason for its term never ended
+    (§ 575 Abs. 1 S. 2 BGB), and one used on continues (§ 545 BGB, § 15 Abs. 6 TzBfG)."""
+    store.update_contract(ids["job"], category=category, start_date="2025-09-01", end_date="2026-08-31")
+    tools = LedgerTools(store, today=TODAY)
+    (row,) = [row for row in tools.list_contracts().record["contracts"] if row["id"] == ids["job"]]
+    explained = tools.explain_date(ids["job"]).record
+    for summary, text in (
+        (row["dates"]["summary"], row["if_not_cancelled"]),
+        (explained["computation"]["summary"], explained["if_not_cancelled"]),
+    ):
+        assert "ended on" not in summary and "has passed" in summary and "Mon 31 Aug 2026" in summary
+        assert "ended on Mon 31 Aug 2026." not in text and law in text
+    # no longer active: the engine's words stand
+    store.update_contract(ids["job"], status="ended")
+    ended = tools.explain_date(ids["job"]).record
+    assert ended["computation"]["summary"] == "This contract ended on Mon 31 Aug 2026."
+    assert "if_not_cancelled" not in ended
+
+
+def test_a_payment_made_at_an_appointment_has_no_transfer_date(store: Store, ids: dict[str, str]) -> None:
+    """Final review 3: the residence permit's fee is paid by card at the appointment, but Ask's record gave
+    it the bank-transfer send-by date (the day before), and a demo answer called that the day to cancel
+    the appointment by — shown as checked, because the date was in the cited record."""
+    doc = ids["doc_permit"]
+    appointment = add_item(
+        store, kind="appointment", title="Appointment", doc_id=doc, area="residence", due_date="2026-10-14",
+        due_time="10:30",
+    )  # fmt: skip
+    fee = add_item(
+        store, kind="payment", title="Pay the fee at the appointment", doc_id=doc, area="residence",
+        due_date="2026-10-14", due_time="10:30", send_by="2026-10-13", amount=100.0, currency="EUR",
+        direction="out",
+    )  # fmt: skip
+    transfer = add_item(
+        store, kind="payment", title="Pay the fee by transfer", doc_id=doc, area="residence",
+        due_date="2026-10-20", send_by="2026-10-19", amount=100.0, currency="EUR", direction="out",
+    )  # fmt: skip
+    tools = LedgerTools(store, today=TODAY)
+    rows = {row["id"]: row for row in tools.list_items(status="all").record["items"]}
+    assert rows[fee]["send_by"] is None and rows[fee]["due_time"] == "10:30"
+    assert rows[transfer]["send_by"] == "2026-10-19"  # a transfer keeps its send-by date
+    assert tools.explain_date(fee).record["send_by"] is None
+    assert '"send_by"' not in render_result(tools.list_items(status="all")).split(fee)[1].split("}")[0]
+    assert tools.explain_date(transfer).record["send_by"] == "2026-10-19"
+    # the appointment's own record is unchanged; without it, the payment keeps its date
+    assert rows[appointment]["due_time"] == "10:30"
+    store.update_item(appointment, kind="task")
+    assert LedgerTools(store, today=TODAY).explain_date(fee).record["send_by"] == "2026-10-13"
