@@ -1,4 +1,4 @@
-import { Lightbulb, Send, Signature } from "lucide-react";
+import { Lightbulb, Send, Signature, TriangleAlert } from "lucide-react";
 import type { SendChannel, SendGuidance } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { Countdown } from "@/components/ui/Countdown";
@@ -18,6 +18,14 @@ const NOT_ENOUGH: Record<string, string> = { email: "An email", fax: "a fax", on
 /** "online or by fax" — the same-day channels this letter allows, without repeats. */
 export function instantPhrase(channels: SendChannel[]): string | null {
   const words = [...new Set(channels.filter((c) => c.allowed && INSTANT[c.channel]).map((c) => INSTANT[c.channel]!))];
+  return words.length ? `${words.slice(0, -1).join(", ")}${words.length > 1 ? " or " : ""}${words[words.length - 1]}` : null;
+}
+
+/** "by fax, online or in person" — every way this letter allows that reaches the recipient the same day. */
+export function sameDayPhrase(channels: SendChannel[]): string | null {
+  const words = [
+    ...new Set(channels.filter((c) => c.allowed && (INSTANT[c.channel] || c.channel === "in_person")).map((c) => INSTANT[c.channel] ?? "in person")),
+  ];
   return words.length ? `${words.slice(0, -1).join(", ")}${words.length > 1 ? " or " : ""}${words[words.length - 1]}` : null;
 }
 
@@ -84,9 +92,12 @@ export function SendGuidancePanel({ guidance, sent }: { guidance: SendGuidance |
   const ranked = rankChannels(guidance.channels);
   const allowed = ranked.filter((c) => c.allowed);
   const instant = instantPhrase(allowed);
+  const sameDay = sameDayPhrase(allowed);
   const notEnough = notEnoughPhrase(ranked);
   const form = copyFor(SEND_FORM_COPY, guidance.form);
-  const due = guidance.send_by ?? guidance.must_arrive_by;
+  // the usual time to post has passed (review round 4 of phase 2): the date that counts is when it must arrive
+  const late = Boolean(guidance.post_too_late && guidance.must_arrive_by);
+  const due = late ? guidance.must_arrive_by : (guidance.send_by ?? guidance.must_arrive_by);
   const u = due ? urgencyOf(due, today) : null;
 
   return (
@@ -98,12 +109,20 @@ export function SendGuidancePanel({ guidance, sent }: { guidance: SendGuidance |
             u === "overdue" || u === "today" || u === "soon" ? "border-danger/25 bg-danger-soft/60" : u === "week" ? "border-warn/30 bg-warn-soft/60" : "border-accent/20 bg-accent-soft/50",
           )}
         >
-          <p className="text-[11.5px] font-semibold uppercase tracking-[0.07em] text-muted">{guidance.send_by ? "Send it by" : "Must arrive by"}</p>
+          <p className="text-[11.5px] font-semibold uppercase tracking-[0.07em] text-muted">{guidance.send_by && !late ? "Send it by" : "Must arrive by"}</p>
           <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <DateText date={due} style="short" className="display text-[26px] font-semibold leading-tight text-ink" />
             <Countdown date={due} variant="pill" />
           </div>
-          {guidance.send_by && guidance.must_arrive_by && guidance.must_arrive_by !== guidance.send_by ? (
+          {late ? (
+            <p className="mt-1.5 flex gap-2 text-[13px] leading-5 text-ink/90" data-post-too-late>
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden />
+              <span>
+                <strong className="font-semibold">A letter posted today may arrive too late.</strong> Use a way that reaches them today
+                {sameDay ? ` — ${sameDay}` : ""}.
+              </span>
+            </p>
+          ) : guidance.send_by && guidance.must_arrive_by && guidance.must_arrive_by !== guidance.send_by ? (
             <p className="mt-1.5 text-[13px] leading-5 text-ink/80">
               It must <strong className="font-semibold">arrive</strong> by <DateText date={guidance.must_arrive_by} className="font-medium" />. That's why the post needs a head start
               {instant ? `; ${instant} you have until then` : ""}.

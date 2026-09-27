@@ -470,6 +470,14 @@ effect when the record reaches the issuing court (§ 129a Abs. 3 S. 2 ZPO). The 
 advice and the help link therefore recommend the issuing court's desk or a letter, and say to go to
 another court early — by the send-by date, as for a letter.
 
+**When the usual time to post has passed.** A letter that must *arrive* by its deadline is posted by the
+send-by date (the postal buffer before it). Once that day has passed, the sending advice never says "post a
+letter by" the last day — for a Notfrist a letter posted then arrives late (§§ 700 Abs. 1, 339 ZPO): it says a
+letter posted today may arrive too late, ranks the allowed ways that reach the recipient the same day first
+(fax of the signed letter, online, e-mail where text form is enough, in person) and recommends the first; the
+letter page shows "Must arrive by", and the Today, inbox and timeline rows of the to-do say "Must arrive by"
+its due date instead of "Send by" today.
+
 **Dismissal: court action** (`kschg_4`, § 4 S. 1, § 7 KSchG). Three weeks from *receiving* the written
 dismissal; afterwards the dismissal counts as valid. The end moves off weekends and holidays (§ 193 BGB).
 The letter never states this deadline, so a dismissal always brings it as a to-do, with the "get

@@ -100,13 +100,15 @@ export function Dialog({
               className,
             )}
           >
-            <div className={cn("flex items-start gap-3 px-5 pt-5 sm:px-6 sm:pt-6", children ? "pb-2" : "pb-5 sm:pb-6")}>
+            {/* with the keyboard open (a short viewport) the header keeps only its title and the footer tightens, so the
+                field being typed in keeps its room (review round 4 of phase 2: 105 px were left at 320×380) */}
+            <div className={cn("flex items-start gap-3 px-5 pt-5 sm:px-6 sm:pt-6 [@media(max-height:560px)]:pt-3", children ? "pb-2" : "pb-5 sm:pb-6")}>
               <div className="min-w-0 flex-1">
                 <h2 id={titleId} className="display text-title font-semibold text-ink">
                   {title}
                 </h2>
                 {description ? (
-                  <p id={descId} className="mt-1.5 text-base leading-relaxed text-muted">
+                  <p id={descId} className="mt-1.5 text-base leading-relaxed text-muted [@media(max-height:560px)]:sr-only">
                     {description}
                   </p>
                 ) : null}
@@ -132,7 +134,7 @@ export function Dialog({
             {footer ? (
               <div
                 className={cn(
-                  "flex flex-col-reverse gap-2 border-t border-line bg-surface-2/50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6",
+                  "flex flex-col-reverse gap-2 border-t border-line bg-surface-2/50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6 [@media(max-height:560px)]:py-2",
                   sheet && "pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4",
                 )}
               >

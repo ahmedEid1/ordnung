@@ -31,6 +31,7 @@ from ordnung.rules.deadlines import (
     from_arrival,
     parse_date,
     period_problem,
+    sending_time_passed,
     statute_rule,
 )
 
@@ -884,6 +885,14 @@ def test_send_by_clamped_to_today_with_warning() -> None:
     receipt = compute_due(spec, ctx(region="NW"))
     assert receipt.send_by == "2026-09-25"
     assert any("usual sending time has passed" in w for w in receipt.warnings)
+    assert sending_time_passed(receipt)
+
+
+def test_only_a_passed_sending_time_makes_the_due_date_the_one_that_counts() -> None:
+    in_time = compute_due(DateSpec(type="fixed", date="2026-10-21", nature="objection"), ctx(region="NW"))
+    assert in_time.send_by == "2026-10-15"
+    assert not sending_time_passed(in_time)
+    assert not sending_time_passed(None)
 
 
 def test_send_by_none_when_date_has_passed() -> None:

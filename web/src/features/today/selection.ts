@@ -34,7 +34,17 @@ import { isDirectDebit } from "@/lib/payments";
 export type ActionVerb = "pay" | "draft" | "done" | "check" | "open";
 
 /** What the date of an action means — drives the countdown prefix ("send by", "pay by"…). */
-export type DateRole = "send_by" | "pay_by" | "transfer_by" | "collected" | "due" | "by" | "on" | "expires" | "decide_by";
+export type DateRole = "send_by" | "arrive_by" | "pay_by" | "transfer_by" | "collected" | "due" | "by" | "on" | "expires" | "decide_by";
+
+/** How a to-do's receipt says the usual time to post has passed (`SENDING_TIME_PASSED` in
+ * `ordnung.rules.deadlines`; a backend test reads this file): its send-by is only "today", and a letter
+ * posted today may arrive too late — the date that counts is when it must arrive (review round 4 of phase 2). */
+export const SENDING_TIME_PASSED = "The usual sending time has passed";
+
+/** Whether the usual time to post an item's letter has passed (its receipt says so). */
+export function postTooLate(item: Pick<Item, "send_by" | "due_date" | "computation">): boolean {
+  return Boolean(item.send_by && item.due_date && item.computation?.warnings.some((w) => w.startsWith(SENDING_TIME_PASSED)));
+}
 
 export interface TodayAction {
   /** `item:<id>` or `contract:<id>` */
@@ -152,6 +162,7 @@ function verbFor(item: Item, needsCheck: boolean, draftKind: DraftKind | null): 
 function roleFor(item: Item): DateRole {
   // money: a transfer has to leave the account in time; a direct debit is collected by the sender
   if (item.kind === "payment" && item.direction !== "in") return isDirectDebit(item) ? "collected" : item.send_by ? "transfer_by" : "pay_by";
+  if (postTooLate(item)) return "arrive_by";
   if (item.send_by) return "send_by";
   switch (item.kind) {
     case "payment":
@@ -200,8 +211,9 @@ function reasonForItem(
 /** Build an action from a to-do or date. Returns null for closed or undated items. */
 export function actionFromItem(item: Item, ctx: CandidateContext): TodayAction | null {
   if (!isOpen(item, ctx.today)) return null;
-  // a direct debit happens on its due date — there is no "send by"
-  const actionDate = isDirectDebit(item) ? item.due_date : item.send_by ?? item.due_date;
+  // a direct debit happens on its due date — there is no "send by"; nor is there once posting is too late
+  const late = item.kind !== "payment" && postTooLate(item);
+  const actionDate = isDirectDebit(item) || late ? item.due_date : item.send_by ?? item.due_date;
   if (!actionDate) return null;
   const reviewIds = new Set((ctx.reviewDocs ?? []).map((d) => d.id));
   const docWarnings = new Map((ctx.reviewDocs ?? []).map((d) => [d.id, d.warnings] as const));
@@ -215,9 +227,9 @@ export function actionFromItem(item: Item, ctx: CandidateContext): TodayAction |
     contract: null,
     title: item.title,
     actionDate,
-    dueDate: item.send_by && item.due_date && item.due_date !== item.send_by ? item.due_date : null,
+    dueDate: item.send_by && !late && item.due_date && item.due_date !== item.send_by ? item.due_date : null,
     dateRole: roleFor(item),
-    time: item.send_by ? null : item.due_time,
+    time: item.send_by && !late ? null : item.due_time,
     kind: item.kind,
     priority: item.priority,
     partyId: item.party_id,

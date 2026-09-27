@@ -96,6 +96,7 @@ export function payActionFor(s: Suggestion, actions: readonly TodayAction[] | un
  */
 const ROLE_WORD: Partial<Record<DateRole, string>> = {
   send_by: "Send",
+  arrive_by: "Must arrive",
   transfer_by: "Transfer",
   pay_by: "Pay",
   collected: "Direct debit",

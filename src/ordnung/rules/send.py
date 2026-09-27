@@ -569,17 +569,47 @@ def send_guidance(
         )
         return guidance
     safe = calendar_de.previous_business_day(due, region)
-    send_by = max(calendar_de.add_business_days(safe, -postal_buffer_days, region), today)
+    buffered = calendar_de.add_business_days(safe, -postal_buffer_days, region)
+    send_by = max(buffered, today)
     guidance.send_by = send_by.isoformat()
-    guidance.tips.insert(
-        0,
-        f"It must arrive by {fmt_date(due)} — sending it is not enough. Post a letter by {fmt_date(send_by)}.",
-    )
+    if buffered < today:
+        _too_late_to_post(guidance, due)
+    else:
+        guidance.tips.insert(
+            0,
+            f"It must arrive by {fmt_date(due)} — sending it is not enough. Post a letter by {fmt_date(send_by)}.",
+        )
     if safe != due:
         guidance.tips.insert(
             1, f"{fmt_date(due)} is not a working day; make sure it arrives by {fmt_date(safe)}."
         )
     return guidance
+
+
+#: Channels that can reach the recipient the day they are used (a letter by post can't be relied on to).
+_SAME_DAY: tuple[str, ...] = ("fax", "online_button", "portal", "email", "in_person")
+
+
+def _too_late_to_post(guidance: SendGuidance, due: date) -> None:
+    """The usual time to post has passed (review round 4 of phase 2: the letter page still said "Post a letter
+    by" the last day — for a Notfrist, §§ 700 Abs. 1, 339 ZPO, a letter posted then arrives late): say a letter
+    posted today may arrive too late, rank the allowed channels that reach the recipient the same day first and
+    recommend the first of them."""
+    guidance.post_too_late = True
+    fast = [c for c in guidance.channels if c.allowed and c.channel in _SAME_DAY]
+    fast.sort(key=lambda c: _SAME_DAY.index(c.channel))
+    rest = [c for c in guidance.channels if c not in fast]
+    for channel in guidance.channels:
+        channel.recommended = False
+    for channel in fast[:1]:
+        channel.recommended = True
+    guidance.channels = [*fast, *rest]
+    ways = "; ".join(c.label for c in fast) or "take it there yourself"
+    guidance.tips.insert(
+        0,
+        f"It must arrive by {fmt_date(due)} — sending it is not enough, and the usual time to post it has passed: "
+        f"a letter posted today may arrive too late. Use a way that reaches them today: {ways}.",
+    )
 
 
 def _withdrawal_dates(guidance: SendGuidance, due: date, today: date) -> SendGuidance:

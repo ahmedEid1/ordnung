@@ -25,7 +25,7 @@ import {
   sortChecks,
   versioned,
 } from "./logic";
-import { SendGuidancePanel, instantPhrase, notEnoughPhrase } from "./SendGuidancePanel";
+import { SendGuidancePanel, instantPhrase, notEnoughPhrase, sameDayPhrase } from "./SendGuidancePanel";
 import { STATUTORY_OBJECTIONS } from "@/mocks/data/highStakes";
 
 /** Render `ui` at `route` under a real `:id` route pattern (so useParams works). */
@@ -137,6 +137,7 @@ describe("sending", () => {
   const guidance: SendGuidance = {
     send_by: "2026-10-08",
     must_arrive_by: "2026-10-14",
+    post_too_late: false,
     form: "written_form",
     form_note: null,
     channels: [
@@ -160,6 +161,21 @@ describe("sending", () => {
       "An email or a fax is not enough.",
     );
     expect(instantPhrase(guidance.channels)).toBeNull();
+  });
+
+  it("on the last days, says when it must arrive and that a letter may be too late (review round 4)", () => {
+    const court: SendGuidance = {
+      ...STATUTORY_OBJECTIONS.enforcement_order!.guidance,
+      send_by: "2026-09-28",
+      must_arrive_by: "2026-09-29",
+      post_too_late: true,
+    };
+    const { container } = renderWithProviders(<SendGuidancePanel guidance={court} />);
+    expect(screen.getByText("Must arrive by")).toBeInTheDocument();
+    expect(screen.queryByText("Send it by")).toBeNull();
+    expect(container.querySelector("[data-post-too-late]")).toHaveTextContent(/A letter posted today may arrive too late\. Use a way that reaches them today — in person or by fax\./);
+    expect(screen.queryByText(/the post needs a head start/)).toBeNull();
+    expect(sameDayPhrase(court.channels)).toBe("in person or by fax");
   });
 
   it("ranks recommended first and not-allowed last", () => {

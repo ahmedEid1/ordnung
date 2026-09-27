@@ -366,3 +366,29 @@ def test_a_fixed_term_contract_ends_by_itself(category: str, notice: str, caveat
         assert summary is not None and "or earlier" not in summary
     # a contract that is no longer active keeps the engine's "ended"
     assert fixed_term_summary(comp, today=later, active=False) is None
+
+
+def test_a_to_do_whose_posting_time_passed_says_when_it_must_arrive(
+    store: Store, ids: dict[str, str]
+) -> None:
+    """Review round 4 of phase 2: the inbox and timeline said "Send by Mon 28 Sep · today" for an objection due
+    that day — a letter posted then arrives too late. The receipt's warning (the usual sending time has passed)
+    makes it "Must arrive by", here and in the web's Today and inbox rows, which read the same words."""
+    from pathlib import Path
+
+    from ordnung.models import ComputationReceipt
+    from ordnung.rules.deadlines import SENDING_TIME_PASSED, sending_time_passed
+
+    late = ComputationReceipt(
+        due_date="2026-09-29",
+        send_by="2026-09-28",
+        warnings=[
+            f"{SENDING_TIME_PASSED} — send it today, by the fastest channel allowed (online, fax or in person)."
+        ],
+    )
+    store.update_item(ids["tax_objection"], due_date="2026-09-29", send_by="2026-09-28", computation=late)
+    entries = {entry.id: entry for entry in timeline(store, date(2026, 9, 1), date(2026, 10, 31))}
+    assert entries[ids["tax_objection"]].subtitle == "Must arrive by Tue 29 Sep"
+    assert sending_time_passed(late) and not sending_time_passed(None)
+    web = Path(__file__).resolve().parents[1] / "web" / "src" / "features" / "today" / "selection.ts"
+    assert f'SENDING_TIME_PASSED = "{SENDING_TIME_PASSED}"' in web.read_text(encoding="utf-8")

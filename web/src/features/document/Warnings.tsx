@@ -161,16 +161,16 @@ function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc:
           className="ml-auto"
           loading={update.isPending}
           onClick={() =>
-            update.mutate(
-              { id: suggestion.id, patch: { status: "dismissed" } },
-              {
-                onSuccess: () =>
-                  toast({
-                    title: "Warning removed",
-                    description: "You checked it with the sender. We'll keep comparing new letters.",
-                    undo: () => update.mutate({ id: suggestion.id, patch: { status: "new" } }),
-                  }),
-              },
+            // the promise, not mutate's callbacks: this button leaves with the warning once the lists are refreshed
+            // (review round 4 of phase 2)
+            update.mutateAsync({ id: suggestion.id, patch: { status: "dismissed" } }).then(
+              () =>
+                toast({
+                  title: "Warning removed",
+                  description: "You checked it with the sender. We'll keep comparing new letters.",
+                  undo: () => update.mutate({ id: suggestion.id, patch: { status: "new" } }),
+                }),
+              () => undefined, // the error toast comes from the mutation's meta
             )
           }
         >

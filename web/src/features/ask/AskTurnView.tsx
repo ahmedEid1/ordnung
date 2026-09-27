@@ -83,12 +83,14 @@ export function splitCheckNote(text: string): { warnings: string[]; rest: string
 export function CheckNote({ text, label }: { text: string | null; label?: string | null }) {
   const { warnings, rest } = text ? splitCheckNote(text) : { warnings: [], rest: "" };
   const shownLabel = text ? checkNoteLabel(text, label) : label;
+  // a German note is read in a German voice (WCAG 3.1.2; review round 4 of phase 2: only the answer had lang="de")
+  const lang = shownLabel === CHECK_NOTE_LABEL_DE ? "de" : undefined;
   return (
     <div className="mt-3 space-y-2">
       {/* what to decide before paying comes first, in the warning tone — under an answer that says the new rent
           "is due" it was the last sentence of the grey note (review round 2) */}
       {warnings.length ? (
-        <p role="note" className="flex items-start gap-2 rounded-lg border border-warn/30 bg-warn-soft px-3 py-2 text-[13.5px] leading-5 text-ink">
+        <p role="note" lang={lang} className="flex items-start gap-2 rounded-lg border border-warn/30 bg-warn-soft px-3 py-2 text-[13.5px] leading-5 text-ink">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
           <span className="min-w-0 break-words">
             <span className="font-medium text-warn-ink">{shownLabel}</span> {warnings.join(" ")}
@@ -96,7 +98,7 @@ export function CheckNote({ text, label }: { text: string | null; label?: string
         </p>
       ) : null}
       {rest || !warnings.length ? (
-        <p role="note" className="flex items-start gap-2 rounded-lg border border-line bg-surface-2/60 px-3 py-2 text-[13px] leading-5 text-muted">
+        <p role="note" lang={lang} className="flex items-start gap-2 rounded-lg border border-line bg-surface-2/60 px-3 py-2 text-[13px] leading-5 text-muted">
           <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
           <span className="min-w-0 break-words">
             {rest ? (

@@ -8632,6 +8632,11 @@
             ],
             "title": "Must Arrive By"
           },
+          "post_too_late": {
+            "type": "boolean",
+            "title": "Post Too Late",
+            "default": false
+          },
           "form": {
             "type": "string",
             "enum": [
@@ -8672,6 +8677,7 @@
         "required": [
           "send_by",
           "must_arrive_by",
+          "post_too_late",
           "form",
           "form_note",
           "channels",

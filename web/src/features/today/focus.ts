@@ -38,9 +38,18 @@ export function focusWhenReady(find: () => HTMLElement | null, ms = 5000, { alwa
  */
 export function focusAfterLeaving(headings: () => HTMLElement[], leavingId: string, fallbackId: string): void {
   const at = Math.max(0, headings().findIndex((h) => h.id === leavingId));
-  focusWhenReady(() => {
-    if (document.getElementById(leavingId)) return null;
-    const rest = headings();
-    return rest[Math.min(at, rest.length - 1)] ?? document.getElementById(fallbackId);
-  });
+  focusWhenReady(
+    () => {
+      if (document.getElementById(leavingId)) return null;
+      const rest = headings();
+      return rest[Math.min(at, rest.length - 1)] ?? document.getElementById(fallbackId);
+    },
+    // watched from the click (review round 4 of phase 2): the card leaves once the change is saved and the lists
+    // are refreshed, which on a busy machine takes longer than the default window. Waiting longer never pulls
+    // back someone who moved on — only lost focus is moved.
+    LEAVING_WAIT_MS,
+  );
 }
+
+/** How long a leaving card's successor is waited for (:func:`focusAfterLeaving`). */
+export const LEAVING_WAIT_MS = 30_000;

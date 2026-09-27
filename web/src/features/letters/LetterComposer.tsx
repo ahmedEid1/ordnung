@@ -600,6 +600,19 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
     const t = window.setTimeout(() => document.querySelector<HTMLElement>("[data-claimant-recipient]")?.focus(), 0);
     return () => window.clearTimeout(t);
   }, [claimantMode]);
+  // the court's box takes focus when the objection needs it typed and it is empty — the footer already asks for
+  // it, and the field sat below the fold (review round 4 of phase 2); once per box, never while typing
+  const courtFocused = useRef(false);
+  useEffect(() => {
+    if (!courtTyped || courtFocused.current || typedRecipient.trim()) return;
+    courtFocused.current = true;
+    const t = window.setTimeout(() => {
+      const box = document.querySelector<HTMLElement>("[data-court-recipient]");
+      box?.scrollIntoView?.({ block: "center" });
+      box?.focus({ preventScroll: true });
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [courtTyped, typedRecipient]);
   // a request for more time can't move the deadlines the law sets: say so before it is written
   const lawDeadlines = kind === "extension_request" && !refusal ? statutoryDeadlines(letterQ.data?.items ?? []) : [];
 
@@ -700,7 +713,12 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
         <>
           {/* why the button is disabled — on phones above the buttons (the footer stacks in reverse) */}
           <p
-            className={cn(disabledReason && !ready ? "order-last text-[12.5px] leading-snug text-muted sm:order-first sm:mr-auto sm:max-w-[22rem] sm:self-center" : "sr-only")}
+            className={cn(
+              disabledReason && !ready
+                ? "order-last text-[12.5px] leading-snug text-muted sm:order-first sm:mr-auto sm:max-w-[22rem] sm:self-center [@media(max-height:560px)]:line-clamp-1"
+                : "sr-only",
+            )}
+            title={disabledReason && !ready ? disabledReason : undefined}
             aria-live="polite"
           >
             {disabledReason && !ready ? disabledReason : ""}
@@ -827,7 +845,9 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                   <Field
                     className="mt-3"
                     label="The court that sent the order"
-                    hint={`As the order and its yellow envelope show it (for a Mahnbescheid usually a central Mahngericht). The objection goes to the court${letterParty ? `, not to ${letterParty.name}` : ""}.`}
+                    hint={`As the order and its yellow envelope show it (${
+                      doc?.kind === "enforcement_order" ? "for a Vollstreckungsbescheid, the Mahngericht that issued it" : "for a Mahnbescheid usually a central Mahngericht"
+                    }; a court's postcode alone is fine, no street needed). The objection goes to the court${letterParty ? `, not to ${letterParty.name}` : ""}.`}
                     error={typedRecipient.trim() && !courtOk ? "This doesn't look like a court's name — type it as the order shows it (e.g. “Amtsgericht Hünfeld”)." : undefined}
                   >
                     <Textarea
@@ -836,7 +856,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                       onChange={(e) => setTypedRecipient(e.target.value)}
                       rows={4}
                       className="min-h-24"
-                      placeholder={"Amtsgericht …\nStreet and number\nPostcode and town"}
+                      placeholder={"Amtsgericht …\nDepartment or street, as the order shows it\nPostcode and town"}
                     />
                   </Field>
                 ) : null}
@@ -941,7 +961,9 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                               setTypedRecipient("");
                             }}
                           >
-                            Write to the claimant instead
+                            {/* an element, not a string: the Button truncates a string label, and this is the only way on
+                                from the refusal — it wraps at 320 px instead (review round 4 of phase 2) */}
+                            <span className="min-w-0 whitespace-normal break-words">Write to the claimant instead</span>
                           </Button>
                         ) : refusal.seeCard && doc ? (
                           // the letter's advice card, scrolled to and its title focused (review round 3 of phase 2)

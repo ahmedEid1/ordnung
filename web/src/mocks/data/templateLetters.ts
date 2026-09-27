@@ -100,6 +100,7 @@ function generalGuidance(note = "No special form is needed."): SendGuidance {
   return {
     send_by: null,
     must_arrive_by: null,
+    post_too_late: false,
     form: "any",
     form_note: note,
     channels: [

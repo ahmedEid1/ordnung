@@ -2917,6 +2917,11 @@ export interface components {
             /** Must Arrive By */
             must_arrive_by: string | null;
             /**
+             * Post Too Late
+             * @default false
+             */
+            post_too_late: boolean;
+            /**
              * Form
              * @default text_form
              * @enum {string}

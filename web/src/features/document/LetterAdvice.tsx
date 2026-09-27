@@ -15,6 +15,7 @@ import { useUpdateDocument } from "@/api/hooks";
 import { Link } from "react-router";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
+import { GermanTerms } from "@/lib/germanTerms";
 import { keepCitations } from "@/lib/glue";
 import { cn } from "@/lib/utils";
 import { useStartDraft } from "./actions";
@@ -81,34 +82,6 @@ function DealtWith({ advice, doc, onDone }: { advice: LetterAdvice; doc: Pick<Do
   );
 }
 
-/**
- * A card title whose German term stays whole or breaks where German breaks it: "Operating-cost statement
- * (Betriebskostenabrechnung)" broke as "(Betriebskostenabrechnun" / "g)" at 320 px (review round 3 of phase 2).
- * The term in brackets is marked German (hyphenated as German, read in a German voice), and the soft hyphens
- * after the parts of a long compound let it break there even where no German hyphenation is installed.
- */
-function AdviceTitle({ title }: { title: string }) {
-  const found = /^(.*?)\s*\(([^()]+)\)(.*)$/.exec(title);
-  if (!found) return <>{title}</>;
-  const [, head, term, tail] = found;
-  return (
-    <>
-      {head}{" "}
-      <span lang="de" className="hyphens-manual">
-        ({softHyphens(term!)})
-      </span>
-      {tail}
-    </>
-  );
-}
-
-/** The heads of German compounds in the card titles' terms, after which a long word may break. */
-const COMPOUND_HEADS = /(Betriebskosten|Heizkosten|Nebenkosten|Vollstreckungs|Kündigungs|Kappungs|Miet|Mahn)(?=\p{Ll}{4,})/gu;
-
-function softHyphens(term: string): string {
-  return term.length < 16 ? term : term.replace(COMPOUND_HEADS, "$1\u00ad");
-}
-
 export function LetterAdviceCard({
   advice,
   doc,
@@ -156,7 +129,7 @@ export function LetterAdviceCard({
             {urgent ? "Act now — and get advice" : "Know your rights"}
           </p>
           <h2 id={titleId} ref={headingRef} tabIndex={-1} className="mt-0.5 scroll-mt-24 text-[15.5px] font-semibold leading-snug text-ink outline-none [overflow-wrap:anywhere]">
-            <AdviceTitle title={advice.title} />
+            <GermanTerms text={advice.title} />
           </h2>
         </div>
       </div>

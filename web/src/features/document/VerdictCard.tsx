@@ -63,6 +63,8 @@ import { PayPanel } from "./PayPanel";
 import { GlossaryText } from "./Explained";
 import { adviceFor, WhyThisDate } from "./WhyThisDate";
 import { LetterText } from "@/components/ui/LetterText";
+import { GermanTerms } from "@/lib/germanTerms";
+import { keepCitations } from "@/lib/glue";
 import { DEMO_NOTE } from "@/mocks/mode";
 
 const countdownTone: Record<Urgency, string> = {
@@ -204,7 +206,8 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
           {doc.ai_private ? <Badge tone="neutral">Private — not read by AI</Badge> : null}
         </div>
         <h1 id="verdict-title" tabIndex={-1} className="display mt-3 scroll-mt-24 outline-none text-[26px] font-semibold leading-[1.15] text-ink [overflow-wrap:anywhere] hyphens-auto sm:text-[29px]">
-          {doc.title ?? doc.filename}
+          {/* a German term keeps its parts whole (review round 4 of phase 2: "Heizkostenabrechn" / "ung)" at 320 px) */}
+          {doc.title ? <GermanTerms text={doc.title} /> : doc.filename}
         </h1>
         <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px] text-muted">
           {detail.party ? <PartyChip party={detail.party} /> : null}
@@ -268,13 +271,14 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
                   <GlossaryText text={open.title} />
                 </p>
                 <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink/80">
-                  {looksGerman(open.action) ? <LetterText text={open.action!} /> : <GlossaryText text={open.action!} />}
+                  {/* a citation stays whole ("§ 549 Abs. 2 BGB" broke after "Abs." at 320 px — review round 4 of phase 2) */}
+                  {looksGerman(open.action) ? <LetterText text={keepCitations(open.action!)} /> : <GlossaryText text={keepCitations(open.action!)} />}
                 </p>
               </>
             ) : (
               <>
                 <p className="text-[16px] font-medium leading-snug text-ink">
-                  {looksGerman(open.action) ? <LetterText text={open.action!} /> : <GlossaryText text={open.action ?? open.title} />}
+                  {looksGerman(open.action) ? <LetterText text={keepCitations(open.action!)} /> : <GlossaryText text={keepCitations(open.action ?? open.title)} />}
                 </p>
                 {open.action && open.title !== open.action ? (
                   <p className="mt-1 text-[13px] text-muted">
@@ -486,16 +490,16 @@ function KeepButton({ suggestion }: { suggestion: Suggestion }) {
       icon={Check}
       loading={update.isPending}
       onClick={() =>
-        update.mutate(
-          { id: suggestion.id, patch: { status: "dismissed" } },
-          {
-            onSuccess: () =>
-              toast({
-                title: "Kept",
-                description: "Ordnung won't remind you about this window again.",
-                undo: () => update.mutate({ id: suggestion.id, patch: { status: "new" } }),
-              }),
-          },
+        // the promise, not mutate's callbacks: this button leaves with its Idea once the lists are refreshed, and a
+        // button that has gone gets no callbacks (review round 4 of phase 2)
+        update.mutateAsync({ id: suggestion.id, patch: { status: "dismissed" } }).then(
+          () =>
+            toast({
+              title: "Kept",
+              description: "Ordnung won't remind you about this window again.",
+              undo: () => update.mutate({ id: suggestion.id, patch: { status: "new" } }),
+            }),
+          () => undefined, // the error toast comes from the mutation's meta
         )
       }
     >

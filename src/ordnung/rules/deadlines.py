@@ -95,6 +95,10 @@ _PRIVATE_STEP = "Not an authority's letter, so no delivery days"
 #: The words that mark a warning's situation, shared with the rules tools, whose hints name the argument
 #: that would settle it (``ordnung.assistant.rules_tools.deadline_hints``): reword them here, not there.
 REGION_UNKNOWN: Final = "Holiday region unknown"
+#: How a receipt starts its warning when the usual time to post has passed (:func:`plan_send_by`): the send-by
+#: date is then today, and a letter posted today may arrive too late — the app says "must arrive by" instead
+#: (views, the Today and inbox rows: ``web/src/features/today/selection.ts`` reads the same words).
+SENDING_TIME_PASSED: Final = "The usual sending time has passed"
 REGION_EARLIER: Final = "where the deadline would be earlier"
 HOME_HOLIDAY: Final = "is a public holiday where you live"
 #: A joint calendar's rule (:func:`check_one_land_holidays`).
@@ -534,6 +538,12 @@ def _no_date(trace: Trace, ctx: RuleContext, reason: str) -> ComputationReceipt:
     )
 
 
+def sending_time_passed(receipt: ComputationReceipt | None) -> bool:
+    """Whether a receipt's send-by date is only "today" because the usual time to post has passed
+    (:func:`plan_send_by`): a letter posted today may arrive too late, so the date that counts is the due date."""
+    return receipt is not None and any(w.startswith(SENDING_TIME_PASSED) for w in receipt.warnings)
+
+
 def plan_send_by(
     trace: Trace,
     today: date,
@@ -565,8 +575,7 @@ def plan_send_by(
             remaining -= 1
     if send_by < today:
         trace.warnings.append(
-            "The usual sending time has passed — send it today, by the fastest channel allowed "
-            "(online, fax or in person)."
+            f"{SENDING_TIME_PASSED} — send it today, by the fastest channel allowed (online, fax or in person)."
         )
         send_by = today
     days = "business day" if buffer == 1 else "business days"

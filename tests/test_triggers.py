@@ -137,6 +137,35 @@ def test_deadline_soon_offers_an_objection_draft_when_the_window_opens(
     assert objection.rationale and objection.rationale.startswith("Letter dated 15 Sep")
 
 
+def test_an_objection_whose_posting_time_passed_says_when_it_must_arrive(
+    store: Store, ids: dict[str, str]
+) -> None:
+    """Review round 4 of phase 2: on an objection's last days the Idea said "send by … today" although a letter
+    posted then may arrive after the deadline. The receipt's warning (the usual sending time has passed) makes it
+    "must arrive by" the due date, with the note to use the fastest channel allowed."""
+    from ordnung.models import ComputationReceipt
+    from ordnung.rules.deadlines import SENDING_TIME_PASSED
+
+    late = ComputationReceipt(
+        due_date="2026-09-30",
+        send_by=TODAY.isoformat(),
+        warnings=[
+            f"{SENDING_TIME_PASSED} — send it today, by the fastest channel allowed (online, fax or in person)."
+        ],
+    )
+    store.update_item(
+        ids["tax_objection"], due_date="2026-09-30", send_by=TODAY.isoformat(), computation=late
+    )
+    found = {idea.refs[0].id: idea for idea in ideas(store, "deadline_soon")}
+    objection = found[ids["tax_objection"]]
+    assert "must arrive by Wed 30 Sep" in objection.title and "send by" not in objection.title
+    assert "use the fastest channel allowed today" in objection.body
+    # in good time, the same to-do says when to send it
+    store.update_item(ids["tax_objection"], computation=late.model_copy(update={"warnings": []}))
+    objection = {idea.refs[0].id: idea for idea in ideas(store, "deadline_soon")}[ids["tax_objection"]]
+    assert "send by" in objection.title
+
+
 def test_overdue_is_computed_on_read_and_never_changes_the_item(store: Store, ids: dict[str, str]) -> None:
     found = ideas(store, "overdue")
     assert [idea.refs[0].id for idea in found] == [ids["library_task"]]

@@ -46,7 +46,7 @@ from ordnung.models import (
 )
 from ordnung.payments import is_collected_or_incoming, is_direct_debit
 from ordnung.rules import RuleContext, compute_contract, get_rule, price_increase_window
-from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
+from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS, sending_time_passed
 from ordnung.rules.explain import fmt_date
 
 try:  # the scam checks are optional: the triggers work without them
@@ -606,6 +606,8 @@ def _soon_idea(ledger: Ledger, item: Item, due: date, act: date, days: int) -> S
         when = f"on {day_label(due, today)}" + (f" at {item.due_time}" if item.due_time else "")
     elif item.kind == "payment":
         when = f"pay by {day_label(act, today)}"
+    elif sending_time_passed(item.computation):
+        when = f"must arrive by {day_label(due, today)}"
     elif act < due:
         when = f"send by {day_label(act, today)}"
     else:
@@ -613,7 +615,7 @@ def _soon_idea(ledger: Ledger, item: Item, due: date, act: date, days: int) -> S
     send_note = None
     if act < due:
         send_note = f"Send it by {day_label(act, today)} so it arrives by {day_label(due, today)}."
-    if days < 0:
+    if days < 0 or sending_time_passed(item.computation):
         send_note = "The usual sending time has passed — use the fastest channel allowed today."
     english_consequence = english(item.consequence)
     consequence = f"If you don't: {english_consequence.rstrip('.')}." if english_consequence else None

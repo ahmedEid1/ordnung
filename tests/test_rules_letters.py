@@ -3168,6 +3168,29 @@ def test_nothing_goes_to_a_court_by_email(kind: str) -> None:
     assert "portal" in {c.channel for c in order.channels}
 
 
+@pytest.mark.parametrize("letter", ["enforcement_order", "court_payment_order", "landlord_notice"])
+@pytest.mark.parametrize("due", ["2026-09-28", "2026-09-29"])
+def test_on_the_last_days_the_letter_page_never_says_to_post_it(letter: str, due: str) -> None:
+    """Review round 4 of phase 2: on an Einspruch's last day the page said "Post a letter by Mon 28 Sep" and
+    recommended Einwurf-Einschreiben — a letter posted then arrives after the Notfrist (§§ 700 Abs. 1, 339
+    ZPO). When the usual time to post has passed, it says a letter may arrive too late and ranks the ways that
+    reach the recipient the same day first."""
+    today = D("2026-09-28")
+    guidance = send_guidance("objection", letter_kind=letter, today=today, due=D(due))
+    assert guidance.post_too_late and guidance.send_by == "2026-09-28" and guidance.must_arrive_by == due
+    assert "Post a letter by" not in guidance.tips[0]
+    assert "a letter posted today may arrive too late" in guidance.tips[0]
+    first = guidance.channels[0]
+    assert first.allowed and first.recommended and first.channel in ("fax", "email")
+    assert first.label in guidance.tips[0]
+    assert not any(c.recommended for c in guidance.channels[1:])
+    letters = [c for c in guidance.channels if c.channel in ("letter", "registered_letter")]
+    assert letters and guidance.channels.index(letters[0]) > guidance.channels.index(first)
+    # in good time: post it, the signed letter first
+    early = send_guidance("objection", letter_kind=letter, today=today, due=D("2026-10-12"))
+    assert not early.post_too_late and early.tips[0].endswith("Post a letter by Tue 6 Oct 2026.")
+
+
 def test_another_courts_desk_is_offered_only_with_the_129a_catch() -> None:
     for letter in ("court_payment_order", "enforcement_order"):
         guidance = send_guidance("objection", letter_kind=letter, today=TODAY, due=D("2026-10-08"))

@@ -49,36 +49,33 @@ function IdeaCard({ idea, today, pinned, pay, focus }: { idea: Suggestion; today
     focus.returning(idea.id);
   };
 
+  // Focus is watched from the click, while the card is in its place, and the toast follows the call's promise,
+  // not mutate's callbacks: the card leaves with the refreshed list, often before every list is refreshed, and a
+  // card that has gone gets no callbacks (review round 4 of phase 2: no toast, no Undo, focus lost).
   const snooze = () => {
     const until = format(addDays(parseISO(today), 7), "yyyy-MM-dd");
-    update.mutate(
-      { id: idea.id, patch: { status: "snoozed", snoozed_until: until } },
-      {
-        onSuccess: () => {
-          focus.leaving(idea.id);
-          toast({
-            title: `I'll bring this back on ${formatDate(until, { style: "short", today })}`,
-            description: idea.title,
-            undo: undo({ status: "new", snoozed_until: null }),
-          });
-        },
-      },
+    focus.leaving(idea.id);
+    update.mutateAsync({ id: idea.id, patch: { status: "snoozed", snoozed_until: until } }).then(
+      () =>
+        toast({
+          title: `I'll bring this back on ${formatDate(until, { style: "short", today })}`,
+          description: idea.title,
+          undo: undo({ status: "new", snoozed_until: null }),
+        }),
+      () => undefined, // the error toast comes from the mutation's meta
     );
   };
 
   const dismiss = () => {
-    update.mutate(
-      { id: idea.id, patch: { status: "dismissed" } },
-      {
-        onSuccess: () => {
-          focus.leaving(idea.id);
-          toast({
-            title: scam ? "Warning removed" : "Idea hidden",
-            description: idea.title,
-            undo: undo({ status: "new" }),
-          });
-        },
-      },
+    focus.leaving(idea.id);
+    update.mutateAsync({ id: idea.id, patch: { status: "dismissed" } }).then(
+      () =>
+        toast({
+          title: scam ? "Warning removed" : "Idea hidden",
+          description: idea.title,
+          undo: undo({ status: "new" }),
+        }),
+      () => undefined,
     );
   };
 

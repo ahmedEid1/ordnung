@@ -81,7 +81,9 @@ export default function AskPage() {
   }, [lastKey, reduce]);
 
   // while it is worked on — and when it arrives — keep the growing turn visible above the composer (and, on
-  // phones, the tab bar), but never scroll the question away
+  // phones, the tab bar). While it is worked on, the newest step and the "Writing the answer" line stay in view
+  // even when the question has to scroll off (review round 4 of phase 2: at 320×640 they stayed behind the
+  // composer for the whole write); the answer that arrives never scrolls its question away
   useEffect(() => {
     if (!lastKey || (!thread.streaming && lastStatus !== "done")) return;
     const el = document.querySelector<HTMLElement>(`[data-turn="${lastKey}"]`);
@@ -90,7 +92,8 @@ export default function AskPage() {
     const composer = composerRef.current?.getBoundingClientRect();
     const covered = composer ? window.innerHeight - composer.top : window.innerWidth < 768 ? 190 : 130;
     const overflow = rect.bottom - (window.innerHeight - covered);
-    const room = rect.top - 72;
+    const working = thread.streaming && lastStatus !== "done";
+    const room = working ? overflow : rect.top - 72;
     if (overflow > 0 && room > 0) window.scrollBy({ top: Math.min(overflow, room) });
   }, [lastLen, lastSteps, lastWriting, lastStatus, thread.streaming, lastKey]);
 

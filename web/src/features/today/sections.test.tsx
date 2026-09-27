@@ -208,6 +208,32 @@ describe("Ideas", () => {
     await waitFor(() => expect(document.activeElement).toBe(within(ideas).getByRole("heading", { level: 3, name: next })));
   });
 
+  it("hides the Idea, says so and moves focus on even when the Idea leaves before every list is refreshed (review round 4)", async () => {
+    useMockApi();
+    // the note is refreshed last: the Idea leaves with the refreshed list before the call is done — its own
+    // callbacks never ran in a card that had gone, so there was no "Idea hidden", no Undo and focus was lost
+    const answer = globalThis.fetch;
+    let release = () => undefined as void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let hidden = false;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if ((init?.method ?? "GET").toUpperCase() === "PATCH") hidden = true;
+      else if (hidden && url.includes("/brief")) await held;
+      return answer(input, init);
+    });
+    const { user } = await renderToday();
+    const ideas = screen.getByRole("region", { name: "Ideas from your secretary" });
+    const [first, second] = within(ideas).getAllByRole("article");
+    const next = within(second!).getByRole("heading", { level: 3 }).textContent!;
+    const gone = within(first!).getByRole("heading", { level: 3 }).textContent!;
+    await user.click(within(first!).getByRole("button", { name: "Not relevant" }));
+    await waitFor(() => expect(within(ideas).queryByRole("heading", { name: gone })).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(within(ideas).getByRole("heading", { level: 3, name: next })));
+    release();
+    expect(await screen.findByText("Idea hidden")).toBeInTheDocument();
+  });
+
   it("an Idea about a Top-3 payment opens the same Pay panel", async () => {
     const { srv } = useMockApi();
     // the TechMarkt Idea no longer points at the Top-3 to-do, so it isn't filtered out as a repeat

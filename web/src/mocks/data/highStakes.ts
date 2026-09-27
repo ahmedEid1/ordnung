@@ -454,6 +454,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
     "guidance": {
       "send_by": null,
       "must_arrive_by": null,
+      "post_too_late": false,
       "form": "written_form",
       "form_note": "In writing to the court that issued the order (§ 694 ZPO) — best on the form that came with it (tick how much you object to and sign it), or online. No reasons are needed; e-mail is not valid.",
       "channels": [
@@ -520,6 +521,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
     "guidance": {
       "send_by": null,
       "must_arrive_by": null,
+      "post_too_late": false,
       "form": "written_form",
       "form_note": "In writing to the court that issued the order (§ 700, § 340 ZPO; not by e-mail), or for the record at its Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record reaches the issuing court (§ 129a Abs. 3 S. 2 ZPO) — go early. The period can't be extended.",
       "channels": [
@@ -577,6 +579,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
     "guidance": {
       "send_by": null,
       "must_arrive_by": null,
+      "post_too_late": false,
       "form": "text_form",
       "form_note": "Text form is enough since 2025 (§ 574b Abs. 1 BGB), but a signed letter by Einwurf-Einschreiben is the safest proof that it arrived in time.",
       "channels": [
@@ -628,6 +631,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
 export const WITHDRAWAL_GUIDANCE: SendGuidance = {
   "send_by": null,
   "must_arrive_by": null,
+  "post_too_late": false,
   "form": "text_form",
   "form_note": "Any clear statement is enough — no reasons, no signature. Sending it in time is enough (§ 355 Abs. 1 BGB); sending the goods back alone is not a withdrawal.",
   "channels": [

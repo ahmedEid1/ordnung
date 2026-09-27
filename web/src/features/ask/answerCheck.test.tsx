@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { AnswerView, checkNoteLabel, splitCheckNote } from "./AskTurnView";
+import { AnswerView, CheckNote, checkNoteLabel, splitCheckNote } from "./AskTurnView";
 import { citationIndex } from "./citations";
 import { Markdown } from "./Markdown";
 import PAYMENT_NOTES from "./paymentNotes.json";
@@ -24,6 +24,20 @@ function inRouter(element: React.ReactElement) {
 }
 
 describe("the answer check's note", () => {
+  it("is read in a German voice when it is German (review round 4 of phase 2, WCAG 3.1.2)", () => {
+    const german = (PAYMENT_NOTES as string[]).find((note) => note.startsWith("Diese Betriebskostenabrechnung"))!;
+    const { container, unmount } = render(<CheckNote text={`${german} ${NOTE_DE}`} label="Von Ordnung geprüft:" />);
+    const notes = container.querySelectorAll('[role="note"]');
+    expect(notes).toHaveLength(2);
+    for (const note of notes) expect(note.closest("[lang]")?.getAttribute("lang")).toBe("de");
+    unmount();
+    const checked = render(<CheckNote text={null} label="Von Ordnung geprüft:" />);
+    expect(checked.container.querySelector('[role="note"]')?.getAttribute("lang")).toBe("de");
+    checked.unmount();
+    const english = render(<CheckNote text={NOTE} label="Checked by Ordnung:" />);
+    expect(english.container.querySelector('[role="note"]')?.hasAttribute("lang")).toBe(false);
+  });
+
   it("comes from the done event's own field", () => {
     const done = accumulate(EMPTY_ANSWER, { type: "done", text: "Due Wed 21 Oct [item:itm_a].", note: NOTE });
     expect(done.note).toBe(NOTE);

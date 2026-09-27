@@ -334,6 +334,10 @@ describe("composer — template letters", () => {
     for (const other of ["TechMarkt Online GmbH", "LG Electronics Deutschland GmbH", "Gerichtskasse Hagen", "Gerichtsvollzieher Müller", "", null]) {
       expect(mayBeCourt(other), String(other)).toBe(false);
     }
+    // review round 4 of phase 2: "AG" alone enabled "Write the letter", and the server refused it — a local court's
+    // abbreviation needs its place; a federal court's may stand alone
+    for (const bare of ["AG", "AG ", "LG", "OLG"]) expect(mayBeCourt(bare), bare).toBe(false);
+    for (const federal of ["BGH", "BSG, 1. Senat", "AG Hünfeld\n36088 Hünfeld"]) expect(mayBeCourt(federal), federal).toBe(true);
     const order = { kind: "court_payment_order" as const, remedy: null };
     expect(needsTypedCourt(order, { name: "TechMarkt Online GmbH" })).toBe(true);
     expect(needsTypedCourt(order, null)).toBe(true);
@@ -350,6 +354,8 @@ describe("composer — template letters", () => {
     const { router } = renderWithProviders(<LettersPage />, { route: "/letters?new=1&kind=objection&doc=doc_tm_dunning" });
     const dialog = await screen.findByRole("dialog", { name: "New letter" });
     const court = await within(dialog).findByLabelText(/The court that sent the order/);
+    // the one field left to fill takes the focus (review round 4: it opened below the fold, unfocused)
+    await waitFor(() => expect(court).toHaveFocus());
     // never "To TechMarkt": the objection doesn't go to the claimant
     expect(within(dialog).queryByText(/^To$/)).toBeNull();
     const write = within(dialog).getByRole("button", { name: /Write the letter/ });

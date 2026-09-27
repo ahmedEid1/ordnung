@@ -29,6 +29,7 @@ from ordnung.models import (
     TimelineEntry,
     TimelineMarker,
 )
+from ordnung.rules.deadlines import sending_time_passed
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.triggers import (
     Ledger,
@@ -390,7 +391,10 @@ def _item_entries(ledger: Ledger) -> list[TimelineEntry]:
             continue
         status = "overdue" if is_overdue(item, ledger.today) else item.status
         subtitle = (
-            f"Send by {day_label(parse_day(item.send_by) or ledger.today, ledger.today)}"
+            # the usual time to post has passed: a letter posted today may arrive too late (review round 4)
+            f"Must arrive by {day_label(parse_day(item.due_date) or ledger.today, ledger.today)}"
+            if item.send_by and sending_time_passed(item.computation)
+            else f"Send by {day_label(parse_day(item.send_by) or ledger.today, ledger.today)}"
             if item.send_by
             else None
         )

@@ -517,6 +517,8 @@ class SendChannel(_Model):
 class SendGuidance(_Model):
     send_by: str | None = None
     must_arrive_by: str | None = None
+    #: The usual time to post it has passed: a letter posted today may arrive too late (``send_by`` is today).
+    post_too_late: bool = False
     form: Literal["text_form", "written_form", "any"] = "text_form"
     form_note: str | None = None
     channels: list[SendChannel] = Field(default_factory=list)

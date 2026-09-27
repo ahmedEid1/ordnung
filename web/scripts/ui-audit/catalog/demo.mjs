@@ -1229,6 +1229,8 @@ export async function demoCatalog({ api, server }) {
     [/^19_bank_preisaenderung/, "rent_increase"],
   ];
   const hsDocs = {};
+  /** The court objection's draft of each set-up letter, created by its first capture (reset with the setup). */
+  const hsObjectionDrafts = new Map();
   const hsStates = [];
   for (const [re, kind] of HS_KINDS) {
     const d = docs.find((x) => re.test(x.filename ?? ""));
@@ -1272,8 +1274,15 @@ export async function demoCatalog({ api, server }) {
       // the re-filed reminder's sender is the claimant, not a court: the objection goes to the court typed in
       // (review round 3 of phase 2 — it went to the claimant)
       const court = "Amtsgericht Hünfeld\nZentrales Mahngericht\n36088 Hünfeld";
-      at("objection-letter", "create its objection to the court typed in (POST /api/drafts) and open the letter", `${kind}: the objection to the court and how to send it (e-mail isn't valid at a court).`, async (c, id) => {
-        const draft = await c.api.post("/api/drafts", { kind: "objection", doc_id: id, language: "en", details: { recipient: court } });
+      at("objection-letter", "create its objection to the court typed in (POST /api/drafts, once per setup) and open the letter", `${kind}: the objection to the court and how to send it (e-mail isn't valid at a court).`, async (c, id) => {
+        // one draft for all of this state's captures (review round 4 of phase 2: each of its 10 captures, 3 at a
+        // time, made another, and the Letters list behind the composer showed 10 identical drafts)
+        let pending = hsObjectionDrafts.get(id);
+        if (!pending) {
+          pending = c.api.post("/api/drafts", { kind: "objection", doc_id: id, language: "en", details: { recipient: court } });
+          hsObjectionDrafts.set(id, pending);
+        }
+        const draft = await pending;
         await c.goto(`/letters/${draft.id}`);
       });
       at("objection-court-typed", "open the composer's objection for it and type the court", `${kind}: the objection asks for the court (its sender, as filed, is the claimant) — typed in.`, async (c, id) => {
@@ -1319,6 +1328,7 @@ export async function demoCatalog({ api, server }) {
   /** A fresh demo folder with the HS_KINDS letters re-filed by the kind picker's PATCH. */
   const setUpHighStakes = async (restart) => {
     await restart("high-stakes");
+    hsObjectionDrafts.clear();
     await setTour(api, null);
     const docs3 = await api.get("/api/documents");
     for (const [re, kind] of HS_KINDS) {

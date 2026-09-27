@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import type { Item } from "@/api/types";
 import { formatTotals } from "@/lib/format";
-import { actionFromItem, groupByWeek, toPayTotals, toPayWithin } from "./selection";
+import { SENDING_TIME_PASSED, actionFromItem, groupByWeek, postTooLate, toPayTotals, toPayWithin } from "./selection";
 
 const TODAY = "2026-09-28";
 
@@ -67,5 +67,34 @@ describe("To pay · next 30 days (round 2)", () => {
       TODAY,
     );
     expect(weeks.map((g) => g.totals)).toEqual([{ EUR: 100, USD: 50 }]);
+  });
+});
+
+describe("the usual time to post has passed (review round 4 of phase 2)", () => {
+  // the inbox and Today said "Send by Mon 28 Sep · today" for an Einspruch due that day: a letter posted then arrives late
+  it("says when it must arrive, not when to post it", () => {
+    const base = payment("einspruch", "2026-09-29", 0, "EUR");
+    const receipt = {
+      due_date: "2026-09-29",
+      send_by: "2026-09-28",
+      safe_date: null,
+      holiday_calendar: "",
+      summary: "",
+      steps: [],
+      rule_ids: ["zpo_339"],
+      warnings: ["The usual sending time has passed — send it today, by the fastest channel allowed (online, fax or in person)."],
+      confidence: "medium" as const,
+    };
+    const late = { ...base, kind: "deadline" as const, amount: null, send_by: "2026-09-28", computation: receipt };
+    expect(postTooLate(late)).toBe(true);
+    const action = actionFromItem(late, { today: TODAY })!;
+    expect(action.dateRole).toBe("arrive_by");
+    expect(action.actionDate).toBe("2026-09-29");
+    expect(action.dueDate).toBeNull();
+    // in good time: post it by the send-by date
+    const early = { ...late, computation: { ...receipt, warnings: [] } };
+    expect(postTooLate(early)).toBe(false);
+    expect(actionFromItem(early, { today: TODAY })!).toMatchObject({ dateRole: "send_by", actionDate: "2026-09-28", dueDate: "2026-09-29" });
+    expect(SENDING_TIME_PASSED).toBe("The usual sending time has passed");
   });
 });

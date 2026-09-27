@@ -127,7 +127,9 @@ function Steps({ steps, holidayCalendar }: { steps: ReceiptStep[]; holidayCalend
                         href={s.href}
                         target="_blank"
                         rel="noreferrer noopener"
-                        className="-my-0.5 inline-flex items-center gap-1 rounded-sm py-0.5 font-medium text-accent underline-offset-2 hover:underline"
+                        // a 24 px target (WCAG 2.5.8): two steps' links on consecutive lines were 22 px tall, touching
+                        // (review round 4 of phase 2)
+                        className="inline-flex min-h-6 items-center gap-1 rounded-sm py-1 font-medium text-accent underline-offset-2 hover:underline"
                       >
                         {inline(s.citation)}
                         <ExternalLink className="size-3 shrink-0" aria-hidden />

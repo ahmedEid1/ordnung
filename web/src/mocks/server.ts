@@ -452,6 +452,7 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
           { ...structuredClone(statutory.guidance), send_by: letterDeadline?.send_by ?? null, must_arrive_by: letterDeadline?.due_date ?? null }
         : {
           send_by: contract?.computed?.send_by ?? db.state.items.find((i) => i.doc_id === doc?.id && i.send_by)?.send_by ?? null,
+          post_too_late: false,
           must_arrive_by: contract?.computed?.cancel_by ?? db.state.items.find((i) => i.doc_id === doc?.id && i.kind === "deadline")?.due_date ?? null,
           form: contract?.category === "rent" || contract?.category === "employment" ? ("written_form" as const) : ("text_form" as const),
           form_note:

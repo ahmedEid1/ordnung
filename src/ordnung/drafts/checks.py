@@ -275,21 +275,31 @@ def has_dates(draft: Draft, context: CheckContext) -> DraftCheck:
 def _address_gaps(block: str) -> list[str]:
     parts = _parts(block)
     if not parts:
-        return ["name", "street and house number", "postcode and town"]
+        return ["name", _STREET_GAP, "postcode and town"]
     rest = parts[1:]
     postcode = [part for part in rest if _POSTCODE_RE.search(part)]
     street = [part for part in rest if part not in postcode and _STREET_RE.match(part)]
     gaps = []
     if not street:
-        gaps.append("street and house number")
+        gaps.append(_STREET_GAP)
     if not postcode:
         gaps.append("postcode and town")
     return gaps
 
 
+_STREET_GAP = "street and house number"
+
+
 def recipient_complete(draft: Draft, context: CheckContext) -> DraftCheck:
-    """The address field has a name, a street (or PO box) and a postcode with town."""
+    """The address field has a name, a street (or PO box) and a postcode with town — for a court (its name,
+    :func:`~ordnung.rules.routing.may_be_court`), the postcode and town alone: a central Mahngericht is addressed
+    by its own postcode ("Amtsgericht Hünfeld / Zentrales Mahngericht / 36088 Hünfeld"; review round 4 of
+    phase 2: a correct court address was flagged as missing a street)."""
+    from ordnung.rules.routing import may_be_court
+
     gaps = _address_gaps(draft.recipient_block)
+    if any(may_be_court(line) for line in _parts(draft.recipient_block)[:2]):
+        gaps = [gap for gap in gaps if gap != _STREET_GAP]
     if gaps:
         return _check("recipient_complete", False, f"Add the recipient's {' and '.join(gaps)}.")
     return _check("recipient_complete", True, None)

@@ -8,9 +8,9 @@ import { Wrench } from "lucide-react";
 import { TOOL_ICONS, toolLabel, toolResultText, unbreakDates, type TitleLookup } from "./tools";
 
 /**
- * One step: its icon, its label and, once done, its result. On a phone the label wraps (a cut-off
- * "until 1…" hides the date) and the result goes on a muted second line up to `lg`; both share one
- * line from `lg` up, the label truncated (its full text in its title).
+ * One step: its icon, its label and, once done, its result. The label wraps at every width (a cut-off
+ * "until 1…" hides the date); the result goes on a muted second line up to `lg`, and follows the label on
+ * its line from `lg` up when there is room. The icon and the done mark sit at the label's first line.
  */
 function StepChip({ step, titleOf }: { step: ToolStep; titleOf?: TitleLookup }) {
   const Icon = TOOL_ICONS[step.name] ?? Wrench;
@@ -30,7 +30,7 @@ function StepChip({ step, titleOf }: { step: ToolStep; titleOf?: TitleLookup }) 
       {/* the label wraps at every width — a date range's end or a letter's title is never cut off, and no
           hover-only title holds what keyboard and touch can't reach (review round 3 of phase 2); from lg up
           the result follows on the same line when there is room */}
-      <span className="flex min-w-0 flex-col pt-0.5 lg:flex-row lg:flex-wrap lg:items-baseline lg:gap-x-2 lg:pt-0">
+      <span className="flex min-w-0 flex-col pt-0.5 lg:flex-row lg:flex-wrap lg:items-baseline lg:gap-x-2">
         <span
           data-testid="tool-step-label"
           className={cn("min-w-0 break-words", step.done ? "text-ink/80" : "text-ink")}
@@ -50,13 +50,13 @@ function StepChip({ step, titleOf }: { step: ToolStep; titleOf?: TitleLookup }) 
       {step.done ? (
         result ? null : (
           <>
-            <Check className="mt-[5px] size-3.5 shrink-0 text-ok sm:mt-0" aria-hidden />
+            <Check className="mt-[5px] size-3.5 shrink-0 text-ok" aria-hidden />
             <span className="sr-only">(done)</span>
           </>
         )
       ) : (
         <>
-          <Spinner className="mt-[5px] size-3.5 shrink-0 text-accent sm:mt-0" />
+          <Spinner className="mt-[5px] size-3.5 shrink-0 text-accent" />
           <span className="sr-only">(working)</span>
         </>
       )}
@@ -104,7 +104,9 @@ export function ToolTrace({ steps, live, titleOf }: { steps: ToolStep[]; live: b
                 initial={reduce ? false : { opacity: 0, x: -4 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.2 }}
-                className="flex min-w-0 items-start gap-2 text-[13px] leading-5 sm:items-center"
+                // the icon at the label's first line at every width: centred beside a wrapped label it sat mid-block
+                // (review round 4 of phase 2)
+                className="flex min-w-0 items-start gap-2 text-[13px] leading-5"
               >
                 <StepChip step={s} titleOf={titleOf} />
               </motion.li>

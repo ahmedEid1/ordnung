@@ -106,6 +106,7 @@ export function phoneGuidance(): SendGuidance {
   return {
     send_by: "2026-10-08",
     must_arrive_by: "2026-10-14",
+    post_too_late: false,
     form: "text_form",
     form_note: "Text form is enough: an email or a letter without handwritten signature is fine.",
     channels: [
@@ -173,6 +174,7 @@ export const DRAFTS: Draft[] = [
     send_guidance: {
       send_by: null,
       must_arrive_by: null,
+      post_too_late: false,
       form: "any",
       form_note: null,
       channels: [{ channel: "email", label: "Email to vermietung@wohnbau-musterstadt.example", allowed: true, recommended: true, note: null, citation: null }],

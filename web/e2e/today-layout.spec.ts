@@ -124,7 +124,11 @@ test("Mark as paid moves focus to the card now in its place; Undo brings the car
   try {
     await panel.getByRole("button", { name: "Mark as paid" }).click();
     await expect(paid).toHaveCount(0);
-    await expect.poll(() => page.evaluate(() => document.activeElement?.matches("[data-top-heading]") ?? false)).toBe(true);
+    // the card leaves once the lists are refreshed: on a loaded machine that takes a while (review round 4; the
+    // card used to leave before the call's callbacks ran, and focus was lost — TopThree.test.tsx pins that)
+    await expect
+      .poll(() => page.evaluate(() => document.activeElement?.matches("[data-top-heading]") ?? false), { timeout: 25_000 })
+      .toBe(true);
     await expect(top3(page).getByRole("heading", { level: 3 }).first()).toBeFocused();
 
     await page.getByRole("button", { name: "Undo" }).click();

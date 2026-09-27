@@ -155,6 +155,32 @@ describe("the Pay panel", () => {
     await user.click(await screen.findByRole("button", { name: "Undo" }));
     await waitFor(() => expect(document.activeElement).toBe(within(top).getByRole("heading", { name: "Pay TechMarkt reminder" })));
   });
+
+  it("says it's paid and moves focus on even when the card leaves before every list is refreshed (review round 4: a slow refresh lost both)", async () => {
+    useMockApi();
+    // the letter's details are refreshed last: the card leaves with the refreshed Top 3, before the mark-as-paid
+    // call is done — its own callbacks never ran in a card that had gone (a flaky e2e run on a busy machine)
+    const answer = globalThis.fetch;
+    let release = () => undefined as void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let marked = false;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if ((init?.method ?? "GET").toUpperCase() === "PATCH") marked = true;
+      else if (marked && url.includes("/documents/")) await held;
+      return answer(input, init);
+    });
+    const { top, user } = await renderToday();
+    await user.click(within(top).getByRole("button", { name: "Pay: TechMarkt reminder" }));
+    const panel = await screen.findByRole("dialog", { name: "Pay: TechMarkt reminder" });
+    await user.click(within(panel).getByRole("button", { name: "Mark as paid" }));
+
+    await waitFor(() => expect(within(top).queryByRole("heading", { name: "Pay TechMarkt reminder" })).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(within(top).getAllByRole("heading", { level: 3 })[1]));
+    release();
+    expect(await screen.findByText("Marked as paid")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+  });
 });
 
 describe("the reason", () => {

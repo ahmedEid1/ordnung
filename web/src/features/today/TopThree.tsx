@@ -69,6 +69,7 @@ export function verbLabel(verb: string, title: string): string {
 /** The countdown pill's first words ("Transfer by Tue 29 Sep · tomorrow"). */
 const PREFIX: Record<DateRole, string | undefined> = {
   send_by: "Send by",
+  arrive_by: "Must arrive by",
   pay_by: "Pay by",
   transfer_by: "Transfer by",
   collected: "Collected",
@@ -184,23 +185,24 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
 
   const markPaid = () => {
     if (!item) return;
-    update.mutate(
-      { id: item.id, patch: { status: "done" } },
-      {
-        onSuccess: () => {
-          close();
-          focus?.leaving(action.key);
-          toast({
-            tone: "success",
-            title: "Marked as paid",
-            description: item.title,
-            undo: async () => {
-              await update.mutateAsync({ id: item.id, patch: { status: "open" } });
-              focus?.returning(action.key);
-            },
-          });
-        },
+    // watched from now, while the card is in its place; the promise, not mutate's callbacks: the card leaves
+    // with the refreshed Top 3, often before every list is refreshed, and a card that has gone gets no callbacks
+    // (review round 4 of phase 2: no "Marked as paid", no Undo, focus lost — on a busy machine)
+    focus?.leaving(action.key);
+    update.mutateAsync({ id: item.id, patch: { status: "done" } }).then(
+      () => {
+        close();
+        toast({
+          tone: "success",
+          title: "Marked as paid",
+          description: item.title,
+          undo: async () => {
+            await update.mutateAsync({ id: item.id, patch: { status: "open" } });
+            focus?.returning(action.key);
+          },
+        });
       },
+      () => undefined, // the error toast comes from the mutation's meta
     );
   };
 
@@ -308,22 +310,20 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
       case "done": {
         const item = action.item;
         if (!item) return;
-        update.mutate(
-          { id: item.id, patch: { status: "done" } },
-          {
-            onSuccess: () => {
-              focus?.leaving(action.key);
-              toast({
-                tone: "success",
-                title: "Marked as done",
-                description: item.title,
-                undo: async () => {
-                  await update.mutateAsync({ id: item.id, patch: { status: "open" } });
-                  focus?.returning(action.key);
-                },
-              });
-            },
-          },
+        // as for "Mark as paid": the card can leave before the call's callbacks would run
+        focus?.leaving(action.key);
+        update.mutateAsync({ id: item.id, patch: { status: "done" } }).then(
+          () =>
+            toast({
+              tone: "success",
+              title: "Marked as done",
+              description: item.title,
+              undo: async () => {
+                await update.mutateAsync({ id: item.id, patch: { status: "open" } });
+                focus?.returning(action.key);
+              },
+            }),
+          () => undefined,
         );
         return;
       }

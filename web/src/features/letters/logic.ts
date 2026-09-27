@@ -346,8 +346,10 @@ export function canSuspend(doc: Pick<Document, "kind"> | null): boolean {
 
 const COURT_NAME =
   /(?:amts|land|landes|oberlandes|kammer|arbeits|sozial|verwaltungs|finanz|mahn|familien|insolvenz|vollstreckungs|nachlass|betreuungs|register|verfassungs|staats|bundes)gericht(?:e?s|shofe?s?)?\b|\bbundesfinanzhofe?s?\b/i;
+/** A court's abbreviation before its place ("AG Hagen") — a federal court's may stand alone ("BGH"), a local one's
+ * never ("AG" alone is no court for the server either: review round 4 of phase 2). */
 const COURT_ABBREVIATION =
-  /(?:^|[(,;/]\s*|\b(?:des|dem|der|beim|vom|am)\s+)(?:AG|LG|OLG|ArbG|LAG|SG|LSG|VG|OVG|VGH|FG|BGH|BFH|BSG|BAG|BVerwG|BVerfG)(?:\s+\p{Lu}|\s*$|\s*[-–—,;/(])/u;
+  /(?:^|[(,;/]\s*|\b(?:des|dem|der|beim|vom|am)\s+)(?:(?:AG|LG|OLG|ArbG|LAG|SG|LSG|VG|OVG|VGH|FG)\s+\p{Lu}|(?:BGH|BFH|BSG|BAG|BVerwG|BVerfG)(?:\s+\p{Lu}|\s*$|\s*[-–—,;/(]))/u;
 const LEGAL_FORM = /\b(?:GmbH|mbH|AG|SE|KGaA|KG|OHG|UG|GbR|eG|e\.\s?V|Ltd|Inc|LLC)(?![\p{L}\d])/u;
 const NOT_A_COURT = /vollzieh|kasse(?:n(?:stelle)?)?\b|zahlstelle/i;
 
