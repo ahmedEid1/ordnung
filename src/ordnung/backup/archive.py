@@ -10,7 +10,7 @@ Written policy (ADR 0007):
   size and SHA-256 of every file and of the database. Nothing else: not the lock, ``server.json``
   or the watched folder (its files are the person's own copies; what Ordnung took from it is in
   ``files/``). Symbolic links are never followed.
-* **Plaintext never touches the disk.** The database snapshot is made in memory; the archive is
+* **Making a backup writes no plaintext.** The database snapshot is made in memory; the archive is
   encrypted as it is written. Each file is read whole (at most one file in memory at a time), so a
   file changed while it is read is in the backup either before or after the change, never torn. A
   file deleted while the backup runs is left out (the database snapshot is exact; files follow it
@@ -137,7 +137,11 @@ def table_counts(conn: sqlite3.Connection) -> dict[str, int]:
             "AND upper(coalesce(sql, '')) NOT LIKE 'CREATE VIRTUAL%' ORDER BY name"
         )
     ]
-    return {name: int(conn.execute(f'SELECT count(*) FROM "{name}"').fetchone()[0]) for name in names}
+    # a name from a backup's database is quoted like any identifier ("" for a ")
+    return {
+        name: int(conn.execute(f'SELECT count(*) FROM "{name.replace(chr(34), chr(34) * 2)}"').fetchone()[0])
+        for name in names
+    }
 
 
 def snapshot_database(db_path: Path) -> _Snapshot:
@@ -240,9 +244,8 @@ class BackupStream:
     ) -> None:
         self.data_dir = data_dir
         self.contents: BackupContents | None = None
-        self._snapshot = snapshot_database(
-            data_dir / DB_NAME
-        )  # a missing database fails here, before any byte
+        # a missing database fails here, before any byte is sent
+        self._snapshot = snapshot_database(data_dir / DB_NAME)
         self._stamp = created_at or real_now_iso()
         self._drain = _Drain()
         self._writer = EncryptedWriter(self._drain, passphrase, kdf=kdf)

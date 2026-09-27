@@ -677,3 +677,26 @@ def test_restore_force_says_where_the_old_data_went(life: Path, tmp_path: Path) 
     assert "moved aside first" in result.output and "before-restore-" in result.output
     aside = [p for p in tmp_path.iterdir() if p.name.startswith("mine.before-restore-")]
     assert len(aside) == 1 and file_digests(aside[0]) == file_digests(life)
+
+
+def test_the_new_commands_are_listed() -> None:
+    result = runner.invoke(app, ["--help"])
+    assert result.exit_code == 0
+    for command in ("backup", "restore", "autostart"):
+        assert command in result.output
+
+
+@pytest.mark.parametrize(
+    ("size", "text"),
+    [(0, "0 bytes"), (999, "999 bytes"), (1000, "1.0 KB"), (10_635_532, "10.6 MB"), (2_400_000_000, "2.4 GB"), (5 * 10**15, "5000.0 TB")],
+)
+def test_human_sizes(size: int, text: str) -> None:
+    from ordnung.cli import human_size
+
+    assert human_size(size) == text
+
+
+def test_restore_check_refuses_a_wrong_passphrase(life: Path, tmp_path: Path) -> None:
+    backup = make_backup(life, tmp_path / "b.ordnung-backup")
+    result = invoke("restore", str(backup), "--check", passphrase="not the passphrase")
+    assert result.exit_code == 1 and "Wrong passphrase" in result.output

@@ -79,7 +79,7 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
 """
 _OSASCRIPT = ("on run argv", "display notification (item 2 of argv) with title (item 1 of argv)", "end run")
 # C0/C1 controls and bidirectional overrides: a letter's words must not reorder or hide the text
-_CONTROL_RE = re.compile("[\x00-\x1f\x7f-\x9f؜‎‏‪-‮⁦-⁩]")
+_CONTROL_RE = re.compile("[\x00-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]")
 _TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 _MECHANISMS: dict[SystemKind, Mechanism] = {
     "macos": "osascript",
