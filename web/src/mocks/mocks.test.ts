@@ -197,7 +197,7 @@ describe("mock dataset", () => {
     // this week's answer and the brief name next week's payment too (Nebenkosten, Fri 9 Oct)
     const week = RECORDED.find((a) => a.question === "What do I need to do this week?")!;
     expect(week.text).toContain("[item:itm_nk]");
-    expect(BRIEF_TEXT).toMatch(/Nebenkosten back payment \(184,30 €/);
+    expect(BRIEF_TEXT).toMatch(/Nebenkosten back payment \(184,30 € by Fri 9 Oct\)/);
     const activity = await get<Activity[]>(srv(), "/activity");
     expect(activity.find((a) => a.ref_id === "doc_gym_price")?.message).toBe("Read “Gym price increase — FitWell” (1 page)");
     expect(new Set(activity.map((a) => a.id)).size).toBe(activity.length);

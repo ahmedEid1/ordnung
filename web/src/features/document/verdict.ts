@@ -3,8 +3,8 @@
  * button does, and which items need the person's eyes ("Please check", "When did it arrive?").
  * Pure functions, unit-tested in `verdict.test.ts`.
  */
-import type { Document, DocumentDetail, DraftKind, Item, ItemKind, Priority, Suggestion } from "@/api/types";
-import { daysUntil, formatRelativeDays, type DateInput } from "@/lib/format";
+import type { Document, DocumentDetail, DraftKind, Item, ItemKind, PartyKind, Priority, Suggestion } from "@/api/types";
+import { daysUntil, formatDate, formatRelativeDays, type DateInput } from "@/lib/format";
 import { isDirectDebit, isIncomingMoney } from "@/lib/payments";
 
 const PRIORITY_RANK: Record<Priority, number> = { critical: 0, high: 1, normal: 2, low: 3 };
@@ -123,6 +123,34 @@ export function needsArrivalDate(i: Item, doc: Pick<Document, "received_date">):
   if (i.date_spec?.anchor !== "receipt" && !fromArrival) return false;
   if (!doc.received_date) return true;
   return Boolean(i.computation?.rule_ids.some((r) => r.includes("fallback")));
+}
+
+/**
+ * Party kinds a public body may be filed as (`ordnung.rules.delivery.MAY_BE_PUBLIC_KINDS`; a Python
+ * test keeps the two equal): a late arrival of their letters never moves a date later, since the
+ * letter may be an authority's (`private_sender_late_arrival`). A letter whose own words name an
+ * administrative act is treated so too, whatever its kind — only the engine can tell that.
+ */
+export const MAY_BE_PUBLIC_KINDS: readonly PartyKind[] = ["company", "insurer", "utility", "employer"];
+
+const LATE_ARRIVAL_RULE = "private_sender_late_arrival";
+
+/**
+ * What saving the arrival day did, from the items recomputed with it: they count from that day — or,
+ * where the letter arrived later than letters usually take and may be an authority's, the engine still
+ * counts from the earlier day it would usually count as delivered (`private_sender_late_arrival`, its
+ * step's date), and says so in "Why this date?".
+ */
+export function arrivalSavedNote(arrived: string, items: readonly Item[]): string {
+  const from = `Counting from ${formatDate(arrived, { style: "short" })}, when the letter arrived`;
+  const capped = items.filter((i) => i.computation?.rule_ids.includes(LATE_ARRIVAL_RULE));
+  if (!capped.length) return `${from}.`;
+  const step = capped[0]!.computation!.steps.find((s) => s.rule_id === LATE_ARRIVAL_RULE);
+  const usual = step?.date ? formatDate(step.date, { style: "short" }) : "an earlier day";
+  const why = `the letter arrived later than letters usually take, so to be safe we still count from ${usual}, when it would usually count as delivered. See “Why this date?”.`;
+  if (capped.length === items.length) return why.charAt(0).toUpperCase() + why.slice(1);
+  const which = capped.length === 1 ? `for “${capped[0]!.title}”` : `for ${capped.length} of these dates`;
+  return `${from} — but ${which} ${why}`;
 }
 
 export type MainAction =

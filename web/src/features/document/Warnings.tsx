@@ -5,10 +5,12 @@
  * warnings from reading the letter.
  */
 import { useState, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { ArrowRight, CalendarCheck, Check, EyeOff, Pencil, Scale, ShieldAlert, TriangleAlert, X } from "lucide-react";
 import type { Document, DocumentDetail, Item, Suggestion } from "@/api/types";
-import { useUpdateDocument, useUpdateSuggestion } from "@/api/hooks";
+import { api } from "@/api/endpoints";
+import { qk, useUpdateDocument, useUpdateSuggestion } from "@/api/hooks";
 import { cn } from "@/lib/utils";
 import { GROUNDING_COPY } from "@/lib/copy";
 import { formatDate, toISODate } from "@/lib/format";
@@ -19,7 +21,7 @@ import { ADVICE_LINKS } from "@/components/ui/Disclaimer";
 import { Glossary } from "@/components/ui/Glossary";
 import { Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
-import { needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
+import { arrivalSavedNote, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
 import { useItemActions } from "./actions";
 import { useEvidence } from "./EvidenceContext";
 
@@ -46,7 +48,9 @@ export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
     scam ? <ScamBanner key="scam" suggestion={scam} doc={doc} reasons={warnings} /> : null,
     doc.hidden_text ? <HiddenTextBanner key="hidden" /> : null,
     remedy === "klage" || remedy === "unclear" ? <AdviceCard key="advice" type={remedy} addressee={doc.remedy?.addressee ?? null} /> : null,
-    arrival.length ? <ArrivalQuestion key="arrival" doc={doc} items={arrival} /> : null,
+    arrival.length ? (
+      <ArrivalQuestion key="arrival" doc={doc} items={arrival} mayBePublic={Boolean(detail.party && MAY_BE_PUBLIC_KINDS.includes(detail.party.kind))} />
+    ) : null,
     ...checks.map((it) => <PleaseCheckItem key={it.id} item={it} />),
     !scam && general.length ? <GeneralWarnings key="general" warnings={general} /> : null,
   ].filter(Boolean);
@@ -201,8 +205,14 @@ function AdviceCard({ type, addressee }: { type: "klage" | "unclear"; addressee:
   );
 }
 
-function ArrivalQuestion({ doc, items }: { doc: Document; items: Item[] }) {
+/**
+ * "When did this letter arrive?" for to-dos that count from the arrival. `mayBePublic`: the sender's
+ * kind may be an authority's (a company, insurer, utility or employer), so a late arrival may not move
+ * the date — the question says so, and the toast after saving says what the engine did.
+ */
+function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: Item[]; mayBePublic: boolean }) {
   const todayISO = useTodayISO();
+  const qc = useQueryClient();
   const update = useUpdateDocument();
   const [date, setDate] = useState(doc.received_date ?? todayISO);
   const min = doc.doc_date ?? undefined;
@@ -213,12 +223,30 @@ function ArrivalQuestion({ doc, items }: { doc: Document; items: Item[] }) {
     return toISODate(d);
   }).filter((d) => !min || d >= min);
 
+  const subject = items.length === 1 ? `“${items[0]!.title}” counts` : "These dates count";
+  // a letter that may be an authority's never counts from later than it would usually count as delivered
+  const unlessLate = mayBePublic
+    ? " — unless it took longer than letters usually do: this sender may be an authority, so we then still count from the day it would usually have arrived"
+    : "";
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!valid) return;
     update.mutate(
       { id: doc.id, patch: { received_date: date } },
-      { onSuccess: () => toast.success("Thanks — dates updated", { description: `Counting from ${formatDate(date, { style: "short" })}, when the letter arrived.` }) },
+      {
+        onSuccess: async () => {
+          // the items as recomputed with the arrival day: they say what the date now counts from
+          const fresh = await qc
+            .fetchQuery({ queryKey: qk.documents.detail(doc.id), queryFn: () => api.document(doc.id), staleTime: 5_000 })
+            .catch(() => undefined);
+          const asked = new Set(items.map((i) => i.id));
+          const recomputed = (fresh?.items ?? []).filter((i) => asked.has(i.id));
+          toast.success("Thanks — dates updated", {
+            description: recomputed.length ? arrivalSavedNote(date, recomputed) : "See “Why this date?” for what each date counts from.",
+          });
+        },
+      },
     );
   };
 
@@ -229,9 +257,8 @@ function ArrivalQuestion({ doc, items }: { doc: Document; items: Item[] }) {
         <div className="min-w-0 flex-1">
           <h2 className="text-[15px] font-semibold text-warn-ink">When did this letter arrive?</h2>
           <p className="mt-1 text-[13.5px] leading-relaxed text-ink/85">
-            {items.length === 1 ? `“${items[0]!.title}” counts` : "These dates count"} from the day the letter reached you. Until you
-            tell us, we count from the letter date{doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""} — the
-            earliest possible, so you're never late.
+            {subject} from the day the letter reached you{unlessLate}. Until you tell us, we count from the letter date
+            {doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""} — the earliest possible, so you're never late.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {quick.map((d, i) => (

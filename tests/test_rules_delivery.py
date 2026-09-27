@@ -10,11 +10,14 @@ bekanntgabe_regime_selection.
 
 from __future__ import annotations
 
+import re
 from datetime import date
+from pathlib import Path
 
 import pytest
 
 from ordnung.rules.delivery import (
+    MAY_BE_PUBLIC_KINDS,
     VWVFG_FOUR_DAY_FROM,
     deemed_delivery,
     fiction_days,
@@ -360,3 +363,14 @@ def test_the_administrative_route_needs_the_codes_written_as_codes() -> None:
     route = is_private_sender("company", scope=None, remedy_type="klage", remedy_text="Klage nach § 40 AO")
     assert route is False
     assert is_private_sender("company", scope=None, remedy_type="klage", remedy_text="ciao ao") is True
+
+
+def test_the_document_page_knows_which_kinds_may_be_public() -> None:
+    """The arrival question (``web/src/features/document/verdict.ts``) says a late arrival may not move
+    the date for the kinds a public body may be filed as: the same kinds as the engine's."""
+    verdict = Path(__file__).resolve().parents[1] / "web" / "src" / "features" / "document" / "verdict.ts"
+    found = re.search(
+        r"MAY_BE_PUBLIC_KINDS: readonly PartyKind\[\] = \[([^\]]*)\]", verdict.read_text("utf-8")
+    )
+    assert found is not None
+    assert set(re.findall(r'"([a-z_]+)"', found.group(1))) == MAY_BE_PUBLIC_KINDS
