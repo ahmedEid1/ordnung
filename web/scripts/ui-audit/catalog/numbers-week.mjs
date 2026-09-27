@@ -75,8 +75,10 @@ export function numbersAndWeekDemoStates() {
     run: async (c) => {
       await c.goto("/numbers?tab=organisations");
       const summary = main(c.page).locator("summary").first();
-      if (await c.exists(summary)) await c.click(summary);
-      else c.note("no call sheet with their own numbers");
+      if (await c.exists(summary)) {
+        await c.click(summary);
+        await c.page.evaluate(() => window.scrollTo(0, 0)); // the tabs back from under the top bar
+      } else c.note("no call sheet with their own numbers");
     },
   });
   add({

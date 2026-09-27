@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { MyNumbers } from "@/api/types";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { mockNumbers } from "@/mocks/numbers";
@@ -93,7 +94,20 @@ describe("the page", () => {
   });
 
   it("says whether the check digit passes, and what to do when it does not", async () => {
-    useMockApi();
+    const { srv } = useMockApi();
+    // the demo's numbers all pass: one misread digit, as a scan might give it
+    const handle = srv.handle;
+    srv.handle = async (method, path, ...rest) => {
+      const res = await handle(method, path, ...rest);
+      if (method !== "GET" || path !== "/numbers") return res;
+      const data = (await res.json()) as MyNumbers;
+      const about_you = data.about_you.map((n) =>
+        n.kind === "health_insurance"
+          ? { ...n, check: "fails" as const, check_note: "Does not pass the Krankenversichertennummer check (§ 290 SGB V): the last digit is not the check digit — compare it with the letter." }
+          : n,
+      );
+      return Response.json({ ...data, about_you });
+    };
     await renderNumbers();
     expect(screen.getAllByRole("button", { name: "Check digit OK" }).length).toBeGreaterThanOrEqual(2);
     const fails = screen.getByRole("button", { name: "Does not check — compare with the letter" });

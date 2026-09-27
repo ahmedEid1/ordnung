@@ -194,7 +194,7 @@ export const DOCUMENTS: Document[] = [
       fact("Monthly contribution", "€142.86", ev("doc_bkk", Q.bkk.amount)),
       fact("Due", "by the 15th of each month", ev("doc_bkk", Q.bkk.due)),
     ],
-    references: [{ label: "Versichertennummer", value: "R123456789" }],
+    references: [{ label: "Versichertennummer", value: "R123456786" }],
   }),
   doc({
     id: "doc_rundfunk",

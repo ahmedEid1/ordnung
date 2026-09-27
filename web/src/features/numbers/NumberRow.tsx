@@ -72,10 +72,8 @@ export function NumberRow({ number, masked = true, showParty = false, showLetter
   return (
     <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 py-3", className)}>
       <div className="min-w-0 flex-1 basis-[13rem]">
-        <p className="text-[13px] font-medium leading-5 text-muted">
-          <span className="text-ink/80">{title}</span>
-          {printed ? <span className="[overflow-wrap:anywhere]"> · {printed}</span> : null}
-        </p>
+        <p className="text-[13px] font-medium leading-5 text-ink/80">{title}</p>
+        {printed ? <p className="text-[12.5px] leading-5 text-muted [overflow-wrap:anywhere]">{printed}</p> : null}
         <p id={valueId} className="mt-0.5 font-ident text-[17px] font-semibold leading-6 tabular-nums tracking-[0.01em] text-ink [overflow-wrap:anywhere]">
           {shown ? (
             number.display

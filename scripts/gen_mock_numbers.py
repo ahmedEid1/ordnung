@@ -102,6 +102,7 @@ def main() -> None:
             numbers = my_numbers(store, today).model_dump(mode="json")
             week = weekly_session(store, today).model_dump(mode="json")
         finally:
+            clock.set_today(None)
             store.close()
 
     def dump(value: object) -> str:

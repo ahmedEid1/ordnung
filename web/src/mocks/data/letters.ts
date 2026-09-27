@@ -347,7 +347,7 @@ export const LETTERS: Record<string, LetterSpec> = {
     recipient: RECIPIENT,
     info: [
       ["Datum", "10.09.2026"],
-      ["Versichertennummer", "R123456789"],
+      ["Versichertennummer", "R123456786"],
     ],
     pages: [
       {

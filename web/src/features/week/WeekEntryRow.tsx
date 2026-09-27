@@ -113,7 +113,7 @@ export function WeekEntryRow({ entry, step }: { entry: WeekEntry; step: StepId }
         <div className="min-w-0 flex-1 basis-[14rem]">
           <Link
             to={entryHref(entry)}
-            className="rounded text-[14.5px] font-medium leading-5 text-ink outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent [overflow-wrap:anywhere]"
+            className="-my-0.5 inline-block rounded py-0.5 text-[14.5px] font-medium leading-5 text-ink outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent [overflow-wrap:anywhere]"
           >
             {entry.title}
           </Link>

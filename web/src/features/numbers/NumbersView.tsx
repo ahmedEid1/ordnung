@@ -271,7 +271,7 @@ export function NumbersView() {
   }
 
   const items: TabItem<NumbersTab>[] = [
-    { value: "you", label: "About you", count: data.about_you.length + data.documents.length },
+    { value: "you", label: "About you", shortLabel: "You", count: data.about_you.length + data.documents.length },
     { value: "cases", label: "Open cases", shortLabel: "Cases", count: data.open_cases.length },
     { value: "organisations", label: "Organisations", count: data.organisations.length },
   ];
