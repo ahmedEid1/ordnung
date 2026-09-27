@@ -755,6 +755,7 @@ CalendarSyncErrorKind = Literal[
     "conflict",
     "server",
     "unavailable",
+    "not_connected",
 ]
 
 

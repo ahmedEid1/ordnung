@@ -229,3 +229,51 @@ def test_mark_exported(store: Store) -> None:
     stamp = mark_exported(store)
     assert store.get_meta("last_calendar_export_at") == stamp
     assert datetime.fromisoformat(stamp).tzinfo is not None
+
+
+def test_an_invoice_payment_a_payment_reminder_took_over_is_left_out(store: Store) -> None:
+    """As on the agenda: pay the reminder, not both — so the calendar (and calendar sync) gets one."""
+    party = store.add_party(name="TechMarkt Online", kind="retailer").id
+    case = store.add_case(title="Invoice TM-2026-0048213", party_id=party).id
+    number = [{"label": "Rechnungsnummer", "value": "TM-2026-0048213"}]
+    invoice = _doc(
+        store,
+        "invoice",
+        kind="invoice",
+        doc_date="2026-08-20",
+        party_id=party,
+        case_id=case,
+        references=number,
+    )
+    reminder = _doc(
+        store,
+        "dunning",
+        kind="dunning",
+        doc_date="2026-09-18",
+        party_id=party,
+        case_id=case,
+        references=number,
+    )
+    paid_by_invoice = _item(
+        store,
+        kind="payment",
+        title="Pay TechMarkt invoice",
+        due_date="2026-10-03",
+        amount=89.99,
+        doc_id=invoice,
+        direction="out",
+    )
+    by_reminder = _item(
+        store,
+        kind="payment",
+        title="Pay the reminder",
+        due_date="2026-10-06",
+        amount=94.99,
+        doc_id=reminder,
+        direction="out",
+    )
+    uids = set(_events(build_ics(store)))
+    assert f"{by_reminder}@ordnung.local" in uids
+    assert f"{paid_by_invoice}@ordnung.local" not in uids
+    store.trash_document(reminder)  # the reminder goes to the trash: the invoice's payment is back
+    assert f"{paid_by_invoice}@ordnung.local" in set(_events(build_ics(store)))

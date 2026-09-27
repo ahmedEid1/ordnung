@@ -12,9 +12,11 @@ the OS keyring and the events are sent. ``POST /api/calendar/sync/run`` sends wh
 Ordnung's events from it first.
 
 The app password travels only over the loopback connection, in the request body, and is never
-stored in the database, logged or returned. A refusal answers ``{"detail": …, "code": <kind>}``
-(``address``, ``auth``, ``not_calendar``, … — :data:`~ordnung.models.CalendarSyncErrorKind`) so the
-web app can show it next to the right field.
+stored in the database, logged or returned. The status reads the keyring only while a calendar is
+connected (whether its password is saved here); otherwise it only asks which password store there
+is, without reading from it. A refusal answers ``{"detail": …, "code": <kind>}`` (``address``,
+``auth``, ``not_calendar``, … — :data:`~ordnung.models.CalendarSyncErrorKind`) so the web app can
+show it next to the right field.
 """
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ from ordnung.api.deps import ApiState, CtxDep, StateDep
 from ordnung.app_context import AppContext
 from ordnung.calendar import caldav
 from ordnung.calendar.secrets import KeyringSecrets, SecretStore, account_name
+from ordnung.ingest.pipeline import run_triggers
 from ordnung.models import (
     CalendarEventPreview,
     CalendarSyncErrorKind,
@@ -48,6 +51,7 @@ _STATUS: dict[CalendarSyncErrorKind, int] = {
     "not_calendar": status.HTTP_422_UNPROCESSABLE_CONTENT,
     "conflict": status.HTTP_409_CONFLICT,
     "unavailable": status.HTTP_409_CONFLICT,
+    "not_connected": status.HTTP_409_CONFLICT,
     "network": status.HTTP_502_BAD_GATEWAY,
     "tls": status.HTTP_502_BAD_GATEWAY,
     "server": status.HTTP_502_BAD_GATEWAY,
@@ -244,9 +248,11 @@ async def calendar_sync_connect(
         return _status(ctx, secrets, False)
 
     try:
-        return await asyncio.to_thread(work)
+        result = await asyncio.to_thread(work)
     except caldav.CalDavError as exc:
         return _refusal(exc)
+    await run_triggers(ctx)  # a connected calendar gets the dates: no "import the calendar file" Idea
+    return result
 
 
 @router.post("/calendar/sync/run", response_model=CalendarSyncStatus, responses=REFUSALS)
@@ -265,9 +271,7 @@ async def calendar_sync_run(
 
     result = await asyncio.to_thread(work)
     if result is None:
-        return JSONResponse(
-            status_code=409, content={"detail": "No calendar is connected.", "code": "not_connected"}
-        )
+        return _refusal(caldav.CalDavError("not_connected", "No calendar is connected."))
     return result
 
 
@@ -282,4 +286,5 @@ async def calendar_sync_disconnect(
         )
     except caldav.CalDavError as exc:
         return _refusal(exc)
+    await run_triggers(ctx)  # the calendar file is the way to a calendar again
     return CalendarSyncDisconnected(removed=removed)

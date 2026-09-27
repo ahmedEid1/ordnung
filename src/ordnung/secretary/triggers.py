@@ -68,6 +68,8 @@ PASSPORT_CHECK_HORIZON_DAYS = 365
 TAX_SEASON_LAST_MONTH = 7
 FOLLOWUP_LATE_DAYS = 14
 CALENDAR_META_KEY = "last_calendar_export_at"
+#: calendar sync's connection record (:data:`ordnung.calendar.caldav.STATE_KEY`)
+CALENDAR_SYNC_META_KEY = "calendar_sync"
 STUDENT_PERMIT_RULE = "student_permit_info"
 
 _DEFAULT_WINDOWS = {"deadline": 14, "payment": 7, "appointment": 2, "task": 3, "reminder": 0, "milestone": 7}
@@ -1331,7 +1333,12 @@ def _changed_after(stamp: str, since: datetime | None) -> bool:
 
 
 def calendar_outdated(ledger: Ledger) -> list[Suggestion]:
-    """Open future dates (items and contract send-by days) added or changed since the last .ics export."""
+    """Open future dates (items and contract send-by days) added or changed since the last .ics export.
+
+    Not while a calendar is connected for calendar sync (paused or not): it gets the dates by itself,
+    and importing the file into it as well would clash with the synced events (the same UIDs)."""
+    if ledger.store.get_meta(CALENDAR_SYNC_META_KEY):
+        return []
     today = ledger.today
     raw = ledger.store.get_meta(CALENDAR_META_KEY)
     since = parse_timestamp(raw)

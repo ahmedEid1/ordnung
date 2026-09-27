@@ -20,6 +20,7 @@ import httpx
 import keyring
 import keyring.backend
 import keyring.backends.fail
+import keyring.backends.null
 import keyring.errors
 import pytest
 from icalendar import Calendar
@@ -39,11 +40,11 @@ from ordnung import clock
 from ordnung.calendar import caldav, ics
 from ordnung.calendar.caldav import CalDavError
 from ordnung.calendar.secrets import (
-    INSTALL_COMMAND,
     SERVICE,
     KeyringSecrets,
     SecretsUnavailable,
     account_name,
+    install_command,
 )
 from ordnung.db.store import Store
 from ordnung.tick import DailyTick
@@ -195,11 +196,30 @@ def test_discreet_mode_keeps_dates_times_and_alarms_and_nothing_else(
         ]
         assert all(str(a.get("description")) == str(sent.get("summary")) for a in sent.walk("VALARM"))
         assert "location" not in sent and "categories" not in sent
-        assert str(sent.get("description")) == caldav.DISCREET_DESCRIPTION
+        assert str(sent.get("description")).startswith(caldav.DISCREET_DESCRIPTION)
     titles = {event.uid.split("@")[0]: event.preview.summary for event in discreet}
     assert titles[ids["abh_appointment"]] == "Ordnung: appointment"
-    assert titles[ids["parking_payment"]] == "Ordnung: payment"
-    assert set(titles.values()) <= {"Ordnung: deadline", "Ordnung: payment", "Ordnung: appointment"}
+    assert titles[ids["semester_fee"]] == "Ordnung: payment"
+    assert titles[ids["tax_refund"]] == "Ordnung: money in"  # money coming in is not a payment to make
+    plain = {"Ordnung: deadline", "Ordnung: payment", "Ordnung: appointment", "Ordnung: money in"}
+    assert set(titles.values()) <= plain | {title + caldav.DISCREET_CHECK_TITLE for title in plain}
+
+
+def test_a_date_ordnung_couldnt_confirm_says_so_in_discreet_mode_too(
+    store: Store, ids: dict[str, str]
+) -> None:
+    # the parking fine's date was read from the letter and not confirmed: "⚠ check:" in full mode
+    full = {e.uid.split("@")[0]: e.preview for e in caldav.build_events(store, "full")}
+    assert full[ids["parking_payment"]].summary.startswith(ics.CHECK_PREFIX)
+    discreet = {e.uid.split("@")[0]: e for e in caldav.build_events(store, "discreet")}
+    parking = discreet[ids["parking_payment"]]
+    assert parking.preview.summary == "Ordnung: payment — check the date"
+    assert parking.preview.description == f"{caldav.DISCREET_DESCRIPTION} {caldav.DISCREET_CHECK}"
+    sent = Calendar.from_ical(parking.body).events[0]
+    assert all("check the date" in str(alarm.get("description")) for alarm in sent.walk("VALARM"))
+    assert "Pay parking fine" not in parking.body.decode("utf-8")
+    # a confirmed date doesn't
+    assert discreet[ids["semester_fee"]].preview.summary == "Ordnung: payment"
 
 
 def test_the_preview_says_what_each_event_holds_and_when_its_alarms_ring(
@@ -348,13 +368,38 @@ def test_a_refused_update_of_an_event_sent_before_is_still_ordnungs_to_remove(
     assert gone is not None and gone.removed == 1 and CALENDAR_PATH + href not in server.resources
 
 
+@pytest.mark.parametrize(
+    "clash",
+    [
+        (409, b"no-uid-conflict"),
+        # Nextcloud: a 400 that names the UID (and a server that says it with a 403)
+        (400, b"Calendar object with uid already exists in this calendar collection."),
+        (
+            403,
+            b'<d:error xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><c:no-uid-conflict/></d:error>',
+        ),
+    ],
+)
 def test_an_event_imported_by_hand_under_another_name_is_a_uid_conflict(
-    store: Store, ids: dict[str, str], server: FakeCalDav, secrets: MemorySecrets
+    store: Store, ids: dict[str, str], secrets: MemorySecrets, clash: tuple[int, bytes]
 ) -> None:
+    server = FakeCalDav(uid_clash=clash)
     event = caldav.build_events(store, "full")[0]
     server.resources[CALENDAR_PATH + "imported.ics"] = event.body
     report = connect(store, secrets, server)
     assert report.failed == 1 and report.error_kind == "conflict"
+    assert "calendar of its own" in (report.error or "")
+    assert report.sent == len(caldav.build_events(store, "discreet")) - 1  # the others still went
+
+
+def test_a_refused_request_without_a_uid_is_not_a_conflict(
+    store: Store, ids: dict[str, str], secrets: MemorySecrets
+) -> None:
+    server = FakeCalDav()
+    refused = CALENDAR_PATH + caldav.resource_name(f"{ids['parking_payment']}@ordnung.local")
+    server.refuse[refused] = 400
+    report = connect(store, secrets, server)
+    assert report.failed == 1 and report.error_kind == "server" and "HTTP 400" in (report.error or "")
 
 
 @pytest.mark.parametrize(
@@ -479,7 +524,7 @@ def test_a_second_calendar_needs_a_disconnect_first(
 
 
 def test_no_password_store_means_no_calendar_sync(store: Store, server: FakeCalDav) -> None:
-    secrets = MemorySecrets(SecretsUnavailable("no store", install=INSTALL_COMMAND))
+    secrets = MemorySecrets(SecretsUnavailable("no store", install=install_command()))
     with pytest.raises(CalDavError) as refused:
         connect(store, secrets, server)
     assert refused.value.kind == "unavailable" and server.requests == []
@@ -509,6 +554,80 @@ def test_disconnecting_removes_only_ordnungs_events_when_asked_and_forgets_the_p
     connect(store, secrets, server)
     assert caldav.disconnect(store, secrets, remove_events=False, transport=server.transport()) == 0
     assert len(server.resources) == count and caldav.load_state(store) is None
+
+
+class CountingSecrets(MemorySecrets):
+    """Counts how often a password is read (a locked keyring asks to be unlocked each time)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.reads = 0
+
+    def get(self, account: str) -> str | None:
+        self.reads += 1
+        return super().get(account)
+
+
+def test_an_unchanged_ledger_doesnt_read_the_password(
+    store: Store, ids: dict[str, str], server: FakeCalDav
+) -> None:
+    secrets = CountingSecrets()
+    connect(store, secrets, server)
+    before = secrets.reads
+    for _ in range(3):
+        report = caldav.sync(store, secrets, transport=server.transport(), automatic=True)
+        assert report is not None and report.sent == 0 and report.error is None
+    assert secrets.reads == before  # nothing to send: the keyring stays shut
+    store.update_item(ids["followup"], status="done")
+    report = caldav.sync(store, secrets, transport=server.transport(), automatic=True)
+    assert report is not None and report.removed == 1 and secrets.reads == before + 1
+
+
+@pytest.mark.parametrize(
+    ("error", "words"),
+    [
+        (httpx.ConnectError("refused"), "Couldn't reach cal.example.org."),
+        (httpx.ReadTimeout("slow"), "didn't answer in time."),
+    ],
+)
+def test_only_a_sync_says_it_is_tried_again(
+    store: Store,
+    ids: dict[str, str],
+    server: FakeCalDav,
+    secrets: MemorySecrets,
+    error: Exception,
+    words: str,
+) -> None:
+    # finding, connecting and disconnecting are not retried: their answers don't promise it
+    for attempt in (
+        lambda: caldav.discover(URL, USERNAME, PASSWORD, transport=FakeCalDav(raises=error).transport()),
+        lambda: connect(store, secrets, FakeCalDav(raises=error)),
+    ):
+        with pytest.raises(CalDavError) as refused:
+            attempt()
+        assert words in str(refused.value) and caldav.RETRY_NOTE not in str(refused.value)
+    connect(store, secrets, server)
+    store.update_item(ids["followup"], status="done")
+    server.raises = error
+    with pytest.raises(CalDavError) as refused:
+        caldav.disconnect(store, secrets, remove_events=True, transport=server.transport())
+    assert caldav.RETRY_NOTE not in str(refused.value)
+    # the tick's next check does send it again
+    report = caldav.sync(store, secrets, transport=server.transport(), automatic=True)
+    assert report is not None and (report.error or "").endswith(f"{words} {caldav.RETRY_NOTE}")
+    server.raises = None
+    server.override = (503, {}, b"")
+    report = caldav.sync(store, secrets, transport=server.transport(), automatic=True)
+    assert (
+        report is not None
+        and report.error == f"The calendar server had a problem (HTTP 503). {caldav.RETRY_NOTE}"
+    )
+    server.override = None
+    server.password = "rotated"
+    report = caldav.sync(store, secrets, transport=server.transport())
+    assert (
+        report is not None and report.error_kind == "auth" and caldav.RETRY_NOTE not in (report.error or "")
+    )
 
 
 def test_disconnecting_keeps_the_connection_when_the_events_cant_be_removed(
@@ -581,6 +700,26 @@ def test_an_account_without_event_calendars_says_what_to_do(server: FakeCalDav) 
     with pytest.raises(CalDavError) as refused:
         found(server, BASE + HOME_PATH)
     assert refused.value.kind == "not_calendar" and "named “Ordnung”" in str(refused.value)
+
+
+@pytest.mark.parametrize("start", [BASE, BASE + "/", "https://cal.example.org/index.php/"])
+def test_a_web_root_that_redirects_to_its_login_page_still_finds_the_calendars(
+    server: FakeCalDav, start: str
+) -> None:
+    # Nextcloud answers a PROPFIND on its web root (and index.php) with a redirect to the login page
+    login = (302, {"Location": "/login"}, b"")
+    server.answers = {
+        "/": login,
+        "/index.php/": login,
+        "/login": (200, {"Content-Type": "text/html"}, b"<html>Log in</html>"),
+    }
+    assert found(server, start) == [ORDNUNG, PERSONAL]  # via /.well-known/caldav
+    assert ("PROPFIND", "/.well-known/caldav") in server.requests
+
+
+def test_a_moved_calendar_on_the_same_host_is_found_where_it_is(server: FakeCalDav) -> None:
+    server.answers = {"/dav/calendars/sam/old/": (301, {"Location": CALENDAR_PATH}, b"")}
+    assert ORDNUNG in found(server, BASE + "/dav/calendars/sam/old/")
 
 
 def test_a_well_known_redirect_to_another_host_is_named_not_followed(server: FakeCalDav) -> None:
@@ -686,6 +825,92 @@ def test_the_keyring_adapter_keeps_one_password_per_account(memory_keyring: Memo
     assert secrets.get(account) is None
 
 
+class ShutKeyring(MemoryKeyring):
+    """A password store that must not be read just to ask whether there is one (it would prompt)."""
+
+    def get_password(self, service: str, username: str) -> str | None:
+        raise AssertionError("a secret was read")
+
+
+def test_asking_whether_there_is_a_password_store_reads_no_secret() -> None:
+    previous = keyring.get_keyring()
+    keyring.set_keyring(ShutKeyring())
+    try:
+        assert KeyringSecrets().problem() is None
+    finally:
+        keyring.set_keyring(previous)
+
+
+class PlaintextKeyring(MemoryKeyring):
+    """Stands in for ``keyrings.alt.file.PlaintextKeyring`` (a plain file in the home folder)."""
+
+    priority = 0.5  # type: ignore[assignment]
+
+
+PlaintextKeyring.__module__ = "keyrings.alt.file"
+
+
+class HomeMadeKeyring(MemoryKeyring):
+    """A third-party backend that says it is a good one, from ``keyrings.alt``."""
+
+    priority = 3  # type: ignore[assignment]
+
+
+HomeMadeKeyring.__module__ = "keyrings.alt.file"
+
+
+@pytest.mark.parametrize(
+    "backend",
+    [keyring.backends.null.Keyring(), PlaintextKeyring(), HomeMadeKeyring()],
+    ids=["null", "plaintext", "keyrings.alt"],
+)
+def test_a_password_store_that_isnt_one_is_refused(
+    store: Store, server: FakeCalDav, backend: keyring.backend.KeyringBackend
+) -> None:
+    previous = keyring.get_keyring()
+    keyring.set_keyring(backend)
+    try:
+        secrets = KeyringSecrets()
+        problem = secrets.problem()
+        assert problem is not None and "doesn't keep passwords safely" in str(problem)
+        with pytest.raises(CalDavError) as refused:
+            caldav.connect(
+                store,
+                secrets,
+                url=URL,
+                username=USERNAME,
+                password=PASSWORD,
+                mode="discreet",
+                transport=server.transport(),
+            )
+        assert refused.value.kind == "unavailable" and server.requests == []
+        with pytest.raises(SecretsUnavailable):
+            secrets.set("a", "b")
+        assert getattr(backend, "data", {}) == {}  # nothing was written to it
+    finally:
+        keyring.set_keyring(previous)
+
+
+def test_a_chain_of_password_stores_is_judged_by_the_one_it_stores_into() -> None:
+    from keyring.backends.chainer import ChainerBackend
+
+    from ordnung.calendar.secrets import backend_problem
+
+    class Chain(ChainerBackend):
+        def __init__(self, backends: list[Any]) -> None:
+            super().__init__()
+            self._chain = backends
+
+        @property
+        def backends(self) -> list[Any]:  # type: ignore[override]
+            return self._chain
+
+    Chain.__name__ = "ChainerBackend"
+    assert backend_problem(Chain([MemoryKeyring(), PlaintextKeyring()])) is None
+    assert backend_problem(Chain([PlaintextKeyring()])) is not None
+    assert backend_problem(Chain([])) is not None
+
+
 def test_a_computer_without_a_password_store_is_told_so() -> None:
     previous = keyring.get_keyring()
     keyring.set_keyring(keyring.backends.fail.Keyring())
@@ -698,7 +923,7 @@ def test_a_computer_without_a_password_store_is_told_so() -> None:
         keyring.set_keyring(previous)
 
 
-def test_without_the_extra_the_install_command_is_named(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_without_keyring_the_command_for_this_installation_is_named(monkeypatch: pytest.MonkeyPatch) -> None:
     import importlib
 
     real = importlib.import_module
@@ -710,4 +935,49 @@ def test_without_the_extra_the_install_command_is_named(monkeypatch: pytest.Monk
 
     monkeypatch.setattr(importlib, "import_module", missing)
     problem = KeyringSecrets().problem()
-    assert problem is not None and problem.install == INSTALL_COMMAND == "pip install 'ordnung[caldav]'"
+    assert problem is not None and problem.install == install_command()
+
+
+@pytest.mark.parametrize(
+    ("prefix", "executable", "command"),
+    [
+        (
+            "/home/sam/.local/share/pipx/venvs/ordnung",
+            "/home/sam/.local/share/pipx/venvs/ordnung/bin/python",
+            "pipx inject ordnung keyring",
+        ),
+        (
+            "C:\\Users\\Jürgen\\pipx\\venvs\\ordnung",
+            "C:\\Users\\Jürgen\\pipx\\venvs\\ordnung\\Scripts\\python.exe",
+            "pipx inject ordnung keyring",
+        ),
+        (
+            "/home/sam/.local/share/uv/tools/ordnung",
+            "/home/sam/.local/share/uv/tools/ordnung/bin/python",
+            "uv tool install --reinstall --with 'keyring>=25' git+https://github.com/ahmedEid1/ordnung",
+        ),
+        (
+            "/home/sam/ordnung/.venv",
+            "/home/sam/ordnung/.venv/bin/python",
+            "/home/sam/ordnung/.venv/bin/python -m pip install 'keyring>=25'",
+        ),
+        ("/opt/my env", "/opt/my env/bin/python", "'/opt/my env/bin/python' -m pip install 'keyring>=25'"),
+    ],
+)
+def test_the_install_command_fits_the_installation(prefix: str, executable: str, command: str) -> None:
+    # never a package name on PyPI that isn't Ordnung's ("pip install ordnung[…]")
+    assert install_command(prefix, executable) == command
+
+
+def test_keyring_is_one_of_ordnungs_dependencies() -> None:
+    import tomllib
+
+    project = tomllib.loads((Path(__file__).parents[1] / "pyproject.toml").read_text())["project"]
+    assert any(dep.startswith("keyring") for dep in project["dependencies"])
+    assert "caldav" not in project.get("optional-dependencies", {})
+
+
+def test_the_triggers_read_the_same_connection_record() -> None:
+    from ordnung.secretary.triggers import CALENDAR_SYNC_META_KEY
+
+    assert caldav.STATE_KEY == CALENDAR_SYNC_META_KEY

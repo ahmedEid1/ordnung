@@ -2,12 +2,16 @@
 
 Status (available, connected, the saved password), the preview in both modes, connecting with the
 refusals the web app places next to a field (``code``), syncing now, disconnecting, the demo's
-refusal, and that the app password never comes back in any answer.
+refusal, and that the app password never comes back in any answer. Also what calendar sync means
+for the rest of Ordnung: no "import the calendar file" Idea while connected, and "Delete everything"
+takes Ordnung's events and the app password out of the calendar and the keyring first.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
+import threading
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -19,8 +23,10 @@ from fake_caldav import CALENDAR_PATH, PASSWORD, USERNAME, FakeCalDav, MemorySec
 from helpers_secretary import TODAY, seed_ledger
 from ordnung import clock
 from ordnung.api.routes import calendar_sync
+from ordnung.api.routes.data import wipe_data_dir
 from ordnung.calendar import caldav
-from ordnung.calendar.secrets import INSTALL_COMMAND, SecretsUnavailable, account_name
+from ordnung.calendar.secrets import SecretsUnavailable, account_name, install_command
+from ordnung.ingest.pipeline import run_triggers
 from test_api_support import Api, api_for
 
 URL = "https://cal.example.org" + CALENDAR_PATH
@@ -70,11 +76,8 @@ async def test_the_preview_shows_each_event_in_the_chosen_mode(data_dir: Path) -
         full = (await api.client.get("/api/calendar/sync/preview", params={"mode": "full"})).json()
         assert discreet["mode"] == "discreet" and full["mode"] == "full"
         assert [e["uid"] for e in discreet["events"]] == [e["uid"] for e in full["events"]]
-        assert {e["summary"] for e in discreet["events"]} <= {
-            "Ordnung: deadline",
-            "Ordnung: payment",
-            "Ordnung: appointment",
-        }
+        plain = {"Ordnung: deadline", "Ordnung: payment", "Ordnung: appointment", "Ordnung: money in"}
+        assert {e["summary"] for e in discreet["events"]} <= plain | {f"{t} — check the date" for t in plain}
         assert "Musterstadt" not in json.dumps(discreet) and "Musterstadt" in json.dumps(full)
         appointment = next(e for e in full["events"] if not e["all_day"])
         assert appointment["start"] == "2026-10-14T10:00:00+02:00"
@@ -191,11 +194,11 @@ async def test_a_calendar_that_cant_be_reached_keeps_the_connection_on_disconnec
 
 
 async def test_without_a_password_store_it_says_what_to_install(data_dir: Path) -> None:
-    secrets = MemorySecrets(SecretsUnavailable("Needs an extra package.", install=INSTALL_COMMAND))
+    secrets = MemorySecrets(SecretsUnavailable("Needs an extra package.", install=install_command()))
     async with calendar_api(data_dir, FakeCalDav(), secrets) as api:
         body = (await api.client.get("/api/calendar/sync")).json()
         assert not body["available"] and body["unavailable"] == "Needs an extra package."
-        assert body["install_command"] == INSTALL_COMMAND
+        assert body["install_command"] == install_command()
         refused = await api.client.put("/api/calendar/sync", json=CONNECT)
         assert refused.status_code == 409 and refused.json()["code"] == "unavailable"
 
@@ -223,3 +226,90 @@ async def test_the_demo_never_connects(data_dir: Path) -> None:
             assert refused.status_code == 409 and refused.json()["code"] == "unavailable"
         assert server.requests == [] and secrets.saved == {}
         assert (await api.client.get("/api/calendar/sync/preview")).status_code == 200
+
+
+# --------------------------------------------------------------------------------------------------
+# calendar sync and the rest of Ordnung
+# --------------------------------------------------------------------------------------------------
+
+
+def calendar_ideas(api: Api) -> list[str]:
+    return [s.title for s in api.ctx.store.list_suggestions(status="new") if s.rule_id == "calendar_outdated"]
+
+
+async def test_a_connected_calendar_is_not_told_to_import_the_calendar_file(data_dir: Path) -> None:
+    server, secrets = FakeCalDav(), MemorySecrets()
+    async with calendar_api(data_dir, server, secrets) as api:
+        api.ctx.store.set_meta("last_calendar_export_at", None)  # never exported: "Add your N dates…"
+        await run_triggers(api.ctx)
+        assert calendar_ideas(api)  # the calendar file is the way to a calendar
+        assert (await api.client.put("/api/calendar/sync", json=CONNECT)).status_code == 200
+        assert calendar_ideas(api) == []  # the dates go there by themselves: importing would clash
+        api.ctx.store.update_item(
+            next(i.id for i in api.ctx.store.list_items() if i.status == "open" and i.due_date),
+            title="Renamed",
+        )
+        await run_triggers(api.ctx)
+        assert calendar_ideas(api) == []  # a new or changed date is synced, not a reason to import
+        await api.client.post("/api/calendar/sync/disconnect", json={"remove_events": True})
+        assert calendar_ideas(api)  # without sync the file is the way again
+
+
+async def test_delete_everything_takes_ordnungs_events_and_password_out_of_the_calendar_first(
+    data_dir: Path,
+) -> None:
+    server, secrets = FakeCalDav(), MemorySecrets()
+    async with calendar_api(data_dir, server, secrets) as api:
+        await api.client.put("/api/calendar/sync", json=CONNECT)
+        theirs = CALENDAR_PATH + "dentist.ics"
+        server.resources[theirs] = b"not Ordnung's"
+        ordnungs = len(server.resources) - 1
+        assert ordnungs > 5 and secrets.saved
+
+        # the calendar can't be reached: nothing is deleted, and the answer says how to go on
+        server.raises = httpx.ConnectError("down")
+        refused = await api.client.request("DELETE", "/api/data", json={"confirm": "DELETE"})
+        assert refused.status_code == 409
+        detail = refused.json()["detail"]
+        assert (
+            "nothing was deleted" in detail and "Settings → Calendar" in detail and "Couldn't reach" in detail
+        )
+        assert api.ctx.store.list_items() and caldav.load_state(api.ctx.store) is not None and secrets.saved
+
+        server.raises = None
+        done = await api.client.request("DELETE", "/api/data", json={"confirm": "DELETE"})
+        assert done.status_code == 200 and done.json()["calendar_events_removed"] == ordnungs
+        assert list(server.resources) == [theirs]  # only Ordnung's own left the calendar
+        assert secrets.saved == {}  # the app password is not left in the keyring
+        assert caldav.load_state(api.ctx.store) is None and api.ctx.store.list_items() == []
+
+        # nothing connected: nothing to remove, and no password store is asked
+        again = await api.client.request("DELETE", "/api/data", json={"confirm": "DELETE"})
+        assert again.status_code == 200 and again.json()["calendar_events_removed"] is None
+
+
+async def test_a_sync_running_while_everything_is_deleted_cant_write_its_record_back(data_dir: Path) -> None:
+    server, secrets = FakeCalDav(), MemorySecrets()
+    async with calendar_api(data_dir, server, secrets) as api:
+        store = api.ctx.store
+        await api.client.put("/api/calendar/sync", json=CONNECT)
+        started, release = threading.Event(), threading.Event()
+
+        def slow_sync() -> None:  # what a sync of the tick does, slowly: read the record, write it back
+            with caldav.exclusive():
+                state = caldav.load_state(store)
+                started.set()
+                release.wait(10)
+                caldav.save_state(store, state)
+
+        syncing = threading.Thread(target=slow_sync)
+        syncing.start()
+        assert started.wait(10)
+        wiping = threading.Thread(target=wipe_data_dir, args=(api.ctx, secrets, server.transport()))
+        wiping.start()
+        await asyncio.sleep(0.3)
+        assert wiping.is_alive()  # it waits for the sync
+        release.set()
+        syncing.join(10)
+        wiping.join(30)
+        assert caldav.load_state(store) is None and secrets.saved == {}

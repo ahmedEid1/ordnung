@@ -13,10 +13,12 @@ Written policy (ADR 0007):
   (:func:`ordnung.calendar.ics.build_ics`: open dated to-dos and contract decision days with their
   alarms; letters with scam signs are left out), each as its own resource ``ordnung-<id>.ics``.
   *Discreet* (the default) keeps the date, the time and the alarms and replaces everything else: the
-  title becomes "Ordnung: deadline" ("… payment", "… appointment"), the description a pointer to
-  Ordnung; no location, no categories — no names, organisations, amounts or letter text reach the
-  calendar provider. *With details* sends the events as the calendar file has them. Settings shows
-  every event in the chosen mode before anything is sent (:func:`preview`).
+  title becomes "Ordnung: deadline" ("… payment", "… appointment", "… money in" for money coming
+  in), the description a pointer to Ordnung; no location, no categories — no names, organisations,
+  amounts or letter text reach the calendar provider. A date Ordnung couldn't confirm in the letter
+  says so in either mode ("Ordnung: deadline — check the date"): the doubt travels with the alarm.
+  *With details* sends the events as the calendar file has them. Settings shows every event in the
+  chosen mode before anything is sent (:func:`preview`).
 * **Idempotent, and only Ordnung's own events.** An event's resource name comes from its stable UID,
   so sending it again replaces it instead of adding a copy. Ordnung remembers a SHA-256 of each event
   it sent (meta ``calendar_sync``, :class:`~ordnung.models.CalendarSyncState`): an unchanged event is
@@ -25,13 +27,17 @@ Written policy (ADR 0007):
   the calendar is read. An event edited in the calendar app is overwritten by the next change made
   in Ordnung — Ordnung's dates are changed in Ordnung.
 * **When.** On connecting, on "Sync now", and at every check of the daily tick while ``ordnung
-  serve`` runs (every 15 minutes) — sending only what changed, so an unchanged ledger sends nothing.
-  After the server refused the user name or password, automatic syncing pauses (repeated failed
-  logins can lock an account) until the person syncs by hand or connects again.
+  serve`` runs (every 15 minutes) — sending only what changed, so an unchanged ledger sends nothing
+  and doesn't even read the app password from the keyring (a locked keyring would ask to be
+  unlocked). After the server refused the user name or password, automatic syncing pauses (repeated
+  failed logins can lock an account) until the person syncs by hand or connects again. A sync that
+  couldn't reach the server, or that the server failed, says it is tried again later — the answers
+  to finding, connecting and disconnecting don't, as nothing retries those.
 * **How.** ``httpx`` with TLS verification (``SSL_CERT_FILE`` is honoured for a private CA), Basic
-  authentication, no redirects followed (a moved calendar is reported with its new address) and a
-  :data:`TIMEOUT_S` second timeout. A server's XML answer is read up to :data:`MAX_RESPONSE_BYTES`
-  and refused if it declares a DTD. Errors are words for people (:class:`CalDavError`) and never
+  authentication, no redirects followed for the calendar itself (a moved calendar is reported with
+  its new address) and a :data:`TIMEOUT_S` second timeout. Finding calendars follows redirects on
+  the same host only (a server's web root often redirects to its login page). A server's XML
+  answer is read up to :data:`MAX_RESPONSE_BYTES` and refused if it declares a DTD. Errors are words for people (:class:`CalDavError`) and never
   contain the password; one event the server refuses doesn't stop the others.
 """
 
@@ -45,6 +51,7 @@ import re
 import ssl
 import threading
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from typing import Any
@@ -82,11 +89,17 @@ DAV = "DAV:"
 CALDAV = "urn:ietf:params:xml:ns:caldav"
 DISCREET_DEFAULT = "Ordnung: deadline"
 DISCREET_TITLES: dict[str, str] = {"payment": "Ordnung: payment", "appointment": "Ordnung: appointment"}
+DISCREET_INCOMING = "Ordnung: money in"
 DISCREET_DESCRIPTION = "Open Ordnung on your computer to see what this is — the details stay there."
+DISCREET_CHECK_TITLE = " — check the date"
+DISCREET_CHECK = "This date couldn't be confirmed in the letter: check it in Ordnung before you rely on it."
 #: errors after which the rest of a run is pointless (every other request would fail the same way)
 FATAL: frozenset[CalendarSyncErrorKind] = frozenset(
     {"address", "auth", "forbidden", "not_found", "network", "tls", "unavailable"}
 )
+#: errors the next sync of the tick may well get past (the report says it is tried again)
+RETRIED: frozenset[CalendarSyncErrorKind] = frozenset({"network", "server"})
+RETRY_NOTE = "Ordnung tries again later."
 PROPFIND_BODY = (
     b'<?xml version="1.0" encoding="utf-8"?>\n'
     b'<d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop>'
@@ -104,14 +117,19 @@ HOME_BODY = (
 )
 MAX_REDIRECTS = 3
 MAX_CALENDARS = 50
-#: refusals that end a search for calendars (anything else: look further)
-_STOP_DISCOVERY: frozenset[CalendarSyncErrorKind] = frozenset(
-    {"auth", "forbidden", "network", "tls", "address"}
+#: refusals that end a search for calendars (anything else — a redirect too — : look further)
+_STOP_DISCOVERY: frozenset[CalendarSyncErrorKind] = frozenset({"auth", "forbidden", "network", "tls"})
+CONFLICT_MESSAGE = (
+    "The calendar refused an event, perhaps because it already holds a copy imported from Ordnung's "
+    "calendar file. A calendar of its own for Ordnung avoids this."
 )
+#: a refusal that is about an event's UID (Nextcloud answers a UID clash with 400 and says so)
+_UID_CLASH = re.compile(rb"\buid\b|no-uid-conflict", re.IGNORECASE)
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 _UNSAFE_NAME = re.compile(r"[^A-Za-z0-9_-]")
 _DTD = re.compile(rb"<!(DOCTYPE|ENTITY)", re.IGNORECASE)
-_LOCK = threading.Lock()
+# re-entrant: "Delete everything" disconnects while it holds it (see :func:`exclusive`)
+_LOCK = threading.RLock()
 
 
 class CalDavError(RuntimeError):
@@ -239,16 +257,25 @@ def _kinds(event: Event) -> list[str]:
     return [str(cat) for item in values for cat in getattr(item, "cats", [])]
 
 
-def discreet_event(event: Event) -> Event:
-    """``event`` without anything but its date, time and alarms (module policy)."""
+def discreet_event(event: Event, *, incoming: bool = False) -> Event:
+    """``event`` without anything but its date, time and alarms (module policy); ``incoming``: money
+    coming in, not a payment to make."""
     kinds = _kinds(event)
-    title = next((DISCREET_TITLES[kind] for kind in kinds if kind in DISCREET_TITLES), DISCREET_DEFAULT)
+    title = (
+        DISCREET_INCOMING
+        if incoming
+        else next((DISCREET_TITLES[kind] for kind in kinds if kind in DISCREET_TITLES), DISCREET_DEFAULT)
+    )
+    description = DISCREET_DESCRIPTION
+    if str(event.get("summary", "")).startswith(ics.CHECK_PREFIX):
+        title += DISCREET_CHECK_TITLE
+        description = f"{description} {DISCREET_CHECK}"
     quiet = Event()
     for name in ("uid", "dtstamp", "last-modified", "dtstart", "dtend", "transp"):
         if name in event:
             quiet[name] = event[name]
     quiet.add("summary", title)
-    quiet.add("description", DISCREET_DESCRIPTION)
+    quiet.add("description", description)
     for alarm in event.walk("VALARM"):
         plain = Alarm()
         plain.add("action", "DISPLAY")
@@ -316,10 +343,14 @@ def build_events(store: Store, mode: CalendarSyncMode) -> list[SyncEvent]:
     """Every event calendar sync sends in ``mode``, in the calendar file's order (module policy)."""
     parsed = Calendar.from_ical(ics.build_ics(store))
     timezones: dict[str, Component] = {str(tz.get("tzid")): tz for tz in parsed.timezones}
+    incoming = {ics.item_uid(item.id) for item in store.list_items(kind="payment") if item.direction == "in"}
     events: list[SyncEvent] = []
     seen: set[str] = set()
     for original in parsed.events:
-        event = discreet_event(original) if mode == "discreet" else original
+        if mode == "discreet":
+            event = discreet_event(original, incoming=str(original.get("uid")) in incoming)
+        else:
+            event = original
         uid = str(event.get("uid"))
         href = resource_name(uid)
         if href in seen:  # never two events under one name
@@ -373,17 +404,11 @@ def http_error(url: str, response: httpx.Response, action: str) -> CalDavError:
     if code == 404:
         return CalDavError("not_found", "There is no calendar at this address.")
     if code in (409, 412):
-        return CalDavError(
-            "conflict",
-            "The calendar refused an event, perhaps because it already holds a copy imported from Ordnung's "
-            "calendar file. A calendar of its own for Ordnung avoids this.",
-        )
+        return CalDavError("conflict", CONFLICT_MESSAGE)
     if code == 507:
         return CalDavError("server", "The calendar is full (the server has no space left).")
     if code >= 500:
-        return CalDavError(
-            "server", f"The calendar server had a problem (HTTP {code}). Ordnung tries again later."
-        )
+        return CalDavError("server", f"The calendar server had a problem (HTTP {code}).")
     return CalDavError("server", f"The calendar server didn't {action} (HTTP {code}).")
 
 
@@ -398,8 +423,8 @@ def _network_error(url: str, exc: httpx.HTTPError) -> CalDavError:
             )
         cause = cause.__cause__ or cause.__context__
     if isinstance(exc, httpx.TimeoutException):
-        return CalDavError("network", f"{host_of(url)} didn't answer in time. Ordnung tries again later.")
-    return CalDavError("network", f"Couldn't reach {host_of(url)}. Ordnung tries again later.")
+        return CalDavError("network", f"{host_of(url)} didn't answer in time.")
+    return CalDavError("network", f"Couldn't reach {host_of(url)}.")
 
 
 class CalDavClient:
@@ -409,6 +434,8 @@ class CalDavClient:
         self, url: str, username: str, password: str, *, transport: httpx.BaseTransport | None = None
     ) -> None:
         self.url = url
+        #: a redirect finding calendars didn't follow (another host): named when nothing is found
+        self._moved: CalDavError | None = None
         self._http = httpx.Client(
             auth=httpx.BasicAuth(username, password),
             timeout=TIMEOUT_S,
@@ -500,6 +527,8 @@ class CalDavClient:
         except CalDavError as exc:
             if exc.kind in _STOP_DISCOVERY:
                 raise
+            if exc.kind == "address" and self._moved is None:
+                self._moved = exc
             return None
         for resource in found:
             target = getattr(resource, field)
@@ -508,7 +537,12 @@ class CalDavClient:
         return None
 
     def discover(self) -> list[FoundCalendar]:
-        """The calendars that take events at or under this address (see :func:`discover`)."""
+        """The calendars that take events at or under this address (see :func:`discover`).
+
+        A redirect of the address itself is not the end: a web app's root (Nextcloud's) answers
+        with its login page, and the account's calendars are then found from the principal or the
+        server's ``/.well-known/caldav``. Only a redirect to another host, which isn't followed, is
+        named — when nothing was found."""
         try:
             return [FoundCalendar(url=self.url, name=self.probe())]
         except CalDavError as exc:
@@ -523,6 +557,8 @@ class CalDavClient:
             found = self._calendars(home) if home else []
             if found:
                 return found
+        if self._moved is not None:
+            raise self._moved
         raise CalDavError(
             "not_calendar",
             "No calendar for events was found at this address. Create a calendar named “Ordnung” in your "
@@ -531,11 +567,14 @@ class CalDavClient:
 
     def put(self, href: str, body: bytes) -> None:
         url = urljoin(self.url, href)
-        response, _ = self._send(
+        response, answer = self._send(
             "PUT", url, content=body, headers={"Content-Type": "text/calendar; charset=utf-8"}
         )
-        if not response.is_success:
-            raise http_error(self.url, response, "add or change events")
+        if response.is_success:
+            return
+        if response.status_code in (400, 403) and _UID_CLASH.search(answer):
+            raise CalDavError("conflict", CONFLICT_MESSAGE)
+        raise http_error(self.url, response, "add or change events")
 
     def delete(self, href: str) -> None:
         url = urljoin(self.url, href)
@@ -619,6 +658,11 @@ def check_calendar(resource: _Resource) -> str | None:
 # --------------------------------------------------------------------------------------------------
 
 
+def exclusive() -> contextlib.AbstractContextManager[Any]:
+    """Hold calendar sync's lock: no sync, connect or disconnect runs (or writes its record) meanwhile."""
+    return _LOCK
+
+
 def _report(**counts: Any) -> CalendarSyncReport:
     return CalendarSyncReport(at=real_now_iso(), **counts)
 
@@ -636,9 +680,13 @@ def _password(secrets: SecretStore, state: CalendarSyncState) -> str:
 
 
 def _push(
-    state: CalendarSyncState, events: list[SyncEvent], password: str, transport: httpx.BaseTransport | None
+    state: CalendarSyncState,
+    events: list[SyncEvent],
+    password: Callable[[], str],
+    transport: httpx.BaseTransport | None,
 ) -> CalendarSyncReport:
-    """Send what changed and remove what left (module policy); updates ``state.events`` as it goes."""
+    """Send what changed and remove what left (module policy); updates ``state.events`` as it goes.
+    ``password`` is asked for only when something is to be sent or removed."""
     wanted = {event.href for event in events}
     changed = [event for event in events if state.events.get(event.href) != event.digest]
     gone = sorted(href for href in state.events if href not in wanted)
@@ -647,7 +695,7 @@ def _push(
         return _report(unchanged=unchanged)
     sent = removed = failed = 0
     error: CalDavError | None = None
-    with CalDavClient(state.url, state.username, password, transport=transport) as client:
+    with CalDavClient(state.url, state.username, password(), transport=transport) as client:
         for event in changed:
             try:
                 client.put(event.href, event.body)
@@ -686,6 +734,8 @@ def _push(
 
 
 def _finish(store: Store, state: CalendarSyncState, report: CalendarSyncReport) -> CalendarSyncReport:
+    if report.error and report.error_kind in RETRIED:  # the tick's next check sends it (module policy)
+        report = report.model_copy(update={"error": f"{report.error} {RETRY_NOTE}"})
     state.last = report
     state.paused = report.error_kind == "auth"
     save_state(store, state)
@@ -703,8 +753,7 @@ def _run(
     store: Store, state: CalendarSyncState, secrets: SecretStore, transport: httpx.BaseTransport | None
 ) -> CalendarSyncReport:
     try:
-        password = _password(secrets, state)
-        report = _push(state, build_events(store, state.mode), password, transport)
+        report = _push(state, build_events(store, state.mode), lambda: _password(secrets, state), transport)
     except CalDavError as exc:
         report = _report(error=str(exc), error_kind=exc.kind)
     return _finish(store, state, report)
@@ -801,7 +850,7 @@ def connect(
         state.mode, state.calendar_name, state.paused = mode, name, False
         save_state(store, state)
         try:
-            report = _push(state, build_events(store, state.mode), use, transport)
+            report = _push(state, build_events(store, state.mode), lambda: use, transport)
         except CalDavError as exc:
             report = _report(error=str(exc), error_kind=exc.kind)
         return _finish(store, state, report)

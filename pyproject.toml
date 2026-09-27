@@ -47,6 +47,8 @@ dependencies = [
   "mcp>=2.0",
   # encrypted backups (AES-256-GCM, scrypt, HKDF); already needed by pdfminer.six
   "cryptography>=44.0.1",
+  # calendar sync keeps the app password in the OS password store, never in the database
+  "keyring>=25",
 ]
 
 [project.optional-dependencies]
@@ -59,12 +61,6 @@ dev = [
   "types-python-dateutil",
   "hypothesis>=6.100",
   "jsonschema>=4.20",
-  # calendar sync's password store, so its tests exercise the real adapter (with an in-memory backend)
-  "keyring>=25",
-]
-# calendar sync (CalDAV): the app password is kept in the OS keyring, never in the database
-caldav = [
-  "keyring>=25",
 ]
 eval = [
   "matplotlib>=3.8",

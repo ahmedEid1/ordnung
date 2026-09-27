@@ -1,10 +1,16 @@
 """“Delete everything” (Settings → Data): ``DELETE /api/data`` wipes the data folder and starts over.
 
 The request must carry ``{"confirm": "DELETE"}`` (the word the person typed). Reading jobs and the
-API's background work stop first; then the database is emptied in place (dropped, re-created and
-vacuumed, so nothing deleted stays in the file) and Ordnung's files — originals, page images, letter
-PDFs, the inbox folder — are removed. The data-folder lock and ``server.json`` stay, so the running
-server keeps working and the command line still finds it. Entries Ordnung did not create (for
+API's background work stop first. When a calendar is connected for calendar sync, Ordnung's events
+are removed from it and its app password from the OS keyring before anything else (only Ordnung
+knows which events are its own, and the database that says so is about to go); if that can't be
+done — the server can't be reached, the password isn't there — nothing is deleted and the answer
+(409) says how to go on: try again, or disconnect the calendar first and leave its events there.
+Then the database is emptied in place (dropped, re-created and vacuumed, so nothing deleted stays in
+the file) and Ordnung's files — originals, page images, letter PDFs, the inbox folder — are removed.
+No calendar sync runs meanwhile (it would write its record back into the emptied database). The
+data-folder lock and ``server.json`` stay, so the running server keeps working and the command line
+still finds it. Entries Ordnung did not create (for
 example when the data folder was pointed at a folder with other files) are never touched; they are
 listed in the answer. The zero-token demo refuses (409): ``ordnung demo --reset`` starts it over.
 """
@@ -16,14 +22,17 @@ import contextlib
 import logging
 import shutil
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from ordnung import clock
 from ordnung.api.deps import StateDep
+from ordnung.api.routes.calendar_sync import SecretsDep, TransportDep
 from ordnung.app_context import SIMULATED_TODAY_KEY, AppContext
+from ordnung.calendar import caldav
+from ordnung.calendar.secrets import SecretStore
 from ordnung.locking import LOCK_NAME
 from ordnung.server import SERVER_FILE
 
@@ -58,6 +67,14 @@ class DataDeleted(BaseModel):
     kept: list[str] = Field(
         default_factory=list, description="Entries Ordnung did not create, left untouched"
     )
+    calendar_events_removed: int | None = Field(
+        default=None,
+        description="Ordnung's events removed from the connected calendar first (null: none was connected)",
+    )
+
+
+class CalendarNotCleared(RuntimeError):
+    """The connected calendar's events (or its password) couldn't be removed: nothing was deleted."""
 
 
 def _ordnung_entries(ctx: AppContext) -> frozenset[str]:
@@ -79,13 +96,35 @@ def _remove(path: Path) -> None:
         path.unlink(missing_ok=True)
 
 
-def wipe_data_dir(ctx: AppContext) -> DataDeleted:
-    """Empty the database in place and delete Ordnung's files (keeping the lock and ``server.json``)."""
+def _forget_calendar(ctx: AppContext, secrets: SecretStore, transport: Any) -> int | None:
+    """Remove Ordnung's events from the connected calendar and forget its password (``None``: no
+    calendar is connected); :class:`CalendarNotCleared` when that can't be done."""
+    state = caldav.load_state(ctx.store)
+    if state is None:
+        return None
+    try:
+        return caldav.disconnect(ctx.store, secrets, remove_events=True, transport=transport)
+    except caldav.CalDavError as exc:
+        where = state.calendar_name or caldav.host_of(state.url)
+        raise CalendarNotCleared(
+            f"Ordnung's events in your calendar “{where}” couldn't be removed, so nothing was deleted: {exc} "
+            "Try again — or disconnect the calendar in Settings → Calendar first (you can leave its "
+            "events there), then delete everything."
+        ) from None
+
+
+def wipe_data_dir(ctx: AppContext, secrets: SecretStore | None = None, transport: Any = None) -> DataDeleted:
+    """Clear the connected calendar, then empty the database in place and delete Ordnung's files
+    (keeping the lock and ``server.json``)."""
+    from ordnung.calendar.secrets import KeyringSecrets
+
     data_dir = ctx.paths.data_dir
     known = _ordnung_entries(ctx)
     db_files = {ctx.paths.db.name + suffix for suffix in _DB_SUFFIXES}
-    ctx.store.wipe()
-    result = DataDeleted()
+    with caldav.exclusive():  # no sync may write its record back into the emptied database
+        events_removed = _forget_calendar(ctx, secrets or KeyringSecrets(), transport)
+        ctx.store.wipe()
+    result = DataDeleted(calendar_events_removed=events_removed)
     for entry in sorted(data_dir.iterdir(), key=lambda path: path.name):
         name = entry.name
         if name in KEPT_FILES:
@@ -105,10 +144,18 @@ def wipe_data_dir(ctx: AppContext) -> DataDeleted:
 @router.delete(
     "/data",
     response_model=DataDeleted,
-    responses={409: {"description": "The demo can't be deleted (``ordnung demo --reset`` starts it over)."}},
+    responses={
+        409: {
+            "description": "The demo can't be deleted (``ordnung demo --reset`` starts it over), or the "
+            "connected calendar's events couldn't be removed (nothing was deleted)."
+        }
+    },
 )
-async def delete_everything(body: DeleteEverything, state: StateDep) -> DataDeleted:
-    """Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty.
+async def delete_everything(
+    body: DeleteEverything, state: StateDep, secrets: SecretsDep, transport: TransportDep
+) -> DataDeleted:
+    """Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty
+    (Ordnung's events leave a connected calendar first).
 
     ``body`` must be ``{"confirm": "DELETE"}`` (422 otherwise)."""
     ctx = state.ctx
@@ -119,7 +166,9 @@ async def delete_everything(body: DeleteEverything, state: StateDep) -> DataDele
     await state.background.stop()
     await ctx.worker.stop(grace=WORKER_GRACE_S)
     try:
-        result = await asyncio.to_thread(wipe_data_dir, ctx)
+        result = await asyncio.to_thread(wipe_data_dir, ctx, secrets, transport)
+    except CalendarNotCleared as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
     finally:
         if worker_was_running:
             with contextlib.suppress(Exception):

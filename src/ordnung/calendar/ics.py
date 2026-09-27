@@ -2,7 +2,8 @@
 
 * One VEVENT per open (or snoozed) to-do with a date — all-day unless it has a time, which is then
   written in the person's time zone (with its VTIMEZONE). To-dos of letters with scam signs are left
-  out. The summary starts with a symbol per kind, and with ``⚠ check:`` when the date still needs the
+  out, and so are invoice payments a later payment reminder took over (the reminder's is the one).
+  The summary starts with a symbol per kind, and with ``⚠ check:`` when the date still needs the
   person's confirmation; the description says what to do, what happens otherwise, why this date and
   who it is with, and that it is not legal advice.
 * For contracts with a renewal decision: a "post your cancellation" event on the send-by day and a
@@ -76,6 +77,11 @@ def _stamp(value: str | None) -> datetime:
 
 def _uid(key: str) -> str:
     return f"{key}@{UID_DOMAIN}"
+
+
+def item_uid(item_id: str) -> str:
+    """The stable UID of a to-do's event."""
+    return _uid(item_id)
 
 
 def needs_check(item: Item) -> bool:
@@ -279,12 +285,15 @@ def _calendar(profile: Profile) -> Calendar:
 
 
 def _exported_items(ledger: Ledger, include_done: bool) -> list[Item]:
+    """Dated to-dos, without letters with scam signs and without invoice payments a later payment
+    reminder took over (the reminder is the one to act on, as on the agenda)."""
     return [
         item
         for item in ledger.items
         if item.due_date
         and (include_done or item.status in OPEN_STATUSES)
         and not ledger.is_suspicious_item(item)
+        and not ledger.is_superseded_by_reminder(item)
     ]
 
 

@@ -5,8 +5,9 @@ principal → the calendar home, depth 1 listing its calendars) and for the cale
 0), ``PUT`` and ``DELETE`` of ``.ics`` resources in the calendar Ordnung writes into, and ``GET`` for
 the tests — and checks what a real server checks: the password, that a resource holds exactly one
 event and no ``METHOD`` (RFC 4791 §4.1), and that no two resources share a UID
-(``no-uid-conflict``). Tests switch on failures (a refused event, the server down, a redirect, odd
-answers). :meth:`FakeCalDav.transport` serves it in-process to ``httpx``; :func:`serve_on_loopback`
+(``no-uid-conflict`` — answered as Nextcloud does with :attr:`FakeCalDav.uid_clash`). Tests switch on
+failures (a refused event, the server down, a redirect, odd answers, a web root that redirects to a
+login page). :meth:`FakeCalDav.transport` serves it in-process to ``httpx``; :func:`serve_on_loopback`
 serves the same object over a real socket.
 """
 
@@ -89,6 +90,10 @@ class FakeCalDav:
     refuse: dict[str, int] = field(default_factory=dict)
     #: every request gets this answer instead (status, headers, body)
     override: tuple[int, dict[str, str], bytes] | None = None
+    #: path → the answer every request to that path gets (a web app's root, its login page)
+    answers: dict[str, tuple[int, dict[str, str], bytes]] = field(default_factory=dict)
+    #: how a PUT whose UID is already in another resource is refused (status, body)
+    uid_clash: tuple[int, bytes] = (409, b"no-uid-conflict")
     #: raise this from the transport (the network failing)
     raises: Exception | None = None
     lock: threading.Lock = field(default_factory=threading.Lock)
@@ -118,6 +123,8 @@ class FakeCalDav:
             self.requests.append((method, path))
             if self.override is not None:
                 return self.override
+            if path in self.answers:
+                return self.answers[path]
             if not self._authorised(headers.get("authorization")):
                 return 401, {"WWW-Authenticate": 'Basic realm="fake"'}, b"Unauthorized"
             if method == "PROPFIND":
@@ -151,7 +158,7 @@ class FakeCalDav:
                     if other != path and any(
                         str(e.get("uid")) == uid for e in Calendar.from_ical(stored).events
                     ):
-                        return 409, {}, b"no-uid-conflict"
+                        return self.uid_clash[0], {}, self.uid_clash[1]
                 new = path not in self.resources
                 self.resources[path] = body
                 return (201 if new else 204), {}, b""
