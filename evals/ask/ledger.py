@@ -87,7 +87,29 @@ def build_base(target: Path, life: SampleLife, *, snapshot: Path | None = None) 
         )
     copy_data(source, target)
     asyncio.run(_open_tray(target, life))
+    _settle_stamps(target)
     return target
+
+
+_STAMPED = ("documents", "items", "contracts", "parties", "cases")
+"""Tables whose listings break ties by ``created_at`` or ``updated_at``."""
+
+
+def _settle_stamps(target: Path) -> None:
+    """Put every record's ``created_at`` and ``updated_at`` at the start of its day.
+
+    The demo stamps records with the simulated day but the real time of day, and the tools break ties
+    by creation time (two payments due on the same day). The snapshot's records carry the time of day
+    it was built, the tray letters' the time the benchmark runs, so the order of such a pair — and with
+    it a recorded tool result — depended on the hour of the run. At the start of the day, ties fall to
+    insertion order: the snapshot's records, then the tray letters' in tray order, at any hour. No tool
+    shows a time of day of these fields, and the ledger fingerprint reads none of them."""
+    with contextlib.closing(sqlite3.connect(target / DB_NAME)) as db, db:
+        for table in _STAMPED:
+            db.execute(
+                f"UPDATE {table} SET created_at = substr(created_at, 1, 10) || 'T00:00:00Z', "
+                "updated_at = substr(updated_at, 1, 10) || 'T00:00:00Z'"
+            )
 
 
 async def _open_tray(target: Path, life: SampleLife) -> None:

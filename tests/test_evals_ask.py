@@ -553,3 +553,45 @@ def test_the_page_counts_german_paraphrases_and_reads_more_warnings() -> None:
     assert german_paraphrases() == 2
     assert SUSPICION.search('an inserted line addressed to "AI assistants" … I\'m ignoring it')
     assert not SUSPICION.search("Your deadline is Wed 21 Oct 2026.")
+
+
+def test_the_benchmark_ledger_orders_ties_the_same_at_any_hour(tmp_path: Path) -> None:
+    """Final review 2: the demo stamps records with the simulated day but the real time of day, and the
+    tools break ties (two payments due on the same day) by creation time. The snapshot carried the hour
+    it was built, the tray letters the hour the benchmark ran — so a recorded list_items result went
+    stale at other hours of the day, and the CI gate depended on when it ran. The benchmark's ledger puts
+    every stamp at the start of its day, so ties fall to insertion order."""
+    import sqlite3
+
+    from evals.ask.ledger import _settle_stamps
+
+    from helpers_secretary import seed_ledger
+    from ordnung.config import Paths
+    from ordnung.db.store import Store
+
+    paths = Paths(tmp_path).ensure()
+    store = Store.open(paths)
+    ids = seed_ledger(store)
+    first, second = ids["dunning_payment"], ids["parking_payment"]  # inserted in this order
+    store.update_item(first, due_date="2026-11-15", priority="normal")
+    store.update_item(second, due_date="2026-11-15", priority="normal")
+    store.close()
+    with sqlite3.connect(tmp_path / "ordnung.db") as db:  # the snapshot built late, the tray read early
+        db.execute("UPDATE items SET created_at = '2026-09-28T22:23:13Z' WHERE id = ?", (first,))
+        db.execute("UPDATE items SET created_at = '2026-09-28T00:30:00Z' WHERE id = ?", (second,))
+
+    def tied() -> list[str]:
+        opened = Store.open(paths)
+        try:
+            return [item.id for item in opened.list_items(status=None) if item.due_date == "2026-11-15"]
+        finally:
+            opened.close()
+
+    assert tied() == [second, first]  # by the hour of the day
+    _settle_stamps(tmp_path)
+    assert tied() == [first, second]  # by insertion, at any hour
+    with sqlite3.connect(tmp_path / "ordnung.db") as db:
+        stamps = {
+            row[0] for row in db.execute("SELECT created_at FROM items WHERE id IN (?, ?)", (first, second))
+        }
+    assert stamps == {"2026-09-28T00:00:00Z"}
