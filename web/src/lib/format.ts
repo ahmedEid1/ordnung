@@ -251,9 +251,9 @@ function moneyFormatter(currency: string, decimals: number): Intl.NumberFormat {
 
 export interface MoneyOptions {
   currency?: string | null;
-  /** prefix "+" for positive amounts (e.g. "+84,00 €/year") */
+  /** prefix "+" for positive amounts (e.g. "+€84.00/year") */
   signed?: boolean;
-  /** decimals; "auto" drops ",00" for whole amounts ≥ 100 */
+  /** decimals; "auto" drops ".00" for whole amounts ≥ 100 */
   decimals?: number | "auto";
 }
 

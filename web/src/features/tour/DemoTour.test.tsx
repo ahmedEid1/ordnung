@@ -4,6 +4,7 @@ import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { DemoBadge } from "@/components/shell/DemoBadge";
 import AskPage from "@/pages/AskPage";
 import InboxPage from "@/pages/InboxPage";
+import SettingsPage from "@/pages/SettingsPage";
 import { Toaster, TOAST_LIFT_VAR, __clearToasts, toast } from "@/components/ui/Toast";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
@@ -102,6 +103,34 @@ describe("the tour spotlights each page's element", () => {
     expect(screen.getByTestId("tour-spotlight")).toHaveStyle({ top: "112px", left: "252px", width: "656px", height: "236px" });
     // under the sticky top bar (z-30) and the Ask composer (z-10): it marks the page, never covers a control
     expect(screen.getByTestId("tour-spotlight").className).toContain("z-[5]");
+  });
+
+  // UI audit round 1 (R1-tour-6): the tray's swipe row ran past a ring around the whole tray
+  it("step 1 on phones · the first envelope, not the whole tray (its swipe row runs past the screen's edges)", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.tour = { active: true, step: 0, completed: false };
+    const sized = (width: number) => {
+      viewport(width, 844);
+      vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+        if (this.hasAttribute?.("data-tour-part")) return new DOMRect(16, 220, 300, 280);
+        return (this.hasAttribute?.("data-tour") ? new DOMRect(0, 120, width, 400) : new DOMRect(0, 0, 0, 0)) as DOMRect;
+      });
+    };
+    sized(390);
+    const view = renderInbox();
+    const tray = await screen.findByRole("region", { name: /New mail/ });
+    // only the first envelope is marked
+    expect(tray.querySelectorAll("[data-tour-part]")).toHaveLength(1);
+    expect(within(tray).getAllByRole("listitem")[0]).toHaveAttribute("data-tour-part");
+    await waitFor(() => expect(screen.getByTestId("tour-spotlight")).toHaveStyle({ top: "212px", left: "8px", width: "316px", height: "296px" }));
+    view.unmount();
+    vi.restoreAllMocks();
+
+    // a laptop: the whole tray fits between the bars — the ring goes around all of it
+    sized(1440);
+    renderInbox();
+    await screen.findByRole("region", { name: /New mail/ });
+    await waitFor(() => expect(screen.getByTestId("tour-spotlight")).toHaveStyle({ top: "112px", left: "8px", width: "1424px", height: "416px" }));
   });
 
   it("step 3 · Ask's suggested questions", async () => {
@@ -391,6 +420,27 @@ describe("restarting the tour", () => {
     const card = await tourRegion();
     expect(within(card).getByRole("heading", { name: "You have new mail" })).toBeInTheDocument();
     await waitFor(() => expect(srv.db.state.tour).toEqual({ active: true, step: 0, completed: false }));
+  });
+
+  it("Settings › Data restarts it too, and says where it is", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.tour = { active: false, step: 3, completed: true };
+    viewport(1440, 900);
+    renderWithProviders(
+      <>
+        <SettingsPage />
+        <DemoTour />
+      </>,
+      { route: "/settings?section=data" },
+    );
+    const card = (await screen.findByRole("heading", { level: 3, name: "Guided tour" })).closest("section") as HTMLElement;
+    expect(within(card).getByTestId("tour-status")).toHaveTextContent("Hidden right now — restarting opens it at step 1.");
+    fireEvent.click(within(card).getByRole("button", { name: "Restart the demo tour" }));
+    const tour = await tourRegion();
+    const title = within(tour).getByRole("heading", { name: "You have new mail" });
+    await waitFor(() => expect(title).toHaveFocus());
+    await waitFor(() => expect(srv.db.state.tour).toEqual({ active: true, step: 0, completed: false }));
+    expect(within(card).getByTestId("tour-status")).toHaveTextContent("Open now at step 1 of 4: You have new mail.");
   });
 
   it("a minimised tour opens again when restarted", async () => {

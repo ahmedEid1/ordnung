@@ -1,10 +1,10 @@
 /** One contract: what it is, what it costs, how it ends (in plain words), the dates to act by. */
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { FilePen, FileSearch, FileText, Info, TriangleAlert } from "lucide-react";
+import { FilePen, FileSearch, FileText, Info, Pencil, TriangleAlert } from "lucide-react";
 import type { Contract, Party } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
-import { buttonVariants } from "@/components/ui/Button";
+import { Button, buttonVariants } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
 import { KindIcon } from "@/components/ui/KindBadge";
@@ -17,7 +17,9 @@ import { cn } from "@/lib/utils";
 import { ContractWhy } from "./ContractWhy";
 import { CONTINUES_MONTHLY, contractMonthlyCost, isFixedTerm, isLockInDecision, isRollingContract, ruleInWords, termsUnclear } from "./model";
 import { composerHrefFor, endingLetterLabel, offersEndingLetter } from "./links";
+import { NoticePeriodForm } from "./NoticePeriodForm";
 import { dayNumber } from "@/features/lanes/scale";
+import { focusWhenReady } from "@/features/today/focus";
 
 /**
  * A label and its value on one line; when both don't fit (a narrow card, a long label) the value
@@ -70,9 +72,21 @@ export function ContractCard({
   // e.g. the broadcasting fee: say why there is nothing to cancel instead of offering a letter
   const whyNot = active && !offerLetter ? c.cancel_hint : null;
   const hasCost = c.cost_amount !== null && Boolean(c.cost_interval) && c.cost_interval !== "once";
+  // terms we couldn't work out: the notice period can be entered here, and the engine redoes the dates
+  const [editingNotice, setEditingNotice] = useState(false);
+  const cardRef = useRef<HTMLElement>(null);
+  const noticeButtonRef = useRef<HTMLButtonElement>(null);
+  const closeNotice = (saved: Contract | null) => {
+    setEditingNotice(false);
+    // back to the button — or, when the dates are known now and it is gone, to the card itself
+    requestAnimationFrame(() => (saved && !termsUnclear(saved) ? cardRef.current : noticeButtonRef.current)?.focus());
+  };
+  // Undo in the toast: the button is back once the old terms are, and takes the focus the toast had
+  const noticeUndone = () => focusWhenReady(() => noticeButtonRef.current);
 
   return (
     <article
+      ref={cardRef}
       id={`contract-${c.id}`}
       aria-labelledby={titleId}
       data-contract-id={c.id}
@@ -193,6 +207,9 @@ export function ContractCard({
         </p>
       ) : null}
 
+      {/* (stays while saving, even once the saved terms have made the dates known) */}
+      {editingNotice ? <NoticePeriodForm contract={c} onClose={closeNotice} onUndone={noticeUndone} /> : null}
+
       <footer className="mt-auto flex flex-wrap items-center gap-2 pt-4">
         {unclear && c.source_doc_id ? (
           // the notice period isn't in the letter we read: checking it comes first
@@ -201,6 +218,12 @@ export function ContractCard({
             Check the letter
             <span className="sr-only"> for {c.name}</span>
           </Link>
+        ) : null}
+        {unclear && !editingNotice ? (
+          <Button ref={noticeButtonRef} size="sm" icon={Pencil} onClick={() => setEditingNotice(true)}>
+            {c.notice_value ? "Change notice period" : "Add notice period"}
+            <span className="sr-only"> for {c.name}</span>
+          </Button>
         ) : null}
         {offerLetter ? (
           <Link

@@ -319,6 +319,17 @@ describe("Claude connection", () => {
     expect(screen.getByText("ordnung doctor --probe").className).toMatch(/whitespace-nowrap/);
   });
 
+  it("names the program as the setup wizard does — Claude Code, never “the Claude app” — and its version once", async () => {
+    useMockApi();
+    const client = withHealth({ backend: "claude_cli", claude: { installed: true, version: "2.1.4 (Claude Code)", path: "/usr/local/bin/claude", ok: true, detail: null } });
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=claude", client });
+    const section = (await screen.findByRole("heading", { level: 2, name: "Claude connection" })).closest("section") as HTMLElement;
+    expect(section).toHaveTextContent("Ordnung reads letters with Claude Code, the Claude program on this computer, signed in with your own Claude account.");
+    expect(section.textContent).not.toMatch(/Claude app|claude CLI/i);
+    const version = within(section).getByText("2.1.4");
+    expect(version.previousElementSibling).toHaveTextContent("Claude Code");
+  });
+
   it("not installed: “Run check” stays (it finds a fresh install) and says so", async () => {
     useMockApi();
     const client = withHealth({ backend: "claude_cli", claude: { installed: false, version: null, path: null, ok: null, detail: null } });

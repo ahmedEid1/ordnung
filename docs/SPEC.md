@@ -702,7 +702,11 @@ Pages:
    about the flat (lease, landlord, running costs, broadcasting fee) are shown under Home even when
    they were read under "residence", which is the residence-permit area.
 5. **Contracts** — lanes chart (bars, hatched notice windows, send-by marker, today line), cards,
-   fixed costs total, "Decide by" callouts.
+   fixed costs total, "Decide by" callouts. A contract whose terms couldn't be worked out ("Please
+   check", usually no notice period in the letter) offers "Check the letter" and "Add notice
+   period": a small form on the card (number, unit, how it can be cancelled — "to the end of the
+   term" only with a term to count from) that saves through `PATCH /api/contracts/{id}`; the rules
+   engine works the dates out again, and the toast says them, with Undo.
 6. **Letters** — list + composer (kind, recipient, related letter/contract, instructions) →
    side-by-side German letter and translation, checks, PDF preview, "How to send it", mark as sent.
 7. **Ask** — chat, streamed tool-trace chips ("Searched your letters for “Kündigung”", dates as
@@ -710,14 +714,17 @@ Pages:
    citation chips → viewer, suggested questions (recorded in demo).
 8. **Settings** — profile & address, region (affects holidays), language, reminders, models,
    privacy statement + "Privacy & AI usage" (activity, tokens, API-equivalent cost, cache hits),
-   Claude status (doctor), "How dates are computed" (rules catalog), data location, disclaimer.
+   Claude status (doctor), "How dates are computed" (rules catalog), data location, disclaimer; in
+   the demo, Data also restarts the guided tour.
 9. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
    name/address (skippable) → Claude check (copyable fixes; "Continue without AI") → drop zone +
    "Explore the demo instead".
 10. **Demo tour**: 4 steps (New mail → Idea arrives → Ask → Timeline), skippable, tracked in meta;
-   ending it can be undone, and the Demo badge restarts it. Docked in the sidebar when it fits,
-   else a card (wide screens) or a slim bar (phones, tablets, short laptops) that never covers the
-   page's end.
+   ending it can be undone, and the Demo badge (or Settings → Data) restarts it. Docked in the
+   sidebar when it fits, else a card (wide screens) or a slim bar (phones, tablets, short laptops)
+   that never covers the page's end or the focused control. Its ring goes around the step's
+   element — on phones, and when that is taller than the screen, around a marked part of it (the
+   first envelope, the first Idea).
 
 Design: "calm paper" tokens in `web/src/styles/index.css`; Fraunces display headings; Inter UI;
 dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighter in dark mode.

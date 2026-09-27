@@ -160,6 +160,31 @@ test.describe("phone: focus stays clear of the top bar and the tab bar", () => {
   }
 });
 
+// UI audit round 1 (R1-deferred-8): on phones the demo tour — its bar, or the card it opens into —
+// partly covered the field that had focus; the page's scroll-padding counts its height now
+test.describe("phone: focus stays clear of the demo tour", () => {
+  test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
+  test.afterEach(async ({ page }) => {
+    await setTour(page, null);
+  });
+
+  test("Tab through Settings with the tour bar, then with its whole card open", async ({ page }) => {
+    await setTour(page, 0);
+    await open(page, "/settings", "Settings");
+    const bar = page.getByRole("button", { name: /^Demo tour · 1 of 4: .* — show the whole step$/ });
+    await expect(bar).toBeVisible();
+    expect(await obscuredFocus(page, 30, "Tab")).toEqual([]);
+
+    await bar.click();
+    await expect(page.getByRole("region", { name: "Demo tour" }).getByRole("heading")).toBeVisible();
+    await page.evaluate(() => {
+      (document.activeElement as HTMLElement | null)?.blur();
+      window.scrollTo(0, 0);
+    });
+    expect(await obscuredFocus(page, 30, "Tab")).toEqual([]);
+  });
+});
+
 /** Ask a question on /ask (the demo replays its recorded answers) and wait for the checked answer. */
 async function ask(page: Page, question: string): Promise<void> {
   const turns = page.getByRole("main").getByRole("article");

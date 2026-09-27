@@ -137,6 +137,11 @@ describe("glossary", () => {
     expect(e!.explanation).not.toMatch(/\n/);
   });
 
+  it("writes money the app's English way in the explanations (€18.36, never 18,36 €)", () => {
+    for (const e of GLOSSARY_TERMS) expect(e.explanation, e.term).not.toMatch(/\d\s*(€|EUR\b|Euro\b)/);
+    expect(lookupTerm("Rundfunkbeitrag")!.explanation).toContain("€18.36 per month");
+  });
+
   it("formats 'Einspruch (objection)' and is case-insensitive", () => {
     expect(termWithTranslation("einspruch")).toBe("Einspruch (objection)");
     expect(termWithTranslation("Unbekannt")).toBe("Unbekannt");

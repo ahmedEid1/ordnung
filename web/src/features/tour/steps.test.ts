@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TOUR_STEPS, stepCopy } from "./steps";
-import { SPOT_PAD, spotlightBox } from "./useSpotlight";
+import { SPOT_PAD, spotlightBox, wantsPart } from "./useSpotlight";
 
 const [newMail, idea, ask] = TOUR_STEPS as [(typeof TOUR_STEPS)[number], (typeof TOUR_STEPS)[number], (typeof TOUR_STEPS)[number]];
 
@@ -47,5 +47,23 @@ describe("the spotlight ring", () => {
   it("is hidden when the element is scrolled away", () => {
     expect(spotlightBox({ top: 1200, left: 16, width: 358, height: 200 }, view)).toBeNull();
     expect(spotlightBox({ top: -300, left: 16, width: 358, height: 200 }, view, { top: 72, bottom: 0 })).toBeNull();
+  });
+});
+
+// UI audit round 1 (R1-tour-6): on phones the ring went around the whole New-mail tray, whose swipe
+// row runs past it, and on short screens a ring kept on screen cut through the Ideas below the fold
+describe("the ring goes around a part of the element when the whole won't do", () => {
+  const area = { top: 72, bottom: 144 };
+
+  it("on phones, always (a swipe row runs to the screen's edges)", () => {
+    expect(wantsPart({ height: 300 }, { height: 844, phone: true }, area)).toBe(true);
+  });
+
+  it("elsewhere only when the whole is taller than the page between the bars", () => {
+    expect(wantsPart({ height: 300 }, { height: 800, phone: false }, area)).toBe(false);
+    expect(wantsPart({ height: 800 - 72 - 144 }, { height: 800, phone: false }, area)).toBe(false);
+    expect(wantsPart({ height: 800 - 72 - 144 + 1 }, { height: 800, phone: false }, area)).toBe(true);
+    // no bars: 8 px kept free at either end
+    expect(wantsPart({ height: 785 }, { height: 800, phone: false }, { top: 0, bottom: 0 })).toBe(true);
   });
 });

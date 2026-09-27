@@ -34,7 +34,22 @@ interface IdeaFocus {
   returning: (id: string) => void;
 }
 
-function IdeaCard({ idea, today, pinned, pay, focus }: { idea: Suggestion; today: string; pinned: boolean; pay: TodayAction | null; focus: IdeaFocus }) {
+function IdeaCard({
+  idea,
+  today,
+  pinned,
+  pay,
+  focus,
+  tourPart = false,
+}: {
+  idea: Suggestion;
+  today: string;
+  pinned: boolean;
+  pay: TodayAction | null;
+  focus: IdeaFocus;
+  /** The demo tour's ring goes around this card when the whole list doesn't fit (the first Idea). */
+  tourPart?: boolean;
+}) {
   const navigate = useNavigate();
   const update = useUpdateSuggestion();
   const figure = ideaFigure(idea);
@@ -85,7 +100,7 @@ function IdeaCard({ idea, today, pinned, pay, focus }: { idea: Suggestion; today
   };
 
   return (
-    <motion.li layout variants={fadeUp} exit={collapseOut}>
+    <motion.li layout variants={fadeUp} exit={collapseOut} data-tour-part={tourPart ? "" : undefined}>
       <article aria-labelledby={titleId} className={cn("card relative overflow-hidden p-4 sm:p-5", scam && "border-danger/40 bg-danger-soft/40")}>
         <div className="flex flex-wrap items-center gap-2">
           <KindBadge ideaKind={idea.kind} />
@@ -227,10 +242,11 @@ export function IdeasSection({
       {ideas.length ? (
         <ul ref={list} id={listId} className="flex flex-col gap-3">
           <AnimatePresence initial={false}>
-            {ideas.map((s) => (
+            {ideas.map((s, i) => (
               <IdeaCard
                 key={s.id}
                 idea={s}
+                tourPart={i === 0}
                 today={today}
                 pinned={Boolean(pinnedIds?.has(s.id))}
                 // (never for a possible scam: its "payment" is what to check first)

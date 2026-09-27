@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { prefersReducedMotion } from "@/lib/utils";
+import { TOUR_PART_ATTR } from "./steps";
 
 export interface SpotRect {
   top: number;
@@ -42,6 +43,36 @@ export function spotlightBox(r: SpotRect, view: { width: number; height: number 
   return { top, left, width: right - left, height: bottom - top };
 }
 
+/** Tailwind's `sm`: below it swipe rows (the New-mail tray) run to the screen's edges. */
+const PHONE_UP = "(min-width: 640px)";
+
+/**
+ * Whether the ring goes around the element's part instead of the whole: on phones, where a swipe
+ * row runs past any ring around the whole, and wherever the whole is taller than the visible page
+ * (between the top bar, `area.top`, and the bottom bars, `area.bottom`), where a ring kept on
+ * screen would cut through the cards inside.
+ */
+export function wantsPart(whole: { height: number }, view: { height: number; phone: boolean }, area: { top: number; bottom: number }): boolean {
+  return view.phone || whole.height > view.height - Math.max(area.top, EDGE) - Math.max(area.bottom, EDGE);
+}
+
+/** The element the ring goes around: `el`, or its `[data-tour-part]` when {@link wantsPart} says so (and it has one). */
+function spotElement(el: HTMLElement, area: { top: number; bottom: number }): HTMLElement {
+  const part = el.querySelector<HTMLElement>(`[${TOUR_PART_ATTR}]`);
+  if (!part) return el;
+  const phone = !(window.matchMedia?.(PHONE_UP).matches ?? true);
+  return wantsPart(el.getBoundingClientRect(), { height: window.innerHeight, phone }, area) ? part : el;
+}
+
+/**
+ * The element a step's ring is around right now (the page's `[data-tour="<target>"]` or its part,
+ * see {@link wantsPart}); null when the page doesn't show it.
+ */
+export function spotlitElement(target: string): HTMLElement | null {
+  const el = document.querySelector<HTMLElement>(`[data-tour="${target}"]`);
+  return el ? spotElement(el, pageArea()) : null;
+}
+
 export interface SpotlightOptions {
   /** Asked when the element is found: may it be scrolled into view? (The tour allows that once per step.) */
   scroll?: () => boolean;
@@ -50,9 +81,10 @@ export interface SpotlightOptions {
 }
 
 /**
- * Find `[data-tour="<target>"]` (waiting for lazy pages to render it), scroll it into view when
- * `opts.scroll()` allows, and keep the ring around it ({@link spotlightBox}) up to date while it
- * is shown. Returns null while not found or off screen.
+ * Find `[data-tour="<target>"]` (waiting for lazy pages to render it), scroll it — or the part the
+ * ring goes around ({@link wantsPart}) — into view when `opts.scroll()` allows, and keep the ring
+ * around it ({@link spotlightBox}) up to date while it is shown. Returns null while not found or
+ * off screen.
  */
 export function useSpotlight(target: string | null, enabled: boolean, opts: SpotlightOptions = {}): SpotRect | null {
   // keyed by target so a rectangle from the previous step is never shown for the next one
@@ -75,9 +107,11 @@ export function useSpotlight(target: string | null, enabled: boolean, opts: Spot
       raf = requestAnimationFrame(() => {
         let next: SpotRect | null = null;
         if (el && el.isConnected) {
-          const r = el.getBoundingClientRect();
+          const area = pageArea();
+          // (the part is looked up each time: the first envelope goes once its letter is filed)
+          const r = spotElement(el, area).getBoundingClientRect();
           const view = { width: document.documentElement.clientWidth || window.innerWidth, height: window.innerHeight };
-          if (r.width && r.height) next = spotlightBox({ top: r.top, left: r.left, width: r.width, height: r.height }, view, pageArea());
+          if (r.width && r.height) next = spotlightBox({ top: r.top, left: r.left, width: r.width, height: r.height }, view, area);
         } else {
           el = null;
         }
@@ -87,13 +121,14 @@ export function useSpotlight(target: string | null, enabled: boolean, opts: Spot
 
     const attach = () => {
       const found = document.querySelector<HTMLElement>(selector);
-      if (found === el) return;
+      // same element: its part may have changed (the first envelope filed), so measure again
+      if (found === el) return measure();
       el = found;
       if (el && !scrolled && optsRef.current.scroll?.()) {
         scrolled = true;
-        const r = el.getBoundingClientRect();
-        const behavior: ScrollBehavior = prefersReducedMotion() ? "auto" : "smooth";
         const area = pageArea();
+        const r = spotElement(el, area).getBoundingClientRect();
+        const behavior: ScrollBehavior = prefersReducedMotion() ? "auto" : "smooth";
         const top = Math.max(area.top, EDGE);
         const bottom = Math.max(area.bottom, EDGE);
         const room = window.innerHeight - top - bottom;
