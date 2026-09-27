@@ -10,6 +10,7 @@ file-system root or Ordnung's own data) and keep the server-controlled ``demo`` 
 from __future__ import annotations
 
 import asyncio
+import re
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,8 @@ from ordnung.secretary.scam import iban_valid, normalize_iban
 router = APIRouter(tags=["profile"])
 
 _READ_ONLY_SETTINGS = ("demo", "simulated_today")
+#: The shape the Profile form accepts (``EMAIL`` in ``web/src/features/settings/ProfileSection.tsx``).
+_EMAIL = re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+")
 #: Profile fields the rules engine uses for to-do dates (holidays, German rules, send-by buffer).
 _DATE_FIELDS = ("region", "country", "postal_buffer_days")
 
@@ -55,6 +58,33 @@ class ProfilePatch(BaseModel):
     iban: str | None = Field(
         default=None, max_length=50, description="your account, for refunds (empty: none)"
     )
+
+    @field_validator("name")
+    @classmethod
+    def _real_name(cls, value: str | None) -> str | None:
+        """The sender on every letter: trimmed, never blank (as the Profile form checks it)."""
+        if value is None:
+            return None
+        name = " ".join(value.split())
+        if not name:
+            raise ValueError("Enter your name — it's the sender on your letters.")
+        return name
+
+    @field_validator("email")
+    @classmethod
+    def _email_address(cls, value: str | None) -> str | None:
+        """Trimmed; empty removes it; anything else must look like an address (name@example.de)."""
+        if value is None:
+            return None
+        email = value.strip()
+        if email and not _EMAIL.fullmatch(email):
+            raise ValueError("This doesn't look like an email address — like name@example.de.")
+        return email
+
+    @field_validator("phone")
+    @classmethod
+    def _trimmed(cls, value: str | None) -> str | None:
+        return value.strip() if value is not None else None
 
     @field_validator("iban")
     @classmethod
