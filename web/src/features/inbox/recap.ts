@@ -102,7 +102,7 @@ export function summarizeBatch(details: DocumentDetail[], today: string): BatchR
   };
 }
 
-/** The findings of a recap as short phrases ("2 deadlines", "55,00 €/month fixed costs", …). */
+/** The findings of a recap as short phrases ("2 deadlines", "€55.00/month fixed costs", …). */
 export function recapFindings(r: BatchRecap): string[] {
   const parts: string[] = [];
   if (r.deadlines) parts.push(plural(r.deadlines, "deadline"));
@@ -114,7 +114,7 @@ export function recapFindings(r: BatchRecap): string[] {
   return parts;
 }
 
-/** "I read 3 letters: 1 deadline, 55 €/month fixed costs, 1 needs you now, 1 possible scam." */
+/** "I read 3 letters: 1 deadline, €55.00/month fixed costs, 1 needs you now, 1 possible scam." */
 export function recapSentence(r: BatchRecap): string {
   const parts = recapFindings(r);
   const head = `I read ${plural(r.letters, "letter")}`;
