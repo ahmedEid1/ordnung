@@ -613,7 +613,7 @@ export async function demoCatalog({ api, server }) {
     group: "settings",
     route: "/settings?section=profile",
     how: "change the name, then click another settings section",
-    description: "“Discard your changes?” dialog.",
+    description: "“Save your changes?” dialog (Discard · Keep editing · Save and go).",
     run: async (c) => {
       await c.goto("/settings?section=profile");
       await c.type(c.page.getByRole("textbox", { name: /Full name/ }), "Sam R.");
@@ -639,7 +639,7 @@ export async function demoCatalog({ api, server }) {
     group: "shell-and-overlays",
     route: "/settings?section=profile",
     how: "change the name, Save (the PUT is answered by the audit with the unchanged profile)",
-    description: "Success toast (“Profile saved”).",
+    description: "Profile saved: the save bar confirms in place (“Saved. New letters use…”), pinned in view for a moment — no toast over it.",
     pinToasts: true,
     run: async (c) => {
       const profile = await c.api.get("/api/profile");

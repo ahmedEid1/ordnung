@@ -1,5 +1,6 @@
 /** "Add to my calendar": download `calendar.ics` and the import guides per calendar app. */
 import { api } from "@/api/endpoints";
+import { leadSpan } from "@/features/settings/logic";
 
 /** Start the download of all open dates as `ordnung.ics` (works for API URLs and mock data: URLs). */
 export function downloadCalendarFile(): void {
@@ -94,8 +95,19 @@ export function reminderDays(days: number[] | null | undefined): string | null {
   return `${words} ${list.length === 1 && list[0] === 1 ? "day" : "days"} before each deadline`;
 }
 
-/** "Reminders: 14, 7, 3 and 1 days before each deadline (change them in Settings)." */
-export function reminderSentence(days: number[] | null | undefined): string {
-  const when = reminderDays(days);
-  return when ? `Reminders: ${when} (change them in Settings).` : "Reminders follow your settings (change them in Settings).";
+/**
+ * The deadline alarms in the words of the Reminders chips (Settings → Calendar): "2 weeks, 1 week,
+ * 3 days and 1 day before each deadline", "1 week before each deadline and on the day" — null when
+ * there are none.
+ */
+export function reminderSentence(days: number[] | null | undefined): string | null {
+  const unique = [...new Set(days ?? [])];
+  const before = unique
+    .filter((d) => d > 0)
+    .sort((a, b) => b - a)
+    .map(leadSpan);
+  const onTheDay = unique.includes(0);
+  if (!before.length) return onTheDay ? "on the day of each deadline" : null;
+  const words = before.length === 1 ? before[0] : `${before.slice(0, -1).join(", ")} and ${before[before.length - 1]}`;
+  return `${words} before each deadline${onTheDay ? " and on the day" : ""}`;
 }
