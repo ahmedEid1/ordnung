@@ -112,7 +112,7 @@ tests/          pytest (+ tests/bin/claude fake CLI)
 Python ≥ 3.11: FastAPI, uvicorn, Pydantic v2, Typer, Rich, sqlite3 (WAL, FTS5), pdfplumber,
 pypdfium2, Pillow + pillow-heif, holidays, python-dateutil, icalendar, fpdf2, rapidfuzz, platformdirs,
 sse-starlette, python-multipart, httpx, mcp v2 (`mcp.server.mcpserver.MCPServer`), cryptography
-(backups), keyring (optional extra `caldav`: calendar sync's password store), hypothesis (dev).
+(backups), keyring (calendar sync's password store), hypothesis (dev).
 Frontend: Vite 8, React 19, TypeScript 5.9, Tailwind 4, React Router 8, TanStack Query, lucide-react,
 date-fns, recharts, motion, @fontsource (Inter, Fraunces). Tooling: uv, ruff, mypy, pytest, vitest,
 Playwright + @axe-core/playwright, GitHub Actions.
@@ -341,6 +341,8 @@ non-user-modified extracted rows in one transaction. "Keep private (no AI)" skip
   when enabled; weekly LLM review in background if the last one is > 7 days old. SSE `day.changed`.
   On every check (not only on a day change) the morning desktop notification is shown once it is
   due, and — in `ordnung serve` — calendar sync sends what changed to a connected calendar (§ 12).
+  While today's notification waits for its first try the loop wakes up for it (its time, or a
+  minute after start-up) instead of sleeping the whole 15 minutes.
 - **Triggers** (`run_triggers(store, today) -> dict[rule_id, list[Suggestion]]`, then
   `reconcile_suggestions` expires absent ones): `deadline_soon`, `overdue`, `contract_cancel_window`
   (send_by within 60 days), `price_increase_right`, `expiry_soon` (passport/ID 180 d, residence
@@ -561,35 +563,50 @@ their docstrings):
   (default `off`; the web app switches it on as `discreet`) and `desktop_notify_time` (`HH:MM`,
   default 08:00). Built by code from `build_agenda` — no model call: overdue, due today or in the
   next 7 days, contract decisions whose send-by day is within 7 days; nothing due, nothing shown.
-  Discreet: "Ordnung" + a count only ("1 overdue · 2 due this week"). Full: the count in the title,
-  the first three things with amounts and days ("Pay the parking fine €30 by Thu · Decide on
-  FitWell: cancel by Thu 8 Oct · and 1 more"). Once per local day at the first tick at or after the
-  time (so up to 15 minutes later, or at start-up); the attempt uses the day up; never in the demo.
-  Shown with `notify-send`, `osascript` (fixed script, texts as arguments) or a Windows PowerShell
-  toast (fixed script, texts in environment variables) — argument lists, never a shell; a missing
-  tool or an error shows nothing and breaks nothing. Settings shows today's text in both modes and
+  Discreet: "Ordnung" + counts only, today's apart ("3 due today · 4 overdue · 5 more this week").
+  Full: the counts in the title, the first three things with amounts and days — what ends today
+  first (deadlines, decisions and appointments before tasks, tasks before payments), then what is
+  overdue, then the week by day ("Decide on FitWell: cancel today · Pay the parking fine €30 —
+  overdue · Dental appointment on Thu 10:30 · and 1 more"; an appointment says its time). Once per
+  local day at the chosen time (the tick wakes up for it), or a minute after start-up when Ordnung
+  wasn't running then; a notification the system couldn't show is tried again at the next checks
+  (3 a day at most) and the last failure is shown in Settings; a missing tool uses the day up;
+  never in the demo. Shown with `notify-send`, `osascript` (fixed script, texts as arguments) or a
+  Windows PowerShell toast (fixed script, texts in environment variables) — argument lists, never a
+  shell; a missing tool or an error breaks nothing. Settings shows today's text in both modes and
   can show a test notification (it doesn't use the day up).
 - **Start at login** — `ordnung autostart enable|disable|status`: one entry per system (systemd user
   unit + `default.target.wants` link, LaunchAgent, Startup-folder `.cmd`) running
   `<python> -m ordnung --data-dir D serve --no-browser`, written by Ordnung itself (no service
   manager is run), printed with its path; standard output (the sign-in link with the token) is
-  discarded, errors go to the journal / `~/Library/Logs/ordnung.log`.
+  discarded, errors go to the journal / `~/Library/Logs/ordnung.log`. The `.cmd` switches cmd.exe
+  to UTF-8 (`chcp 65001`) before any non-ASCII byte, so a user folder like `C:\Users\Jürgen` works.
+  Settings offers the command for *this* data folder (`--data-dir` when it isn't the default one;
+  none in the demo).
 - **Calendar sync (CalDAV, opt-in)** — `calendar/caldav.py` (policy in its docstring, ADR 0013).
   The person connects one calendar in Settings → Calendar: an address (a calendar's, an account's or
   just the provider's — Ordnung finds the calendars that take events: the address itself, the
   collections inside it, or `current-user-principal` → `calendar-home-set` from the address or
-  `/.well-known/caldav`, RFC 6764/4791), a user name and an app password. `https://` only
-  (`http://` to loopback); the address is checked with `PROPFIND` before the password is stored,
-  in the OS keyring (`calendar/secrets.py`, `keyring` from the optional extra `ordnung[caldav]`),
+  `/.well-known/caldav`, RFC 6764/4791; a redirect of the typed address — a web root's login page —
+  doesn't end the search), a user name and an app password. `https://` (or `http://` to loopback);
+  the address is checked with `PROPFIND` before the password is stored, in the OS keyring
+  (`calendar/secrets.py`, `keyring` is a dependency; the `null`/`fail` backends, `keyrings.alt` and
+  any backend below priority 1 are refused; asking whether there is a store reads no secret),
   never in the database; unavailable in the demo. What is sent: the events of the `.ics` export,
   one resource `ordnung-<id>.ics` each (one VEVENT + its VTIMEZONE, no METHOD). Mode `discreet`
   (default): date, time and alarms kept; title "Ordnung: deadline" / "…: payment" / "…:
-  appointment", a fixed description, no location or categories. Mode `full`: the calendar file's
-  events. Idempotent: resource names from the stable UIDs; meta `calendar_sync`
+  appointment" / "…: money in", "— check the date" added for a date Ordnung couldn't confirm, a
+  fixed description, no location or categories. Mode `full`: the calendar file's events (which
+  leave out invoice payments a later payment reminder took over, as the agenda does). While a
+  calendar is connected the `calendar_outdated` Idea ("import the calendar file") is not raised:
+  the same UIDs imported by hand would clash. Idempotent: resource names from the stable UIDs; meta `calendar_sync`
   (`CalendarSyncState`: address, user, mode, SHA-256 per sent event, last report, paused) — only
   changed events are sent, events that left the export are deleted, only Ordnung's own resources
-  are ever touched. Runs on connect, on "Sync now" and at every tick check of `ordnung serve`; a
-  refused password pauses automatic runs until a manual sync or a new password. httpx, TLS
+  are ever touched. Runs on connect, on "Sync now" and at every tick check of `ordnung serve`
+  (nothing changed: nothing sent and the keyring not read); a refused password pauses automatic
+  runs until a manual sync or a new password; a 400/403 that names the UID is a conflict.
+  "Delete everything" first removes Ordnung's events from a connected calendar and its password
+  from the keyring (refused, nothing deleted, when that can't be done). httpx, TLS
   verified, Basic auth, no redirects (same-host redirects only while discovering), 20 s timeout,
   answers ≤ 1 MiB and never with a DTD. Settings previews every event in either mode first.
 
@@ -613,17 +630,19 @@ Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT
 (GET/POST), `drafts/{id}` (GET/PATCH/DELETE), `drafts/{id}/pdf`, `drafts/{id}/sent` (POST),
 `drafts/{id}/translate` (POST: translate the edited letter again, purpose `draft`; 409 in the
 replay-only demo), `calendar.ics`, `calendar/exported` (POST), `activity`, `usage`, `rules`, `jobs`,
-`events` (SSE), `data` (DELETE `{"confirm": "DELETE"}`: "Delete everything" — empties the database
-in place and removes Ordnung's files, keeping the lock and `server.json`; 409 in the demo),
+`events` (SSE), `data` (DELETE `{"confirm": "DELETE"}`: "Delete everything" — a connected
+calendar's events and app password go first (`calendar_events_removed`; 409 and nothing deleted
+when that can't be done), then empties the database in place and removes Ordnung's files, keeping
+the lock and `server.json`; 409 in the demo),
 `calendar/sync` (GET: available here, the connected calendar, the last sync; PUT `{url, username,
 password|null, mode}`: connect or change the mode — checked with the server, the password to the
 keyring, then sent), `calendar/sync/preview?mode=` (every event as it would be sent),
 `calendar/sync/discover` (POST `{url, username, password}`: the calendars that take events),
 `calendar/sync/run` (POST: send what changed now), `calendar/sync/disconnect` (POST
-`{remove_events}`; refusals carry `code`: `address`, `auth`, `not_calendar`, `network`, …; the demo
-answers 409),
+`{remove_events}`; refusals carry `code`: `address`, `auth`, `not_calendar`, `network`,
+`not_connected`, …; the demo answers 409),
 `reminders/desktop` (GET: the notification tool, today's text in each mode, the last day shown, the
-start-at-login entry), `reminders/desktop/test` (POST `{mode}`: show it now), `backup` (GET: what a
+last failure, whether it is the demo, the start-at-login entry and the command for this folder), `reminders/desktop/test` (POST `{mode}`: show it now), `backup` (GET: what a
 backup would hold; POST `{passphrase}`: the encrypted backup file, streamed while it is made — the
 passphrase is never stored, logged or echoed),
 `demo/tour` (GET tour state), `demo/mail` (GET tray, POST `{id}` → ingest a tray letter).
@@ -684,10 +703,11 @@ Pages:
    browser notifications, the morning desktop notification with a preview, a test and "start
    Ordnung when you log in"), models, privacy statement + "Privacy & AI usage" (activity, tokens,
    API-equivalent cost, cache hits), Claude status (doctor), "How dates are computed" (rules
-   catalog), calendar (the `.ics` download; "Sync with your own calendar": find the calendars,
-   choose one, discreet or with details with a preview of every event, sync now, disconnect —
-   optionally removing Ordnung's events), data location, encrypted backup (passphrase twice or a suggested one, then the
-   download; how to restore), disclaimer. The static demo explains that it can neither notify,
+   catalog), calendar (the `.ics` download next to its import guide; "Sync with your own calendar":
+   find the calendars, choose one, discreet or with details with a preview of every event — dates
+   still to come first — sync now, disconnect optionally removing Ordnung's events), data location,
+   encrypted backup (passphrase twice or a suggested one to copy, then the download; how to
+   restore; also offered by "Delete everything"), disclaimer. The static demo explains that it can neither notify,
    sync a calendar nor back up.
 9. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
    name/address (skippable) → Claude check (copyable fixes; "Continue without AI") → drop zone +
@@ -706,7 +726,8 @@ dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighte
 [--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--data-dir D] [--print-config]
 [--rules-only]` · `mcp install --client claude-desktop|claude-code [--rules-only|--with-ledger]
 [--data-dir D] [--config PATH] [--remove-ledger] [--write]` · `autostart enable [--port N]
-[--dry-run] | disable | status` · `backup [--to PATH]` · `restore BACKUP [--force] [--check]` ·
+[--dry-run] | disable | status` · `backup [--to FOLDER|FILE.ordnung-backup]` (a folder that
+doesn't exist is refused) · `restore BACKUP [--force] [--check]` ·
 `openapi`.
 If a server is running (`server.json` + live pid) `add`/`ask`/`brief` go through its API; otherwise
 they run in-process under an exclusive data-dir lock. `backup` reads the folder directly (holding
@@ -714,7 +735,8 @@ the lock when it is free, else alongside the running server — the database sna
 either way); `restore` refuses a folder whose lock is held.
 
 **Backup format** (`backup/`, ADR 0013): one file = header (`ORDNUNG-BACKUP\n`, format version,
-scrypt parameters N = 2¹⁷ r = 8 p = 1, salt, nonce prefix, chunk size, HMAC-SHA256 header MAC) +
+scrypt parameters N = 2¹⁷ r = 8 p = 1 — a reader accepts at most 256 MiB of scrypt memory and p ≤ 2 —
+salt, nonce prefix, chunk size, HMAC-SHA256 header MAC) +
 AES-256-GCM STREAM chunks of 1 MiB (nonce = prefix ‖ counter ‖ last flag, the header as associated
 data) holding a tar of `ordnung.db` (online-backup snapshot, in memory), `files/`, `derived/`,
 `drafts/` and a `manifest.json` (versions, row count per table, size and SHA-256 per file).

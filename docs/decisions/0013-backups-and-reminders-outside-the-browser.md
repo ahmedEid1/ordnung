@@ -25,8 +25,12 @@ deterministic agenda (`build_agenda`), never by a model, so it can't say anythin
 (ADR 0002) and costs no tokens. A notification is seen on lock screens and kept in notification
 histories, so the web app switches it on as *discreet* — a count only — and *full* (titles, amounts,
 days) is a choice with a stated consequence. Letters' words reach the system tool as arguments of a
-fixed script or in environment variables, never a shell line. Once a day, at or after the chosen
-time; the attempt uses the day up, so a missing tool is not retried every 15 minutes. Policy:
+fixed script or in environment variables, never a shell line. It leads with what ends today — a
+remedy whose last day is today outranks a small fee a week overdue — and discreet mode counts
+today's apart. Once a day at the chosen time (the tick wakes up for it) or a minute after start-up
+(at login the desktop's notification service may not be up yet); a notification the system
+couldn't show is tried again at the next checks, three times a day at most, and the last failure is
+kept for Settings; a missing tool uses the day up, so it is not retried every 15 minutes. Policy:
 `ordnung/notify/desktop.py`.
 
 **Calendar sync is opt-in, discreet, and touches only Ordnung's own events.** Pushing events to
@@ -39,9 +43,16 @@ of duplicating; a digest per sent event means only changes are sent and only res
 created are ever replaced or deleted. It keeps itself current from the tick of `ordnung serve` —
 the person's own calendar, opted into, is not a counterparty, so this is not an automatic
 "sending" in the sense of ADR 0006; a refused password pauses it (repeated failed logins lock
-accounts). The app password goes to the OS keyring through the optional `keyring` package
-(`ordnung[caldav]`) — never the database — and without a usable keyring calendar sync is
-unavailable rather than falling back to a file. Discovery (well-known URI, principal, calendar
+accounts). The app password goes to the OS keyring through the `keyring` package (a regular
+dependency: an optional extra would have to be named in a pip command for a package that isn't on
+PyPI, and would land in another environment than a pipx or uv tool install) — never the database —
+and without a usable keyring calendar sync is unavailable rather than falling back to a file:
+backends that don't keep secrets safely (`null`, `fail`, `keyrings.alt`, priority below 1) are
+refused, and whether there is one is asked without reading a secret (reading can prompt to unlock
+a keyring). While a calendar is connected, Ordnung doesn't also suggest importing the calendar file
+(the same UIDs would clash), and "Delete everything" first removes Ordnung's events and the
+password — refusing, with nothing deleted, when it can't: after the wipe nothing would remember
+which events were Ordnung's. Discovery (well-known URI, principal, calendar
 home) makes "iCloud with an app password" work without hunting for a calendar URL. Chosen over
 publishing a feed URL (a public link to the ledger) and over the `caldav` library (a large
 dependency for four requests). Policy: `ordnung/calendar/caldav.py`.
@@ -54,7 +65,8 @@ over a zip with a password (weak or unauthenticated in common tools) and over a 
 (`cryptography` already ships with `pdfminer.six`). What it buys: a wrong passphrase is told apart
 from a changed file before anything is decrypted; a newer format is refused before a key is
 derived; every changed, cut, reordered or appended byte fails; and a crafted header can't make
-scrypt use gigabytes. The database snapshot is SQLite's online backup, taken in memory, so the copy
+scrypt use more than 256 MiB of memory (128·r·N) or p > 2 — the key is derived before the header
+MAC can reject anything, so the reader caps the cost, not only each parameter. The database snapshot is SQLite's online backup, taken in memory, so the copy
 is consistent while Ordnung runs and no plaintext touches the disk. Policy: `ordnung/backup/`.
 
 **Restore proves everything before it replaces anything.** It extracts into a staging folder next to
@@ -67,8 +79,9 @@ data unless asked (`--force`), and then moves it aside; it never runs under a he
 ## Consequences
 - Reminders reach the person with the browser closed, and the backup is something they can put on
   another drive or in the cloud without trusting it.
-- A lost passphrase loses the backup — stated wherever a passphrase is asked for; Ordnung never
-  stores it. The web app offers a random one to put into a password manager.
+- A lost passphrase loses the backup — stated before a passphrase is asked for (the dialog's
+  description, the CLI's line before the prompt); Ordnung never stores it. The web app offers a
+  random one, with a Copy button, to put into a password manager.
 - The browser download holds the whole backup in memory before saving it (a Blob); very large data
   folders are better backed up with `ordnung backup`.
 - Calendar sync overwrites an event of Ordnung's that the person edited in their calendar app at

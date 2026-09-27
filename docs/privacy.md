@@ -56,7 +56,11 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   that carried it (a secretary's note or review built from several letters included). The usage log
   keeps only anonymous numbers, and deleted database rows are overwritten rather than left behind.
   Contracts and letters you drafted stay, without the link to it; your *Ask* conversations stay as
-  they are. *Settings → Delete everything* wipes the whole database.
+  they are. *Settings → Delete everything* wipes the whole database — and, when a calendar is
+  connected for calendar sync, first removes Ordnung's events from it and the app password from your
+  system's password store (if that can't be done, nothing is deleted and Ordnung says what to do).
+  Encrypted backups you made earlier are files of your own: they still hold what was in Ordnung
+  when you made them, deleted letters included, until you delete them.
 - **Models** — choose which Claude model handles each purpose.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself. (The one thing that keeps itself current is calendar sync, and only after you
@@ -68,8 +72,8 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   by Ordnung's own code from the day's agenda — no model call, nothing sent anywhere — and shown by
   your system's notification tool (`notify-send`, macOS notifications, Windows toasts). A
   notification can be seen on a lock screen, a shared screen or in the system's notification
-  history, so the app switches it on as **Discreet**: "Ordnung — 2 things due this week", never a
-  title, a name, an organisation or an amount. **With details** shows the first three things with
+  history, so the app switches it on as **Discreet**: "Ordnung — 1 due today · 2 more this week",
+  never a title, a name, an organisation or an amount. **With details** shows the first three things with
   their amounts and days; choose it only on a screen nobody else sees. Letters with scam signs are
   never in it. The activity log notes that it was shown, with the count only.
 - **Start at login** (`ordnung autostart enable`) writes one file that starts `ordnung serve` when you
@@ -85,19 +89,23 @@ so your phone reminds you. It is off until you connect a calendar, and it **send
 third party** — your calendar provider — so:
 
 - **Discreet by default.** The events keep their date, time and alarms, and are titled "Ordnung:
-  deadline" (or "… payment", "… appointment") with a note to look in Ordnung — no letter's title,
-  no name or organisation, no amount, no place. *With details* sends what Ordnung's calendar file
+  deadline" (or "… payment", "… appointment", "… money in") with a note to look in Ordnung — no
+  letter's title, no name or organisation, no amount, no place. A date Ordnung couldn't confirm in
+  the letter says "— check the date" (that reveals nothing private). *With details* sends what Ordnung's calendar file
   holds (the title, what to do, the amount, who it is with, why that date); choose it only if you
   are comfortable with your provider storing it. Settings shows every event exactly as it would be
   sent, in either mode, before you connect.
 - **Your app password stays in your system's password store** (Keychain, Credential Locker, GNOME
-  Keyring / KWallet — the `ordnung[caldav]` extra), never in Ordnung's database, a log or a backup;
-  use an app password from your provider, not your main password. Ordnung talks to the calendar only
-  over `https://` and checks its certificate.
+  Keyring / KWallet), never in Ordnung's database, a log or a backup. A "password store" that
+  doesn't keep it safely — Python keyring's `null` backend, or the plain-text and home-made files of
+  `keyrings.alt` — is refused, not used. Ordnung reads the password only to connect, to send a change
+  and to disconnect, so opening Settings doesn't ask a locked keyring to unlock. Use an app password
+  from your provider, not your main password. Ordnung talks to the calendar only over `https://`
+  (or plain `http://` to a server on this computer) and checks its certificate.
 - **Only Ordnung's own events.** Ordnung adds, updates and removes the events it created, and never
   reads or changes anything else in that calendar — a calendar of its own, named "Ordnung", keeps
-  things tidy. Disconnecting forgets the password and can remove Ordnung's events first. "Delete
-  everything" doesn't reach into your calendar: disconnect first to remove the events there too.
+  things tidy. Disconnecting forgets the password and can remove Ordnung's events first; "Delete
+  everything" always removes them (and forgets the password) before it deletes anything.
 - **When.** When you connect, when you press *Sync now*, and every 15 minutes while `ordnung serve`
   runs — only what changed is sent. The activity log notes each sync that sent or removed events.
 
@@ -111,7 +119,8 @@ took from them is), the lock and the running server's session file.
 
 - **Encrypted before it is written.** AES-256-GCM in authenticated chunks, the key derived from your
   passphrase with scrypt (N = 2¹⁷, r = 8); the file starts with a versioned header and nothing else
-  in plain text. The database snapshot is made in memory, so no unencrypted copy is written to disk.
+  in plain text. A backup file someone hands you can't make restoring use more than 256 MiB of
+  memory for the key. The database snapshot is made in memory, so no unencrypted copy is written to disk.
 - **Your passphrase stays yours.** At least 12 characters; Ordnung never stores or logs it and
   can't recover it — without it the backup can't be opened, by anyone. In the browser the
   passphrase goes only to the Ordnung on this computer (in the request body, never in a web address).

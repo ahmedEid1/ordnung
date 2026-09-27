@@ -63,8 +63,8 @@ flowchart LR
 | Upload → machine | Checked before anything decodes it: PDF stream expansion, image pixels and text pages are capped; the data folder is private to the account (`0700`, files `0600`) |
 | Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs |
 | Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence`. The desktop notification's texts (letters' titles in *full* mode) reach `notify-send` / `osascript` / PowerShell as separate arguments of a fixed script or in environment variables — never a shell line; markup is escaped, control and bidi characters removed. The start-at-login entry is a file Ordnung writes (quoted per format, a line break refused) and discards the server's standard output, so the session token never reaches a journal |
-| Ordnung → your calendar provider (opt-in) | Nothing is sent until a calendar is connected; `https://` only, TLS verified, no redirects followed to another host; discreet by default (dates, times and alarms — no titles, names or amounts); only resources Ordnung created are replaced or deleted; the app password lives in the OS keyring, never in `ordnung.db`, a log or an answer; a server's XML is size-capped and read without a DTD |
-| Backup file → data folder | Authenticated encryption end to end (header MAC, AES-256-GCM chunks bound to the header, their order and the last one), a newer format refused before any key is derived, scrypt costs capped when read; the archive extracted under a name policy (regular files in three folders only) into a staging folder, read to its authenticated end and checked against its manifest before it replaces anything; a folder with data is moved aside, never deleted ([ADR 0013](decisions/0013-backups-and-reminders-outside-the-browser.md)) |
+| Ordnung → your calendar provider (opt-in) | Nothing is sent until a calendar is connected; `https://` (or `http://` to this computer's loopback address), TLS verified, no redirects followed to another host; discreet by default (dates, times and alarms — no titles, names or amounts); only resources Ordnung created are replaced or deleted; the app password lives in the OS keyring (a backend that doesn't keep passwords safely — `null`, `keyrings.alt`, priority below 1 — is refused), never in `ordnung.db`, a log or an answer, and the keyring is read only to connect, send a change or disconnect; "Delete everything" removes Ordnung's events and the password first; a server's XML is size-capped and read without a DTD |
+| Backup file → data folder | Authenticated encryption end to end (header MAC, AES-256-GCM chunks bound to the header, their order and the last one), a newer format refused before any key is derived, scrypt costs capped when read (at most 256 MiB of memory, p ≤ 2); the archive extracted under a name policy (regular files in three folders only) into a staging folder, read to its authenticated end and checked against its manifest before it replaces anything; a folder with data is moved aside, never deleted ([ADR 0013](decisions/0013-backups-and-reminders-outside-the-browser.md)) |
 
 ## Reading a letter
 
@@ -197,16 +197,21 @@ flowchart LR
   FILE -->|"ordnung restore: verify all, then swap"| DB2[("a data folder")]
 ```
 
-- **The notification** is the agenda's words, not a model's: `notify/desktop.py` counts what is
-  overdue or due within 7 days and, in *full* mode, lists the first three. The tick shows it once a
-  day at or after the chosen time; a missing tool shows nothing. The web app's preview and test use
-  the same functions (`GET /api/reminders/desktop`, `POST …/test`).
+- **The notification** is the agenda's words, not a model's: `notify/desktop.py` counts what ends
+  today, what is overdue and what is due within 7 days and, in *full* mode, lists the first three —
+  today's first. The tick wakes up for it at the chosen time (or a minute after start-up, when the
+  desktop may still be starting), retries one the system couldn't show at its next checks (three a
+  day at most) and keeps the last failure for Settings; a missing tool shows nothing. The web app's
+  preview and test use the same functions (`GET /api/reminders/desktop`, `POST …/test`).
 - **Start at login** (`autostart.py`) writes one entry and runs nothing; `status` reads it back
   (which folder it starts, whether it is current) for the CLI and for Settings.
 - **Calendar sync** (`calendar/caldav.py`, opt-in) puts the calendar file's events into the
   person's own CalDAV calendar — discreet by default — and keeps them current from the same tick:
-  it remembers a digest per event it sent, so an unchanged ledger sends nothing and a finished
-  to-do's event is removed. The password is in the OS keyring (`calendar/secrets.py`).
+  it remembers a digest per event it sent, so an unchanged ledger sends nothing (and reads no
+  password) and a finished to-do's event is removed. The password is in the OS keyring
+  (`calendar/secrets.py`). While a calendar is connected the "import the calendar file" Idea stays
+  quiet, and "Delete everything" (`api/routes/data.py`) clears the calendar and the keyring first,
+  holding calendar sync's lock so no running sync writes its record back.
 - **The backup** (`backup/`) is a pull-based stream (`BackupStream`, one step per file): the CLI
   writes it to a file atomically, the API sends it as the HTTP response while it is made. Restore is
   all or nothing (`backup/restore.py`). The format and its policies are in
