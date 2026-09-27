@@ -322,10 +322,15 @@ def other_entry_in(plan: Plan) -> str | None:
     Best effort, for what is printed before anything is written: a missing or unreadable file
     counts as not having it (:func:`write_config` reports such a file).
     """
-    path = plan.path.resolve() if plan.path.is_symlink() else plan.path
     try:
+        path = plan.path.resolve() if plan.path.is_symlink() else plan.path
         data = json.loads(_read(path) or "{}")
-    except (InstallError, OSError, ValueError):
+    except (
+        InstallError,
+        OSError,
+        ValueError,
+        RuntimeError,
+    ):  # RuntimeError: a symlink loop, or nested too deep
         return None
     servers = data.get("mcpServers") if isinstance(data, dict) else None
     name = other_entry_name(plan)
@@ -340,13 +345,21 @@ def write_config(plan: Plan, *, now: datetime | None = None, remove_ledger: bool
     if remove_ledger and not plan.rules_only:
         raise ValueError("remove_ledger goes with the rules tools")
     path = plan.path
-    if path.is_symlink():
-        path = path.resolve()
+    try:
+        if path.is_symlink():
+            path = path.resolve()
+    except RuntimeError as exc:  # a link that leads back to itself (review round 4 of phase 2: a traceback)
+        raise InstallError(
+            f"Nothing was changed: {path} is a link that leads back to itself ({exc}). Fix or move that file, then "
+            "run this again."
+        ) from exc
     if not plan.rules_only and is_project_file(plan, path):
+        # the command itself: with --write nothing else was printed (review round 4 of phase 2)
+        command = claude_code_command(plan)
         raise InstallError(
             f"Nothing was changed: {path} is a project's shared server list, usually committed with the "
-            "project, so Ordnung doesn't put your ledger there. Run the printed `claude mcp add --scope "
-            "local …` command instead: it keeps the ledger private to you and this project."
+            f"project, so Ordnung doesn't put your ledger there. Run this instead, in the project's folder: "
+            f"{command} — it keeps the ledger private to you and this project."
         )
     if path.exists() and not path.is_file():
         raise InstallError(f"{path} is not a file")
@@ -360,20 +373,28 @@ def write_config(plan: Plan, *, now: datetime | None = None, remove_ledger: bool
     try:
         existing = _read(path)
         merged, status = merge_server(existing, plan.name, plan.entry)
+        servers: dict[str, Any] = merged.get("mcpServers", {})
+        other = other_entry_name(plan)
+        removed = other if remove_ledger and other in servers else None
+        if removed is not None:
+            merged = {
+                **merged,
+                "mcpServers": {name: entry for name, entry in servers.items() if name != removed},
+            }
+        rendered = render_json(merged)
     except InstallError as exc:
         raise InstallError(
             f"Nothing was changed: {path} — {exc}. Fix or move that file, then run this again."
         ) from exc
-    servers: dict[str, Any] = merged.get("mcpServers", {})
-    other = other_entry_name(plan)
-    removed = other if remove_ledger and other in servers else None
-    if removed is not None:
-        merged = {**merged, "mcpServers": {name: entry for name, entry in servers.items() if name != removed}}
+    except RecursionError as exc:  # review round 4 of phase 2: a traceback
+        raise InstallError(
+            f"Nothing was changed: {path} — it is nested too deeply to read and write back. Fix or move that "
+            "file, then run this again."
+        ) from exc
     left = other if other in servers and removed is None else None
     if status == "unchanged" and removed is None:
         return WriteResult(status=status, path=path, other=left)
-    try:  # rendered and encoded before anything is written: a lone surrogate ("\ud800") can't be UTF-8
-        rendered = render_json(merged)
+    try:  # encoded before anything is written: a lone surrogate ("\ud800") can't be UTF-8
         rendered.encode("utf-8")
     except UnicodeEncodeError as exc:
         raise InstallError(

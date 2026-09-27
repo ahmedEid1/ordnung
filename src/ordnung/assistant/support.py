@@ -11,8 +11,9 @@ computed, the person confirmed or the pipeline filed with verified evidence) and
    (``31.**12**.2027`` reads as 31.12.2027, ``٣١`` as 31) and colon look-alikes read as a colon (``16∶00``),
    except an underscore between two letters or digits and an asterisk between two digits, which the web
    shows; a value glued to a Chinese, Japanese or Korean sign is read as if a space stood between them
-   (``预约是11:30``, ``999欧元``), and a line's ordered-list number as the web shows it (``31)`` as ``31.``: the
-   web renders ``31) 12. 2027`` as "31. 12. 2027"). A sentence ends at ``.``, ``!`` or ``?`` before a capital letter (after optional quotes,
+   (``预约是11:30``, ``999欧元``), and a line's number as the web shows it (``31)`` as ``31.``: the web renders
+   ``31) 12. 2027`` as "31. 12. 2027", and ``022.`` as ``22.``; a day before a month name, ``22) Okt.`` or ``0022.
+   Oktober``, as that day — review round 4 of phase 2). A sentence ends at ``.``, ``!`` or ``?`` before a capital letter (after optional quotes,
    markup or citation markers), never after a one-letter or listed abbreviation (:data:`ABBREVIATION`);
    every line is split on its own, except that a line continuing its paragraph, list item or quote joins
    the line before it when a value stands across the soft break (``21.10.`` / ``2027``). A line that
@@ -24,19 +25,23 @@ computed, the person confirmed or the pipeline filed with verified evidence) and
      ``Dec-31-2027``, ``31Dec2027``, ``December the 31st, 2027``); eight digits that are a date
      (``20271231``); ``31.12.'27``; and any run of digit groups joined by single marks (:data:`_RUN`:
      ``31|12|2027``, ``2027.12.31``, ``31/12/'27``, look-alike letters ``2O27``, ``31.l2.2027``) that
-     holds a day, a month and a year; year, month and day with their CJK signs (``2027年12月31日``); the
-     year written after a date (``Dec 31 of 2027``); and a bare day after a date and a range word
+     holds a day, a month and a year; year, month and day with their CJK signs (``2027年12月31日``); a day and
+     a month name with no year joined by one mark or none, or with an ordinal (``22-Oct``, ``Oct22``, ``22ten
+     Oktober``, ``Oct the 22nd``); the year written after a date (``Dec 31 of 2027``, ``Oct 21, '27``, ``21. Oktober
+     27``, ``Oct 21 ('27)``, ``21 Oct/2027``: review round 4 of phase 2); and a bare day after a date and a range word
      (``Oct 21–31, 2026``, ``Oct 21 through 31``, ``21. Oktober bis 31.``): the range's end, in the same
      month. Groups shaped like a date that are no calendar date (``31.02.2027``, year 0) are *unreadable*:
      never supported. So is a day, one word and a year when the word is no month the check knows
      (``31 décembre 2027``, ``31 de diciembre de 2027``, ``31 Aralık 2027``: Ask answers in the language of
      the question, and the check knows English and German month names only — it fails closed), joined by
      spaces, by one mark twice or by none, in any order (``31-dic-2027``, ``dic-31-2027``, ``2027-dic-31``,
-     ``31dic2027``, ``dic. 31, 2027``); a month and a year, or a month before its day, in another offered
-     language (``décembre 2027``, ``diciembre 31, 2027``, ``दिसंबर 2027``); a date of the Islamic or Solar
+     ``31dic2027``, ``dic. 31, 2027``); a month and a year, a month before its day, or a day and a month with no
+     year in another offered language (``décembre 2027``, ``diciembre 31, 2027``, ``दिसंबर 2027``, ``22 de
+     octubre``, ``22 окт``, ``octubre 22``: review round 4 of phase 2); a date of the Islamic or Solar
      Hijri calendar (``1 رجب 1449``, ``۱۴۰۶/۱۰/۱۰``); a month in Chinese numerals (``十二月三十一日``); a day
-     and a month with no year joined by a slash in either order (``31/12``, ``12/31``) or by a hyphen or
-     space when one of them can only be a day (``31-12``, ``31 12``); a part of a year in Chinese
+     and a month with no year joined by a slash in either order (``31/12``, ``12/31``), by a middle dot
+     (``22·10``) or by a hyphen or space when one of them can only be a day (``31-12``, ``31 12``); a part of a
+     year in Chinese
      (``2027年底``) or its end or part in another offered language (``fin 2027``, ``до конца 2027 года``, ``2027 sonu``,
      ``early 2027``); digit groups joined to a year by marks, brackets or quotation marks the other forms don't read
      (``12. 2027``, ``2027 / 12``, ``31..12..2027``, ``31(12)2027``, ``12/'27``); and a day in words before or after a month
@@ -52,7 +57,8 @@ computed, the person confirmed or the pipeline filed with verified evidence) and
      ``early``: the 1st to 10th). Without a year, "may", "march" and "mar" are months only when capitalised
      ("paying late may add a fee" is the verb). In a sentence that cites or inherits a record, a year (19xx,
      20xx) that stands in no other value is a value too: any date a cited record holds in that year supports it;
-   - a clock time: ``16:00``, ``4 pm``, ``4:30 p.m.``, ``10 Uhr``, ``10 Uhr 45``, ``14h``, ``14 h``,
+   - a clock time: ``16:00`` (``11 : 00`` too, before its unit, a part of the day or the end of its clause),
+     ``4 pm``, ``4:30 p.m.``, ``10 Uhr``, ``10 Uhr 45``, ``14h``, ``14 h``,
      ``14h30``, ``14 h 30``, ``T15:30``, ``1530 hrs``, ``1600 hours``, a number with an hour word of another
      offered language (``15 heures``, ``a las 15 horas``, ``alle ore 15``, ``saat 15``, ``15 часов``, ``16 ч``,
      ``15時30分``, ``3 बजे``), and ``10.30`` with its unit after it, after the other end of its range (``8.00–12.00
@@ -99,9 +105,13 @@ computed, the person confirmed or the pipeline filed with verified evidence) and
    to it (``doc_id``, ``contract_id``, ``party_id``, ``source_doc_id``). Dates without a year match by day
    and month; a month without a day matches a record date in that month, a part of a month only one in
    that part, a year only by a record date in it; a clock time must be a time of the record (a to-do's
-   ``due_time``), and a date written with a time is supported only with it. Today supports only a sentence
-   that cites no record, not even one it inherits: "the deadline passed today [item:…]" is the record's claim
-   (review round 3 of phase 2). Overview totals (``due_this_month``,
+   ``due_time``), and a date written with a time is supported only with it. Today's date is a date like any
+   other: a record the sentence cites (or, citing none, one the answer cites) must hold it — "the deadline
+   passed today [item:…]" is the record's claim (review round 3 of phase 2), and so is "the period ended
+   today" in a paragraph of its own under an answer that cites records (review round 4). Only in an answer
+   that cites no record at all does today back a sentence alone, and the note then says so and gives the own
+   dates of the records read in this turn (rule 5): an unqualified "checked" never stands on today alone.
+   Overview totals (``due_this_month``,
    ``fixed_costs_monthly``, ``fixed_costs_by_category``) support only a sentence without citations of its
    own — a total can equal one record's amount. A sentence without citations of its own (also one that
    inherits them) states a record's value only when the value is in the record part of a record the
@@ -155,9 +165,7 @@ Known limits — documented, not bugs:
   sentence's copy of that date was left out because the record it cites does not hold it.
 - Not read (the prompt and the record are the only defence): dates in words without a named month or
   number ("next Friday", "end of the month", a bare year in a sentence that cites nothing, "in October" with
-  no year), a day and a month
-  name of another language without a year (``31 décembre``), a month name of another language before
-  its day (``diciembre 31``), calendar weeks, rates, times without a unit ("at 4") or in words ("half
+  no year), calendar weeks, rates, times without a unit ("at 4") or in words ("half
   nine"), a duration in hours read as a clock time ("2 h"), claims without a value or § ("there is no
   deadline"), the start of a range written as a bare day before its date (``1. bis 14. Oktober``: the
   end, which a deadline is, is read); ``31.12/27`` (read as an amount), six digits (``311227``), letters
@@ -165,7 +173,9 @@ Known limits — documented, not bugs:
   Oct, 14.00``, "at 23.59") is read as money: left out as an amount, not as a time. In a sentence with
   right-to-left letters, both orders of spaced day, month and year are read, other runs are not.
 - Failing closed has a cost: a correct date written with another language's month name (``21 octobre
-  2026``) is left out like a wrong one, and a day, a word and a year that is no date at all (``3 Briefe
+  2026``, also without its year: ``21 octobre``) is left out like a wrong one, a two-digit number right after
+  a day and a month is read as its year ("Oct 21 27 people"), a month and a number joined by a hyphen are a
+  day, never a month and a year (``Nov-26`` is 26 November), and a day, a word and a year that is no date at all (``3 Briefe
   2026``) is left out as a date; a year that names a letter's period ("Income Tax Assessment 2025", "the 2025
   statement") is left out in a sentence that cites a record holding no date in that year; a clock time a
   part of the day or a time zone nearby can't place is left out, and a number right after an amount's currency
@@ -205,7 +215,7 @@ AMOUNT_KEYS = frozenset({"amount", "monthly", "monthly_cost", "due_this_month", 
 AMOUNT_MAPS = frozenset({"fixed_costs_by_category", "fixed_costs_monthly_other_currencies"})
 """Fields whose values are all money (``{"rent": 640.0, …}``)."""
 TODAY_KEY = "today"
-"""The top-level record field every sentence may state (today's date)."""
+"""The top-level record field with today's date (the ``context`` of :class:`TurnEvidence`, rule 3)."""
 TOTAL_KEYS = frozenset(
     {
         "due_this_month",
@@ -484,6 +494,18 @@ _NAMED_DATES = re.compile(
 """A month name joined to digit groups by one mark or none, in any order, with a four- or two-digit
 year: ``31-Dec-2027``, ``31-Dec-27``, ``31Dec2027``, ``31 Dec 27``, ``2027-Dec-31``, ``Dec-31-2027``,
 ``December the 31st, 2027`` (look-alike letters for digits included: ``3l Dec 2O27``)."""
+_ORDINAL = r"(?:st|nd|rd|th|sten|ten|ter|ste|te)"
+_DAY_MARK = r"[-/–—_·•∙‧]"
+_MARKED_DAY_MONTH = re.compile(
+    rf"(?<![\w.,/·•∙‧-])(?P<d1>{_DAY})(?:{_ORDINAL}\s?)?(?:{_DAY_MARK}|\.(?!\s))?(?P<m1>{_MONTH_NAME})\b\.?"
+    rf"|(?<![\w])(?P<m2>{_MONTH_NAME})\.?{_DAY_MARK}?(?P<d2>{_DAY})(?:st|nd|rd|th)?(?![\w]|[-/–—_·•∙‧.,:]\d)"
+    rf"|(?<![\w])(?P<m3>{_MONTH_NAME})\.?,?\s+the\s+(?P<d3>{_DAY})(?:st|nd|rd|th)?\b",
+    re.IGNORECASE,
+)
+"""A day and a month name with no year, joined by one mark or none, in either order, or with an ordinal the
+other forms don't read (``22-Oct``, ``Oct-22``, ``22/Oct``, ``Oct22``, ``22nd-Oct``, ``22ten Oktober``, ``Oct the
+22nd``): a date matched by day and month (review round 4 of phase 2: they were not read at all, so a wrong day
+passed as checked)."""
 _APOSTROPHE_YEAR = re.compile(
     r"(?<![\w.,/-])(?P<d>\d{1,2})(?P<s>[./-])(?P<m>\d{1,2})(?P=s)['’](?P<y>\d{2})(?![\w]|[.,]\d)"
 )
@@ -557,6 +579,21 @@ _FOREIGN_WORD_FIRST = re.compile(
     re.IGNORECASE,
 )
 """Another offered language's month before its day and year (``diciembre 31, 2027``): *unreadable*."""
+_FOREIGN_SHORT_MONTHS = (
+    "янв|фев|февр|апр|июн|июл|авг|сен|сент|окт|ноя|нояб|дек|січ|лют|бер|квіт|трав|черв|лип|серп|вер|жовт|лист|груд|"
+    "janv|févr|fevr|avr|juil|déc|ene|abr|ago|dic|ott|giu|lug|mag"
+)
+_FOREIGN_DAY_MONTH = re.compile(
+    rf"(?<![\w.,/-])(?:0?[1-9]|[12]\d|3[01])(?:\.|º|°|er|e)?\s{{0,3}}(?:de\s{{1,3}})?"
+    rf"(?:{_FOREIGN_MONTHS}|{_FOREIGN_SHORT_MONTHS})(?![\w\u0900-\u097F\u0600-\u06FF])"
+    rf"|(?<![\w\u0900-\u097F\u0600-\u06FF])(?:{_FOREIGN_MONTHS})\.?\s+(?:0?[1-9]|[12]\d|3[01])"
+    r"(?![\d]|[.,:]\d|\s?(?:%|€|Uhr\b|h\b))",
+    re.IGNORECASE,
+)
+"""A day and a month of another offered language with no year (``22 de octubre``, ``22 octobre``, ``22 ottobre``,
+``22 października``, ``22 Ekim``, ``22 окт``, ``22 أكتوبر``, ``octubre 22``): *unreadable* (review round 4 of phase 2:
+a wrong day passed as checked in the natural form of 12 of the 14 answer languages, while the same date with its
+year was already left out)."""
 _ANY_WORD_FIRST = re.compile(
     r"(?<![\w])(?P<w>[^\W\d_]{2,12})\.\s?(?P<d>0?[1-9]|[12]\d|3[01]),\s+(?P<y>(?:19|20)\d{2})(?!\d)"
 )
@@ -572,12 +609,14 @@ _ZH_WORD_DATE = re.compile(
 the end of 2027): *unreadable*."""
 _DAY_MONTH_PAIR = re.compile(
     r"(?<![\w.,/·-])(?:(?P<d>0?[1-9]|[12]\d|3[01])/(?P<m>0?[1-9]|1[0-2])|(?:0?[1-9]|1[0-2])/(?:1[3-9]|2\d|3[01])"
+    r"|(?:0?[1-9]|[12]\d|3[01])[·•∙‧](?:0?[1-9]|1[0-2])"
     r"|(?:1[3-9]|2\d|3[01])(?P<sep>-| )(?:0[1-9]|1[0-2])|(?:0[1-9]|1[0-2])-(?:1[3-9]|2\d|3[01]))"
     r"(?![\w/-]|[.,]\d|\s?(?:%|€|Uhr\b|h\b|\d))"
 )
 """A day and a month with no year: joined by a slash in either order (``31/12``, the short form of French,
-Spanish, Italian, Portuguese, Polish, Turkish and Russian; ``12/31``, the US one), or by a hyphen or space
-when one of them can only be a day (``31-12``, ``12-31``, ``31 12``): *unreadable* — ``31.12.`` and ``Dec 31``
+Spanish, Italian, Portuguese, Polish, Turkish and Russian; ``12/31``, the US one), by a middle dot or bullet
+(``22·10``), or by a hyphen or space when one of them can only be a day (``31-12``, ``12-31``, ``31 12``):
+*unreadable* — ``31.12.`` and ``Dec 31``
 are read as dates (review round 2 of phase 2)."""
 _CJK_DATE = re.compile(
     r"(?<!\d)(?:(?P<y>\d{4})\s?年\s?)?(?P<m>0?[1-9]|1[0-2])\s?月(?:\s?(?P<d>0?[1-9]|[12]\d|3[01])\s?[日号])?"
@@ -588,7 +627,7 @@ _PART_WORDS = (
     r"|mitte|early|(?:the\s+)?(?:beginning|start)\s+of|anfang|beginn|monatsanfang"
 )
 _MONTH_YEAR = re.compile(
-    rf"\b(?:(?P<part>{_PART_WORDS})\s*)?(?P<m>{_MONTH_NAME})\b\.?(?:,?\s+(?:of|de|del|di)\s+|,?\s*|[-/–]\s?)"
+    rf"\b(?:(?P<part>{_PART_WORDS})\s*)?(?P<m>{_MONTH_NAME})\b\.?(?:,?\s+(?:of|de|del|di)\s+|,?\s*|[-/–·•∙‧]\s?)"
     rf"(?:(?P<y>{_YEAR4})|'(?P<ay>\d{{2}}))(?![\dOoIlZ])"
     rf"|\b(?:(?:the\s+)?end\s+of(?:\s+(?:the\s+)?year)?|ende(?:\s+des\s+jahres)?|year-end|jahresende|late"
     rf"|end-|(?:am\s+)?letzten\s+tag\s+des\s+jahres|(?:the\s+)?last\s+day\s+of(?:\s+the\s+year)?|silvester"
@@ -698,7 +737,12 @@ _AMPM_TIME = re.compile(
 )
 _COLON_TIME = re.compile(
     r"(?<![\w.,])(?<!\d:)(?P<h>[01]?\d|2[0-4]):(?P<m>[0-5]\d)(?::[0-5]\d)?(?![\d:])(?:\s?(?:Uhr|h)\b)?"
+    r"|(?<![\w.,:])(?P<sh>[01]?\d|2[0-4])(?: :\s?| ?: )(?P<sm>[0-5]\d)(?![\d:])"
+    r"(?:(?P<unit>\s?(?:Uhr|h)\b)|(?=\s?(?:am|pm|a\.m\.|p\.m\.)(?![^\W\d_])|\s{0,3}(?:$|[.,;!?)\]\[])))"
 )
+"""A clock time: ``16:00`` — and with spaces around its colon (``11 : 00``, ``11 :00``, ``11: 00``) before a unit, a
+part of the day or the end of its clause (review round 4 of phase 2: they passed unread; "Option 1: 14 days" is
+no time)."""
 _HOUR_TIME = re.compile(
     r"(?<![\w.,])(?<!\d:)(?:(?P<h>[01]?\d|2[0-4])\s?(?:Uhr|o'clock)\b(?:\s?(?P<um>[0-5]\d)(?![\d:]|[.,]\d))?"
     r"|(?P<hh>[01]?\d|2[0-3])\s?h(?:\s?(?P<m>[0-5]\d)(?![\d:]|[.,]\d))?\b)",
@@ -1389,6 +1433,16 @@ def _named_reading(match: re.Match[str]) -> list[DateMention] | None:
     return _valid_mention(match.group(), day, month, year)
 
 
+def _marked_day_month_reading(match: re.Match[str]) -> list[DateMention] | None:
+    number = next(number for number in "123" if match.group(f"m{number}"))
+    name = match.group(f"m{number}")
+    if name.casefold() in _VERB_MONTHS and not name[0].isupper():
+        return None  # "may" the verb
+    return _valid_mention(
+        match.group(), _digits(match.group(f"d{number}")), MONTH_NUMBERS[name.casefold()], None
+    )
+
+
 def _apostrophe_reading(match: re.Match[str]) -> list[DateMention] | None:
     if _after_label(match):
         return None
@@ -1403,6 +1457,7 @@ _DATE_FORMS: tuple[tuple[re.Pattern[str], Callable[[re.Match[str]], list[DateMen
     (_COMPACT_DATE, _compact_reading),
     (_LOOSE_DATES, _loose_reading),
     (_LOOSE_YMD, _ymd_reading),
+    (_MARKED_DAY_MONTH, _marked_day_month_reading),
 )
 """Date forms read besides :func:`~ordnung.ingest.verify.parse_dates` and :data:`_RUN`: a reading is
 ``None`` when the match is no date at all, empty when it is shaped like one but none (*unreadable*)."""
@@ -1809,7 +1864,14 @@ def _other_named_values(plain: str) -> Iterator[Value]:
             yield Value(
                 plain[start:end], "date" if readings else "unreadable", start, end, dates=tuple(readings)
             )
-    for pattern in (_FOREIGN_MONTH_YEAR, _FOREIGN_WORD_FIRST, _ZH_WORD_DATE, _DAY_MONTH_PAIR, _YEAR_PART):
+    for pattern in (
+        _FOREIGN_MONTH_YEAR,
+        _FOREIGN_WORD_FIRST,
+        _ZH_WORD_DATE,
+        _DAY_MONTH_PAIR,
+        _YEAR_PART,
+        _FOREIGN_DAY_MONTH,
+    ):
         for match in pattern.finditer(plain):
             if not _after_label(match):
                 yield Value(match.group(), "unreadable", *match.span())
@@ -1824,20 +1886,20 @@ def _other_named_values(plain: str) -> Iterator[Value]:
         yield Value(match.group(), "unreadable", *match.span())
 
 
-_BARE_YEAR = re.compile(r"(?<![\w.,/·'’-])(?:19|20)\d{2}(?![\w]|[.,/·-]\d)")
+_BARE_YEAR = re.compile(r"(?<![\w.,/·'’-])(?:19|20)\d{2}(?![\w]|[.,/·-]\d)|(?<![\w'’])['’]\d{2}(?![\w'’])")
 
 
 def bare_years(plain: str, values: Sequence[Value]) -> list[Value]:
-    """The years of ``plain`` (19xx, 20xx) that stand in no value it states (``values``) and after no label
-    (``Az. 2026``): in a sentence that cites a record, a date value that any date the record holds in that year
-    supports (rule 3; review round 3 of phase 2 — "Ende des Jahres 2027", "late 2027", "31..12..2027" and other
-    forms the reader has no rule for passed unread)."""
+    """The years of ``plain`` (19xx, 20xx, and ``'27``) that stand in no value it states (``values``) and after no
+    label (``Az. 2026``): in a sentence that cites a record, a date value that any date the record holds in that
+    year supports (rule 3; review round 3 of phase 2 — "Ende des Jahres 2027", "late 2027", "31..12..2027" and
+    other forms the reader has no rule for passed unread; review round 4 — "in '27")."""
     found = []
     for match in _BARE_YEAR.finditer(plain):
         start, end = match.span()
         if _after_label(match) or any(v.start < end and start < v.end for v in values if v.start >= 0):
             continue
-        found.append(Value(match.group(), "date", start, end, year=int(match.group())))
+        found.append(Value(match.group(), "date", start, end, year=_year(match.group().lstrip("'’"))))
     return found
 
 
@@ -1873,8 +1935,19 @@ def _word_day_values(plain: str) -> Iterator[Value]:
         yield Value(plain[start:end], "date" if readings else "unreadable", start, end, dates=tuple(readings))
 
 
-_YEAR_AFTER = re.compile(r",?\s+(?:of|in|de|del)\s+(?P<y>(?:19|20)\d{2})(?!\d)", re.IGNORECASE)
-"""The year written after a date without one: ``Dec 31 of 2027`` is 31 Dec 2027."""
+_YEAR_AFTER = re.compile(
+    r"(?:st|nd|rd|th)?(?:,?\s+(?:of|in|de|del)\s+(?P<y>(?:19|20)\d{2})(?!\d)"
+    r"|\s*[/·•∙‧]\s*(?P<my>(?:19|20)\d{2})(?!\d)"
+    r"|,?\s*\(\s*['’]?(?P<py>\d{2})\s*\)"
+    r"|,?\s*(?:(?:of|in|de|del)\s+)?['’](?P<ay>\d{2})(?![\d])"
+    r"|,?\s(?P<sy>\d{2})(?![\d]|[.,:/]\d|\s?(?:%|€|\$|£|Uhr\b|h\b|am\b|pm\b|a\.m\.|p\.m\.|o'clock\b)))",
+    re.IGNORECASE,
+)
+"""The year written after a date without one: ``Dec 31 of 2027`` is 31 Dec 2027, and so are ``Oct 21, '27``,
+``21. Oktober 27``, ``21 Oct, 27``, ``Oct 21 ('27)``, ``Oct 21 in '27`` and ``21 Oct/2027`` (review round 4 of
+phase 2: a two-digit year, or one joined by a mark, was never read — a date a year late passed as checked). A
+two-digit number after a day and a month is read as its year: "Oct 21 27 people" loses a correct date (fail
+closed)."""
 _RANGE_END = re.compile(
     r"\s?(?:-|through|thru|to|until|till|bis(?:\s+(?:zum|einschließlich))?)\s?(?P<d>0?[1-9]|[12]\d|3[01])"
     r"(?:st|nd|rd|th|\.)?(?![\d\w]|[.,:/]\d|\s?(?:Uhr|h|am|pm|a\.m|p\.m|o'clock)\b|\s?(?:%|€))"
@@ -1901,7 +1974,9 @@ def _with_year_after(plain: str, value: Value, taken: _Taken) -> Value | None:
     if found is None or not taken.free(value.end, found.end()):
         return None
     text = plain[value.start : found.end()]
-    readings = _valid_mention(text, day.day, day.month, int(found.group("y")))
+    long_year = found.group("y") or found.group("my")
+    year = int(long_year) if long_year else _year(found.group("py") or found.group("ay") or found.group("sy"))
+    readings = _valid_mention(text, day.day, day.month, year)
     kind: ValueKind = "date" if readings else "unreadable"
     return Value(text, kind, value.start, found.end(), dates=tuple(readings))
 
@@ -2085,7 +2160,7 @@ def _clock_values(plain: str, taken: _Taken, *, german: bool | None = None) -> I
         clock = (hour, int(match.group("m") or 0))
         yield _moved(plain, taken, match, clock, minutes=match.group("m") is not None)
     for match in _COLON_TIME.finditer(plain):
-        clock = (int(match.group("h")), int(match.group("m")))
+        clock = (int(match.group("h") or match.group("sh")), int(match.group("m") or match.group("sm")))
         yield _moved(plain, taken, match, clock, minutes=True)
     for match in _HOUR_TIME.finditer(plain):
         minutes = match.group("m") or match.group("um")
@@ -2294,8 +2369,8 @@ class TurnEvidence:
     ``record``: the dates, times and amounts of each record's record part (and of the records inside
     it or linked to it); ``letters``: those of its letter text (and of the records crediting it);
     ``unverified``: the amounts of records whose record flags them as unverified (they sit in the
-    letter text); ``own``: each record's own deadlines and amounts; ``context``: today, which any
-    sentence may state; ``totals``: Ordnung's overview totals (a category's fixed costs among them),
+    letter text); ``own``: each record's own deadlines and amounts; ``context``: today, which a sentence
+    of an answer that cites no record may state (rule 3); ``totals``: Ordnung's overview totals (a category's fixed costs among them),
     which only a sentence without own citations may state; ``person``: values the person wrote;
     ``seen_ids``: every citable id in a record part; ``paragraphs``: the § citations of the rules
     catalog and the record parts; ``suspicious``: the records with scam signs (a to-do or letter
@@ -2406,10 +2481,9 @@ class TurnEvidence:
     def supports(
         self, value: Value, cited: Collection[str], *, totals: bool | None = None, today: bool | None = None
     ) -> bool:
-        """Policy rule 3: today in a sentence that cites no record, not even one it inherits (``today``, by
-        default when ``cited`` is empty — a deadline "passed today [item:…]" is the record's claim, review
-        round 3 of phase 2); an overview total in a sentence with no citation of its own (``totals``, by
-        default when ``cited`` is empty); or a value in the record part of a cited record."""
+        """Policy rule 3: today (``today``, by default when ``cited`` is empty — the answer check asks for it
+        only in an answer that cites no record); an overview total in a sentence with no citation of its own
+        (``totals``, by default when ``cited`` is empty); or a value in the record part of a cited record."""
         if (not cited if today is None else today) and value.found_in(self.context):
             return True
         if (not cited if totals is None else totals) and value.found_in(self.totals):
@@ -2744,9 +2818,14 @@ def style_for(text: str) -> Style:
 
 def language_of(text: str) -> bool | None:
     """Whether ``text`` is German (``True``: more common German than English words), English
-    (``False``: more English ones) or neither (``None``)."""
+    (``False``: more English ones) or neither (``None``). Citation markers are not words: a record id's
+    letters ("itm_4to7…") never tip the answer's language."""
     german = english = 0
-    for word in _WORD.findall(text):
+    parts, last = [], 0
+    for begin, end in marker_spans(text):
+        parts.append(text[last:begin])
+        last = end
+    for word in _WORD.findall(" ".join([*parts, text[last:]])):
         folded = word.casefold()
         german += folded in _DE_WORDS
         english += folded in _EN_WORDS
@@ -2814,6 +2893,16 @@ _NOTE_TEXTS: Mapping[str, tuple[str, str, str, str]] = {
         "Added {n} sources to sentences that gave a date, time or amount without one.",
         "1 Quelle ergänzt: Ein Satz nannte ein Datum, eine Uhrzeit oder einen Betrag ohne Quelle.",
         "{n} Quellen ergänzt: Sätze nannten Daten, Uhrzeiten oder Beträge ohne Quelle.",
+    ),
+    "today": (
+        "1 sentence gives today's date without a source: it is today's date, not a date Ordnung saved for your "
+        "letters, to-dos or contracts.",
+        "{n} sentences give today's date without a source: it is today's date, not a date Ordnung saved for "
+        "your letters, to-dos or contracts.",
+        "1 Satz nennt das heutige Datum ohne Quelle: Es ist das heutige Datum, kein Datum, das Ordnung zu Ihren "
+        "Briefen, Aufgaben oder Verträgen gespeichert hat.",
+        "{n} Sätze nennen das heutige Datum ohne Quelle: Es ist das heutige Datum, kein Datum, das Ordnung zu "
+        "Ihren Briefen, Aufgaben oder Verträgen gespeichert hat.",
     ),
     "stripped": (
         "Removed 1 source that isn't among the records Ordnung looked up for this answer.",
@@ -2939,7 +3028,8 @@ class SentenceCheck:
     it belongs to (whose own values the note gives); ``added``: the ids whose citation the check added
     (rule 3); ``repeated``: those it added although the sentence already inherits them (rule 2) — the
     chip still shows whose value the sentence states, but nothing new is claimed, so the note does not
-    count them.
+    count them. ``today``: a value only today's date backs (an answer that cites no record, rule 3) — the
+    note says so and gives the own dates of the records read in this turn.
     """
 
     text: str
@@ -2955,6 +3045,7 @@ class SentenceCheck:
     in_letter: int = 0
     added: tuple[str, ...] = ()
     repeated: tuple[str, ...] = ()
+    today: bool = False
 
 
 @dataclass(frozen=True)
@@ -2983,9 +3074,13 @@ class CheckedAnswer:
 
     @property
     def changed(self) -> bool:
-        """Whether the check left anything out (a sentence, a value or a line) or added a citation."""
+        """Whether the check left anything out (a sentence, a value or a line), added a citation or kept a
+        date only today's backs."""
         return bool(
-            self.removed or self.redacted or self.forged_notes or any(c.added for c in self.sentences)
+            self.removed
+            or self.redacted
+            or self.forged_notes
+            or any(c.added or (c.today and c.verdict != "removed") for c in self.sentences)
         )
 
     def note(self, *, stripped: int = 0, weekdays: bool = False) -> str | None:
@@ -3006,6 +3101,7 @@ class CheckedAnswer:
             _counted("removed_law", sum(1 for c in self.removed if c.reason == "law"), style),
             _counted("forged", self.forged_notes, style),
             _counted("added", sum(len(c.added) for c in kept), style),
+            _counted("today", sum(1 for c in kept if c.today), style),
             _counted("stripped", stripped, style),
             (_WEEKDAYS_NOTE[1] if style.german else _WEEKDAYS_NOTE[0]) if weekdays else None,
         ]
@@ -3051,7 +3147,7 @@ def check_answer(
             zip(sentences, own, _inherit(own, lead if item else []), strict=True)
         ):
             reading = read_as_shown(sentence)
-            if index == 0 and item:
+            if index == 0:
                 reading = _as_list_number(reading, sentence)
             if _FORGED_NOTE.match(skeleton(reading.text)):
                 forged += 1
@@ -3088,21 +3184,28 @@ def check_answer(
     return CheckedAnswer("\n".join(lines), tuple(checks), forged, record_values, style, kinds)
 
 
-_PAREN_NUMBER = re.compile(r"^\s*\d{1,9}(\))\s")
+_LINE_NUMBER = re.compile(r"^\s*(?P<n>\d{1,9})(?P<mark>[.)])\s")
+_LINE_NUMBER_STOP = re.compile(r"\s*\d{1,9}\.")
 
 
 def _as_list_number(reading: Reading, sentence: str) -> Reading:
-    """A line's first sentence read as the web shows an ordered list's number: ``31)`` as ``31.`` (the web
-    renders ``<li value=31>`` in a decimal list, so ``31) 12. 2027 …`` shows as ``31. 12. 2027 …`` — review round
-    3 of phase 2)."""
-    found = _PAREN_NUMBER.match(sentence)
+    """A line's first sentence read with its number as the web shows it: an ordered list's as the number the
+    list renders (``31)`` as ``31.`` — ``<li value=31>`` in a decimal list, so ``31) 12. 2027 …`` shows as ``31. 12.
+    2027 …``, review round 3 of phase 2 — and ``022.`` as ``22.``); and a day before a month name, which is no list
+    item, as a day (``22) Okt. 2026``, ``0022. Oktober 2026``: 22 October — review round 4 of phase 2: the web
+    showed ``22. 10.`` and a reader sees a date where the check read none)."""
+    found = _LINE_NUMBER.match(sentence)
     if found is None:
         return reading
     try:
-        index = reading.offsets.index(found.start(1))
+        first = reading.offsets.index(found.start("n"))
+        mark = reading.offsets.index(found.start("mark"))
     except ValueError:
         return reading
-    return Reading(f"{reading.text[:index]}.{reading.text[index + 1 :]}", reading.offsets)
+    digits = found.group("n")
+    drop = len(digits) - len(str(int(digits)))
+    text = f"{reading.text[:first]}{reading.text[first + drop : mark]}.{reading.text[mark + 1 :]}"
+    return Reading(text, reading.offsets[:first] + reading.offsets[first + drop :])
 
 
 _FENCE_LINE = re.compile(r"^\s{0,3}(?:```|~~~)")
@@ -3266,8 +3369,11 @@ def sentences_of(body: str) -> list[str]:
         if after >= len(body) or not body[after].isupper():
             continue
         head = body[max(start, match.start() - 12) : match.start() + 1]  # abbreviations are short: linear
-        if body[match.start()] == "." and ABBREVIATION.search(head):
-            continue
+        if body[match.start()] == "." and (
+            ABBREVIATION.search(head)
+            or (start == 0 and _LINE_NUMBER_STOP.fullmatch(body, 0, match.start() + 1))
+        ):
+            continue  # a line's number ("0022. Oktober 2026") never ends a sentence
         sentences.append(body[start : match.start("gap")].strip())
         start = match.end()
     sentences.append(body[start:].strip())
@@ -3312,15 +3418,19 @@ def check_sentence(
     own_cites = bool(cited) if cites_own is None else cites_own
     supported: list[bool] = []
     owners: list[set[str]] = []  # for each value rule 3 supports, the records it belongs to
+    today = False  # a value only today backs (rule 3: in an answer that cites no record)
     for value in values:
         if own_cites:
             supported.append(evidence.supports(value, cited, totals=False, today=False))
             continue
-        # today (only when the sentence cites no record, not even one it inherits), or an overview total
-        if evidence.supports(value, (), totals=True, today=not cited):
+        # an overview total; never today, which a cited record must hold like any other date (review round 4)
+        if evidence.supports(value, (), totals=True, today=False):
             supported.append(True)
             continue
         holders = evidence.holders(value, answer_cited or tuple(cited))
+        if not holders and not (answer_cited or cited) and value.found_in(evidence.context):
+            supported.append(today := True)  # the note says so, with the records' own dates (rule 5)
+            continue
         supported.append(bool(holders))
         if holders:  # a demand not to pay is never cited by the check, and a value it holds gets no chip
             owners.append(set() if evidence.suspicious.intersection(holders) else set(holders))
@@ -3351,6 +3461,8 @@ def check_sentence(
     in_letter = len(letter)
     unsupported = tuple(values[i].text for i in sorted([*quoted, *left]))
     ids = (*added, *repeated)
+    if today:  # the records read in this turn whose own dates the note gives (rule 5)
+        refs.append(("date", frozenset(evidence.own)))
     if not unsupported:
         cited_result = _add_citations(sentence, ids)
         return SentenceCheck(
@@ -3359,8 +3471,10 @@ def check_sentence(
             stated,
             result=cited_result,
             supported=tuple(values),
+            record_refs=tuple(refs),
             added=added,
             repeated=repeated,
+            today=today,
         )
     left_texts = tuple(values[i].text for i in left)
     unplaced = any(values[i].start < 0 for i in (*quoted, *left))
@@ -3402,6 +3516,7 @@ def check_sentence(
         in_letter=in_letter,
         added=added,
         repeated=repeated,
+        today=today,
     )
 
 

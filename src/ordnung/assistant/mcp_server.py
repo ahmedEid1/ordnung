@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import re
 import sys
+from collections import deque
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import date
 from pathlib import Path
@@ -380,7 +381,10 @@ class LedgerTools:
         return [party for _, party in scored[:MAX_PARTY_MATCHES]]
 
     def _party_detail(self, ledger: Ledger, party: Party, letters: LetterText) -> dict[str, Any]:
-        """Kind and region are the record; name, contact details and identifiers come from letters."""
+        """Kind and region are the record; name, contact details and identifiers come from letters. A letter
+        with scam signs is flagged (``scam_warning``, its ``scam_signs`` in the letter text) as ``search`` and
+        ``get_document`` flag it — also once its to-do is done or dismissed, or not linked to the sender (review
+        round 4 of phase 2: only an open to-do brought the flag in, so the scam note was missing)."""
         documents = sorted(
             (d for d in ledger.documents.values() if d.party_id == party.id and _shareable(d)),
             key=lambda d: (d.doc_date or "", d.id),
@@ -396,7 +400,7 @@ class LedgerTools:
             "id": party.id,
             "kind": party.kind,
             "region": party.region,
-            "documents": [_document_ref(doc, letters) for doc in documents[:MAX_PARTY_ROWS]],
+            "documents": [_flagged_ref(ledger, doc, letters) for doc in documents[:MAX_PARTY_ROWS]],
             "open_items": [_item_row(ledger, item, letters) for item in items[:MAX_PARTY_ROWS]],
             "contracts": [_contract_ref(c, letters) for c in ledger.contracts if c.party_id == party.id],
         }
@@ -611,6 +615,13 @@ def _document_ref(doc: Document, letters: LetterText) -> dict[str, Any]:
     """Id, kind and the document date (a correctable ledger field, the anchor of computed dates)."""
     letters.add(doc.id, title=doc.title or doc.filename)
     return {"id": doc.id, "kind": doc.kind, "date": doc.doc_date}
+
+
+def _flagged_ref(ledger: Ledger, doc: Document, letters: LetterText) -> dict[str, Any]:
+    """A letter's reference with its scam flag (``scam_warning``; the signs are letter text)."""
+    scam = ledger.scam_reasons(doc)
+    letters.add(doc.id, scam_signs=scam)
+    return {**_document_ref(doc, letters), "scam_warning": bool(scam) or None}
 
 
 def _document_head(doc: Document, letters: LetterText, ledger: Ledger) -> dict[str, Any]:
@@ -1031,27 +1042,59 @@ def answer_again(tools: LedgerTools, name: str, args: Mapping[str, Any]) -> str:
 
 def stale_tool_results(tools: LedgerTools, events: Iterable[Any]) -> list[str]:
     """The recorded tool calls of one turn (``tool_use`` / ``tool_result`` stream events, or dicts of
-    them) whose results the current tools render differently — by name. Results are compared as a
-    multiset: the results of parallel calls may arrive in any order."""
+    them) whose results the current tools render differently — by name — and one ``"unclaimed result"``
+    for each recorded result no call claims. Results are paired with their calls as Ask pairs them
+    (:func:`pair_results`): by ``tool_use_id``, and a result without
+    one with the oldest call without one still waiting — so a result recorded out of order, or an extra
+    one before the real one, is stale (review round 4 of phase 2: leftover results were never reported,
+    and Ask kept a forged extra result as the call's)."""
     calls: list[tuple[str, Mapping[str, Any]]] = []
-    recorded: list[str] = []
+    stream: list[tuple[str, str | None, str]] = []
     for event in events:
-        kind = event.get("type") if isinstance(event, Mapping) else event.type
+        kind = _field(event, "type")
         if kind == "tool_use":
-            name = event.get("name") if isinstance(event, Mapping) else event.name
-            args = event.get("input") if isinstance(event, Mapping) else event.input
-            calls.append((str(name or ""), args if isinstance(args, Mapping) else {}))
+            args = _field(event, "input")
+            calls.append((str(_field(event, "name") or ""), args if isinstance(args, Mapping) else {}))
+            stream.append(("tool_use", _field(event, "tool_use_id"), ""))
         elif kind == "tool_result":
-            recorded.append(str((event.get("text") if isinstance(event, Mapping) else event.text) or ""))
-    remaining = list(recorded)
+            stream.append(("tool_result", _field(event, "tool_use_id"), str(_field(event, "text") or "")))
+    paired, unclaimed = pair_results(stream)
     stale = []
-    for name, args in calls:
-        text = answer_again(tools, name, args)
-        if text in remaining:
-            remaining.remove(text)
-        else:
+    for index, (name, args) in enumerate(calls):
+        if paired.get(index) != answer_again(tools, name, args):
             stale.append(name.removeprefix(f"mcp__{SERVER_NAME}__"))
-    return stale
+    return stale + ["unclaimed result"] * unclaimed
+
+
+def _field(event: Any, key: str) -> Any:
+    """A stream event's field, from the event or from a dict of it (a recording)."""
+    return event.get(key) if isinstance(event, Mapping) else getattr(event, key, None)
+
+
+def pair_results(stream: Iterable[tuple[str, str | None, str]]) -> tuple[dict[int, str], int]:
+    """Pair tool results with their calls, as Ask does: ``stream`` is ``(kind, tool_use_id, text)`` in the
+    order the events came. A result with an id belongs to the call with that id; one without to the oldest
+    call without an id still waiting. Returns the result of each call (by its index) and how many results
+    no call claims — those never count as a call's result."""
+    by_id: dict[str, int] = {}
+    waiting: deque[int] = deque()
+    paired: dict[int, str] = {}
+    unclaimed = 0
+    count = 0
+    for kind, tool_use_id, text in stream:
+        if kind == "tool_use":
+            if tool_use_id:
+                by_id[tool_use_id] = count
+            else:
+                waiting.append(count)
+            count += 1
+            continue
+        index = by_id.pop(tool_use_id, None) if tool_use_id else (waiting.popleft() if waiting else None)
+        if index is None:
+            unclaimed += 1
+        else:
+            paired[index] = text
+    return paired, unclaimed
 
 
 # --------------------------------------------------------------------------------------------------

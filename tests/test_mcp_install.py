@@ -654,6 +654,43 @@ def test_cli_refuses_the_ledger_in_a_projects_mcp_json(
     result = runner.invoke(app, args)
     assert result.exit_code == 1 and "usually committed with the project" in result.stderr
     assert not (tmp_path / ".mcp.json").exists()
+    # review round 4 of phase 2: with --write nothing else is printed, so the refusal gives the command itself
+    printed = runner.invoke(app, args[:-1])
+    [command] = [
+        line.strip() for line in printed.stdout.splitlines() if line.strip().startswith("claude mcp add")
+    ]
+    assert " ".join(command.split()) in " ".join(result.stderr.split())
+
+
+def test_a_config_that_links_to_itself_or_nests_too_deep_is_refused_without_a_traceback(
+    tmp_path: Path, home: Path
+) -> None:
+    """Review round 4 of phase 2: a symlink loop raised RuntimeError (even without --write) and ~500 nested
+    arrays RecursionError: both left the file alone, but as a traceback."""
+    folder = tmp_path / "configs"
+    folder.mkdir()
+    loop = folder / "loop.json"
+    loop.symlink_to(loop.name)
+    plan = plan_install("claude-desktop", rules_only=True, config=loop)
+    assert other_entry_in(plan) is None
+    with pytest.raises(InstallError, match=r"Nothing was changed: .* leads back to itself"):
+        write_config(plan, now=NOW)
+    deep = folder / "deep.json"
+    text = '{"mcpServers": {}, "x": ' + "[" * 5000 + "]" * 5000 + "}"
+    deep.write_text(text, encoding="utf-8")
+    deep_plan = plan_install("claude-desktop", rules_only=True, config=deep)
+    assert other_entry_in(deep_plan) is None
+    with pytest.raises(InstallError, match=r"Nothing was changed: .* nested too deeply"):
+        write_config(deep_plan, now=NOW)
+    assert deep.read_text(encoding="utf-8") == text and sorted(folder.iterdir()) == [deep, loop]
+    for config in (loop, deep):
+        result = runner.invoke(
+            app, ["mcp", "install", "--client", "claude-desktop", "--config", str(config), "--write"]
+        )
+        assert (
+            result.exit_code == 1 and "Nothing was changed" in result.stderr and result.exception is not None
+        )
+        assert isinstance(result.exception, SystemExit)
 
 
 @pytest.mark.parametrize(

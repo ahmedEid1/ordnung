@@ -26,8 +26,12 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
 2. **Claim-level support, as a written policy** (`assistant/support.py`, ADR 0007). Its closed core:
    a date, time or amount of the answer is *Ordnung's* only when it is in the code-written record part
    of a record its sentence cites (or inherits from its line or its list's lead line) — today's date, too, is
-   no exception there: it supports only a sentence that cites no record, so "the deadline passed today
-   [item:…]" is left out and the note gives the record's own date; a year that stands in no other value is
+   no exception there: a cited record must hold it, in a sentence without a citation too when the answer
+   cites any record, so "the deadline passed today [item:…]" and "the period ended today" in a paragraph of
+   its own are left out and the note gives the record's own date; only in an answer that cites no record does
+   today stand alone, and the note then says it is today's date and gives the records' own dates, so an
+   unqualified "checked" never rests on today (review round 4 of phase 2; the prompt's "Today's date needs no
+   citation" goes with its next version); a year that stands in no other value is
    the cited record's only when it holds a date in that year; a sentence without
    citations of its own may state a value of a record the answer cites, and the check then adds that
    record's citation (never a scam record's, never several). A cited record's flagged amount and the
@@ -56,7 +60,8 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
    only what is true of every case it covers, in words a non-expert reads ("isn't among the dates and
    amounts Ordnung saved for the linked letter, to-do or contract").
    The answer's words are never streamed: the UI and the CLI show the tool trace — with every word of a
-   value the check reads shown as "…" — until the check is done, and nothing of an answer that fails or
+   value the check reads in the model's own words shown as "…"; a record's title, as the app shows it on
+   every list and letter page — until the check is done, and nothing of an answer that fails or
    cannot be checked (it fails closed). An unchanged answer says "Dates and amounts checked against your
    records" (in German "Daten und Beträge mit Ihren Unterlagen abgeglichen") — it says what was checked:
    claims without a value ("there is no deadline") never are; an answer stored before this check has no

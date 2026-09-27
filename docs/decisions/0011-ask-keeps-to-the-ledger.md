@@ -25,9 +25,12 @@ reading checked against the page, with the person's confirmations — not to com
 - **The check reads only the ledger tools' results.** `ask._Turn` keeps a tool result as evidence only
   when its call is one of `TOOL_NAMES`; a result of any other tool — a rules tool on Ordnung's server
   or the rules-only one, or a result no call claims — never supports a value and never makes an id
-  citable, whatever its text says (a forged `<ordnung_record>` included). The Ask benchmark and
-  `ordnung demo --check` already fail a replay whose recording holds a call of any other tool
-  (`mcp_server.answer_again` answers it "unknown tool", so it is stale).
+  citable, whatever its text says (a forged `<ordnung_record>` included). A result belongs to the call with
+  its `tool_use_id`; one without an id only to the oldest call without one still waiting (review round 4 of
+  phase 2: an extra result recorded first became the call's). The Ask benchmark and `ordnung demo --check`
+  pair a recording's results the same way (`mcp_server.pair_results`) and fail a replay whose recording holds
+  a call of any other tool (`mcp_server.answer_again` answers it "unknown tool", so it is stale), a result
+  that differs from what the tools give now, or a result no call claims.
 - **The rules tools are for other clients.** `ordnung mcp --rules-only` (what `ordnung mcp install`
   adds) and the full server for `--with-ledger` clients keep them; there the model and the person
   decide what to trust, and every result says it is information, not legal advice.

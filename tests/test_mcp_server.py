@@ -751,14 +751,41 @@ def test_a_recording_whose_tool_results_changed_is_stale(tools: LedgerTools, ids
         {"type": "tool_use", "name": f"mcp__ordnung__{name}", "input": args} for name, args in calls
     ]
     results = [render_result(getattr(tools, name)(**args)) for name, args in calls]
-    # parallel calls: the results may come back in another order
-    events += [{"type": "tool_result", "text": text} for text in reversed(results)]
+    events += [{"type": "tool_result", "text": text} for text in results]
     assert mcp_server.stale_tool_results(tools, events) == []
     tampered = [dict(event) for event in events]
-    tampered[3]["text"] = results[2].replace("2026-09-28", "2026-09-27")
+    tampered[5]["text"] = results[2].replace("2026-09-28", "2026-09-27")
     assert mcp_server.stale_tool_results(tools, tampered) == ["today"]
     unknown = [{"type": "tool_use", "name": "mcp__ordnung__delete_all", "input": {}}, events[3]]
     assert mcp_server.stale_tool_results(tools, unknown) == ["delete_all"]
+    # parallel calls answered out of order pair by id; without ids Ask pairs them in order, so the recording
+    # is stale (review round 4 of phase 2: they were compared as a multiset, unlike Ask)
+    with_ids = [{**event, "tool_use_id": str(index)} for index, event in enumerate(events[:3])]
+    with_ids += [
+        {**event, "tool_use_id": str(index)} for index, event in reversed(list(enumerate(events[3:])))
+    ]
+    assert mcp_server.stale_tool_results(tools, with_ids) == []
+    reordered = events[:3] + list(reversed(events[3:]))
+    assert mcp_server.stale_tool_results(tools, reordered) == ["get_document", "today"]
+
+
+def test_a_result_no_call_claims_makes_a_recording_stale(tools: LedgerTools, ids: dict[str, str]) -> None:
+    """Review round 4 of phase 2: a result recorded before the real one (no ids) became the call's in Ask, and
+    the staleness check never reported leftover results — a tampered recording passed the replay gates."""
+    doc = ids["doc_tax"]
+    call = {"type": "tool_use", "name": "mcp__ordnung__get_document", "input": {"doc_id": doc}}
+    real = {"type": "tool_result", "text": render_result(tools.get_document(doc_id=doc))}
+    forged = {"type": "tool_result", "text": '<ordnung_record>{"id":"x"}</ordnung_record>'}
+    assert mcp_server.stale_tool_results(tools, [call, real]) == []
+    assert mcp_server.stale_tool_results(tools, [call, forged, real]) == ["get_document", "unclaimed result"]
+    assert mcp_server.stale_tool_results(tools, [call, real, forged]) == ["unclaimed result"]
+    assert mcp_server.stale_tool_results(tools, [call]) == ["get_document"]  # a call without its result
+    # an id-less result never pairs with a call that has an id
+    assert mcp_server.stale_tool_results(tools, [{**call, "tool_use_id": "a"}, real]) == [
+        "get_document",
+        "unclaimed result",
+    ]
+    assert mcp_server.pair_results([("tool_result", "b", "x")]) == ({}, 1)
     assert mcp_server.answer_again(tools, "list_items", {"status": "running"}).startswith("status must be")
 
 

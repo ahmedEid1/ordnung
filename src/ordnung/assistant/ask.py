@@ -321,7 +321,7 @@ class _Turn:
     calls: list[dict[str, Any]] = field(default_factory=list)
     results: list[str] = field(default_factory=list)
     deltas: list[str] = field(default_factory=list)
-    _pending: deque[int] = field(default_factory=deque)
+    _waiting: deque[int] = field(default_factory=deque)  # calls without an id, oldest first
     _by_id: dict[str, int] = field(default_factory=dict)
 
     def tool_use(self, event: StreamEvent) -> StreamEvent:
@@ -331,7 +331,8 @@ class _Turn:
         label = tool_label(name, args, title_of=lambda ref_id: record_label(self.store, ref_id))
         if event.tool_use_id:
             self._by_id[event.tool_use_id] = len(self.calls)
-        self._pending.append(len(self.calls))
+        else:
+            self._waiting.append(len(self.calls))
         self.calls.append({"name": name, "input": args, "label": label})
         doc_id = args.get("doc_id")
         if name == "get_document" and isinstance(doc_id, str):
@@ -352,7 +353,10 @@ class _Turn:
         """Keep the result for validation and summarise it for the trace.
 
         A result belongs to the call with its ``tool_use_id`` (parallel calls may answer out of
-        order); a result without an id (fakes, older recordings) to the oldest call still waiting.
+        order); a result without an id (fakes, older recordings) to the oldest call without an id still
+        waiting — never to a call with an id, and a result no call claims stays unclaimed (review round 4
+        of phase 2: an extra result recorded first became the call's). The replay's staleness check pairs
+        the same way (:func:`~ordnung.assistant.mcp_server.pair_results`).
         Only a result of one of Ordnung's ledger tools (:data:`~ordnung.assistant.mcp_server.TOOL_NAMES`)
         is kept for the check (ADR 0011): the answer is checked against the records alone, so a result
         of any other tool — a rules tool's date computed from what the model passed it, or a result no
@@ -370,11 +374,8 @@ class _Turn:
 
     def _call_for(self, tool_use_id: str | None) -> int | None:
         if tool_use_id:
-            index = self._by_id.pop(tool_use_id, None)
-            if index is not None:
-                self._pending.remove(index)
-            return index
-        return self._pending.popleft() if self._pending else None
+            return self._by_id.pop(tool_use_id, None)
+        return self._waiting.popleft() if self._waiting else None
 
 
 # --------------------------------------------------------------------------------------------------

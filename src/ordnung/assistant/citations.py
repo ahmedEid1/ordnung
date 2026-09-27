@@ -8,10 +8,12 @@ understood, and :func:`strip_invalid` rewrites every marker it keeps in the cano
 Tool labels are the past-tense chips of the Ask trace ("Searched your letters for "Kündigung"");
 result summaries are the short text shown once a tool answered ("Found 4 to-dos & dates"). A label
 shows the model's own words only where it searched for them (a search, a name to look up), and every
-word with a digit in it or in a value the answer check reads ("Ende Januar") is shown as "…": the
-trace appears before the answer check, so it never shows a date, time or amount the check reads that
-a letter could have put there (ADR 0008). Date ranges of the tools'
-arguments are shown as the range looked at.
+word of them with a digit in it or in a value the answer check reads ("Ende Januar") is shown as "…": the
+trace appears before the answer check, so it never shows a date, time or amount of the model's words the
+check reads (ADR 0008). A record the model named by its id is shown by its title as the app shows it on
+every list and letter page ("Read "Income tax assessment 2025""): the AI's reading of a letter, which may
+hold a date the letter put there — no more than the letter's own page shows (review round 4 of phase 2).
+Date ranges of the tools' arguments are shown as the range looked at.
 """
 
 from __future__ import annotations
