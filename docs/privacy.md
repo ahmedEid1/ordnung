@@ -67,10 +67,17 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
 - Document text is treated as **untrusted**: it is wrapped in `<untrusted_document>` markers, hidden
   (invisible) text is removed before it reaches the model, and every extracted fact is checked
   against the page before it is shown as "found in the letter".
-- *Ask* can only call Ordnung's **read-only** tools; there are no write tools for a
-  prompt-injected document to abuse.
+- *Ask* can only call Ordnung's **read-only** ledger tools; there are no write tools for a
+  prompt-injected document to abuse, and no date calculator: the rules tools other clients can install
+  are not on Ask's server ([ADR 0011](decisions/0011-ask-keeps-to-the-ledger.md)).
 - *Ask*'s tool results (search snippets, summaries, quotes, page texts) reach the model inside
-  `<untrusted_document>` markers too. Text an HTML e-mail certainly hides from every reader (inline
+  `<untrusted_document>` markers too, apart from Ordnung's own record of dates and amounts; a
+  date, time or amount of an answer that is not in Ordnung's record of what its sentence cites is shown
+  only as a placeholder ("[date only in the letter]", "[date left out]") — except a cited to-do's or
+  contract's own amount that Ordnung could not verify, which stays in quotation marks as the letter's,
+  not confirmed — and no word of an answer is shown before that check; the tool trace shown meanwhile
+  names the words the model searched for without any date, time or amount the check reads in them
+  ([ADR 0008](decisions/0008-two-channels-and-claim-level-citations.md)). Text an HTML e-mail certainly hides from every reader (inline
   `display:none`, `visibility:hidden`, `opacity:0`, a font of at most 1 px, zero-height clipped or
   far off-screen boxes, text in its own inline background colour, simple hiding classes) is kept from
   the model like hidden text in PDFs. When that isn't certain (media queries, Outlook-only parts,

@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Check, Copy, RotateCw, Square } from "lucide-react";
+import { Check, Copy, Info, RotateCw, Square } from "lucide-react";
 import { LogoMark } from "@/components/shell/Logo";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { useClipboard } from "@/features/today/clipboard";
+import { looksGerman } from "@/lib/format";
 import { citationIndex, numberCitations, stripAllMarkers } from "./citations";
 import { CitationChip, CitationMarker } from "./CitationChip";
 import { Markdown } from "./Markdown";
@@ -18,7 +19,7 @@ import type { TitleLookup } from "./tools";
 export function QuestionBubble({ text }: { text: string }) {
   return (
     <div className="flex justify-end">
-      <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-accent-soft px-4 py-2.5 text-[15px] leading-relaxed text-ink">
+      <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-accent-soft px-4 py-2.5 text-[15px] leading-relaxed text-ink">
         <span className="sr-only">You asked: </span>
         {text}
       </p>
@@ -26,7 +27,9 @@ export function QuestionBubble({ text }: { text: string }) {
   );
 }
 
-function Thinking() {
+/** The progress line while an answer is written. Not a live region: the page's announcer already says
+ * "Writing the answer …", and a second status in `<main>` would announce it twice. */
+function Thinking({ writing }: { writing: boolean }) {
   return (
     <p className="flex items-center gap-2 text-[14px] text-muted">
       <span className="flex gap-1" aria-hidden>
@@ -34,7 +37,53 @@ function Thinking() {
           <span key={i} className="size-1.5 rounded-full bg-accent/60 animate-pulse-soft motion-reduce:animate-none" style={{ animationDelay: `${i * 180}ms` }} />
         ))}
       </span>
-      Looking through your records…
+      {writing ? "Writing the answer — it appears once Ordnung has checked it against your records…" : "Looking through your records…"}
+    </p>
+  );
+}
+
+/** The label the check's note is shown (and copied) under, as the backend stores and prints it. */
+export const CHECK_NOTE_LABEL = "Checked by Ordnung:";
+export const CHECK_NOTE_LABEL_DE = "Von Ordnung geprüft:";
+
+/**
+ * The note's label: the one the backend sends with the answer (it knows the answer's language);
+ * only a note without one (an older recording) has its language guessed.
+ */
+export function checkNoteLabel(note: string, label?: string | null): string {
+  if (label) return label;
+  return looksGerman(note) ? CHECK_NOTE_LABEL_DE : CHECK_NOTE_LABEL;
+}
+
+/**
+ * Shown under a checked answer the check did not change, in the answer's language. It says what was
+ * checked — the dates, times, amounts and laws, not every claim ("there is no deadline" is never read).
+ */
+export const CHECKED_LINE = "Dates and amounts checked against your records.";
+export const CHECKED_LINE_DE = "Daten und Beträge mit Ihren Unterlagen abgeglichen.";
+
+/**
+ * What Ordnung's answer check did (ADR 0008): dates or amounts left out because the records their
+ * sentences cite don't hold them, values marked as only a letter's, the person's words in quotation
+ * marks, citations it added. The text comes only from the `done` event's `note` field, never from the
+ * answer. Every checked answer shows the line, so an answer without a note is visibly checked too.
+ */
+export function CheckNote({ text, label }: { text: string | null; label?: string | null }) {
+  return (
+    <p
+      role="note"
+      className="mt-3 flex items-start gap-2 rounded-lg border border-line bg-surface-2/60 px-3 py-2 text-[13px] leading-5 text-muted"
+    >
+      <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+      <span className="min-w-0 break-words">
+        {text ? (
+          <>
+            <span className="font-medium text-ink">{checkNoteLabel(text, label)}</span> {text}
+          </>
+        ) : (
+          <span className="font-medium text-ink">{label === CHECK_NOTE_LABEL_DE ? CHECKED_LINE_DE : CHECKED_LINE}</span>
+        )}
+      </span>
     </p>
   );
 }
@@ -48,17 +97,28 @@ export interface AnswerViewProps {
   demoNote?: boolean;
 }
 
-/** One answer: tool trace, the (streaming) text with citation chips, sources and actions. */
+/**
+ * One answer: tool trace, the checked text with citation chips, the check's line, sources and actions.
+ * While the answer streams only the trace and a "writing" line show: its words appear once checked.
+ */
 export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: AnswerViewProps) {
   const { copy, copied } = useClipboard();
   const live = answer.status === "streaming";
+  const done = answer.status === "done";
+  const body = done ? answer.text : "";
+  const note = answer.note;
+  // an answer that went through the claim-level check: not the demo's "no recording" reply, nor an
+  // answer stored before the check existed (ADR 0008)
+  const checked = done && answer.checked && Boolean(answer.messageId) && Boolean(body.trim());
   const valid = useMemo(() => (live ? null : citationIndex(answer.citations)), [live, answer.citations]);
-  const numbers = useMemo(() => (valid ? numberCitations(answer.text, valid) : new Map<string, number>()), [valid, answer.text]);
+  const numbers = useMemo(() => (valid ? numberCitations(body, valid) : new Map<string, number>()), [valid, body]);
   const sources = useMemo(
     () => (valid ? [...numbers.entries()].map(([id, n]) => ({ n, info: resolve(valid.get(id)!) })) : []),
     [valid, numbers, resolve],
   );
-  const plain = stripAllMarkers(answer.text).trim();
+  const plain = stripAllMarkers(body).trim();
+  // the note travels with a copied answer: it explains its quotation marks and "[date left out]"
+  const copyText = note ? `${plain}\n\n${checkNoteLabel(note, answer.noteLabel)} ${note}` : plain;
   const copyId = answer.messageId ?? plain;
   const isCopied = copied === copyId;
 
@@ -67,20 +127,21 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
       <LogoMark className="mt-0.5 size-7 rounded-lg" />
       <div className="min-w-0 flex-1" aria-busy={live || undefined}>
         <ToolTrace steps={answer.tools} live={live} titleOf={titleOf} />
-        {answer.text ? (
+        {body ? (
           <Markdown
-            text={answer.text}
+            text={body}
             citations={valid}
-            streaming={live}
             renderCitation={(ref, key) => <CitationMarker key={key} info={resolve(ref)} n={numbers.get(ref.id) ?? 0} />}
           />
         ) : live ? (
-          <Thinking />
+          <Thinking writing={answer.writing} />
         ) : null}
+
+        {checked ? <CheckNote text={note} label={answer.noteLabel} /> : null}
 
         {answer.status === "stopped" ? (
           <p className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-muted">
-            <Square className="size-3" aria-hidden /> Stopped — this answer may be incomplete.
+            <Square className="size-3" aria-hidden /> Stopped before Ordnung checked an answer — nothing of it is shown.
           </p>
         ) : null}
 
@@ -124,7 +185,7 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, demoNote }: Answ
           <div className="mt-2 flex items-center gap-1">
             <button
               type="button"
-              onClick={() => void copy(plain, copyId)}
+              onClick={() => void copy(copyText, copyId)}
               className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
               {isCopied ? <Check className="size-3.5 text-ok" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}

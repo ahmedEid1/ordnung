@@ -6,19 +6,23 @@ bracket (``[doc:doc_a, item:itm_b]``) or spell the type out (``[document:doc_a]`
 understood, and :func:`strip_invalid` rewrites every marker it keeps in the canonical one-id form.
 
 Tool labels are the past-tense chips of the Ask trace ("Searched your letters for "Kündigung"");
-result summaries are the short text shown once a tool answered ("Found 4 to-dos & dates").
+result summaries are the short text shown once a tool answered ("Found 4 to-dos & dates"). A label
+shows the model's own words only where it searched for them (a search, a name to look up), and every
+word with a digit in it or in a value the answer check reads ("Ende Januar") is shown as "…": the
+trace appears before the answer check, so it never shows a date, time or amount the check reads that
+a letter could have put there (ADR 0008). Date ranges of the tools'
+arguments are shown as the range looked at.
 """
 
 from __future__ import annotations
 
-import json
 import re
 from collections.abc import Callable, Collection, Mapping
 from typing import Any, Literal, NamedTuple
 
 from pydantic import BaseModel
 
-from ordnung.ingest.extract import unwrap_untrusted
+from ordnung.assistant.channels import parse_tool_result
 
 MARKER_TYPES: tuple[str, ...] = ("doc", "item", "contract", "party")
 """Canonical marker types, as written in answers."""
@@ -43,7 +47,11 @@ _TYPE_ALIASES: dict[str, str] = {
     "pty": "party",
 }
 _PAIR = r"[a-z]+\s*:\s*[a-z]{3}_[a-z0-9]+"
-_GROUP_RE = re.compile(rf"(?P<lead>[ \t]*)\[\s*(?P<body>{_PAIR}(?:\s*[,;]\s*{_PAIR})*)\s*\]", re.IGNORECASE)
+_GROUP_RE = re.compile(
+    rf"(?P<lead>(?<![ \t])[ \t]*)\[\s*(?P<body>{_PAIR}(?:\s*[,;]\s*{_PAIR})*)\s*\]", re.IGNORECASE
+)
+"""A citation marker with the spaces before it; a match starts only where a run of spaces starts, so a
+long run is read once (linear time)."""
 _PAIR_RE = re.compile(r"(?P<type>[a-z]+)\s*:\s*(?P<id>[a-z]{3}_[a-z0-9]+)", re.IGNORECASE)
 
 TOOL_PREFIX = "mcp__ordnung__"
@@ -111,6 +119,12 @@ def remove_markers(text: str) -> str:
     return _GROUP_RE.sub("", text)
 
 
+def marker_spans(text: str) -> list[tuple[int, int]]:
+    """Where the citation markers of ``text`` stand, each with the spaces before it (what
+    :func:`remove_markers` removes)."""
+    return [match.span() for match in _GROUP_RE.finditer(text)]
+
+
 def _pairs(body: str) -> list[tuple[str, str]]:
     return [(canonical_type(pair.group("type")), pair.group("id")) for pair in _PAIR_RE.finditer(body)]
 
@@ -167,7 +181,7 @@ def tool_label(name: str, args: Mapping[str, Any] | None = None, title_of: Title
     if short == "get_party":
         return f'Looked up "{_text(args.get("party_id_or_name"), title_of)}"'
     if short == "timeline":
-        return f"Checked your timeline from {_text(args.get('from_date'))} to {_text(args.get('to_date'))}"
+        return f"Checked your timeline from {_day(args.get('from_date'))} to {_day(args.get('to_date'))}"
     if short == "explain_date":
         found = _titled("Checked how", args.get("item_or_contract_id"), title_of, fallback="")
         return f"{found} was worked out" if found else "Checked how a date was worked out"
@@ -193,13 +207,13 @@ def result_summary(name: str, text: str | None) -> str:
 
 
 def _items_label(args: Mapping[str, Any]) -> str:
-    status = args.get("status") or "open"
+    status = args.get("status") if args.get("status") in _STATUSES else "open"
     scope = "your to-dos & dates" if status == "all" else f"your {status} to-dos & dates"
     start, end = args.get("from_date"), args.get("to_date")
     if start and end:
-        return f"Checked {scope} from {start} to {end}"
+        return f"Checked {scope} from {_day(start)} to {_day(end)}"
     if start or end:
-        return f"Checked {scope} {'from ' + str(start) if start else 'until ' + str(end)}"
+        return f"Checked {scope} {'from ' + _day(start) if start else 'until ' + _day(end)}"
     return f"Checked {scope}"
 
 
@@ -208,11 +222,55 @@ def _titled(verb: str, ref_id: Any, title_of: TitleLookup | None, *, fallback: s
     return f'{verb} "{title}"' if title else fallback
 
 
+_WITH_DIGIT = re.compile(r"[^\s\"“”„]*\d[^\s\"“”„]*")
+_WORD_RUN = re.compile(r"[^\s\"“”„]+")
+_MAX_ARGUMENT = 500
+"""How much of an argument a label reads (a label shows at most 60 characters of it)."""
+
+
 def _text(value: Any, title_of: TitleLookup | None = None) -> str:
+    """The model's words for a label: a record's title when they name one, else as written with every
+    word that holds a digit or is part of a value the answer check reads (``Ende Januar``,
+    ``mid-October``) shown as "…" — never a value the check has not read —, at most 60 characters."""
     raw = " ".join(str(value or "").split())
-    if title_of is not None and raw:
-        raw = title_of(raw) or raw
-    return raw if len(raw) <= 60 else raw[:59] + "…"
+    title = title_of(raw) if title_of is not None and raw else None
+    shown = title or _masked(raw[:_MAX_ARGUMENT])
+    return shown if len(shown) <= 60 else shown[:59] + "…"
+
+
+def _masked(raw: str) -> str:
+    """``raw`` with each word that holds a digit or a part of a stated value as "…", neighbouring ones as
+    one. The values are the check's own reading of the words as shown — markup dropped, punctuation
+    folded (:func:`ordnung.assistant.support.read_as_shown`, then
+    :func:`~ordnung.assistant.support.stated_values`: ``Ende **Januar**``, ``mid‐January``) — mapped back
+    to the words as written."""
+    from ordnung.assistant.support import read_as_shown, stated_values  # support reads this module's markers
+
+    reading = read_as_shown(raw)
+    values = stated_values(reading.text)
+    if any(value.start < 0 for value in values):
+        return "…"  # a value that cannot be placed: show none of the words
+    hidden = bytearray(len(raw))
+    for value in values:
+        start, end = reading.source_span(value.start, value.end)
+        hidden[start:end] = b"\x01" * (end - start)
+    words: list[str] = []
+    for match in _WORD_RUN.finditer(raw):
+        masked = hidden.find(1, *match.span()) >= 0 or _WITH_DIGIT.fullmatch(match.group())
+        if not masked:
+            words.append(match.group())
+        elif not words or words[-1] != "…":
+            words.append("…")
+    return " ".join(words)
+
+
+def _day(value: Any) -> str:
+    """A date argument (the tool accepts only ``YYYY-MM-DD``); anything else is shown as "…"."""
+    return value if isinstance(value, str) and _ISO_DAY.fullmatch(value) else "…"
+
+
+_ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
+_STATUSES = frozenset({"open", "done", "dismissed", "snoozed", "missed", "all"})
 
 
 def _count(n: int, singular: str, plural: str) -> str:
@@ -222,10 +280,6 @@ def _count(n: int, singular: str, plural: str) -> str:
 
 
 def _json_object(text: str | None) -> dict[str, Any] | None:
-    if not text:
-        return None
-    try:
-        data = json.loads(unwrap_untrusted(text))
-    except ValueError:
-        return None
+    """The record part of a tool result (what the counts and flags of the summary come from)."""
+    data = parse_tool_result(text).record
     return data if isinstance(data, dict) else None

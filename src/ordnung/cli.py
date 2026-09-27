@@ -754,42 +754,63 @@ def brief(
 # --------------------------------------------------------------------------------------------------
 
 
+WRITING_LINE = "Writing the answer — it appears once Ordnung has checked it against your records…"
+CHECKED_LINE = "Dates and amounts checked against your records."
+CHECKED_LINE_DE = "Daten und Beträge mit Ihren Unterlagen abgeglichen."
+"""Under an answer the check did not change (in its language): it says what was checked — dates,
+times, amounts and laws, not every claim."""
+
+
 class _AnswerPrinter:
-    """Prints an Ask stream: tool trace lines, text as it arrives, then the checked answer and sources."""
+    """Prints an Ask stream: tool trace lines; one line while the answer is written (its words are not
+    streamed: nobody sees them before Ordnung's check, ADR 0008); then the checked answer, the check's
+    note under its label in the answer's language (or "Dates and amounts checked against your records."
+    when the check changed nothing), and the sources. A stream that ends without a checked answer prints only why."""
 
     def __init__(self) -> None:
-        self.streamed: list[str] = []
+        self.writing = False
         self.failed = False
-
-    def _end_line(self) -> None:
-        if self.streamed and not "".join(self.streamed).endswith("\n"):
-            console.print()
 
     def handle(self, event: Mapping[str, Any]) -> None:
         """Print one event (``type``: text, tool_use, tool_result, done or error)."""
         kind, text = event.get("type"), str(event.get("text") or "")
         if kind == "tool_use":
-            self._end_line()
             console.print(f"  [dim]↳ {escape(text or str(event.get('name') or 'tool'))}[/]")
         elif kind == "tool_result":
             console.print(f"    [dim]{escape(text)}[/]")
         elif kind == "text":
-            self.streamed.append(text)
-            console.print(escape(text), end="", soft_wrap=True)
+            if not self.writing:
+                console.print(f"[dim]{escape(WRITING_LINE)}[/]")
+            self.writing = True
         elif kind == "done":
-            self._done(text, event.get("citations") or [])
+            self._done(
+                text,
+                str(event.get("note") or ""),
+                event.get("citations") or [],
+                label=str(event.get("note_label") or ""),
+                checked=bool(event.get("message_id")),
+            )
         elif kind == "error":
-            self._end_line()
             self.failed = True
             err_console.print(f"[red]✗[/] {escape(str(event.get('error') or text or 'The answer stopped.'))}")
 
-    def _done(self, text: str, citations: Sequence[Mapping[str, Any]]) -> None:
-        streamed = "".join(self.streamed).strip()
-        self._end_line()
-        if text.strip() != streamed:
-            if streamed:
-                console.rule("[dim]Checked answer[/]", style="dim")
-            console.print(escape(text.strip()))
+    def _done(
+        self,
+        text: str,
+        note: str,
+        citations: Sequence[Mapping[str, Any]],
+        *,
+        label: str = "",
+        checked: bool = True,
+    ) -> None:
+        from ordnung.assistant.support import NOTE_PREFIX_DE, labelled_note
+
+        console.print(escape(text.strip()))
+        if note:
+            german = (label == NOTE_PREFIX_DE) if label else None
+            console.print(f"[dim]{escape(labelled_note(note, german=german))}[/]")
+        elif checked and text.strip():  # the demo's "no recording" answer went through no check
+            console.print(f"[dim]{escape(CHECKED_LINE_DE if label == NOTE_PREFIX_DE else CHECKED_LINE)}[/]")
         if citations:
             console.print("[bold]Sources[/]")
             for citation in citations:

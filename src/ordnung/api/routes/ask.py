@@ -2,8 +2,10 @@
 
 ``POST /api/ask`` answers with ``text/event-stream``: one default ``message`` event per
 :class:`StreamEvent` (JSON with a ``type``) — ``tool_use``/``tool_result`` for the visible tool trace,
-``text`` deltas, then ``done`` (the checked answer's text, validated citations, message and thread
-ids) or ``error``. Closing the connection stops the answer and the ``claude`` process behind it.
+one ``text`` event without text when the answer is being written (its words are never sent before
+the check, ADR 0008), then ``done`` (the checked answer's text, the check's note, validated
+citations, message and thread ids) or ``error``. Closing the connection stops the answer and the
+``claude`` process behind it.
 """
 
 from __future__ import annotations
@@ -17,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from ordnung.api.deps import ApiState, StateDep, StoreDep
 from ordnung.api.routes.demo import optional_demo_function
 from ordnung.api.sse import EventStreamResponse, close_iterator, model_stream_response
-from ordnung.assistant.ask import ask_stream
+from ordnung.assistant.ask import ask_stream, checked_by_claims, stored_answer, stored_note_label
 from ordnung.assistant.citations import CitationRef
 from ordnung.llm.base import StreamEvent as LLMStreamEvent
 from ordnung.models import ChatMessage
@@ -40,10 +42,21 @@ class StreamEvent(BaseModel):
     """One event of the streamed answer (the JSON data of an SSE ``message`` event)."""
 
     type: Literal["text", "tool_use", "tool_result", "done", "error"]
-    text: str | None = Field(default=None, description="text delta, tool label/summary, or the final answer")
+    text: str | None = Field(
+        default=None,
+        description="tool label/summary or the checked answer (done); none on the text event that says the "
+        "answer is being written",
+    )
     name: str | None = Field(default=None, description="tool name (tool_use / tool_result)")
     input: dict[str, Any] | None = Field(default=None, description="tool input (tool_use)")
     error: str | None = None
+    note: str | None = Field(
+        default=None, description="what the answer check left out or quoted (done); shown apart from the text"
+    )
+    note_label: str | None = Field(
+        default=None,
+        description="the label of the note in the answer's language (done), e.g. 'Checked by Ordnung:'",
+    )
     citations: list[CitationRef] | None = Field(default=None, description="validated citations (done)")
     message_id: str | None = None
     thread_id: str | None = None
@@ -81,7 +94,29 @@ async def ask(body: AskRequest, state: StateDep) -> EventStreamResponse:
     return model_stream_response(answer_events(state, body.question, body.thread_id))
 
 
-@router.get("/chat/{thread_id}", response_model=list[ChatMessage])
-def chat_thread(thread_id: str, store: StoreDep) -> list[ChatMessage]:
+class ThreadMessage(ChatMessage):
+    """A stored question or answer; an answer's check note is split off its text into ``note``."""
+
+    note: str | None = Field(
+        default=None, description="what the answer check left out or quoted; shown apart from the text"
+    )
+    note_label: str | None = Field(default=None, description="the note's label in the answer's language")
+    checked: bool = Field(
+        default=False,
+        description="the answer went through the claim-level check (answers stored before it did not)",
+    )
+
+
+@router.get("/chat/{thread_id}", response_model=list[ThreadMessage])
+def chat_thread(thread_id: str, store: StoreDep) -> list[ThreadMessage]:
     """The questions and answers of a thread, oldest first."""
-    return store.list_chat_messages(thread_id)
+    messages = []
+    for message in store.list_chat_messages(thread_id):
+        body, note = stored_answer(message)
+        extra = {
+            "note": note,
+            "note_label": stored_note_label(message),
+            "checked": checked_by_claims(message),
+        }
+        messages.append(ThreadMessage.model_validate({**message.model_dump(), "content": body, **extra}))
+    return messages

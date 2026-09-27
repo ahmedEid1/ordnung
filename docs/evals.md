@@ -22,6 +22,9 @@ date. This benchmark checks the bet against three strong baselines with the *sam
   (`ordnung mcp --rules-only`): an agent with a calculator, which decides itself when to use it
   and whether to trust it.
 
+This page measures reading letters. How well *Ask* answers questions about them — with gold answers,
+injected letters and the answer check — is measured separately: [Ask benchmark](evals-ask.md).
+
 ## Headline
 
 | Condition | Due-date accuracy [95 % CI] | Exact | Dangerous late | Early | Missed | Cost / letter | Latency p50 / mean |

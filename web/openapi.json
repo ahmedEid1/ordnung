@@ -2167,7 +2167,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/ChatMessage"
+                    "$ref": "#/components/schemas/ThreadMessage"
                   },
                   "title": "Response Chat Thread Api Chat  Thread Id  Get"
                 }
@@ -3272,60 +3272,6 @@
           "drafts"
         ],
         "title": "CaseDetail"
-      },
-      "ChatMessage": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "thread_id": {
-            "type": "string",
-            "title": "Thread Id"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "user",
-              "assistant"
-            ],
-            "title": "Role"
-          },
-          "content": {
-            "type": "string",
-            "title": "Content"
-          },
-          "citations": {
-            "items": {
-              "$ref": "#/components/schemas/SuggestionRef"
-            },
-            "type": "array",
-            "title": "Citations"
-          },
-          "tool_calls": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Tool Calls"
-          },
-          "created_at": {
-            "type": "string",
-            "title": "Created At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "thread_id",
-          "role",
-          "content",
-          "citations",
-          "tool_calls",
-          "created_at"
-        ],
-        "title": "ChatMessage"
       },
       "CitationRef": {
         "properties": {
@@ -8857,7 +8803,7 @@
               }
             ],
             "title": "Text",
-            "description": "text delta, tool label/summary, or the final answer"
+            "description": "tool label/summary or the checked answer (done); none on the text event that says the answer is being written"
           },
           "name": {
             "anyOf": [
@@ -8894,6 +8840,30 @@
               }
             ],
             "title": "Error"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note",
+            "description": "what the answer check left out or quoted (done); shown apart from the text"
+          },
+          "note_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Label",
+            "description": "the label of the note in the answer's language (done), e.g. 'Checked by Ordnung:'"
           },
           "citations": {
             "anyOf": [
@@ -9245,6 +9215,94 @@
           "id"
         ],
         "title": "SuggestionRef"
+      },
+      "ThreadMessage": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "thread_id": {
+            "type": "string",
+            "title": "Thread Id"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionRef"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "tool_calls": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Tool Calls"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note",
+            "description": "what the answer check left out or quoted; shown apart from the text"
+          },
+          "note_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note Label",
+            "description": "the note's label in the answer's language"
+          },
+          "checked": {
+            "type": "boolean",
+            "title": "Checked",
+            "description": "the answer went through the claim-level check (answers stored before it did not)",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "thread_id",
+          "role",
+          "content",
+          "citations",
+          "tool_calls",
+          "created_at",
+          "note",
+          "note_label",
+          "checked"
+        ],
+        "title": "ThreadMessage",
+        "description": "A stored question or answer; an answer's check note is split off its text into ``note``."
       },
       "TimelineEntry": {
         "properties": {

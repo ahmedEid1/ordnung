@@ -42,8 +42,9 @@ Claude reads through it also reaches every other MCP server loaded there, throug
   `today` (a model passes these facts, not the person), and their warnings in the tools' own voice.
   Next to the ledger (`--with-ledger`), a letter in the ledger keeps its stored date.
 - Ask's own server leaves the rules tools out (`--ledger-only`). Ask quotes the ledger's stored
-  receipts and never computes a new date (SPEC § 21); with a calculator in reach, any date it
-  echoed would also pass Ask's fact check.
+  receipts and never computes a new date (SPEC § 21); a rules tool's date comes from what the model
+  passed it and has no record to cite, so it can never support a claim under Ask's claim-level check
+  (ADR 0008) — see [ADR 0011](0011-ask-keeps-to-the-ledger.md).
 - `ordnung mcp install` prints first and writes only with `--write`, under a written merge policy:
   only Ordnung's entry changes, the file is backed up, a file that is not a UTF-8 JSON object is
   refused untouched, an app's settings folder is never created.

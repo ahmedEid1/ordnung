@@ -1,0 +1,327 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "5+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"6d6cd53a1de67dd7779d855a0568f390d2649b88003fef5f9d133894d07bfa7a\",\"question\":\"When does my passport expire?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_1dgp8tp2ga0c"
+    ],
+    "prompt_head": "The person asks:\nWhen does my passport expire?\n"
+  },
+  "response": {
+    "text": "Your passport expires **Wed 10 Feb 2027** [item:itm_86khkd0zfcse].\n\nA couple of things worth noting:\n- Ordnung's record marks this document as marked \"SPECIMEN\" — worth double-checking with the issuing authority that this is your actual passport data and not a sample [doc:doc_1dgp8tp2ga0c].\n- There's also a related letter about extending your residence permit that mentions checking your passport stays valid long enough for that process — you may want to review it separately [doc:doc_d9hwr1mp3bsj].",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 315,
+      "cache_read_tokens": 16963,
+      "cache_creation_tokens": 3691,
+      "cost_usd": 0.0213186,
+      "duration_ms": 9225,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "passport"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_1dgp8tp2ga0c\",\"kind\":\"identity_document\",\"party_id\":\"pty_z1se3q2nn3k3\"},{\"id\":\"doc_d9hwr1mp3bsj\",\"kind\":\"residence_permit\",\"date\":\"2026-09-16\",\"party_id\":\"pty_7jmdemeegmw0\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_1dgp8tp2ga0c\":{\"title\":\"Passport of Sam Rivera\",\"snippet\":\"This is a passport (Passeport) issued by the Ministry of Interior of the Republic of Examplia…\"},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"},\"doc_d9hwr1mp3bsj\":{\"title\":\"Invitation to Appointment – Extension of Residence Permit\",\"snippet\":\"…4 AufenthG) — but check that your passport also stays valid long enough, since a permit cannot…\"},\"pty_7jmdemeegmw0\":{\"name\":\"Stadt Musterstadt – Ausländerbehörde\"}}\n</untrusted_document>"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_1dgp8tp2ga0c"
+      }
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_1dgp8tp2ga0c\",\"kind\":\"identity_document\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-20\",\"language\":\"en\",\"party_id\":\"pty_z1se3q2nn3k3\",\"case_id\":\"cas_yt03h5g752mq\",\"urgency\":\"low\",\"pages\":1,\"items\":[{\"id\":\"itm_86khkd0zfcse\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2027-02-10\",\"date_source\":\"fixed\",\"priority\":\"low\",\"area\":\"other\",\"party_id\":\"pty_z1se3q2nn3k3\",\"doc_id\":\"doc_1dgp8tp2ga0c\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_86khkd0zfcse\":{\"title\":\"Passport expires\",\"action\":\"Renew the passport before it expires if it is still needed for travel.\"},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"},\"doc_1dgp8tp2ga0c\":{\"title\":\"Passport of Sam Rivera\",\"summary\":\"This is a passport (Passeport) issued by the Ministry of Interior of the Republic of Examplia for Sam Rivera, passport number X1234567, valid until 10 February 2027. The document itself is marked \\\"SPECIMEN\\\".\",\"explanation\":\"This page shows the biographical data page of a passport for Sam Rivera, born 14 March 2000 in Examplia City, issued 11 February 2017 and valid until 10 February 2027. Since the document is explicitly labeled \\\"SPECIMEN\\\", it appears to be a sample rather than an actual valid travel document — double-check with the issuing authority if this is meant to be a real passport. If it is a real passport, plan to renew it well before the expiry date shown, since many countries and airlines require at least six months of remaining validity for travel or visa applications.\",\"key_facts\":[{\"label\":\"Passport No.\",\"value\":\"X1234567\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Surname\",\"value\":\"RIVERA\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Given names\",\"value\":\"SAM\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Nationality\",\"value\":\"EXAMPLIAN\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Date of birth\",\"value\":\"2000-03-14\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Date of issue\",\"value\":\"2017-02-11\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Date of expiry\",\"value\":\"2027-02-10\",\"page\":1,\"grounding\":\"model_read\"}],\"references\":[{\"label\":\"Passport No.\",\"value\":\"X1234567\"}],\"warnings\":[\"The document is explicitly marked \\\"SPECIMEN\\\", suggesting this is a sample/template passport image rather than a genuine issued travel document.\"],\"text\":\"=== Page 1 ===\\nOBSERVATIONS / OBSERVATIONS\\n\\n3\\n\\n\\nREPUBLIC OF EXAMPLIA\\nRÉPUBLIQUE D'EXAMPLIE\\n\\nPASSPORT\\nPASSEPORT\\n\\nType / Type | Code / Code\\nP | EXA\\n\\nPassport No. / N° du passeport\\nX1234567\\n\\nSurname / Nom\\nRIVERA\\n\\nGiven names / Prénoms\\nSAM\\n\\nNationality / Nationalité\\nEXAMPLIAN\\n\\nSex / Sexe\\nM\\n\\nDate of birth / Date de naissance\\n14 MAR / MARS 2000\\n\\nPlace of birth / Lieu de naissance\\nEXAMPLIA CITY\\n\\nAuthority / Autorité\\nMINISTRY OF INTERIOR\\n\\nDate of issue / Date de délivrance\\n11 FEB / FÉV 2017\\n\\nDate of expiry / Date d'expiration\\n10 FEB / FÉV 2027\\n\\nHolder's signature\\n[unleserlich, Unterschrift]\\n\\nSPECIMEN\\n\\nP\\u003cEXARIVERA\\u003c\\u003cSAM\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\nX1234567\\u003c7EXA0003148M2702102\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c0\"}}\n</untrusted_document>"
+    },
+    {
+      "type": "text",
+      "text": "Your passport exp"
+    },
+    {
+      "type": "text",
+      "text": "ires **"
+    },
+    {
+      "type": "text",
+      "text": "W"
+    },
+    {
+      "type": "text",
+      "text": "ed "
+    },
+    {
+      "type": "text",
+      "text": "10 Feb 2027"
+    },
+    {
+      "type": "text",
+      "text": "** [item"
+    },
+    {
+      "type": "text",
+      "text": ":it"
+    },
+    {
+      "type": "text",
+      "text": "m_86kh"
+    },
+    {
+      "type": "text",
+      "text": "k"
+    },
+    {
+      "type": "text",
+      "text": "d0"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "se"
+    },
+    {
+      "type": "text",
+      "text": "].\n\nA couple of things"
+    },
+    {
+      "type": "text",
+      "text": " worth noting:\n-"
+    },
+    {
+      "type": "text",
+      "text": " Ord"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "ung"
+    },
+    {
+      "type": "text",
+      "text": "'s"
+    },
+    {
+      "type": "text",
+      "text": " record"
+    },
+    {
+      "type": "text",
+      "text": " mar"
+    },
+    {
+      "type": "text",
+      "text": "ks this document as mar"
+    },
+    {
+      "type": "text",
+      "text": "ked \"SPECIME"
+    },
+    {
+      "type": "text",
+      "text": "N\" — worth double-chec"
+    },
+    {
+      "type": "text",
+      "text": "king with"
+    },
+    {
+      "type": "text",
+      "text": " the iss"
+    },
+    {
+      "type": "text",
+      "text": "uing authority that"
+    },
+    {
+      "type": "text",
+      "text": " this is your"
+    },
+    {
+      "type": "text",
+      "text": " actual passport data"
+    },
+    {
+      "type": "text",
+      "text": " and not a sample [do"
+    },
+    {
+      "type": "text",
+      "text": "c:do"
+    },
+    {
+      "type": "text",
+      "text": "c_1d"
+    },
+    {
+      "type": "text",
+      "text": "g"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "8"
+    },
+    {
+      "type": "text",
+      "text": "t"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "2"
+    },
+    {
+      "type": "text",
+      "text": "ga"
+    },
+    {
+      "type": "text",
+      "text": "0"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "].\n- There's also a related"
+    },
+    {
+      "type": "text",
+      "text": " let"
+    },
+    {
+      "type": "text",
+      "text": "ter about ext"
+    },
+    {
+      "type": "text",
+      "text": "ending your residence permit that"
+    },
+    {
+      "type": "text",
+      "text": " mentions chec"
+    },
+    {
+      "type": "text",
+      "text": "king your passport st"
+    },
+    {
+      "type": "text",
+      "text": "ays valid long"
+    },
+    {
+      "type": "text",
+      "text": " enough for"
+    },
+    {
+      "type": "text",
+      "text": " that"
+    },
+    {
+      "type": "text",
+      "text": " process"
+    },
+    {
+      "type": "text",
+      "text": " — you may want to review it separ"
+    },
+    {
+      "type": "text",
+      "text": "ately [doc:doc_"
+    },
+    {
+      "type": "text",
+      "text": "d9h"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "r1"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "3"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Your passport expires **Wed 10 Feb 2027** [item:itm_86khkd0zfcse].\n\nA couple of things worth noting:\n- Ordnung's record marks this document as marked \"SPECIMEN\" — worth double-checking with the issuing authority that this is your actual passport data and not a sample [doc:doc_1dgp8tp2ga0c].\n- There's also a related letter about extending your residence permit that mentions checking your passport stays valid long enough for that process — you may want to review it separately [doc:doc_d9hwr1mp3bsj].",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 315,
+          "cache_read_tokens": 16963,
+          "cache_creation_tokens": 3691,
+          "cost_usd": 0.0213186,
+          "duration_ms": 9225,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude"
+      }
+    }
+  ]
+}

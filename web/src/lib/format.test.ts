@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import inlineDateForms from "./inlineDateForms.json";
 import {
   daysUntil,
   formatCompact,
@@ -164,6 +165,28 @@ describe("values copied from letters", () => {
 
   it("formats ISO dates inside sentences", () => {
     expect(formatInlineDates("from 2026-09-28 to 2026-10-26", "2026-09-28")).toBe("from Mon 28 Sep to Mon 26 Oct");
+  });
+
+  it("keeps one weekday when the text writes one before an ISO date", () => {
+    // review finding: a recorded answer's "due Wed 2026-09-30" showed as "due Wed Wed 30 Sep 2026"
+    expect(formatInlineDates("due Wed 2026-09-30", "2026-09-28")).toBe("due Wed 30 Sep");
+    expect(formatInlineDates("fällig Mi. 2026-09-30 und Thursday, 2026-10-01", "2026-09-28")).toBe(
+      "fällig Wed 30 Sep und Thu 1 Oct",
+    );
+    expect(formatInlineDates("Monday 2026-09-28 10:30", "2026-09-28")).toBe("Mon 28 Sep, 10:30");
+    expect(formatInlineDates("Womo 2026-09-30", "2026-09-28")).toBe("Womo Wed 30 Sep");
+    expect(formatInlineDates("So 2026-09-30 it is", "2026-09-28")).toBe("So Wed 30 Sep it is");
+  });
+
+  it("formats exactly the inline date forms the Ask check reads (review round 4)", () => {
+    // an ISO date-time the check did not read reached the person as "Fri 31 Dec 2027, 23:59" — in
+    // Ordnung's own style. The check's test (tests/test_ask_support.py) reads the same list.
+    for (const form of inlineDateForms) {
+      const shown = formatInlineDates(`Due ${form} now.`);
+      expect(shown, form).toMatch(/^Due (Fri 31 Dec 2027|31 Dec 2027)(, 23:59)? now\.$/);
+    }
+    // what is not in the list stays as written, so the check never has to read a formatted date
+    expect(formatInlineDates("Due 2027-12-31Z now.")).toBe("Due 2027-12-31Z now.");
   });
 
   it("tells German sentences from English ones", () => {

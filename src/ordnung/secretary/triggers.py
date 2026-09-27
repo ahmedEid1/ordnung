@@ -840,6 +840,15 @@ def _expiry_window(ledger: Ledger, klass: str) -> int:
     return ledger.reminder_window("expiry")
 
 
+RESIDENCE_EXTENSION_LAW = "§ 81 Abs. 4 AufenthG"
+"""Applying before a residence permit expires keeps it in force until the office decides."""
+STUDENT_WORK_LAW = "§ 16b Abs. 3 AufenthG"
+"""How much a student with a residence permit may work."""
+IDEA_LAWS = (RESIDENCE_EXTENSION_LAW, STUDENT_WORK_LAW)
+"""The § citations Ordnung's own Ideas state outside the rules catalog: Ask's check knows them like
+the catalog's (ADR 0008), so a correct "§ 81 Abs. 4 AufenthG" is not taken for an unvouched law."""
+
+
 def _expiry_text(klass: str, item: Item, expiry: date, today: date) -> IdeaText:
     day = day_label(expiry, today)
     past = expiry < today
@@ -849,14 +858,14 @@ def _expiry_text(klass: str, item: Item, expiry: date, today: date) -> IdeaText:
                 f"Your residence permit expired on {day}",
                 "Contact the immigration office (Ausländerbehörde) right away and get advice — the "
                 "Studierendenwerk, your international office or a migration counselling service can help.",
-                "Residence permits must be extended before they expire (§ 81 Abs. 4 AufenthG).",
+                f"Residence permits must be extended before they expire ({RESIDENCE_EXTENSION_LAW}).",
             )
         return IdeaText(
             f"Residence permit expires {day} — apply for the extension now",
             "Apply at the immigration office (Ausländerbehörde) before it expires. If you apply in time, "
-            "your current permit continues to count until they decide (§ 81 Abs. 4 AufenthG) — ask for a "
+            f"your current permit continues to count until they decide ({RESIDENCE_EXTENSION_LAW}) — ask for a "
             "Fiktionsbescheinigung. Appointments are often booked out for weeks.",
-            "Residence permits: apply before expiry (§ 81 Abs. 4 AufenthG).",
+            f"Residence permits: apply before expiry ({RESIDENCE_EXTENSION_LAW}).",
         )
     if klass == "identity":
         return IdeaText(
@@ -1412,7 +1421,7 @@ def student_permit_info(ledger: Ledger) -> list[Suggestion]:
     )
     body = _sentences(
         "A student residence permit lets you work up to 140 full or 280 half days a year, plus student "
-        "jobs at your university (§ 16b Abs. 3 AufenthG).",
+        f"jobs at your university ({STUDENT_WORK_LAW}).",
         "Check the conditions printed on your permit (Nebenbestimmungen) and ask the international "
         "office or the Studierendenwerk before taking on more.",
         "Law: " + _PERMIT_LINKS[0] + " · Advice: " + _PERMIT_LINKS[1],

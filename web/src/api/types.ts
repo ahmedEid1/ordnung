@@ -422,7 +422,7 @@ export type Draft = Schemas["Draft"];
 export type Activity = Schemas["Activity"];
 export type LLMCallRecord = Schemas["LLMCallRecord"];
 export type Job = Schemas["Job"];
-export type ChatMessage = Schemas["ChatMessage"];
+export type ChatMessage = Schemas["ThreadMessage"];
 
 // ------------------------------------------------------------------------------------------------
 // Profile & settings

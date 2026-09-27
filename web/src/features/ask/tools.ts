@@ -18,6 +18,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { formatDate, formatInlineDates } from "@/lib/format";
+import { MONTH_WORD } from "./markdown";
+import MONTH_WORDS from "./monthWords.json";
 import type { ToolStep } from "./stream";
 
 export const TOOL_ICONS: Record<string, LucideIcon> = {
@@ -36,15 +38,28 @@ export const TOOL_ICONS: Record<string, LucideIcon> = {
 /** Resolves an id (doc_…, itm_…) to a readable title. */
 export type TitleLookup = (id: string) => string | null | undefined;
 
+/** A part of a month the check reads as its days ("Ende Januar", "mid-October"): the check's own words. */
+const MONTH_PART = new RegExp(`\\b(?:${MONTH_WORDS.parts})\\s*(?:${MONTH_WORD})\\b\\.?`, "gi");
+
 function str(v: unknown): string {
+  // the model's own words: every word with a digit, and every part of a month, shows as "…" (the trace is
+  // shown before the answer check, so it never shows a date or amount a letter could have put there —
+  // ADR 0008); read as the check reads them: emphasis markup dropped, dashes folded ("Ende **Januar**",
+  // "mid‐January")
   const s = String(v ?? "")
+    .normalize("NFKC")
+    .replace(/[\u2010-\u2015\u2212]/g, "-")
+    .replace(/[*_`]+/g, "")
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    .replace(MONTH_PART, "…")
+    .replace(/[^\s"“”„]*\d[^\s"“”„]*/g, "…")
+    .replace(/…(?: …)+/g, "…");
   return s.length > 60 ? `${s.slice(0, 59)}…` : s;
 }
 
 function day(v: unknown): string {
-  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? formatDate(v, { style: "day" }) : str(v);
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? formatDate(v, { style: "day" }) : "…";
 }
 
 function statusWord(v: unknown): string {

@@ -54,6 +54,11 @@ export function turnsFromHistory(messages: ChatMessage[]): AskTurn[] {
       answer: {
         status: "done",
         text: m.content,
+        writing: false,
+        note: m.note ?? null,
+        noteLabel: m.note_label ?? null,
+        // answers stored before the claim-level check (ADR 0008) are not shown as checked
+        checked: Boolean(m.checked),
         tools: toolStepsFromStored(m.tool_calls ?? []),
         citations: (m.citations ?? []) as CitationRef[],
         messageId: m.id,
@@ -99,7 +104,7 @@ export function useAskThread() {
       abortRef.current = ctrl;
       const key = `t${Date.now().toString(36)}${++seq}`;
       setTurns((ts) => [
-        ...ts.map((t) => (t.answer.status === "streaming" ? { ...t, answer: { ...t.answer, status: "stopped" as const } } : t)),
+        ...ts.map((t) => (t.answer.status === "streaming" ? { ...t, answer: { ...t.answer, status: "stopped" as const, writing: false } } : t)),
         { key, question: q, answer: { ...EMPTY_ANSWER } },
       ]);
       try {
@@ -129,7 +134,9 @@ export function useAskThread() {
     abortRef.current = null;
     setTurns((ts) =>
       ts.map((t) =>
-        t.answer.status === "streaming" ? { ...t, answer: { ...t.answer, status: "stopped", tools: t.answer.tools.map((s) => ({ ...s, done: true })) } } : t,
+        t.answer.status === "streaming"
+          ? { ...t, answer: { ...t.answer, status: "stopped", writing: false, tools: t.answer.tools.map((s) => ({ ...s, done: true })) } }
+          : t,
       ),
     );
   }, []);

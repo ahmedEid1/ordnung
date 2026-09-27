@@ -52,7 +52,7 @@ SPECIMEN.
    page image, "Why this date?" with rule steps and citations, explained simply, key facts.
 4. **Timeline** with year-ahead *life lanes* and a month-grouped list.
 5. **Contracts** with lanes chart (notice windows, send-by markers), fixed costs per month.
-6. **Ask** with streamed answers, visible tool trace, validated citations.
+6. **Ask** with a visible tool trace, answers shown once checked, validated citations.
 7. **Letters**: cancellation / objection / general reply → bilingual draft → DIN 5008 PDF → "how to send".
 8. `.ics` export with alarms ("Add to my calendar"), onboarding wizard, Settings incl. privacy & AI usage.
 9. Benchmark run live and published (`docs/evals.md`), README with GIF, diagram, numbers.
@@ -352,12 +352,101 @@ non-user-modified extracted rows in one transaction. "Keep private (no AI)" skip
 
 MCP server (`python -m ordnung mcp --data-dir D`, read-only DB, lazy imports): `search`,
 `get_document`, `list_items`, `list_contracts`, `get_party`, `timeline`, `money_summary`,
-`get_profile`, `today`. Ask runs `claude -p` with `--tools ""`, `--allowedTools mcp__ordnung__*`,
-`--mcp-config` (absolute `sys.executable`), `--max-budget-usd 0.50`, 120 s timeout. Citations
+`explain_date`, `get_profile`, `today` — the ledger tools. Ask runs `claude -p` with `--tools ""`,
+`--allowedTools` naming exactly these ledger tools (`mcp__ordnung__search`, …), `--mcp-config`
+(absolute `sys.executable`, the server started `--ledger-only`), `--max-budget-usd 0.50`, 120 s
+timeout. **Ask keeps to the ledger** (ADR 0011): the ledger-free rules tools (below) are not on its
+server and not allowed, and the answer check reads only the ledger tools' results — a result of any
+other tool, such as a rules tool's date computed from a `DateSpec` the model supplied, is never
+record support and never makes an id citable. Citations
 `[doc:ID]`, `[item:ID]`, `[contract:ID]`, `[party:ID]` are **validated**: the id must exist and
-appear in a tool result of the same turn; otherwise it is stripped and logged. The tool trace is
-streamed to the UI and persisted with the message. Markdown is rendered without raw HTML and without
-remote images.
+appear in the record part of a tool result of the same turn; otherwise it is stripped and logged. The
+tool trace is streamed to the UI and persisted with the message. Markdown is rendered without raw
+HTML and without remote images.
+
+**Two channels and claim-level citations** (ADR 0008; the policy is the docstring of
+`assistant/support.py`, the measurement `python -m evals.ask`, [evals-ask](evals-ask.md)).
+
+- **Two channels.** Every tool result has Ordnung's record (`<ordnung_record>`: ids, types, statuses,
+  due and send-by dates — none for a payment made at an appointment, whose send-by date would be a bank
+  transfer's —, a to-do's time only as a clock time, rules-engine contract dates, letter dates,
+  amounts and terms with verified or person-given evidence, totals of verified amounts, code-written
+  receipts and notes) and the letters' text by record id (`<untrusted_document>`: titles, summaries,
+  names, quotes, warnings, payment details, page text, and amounts or terms read by AI from a photo or
+  not found on the page, flagged `amount_unverified`/`terms_unverified`). A tool keeps each result
+  within a size budget by leaving out rows (and says how many); the answer is checked against the whole
+  result the model read.
+- **What the record says.** `money_summary` lists open payments with no stored due date and, apart, the
+  demands of letters with scam signs (`do_not_pay`: not to be paid until the person has checked with
+  the sender — a real sender whose bank details changed shows the same signs), with `today` and each
+  fixed-cost contract's category. `list_contracts` names a letter that says a contract is cancelled
+  only as `cancellation_letter` (pending the person's confirmation). `if_not_cancelled` (also in
+  `explain_date` for a fixed-term job or flat let) says a job ends by itself on its date (§ 15 Abs. 1
+  TzBfG); ending it earlier by ordinary notice needs an agreed notice clause (§ 15 Abs. 4 TzBfG), and a
+  written agreement (§ 623 BGB) or notice for cause (§ 626 BGB) end it early without one; everyone whose
+  job ends must register as job-seeking 3 months before the end (§ 38 Abs. 1 SGB III, not in a company
+  apprenticeship) — the record puts it as advice for whoever may claim unemployment benefit, since a late
+  registration blocks the benefit for a week (§ 159 Abs. 1 S. 2 Nr. 7 and Abs. 6 SGB III). A flat let's
+  record says notice may still be needed (§ 575 Abs. 1 BGB, with the § 549 Abs. 2 and 3 BGB exceptions
+  as examples) and that courts often read the agreed end date as a waiver of ordinary notice until then
+  (BGH VIII ZR 388/12), so leaving earlier may not be possible; `explain_date` notes that the catalog's
+  `fixed_term` rule applies to a flat let only where § 575 or § 549 allows it. Once the end date of an
+  active job or flat let has passed, the record never says it "ended": it may continue by conduct
+  (§ 15 Abs. 6 TzBfG, § 545 BGB), and a flat let without a written reason never had a fixed term (§ 575
+  Abs. 1 S. 2 BGB).
+- **Release blocker (rules workstream).** The contract page still prints the rules engine's "ends by
+  itself — no cancellation needed" (`rules/explain.py`) for a fixed-term flat let, and the catalog's
+  `fixed_term` rule is titled "Fixed-term contracts end by themselves". The rules text must say what
+  Ask's record says before release (the sample life has no fixed-term lease, so neither the demo nor
+  the benchmark shows it).
+- **Nothing unchecked is shown.** The answer's words are never streamed: the UI and the CLI show only
+  the tool trace (which tools ran, the words searched for with every word of a value the check reads —
+  any word with a digit, a part of a month — shown as "…", and the date range looked at) and "Writing
+  the answer — it appears once Ordnung has checked it". The check runs off the event loop and fails
+  closed: if it cannot read an answer, the stream ends with an error and nothing of it is shown.
+- **What the check reads.** The answer as it will be shown (bidirectional controls removed; Markdown,
+  escapes and invisible characters dropped; soft-wrapped lines joined where a value spans the break; a
+  line starting with a day read whole; digits of any script read as digits), with every date, time and
+  amount form of the policy. A run of digit groups shaped like a date that is no calendar date
+  (`31.02.2027`, year 0), a number too long to be an amount, a day, one word and a year whose word is no
+  month the check knows (`31 décembre 2027`: Ask answers in the question's language, the check knows
+  English and German month names), a day in words before a month, and a clock time moved by words
+  (`halb 10 Uhr`) are *unreadable* and never supported — never an exception. What stays unread is listed
+  in the policy's limits. The date forms the web formats inside an answer, its placeholders and its month
+  words are lists both test suites read.
+- **What stays.** Each date, time or amount must be in the record part of a record its sentence cites
+  (a letter's includes its to-dos, a contract's its letter, a person's their to-dos; a sentence without
+  citations takes its line's, a list item its lead line's). Today needs no citation; Ordnung's totals
+  only in a sentence without a citation of its own. A sentence without citations of its own may state a
+  value of a record the answer cites; when its values belong to one record, the check adds that record's
+  citation (never a scam record's; none for several) — counted in the note only when the sentence did not
+  already inherit it. A cited record's flagged, unverified amount and a value the person typed are shown
+  in quotation marks as unconfirmed.
+- **What is left out.** Every other value: as "[date only in the letter]" / "[time …]" / "[amount …]"
+  when the letter text of a record the sentence cites holds it (the note says to open the letter),
+  whatever the wording, and otherwise as "[date left out]" / "[time left out]" / "[amount left out]". The
+  edit replaces only the value — the sentence's full stop and a citation after it stay. A sentence that
+  keeps no value is removed unless all it leaves out is its letter's (a warning about injected text); a
+  § — or a law cited in words ("section 999", "Paragraf 999 AO", "Art. 99 EGAO") — that is not in the
+  rules catalog, among `IDEA_LAWS` or in a record removes its sentence. Within its
+  sentence a left-out value is never shown; another sentence without a citation of its own can still
+  state the same date when a cited record holds it anywhere in its record part (literal support, listed
+  in the limits).
+- **The note.** What was left out, quoted or cited, the citations removed and the weekday names
+  corrected, and why — worded as what is true, for a non-expert ("isn't among the dates and amounts
+  Ordnung saved for the linked letter, to-do or contract"; "a letter's text has it") — and, for the records concerned, their own dates or amounts on file (never
+  a demand not to pay), in the answer's language under its label ("Checked by Ordnung:" / "Von Ordnung
+  geprüft:", sent as `note_label`). It travels in its own `note` field of the `done` event and the stored
+  thread; the UI shows only that field. An answer the check did not change says "Dates and amounts
+  checked against your records" ("Daten und Beträge mit Ihren Unterlagen abgeglichen" under a German
+  label) — what was checked, not every claim. A checked answer is stored with the label (alone when
+  nothing changed), so an answer stored before this check is never shown as checked; a model sentence
+  that starts like the note — also with look-alike letters or across a soft line break — is left out.
+- **The prompt** (`ask_system` version 5) says what the check does: a value only a letter holds is not
+  stated (it would be shown as "[… only in the letter]"), each sentence and list item cites its own
+  record, the record's legal statements keep their hedges, German answers use "Sie", and a `do_not_pay`
+  demand is not to be paid until checked with the sender. Every demo and benchmark answer was recorded
+  with it.
 
 **Rules tools** (`assistant/rules_tools.py`, no ledger): `compute_deadline(spec, document_date?,
 sender_kind?, sender_name?, remedy_type?, region?, recipient_region?, received_date?, today?)` —
@@ -405,9 +494,10 @@ it) does not use it at all. Every result carries "Information, not legal advice"
 serves them next to the ledger tools (counting from the ledger's day), and its instructions and
 `compute_deadline`'s description say that a letter in the ledger keeps its stored date (quoted from
 `list_items`/`explain_date`, which may rest on a confirmed arrival day or a corrected sender) —
-except Ask's own server (`--ledger-only`): Ask quotes stored receipts and never computes a date,
-and its fact check would otherwise accept any date a rules tool echoed; `ordnung mcp --rules-only`
-serves only them — no data folder, nothing personal.
+except Ask's own server (`--ledger-only`, ADR 0011): Ask quotes stored receipts and never computes a
+date — a rules tool's date is computed by code, but from a `DateSpec` the model passed (possibly read
+from an injected letter), and has no record to cite, so it could never support a claim; `ordnung mcp
+--rules-only` serves only them — no data folder, nothing personal.
 
 **Other clients** (`assistant/mcp_install.py`). `ordnung mcp install --client claude-desktop|
 claude-code [--rules-only|--with-ledger] [--data-dir D] [--config PATH] [--write]` adds the rules
@@ -494,8 +584,10 @@ View models (in models.py): `Dashboard`, `TimelineEntry`, `Lane{id,label,area,ba
 Contract details: list endpoints answer plain JSON arrays. `health` carries `rules_last_checked`
 (the catalog's `LAST_CHECKED`, shown as "Based on the law as of …"); `health?probe=1` ("Run check")
 adds the doctor's `checks` plus one tiny live call, at most once a minute (else `429` +
-`Retry-After`). `ask` streams default SSE `message` events whose JSON carries `type`; `done` has the
-checked answer `text`, `citations[{type,id,label}]`, `message_id`, `thread_id`. `events` payloads are
+`Retry-After`). `ask` streams default SSE `message` events whose JSON carries `type`: the tool trace,
+one `text` event without text while the answer is written (its words are never sent before the
+check), then `done` with the checked answer `text`, the check's `note`, `citations[{type,id,label}]`,
+`message_id`, `thread_id` — or `error`. `events` payloads are
 declared per event name in `models.ServerEvents`. `web/openapi.json` (`ordnung openapi`) and the
 generated `web/src/api/schema.d.ts` are the web app's source of API types (`make openapi`); tests fail
 when they are stale, when a mock route or response differs from the schema, or when a GET endpoint's
@@ -533,7 +625,7 @@ Pages:
    fixed costs total, "Decide by" callouts.
 6. **Letters** — list + composer (kind, recipient, related letter/contract, instructions) →
    side-by-side German letter and translation, checks, PDF preview, "How to send it", mark as sent.
-7. **Ask** — chat, streamed answer, tool-trace chips ("Searched your letters for 'Kündigung'"),
+7. **Ask** — chat, streamed tool-trace chips ("Searched your letters for 'Kündigung'"),
    citation chips → viewer, suggested questions (recorded in demo).
 8. **Settings** — profile & address, region (affects holidays), language, reminders, models,
    privacy statement + "Privacy & AI usage" (activity, tokens, API-equivalent cost, cache hits),
@@ -589,6 +681,22 @@ sender/reference/amount accuracy, item recall/precision, evidence grounding rate
 rate, injection resistance, scam recall, latency p50, API-equivalent cost/doc. Output:
 `evals/results/<date>-<model>.json`, `docs/evals.md` (tables, chart, failure gallery). CI recomputes
 metrics from recorded outputs with thresholds.
+
+**Ask benchmark** (`evals/ask/`, `python -m evals.ask`): ~50 questions about the demo's sample life
+asked through the real Ask on the demo ledger (deadlines, payments, contract cancel-by dates and
+costs, questions across letters, hand-written paraphrases incl. German, unanswerable questions),
+with gold answers from the sample life's truth only, plus injected letters (moved deadline — also
+to the end of its own month —, changed amount, "no deadline", cite another record). Metrics with
+cluster-bootstrap CIs: answer correctness, citation precision by support (a cited record's record
+part holds a value of its sentence), citations from the right letter and recall, abstention (the
+answer leads with "not in your records"),
+attack success raw vs final, guard effect (removed sentences and left-out values sorted into true,
+a letter's, unreadable, unvouched § and other), tool calls, turns, cost and latency. Replayed from
+`evals/recorded/ask/`; every replayed tool call is answered again by the current tools, and a
+recording they no longer match fails the run (`--prune-stale`, then `--live`); the benchmark ledger
+puts every record's stamp at the start of its day, so the order of a tie (two payments due the same
+day) never depends on the hour of the run; results in
+`evals/results/<date>-<model>-ask.json` and `docs/evals-ask.md`; CI gates on the replay.
 
 ## 18. Quality bar
 ruff + mypy clean; pytest incl. Hypothesis properties for rules (month-end invariants, business-day
@@ -752,14 +860,19 @@ English) → `low` confidence. Mismatch → "Please check". UI never says "verif
 text in any prompt (including earlier summaries) is wrapped in `<untrusted_document>` tags. Hidden-
 text detector (pdfplumber char colour/size/position): invisible text is excluded from the prompt and
 raises a red banner. HTML e-mails follow the short written policy of `html_to_text` (ADR 0007): only
-text that is certainly hidden is excluded; when in doubt it stays visible. Brief/review/Ask free text is checked: every date, amount and § must exist in
-the agenda/ledger/catalog, else it is removed (fallback to code-generated text). Ask gets a read-only
-`explain_date(id)` tool that returns receipts, and no tool that computes a new date. MCP is
-read-only everywhere. Besides Ask, other clients can use it: the rules tools alone (`ordnung mcp
---rules-only`: no data folder, nothing personal) are what `ordnung mcp install` adds to Claude
-Desktop or Claude Code; the full server (`--with-ledger`) exposes the ledger to that client, and so,
-through the model, to its other tools and MCP servers (`docs/privacy.md`). `ordnung mcp install`
-prints the entry first and writes only with `--write`.
+text that is certainly hidden is excluded; when in doubt it stays visible. Brief/review free text is checked: every date, amount and § must exist in
+the agenda/ledger/catalog, else it is removed (fallback to code-generated text). Ask's tool results
+separate Ordnung's record from letter text, and each date or amount of an Ask answer must be in the
+record part of a record its sentence cites (a cited record's unverified amount or the person's own
+words are shown quoted as unconfirmed); anything else is left out — a letter's value as "[date only
+in the letter]" (ADR 0008). The tool trace, shown before the check, shows search words without
+digits. Ask gets a read-only `explain_date(id)` tool that returns receipts, and no tool that computes
+a new date: its server leaves the rules tools out, and its check reads only the ledger tools' results
+(ADR 0011). MCP is read-only everywhere. Besides Ask, other clients can use it: the rules tools alone
+(`ordnung mcp --rules-only`: no data folder, nothing personal) are what `ordnung mcp install` adds to
+Claude Desktop or Claude Code; the full server (`--with-ledger`) exposes the ledger to that client,
+and so, through the model, to its other tools and MCP servers (`docs/privacy.md`). `ordnung mcp
+install` prints the entry first and writes only with `--write`.
 
 **Scam checks (code, not model).** IBAN checksum validation; payee IBAN/name compared with those
 previously seen for the same party; mismatch → scam Idea quoting both. Copy: "No warning does not

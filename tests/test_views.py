@@ -280,3 +280,89 @@ def test_continuation_says_whether_a_contract_renews_or_runs_on() -> None:
         == "It renews for 12 months unless it is cancelled in time."
     )
     assert "no fixed term" in continuation(gym, ContractComputation(regime="bgb309_new"))
+
+
+@pytest.mark.parametrize(
+    ("category", "notice", "caveat"),
+    [
+        ("employment", "(§ 15 Abs. 4 TzBfG)", "(§ 15 Abs. 6 TzBfG)."),
+        (
+            "rent",
+            "(§ 575 Abs. 1 BGB)",
+            "(§ 545 BGB) — unless the lease excludes that rule, as many leases do.",
+        ),
+        ("other", "", ""),
+    ],
+)
+def test_a_fixed_term_contract_ends_by_itself(category: str, notice: str, caveat: str) -> None:
+    """Review findings: the working-student contract "continues with no fixed term" if nothing is done —
+    wrong under § 15 Abs. 1 TzBfG: it ends when its time runs out, and only continued work the employer
+    knows of and does not object to makes it open-ended (§ 15 Abs. 6 TzBfG). A flat let without a written
+    reason for its term counts as open-ended (§ 575 Abs. 1 S. 2 BGB), so Ask's record says to check the
+    contract. Final review: round 4 said a fixed-term job "may still need notice to end then" — wrong: § 15
+    Abs. 4 TzBfG only allows ending it *earlier* when agreed; an undated notice would end the job at the
+    next possible date instead. And § 575 does not apply in a student hall (§ 549 Abs. 3 BGB)."""
+    from ordnung.models import Contract, ContractTerms
+    from ordnung.rules import RuleContext
+    from ordnung.rules.contracts import compute_contract
+    from ordnung.views import continuation, fixed_term_summary
+
+    stamps = {"created_at": "2026-09-01T00:00:00Z", "updated_at": "2026-09-01T00:00:00Z"}
+    contract = Contract(
+        id="ctr_f", name="Working student", category=category, start_date="2026-04-01", end_date="2027-03-31",
+        initial_term_months=12, **stamps,
+    )  # fmt: skip
+    terms = ContractTerms(
+        category=category, start_date="2026-04-01", end_date="2027-03-31", initial_term_months=12
+    )
+    comp = compute_contract(terms, RuleContext(today=TODAY))
+    assert "fixed_term" in comp.rule_ids
+    text = continuation(contract, comp, today=TODAY)
+    assert "continues with no fixed term and can then be cancelled" not in text
+    summary = fixed_term_summary(comp, today=TODAY)
+    if category == "employment":
+        assert text.startswith(
+            "Its fixed term ends on Wed 31 Mar 2027. A fixed-term job ends then by itself, with no notice "
+            "(§ 15 Abs. 1 TzBfG). Ending it earlier by ordinary notice needs a notice clause"
+        )
+        assert notice in text and text.endswith(caveat) and "may still need notice" not in text
+        # final review 2: never "possible only if …" — an agreement or notice for cause end it early too
+        assert "possible only if" not in text
+        assert "(§ 623 BGB)" in text and "(§ 626 BGB)" in text
+        assert "register as job-seeking" in text and "(§ 38 Abs. 1 SGB III)" in text
+        assert "job-seeking" in (summary or "")
+        assert summary is not None and "ends then by itself" in summary and "(§ 15 Abs. 1 TzBfG)" in summary
+        assert "may still need notice" not in summary
+    elif notice:
+        assert text.startswith("Its fixed term ends on Wed 31 Mar 2027.")
+        assert notice in text and "check the contract" in text and text.endswith(caveat)
+        assert "student or youth hall of residence" in text and "(§ 549 Abs. 2 and 3 BGB)" in text
+        # final review 2: "then" read as the case the landlord gave a reason; the exceptions are examples
+        assert "If it counts as open-ended, leaving needs notice" in text and "; then leaving" not in text
+        assert "Exceptions include" in text and "people in urgent need" in text
+        assert "not let for lasting use with a family or partner" in text
+        assert "no cancellation" not in text
+        assert summary is not None and "may still need notice" in summary
+    else:
+        assert text == "It ends by itself on Wed 31 Mar 2027; no cancellation is needed."
+        assert summary is None
+    later = date(2027, 4, 2)
+    past = continuation(contract, comp, today=later)
+    past_summary = fixed_term_summary(comp, today=later)
+    if not notice:
+        assert past == "Its fixed term ended on Wed 31 Mar 2027." and past_summary is None
+        return
+    # final review 3: an active job or flat let past its end date was recorded as "ended", with none of
+    # the caveats — though it may never have ended (§ 575 Abs. 1 S. 2 BGB) or continue by conduct
+    assert past.startswith("Its fixed term's end date, Wed 31 Mar 2027, has passed. If you still ")
+    assert "ended on Wed 31 Mar 2027." not in past
+    assert ("(§ 15 Abs. 6 TzBfG)" if category == "employment" else "(§ 545 BGB)") in past
+    assert past_summary is not None and "has passed" in past_summary and "may" in past_summary
+    assert "ended on" not in past_summary
+    if category == "rent":
+        assert "(§ 575 Abs. 1 S. 2 BGB)" in past and "Check the contract or get advice." in past
+        # final review 3: a fixed term that fails § 575 is often read as a waiver of notice until its end
+        assert "VIII ZR 388/12" in text and "may not be possible" in text
+        assert summary is not None and "or earlier" not in summary
+    # a contract that is no longer active keeps the engine's "ended"
+    assert fixed_term_summary(comp, today=later, active=False) is None

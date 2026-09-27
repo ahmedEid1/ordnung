@@ -49,8 +49,8 @@ forget: nothing tracks the letter once the chat is closed.
 | **Keeps a ledger** | Parties, letter threads, contracts, to-dos and payments, linked across letters. A reminder is joined to its invoice; a price increase is joined to its contract. |
 | **Acts like a secretary** | A *Today* page with the three things that matter, a note on what's coming, *Ideas* with reasons (for example "special right to cancel until 31 Oct"), and scam warnings. |
 | **Shows your year** | A timeline and *life lanes* (money, housing, work, study, health, permits) for the next twelve months, including contract notice windows. |
-| **Answers questions** | *Ask* runs an agent over read-only tools and streams the answer. Answers cite the records they come from; a citation must name a record the agent actually read, and a sentence with a date or amount it can't back up is removed. |
-| **Writes the reply** | Objections, cancellations and general replies as a bilingual draft, rendered as a DIN 5008 PDF, with advice on how to send it so it can be proven. |
+| **Answers questions** | *Ask* runs an agent over read-only tools that keep Ordnung's records apart from the letters' own words. Every date and amount in an answer must be in a record its sentence cites; a date only an (injected) letter states is never shown as Ordnung's, and a note says what the check left out. |
+| **Writes the reply** | Objections, cancellations and general replies as a bilingual draft, and template letters (withdrawal, more time, instalments, defect notice, GDPR access, receipts, deposit back, new address), rendered as a DIN 5008 PDF, with advice on how to send it so it can be proven. |
 | **Reminds you** | Calendar export (`.ics`) with alarms at the send-by date, and browser notifications. |
 
 Nothing is ever sent, paid or cancelled for you. Ordnung suggests; you decide.
@@ -165,8 +165,11 @@ whether an objection is on time, and they are what the engine is tested on.
 The engine covers deemed delivery under tax, administrative and social law; §§ 187–193 BGB
 including the cases where a weekend does *not* move a deadline (notice periods); federal-state
 holidays; working-day periods; consumer contract law (§ 309 BGB, § 56 TKG, § 11 VVG, electricity
-basic supply, rent, employment); and fines. Every rule is documented with its source in
-[docs/deadline-rules.md](docs/deadline-rules.md).
+basic supply, rent, employment); fines; and the rare letters that are costly to miss: a court
+payment order (*Mahnbescheid*) or enforcement order, a dismissal (court action in three weeks,
+registering as job-seeking), a landlord's notice or rent increase, a late operating-cost statement and
+a consumer's withdrawal, each with a "get advice" card naming free or low-cost help. Every rule is
+documented with its source in [docs/deadline-rules.md](docs/deadline-rules.md).
 
 A few other things keep it honest:
 
@@ -176,8 +179,13 @@ A few other things keep it honest:
   photo is labelled as such and gets at most medium confidence.
 - **Letters are data, not instructions.** Document text is wrapped as untrusted, the extraction
   model has no tools, and text hidden in the PDF (white or tiny glyphs) is detected and shown.
-- **The assistant can only read.** *Ask* reaches your data through a read-only MCP server. Its
-  answers must cite records that exist, or the citation is removed.
+- **The assistant can only read, and is checked.** *Ask* reaches your data through a read-only MCP
+  server whose results keep Ordnung's record apart from the letters' text. A citation must name a
+  record the agent read; a date or amount must be in the record its sentence cites, or it is left
+  out. Ask has no date calculator: it quotes the stored receipts
+  ([ADR 0008](docs/decisions/0008-two-channels-and-claim-level-citations.md),
+  [ADR 0011](docs/decisions/0011-ask-keeps-to-the-ledger.md)). A separate
+  [Ask benchmark](docs/evals-ask.md) measures its answers and injected letters.
 - **Reproducible by construction.** IDs are derived from content, every model answer can be
   recorded and replayed, and `ordnung demo --check` rebuilds the demo from the sample letters twice
   and requires identical database contents (timestamps aside).
@@ -270,9 +278,9 @@ Details in [docs/privacy.md](docs/privacy.md).
 | Backend | Python 3.11–3.13, FastAPI, SQLite (WAL, FTS5 + trigram), pdfplumber, Pydantic, Typer |
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query; API types generated from OpenAPI |
 | Model runtime | The `claude` CLI in headless mode (`-p`, stream-json in and out, JSON schema output), no SDK keys |
-| Agent | Read-only MCP server (official `mcp` SDK), streamed tool trace, citation validation |
+| Agent | Read-only MCP server (official `mcp` SDK) with two channels per result, streamed tool trace, claim-level answer check; the rules engine as ledger-free MCP tools for other Claude clients |
 | Tests | 1,700+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 380+ Vitest tests; 35 Playwright tests over the real demo with axe accessibility checks in light and dark mode |
-| Quality gates in CI | ruff, mypy (strict on the pure core), ESLint, `tsc`, 100 % branch coverage of the rules engine, `ordnung demo --check`, benchmark thresholds, and a check that the committed web build matches its sources |
+| Quality gates in CI | ruff, mypy (strict on the pure core), ESLint, `tsc`, 100 % branch coverage of the rules engine, `ordnung demo --check`, thresholds of the deadline benchmark and of the Ask benchmark (no unsupported value, no successful injection beyond one documented ledger gap), and a check that the committed web build matches its sources |
 
 ```bash
 make install     # Python venv + web dependencies

@@ -7,7 +7,7 @@ every list is sorted by stable keys so the same ledger always renders the same w
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
@@ -29,6 +29,7 @@ from ordnung.models import (
     TimelineEntry,
     TimelineMarker,
 )
+from ordnung.rules.explain import fmt_date
 from ordnung.secretary.triggers import (
     Ledger,
     action_day,
@@ -179,19 +180,36 @@ def _is_outgoing_payment(item: Item) -> bool:
     return item.kind == "payment" and item.direction != "in" and item.amount is not None
 
 
-def money_summary(ledger: Ledger) -> MoneySummary:
-    """Euro payments due this month, fixed costs per month (active contracts; in euros, other currencies
-    each summed on their own) and upcoming payments."""
-    today = ledger.today
-    month_start = today.replace(day=1)
+def payments_due_this_month(ledger: Ledger) -> list[Item]:
+    """Open outgoing euro payments due in today's month (what ``due_this_month`` adds up)."""
+    month_start = ledger.today.replace(day=1)
     next_month = (month_start + timedelta(days=32)).replace(day=1)
+    return [
+        item
+        for item in ledger.actionable_items()
+        if _is_outgoing_payment(item)
+        and (item.currency or "EUR").upper() == "EUR"
+        and month_start <= (parse_day(item.due_date) or date.min) < next_month
+    ]
+
+
+def money_summary(
+    ledger: Ledger,
+    *,
+    counts: Callable[[Item], bool] | None = None,
+    counts_contract: Callable[[Contract], bool] | None = None,
+) -> MoneySummary:
+    """Euro payments due this month, fixed costs per month (active contracts; in euros, other currencies
+    each summed on their own) and upcoming payments.
+
+    ``counts`` / ``counts_contract`` leave to-dos and contracts out of the totals (Ask's record adds
+    up only verified amounts); the list of upcoming payments stays complete.
+    """
+    today = ledger.today
     payments = [item for item in ledger.actionable_items() if _is_outgoing_payment(item)]
     # a sum in euros: a $50 invoice is not €50 of it (payments in other currencies stay in the list)
     due_this_month = sum(
-        item.amount or 0.0
-        for item in payments
-        if (item.currency or "EUR").upper() == "EUR"
-        and month_start <= (parse_day(item.due_date) or date.min) < next_month
+        item.amount or 0.0 for item in payments_due_this_month(ledger) if counts is None or counts(item)
     )
     upcoming = sorted(
         (item for item in payments if _within(item, today, 0, UPCOMING_DAYS)),
@@ -201,7 +219,7 @@ def money_summary(ledger: Ledger) -> MoneySummary:
     other_currencies: dict[str, float] = {}  # a $20 subscription is not €20 of the fixed costs
     for contract in ledger.active_contracts():
         monthly = contract.monthly_cost()
-        if monthly is None:
+        if monthly is None or (counts_contract is not None and not counts_contract(contract)):
             continue
         currency = contract.cost_currency.upper()
         if currency == "EUR":
@@ -643,12 +661,136 @@ def renews_for_a_term(contract: Contract, comp: ContractComputation) -> bool:
     return comp.regime not in _ROLLING_REGIMES and bool(contract.renewal_term_months)
 
 
-def continuation(contract: Contract, comp: ContractComputation) -> str:
-    """What happens on ``next_renewal`` if the contract is not cancelled, in plain words."""
+_FIXED_TERM_CAVEATS = {
+    "employment622": (
+        " If you keep working after that with the employer's knowledge and the employer does not object "
+        "without delay, it continues with no fixed term (§ 15 Abs. 6 TzBfG)."
+    ),
+    "rent573c": (
+        " If you keep living there after that and neither side objects within two weeks, it continues "
+        "with no fixed term (§ 545 BGB) — unless the lease excludes that rule, as many leases do."
+    ),
+}
+"""What turns a fixed-term employment or tenancy into an open-ended one — by conduct, not by doing
+nothing (§ 15 Abs. 1 and 6 TzBfG, § 545 BGB)."""
+_FIXED_TERM_NOTICE = {
+    "employment622": (
+        " A fixed-term job ends then by itself, with no notice (§ 15 Abs. 1 TzBfG). Ending it earlier by "
+        "ordinary notice needs a notice clause in the contract or a collective agreement (§ 15 Abs. 4 TzBfG) "
+        "— many have one, for example after the probation period; without one it can still end earlier by "
+        "a written agreement with the employer (§ 623 BGB), or for a serious reason by notice without a "
+        "notice period (§ 626 BGB). If you may claim unemployment benefit afterwards, register as "
+        "job-seeking with the Agentur für Arbeit at least 3 months before it ends, or within 3 days of "
+        "learning the end date if that is later (§ 38 Abs. 1 SGB III); registering late can block the "
+        "benefit for a week (§ 159 Abs. 6 SGB III)."
+    ),
+    "rent573c": (
+        " A flat let for a fixed term usually counts as open-ended unless the landlord gave one of the legal "
+        "reasons for the fixed term in writing when it was signed (§ 575 Abs. 1 BGB). If it counts as "
+        "open-ended, leaving needs notice like any open-ended lease (§ 573c BGB) — but courts often read the "
+        "agreed end date as both sides giving up ordinary notice until then (BGH, 10 Jul 2013, VIII ZR "
+        "388/12), so ending it earlier may not be possible; check the contract or get advice. Exceptions "
+        "include a "
+        "room in a student or youth hall of residence, a flat let only for temporary use, a furnished room "
+        "in the landlord's own flat that is not let for lasting use with a family or partner, and housing a "
+        "public body or welfare organisation rents to pass on to people in urgent need (§ 549 Abs. 2 and 3 "
+        "BGB): there a fixed term ends by itself. So check the contract before relying on the end date."
+    ),
+}
+"""What the end date of a fixed-term job or flat let means. A job ends by itself on its date (§ 15 Abs. 1
+TzBfG); ending it *earlier* by ordinary notice needs an agreed notice clause (§ 15 Abs. 4 TzBfG) — a
+written termination agreement (§ 623 BGB) or notice for cause (§ 626 BGB) end it early without one —, and
+everyone whose job ends must register as job-seeking 3 months before the end (§ 38 Abs. 1 SGB III; not in
+a company apprenticeship); for whoever then claims unemployment benefit, a late registration costs a
+one-week block (§ 159 Abs. 1 S. 2 Nr. 7 and Abs. 6 SGB III), so the text the person reads puts it as
+advice for that case. A flat let's fixed term usually needs a written legal reason, or the lease counts
+as open-ended and leaving needs notice (§ 575 Abs. 1 S. 2 BGB) — though courts often read the agreed end
+date as a mutual waiver of ordinary notice until then (BGH, 10 Jul 2013, VIII ZR 388/12), so leaving
+earlier may not be possible — except where § 575 does not apply (§ 549 Abs. 2 and 3 BGB: student
+or youth halls, temporary use, a furnished room in the landlord's flat not let for lasting use with a
+family or partner, housing a public body or welfare organisation lets on to people in urgent need). The
+rules engine reads none of these clauses (it applies ``fixed_term`` to every such contract with an end
+date), so for a flat let Ask's record says notice may still be needed. The contract page still prints
+the engine's "ends by itself — no cancellation needed" (``rules/explain.py``) for a flat let: a release
+blocker for the rules workstream (docs/SPEC.md §10)."""
+
+
+_FIXED_TERM_PAST = {
+    "employment622": (
+        " If you still work there with the employer's knowledge and the employer did not object without "
+        "delay, the job continues with no fixed term (§ 15 Abs. 6 TzBfG); if you stopped working then, it "
+        "ended on that date."
+    ),
+    "rent573c": (
+        " If you still live there, the lease may not have ended: a flat let whose fixed term has no legal "
+        "reason given in writing counts as open-ended from the start (§ 575 Abs. 1 S. 2 BGB), and a lease used "
+        "on after its end continues with no fixed term unless a side objected within two weeks (§ 545 BGB) — "
+        "unless the lease excludes that rule. Check the contract or get advice."
+    ),
+}
+"""What a passed end date means for an active fixed-term job or flat let: it may never have ended, or it
+may continue by conduct (§ 575 Abs. 1 S. 2 and § 545 BGB, § 15 Abs. 6 TzBfG) — never simply "ended"."""
+
+
+def continuation(contract: Contract, comp: ContractComputation, *, today: date | None = None) -> str:
+    """What happens if the contract is not cancelled, in plain words.
+
+    A fixed-term contract (the rules engine applied ``fixed_term``) ends by itself on its end date — for
+    employment and tenancies with what :data:`_FIXED_TERM_NOTICE` says (ending a job earlier needs an
+    agreed notice clause; a flat let may count as open-ended) and what :data:`_FIXED_TERM_CAVEATS` says
+    turns it into an open-ended one by conduct; once that date has passed, a job or flat let may still
+    run (:data:`_FIXED_TERM_PAST`). Otherwise it either renews for a fixed term or runs on, cancellable at
+    any time.
+    """
+    end = parse_day(comp.current_term_end) if "fixed_term" in comp.rule_ids else None
+    if end is not None:
+        if today is not None and end < today:
+            if comp.regime in _FIXED_TERM_PAST:
+                return (
+                    f"Its fixed term's end date, {fmt_date(end)}, has passed.{_FIXED_TERM_PAST[comp.regime]}"
+                )
+            return f"Its fixed term ended on {fmt_date(end)}."
+        if comp.regime in _FIXED_TERM_NOTICE:
+            notice, caveat = _FIXED_TERM_NOTICE[comp.regime], _FIXED_TERM_CAVEATS[comp.regime]
+            return f"Its fixed term ends on {fmt_date(end)}.{notice}{caveat}"
+        return f"It ends by itself on {fmt_date(end)}; no cancellation is needed."
     if not renews_for_a_term(contract, comp):
         return "It continues with no fixed term and can then be cancelled at any time with its notice period."
     months = contract.renewal_term_months
     return f"It renews for {months} months unless it is cancelled in time."
+
+
+def fixed_term_summary(comp: ContractComputation, *, today: date, active: bool = True) -> str | None:
+    """The summary Ask's record gives a fixed-term job or flat let instead of the engine's (``None``: keep
+    the engine's): a job ends by itself on its date (§ 15 Abs. 1 TzBfG), a flat let may still need
+    notice (:data:`_FIXED_TERM_NOTICE`); both point to ``if_not_cancelled`` for the rest. Once the end
+    date has passed, an ``active`` one may still run (:data:`_FIXED_TERM_PAST`) — never the engine's
+    "This contract ended on …"."""
+    end = parse_day(comp.current_term_end) if "fixed_term" in comp.rule_ids else None
+    if end is None or comp.regime not in _FIXED_TERM_NOTICE:
+        return None
+    if end < today:
+        if not active:
+            return None
+        if comp.regime == "employment622":
+            return (
+                f"This job's fixed-term end date, {fmt_date(end)}, has passed: if you still work there, it may "
+                "continue with no fixed term (§ 15 Abs. 6 TzBfG) — see if_not_cancelled."
+            )
+        return (
+            f"This flat let's fixed-term end date, {fmt_date(end)}, has passed: if you still live there, it may "
+            "not have ended (§ 575 Abs. 1 S. 2 BGB, § 545 BGB) — see if_not_cancelled."
+        )
+    if comp.regime == "employment622":
+        return (
+            f"This job's fixed term ends on {fmt_date(end)}: it ends then by itself, with no notice (§ 15 Abs. 1 "
+            "TzBfG) — see if_not_cancelled for ending it earlier, for registering as job-seeking and for what "
+            "makes it open-ended."
+        )
+    return (
+        f"This contract's fixed term ends on {fmt_date(end)}; it may still need notice to end then — see "
+        "if_not_cancelled."
+    )
 
 
 def _continuation_label(contract: Contract, comp: ContractComputation) -> str:

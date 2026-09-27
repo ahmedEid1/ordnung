@@ -1163,28 +1163,6 @@ export interface components {
             /** Drafts */
             drafts: components["schemas"]["Draft"][];
         };
-        /** ChatMessage */
-        ChatMessage: {
-            /** Id */
-            id: string;
-            /** Thread Id */
-            thread_id: string;
-            /**
-             * Role
-             * @enum {string}
-             */
-            role: "user" | "assistant";
-            /** Content */
-            content: string;
-            /** Citations */
-            citations: components["schemas"]["SuggestionRef"][];
-            /** Tool Calls */
-            tool_calls: {
-                [key: string]: unknown;
-            }[];
-            /** Created At */
-            created_at: string;
-        };
         /**
          * CitationRef
          * @description A validated citation as sent to the UI with the final answer.
@@ -2987,7 +2965,7 @@ export interface components {
             type: "text" | "tool_use" | "tool_result" | "done" | "error";
             /**
              * Text
-             * @description text delta, tool label/summary, or the final answer
+             * @description tool label/summary or the checked answer (done); none on the text event that says the answer is being written
              */
             text?: string | null;
             /**
@@ -3004,6 +2982,16 @@ export interface components {
             } | null;
             /** Error */
             error?: string | null;
+            /**
+             * Note
+             * @description what the answer check left out or quoted (done); shown apart from the text
+             */
+            note?: string | null;
+            /**
+             * Note Label
+             * @description the label of the note in the answer's language (done), e.g. 'Checked by Ordnung:'
+             */
+            note_label?: string | null;
             /**
              * Citations
              * @description validated citations (done)
@@ -3101,6 +3089,47 @@ export interface components {
             type: "document" | "item" | "contract" | "party" | "case" | "draft";
             /** Id */
             id: string;
+        };
+        /**
+         * ThreadMessage
+         * @description A stored question or answer; an answer's check note is split off its text into ``note``.
+         */
+        ThreadMessage: {
+            /** Id */
+            id: string;
+            /** Thread Id */
+            thread_id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Content */
+            content: string;
+            /** Citations */
+            citations: components["schemas"]["SuggestionRef"][];
+            /** Tool Calls */
+            tool_calls: {
+                [key: string]: unknown;
+            }[];
+            /** Created At */
+            created_at: string;
+            /**
+             * Note
+             * @description what the answer check left out or quoted; shown apart from the text
+             */
+            note: string | null;
+            /**
+             * Note Label
+             * @description the note's label in the answer's language
+             */
+            note_label: string | null;
+            /**
+             * Checked
+             * @description the answer went through the claim-level check (answers stored before it did not)
+             * @default false
+             */
+            checked: boolean;
         };
         /** TimelineEntry */
         TimelineEntry: {
@@ -4774,7 +4803,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChatMessage"][];
+                    "application/json": components["schemas"]["ThreadMessage"][];
                 };
             };
             /** @description Validation Error */

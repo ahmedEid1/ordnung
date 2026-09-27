@@ -71,7 +71,7 @@ test.describe("pages", () => {
     const turn = page.getByRole("article", { name: `Question: ${question}` });
     await expect(page.getByRole("main").getByRole("status")).toHaveText("Answer ready.");
     // the permit's expiry (checked against the records; the recording depends on which letters are read)
-    await expect(turn).toContainText(/30 Nov 2026|30\.11\.2026/);
+    await expect(turn).toContainText(/30\sNov\s2026|30\.11\.2026/); // a date never breaks: no-break spaces
     await expect(turn.getByRole("button", { name: /^Looked at \d+ things?/ })).toBeVisible();
     const toLetter = turn.locator('a[href^="/documents/"]');
     await expect(toLetter.first()).toBeVisible();
@@ -240,6 +240,47 @@ test.describe("phone", () => {
     const path = page.getByRole("region", { name: "Where your data lives" }).locator("code");
     expect(await path.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
     await expectNoSideways(page);
+  });
+
+  test("Ask answers fit a phone: no citation chip starts a line, nothing scrolls sideways", async ({ page }) => {
+    // review round 2: a no-break space before a chip did not keep it on its line (an inline-grid
+    // chip is a line-break opportunity of its own); the word before it now wraps with it
+    for (const width of [320, 360, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await open(page, "/ask");
+      for (const question of [
+        "When does my phone contract end, and by when do I have to cancel it?",
+        "What do I have to pay in the next four weeks?",
+        "When does my residence permit expire, and what should I do before then?",
+      ]) {
+        await page.getByRole("textbox").first().fill(question);
+        await page.getByRole("textbox").first().press("Enter");
+        await expect(page.getByRole("main").getByRole("status")).toHaveText("Answer ready.");
+      }
+      await expectNoSideways(page);
+      const orphans = await page.evaluate(() => {
+        const found: string[] = [];
+        for (const chip of document.querySelectorAll("article p [aria-label^='Source'], article li [aria-label^='Source']")) {
+          const block = chip.closest("p, li")!;
+          const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+          let before: Text | null = null;
+          for (let n = walker.nextNode() as Text | null; n; n = walker.nextNode() as Text | null) {
+            if (chip.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING || chip.contains(n)) break;
+            if (n.textContent?.trim() && !n.parentElement?.closest("[aria-label^='Source']")) before = n;
+          }
+          if (!before) continue;
+          const text = before.textContent ?? "";
+          let i = text.length - 1;
+          while (i > 0 && /\s/.test(text[i]!)) i--;
+          const range = document.createRange();
+          range.setStart(before, i);
+          range.setEnd(before, i + 1);
+          if (range.getBoundingClientRect().bottom <= chip.getBoundingClientRect().top + 1) found.push(`${chip.textContent} after “${text.slice(-30)}”`);
+        }
+        return found;
+      });
+      expect(orphans, `citation chips alone at the start of a line at ${width} px`).toEqual([]);
+    }
   });
 
   test("the letter viewer stacks the page images below the verdict card", async ({ page }, testInfo) => {

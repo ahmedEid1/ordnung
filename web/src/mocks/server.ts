@@ -46,6 +46,9 @@ import { ADVICE_ARRIVED_BY_KIND, ADVICE_BY_DOC, ADVICE_BY_KIND } from "./data/ad
 import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
 import { SAM, sha } from "./data/constants";
+import { TRAY_DOCUMENTS } from "./data/documents";
+import { TRAY_ITEMS } from "./data/items";
+import { PARTIES } from "./data/parties";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
 import { isOpenItem } from "@/features/document/verdict";
 
@@ -490,6 +493,17 @@ function checksFor(db: MockDb, d: Draft): Draft["checks"] {
 
 const CITABLE = new Set<string>(["document", "item", "contract", "party"]);
 
+/** Titles of the New-mail letters' records before they are opened (recordings may cite them). */
+function trayLabel(r: SuggestionRef): string | null {
+  if (r.type === "document") {
+    const d = TRAY_DOCUMENTS[r.id];
+    return d ? (d.title ?? d.filename) : null;
+  }
+  if (r.type === "item") return Object.values(TRAY_ITEMS).flat().find((i) => i.id === r.id)?.title ?? null;
+  if (r.type === "party") return PARTIES.find((p) => p.id === r.id)?.name ?? null;
+  return null;
+}
+
 /** Citations as the API's `done` event carries them: with the cited record's label. */
 function citationRefs(db: MockDb, refs: SuggestionRef[]): CitationRef[] {
   const labelOf = (r: SuggestionRef): string | null => {
@@ -501,9 +515,16 @@ function citationRefs(db: MockDb, refs: SuggestionRef[]): CitationRef[] {
     if (r.type === "contract") return db.state.contracts.find((c) => c.id === r.id)?.name ?? null;
     return db.party(r.id)?.name ?? null;
   };
-  // recordings may cite letters of the New-mail tray that aren't opened yet: keep them (id as label)
-  return refs.filter((r) => CITABLE.has(r.type)).map((r) => ({ type: r.type as CitationRef["type"], id: r.id, label: labelOf(r) ?? r.id }));
+  // recordings may cite letters of the New-mail tray that aren't opened yet: label them from the tray;
+  // like the API, a citation of a record that exists nowhere is dropped
+  return refs.flatMap((r) => {
+    const label = CITABLE.has(r.type) ? (labelOf(r) ?? trayLabel(r)) : null;
+    return label ? [{ type: r.type as CitationRef["type"], id: r.id, label }] : [];
+  });
 }
+
+/** The check's label, as the API sends it with every checked answer (the recordings are English). */
+const CHECK_LABEL = "Checked by Ordnung:";
 
 function askStream(ctx: Ctx): Response {
   const { db } = ctx;
@@ -513,7 +534,10 @@ function askStream(ctx: Ctx): Response {
   const q = question.toLowerCase();
   const rec = RECORDED.find((r) => r.question.toLowerCase() === q) ?? RECORDED.find((r) => r.match.some((group) => group.every((w) => q.includes(w))));
   const now = nowTs();
-  db.state.chat.push({ id: newId("msg"), thread_id: threadId, role: "user", content: question, citations: [], tool_calls: [], created_at: now });
+  // like the API, only an answer is stored with its question: the demo's "no recording" reply is not
+  // (it never went through the check, so it carries no message id and no "checked" line)
+  if (rec)
+    db.state.chat.push({ id: newId("msg"), thread_id: threadId, role: "user", content: question, citations: [], tool_calls: [], created_at: now, note: null, note_label: null, checked: false });
   const enc = new TextEncoder();
   const signal = ctx.signal;
   const speed = ctx.opts.latency ?? 1;
@@ -528,19 +552,27 @@ function askStream(ctx: Ctx): Response {
       try {
         controller.enqueue(enc.encode(": connected\n\n"));
         await sleep(250 * speed, signal);
-        // the online demo's Ask page explains a question without a recording in a note of its own
+        // like the real API: the tool trace, one `text` event without text while the answer is
+        // written (its words — `raw` — are never sent before the check), then `done` with the checked
+        // answer, which may leave a value or a sentence out, and Ordnung's note in its own field.
+        // The online demo's Ask page explains a question without a recording in a note of its own.
         const text = rec?.text ?? (ctx.opts.staticDemo ? "" : FALLBACK_ANSWER);
+        const written = rec?.raw ?? text;
         for (const t of rec?.tools ?? []) {
           send({ type: "tool_use", name: t.name, input: t.input });
           await sleep(550 * speed, signal);
           send({ type: "tool_result", name: t.name, text: t.result });
           await sleep(200 * speed, signal);
         }
-        const chunks = text.match(/\S+\s*/g) ?? [];
-        for (let i = 0; i < chunks.length; i += 3) {
-          if (signal?.aborted) break;
-          send({ type: "text", text: chunks.slice(i, i + 3).join("") });
-          await sleep(38 * speed, signal);
+        if (!rec && !text) {
+          send({ type: "done", text, note: null, thread_id: threadId, citations: [] });
+          return;
+        }
+        send({ type: "text" });
+        await sleep(Math.min(2500, 4 * written.length) * speed, signal);
+        if (!rec) {
+          send({ type: "done", text, note: null, thread_id: threadId, citations: [] });
+          return;
         }
         const messageId = newId("msg");
         db.state.chat.push({
@@ -548,11 +580,14 @@ function askStream(ctx: Ctx): Response {
           thread_id: threadId,
           role: "assistant",
           content: text,
-          citations: rec?.citations ?? [],
-          tool_calls: (rec?.tools ?? []).map((t) => ({ name: t.name, input: t.input, result: t.result })),
+          citations: rec.citations ?? [],
+          tool_calls: rec.tools.map((t) => ({ name: t.name, input: t.input, result: t.result })),
           created_at: nowTs(),
+          note: rec.note ?? null,
+          note_label: CHECK_LABEL,
+          checked: true,
         } satisfies ChatMessage);
-        send({ type: "done", text, message_id: messageId, thread_id: threadId, citations: citationRefs(db, rec?.citations ?? []) });
+        send({ type: "done", text, note: rec.note ?? null, note_label: CHECK_LABEL, message_id: messageId, thread_id: threadId, citations: citationRefs(db, rec.citations ?? []) });
       } catch (err) {
         send({ type: "error", error: err instanceof Error ? err.message : "The answer was interrupted." });
       } finally {

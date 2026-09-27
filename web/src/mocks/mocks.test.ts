@@ -225,6 +225,21 @@ describe("mock dataset", () => {
     expect([...times].sort().reverse()).toEqual(times);
   });
 
+  it("keeps no unrecorded question, and its reply carries no message id (like the API's demo miss)", async () => {
+    const s = srv();
+    const res = await s.handle("POST", "/ask", new URLSearchParams(), { question: "What is the meaning of life?" });
+    const done = (await res.text())
+      .split("\n\n")
+      .filter((block) => block.startsWith("data: "))
+      .map((block) => JSON.parse(block.slice(6)) as { type: string; message_id?: string; thread_id?: string; text?: string })
+      .find((e) => e.type === "done")!;
+    // the UI marks an answer "Dates and amounts checked against your records" only when it was stored — this one never was checked
+    expect(done.message_id).toBeUndefined();
+    expect(done.text).toMatch(/recorded answers/);
+    const history = await s.handle("GET", `/chat/${done.thread_id}`, new URLSearchParams(), undefined);
+    expect(await history.json()).toEqual([]);
+  });
+
   it("streams recorded Ask answers as SSE", async () => {
     const s = srv();
     const res = await s.handle("POST", "/ask", new URLSearchParams(), { question: "Can I still cancel my phone contract?" });
@@ -313,6 +328,46 @@ describe("mock dataset", () => {
     expect(online).toContain('data: {"type":"done","text":""');
     // mock mode (?mock=1) has no such note: it says it in the answer
     expect(await ask(false)).toContain("install Ordnung to ask anything about your own letters");
+  });
+
+  it("sends no word before the check, then the checked answer with Ordnung's note (like the API)", async () => {
+    const s = srv();
+    const res = await s.handle("POST", "/ask", new URLSearchParams(), { question: "What did the Finanzamt send me?" });
+    const events = (await res.text())
+      .split("\n\n")
+      .filter((block) => block.startsWith("data: "))
+      .map(
+        (block) =>
+          JSON.parse(block.slice(6)) as { type: string; text?: string; note?: string | null; citations?: { id: string; label: string | null }[] },
+      );
+    const streamed = events.filter((e) => e.type === "text").map((e) => e.text ?? "").join("");
+    const done = events.find((e) => e.type === "done")!;
+    // like the real API, no word of the answer is sent before the check (review round 4): one "writing"
+    // event, then the checked answer — the model's own date arithmetic never shows, not even briefly
+    expect(events.filter((e) => e.type === "text")).toHaveLength(1);
+    expect(streamed).toBe("");
+    expect(done.text).not.toContain("17 Oct");
+    expect(done.text).toContain("post it by **Thu 15 Oct** to be safe.");
+    expect(done.text).toContain("**“€324.00”**");
+    // the note travels in its own field, like the API's
+    expect(done.text).not.toContain("Checked by Ordnung");
+    expect(done.note).toMatch(/^Left out 1 sentence: its date, time or amount isn't among the dates and amounts Ordnung saved/);
+    const threadId = (done as { thread_id?: string }).thread_id;
+    const history = await s.handle("GET", `/chat/${threadId}`, new URLSearchParams(), undefined);
+    const thread = (await history.json()) as { role: string; note: string | null; note_label: string | null; checked: boolean }[];
+    expect(thread.map((m) => m.note)).toEqual([null, done.note]);
+    // like the API: the label comes with the answer, and a stored answer says it was checked
+    expect((done as { note_label?: string }).note_label).toBe("Checked by Ordnung:");
+    expect(thread.map((m) => [m.checked, m.note_label])).toEqual([
+      [false, null],
+      [true, "Checked by Ordnung:"],
+    ]);
+    // the tax letter waits unopened in New mail: its records are labelled from the tray, never by id
+    expect(done.citations!.map((c) => c.label)).toEqual([
+      "Finanzamt Musterstadt",
+      "Income tax assessment 2025",
+      expect.stringMatching(/Einspruch/),
+    ]);
   });
 
   it("refuses Claude-only actions in the static demo with a friendly message", async () => {

@@ -80,7 +80,9 @@ export default function AskPage() {
   const asked = thread.all.map((t) => t.question);
   const announce = last
     ? last.answer.status === "streaming"
-      ? "Looking through your records…"
+      ? last.answer.writing
+        ? "Writing the answer — it appears once Ordnung has checked it."
+        : "Looking through your records…"
       : last.answer.status === "done"
         ? "Answer ready."
         : last.answer.status === "error"
@@ -119,8 +121,9 @@ export default function AskPage() {
         <div className="flex-1">
           <div className="mb-6 flex items-center gap-3">
             <h1 className="display min-w-0 flex-1 truncate text-[22px] font-semibold text-ink">Ask about your letters</h1>
-            <Button size="sm" variant="ghost" icon={SquarePen} onClick={thread.newChat} disabled={thread.loadingHistory}>
-              New chat
+            {/* on the narrowest phones the title needs the room: the button keeps its icon and name */}
+            <Button size="sm" variant="ghost" icon={SquarePen} onClick={thread.newChat} disabled={thread.loadingHistory} title="New chat">
+              <span className="max-[359px]:sr-only">New chat</span>
             </Button>
           </div>
 
@@ -160,7 +163,10 @@ export default function AskPage() {
         </div>
       )}
 
-      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-6 bg-linear-to-t from-canvas from-70% to-transparent px-4 pb-3 pt-6 sm:-mx-6 sm:px-6 md:bottom-0 md:pb-5 lg:-mx-10 lg:px-10">
+      {/* on phones the demo tour's bar sits above the tab bar: the composer stays above both */}
+      {/* opaque down to the screen's edge (under the see-through tab bar too), so the answer never
+          shows around the tour's bar or through the tab bar */}
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-6 bg-linear-to-t from-canvas from-80% to-transparent px-4 pb-[calc(0.75rem+var(--ordnung-toast-lift,0px))] pt-6 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[calc(4rem+env(safe-area-inset-bottom))] after:bg-canvas sm:-mx-6 sm:px-6 md:bottom-0 md:pb-[calc(1.25rem+var(--ordnung-toast-lift,0px))] md:after:hidden lg:-mx-10 lg:px-10">
         <AskComposer value={draft} onChange={setDraft} onSubmit={send} onStop={thread.stop} streaming={thread.streaming} textareaRef={inputRef} />
         <p id="ask-hint" className="mt-2 text-center text-[12px] leading-5 text-muted">
           {replayDemo ? "Demo: suggested questions replay recorded answers. " : null}

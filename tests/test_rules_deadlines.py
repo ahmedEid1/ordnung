@@ -1126,11 +1126,15 @@ def test_the_private_sender_rule_and_the_court_rules_meet() -> None:
     court = compute_due(spec, replace(company, court=True))
     assert "private_sender_arrival" not in court.rule_ids and "zpo_180" in court.rule_ids
     kschg = notice_spec(amount=3, unit="weeks", legal_basis="§ 4 KSchG")
-    employer = ctx(today="2026-09-26", document_date="2026-09-01", private_sender=True, sender_kind="employer")
+    employer = ctx(
+        today="2026-09-26", document_date="2026-09-01", private_sender=True, sender_kind="employer"
+    )
     counted = from_arrival(kschg, employer)
     assert counted is not kschg and counted.anchor == "receipt"
     dismissal = compute_due(kschg, employer)
-    assert dismissal.due_date == "2026-09-22" and {"kschg_4", "private_sender_arrival"} <= set(dismissal.rule_ids)
+    assert dismissal.due_date == "2026-09-22" and {"kschg_4", "private_sender_arrival"} <= set(
+        dismissal.rule_ids
+    )
 
 
 @pytest.mark.parametrize(
