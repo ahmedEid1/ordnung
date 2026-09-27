@@ -404,14 +404,17 @@ describe("composer — template letters", () => {
   });
 
   it("asks who a letter is for when its sender isn't in Ordnung, and starts a withdrawal with nothing guessed", async () => {
-    const { calls } = useMockApi({ full: true });
+    const { srv, calls } = useMockApi({ full: true });
+    // an invoice whose sender Ordnung doesn't know
+    await srv.handle("PATCH", "/documents/doc_tm_invoice", new URLSearchParams(), { party_id: null }, null);
     const user = userEvent.setup();
     const { router } = renderWithProviders(<LettersPage />, { route: "/letters?new=1" });
     const dialog = await screen.findByRole("dialog", { name: "New letter" });
     await user.click(within(dialog).getByRole("radio", { name: /Withdraw from a purchase/ }));
-    // a letter flagged as a possible scam is never answered with a template
+    // a letter flagged as a possible scam is never answered with a template; an ID is never answered at all
     expect(within(dialog).queryByRole("radio", { name: /Last reminder/ })).toBeNull();
-    await user.click(within(dialog).getByRole("radio", { name: /Passport \(photo\)/ }));
+    expect(within(dialog).queryByRole("radio", { name: /Passport/ })).toBeNull();
+    await user.click(within(dialog).getByRole("radio", { name: /TechMarkt invoice/ }));
     // the letter's title is Ordnung's summary, not what was ordered
     expect(within(dialog).getByLabelText(/What did you order or sign up for/)).toHaveValue("");
     await user.type(within(dialog).getByLabelText(/What did you order or sign up for/), "Fotoservice");

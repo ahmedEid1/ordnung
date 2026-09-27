@@ -29,41 +29,61 @@ export function DraftKindIcon({ kind, size = "md", className }: { kind: Draft["k
   );
 }
 
-/** One letter in the list: kind, recipient, German subject, status and the important date. */
+/**
+ * One letter in the list: kind, recipient, German subject, status and the important date. The list is a
+ * container: a roomy one (from 36rem) puts the status and date in a column on the right, a narrow one
+ * (a phone, or beside the "How letters work" card) under the subject — the same facts either way, and the
+ * title is never squeezed out by them (UI audit round 1).
+ */
 export function DraftRow({ draft, party }: { draft: Draft; party?: Party | null }) {
   const sendBy = draft.status !== "sent" ? draft.send_guidance?.send_by : null;
+  const title = draftTitle(draft, party?.name);
+  const subject = draft.subject || "No subject yet";
   return (
     <li>
       <Link
         to={`/letters/${draft.id}`}
-        className="group flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-surface-2/60 focus-visible:bg-surface-2/60 sm:px-5"
+        data-draft-row
+        className={cn(
+          "group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 gap-y-1.5 px-4 py-3.5 transition-colors hover:bg-surface-2/60 sm:px-5",
+          "@xl/drafts:grid-cols-[auto_minmax(0,1fr)_auto_auto]",
+          // drawn inside the row (the card clips what sticks out), rounded like the card's corners
+          "focus-visible:-outline-offset-2 focus-visible:rounded-[calc(var(--radius-card)-1px)] focus-visible:bg-surface-2/60",
+        )}
       >
-        <DraftKindIcon kind={draft.kind} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14.5px] font-medium text-ink">{draftTitle(draft, party?.name)}</span>
-          <span lang={draft.language} className="mt-0.5 block truncate text-[13px] text-muted">
-            {draft.subject || "No subject yet"}
+        <DraftKindIcon kind={draft.kind} className="row-span-2 @xl/drafts:row-span-1" />
+        <span className="min-w-0">
+          <span title={title} className="line-clamp-2 break-words text-[14.5px] font-medium leading-snug text-ink">
+            {title}
           </span>
-          <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted sm:hidden">
-            <StatusPill of="draft" status={draft.status} />
-            {sendBy ? <Countdown date={sendBy} prefix="send by" /> : null}
+          <span lang={draft.language} title={subject} className="mt-0.5 block truncate text-[13px] text-muted">
+            {subject}
           </span>
         </span>
-        <span className="hidden shrink-0 flex-col items-end gap-1.5 sm:flex">
+        <span
+          data-draft-meta
+          className={cn(
+            "col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] leading-5 text-muted",
+            "@xl/drafts:col-start-3 @xl/drafts:row-start-1 @xl/drafts:max-w-52 @xl/drafts:flex-col @xl/drafts:items-end @xl/drafts:gap-1.5 @xl/drafts:text-right",
+          )}
+        >
           <StatusPill of="draft" status={draft.status} />
           {draft.status === "sent" && draft.sent_at ? (
-            <span className="text-[12.5px] text-muted">
+            <span>
               <DateText date={draft.sent_at.slice(0, 10)} style="day" /> {sentVia(draft.sent_channel)}
             </span>
           ) : sendBy ? (
-            <Countdown date={sendBy} prefix="send by" className="text-[12.5px]" />
+            <Countdown date={sendBy} prefix="send by" />
           ) : (
-            <span className="text-[12.5px] text-muted">
+            <span>
               Started <DateText date={draft.created_at.slice(0, 10)} style="day" />
             </span>
           )}
         </span>
-        <ChevronRight className="size-4 shrink-0 text-faint transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
+        <ChevronRight
+          className="col-start-3 row-span-2 row-start-1 size-4 text-faint transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none @xl/drafts:col-start-4 @xl/drafts:row-span-1"
+          aria-hidden
+        />
       </Link>
     </li>
   );
@@ -72,11 +92,12 @@ export function DraftRow({ draft, party }: { draft: Draft; party?: Party | null 
 export function DraftGroup({ title, drafts, parties, id }: { title: string; drafts: Draft[]; parties: Map<string, Party>; id: string }) {
   if (!drafts.length) return null;
   return (
-    <section aria-labelledby={id} className="mb-8">
-      <h2 id={id} className="mb-2.5 px-1 text-[12.5px] font-semibold uppercase tracking-[0.07em] text-muted">
+    // no margin after the last group: the page's grid gap follows it
+    <section aria-labelledby={id} className="mb-8 last:mb-0">
+      <h2 id={id} className="mb-2.5 px-1 text-[12.5px] font-semibold uppercase leading-5 tracking-[0.07em] text-muted">
         {title} <span className="font-medium text-muted">· {drafts.length}</span>
       </h2>
-      <ul className="card divide-y divide-line overflow-hidden">
+      <ul className="card @container/drafts divide-y divide-line overflow-hidden">
         {drafts.map((d) => (
           <DraftRow key={d.id} draft={d} party={d.party_id ? parties.get(d.party_id) : null} />
         ))}

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
-import { Building2, Check, FileX, Languages, Mail, Scale, Search, Sparkles, type LucideIcon } from "lucide-react";
+import { Building2, Check, FileX, Languages, Mail, Plus, Scale, Search, Sparkles, type LucideIcon } from "lucide-react";
 import { useContracts, useCreateDraft, useDocument, useDocuments, useParties, useProfile, useSuggestions } from "@/api/hooks";
 import type { Contract, Document, DraftKind, Party } from "@/api/types";
+import { useOptionalAddLetters } from "@/components/shell/AddLetters";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { Countdown } from "@/components/ui/Countdown";
@@ -19,14 +20,16 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CONTRACT_CATEGORY_COPY, copyFor, documentKindLabel, partyKindLabel } from "@/lib/copy";
 import { useTodayISO } from "@/lib/today";
 import { keepCitations } from "@/lib/glue";
-import { cn } from "@/lib/utils";
+import { cn, prefersReducedMotion } from "@/lib/utils";
 import { offersEndingLetter } from "@/features/contracts/links";
 import {
   canSuspend,
   cancellableContracts,
+  letterDate,
   mayBeCourt,
   needsTypedCourt,
   objectionCheck,
+  objectionDeadline,
   objectionDocuments,
   usableDocuments,
   type ComposerPrefill,
@@ -91,6 +94,28 @@ function wishesPlaceholder(kind: DraftKind, letterKind?: Document["kind"] | null
   return PLACEHOLDER[kind];
 }
 
+/** A choice's radio circle — every way to choose in the composer shows one (a tick once chosen). */
+function RadioDot({ selected, className }: { selected: boolean; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "grid size-5 shrink-0 place-items-center rounded-full border transition-colors",
+        selected ? "border-accent bg-accent text-on-accent" : "border-line-strong bg-surface",
+        className,
+      )}
+      aria-hidden
+      data-radio-dot
+    >
+      {selected ? <Check className="size-3" strokeWidth={3} /> : null}
+    </span>
+  );
+}
+
+/** The focus ring of a card that holds a visually hidden radio: only the radio's own keyboard focus rings it. */
+const CARD_FOCUS = "has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-accent";
+const CARD_STATE = (selected: boolean) =>
+  selected ? "border-accent/60 bg-accent-soft/50 shadow-[0_0_0_1px_var(--color-accent)]" : "border-line bg-surface hover:border-line-strong";
+
 function OptionRow({
   selected,
   disabled,
@@ -110,22 +135,14 @@ function OptionRow({
     <label
       className={cn(
         "group relative flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition-[border-color,background-color,box-shadow]",
-        "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent",
-        selected ? "border-accent/60 bg-accent-soft/50 shadow-[0_0_0_1px_var(--color-accent)]" : "border-line bg-surface hover:border-line-strong",
+        CARD_FOCUS,
+        CARD_STATE(selected),
         disabled && "cursor-not-allowed opacity-55 hover:border-line",
       )}
     >
       <input type="radio" name={name} value={value} checked={selected} disabled={disabled} onChange={onSelect} className="sr-only" />
       {children}
-      <span
-        className={cn(
-          "grid size-5 shrink-0 place-items-center rounded-full border transition-colors",
-          selected ? "border-accent bg-accent text-on-accent" : "border-line-strong bg-surface",
-        )}
-        aria-hidden
-      >
-        {selected ? <Check className="size-3" strokeWidth={3} /> : null}
-      </span>
+      <RadioDot selected={selected} />
     </label>
   );
 }
@@ -133,7 +150,11 @@ function OptionRow({
 function StepLabel({ n, children, id }: { n: number; children: ReactNode; id?: string }) {
   return (
     <h3 id={id} className="mb-2.5 flex items-center gap-2 text-[13px] font-semibold text-ink">
-      <span className="grid size-5 place-items-center rounded-full bg-surface-3 text-[11px] font-bold text-muted">{n}</span>
+      {/* read as "Step 1: What do you want to do?", never "1What do you…" */}
+      <span aria-hidden className="grid size-5 shrink-0 place-items-center rounded-full bg-surface-3 text-[11px] font-bold text-muted">
+        {n}
+      </span>
+      <span className="sr-only">Step {n}: </span>
       {children}
     </h3>
   );
@@ -149,45 +170,212 @@ function ListSkeleton() {
   );
 }
 
+/**
+ * A choice's words: its name on up to two lines (the whole of it on hover and for screen readers — two
+ * statements for two years differ only at the end), then the facts that tell it apart, one separator
+ * style, wrapping rather than cut off.
+ */
+function OptionText({ title, meta, below }: { title: string; meta: ReactNode[]; below?: ReactNode }) {
+  const parts = meta.filter((p) => p !== null && p !== undefined && p !== false && p !== "");
+  return (
+    <span className="min-w-0 flex-1">
+      {/* a phone's narrow row gets a third line ("Gesetzliche Kranken- und Pflegeversicherung bei Muster BKK") */}
+      <span title={title} className="line-clamp-3 break-words text-[14px] font-medium leading-snug text-ink sm:line-clamp-2">
+        {title}
+      </span>
+      {parts.length ? (
+        <span className="mt-0.5 block text-[12.5px] leading-snug text-muted [overflow-wrap:anywhere]">
+          {parts.map((p, i) => (
+            <Fragment key={i}>
+              {i ? (
+                <>
+                  {" "}
+                  <span aria-hidden>·</span>{" "}
+                </>
+              ) : null}
+              {p}
+            </Fragment>
+          ))}
+        </span>
+      ) : null}
+      {below}
+    </span>
+  );
+}
+
 function ContractOption({ c, party }: { c: Contract; party?: Party }) {
   const sendBy = c.computed?.send_by;
   return (
     <>
       <KindIcon category={c.category} size="md" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[14px] font-medium text-ink">{c.name}</span>
-        <span className="block truncate text-[12.5px] text-muted">
-          {[party?.name, copyFor(CONTRACT_CATEGORY_COPY, c.category).label].filter(Boolean).join(" · ")}
-        </span>
-      </span>
+      <OptionText
+        title={c.name}
+        meta={[party?.name, copyFor(CONTRACT_CATEGORY_COPY, c.category).label]}
+        // phones: the send-by date as a line of its own (a pill beside the name from 640 px)
+        below={sendBy ? <Countdown date={sendBy} prefix="send by" className="mt-0.5 block text-[12.5px] leading-snug sm:hidden" /> : null}
+      />
       {sendBy ? <Countdown date={sendBy} prefix="send by" variant="pill" className="hidden sm:inline-flex" /> : null}
     </>
   );
 }
 
-function DocOption({ d, party, extra }: { d: Document; party?: Party; extra?: ReactNode }) {
+function DocOption({ d, party, pill }: { d: Document; party?: Party; pill?: ReactNode }) {
+  const date = letterDate(d);
   return (
     <>
       <KindIcon docKind={d.kind} size="md" />
-      <span className="min-w-0 flex-1">
-        {/* the whole title on hover and for screen readers: two statements for two years differ only at the end */}
-        <span className="block truncate text-[14px] font-medium text-ink" title={d.title ?? d.filename}>
-          {d.title ?? d.filename}
-        </span>
-        <span className="flex min-w-0 items-center gap-1.5 truncate text-[12.5px] text-muted">
-          <span className="truncate">{party?.name ?? documentKindLabel(d.kind)}</span>
-          {d.doc_date ? (
-            <>
-              <span aria-hidden>·</span>
-              <DateText date={d.doc_date} style="day" />
-            </>
-          ) : null}
-        </span>
-      </span>
-      {extra}
+      <OptionText
+        title={d.title ?? d.filename}
+        meta={[party?.name ?? documentKindLabel(d.kind), date ? <DateText key="date" date={date} style="day" /> : null]}
+        below={pill ? <span className="mt-1 flex sm:hidden">{pill}</span> : null}
+      />
+      {pill ? <span className="hidden shrink-0 sm:inline-flex">{pill}</span> : null}
     </>
   );
 }
+
+/** "Widerspruch possible": said on phones too (under the letter's name), not only beside it from 640 px. */
+function PossiblePill({ term }: { term: string }) {
+  return <span className="whitespace-nowrap rounded-full bg-k-expiry-soft px-2 py-0.5 text-[12px] font-medium text-k-expiry-ink">{term} possible</span>;
+}
+
+/** The box `el` scrolls in (the dialog's body), if any. */
+function scrollParent(el: HTMLElement): HTMLElement | null {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const y = getComputedStyle(p).overflowY;
+    if ((y === "auto" || y === "scroll") && p.scrollHeight > p.clientHeight) return p;
+  }
+  return null;
+}
+
+/** Rows a list shows before "Show all": the chosen one is always among them. */
+const LIST_PREVIEW = 5;
+/** Rows a list shows at most — searching finds the others. */
+const LIST_CAP = 30;
+
+/**
+ * The choices of step 2, in the dialog's own scroll (no second scrolling box inside it, where a chosen
+ * contract sat out of view): the one the composer was opened with first — right under the step's heading,
+ * where the composer scrolls to — then the first few, the chosen one always among them, and "Show all"
+ * for the rest (UI audit round 1).
+ */
+function ChoiceList<T extends { id: string }>({
+  items,
+  selectedId,
+  labelledBy,
+  noun,
+  render,
+  emptyText,
+}: {
+  items: readonly T[];
+  selectedId: string | null;
+  labelledBy: string;
+  /** "contracts", "letters", "decisions" — for "Show all 9 contracts". */
+  noun: string;
+  render: (item: T) => ReactNode;
+  emptyText?: string | null;
+}) {
+  const listId = useId();
+  const [expanded, setExpanded] = useState(false);
+  // what was chosen when the list appeared came with the link that opened the composer; it stays first
+  // (a later choice never moves under the pointer)
+  const [pinned] = useState(selectedId);
+  const ordered = useMemo(() => {
+    const first = pinned ? items.find((i) => i.id === pinned) : undefined;
+    return first ? [first, ...items.filter((i) => i !== first)] : items;
+  }, [items, pinned]);
+  const capped = ordered.slice(0, LIST_CAP);
+  const foldable = capped.length > LIST_PREVIEW + 1;
+  let shown: readonly T[] = foldable && !expanded ? capped.slice(0, LIST_PREVIEW) : capped;
+  const chosen = selectedId ? items.find((i) => i.id === selectedId) : undefined;
+  if (chosen && !shown.includes(chosen)) shown = [chosen, ...(foldable && !expanded ? shown.slice(0, LIST_PREVIEW - 1) : shown)];
+  const more = items.length - capped.length;
+  return (
+    <div>
+      <div role="radiogroup" id={listId} aria-labelledby={labelledBy} className="space-y-2" data-choice-list>
+        {shown.map(render)}
+        {!items.length && emptyText ? <p className="px-1 py-2 text-base text-muted">{emptyText}</p> : null}
+      </div>
+      {foldable || more > 0 ? (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 px-1">
+          {foldable ? (
+            <Button variant="link" size="sm" aria-expanded={expanded} aria-controls={listId} onClick={() => setExpanded((v) => !v)}>
+              {expanded ? "Show fewer" : more > 0 ? `Show ${capped.length} of ${items.length} ${noun}` : `Show all ${capped.length} ${noun}`}
+            </Button>
+          ) : null}
+          {more > 0 && (expanded || !foldable) ? (
+            <p className="text-[12.5px] leading-5 text-muted">
+              Showing {capped.length} of {items.length} — search to find another.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** The letter chosen for an objection that can't be objected to — shown as chosen, not as a choice. */
+function ChosenLetter({ d, party }: { d: Document; party?: Party }) {
+  return (
+    <div className="mb-2 flex items-center gap-3 rounded-xl border border-warn/40 bg-surface px-3 py-2.5" data-chosen-letter>
+      <span className="sr-only">The letter you chose: </span>
+      <DocOption d={d} party={party} />
+    </div>
+  );
+}
+
+/** Step 2 with nothing to choose (an empty install): why, and the way on — never a dead end. */
+function NothingYet({ title, children, onAdd }: { title: string; children: ReactNode; onAdd: (() => void) | null }) {
+  return (
+    <Callout
+      tone="info"
+      title={title}
+      action={
+        onAdd ? (
+          <Button size="sm" icon={Plus} onClick={onAdd}>
+            Add letters
+          </Button>
+        ) : (
+          <Link to="/inbox" className={buttonVariants({ size: "sm" })}>
+            Go to the inbox
+          </Link>
+        )
+      }
+    >
+      {children}
+    </Callout>
+  );
+}
+
+type NothingKind = "cancellation" | "objection" | "general_reply" | "template";
+
+/** What an empty install says in step 2, in the kind cards and next to the disabled button. */
+const NOTHING: Record<NothingKind, { title: string; body: string; card: string; reason: string }> = {
+  cancellation: {
+    title: "No contracts to cancel yet",
+    body: "Ordnung finds your contracts in the letters you add — a contract confirmation or a welcome letter, say. Add one, and it's listed here.",
+    card: "No contracts yet — add a contract letter first.",
+    reason: "Add a contract letter first — there's no contract to cancel yet.",
+  },
+  objection: {
+    title: "No decision to object to yet",
+    body: "An objection answers a decision whose letter explains how to object — a tax assessment, say. Add that letter, and it's listed here.",
+    card: "None of your letters is a decision you can object to.",
+    reason: "Add the decision first — none of your letters can be objected to.",
+  },
+  general_reply: {
+    title: "No letters to answer yet",
+    body: "Add the letter you want to answer. Any letter from a person or office also lets you write to them.",
+    card: "No letters yet — add a letter first.",
+    reason: "Add a letter first — there's nothing to answer yet.",
+  },
+  template: {
+    title: "No one to write to yet",
+    body: "Add a letter from them first — Ordnung takes their name and address from it.",
+    card: "",
+    reason: "Add a letter from them first — there's no one to write to yet.",
+  },
+};
 
 
 /** Why an objection is possible when the law, not the letter's instructions, gives it. */
@@ -217,33 +405,38 @@ function StatutoryNote({ kind, term }: { kind: Document["kind"]; term: "Einspruc
   );
 }
 
-/** Step 1: the three everyday letters as cards, then the template letters as compact tiles. */
-function KindChooser({ kind, onPick, noObjectable }: { kind: DraftKind | null; onPick: (k: DraftKind) => void; noObjectable: boolean }) {
+/**
+ * Step 1: the three everyday letters as cards, then the template letters as compact tiles. A card with
+ * nothing to act on (no contracts, no decision to object to, no letters) is disabled with the reason
+ * instead of its description — unless it is the chosen one (opened by a link), where step 2 says why.
+ */
+function KindChooser({ kind, onPick, unavailable }: { kind: DraftKind | null; onPick: (k: DraftKind) => void; unavailable: Partial<Record<DraftKind, string>> }) {
   return (
     <fieldset className="min-w-0">
       <legend className="sr-only">What do you want to do?</legend>
       <div className="grid gap-2 sm:grid-cols-3">
         {KIND_OPTIONS.map((o) => {
-          const disabled = o.kind === "objection" && noObjectable;
           const selected = kind === o.kind;
+          const reason = selected ? undefined : unavailable[o.kind];
+          const disabled = Boolean(reason);
           return (
             <label
               key={o.kind}
               className={cn(
-                "relative grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-0.5 rounded-xl border p-3 transition-[border-color,background-color,box-shadow] sm:flex sm:flex-col sm:items-start sm:gap-2 sm:p-3.5",
-                "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent",
-                selected ? "border-accent/60 bg-accent-soft/50 shadow-[0_0_0_1px_var(--color-accent)]" : "border-line bg-surface hover:border-line-strong",
-                disabled && "cursor-not-allowed opacity-55 hover:border-line",
+                "relative grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 rounded-xl border p-3 transition-[border-color,background-color,box-shadow] sm:flex sm:flex-col sm:items-start sm:gap-2 sm:p-3.5",
+                CARD_FOCUS,
+                CARD_STATE(selected),
+                disabled && "cursor-not-allowed bg-surface-2/40 hover:border-line",
               )}
             >
               <input type="radio" name="letter-kind" value={o.kind} checked={selected} disabled={disabled} onChange={() => onPick(o.kind)} className="sr-only" />
-              <span className={cn("row-span-2 grid size-8 place-items-center rounded-lg", selected ? "bg-accent text-on-accent" : "bg-surface-2 text-muted")}>
+              {/* a disabled card fades its icon, name and circle — never the reason, which must stay readable */}
+              <span className={cn("row-span-2 grid size-8 place-items-center rounded-lg", selected ? "bg-accent text-on-accent" : "bg-surface-2 text-muted", disabled && "opacity-55")}>
                 <o.icon className="size-4" aria-hidden />
               </span>
-              <span className="text-[14px] font-semibold text-ink">{o.title}</span>
-              <span className="col-start-2 text-[12.5px] leading-snug text-muted">
-                {disabled ? "None of your letters is a decision you can object to." : o.description}
-              </span>
+              <span className={cn("text-[14px] font-semibold", disabled ? "text-muted" : "text-ink")}>{o.title}</span>
+              <span className="col-start-2 text-[12.5px] leading-snug text-muted">{reason ?? o.description}</span>
+              <RadioDot selected={selected} className={cn("col-start-3 row-span-2 row-start-1 sm:absolute sm:right-3 sm:top-3", disabled && "opacity-40")} />
             </label>
           );
         })}
@@ -259,18 +452,19 @@ function KindChooser({ kind, onPick, noObjectable }: { kind: DraftKind | null; o
               key={t.kind}
               className={cn(
                 "relative flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 transition-[border-color,background-color,box-shadow]",
-                "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent",
-                selected ? "border-accent/60 bg-accent-soft/50 shadow-[0_0_0_1px_var(--color-accent)]" : "border-line bg-surface hover:border-line-strong",
+                CARD_FOCUS,
+                CARD_STATE(selected),
               )}
             >
               <input type="radio" name="letter-kind" value={t.kind} checked={selected} onChange={() => onPick(t.kind)} className="sr-only" />
               <span className={cn("mt-px grid size-7 shrink-0 place-items-center rounded-lg", selected ? "bg-accent text-on-accent" : "bg-surface-2 text-muted")}>
                 <t.icon className="size-3.5" aria-hidden />
               </span>
-              <span className="min-w-0">
+              <span className="min-w-0 flex-1">
                 <span className="block text-[13.5px] font-semibold leading-5 text-ink">{t.title}</span>
                 <span className="block text-[12px] leading-snug text-muted">{t.blurb}</span>
               </span>
+              <RadioDot selected={selected} className="mt-1" />
             </label>
           );
         })}
@@ -338,21 +532,23 @@ function TemplateRecipient({
   claimant?: boolean;
 }) {
   const [filter, setFilter] = useState("");
-  // the letter the composer was opened for comes first, so it is in view and never cut off the list
-  const [pinned] = useState(docId);
   const byId = useMemo(() => new Map(parties.map((p) => [p.id, p])), [parties]);
+  // the letters whose kind fits the template come first (a withdrawal's orders and contracts, a statement's
+  // statements), the rest after them: any letter can still be chosen (review round 3 of phase 2); the letter
+  // the composer was opened for is always shown (ChoiceList)
+  const incoming = useMemo(
+    () =>
+      fittingFirst(
+        docs.filter((d) => d.direction !== "outgoing"),
+        config.letterKinds,
+      ),
+    [docs, config.letterKinds],
+  );
   const shown = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    // the letters whose kind fits the template come first (a withdrawal's orders and contracts, a statement's
-    // statements), the rest after them: any letter can still be chosen (review round 3 of phase 2)
-    const base = fittingFirst(
-      docs.filter((d) => d.direction !== "outgoing"),
-      config.letterKinds,
-    );
-    if (q) return base.filter((d) => [d.title, d.filename, byId.get(d.party_id ?? "")?.name].some((s) => s?.toLowerCase().includes(q)));
-    const first = pinned ? base.find((d) => d.id === pinned) : undefined;
-    return first ? [first, ...base.filter((d) => d.id !== pinned).slice(0, 29)] : base.slice(0, 30);
-  }, [docs, filter, byId, pinned, config.letterKinds]);
+    if (!q) return incoming;
+    return incoming.filter((d) => [d.title, d.filename, byId.get(d.party_id ?? "")?.name].some((s) => s?.toLowerCase().includes(q)));
+  }, [incoming, filter, byId]);
   const noticeRef = useRef<HTMLDivElement>(null);
   const hasNotice = Boolean(notice);
   useEffect(() => {
@@ -365,20 +561,29 @@ function TemplateRecipient({
   const chosen = letters && docId ? (docs.find((d) => d.id === docId) ?? null) : null;
   const unknownSender = Boolean(chosen && !chosen.party_id);
 
+  // no search box and no list for an install without letters, no picker without people (UI audit round 1)
+  const hasLetters = letters && incoming.length > 0;
   return (
     <div className="space-y-3">
       {letters ? (
         <>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
-            <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find a letter…" aria-label="Find a letter" className="pl-9" />
-          </div>
-          {config.letterHint ? <p className="text-[12.5px] leading-5 text-muted">{config.letterHint}</p> : null}
+          {hasLetters && (incoming.length > LIST_PREVIEW + 1 || filter) ? (
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
+              <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find a letter…" aria-label="Find a letter" className="pl-9" />
+            </div>
+          ) : null}
+          {hasLetters && config.letterHint ? <p className="text-[12.5px] leading-5 text-muted">{config.letterHint}</p> : null}
           {loading ? (
             <ListSkeleton />
-          ) : (
-            <div role="radiogroup" aria-labelledby="cmp-which" className="max-h-56 space-y-2 overflow-y-auto p-0.5 scrollbar-thin">
-              {shown.map((d) => (
+          ) : hasLetters ? (
+            <ChoiceList
+              items={shown}
+              selectedId={docId}
+              labelledBy="cmp-which"
+              noun="letters"
+              emptyText={filter ? `No letters match “${filter}”.` : null}
+              render={(d) => (
                 <OptionRow
                   key={d.id}
                   name="letter-about"
@@ -391,10 +596,9 @@ function TemplateRecipient({
                 >
                   <DocOption d={d} party={byId.get(d.party_id ?? "")} />
                 </OptionRow>
-              ))}
-              {!shown.length ? <p className="px-1 py-2 text-sm text-muted">{filter ? `No letters match “${filter}”.` : "No letters yet."}</p> : null}
-            </div>
-          )}
+              )}
+            />
+          ) : null}
           {notice ? (
             <div ref={noticeRef} className="scroll-mb-4">
               {notice}
@@ -432,25 +636,27 @@ function TemplateRecipient({
           ) : null}
         </>
       ) : null}
-      <Field label={letters ? "Or write to someone without a letter" : "Recipient"} optional={letters}>
-        <Select
-          value={docId && letters ? "" : (partyId ?? "")}
-          onChange={(e) => {
-            setPartyId(e.target.value || null);
-            if (e.target.value) {
-              setDocId(null);
-              setTyped("");
-            }
-          }}
-        >
-          <option value="">Choose a person or organisation…</option>
-          {sorted.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} — {partyKindLabel(p.kind)}
-            </option>
-          ))}
-        </Select>
-      </Field>
+      {sorted.length ? (
+        <Field label={hasLetters ? "Or write to someone without a letter" : "Recipient"} optional={hasLetters}>
+          <Select
+            value={docId && letters ? "" : (partyId ?? "")}
+            onChange={(e) => {
+              setPartyId(e.target.value || null);
+              if (e.target.value) {
+                setDocId(null);
+                setTyped("");
+              }
+            }}
+          >
+            <option value="">Choose a person or organisation…</option>
+            {sorted.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} — {partyKindLabel(p.kind)}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      ) : null}
       {config.target === "party-or-typed" ? (
         <div className="rounded-xl border border-dashed border-line-strong/80 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -520,11 +726,24 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
     const t = window.setTimeout(() => whichRef.current?.scrollIntoView?.({ block: "start" }), 60);
     return () => window.clearTimeout(t);
   }, [open, startAtWhich]);
+  // a kind picked by hand: when step 2 starts below the fold (a phone, under the template tiles), bring it
+  // up — before, nothing visible changed at 320 px (UI audit round 1)
+  const picked = useRef(false);
+  useEffect(() => {
+    if (!picked.current || !kind) return;
+    picked.current = false;
+    const step = whichRef.current;
+    const scroller = step ? scrollParent(step) : null;
+    if (!step || !scroller) return;
+    if (step.getBoundingClientRect().top > scroller.getBoundingClientRect().bottom - 96) {
+      step.scrollIntoView?.({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    }
+  }, [kind]);
   const doc = docId ? (docsQ.data ?? []).find((d) => d.id === docId) ?? null : null;
   // the answered letter's own deadline and amount: the server uses them when the fields are left empty;
-  // a landlord's notice's card says whether it has a hardship objection at all
+  // a landlord's notice's card says whether it has a hardship objection at all; an objection's deadline
   const needsCard = kind === "objection" && doc?.kind === "landlord_notice";
-  const needsLetter = kind === "extension_request" || kind === "payment_plan" || needsCard;
+  const needsLetter = kind === "extension_request" || kind === "payment_plan" || kind === "objection";
   const letterQ = useDocument(needsLetter && docId ? docId : undefined);
   const defaults = useMemo(() => letterDefaults(letterQ.data?.items ?? []), [letterQ.data]);
 
@@ -566,16 +785,53 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const recipientId =
     kind === "cancellation" ? contract?.party_id ?? null : claimantMode || courtTyped ? null : doc?.party_id ?? partyId;
   const recipient = recipientId ? parties.get(recipientId) ?? null : null;
+  const partyList = useMemo(() => partiesQ.data ?? [], [partiesQ.data]);
+  const incomingDocs = useMemo(() => docs.filter((d) => d.direction !== "outgoing"), [docs]);
   const replyDocs = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    const base = docs.filter((d) => d.direction !== "outgoing");
-    if (!q) return base.slice(0, 30);
-    return base.filter((d) => [d.title, d.filename, parties.get(d.party_id ?? "")?.name].some((s) => s?.toLowerCase().includes(q)));
-  }, [docs, filter, parties]);
+    if (!q) return incomingDocs;
+    return incomingDocs.filter((d) => [d.title, d.filename, parties.get(d.party_id ?? "")?.name].some((s) => s?.toLowerCase().includes(q)));
+  }, [incomingDocs, filter, parties]);
 
   // e.g. the broadcasting fee (from an old link): nothing to cancel — say why instead
   const contractBlocked = kind === "cancellation" && contract !== null && !offersEndingLetter(contract);
   const resignation = kind === "cancellation" && contract?.category === "employment";
+
+  // an empty install: kinds with nothing to act on say so (step 1), and step 2 offers "Add letters" instead of an
+  // empty list, an empty search and a picker without people (UI audit round 1)
+  const loaded = !docsQ.isPending && !partiesQ.isPending;
+  const noContracts = !contractsQ.isPending && contracts.length === 0;
+  const noReply = loaded && incomingDocs.length === 0 && partyList.length === 0 && !doc;
+  const templateIncoming = template && template.target === "letter-or-party" ? templateDocs.filter((d) => d.direction !== "outgoing").length : 0;
+  const noTemplateTarget = Boolean(template) && template?.target !== "party-or-typed" && loaded && partyList.length === 0 && templateIncoming === 0 && !doc;
+  const nothing: NothingKind | null =
+    kind === "cancellation" && noContracts && !contract
+      ? "cancellation"
+      : kind === "objection" && noObjectable && !doc
+        ? "objection"
+        : kind === "general_reply" && noReply
+          ? "general_reply"
+          : noTemplateTarget
+            ? "template"
+            : null;
+  const unavailable: Partial<Record<DraftKind, string>> = {
+    ...(noContracts ? { cancellation: NOTHING.cancellation.card } : {}),
+    ...(noObjectable ? { objection: NOTHING.objection.card } : {}),
+    ...(noReply ? { general_reply: NOTHING.general_reply.card } : {}),
+  };
+  const adder = useOptionalAddLetters();
+  const addLetters = adder
+    ? () => {
+        onClose();
+        adder.openPicker();
+      }
+    : null;
+  // an objection's deadline in plain words (the letter quotes it in German)
+  const objectionDue = kind === "objection" && check.ok ? objectionDeadline(letterQ.data?.items ?? []) : null;
+  const periodText = check.ok ? check.remedy?.period_text?.trim().replace(/[.„“"]+$/, "").replace(/^[„“"]+/, "") || null : null;
+  // the To card below names the recipient: repeat the letter's addressee only when it names someone else
+  const addressee = check.ok ? check.remedy?.addressee?.trim() || null : null;
+  const addresseeElsewhere = addressee && !(recipient && addressee.toLowerCase().startsWith(recipient.name.toLowerCase())) ? addressee : null;
 
   // what the template form starts with: the contract's name (never a letter's title, which is Ordnung's
   // English summary, not what was ordered), the profile's address
@@ -628,6 +884,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
             : false;
 
   const pickKind = (k: DraftKind) => {
+    picked.current = true;
     setKind(k);
     setToClaimant(false);
     if (k === "cancellation") setDocId(null);
@@ -662,7 +919,8 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
       },
       {
         onSuccess: (draft) => {
-          toast.success("Your letter is ready to check", { description: "Read the English translation next to it before you send anything." });
+          // not "next to it": on a phone the translation is behind a switch (UI audit round 1)
+          toast.success("Your letter is ready to check", { description: "Check the English translation before you send anything." });
           onClose();
           navigate(`/letters/${draft.id}`);
         },
@@ -674,15 +932,23 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
     kind === "cancellation" ? "Which contract?" : kind === "objection" ? "Which decision?" : template ? template.whichLabel : "Which letter are you answering?";
   const disabledReason = !kind
     ? "Choose what you want to do."
-    : kind === "cancellation"
+    : nothing
+      ? NOTHING[nothing].reason
+      : kind === "cancellation"
       ? contract
-        ? null
+        ? contractBlocked
+          ? "This contract can't be ended with a letter — see why above."
+          : null
         : "Choose the contract to cancel."
       : kind === "objection"
         ? doc
-          ? courtOk
-            ? null
-            : "Type the court's name and address — the objection goes to the court that issued the order."
+          ? !check.ok
+            ? objectable.length
+              ? "You can't object to this letter — reply to it instead, or choose a decision below."
+              : "You can't object to this letter — reply to it instead."
+            : courtOk
+              ? null
+              : "Type the court's name and address — the objection goes to the court that issued the order."
           : "Choose the decision you object to."
         : kind === "general_reply"
           ? doc || partyId
@@ -713,6 +979,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
         <>
           {/* why the button is disabled — on phones above the buttons (the footer stacks in reverse) */}
           <p
+            id="cmp-why"
             className={cn(
               disabledReason && !ready
                 ? "order-last text-[12.5px] leading-snug text-muted sm:order-first sm:mr-auto sm:max-w-[22rem] sm:self-center [@media(max-height:560px)]:line-clamp-1"
@@ -724,7 +991,15 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
             {disabledReason && !ready ? disabledReason : ""}
           </p>
           <Button onClick={onClose}>Cancel</Button>
-          <Button variant="primary" icon={Sparkles} onClick={submit} disabled={!ready} loading={create.isPending}>
+          <Button
+            variant="primary"
+            icon={Sparkles}
+            onClick={submit}
+            disabled={!ready}
+            loading={create.isPending}
+            // the reason travels with the disabled button, for a screen reader that lands on it
+            aria-describedby={disabledReason && !ready ? "cmp-why" : undefined}
+          >
             {create.isPending ? "Writing…" : "Write the letter"}
           </Button>
         </>
@@ -736,7 +1011,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
           <StepLabel n={1} id="cmp-kind">
             What do you want to do?
           </StepLabel>
-          <KindChooser kind={kind} onPick={pickKind} noObjectable={noObjectable} />
+          <KindChooser kind={kind} onPick={pickKind} unavailable={unavailable} />
         </section>
 
         {/* 2 · which */}
@@ -746,55 +1021,78 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
               {whichLabel}
             </StepLabel>
 
+            {nothing ? (
+              <NothingYet title={NOTHING[nothing].title} onAdd={addLetters}>
+                {NOTHING[nothing].body}
+              </NothingYet>
+            ) : null}
+
             {contractBlocked && contract ? (
               <Callout tone="warn" className="mb-3" title={`${contract.name} can't be cancelled`}>
                 {contract.cancel_hint ?? "This isn't a contract you can end with a cancellation letter."}
               </Callout>
-            ) : resignation && contract?.cancel_hint ? (
-              <Callout tone="info" className="mb-3" title="This drafts your resignation">
-                {contract.cancel_hint}
-              </Callout>
             ) : null}
-            {kind === "cancellation" ? (
+            {kind === "cancellation" && !nothing ? (
               contractsQ.isPending ? (
                 <ListSkeleton />
               ) : contracts.length ? (
-                <div role="radiogroup" aria-labelledby="cmp-which" className="max-h-72 space-y-2 overflow-y-auto p-0.5 scrollbar-thin">
-                  {contracts.map((c) => (
+                <ChoiceList
+                  items={contracts}
+                  selectedId={effContractId}
+                  labelledBy="cmp-which"
+                  noun="contracts"
+                  render={(c) => (
                     <OptionRow key={c.id} name="letter-contract" value={c.id} selected={effContractId === c.id} onSelect={() => setContractId(c.id)}>
                       <ContractOption c={c} party={parties.get(c.party_id ?? "")} />
                     </OptionRow>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-base text-muted">No active contracts yet. Add the contract letter to your inbox first.</p>
-              )
+                  )}
+                />
+              ) : null
+            ) : null}
+            {/* about the chosen contract: under the choice, where the eye is (UI audit round 1) */}
+            {resignation && contract?.cancel_hint && !contractBlocked ? (
+              <Callout tone="info" className="mt-3" title="This drafts your resignation">
+                {contract.cancel_hint}
+              </Callout>
             ) : null}
 
-            {kind === "objection" ? (
+            {kind === "objection" && !nothing ? (
               <>
-                {objectionBlocked && !check.ok ? (
-                  <Callout
-                    tone="warn"
-                    className="mb-3"
-                    title={check.title}
-                    action={
-                      <Button size="sm" icon={Mail} onClick={() => setKind("general_reply")}>
-                        Reply to this letter instead
-                      </Button>
-                    }
-                  >
-                    <p>{check.body}</p>
-                    <p className="mt-1.5">
-                      <AdviceLinks advice={check.advice} />
-                    </p>
-                  </Callout>
+                {objectionBlocked && !check.ok && doc ? (
+                  <>
+                    {/* the letter it is about, so "this letter" names one — never the decision listed under it */}
+                    <ChosenLetter d={doc} party={parties.get(doc.party_id ?? "")} />
+                    <Callout
+                      tone="warn"
+                      className="mb-4"
+                      title={check.title}
+                      action={
+                        <Button size="sm" icon={Mail} onClick={() => setKind("general_reply")}>
+                          Reply to this letter instead
+                        </Button>
+                      }
+                    >
+                      <p>{check.body}</p>
+                      <p className="mt-1.5">
+                        <AdviceLinks advice={check.advice} />
+                      </p>
+                    </Callout>
+                    {objectable.length ? (
+                      <p id="cmp-objectable" className="eyebrow mb-2 px-1">
+                        Or choose a decision you can object to
+                      </p>
+                    ) : null}
+                  </>
                 ) : null}
                 {docsQ.isPending ? (
                   <ListSkeleton />
                 ) : objectable.length ? (
-                  <div role="radiogroup" aria-labelledby="cmp-which" className="max-h-72 space-y-2 overflow-y-auto p-0.5 scrollbar-thin">
-                    {objectable.map((d) => {
+                  <ChoiceList
+                    items={objectable}
+                    selectedId={docId}
+                    labelledBy={objectionBlocked ? "cmp-objectable" : "cmp-which"}
+                    noun="decisions"
+                    render={(d) => {
                       const c = objectionCheck(d);
                       return (
                         <OptionRow
@@ -808,38 +1106,47 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                             setTypedRecipient("");
                           }}
                         >
-                          <DocOption
-                            d={d}
-                            party={parties.get(d.party_id ?? "")}
-                            extra={c.ok ? <span className="hidden shrink-0 rounded-full bg-k-expiry-soft px-2 py-0.5 text-[12px] font-medium text-k-expiry-ink sm:inline">{c.term} possible</span> : null}
-                          />
+                          <DocOption d={d} party={parties.get(d.party_id ?? "")} pill={c.ok ? <PossiblePill term={c.term} /> : null} />
                         </OptionRow>
                       );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-base text-muted">None of your letters is a decision with instructions on how to object.</p>
-                )}
+                    }}
+                  />
+                ) : null}
                 {doc && check.ok ? (
-                  <p className="mt-2.5 text-[13px] leading-relaxed text-muted">
-                    {check.statutory ? (
-                      <StatutoryNote kind={doc.kind} term={check.term} />
-                    ) : (
-                      <>
-                        The letter allows an <Glossary term={check.term} />
-                        {check.remedy?.addressee ? <> to {check.remedy.addressee}</> : null}. It's free, a short letter is enough and reasons can follow later.
-                      </>
-                    )}
-                    {check.remedy?.period_text ? (
-                      // the period is quoted as the letter words it — German, so marked as a quote of its own
-                      <span className="mt-1 block">
+                  <div className="mt-2.5 space-y-1 text-[13px] leading-relaxed text-muted" data-objection-note>
+                    <p>
+                      {check.statutory ? (
+                        <StatutoryNote kind={doc.kind} term={check.term} />
+                      ) : (
+                        <>
+                          The letter allows {check.term === "Einspruch" ? "an" : "a"} <Glossary term={check.term} />
+                          {addresseeElsewhere ? <> to {addresseeElsewhere}</> : null}. It's free, a short letter is enough and reasons can follow later.
+                        </>
+                      )}
+                    </p>
+                    {objectionDue?.due_date ? (
+                      // the deadline in plain words first; the letter's German wording after it, as a quote of its own
+                      <p>
+                        Deadline: <Countdown date={objectionDue.due_date} showDate />
+                        {periodText ? (
+                          <>
+                            {" "}
+                            — in the letter's words (German):{" "}
+                            <q lang="de" className="italic">
+                              {periodText}
+                            </q>
+                          </>
+                        ) : null}
+                      </p>
+                    ) : periodText ? (
+                      <p>
                         The letter says (in German):{" "}
                         <q lang="de" className="italic">
-                          {check.remedy.period_text.trim().replace(/[.„“"]+$/, "").replace(/^[„“"]+/, "")}
+                          {periodText}
                         </q>
-                      </span>
+                      </p>
                     ) : null}
-                  </p>
+                  </div>
                 ) : null}
                 {courtTyped ? (
                   <Field
@@ -876,17 +1183,25 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
               </>
             ) : null}
 
-            {kind === "general_reply" ? (
+            {kind === "general_reply" && !nothing ? (
               <>
-                <div className="relative mb-2.5">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
-                  <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find a letter…" aria-label="Find a letter" className="pl-9" />
-                </div>
+                {/* a search only where there is a list to search (UI audit round 1: an empty install had one) */}
+                {incomingDocs.length > LIST_PREVIEW + 1 || filter ? (
+                  <div className="relative mb-2.5">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
+                    <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find a letter…" aria-label="Find a letter" className="pl-9" />
+                  </div>
+                ) : null}
                 {docsQ.isPending ? (
                   <ListSkeleton />
-                ) : (
-                  <div role="radiogroup" aria-labelledby="cmp-which" className="max-h-64 space-y-2 overflow-y-auto p-0.5 scrollbar-thin">
-                    {replyDocs.map((d) => (
+                ) : incomingDocs.length ? (
+                  <ChoiceList
+                    items={replyDocs}
+                    selectedId={docId}
+                    labelledBy="cmp-which"
+                    noun="letters"
+                    emptyText={filter ? `No letters match “${filter}”.` : null}
+                    render={(d) => (
                       <OptionRow
                         key={d.id}
                         name="letter-reply"
@@ -899,32 +1214,33 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                       >
                         <DocOption d={d} party={parties.get(d.party_id ?? "")} />
                       </OptionRow>
-                    ))}
-                    {!replyDocs.length ? <p className="px-1 py-2 text-base text-muted">No letters match “{filter}”.</p> : null}
+                    )}
+                  />
+                ) : null}
+                {partyList.length ? (
+                  <div className={cn(incomingDocs.length > 0 && "mt-3")}>
+                    <Field label={incomingDocs.length ? "Or write to someone without a letter" : "Who do you want to write to?"} optional={incomingDocs.length > 0}>
+                      <Select
+                        value={doc ? "" : (partyId ?? "")}
+                        onChange={(e) => {
+                          setPartyId(e.target.value || null);
+                          if (e.target.value) setDocId(null);
+                        }}
+                      >
+                        <option value="">Choose a person or organisation…</option>
+                        {partyList.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} — {partyKindLabel(p.kind)}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
                   </div>
-                )}
-                <div className="mt-3">
-                  <Field label="Or write to someone without a letter" optional>
-                    <Select
-                      value={doc ? "" : (partyId ?? "")}
-                      onChange={(e) => {
-                        setPartyId(e.target.value || null);
-                        if (e.target.value) setDocId(null);
-                      }}
-                    >
-                      <option value="">Choose a person or organisation…</option>
-                      {(partiesQ.data ?? []).map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} — {partyKindLabel(p.kind)}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                </div>
+                ) : null}
               </>
             ) : null}
 
-            {template ? (
+            {template && !nothing ? (
               <TemplateRecipient
                 config={template}
                 docs={templateDocs}
@@ -1014,8 +1330,8 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
           </section>
         ) : null}
 
-        {/* 3 · the facts a template letter needs */}
-        {template && !refusal && template.fields.length + (template.kind === "deposit_return" ? 1 : 0) > 0 ? (
+        {/* 3 · the facts a template letter needs — none of the next steps while step 2 has nothing to choose */}
+        {template && !refusal && !nothing && template.fields.length + (template.kind === "deposit_return" ? 1 : 0) > 0 ? (
           <section aria-labelledby="cmp-details">
             <StepLabel n={3} id="cmp-details">
               The details
@@ -1025,7 +1341,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
         ) : null}
 
         {/* wishes + language */}
-        {kind && !objectionBlocked && !refusal ? (
+        {kind && !objectionBlocked && !refusal && !nothing ? (
           <section aria-labelledby="cmp-extra" className="space-y-4">
             <StepLabel n={template && template.fields.length + (template.kind === "deposit_return" ? 1 : 0) > 0 ? 4 : 3} id="cmp-extra">
               Anything to add?
@@ -1048,7 +1364,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
               />
               <p className="mt-1.5 text-[12.5px] leading-5 text-muted">
                 {language === "de"
-                  ? "German offices and companies expect German. You'll see an English translation right next to it."
+                  ? "German offices and companies expect German. You'll get an English translation to check it against."
                   : "Only if you know the recipient reads English — German offices may not accept it."}
               </p>
             </div>

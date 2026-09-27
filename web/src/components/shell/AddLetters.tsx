@@ -40,6 +40,11 @@ export function useAddLetters(): AddLettersApi {
   return ctx;
 }
 
+/** The "Add letters" flow when there is one — `null` outside the provider (a dialog rendered on its own). */
+export function useOptionalAddLetters(): AddLettersApi | null {
+  return useContext(Ctx);
+}
+
 /** A file waiting for the person's choice; `id` keeps two files with the same name apart. */
 interface PendingFile {
   id: string;

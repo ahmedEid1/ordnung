@@ -17,6 +17,7 @@ import {
   type Draft,
   type DraftCheck,
   type DraftKind,
+  type Item,
   type LetterAdvice,
   type Remedy,
   type SendChannel,
@@ -168,11 +169,27 @@ export function objectionCheck(
   };
 }
 
-/** Documents a letter can relate to (read, not in the trash). */
+/** Papers nobody writes back to: an ID document or a payslip is kept, never answered. */
+const NOT_ANSWERED = new Set<Document["kind"]>(["identity_document", "payslip"]);
+
+/** The date a letter is known by: its own date, else the day it arrived. */
+export function letterDate(d: Pick<Document, "doc_date" | "received_date">): string | null {
+  return d.doc_date ?? d.received_date ?? null;
+}
+
+/** Documents a letter can relate to (read, not in the trash, not an ID or a payslip) — newest first. */
 export function usableDocuments(docs: Document[]): Document[] {
   return docs
-    .filter((d) => !d.deleted_at && (d.status === "processed" || d.status === "needs_review"))
-    .sort((a, b) => ((b.doc_date ?? b.received_date ?? "") < (a.doc_date ?? a.received_date ?? "") ? -1 : 1));
+    .filter((d) => !d.deleted_at && (d.status === "processed" || d.status === "needs_review") && !NOT_ANSWERED.has(d.kind))
+    .sort((a, b) => ((letterDate(b) ?? "") < (letterDate(a) ?? "") ? -1 : 1));
+}
+
+type DeadlineItem = Pick<Item, "kind" | "status" | "due_date"> & Partial<Pick<Item, "date_spec">>;
+
+/** The open objection deadline among a letter's to-dos (the day the objection must arrive by), if any. */
+export function objectionDeadline<T extends DeadlineItem>(items: readonly T[]): T | null {
+  const open = items.filter((i) => i.kind === "deadline" && i.due_date && i.date_spec?.nature === "objection" && i.status !== "done" && i.status !== "dismissed");
+  return open.sort((a, b) => (a.due_date! < b.due_date! ? -1 : a.due_date! > b.due_date! ? 1 : 0))[0] ?? null;
 }
 
 export function objectionDocuments(docs: Document[]): Document[] {
@@ -189,6 +206,30 @@ export function cancellableContracts(contracts: Contract[]): Contract[] {
 // ------------------------------------------------------------------------------------------------
 // Drafts
 // ------------------------------------------------------------------------------------------------
+
+/** When a letter in progress is due: its send-by date, else the day it must arrive (a reply may have neither). */
+function draftDue(d: Pick<Draft, "send_guidance">): string | null {
+  return d.send_guidance?.send_by ?? d.send_guidance?.must_arrive_by ?? null;
+}
+
+/**
+ * The Letters list's two groups: letters in progress by what is due first (those without a date after
+ * them, the newest first), sent letters the latest first.
+ */
+export function splitDrafts<T extends Pick<Draft, "status" | "send_guidance" | "created_at" | "sent_at">>(drafts: readonly T[]): { inProgress: T[]; sent: T[] } {
+  const inProgress = drafts
+    .filter((d) => d.status !== "sent")
+    .sort((a, b) => {
+      const da = draftDue(a);
+      const db = draftDue(b);
+      if (da && db && da !== db) return da < db ? -1 : 1;
+      if (da && !db) return -1;
+      if (db && !da) return 1;
+      return b.created_at.localeCompare(a.created_at);
+    });
+  const sent = drafts.filter((d) => d.status === "sent").sort((a, b) => (b.sent_at ?? b.created_at).localeCompare(a.sent_at ?? a.created_at));
+  return { inProgress, sent };
+}
 
 /** The follow-up to-do is created 21 days after sending (SPEC §11). */
 export const FOLLOW_UP_DAYS = 21;

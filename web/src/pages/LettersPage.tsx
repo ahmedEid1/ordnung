@@ -7,15 +7,18 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Disclaimer } from "@/components/ui/Disclaimer";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadError } from "@/components/ui/LoadError";
 import { LoadingLabel, Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { DraftGroup } from "@/features/letters/DraftList";
 import { LetterComposer } from "@/features/letters/LetterComposer";
-import { COMPOSER_PARAMS, parsePrefill } from "@/features/letters/logic";
+import { COMPOSER_PARAMS, parsePrefill, splitDrafts } from "@/features/letters/logic";
 import { PARTY_PARAM } from "@/lib/party-drawer";
+import { cn } from "@/lib/utils";
 
 const HOW = [
   { icon: PenLine, title: "Pick what you want to do", body: "Cancel a contract, object to a decision or reply to a letter." },
-  { icon: Languages, title: "Ordnung drafts it in German", body: "Legal sentences come from fixed templates. An English translation sits right next to it." },
+  // no "right next to it": a phone shows the translation behind a switch (UI audit round 1)
+  { icon: Languages, title: "Ordnung drafts it in German", body: "Legal sentences come from fixed templates, with an English translation to check it against." },
   { icon: FileCheck2, title: "Checks before you send", body: "Reference, dates, addresses and placeholders are checked for you." },
   { icon: Send, title: "How and by when to send it", body: "The safest way to send it, the send-by date — and a reminder to check for a reply." },
 ];
@@ -59,9 +62,11 @@ export default function LettersPage() {
   );
 
   const partyMap = useMemo(() => new Map((parties.data ?? []).map((p) => [p.id, p])), [parties.data]);
-  const list = drafts.data ?? [];
-  const inProgress = list.filter((d) => d.status !== "sent");
-  const sent = list.filter((d) => d.status === "sent");
+  const list = useMemo(() => drafts.data ?? [], [drafts.data]);
+  const { inProgress, sent } = useMemo(() => splitDrafts(list), [list]);
+  const listed = !drafts.isPending && !drafts.isError && list.length > 0;
+  // the empty state has its own "Write your first letter": one primary button, not two
+  const empty = !drafts.isPending && !drafts.isError && list.length === 0;
 
   return (
     <Page title="Letters">
@@ -69,18 +74,23 @@ export default function LettersPage() {
         title="Letters"
         description="Cancellations, objections and replies — drafted in German with an English translation, checked, and ready to send."
         actions={
-          <Button variant="primary" icon={Plus} onClick={openComposer}>
-            New letter
-          </Button>
+          empty ? undefined : (
+            <Button variant="primary" icon={Plus} onClick={openComposer}>
+              New letter
+            </Button>
+          )
         }
       />
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
+      {/* the "How letters work" card sits beside the list only where both have room (from 1280 px): beside a
+          narrow list the rows lost their titles (UI audit round 1) */}
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0">
           {drafts.isPending ? (
             <div aria-busy="true">
               <LoadingLabel>Loading your letters…</LoadingLabel>
-              <Skeleton className="mb-3 h-4 w-32" />
+              {/* as tall as a group's heading (20 px + 10 px), so the card beside it doesn't jump */}
+              <Skeleton className="mb-2.5 h-5 w-32" />
               <div className="card divide-y divide-line">
                 {[0, 1, 2].map((i) => (
                   <div key={i} className="flex items-center gap-3.5 px-5 py-4">
@@ -91,7 +101,7 @@ export default function LettersPage() {
               </div>
             </div>
           ) : drafts.isError ? (
-            <EmptyState illustration="error" headingLevel={2} title="Couldn't load your letters" description="Is Ordnung still running on this computer?" action={<Button onClick={() => void drafts.refetch()}>Try again</Button>} />
+            <LoadError what="your letters" error={drafts.error} onRetry={() => void drafts.refetch()} retrying={drafts.isFetching} />
           ) : list.length ? (
             <>
               <DraftGroup id="letters-open" title="In progress" drafts={inProgress} parties={partyMap} />
@@ -112,13 +122,16 @@ export default function LettersPage() {
           )}
         </div>
 
-        <aside aria-labelledby="letters-how" className="lg:pt-[30px]">
+        {/* beside the list, its top lines up with the first card under the group heading (20 px line + 10 px);
+            beside the empty state or a load error, with their top */}
+        <aside aria-labelledby="letters-how" data-letters-how className={cn((listed || drafts.isPending) && "xl:pt-[1.875rem]")}>
           <Card padding="md" className="bg-surface/70">
             <h2 id="letters-how" className="mb-4 flex items-center gap-2 text-[14px] font-semibold text-ink">
               <ShieldCheck className="size-4 text-accent" aria-hidden />
               How letters work
             </h2>
-            <ol className="space-y-4">
+            {/* under the list (below 1280 px) the steps use the width: two columns from 640 px */}
+            <ol className="grid gap-4 sm:grid-cols-2 sm:gap-x-6 xl:grid-cols-1">
               {HOW.map((h, i) => (
                 <li key={h.title} className="flex gap-3">
                   <span className="relative grid size-7 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent">
