@@ -48,6 +48,8 @@ if TYPE_CHECKING:
         Document,
         Item,
         KeyFact,
+        MyNumber,
+        OpenCase,
         Party,
         TimelineEntry,
     )
@@ -518,10 +520,124 @@ class LedgerTools:
         }
         return ToolAnswer(record, letters.by_id)
 
+    def get_my_numbers(self) -> ToolAnswer:
+        """The person's numbers sorted by whose they are (:mod:`ordnung.numbers`); private letters left out.
+
+        The record holds what code decided: each number's kind and group, its check-digit result, the
+        letter and party it came from, an identity document's expiry (its to-do's due date) and an open
+        case's next to-do. Labels, values, names, contact details and titles are letter text, under the
+        id of the letter (or organisation) they come from; a row's ``ref`` names its value there.
+        """
+        from ordnung.views import my_numbers
+
+        page = my_numbers(self.store, self.current_day(), shareable_only=True)
+        rows = _NumberRows()
+        record = {
+            "today": page.today,
+            "about_you": [rows.number(found) for found in page.about_you],
+            "documents": [
+                {
+                    "id": doc.item_id,
+                    "kind": "expiry" if doc.item_id else None,
+                    "document": doc.kind,
+                    "due_date": doc.valid_until,
+                    "status": doc.status,
+                    "note": doc.note,
+                    "doc_id": doc.letter.id if doc.letter else None,
+                    "number": rows.number(doc.number) if doc.number else None,
+                }
+                for doc in page.documents
+            ],
+            "open_cases": [rows.case(found) for found in page.open_cases],
+            "organisations": [
+                {
+                    "party_id": sheet.party_id,
+                    "kind": sheet.kind,
+                    "numbers": [rows.number(found) for found in sheet.numbers],
+                    "their_numbers": [rows.number(found) for found in sheet.their_numbers],
+                    "open_cases": [rows.case(found) for found in sheet.open_cases],
+                    "last_letter": {"doc_id": sheet.last_letter.id, "date": sheet.last_letter.date}
+                    if sheet.last_letter
+                    else None,
+                    "open_items": sheet.open_items,
+                }
+                for sheet in page.organisations
+            ],
+            "numbers": rows.numbers,
+            "note": NUMBERS_NOTE,
+        }
+        for sheet in page.organisations:
+            rows.letters.add(
+                sheet.party_id, name=sheet.name, phone=sheet.phone, email=sheet.email, website=sheet.website
+            )
+        for owner, found in rows.values.items():
+            rows.letters.add(owner, numbers=found)
+        return ToolAnswer(record, rows.letters.by_id)
+
 
 # --------------------------------------------------------------------------------------------------
 # rows: the record part is returned, letter text goes to ``letters`` under the record's id
 # --------------------------------------------------------------------------------------------------
+
+
+class _NumberRows:
+    """``get_my_numbers``' rows: each number once in ``numbers`` (what code decided, the letter and party
+    it came from), named by a ``ref`` everywhere else; each open case once, named ``c1`` …; labels and
+    values in the letter text of the letter that shows them."""
+
+    def __init__(self) -> None:
+        self.letters = LetterText()
+        self.numbers: list[dict[str, Any]] = []
+        self.values: dict[str, dict[str, dict[str, str]]] = {}
+        self._refs: dict[str, str] = {}
+        self._cases: dict[str, dict[str, Any]] = {}
+
+    def number(self, found: MyNumber) -> str:
+        if found.key in self._refs:
+            return self._refs[found.key]
+        ref = self._refs[found.key] = f"n{len(self._refs) + 1}"
+        doc_id = found.letter.id if found.letter else None
+        owner = doc_id or found.party_id
+        if owner:
+            self.values.setdefault(owner, {})[ref] = {"label": found.label, "value": found.value}
+        if found.letter:
+            self.letters.add(found.letter.id, title=found.letter.title)
+        self.letters.add(found.party_id, name=found.party_name)
+        self.numbers.append(
+            {
+                "ref": ref,
+                "kind": found.kind,
+                "group": found.group,
+                "check": found.check,
+                "check_note": found.check_note,
+                "doc_id": doc_id,
+                "party_id": found.party_id,
+                "letters": found.letters,
+            }
+        )
+        return ref
+
+    def case(self, found: OpenCase) -> dict[str, Any] | str:
+        """The case's row the first time, its ``ref`` after that."""
+        if found.key in self._cases:
+            return str(self._cases[found.key]["ref"])
+        nxt = found.next_item
+        if nxt is not None:
+            self.letters.add(nxt.id, title=nxt.title)
+        if found.letter:
+            self.letters.add(found.letter.id, title=found.letter.title, case_title=found.title)
+        row = self._cases[found.key] = {
+            "ref": f"c{len(self._cases) + 1}",
+            "doc_id": found.letter.id if found.letter else None,
+            "party_id": found.party_id,
+            "references": [self.number(ref) for ref in found.references],
+            "next_item": {"id": nxt.id, "kind": nxt.kind, "due_date": nxt.due_date, "send_by": nxt.send_by}
+            if nxt
+            else None,
+            "open_items": found.open_items,
+        }
+        return row
+
 
 PARTY_FIELDS = {"id", "name", "kind", "aliases", "address", "email", "phone", "website", "region", "ibans"}
 """Party fields Ask can read (part of the ledger fingerprint)."""
@@ -651,6 +767,12 @@ CANCELLATION_PENDING = (
     "A letter says this contract is cancelled, but the person has not confirmed it in Ordnung yet, so "
     "the contract is still active here and its dates stand; the end date the letter gives is only in "
     "the letter text."
+)
+NUMBERS_NOTE = (
+    "Each number's label and value are in the letter text of the letter it comes from (under numbers, by "
+    "ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no "
+    "digit was misread — it does not prove the number is the person's), fails (compare it with the "
+    "letter) or none (no public check for this kind of number)."
 )
 TERMS_UNVERIFIED = (
     "The terms and cost were read by AI from a photo or could not be found in the letter, so they are "
@@ -917,6 +1039,7 @@ TOOL_NAMES = (
     "explain_date",
     "get_profile",
     "today",
+    "get_my_numbers",
 )
 """The ledger tools, each answered by the :class:`LedgerTools` method of the same name — the only tools
 Ask may call and the only results its answer check reads (ADR 0011); the rules tools are not among them."""
@@ -1087,6 +1210,15 @@ def build_server(store: Store, *, today: date | None = None, rules_tools: bool =
         confidence) of a to-do's due date, or a contract's cancellation dates. Quote it; never
         recalculate dates yourself."""
         return answer(lambda: tools.explain_date(item_or_contract_id))
+
+    @tool
+    def get_my_numbers() -> str:
+        """The person's own numbers — Steuer-ID, social and health insurance numbers, student number,
+        Rundfunkbeitrag number, passport and residence permit with their expiry — then, per organisation,
+        the customer, contract and member numbers its letters show, its contact details and open cases
+        (Aktenzeichen, Kassenzeichen, invoice numbers), and each organisation's own registry numbers apart.
+        Values are letter text; the record says whose each number is and whether its check digit passes."""
+        return answer(tools.get_my_numbers)
 
     @tool
     def get_profile() -> str:

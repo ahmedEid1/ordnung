@@ -1197,6 +1197,197 @@ class MailTrayItem(_Model):
     doc_id: str | None = None
 
 
+# --------------------------------------------------------------------------------------------------
+# My numbers (``GET /api/numbers``, :mod:`ordnung.numbers`)
+# --------------------------------------------------------------------------------------------------
+
+NumberKind = Literal[
+    "tax_id",
+    "tax_number",
+    "social_insurance",
+    "health_insurance",
+    "student",
+    "broadcasting_fee",
+    "passport",
+    "residence_permit",
+    "id_card",
+    "customer",
+    "contract",
+    "policy",
+    "member",
+    "employee",
+    "account",
+    "mandate",
+    "meter",
+    "other",
+    "case_file",
+    "payment_reference",
+    "invoice",
+    "order",
+    "reference",
+    "vat_id",
+    "register",
+    "creditor_id",
+    "iban",
+    "bic",
+    "their_tax_number",
+    "their_other",
+]
+#: ``about_you`` (issued to the person), ``document`` (an identity document's number), ``organisation``
+#: (yours with one organisation), ``case`` (one matter) or ``theirs`` (the organisation's own).
+NumberGroup = Literal["about_you", "document", "organisation", "case", "theirs"]
+#: The check-digit test: ``ok``, ``fails`` or ``none`` (no public algorithm for this kind of number).
+NumberCheck = Literal["ok", "fails", "none"]
+
+
+class LetterRef(_Model):
+    """A letter a number or case links to."""
+
+    id: str
+    title: str
+    date: str | None = None
+    kind: LetterKind | None = None
+
+
+class MyNumber(_Model):
+    """One number as Ordnung sorted it (:mod:`ordnung.numbers`): the value as printed, how to read and
+    copy it, the check-digit test and the latest letter that shows it."""
+
+    key: str
+    kind: NumberKind
+    group: NumberGroup
+    name: str = Field(description="What it is, in plain English (“Tax ID (Steuer-ID)”)")
+    label: str = Field(description="The label the letter prints next to it")
+    value: str = Field(description="The value as printed")
+    display: str = Field(description="The value grouped for reading")
+    copy_value: str = Field(description="What “Copy” puts on the clipboard (forms want no spaces)")
+    check: NumberCheck = "none"
+    check_note: str | None = None
+    party_id: str | None = None
+    party_name: str | None = None
+    letter: LetterRef | None = Field(default=None, description="The latest letter that shows it")
+    letters: int = Field(default=1, description="How many letters show it")
+
+
+class IdentityDocument(_Model):
+    """A passport, residence permit or ID card: its number (when a letter shows it) and expiry."""
+
+    key: str
+    kind: Literal["passport", "residence_permit", "id_card", "identity_document"]
+    name: str
+    number: MyNumber | None = None
+    valid_until: str | None = None
+    status: Literal["ok", "renew_soon", "expired", "unknown"] = "unknown"
+    note: str | None = Field(default=None, description="What to do about it (written by code)")
+    item_id: str | None = Field(default=None, description="The expiry to-do")
+    letter: LetterRef | None = None
+
+
+class CaseItemRef(_Model):
+    """The next open to-do of a case."""
+
+    id: str
+    title: str
+    kind: ItemKind
+    due_date: str | None = None
+    send_by: str | None = None
+
+
+class OpenCase(_Model):
+    """A matter with an open one-off to-do, and the references to quote when you call or write."""
+
+    key: str
+    case_id: str | None = None
+    title: str
+    party_id: str | None = None
+    party_name: str | None = None
+    references: list[MyNumber] = Field(default_factory=list)
+    next_item: CaseItemRef | None = None
+    open_items: int = 0
+    letter: LetterRef | None = Field(default=None, description="The case's latest letter")
+
+
+class CallSheet(_Model):
+    """Everything to have at hand when you call or write to one organisation."""
+
+    party_id: str
+    name: str
+    kind: PartyKind = "other"
+    phone: str | None = None
+    email: str | None = None
+    website: str | None = None
+    numbers: list[MyNumber] = Field(default_factory=list, description="Your numbers its letters show")
+    their_numbers: list[MyNumber] = Field(default_factory=list, description="Its own (registry, bank)")
+    open_cases: list[OpenCase] = Field(default_factory=list)
+    last_letter: LetterRef | None = None
+    open_items: int = 0
+
+
+class MyNumbers(_Model):
+    """The *My numbers* page."""
+
+    today: str
+    about_you: list[MyNumber] = Field(default_factory=list)
+    documents: list[IdentityDocument] = Field(default_factory=list)
+    organisations: list[CallSheet] = Field(default_factory=list)
+    open_cases: list[OpenCase] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------------------------------
+# The weekly session (``GET /api/week``, :mod:`ordnung.secretary.week`)
+# --------------------------------------------------------------------------------------------------
+
+WeekStepId = Literal["new", "check", "pay", "post", "waiting", "decide", "file"]
+WeekDateRole = Literal[
+    "added", "due", "send_by", "pay_by", "collected", "decide_by", "sent", "reply_by", "done"
+]
+
+
+class WeekEntry(_Model):
+    """One row of a weekly-session step: a letter, a to-do, a contract decision or a letter you wrote."""
+
+    key: str
+    ref: RefLink
+    title: str
+    kind: str = Field(description="The item's, letter's or draft's kind, or “contract”")
+    date: str | None = None
+    date_role: WeekDateRole | None = None
+    amount: float | None = None
+    currency: str | None = None
+    party_id: str | None = None
+    party_name: str | None = None
+    doc_id: str | None = None
+    status: str | None = None
+    note: str | None = Field(default=None, description="One line written by code")
+    tone: Literal["neutral", "warn", "danger", "ok"] = "neutral"
+    overdue: bool = False
+    item: Item | None = Field(default=None, description="The to-do itself (Pay and Confirm need it)")
+
+
+class WeekStep(_Model):
+    """One step of the weekly session."""
+
+    id: WeekStepId
+    title: str
+    summary: str
+    entries: list[WeekEntry] = Field(default_factory=list)
+    more: int = Field(default=0, description="Rows left out to keep the step short")
+    total: float | None = Field(default=None, description="Euros (the pay step)")
+    total_other_currencies: dict[str, float] = Field(default_factory=dict)
+
+
+class WeeklySession(_Model):
+    """The guided weekly review: seven steps, what comes next and whether Today should suggest it."""
+
+    today: str
+    since: str = Field(description="New since this day (the last session, else a week ago)")
+    last_session: str | None = None
+    due: bool = Field(description="Today shows its one gentle prompt")
+    minutes: int = 10
+    steps: list[WeekStep] = Field(default_factory=list)
+    next_deadline: WeekEntry | None = Field(default=None, description="“All clear until …”")
+
+
 LaneBar.model_rebuild()
 
 

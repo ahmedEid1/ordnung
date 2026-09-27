@@ -24,12 +24,16 @@ from ordnung.models import (
     Lane,
     LaneBar,
     MoneySummary,
+    MyNumbers,
     RefLink,
     Suggestion,
     TimelineEntry,
     TimelineMarker,
+    WeeklySession,
 )
+from ordnung.numbers import NumbersInput, build_my_numbers
 from ordnung.rules.explain import fmt_date
+from ordnung.secretary.brief import build_agenda
 from ordnung.secretary.triggers import (
     Ledger,
     action_day,
@@ -42,6 +46,7 @@ from ordnung.secretary.triggers import (
     priority_rank,
     was_history_when_filed,
 )
+from ordnung.secretary.week import build_weekly_session, session_state
 from ordnung.tick import local_today, simulated_day
 
 ATTENTION_DAYS = 7
@@ -864,3 +869,49 @@ def lanes(store: Store, start: date, end: date, *, today: date | None = None) ->
     for contract in ledger.active_contracts():
         _contract_bars(ledger, contract, collected)
     return collected.build()
+
+
+# --------------------------------------------------------------------------------------------------
+# My numbers and the weekly session
+# --------------------------------------------------------------------------------------------------
+
+
+def my_numbers(store: Store, today: date, *, shareable_only: bool = False) -> MyNumbers:
+    """The *My numbers* page (:mod:`ordnung.numbers`) over a snapshot of the ledger.
+
+    ``shareable_only`` leaves out letters marked "Keep private — no AI" (Ask's tool, ADR 0006).
+    """
+    ledger = Ledger(store, today)
+    documents = [doc for doc in ledger.documents.values() if not (shareable_only and doc.ai_private)]
+    return build_my_numbers(
+        NumbersInput(
+            today=today,
+            documents=documents,
+            parties=ledger.parties,
+            cases={case.id: case for case in store.list_cases()},
+            items=ledger.items,
+            open_items=ledger.actionable_items(),
+            extractions={doc.id: ledger.extraction(doc.id) for doc in documents},
+            suspicious=frozenset(doc.id for doc in documents if ledger.scam_reasons(doc)),
+            expiry_classes={
+                item.id: expiry_class(item, ledger.document(item.doc_id))
+                for item in ledger.items
+                if item.kind == "expiry"
+            },
+            own_iban=ledger.profile.iban or None,
+        )
+    )
+
+
+def weekly_session(store: Store, today: date) -> WeeklySession:
+    """The weekly admin session (:mod:`ordnung.secretary.week`): the agenda of
+    :func:`~ordnung.secretary.brief.build_agenda`, the money summary and the ledger's letters, drafts
+    and to-dos, arranged as seven steps."""
+    ledger = Ledger(store, today)
+    return build_weekly_session(
+        ledger,
+        agenda=build_agenda(store, today),
+        money=money_summary(ledger),
+        drafts=store.list_drafts(),
+        state=session_state(store),
+    )

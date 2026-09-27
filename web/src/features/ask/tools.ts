@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CalendarRange,
   FileText,
+  IdCard,
   ListTodo,
   Scale,
   Search,
@@ -33,6 +34,7 @@ export const TOOL_ICONS: Record<string, LucideIcon> = {
   timeline: CalendarRange,
   today: CalendarDays,
   get_profile: UserRound,
+  get_my_numbers: IdCard,
 };
 
 /** Resolves an id (doc_…, itm_…) to a readable title. */
@@ -113,6 +115,8 @@ export function fallbackToolLabel(name: string, input: Record<string, unknown> =
       return "Checked today's date";
     case "get_profile":
       return "Checked your profile";
+    case "get_my_numbers":
+      return "Looked up your numbers";
     default:
       return "Looked something up";
   }
