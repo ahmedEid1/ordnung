@@ -3,10 +3,12 @@
  * cost summary never cuts a figure off ("€982.3…", "Thu 8 …") and goes four across only when its
  * column has room; the cards stay inside their column at every width; the electricity contract,
  * whose end date is only the end of its minimum term, is drawn running on (not "Ends in 2 days");
- * and a contract picked in the chart takes the keyboard focus along to its card.
+ * and a contract picked in the chart takes the keyboard focus along to its card. A contract whose
+ * notice period the letter didn't give gets it on its card (UI audit round 1, leftovers): the form
+ * fits a phone, and the rules engine works the dates out from it.
  */
 import type { Page } from "@playwright/test";
-import { expect, open, setTour, test } from "./helpers";
+import { apiGet, apiPatch, expect, open, setTour, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -77,4 +79,59 @@ test("a contract picked in the chart takes the keyboard focus to its card", asyn
   // the focus ring shows (a keyboard pick)
   expect(await card.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("solid");
   await expect(page).toHaveURL(/contract=/);
+});
+
+interface ContractTerms {
+  id: string;
+  name: string;
+  notice_value: number | null;
+  notice_unit: string | null;
+  notice_basis: string | null;
+}
+
+test("at 320 px: the notice period entered on the card of a contract we couldn't work out", async ({ page }) => {
+  const contracts = await apiGet<ContractTerms[]>(page, "/api/contracts");
+  const bank = contracts.find((c) => c.name.startsWith("Girokonto"))!;
+  const before = { notice_value: bank.notice_value, notice_unit: bank.notice_unit, notice_basis: bank.notice_basis };
+  try {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await open(page, "/contracts", "Contracts");
+    const card = page.locator("article", { has: page.getByRole("heading", { level: 3, name: /^Girokonto/ }) });
+    await card.getByRole("button", { name: /^Add notice period/ }).click();
+    const form = card.getByRole("form", { name: /^Notice period for Girokonto/ });
+    const value = form.getByRole("textbox", { name: "Notice period" });
+    await expect(value).toBeFocused();
+
+    // nothing typed: said at the field, and the form still fits the card and the screen
+    await form.getByRole("button", { name: "Save notice period" }).click();
+    await expect(form.getByText("Enter the notice period, e.g. 1 or 3")).toBeVisible();
+    await expect(value).toHaveAttribute("aria-invalid", "true");
+    const fits = await form.evaluate((f) => {
+      const card = f.closest("article")!.getBoundingClientRect();
+      const out = [...f.querySelectorAll<HTMLElement>("input, select, button, p")].filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.left < card.left || r.right > card.right;
+      });
+      const small = [...f.querySelectorAll<HTMLElement>("input, select, button")].filter((el) => el.getBoundingClientRect().height < 24);
+      return { sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth, out: out.length, small: small.length };
+    });
+    expect(fits).toEqual({ sideways: false, out: 0, small: 0 });
+
+    await value.fill("1");
+    await form.getByRole("combobox", { name: "Can be cancelled" }).selectOption("end_of_month");
+    await form.getByRole("button", { name: "Save notice period" }).click();
+    await expect(page.getByText("Notice period saved", { exact: true })).toBeVisible();
+    // the rules engine worked the dates out (the toast says them) and the card shows them
+    await expect(page.getByText("To leave on Sat 31 Oct 2026, your notice must arrive by Wed 30 Sep 2026; send it by Mon 28 Sep.")).toBeVisible();
+    await expect(card).toContainText("As written in the contract: 1 month's notice to the end of a month");
+    await expect(card).toContainText("Notice must arrive by");
+    await expect(card.getByRole("button", { name: /notice period/ })).toHaveCount(0);
+    await expect(card).toBeFocused();
+
+    // Undo: the missing terms are back
+    await page.getByRole("button", { name: /^Undo/ }).click();
+    await expect(card.getByRole("button", { name: /^Add notice period/ })).toBeVisible();
+  } finally {
+    await apiPatch(page, `/api/contracts/${bank.id}`, before);
+  }
 });

@@ -429,6 +429,32 @@ export async function demoCatalog({ api, server }) {
       await c.hover(main(c.page).getByRole("list", { name: "Lanes" }).getByRole("button"));
     },
   });
+  const noticeForm = async (c) => {
+    await c.goto("/contracts");
+    const add = main(c.page).getByRole("button", { name: /^(Add|Change) notice period/ });
+    if (!(await c.exists(add))) c.notApplicable("no contract with terms it couldn't work out");
+    await c.click(add);
+    return main(c.page).getByRole("form", { name: /^Notice period for / });
+  };
+  add({
+    id: "contracts-notice-form",
+    group: "contracts",
+    route: "/contracts",
+    how: "open /contracts, “Add notice period” on a contract whose terms are unclear",
+    description: "The notice period entered by hand on a contract card (terms it couldn't work out).",
+    run: noticeForm,
+  });
+  add({
+    id: "contracts-notice-errors",
+    group: "contracts",
+    route: "/contracts",
+    how: "open /contracts, “Add notice period”, then “Save notice period” with nothing entered",
+    description: "The notice-period form's validation errors.",
+    run: async (c) => {
+      const form = await noticeForm(c);
+      await c.click(form.getByRole("button", { name: "Save notice period" }));
+    },
+  });
 
   // ---------------------------------------------------------------------------------------------
   // Letters (drafts) and the composer

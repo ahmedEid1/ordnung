@@ -1,12 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { qk } from "@/api/hooks";
 import type { Contract, Party } from "@/api/types";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
+import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { createMockServer } from "@/mocks/server";
+import { useMockApi } from "@/test/mockFetch";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { ContractsView } from "./ContractsView";
+import { NoticePeriodForm, noticeBases, noticeValueError } from "./NoticePeriodForm";
 
 async function seededClient(mutate?: (c: Contract[]) => Contract[]) {
   const srv = createMockServer({ staticDemo: false, latency: 0 });
@@ -266,5 +270,138 @@ describe("Contracts page — fits every width, honest states", () => {
       for (const t of item.querySelectorAll("time[data-urgency]")) expect(t).toHaveAttribute("data-urgency", level);
       unmount();
     }
+  });
+});
+
+/** UI audit round 1 (leftovers): terms we couldn't work out — the notice period entered on the card. */
+describe("Contracts page — adding a notice period by hand", () => {
+  afterEach(() => {
+    act(() => __clearToasts());
+    vi.unstubAllGlobals();
+  });
+
+  const card = (name: string | RegExp) => screen.getAllByRole("article").find((a) => within(a).queryByRole("heading", { name }))!;
+
+  it("checks the number and offers only the ways that give dates", () => {
+    expect(noticeValueError("", "months")).toBe("Enter the notice period, e.g. 1 or 3");
+    expect(noticeValueError("2,5", "months")).toBe("Enter a whole number, e.g. 1 or 3");
+    expect(noticeValueError("0", "weeks")).toBe("At least 1 week");
+    expect(noticeValueError("25", "months")).toBe("Up to 24 months");
+    expect(noticeValueError(" 3 ", "months")).toBeNull();
+    expect(noticeValueError("730", "days")).toBeNull();
+    const noTerm = { initial_term_months: null, start_date: null, concluded_date: null, notice_basis: null };
+    expect(noticeBases(noTerm)).toEqual(["any_time", "end_of_month"]);
+    expect(noticeBases({ ...noTerm, initial_term_months: 12, start_date: "2025-01-01" })).toEqual(["any_time", "end_of_month", "end_of_term"]);
+    expect(noticeBases({ ...noTerm, notice_basis: "end_of_term" })).toContain("end_of_term");
+  });
+
+  it("validates, saves through the API, shows the new dates and can be undone", async () => {
+    const { srv, calls } = useMockApi();
+    const bank = srv.db.state.contracts.find((c) => c.id === "ctr_bank")!;
+    bank.computed = { ...bank.computed!, confidence: "low", summary: "We couldn't compute a cancellation date: the contract's notice period is missing." };
+    renderWithProviders(
+      <>
+        <ContractsView />
+        <Toaster />
+      </>,
+      { route: "/contracts" },
+    );
+    await screen.findByRole("heading", { level: 3, name: "Musterbank Girokonto" });
+    fireEvent.click(within(card("Musterbank Girokonto")).getByRole("button", { name: /^Add notice period/ }));
+
+    const form = within(card("Musterbank Girokonto")).getByRole("form", { name: "Notice period for Musterbank Girokonto" });
+    const value = within(form).getByLabelText("Notice period");
+    await waitFor(() => expect(value).toHaveFocus());
+    const basis = within(form).getByLabelText("Can be cancelled");
+    // no term to count from: "to the end of the term" would give no dates
+    expect(within(basis).getAllByRole("option").map((o) => o.textContent)).toEqual(["Choose…", "at any time", "to the end of a month"]);
+
+    fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
+    expect(value).toHaveAttribute("aria-invalid", "true");
+    expect(value).toHaveAccessibleDescription("Enter the notice period, e.g. 1 or 3");
+    expect(within(form).getByText("Choose how it can be cancelled")).toBeInTheDocument();
+    expect(value).toHaveFocus();
+
+    fireEvent.change(value, { target: { value: "30" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
+    expect(value).toHaveAccessibleDescription("Up to 24 months");
+
+    fireEvent.change(value, { target: { value: "1" } });
+    // "1 month", not "1 months"
+    expect(within(form).getByLabelText("Unit")).toHaveDisplayValue("month");
+    fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
+    expect(basis).toHaveFocus();
+    expect(basis).toHaveAttribute("aria-invalid", "true");
+    fireEvent.change(basis, { target: { value: "end_of_month" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
+
+    expect(await screen.findByText("Notice period saved")).toBeInTheDocument();
+    expect(screen.getByText("To leave on Sat 31 Oct 2026, your notice must arrive by Wed 30 Sep 2026; send it by Mon 28 Sep.")).toBeInTheDocument();
+    expect(calls.find((c) => c.method === "PATCH")).toEqual({ method: "PATCH", path: "/contracts/ctr_bank", body: { notice_value: 1, notice_unit: "months", notice_basis: "end_of_month" } });
+    // the card shows the dates the engine worked out, and the focus stays on the card
+    await waitFor(() => expect(within(card("Musterbank Girokonto")).queryByRole("button", { name: /notice period/ })).toBeNull());
+    const saved = card("Musterbank Girokonto");
+    expect(within(saved).getByText(/As written in the contract: 1 month's notice to the end of a month/)).toBeInTheDocument();
+    // cancellable any month: when notice must arrive, never an urgent "Send by"
+    expect(within(saved).getByText("Notice must arrive by")).toBeInTheDocument();
+    expect(within(saved).queryByRole("form")).toBeNull();
+    await waitFor(() => expect(saved).toHaveFocus());
+
+    // Undo puts the old (missing) terms back, and the button that is back takes the focus
+    const undo = screen.getByRole("button", { name: /^Undo/ });
+    act(() => undo.focus());
+    fireEvent.click(undo);
+    const again = await within(card("Musterbank Girokonto")).findByRole("button", { name: /^Add notice period/ });
+    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({ notice_value: null, notice_unit: null, notice_basis: null });
+    await waitFor(() => expect(again).toHaveFocus());
+  });
+
+  // on the real demo the refreshed contract list came before the call's own answer: the form had
+  // gone with it, and mutate's callbacks with the form — no "saved" toast, no Undo, focus lost
+  it("says it was saved and closes even when the form has gone before the answer came", async () => {
+    const { srv } = useMockApi();
+    const bank = srv.db.state.contracts.find((c) => c.id === "ctr_bank")!;
+    bank.computed = { ...bank.computed!, confidence: "low" };
+    let release = () => {};
+    const held = new Promise<void>((r) => (release = r));
+    const mocked = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PATCH") await held;
+      return mocked(input, init);
+    });
+    const onClose = vi.fn();
+    function Harness() {
+      const [shown, setShown] = useState(true);
+      return (
+        <>
+          {shown ? <NoticePeriodForm contract={bank} onClose={onClose} onUndone={() => {}} /> : null}
+          <button onClick={() => setShown(false)}>Gone</button>
+          <Toaster />
+        </>
+      );
+    }
+    renderWithProviders(<Harness />);
+    fireEvent.change(screen.getByLabelText("Notice period"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Can be cancelled"), { target: { value: "any_time" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save notice period" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gone" }));
+    expect(screen.queryByRole("form")).toBeNull();
+    release();
+    expect(await screen.findByText("Notice period saved")).toBeInTheDocument();
+    expect(onClose).toHaveBeenCalledWith(expect.objectContaining({ id: "ctr_bank", notice_value: 1, notice_basis: "any_time" }));
+    expect(screen.getByRole("button", { name: /^Undo/ })).toBeInTheDocument();
+  });
+
+  it("Escape closes the form and hands the focus back to its button", async () => {
+    const { srv } = useMockApi();
+    const bank = srv.db.state.contracts.find((c) => c.id === "ctr_bank")!;
+    bank.computed = { ...bank.computed!, confidence: "low" };
+    renderWithProviders(<ContractsView />, { route: "/contracts" });
+    await screen.findByRole("heading", { level: 3, name: "Musterbank Girokonto" });
+    fireEvent.click(within(card("Musterbank Girokonto")).getByRole("button", { name: /Add notice period/ }));
+    const form = within(card("Musterbank Girokonto")).getByRole("form");
+    fireEvent.keyDown(within(form).getByLabelText("Notice period"), { key: "Escape" });
+    expect(within(card("Musterbank Girokonto")).queryByRole("form")).toBeNull();
+    await waitFor(() => expect(within(card("Musterbank Girokonto")).getByRole("button", { name: /Add notice period/ })).toHaveFocus());
   });
 });

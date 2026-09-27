@@ -3,7 +3,7 @@
  * Mutations change the in-memory copy so the UI is fully interactive; long-running work
  * (uploads, New-mail letters) is simulated with realistic stage timings and SSE events.
  */
-import { addDays, format, parseISO } from "date-fns";
+import { addDays, addMonths, endOfMonth, format, parseISO } from "date-fns";
 import type {
   AppSettings,
   Brief,
@@ -707,6 +707,83 @@ function recomputeGymPrice(db: MockDb, receivedDate: string) {
   };
 }
 
+/** `d` moved by `n` NW working days (negative: back); `d` itself is not counted. */
+function workingDays(d: Date, n: number): Date {
+  let x = d;
+  for (let left = Math.abs(n); left > 0; ) {
+    x = addDays(x, Math.sign(n));
+    if (!notWorkingDay(x)) left -= 1;
+  }
+  return x;
+}
+
+/**
+ * Like the rules engine for a contract that follows its own terms (`as_written`) once its notice
+ * period is known: "at any time" counts the notice from when a letter posted today arrives (four
+ * working days), "to the end of a month" finds the first month end whose deadline hasn't passed,
+ * and "to the end of the term" needs a start date and term the mock's contracts don't have.
+ * Contracts under a statutory rule keep their dates (the mock has no rules engine for those).
+ */
+function recomputeNotice(db: MockDb, c: Contract) {
+  if (!c.computed || c.computed.regime !== "as_written") return;
+  const day = (d: Date, year = true) => format(d, year ? "EEE d MMM yyyy" : "EEE d MMM");
+  const iso = (d: Date) => format(d, "yyyy-MM-dd");
+  const today = parseISO(db.today);
+  const general = "No special consumer rule applies that we know of, so we used the contract's own terms.";
+  const blank = { ...c.computed, current_term_end: null, cancel_by: null, send_by: null, safe_date: null, next_renewal: null, earliest_exit: null, confidence: "low" as const, steps: [] };
+  const unknown = (reason: string) => {
+    c.computed = { ...blank, summary: `We couldn't compute a cancellation date: ${reason[0]!.toLowerCase()}${reason.slice(1)}`, warnings: [general, reason] };
+  };
+  const n = c.notice_value;
+  const unit = c.notice_unit;
+  if (!n || !unit) return unknown("The contract's notice period is missing.");
+  const one = unit.replace(/s$/, "");
+  const period = n === 1 ? `one ${one}` : `${n} ${unit}`;
+  const phrase = n === 1 ? `one ${one}'s notice` : `${n} ${unit}' notice`;
+  const add = (d: Date, k: number) => (unit === "months" ? addMonths(d, k) : addDays(d, (unit === "weeks" ? 7 : 1) * k));
+  if (c.notice_basis === "any_time") {
+    const arrival = workingDays(today, 4);
+    const exit = add(arrival, n);
+    c.computed = {
+      ...blank,
+      earliest_exit: iso(exit),
+      summary: `You can cancel any time with ${phrase}: if your cancellation arrives by ${day(arrival)}, the contract ends on ${day(exit)}.`,
+      steps: [{ label: `If it arrives by ${day(arrival)}, the contract ends ${period} later, on ${day(exit)}`, date: iso(exit), rule_id: "bgb_188", citation: "§ 188 BGB" }],
+      rule_ids: ["bgb_188"],
+      warnings: [general],
+    };
+    return;
+  }
+  if (c.notice_basis !== "end_of_month") return unknown("We need the contract's start date and term to compute the deadline.");
+  // the latest day notice can arrive so that the period fits before the month's end
+  const latestReceipt = (end: Date) => {
+    let r = add(end, -n);
+    while (add(addDays(r, 1), n) <= end) r = addDays(r, 1);
+    return r;
+  };
+  let end = endOfMonth(today);
+  while (latestReceipt(end) < today) end = endOfMonth(addDays(end, 1));
+  const cancelBy = latestReceipt(end);
+  let safe = cancelBy;
+  while (notWorkingDay(safe)) safe = addDays(safe, -1);
+  const late = workingDays(safe, -4) < today;
+  const sendBy = late ? today : workingDays(safe, -4);
+  c.computed = {
+    ...blank,
+    cancel_by: iso(cancelBy),
+    safe_date: iso(safe),
+    send_by: iso(sendBy),
+    earliest_exit: iso(end),
+    summary: `To leave on ${day(end)}, your notice must arrive by ${day(cancelBy)}${iso(sendBy) !== iso(cancelBy) ? `; send it by ${day(sendBy, false)}` : ""}.`,
+    steps: [
+      { label: `To end the contract on ${day(end)} with ${phrase}, it must arrive by ${day(cancelBy)}`, date: iso(cancelBy), rule_id: "bgb_188", citation: "§ 188 BGB" },
+      { label: `Send by ${day(sendBy)} to allow 4 business days for a letter to arrive`, date: iso(sendBy), rule_id: "postal_buffer", citation: null },
+    ],
+    rule_ids: ["bgb_188", "postal_buffer"],
+    warnings: late ? [general, "The usual sending time has passed — use the fastest channel allowed (online button, e-mail, fax or in person) today."] : [general],
+  };
+}
+
 function recomputeParking(db: MockDb, receivedDate: string) {
   const it = db.state.items.find((i) => i.id === "itm_parking");
   if (!it) return;
@@ -1034,7 +1111,10 @@ const routes: [string, string, Handler][] = [
     "/contracts/:id",
     ({ db, params, body }) => {
       const c = db.state.contracts.find((x) => x.id === params.id) ?? notFound("Unknown contract.");
-      Object.assign(c, pick<Contract>(body, ["name", "category", "status", "cost_amount", "cost_interval", "notice_value", "notice_unit", "end_date", "customer_number"]), { updated_at: nowTs() });
+      const notice = pick<Contract>(body, ["notice_value", "notice_unit", "notice_basis"]);
+      Object.assign(c, pick<Contract>(body, ["name", "category", "status", "cost_amount", "cost_interval", "end_date", "customer_number"]), notice, { updated_at: nowTs() });
+      // like the API: the rules engine works the dates out again from the new terms
+      if (Object.keys(notice).length) recomputeNotice(db, c);
       return c;
     },
   ],
