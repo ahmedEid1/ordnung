@@ -105,6 +105,34 @@ describe("the tour spotlights each page's element", () => {
     expect(screen.getByTestId("tour-spotlight").className).toContain("z-[5]");
   });
 
+  // UI audit round 1 (R1-tour-6): the tray's swipe row ran past a ring around the whole tray
+  it("step 1 on phones · the first envelope, not the whole tray (its swipe row runs past the screen's edges)", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.tour = { active: true, step: 0, completed: false };
+    const sized = (width: number) => {
+      viewport(width, 844);
+      vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+        if (this.hasAttribute?.("data-tour-part")) return new DOMRect(16, 220, 300, 280);
+        return (this.hasAttribute?.("data-tour") ? new DOMRect(0, 120, width, 400) : new DOMRect(0, 0, 0, 0)) as DOMRect;
+      });
+    };
+    sized(390);
+    const view = renderInbox();
+    const tray = await screen.findByRole("region", { name: /New mail/ });
+    // only the first envelope is marked
+    expect(tray.querySelectorAll("[data-tour-part]")).toHaveLength(1);
+    expect(within(tray).getAllByRole("listitem")[0]).toHaveAttribute("data-tour-part");
+    await waitFor(() => expect(screen.getByTestId("tour-spotlight")).toHaveStyle({ top: "212px", left: "8px", width: "316px", height: "296px" }));
+    view.unmount();
+    vi.restoreAllMocks();
+
+    // a laptop: the whole tray fits between the bars — the ring goes around all of it
+    sized(1440);
+    renderInbox();
+    await screen.findByRole("region", { name: /New mail/ });
+    await waitFor(() => expect(screen.getByTestId("tour-spotlight")).toHaveStyle({ top: "112px", left: "8px", width: "1424px", height: "416px" }));
+  });
+
   it("step 3 · Ask's suggested questions", async () => {
     const { srv } = useMockApi();
     srv.db.state.tour = { active: true, step: 2, completed: false };

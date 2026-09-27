@@ -204,6 +204,8 @@ function Envelope({ item, state, index, onOpen }: { item: MailTrayItem; state: C
 
   return (
     <motion.li
+      // the demo tour's ring on phones: the first envelope, not the swipe row running past the screen's edges
+      data-tour-part={index === 0 ? "" : undefined}
       // "position": when a letter is filed the others slide over without their text being squashed
       layout={reduced ? false : "position"}
       initial={reduced ? false : { opacity: 0, y: 10 }}

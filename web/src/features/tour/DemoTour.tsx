@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { TOUR_DOCK_ID, TOUR_STEPS, onStepRoute, stepCopy, type TourFacts, type TourStep } from "./steps";
 import type { TourEvent } from "./tourMachine";
 import { onTourRestart, useTourController } from "./useTourController";
-import { useSpotlight, type SpotRect } from "./useSpotlight";
+import { spotlitElement, useSpotlight, type SpotRect } from "./useSpotlight";
 import { useNewMailIdeas } from "./newMail";
 
 const TOTAL = TOUR_STEPS.length;
@@ -462,10 +462,10 @@ export function DemoTour() {
 
   const stepAside = useCallback((id: string) => setCoveredStep(id), []);
   useLayoutEffect(() => {
-    // (re-checked whenever the ring moves; the element itself, not the ring kept clear of the card)
+    // (re-checked whenever the ring moves; the element (or its part) itself, not the ring kept clear of the card)
     if (!floatingCard || compactForm || !rect) return;
     const c = cardRef.current?.getBoundingClientRect();
-    const t = document.querySelector(`[data-tour="${step.target}"]`)?.getBoundingClientRect();
+    const t = spotlitElement(step.target)?.getBoundingClientRect();
     if (!c?.height || !t?.height) return;
     const across = Math.min(c.right, t.right) - Math.max(c.left, t.left);
     const down = Math.min(c.bottom, t.bottom) - Math.max(c.top, t.top);

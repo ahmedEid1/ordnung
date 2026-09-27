@@ -50,6 +50,9 @@ describe("Today page", () => {
     const ideas = screen.getByRole("region", { name: "Ideas from your secretary" });
     expect(ideas).toHaveAttribute("data-tour", "today-ideas");
     expect(within(ideas).getAllByRole("article")).toHaveLength(3);
+    // the demo tour's ring on phones and short screens: the first Idea only (R1-tour-6)
+    expect(ideas.querySelectorAll("[data-tour-part]")).toHaveLength(1);
+    expect(within(ideas).getAllByRole("listitem")[0]).toHaveAttribute("data-tour-part");
     expect(within(ideas).getAllByRole("button", { name: "Remind me in a week" })).toHaveLength(3);
     expect(within(ideas).getByText(/Could save about €756/)).toBeInTheDocument();
     // an Idea that repeats a Top-3 card is not shown twice

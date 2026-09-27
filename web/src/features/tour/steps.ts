@@ -1,9 +1,10 @@
 /**
  * The demo tour (SPEC §14.10, §16): four short steps, each pointing at one element of a page.
  *
- * Pages mark the element with `data-tour="<target>"` (see {@link TOUR_TARGETS}). When the target
- * is on screen the tour draws a soft spotlight around it (two pulses, then a still ring); when it
- * is missing the card still works (no spotlight). Two steps follow the demo's data
+ * Pages mark the element with `data-tour="<target>"` (see {@link TOUR_TARGETS}), and may mark a
+ * smaller part of it for phones and short screens ({@link TOUR_PART_ATTR}). When the target is on
+ * screen the tour draws a soft spotlight around it (two pulses, then a still ring); when it is
+ * missing the card still works (no spotlight). Two steps follow the demo's data
  * ({@link stepCopy}): the New-mail step counts the letters still in the tray, and the Idea step
  * says "An idea just arrived" only when a letter really brought one.
  */
@@ -19,6 +20,13 @@ export const TOUR_TARGETS = {
 } as const;
 
 export type TourTarget = (typeof TOUR_TARGETS)[keyof typeof TOUR_TARGETS];
+
+/**
+ * Marks the part of a target the ring goes around when the whole won't do — on phones, and when
+ * the whole is taller than the screen (`useSpotlight`'s `wantsPart`): the tray's first envelope,
+ * the first Idea. A target without one keeps the ring around the whole.
+ */
+export const TOUR_PART_ATTR = "data-tour-part";
 
 /** The sidebar's free space (between the navigation and its footer) where the tour card docks. */
 export const TOUR_DOCK_ID = "tour-dock";
