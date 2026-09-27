@@ -240,7 +240,14 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
         fields["recurrence"] = patch.recurrence
     if "due_date" in changes:
         nature = date_nature(item.kind, item.date_spec)
-        fields |= manual_date_fields(store, changes["due_date"], today, nature=nature, party_id=item.party_id)
+        fields |= manual_date_fields(
+            store,
+            changes["due_date"],
+            today,
+            nature=nature,
+            party_id=item.party_id,
+            previous=item.computation,
+        )
         replaced = replaced_occurrence(item)
         if item.recurrence is not None and fields["computation"] is not None and replaced is not None:
             fields["computation"] = standing_in(fields["computation"], replaced)  # recurrence.py, point 7

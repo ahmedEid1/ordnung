@@ -24,6 +24,8 @@ from ordnung.ingest.plan import (
     compute_item,
     consistency_reasons,
     document_context,
+    for_item,
+    kept_payment_note,
     law_deadlines,
     needs_check,
     payment_note,
@@ -111,8 +113,9 @@ def recompute_document_items(
         for item in store.list_items(doc_id=document.id):
             if not recomputable(item) or item.date_spec is None:
                 continue
+            item_ctx = for_item(ctx, item, note)
             result = with_payment_note(
-                compute_item(_verified(item, item.date_spec, pages), ctx, postal_buffer_days=buffer),
+                compute_item(_verified(item, item.date_spec, pages), item_ctx, postal_buffer_days=buffer),
                 item,
                 note,
             )
@@ -124,9 +127,9 @@ def recompute_document_items(
                     "due_date_source": result.source,
                 }
             )
-            moved = rolled(recomputed, ctx, postal_buffer_days=buffer) or recomputed
+            moved = rolled(recomputed, item_ctx, postal_buffer_days=buffer) or recomputed
             if keeps_later_date(item, item.recurrence, item.date_spec, moved.due_date):
-                moved = at_occurrence(recomputed, item.due_date, ctx, postal_buffer_days=buffer) or item
+                moved = at_occurrence(recomputed, item.due_date, item_ctx, postal_buffer_days=buffer) or item
             fields = {name: getattr(moved, name) for name in SCHEDULE_FIELDS}
             if any(getattr(item, name) != value for name, value in fields.items()):
                 changed.append(store.update_item(item.id, **fields))
@@ -208,15 +211,28 @@ def schedule_spec(due: str, nature: DateNature) -> DateSpec:
 
 
 def manual_date_fields(
-    store: Store, due: str | None, today: date, *, nature: DateNature, party_id: str | None
+    store: Store,
+    due: str | None,
+    today: date,
+    *,
+    nature: DateNature,
+    party_id: str | None,
+    previous: ComputationReceipt | None = None,
 ) -> dict[str, Any]:
-    """Item fields for a due date set (or cleared) by the person."""
+    """Item fields for a due date set (or cleared) by the person. A payment note the ``previous`` receipt
+    carried (a rent increase's new rent, a late statement's back-payment) stays: a date set by hand never
+    makes such a payment owed (:func:`~ordnung.ingest.plan.kept_payment_note`)."""
     if due is None:
-        return {"due_date": None, "send_by": None, "computation": None, "due_date_source": "none"}
-    receipt = manual_receipt(store, due, today, nature=nature, party_id=party_id)
+        return {
+            "due_date": None,
+            "send_by": None,
+            "computation": kept_payment_note(previous, None),
+            "due_date_source": "none",
+        }
+    receipt = kept_payment_note(previous, manual_receipt(store, due, today, nature=nature, party_id=party_id))
     return {
         "due_date": due,
-        "send_by": receipt.send_by,
+        "send_by": receipt.send_by if receipt else None,
         "computation": receipt,
         "due_date_source": "manual",
         "grounding": "user",

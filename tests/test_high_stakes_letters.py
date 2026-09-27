@@ -558,6 +558,49 @@ RENT_INCREASE = Letter(
     },
 )
 
+CURRENT_PAY = "Ihre derzeitige Miete von 640,00 EUR ist weiterhin zum 01.10.2026 fällig."
+NEW_RENT_UNDATED = "Die neue Miete beträgt 670,00 EUR."
+#: Review round 2 of phase 2: a § 558 request whose reading has the current rent as a payment next to an
+#: undated new rent — only the new rent is "decide before you pay".
+RENT_INCREASE_CURRENT = Letter(
+    marker="Mieterhoehung mit laufender Miete",
+    pages=(
+        (
+            "Hausverwaltung Muster GmbH",
+            "SPECIMEN",
+            "Mieterhoehung mit laufender Miete",
+            INCREASE_QUOTE,
+            CURRENT_PAY,
+            NEW_RENT_UNDATED,
+        ),
+    ),
+    payload={
+        **RENT_INCREASE.payload,
+        "items": [
+            {
+                "kind": "payment",
+                "title": "Rent for October",
+                "amount": 640.0,
+                "date": {
+                    "type": "fixed",
+                    "date": "2026-10-01",
+                    "nature": "payment",
+                    "text": "zum 01.10.2026",
+                },
+                "quote": CURRENT_PAY,
+            },
+            {
+                "kind": "payment",
+                "title": "New monthly rent",
+                "amount": 670.0,
+                "date": {"type": "none", "nature": "payment", "text": ""},
+                "quote": NEW_RENT_UNDATED,
+            },
+        ],
+        "change": {**RENT_INCREASE.payload["change"], "effective_date": "2026-12-01"},
+    },
+)
+
 #: Final review 1: an ordinary notice ending the tenancy five weeks after its date — the objection date
 #: (31 Aug 2026) had passed when it was written.
 SHORT_NOTICE = _notice(
@@ -725,6 +768,7 @@ LETTERS = (
     REMINDER,
     LATE_MIXED,
     RENT_INCREASE,
+    RENT_INCREASE_CURRENT,
     SHORT_NOTICE,
     OBJECTION_DATE_ONLY,
     COURT_REQUEST,
@@ -1537,6 +1581,52 @@ async def test_ask_never_presents_a_rent_increases_new_rent_as_just_another_paym
             today=date(2026, 12, 1),
         )
         assert other.note is None
+
+
+async def test_only_the_new_rent_carries_the_note_dated_or_not(data_dir: Path) -> None:
+    """Review round 2 of phase 2: the current rent got the "decide before you pay" note (holding it back
+    risks arrears, § 543 Abs. 2 Nr. 3 BGB), and an undated new rent got none, so Ask listed it as an ordinary
+    payment without a due date."""
+    from ordnung.assistant.mcp_server import DECIDE_BEFORE_PAYING, LedgerTools
+
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, RENT_INCREASE_CURRENT)
+        payments = {item.title: item for item in _by_origin(api, doc_id)["extracted"]}
+        current, new = payments["Rent for October"], payments["New monthly rent"]
+        assert current.computation is not None
+        assert RENT_INCREASE_PAYMENT_WARNING not in current.computation.warnings
+        assert new.due_date is None and new.computation is not None
+        assert new.computation.warnings == [RENT_INCREASE_PAYMENT_WARNING]
+        assert "bgb_558b" in new.computation.rule_ids
+        record = LedgerTools(api.ctx.store, today=date(2026, 9, 26)).money_summary().record
+        assert [row["id"] for row in record[DECIDE_BEFORE_PAYING]] == [new.id]
+        assert all(row["id"] != new.id for row in record["payments_without_due_date"])
+        # the current rent is owed on its own day, never re-dated to the new rent's (§ 558b Abs. 1 BGB)
+        assert current.due_date == "2026-10-01" and "bgb_558b" not in current.computation.rule_ids
+        assert any(row["id"] == current.id for row in record["upcoming_payments"])
+
+
+async def test_a_hand_set_date_keeps_the_new_rents_note(data_dir: Path) -> None:
+    """Review round 2 of phase 2: setting the new rent's due date by hand replaced its receipt, so Ask
+    counted the not-yet-agreed rent as due this month, without the note."""
+    from ordnung.assistant.mcp_server import DECIDE_BEFORE_PAYING, LedgerTools
+
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, RENT_INCREASE)
+        [payment] = _by_origin(api, doc_id)["extracted"]
+        response = await api.client.patch(f"/api/items/{payment.id}", json={"due_date": "2026-10-05"})
+        assert response.status_code == 200
+        after = api.ctx.store.get_item(payment.id)
+        assert after is not None and after.due_date_source == "manual" and after.computation is not None
+        assert RENT_INCREASE_PAYMENT_WARNING in after.computation.warnings
+        record = LedgerTools(api.ctx.store, today=date(2026, 10, 1)).money_summary().record
+        assert record["due_this_month"] == 0
+        assert [row["id"] for row in record[DECIDE_BEFORE_PAYING]] == [payment.id]
+        # clearing the date keeps it too
+        await api.client.patch(f"/api/items/{payment.id}", json={"due_date": None})
+        cleared = api.ctx.store.get_item(payment.id)
+        assert cleared is not None and cleared.computation is not None
+        assert cleared.computation.warnings == [RENT_INCREASE_PAYMENT_WARNING]
 
 
 async def test_a_late_statements_back_payment_is_listed_apart_with_its_note(data_dir: Path) -> None:

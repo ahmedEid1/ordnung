@@ -385,6 +385,8 @@ def item_context(store: Store, item: Item, today: date) -> RuleContext:
     holidays in the person's country (a to-do added by hand)."""
     document = store.get_document(item.doc_id) if item.doc_id else None
     found = document_context(store, document, today) if document is not None else None
+    if found is not None and document is not None:
+        found = for_item(found, item, rent_increase_note(document.kind, store.get_extraction(document.id)))
     return found or RuleContext(today=today, country=store.get_profile().country)
 
 
@@ -454,11 +456,66 @@ def late_statement_warning(statement: bool, title: str | None, text: str, ctx: R
 class PaymentNote:
     """A warning a letter's outgoing payment to-dos carry in their receipt, with the rule it cites.
     ``recurring``: recurring payments carry it too (a rent increase's new rent), not only one-off ones (a
-    late statement's back-payment — never the new monthly prepayment)."""
+    late statement's back-payment — never the new monthly prepayment). ``current``: the rent before the
+    increase and ``starts`` the day it takes effect, as read — a payment of the current rent, or one due
+    before the increase, is owed as ever and never carries the note (review round 2 of phase 2)."""
 
     warning: str
     rule_id: str
     recurring: bool
+    current: float | None = None
+    starts: date | None = None
+
+    def is_current(self, item: ExtractedItem | Item) -> bool:
+        """Whether a payment is the rent as it is now, not the increase: the current rent's amount, or a date
+        the letter writes before the increase takes effect."""
+        amount = item.amount
+        if (
+            self.current is not None
+            and amount is not None
+            and round(amount * 100) == round(self.current * 100)
+        ):
+            return True
+        spec = item.date if isinstance(item, ExtractedItem) else item.date_spec
+        written = parse_date(spec.date) if spec is not None and spec.type == "fixed" else None
+        return self.starts is not None and written is not None and written < self.starts
+
+    def applies(self, item: ExtractedItem | Item) -> bool:
+        """Whether a payment the person makes (never a credit) carries the note: a recurring one only when
+        the note says so, never the current rent (:meth:`is_current`)."""
+        if item.kind != "payment" or item.direction == "in":
+            return False
+        if item.recurrence is not None and not self.recurring:
+            return False
+        return not self.is_current(item)
+
+
+def rent_increase_note(kind: str | None, extraction: DocumentExtraction | None) -> PaymentNote | None:
+    """A rent increase's :class:`PaymentNote`: its new rent is only owed once the person agrees (§ 558b Abs.
+    1 BGB) — with the current rent and the day the increase takes effect, as read."""
+    if kind != "rent_increase":
+        return None
+    change = extraction.change if extraction is not None else None
+    return PaymentNote(
+        RENT_INCREASE_PAYMENT_WARNING,
+        "bgb_558b",
+        recurring=True,
+        current=change.old_amount if change is not None else None,
+        starts=parse_date(change.effective_date) if change is not None else None,
+    )
+
+
+def for_item(ctx: RuleContext, item: ExtractedItem | Item, note: PaymentNote | None) -> RuleContext:
+    """The context a to-do's date is computed in: a rent increase's current rent (:meth:`PaymentNote.
+    is_current`) is owed as ever, so it is never re-dated to the new rent's earliest day (§ 558b Abs. 1 BGB,
+    review round 2 of phase 2) — it is computed like a payment on any other letter."""
+    if note is not None and note.rule_id == "bgb_558b" and item.kind == "payment" and note.is_current(item):
+        return replace(ctx, letter_kind=None)
+    return ctx
+
+
+#: The summary of the receipt an undated payment gets for its note (it has no date of its own).
+UNDATED_NOTE_SUMMARY = "The letter gives no date for this payment."
 
 
 def payment_note(
@@ -468,7 +525,7 @@ def payment_note(
     agrees (§ 558b Abs. 1 BGB); a late statement's back-payment may not be owed
     (:func:`late_statement_warning`)."""
     if kind == "rent_increase":
-        return PaymentNote(RENT_INCREASE_PAYMENT_WARNING, "bgb_558b", recurring=True)
+        return rent_increase_note(kind, extraction)
     warning = late_statement_warning(is_statement(kind, extraction), title, text, ctx)
     return PaymentNote(warning, "bgb_556_3", recurring=False) if warning else None
 
@@ -476,17 +533,42 @@ def payment_note(
 def with_payment_note(
     computed: ComputedDate, item: ExtractedItem | Item, note: PaymentNote | None
 ) -> ComputedDate:
-    """A payment's receipt with its letter's :class:`PaymentNote` and its rule. Only money the person
-    pays: never a credit or refund (``direction`` "in"), and a recurring payment only when the note says
-    so."""
-    receipt = computed.receipt
-    if note is None or receipt is None or item.kind != "payment" or item.direction == "in":
+    """A payment's receipt with its letter's :class:`PaymentNote` and its rule, when it applies
+    (:meth:`PaymentNote.applies`). A payment without a date gets a receipt for the note alone — the page
+    and Ask read the note from the receipt, so an undated new rent is never shown as owed (review round 2
+    of phase 2)."""
+    if note is None or not note.applies(item):
         return computed
-    if item.recurrence is not None and not note.recurring:
-        return computed
-    rule_ids = receipt.rule_ids if note.rule_id in receipt.rule_ids else [*receipt.rule_ids, note.rule_id]
-    updated = receipt.model_copy(update={"warnings": [*receipt.warnings, note.warning], "rule_ids": rule_ids})
-    return replace(computed, receipt=updated)
+    receipt = computed.receipt or ComputationReceipt(due_date=None, summary=UNDATED_NOTE_SUMMARY)
+    return replace(computed, receipt=noted_receipt(receipt, note.warning, note.rule_id))
+
+
+def noted_receipt(receipt: ComputationReceipt, warning: str, rule_id: str) -> ComputationReceipt:
+    """``receipt`` with a payment note and the rule it cites (each once)."""
+    rule_ids = receipt.rule_ids if rule_id in receipt.rule_ids else [*receipt.rule_ids, rule_id]
+    warnings = receipt.warnings if warning in receipt.warnings else [*receipt.warnings, warning]
+    return receipt.model_copy(update={"warnings": warnings, "rule_ids": rule_ids})
+
+
+#: The payment notes a receipt can carry, with the rule each cites (:func:`payment_note`).
+PAYMENT_NOTES: dict[str, str] = {
+    RENT_INCREASE_PAYMENT_WARNING: "bgb_558b",
+    LATE_STATEMENT_WARNING: "bgb_556_3",
+}
+
+
+def kept_payment_note(
+    previous: ComputationReceipt | None, receipt: ComputationReceipt | None
+) -> ComputationReceipt | None:
+    """A payment's new receipt (a date the person set, or none) with the payment note its previous one
+    carried: setting the new rent's date by hand never makes it owed (review round 2 of phase 2)."""
+    notes = [warning for warning in (previous.warnings if previous else []) if warning in PAYMENT_NOTES]
+    if not notes:
+        return receipt
+    kept = receipt or ComputationReceipt(due_date=None, summary=UNDATED_NOTE_SUMMARY)
+    for warning in notes:
+        kept = noted_receipt(kept, warning, PAYMENT_NOTES[warning])
+    return kept
 
 
 def remedy_warnings(remedy: Remedy | None) -> list[str]:

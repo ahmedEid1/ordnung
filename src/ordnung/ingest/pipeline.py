@@ -51,6 +51,7 @@ from ordnung.ingest.plan import (
     compute_item,
     corrections,
     filed_kind,
+    for_item,
     law_deadlines,
     payment_details,
     payment_note,
@@ -441,7 +442,9 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
         note = payment_note(kind, reading, reading.title, full_text, ctx)
         computed = [
             with_payment_note(
-                compute_item(verified, ctx, postal_buffer_days=data.postal_buffer_days),
+                compute_item(
+                    verified, for_item(ctx, verified.item, note), postal_buffer_days=data.postal_buffer_days
+                ),
                 verified.item,
                 note,
             )

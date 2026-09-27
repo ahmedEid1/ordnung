@@ -290,7 +290,10 @@ class LedgerTools:
             in_person = (
                 item.kind == "payment" and bool(item.due_time) and paid_at_appointment(self.ledger(), item)
             )
-            return _explain_item(item, in_person=in_person)
+            letter = self.store.get_document(item.doc_id) if item.doc_id else None
+            return _explain_item(
+                item, in_person=in_person, withheld=letter is not None and not _shareable(letter)
+            )
         if ref_id.startswith("ctr_"):
             contract = self.store.get_contract(ref_id)
             if contract is None:
@@ -843,18 +846,23 @@ def _cites_document(contract: Contract, doc_id: str) -> bool:
     return contract.source_doc_id == doc_id or any(ev.doc_id == doc_id for ev in contract.evidence)
 
 
-def _explain_item(item: Item, *, in_person: bool = False) -> ToolAnswer:
+def _explain_item(item: Item, *, in_person: bool = False, withheld: bool = False) -> ToolAnswer:
     """The receipt, how the date was made and the rules are code; the wording and quotes are letter text.
-    ``in_person``: a payment made at an appointment (:func:`paid_at_appointment`) gets no send-by date."""
+    ``in_person``: a payment made at an appointment (:func:`paid_at_appointment`) gets no send-by date.
+    ``withheld``: the to-do's letter is private (or in the trash) — its wording and quotes are left out, as
+    ``get_document`` leaves out its text (review round 2 of phase 2)."""
     receipt = item.computation
     spec = item.date_spec
     letters = LetterText()
-    letters.add(
-        item.id,
-        title=item.title,
-        as_written=spec.text if spec is not None else None,
-        evidence=[{"doc_id": ev.doc_id, "page": ev.page, "quote": ev.quote} for ev in item.evidence],
-    )
+    if withheld:
+        letters.add(item.id, title=item.title)
+    else:
+        letters.add(
+            item.id,
+            title=item.title,
+            as_written=spec.text if spec is not None else None,
+            evidence=[{"doc_id": ev.doc_id, "page": ev.page, "quote": ev.quote} for ev in item.evidence],
+        )
     record = {
         "id": item.id,
         "kind": item.kind,

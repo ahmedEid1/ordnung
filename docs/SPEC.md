@@ -410,8 +410,13 @@ HTML and without remote images.
   a late statement's back-payment (may not be owed, § 556 Abs. 3 S. 3 BGB) — carries the app's note in
   its record (`payment_note`, in every row and timeline entry) and is listed apart too
   (`decide_before_paying`), never among the upcoming payments or in the totals; the answer check repeats
-  the note, in the answer's language, under an answer that cites the to-do or its letter. `explain_date`
-  keeps an unverified contract's steps (which repeat its terms) in its letter text, like the terms. `list_contracts` names a letter that says a contract is cancelled
+  the note, in the answer's language and first in its note, under an answer that cites the to-do or its
+  letter, or states its due date or amount through any record linked to it (its contract, its sender), and
+  adds the app's scam warning under one that cites or states a `do_not_pay` demand. Only the new rent
+  carries the note — never the current rent (its amount, or a date before the increase), which is owed and
+  dated as ever — an undated one too, and a due date the person sets by hand keeps it. `explain_date`
+  keeps an unverified contract's steps (which repeat its terms) in its letter text, like the terms, and
+  leaves out the wording and quotes of a to-do whose letter is private or in the trash. `list_contracts` names a letter that says a contract is cancelled
   only as `cancellation_letter` (pending the person's confirmation). `if_not_cancelled` (also in
   `explain_date` for a fixed-term job or flat let) says a job ends by itself on its date (§ 15 Abs. 1
   TzBfG); ending it earlier by ordinary notice needs an agreed notice clause (§ 15 Abs. 4 TzBfG), and a

@@ -240,7 +240,7 @@ def merge_server(text: str | None, name: str, entry: dict[str, Any]) -> tuple[di
     data: Any = {}
     if text is not None and text.strip():
         try:
-            data = json.loads(text)
+            data = json.loads(text, object_pairs_hook=_unique_keys)
         except ValueError as exc:
             raise InstallError(f"it is not valid JSON ({exc})") from exc
     if not isinstance(data, dict):
@@ -252,6 +252,17 @@ def merge_server(text: str | None, name: str, entry: dict[str, Any]) -> tuple[di
         return data, "unchanged"
     status: WriteStatus = "updated" if name in servers else "added"
     return {**data, "mcpServers": {**servers, name: entry}}, status
+
+
+def _unique_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """A JSON object whose keys are all different: rewriting one with a key twice would keep only the last
+    (review round 2 of phase 2), against "every other key and server stays as it was"."""
+    found: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in found:
+            raise ValueError(f"the key {json.dumps(key)} appears twice in one object")
+        found[key] = value
+    return found
 
 
 def other_entry_name(plan: Plan) -> str:
@@ -315,9 +326,17 @@ def write_config(plan: Plan, *, now: datetime | None = None, remove_ledger: bool
     left = other if other in servers and removed is None else None
     if status == "unchanged" and removed is None:
         return WriteResult(status=status, path=path, other=left)
+    try:  # rendered and encoded before anything is written: a lone surrogate ("\ud800") can't be UTF-8
+        rendered = render_json(merged)
+        rendered.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise InstallError(
+            f"Nothing was changed: {path} — it holds text that can't be written as UTF-8 ({exc.reason}). Fix "
+            "or move that file, then run this again."
+        ) from exc
     backup = _backup(path, now or datetime.now()) if existing is not None else None
     mode = path.stat().st_mode & 0o7777 if existing is not None else NEW_FILE_MODE
-    _replace(path, render_json(merged), mode)
+    _replace(path, rendered, mode)
     return WriteResult(status=status, path=path, backup=backup, removed=removed, other=left)
 
 

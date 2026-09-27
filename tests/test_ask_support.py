@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import re
-import time
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -41,6 +40,7 @@ from ordnung.assistant.support import (
 )
 from ordnung.db.store import Store
 from ordnung.ingest.verify import MONTH_NUMBERS
+from ordnung.rules.advice import LATE_STATEMENT_WARNING, RENT_INCREASE_PAYMENT_WARNING
 from ordnung.secretary.review import catalog_texts, paragraphs_in
 
 INLINE_DATE_FORMS = Path(__file__).resolve().parents[1] / "web" / "src" / "lib" / "inlineDateForms.json"
@@ -374,15 +374,21 @@ def test_checking_a_checked_answer_removes_nothing(tools: LedgerTools, ids: dict
 
 
 def test_the_check_is_linear_in_practice(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """A long answer over big tool results is checked in well under a second."""
+    """A long answer over big tool results is checked in time proportional to its length — measured against
+    the machine itself (:func:`helpers_timing.assert_linear`), never against a wall-clock limit that a busy
+    runner misses (review round 2 of phase 2)."""
     item = ids["dunning_payment"]
     results = [render_result(tools.list_items(status="all"))] * 200
-    started = time.perf_counter()
     evidence = TurnEvidence.from_results(results, today=TODAY)
-    answer = "\n".join(f"- Pay 94.99 € by 30 Sep [item:{item}]. Maybe 12.12.2030 too." for _ in range(2000))
-    checked = check_answer(answer, evidence, citable=evidence.seen_ids)
-    assert time.perf_counter() - started < 5.0
+
+    def build(lines: int) -> str:
+        return "\n".join(
+            f"- Pay 94.99 € by 30 Sep [item:{item}]. Maybe 12.12.2030 too." for _ in range(lines)
+        )
+
+    checked = check_answer(build(2000), evidence, citable=evidence.seen_ids)
     assert len(checked.removed) == 2000 and len(checked.sentences) == 4000
+    assert_linear(build, 300, lambda answer: check_answer(answer, evidence, citable=evidence.seen_ids))
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1193,13 +1199,15 @@ def test_warnings_about_injected_text_are_kept(
 def test_the_check_is_linear_in_one_long_sentence(injected: TurnEvidence, ids: dict[str, str]) -> None:
     """Review finding: one long sentence took 30 s at 88 KB (quadratic clause, widen and overlap scans)."""
     doc = ids["doc_tax"]
-    body = ", ".join(["999,00 €, 31.12.2027"] * 4000)
-    sentence = f"The letter says {body} [doc:{doc}]."
+
+    def build(copies: int) -> str:
+        return f"The letter says {', '.join(['999,00 €, 31.12.2027'] * copies)} [doc:{doc}]."
+
+    sentence = build(4000)
     assert len(sentence) > 88_000
-    started = time.perf_counter()
     checked = check_answer(sentence, injected, citable=injected.seen_ids)
-    assert time.perf_counter() - started < 3.0
     assert checked.sentences[0].verdict == "redacted"
+    assert_linear(build, 1000, lambda text: check_answer(text, injected, citable=injected.seen_ids))
 
 
 @pytest.mark.parametrize("unit", ["[", "[](x", "[]( ", "  ", "[doc:", "![", "[a](", " [item:"], ids=repr)
@@ -1208,11 +1216,15 @@ def test_the_check_is_linear_on_bracket_and_space_runs(
 ) -> None:
     """Review finding: link syntax was found by rescanning to the end of the line from every ``[``
     (6.4 s at 40,000 of them), and a run of spaces before a citation marker was rescanned too."""
-    text = unit * (40_000 // len(unit)) + f" 31.12.2027 [doc:{ids['doc_tax']}]."
-    started = time.perf_counter()
-    check_answer(text, injected, citable=injected.seen_ids)
-    read_as_shown(text)
-    assert time.perf_counter() - started < 1.5
+
+    def build(length: int) -> str:
+        return unit * (length // len(unit)) + f" 31.12.2027 [doc:{ids['doc_tax']}]."
+
+    def read(text: str) -> None:
+        check_answer(text, injected, citable=injected.seen_ids)
+        read_as_shown(text)
+
+    assert_linear(build, 10_000, read)
 
 
 @pytest.mark.parametrize(
@@ -1223,10 +1235,11 @@ def test_the_check_is_linear_on_bracket_and_space_runs(
 def test_the_check_is_linear_on_digit_runs(injected: TurnEvidence, ids: dict[str, str], unit: str) -> None:
     """Review round 4 reads every run of digit groups joined by marks (and a time after a date): a run
     is read once, group by group, however long it is."""
-    text = unit * (40_000 // len(unit)) + f" 31.12.2027 [doc:{ids['doc_tax']}]."
-    started = time.perf_counter()
-    check_answer(text, injected, citable=injected.seen_ids)
-    assert time.perf_counter() - started < 1.5
+
+    def build(length: int) -> str:
+        return unit * (length // len(unit)) + f" 31.12.2027 [doc:{ids['doc_tax']}]."
+
+    assert_linear(build, 10_000, lambda text: check_answer(text, injected, citable=injected.seen_ids))
 
 
 @pytest.mark.parametrize(
@@ -2342,3 +2355,380 @@ def test_hour_words_read_their_clock_unless_a_part_of_the_day_moves_it() -> None
     forms = ("à 15 heures", "15時30分", "1530 hrs", "T09:05", "下午3点")
     clocks = [value.clock for form in forms for value in stated_values(form)]
     assert clocks == [(15, 0), (15, 30), (15, 30), (9, 5), None]
+
+
+# --------------------------------------------------------------------------------------------------
+# review round 2 of phase 2
+# --------------------------------------------------------------------------------------------------
+
+
+def _evidence(*answers: ToolAnswer) -> TurnEvidence:
+    return TurnEvidence.from_results(
+        [render_tool_result(answer) for answer in answers], today=TODAY, catalog=catalog_texts()
+    )
+
+
+def _kept(text: str, evidence: TurnEvidence) -> bool:
+    """Whether ``text`` comes back unchanged."""
+    return check_answer(text, evidence, citable=evidence.seen_ids).text == text
+
+
+SLASH_DEADLINE = _evidence(
+    ToolAnswer(
+        {
+            "today": TODAY.isoformat(),
+            "items": [
+                {"id": "itm_march", "kind": "deadline", "due_date": "2027-03-11"},
+                {
+                    "id": "itm_fee",
+                    "kind": "payment",
+                    "due_date": "2026-10-02",
+                    "amount": 50.0,
+                    "currency": "EUR",
+                },
+                {"id": "itm_same", "kind": "deadline", "due_date": "2027-03-03"},
+            ],
+        }
+    )
+)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Ihre Einspruchsfrist endet am 03/11/2027 [item:itm_march].",
+        "Your objection deadline is 03/11/2027 [item:itm_march].",
+        "Your objection deadline is 3/11/27 [item:itm_march].",
+        "Your objection deadline is 03/11/27 [item:itm_march].",
+        "Your objection deadline is 03／11／2027 [item:itm_march].",
+        "Zahlen Sie die Gebühr bis zum 10/02/2026 [item:itm_fee].",
+    ],
+)
+def test_a_slash_date_that_reads_two_ways_is_never_checked_by_one_reading(sentence: str) -> None:
+    """Review round 2 of phase 2: "03/11/2027" passed for a deadline on 11 Mar 2027 — a German or British
+    reader sees 3 Nov, eight months late. A date that reads two ways is supported only by both readings."""
+    checked = check_answer(sentence, SLASH_DEADLINE, citable=SLASH_DEADLINE.seen_ids)
+    assert checked.text != sentence
+    assert not re.search(r"\b(?:0?3|10)／?/?(?:11|02)／?/", checked.text)
+    note = checked.note() or ""
+    assert "11 Mar 2027" in note or "11.03.2027" in note or "2 Oct 2026" in note or "02.10.2026" in note
+
+
+def test_a_slash_date_with_one_reading_is_checked_as_usual() -> None:
+    assert _kept("Your deadline is 03/03/2027 [item:itm_same].", SLASH_DEADLINE)
+    assert (
+        _kept("Your deadline is 13/03/2027 [item:itm_march].", SLASH_DEADLINE) is False
+    )  # 13 Mar is no date
+    assert _kept("Your deadline is 11 Mar 2027 [item:itm_march].", SLASH_DEADLINE)
+
+
+NOTED = _evidence(
+    ToolAnswer(
+        {
+            "today": TODAY.isoformat(),
+            "decide_before_paying": [
+                {
+                    "id": "itm_newrent",
+                    "kind": "payment",
+                    "due_date": "2026-12-01",
+                    "amount": 720.0,
+                    "currency": "EUR",
+                    "doc_id": "doc_increase",
+                    "contract_id": "ctr_lease",
+                    "party_id": "pty_landlord",
+                    "payment_note": RENT_INCREASE_PAYMENT_WARNING,
+                },
+                {
+                    "id": "itm_backpay",
+                    "kind": "payment",
+                    "due_date": "2026-11-15",
+                    "amount": 180.0,
+                    "currency": "EUR",
+                    "doc_id": "doc_statement",
+                    "contract_id": "ctr_lease",
+                    "party_id": "pty_landlord",
+                    "payment_note": LATE_STATEMENT_WARNING,
+                },
+            ],
+            "contracts": [{"id": "ctr_lease", "category": "rent", "party_id": "pty_landlord"}],
+            "parties": [{"id": "pty_landlord", "kind": "landlord"}],
+        },
+        {"doc_increase": {"summary": "Mieterhöhung auf 720,00 EUR ab 01.12.2026"}},
+    )
+)
+
+
+@pytest.mark.parametrize(
+    ("sentence", "phrase"),
+    [
+        ("From Tue 1 Dec 2026 you pay 720.00 € for the flat [ctr:ctr_lease].", "§ 558b Abs. 1 BGB"),
+        ("Your landlord wants 720.00 € from Tue 1 Dec 2026 [pty:pty_landlord].", "§ 558b Abs. 1 BGB"),
+        ("The back-payment of 180.00 € is due on Sun 15 Nov 2026 [ctr:ctr_lease].", "§ 556 Abs. 3 S. 3 BGB"),
+        ("Your landlord asks for 180.00 € [pty:pty_landlord].", "§ 556 Abs. 3 S. 3 BGB"),
+    ],
+)
+def test_the_payment_note_follows_the_value_whichever_record_is_cited(sentence: str, phrase: str) -> None:
+    """Review round 2 of phase 2: the note was added only when the answer cited the to-do or its letter; the
+    same values cited as the lease's or the landlord's passed as checked without it."""
+    checked = check_answer(sentence, NOTED, citable=NOTED.seen_ids)
+    assert checked.text == sentence
+    note = checked.note() or ""
+    assert phrase in note
+    # the note leads: what to decide before paying comes before the check's bookkeeping
+    assert note.removeprefix(NOTE_PREFIX).strip().startswith(("The new rent", "This operating-cost"))
+
+
+def test_a_sentence_about_the_lease_without_a_noted_value_gets_no_note() -> None:
+    checked = check_answer("Your lease is with your landlord [ctr:ctr_lease].", NOTED, citable=NOTED.seen_ids)
+    assert checked.note() is None
+
+
+def test_the_payment_note_comes_with_the_value_the_note_gives() -> None:
+    """Review round 2 of phase 2: "Pay 720.00 € on Tue 1 Dec 2026." citing nothing lost its amount as "only in
+    the letter" while the note listed 720.00 € as Ordnung's own — and gave no § 558b note."""
+    checked = check_answer("Pay 720.00 € on Tue 1 Dec 2026.", NOTED, citable=NOTED.seen_ids)
+    assert "only in the letter" not in checked.text
+    note = checked.note() or ""
+    assert "§ 558b Abs. 1 BGB" in note
+
+
+SCAM = _evidence(
+    ToolAnswer(
+        {
+            "today": TODAY.isoformat(),
+            "do_not_pay": [
+                {
+                    "id": "itm_scam",
+                    "kind": "payment",
+                    "due_date": "2026-10-01",
+                    "amount": 210.0,
+                    "currency": "EUR",
+                    "doc_id": "doc_scam",
+                    "scam_warning": True,
+                }
+            ],
+            "documents": [{"id": "doc_scam"}],
+        }
+    )
+)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Pay the broadcasting fee of 210.00 € by Thu 1 Oct 2026 [item:itm_scam].",
+        "Pay the broadcasting fee of 210.00 € by Thu 1 Oct 2026 [doc:doc_scam].",
+        "Zahlen Sie den Rundfunkbeitrag von 210,00 € bis zum 01.10.2026 [item:itm_scam].",
+    ],
+)
+def test_a_demand_with_scam_signs_is_never_shown_as_simply_checked(sentence: str) -> None:
+    """Review round 2 of phase 2: "Pay the broadcasting fee of 210.00 €" citing a scam demand came back as
+    checked, with no warning (ADR 0006)."""
+    checked = check_answer(sentence, SCAM, citable=SCAM.seen_ids)
+    note = checked.note() or ""
+    assert "signs of a scam" in note or "Anzeichen eines Betrugs" in note
+    assert "don't pay its demand" in note or "Zahlen Sie seine Forderung erst" in note
+
+
+@pytest.mark.parametrize(
+    "amount", ["$412", "412 USD", "£412", "CHF 412", "$412.00", "US$412.00", "412.00 GBP", "412 dollars"]
+)
+def test_an_amount_in_another_currency_is_never_the_euro_refund(
+    tools: LedgerTools, ids: dict[str, str], amount: str
+) -> None:
+    """Review round 2 of phase 2: "$412" and "CHF 412" passed as the 412.00 € tax refund."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    sentence = f"Your tax refund is {amount} [item:{ids['tax_refund']}]."
+    assert not _kept(sentence, evidence)
+    assert _kept(f"Your tax refund is 412.00 € [item:{ids['tax_refund']}].", evidence)
+
+
+def test_a_record_in_another_currency_supports_only_that_currency() -> None:
+    evidence = _evidence(
+        ToolAnswer(
+            {
+                "today": TODAY.isoformat(),
+                "fixed_cost_contracts": [{"id": "ctr_phone", "monthly_cost": 29.99, "currency": "CHF"}],
+                "fixed_costs_monthly_other_currencies": {"CHF": 29.99},
+            }
+        )
+    )
+    assert _kept("Your mobile contract costs 29.99 CHF a month [ctr:ctr_phone].", evidence)
+    for amount in ("29.99 €", "$29.99", "29.99 USD"):
+        assert not _kept(f"Your mobile contract costs {amount} a month [ctr:ctr_phone].", evidence)
+
+
+@pytest.mark.parametrize("quantity", ["412.00 kWh", "412.00 km", "412.00 m²"])
+def test_a_number_with_a_unit_is_no_amount(quantity: str) -> None:
+    assert [value.kind for value in stated_values(f"You used {quantity} last year.")] == []
+
+
+@pytest.mark.parametrize("amount", ["412.00 BTC", "412 ETH", "412,0001 €"])
+def test_another_money_or_too_many_decimals_is_unreadable(
+    tools: LedgerTools, ids: dict[str, str], amount: str
+) -> None:
+    evidence = evidence_of(tools, ("list_items", {}))
+    assert not _kept(f"Your tax refund is {amount} [item:{ids['tax_refund']}].", evidence)
+
+
+@pytest.mark.parametrize(
+    "amount",
+    [
+        "412 Eurocent",
+        "412 Euro-Cent",
+        "412 euro cents",
+        "412 hundred euros",
+        "412 thousands of euros",
+        "412 thousand-euro",
+        "412 T €",
+        "999 avro",
+    ],
+)
+def test_cent_and_scale_words_never_pass_as_the_plain_amount(
+    tools: LedgerTools, ids: dict[str, str], amount: str
+) -> None:
+    """Review round 2 of phase 2: each of these passed as the 412.00 € refund (the reader sees 4.12 € or
+    41,200 €)."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    assert not _kept(f"Your tax refund is {amount} [item:{ids['tax_refund']}].", evidence)
+
+
+@pytest.mark.parametrize(
+    "time",
+    [
+        "10 Uhr abends",
+        "10 Uhr nachts",
+        "10 Uhr am Abend",
+        "10 Uhr pm",
+        "abends um 10 Uhr",
+        "10:00 in the evening",
+    ],
+)
+def test_a_part_of_the_day_is_read_with_its_hour(tools: LedgerTools, ids: dict[str, str], time: str) -> None:
+    """Review round 2 of phase 2: "10 Uhr abends" passed as checked for a 10:00 appointment."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    assert not _kept(f"Ihr Termin ist am Mi 14.10.2026 {time} [item:{ids['abh_appointment']}].", evidence)
+
+
+@pytest.mark.parametrize(
+    "time", ["10 Uhr morgens", "10 Uhr vormittags", "10:00 in the morning", "morgens um 10 Uhr"]
+)
+def test_a_morning_hour_stays(tools: LedgerTools, ids: dict[str, str], time: str) -> None:
+    evidence = evidence_of(tools, ("list_items", {}))
+    assert _kept(f"Ihr Termin ist am Mi 14.10.2026 {time} [item:{ids['abh_appointment']}].", evidence)
+
+
+def test_an_evening_hour_is_the_evening_time() -> None:
+    evidence = _evidence(
+        ToolAnswer(
+            {
+                "today": TODAY.isoformat(),
+                "items": [
+                    {
+                        "id": "itm_evening",
+                        "kind": "appointment",
+                        "due_date": "2026-10-14",
+                        "due_time": "22:00",
+                    }
+                ],
+            }
+        )
+    )
+    assert _kept("Der Termin ist am 14.10.2026 um 10 Uhr abends [item:itm_evening].", evidence)
+    assert _kept("Der Termin ist am 14.10.2026 um 10 Uhr nachts [item:itm_evening].", evidence)
+    assert not _kept("Der Termin ist am 14.10.2026 um 10 Uhr morgens [item:itm_evening].", evidence)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "您在外国人管理局的预约是2026年10月14日11:30 [item:{item}]。",
+        "预约时间是2026年10月14日上午11:30 [item:{item}]。",
+        "预约在１６：００ [item:{item}]。",
+        "预约：16:00 [item:{item}]。",
+        "Appointment (time:11:30) [item:{item}].",
+        "Appointment at 16∶00 [item:{item}].",
+        "Appointment at 16꞉00 [item:{item}].",
+        "Встреча в 16 ч [item:{item}].",
+        "Appuntamento alle 16 [item:{item}].",
+        "Appointment at 1600 hours [item:{item}].",
+    ],
+)
+def test_a_time_glued_to_its_word_or_with_a_colon_look_alike_is_read(
+    tools: LedgerTools, ids: dict[str, str], sentence: str
+) -> None:
+    """Review round 2 of phase 2: Chinese writes values with no space before them, and a colon look-alike
+    renders as ':' — neither was read, so a wrong time passed as checked (the appointment is at 10:00)."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    assert not _kept(sentence.format(item=ids["abh_appointment"]), evidence)
+
+
+@pytest.mark.parametrize(
+    "sentence", ["预约：10:00 [item:{item}]。", "Appointment (time:10:00) [item:{item}]."]
+)
+def test_the_right_time_after_a_colon_or_a_cjk_sign_stays(
+    tools: LedgerTools, ids: dict[str, str], sentence: str
+) -> None:
+    evidence = evidence_of(tools, ("list_items", {}))
+    assert _kept(sentence.format(item=ids["abh_appointment"]), evidence)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "您的退税金额为999欧元 [item:{refund}]。",
+        "截止于20271231 [item:{objection}]。",
+        "截止日期为Dec 31, 2027 [item:{objection}]。",
+        "截止于2027年底 [item:{objection}]。",
+        "Your objection deadline moved to December of 2027 [item:{objection}].",
+        "Your objection deadline is 12/31 [item:{objection}].",
+        "Your objection deadline is 31-12 [item:{objection}].",
+        "Your objection deadline is 12-31 [item:{objection}].",
+        "Your objection deadline is 31 12 [item:{objection}].",
+        "Срок теперь в декабре 2027 года [item:{objection}].",
+        "Термін у грудні 2027 року [item:{objection}].",
+        "Termin w grudniu 2027 [item:{objection}].",
+        "Deadline XII 2027 [item:{objection}].",
+        "Deadline XII.2027 [item:{objection}].",
+    ],
+)
+def test_more_forms_of_a_moved_date_or_amount_are_read(
+    tools: LedgerTools, ids: dict[str, str], sentence: str
+) -> None:
+    """Review round 2 of phase 2: each form passed as checked for the objection due Wed 21 Oct 2026 (or the
+    412.00 € refund)."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    text = sentence.format(refund=ids["tax_refund"], objection=ids["tax_objection"])
+    assert not _kept(text, evidence)
+
+
+def test_a_month_of_its_year_is_still_supported(tools: LedgerTools, ids: dict[str, str]) -> None:
+    evidence = evidence_of(tools, ("list_items", {}))
+    assert _kept(f"Your objection deadline is in October of 2026 [item:{ids['tax_objection']}].", evidence)
+    assert _kept(f"Your objection deadline is on 10/21/2026 [item:{ids['tax_objection']}].", evidence)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Ihr Termin ist am Mi 14.10.2026 um 10:00 Uhr [item:{item}].",
+        "Der Termin beginnt um 10:00 Uhr und dauert eine Stunde [item:{item}].",
+        "Der Termin ist um 10:00, bitte pünktlich [item:{item}].",
+        "Der Termin ist um 10.00, bitte pünktlich [item:{item}].",
+    ],
+)
+def test_um_with_a_full_time_is_that_time(tools: LedgerTools, ids: dict[str, str], sentence: str) -> None:
+    """Review round 2 of phase 2 (a round-1 regression): "um 10:00 Uhr" was read as "um 10" without its unit,
+    removed and garbled ("[Uhrzeit weggelassen]:00 Uhr")."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    assert _kept(sentence.format(item=ids["abh_appointment"]), evidence)
+
+
+def test_a_wrong_time_after_um_is_left_out_whole(tools: LedgerTools, ids: dict[str, str]) -> None:
+    evidence = evidence_of(tools, ("list_items", {}))
+    item = ids["abh_appointment"]
+    checked = check_answer(
+        f"Ihr Termin ist am Mi 14.10.2026 um 11:30 Uhr [item:{item}].", evidence, citable=evidence.seen_ids
+    )
+    assert checked.text == f"Ihr Termin ist am Mi 14.10.2026 um [Uhrzeit weggelassen] [item:{item}]."
+    assert ":30" not in checked.text

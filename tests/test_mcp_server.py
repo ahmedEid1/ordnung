@@ -899,3 +899,51 @@ def test_explain_date_keeps_an_unverified_contracts_steps_out_of_the_record(
         ids["gym_contract"], evidence=_evidence(ids["doc_gym_confirm"], "24,90 €", "verified")
     )
     assert "steps" in tools.explain_date(ids["gym_contract"]).record["computation"]
+
+
+def test_explain_date_withholds_a_private_or_trashed_letters_words(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """Review round 2 of phase 2: marking a read letter private (or trashing it) still let explain_date
+    return its verbatim evidence quote and wording, which get_document withholds."""
+    objection = ids["tax_objection"]
+    shared = tools.explain_date(objection)
+    assert "innerhalb eines Monats nach Bekanntgabe" in render_result(shared)
+    store.update_document(ids["doc_tax"], ai_private=True)
+    private = tools.explain_date(objection)
+    rendered = render_result(private)
+    assert "innerhalb eines Monats nach Bekanntgabe" not in rendered
+    assert private.letters[objection] == {"title": "Objection deadline (Einspruch)"}
+    assert private.record["due_date"] == "2026-10-21"  # the date and its receipt are Ordnung's own
+    store.update_document(ids["doc_tax"], ai_private=False)
+    store.trash_document(ids["doc_tax"])
+    assert "innerhalb eines Monats nach Bekanntgabe" not in render_result(tools.explain_date(objection))
+
+
+def test_the_totals_note_never_counts_a_payment_listed_to_decide_on(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """Review round 2 of phase 2 (a mutation that survived): an unverified payment the app says to decide on
+    first is neither in the totals nor among the payments the totals leave out."""
+    from ordnung.models import ComputationReceipt
+    from ordnung.rules.advice import RENT_INCREASE_PAYMENT_WARNING
+
+    before = tools.money_summary().record["totals_leave_out"]
+    receipt = ComputationReceipt(
+        due_date="2026-09-28", warnings=[RENT_INCREASE_PAYMENT_WARNING], rule_ids=["bgb_558b"]
+    )
+    add_item(
+        store,
+        kind="payment",
+        title="New rent",
+        area="home",
+        due_date="2026-09-28",
+        amount=720.0,
+        currency="EUR",
+        direction="out",
+        grounding="unverified",
+        computation=receipt,
+    )
+    after = tools.money_summary().record
+    assert after["totals_leave_out"] == before
+    assert after["due_this_month"] == 94.99

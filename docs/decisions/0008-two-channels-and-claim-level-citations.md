@@ -37,8 +37,12 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
    is no calendar date is never supported, and a day, one word and a year whose word is no month the
    check knows (``31 décembre 2027`` — Ask answers in the question's language, the check knows English
    and German month names) is unreadable, never supported; so is a clock time moved by words ("halb 10
-   Uhr") and a day in words before a month. The form lists decide only what counts as a value; what they
-   leave unread is named in the policy's limits.
+   Uhr") and a day in words before a month. A slash date that reads two ways (`03/11/2027`) is Ordnung's
+   only when the record holds both readings, and an amount written with a currency only when the record's
+   amount is in that currency. The form lists decide only what counts as a value; what they leave unread
+   is named in the policy's limits. A kept sentence that states or cites a payment the app says to decide
+   on first (a rent increase's new rent, a late statement's back-payment) — through any record linked to it
+   — or a record with scam signs gets the app's own warning in the note, first (ADR 0006).
 3. **Only the check writes its note, and nobody reads an unchecked word.** The note travels in its own
    field of the `done` event and the stored thread, under its label in the answer's language, and says
    only what is true of every case it covers, in words a non-expert reads ("isn't among the dates and
@@ -88,7 +92,10 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
   unreadable, not unread — but the list of forms remains. Review round 1 of phase 2 found more unread
   forms in the other offered languages (marked dates such as `31-dic-2027`, month and year in those
   languages, other calendars, `31/12`, scales glued to a currency, other currencies, hour words); they
-  were added the same way, and the Ask page's generated numbers are now checked in CI (`--check-docs`). The smaller policy ADR 0007 asks for is the
+  were added the same way, and the Ask page's generated numbers are now checked in CI (`--check-docs`).
+  Review round 2 of phase 2 found more again (values glued to Chinese signs, colon look-alikes, parts of
+  the day, cent and scale words, months with "of", US month/day pairs, locative month names, other
+  currencies' symbols); they were added the same way. The smaller policy ADR 0007 asks for is the
   next step: the prompt requires Ordnung's own formats ("Wed 21 Oct 2026", "640.00 €", "10:30"), and
   every other digit run in a sentence that could be a date, time or amount is left out. It needs a
   prompt version, a re-recording and a new measurement of what it costs correct answers, so it is not

@@ -274,6 +274,9 @@ def test_merge_into_an_empty_config(text: str | None) -> None:
         ("[1, 2]", "its top level is not a JSON object"),
         ('"text"', "its top level is not a JSON object"),
         ('{"mcpServers": []}', 'its "mcpServers" is not a JSON object'),
+        # review round 2 of phase 2: a key twice would be rewritten as the last one alone
+        ('{"mcpServers": {"a": {"command": "x"}, "a": {"command": "y"}}}', 'the key "a" appears twice'),
+        ('{"theme": "dark", "theme": "light"}', 'the key "theme" appears twice'),
     ],
 )
 def test_merge_refuses_what_it_cannot_understand(text: str, message: str) -> None:
@@ -355,6 +358,25 @@ def test_write_refuses_invalid_json_and_changes_nothing(tmp_path: Path) -> None:
         write_config(desktop_plan(tmp_path), now=NOW)
     assert "Fix or move that file" in str(raised.value)
     assert config.read_text(encoding="utf-8") == '{"mcpServers": {"files": '
+    assert list(config.parent.iterdir()) == [config]  # no backup, no temp file
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"mcpServers": {"a": {"command": "x"}, "a": {"command": "y"}}}',
+        '{"note": "\\ud800", "mcpServers": {}}',
+    ],
+    ids=["duplicate key", "lone surrogate"],
+)
+def test_write_refuses_a_config_it_cannot_keep_whole_and_changes_nothing(tmp_path: Path, text: str) -> None:
+    """Review round 2 of phase 2: duplicate keys were dropped, and a lone surrogate escape raised a traceback
+    after the backup was written."""
+    config = settings_folder(tmp_path) / "claude_desktop_config.json"
+    config.write_text(text, encoding="utf-8")
+    with pytest.raises(InstallError, match=r"Nothing was changed: .*Fix or move that file"):
+        write_config(desktop_plan(tmp_path), now=NOW)
+    assert config.read_text(encoding="utf-8") == text
     assert list(config.parent.iterdir()) == [config]  # no backup, no temp file
 
 
