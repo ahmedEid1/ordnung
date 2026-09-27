@@ -6,19 +6,25 @@ Written policy (ADR 0007):
   no model, zero tokens): what is overdue, what is due today or in the next 7 days, and contract
   decisions whose send-by day is in the next 7 days. Letters with scam signs are never in it (the
   agenda leaves them out). Nothing to report, no notification.
-* **Discreet** (the mode the web app switches on): the title is "Ordnung" and the text a count only
-  — "2 things due this week", "1 thing overdue", "1 overdue · 2 due this week" — never a title, a
-  name, an organisation or an amount, so a lock screen or a shared screen shows nothing private.
-* **Full**: the title carries that count ("Ordnung · 2 things due this week"), the text the first
-  three things — overdue first, then by day — with the amount of a payment and the day to act:
-  "Pay the parking fine €30 by Thu · Decide on FitWell: cancel by Thu 8 Oct · and 1 more". The
-  titles are letters' words: control and bidirectional characters are removed, whitespace is
+* **Discreet** (the mode the web app switches on): the title is "Ordnung" and the text counts only
+  — "2 things due this week", "1 thing overdue", "3 due today · 4 overdue · 5 more this week" —
+  never a title, a name, an organisation or an amount, so a lock screen or a shared screen shows
+  nothing private. What ends today is always counted apart: it is the reason to look.
+* **Full**: the title carries that count ("Ordnung · 1 due today · 2 more this week"), the text the
+  first three things with the amount of a payment and the day to act: what ends *today* first
+  (deadlines, contract decisions and appointments before tasks, tasks before payments — a remedy
+  that expires today outranks a small fee that is a week overdue), then what is overdue, then the
+  rest of the week by day: "Decide on FitWell: cancel today · Pay the parking fine €30 — overdue ·
+  Dental appointment on Thu 10:30 · and 1 more". An appointment says its time ("today 09:15").
+  The titles are letters' words: control and bidirectional characters are removed, whitespace is
   collapsed, a leading dash is dropped and each is cut to :data:`MAX_TITLE_CHARS` characters.
-* **When.** Once per local day (the profile's time zone), at the first check at or after the chosen
-  time (``settings.desktop_notify_time``, default 08:00). The daily tick checks every 15 minutes,
-  so it comes up to 15 minutes after that time — or as soon as Ordnung starts, when it wasn't
-  running then. The day is used up by the attempt, shown or not: a missing tool is not retried every
-  15 minutes. The demo never notifies on its own.
+* **When.** Once per local day (the profile's time zone), at the chosen time
+  (``settings.desktop_notify_time``, default 08:00) — the daily tick wakes up for it, whatever time
+  it is — or, when Ordnung wasn't running then, :data:`STARTUP_GRACE_S` seconds after it starts (at
+  login the desktop's notification service may not be up yet). A notification the system couldn't
+  show (an error, no answer in time) is tried again at the next checks, :data:`MAX_TRIES` times a
+  day at most, and the last failure is kept for Settings; a missing tool is not retried. Nothing
+  due, no notification — and the day is done. The demo never notifies on its own.
 * **How.** The system's own tool, no new dependency and never through a shell: ``notify-send``
   (Linux and other Unix desktops; the text's ``& < >`` escaped, as the notification servers read
   markup), ``osascript`` (macOS; a fixed script, the texts as its arguments) and Windows
@@ -31,13 +37,14 @@ from __future__ import annotations
 
 import base64
 import html
+import json
 import logging
 import os
 import re
 import shutil
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time
 from typing import Any, Literal
@@ -49,6 +56,8 @@ from ordnung.models import AppSettings
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.brief import Agenda, AgendaEntry, build_agenda
 from ordnung.secretary.triggers import money, parse_day
+
+When = Literal["today", "overdue", "upcoming"]
 
 log = logging.getLogger(__name__)
 
@@ -63,6 +72,11 @@ MAX_TITLE_CHARS = 60
 SEND_TIMEOUT_S = 10.0
 DEFAULT_TIME = time(8, 0)
 LAST_SHOWN_KEY = "desktop_notified_on"
+#: the last attempt the system couldn't show: ``{"day": …, "tries": …, "detail": …}``
+FAILED_KEY = "desktop_notify_failed"
+MAX_TRIES = 3
+#: after Ordnung starts, the first notification waits this long (the desktop may still be starting)
+STARTUP_GRACE_S = 60.0
 TITLE_ENV = "ORDNUNG_NOTIFY_TITLE"
 BODY_ENV = "ORDNUNG_NOTIFY_BODY"
 #: Windows PowerShell's own app id: a toast needs a registered app to be shown under.
@@ -151,7 +165,18 @@ def _plural(count: int, word: str = "thing") -> str:
 class _Thing:
     text: str
     day: date
-    overdue: bool
+    when: When
+    #: within a day: what can't wait first (see the module policy)
+    rank: int = 1
+
+    @property
+    def overdue(self) -> bool:
+        return self.when == "overdue"
+
+
+_GROUPS: dict[When, int] = {"today": 0, "overdue": 1, "upcoming": 2}
+#: deadlines, decisions and appointments before tasks, tasks before payments (module policy)
+_RANKS: dict[str, int] = {"deadline": 0, "expiry": 0, "appointment": 0, "contract": 0, "payment": 2}
 
 
 def _amount(entry: AgendaEntry) -> str:
@@ -162,32 +187,58 @@ def _amount(entry: AgendaEntry) -> str:
     )
 
 
-def things_due(agenda: Agenda) -> list[_Thing]:
-    """Everything the notification counts, in the order it lists them (overdue first, then by day)."""
+def _when(entry: AgendaEntry, day: date, today: date, times: Mapping[str, str]) -> str:
+    """``today`` / ``by Thu`` — an appointment ``today 09:15`` / ``on Thu 10:30``."""
+    if entry.kind != "appointment":
+        return "today" if day <= today else f"by {short_day(day, today)}"
+    label = "today" if day <= today else short_day(day, today)
+    clock_time = times.get(entry.id)
+    on = label if label in ("today", "tomorrow") else f"on {label}"
+    return f"{on} {clock_time}" if clock_time else on
+
+
+def things_due(agenda: Agenda, times: Mapping[str, str] | None = None) -> list[_Thing]:
+    """Everything the notification counts, in the order it lists it (module policy); ``times``:
+    an appointment's time of day (``HH:MM``) by its agenda id."""
     today = parse_day(agenda.date) or clock.today()
+    times = times or {}
     found: list[_Thing] = []
     for entry in agenda.overdue:
         day = parse_day(entry.date) or today
-        found.append(_Thing(f"{clean(entry.title)}{_amount(entry)} — overdue", day, True))
+        found.append(_Thing(f"{clean(entry.title)}{_amount(entry)} — overdue", day, "overdue"))
     for entry in [*agenda.today, *agenda.next_7_days]:
         day = parse_day(entry.date) or today
-        when = "today" if day <= today else f"by {short_day(day, today)}"
-        found.append(_Thing(f"{clean(entry.title)}{_amount(entry)} {when}", day, False))
+        text = f"{clean(entry.title)}{_amount(entry)} {_when(entry, day, today, times)}"
+        found.append(_Thing(text, day, "today" if day <= today else "upcoming", _RANKS.get(entry.kind, 1)))
     for entry in agenda.decisions:
         send_by = parse_day(entry.date)
         if send_by is not None and (send_by - today).days <= WEEK_DAYS:
             act = max(send_by, today)  # a missed send-by day means "act today", as on the agenda
-            when = "today" if act == today else f"by {short_day(act, today)}"
-            found.append(_Thing(f"Decide on {clean(entry.title)}: cancel {when}", act, False))
-    return sorted(found, key=lambda thing: (not thing.overdue, thing.day))
+            when: When = "today" if act == today else "upcoming"
+            label = "today" if act == today else f"by {short_day(act, today)}"
+            found.append(_Thing(f"Decide on {clean(entry.title)}: cancel {label}", act, when, 0))
+    # today: what can't wait first; overdue and the rest of the week: by day
+    return sorted(
+        found, key=lambda thing: (_GROUPS[thing.when], thing.rank if thing.when == "today" else 0, thing.day)
+    )
 
 
 def summary(things: Sequence[_Thing]) -> str:
-    """The count, without any detail: ``2 things due this week`` / ``1 overdue · 2 due this week``."""
-    overdue = sum(thing.overdue for thing in things)
-    upcoming = len(things) - overdue
-    if overdue and upcoming:
-        return f"{overdue} overdue · {upcoming} due this week"
+    """The counts, without any detail: ``2 things due this week`` / ``1 overdue · 2 due this week`` /
+    ``3 due today · 4 overdue · 5 more this week``."""
+    today = sum(thing.when == "today" for thing in things)
+    overdue = sum(thing.when == "overdue" for thing in things)
+    upcoming = len(things) - today - overdue
+    parts = [
+        f"{today} due today" if today else None,
+        f"{overdue} overdue" if overdue else None,
+        f"{upcoming} {'more' if today else 'due'} this week" if upcoming else None,
+    ]
+    shown = [part for part in parts if part]
+    if len(shown) > 1:
+        return " · ".join(shown)
+    if today:
+        return f"{_plural(today)} due today"
     if overdue:
         return f"{_plural(overdue)} overdue"
     return f"{_plural(upcoming)} due this week"
@@ -206,9 +257,32 @@ def _compose(things: Sequence[_Thing], mode: Mode) -> Notification | None:
     return Notification(title=f"{APP_NAME} · {count}", body=" · ".join(listed))
 
 
-def compose(agenda: Agenda, mode: Mode) -> Notification | None:
+def compose(agenda: Agenda, mode: Mode, times: Mapping[str, str] | None = None) -> Notification | None:
     """The notification for ``agenda`` in ``mode`` (``None``: nothing to say, or switched off)."""
-    return _compose(things_due(agenda), mode)
+    return _compose(things_due(agenda, times), mode)
+
+
+def appointment_times(store: Store, agenda: Agenda) -> dict[str, str]:
+    """The time of day (``HH:MM``) of the agenda's appointments that have one, by agenda id."""
+    times: dict[str, str] = {}
+    for entry in [*agenda.overdue, *agenda.today, *agenda.next_7_days]:
+        if entry.kind == "appointment" and entry.ref.type == "item":
+            item = store.get_item(entry.ref.id)
+            if item is not None and item.due_time and _TIME_RE.match(item.due_time[:5]):
+                times[entry.id] = item.due_time[:5]
+    return times
+
+
+def today_things(store: Store, today: date) -> list[_Thing]:
+    """What the notification says on ``today``: the day's agenda, appointments with their time."""
+    agenda = build_agenda(store, today)
+    return things_due(agenda, appointment_times(store, agenda))
+
+
+def preview(store: Store, today: date) -> dict[Mode, Notification | None]:
+    """Today's notification in each mode (Settings shows both)."""
+    things = today_things(store, today)
+    return {mode: _compose(things, mode) for mode in ("discreet", "full")}
 
 
 # --------------------------------------------------------------------------------------------------
@@ -318,11 +392,43 @@ def is_due(settings: AppSettings, today: date, now: time, last_shown: str | None
     return last_shown != today.isoformat() and now >= notify_time(settings)
 
 
+@dataclass(frozen=True)
+class Failure:
+    """The last attempt the system couldn't show (meta :data:`FAILED_KEY`)."""
+
+    day: str
+    tries: int
+    detail: str
+
+
+def last_failure(store: Store) -> Failure | None:
+    """The last notification the system couldn't show (``None``: the last one was shown, or none failed)."""
+    raw = store.get_meta(FAILED_KEY)
+    try:
+        data = json.loads(raw) if raw else {}
+        return Failure(day=str(data["day"]), tries=int(data["tries"]), detail=str(data["detail"]))
+    except (ValueError, TypeError, KeyError):
+        return None
+
+
+def first_try_in(store: Store, today: date, now: datetime) -> float | None:
+    """Seconds until today's notification is first due (0: now); ``None`` when it isn't waiting —
+    switched off, the demo, done for today or already tried (retries come with the regular checks)."""
+    settings = store.get_settings()
+    if settings.desktop_notifications == "off" or settings.demo:
+        return None
+    failed = last_failure(store)
+    if store.get_meta(LAST_SHOWN_KEY) == today.isoformat() or (failed and failed.day == today.isoformat()):
+        return None
+    moment = datetime.combine(now.date(), notify_time(settings), tzinfo=now.tzinfo)
+    return max(0.0, (moment - now).total_seconds())
+
+
 def show(
     store: Store, today: date, mode: Mode, *, sender: Callable[[Notification], SendResult] = send
 ) -> Outcome:
     """Build today's notification in ``mode`` and show it now (the Settings test uses it too)."""
-    things = things_due(build_agenda(store, today))
+    things = today_things(store, today)
     note = _compose(things, mode)
     return Outcome(
         day=today,
@@ -343,10 +449,25 @@ def morning_notification(
     settings = store.get_settings()
     if not is_due(settings, today, now, store.get_meta(LAST_SHOWN_KEY)):
         return None
-    store.set_meta(LAST_SHOWN_KEY, today.isoformat())  # the attempt uses the day up, whatever happens
     outcome = show(store, today, settings.desktop_notifications, sender=sender)
-    if outcome.result is not None and outcome.result.sent:
+    result = outcome.result
+    failed = last_failure(store)
+    tries = (failed.tries if failed is not None and failed.day == today.isoformat() else 0) + 1
+    if result is not None and not result.sent and result.mechanism is not None and tries < MAX_TRIES:
+        # the system couldn't show it this time: the next check tries again (module policy)
+        _record_failure(store, today, tries, result.detail)
+        log.info("desktop notification not shown (try %d of %d): %s", tries, MAX_TRIES, result.detail)
+        return outcome
+    store.set_meta(LAST_SHOWN_KEY, today.isoformat())  # shown, nothing to say, no tool, or given up
+    if result is not None and result.sent:
+        store.set_meta(FAILED_KEY, None)
         store.log_activity("notify.desktop", f"Showed the morning notification ({outcome.count})")
-    elif outcome.result is not None:
-        log.info("desktop notification not shown: %s", outcome.result.detail)
+    elif result is not None:
+        _record_failure(store, today, tries, result.detail)
+        log.info("desktop notification not shown: %s", result.detail)
     return outcome
+
+
+def _record_failure(store: Store, today: date, tries: int, detail: str | None) -> None:
+    record = {"day": today.isoformat(), "tries": tries, "detail": detail or "The system didn't show it."}
+    store.set_meta(FAILED_KEY, json.dumps(record))

@@ -9,6 +9,7 @@ import subprocess
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
+from time import monotonic
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -84,7 +85,7 @@ def test_the_example_from_the_brief() -> None:
     )
 
 
-def test_full_lists_overdue_first_then_by_day_and_counts_the_rest() -> None:
+def test_full_lists_today_then_overdue_then_by_day_and_counts_the_rest() -> None:
     week = agenda(
         overdue=[entry("Return library books", MON - timedelta(days=8), kind="task")],
         today=[entry("Call the Ausländerbehörde", MON, kind="task")],
@@ -96,12 +97,70 @@ def test_full_lists_overdue_first_then_by_day_and_counts_the_rest() -> None:
     )
     note = compose(week, "full")
     assert note is not None
-    assert note.title == "Ordnung · 1 overdue · 4 due this week"
+    assert note.title == "Ordnung · 1 due today · 1 overdue · 3 more this week"
     assert note.body == (
-        "Return library books — overdue · Call the Ausländerbehörde today · "
+        "Call the Ausländerbehörde today · Return library books — overdue · "
         "Pay TechMarkt reminder €94.99 by tomorrow · and 2 more"
     )
-    assert compose(week, "discreet") == Notification("Ordnung", "1 overdue · 4 due this week")
+    assert compose(week, "discreet") == Notification("Ordnung", "1 due today · 1 overdue · 3 more this week")
+
+
+def test_what_ends_today_comes_before_old_small_payments() -> None:
+    """The live demo on Thu 8 Oct: a legal objection's last day and a contract's last posting day
+    must not hide behind a €4.50 library fee that is a week overdue."""
+    thu = MON + timedelta(days=10)
+    week = Agenda(
+        date=thu.isoformat(),
+        overdue=[
+            entry("Pay outstanding invoice plus reminder fee", thu - timedelta(days=2), amount=94.99),
+            entry("Pay accumulated library fees", thu - timedelta(days=7), amount=4.5),
+            entry("Pay Verwarnungsgeld (traffic fine)", thu - timedelta(days=1), amount=30.0),
+        ],
+        today=[
+            entry("Pay the rent", thu, amount=750.0),
+            entry("Buy stamps", thu, kind="task"),
+            entry("Object to contribution notice (Widerspruch)", thu, kind="deadline"),
+        ],
+        decisions=[entry("FunkNetz Smart M", thu, kind="contract")],
+    )
+    note = compose(week, "full")
+    assert note is not None
+    assert note.body == (
+        "Object to contribution notice (Widerspruch) today · Decide on FunkNetz Smart M: cancel today · "
+        "Buy stamps today · and 4 more"
+    )
+    assert compose(week, "discreet") == Notification("Ordnung", "4 due today · 3 overdue")
+
+
+def test_appointments_say_their_day_and_time() -> None:
+    week = agenda(
+        today=[entry("Dental appointment", MON, kind="appointment")],
+        next_7_days=[
+            entry("Ausländerbehörde", MON + timedelta(days=1), kind="appointment"),
+            entry("Bürgeramt", MON + timedelta(days=2), kind="appointment"),
+            entry("Doctor", MON + timedelta(days=3), kind="appointment"),
+        ],
+    )
+    times = {
+        e.id: t for e, t in zip(week.today + week.next_7_days, ["09:15", "10:30", "08:00"], strict=False)
+    }
+    note = compose(week, "full", times)
+    assert note is not None
+    assert note.body == (
+        "Dental appointment today 09:15 · Ausländerbehörde tomorrow 10:30 · Bürgeramt on Wed 08:00 · and 1 more"
+    )
+    doctor = things_due(week, times)[-1]
+    assert doctor.text == "Doctor on Thu"  # no time known: the day only
+
+
+def test_an_appointments_time_comes_from_its_to_do(store: Store) -> None:
+    ids = seed_ledger(store)
+    store.update_item(ids["abh_appointment"], due_date=(MON + timedelta(days=2)).isoformat())
+    texts = desktop.preview(store, MON)
+    assert (
+        texts["full"] is not None and "Appointment at the Ausländerbehörde on Wed 10:00" in texts["full"].body
+    )
+    assert texts["discreet"] is not None and "10:00" not in texts["discreet"].body
 
 
 def test_discreet_never_says_a_title_a_name_or_an_amount(store: Store) -> None:
@@ -144,7 +203,7 @@ def test_contract_decisions_count_only_within_the_week() -> None:
         ]
     )
     note = compose(week, "full")
-    assert note is not None and note.title == "Ordnung · 2 things due this week"
+    assert note is not None and note.title == "Ordnung · 1 due today · 1 more this week"
     assert (
         note.body == "Decide on Missed send-by: cancel today · Decide on Phone contract: cancel by Mon 5 Oct"
     )
@@ -167,6 +226,26 @@ def test_summary_wording(count: int, overdue: int, expected: str) -> None:
     ]
     week = agenda(overdue=things[:overdue], next_7_days=things[overdue:])
     assert summary(things_due(week)) == expected
+
+
+@pytest.mark.parametrize(
+    ("today", "overdue", "later", "expected"),
+    [
+        (1, 0, 0, "1 thing due today"),
+        (2, 0, 0, "2 things due today"),
+        (2, 1, 0, "2 due today · 1 overdue"),
+        (2, 0, 3, "2 due today · 3 more this week"),
+        (3, 4, 5, "3 due today · 4 overdue · 5 more this week"),
+    ],
+)
+def test_what_ends_today_is_counted_apart(today: int, overdue: int, later: int, expected: str) -> None:
+    week = agenda(
+        overdue=[entry(f"o{i}", MON - timedelta(days=1)) for i in range(overdue)],
+        today=[entry(f"t{i}", MON) for i in range(today)],
+        next_7_days=[entry(f"l{i}", MON + timedelta(days=2)) for i in range(later)],
+    )
+    assert summary(things_due(week)) == expected
+    assert compose(week, "discreet") == Notification("Ordnung", expected)
 
 
 def test_short_days() -> None:
@@ -355,7 +434,8 @@ def test_once_a_day_at_or_after_the_chosen_time(store: Store) -> None:
     assert morning_notification(store, tomorrow, time(23, 59), sender=sender) is not None  # started late
     assert len(sender.notes) == 2
     logged = [a for a in store.list_activity(limit=20) if a.kind == "notify.desktop"]
-    assert logged and "1 overdue · 3 due this week" in logged[0].message
+    assert logged and "1 due today · 1 overdue · 2 more this week" in logged[0].message  # Tuesday's
+    assert "1 overdue · 3 due this week" in logged[1].message
     assert "library" not in logged[0].message.lower()
 
 
@@ -367,15 +447,46 @@ def test_full_mode_sends_the_details(store: Store) -> None:
     assert sender.notes[0].body.startswith("Return library books — overdue")
 
 
-def test_a_failed_attempt_still_uses_the_day_up(store: Store) -> None:
+def test_a_failed_attempt_is_tried_again_up_to_three_times(store: Store) -> None:
     seed_ledger(store)
     switch_on(store)
-    sender = Sender(sent=False)
-    outcome = morning_notification(store, MON, time(9, 0), sender=sender)
-    assert outcome is not None and outcome.result is not None and not outcome.result.sent
-    assert morning_notification(store, MON, time(9, 15), sender=sender) is None
-    assert len(sender.notes) == 1
+    sender = Sender(sent=False)  # e.g. notify-send ran before the desktop's notification service
+    for minute in (0, 15, 30):
+        outcome = morning_notification(store, MON, time(9, minute), sender=sender)
+        assert outcome is not None and outcome.result is not None and not outcome.result.sent
+    assert morning_notification(store, MON, time(9, 45), sender=sender) is None  # given up for today
+    assert len(sender.notes) == desktop.MAX_TRIES == 3
+    assert store.get_meta(LAST_SHOWN_KEY) == MON.isoformat()
+    failure = desktop.last_failure(store)
+    assert failure is not None and failure.day == MON.isoformat() and failure.tries == 3
+    assert failure.detail == "no tool"
     assert not [a for a in store.list_activity(limit=20) if a.kind == "notify.desktop"]
+    # the next day starts afresh, and a shown notification clears the failure
+    shown = morning_notification(store, MON + timedelta(days=1), time(9, 0), sender=Sender())
+    assert shown is not None and shown.result is not None and shown.result.sent
+    assert desktop.last_failure(store) is None
+
+
+def test_a_retry_that_works_shows_it_once(store: Store) -> None:
+    seed_ledger(store)
+    switch_on(store)
+    morning_notification(store, MON, time(9, 0), sender=Sender(sent=False))
+    assert store.get_meta(LAST_SHOWN_KEY) is None and desktop.last_failure(store) is not None
+    works = Sender()
+    assert morning_notification(store, MON, time(9, 15), sender=works) is not None
+    assert morning_notification(store, MON, time(9, 30), sender=works) is None
+    assert len(works.notes) == 1 and desktop.last_failure(store) is None
+
+
+def test_a_missing_tool_uses_the_day_up_at_once(store: Store) -> None:
+    seed_ledger(store)
+    switch_on(store)
+
+    def missing(_note: Notification) -> SendResult:
+        return SendResult(sent=False, mechanism=None, detail=desktop.MISSING_TOOL["linux"])
+
+    assert morning_notification(store, MON, time(9, 0), sender=missing) is not None
+    assert store.get_meta(LAST_SHOWN_KEY) == MON.isoformat()  # not tried every 15 minutes
 
 
 def test_nothing_due_shows_nothing_but_uses_the_day(store: Store) -> None:
@@ -449,6 +560,64 @@ async def test_the_tick_shows_it_on_every_check_until_it_has(store: Store) -> No
     assert second.desktop is not None and second.desktop.result is not None and second.desktop.result.sent
     assert (await tick.check()).desktop is None
     assert sender.notes == [Notification("Ordnung", "1 overdue · 3 due this week")]
+
+
+@pytest.mark.parametrize(
+    ("at", "now", "sleep"),
+    [
+        ("23:50", (23, 48), 121.0),  # would be skipped: 23:48 is too early, the next check is tomorrow
+        ("08:00", (7, 50), 601.0),
+        ("08:00", (6, 0), 900.0),  # the usual interval
+        ("08:00", (7, 59, 50), 30.0),  # never less than half a minute
+    ],
+)
+def test_the_tick_wakes_up_for_the_notification(
+    store: Store, at: str, now: tuple[int, ...], sleep: float
+) -> None:
+    seed_ledger(store)
+    switch_on(store, at=at)
+    moment = datetime(2026, 9, 28, *now, tzinfo=ZoneInfo("Europe/Berlin"))
+    tick = DailyTick(Ctx(store=store, llm=None), now=lambda _s: moment)
+    assert tick.next_check_in() == pytest.approx(sleep)
+
+
+async def test_a_late_time_is_shown_on_the_day(store: Store) -> None:
+    seed_ledger(store)
+    switch_on(store, at="23:50")
+    clock_now = {"value": datetime(2026, 9, 28, 23, 48, tzinfo=ZoneInfo("Europe/Berlin"))}
+    sender = Sender()
+    tick = DailyTick(Ctx(store=store, llm=None), now=lambda _s: clock_now["value"], notifier=sender)
+    assert (await tick.check()).desktop is None
+    clock_now["value"] += timedelta(seconds=tick.next_check_in())  # 23:50:01, not 00:03
+    assert clock_now["value"].date() == MON
+    assert (await tick.check()).desktop is not None and len(sender.notes) == 1
+
+
+def test_nothing_to_wait_for_means_the_usual_interval(store: Store) -> None:
+    seed_ledger(store)
+    moment = datetime(2026, 9, 28, 7, 0, tzinfo=ZoneInfo("Europe/Berlin"))
+    tick = DailyTick(Ctx(store=store, llm=None), now=lambda _s: moment)
+    assert tick.next_check_in() == tick.interval_s  # switched off
+    switch_on(store)
+    store.set_meta(LAST_SHOWN_KEY, MON.isoformat())
+    assert tick.next_check_in() == tick.interval_s  # done for today
+    store.set_meta(LAST_SHOWN_KEY, None)
+    morning_notification(store, MON, time(8, 0), sender=Sender(sent=False))
+    assert tick.next_check_in() == tick.interval_s  # a retry comes with the regular checks
+
+
+async def test_right_after_start_up_the_notification_waits_a_minute(store: Store) -> None:
+    seed_ledger(store)
+    switch_on(store)
+    sender = Sender()
+    moment = datetime(2026, 9, 28, 9, 0, tzinfo=ZoneInfo("Europe/Berlin"))
+    tick = DailyTick(Ctx(store=store, llm=None), now=lambda _s: moment, notifier=sender)
+    tick._hold_until = monotonic() + desktop.STARTUP_GRACE_S  # as run_forever does
+    first = await tick.check()
+    assert first.day_changed and first.desktop is None and sender.notes == []  # logged in at 09:00
+    assert tick.next_check_in() == pytest.approx(desktop.STARTUP_GRACE_S + 1, abs=1)
+    tick._hold_until = 0.0  # a minute later
+    assert (await tick.check()).desktop is not None and len(sender.notes) == 1
 
 
 async def test_a_broken_notifier_never_breaks_the_tick(store: Store) -> None:

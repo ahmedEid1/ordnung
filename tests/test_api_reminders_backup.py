@@ -99,14 +99,43 @@ async def test_the_status_previews_both_modes(data_dir: Path, home: Path) -> Non
         assert body["preview"]["discreet"] == {"title": "Ordnung", "body": "1 overdue · 3 due this week"}
         assert body["preview"]["full"]["title"] == "Ordnung · 1 overdue · 3 due this week"
         assert body["preview"]["full"]["body"].startswith("Return library books — overdue")
-        assert body["last_shown_on"] is None
+        assert body["last_shown_on"] is None and body["last_failure"] is None and not body["demo"]
         assert body["autostart"] == {
             "enabled": False,
             "kind": "systemd user service",
             "path": str(home / ".config" / "systemd" / "user" / "ordnung.service"),
             "points_here": False,
-            "command": "ordnung autostart enable",
+            # this data folder is not the default one: the command sets up this one
+            "command": f"ordnung autostart enable --data-dir {data_dir}",
         }
+
+
+def test_the_start_at_login_command_names_a_folder_that_isnt_the_default(tmp_path: Path) -> None:
+    default = tmp_path / "default"
+    assert reminders.autostart_command(default, default=default) == "ordnung autostart enable"
+    odd = tmp_path / "my data"
+    assert reminders.autostart_command(odd, default=default) == f"ordnung autostart enable --data-dir '{odd}'"
+
+
+async def test_the_demo_offers_no_start_at_login_command(data_dir: Path, home: Path) -> None:
+    async with api_for(data_dir, demo=True) as api:
+        body = (await api.client.get("/api/reminders/desktop")).json()
+        assert body["demo"] and body["autostart"]["command"] is None
+
+
+async def test_the_status_says_why_the_last_notification_wasnt_shown(data_dir: Path, home: Path) -> None:
+    async with api_for(data_dir) as api:
+        seed_ledger(api.ctx.store)
+        store = api.ctx.store
+        store.save_settings(store.get_settings().model_copy(update={"desktop_notifications": "discreet"}))
+
+        def fails(_note: Notification) -> SendResult:
+            return SendResult(sent=False, mechanism="notify-send", detail="notify-send failed (exit code 1).")
+
+        desktop.morning_notification(store, TODAY, desktop.DEFAULT_TIME, sender=fails)
+        body = (await api.client.get("/api/reminders/desktop")).json()
+        assert body["last_failure"] == "notify-send failed (exit code 1)."
+        assert body["last_failure_on"] == TODAY.isoformat() and body["last_shown_on"] is None
 
 
 async def test_the_status_says_when_no_tool_is_found_and_nothing_is_due(
@@ -184,7 +213,13 @@ async def test_backup_info(data_dir: Path) -> None:
         seed_ledger(api.ctx.store)
         (api.ctx.paths.files / "a.pdf").write_bytes(b"%PDF" * 100)
         info = (await api.client.get("/api/backup")).json()
-        assert info["letters"] == api.ctx.store.counts()["documents"] > 0
+        counts = api.ctx.store.counts()
+        assert info["letters"] == counts["documents"] > 0
+        api.ctx.store.trash_document(api.ctx.store.list_documents()[0].id)
+        # the trash is in the backup too: the same count `ordnung backup` prints
+        info = (await api.client.get("/api/backup")).json()
+        after = api.ctx.store.counts()
+        assert info["letters"] == counts["documents"] == after["documents"] + after["trashed_documents"]
         assert info["files"] == 1 and info["bytes"] > 400
         assert info["file_name"] == "ordnung-backup-2026-09-28.ordnung-backup"
         assert info["min_passphrase"] == 12 and info["format_version"] == 1
