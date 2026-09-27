@@ -110,9 +110,14 @@ test.describe("phone 320 px: no page scrolls sideways (WCAG 1.4.10 reflow)", () 
     const list = page.getByRole("tablist", { name: "Show contracts" });
     const track = list.locator("xpath=..");
     const last = list.getByRole("tab").last();
+    // the page's own status tabs fit a phone: only statuses that have contracts, on the whole row
+    expect(await list.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    // squeeze the row so that they can't, whatever statuses the demo has
+    await track.evaluate((el) => {
+      el.style.width = "8rem";
+    });
     // more tabs to the right: that edge fades
-    const overflow = await list.evaluate((el) => el.scrollWidth > el.clientWidth);
-    if (overflow) await expect(track).toHaveAttribute("data-overflow", /end/);
+    await expect(track).toHaveAttribute("data-overflow", /end/);
     await last.click();
     await expect(last).toHaveAttribute("aria-selected", "true");
     await settle(page);
@@ -123,14 +128,12 @@ test.describe("phone 320 px: no page scrolls sideways (WCAG 1.4.10 reflow)", () 
         return t.left >= l.left - 0.5 && t.right <= l.right + 0.5;
       });
     expect(await inView(last)).toBe(true);
-    if (overflow) {
-      await expect(track).toHaveAttribute("data-overflow", /start/);
-      // a swipe back along the row stays where the person left it
-      await list.evaluate((el) => el.scrollTo({ left: 0 }));
-      await expect(track).toHaveAttribute("data-overflow", "end");
-      await page.waitForTimeout(300);
-      expect(await list.evaluate((el) => el.scrollLeft)).toBe(0);
-    }
+    await expect(track).toHaveAttribute("data-overflow", /start/);
+    // a swipe back along the row stays where the person left it
+    await list.evaluate((el) => el.scrollTo({ left: 0 }));
+    await expect(track).toHaveAttribute("data-overflow", "end");
+    await page.waitForTimeout(300);
+    expect(await list.evaluate((el) => el.scrollLeft)).toBe(0);
     // keyboard: back to the first tab, which scrolls back into view; the ring is drawn inside the tab
     await page.keyboard.press("Home");
     const first = list.getByRole("tab").first();
