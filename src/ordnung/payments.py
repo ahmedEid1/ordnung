@@ -3,20 +3,31 @@ debit the sender collects, money coming in). Mirrored by ``web/src/lib/payments.
 
 Policy (ADR 0007):
 
-* **A to-do is a direct debit** when its own words (title, action, description) name one — German
-  or English wording, :data:`DEBIT_WORDS` — unless its action asks for a transfer.
+* **A to-do is a direct debit** when its own words (title, action, description) name one —
+  :data:`DEBIT_WORDS`, German or English — unless they say the debit failed (:data:`_FAILED_DEBIT`:
+  a *Rücklastschrift*, "konnte nicht eingezogen werden", "could not be debited" — after one, the
+  person transfers) or its action asks for a transfer.
 * **A letter's sentence speaks of a direct debit** (:func:`debit_in_sentence`) when it names one —
-  the same words, plus the split verbs "buchen … ab" and "ziehen … ein" — unless it names a debit
-  that failed (a *Rücklastschrift*: after one, the person transfers) or asks for a transfer
-  (a SEPA mandate offered as the alternative). A transfer the sentence waves off ("eine Überweisung
-  ist nicht nötig") asks for none.
+  the same words, a mandate's reference or the creditor's ID, the split verb "buchen … ab", or
+  "einziehen" in a clause that names the account or the money ("von Ihrem Konto eingezogen", "ziehen
+  den Betrag … ein"; moving in names neither: "sobald Sie eingezogen sind") — unless it says the debit
+  failed, or one of its clauses asks for a transfer (a SEPA mandate offered as the alternative:
+  "Sofern Sie nicht am Lastschriftverfahren teilnehmen, überweisen Sie …"). A transfer its own
+  clause waves off ("eine Überweisung ist nicht nötig", "überweisen Sie nicht") asks for none.
+* **A clause** ends at a comma, a full stop, ``;``, ``:``, ``!`` or ``?`` — not at the marks inside
+  a number or a date ("29,90 €", "am 15.10. von Ihrem Konto").
 * **The reference to type** into a transfer (:func:`payment_reference`) is the letter's reference
   without a leading label word such as "Kassenzeichen": the payee's bookkeeping matches the number,
   and the label only takes room in the 140 characters.
 
-Limits: wording is matched, not understood — a sentence that names a debit in words this list
-doesn't know reads as a transfer; one that names a debit and a transfer in some other way reads as
-a debit (no code; the safe side, SPEC §GiroCode).
+"Einziehen" and "Einzug" are left out of the to-do's words (in a tenancy they are moving in), and so
+are the mandate's reference and the creditor's ID (a letter asking for a transfer after the mandate
+ended prints them too).
+
+Limits: wording is matched, not understood — a sentence that names a debit in words these lists
+don't know reads as a transfer; one that names a debit and a transfer in some other way reads as
+a debit (no code; the safe side, SPEC §GiroCode); words of a failed debit count also where they only
+warn of one ("Gebühr bei Rücklastschrift").
 """
 
 from __future__ import annotations
@@ -25,30 +36,38 @@ import re
 
 from ordnung.models import Item
 
-#: A direct debit in a to-do's words or a letter's sentence (German and English wording). "Einzug"
-#: alone is left out: in a tenancy it is moving in.
+#: A direct debit in a to-do's words or a letter's sentence (German and English wording).
 DEBIT_WORDS = re.compile(
     r"direct debit|debited|collected automatically|sufficient funds|lastschrift|bankeinzug|abbuch|abgebucht"
-    r"|eingezogen|einzieh|mandatsreferenz|gläubiger-?id|kontodeckung",
+    r"|kontodeckung",
     re.I,
 )
+#: A debit only a letter's sentence names: the mandate's reference, the creditor's ID, the split verb
+#: "buchen … ab" (its particle closing the clause: "Den Betrag buchen wir am 15.10. ab").
+_SENTENCE_DEBIT = re.compile(
+    r"mandatsreferenz|gläubiger-?id"
+    r"|\b(?:buche|buchen|bucht)\b.{0,80}?\bab\b(?=\s*(?:[,;:!?()]|\.(?!\d)|$))",
+    re.I | re.S,
+)
+#: "Einziehen" (collect — or move in), counted in a clause that names the account or the money.
+_COLLECT = re.compile(
+    r"eingezogen|einzuziehen|einzieh|\b(?:ziehe|ziehen|zieht)\b.{0,80}?\bein\s*(?:\(|$)", re.I | re.S
+)
+_ACCOUNT_OR_MONEY = re.compile(r"konto|account|betrag|beitrag|summe|forderung|gebühr|prämie|entgelt", re.I)
 _TRANSFER_WORDS = re.compile(r"\btransfer|überweis", re.I)
-#: The split verbs of a debit, their particle closing the clause: "Den Betrag buchen wir am 15.10.
-#: ab", "Wir ziehen den Beitrag … von Ihrem Konto ein (Mandatsreferenz …)".
-_SPLIT_DEBIT = re.compile(
-    r"\b(?:buche|buchen|bucht)\b.{0,80}?\bab\b(?=\s*(?:[,;:!?()]|\.(?!\d)|$))"
-    r"|\b(?:ziehe|ziehen|zieht)\b.{0,80}?\bein\b(?=\s*(?:[,;:!?()]|\.(?!\d)|$))",
-    re.I | re.S,
-)
-#: A debit that failed: the bank returned it, or it couldn't be collected (in the same clause).
+#: A debit that failed: the bank returned it, or it couldn't be collected (in one clause).
 _FAILED_DEBIT = re.compile(
-    r"rücklastschrift|zurückgegeben|zurückgebucht|zurückgerufen|nicht\b[^,.;:]{0,40}?"
-    r"(?:eingelöst|eingezogen|abgebucht|einziehen|abbuchen)|returned|could not be (?:collected|debited)",
+    r"rücklastschrift|zurückgegeben|zurückgebucht|zurückgerufen|mangels\s+deckung|fehlgeschlagen"
+    r"|nicht\s+gedeckt|nicht\b.{0,40}?(?:eingelöst|eingezogen|abgebucht|einziehen|abbuchen|ausgeführt|durchgeführt)"
+    r"|(?:abbuchung|lastschrift|einzug).{0,40}?nicht\s+möglich"
+    r"|returned|could\s+not\s+be\s+(?:collected|debited)",
     re.I | re.S,
 )
-_NEGATION = r"(?:nicht|nichts|kein\w*|not|no|never)"
+#: Where a clause ends (module policy): not at a comma or full stop inside a number or a date.
+_CLAUSE_END = re.compile(r"[;:!?]|(?<!\d),|,(?!\d)|(?<!\d)\.(?!\d)")
+_NEGATION = r"(?:nicht|nichts|kein\w*|not|no|never|\w+n['’]t)"
 _TRANSFER = r"(?:überweis\w*|transfer\w*)"
-#: A transfer the sentence waves off: a negation up to three words before it or four after it.
+#: A transfer its clause waves off: a negation up to three words before it or four after it.
 _NO_TRANSFER = re.compile(
     rf"\b{_NEGATION}\b(?:\W+\w+){{0,3}}?\W+{_TRANSFER}|{_TRANSFER}(?:\W+\w+){{0,4}}?\W+{_NEGATION}\b",
     re.I,
@@ -63,10 +82,23 @@ _REFERENCE_LABEL = re.compile(
 )
 
 
+def _clauses(text: str) -> list[str]:
+    return _CLAUSE_END.split(text)
+
+
+def debit_failed(text: str) -> bool:
+    """``text`` says a direct debit failed — returned by the bank, or not collected (module policy)."""
+    return any(_FAILED_DEBIT.search(clause) for clause in _clauses(text))
+
+
 def is_direct_debit(item: Item) -> bool:
-    """The sender collects this payment itself (SEPA direct debit): nothing to transfer."""
+    """The sender collects this payment itself (SEPA direct debit): nothing to transfer (policy)."""
     text = " ".join(part for part in (item.title, item.action, item.description) if part)
-    return bool(DEBIT_WORDS.search(text)) and not _TRANSFER_WORDS.search(item.action or "")
+    return (
+        bool(DEBIT_WORDS.search(text))
+        and not debit_failed(text)
+        and not _TRANSFER_WORDS.search(item.action or "")
+    )
 
 
 def is_collected_or_incoming(item: Item) -> bool:
@@ -76,11 +108,15 @@ def is_collected_or_incoming(item: Item) -> bool:
 
 def debit_in_sentence(sentence: str) -> bool:
     """``sentence`` (a letter's words) says the sender collects the money by direct debit (policy)."""
-    if not (DEBIT_WORDS.search(sentence) or _SPLIT_DEBIT.search(sentence)):
+    clauses = _clauses(sentence)
+    names_debit = (
+        DEBIT_WORDS.search(sentence)
+        or _SENTENCE_DEBIT.search(sentence)
+        or any(_COLLECT.search(clause) and _ACCOUNT_OR_MONEY.search(clause) for clause in clauses)
+    )
+    if not names_debit or debit_failed(sentence):
         return False
-    if _FAILED_DEBIT.search(sentence):
-        return False
-    return not (_TRANSFER_WORDS.search(sentence) and not _NO_TRANSFER.search(sentence))
+    return not any(_TRANSFER_WORDS.search(clause) and not _NO_TRANSFER.search(clause) for clause in clauses)
 
 
 def payment_reference(reference: str) -> str:

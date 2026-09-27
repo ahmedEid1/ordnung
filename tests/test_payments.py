@@ -1,5 +1,6 @@
 """How a payment is made (ordnung.payments): a direct debit in a to-do's words or a letter's sentence,
-a returned debit or a transfer asked for that is none, and the reference to type without its label.
+a returned debit, moving in or a transfer asked for that is none, and the reference to type without its
+label.
 The web app mirrors the to-do rule and the reference (``web/src/lib/payments.test.ts``)."""
 
 from __future__ import annotations
@@ -29,8 +30,8 @@ def todo(title: str, action: str | None = None) -> Item:
         ("Monthly fee", "Collected by direct debit"),
         ("Monatsbeitrag", "Wird per Bankeinzug eingezogen"),
         ("Jahresbeitrag", "Will be debited from your account"),
-        ("Beitrag (Mandatsreferenz M-4711)", None),
         ("Monatliche Abbuchung Deutschlandticket", None),
+        ("Monthly mobile fee", "Ensure sufficient funds for the monthly SEPA direct debit of 34.99 €."),
     ],
 )
 def test_a_to_do_naming_a_debit_is_one(title: str, action: str | None) -> None:
@@ -51,22 +52,56 @@ def test_a_to_do_asking_for_a_transfer_is_none(title: str, action: str | None) -
 
 
 @pytest.mark.parametrize(
+    ("title", "action"),
+    [
+        # a debit that failed, in the to-do's own words and with no "transfer" in its action: the person
+        # pays it now, so it keeps its "Pay" and its reminders
+        ("Beitrag nachzahlen – konnte nicht eingezogen werden", "Pay 55.08 € by 15.10.2026"),
+        (
+            "Rundfunkbeitrag nachzahlen – Lastschrift konnte nicht eingelöst werden",
+            "Pay 49.99 € by 01.10.2026",
+        ),
+        ("Pay Rundfunkbeitrag (amount could not be debited)", "Pay 55.08 € by 15.10.2026"),
+        ("Mitgliedsbeitrag nach Rücklastschrift", "Pay 47.40 € by 12.12.2025"),
+        ("Gym fee: direct debit was returned by the bank", "Pay 47.40 € including the fee"),
+        ("Abbuchung fehlgeschlagen", "Pay 29.90 € by 15.10.2026"),
+        ("Die Lastschrift wurde mangels Deckung nicht ausgeführt", "Pay 29.90 € plus 3.00 € fee"),
+        # a mandate's reference alone doesn't say who moves the money: the mandate may have ended
+        ("Beitrag (Mandatsreferenz M-4711)", "Mandate was cancelled; please pay yourself"),
+        # "einziehen" is also moving in: a newcomer's first rent and deposit keep their reminders
+        ("Die erste Miete von 640 € zahlen, sobald Sie eingezogen sind", None),
+        ("Kaution von 1.560 € vor dem Einziehen bezahlen", None),
+        ("First rent", "Pay the first rent of 640 € once you have moved in (eingezogen)"),
+    ],
+)
+def test_a_to_do_whose_debit_failed_or_that_moves_in_is_a_payment_to_make(
+    title: str, action: str | None
+) -> None:
+    assert not is_direct_debit(todo(title, action))
+
+
+@pytest.mark.parametrize(
     "sentence",
     [
         "Der Monatsbeitrag von 29,90 € wird zum 1. eines Monats per SEPA-Lastschrift eingezogen.",
         "Der Monatsbeitrag von 29,90 € wird per Bankeinzug von Ihrem Konto eingezogen.",
         "Den Betrag von 29,90 € ziehen wir am 01.10.2026 von Ihrem Konto ein (Mandatsreferenz M-4711).",
         "Der Betrag von 29,90 € wird wie gewohnt von Ihrem Konto DE12 3456 eingezogen.",
+        "Der Betrag wird am 15.10. von Ihrem Konto eingezogen.",
         "Wir ziehen den Betrag am 15.10. ein.",
         "Den Betrag buchen wir am 15.10. ab",
         "Wir buchen den Beitrag wie bisher zum 15. eines Monats ab, den neuen Betrag erstmals am 15.10.2026.",
         "Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 von Ihrem Konto abgebucht.",
         "Zahlungsweise SEPA-Lastschrift, Gläubiger-ID DE58ZZZ00000330471",
+        "Mandatsreferenz M-4711, Gläubiger-ID DE58ZZZ00000330471",
         "Your next premium of EUR 59.90 will be debited from your account on 1 December.",
-        # a transfer waved off
+        # a transfer waved off in its own clause
         "Eine Überweisung ist nicht nötig, wir buchen den Betrag ab.",
+        "Eine Überweisung ist nicht nötig: den Betrag von 29,90 € ziehen wir ein.",
         "Sie müssen nichts überweisen: der Betrag wird abgebucht.",
         "Bitte überweisen Sie den Betrag nicht, er wird per Lastschrift eingezogen.",
+        "Keine Überweisung nötig – der Betrag wird per Lastschrift eingezogen.",
+        "You don't need to transfer anything: the amount is collected by direct debit.",
     ],
 )
 def test_a_sentence_naming_a_debit_speaks_of_one(sentence: str) -> None:
@@ -83,13 +118,30 @@ def test_a_sentence_naming_a_debit_speaks_of_one(sentence: str) -> None:
         "Die Lastschrift konnte nicht eingelöst werden. Bitte überweisen Sie den Betrag.",
         "Der Betrag konnte leider nicht von Ihrem Konto abgebucht werden.",
         "Your direct debit was returned by your bank.",
-        # a mandate offered as the alternative to the transfer asked for
+        "Die Lastschrift wurde mangels Deckung nicht ausgeführt. Bitte überweisen Sie 49,99 EUR.",
+        "Die Lastschrift wurde mangels Deckung nicht ausgeführt.",
+        "Die Abbuchung vom 01.09.2026 war leider nicht möglich. Bitte überweisen Sie 49,99 EUR.",
+        "Die Abbuchung vom 01.09.2026 war leider nicht möglich.",
+        "Der Lastschrifteinzug ist fehlgeschlagen.",
+        "Der Beitrag konnte nicht eingezogen werden. Bitte überweisen Sie 49,99 EUR bis zum 01.10.2026.",
+        # a mandate offered as the alternative to the transfer asked for — the negation belongs to the
+        # debit's clause, not to the transfer
         "Bitte überweisen Sie 55,08 € bis zum 15.11.2026 oder erteilen Sie uns ein SEPA-Lastschriftmandat.",
         "Sofern Sie uns kein SEPA-Lastschriftmandat erteilt haben, überweisen Sie den Betrag bitte bis zum 15.11.",
+        "Sofern Sie nicht am Lastschriftverfahren teilnehmen, überweisen Sie den Betrag von 49,99 EUR bitte "
+        "bis zum 15.09.2026.",
+        "Wenn Sie nicht per Lastschrift zahlen, überweisen Sie bitte 55,08 €.",
+        "Da die Lastschrift mangels Deckung nicht ausgeführt wurde, überweisen Sie bitte 49,99 EUR.",
+        "Leider konnten wir keinen Zahlungseingang feststellen. Bitte überweisen Sie 49,99 € (Mandatsreferenz M-1).",
         # "ab" and "ein" that close no debit
         "Bitte geben Sie das Buch bis zum 15.10. ab.",
         "Der Betrag ist ab dem 01.10. fällig.",
         "Ziehen Sie ein Ticket am Automaten.",
+        # "einziehen" is also moving in: it names neither the account nor the money
+        "Die erste Miete von 640,00 € ist zu zahlen, sobald Sie eingezogen sind.",
+        "Die Kaution von 1.560,00 € ist zu zahlen, bevor Sie einziehen.",
+        "Sie ziehen am 01.11.2026 ein. Die erste Miete von 640,00 € ist bis zum 03.11.2026 fällig.",
+        "Bitte überweisen Sie die Kaution auf unser Konto, bevor Sie einziehen.",
     ],
 )
 def test_a_sentence_asking_for_a_transfer_or_naming_a_returned_debit_speaks_of_none(sentence: str) -> None:

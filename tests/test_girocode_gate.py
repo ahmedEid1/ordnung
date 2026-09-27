@@ -78,6 +78,15 @@ def test_a_grounded_transfer_gets_its_payload() -> None:
     assert code == GiroCodeReady(item_id="itm_1", payload=PAYLOAD.format(iban=KNOWN_IBAN), checked=False)
 
 
+def test_a_payment_without_a_reference_gets_a_code_without_one() -> None:
+    """Nothing to ground, nothing to invent: both remittance elements stay empty (and are trimmed, as
+    the standard allows). The Pay panel reads that off the payload and says to add the letter's
+    reference, if it names one, in the banking app (``GIROCODE_NO_REFERENCE``)."""
+    code = decide(ready_facts(reference=None, reference_grounding="unverified"))
+    assert isinstance(code, GiroCodeReady)
+    assert code.payload == f"BCD\n002\n1\nSCT\n\nMuster Telecom GmbH\n{KNOWN_IBAN}\nEUR49.99"
+
+
 @pytest.mark.parametrize(
     ("changes", "reason", "message"),
     [
@@ -90,7 +99,7 @@ def test_a_grounded_transfer_gets_its_payload() -> None:
         (
             {"direct_debit": True, "party": None},
             "direct_debit",
-            "No code: The sender collects this by direct debit",
+            "No code: the sender collects this by direct debit — there is nothing to transfer.",
         ),
         (
             {"debit_in_letter": True},
@@ -225,11 +234,13 @@ def test_values_read_from_a_photo_need_the_paper_letter_first() -> None:
 
 
 def test_the_check_message_names_only_what_to_compare_and_why() -> None:
+    # a PDF's value not found in its text: its pages are the letter — there is no paper to compare with
     one = blocked(ready_facts(reference_grounding="unverified"))
     assert one.to_check == ["reference"]
     assert one.message == (
-        "No code yet: the reference wasn't found in the letter's text. Compare it with the paper letter, then confirm."
+        "No code yet: the reference wasn't found in the letter's text. Compare it with the letter, then confirm."
     )
+    assert "paper" not in blocked(ready_facts(amount_grounding="unverified")).message
     mixed = blocked(ready_facts(iban_grounding="model_read", amount_grounding="unverified"))
     assert mixed.to_check == ["amount", "iban"]
     assert mixed.message == (
@@ -528,7 +539,7 @@ def test_a_photo_letter_waits_for_the_paper_then_holds_only_while_the_values_sta
     assert ready == GiroCodeReady(item_id=item_id, payload=PAYLOAD.format(iban=KNOWN_IBAN), checked=True)
     entry = store.last_activity("item", item_id, [CHECKED])
     assert entry is not None and entry.data == {**code.values.model_dump(), "doc_id": doc_id}
-    assert entry.message == "You compared the transfer details of “Pay photo” with the paper letter"
+    assert entry.message == "You compared the transfer details of “Pay photo” with the letter"
     with pytest.raises(CheckRefused, match="nothing to compare"):
         record_check(store, item, code.values, TODAY)
 
@@ -687,12 +698,30 @@ def test_a_debit_in_the_quoted_sentence_blocks_even_when_the_todo_reads_like_a_t
         "Ihre Lastschrift wurde von Ihrer Bank zurückgegeben. Bitte überweisen Sie 49,99 EUR bis zum 15.09.2026.",
         "Rücklastschrift: bitte zahlen Sie 49,99 EUR bis zum 15.09.2026.",
         "Der Betrag von 49,99 EUR konnte nicht von Ihrem Konto abgebucht werden.",
+        "Da die Lastschrift mangels Deckung nicht ausgeführt wurde, überweisen Sie bitte 49,99 EUR bis zum "
+        "15.09.2026.",
+        "Die Abbuchung vom 01.09.2026 war leider nicht möglich. Bitte überweisen Sie 49,99 EUR bis zum 15.09.2026.",
         # a mandate offered as the alternative to the transfer asked for
         "Bitte überweisen Sie 49,99 EUR bis zum 15.09.2026 oder erteilen Sie uns ein SEPA-Lastschriftmandat.",
+        "Sofern Sie nicht am Lastschriftverfahren teilnehmen, überweisen Sie den Betrag von 49,99 EUR bitte bis "
+        "zum 15.09.2026.",
     ],
 )
 def test_a_returned_debit_or_a_transfer_asked_for_is_no_direct_debit(store: Store, quote: str) -> None:
     _, item_id = letter(store, "reminder", telecom(store), quote=quote)
+    assert code_for(store, item_id) == GiroCodeReady(item_id=item_id, payload=PAYLOAD.format(iban=KNOWN_IBAN))
+
+
+def test_a_to_do_that_says_its_debit_failed_gets_a_code_not_nothing_to_transfer(store: Store) -> None:
+    """The to-do's own words say the debit failed and its action asks for no transfer by name: the
+    person has to transfer now (a reminder with fees follows otherwise)."""
+    quote = "Der Beitrag konnte nicht eingezogen werden. Bitte überweisen Sie 49,99 EUR bis zum 01.10.2026."
+    _, item_id = letter(store, "returned", telecom(store), quote=quote)
+    store.update_item(
+        item_id,
+        title="Rundfunkbeitrag nachzahlen – konnte nicht eingezogen werden",
+        action="Pay 49.99 € by 01.10.2026",
+    )
     assert code_for(store, item_id) == GiroCodeReady(item_id=item_id, payload=PAYLOAD.format(iban=KNOWN_IBAN))
 
 

@@ -36,10 +36,11 @@ reason the person reads:
    for too; the reference is printed, whole, in the text layer (not the start or end of a longer
    number: "2026-0815" is not "2026-0815-77"). A value read by AI from a photo (``model_read``), or
    not found in the letter — an amount the person typed or changed included — needs the person to
-   compare the details with the paper letter first (``check_letter``). Their confirmation records
-   the exact values they saw — payee, IBAN, reference and amount — and holds only while all four
-   stay the same: reading the letter again differently, or changing the amount, asks again. Nothing
-   else the person does to the to-do (confirming or moving its date) vouches for its amount.
+   compare the details with the letter first (the paper, for a photo; ``check_letter``). Their
+   confirmation records the exact values they saw — payee, IBAN, reference and amount — and holds
+   only while all four stay the same: reading the letter again differently, or changing the amount,
+   asks again. Nothing else the person does to the to-do (confirming or moving its date) vouches for
+   its amount.
 
 The reference a code carries is the letter's without a leading label word ("Kassenzeichen …",
 :func:`ordnung.payments.payment_reference`), checked and shown as such. A refusal of the standard's
@@ -59,7 +60,11 @@ Limits: a first letter from a sender Ordnung has never seen is checked only for 
 (there is no history to compare with); a letter asking for several one-off payments gets no code,
 even when its reference fits all of them; debit wording is matched, not understood
 (:mod:`ordnung.payments`); a letter wrongly flagged as a scam keeps its IBAN from codes until it is
-deleted for good.
+deleted for good — and a letter with scam signs deleted for good (the app's Delete) no longer blocks
+its IBAN on other letters: Ordnung keeps nothing of a letter deleted for good, not even its IBAN
+(docs/privacy.md, "Delete means delete"), so a later letter asking for that account is judged on
+its own, like a first letter from a new sender. A payment without a reference gets a code without
+one; the Pay panel then says to add the letter's reference, if it names one, in the banking app.
 """
 
 from __future__ import annotations
@@ -198,7 +203,7 @@ def _not_payable(facts: TransferFacts) -> GiroCodeBlocked | None:
     if facts.incoming:
         return _blocked(facts, "incoming", "No code: this is money coming to you.")
     if facts.direct_debit:
-        who = facts.party or "The sender"
+        who = facts.party or "the sender"
         return _blocked(
             facts,
             "direct_debit",
@@ -321,7 +326,9 @@ def _check_message(facts: TransferFacts, fields: Sequence[TransferField]) -> str
         verb = "wasn't" if len(missing) == 1 else "weren't"
         parts.append(f"{_names(missing)} {verb} found in the letter's text")
     it = "it" if len(fields) == 1 else "them"
-    return f"No code yet: {' and '.join(parts)}. Compare {it} with the paper letter, then confirm."
+    # the paper only for a letter read from a photo: a PDF's pages are the letter itself
+    letter = "the paper letter" if photo else "the letter"
+    return f"No code yet: {' and '.join(parts)}. Compare {it} with {letter}, then confirm."
 
 
 def _names(fields: Sequence[TransferField]) -> str:
@@ -594,7 +601,7 @@ def record_check(store: Store, item: Item, values: TransferValues, today: date) 
         raise CheckRefused(DETAILS_CHANGED)
     store.log_activity(
         CHECKED,
-        f"You compared the transfer details of “{item.title}” with the paper letter",
+        f"You compared the transfer details of “{item.title}” with the letter",
         ref_type="item",
         ref_id=item.id,
         # the letter's id too: deleting the letter deletes this entry, even after the to-do is gone

@@ -126,7 +126,7 @@ export const GIROCODES: Record<string, GiroCode> = {
   }
 };
 
-/** The code once the person compared the details with the paper letter. */
+/** The code once the person compared the details with the letter. */
 export const GIROCODES_CHECKED: Record<string, GiroCodeReady> = {
   "itm_parking": {
     "status": "ready",
@@ -138,7 +138,7 @@ export const GIROCODES_CHECKED: Record<string, GiroCodeReady> = {
 
 /**
  * What a payment with a code (or waiting for one) asks once its amount was changed by hand: compare
- * with the paper letter (`values.amount` is the to-do's new amount, filled in by the mock).
+ * with the letter (`values.amount` is the to-do's new amount, filled in by the mock).
  */
 export const GIROCODES_AMOUNT_CHANGED: Record<string, GiroCodeBlocked> = {
   "itm_parking": {
@@ -162,7 +162,7 @@ export const GIROCODES_AMOUNT_CHANGED: Record<string, GiroCodeBlocked> = {
     "status": "blocked",
     "item_id": "itm_tm_dunning",
     "reason": "check_letter",
-    "message": "No code yet: the amount wasn't found in the letter's text. Compare it with the paper letter, then confirm.",
+    "message": "No code yet: the amount wasn't found in the letter's text. Compare it with the letter, then confirm.",
     "to_check": [
       "amount"
     ],
@@ -177,7 +177,7 @@ export const GIROCODES_AMOUNT_CHANGED: Record<string, GiroCodeBlocked> = {
     "status": "blocked",
     "item_id": "itm_nk",
     "reason": "check_letter",
-    "message": "No code yet: the amount wasn't found in the letter's text. Compare it with the paper letter, then confirm.",
+    "message": "No code yet: the amount wasn't found in the letter's text. Compare it with the letter, then confirm.",
     "to_check": [
       "amount"
     ],
@@ -192,7 +192,7 @@ export const GIROCODES_AMOUNT_CHANGED: Record<string, GiroCodeBlocked> = {
     "status": "blocked",
     "item_id": "itm_rundfunk",
     "reason": "check_letter",
-    "message": "No code yet: the amount wasn't found in the letter's text. Compare it with the paper letter, then confirm.",
+    "message": "No code yet: the amount wasn't found in the letter's text. Compare it with the letter, then confirm.",
     "to_check": [
       "amount"
     ],
@@ -207,7 +207,7 @@ export const GIROCODES_AMOUNT_CHANGED: Record<string, GiroCodeBlocked> = {
     "status": "blocked",
     "item_id": "itm_semester",
     "reason": "check_letter",
-    "message": "No code yet: the amount wasn't found in the letter's text. Compare it with the paper letter, then confirm.",
+    "message": "No code yet: the amount wasn't found in the letter's text. Compare it with the letter, then confirm.",
     "to_check": [
       "amount"
     ],

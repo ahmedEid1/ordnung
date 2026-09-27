@@ -2,7 +2,7 @@
  * The static demo's GiroCodes: the server's answers, generated from the real gate and payload
  * builder (`data/girocodes.ts`, `scripts/gen_mock_girocodes.py`), the person's "These match the
  * letter", "no code" once a payment is marked paid or set aside, and — like the server — a code
- * whose amount was changed by hand asks for the paper letter again (and then carries the new
+ * whose amount was changed by hand asks to compare with the letter again (and then carries the new
  * amount). Which payments were compared, and at which amount, belongs to the mock state, so
  * resetting the demo forgets it.
  */
@@ -12,7 +12,7 @@ import { readPayload } from "@/features/girocode/qr";
 import { GIROCODE_MESSAGES, GIROCODE_REFUSALS, GIROCODES, GIROCODES_AMOUNT_CHANGED, GIROCODES_CHECKED } from "./data/girocodes";
 import type { MockDb } from "./db";
 
-/** Per mock state: item id → the amount the person compared with the paper letter. */
+/** Per mock state: item id → the amount the person compared with the letter. */
 const compared = new WeakMap<object, Map<string, number>>();
 
 function comparedIn(db: MockDb): Map<string, number> {
@@ -82,7 +82,7 @@ export function confirmMockGiroCode(db: MockDb, itemId: string, values: Transfer
   if (current.reason !== "check_letter") return { status: 409, message: current.message };
   if (!current.values || item.amount == null || !sameTransfer(values, current.values)) return { status: 409, message: GIROCODE_REFUSALS.changed };
   comparedIn(db).set(item.id, item.amount);
-  db.log("payment.checked", `You compared the transfer details of “${item.title}” with the paper letter`, "item", item.id, { ...current.values, doc_id: item.doc_id });
+  db.log("payment.checked", `You compared the transfer details of “${item.title}” with the letter`, "item", item.id, { ...current.values, doc_id: item.doc_id });
   const code = mockGiroCode(db, item);
   if (code.status !== "ready") return { status: 409, message: GIROCODE_REFUSALS.changed };
   return { code, docId: item.doc_id };
