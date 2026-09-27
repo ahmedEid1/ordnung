@@ -187,6 +187,26 @@ erDiagram
   CONTRACT ||--o{ ITEM : "milestones"
   ITEM }o--o{ SUGGESTION : "referenced by"
   DOCUMENT ||--o{ DRAFT : "answered by"
+  DRAFT ||--o{ PROOF : "proof of sending"
+  PROOF }o--|| DOCUMENT : "file (source=proof, private)"
+  PARTY ||--o{ CALL_NOTE : "phone calls"
+  CASE ||--o{ CALL_NOTE : "in thread"
+  DRAFT {
+    string status "draft|final|sent"
+    string tracking_number "checked S10 / 12 digits"
+    json sent_profile "sender as the PDF showed it when sent"
+    date answered_on "the person's word"
+    string answer_doc_id "the letter they named"
+  }
+  PROOF {
+    string kind "posting_receipt|delivery_record|..."
+    date on_date "the day it shows (optional)"
+  }
+  CALL_NOTE {
+    date called_on
+    string promise
+    date promise_due "waited for"
+  }
   DOCUMENT {
     string id "doc_ + sha256"
     string kind
@@ -211,6 +231,16 @@ erDiagram
 
 IDs are content-derived (`doc_` from the file hash, `itm_` from document + slot, `pty_` from the
 normalised name), so re-processing is idempotent and recorded demo outputs stay valid.
+
+**After a letter is sent** (SPEC § 11): `drafts/tracking.py` checks tracking numbers,
+`drafts/proof.py` is the written policy (what each proof shows, what is missing, the timeline, what
+counts as an answer), `drafts/sent.py` stores proofs and makes the Nachweis (`drafts/pdf.py`
+`render_nachweis`), `secretary/waiting.py` works out *Waiting for* on read and `secretary/calls.py`
+keeps call notes. Proof files are documents with `source="proof"` and *Keep private* on: the Store
+leaves them out of letter lists and counts in SQL, and the ledger never sees them.
+
+**Migrations** (`db/migrate.py`): numbered SQL files, applied once each and recorded in
+`schema_migrations`, so work merged in any order (a 0003 after a 0004) still reaches every database.
 
 ## Concurrency model
 

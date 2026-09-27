@@ -26,6 +26,7 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import pypdfium2 as pdfium
 from fpdf import FPDF
@@ -262,8 +263,9 @@ def render(draft: Draft, profile: Profile) -> bytes:
 # --------------------------------------------------------------------------------------------------
 #
 # One PDF to keep or hand over in a dispute: a summary page (the timeline in German with English below,
-# the tracking number, what each enclosure shows and does not show, and the caveat), then the letter as
-# sent (enclosure 1), then each proof file (enclosure 2 …): a PDF with its own pages, anything else as
+# proofs without a day apart from it, the tracking number, what each enclosure shows and does not show,
+# and the caveat), then the letter (enclosure 1, named for how it went out), then each proof file
+# (enclosure 2 …): a PDF with its own pages, anything else as
 # its rendered page images, one per A4 page under a caption. The summary carries no software branding
 # and proves nothing by itself: it lists what the person recorded.
 
@@ -301,7 +303,8 @@ class NachweisFile:
 
 @dataclass(frozen=True)
 class NachweisFacts:
-    """What the summary page says besides the timeline."""
+    """What the summary page says besides the timeline. ``letter`` names the enclosed letter (German,
+    English): "as sent" only when it is what went out (``drafts.sent``)."""
 
     recipient: str
     sender: str
@@ -310,6 +313,7 @@ class NachweisFacts:
     created: str
     caveat_de: str
     caveat_en: str
+    letter: tuple[str, str] = ("Das Schreiben wie versandt", "The letter as sent")
 
 
 class _SummaryPDF(FPDF):
@@ -317,7 +321,9 @@ class _SummaryPDF(FPDF):
         self.set_y(-15)
         self.set_font(FONT, "", FOOTER_SIZE)
         self.set_text_color(*MUTED)
-        self.cell(0, 4, f"Versandnachweis · Seite {self.page_no()} / page {self.page_no()}", align="R")
+        # {nb}: the summary's own page count (the letter and the enclosures follow it)
+        page = self.page_no()
+        self.cell(0, 4, f"Übersicht, Seite {page} von {{nb}} · Summary, page {page} of {{nb}}", align="R")
         self.set_text_color(*INK)
 
 
@@ -383,6 +389,39 @@ def _timeline_row(pdf: FPDF, line: NachweisLine) -> None:
     pdf.ln(1.5)
 
 
+def _text_height(pdf: FPDF, text: str, *, size: float, height: float, bold: bool = False) -> float:
+    pdf.set_font(FONT, "B" if bold else "", size)
+    measured = pdf.multi_cell(0, height, text, dry_run=True, output="HEIGHT")
+    return float(cast(float, measured))
+
+
+def _note_block(pdf: FPDF, facts: NachweisFacts) -> None:
+    """The caveat and the made-on line, kept on one page (never three lines alone on a new one)."""
+    made = (
+        f"Erstellt am {facts.created} aus den eigenen Angaben des Absenders. "
+        f"Made on {facts.created} from the sender's own records."
+    )
+    needed = (
+        4
+        + 6
+        + 4
+        + 1.5  # the section heading
+        + _text_height(pdf, facts.caveat_de, size=9.5, height=5)
+        + 1
+        + _text_height(pdf, facts.caveat_en, size=8.5, height=4)
+        + 3
+        + _text_height(pdf, made, size=8, height=4)
+    )
+    if pdf.will_page_break(needed):
+        pdf.add_page()
+    _section(pdf, "Hinweis", "Note")
+    _say(pdf, facts.caveat_de, size=9.5)
+    pdf.ln(1)
+    _say(pdf, facts.caveat_en, size=8.5, muted=True, height=4)
+    pdf.ln(3)
+    _say(pdf, made, size=8, muted=True, height=4)
+
+
 def _summary(
     draft: Draft,
     profile: Profile,
@@ -390,6 +429,7 @@ def _summary(
     lines: list[NachweisLine],
     files: list[NachweisFile],
     letter_pages: int,
+    undated: list[NachweisLine],
 ) -> bytes:
     pdf = _new_summary(draft, profile)
     _say(pdf, "Versandnachweis", size=18, bold=True, height=8)
@@ -406,11 +446,16 @@ def _summary(
     _section(pdf, "Verlauf", "Timeline")
     for line in lines:
         _timeline_row(pdf, line)
+    if undated:
+        _section(pdf, "Nachweise ohne Datum", "Proofs without a day — not placed on the timeline")
+        for line in undated:
+            _timeline_row(pdf, line)
 
     _section(pdf, "Anlagen", "Enclosures")
     pages = f"{letter_pages} {'Seite' if letter_pages == 1 else 'Seiten'}"
-    _say(pdf, f"1. Das Schreiben wie versandt ({pages})", bold=True)
-    _say(pdf, "The letter as sent", size=8.5, muted=True, height=4)
+    german, english = facts.letter
+    _say(pdf, f"1. {german} ({pages})", bold=True)
+    _say(pdf, english, size=8.5, muted=True, height=4)
     pdf.ln(1.5)
     for number, enclosed in enumerate(files, start=2):
         if pdf.will_page_break(22):
@@ -420,16 +465,7 @@ def _summary(
         _say(pdf, explained, size=8.5, muted=True, height=4)
         pdf.ln(1.5)
 
-    _section(pdf, "Hinweis", "Note")
-    _say(pdf, facts.caveat_de, size=9.5)
-    pdf.ln(1)
-    _say(pdf, facts.caveat_en, size=8.5, muted=True, height=4)
-    pdf.ln(3)
-    made = (
-        f"Erstellt am {facts.created} aus den eigenen Angaben des Absenders. "
-        f"Made on {facts.created} from the sender's own records."
-    )
-    _say(pdf, made, size=8, muted=True, height=4)
+    _note_block(pdf, facts)
     return bytes(pdf.output())
 
 
@@ -493,10 +529,13 @@ def render_nachweis(
     facts: NachweisFacts,
     lines: list[NachweisLine],
     files: list[NachweisFile],
+    *,
+    undated: list[NachweisLine] | None = None,
 ) -> bytes:
-    """The Nachweis PDF: summary, the letter as sent, then every proof file (see the section comment)."""
+    """The Nachweis PDF: summary, the letter (``profile`` as it was when sent), then every proof file
+    (see the section comment). ``undated``: proofs without a day, listed apart from the timeline."""
     letter = render(draft, profile)
-    parts = [_summary(draft, profile, facts, lines, files, _page_count(letter)), letter]
+    parts = [_summary(draft, profile, facts, lines, files, _page_count(letter), undated or []), letter]
     for number, enclosed in enumerate(files, start=2):
         if enclosed.pdf is not None:
             parts.append(enclosed.pdf)

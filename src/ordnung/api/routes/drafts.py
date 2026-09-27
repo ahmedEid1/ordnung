@@ -113,8 +113,16 @@ def get_draft(draft_id: str, store: StoreDep) -> Draft:
     return require(store.get_draft(draft_id), NOT_FOUND)
 
 
+SENT_IS_FINAL = (
+    "This letter was sent: its text stays as it went out, so the PDF and the Nachweis show what you "
+    "sent. To write again, start a new letter."
+)
+
+
 def _edit(store: Store, draft_id: str, patch: DraftPatch) -> Draft:
-    require(store.get_draft(draft_id), NOT_FOUND)
+    draft = require(store.get_draft(draft_id), NOT_FOUND)
+    if draft.status == "sent":
+        raise HTTPException(status.HTTP_409_CONFLICT, SENT_IS_FINAL)
     changes = {
         name: value for name, value in patch.model_dump(exclude_unset=True).items() if value is not None
     }
@@ -124,9 +132,14 @@ def _edit(store: Store, draft_id: str, patch: DraftPatch) -> Draft:
         return refresh_checks(store, draft_id)
 
 
-@router.patch("/drafts/{draft_id}", response_model=Draft)
+@router.patch(
+    "/drafts/{draft_id}",
+    response_model=Draft,
+    responses={409: {"description": "A sent letter's text can't be changed."}},
+)
 async def update_draft(draft_id: str, patch: DraftPatch, ctx: CtxDep) -> Draft:
-    """Edit the letter; the checks (placeholders, references, dates …) run again."""
+    """Edit the letter; the checks (placeholders, references, dates …) run again. A sent letter is
+    refused: it stays as it went out."""
     return await asyncio.to_thread(_edit, ctx.store, draft_id, patch)
 
 
@@ -144,20 +157,22 @@ async def translate_draft(draft_id: str, ctx: CtxDep) -> Draft:
 
 
 @router.delete("/drafts/{draft_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
-async def delete_draft(draft_id: str, ctx: CtxDep) -> Response:
-    """Delete a letter, with its proofs and their files."""
+async def delete_draft(draft_id: str, ctx: CtxDep, keep_proof_files: bool = False) -> Response:
+    """Delete a letter with its proofs; their files are deleted for good too unless ``keep_proof_files``
+    (they then stay as documents of their own)."""
     require(ctx.store.get_draft(draft_id), NOT_FOUND)
-    await asyncio.to_thread(sent.delete_letter, ctx.store, draft_id)
+    await asyncio.to_thread(partial(sent.delete_letter, keep_files=keep_proof_files), ctx.store, draft_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 def _pdf(store: Store, draft_id: str) -> bytes:
-    return pdf.render(require(store.get_draft(draft_id), NOT_FOUND), store.get_profile())
+    draft = require(store.get_draft(draft_id), NOT_FOUND)
+    return pdf.render(draft, sent.letter_profile(store, draft))
 
 
 @router.get("/drafts/{draft_id}/pdf", response_class=Response)
 async def draft_pdf(draft_id: str, store: StoreDep) -> Response:
-    """The letter as a printable DIN 5008 PDF."""
+    """The letter as a printable DIN 5008 PDF (a sent letter as it went out)."""
     body = await asyncio.to_thread(_pdf, store, draft_id)
     return Response(
         body,

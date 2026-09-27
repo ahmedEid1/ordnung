@@ -2300,7 +2300,7 @@
           "drafts"
         ],
         "summary": "Update Draft",
-        "description": "Edit the letter; the checks (placeholders, references, dates …) run again.",
+        "description": "Edit the letter; the checks (placeholders, references, dates …) run again. A sent letter is\nrefused: it stays as it went out.",
         "operationId": "update_draft_api_drafts__draft_id__patch",
         "parameters": [
           {
@@ -2334,6 +2334,9 @@
               }
             }
           },
+          "409": {
+            "description": "A sent letter's text can't be changed."
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2351,7 +2354,7 @@
           "drafts"
         ],
         "summary": "Delete Draft",
-        "description": "Delete a letter, with its proofs and their files.",
+        "description": "Delete a letter with its proofs; their files are deleted for good too unless ``keep_proof_files``\n(they then stay as documents of their own).",
         "operationId": "delete_draft_api_drafts__draft_id__delete",
         "parameters": [
           {
@@ -2361,6 +2364,16 @@
             "schema": {
               "type": "string",
               "title": "Draft Id"
+            }
+          },
+          {
+            "name": "keep_proof_files",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Keep Proof Files"
             }
           }
         ],
@@ -2433,7 +2446,7 @@
           "drafts"
         ],
         "summary": "Draft Pdf",
-        "description": "The letter as a printable DIN 5008 PDF.",
+        "description": "The letter as a printable DIN 5008 PDF (a sent letter as it went out).",
         "operationId": "draft_pdf_api_drafts__draft_id__pdf_get",
         "parameters": [
           {
@@ -2618,7 +2631,7 @@
           "drafts"
         ],
         "summary": "Add Proof",
-        "description": "Attach a proof file to a sent letter. The file is kept private: it is never sent to AI.",
+        "description": "Attach a proof file to a sent letter. The file is kept private: it is never sent to AI. A file\nalready in Ordnung is linked as it is, and ``notice`` says what that means for it.",
         "operationId": "add_proof_api_drafts__draft_id__proofs_post",
         "parameters": [
           {
@@ -2750,6 +2763,100 @@
             "schema": {
               "type": "string",
               "title": "Proof Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProofOverview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/drafts/{draft_id}/answered": {
+      "post": {
+        "tags": [
+          "drafts"
+        ],
+        "summary": "Mark Answered",
+        "description": "Say the sent letter was answered (by a letter in Ordnung, or otherwise); closes its follow-up.",
+        "operationId": "mark_answered_api_drafts__draft_id__answered_post",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnsweredRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProofOverview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "drafts"
+        ],
+        "summary": "Unmark Answered",
+        "description": "Take back \"it's answered\": the letter waits again and its follow-up reopens.",
+        "operationId": "unmark_answered_api_drafts__draft_id__answered_delete",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Draft Id"
             }
           }
         ],
@@ -3355,6 +3462,25 @@
         "title": "AdviceFact",
         "description": "One computed or legal point on a high-stakes letter's card (e.g. the rent cap check)."
       },
+      "AnsweredRequest": {
+        "properties": {
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AnsweredRequest",
+        "description": "The sent letter was answered — by this letter (``doc_id``), or by phone, e-mail … (``null``)."
+      },
       "AppSettings": {
         "properties": {
           "models": {
@@ -3897,6 +4023,7 @@
             "anyOf": [
               {
                 "type": "number",
+                "maximum": 1000000.0,
                 "minimum": 0.0
               },
               {
@@ -5935,6 +6062,13 @@
             },
             "type": "array",
             "title": "Drafts"
+          },
+          "proof_of": {
+            "items": {
+              "$ref": "#/components/schemas/ProofLink"
+            },
+            "type": "array",
+            "title": "Proof Of"
           }
         },
         "type": "object",
@@ -5948,7 +6082,8 @@
           "case",
           "related",
           "suggestions",
-          "drafts"
+          "drafts",
+          "proof_of"
         ],
         "title": "DocumentDetail"
       },
@@ -6314,6 +6449,28 @@
             ],
             "title": "Tracking Number"
           },
+          "answered_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answered On"
+          },
+          "answer_doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer Doc Id"
+          },
           "created_at": {
             "type": "string",
             "title": "Created At"
@@ -6346,6 +6503,8 @@
           "status",
           "sent_at",
           "tracking_number",
+          "answered_on",
+          "answer_doc_id",
           "created_at",
           "updated_at"
         ],
@@ -9204,7 +9363,14 @@
       "ProofEvent": {
         "properties": {
           "date": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Date"
           },
           "kind": {
@@ -9215,7 +9381,8 @@
               "tracking",
               "proof",
               "delivered",
-              "answered"
+              "answered",
+              "possible_answer"
             ],
             "title": "Kind"
           },
@@ -9243,6 +9410,17 @@
                 "type": "null"
               }
             ]
+          },
+          "added_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added On"
           }
         },
         "type": "object",
@@ -9251,10 +9429,49 @@
           "kind",
           "label",
           "detail",
-          "ref"
+          "ref",
+          "added_on"
         ],
         "title": "ProofEvent",
-        "description": "One line of a sent letter's timeline (the \"Nachweis\")."
+        "description": "One line of a sent letter's timeline (the \"Nachweis\"). ``date`` is ``None`` for a proof without a\nday (listed apart, with ``added_on``: the day it was added). ``possible_answer``: a letter that may be\nthe answer — shown to the person, never written into the Nachweis."
+      },
+      "ProofLink": {
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "title": "Draft Id"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "proof_id": {
+            "type": "string",
+            "title": "Proof Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "posting_receipt",
+              "delivery_record",
+              "return_receipt",
+              "fax_report",
+              "sent_email",
+              "cancel_confirmation",
+              "other"
+            ],
+            "title": "Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "draft_id",
+          "subject",
+          "proof_id",
+          "kind"
+        ],
+        "title": "ProofLink",
+        "description": "A sent letter this document is proof of (``drafts.proof``): the letter and what the proof is."
       },
       "ProofOverview": {
         "properties": {
@@ -9308,6 +9525,24 @@
             "type": "array",
             "title": "Missing"
           },
+          "conflicts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Conflicts"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice"
+          },
           "waiting": {
             "anyOf": [
               {
@@ -9333,6 +9568,8 @@
           "proofs",
           "timeline",
           "missing",
+          "conflicts",
+          "notice",
           "waiting",
           "caveat"
         ],
@@ -10705,7 +10942,8 @@
             "type": "string",
             "enum": [
               "s10",
-              "domestic"
+              "domestic",
+              "unknown"
             ],
             "title": "Format"
           },

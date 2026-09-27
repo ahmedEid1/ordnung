@@ -64,6 +64,7 @@ from ordnung.models import (
     Remedy,
     SendChannel,
     SendGuidance,
+    SentSigner,
     TemplateDraftKind,
 )
 from ordnung.rules import LAST_CHECKED, RuleContext, compute_due, send_guidance
@@ -88,6 +89,8 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 FOLLOWUP_DAYS = 21
+#: Said when a tracking number comes with a letter that wasn't registered.
+NO_TRACKING = "Only a registered letter (Einschreiben) has a tracking number."
 #: Days to wait for a reply per kind of letter when it differs: a data request has one month from
 #: receipt (Art. 12 Abs. 3 GDPR), plus the post.
 FOLLOWUP_DAYS_BY_KIND = {"data_access": 35}
@@ -1428,6 +1431,8 @@ def _save_followup(store: Store, draft: Draft, fields: dict[str, object]) -> Ite
         return store.add_item(id=item_id, **fields)
     if existing.user_modified:
         return existing
+    if existing.status in ("done", "dismissed"):  # correcting how or when it went reopens nothing
+        fields = {name: value for name, value in fields.items() if name != "status"}
     return store.update_item(item_id, **fields)
 
 
@@ -1442,9 +1447,12 @@ def mark_sent(
     """Record that a letter was sent (how and when) and create its follow-up to-do 21 days later.
 
     The checks are re-run with the channel, so a rent or employment notice sent by e-mail is flagged.
-    Marking the same letter again updates its follow-up instead of adding another one. A registered
-    letter may bring its tracking number (checked by :func:`ordnung.drafts.tracking.parse_tracking_number`;
-    a refused one raises :class:`DraftError` before anything is saved).
+    Marking the same letter again corrects how and when it went and updates its follow-up instead of
+    adding another one (a closed follow-up stays closed). Only a registered letter has a tracking number
+    (checked by :func:`ordnung.drafts.tracking.parse_tracking_number`; a refused one raises
+    :class:`DraftError` before anything is saved): marked again with another channel, the letter's stored
+    number goes. The first marking keeps what the PDF shows of the sender (:class:`SentSigner`), so the
+    letter prints as it went out even after the profile changes.
     """
     store = ctx.store
     draft = store.get_draft(draft_id)
@@ -1459,6 +1467,8 @@ def mark_sent(
         raise DraftError("The sending date can't be in the future.")
     tracking = None
     if tracking_number and tracking_number.strip():
+        if channel != "registered_letter":
+            raise DraftError(NO_TRACKING)
         try:
             tracking = parse_tracking_number(tracking_number).number
         except TrackingError as exc:
@@ -1466,7 +1476,14 @@ def mark_sent(
     sources = sources_for_draft(store, draft)
     sent = draft.model_copy(update={"status": "sent", "sent_at": day.isoformat(), "sent_channel": channel})
     checks = run_checks(sent, check_context(store, sources, sent, channel=channel))
-    extra = {"tracking_number": tracking} if tracking else {}
+    extra: dict[str, object] = {}
+    if tracking:
+        extra["tracking_number"] = tracking
+    elif channel != "registered_letter":
+        extra["tracking_number"] = None
+    if store.get_sent_signer(draft_id) is None:
+        profile = store.get_profile()
+        extra["sent_profile"] = SentSigner(name=profile.name, email=profile.email, phone=profile.phone)
     with store.tx():
         updated = store.update_draft(
             draft_id, status="sent", sent_at=day.isoformat(), sent_channel=channel, checks=checks, **extra

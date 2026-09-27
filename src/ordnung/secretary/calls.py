@@ -22,6 +22,8 @@ from ordnung.secretary.triggers import parse_day
 MAX_SUMMARY = 2000
 MAX_PROMISE = 300
 MAX_CONTACT = 120
+#: The largest promised amount in euros (a typo guard; also keeps the amount readable at phone width).
+MAX_AMOUNT = 1_000_000
 
 
 class CallNoteError(ValueError):
@@ -66,6 +68,8 @@ def add_call_note(
     due = parse_day(promise_due) if promise_due else None
     if (due is not None or promise_amount is not None) and not promised:
         raise CallNoteError("Say what they promised, too.")
+    if promise_amount is not None and not 0 <= promise_amount <= MAX_AMOUNT:
+        raise CallNoteError(f"Type an amount between 0 and {MAX_AMOUNT:,} euros.".replace(",", "."))
     if due is not None and due < called:
         raise CallNoteError("The promised day is before the call.")
     fields: dict[str, Any] = {

@@ -8,6 +8,7 @@ from hypothesis import strategies as st
 
 from ordnung.drafts.tracking import (
     DOMESTIC_NOTE,
+    GROUP_SEPARATOR,
     NOT_REGISTERED,
     TrackingError,
     display,
@@ -17,6 +18,7 @@ from ordnung.drafts.tracking import (
     tracking_info,
 )
 
+NB = GROUP_SEPARATOR
 LETTERS = st.text(alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ", min_size=2, max_size=2)
 SERIALS = st.text(alphabet="0123456789", min_size=8, max_size=8)
 
@@ -93,7 +95,7 @@ def test_a_registered_s10_number_is_checked_and_grouped() -> None:
     info = parse_tracking_number("rt 123 456 785 de")
     assert (info.number, info.display, info.format, info.checked, info.note) == (
         "RT123456785DE",
-        "RT 123 456 785 DE",
+        f"RT{NB}123{NB}456{NB}785{NB}DE",
         "s10",
         True,
         None,
@@ -119,7 +121,7 @@ def test_twelve_digits_are_kept_unchecked_with_a_note() -> None:
     info = parse_tracking_number("0034 0434 1234")
     assert (info.number, info.display, info.format, info.checked, info.note) == (
         "003404341234",
-        "0034 0434 1234",
+        f"0034{NB}0434{NB}1234",
         "domestic",
         False,
         DOMESTIC_NOTE,
@@ -148,4 +150,37 @@ def test_a_stored_number_is_shown_even_when_the_policy_changed() -> None:
     assert tracking_info("") is None
     kept = tracking_info("RT123456784DE")
     assert kept is not None and not kept.checked and kept.display == "RT123456784DE"
+    assert kept.format == "unknown"  # not passed off as a twelve-digit Deutsche Post number
     assert kept.note and "check digit" in kept.note
+
+
+@pytest.mark.parametrize(
+    ("typed", "number"),
+    [
+        ("RR１２３４５６７８５DE", "RR123456785DE"),  # full-width digits
+        ("ＲＲ１２３４５６７８５ＤＥ", "RR123456785DE"),  # full-width letters too
+        ("RR١٢٣٤٥٦٧٨٥DE", "RR123456785DE"),  # Arabic-Indic digits
+        ("RR۱۲۳۴۵۶۷۸۵DE", "RR123456785DE"),  # Eastern Arabic-Indic (Persian) digits
+        ("RR १२३ ४५६ ७८५ DE", "RR123456785DE"),  # Devanagari digits, spaced
+        ("１２３４５６７８９０１２", "123456789012"),  # a domestic number in full-width digits
+        ("٠٠٣٤ ٠٤٣٤ ١٢٣٤", "003404341234"),
+    ],
+)
+def test_other_digits_are_stored_as_ascii(typed: str, number: str) -> None:
+    info = parse_tracking_number(typed)
+    assert info.number == number and info.number.isascii()
+    assert normalise(info.display) == number
+
+
+def test_a_wrong_check_digit_in_other_digits_is_still_refused() -> None:
+    with pytest.raises(TrackingError, match="check digit"):
+        parse_tracking_number("RR١٢٣٤٥٦٧٨٤DE")
+
+
+def test_letters_that_only_look_latin_are_refused() -> None:
+    with pytest.raises(TrackingError):
+        parse_tracking_number("РТ123456785DE")  # Cyrillic Er and Te
+
+
+def test_the_display_never_breaks_inside_the_number() -> None:
+    assert " " not in display("RT123456785DE") and display("RT123456785DE").count(NB) == 4

@@ -4,38 +4,53 @@ stores and reads.
 
 * **Proof files are private.** They go through the normal intake (every size and expansion limit) as
   documents with direction ``outgoing``, ``source="proof"`` and "Keep private — no AI" on, so no model
-  ever sees them. A file already in Ordnung (the same bytes) is linked as it is.
-* **Only sent letters take proof**, at most :data:`~ordnung.drafts.proof.MAX_PROOFS` of them; a proof's
-  day can't be in the future.
+  ever sees them. A file already in Ordnung (the same bytes) is linked as it is, and what is said about
+  it is true of *that* file (:func:`add_proof`): one no model has read yet is made private now; one a
+  model already read is said to be so — "kept private" is never claimed for it.
+* **Only sent letters take proof**, at most :data:`~ordnung.drafts.proof.MAX_PROOFS` of them, each file
+  once per letter; a proof's day can't be in the future, and a delivery can't be before the sending.
+* **An answer is the person's word** (:func:`mark_answered`): the day, and the letter that answered if
+  they name one; the follow-up to-do closes with it, and taking it back reopens the follow-up.
+* **The letter as sent is what went out.** Marking a letter as sent keeps what its PDF showed of the
+  sender (:class:`~ordnung.models.SentSigner`), so the PDF and the Nachweis show that even after the
+  profile changed; the text of a sent letter can't be edited (the API refuses it). A letter "sent" by a
+  cancel button, portal or e-mail went out as text, not as this letter — the Nachweis says so.
 * **Delete means delete.** Removing a proof deletes its file for good when it was added as proof and no
-  other proof uses it; deleting a letter deletes its proofs and their files the same way.
+  other proof uses it; deleting a letter deletes its proofs and their files the same way, unless the
+  person keeps the files (they become their own documents).
 """
 
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass
 from datetime import date
 from typing import TYPE_CHECKING
 
 from ordnung.db.store import NotFoundError, Store
-from ordnung.drafts.compose import DraftError
+from ordnung.drafts.compose import NO_TRACKING, DraftError
 from ordnung.drafts.pdf import NachweisFacts, NachweisFile, NachweisLine, render_nachweis
 from ordnung.drafts.proof import (
     CAVEAT,
     CAVEAT_DE,
+    DELIVERY_DAY_KINDS,
     MAX_NOTE,
     MAX_PROOFS,
     PROOF_KINDS,
     PROOF_SOURCE,
     RecordedProof,
     channel_label,
+    conflicts,
+    followup_item_id,
     kind_info,
     missing,
+    sent_day,
     timeline,
 )
 from ordnung.drafts.templates import format_date
 from ordnung.drafts.tracking import TrackingError, parse_tracking_number, tracking_info
 from ordnung.ingest.pipeline import add_file
-from ordnung.models import Document, Draft, Proof, ProofEntry, ProofOverview
+from ordnung.models import Document, Draft, Profile, Proof, ProofEntry, ProofOverview
 from ordnung.secretary.triggers import Ledger, parse_day
 from ordnung.secretary.waiting import letter_entry
 
@@ -46,6 +61,43 @@ NOT_SENT = "Mark the letter as sent first — proof belongs to a letter that wen
 TOO_MANY = f"A letter can hold up to {MAX_PROOFS} proofs. Remove one you don't need first."
 FUTURE_DAY = "The day a proof shows can't be in the future."
 UNKNOWN_KIND = "Choose what the proof is (posting receipt, delivery record …)."
+ALREADY_PROOF = "This file is already a proof of this letter."
+UNKNOWN_ANSWER = "That letter isn't in Ordnung any more — close this without naming it."
+#: How the letter's text went out, per channel: (German, English) caption of the Nachweis enclosure.
+LETTER_AS_SENT = ("Das Schreiben wie versandt", "The letter as sent")
+LETTER_AS_RECORDED = ("Das Schreiben, wie in Ordnung gespeichert", "The letter as recorded in Ordnung")
+TEXT_ONLY = {
+    "online_button": (
+        "Text wie in Ordnung verfasst – nicht als Brief versandt (Kündigungsbutton)",
+        "The text as written in Ordnung — not sent as a letter (the cancel button)",
+    ),
+    "portal": (
+        "Text wie in Ordnung verfasst – nicht als Brief versandt (Online-Portal)",
+        "The text as written in Ordnung — not sent as a letter (online portal)",
+    ),
+    "email": (
+        "Text wie in Ordnung verfasst – per E-Mail versandt; was gesendet wurde, zeigt die E-Mail",
+        "The text as written in Ordnung — sent by e-mail; the sent e-mail shows what went out",
+    ),
+}
+PRIVATE = "kept private, not sent to AI"
+MADE_PRIVATE_NOTICE = (
+    "This file was already in Ordnung, not yet read. It is kept private from now on — AI won't read it."
+)
+READ_NOTICE = (
+    "This file was already in Ordnung as a letter, and AI has read it. It is linked as proof and stays "
+    "where it was."
+)
+
+
+def _delivery_before_sending(kind: str | None, day: date | None, draft: Draft) -> str | None:
+    sent = sent_day(draft)
+    if kind in DELIVERY_DAY_KINDS and day is not None and sent is not None and day < sent:
+        return (
+            f"A delivery can't be before the letter was sent ({format_date(sent, 'en')}) — check the day, "
+            "or the day you marked the letter as sent."
+        )
+    return None
 
 
 def _draft(store: Store, draft_id: str) -> Draft:
@@ -69,8 +121,11 @@ def _proof(store: Store, draft_id: str, proof_id: str) -> Proof:
     return proof
 
 
-def _checked(kind: str | None, on_date: str | None, note: str | None, today: date) -> date | None:
-    """Refuse an unknown kind, a day that isn't one or lies in the future, and a long note; returns the day."""
+def _checked(
+    kind: str | None, on_date: str | None, note: str | None, today: date, draft: Draft | None = None
+) -> date | None:
+    """Refuse an unknown kind, a day that isn't one, lies in the future or (for a delivery) before the
+    sending, and a long note; returns the day."""
     if kind is not None and kind not in PROOF_KINDS:
         raise DraftError(UNKNOWN_KIND)
     day = parse_day(on_date) if on_date else None
@@ -78,6 +133,8 @@ def _checked(kind: str | None, on_date: str | None, note: str | None, today: dat
         raise DraftError(f"“{on_date}” is not a date.")
     if day is not None and day > today:
         raise DraftError(FUTURE_DAY)
+    if draft is not None and (refused := _delivery_before_sending(kind, day, draft)):
+        raise DraftError(refused)
     if note is not None and len(note) > MAX_NOTE:
         raise DraftError(f"Keep the note under {MAX_NOTE} characters.")
     return day
@@ -94,6 +151,8 @@ def set_tracking(store: Store, draft_id: str, text: str | None) -> Draft:
     draft = _sent_draft(store, draft_id)
     number = None
     if text and text.strip():
+        if draft.sent_channel != "registered_letter":
+            raise DraftError(NO_TRACKING)
         try:
             number = parse_tracking_number(text).number
         except TrackingError as exc:
@@ -109,6 +168,42 @@ def set_tracking(store: Store, draft_id: str, text: str | None) -> Draft:
     return updated
 
 
+@dataclass(frozen=True)
+class AddedProof:
+    """A proof just added, and what to tell the person about its file when it was already in Ordnung
+    (``notice``; ``None``: the file is private and was never sent to AI)."""
+
+    proof: Proof
+    notice: str | None = None
+
+    @property
+    def id(self) -> str:
+        return self.proof.id
+
+    @property
+    def doc_id(self) -> str | None:
+        return self.proof.doc_id
+
+
+def _unread(document: Document) -> bool:
+    """No model has read the file and none is reading it now (queued, or failed before a model ran)."""
+    return document.ai_processed_at is None and document.status in ("queued", "failed")
+
+
+def _keep_private(store: Store, document: Document) -> tuple[Document, str | None, str]:
+    """Make a file already in Ordnung private if no model read it yet; returns it, the notice for the
+    person and the words for the activity log (see the module docstring)."""
+    if document.ai_private:
+        return document, None, PRIVATE
+    if _unread(document):
+        return (
+            store.update_document(document.id, ai_private=True),
+            MADE_PRIVATE_NOTICE,
+            f"already in Ordnung, now {PRIVATE}",
+        )
+    return document, READ_NOTICE, "already in Ordnung as a letter that AI has read"
+
+
 async def add_proof(
     ctx: AppContext,
     draft_id: str,
@@ -119,14 +214,18 @@ async def add_proof(
     on_date: str | None = None,
     note: str | None = None,
     today: date,
-) -> Proof:
+) -> AddedProof:
     """Store a proof file privately and attach it to a sent letter (see the module docstring)."""
     store = ctx.store
     draft = _sent_draft(store, draft_id)
-    day = _checked(kind, on_date, note, today)
-    if len(store.list_proofs(draft.id)) >= MAX_PROOFS:
+    day = _checked(kind, on_date, note, today, draft)
+    proofs = store.list_proofs(draft.id)
+    if len(proofs) >= MAX_PROOFS:
         raise DraftError(TOO_MANY)
     document = await add_file(ctx, data, filename, private=True, direction="outgoing", source=PROOF_SOURCE)
+    if any(proof.doc_id == document.id for proof in proofs):
+        raise DraftError(ALREADY_PROOF)
+    document, notice, said = _keep_private(store, document)
     proof = store.add_proof(
         draft_id=draft.id,
         kind=kind,
@@ -136,12 +235,12 @@ async def add_proof(
     )
     store.log_activity(
         "draft.proof",
-        f"Added proof to “{draft.subject}”: {kind_info(kind).label} · kept private, not sent to AI",
+        f"Added proof to “{draft.subject}”: {kind_info(kind).label} · {said}",
         ref_type="draft",
         ref_id=draft.id,
         data={"proof_id": proof.id, "doc_id": document.id},
     )
-    return proof
+    return AddedProof(proof, notice)
 
 
 def update_proof(
@@ -156,8 +255,11 @@ def update_proof(
     clear_date: bool = False,
 ) -> Proof:
     """Change a proof's kind, day or note (``clear_date`` removes the day)."""
-    _proof(store, draft_id, proof_id)
+    current = _proof(store, draft_id, proof_id)
     day = _checked(kind, on_date, note, today)
+    kept_day = None if clear_date else (day or parse_day(current.on_date))
+    if refused := _delivery_before_sending(kind or current.kind, kept_day, _draft(store, draft_id)):
+        raise DraftError(refused)
     changes: dict[str, object] = {}
     if kind is not None:
         changes["kind"] = kind
@@ -191,14 +293,84 @@ def remove_proof(store: Store, draft_id: str, proof_id: str) -> None:
         )
 
 
-def delete_letter(store: Store, draft_id: str) -> None:
-    """Delete a letter with its proofs and their files."""
+def delete_letter(store: Store, draft_id: str, *, keep_files: bool = False) -> None:
+    """Delete a letter with its proofs and — unless ``keep_files`` — their files. A kept proof file
+    becomes a document of its own (still private and outgoing), so it is listed with the letters."""
     draft = _draft(store, draft_id)
     files = [proof.doc_id for proof in store.list_proofs(draft.id) if proof.doc_id]
     with store.tx():
         store.delete_draft(draft.id)  # its proofs go with it (ON DELETE CASCADE)
         for doc_id in dict.fromkeys(files):
-            _forget_file(store, doc_id)
+            if not keep_files:
+                _forget_file(store, doc_id)
+                continue
+            document = store.get_document(doc_id)
+            if (
+                document is not None
+                and document.source == PROOF_SOURCE
+                and not store.list_proofs(doc_id=doc_id)
+            ):
+                store.update_document(doc_id, source="upload")
+        store.log_activity(
+            "draft.deleted",
+            f"Deleted the letter “{draft.subject}”"
+            + (
+                f" and its {len(files)} proof file{'s' if len(files) != 1 else ''}"
+                if files and not keep_files
+                else ""
+            ),
+            ref_type="draft",
+            ref_id=draft.id,
+        )
+
+
+def mark_answered(store: Store, draft_id: str, today: date, *, doc_id: str | None = None) -> Draft:
+    """The person says a sent letter was answered — by the letter ``doc_id``, or (``None``) by phone,
+    e-mail or a letter they don't name. Closes its follow-up to-do (policy 3 of ``drafts.proof``)."""
+    draft = _sent_draft(store, draft_id)
+    if doc_id is not None:
+        document = store.get_document(doc_id)
+        if (
+            document is None
+            or document.deleted_at is not None
+            or document.source == PROOF_SOURCE
+            or document.direction != "incoming"
+        ):
+            raise DraftError(UNKNOWN_ANSWER)
+    with store.tx():
+        updated = store.update_draft(draft.id, answered_on=today.isoformat(), answer_doc_id=doc_id)
+        followup = store.get_item(followup_item_id(draft.id))
+        if followup is not None and followup.status == "open":
+            store.update_item(followup.id, status="done")
+        store.log_activity(
+            "draft.answered", f"Marked “{draft.subject}” as answered", ref_type="draft", ref_id=draft.id
+        )
+    return updated
+
+
+def unmark_answered(store: Store, draft_id: str) -> Draft:
+    """Take back :func:`mark_answered`: the letter waits again and its follow-up to-do reopens."""
+    draft = _sent_draft(store, draft_id)
+    with store.tx():
+        updated = store.update_draft(draft.id, answered_on=None, answer_doc_id=None)
+        followup = store.get_item(followup_item_id(draft.id))
+        if followup is not None and followup.status == "done":
+            store.update_item(followup.id, status="open")
+        store.log_activity(
+            "draft.answered",
+            f"“{draft.subject}” is waiting for an answer again",
+            ref_type="draft",
+            ref_id=draft.id,
+        )
+    return updated
+
+
+def letter_profile(store: Store, draft: Draft) -> Profile:
+    """The profile the letter's PDF uses: today's, with what the letter showed of the sender when it was
+    marked as sent (name, e-mail, phone) — so a sent letter prints as it went out."""
+    profile = store.get_profile()
+    signer = store.get_sent_signer(draft.id) if draft.status == "sent" else None
+    return profile.model_copy(update=signer.model_dump()) if signer is not None else profile
 
 
 # --------------------------------------------------------------------------------------------------
@@ -225,14 +397,15 @@ def _files(store: Store, proofs: list[Proof]) -> dict[str, Document]:
 
 
 def overview(store: Store, draft_id: str, today: date) -> ProofOverview:
-    """A letter's tracking number, proofs (with what each shows), timeline, what's missing and what it
-    waits for."""
+    """A letter's tracking number, proofs (with what each shows), timeline, what's missing, days that
+    contradict each other and what it waits for."""
     draft = _draft(store, draft_id)
     ledger = Ledger(store, today)
     proofs = ledger.proofs_of(draft.id)
     documents = _files(store, proofs)
     tracking = tracking_info(draft.tracking_number)
-    reply = ledger.reply_to(draft)
+    answer = ledger.answer_of(draft)
+    recorded = _recorded(proofs, documents)
     entries = [
         ProofEntry(
             proof=proof,
@@ -243,7 +416,7 @@ def overview(store: Store, draft_id: str, today: date) -> ProofOverview:
         )
         for proof in proofs
     ]
-    events = timeline(draft, tracking, _recorded(proofs, documents), reply)
+    events = timeline(draft, tracking, recorded, answer, ledger.reply_to(draft))
     return ProofOverview(
         draft_id=draft.id,
         sent=draft.status == "sent",
@@ -251,7 +424,8 @@ def overview(store: Store, draft_id: str, today: date) -> ProofOverview:
         tracking=tracking,
         proofs=entries,
         timeline=[event.event() for event in events],
-        missing=missing(draft, (proof.kind for proof in proofs), answered=reply is not None),
+        missing=missing(draft, recorded, answered=answer is not None, today=today),
+        conflicts=conflicts(draft, recorded),
         waiting=letter_entry(ledger, draft),
         caveat=CAVEAT,
     )
@@ -280,42 +454,78 @@ def _enclosure(store: Store, proof: Proof, document: Document | None) -> Nachwei
     return NachweisFile(german, english, info.shows, info.does_not_show, images=images) if images else None
 
 
+def _enclosed_letter(store: Store, draft: Draft) -> tuple[str, str]:
+    """How the Nachweis names the letter it encloses (see the module docstring)."""
+    if draft.sent_channel in TEXT_ONLY:
+        return TEXT_ONLY[draft.sent_channel]
+    return LETTER_AS_SENT if store.get_sent_signer(draft.id) is not None else LETTER_AS_RECORDED
+
+
+def _nachweis_day(day: str | None) -> str:
+    parsed = parse_day(day) if day else None
+    return format_date(parsed, "de") if parsed else (day or "")
+
+
+def nachweis_file_name(draft: Draft) -> str:
+    """``Nachweis Kündigung Mitgliedschaft FW-4711 2026-09-10.pdf``: the letter's subject (without
+    characters file systems refuse, at most 80) and its sending day."""
+    subject = re.sub(r'[\\/:*?"<>|\x00-\x1f]+', " ", draft.subject or "Schreiben")
+    words = " ".join(subject.split())[:80].strip() or "Schreiben"
+    day = (draft.sent_at or draft.created_at)[:10]
+    return f"Nachweis {words} {day}.pdf"
+
+
 def nachweis_pdf(store: Store, draft_id: str, today: date) -> bytes:
-    """The Nachweis PDF of a sent letter: summary and timeline, the letter as sent, the proof files."""
+    """The Nachweis PDF of a sent letter: summary and timeline, the letter (as sent), the proof files.
+    A possible answer the person hasn't confirmed is left out; proofs without a day are listed apart."""
     draft = _sent_draft(store, draft_id)
     ledger = Ledger(store, today)
     proofs = ledger.proofs_of(draft.id)
     documents = _files(store, proofs)
     tracking = tracking_info(draft.tracking_number)
-    events = timeline(draft, tracking, _recorded(proofs, documents), ledger.reply_to(draft))
+    events = [
+        event
+        for event in timeline(draft, tracking, _recorded(proofs, documents), ledger.answer_of(draft))
+        if event.in_nachweis
+    ]
     lines = [
         NachweisLine(
-            day=format_date(day, "de") if (day := parse_day(event.date)) else event.date,
-            german=event.german,
-            english=event.english,
+            day=_nachweis_day(event.date), german=event.german, english=event.english, detail=event.detail
+        )
+        for event in events
+        if event.date is not None
+    ]
+    undated = [
+        NachweisLine(
+            day="ohne Datum",
+            german=f"{event.german} – Tag nicht angegeben, hinzugefügt am {_nachweis_day(event.added_on)}",
+            english=f"{event.english} — no day given, added on {_nachweis_day(event.added_on)}",
             detail=event.detail,
         )
         for event in events
+        if event.date is None
     ]
     files = [
         enclosed
         for proof in proofs
         if (enclosed := _enclosure(store, proof, documents.get(proof.doc_id or ""))) is not None
     ]
-    sent_day = parse_day(draft.sent_at)
+    sent_on = parse_day(draft.sent_at)
     sent = (
-        f"{format_date(sent_day, 'de')} · {channel_label(draft.sent_channel, german=True)}"
-        if sent_day
+        f"{format_date(sent_on, 'de')} · {channel_label(draft.sent_channel, german=True)}"
+        if sent_on
         else None
     )
     checked = " (Prüfziffer korrekt)" if tracking is not None and tracking.checked else ""
+    profile = letter_profile(store, draft)
     facts = NachweisFacts(
         recipient=", ".join(line.strip() for line in draft.recipient_block.splitlines() if line.strip()),
-        sender=store.get_profile().name,
+        sender=profile.name,
         sent=sent,
         tracking=f"{tracking.display}{checked}" if tracking else None,
         created=format_date(today, "de"),
         caveat_de=CAVEAT_DE,
         caveat_en=CAVEAT,
+        letter=_enclosed_letter(store, draft),
     )
-    return render_nachweis(draft, store.get_profile(), facts, lines, files)
+    return render_nachweis(draft, profile, facts, lines, files, undated=undated)

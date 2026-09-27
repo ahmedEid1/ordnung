@@ -1,11 +1,19 @@
 -- Migration 0003: proof of sending for letters, and call notes (Gesprächsnotizen).
 --
--- Only adds: one column on drafts and two new tables, so it applies after any 0002 (which may add
--- its own columns or tables) and on a database without one. Dates: YYYY-MM-DD. Timestamps: ISO-8601 UTC.
+-- Only adds: columns on drafts and two new tables, so it applies after (or before) any other
+-- migration that adds its own columns or tables, and on a database without them. Dates: YYYY-MM-DD.
+-- Timestamps: ISO-8601 UTC.
 
 -- The Einschreiben's tracking number (Sendungsnummer), stored as typed after normalising
 -- (no spaces, upper case); ``drafts.proof.parse_tracking_number`` decides what is accepted.
 ALTER TABLE drafts ADD COLUMN tracking_number TEXT;
+-- What the letter's PDF showed of the sender when it was marked as sent (JSON: name, e-mail, phone),
+-- so the Nachweis encloses the letter as it went out even after the profile changed.
+ALTER TABLE drafts ADD COLUMN sent_profile TEXT;
+-- The person said the sent letter was answered (the day), and by which letter (NULL: by phone,
+-- e-mail … or not said). Only this — or a confirmation of the cancelled contract — counts as an answer.
+ALTER TABLE drafts ADD COLUMN answered_on TEXT;
+ALTER TABLE drafts ADD COLUMN answer_doc_id TEXT REFERENCES documents(id) ON DELETE SET NULL;
 
 -- One piece of proof for a sent letter: a posting receipt, delivery record, return receipt, fax
 -- report, the sent e-mail, a cancel-button confirmation … The file is a private outgoing document

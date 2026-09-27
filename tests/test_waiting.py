@@ -11,7 +11,7 @@ import pytest
 
 import helpers_proof
 from helpers_docs import photo
-from helpers_proof import DRAFT_ANSWER, SENT, TODAY, TRACKING, Gym, incoming, money_in
+from helpers_proof import DRAFT_ANSWER, SENT, TODAY, TRACKING, TRACKING_SHOWN, Gym, incoming, money_in
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.drafts import sent
@@ -80,7 +80,7 @@ async def test_after_the_follow_up_day_it_is_overdue_and_names_the_proof(ctx: Ap
     )
     entry = _only(ctx)
     assert entry.status == "overdue" and entry.expected_by == "2026-09-22"
-    assert "delivered on Thu 3 Sep" in entry.note and TRACKING in entry.note
+    assert "delivered on Thu 3 Sep" in entry.note and TRACKING_SHOWN in entry.note
     assert "Send a short reminder" in entry.note
 
 
@@ -183,6 +183,39 @@ async def test_closing_the_follow_up_closes_the_entry(ctx: AppContext, gym: Gym)
     assert _entries(ctx) == []
 
 
+async def test_answered_in_the_persons_words_closes_the_entry_and_undo_reopens_it(
+    ctx: AppContext, gym: Gym
+) -> None:
+    letter = await helpers_proof.sent_letter(ctx, gym)
+    assert _only(ctx).status == "overdue"
+    sent.mark_answered(ctx.store, letter.id, TODAY)
+    assert _entries(ctx) == []
+    (closed,) = _entries(ctx, include_closed=True)
+    assert "You said it was answered on Mon 28 Sep" in closed.note
+    assert ctx.store.get_item(followup_item_id(letter.id)).status == "done"  # type: ignore[union-attr]
+    sent.unmark_answered(ctx.store, letter.id)
+    assert _only(ctx).status == "overdue"
+    assert ctx.store.get_item(followup_item_id(letter.id)).status == "open"  # type: ignore[union-attr]
+
+
+async def test_marking_again_keeps_a_closed_follow_up_closed(ctx: AppContext, gym: Gym) -> None:
+    letter = await helpers_proof.sent_letter(ctx, gym)
+    sent.mark_answered(ctx.store, letter.id, TODAY)
+    mark_sent(ctx, letter.id, "registered_letter", date(2026, 9, 2))  # correcting the day
+    assert ctx.store.get_item(followup_item_id(letter.id)).status == "done"  # type: ignore[union-attr]
+
+
+async def test_a_deposit_letter_waits_for_when_not_for_the_money(ctx: AppContext, gym: Gym) -> None:
+    """The landlord may take months to settle a deposit: three weeks on, the answer on when is due."""
+    details = LetterDetails(moved_out_on="2026-08-31", old_address="Alt 1, 12345 Musterstadt", amount=900.0)
+    draft = await compose(ctx, "deposit_return", party_id=gym.party, details=details)
+    mark_sent(ctx, draft.id, "letter", SENT)
+    entry = _only(ctx)
+    assert entry.status == "overdue" and entry.title == "An answer on when your deposit will be settled"
+    assert "VIII ZR 71/05" in entry.note and "more than six months" in entry.note
+    assert "Your deposit back" not in entry.note
+
+
 async def test_an_address_change_waits_for_nothing(ctx: AppContext, gym: Gym) -> None:
     details = LetterDetails(
         old_address="Alt 1, 12345 Musterstadt", new_address="Neu 2, 12345 Musterstadt", moved_on="2026-09-01"
@@ -266,6 +299,7 @@ def test_a_dated_promise_on_the_phone_is_waited_for(ctx: AppContext, gym: Gym) -
     entry = _only(ctx)
     assert (entry.source, entry.status, entry.title) == ("call", "overdue", "Call back about the refund")
     assert entry.about == "Call with Frau Weber" and "Call them again" in entry.note
+    assert entry.note.startswith("On the phone on Sun 20 Sep, they promised this by Fri 25 Sep.")
     calls.mark_kept(ctx.store, note.id, True, TODAY)
     assert _entries(ctx) == [] and _entries(ctx, include_closed=True)[0].note == "Kept on Mon 28 Sep."
     calls.mark_kept(ctx.store, note.id, False, TODAY)
@@ -429,10 +463,36 @@ async def test_proof_missing_not_when_answered_or_closed(ctx: AppContext, gym: G
     ctx.store.update_item(followup_item_id(letter.id), status="done")
     assert _ideas(ctx, "proof_missing") == []
     ctx.store.update_item(followup_item_id(letter.id), status="open")
-    incoming(
+    reply = incoming(
         ctx, "reply", kind="other", title="Reply", doc_date="2026-09-08", party_id=gym.party, case_id=gym.case
     )
+    # a later letter of the thread is only a possible answer: the advice stays
+    assert len(_ideas(ctx, "proof_missing")) == 1
+    sent.mark_answered(ctx.store, letter.id, TODAY, doc_id=reply)
     assert _ideas(ctx, "proof_missing") == []
+
+
+async def test_proof_missing_not_after_a_confirmation_of_the_cancellation(ctx: AppContext, gym: Gym) -> None:
+    await helpers_proof.sent_letter(ctx, gym)
+    incoming(
+        ctx,
+        "confirmation",
+        kind="cancellation_confirmation",
+        title="Kündigungsbestätigung",
+        doc_date="2026-09-05",
+        party_id=gym.party,
+        case_id=gym.case,
+    )
+    assert _ideas(ctx, "proof_missing") == []
+
+
+async def test_proof_missing_not_once_the_delivery_record_can_no_longer_be_had(
+    ctx: AppContext, gym: Gym
+) -> None:
+    """Sent 1 Sep 2026: Deutsche Post issues the delivery record until 1 Dec 2027 (15 months)."""
+    await helpers_proof.sent_letter(ctx, gym)
+    assert len(_ideas(ctx, "proof_missing", today=date(2027, 12, 1))) == 1
+    assert _ideas(ctx, "proof_missing", today=date(2027, 12, 2)) == []
 
 
 async def test_follow_up_names_the_delivery_and_the_tracking_number(ctx: AppContext, gym: Gym) -> None:
@@ -443,7 +503,7 @@ async def test_follow_up_names_the_delivery_and_the_tracking_number(ctx: AppCont
     (idea,) = _ideas(ctx, "followup_due")
     assert idea.title == "Follow-up due: Check for a reply from FitWell Studios GmbH"
     assert "delivered on Fri 4 Sep — say so when you remind them" in idea.body
-    assert f"Quote the tracking number {TRACKING} if you call" in idea.body
+    assert f"Quote the tracking number {TRACKING_SHOWN} if you call" in idea.body
 
 
 async def test_follow_up_without_proof_keeps_the_plain_reminder(ctx: AppContext, gym: Gym) -> None:
@@ -465,7 +525,8 @@ async def test_follow_up_after_an_answer_asks_to_check_it(ctx: AppContext, gym: 
         case_id=gym.case,
     )
     (idea,) = _ideas(ctx, "followup_due")
-    assert idea.title == "FitWell Studios GmbH answered — close the follow-up?"
+    # only in the same thread: it may be about something else, so Ordnung asks
+    assert idea.title == "A letter from FitWell Studios GmbH came — is it the answer?"
     assert "“Antwort” of Wed 9 Sep came after yours" in idea.body
     assert idea.fingerprint != before.fingerprint  # a new Idea, not the old "send a reminder"
     assert idea.action is not None and idea.action.target_id == letter.id
@@ -487,7 +548,7 @@ async def test_confirm_cancellation_names_the_sent_letter(ctx: AppContext, gym: 
     letter = await helpers_proof.sent_letter(ctx, gym, tracking_number=TRACKING)
     (idea,) = _ideas(ctx, "confirm_cancellation")
     assert (
-        f"answers your cancellation sent on Tue 1 Sep by registered letter (Einschreiben) (tracking number {TRACKING})"
+        f"answers your cancellation sent on Tue 1 Sep by registered letter (Einschreiben) (tracking number {TRACKING_SHOWN})"
         in idea.body
     )
     assert ("draft", letter.id) in {(ref.type, ref.id) for ref in idea.refs}

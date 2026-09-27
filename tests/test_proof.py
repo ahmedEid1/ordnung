@@ -13,7 +13,7 @@ import pytest
 
 import helpers_proof
 from helpers_docs import letter_pdf, photo
-from helpers_proof import DRAFT_ANSWER, SENT, TODAY, TRACKING, Gym, incoming
+from helpers_proof import DRAFT_ANSWER, SENT, TODAY, TRACKING, TRACKING_SHOWN, Gym, incoming
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.drafts import proof, sent
@@ -23,7 +23,7 @@ from ordnung.drafts.tracking import tracking_info
 from ordnung.ingest.intake import IntakeError
 from ordnung.ingest.pipeline import add_file
 from ordnung.llm.fake import FakeBackend
-from ordnung.models import Draft
+from ordnung.models import Document, Draft, Profile
 from ordnung.secretary.triggers import Ledger
 from ordnung.views import dashboard, timeline
 
@@ -49,11 +49,13 @@ async def _sent_letter(
 
 
 def _pdf_text(data: bytes) -> str:
+    """The PDF's text, no-break spaces read as spaces (tracking numbers are grouped with them)."""
     document = pdfium.PdfDocument(data)
     try:
-        return "\n".join(document[i].get_textpage().get_text_range() for i in range(len(document)))
+        text = "\n".join(document[i].get_textpage().get_text_range() for i in range(len(document)))
     finally:
         document.close()
+    return text.replace("\u00a0", " ")
 
 
 def _pages(data: bytes) -> int:
@@ -91,23 +93,54 @@ def _draft(**fields: Any) -> Draft:
     return Draft.model_validate(base | fields)
 
 
+def _had(*kinds: str, day: str | None = None) -> list[proof.RecordedProof]:
+    return [proof.RecordedProof(kind, day, "2026-09-05", None, None) for kind in kinds]
+
+
+def _missing(draft: Draft, kinds: list[str], *, answered: bool, today: date = TODAY) -> list[str]:
+    return proof.missing(draft, _had(*kinds), answered=answered, today=today)
+
+
 def test_a_registered_letter_wants_its_number_the_receipt_and_the_delivery_record() -> None:
-    assert proof.missing(_draft(), [], answered=False) == [
+    assert _missing(_draft(), [], answered=False) == [
         proof.MISSING_TRACKING,
         proof.MISSING_POSTING,
         proof.MISSING_DELIVERY,
     ]
     numbered = _draft(tracking_number="RT123456785DE")
-    assert proof.missing(numbered, ["posting_receipt"], answered=False) == [proof.MISSING_DELIVERY]
-    assert proof.missing(numbered, ["posting_receipt", "delivery_record"], answered=False) == []
-    assert proof.missing(numbered, ["posting_receipt", "return_receipt"], answered=False) == []
-    assert "BAG 2 AZR 68/24" in proof.MISSING_DELIVERY
+    assert _missing(numbered, ["posting_receipt"], answered=False) == [proof.MISSING_DELIVERY]
+    assert _missing(numbered, ["posting_receipt", "delivery_record"], answered=False) == []
+    assert _missing(numbered, ["posting_receipt", "return_receipt"], answered=False) == []
+    assert "BAG 2 AZR 68/24" in proof.MISSING_DELIVERY and "15 months" in proof.MISSING_DELIVERY
 
 
-def test_an_answer_shows_the_letter_arrived() -> None:
-    assert proof.missing(_draft(tracking_number="RT123456785DE"), ["posting_receipt"], answered=True) == []
-    assert proof.missing(_draft(sent_channel="letter"), [], answered=True) == []
-    assert proof.missing(_draft(sent_channel="fax"), [], answered=True) == []
+def test_the_delivery_record_is_suggested_only_while_deutsche_post_issues_it() -> None:
+    """Deutsche Post issues a copy for 15 months after posting (sent 1 Sep 2026: until 1 Dec 2027)."""
+    numbered = _draft(tracking_number="RT123456785DE")
+    assert _missing(numbered, ["posting_receipt"], answered=False, today=date(2027, 12, 1)) == [
+        proof.MISSING_DELIVERY
+    ]
+    late = _missing(numbered, ["posting_receipt"], answered=False, today=date(2027, 12, 2))
+    assert late == [proof.MISSING_DELIVERY_LATE]
+    assert "Ask Deutsche Post" not in late[0] and "time has passed" in late[0]
+    assert proof.delivery_record_obtainable(_draft(sent_at=None), date(2030, 1, 1))
+
+
+def test_a_confirmed_answer_shows_the_letter_arrived() -> None:
+    assert _missing(_draft(tracking_number="RT123456785DE"), ["posting_receipt"], answered=True) == []
+    assert _missing(_draft(sent_channel="letter"), [], answered=True) == []
+    assert _missing(_draft(sent_channel="fax"), [], answered=True) == []
+
+
+@pytest.mark.parametrize("kind", sorted(proof.SENDING_DAY_KINDS))
+def test_a_sending_proof_on_another_day_than_the_sending_is_pointed_out(kind: str) -> None:
+    draft = _draft()  # sent 2026-09-01
+    assert proof.conflicts(draft, _had(kind, day="2026-09-01")) == []
+    assert proof.conflicts(draft, _had(kind)) == []  # no day: nothing to compare
+    (said,) = proof.conflicts(draft, _had(kind, day="2026-09-03"))
+    assert "Thu 3 Sep 2026" in said and "Tue 1 Sep 2026" in said and "correct one of them" in said
+    assert proof.conflicts(draft, _had("delivery_record", day="2026-09-03")) == []
+    assert proof.conflicts(_draft(status="draft", sent_at=None), _had(kind, day="2026-09-03")) == []
 
 
 @pytest.mark.parametrize(
@@ -126,18 +159,18 @@ def test_an_answer_shows_the_letter_arrived() -> None:
     ],
 )
 def test_what_is_missing_follows_the_channel(channel: str, have: list[str], expected: list[str]) -> None:
-    assert proof.missing(_draft(sent_channel=channel), have, answered=False) == expected
+    assert _missing(_draft(sent_channel=channel), have, answered=False) == expected
 
 
 def test_a_letter_not_yet_sent_misses_nothing() -> None:
-    assert proof.missing(_draft(status="draft", sent_at=None, sent_channel=None), [], answered=False) == []
+    assert _missing(_draft(status="draft", sent_at=None, sent_channel=None), [], answered=False) == []
 
 
 def test_the_timeline_lists_what_was_recorded_in_order() -> None:
     tracking = tracking_info("RT123456785DE")
     recorded = [
         proof.RecordedProof("delivery_record", "2026-09-03", "2026-09-05", None, None),
-        proof.RecordedProof("posting_receipt", None, "2026-09-01", "Filiale Mitte", None),
+        proof.RecordedProof("posting_receipt", "2026-09-01", "2026-09-01", "Filiale Mitte", None),
     ]
     events = proof.timeline(_draft(), tracking, recorded, None)
     assert [(e.date, e.kind) for e in events] == [
@@ -147,9 +180,59 @@ def test_the_timeline_lists_what_was_recorded_in_order() -> None:
         ("2026-09-01", "proof"),
         ("2026-09-03", "delivered"),
     ]
-    assert events[2].english == f"Tracking number {TRACKING}" and events[2].detail == "check digit correct"
+    assert (
+        events[2].english == f"Tracking number {TRACKING_SHOWN}" and events[2].detail == "check digit correct"
+    )
     assert events[3].detail == "Filiale Mitte"
     assert events[4].german == "Zugestellt laut Auslieferungsbeleg"
+
+
+def test_a_proof_without_a_day_is_never_put_on_a_day() -> None:
+    """Sent 10 Sep, a posting receipt without a day added on 27 Sep: never "27 Sep · posting receipt"."""
+    recorded = [
+        proof.RecordedProof("posting_receipt", None, "2026-09-27", None, None),
+        proof.RecordedProof("delivery_record", None, "2026-09-26", None, None),
+    ]
+    events = proof.timeline(_draft(sent_at="2026-09-10"), None, recorded, None)
+    assert [(e.date, e.kind, e.added_on) for e in events] == [
+        ("2026-08-30", "created", None),
+        ("2026-09-10", "sent", None),
+        (None, "proof", "2026-09-26"),  # undated ones last, apart, with the day they were added
+        (None, "proof", "2026-09-27"),
+    ]
+    assert events[2].english == "Delivery record"  # not "Delivered —": no day of delivery was given
+    assert all(event.date != "2026-09-27" for event in events)
+
+
+def test_only_a_confirmed_answer_is_stated_and_a_possible_one_stays_a_hint() -> None:
+    invoice = Document.model_validate(
+        {
+            "id": "doc_i",
+            "sha256": "x",
+            "filename": "i.pdf",
+            "mime": "application/pdf",
+            "title": "Beitragsrechnung",
+            "doc_date": "2026-09-15",
+            "created_at": "2026-09-15T08:00:00Z",
+            "updated_at": "2026-09-15T08:00:00Z",
+        }
+    )
+    draft = _draft(sent_at="2026-09-10")
+    possible = proof.timeline(draft, None, [], None, invoice)
+    assert possible[-1].kind == "possible_answer" and not possible[-1].in_nachweis
+    assert "Antwort erhalten" not in possible[-1].german and "is it the answer?" in possible[-1].english
+    confirmed = proof.timeline(draft, None, [], proof.RecordedAnswer(None, invoice, "letter"), invoice)
+    assert [e.kind for e in confirmed][-1] == "answered" and confirmed[-1].in_nachweis
+    assert confirmed[-1].german == "Antwort erhalten: „Beitragsrechnung“"
+    assert all(e.kind != "possible_answer" for e in confirmed)
+    noted = proof.timeline(draft, None, [], proof.RecordedAnswer("2026-09-20", None, "noted"), invoice)
+    assert (noted[-1].date, noted[-1].kind, noted[-1].english) == (
+        "2026-09-20",
+        "answered",
+        "Answered — as you noted",
+    )
+    confirmation = proof.timeline(draft, None, [], proof.RecordedAnswer(None, invoice, "confirmation"))
+    assert confirmation[-1].german.startswith("Kündigung bestätigt")
 
 
 def test_a_letter_recorded_after_it_was_sent_starts_with_its_sending() -> None:
@@ -352,7 +435,7 @@ async def test_the_overview_brings_everything_together(ctx: AppContext, gym: Gym
     )
     overview = sent.overview(ctx.store, letter.id, TODAY)
     assert overview.sent and overview.channel == "registered_letter"
-    assert overview.tracking is not None and overview.tracking.display == TRACKING
+    assert overview.tracking is not None and overview.tracking.display == TRACKING_SHOWN
     assert overview.missing == [proof.MISSING_DELIVERY]
     assert overview.caveat == proof.CAVEAT
     assert overview.waiting is not None and overview.waiting.title == "A written confirmation of the end date"
@@ -410,7 +493,7 @@ async def test_the_nachweis_holds_the_timeline_the_letter_and_the_proof_files(
         "Prüfziffer korrekt",
         "Einlieferungsbeleg",
         "Zugestellt laut Auslieferungsbeleg",
-        "Antwort erhalten: „Kündigungsbestätigung“",
+        "Kündigung bestätigt: „Kündigungsbestätigung“",  # a confirmation of the cancelled contract
         "01.09.2026",
         "03.09.2026",
         "10.09.2026",
@@ -422,3 +505,32 @@ async def test_the_nachweis_holds_the_timeline_the_letter_and_the_proof_files(
     letter_pages = _pages(render_letter(ctx.store.get_draft(letter.id), ctx.store.get_profile()))  # type: ignore[arg-type]
     assert _pages(data) == 1 + letter_pages + 1 + 3  # summary, letter, photo, the 3-page PDF
     assert "Ordnung" not in text.split("Kündigung des Vertrags")[0]  # no branding on the summary
+
+
+def test_the_note_at_the_end_of_the_summary_is_never_split_over_two_pages() -> None:
+    """However long the timeline, the caveat and the made-on line stay on one page together."""
+    from ordnung.drafts import pdf as pdf_module
+
+    draft = _draft(subject="Kündigung", recipient_block="FitWell Studios GmbH")
+    facts = pdf_module.NachweisFacts(
+        recipient="FitWell Studios GmbH",
+        sender="Sam Rivera",
+        sent="01.09.2026 · Einschreiben",
+        tracking=None,
+        created="28.09.2026",
+        caveat_de=proof.CAVEAT_DE,
+        caveat_en=proof.CAVEAT,
+    )
+    for count in range(8, 22):
+        lines = [pdf_module.NachweisLine("01.09.2026", f"Zeile {i}", f"Line {i}") for i in range(count)]
+        data = pdf_module._summary(draft, Profile(name="Sam Rivera"), facts, lines, [], 1, [])
+        document = pdfium.PdfDocument(data)
+        try:
+            pages = [document[i].get_textpage().get_text_range() for i in range(len(document))]
+        finally:
+            document.close()
+        holding = [i for i, text in enumerate(pages) if "Hinweis" in text]
+        made = [i for i, text in enumerate(pages) if "Erstellt am" in text]
+        assert holding == made, count
+        footer = pages[-1]
+        assert f"Seite {len(pages)} von {len(pages)}" in footer and "Summary, page" in footer

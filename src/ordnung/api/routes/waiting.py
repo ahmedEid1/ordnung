@@ -35,7 +35,7 @@ class CallNoteCreate(BaseModel):
     summary: str = Field(min_length=1, max_length=calls.MAX_SUMMARY)
     promise: str | None = Field(default=None, max_length=calls.MAX_PROMISE)
     promise_due: IsoDate | None = None
-    promise_amount: float | None = Field(default=None, ge=0)
+    promise_amount: float | None = Field(default=None, ge=0, le=calls.MAX_AMOUNT)
 
 
 class CallNotePatch(BaseModel):

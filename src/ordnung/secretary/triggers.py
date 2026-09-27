@@ -24,7 +24,13 @@ from typing import Any
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
-from ordnung.drafts.proof import channel_label, followup_item_id, is_proof_file
+from ordnung.drafts.proof import (
+    PROOF_SOURCE,
+    RecordedAnswer,
+    channel_label,
+    delivery_record_obtainable,
+    followup_item_id,
+)
 from ordnung.drafts.tracking import tracking_info
 from ordnung.ids import content_id
 from ordnung.ingest.link import reminder_covers
@@ -373,7 +379,7 @@ class Ledger:
         self.profile = store.get_profile()
         # proof files belong to their letter (``drafts.proof``): they are no letters of the ledger
         self.documents: dict[str, Document] = {
-            doc.id: doc for doc in store.list_documents() if not is_proof_file(doc)
+            doc.id: doc for doc in store.list_documents(exclude_source=PROOF_SOURCE)
         }
         self.items: list[Item] = store.list_items()
         self.contracts: list[Contract] = store.list_contracts()
@@ -509,15 +515,16 @@ class Ledger:
         return contract is not None and contract.id == contract_id
 
     def reply_to(self, draft: Draft) -> Document | None:
-        """The letter that answered a sent letter (cached), or ``None``.
+        """The letter that *may* have answered a sent letter (cached), or ``None``.
 
         Written policy: the earliest live incoming letter without scam signs, other than the letter it
         answered, dated (else received, else added) on or after the day it was sent, that is in the same
         thread (:mod:`ordnung.ingest.link` threads letters by reference), or — for a cancellation of a
         contract — confirms the cancellation of that contract. Nothing is closed because of it (ADR 0006):
         the waiting entry and the follow-up Idea say which letter it was, and the person checks it.
-        Limit: any later letter of the thread counts (a new tax assessment under the same tax number
-        "answers" an objection); naming the letter is what lets the person notice.
+        Limit: any later letter of the thread counts (a new tax assessment under the same tax number, a
+        monthly invoice); so it is only a *possible* answer — never proof of arrival, never written
+        into the Nachweis. What counts as an answer is :meth:`answer_of`.
         """
         if draft.id not in self._replies:
             sent = parse_day(draft.sent_at) if draft.status == "sent" else None
@@ -528,6 +535,24 @@ class Ledger:
                 else None
             )
         return self._replies[draft.id]
+
+    def answer_of(self, draft: Draft) -> RecordedAnswer | None:
+        """The *confirmed* answer to a sent letter (``drafts.proof`` policy 3), or ``None``: the person's
+        word that it was answered (with the letter they named, if it is still here), else — for a
+        cancellation of a contract — a confirmation of that contract's cancellation that arrived after
+        it was sent. A letter that is only in the same thread is no confirmed answer (:meth:`reply_to`)."""
+        if draft.status != "sent":
+            return None
+        if draft.answered_on:
+            named = self.document(draft.answer_doc_id)
+            if named is not None:
+                return RecordedAnswer(None, named, "letter")
+            return RecordedAnswer(draft.answered_on[:10], None, "noted")
+        sent = parse_day(draft.sent_at)
+        if draft.kind != "cancellation" or not draft.contract_id or sent is None:
+            return None
+        confirmation = self.letter_after(None, sent, exclude=draft.doc_id, contract_id=draft.contract_id)
+        return RecordedAnswer(None, confirmation, "confirmation") if confirmation is not None else None
 
     def is_dunning_item(self, item: Item) -> bool:
         """Items of a payment reminder are reported by ``dunning_escalation`` only."""
@@ -1105,11 +1130,21 @@ def _answered_idea(ledger: Ledger, item: Item, draft: Draft, reply: Document, du
         f"Their letter “{reply.title or reply.filename}”{when} came after yours (“{draft.subject}”{sent}).",
         "Check that it answers your letter, then mark the follow-up done.",
     )
+    answer = ledger.answer_of(draft)
+    confirmed = answer is not None and answer.document is not None and answer.document.id == reply.id
+    # a letter that is only in the same thread may be about something else: ask, don't state
+    title = (
+        f"{who} confirmed — close the follow-up?"
+        if confirmed
+        else f"A letter from {who} came — is it the answer?"
+    )
+    if who == "They" and not confirmed:
+        title = "A letter came in the same thread — is it the answer?"
     return make_idea(
         "followup_due",
         item.id,
         (item.due_date, "answered", reply.id),
-        IdeaText(f"{who} answered — close the follow-up?", body, f"Follow-up date {day_label(due, today)}."),
+        IdeaText(title, body, f"Follow-up date {day_label(due, today)}."),
         kind="followup",
         priority="normal",
         refs=[_ref("item", item.id), _ref("draft", draft.id), _ref("document", reply.id)],
@@ -1183,8 +1218,10 @@ PROOF_WATCHED_KINDS = frozenset({"cancellation", "objection"})
 def proof_missing(ledger: Ledger) -> list[Suggestion]:
     """A cancellation or objection sent by Einschreiben has no tracking number and no proof two days on.
 
-    Not raised when a letter linked to it already arrived (an answer shows it was received) or when the
-    person closed its follow-up. Once a tracking number or a proof is added the Idea expires.
+    Not raised when the letter has a confirmed answer (:meth:`Ledger.answer_of` — a later letter that is
+    merely in the same thread is not one), when the person closed its follow-up, or once Deutsche Post no
+    longer issues the delivery record (15 months after posting). Once a tracking number or a proof is
+    added the Idea expires.
     """
     ideas: list[Suggestion] = []
     today = ledger.today
@@ -1197,7 +1234,8 @@ def proof_missing(ledger: Ledger) -> list[Suggestion]:
             or (today - sent).days < PROOF_GRACE_DAYS
             or draft.tracking_number
             or ledger.proofs_of(draft.id)
-            or ledger.reply_to(draft) is not None
+            or ledger.answer_of(draft) is not None
+            or not delivery_record_obtainable(draft, today)
         ):
             continue
         followup = ledger.followup_item(draft)
@@ -1209,8 +1247,8 @@ def proof_missing(ledger: Ledger) -> list[Suggestion]:
             f"You sent “{draft.subject}” on {day_label(sent, today)} by Einschreiben, but Ordnung has no "
             "tracking number or receipt for it.",
             "Add the tracking number and a photo of the posting receipt (Einlieferungsbeleg), and ask "
-            "Deutsche Post for the delivery record (Auslieferungsbeleg): if they ever say it didn't arrive, "
-            "that is what shows it did.",
+            "Deutsche Post for the delivery record (Auslieferungsbeleg) — they issue it only within 15 "
+            "months of posting: if they ever say it didn't arrive, that is what shows it did.",
         )
         refs = [_ref("draft", draft.id)]
         if draft.contract_id:

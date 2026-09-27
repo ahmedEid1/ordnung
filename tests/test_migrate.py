@@ -7,13 +7,16 @@ from pathlib import Path
 import pytest
 
 from ordnung.db.migrate import (
+    LEDGER,
     MIGRATIONS_DIR,
     Migration,
     _apply,
+    applied_versions,
     current_version,
     discover,
     latest_version,
     migrate,
+    pending,
     split_statements,
 )
 
@@ -37,6 +40,7 @@ EXPECTED_TABLES = {
     "chat_messages",
     "proofs",
     "call_notes",
+    LEDGER,
 }
 
 
@@ -185,6 +189,77 @@ def test_a_gap_in_the_numbering_is_allowed(tmp_path: Path, conn: sqlite3.Connect
     assert conn.execute("SELECT step FROM log").fetchall() == [("three",)]
 
 
+def test_a_lower_number_merged_after_a_higher_one_still_runs(
+    tmp_path: Path, conn: sqlite3.Connection
+) -> None:
+    """0004 reached a database first; 0003 arrives later: it runs (it is not below "the version")."""
+    directory = _write(
+        tmp_path / "m",
+        {
+            "0001_a.sql": "CREATE TABLE log (step TEXT);",
+            "0004_d.sql": "INSERT INTO log (step) VALUES ('four');",
+        },
+    )
+    assert migrate(conn, directory=directory) == 4
+    _write(
+        directory, {"0003_c.sql": "CREATE TABLE three (x INTEGER); INSERT INTO log (step) VALUES ('three');"}
+    )
+    assert [m.version for m in pending(conn, directory=directory)] == [3]
+    assert migrate(conn, directory=directory) == 4
+    assert [r[0] for r in conn.execute("SELECT step FROM log ORDER BY rowid")] == ["four", "three"]
+    assert "three" in _tables(conn)
+    assert applied_versions(conn) == {1, 3, 4}
+    assert migrate(conn, directory=directory) == 4  # and never again
+    assert conn.execute("SELECT COUNT(*) FROM log").fetchone() == (2,)
+
+
+def test_0003_runs_on_a_database_that_already_ran_a_later_migration(
+    tmp_path: Path, conn: sqlite3.Connection
+) -> None:
+    """The shipped 0003 after another branch's 0004: the letters' columns and tables are there."""
+    directory = tmp_path / "m"
+    _shipped(directory, "0001_initial.sql")
+    (directory / "0004_traces.sql").write_text(
+        "CREATE TABLE trace_spans (id TEXT PRIMARY KEY);", encoding="utf-8"
+    )
+    assert migrate(conn, directory=directory) == 4
+    _shipped(directory, PROOF_MIGRATION)
+    assert migrate(conn, directory=directory) == 4
+    assert "tracking_number" in _columns(conn, "drafts")
+    assert {"proofs", "call_notes", "trace_spans"} <= _tables(conn)
+
+
+def test_a_database_from_before_the_ledger_ran_0001(tmp_path: Path, conn: sqlite3.Connection) -> None:
+    directory = _write(tmp_path / "m", {"0001_a.sql": "CREATE TABLE log (step TEXT);"})
+    conn.execute("CREATE TABLE log (step TEXT)")  # as the old runner left it: version 1, no ledger
+    conn.execute("PRAGMA user_version = 1")
+    _write(directory, {"0003_c.sql": "INSERT INTO log (step) VALUES ('three');"})
+    assert migrate(conn, directory=directory) == 3
+    assert applied_versions(conn) == {1, 3}
+    assert conn.execute(f"SELECT version, name FROM {LEDGER} ORDER BY version").fetchall() == [
+        (1, "a"),
+        (3, "c"),
+    ]
+
+
+def test_a_database_past_0001_without_a_ledger_is_refused(tmp_path: Path, conn: sqlite3.Connection) -> None:
+    """A development build may have skipped a lower number: say so instead of guessing."""
+    directory = _write(tmp_path / "m", {"0001_a.sql": "", "0003_c.sql": "", "0004_d.sql": ""})
+    conn.execute("PRAGMA user_version = 4")
+    with pytest.raises(RuntimeError, match="no record of which migrations ran"):
+        migrate(conn, directory=directory)
+    assert LEDGER not in _tables(conn)
+
+
+def test_a_migration_this_code_does_not_have_is_refused(tmp_path: Path, conn: sqlite3.Connection) -> None:
+    directory = _write(tmp_path / "m", {"0001_a.sql": "", "0002_b.sql": "", "0004_d.sql": ""})
+    migrate(conn, directory=directory)
+    (directory / "0002_b.sql").unlink()
+    _write(directory, {"0003_c.sql": ""})
+    with pytest.raises(RuntimeError, match="0002, which this version of Ordnung doesn't have"):
+        migrate(conn, directory=directory)
+
+
 def test_discover_ignores_non_sql_files(tmp_path: Path) -> None:
     directory = _write(tmp_path / "m", {"0001_a.sql": "SELECT 1;", "README.md": "notes"})
     assert [m.name for m in discover(directory)] == ["a"]
@@ -252,11 +327,12 @@ def _shipped(directory: Path, *names: str) -> None:
 
 
 PROOF_MIGRATION = "0003_proof_and_calls.sql"
+NEW_DRAFT_COLUMNS = ("tracking_number", "sent_profile", "answered_on", "answer_doc_id")
 
 
 def test_0003_adds_proofs_call_notes_and_the_tracking_number(conn: sqlite3.Connection) -> None:
     migrate(conn)
-    assert "tracking_number" in _columns(conn, "drafts")
+    assert set(NEW_DRAFT_COLUMNS) <= _columns(conn, "drafts")
     assert {"draft_id", "kind", "doc_id", "on_date", "note"} <= _columns(conn, "proofs")
     assert {"party_id", "case_id", "called_on", "promise", "promise_due", "promise_kept_on"} <= _columns(
         conn, "call_notes"
@@ -318,14 +394,16 @@ def test_0003_migrates_the_demo_database(tmp_path: Path) -> None:
     demo = sqlite3.connect(copy, isolation_level=None)
     try:
         before = demo.execute("SELECT COUNT(*) FROM documents").fetchone()
-        demo.execute("PRAGMA user_version = 1")  # as it was before this migration
-        if "tracking_number" in _columns(demo, "drafts"):  # a snapshot already built at 0003: undo it
-            demo.execute("ALTER TABLE drafts DROP COLUMN tracking_number")
-            demo.execute("DROP TABLE IF EXISTS proofs")
-            demo.execute("DROP TABLE IF EXISTS call_notes")
+        demo.execute("PRAGMA user_version = 1")  # as it was before this migration (and the ledger)
+        demo.execute(f"DROP TABLE IF EXISTS {LEDGER}")
+        for column in NEW_DRAFT_COLUMNS:  # a snapshot already built at 0003: undo it
+            if column in _columns(demo, "drafts"):
+                demo.execute(f"ALTER TABLE drafts DROP COLUMN {column}")
+        demo.execute("DROP TABLE IF EXISTS proofs")
+        demo.execute("DROP TABLE IF EXISTS call_notes")
         assert migrate(demo) == latest_version()
         assert demo.execute("SELECT COUNT(*) FROM documents").fetchone() == before
-        assert "tracking_number" in _columns(demo, "drafts")
+        assert set(NEW_DRAFT_COLUMNS) <= _columns(demo, "drafts")
         assert {"proofs", "call_notes"} <= _tables(demo)
     finally:
         demo.close()

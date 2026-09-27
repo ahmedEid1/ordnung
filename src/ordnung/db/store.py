@@ -41,10 +41,11 @@ from pydantic_core import to_jsonable_python
 
 from ordnung.clock import now_iso, real_now_iso
 from ordnung.config import Paths
-from ordnung.db.migrate import current_version, latest_version, migrate
+from ordnung.db.migrate import current_version, latest_version, migrate, pending
 from ordnung.ids import content_id, doc_id_for_sha, new_id
 from ordnung.llm.base import Usage
 from ordnung.models import (
+    PROOF_SOURCE,
     Activity,
     AppSettings,
     CallNote,
@@ -67,6 +68,7 @@ from ordnung.models import (
     Proof,
     PurposeUsage,
     SearchHit,
+    SentSigner,
     Suggestion,
     UsageStats,
 )
@@ -219,7 +221,7 @@ _PAGES = _Table("pages", Page)
 _CONTRACTS = _Table("contracts", Contract, "ctr", on_read=("cancellable", "cancel_hint"))
 _ITEMS = _Table("items", Item, "itm")
 _SUGGESTIONS = _Table("suggestions", Suggestion, "sug")
-_DRAFTS = _Table("drafts", Draft, "drf")
+_DRAFTS = _Table("drafts", Draft, "drf", extras={"sent_profile": SentSigner})
 _NOTES = _Table("notes", Note, "nte")
 _PROOFS = _Table("proofs", Proof, "prf")
 _CALL_NOTES = _Table("call_notes", CallNote, "cal")
@@ -504,9 +506,10 @@ class Store:
                     path.chmod(PRIVATE_FILE_MODE)
 
     def _check_schema(self) -> int:
-        version = current_version(self._conn())
+        conn = self._conn()
+        version = current_version(conn)
         latest = latest_version()
-        if version != latest:
+        if version != latest or pending(conn):
             raise RuntimeError(
                 f"database schema is at version {version}, expected {latest}; open it writable first"
             )
@@ -842,13 +845,17 @@ class Store:
         *,
         ai_private: bool | None = None,
         include_deleted: bool = False,
+        exclude_source: str | None = None,
     ) -> list[Document]:
         """Documents, newest first by ``COALESCE(doc_date, created_at)``.
 
         ``q`` filters by the same full-text/substring matching as :meth:`search`. Trashed documents
-        are left out unless ``include_deleted``.
+        are left out unless ``include_deleted``; ``exclude_source`` leaves out one source (the
+        Inbox leaves out proof files).
         """
         where = _Where()
+        if exclude_source is not None:
+            where.add("source != ?", exclude_source)
         where.within("kind", kind)
         where.equals("party_id", party_id)
         where.equals("case_id", case_id)
@@ -1487,6 +1494,13 @@ class Store:
         """Delete a draft; ``False`` if it did not exist."""
         return self._delete(_DRAFTS, id)
 
+    def get_sent_signer(self, draft_id: str) -> SentSigner | None:
+        """What the letter's PDF showed of the sender when it was marked as sent (``None``: not kept)."""
+        row = self._conn().execute("SELECT sent_profile FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+        if row is None or row["sent_profile"] is None:
+            return None
+        return SentSigner.model_validate_json(row["sent_profile"])
+
     def add_note(self, text: str, item_ids: Sequence[str] = (), *, id: str | None = None) -> Note:
         """Insert a note, optionally attached to items."""
         return self._insert(_NOTES, {"id": id, "text": text, "item_ids": list(item_ids)})
@@ -1854,9 +1868,13 @@ _USAGE_AGGREGATES = (
 _LIVE_DOCUMENT_ITEMS = "FROM items i LEFT JOIN documents d ON d.id = i.doc_id WHERE d.deleted_at IS NULL"
 
 _COUNT_QUERIES = {
-    "documents": "SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL",
+    # letters only: a proof file belongs to its letter and is no letter of its own
+    "documents": f"SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL AND source != '{PROOF_SOURCE}'",
     "trashed_documents": "SELECT COUNT(*) FROM documents WHERE deleted_at IS NOT NULL",
-    "needs_review": "SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL AND status = 'needs_review'",
+    "needs_review": (
+        f"SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL AND status = 'needs_review' "
+        f"AND source != '{PROOF_SOURCE}'"
+    ),
     "pages": "SELECT COUNT(*) FROM pages",
     "parties": "SELECT COUNT(*) FROM parties",
     "cases": "SELECT COUNT(*) FROM cases",

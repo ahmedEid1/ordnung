@@ -553,6 +553,10 @@ class Draft(_Model):
     sent_at: str | None = None
     #: The Einschreiben's tracking number, normalised (``drafts.proof.parse_tracking_number``).
     tracking_number: str | None = None
+    #: The day the person said the sent letter was answered (``drafts.sent.mark_answered``) and the
+    #: letter they said is the answer (``None``: answered by phone, e-mail … or not said).
+    answered_on: str | None = None
+    answer_doc_id: str | None = None
     created_at: str
     updated_at: str
 
@@ -615,6 +619,19 @@ class Note(_Model):
     text: str
     item_ids: list[str] = Field(default_factory=list)
     created_at: str
+
+
+#: ``Document.source`` of a proof file: a private outgoing document that belongs to its letter
+#: (``drafts.proof``) and is never listed or counted as a letter.
+PROOF_SOURCE = "proof"
+
+
+class SentSigner(_Model):
+    """What a letter's PDF showed of the sender when it was marked as sent (the profile may change later)."""
+
+    name: str = ""
+    email: str = ""
+    phone: str = ""
 
 
 #: What a piece of proof of a sent letter is (``drafts.proof.PROOF_KINDS`` says what each one shows).
@@ -1078,6 +1095,15 @@ class LetterAdvice(_Model):
     closable: bool = False
 
 
+class ProofLink(_Model):
+    """A sent letter this document is proof of (``drafts.proof``): the letter and what the proof is."""
+
+    draft_id: str
+    subject: str
+    proof_id: str
+    kind: ProofKind
+
+
 class DocumentDetail(_Model):
     document: Document
     advice: LetterAdvice | None = None
@@ -1089,14 +1115,18 @@ class DocumentDetail(_Model):
     related: list[Document] = Field(default_factory=list)
     suggestions: list[Suggestion] = Field(default_factory=list)
     drafts: list[Draft] = Field(default_factory=list)
+    #: the sent letters this file is proof of (a proof file, or a letter also linked as proof)
+    proof_of: list[ProofLink] = Field(default_factory=list)
 
 
 class TrackingInfo(_Model):
     """A letter's tracking number as Ordnung read it (``drafts.proof.parse_tracking_number``)."""
 
     number: str
+    #: grouped for reading, the groups joined by no-break spaces (never breaks inside the number)
     display: str
-    format: Literal["s10", "domestic"]
+    #: ``unknown``: a stored number the current policy no longer accepts (shown as typed)
+    format: Literal["s10", "domestic", "unknown"]
     #: The check digit was verified (UPU S10); a domestic number has no check Ordnung knows.
     checked: bool
     note: str | None = None
@@ -1113,13 +1143,16 @@ class ProofEntry(_Model):
 
 
 class ProofEvent(_Model):
-    """One line of a sent letter's timeline (the "Nachweis")."""
+    """One line of a sent letter's timeline (the "Nachweis"). ``date`` is ``None`` for a proof without a
+    day (listed apart, with ``added_on``: the day it was added). ``possible_answer``: a letter that may be
+    the answer — shown to the person, never written into the Nachweis."""
 
-    date: str
-    kind: Literal["created", "sent", "tracking", "proof", "delivered", "answered"]
+    date: str | None = None
+    kind: Literal["created", "sent", "tracking", "proof", "delivered", "answered", "possible_answer"]
     label: str
     detail: str | None = None
     ref: RefLink | None = None
+    added_on: str | None = None
 
 
 WaitingSource = Literal["letter", "money", "call"]
@@ -1164,6 +1197,11 @@ class ProofOverview(_Model):
     timeline: list[ProofEvent] = Field(default_factory=list)
     #: what would make the proof stronger, in the person's words (empty: nothing Ordnung knows of)
     missing: list[str] = Field(default_factory=list)
+    #: proof days that contradict the day the letter is marked as sent (one of them is wrong)
+    conflicts: list[str] = Field(default_factory=list)
+    #: only in the answer to adding a proof: what to tell the person about a file that was already in
+    #: Ordnung (made private now, or already read by AI); ``None``: it was stored privately
+    notice: str | None = None
     waiting: WaitingEntry | None = None
     #: the fixed caveat: proof of sending never shows what was inside
     caveat: str = ""

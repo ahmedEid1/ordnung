@@ -55,12 +55,17 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   Contracts and letters you drafted stay, without the link to it; your *Ask* conversations stay as
   they are. *Settings → Delete everything* wipes the whole database.
 - **Proof of sending stays private** — a receipt, delivery record, fax report or saved e-mail you
-  add to a sent letter is stored like any upload but always with *Keep private (no AI)* on: it is
-  never sent to Claude, not even when you ask about the letter, and it isn't listed among your
-  letters. Its kind, day and note are what you chose — Ordnung doesn't read them from the file. The
-  *Nachweis* PDF is made on your computer from the letter and these files. Removing a proof deletes
-  its file for good (unless another proof uses it); deleting the letter deletes its proofs too.
-  Tracking numbers are checked on your computer; Ordnung never asks a tracking website.
+  add to a sent letter is stored like any upload with *Keep private (no AI)* on: it is never sent to
+  Claude, not even when you ask about the letter, and it isn't listed among your letters. One
+  exception is said when it happens: a file that was already in Ordnung (the same bytes, e.g. you
+  first added it to your Inbox) is linked as it is — made private then if no AI had read it yet, and
+  otherwise Ordnung tells you AI has already read it instead of calling it private. Its kind, day and
+  note are what you chose — Ordnung doesn't read them from the file. The *Nachweis* PDF is made on
+  your computer from the letter and these files. Removing a proof deletes its file for good (unless
+  another proof uses it); deleting the letter deletes its proofs too, unless you choose to keep the
+  files. Tracking numbers are checked on your computer; Ordnung never asks a tracking website. The
+  name, e-mail and phone the letter showed when you marked it sent are kept with it, so its PDF shows
+  what went out.
 - **Call notes** — what you note about a phone call is kept as you typed it; no AI reads it.
 - **Models** — choose which Claude model handles each purpose.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send

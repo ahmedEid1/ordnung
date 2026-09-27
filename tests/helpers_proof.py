@@ -15,6 +15,8 @@ from ordnung.models import Draft, Identifier, Item, Profile
 TODAY = date(2026, 9, 28)
 SENT = date(2026, 9, 1)
 TRACKING = "RT 123 456 785 DE"
+#: how Ordnung shows it: the groups joined by no-break spaces (never broken inside the number)
+TRACKING_SHOWN = TRACKING.replace(" ", "\u00a0")
 DRAFT_ANSWER: dict[str, Any] = {
     "subject": "ignored",
     "body": "Sehr geehrte Damen und Herren,\n\nvielen Dank.\n\nMit freundlichen Grüßen",
