@@ -615,6 +615,32 @@ def test_manifest_views() -> None:
         eval_run.select_entries(list(entries.values()), ids=["nope"])
 
 
+def test_the_benchmark_rule_context_follows_the_sender_as_the_app_does(tmp_path: Path) -> None:
+    """Reviewer repro: the benchmark's context must decide deemed delivery exactly as the app's
+    (``ingest.plan.rule_context``) — the sender's kind included, which caps a late arrival."""
+    from evals.conditions import ordnung_rule_context
+
+    from ordnung.db.store import Store
+    from ordnung.ingest.plan import rule_context
+    from ordnung.llm.schemas import DocumentExtraction
+
+    entry = {e.id: e for e in load_manifest(MANIFEST)}["dev-tax_assessment-A1"]
+    store = Store(tmp_path / "ordnung.db")
+    document = store.add_document(sha256="e" * 64, filename="x", mime="application/pdf", file_path="x")
+    for sender in ({"name": "Muster GmbH", "kind": "company"}, {"name": "FitWell", "kind": "gym"}):
+        extraction = DocumentExtraction(
+            kind="invoice", title="t", summary="s", explanation="e", sender=sender, document_date="2026-09-01"
+        )
+        ours = ordnung_rule_context(entry, extraction)
+        app = rule_context(None, document, extraction, entry.today_date)
+        assert (ours.sender_kind, ours.private_sender, ours.delivery_scope) == (
+            app.sender_kind,
+            app.private_sender,
+            app.delivery_scope,
+        )
+        assert ours.sender_kind == sender["kind"]
+
+
 # --------------------------------------------------------------------------------------------------
 # Review fixes: cache validity, stale recordings, failure isolation, docs only from complete runs
 # --------------------------------------------------------------------------------------------------

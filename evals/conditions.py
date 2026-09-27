@@ -339,6 +339,7 @@ def ordnung_rule_context(entry: Entry, extraction: DocumentExtraction) -> RuleCo
         delivery_scope=scope,
         recipient_region=entry.recipient_region or PERSONA_REGION,
         private_sender=is_private_sender(kind, scope=scope, remedy_type=remedy_type, remedy_text=notice),
+        sender_kind=kind,
     )
 
 
