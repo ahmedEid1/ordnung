@@ -1171,7 +1171,7 @@ def test_check_iban_says_when_a_non_euro_banks_name_check_starts(
     """Reviewer repro: banks outside the euro area have to answer the payee-name check only from
     9 July 2027 (Art. 5c(9) Reg. (EU) No 260/2012 as amended by 2024/886), Bulgaria's, in the euro since
     1 January 2026, a year later (Art. 16(9)). Until then the note must not promise the check."""
-    from ordnung.money.iban import EU_IBAN_COUNTRIES, PAYEE_CHECK_FROM
+    from ordnung.money.iban import PAYEE_CHECK_FROM
 
     result = tools.check_iban(iban)
     assert result["valid"] is True and result["country"]["name"] == country
@@ -1184,7 +1184,7 @@ def test_check_iban_says_when_a_non_euro_banks_name_check_starts(
     # from that day the check is the law there too
     on_the_day = RulesTools(today=lambda: PAYEE_CHECK_FROM[iban[:2]]).check_iban(iban)
     assert on_the_day["note"] == rules_tools.IBAN_NOTE
-    assert len(EU_IBAN_COUNTRIES) == 27 and {"CZ", "DK", "HU", "RO"} <= EU_IBAN_COUNTRIES
+    assert len(PAYEE_CHECK_FROM) == 27 and {"CZ", "DK", "HU", "RO"} <= PAYEE_CHECK_FROM.keys()  # the EU
 
 
 @pytest.mark.parametrize(

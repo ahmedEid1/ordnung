@@ -166,8 +166,6 @@ PAYEE_CHECK_FROM: dict[str, date] = {
     "BG": date(2027, 1, 1),
     **dict.fromkeys(("CZ", "DK", "HU", "PL", "RO", "SE"), date(2027, 7, 9)),
 }  # fmt: skip
-#: The EU member states' IBAN country codes.
-EU_IBAN_COUNTRIES: frozenset[str] = frozenset(PAYEE_CHECK_FROM)
 
 
 @dataclass(frozen=True)
