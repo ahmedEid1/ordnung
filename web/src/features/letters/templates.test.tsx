@@ -291,11 +291,33 @@ describe("composer — template letters", () => {
     expect(within(dialog).queryByLabelText(/New date you ask for/)).toBeNull();
     expect(within(dialog).queryByLabelText(/Your wishes/)).toBeNull();
     expect(write).toBeDisabled();
-    expect(within(dialog).getByText("This letter can't answer the one you chose — see why above.")).toBeInTheDocument();
+    expect(within(dialog).getByText("This letter can't answer the one you chose — see why under the letters.")).toBeInTheDocument();
     await user.click(within(dialog).getByRole("radio", { name: /Pay in instalments/ }));
     expect(await within(dialog).findByText("Offer instalments to the claimant, not the court")).toBeInTheDocument();
+    // review round 1: the offer acknowledges the claim (§ 212 BGB), and "§" never parts from its number
+    expect(within(dialog).getByText(/limitation period starts again/).textContent).toContain("(§\u00a0212 Abs.\u00a01 Nr.\u00a01 BGB)");
     expect(within(dialog).getByRole("button", { name: /Write the letter/ })).toBeDisabled();
     expect(calls.some((c) => c.method === "POST" && c.path === "/drafts")).toBe(false);
+  });
+
+  it("offers instalments on a court order to its claimant, typed in (review round 1: it was a dead end)", async () => {
+    const { calls } = useMockApi({ full: true });
+    const user = userEvent.setup();
+    const { router } = renderWithProviders(<LettersPage />, { route: "/letters?new=1&doc=doc_mahnbescheid" });
+    const dialog = await screen.findByRole("dialog", { name: "New letter" });
+    await user.click(within(dialog).getByRole("radio", { name: /Pay in instalments/ }));
+    await user.click(await within(dialog).findByRole("button", { name: "Write to the claimant instead" }));
+    const claimant = within(dialog).getByLabelText(/The claimant \(Antragsteller\)/);
+    expect(within(dialog).queryByText("Offer instalments to the claimant, not the court")).toBeNull();
+    await user.type(claimant, "Streamline Media GmbH{Enter}Musterweg 1{Enter}12345 Berlin");
+    await user.type(within(dialog).getByLabelText(/Monthly instalment/), "20");
+    await user.type(within(dialog).getByLabelText(/First instalment on/), "2026-10-15");
+    const write = within(dialog).getByRole("button", { name: /Write the letter/ });
+    await waitFor(() => expect(write).toBeEnabled());
+    await user.click(write);
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/letters\/drf_/));
+    const post = calls.find((c) => c.method === "POST" && c.path === "/drafts");
+    expect(post?.body).toMatchObject({ kind: "payment_plan", doc_id: null, party_id: null, details: { recipient: "Streamline Media GmbH\nMusterweg 1\n12345 Berlin" } });
   });
 
   it("asks who a letter is for when its sender isn't in Ordnung, and starts a withdrawal with nothing guessed", async () => {

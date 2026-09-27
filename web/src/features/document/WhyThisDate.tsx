@@ -4,7 +4,7 @@
  * the rules" with every step, its citation and the holiday calendar. Always ends with the
  * point-of-use disclaimer (SPEC §21), with independent advice for high-stakes areas.
  */
-import type { Area, ComputationReceipt, DateSpec } from "@/api/types";
+import type { Area, ComputationReceipt, DateSpec, ItemOrigin } from "@/api/types";
 import { ADVICE_LINKS, type AdviceLink } from "@/components/ui/Disclaimer";
 import { Receipt, ReceiptPopover, useReceiptSteps, type ReceiptDate } from "@/components/ui/Receipt";
 
@@ -31,9 +31,14 @@ export interface ReceiptViewProps {
   area?: Area | null;
   /** Start with the rule steps open. */
   defaultShowRules?: boolean;
+  /**
+   * Where the to-do came from: a deadline the law adds (`rule`) has a spec Ordnung wrote in the law's
+   * words — never shown as what the letter says.
+   */
+  origin?: ItemOrigin | null;
 }
 
-export function ReceiptView({ receipt, spec, area, defaultShowRules = false }: ReceiptViewProps) {
+export function ReceiptView({ receipt, spec, area, defaultShowRules = false, origin }: ReceiptViewProps) {
   const steps = useReceiptSteps(receipt.steps);
   const dates: ReceiptDate[] = [];
   if (receipt.send_by) dates.push({ label: "Send by", date: receipt.send_by });
@@ -45,7 +50,7 @@ export function ReceiptView({ receipt, spec, area, defaultShowRules = false }: R
       summary={receipt.summary}
       confidence={receipt.confidence}
       warnings={receipt.warnings}
-      quote={spec?.text ? { text: spec.text } : null}
+      quote={spec?.text ? (origin === "rule" ? { text: spec.text, source: "law", citation: spec.legal_basis } : { text: spec.text }) : null}
       steps={steps}
       holidayCalendar={receipt.holiday_calendar}
       defaultShowRules={defaultShowRules}
@@ -63,15 +68,20 @@ export function WhyThisDate({
   receipt,
   spec,
   area,
+  origin,
   context,
   className,
 }: {
   receipt: ComputationReceipt;
   spec?: DateSpec | null;
   area?: Area | null;
+  /** Where the to-do came from (see {@link ReceiptViewProps.origin}). */
+  origin?: ItemOrigin | null;
   /** What the date belongs to (the to-do's title), for screen readers. */
   context?: string;
   className?: string;
 }) {
-  return <ReceiptPopover content={<ReceiptView receipt={receipt} spec={spec} area={area} />} context={context} className={className} />;
+  return (
+    <ReceiptPopover content={<ReceiptView receipt={receipt} spec={spec} area={area} origin={origin} />} context={context} className={className} />
+  );
 }

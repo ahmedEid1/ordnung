@@ -51,6 +51,8 @@ import { TRAY_ITEMS } from "./data/items";
 import { PARTIES } from "./data/parties";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
 import { isOpenItem } from "@/features/document/verdict";
+import { documentKindLabel } from "@/lib/copy";
+import { DEMO_NOTE } from "./mode";
 
 const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
@@ -607,6 +609,14 @@ function askStream(ctx: Ctx): Response {
 // ------------------------------------------------------------------------------------------------
 
 const ITEM_PATCHABLE = ["title", "description", "due_date", "due_time", "amount", "status", "snoozed_until", "priority", "area", "location", "recurrence"] as const;
+/** A letter filed as another kind than it was read as: the online demo has no rules engine to follow it. */
+export function refiledNote(read: Document["kind"], chosen: Document["kind"]): string {
+  return (
+    `${DEMO_NOTE} the dates and to-dos on this page are still those of the kind it was read as, “${documentKindLabel(read ?? "other")}”. ` +
+    `This demo has no rules engine to work them out again for “${documentKindLabel(chosen ?? "other")}” — the installed app does.`
+  );
+}
+
 const DOC_PATCHABLE = ["title", "kind", "area", "doc_date", "received_date", "party_id", "case_id", "ai_private", "tags", "direction"] as const;
 
 function withoutNulls(src: unknown): Record<string, unknown> {
@@ -875,6 +885,11 @@ const routes: [string, string, Handler][] = [
       }
       if (kindChanged) {
         db.refileRuleItems(d);
+        // the page keeps the dates and to-dos of the kind the letter was read as: say so where they are, not
+        // only in the toast (review round 1: the verdict of a re-filed court order still said "Widerspruch")
+        const seed = db.seedKind(d.id);
+        d.warnings = d.warnings.filter((w) => !w.startsWith(DEMO_NOTE));
+        if (seed && d.kind !== seed) d.warnings.push(refiledNote(seed, d.kind));
         emit("item.updated", {});
       }
       if (patch.received_date && d.id === "doc_parking") {

@@ -120,6 +120,18 @@ export function accumulate(state: AnswerState, ev: StreamEvent): AnswerState {
   }
 }
 
+/** What the person reads when the stream closed before the checked answer (a restart, a dropped connection). */
+export const STREAM_CUT = "The answer stopped before Ordnung could check it, so nothing of it is shown. Please try again.";
+
+/**
+ * The state once the stream has closed: an answer still streaming never got its `done` (nor an `error`),
+ * so none of its words were checked — an error the person can retry, never "Answer ready." with nothing.
+ */
+export function streamEnded(state: AnswerState): AnswerState {
+  if (state.status !== "streaming") return state;
+  return { ...state, status: "error", writing: false, text: "", error: STREAM_CUT, tools: state.tools.map((t) => (t.done ? t : { ...t, done: true })) };
+}
+
 /** Fold a whole event list (tests, replays). */
 export function accumulateAll(events: StreamEvent[], from: AnswerState = EMPTY_ANSWER): AnswerState {
   return events.reduce(accumulate, from);

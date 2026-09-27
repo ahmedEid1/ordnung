@@ -39,6 +39,14 @@ export interface ReceiptQuote {
   text: string;
   grounding?: Grounding | null;
   page?: number | null;
+  /**
+   * Whose words these are: the letter's (default), or — for a deadline the law adds, which the letter
+   * never states — Ordnung's short wording of the law, shown as "What the law says" with its citation,
+   * never as the letter's.
+   */
+  source?: "letter" | "law";
+  /** The law the words stand for ("§ 4 S. 1 KSchG"), for a `law` quote. */
+  citation?: string | null;
 }
 
 export interface ReceiptProps {
@@ -203,7 +211,12 @@ export function Receipt({
         <figure className="rounded-lg border border-line px-3 py-2.5">
           <figcaption className="mb-1 flex items-start gap-1.5 text-xs font-medium text-muted">
             <Quote className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>What the letter says{german ? " (in German — the sentence above says it in English)" : ""}</span>
+            <span>
+              {quote.source === "law"
+                ? `What the law says${quote.citation ? ` (${quote.citation}, in short)` : " (in short)"}`
+                : "What the letter says"}
+              {german ? " (in German — the sentence above says it in English)" : ""}
+            </span>
           </figcaption>
           <blockquote lang={german ? "de" : undefined} className="text-sm leading-relaxed text-ink">
             <span className="marker box-decoration-clone px-0.5">{formatInlineText(quote.text, { rewrite: false })}</span>

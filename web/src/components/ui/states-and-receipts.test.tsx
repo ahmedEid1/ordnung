@@ -306,4 +306,18 @@ describe("Receipt", () => {
     expect(within(pop).getByText("The document's own wording").className).toContain("text-muted");
     expect(within(pop).getByText(/Not legal advice/)).toBeInTheDocument();
   });
+
+  it("shows a deadline the law adds in the law's words, never as what the letter says", () => {
+    // review round 1: the dismissal's court-action to-do quoted Ordnung's wording of § 4 KSchG as the letter's
+    renderWithProviders(
+      <Receipt
+        summary="Three weeks after the day you received it: Thu 15 Oct 2026."
+        confidence="low"
+        quote={{ text: "innerhalb von drei Wochen nach Zugang der Kündigung", source: "law", citation: "§ 4 S. 1 KSchG" }}
+      />,
+    );
+    const caption = screen.getByText(/What the law says/);
+    expect(caption).toHaveTextContent("What the law says (§ 4 S. 1 KSchG, in short)");
+    expect(screen.queryByText(/What the letter says/)).toBeNull();
+  });
 });

@@ -8,11 +8,13 @@
  * to draft; a card no to-do can close (`advice.closable`: a landlord's notice without notice period)
  * lets the person say they have dealt with it — stored as the letter's `dealt-with` tag, and undoable.
  */
+import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, CircleCheck, CircleCheckBig, FileSearch, Info, PenLine, Scale, TriangleAlert, type LucideIcon } from "lucide-react";
 import type { AdviceFact, Document, DraftKind, LetterAdvice } from "@/api/types";
 import { useUpdateDocument } from "@/api/hooks";
 import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
+import { keepCitations } from "@/lib/glue";
 import { cn } from "@/lib/utils";
 import { useStartDraft } from "./actions";
 
@@ -25,10 +27,11 @@ const FACT_TONE: Record<AdviceFact["tone"], { box: string; icon: LucideIcon; ico
   good: { box: "border-ok/25 bg-ok-soft", icon: CircleCheck, iconClass: "text-ok", title: "text-ok-ink" },
 };
 
-/** Keep a citation's parts on one line ("§ 38 Abs. 1 S. 4 SGB III" never breaks after "§"). */
-export function keepCitations(text: string): string {
-  return text.replace(/(§|Abs\.|S\.|Nr\.|Art\.)\s+(?=\d)/g, "$1\u00a0");
-}
+/** The steps a tenancy card shows before "Show all steps" (a landlord's notice has six, one of them a
+ * paragraph of law): its actions and help stay in view on a phone. A court order's and a dismissal's steps
+ * are each something to do within days — all shown. */
+const FIRST_STEPS = 3;
+const ALL_STEPS_SHOWN = new Set<LetterAdvice["kind"]>(["court_payment_order", "enforcement_order", "dismissal"]);
 
 /**
  * How the card's letter reads (`advice.draft`, decided by the backend: none for a notice without
@@ -40,20 +43,22 @@ const CARD_ACTION: Partial<Record<DraftKind, { label: string; icon: LucideIcon }
 };
 
 /** "I've dealt with this" on a card no to-do can close, and its undo once it is handled that way. */
-function DealtWith({ advice, doc }: { advice: LetterAdvice; doc: Pick<Document, "id" | "tags"> }) {
+function DealtWith({ advice, doc, onDone }: { advice: LetterAdvice; doc: Pick<Document, "id" | "tags">; onDone: (dealt: boolean) => void }) {
   const update = useUpdateDocument();
   const tags = doc.tags ?? [];
   const mark = (dealt: boolean) =>
     update.mutate(
       { id: doc.id, patch: { tags: dealt ? [...tags.filter((t) => t !== DEALT_WITH_TAG), DEALT_WITH_TAG] : tags.filter((t) => t !== DEALT_WITH_TAG) } },
       {
-        onSuccess: () =>
-          dealt
+        onSuccess: () => {
+          onDone(dealt);
+          return dealt
             ? toast.success("Marked as dealt with", {
                 description: "The card stays on the letter for reference. Nothing was sent.",
                 undo: () => update.mutate({ id: doc.id, patch: { tags: tags.filter((t) => t !== DEALT_WITH_TAG) } }),
               })
-            : toast.success("Back to “get advice now”"),
+            : toast.success("Back to “get advice now”");
+        },
       },
     );
   if (advice.handled) {
@@ -80,10 +85,23 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
   const draftKind = advice.handled ? null : (advice.draft ?? null);
   const action = draftKind ? CARD_ACTION[draftKind] : undefined;
   const titleId = `advice-${doc.id}`;
+  const [allSteps, setAllSteps] = useState(false);
+  const foldable = !ALL_STEPS_SHOWN.has(advice.kind);
+  // the button the person pressed goes away once the card settles: focus follows to what replaced it
+  const focusAfter = useRef<"status" | "title" | null>(null);
+  const statusRef = useRef<HTMLParagraphElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    const target = focusAfter.current === "status" && advice.handled ? statusRef.current : focusAfter.current === "title" && !advice.handled ? headingRef.current : null;
+    if (!target) return;
+    focusAfter.current = null;
+    target.focus();
+  }, [advice.handled]);
   return (
     <section
+      id={`advice-card-${doc.id}`}
       aria-labelledby={titleId}
-      className={cn("@container overflow-hidden rounded-2xl border", urgent ? "border-warn/35 bg-warn-soft" : "border-line bg-surface shadow-[var(--shadow-card)]")}
+      className={cn("@container scroll-mt-24 overflow-hidden rounded-2xl border", urgent ? "border-warn/35 bg-warn-soft" : "border-line bg-surface shadow-[var(--shadow-card)]")}
     >
       <div className="flex gap-3 px-4 pb-1 pt-4 sm:px-5">
         <span
@@ -98,7 +116,7 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
           <p className={cn("text-[12px] font-semibold uppercase tracking-[0.07em]", urgent ? "text-warn-ink" : "text-muted")}>
             {urgent ? "Act now — and get advice" : "Know your rights"}
           </p>
-          <h2 id={titleId} className="mt-0.5 text-[15.5px] font-semibold leading-snug text-ink [overflow-wrap:anywhere]">
+          <h2 id={titleId} ref={headingRef} tabIndex={-1} className="mt-0.5 scroll-mt-24 text-[15.5px] font-semibold leading-snug text-ink outline-none [overflow-wrap:anywhere]">
             {advice.title}
           </h2>
         </div>
@@ -107,7 +125,12 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
       {/* the summary lines up with the steps below it: under the title on a wide card, full width on a narrow one */}
       <div className="space-y-4 px-4 pb-4 pt-2 sm:px-5 @[34rem]:pl-[68px]">
         {advice.handled ? (
-          <p role="status" className="flex items-start gap-2 rounded-xl border border-ok/25 bg-ok-soft px-3 py-2 text-[13.5px] font-medium leading-snug text-ok-ink">
+          <p
+            role="status"
+            ref={statusRef}
+            tabIndex={-1}
+            className="flex scroll-mt-24 items-start gap-2 rounded-xl border border-ok/25 bg-ok-soft px-3 py-2 text-[13.5px] font-medium leading-snug text-ok-ink outline-none"
+          >
             <CircleCheck className="mt-0.5 size-4 shrink-0 text-ok" aria-hidden />
             <span>
               {doc.tags?.includes(DEALT_WITH_TAG) && advice.closable
@@ -120,8 +143,8 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
         {advice.steps.length ? (
           <div>
             <h3 className={cn("text-[12px] font-semibold uppercase tracking-[0.07em]", urgent ? "text-warn-ink/85" : "text-muted")}>What to do</h3>
-            <ol className="mt-2 space-y-2">
-              {advice.steps.map((s, i) => (
+            <ol id={`advice-steps-${doc.id}`} className="mt-2 space-y-2">
+              {(allSteps || !foldable ? advice.steps : advice.steps.slice(0, FIRST_STEPS)).map((s, i) => (
                 <li key={s} className="flex gap-2.5 text-[13.5px] leading-snug text-ink/90">
                   <span
                     className={cn(
@@ -136,6 +159,19 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
                 </li>
               ))}
             </ol>
+            {foldable && advice.steps.length > FIRST_STEPS ? (
+              // a long card (a landlord's notice: six steps of law) keeps its first steps and its actions in view
+              <Button
+                variant="link"
+                size="sm"
+                className="mt-1.5"
+                aria-expanded={allSteps}
+                aria-controls={`advice-steps-${doc.id}`}
+                onClick={() => setAllSteps((v) => !v)}
+              >
+                {allSteps ? "Show fewer steps" : `Show all ${advice.steps.length} steps`}
+              </Button>
+            ) : null}
           </div>
         ) : null}
 
@@ -208,7 +244,7 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
             </Button>
           </div>
         ) : null}
-        {advice.closable ? <DealtWith advice={advice} doc={doc} /> : null}
+        {advice.closable ? <DealtWith advice={advice} doc={doc} onDone={(dealt) => (focusAfter.current = dealt ? "status" : "title")} /> : null}
       </div>
 
       <p className={cn("border-t px-4 py-2 text-[12px] leading-5 text-muted sm:px-5", urgent ? "border-warn/20 bg-surface/40" : "border-line bg-surface-2/40")}>

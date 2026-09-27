@@ -44,7 +44,8 @@ describe("Document viewer — tax assessment (phone photo, Einspruch)", () => {
     expect(within(verdict).getByText("in 23 days")).toBeInTheDocument();
     expect(within(verdict).getByRole("button", { name: /Why this date\?/ })).toBeInTheDocument();
     expect(within(verdict).getByText(/can hardly be changed/)).toBeInTheDocument();
-    expect(within(verdict).getByRole("button", { name: "Draft objection" })).toBeInTheDocument();
+    // an objection that may ask to suspend payment opens the composer, which asks (review round 1)
+    expect(within(verdict).getByRole("link", { name: "Draft objection" })).toHaveAttribute("href", "/letters?kind=objection&doc=doc_tax");
     expect(within(verdict).queryByRole("button", { name: /^Pay/ })).toBeNull();
     expect(within(verdict).getByText(/Not legal advice/)).toBeInTheDocument();
     // explained simply with the German term explained
@@ -86,6 +87,32 @@ describe("Document viewer — tax assessment (phone photo, Einspruch)", () => {
     expect(within(callout).getByText(/Worth comparing with the paper letter/)).toBeInTheDocument();
     // the matching highlight on the page is pressed
     expect(screen.getByRole("button", { name: /^Refund: €324\.00/, pressed: true })).toBeInTheDocument();
+  });
+});
+
+describe("Document viewer — the arrival day's name", () => {
+  it("names a court order's one date 'delivered', as its question and receipts do (review round 1)", () => {
+    const dates = { doc_date: "2026-09-10", received_date: "2026-09-12" };
+    const court = makeDetail({ document: makeDoc({ kind: "court_payment_order", title: "Mahnbescheid", ...dates }) });
+    const { unmount } = renderWithProviders(<DocumentView detail={court} />, { client: client() });
+    const verdict = screen.getByRole("article", { name: "Mahnbescheid" });
+    expect(verdict).toHaveTextContent(/Letter of .+, delivered /);
+    expect(verdict).not.toHaveTextContent(/arrived/);
+    unmount();
+    const letter = makeDetail({ document: makeDoc({ kind: "other", title: "A letter", ...dates }) });
+    renderWithProviders(<DocumentView detail={letter} />, { client: client() });
+    expect(screen.getByRole("article", { name: "A letter" })).toHaveTextContent(/Letter of .+, arrived /);
+  });
+});
+
+describe("Document viewer — the online demo's own note", () => {
+  it("shows a re-filed letter's demo note at the top of the verdict, not under Please check (review round 1)", () => {
+    const note = "Online demo: the dates and to-dos on this page are still those of the kind it was read as, “Payment reminder”.";
+    const detail = makeDetail({ document: makeDoc({ kind: "enforcement_order", title: "Mahnbescheid", warnings: [note, "Check the amount."] }) });
+    renderWithProviders(<DocumentView detail={detail} />, { client: client() });
+    expect(within(screen.getByRole("article", { name: "Mahnbescheid" })).getByText(note)).toBeInTheDocument();
+    expect(screen.getAllByText(note)).toHaveLength(1);
+    expect(screen.getByText("Check the amount.")).toBeInTheDocument();
   });
 });
 

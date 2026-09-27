@@ -5,7 +5,7 @@ import type { ChatMessage, StreamEvent } from "@/api/types";
 import { citationIndex, numberCitations, parseCitations, stripAllMarkers, stripInvalid, type CitationRef } from "./citations";
 import { inlineText, isInternalHref, parseInline, parseMarkdown } from "./markdown";
 import { Markdown } from "./Markdown";
-import { accumulate, accumulateAll, EMPTY_ANSWER } from "./stream";
+import { accumulate, accumulateAll, EMPTY_ANSWER, STREAM_CUT, streamEnded } from "./stream";
 import { fallbackToolLabel, toolLabel, toolResultText, unbreakDates } from "./tools";
 import { formatDate } from "@/lib/format";
 import { ToolTrace } from "./ToolTrace";
@@ -150,6 +150,14 @@ describe("safe markdown renderer", () => {
     expect(container.textContent).not.toMatch(/\[doc:|\[item:/);
   });
 
+  it("keeps a citation chip with the placeholder before it, however long (review round 1)", () => {
+    const { container } = renderMd("The fee is [amount only in the letter] [item:itm_phone_cancel].");
+    const chip = container.querySelector("[data-cite]")!;
+    const group = chip.closest(".whitespace-nowrap")!;
+    expect(group).not.toBeNull();
+    expect(group.textContent).toMatch(/amount.only.in.the.letter/); // with no-break spaces
+  });
+
   it("without validated citations, no marker becomes a chip", () => {
     const { container } = renderMd("Send by Thu 8 Oct [item:itm_phone_cancel] and more", null);
     expect(container.querySelector("[data-cite]")).toBeNull();
@@ -249,6 +257,17 @@ describe("stream accumulation", () => {
     expect(s.citations).toEqual([]);
   });
 
+  it("a stream that closes before the checked answer is an error to retry, never an empty 'ready' answer", () => {
+    // review round 1: a server restart mid-answer showed only the tool trace, announced as "Answer ready."
+    const cut = streamEnded(accumulateAll([{ type: "tool_use", name: "today" }, { type: "text", text: "Your deadline is 31.12.2027" }]));
+    expect(cut.status).toBe("error");
+    expect(cut.error).toBe(STREAM_CUT);
+    expect(cut.text).toBe("");
+    expect(cut.tools[0]!.done).toBe(true);
+    const finished = accumulateAll([{ type: "text", text: "x" }, { type: "done", text: "Checked.", message_id: "m" }]);
+    expect(streamEnded(finished)).toBe(finished);
+  });
+
   it("an error keeps no words of the unchecked answer", () => {
     const s = accumulateAll([{ type: "text", text: "Partial 31.12.2027" }, { type: "error", error: "Claude is not signed in." }]);
     expect(s.status).toBe("error");
@@ -304,9 +323,12 @@ describe("tool trace labels", () => {
     ];
     render(<ToolTrace steps={steps} live />);
     const label = screen.getByTestId("tool-step-label");
-    // wraps below `sm` (a cut-off "until 1…" hid the date) and is truncated only from `sm` up
-    expect(label.className.split(" ")).toEqual(expect.arrayContaining(["break-words", "sm:truncate"]));
+    // wraps below `lg` (a cut-off "until 1…" hid the date, also at 640–1024 px: review round 1) and is
+    // truncated only from `lg` up, with its whole text as its title
+    expect(label.className.split(" ")).toEqual(expect.arrayContaining(["break-words", "lg:truncate"]));
     expect(label.className.split(" ")).not.toContain("truncate");
+    expect(label.className.split(" ")).not.toContain("sm:truncate");
+    expect(label.getAttribute("title")).toMatch(/^Listed your open to-dos & dates until .*15 Oct/);
     // the result is on its own line on a phone, not hidden there
     const result = screen.getByTestId("tool-step-result");
     expect(result.className.split(" ")).not.toContain("hidden");

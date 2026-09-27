@@ -3,12 +3,12 @@
  * description, addresses. Errors show next to the field; the composer keeps "Write the letter"
  * disabled until every required fact is there.
  */
-import type { ComponentProps } from "react";
-import { Link } from "react-router";
+import type { ComponentProps, ReactNode } from "react";
+import { useHref } from "react-router";
 import { Landmark } from "lucide-react";
 import type { Profile } from "@/api/types";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui/Field";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatIban, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { fieldError, nextDay, parseMoney, type DetailField, type DetailValues, type LetterDefaults, type TemplateConfig } from "./templates";
 
@@ -111,6 +111,20 @@ function FieldControl({
 
 const NO_DEFAULTS: LetterDefaults = { deadline: null, amount: null };
 
+/**
+ * A link to the profile settings that keeps the letter being written: it opens in a new tab — following
+ * it inside the composer would close the dialog and drop everything typed.
+ */
+function SettingsLink({ children }: { children: ReactNode }) {
+  const href = useHref({ pathname: "/settings", hash: "#set-profile" });
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="font-medium text-accent underline-offset-2 hover:underline">
+      {children}
+      <span className="sr-only"> (opens in a new tab, so this letter stays as it is)</span>
+    </a>
+  );
+}
+
 export function TemplateFields({ config, values, onChange, today, profile, defaults = NO_DEFAULTS }: TemplateFieldsProps) {
   const iban = profile?.iban?.trim() ?? "";
   return (
@@ -127,19 +141,13 @@ export function TemplateFields({ config, values, onChange, today, profile, defau
           <Landmark className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
           {iban ? (
             <span>
-              The refund goes to your account <span className="font-ident [overflow-wrap:anywhere]">{iban}</span> from{" "}
-              <Link to="/settings#set-profile" className="font-medium text-accent underline-offset-2 hover:underline">
-                Settings
-              </Link>
-              .
+              {/* grouped in fours like everywhere else: a line breaks only between the groups */}
+              The refund goes to your account <span className="font-ident">{formatIban(iban)}</span> from <SettingsLink>Settings</SettingsLink>.
             </span>
           ) : (
             <span>
-              Add your IBAN under{" "}
-              <Link to="/settings#set-profile" className="font-medium text-accent underline-offset-2 hover:underline">
-                Settings → Profile
-              </Link>{" "}
-              so the letter says where to send the money — or fill it in in the letter.
+              Add your IBAN under <SettingsLink>Settings → Profile</SettingsLink> so the letter says where to send the money — or fill it in in
+              the letter.
             </span>
           )}
         </p>

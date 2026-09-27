@@ -229,7 +229,14 @@ const COURT_ORDERS = new Set<Document["kind"]>(["court_payment_order", "enforcem
  * `template_refusal`): more time against a deadline the law sets (a court order, a dismissal), or
  * instalments offered to a court instead of the claimant.
  */
-export function templateRefusal(kind: TemplateDraftKind, letterKind: Document["kind"] | null | undefined): { title: string; body: string } | null {
+export interface TemplateRefusal {
+  title: string;
+  body: string;
+  /** Instalments offered to a court: the letter can go to the claimant instead (a typed recipient). */
+  toClaimant?: boolean;
+}
+
+export function templateRefusal(kind: TemplateDraftKind, letterKind: Document["kind"] | null | undefined): TemplateRefusal | null {
   if (kind === "extension_request" && letterKind && COURT_ORDERS.has(letterKind)) {
     return {
       title: "A court's deadline can't be extended",
@@ -248,7 +255,8 @@ export function templateRefusal(kind: TemplateDraftKind, letterKind: Document["k
   if (kind === "payment_plan" && letterKind && COURT_ORDERS.has(letterKind)) {
     return {
       title: "Offer instalments to the claimant, not the court",
-      body: "A court doesn't agree instalments — the claimant does. Choose the claimant below instead of the letter, and still pay or object by the court's deadline: an offer to pay in instalments doesn't stop the order.",
+      body: "A court doesn't agree instalments — the claimant does: write to them instead (the order names them as the Antragsteller), and still pay or object by the court's deadline — an offer to pay in instalments doesn't stop the order. Offering instalments acknowledges the claim: the limitation period starts again (§ 212 Abs. 1 Nr. 1 BGB) and it is hard to dispute later — and money paid on a time-barred claim can't be reclaimed (§ 214 Abs. 2 BGB). If you think the claim is wrong or time-barred, object or get debt advice first.",
+      toClaimant: true,
     };
   }
   return null;

@@ -45,6 +45,10 @@ const REQUIRED: Record<TemplateDraftKind, [keyof LetterDetails, string][]> = {
   address_change: [["new_address", "your new address"]],
 };
 
+/** Mirrors ACKNOWLEDGES_CLAIM in ordnung.drafts.compose (review round 1: § 212 BGB). */
+export const ACKNOWLEDGES_CLAIM =
+  "Offering instalments acknowledges the claim: the limitation period starts again (§ 212 Abs. 1 Nr. 1 BGB) and it is hard to dispute later — and money paid on a time-barred claim can't be reclaimed (§ 214 Abs. 2 BGB). If you think the claim is wrong or time-barred, object or get debt advice first.";
+
 const de = (iso: string) => format(parseISO(iso), "dd.MM.yyyy");
 const en = (iso: string) => format(parseISO(iso), "d MMMM yyyy");
 const oneLine = (address: string | null | undefined) =>
@@ -130,7 +134,7 @@ export function templateRefusal(kind: TemplateDraftKind, letterKind: string | nu
   if (kind === "extension_request" && letterKind === "dismissal")
     return "The three weeks for a court action against a dismissal are set by law (§ 4 KSchG) — your employer can't extend them. Get advice now (see the card on the letter).";
   if (kind === "payment_plan" && (letterKind === "court_payment_order" || letterKind === "enforcement_order"))
-    return "A court doesn't agree instalments — the claimant does. Write to the claimant instead (choose them as the recipient, without the letter), and still pay or object by the court's deadline: an offer to pay in instalments doesn't stop the order.";
+    return "A court doesn't agree instalments — the claimant does. Write to the claimant instead (the order names them as the Antragsteller), and still pay or object by the court's deadline: an offer to pay in instalments doesn't stop the order. Offering instalments acknowledges the claim: the limitation period starts again (§ 212 Abs. 1 Nr. 1 BGB) and it is hard to dispute later — and money paid on a time-barred claim can't be reclaimed (§ 214 Abs. 2 BGB). If you think the claim is wrong or time-barred, object or get debt advice first.";
   return null;
 }
 
@@ -233,7 +237,7 @@ export function templateLetter(kind: TemplateDraftKind, ctx: TemplateContext): T
         paragraphs: [`zu Ihrer Forderung${ctx.docDate ? ` aus Ihrem Schreiben vom ${de(ctx.docDate)}` : ""}${amount !== null ? ` in Höhe von ${moneyDe(amount)}` : ""} biete ich Ihnen an, ${offerDe}`, "Bitte bestätigen Sie mir die Ratenzahlung schriftlich."],
         subjectEn: dash("Request to pay in instalments", ctx.reference),
         paragraphsEn: [`Regarding your claim${amount !== null ? ` of ${moneyEn(amount)}` : ""}, I offer ${offerEn}`, "Please confirm the instalment plan in writing."],
-        notes: ["Until they agree, the full amount stays due."],
+        notes: ["Until they agree, the full amount stays due.", ACKNOWLEDGES_CLAIM],
         guidance: generalGuidance("No special form is needed. Until they agree, the full amount stays due."),
       };
     }

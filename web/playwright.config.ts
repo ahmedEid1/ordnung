@@ -33,12 +33,14 @@ export default defineConfig({
   },
   // Same browser twice, only to fix the order: the guided tour runs first, on the untouched demo
   // (before other tests open New-mail letters); then every page, then the layout guards (with the
-  // feedback components: toasts, stepper, receipts — and the app shell). One worker
-  // runs projects in order.
+  // feedback components: toasts, stepper, receipts — and the app shell), and last the high-stakes
+  // letters, which re-file demo letters (PATCH kind) and so add the law's to-dos to the shared demo.
+  // One worker runs projects in order.
   projects: [
     { name: "tour", testMatch: /tour\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "pages", testMatch: /pages\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "layout", testMatch: /(layout|feedback|shell)\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    { name: "high-stakes", testMatch: /high-stakes\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
   ],
   webServer: {
     command: `"${ORDNUNG_BIN}" demo --serve --no-browser --port ${PORT} --data-dir "${DATA_DIR}" --reset`,

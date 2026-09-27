@@ -10,7 +10,8 @@ import { ADVICE_BY_KIND } from "@/mocks/data/advice";
 import { DocumentWarnings } from "./Warnings";
 import { ItemsList } from "./ItemsList";
 import { ThreadSection } from "./Related";
-import { LetterAdviceCard, keepCitations } from "./LetterAdvice";
+import { keepCitations } from "@/lib/glue";
+import { LetterAdviceCard } from "./LetterAdvice";
 import { chooseMainAction } from "./verdict";
 import { VerdictCard } from "./VerdictCard";
 import { makeDetail, makeDoc, makeItem, makeReceipt } from "./fixtures";
@@ -53,6 +54,20 @@ describe("the advice card of a high-stakes letter", () => {
     // the verdict's main button drafts the objection; the card doesn't repeat it
     expect(within(card).queryByRole("button")).toBeNull();
     assertNoRawEnumsInElement(container);
+  });
+
+  it("keeps a landlord's notice card short on a phone: three steps, the rest on demand (review round 1)", async () => {
+    const user = userEvent.setup();
+    const doc = makeDoc({ id: "doc_notice", kind: "landlord_notice", area: "home", title: "Kündigung" });
+    const advice = { ...ADVICE_BY_KIND.landlord_notice, steps: ["one", "two", "three", "four", "five", "six"] };
+    renderWithProviders(<LetterAdviceCard advice={advice} doc={doc} />, { client: client() });
+    const steps = document.getElementById("advice-steps-doc_notice")!;
+    expect(within(steps).getAllByRole("listitem")).toHaveLength(3);
+    const more = screen.getByRole("button", { name: "Show all 6 steps" });
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    await user.click(more);
+    expect(within(steps).getAllByRole("listitem")).toHaveLength(6);
+    expect(screen.getByRole("button", { name: "Show fewer steps" })).toHaveAttribute("aria-expanded", "true");
   });
 
   it("offers the receipts letter on an operating-cost statement", async () => {

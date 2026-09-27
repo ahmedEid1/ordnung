@@ -9,12 +9,13 @@ import { TOOL_ICONS, toolLabel, toolResultText, unbreakDates, type TitleLookup }
 
 /**
  * One step: its icon, its label and, once done, its result. On a phone the label wraps (a cut-off
- * "until 1…" hides the date) and the result goes on a muted second line; from `sm` up both share one
- * line and the label is truncated instead.
+ * "until 1…" hides the date) and the result goes on a muted second line up to `lg`; both share one
+ * line from `lg` up, the label truncated (its full text in its title).
  */
 function StepChip({ step, titleOf }: { step: ToolStep; titleOf?: TitleLookup }) {
   const Icon = TOOL_ICONS[step.name] ?? Wrench;
   const result = step.done && step.result ? unbreakDates(toolResultText(step.result)) : null;
+  const label = toolLabel(step, titleOf);
   return (
     <>
       <span
@@ -26,17 +27,20 @@ function StepChip({ step, titleOf }: { step: ToolStep; titleOf?: TitleLookup }) 
       >
         <Icon className="size-3.5" />
       </span>
-      <span className="flex min-w-0 flex-col pt-0.5 sm:flex-row sm:items-center sm:gap-2 sm:pt-0">
+      {/* the result goes under the label up to lg (a date range's end or a letter's title must not be cut
+          off at 640–1024 px); from lg up they share a line, the label truncated with its full text as a title */}
+      <span className="flex min-w-0 flex-col pt-0.5 lg:flex-row lg:items-center lg:gap-2 lg:pt-0">
         <span
           data-testid="tool-step-label"
-          className={cn("min-w-0 break-words sm:truncate", step.done ? "text-ink/80" : "text-ink")}
+          title={label}
+          className={cn("min-w-0 break-words lg:truncate", step.done ? "text-ink/80" : "text-ink")}
         >
-          {unbreakDates(toolLabel(step, titleOf))}
+          {unbreakDates(label)}
         </span>
         {result ? (
           <span
             data-testid="tool-step-result"
-            className="flex min-w-0 items-center gap-1 text-[12px] leading-4 text-muted sm:shrink-0 sm:text-[13px] sm:leading-5"
+            className="flex min-w-0 items-center gap-1 text-[12px] leading-4 text-muted sm:text-[13px] sm:leading-5 lg:shrink-0"
           >
             <Check className="size-3 shrink-0 text-ok" aria-hidden />
             <span className="min-w-0 break-words">{result}</span>

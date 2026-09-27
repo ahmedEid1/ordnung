@@ -116,10 +116,13 @@ export function Dialog({
               ) : null}
             </div>
             {children ? (
+              // `relative`: the body is the containing block of what it positions (a link's screen-reader-only
+              // "opens in a new tab"), so nothing overflows the panel itself — a panel with overflow of its own
+              // is scrolled by scrollIntoView, which moved the title and Close off the top
               <div
                 onFocus={revealFocused}
                 className={cn(
-                  "min-h-0 flex-1 scroll-py-6 overflow-y-auto overscroll-contain px-5 py-3 scrollbar-thin sm:px-6",
+                  "relative min-h-0 flex-1 scroll-py-6 overflow-y-auto overscroll-contain px-5 py-3 scrollbar-thin sm:px-6",
                   sheet && !footer && "pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-3",
                 )}
               >

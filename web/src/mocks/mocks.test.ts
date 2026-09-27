@@ -120,6 +120,23 @@ describe("mock dataset", () => {
     expect(detail.document.status).toBe("processed");
   });
 
+  it("says on the letter that a re-filed letter keeps the dates of the kind it was read as (no rules engine)", async () => {
+    // review round 1: a Mahnbescheid re-filed as an enforcement order still said "object (Widerspruch)"
+    const s = srv();
+    await s.handle("PATCH", "/documents/doc_lease", new URLSearchParams(), { kind: "landlord_notice" });
+    let doc = (await get<DocumentDetail>(s, "/documents/doc_lease")).document;
+    const notes = doc.warnings.filter((w) => w.startsWith("Online demo:"));
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatch(/still those of the kind it was read as, “.+”\. This demo has no rules engine to work them out again for “Notice from your landlord”/);
+    // filed as another kind again: still one note; back as read: none
+    await s.handle("PATCH", "/documents/doc_lease", new URLSearchParams(), { kind: "rent_increase" });
+    doc = (await get<DocumentDetail>(s, "/documents/doc_lease")).document;
+    expect(doc.warnings.filter((w) => w.startsWith("Online demo:"))).toHaveLength(1);
+    await s.handle("PATCH", "/documents/doc_lease", new URLSearchParams(), { kind: "rent_lease" }); // as it was read
+    doc = (await get<DocumentDetail>(s, "/documents/doc_lease")).document;
+    expect(doc.warnings.filter((w) => w.startsWith("Online demo:"))).toEqual([]);
+  });
+
   it("asks when a company's letter arrived, and counts from the day given", async () => {
     // read as deemed delivery, but the engine counted FitWell's letter from its arrival (§ 130 BGB)
     const s = srv();

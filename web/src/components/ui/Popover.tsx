@@ -129,9 +129,13 @@ export function Popover({
     },
     [openProp, onOpenChange],
   );
-  /** Close; focus inside the panel goes back to the trigger instead of dropping to <body>. */
+  /**
+   * Close; focus inside the panel goes back to the trigger instead of dropping to <body> — also focus
+   * that already dropped there (a Save button that was disabled while it saved lost it).
+   */
   const close = useCallback(() => {
-    if (panel?.contains(document.activeElement)) resolveBox(wrap)?.focus({ preventScroll: true });
+    const active = document.activeElement;
+    if (panel?.contains(active) || !active || active === document.body) resolveBox(wrap)?.focus({ preventScroll: true });
     setOpen(false);
   }, [setOpen, panel, wrap]);
   const dismiss = useCallback(() => setOpen(false), [setOpen]);

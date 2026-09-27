@@ -29,6 +29,7 @@ import { formatDate, formatMoney, formatTime, looksGerman, urgencyOf, type Urgen
 import { useToday } from "@/lib/today";
 import { Badge } from "@/components/ui/Badge";
 import { Button, buttonVariants } from "@/components/ui/Button";
+import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
 import { Disclaimer } from "@/components/ui/Disclaimer";
 import { KindBadge } from "@/components/ui/KindBadge";
@@ -56,10 +57,13 @@ import {
 } from "./verdict";
 import { icsFileName, icsHref, useItemActions, useStartDraft } from "./actions";
 import { KindPicker } from "./KindPicker";
+import { canSuspend } from "@/features/letters/logic";
+import { composerHref } from "@/features/today/selection";
 import { PayPanel } from "./PayPanel";
 import { GlossaryText } from "./Explained";
 import { adviceFor, WhyThisDate } from "./WhyThisDate";
 import { LetterText } from "@/components/ui/LetterText";
+import { DEMO_NOTE } from "@/mocks/mode";
 
 const countdownTone: Record<Urgency, string> = {
   overdue: "bg-danger text-white dark:text-canvas",
@@ -111,6 +115,32 @@ const ADVICE_NOW: Record<string, string> = {
   default: "Get advice now: this is a court order with a short deadline — see the card on this page.",
 };
 
+const SEE_THE_CARD = "see the card on this page";
+
+/** A verdict line that points to the advice card: "see the card on this page" links to it. */
+function CardLink({ text, docId }: { text: string; docId: string }) {
+  const at = text.indexOf(SEE_THE_CARD);
+  if (at < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, at)}
+      <a
+        href={`#advice-card-${docId}`}
+        className="underline decoration-warn/50 underline-offset-2 hover:decoration-warn"
+        onClick={(e) => {
+          // the online demo routes by the hash: scroll to the card (and focus its title) without navigating
+          e.preventDefault();
+          document.getElementById(`advice-card-${docId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+          document.getElementById(`advice-${docId}`)?.focus({ preventScroll: true });
+        }}
+      >
+        {SEE_THE_CARD}
+      </a>
+      {text.slice(at + SEE_THE_CARD.length)}
+    </>
+  );
+}
+
 export interface VerdictCardProps {
   detail: DocumentDetail;
   primary: Item | null;
@@ -134,6 +164,10 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
   // a court order's or a dismissal's deadline isn't optional: doing nothing has consequences
   const optional = open ? isOptionalObjection(open) && !mustAct(doc) : false;
   const alsoByLaw = !scam && !decision ? otherLawDeadlines(detail.items, open) : [];
+  const demoNote = doc.warnings.find((w) => w.startsWith(DEMO_NOTE));
+  // an operating-cost statement is recognised on read (ADR 0010) and filed under the model's kind: the badge
+  // names what the card below says it is, never "Utility bill" over an operating-cost statement's card
+  const shownKind = detail.advice?.kind === "operating_costs" ? "operating_costs" : doc.kind;
   const refund = incomingMoney(detail.items);
   // a late operating-cost statement's back-payment, a rent increase's new rent: still a to-do, but
   // checked (or decided) before it is paid
@@ -150,8 +184,8 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
       <header className="px-5 pb-4 pt-5 sm:px-6 sm:pt-6">
         <p className="sr-only">What this is</p>
         <div className="flex flex-wrap items-center gap-1.5">
-          <KindBadge docKind={doc.kind} />
-          {!scam && doc.status !== "queued" && doc.status !== "processing" ? <KindPicker doc={doc} /> : null}
+          <KindBadge docKind={shownKind} />
+          {!scam && doc.status !== "queued" && doc.status !== "processing" ? <KindPicker doc={{ id: doc.id, kind: shownKind }} /> : null}
           {scam ? (
             <Badge tone="danger" icon={ShieldAlert}>
               Possible scam
@@ -161,7 +195,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
           ) : null}
           {doc.ai_private ? <Badge tone="neutral">Private — not read by AI</Badge> : null}
         </div>
-        <h1 id="verdict-title" className="display mt-3 text-[26px] font-semibold leading-[1.15] text-ink [overflow-wrap:anywhere] hyphens-auto sm:text-[29px]">
+        <h1 id="verdict-title" tabIndex={-1} className="display mt-3 scroll-mt-24 outline-none text-[26px] font-semibold leading-[1.15] text-ink [overflow-wrap:anywhere] hyphens-auto sm:text-[29px]">
           {doc.title ?? doc.filename}
         </h1>
         <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px] text-muted">
@@ -177,13 +211,22 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
               {doc.doc_date && doc.received_date ? ", " : null}
               {doc.received_date ? (
                 <>
-                  {doc.doc_date ? "arrived" : "Arrived"} <DateText date={doc.received_date} style="day" className="text-ink/85" />
+                  {/* a court's letter is served: its one date is "delivered", as the question and the receipts say */}
+                  {isServed(doc, detail.items) ? (doc.doc_date ? "delivered" : "Delivered") : doc.doc_date ? "arrived" : "Arrived"}{" "}
+                  <DateText date={doc.received_date} style="day" className="text-ink/85" />
                 </>
               ) : null}
             </span>
           ) : null}
         </div>
         {doc.summary ? <p className="mt-3 text-[15px] leading-relaxed text-ink/80">{doc.summary}</p> : null}
+        {demoNote ? (
+          // the online demo's own note (a re-filed letter keeps the old kind's dates): next to what it is about
+          <p className="mt-3 flex gap-2 rounded-lg border border-warn/30 bg-warn-soft px-3 py-2 text-[13px] leading-snug text-warn-ink">
+            <Info className="mt-px size-4 shrink-0" aria-hidden />
+            <span className="min-w-0">{demoNote}</span>
+          </p>
+        ) : null}
       </header>
 
       {/* 2 — what you need to do */}
@@ -232,21 +275,30 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
             ) : null}
             {alsoByLaw.length ? (
               <ul className="mt-3 space-y-1.5" aria-label="Also due by law">
-                {alsoByLaw.map((i) => (
-                  <li key={i.id} className="flex items-start gap-2 rounded-lg bg-surface-2/70 px-3 py-2 text-[13.5px] leading-snug text-ink">
-                    <Scale className="mt-0.5 size-3.5 shrink-0 text-muted" aria-hidden />
-                    <span className="min-w-0">
-                      <span className="font-medium">Also: </span>
-                      <GlossaryText text={i.title} />
-                      {i.due_date ? (
-                        <>
-                          {" "}
-                          — by <DateText date={i.due_date} style="medium" className="font-semibold" />
-                        </>
-                      ) : null}
-                    </span>
-                  </li>
-                ))}
+                {alsoByLaw.map((i) => {
+                  // a law's other deadline may come first (registering as job-seeking before the court action):
+                  // it gets the same countdown and urgency as the main date, never a quiet grey line
+                  const urgency = i.due_date ? urgencyOf(i.due_date, today) : "later";
+                  return (
+                    <li
+                      key={i.id}
+                      className={cn("flex items-start gap-2 rounded-lg border px-3 py-2 text-[13.5px] leading-snug text-ink", i.due_date ? dateTone[urgency] : "border-transparent bg-surface-2/70")}
+                    >
+                      <Scale className="mt-0.5 size-3.5 shrink-0 text-muted" aria-hidden />
+                      <span className="min-w-0">
+                        <span className="font-medium">Also: </span>
+                        <GlossaryText text={i.title} />
+                        {i.due_date ? (
+                          <>
+                            {" "}
+                            — by <DateText date={i.due_date} style="medium" className="font-semibold" />{" "}
+                            <Countdown date={i.due_date} variant="pill" className="align-[1px]" />
+                          </>
+                        ) : null}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             ) : null}
           </>
@@ -256,7 +308,9 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
           // with it (objected, went to court: the server's `advice.handled`): then it is filed
           <p className="flex items-start gap-2 text-[16px] font-medium leading-snug text-ink">
             <Scale className="mt-0.5 size-[18px] shrink-0 text-warn" aria-hidden />
-            <span>{ADVICE_NOW[doc.kind ?? "default"] ?? ADVICE_NOW.default}</span>
+            <span>
+              <CardLink text={ADVICE_NOW[doc.kind ?? "default"] ?? ADVICE_NOW.default} docId={doc.id} />
+            </span>
           </p>
         ) : (
           <p className="flex items-center gap-2 text-[15px] font-medium text-ink">
@@ -340,7 +394,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
             ) : null}
             {open.computation ? (
               <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <WhyThisDate receipt={open.computation} spec={open.date_spec} area={open.area} />
+                <WhyThisDate receipt={open.computation} spec={open.date_spec} area={open.area} origin={open.origin} />
                 {open.computation.confidence !== "high" ? (
                   <span className="text-[12px] text-muted">
                     {open.computation.confidence === "medium" ? "Worth a second look" : "Please check this date"}
@@ -437,6 +491,16 @@ function Actions({ detail, main, primary, optional }: { detail: DocumentDetail; 
         );
       }
       case "draft":
+        // an objection that may ask to suspend enforcement: the composer asks (an explicit choice, §§ 719,
+        // 707 ZPO / Aussetzung der Vollziehung) — never drafted without the question
+        if (main.draftKind === "objection" && canSuspend(doc)) {
+          return (
+            <Link to={composerHref("objection", { docId: doc.id })} className={buttonVariants({ variant: optional ? "secondary" : "primary" })}>
+              <PenLine aria-hidden />
+              {main.label}
+            </Link>
+          );
+        }
         return (
           <Button
             variant={optional ? "secondary" : "primary"}

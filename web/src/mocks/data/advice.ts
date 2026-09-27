@@ -9,7 +9,7 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "summary": "A court sent this on behalf of someone who says you owe them money. The court has not checked whether that is true. Within two weeks of delivery you either pay or object (Widerspruch); otherwise the claimant can get an enforcement order and have the money collected.",
     "urgent": true,
     "steps": [
-      "Find the delivery date on the yellow envelope and enter it as the day the letter arrived.",
+      "Find the delivery date on the yellow envelope and enter it where this page asks when it was delivered.",
       "If you don't owe the money, or not all of it, object on the enclosed form (or online) and send it to the court. You don't have to give reasons.",
       "If you do owe it, pay the claimant — not the court — including the costs listed.",
       "Check it's real: a genuine order comes from a court in a yellow envelope, never by e-mail."

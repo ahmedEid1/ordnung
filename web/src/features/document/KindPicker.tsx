@@ -14,6 +14,7 @@ import { Field, Select } from "@/components/ui/Field";
 import { Popover } from "@/components/ui/Popover";
 import { toast } from "@/components/ui/Toast";
 import { DOCUMENT_KIND_COPY, documentKindLabel } from "@/lib/copy";
+import { isStaticDemo } from "@/mocks/mode";
 
 const HIGH_STAKES = new Set<string>(HIGH_STAKES_KINDS);
 /** Everyday kinds by name ("Other letter" last). */
@@ -23,6 +24,8 @@ const EVERYDAY = DOCUMENT_KINDS.filter((k) => !HIGH_STAKES.has(k) && k !== "othe
 
 function KindForm({ doc, close }: { doc: Pick<Document, "id" | "kind">; close: () => void }) {
   const update = useUpdateDocument();
+  // the online demo has no rules engine: a new kind is saved, but nothing is worked out again for it
+  const staticDemo = isStaticDemo();
   const [kind, setKind] = useState<DocumentKind>(doc.kind ?? "other");
   const hint = DOCUMENT_KIND_COPY[kind]?.hint;
   const save = () => {
@@ -31,7 +34,12 @@ function KindForm({ doc, close }: { doc: Pick<Document, "id" | "kind">; close: (
       { id: doc.id, patch: { kind } },
       {
         onSuccess: () => {
-          toast.success(`Filed as “${documentKindLabel(kind)}”`, { description: "Its dates and to-dos were worked out again." });
+          toast.success(`Filed as “${documentKindLabel(kind)}”`, {
+            description: staticDemo
+              ? // short: the toast sits over the letter (the form said it in full before Save)
+                "In this online demo the new kind's dates and deadlines aren't worked out — the installed app does that."
+              : "Its dates and to-dos were worked out again.",
+          });
           close();
         },
       },
@@ -46,8 +54,9 @@ function KindForm({ doc, close }: { doc: Pick<Document, "id" | "kind">; close: (
       className="space-y-3"
     >
       <div>
-        <h2 className="text-[15px] font-semibold text-ink">What kind of letter is this?</h2>
-        <p className="mt-1 text-[13px] leading-5 text-muted">
+        {/* a phone sheet shows the label as its title */}
+        <h2 className="text-[15px] font-semibold text-ink in-sheet:hidden">What kind of letter is this?</h2>
+        <p className="mt-1 text-[13px] leading-5 text-muted in-sheet:mt-0">
           The kind decides which deadlines the law adds and which advice you see. Change it if Ordnung got it wrong.
         </p>
       </div>
@@ -69,6 +78,12 @@ function KindForm({ doc, close }: { doc: Pick<Document, "id" | "kind">; close: (
           </optgroup>
         </Select>
       </Field>
+      {staticDemo ? (
+        <p className="text-[12.5px] leading-5 text-muted">
+          In this online demo the kind is saved, but the letter's own dates stay as they were and the new kind's deadlines aren't
+          added — the installed app works them out again for the new kind.
+        </p>
+      ) : null}
       <div className="flex flex-wrap justify-end gap-2">
         <Button size="sm" onClick={close}>
           Cancel

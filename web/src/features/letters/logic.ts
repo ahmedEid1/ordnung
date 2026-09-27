@@ -334,3 +334,12 @@ export function sendChoices(guidance: Draft["send_guidance"]): SendChoice[] {
     .map((c) => ({ channel: c, label: copyFor(SEND_CHANNEL_COPY, c).label, allowed: guidance?.form !== "written_form" || c === "registered_letter" || c === "letter" || c === "in_person", recommended: false }));
   return [...fromGuidance.filter((c) => c.allowed), ...rest, ...fromGuidance.filter((c) => !c.allowed)];
 }
+
+/**
+ * Whether an objection to this letter can ask to suspend enforcement: an enforcement order or an
+ * authority's decision — not a court payment order (nothing to enforce yet) or a landlord's notice.
+ * The composer asks it (an explicit choice), so "Draft objection" on such a letter opens the composer.
+ */
+export function canSuspend(doc: Pick<Document, "kind"> | null): boolean {
+  return Boolean(doc) && doc!.kind !== "court_payment_order" && doc!.kind !== "landlord_notice";
+}

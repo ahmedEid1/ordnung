@@ -116,7 +116,7 @@ function ItemRow({ item, docId }: { item: Item; docId: string }) {
               Set by law
             </span>
           ) : null}
-          {item.computation ? <WhyThisDate receipt={item.computation} spec={item.date_spec} area={item.area} context={item.title} /> : null}
+          {item.computation ? <WhyThisDate receipt={item.computation} spec={item.date_spec} area={item.area} origin={item.origin} context={item.title} /> : null}
           {item.due_date_source === "manual" ? <span className="text-[12px] text-muted">Date set by you</span> : null}
         </div>
         {editing ? (

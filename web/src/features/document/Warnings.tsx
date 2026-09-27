@@ -26,6 +26,7 @@ import { arrivalSavedNote, isServed, MAY_BE_PUBLIC_KINDS, needsArrivalDate, need
 import { useItemActions } from "./actions";
 import { useEvidence } from "./EvidenceContext";
 import { LetterAdviceCard } from "./LetterAdvice";
+import { DEMO_NOTE } from "@/mocks/mode";
 
 export const SAFE_NOTE = "No warning does not mean it is safe.";
 
@@ -34,9 +35,14 @@ const isHiddenTextWarning = (w: string) => /invisible text|hidden text/i.test(w)
 /** A reading's warning that only repeats the arrival question ("…when it arrived", "…when it was delivered"). */
 export const REPEATS_ARRIVAL_QUESTION = /arriv|received|zugang|deliver|zustell/i;
 
-/** Warnings shown in the scam banner / generic list (the hidden-text one has its own banner). */
+/**
+ * Warnings shown in the scam banner / generic list (the hidden-text one has its own banner, the online demo's
+ * own note sits in the verdict).
+ */
 function otherWarnings(doc: Document): string[] {
-  return doc.warnings.filter((w) => w.trim() && w.trim() !== SAFE_NOTE && !(doc.hidden_text && isHiddenTextWarning(w)));
+  return doc.warnings.filter(
+    (w) => w.trim() && w.trim() !== SAFE_NOTE && !(doc.hidden_text && isHiddenTextWarning(w)) && !w.startsWith(DEMO_NOTE),
+  );
 }
 
 export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
@@ -256,6 +262,8 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
       { id: doc.id, patch: { received_date: date } },
       {
         onSuccess: async () => {
+          // the question goes away once answered: keyboard focus moves to the verdict and its new date
+          document.getElementById("verdict-title")?.focus();
           if (served) {
             // a start the letter itself names counts when it is earlier (see "Why this date?")
             toast.success("Thanks — dates updated", {

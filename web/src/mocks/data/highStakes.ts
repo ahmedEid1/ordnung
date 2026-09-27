@@ -14,13 +14,13 @@ export const ORDER_RECEIPTS: Record<string, ComputationReceipt> = {
         "label": "Counting starts the day after Wed 23 Sep 2026",
         "date": "2026-09-23",
         "rule_id": "bgb_187_1",
-        "citation": "§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X"
+        "citation": "§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB"
       },
       {
         "label": "Two weeks later: Wed 7 Oct 2026",
         "date": "2026-10-07",
         "rule_id": "bgb_188",
-        "citation": "§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG"
+        "citation": "§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB"
       },
       {
         "label": "Wed 7 Oct 2026 is a working day, so it stays",
@@ -46,7 +46,7 @@ export const ORDER_RECEIPTS: Record<string, ComputationReceipt> = {
     "warnings": [
       "This is a court deadline. Ordnung's date is information, not legal advice — if you don't owe the money, object in time and get advice (see the card on this letter).",
       "A late objection still counts until the enforcement order is issued (§ 694 ZPO) — but don't rely on that.",
-      "We assumed the letter arrived on the date printed on it — tell us when it actually arrived."
+      "We assumed the letter was delivered on the date printed on it — tell us the delivery date the postman wrote on the yellow envelope."
     ],
     "confidence": "low"
   },
@@ -55,19 +55,19 @@ export const ORDER_RECEIPTS: Record<string, ComputationReceipt> = {
     "send_by": "2026-10-01",
     "safe_date": null,
     "holiday_calendar": "Nordrhein-Westfalen",
-    "summary": "Two weeks after the day you received it (Wed 23 Sep 2026) is Wed 7 Oct 2026.",
+    "summary": "Two weeks after the day it was delivered (Wed 23 Sep 2026) is Wed 7 Oct 2026.",
     "steps": [
       {
         "label": "Counting starts the day after Wed 23 Sep 2026",
         "date": "2026-09-23",
         "rule_id": "bgb_187_1",
-        "citation": "§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X"
+        "citation": "§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB"
       },
       {
         "label": "Two weeks later: Wed 7 Oct 2026",
         "date": "2026-10-07",
         "rule_id": "bgb_188",
-        "citation": "§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG"
+        "citation": "§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB"
       },
       {
         "label": "Wed 7 Oct 2026 is a working day, so it stays",
@@ -101,19 +101,19 @@ export const ORDER_RECEIPTS: Record<string, ComputationReceipt> = {
     "send_by": "2026-10-02",
     "safe_date": null,
     "holiday_calendar": "Nordrhein-Westfalen",
-    "summary": "Two weeks after the day you received it (Thu 24 Sep 2026) is Thu 8 Oct 2026.",
+    "summary": "Two weeks after the day it was delivered (Thu 24 Sep 2026) is Thu 8 Oct 2026.",
     "steps": [
       {
         "label": "Counting starts the day after Thu 24 Sep 2026",
         "date": "2026-09-24",
         "rule_id": "bgb_187_1",
-        "citation": "§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X"
+        "citation": "§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB"
       },
       {
         "label": "Two weeks later: Thu 8 Oct 2026",
         "date": "2026-10-08",
         "rule_id": "bgb_188",
-        "citation": "§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG"
+        "citation": "§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB"
       },
       {
         "label": "Thu 8 Oct 2026 is a working day, so it stays",
@@ -147,19 +147,19 @@ export const ORDER_RECEIPTS: Record<string, ComputationReceipt> = {
     "send_by": "2026-10-05",
     "safe_date": null,
     "holiday_calendar": "Nordrhein-Westfalen",
-    "summary": "Two weeks after the day you received it (Fri 25 Sep 2026) is Fri 9 Oct 2026.",
+    "summary": "Two weeks after the day it was delivered (Fri 25 Sep 2026) is Fri 9 Oct 2026.",
     "steps": [
       {
         "label": "Counting starts the day after Fri 25 Sep 2026",
         "date": "2026-09-25",
         "rule_id": "bgb_187_1",
-        "citation": "§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X"
+        "citation": "§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB"
       },
       {
         "label": "Two weeks later: Fri 9 Oct 2026",
         "date": "2026-10-09",
         "rule_id": "bgb_188",
-        "citation": "§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG"
+        "citation": "§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB"
       },
       {
         "label": "Fri 9 Oct 2026 is a working day, so it stays",
@@ -193,19 +193,19 @@ export const ORDER_RECEIPTS: Record<string, ComputationReceipt> = {
     "send_by": "2026-10-06",
     "safe_date": null,
     "holiday_calendar": "Nordrhein-Westfalen",
-    "summary": "Two weeks after the day you received it (Sat 26 Sep 2026) is Sat 10 Oct 2026, a Saturday, so the deadline moves to Mon 12 Oct 2026.",
+    "summary": "Two weeks after the day it was delivered (Sat 26 Sep 2026) is Sat 10 Oct 2026, a Saturday, so the deadline moves to Mon 12 Oct 2026.",
     "steps": [
       {
         "label": "Counting starts the day after Sat 26 Sep 2026",
         "date": "2026-09-26",
         "rule_id": "bgb_187_1",
-        "citation": "§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X"
+        "citation": "§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB"
       },
       {
         "label": "Two weeks later: Sat 10 Oct 2026",
         "date": "2026-10-10",
         "rule_id": "bgb_188",
-        "citation": "§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG"
+        "citation": "§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB"
       },
       {
         "label": "Sat 10 Oct 2026 is a Saturday, so the deadline moves to Mon 12 Oct 2026",
@@ -239,19 +239,19 @@ export const ORDER_RECEIPTS: Record<string, ComputationReceipt> = {
     "send_by": "2026-10-06",
     "safe_date": null,
     "holiday_calendar": "Nordrhein-Westfalen",
-    "summary": "Two weeks after the day you received it (Sun 27 Sep 2026) is Sun 11 Oct 2026, a Sunday, so the deadline moves to Mon 12 Oct 2026.",
+    "summary": "Two weeks after the day it was delivered (Sun 27 Sep 2026) is Sun 11 Oct 2026, a Sunday, so the deadline moves to Mon 12 Oct 2026.",
     "steps": [
       {
         "label": "Counting starts the day after Sun 27 Sep 2026",
         "date": "2026-09-27",
         "rule_id": "bgb_187_1",
-        "citation": "§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X"
+        "citation": "§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB"
       },
       {
         "label": "Two weeks later: Sun 11 Oct 2026",
         "date": "2026-10-11",
         "rule_id": "bgb_188",
-        "citation": "§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG"
+        "citation": "§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB"
       },
       {
         "label": "Sun 11 Oct 2026 is a Sunday, so the deadline moves to Mon 12 Oct 2026",
@@ -285,19 +285,19 @@ export const ORDER_RECEIPTS: Record<string, ComputationReceipt> = {
     "send_by": "2026-10-06",
     "safe_date": null,
     "holiday_calendar": "Nordrhein-Westfalen",
-    "summary": "Two weeks after the day you received it (Mon 28 Sep 2026) is Mon 12 Oct 2026.",
+    "summary": "Two weeks after the day it was delivered (Mon 28 Sep 2026) is Mon 12 Oct 2026.",
     "steps": [
       {
         "label": "Counting starts the day after Mon 28 Sep 2026",
         "date": "2026-09-28",
         "rule_id": "bgb_187_1",
-        "citation": "§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X"
+        "citation": "§ 222 Abs. 1 ZPO; § 187 Abs. 1 BGB"
       },
       {
         "label": "Two weeks later: Mon 12 Oct 2026",
         "date": "2026-10-12",
         "rule_id": "bgb_188",
-        "citation": "§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG"
+        "citation": "§ 222 Abs. 1 ZPO; § 188 Abs. 1, 2 BGB"
       },
       {
         "label": "Mon 12 Oct 2026 is a working day, so it stays",
@@ -349,20 +349,20 @@ export const DISMISSAL_RULES: Record<string, { spec: DateSpec; receipt: Computat
       "due_date": "2026-10-19",
       "send_by": "2026-10-13",
       "safe_date": null,
-      "holiday_calendar": "Nordrhein-Westfalen",
+      "holiday_calendar": "Germany (nationwide holidays only)",
       "summary": "Three weeks after the day you received it (Mon 28 Sep 2026) is Mon 19 Oct 2026.",
       "steps": [
         {
           "label": "Counting starts the day after Mon 28 Sep 2026",
           "date": "2026-09-28",
           "rule_id": "bgb_187_1",
-          "citation": "§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X"
+          "citation": "§ 187 Abs. 1 BGB"
         },
         {
           "label": "Three weeks later: Mon 19 Oct 2026",
           "date": "2026-10-19",
           "rule_id": "bgb_188",
-          "citation": "§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG"
+          "citation": "§ 188 Abs. 1, 2 BGB"
         },
         {
           "label": "Mon 19 Oct 2026 is a working day, so it stays",

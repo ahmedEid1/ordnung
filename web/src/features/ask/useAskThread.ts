@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, useChat } from "@/api";
 import type { ChatMessage } from "@/api/types";
-import { accumulate, EMPTY_ANSWER, toolStepsFromStored, type AnswerState } from "./stream";
+import { accumulate, EMPTY_ANSWER, streamEnded, toolStepsFromStored, type AnswerState } from "./stream";
 import type { CitationRef } from "./citations";
 
 export const THREAD_STORAGE_KEY = "ordnung.ask.thread";
@@ -117,7 +117,7 @@ export function useAskThread() {
             void qc.invalidateQueries({ queryKey: qk.chat(ev.thread_id), refetchType: "none" });
           }
         }
-        update(key, (s) => (s.status === "streaming" ? { ...s, status: "done" } : s));
+        update(key, streamEnded);
       } catch (err) {
         if (ctrl.signal.aborted) return;
         const message = err instanceof ApiError ? err.message : "The answer was interrupted. Please try again.";

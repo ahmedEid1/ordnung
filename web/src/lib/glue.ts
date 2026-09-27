@@ -20,6 +20,11 @@ export function protectRefs(text: string): string {
   return text.replace(REF, (ref) => ref.replace(/-/g, NB_HYPHEN));
 }
 
+/** Keep a citation's parts on one line ("§ 38 Abs. 1 S. 4 SGB III" never breaks after "§"). Display only. */
+export function keepCitations(text: string): string {
+  return text.replace(/(§|Abs\.|S\.|Nr\.|Art\.)\s+(?=\d)/g, "$1\u00a0");
+}
+
 /** Undo the display-only glue (non-breaking spaces and hyphens) for text that leaves the app. */
 export function plainText(text: string): string {
   return text.replace(/[\u00a0\u202f]/g, " ").replace(/\u2011/g, "-");

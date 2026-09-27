@@ -22,6 +22,8 @@ const LEFT_OUT = new RegExp(
   `\\[(${(PLACEHOLDERS as string[]).map((p) => p.slice(1, -1).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "[ \u00a0]")).join("|")})\\]`,
   "g",
 );
+/** A whole placeholder (its spaces already no-break): it always joins the chips after it (review round 1). */
+const LEFT_OUT_WHOLE = new RegExp(`^${LEFT_OUT.source}$`);
 /** Punctuation that must not wrap onto a line of its own after a citation chip. */
 const TRAILING_PUNCT = /^[.,;:!?)\]»”“"'…]+/;
 /** The longest word that joins the chips after it (a longer one could not wrap on a phone). */
@@ -122,6 +124,11 @@ function shownLength(nodes: Inline[]): number {
 
 type Piece = { t: "node"; n: Inline } | { t: "chips"; word: Inline[]; refs: CitationRef[]; punct: string };
 
+function isPlaceholder(word: Inline[]): boolean {
+  const only = word.length === 1 ? word[0] : undefined;
+  return only?.t === "text" && LEFT_OUT_WHOLE.test(only.v.trim());
+}
+
 /**
  * Inline nodes with every run of citation chips grouped with the word before it and the
  * punctuation after it: the group never wraps, so a chip never starts a line on its own ("…for
@@ -143,7 +150,8 @@ function groupChips(nodes: Inline[]): Piece[] {
       i++;
     }
     let [head, word] = splitLastWord(pending);
-    if (shownLength(word) > MAX_JOINED_WORD) [head, word] = [pending, []];
+    // the check's placeholders are longer than a joined word may be, but a pill that always fits a line
+    if (shownLength(word) > MAX_JOINED_WORD && !isPlaceholder(word)) [head, word] = [pending, []];
     pieces.push(...head.map((h): Piece => ({ t: "node", n: h })));
     pending = [];
     const after = nodes[i + 1];
