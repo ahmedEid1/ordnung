@@ -143,7 +143,12 @@ test("'Not relevant' hands focus to the Idea now in its place; Undo brings the I
   await page.setViewportSize({ width: 1280, height: 800 });
   await open(page, "/", /Sam/);
   const section = ideas(page);
-  const [first, second] = await section.getByRole("article").all();
+  // the first Idea that can be dismissed (a scam warning, first once an earlier test opened the scam
+  // letter, offers "I checked — it's genuine" instead) and the one after it
+  const articles = await section.getByRole("article").all();
+  const at = await Promise.all(articles.map((a) => a.getByRole("button", { name: "Not relevant" }).count()));
+  const index = at.findIndex((n) => n > 0);
+  const [first, second] = articles.slice(index, index + 2);
   const gone = first!.getByRole("heading", { level: 3 });
   const goneId = (await gone.getAttribute("id"))!.replace(/^idea-/, "");
   const nextTitle = (await second!.getByRole("heading", { level: 3 }).textContent())!;

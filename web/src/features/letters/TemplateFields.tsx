@@ -127,7 +127,7 @@ export function TemplateFields({ config, values, onChange, today, profile, defau
           <Landmark className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
           {iban ? (
             <span>
-              The refund goes to your account <span className="font-mono text-[12.5px] [overflow-wrap:anywhere]">{iban}</span> from{" "}
+              The refund goes to your account <span className="font-ident [overflow-wrap:anywhere]">{iban}</span> from{" "}
               <Link to="/settings#set-profile" className="font-medium text-accent underline-offset-2 hover:underline">
                 Settings
               </Link>

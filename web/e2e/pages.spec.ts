@@ -87,7 +87,8 @@ test.describe("pages", () => {
     await composer.locator("label", { hasText: "Cancel a contract" }).click();
     await composer.locator("label", { hasText: "FunkNetz Smart M" }).click();
     await expect(composer.getByRole("radio", { name: /^FunkNetz Smart M/ })).toBeChecked();
-    await expect(composer).toContainText("FunkNetz Mobil GmbH · Wellenweg 7");
+    // the recipient's whole name and address, the address on a line of its own (never cut off)
+    await expect(composer).toContainText("ToFMFunkNetz Mobil GmbHWellenweg 7, 12351 Beispielhausen");
 
     const pdf = page.waitForResponse((r) => /\/api\/drafts\/[^/]+\/pdf/.test(r.url()));
     await composer.getByRole("button", { name: "Write the letter" }).click();

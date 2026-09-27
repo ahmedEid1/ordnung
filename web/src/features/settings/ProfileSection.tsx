@@ -126,7 +126,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
               autoComplete="off"
               autoCapitalize="characters"
               spellCheck={false}
-              className="font-mono tracking-wide sm:max-w-sm"
+              className="font-ident sm:max-w-sm"
             />
           </Field>
         </div>
