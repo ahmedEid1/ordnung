@@ -11,6 +11,12 @@ The passphrase policy for *new* backups: at least :data:`MIN_PASSPHRASE_CHARS` c
 :data:`MAX_PASSPHRASE_CHARS`; nothing else is judged (a long sentence is a good passphrase).
 Ordnung never stores it: without it the backup can't be opened, by anyone.
 
+Where it goes (:func:`destination`): into a folder that exists (under the default name), or as a new
+file with an extension (``mine.ordnung-backup``). A name that doesn't exist and reads as a folder —
+written with a trailing ``/``, or without any extension (``--to /media/usb`` with the stick not
+mounted) — is refused ("is the drive connected?") instead of becoming a file of that name on the
+internal disk.
+
 Writing a backup file (:func:`write_backup_file`): never inside the data folder it backs up, never
 over an existing file; the file is written under a temporary name next to its destination, private
 to its owner (``0600``), and renamed into place only once the last chunk is sealed.
@@ -83,11 +89,22 @@ def passphrase_problem(passphrase: str) -> str | None:
     return None
 
 
-def destination(data_dir: Path, to: Path | None, day: date) -> Path:
-    """Where ``ordnung backup --to`` writes: a folder gets the default name; refuses the data folder."""
-    target = (to or Path.cwd()).expanduser().absolute()
+def _names_a_folder(to: str | Path) -> bool:
+    """``to`` was written with a trailing separator (``/media/usb/``), so it means a folder."""
+    return isinstance(to, str) and to.endswith(("/", os.sep))
+
+
+def destination(data_dir: Path, to: str | Path | None, day: date) -> Path:
+    """Where ``ordnung backup --to`` writes: a folder gets the default name; refuses the data folder
+    and a folder that doesn't exist (see the module policy)."""
+    target = (Path(to) if to is not None else Path.cwd()).expanduser().absolute()
     if target.is_dir():
         target = target / backup_file_name(day)
+    elif not target.exists() and (_names_a_folder(to or "") or not target.suffix):
+        raise BackupError(
+            f"The folder {target} doesn't exist — is the drive connected? (To save the backup as a new "
+            f"file, give its name with an extension, like {target.name}{FILE_SUFFIX}.)"
+        )
     if target.resolve().is_relative_to(data_dir.resolve()):
         raise BackupError(
             "A backup can't be saved inside the data folder it backs up — choose another folder, "

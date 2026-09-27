@@ -171,9 +171,13 @@ def _with_params(sealed: bytes, **fields: int) -> bytes:
     "fields",
     [
         {"log2_n": 30},  # 128 GiB of scrypt memory
+        {"log2_n": 20, "r": 16},  # 2 GiB, inside the old per-field ranges
+        {"log2_n": 19, "r": 8},  # 512 MiB
+        {"log2_n": 18, "r": 9},  # just over 256 MiB
         {"log2_n": 9},
         {"r": 0},
         {"r": 200},
+        {"p": 3},  # three times the work of p=1, before the MAC can say the passphrase is wrong
         {"p": 64},
         {"chunk_size": 16},
         {"chunk_size": 2**31},
@@ -191,6 +195,18 @@ def test_hostile_header_parameters_are_refused_before_scrypt_runs(
     monkeypatch.setattr(container, "_derive", no_key)
     with pytest.raises(DamagedBackup):
         EncryptedReader(io.BytesIO(crafted), PASS)
+
+
+@pytest.mark.parametrize(("log2_n", "r", "p"), [(17, 8, 1), (18, 8, 2), (20, 2, 1), (10, 16, 2), (11, 4, 2)])
+def test_key_settings_up_to_256_mib_and_p_2_are_read(log2_n: int, r: int, p: int) -> None:
+    kdf = KdfParams(log2_n=log2_n, r=r, p=p)
+    kdf.check()
+    assert kdf.memory <= container.MAX_SCRYPT_BYTES == 256 * 1024 * 1024
+
+
+def test_the_documented_bound_is_the_checked_one() -> None:
+    assert container.DEFAULT_KDF.memory == 128 * 1024 * 1024  # what a written backup costs
+    assert "256 MiB" in (container.__doc__ or "") and "gigabytes" not in (container.__doc__ or "")
 
 
 def test_valid_but_different_header_parameters_fail_the_mac() -> None:

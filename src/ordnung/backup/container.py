@@ -14,14 +14,16 @@ Layout (integers big-endian)::
     kdf             1  1 = scrypt
     log2_n          1  scrypt cost N = 2**log2_n (17 when written; 10..20 read)
     r               1  scrypt block size (8 when written; 1..16 read)
-    p               1  scrypt parallelism (1 when written; 1..4 read)
+    p               1  scrypt parallelism (1 when written; 1..2 read)
     salt           16  random
     nonce_prefix    7  random
     chunk_size      4  plaintext bytes per chunk (1 MiB when written; 4 KiB..16 MiB read)
     header_mac     32  HMAC-SHA256(header key, the 47 bytes above)
     chunks          …  AES-256-GCM(data key, nonce = prefix ‖ counter (4) ‖ last (1), aad = the 79 header bytes)
 
-Every chunk but the last holds exactly ``chunk_size`` bytes; the last holds 0..``chunk_size``.
+Every chunk but the last holds exactly ``chunk_size`` bytes; the last holds 0..``chunk_size``. The
+reader also caps scrypt's memory, ``128 · r · N`` bytes, at :data:`MAX_SCRYPT_BYTES` (256 MiB; a
+written backup uses 128 MiB), since the key is derived before the header MAC can be checked.
 
 Keys: ``master = scrypt(passphrase)`` over the passphrase's UTF-8 bytes in Unicode NFC (so the same
 passphrase typed on another system opens it), then the data key and the header key are derived
@@ -31,8 +33,9 @@ passphrase is wrong (or the header was changed) — the reader says so before de
 What the reader refuses, and in which order: a file that doesn't start with the magic
 (:class:`NotABackup`), a newer format version (:class:`NewerBackupFormat` — before asking for any
 key), header parameters outside the ranges above (:class:`DamagedBackup`, so a crafted header can't
-make scrypt use gigabytes of memory), a wrong passphrase (:class:`WrongPassphrase`), and any chunk
-that fails authentication or a missing last chunk (:class:`DamagedBackup`).
+make scrypt use more than 256 MiB of memory, or more than four times the work of a written backup), a
+wrong passphrase (:class:`WrongPassphrase`), and any chunk that fails authentication or a missing
+last chunk (:class:`DamagedBackup`).
 """
 
 from __future__ import annotations
@@ -65,6 +68,9 @@ CHUNK_SIZE = 1024 * 1024
 MIN_CHUNK_SIZE = 4 * 1024
 MAX_CHUNK_SIZE = 16 * 1024 * 1024
 _MAX_COUNTER = 2**32 - 1
+#: the most memory a backup's key derivation may take (scrypt: 128 · r · N bytes)
+MAX_SCRYPT_BYTES = 256 * 1024 * 1024
+MAX_SCRYPT_P = 2
 # everything after the version byte, up to the MAC
 _PARAMS = struct.Struct(">BBBB16s7sI")
 HEADER_BYTES = len(MAGIC) + 1 + _PARAMS.size + MAC_BYTES
@@ -108,9 +114,15 @@ class KdfParams:
     r: int = 8
     p: int = 1
 
+    @property
+    def memory(self) -> int:
+        """Bytes of memory scrypt needs with these parameters."""
+        return 128 * self.r * 2**self.log2_n
+
     def check(self) -> None:
-        """Refuse parameters outside what a reader accepts (a crafted header can't cost gigabytes)."""
-        if not (10 <= self.log2_n <= 20 and 1 <= self.r <= 16 and 1 <= self.p <= 4):
+        """Refuse parameters outside what a reader accepts (module doc: at most 256 MiB, ``p`` ≤ 2)."""
+        in_range = 10 <= self.log2_n <= 20 and 1 <= self.r <= 16 and 1 <= self.p <= MAX_SCRYPT_P
+        if not in_range or self.memory > MAX_SCRYPT_BYTES:
             raise DamagedBackup("This backup's header is damaged (unusual key settings).")
 
 

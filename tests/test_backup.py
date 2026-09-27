@@ -224,6 +224,16 @@ def test_destination_policy(life: Path, tmp_path: Path) -> None:
         backups.destination(life, tmp_path / "nowhere" / "b.bak", day)
 
 
+@pytest.mark.parametrize("to", ["usb-backups/", "usb-backups", "usb.stick/"])
+def test_a_folder_that_isnt_there_is_not_made_a_file(life: Path, tmp_path: Path, to: str) -> None:
+    """``--to /media/usb`` with the stick not mounted: refused, never a file called "usb" on the disk."""
+    with pytest.raises(backups.BackupError, match="doesn't exist — is the drive connected"):
+        backups.destination(life, f"{tmp_path}/{to}", date(2026, 9, 28))
+    assert list(tmp_path.iterdir()) == [life]
+    new_file = backups.destination(life, f"{tmp_path}/usb-backups.ordnung-backup", date(2026, 9, 28))
+    assert new_file == tmp_path / "usb-backups.ordnung-backup"
+
+
 @pytest.mark.parametrize("passphrase", ["", "short", "x" * 11, "x" * 1025])
 def test_weak_or_huge_passphrases_are_refused_for_new_backups(
     life: Path, tmp_path: Path, passphrase: str
@@ -637,7 +647,30 @@ def test_backup_refusals_are_explained(life: Path, tmp_path: Path, pinned_today:
     assert weak.exit_code == 1 and "at least 12 characters" in weak.output
     empty = invoke("backup", "--data-dir", str(tmp_path / "nothing"), "--to", str(tmp_path))
     assert empty.exit_code == 1 and "no Ordnung database" in empty.output
+    unplugged = invoke("backup", "--data-dir", str(life), "--to", f"{tmp_path}/usb/")
+    assert unplugged.exit_code == 1 and "is the drive connected" in unplugged.output
+    assert not (tmp_path / "usb").exists()
     assert not list(tmp_path.glob("*.ordnung-backup"))
+
+
+def test_backup_warns_about_the_passphrase_before_asking_for_it(
+    life: Path, tmp_path: Path, pinned_today: None
+) -> None:
+    result = invoke(
+        "backup", "--data-dir", str(life), "--to", str(tmp_path), passphrase=None, input="a\nb\nc\n"
+    )
+    warning = result.output.index("not even you")
+    assert warning < result.output.index("Passphrase for the backup")
+
+
+def test_a_path_in_a_backup_refusal_is_never_split(life: Path, tmp_path: Path) -> None:
+    deep = tmp_path / ("a-rather-long-folder-name-" * 4) / "scratchpad" / "restored-data"
+    shutil.copytree(life, deep)
+    backup = make_backup(life, tmp_path / "b.ordnung-backup")
+    narrow = CliRunner(env={"COLUMNS": "60", "NO_COLOR": "1"})
+    result = narrow.invoke(app, ["restore", str(backup), "--data-dir", str(deep)], env={})
+    assert result.exit_code == 1 and "already holds Ordnung data" in result.output
+    assert str(deep) in result.output  # the terminal may wrap it; the text itself has no break in it
 
 
 def test_backup_while_ordnung_runs_reads_alongside_it(life: Path, tmp_path: Path, pinned_today: None) -> None:

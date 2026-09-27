@@ -38,7 +38,7 @@ class BackupInfo(BaseModel):
 
     model_config = ConfigDict(json_schema_serialization_defaults_required=True)
 
-    letters: int = Field(description="Letters (not counting the trash)")
+    letters: int = Field(description="Letters, the trash included (as the backup holds them)")
     files: int = Field(description="Originals, page images and letter PDFs")
     bytes: int = Field(description="Their size plus the database's, before encryption")
     file_name: str = Field(description="The name the download gets")
@@ -56,8 +56,10 @@ class BackupRequest(BaseModel):
 
 def _info(ctx: AppContext) -> BackupInfo:
     files, size = backups.estimate(ctx.paths.data_dir)
+    counts = ctx.store.counts()
     return BackupInfo(
-        letters=ctx.store.counts().get("documents", 0),
+        # the same count as the backup's own (every letter row; `ordnung backup` prints it too)
+        letters=counts.get("documents", 0) + counts.get("trashed_documents", 0),
         files=files,
         bytes=size,
         file_name=backups.backup_file_name(clock.today()),

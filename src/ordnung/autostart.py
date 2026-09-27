@@ -35,6 +35,9 @@ Written policy (ADR 0007):
   without ``$``. The plist is written by :mod:`plistlib`. Windows ``.cmd``: every argument in double
   quotes with ``%`` doubled (a Windows path can't contain ``"``). A line break in any value is
   refused.
+* **Encoding.** Every entry is UTF-8. cmd.exe reads a batch file in the console's code page (850 on
+  a German Windows), so the ``.cmd`` switches to UTF-8 (``chcp 65001``) on its second line, before
+  any character outside ASCII — a user folder like ``C:\\Users\\Jürgen`` is read as written.
 """
 
 from __future__ import annotations
@@ -237,9 +240,14 @@ def cmd_quote(value: str) -> str:
     return '"' + value.replace("%", "%%") + '"'
 
 
+#: cmd.exe reads what follows as UTF-8 (the file is UTF-8; everything before this line is ASCII)
+UTF8_CODE_PAGE = "chcp 65001 >nul"
+
+
 def _cmd(argv: tuple[str, ...]) -> str:
     lines = [
         "@echo off",
+        UTF8_CODE_PAGE,
         f"rem {HEADER}",
         "rem Starts Ordnung (the local web app) in a minimised window when you sign in; closing it stops Ordnung.",
         'start "Ordnung" /min ' + " ".join(cmd_quote(arg) for arg in argv),

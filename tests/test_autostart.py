@@ -193,13 +193,29 @@ def test_windows_writes_a_startup_cmd(tmp_path: Path) -> None:
     )
     assert enable(entry) == "added"
     raw = entry.path.read_bytes()
-    assert raw.count(b"\r\n") == 4 and b"\n" not in raw.replace(b"\r\n", b"")
+    assert raw.count(b"\r\n") == 5 and b"\n" not in raw.replace(b"\r\n", b"")
     lines = raw.decode().split("\r\n")
-    assert lines[0] == "@echo off"
-    assert lines[3].startswith('start "Ordnung" /min "C:\\Users\\Sam')
-    assert lines[3].endswith('"serve" "--no-browser"')
+    assert lines[:2] == ["@echo off", "chcp 65001 >nul"]
+    assert lines[4].startswith('start "Ordnung" /min "C:\\Users\\Sam')
+    assert lines[4].endswith('"serve" "--no-browser"')
     assert entry_argv("windows", entry.content) == list(entry.argv)
     assert "Close the minimised" in entry.stop_now
+
+
+def test_windows_reads_a_user_folder_with_umlauts_as_written(tmp_path: Path) -> None:
+    """cmd.exe reads a batch file in the console's code page (850 on a German Windows): the UTF-8 file
+    switches it to UTF-8 before the first character outside ASCII, or "Jürgen" becomes "J├╝rgen"."""
+    py = "C:\\Users\\Jürgen\\AppData\\Local\\Programs\\Python\\Python312\\python.exe"
+    folder = tmp_path / "Jürgen" / "AppData" / "Local" / "ordnung"
+    entry = plan(folder, platform="win32", env={"APPDATA": str(tmp_path)}, home=tmp_path, python=py)
+    enable(entry)
+    raw = entry.path.read_bytes()
+    switch = raw.index(b"chcp 65001 >nul\r\n")
+    assert raw[:switch].isascii()  # read in the console's code page, whatever it is
+    assert raw.decode("utf-8").count("Jürgen") == 2  # the Python and the data folder
+    assert "J├╝rgen" in raw.decode("cp850")  # what cmd.exe would have run without the switch
+    assert entry_argv("windows", entry.content) == list(entry.argv)
+    assert state(folder, platform="win32", env={"APPDATA": str(tmp_path)}, home=tmp_path, python=py).current
 
 
 def test_windows_doubles_percent_signs_and_refuses_quotes() -> None:

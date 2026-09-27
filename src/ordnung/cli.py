@@ -192,8 +192,11 @@ def _friendly() -> Iterator[None]:
     except Exception as exc:
         if os.environ.get("ORDNUNG_DEBUG"):
             raise
+        from ordnung.backup import BackupError
+
         message, hint = _explain(exc)
-        raise _fail(message, hint) from None
+        # a backup's messages name files and folders: no line break may split a path
+        raise _fail(message, hint, soft_wrap=isinstance(exc, BackupError)) from None
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1375,6 +1378,10 @@ def autostart_status(ctx: typer.Context, data_dir: DataDirOption = None) -> None
 # --------------------------------------------------------------------------------------------------
 
 PASSPHRASE_ENV = "ORDNUNG_BACKUP_PASSPHRASE"
+PASSPHRASE_WARNING = (
+    "Choose a passphrase and keep it somewhere safe (a password manager): Ordnung never stores it, and "
+    "without it nobody can open this backup — not even you."
+)
 
 
 def human_size(size: int) -> str:
@@ -1451,10 +1458,11 @@ def _contents_line(contents: Any) -> str:
 def backup(
     ctx: typer.Context,
     to: Annotated[
-        Path | None,
+        str | None,
         typer.Option(
             "--to",
-            help="File or folder to save the backup in (default: the current folder).",
+            help="Folder to save the backup in, or a new file name ending in .ordnung-backup "
+            "(default: the current folder).",
             show_default=False,
         ),
     ] = None,
@@ -1476,6 +1484,7 @@ def backup(
         console.print(
             f"Backing up [bold]{escape(str(folder))}[/] to [bold]{escape(str(target))}[/]", soft_wrap=True
         )
+        console.print(PASSPHRASE_WARNING)
         passphrase = _passphrase(new=True)
         with _read_lock(folder) as exact:
             if not exact:
@@ -1485,10 +1494,7 @@ def backup(
         f"[green]✓[/] Saved an encrypted backup: {escape(_contents_line(contents))}", soft_wrap=True
     )
     console.print(f"  {escape(str(target))}", soft_wrap=True)
-    console.print(
-        "  Keep the passphrase somewhere safe (a password manager): without it nobody can open this backup — "
-        "not even you."
-    )
+    console.print("  Keep the passphrase somewhere safe (a password manager): you need it to restore.")
     console.print(f"  Restore it with: ordnung restore {escape(shell_quoted(str(target)))}", soft_wrap=True)
 
 
