@@ -27,9 +27,9 @@ Policies:
   the day a letter usually counts as delivered never makes it later,
   :func:`ordnung.rules.deadlines.may_be_public`) — naming an *Einspruch*, *Klage* or *Widerspruch*
   changes that only with a notice naming an administrative route, words in the period never do — and
-  an unknown sender (none, ``other``) keeps the earliest plausible deemed delivery. Missing facts are never guessed: the engine uses the
-  earliest plausible date and says so, and ``hints`` name the argument that would settle it (and
-  never one that was given).
+  an unknown sender (none, ``other``) keeps the earliest plausible deemed delivery. Missing facts are
+  never guessed: the engine uses the earliest plausible date and says so, and ``hints`` name the
+  argument that would settle it (and never one that was given).
 * **Formal service.** A letter served in a yellow envelope has no deemed delivery; the spec help
   says how to pass its date, and a result that applied deemed delivery to a posted letter says so.
 * **A model's arrival day is checked.** In the app a person enters ``received_date``; here a model
@@ -37,12 +37,14 @@ Policies:
   which the engine counts from when it is not before the letter's date). The day the period
   actually runs from is checked: a day after today is refused, and one before the letter's date or
   more than :data:`LATE_ARRIVAL_DAYS` days after it gets a warning and one level less confidence (a
-  wrong arrival day moves the deadline). A stated posting or delivery day can only be checked
-  against the letter's date: without ``document_date`` it gets one level less confidence and a hint
-  (:data:`UNCHECKED_DAY_HINT`). ``assumed`` reports the arrival day the period ran from
-  and where it came from — none when it did not run from an arrival — and an arrival day given but
-  not used. A letter dated after today gets a warning and one level less confidence too (usually a
-  misread year).
+  wrong arrival day moves the deadline). A late arrival day the period did not run from
+  (``private_sender_late_arrival``) is checked too, since the engine's note gives a later date from
+  it; it does not move the date shown, so it costs no confidence. A stated posting or delivery day
+  can only be checked against the letter's date: without ``document_date`` it gets one level less
+  confidence and a hint (:data:`UNCHECKED_DAY_HINT`). ``assumed`` reports the arrival day the period
+  ran from and where it came from — none when it did not run from an arrival — and an arrival day
+  given but not used. A letter dated after today gets a warning and one level less confidence too
+  (usually a misread year).
 * **"Today" is the server's.** A model's own idea of the date may be stale, and a wrong today makes
   a live deadline look missed. So a result is always for the server's today, whether the deadline
   has passed and the send-by date included; a caller's ``today`` more than a day off only adds
@@ -371,7 +373,7 @@ class RulesTools:
         found: list[tuple[str, bool]] = []
         if not unreadable:
             found += arrival_warnings(
-                counted, letter_day=letter_day, received=None if late else received, stated=stated
+                counted, letter_day=letter_day, received=received, stated=stated, capped=late
             )
         found += [(w, True) for w in _future_letter_warning(counted, letter_day, day)]
         found += [(w, True) for w in unchecked_day_warning(counted, letter_day)]
@@ -768,14 +770,22 @@ def for_other_day(
 
 
 def arrival_warnings(
-    spec: DateSpec, *, letter_day: date | None, received: date | None, stated: date | None
+    spec: DateSpec,
+    *,
+    letter_day: date | None,
+    received: date | None,
+    stated: date | None,
+    capped: bool = False,
 ) -> list[tuple[str, bool]]:
     """Warnings on the arrival day a period runs from (``anchor: receipt``); ``True`` lowers confidence.
 
     The day checked is the one the engine used: the delivery day the letter states, else the
     arrival day given. One before the letter's date or more than :data:`LATE_ARRIVAL_DAYS` days
     after it is flagged; an arrival day the engine did not use is named. Other anchors are left to
-    the engine (deemed delivery already keeps the earlier, safe day for a late arrival).
+    the engine (deemed delivery already keeps the earlier, safe day for a late arrival). ``capped``: the
+    period ran from an earlier day than a late arrival (``private_sender_late_arrival``), so a late
+    arrival day moves only the later date the engine's note gives from it: it is flagged all the same,
+    without less confidence in the date shown.
     """
     from ordnung.rules.explain import fmt_date
 
@@ -816,12 +826,17 @@ def arrival_warnings(
             )
         )
     elif gap > LATE_ARRIVAL_DAYS:
+        check = (
+            "Check it before relying on the later date counted from it"
+            if capped
+            else "Check it: a later arrival day moves the deadline later"
+        )
         found.append(
             (
                 f"The {what} ({fmt_date(arrival)}) is {gap} days after the letter's date "
-                f"({fmt_date(letter_day)}), which is unusually late for post. Check it: a later arrival day "
-                "moves the deadline later. If it is right, keep the envelope as proof.",
-                True,
+                f"({fmt_date(letter_day)}), which is unusually late for post. {check}. If it is right, keep "
+                "the envelope as proof.",
+                not capped,
             )
         )
     return found

@@ -297,11 +297,13 @@ calendar and which argument's Land it follows). The day a period runs
 from is checked: when it runs from arrival, the day used — a delivery day the letter states
 (`spec.anchor_date` not before the letter's date) or `received_date` — after today is refused, and
 one before the letter's date or more than 14 days after it gets a warning and one level less
-confidence; an arrival day the engine did not use is named. A letter dated after today gets a
+confidence (a late one the period did not run from gets the warning only: the date shown does not
+rest on it, the later date in the engine's note does); an arrival day the engine did not use is
+named. A letter dated after today gets a
 warning and one level less confidence. Whether the sender has deemed delivery at all is the
 engine's rule, as in the app (a private sender's letter counts from its arrival — for a kind a public
-body may be filed as, or a period whose words name an administrative act, never later than an
-authority's letter would count as delivered; an unknown one, `other` included, keeps the earliest
+body may be filed as, or a period whose words name an administrative act, never later than from
+the day a letter usually counts as delivered; an unknown one, `other` included, keeps the earliest
 plausible deemed delivery). The spec help says how to pass a
 formally served letter (yellow envelope: `anchor: receipt`, the envelope's date), and a result that
 applied deemed delivery to a posted letter says it would not apply then (a warning) and what to pass
@@ -598,7 +600,8 @@ known (a municipal utility's Gebührenbescheid, a statutory health insurer filed
 a kind a public body may be filed as (company, insurer, utility, employer), and for any sender whose
 period names an administrative act in its own words (the spec's text and legal basis, the item's
 quote), a confirmed arrival day after the day a letter usually counts as delivered never moves the
-date later: the period runs from that earlier day with one level less confidence, and a warning says
+date later: the period runs from that earlier day with one level less confidence (unless both days
+give the same date, a weekend or holiday between them: then it runs from the arrival), and a warning says
 that the date from arrival holds once the arrival is shown — for an authority's letter too
 (§ 41 Abs. 2 S. 3 VwVfG, § 122 Abs. 2 AO, § 37 Abs. 2 S. 3 SGB X) — and, when the earlier date has passed
 but that one has not, that the deadline may still be open (`private_sender_late_arrival`). A gym's,

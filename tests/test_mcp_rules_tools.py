@@ -546,17 +546,22 @@ def test_a_late_arrival_never_makes_a_private_senders_date_later() -> None:
     assert company["warnings"][0] == (
         "The letter arrived on Tue 15 Sep 2026, later than a letter dated Tue 1 Sep 2026 usually counts as "
         "delivered (Sat 5 Sep 2026). If you can show that (keep the envelope), the deadline may be Thu 15 Oct "
-        "2026 — for an authority's letter too; we show the earlier, safe date."
+        "2026, whether or not the sender is an authority; we show the earlier, safe date."
     )
     assert PRIVATE_SENDER_WARNING not in company["warnings"]
     assert [step["rule_id"] for step in company["steps"]][:2] == ["private_sender_late_arrival", "bgb_187_1"]
     # the period did not run from the arrival day given
     assert company["assumed"]["received_date"] is None
     assert company["assumed"]["received_date_not_used"] == "2026-09-15"
-    # nor does a later one move it, so it gets no warning that it would (nor less confidence)
+    # nor does a later one move it, so it costs no confidence; but the note's later date counts from
+    # it, so an implausible one is flagged all the same (below)
     later = tools.compute_deadline(spec, sender_kind="company", **{**args, "received_date": "2026-09-25"})
     assert (later["due_date"], later["confidence"]) == ("2026-10-05", company["confidence"])
-    assert not any("unusually late" in w for w in later["warnings"])
+    assert later["warnings"][-1] == (
+        "The arrival day given (Fri 25 Sep 2026) is 24 days after the letter's date (Tue 1 Sep 2026), which "
+        "is unusually late for post. Check it before relying on the later date counted from it. If it is "
+        "right, keep the envelope as proof."
+    )
     # a gym issues no Bescheid: its letter counts from the day it arrived (§ 130 BGB)
     gym = tools.compute_deadline(spec, sender_kind="gym", **args)
     assert gym["due_date"] == "2026-10-15" and gym["assumed"]["received_date"] == "2026-09-15"
@@ -571,6 +576,45 @@ def test_a_late_arrival_never_makes_a_private_senders_date_later() -> None:
     )
     assert utility["due_date"] == "2026-10-05" and PRIVATE_SENDER_WARNING not in utility["warnings"]
     assert any("keep the envelope" in w for w in utility["warnings"])
+
+
+def test_a_capped_late_arrival_day_is_still_checked() -> None:
+    """Reviewer repro: a company's letter dated Sat 1 Aug, arrival given as Sun 20 Sep — 50 days later.
+    The date shown counts from the usual delivery day, but the note says the deadline "may be Tue 20
+    Oct" and "may still be open", from that arrival day: a model must not relay that unchecked. The
+    arrival day was not used, and is reported so."""
+    tools = at("2026-09-27")
+    spec = {**POSTED, "nature": "payment", "text": "innerhalb eines Monats"}
+    args = {"document_date": "2026-08-01", "received_date": "2026-09-20"}
+    company = tools.compute_deadline(spec, sender_kind="company", **args)
+    assert (company["due_date"], company["confidence"]) == ("2026-09-04", "medium")
+    assert "may still be open" in company["warnings"][0]
+    assert company["warnings"][-1] == (
+        "The arrival day given (Sun 20 Sep 2026) is 50 days after the letter's date (Sat 1 Aug 2026), which "
+        "is unusually late for post. Check it before relying on the later date counted from it. If it is "
+        "right, keep the envelope as proof."
+    )
+    assert company["assumed"]["received_date"] is None
+    assert company["assumed"]["received_date_not_used"] == "2026-09-20"
+    # a gym's letter runs from that day: the same check, and one level less confidence in the date
+    gym = tools.compute_deadline(spec, sender_kind="gym", **args)
+    assert (gym["due_date"], gym["confidence"]) == ("2026-10-20", "medium")
+    assert any("Check it: a later arrival day moves the deadline later." in w for w in gym["warnings"])
+
+
+def test_a_late_arrival_giving_the_same_date_is_the_day_counted_from() -> None:
+    """Reviewer repro: a company's payment letter dated Tue 1 Sep (NW) usually counts as delivered Sat 5
+    Sep; it arrived Mon 7 Sep, and 14 days from either day end on Mon 21 Sep. Nothing is capped: the
+    result is a gym's — from the arrival day, at full confidence, with no "may be Mon 21 Sep" note."""
+    tools = at("2026-09-10")
+    spec = {**POSTED, "amount": 14, "unit": "days", "nature": "payment", "text": "zahlbar in 14 Tagen"}
+    args = {"document_date": "2026-09-01", "received_date": "2026-09-07", "region": "NW"}
+    company = tools.compute_deadline(spec, sender_kind="company", **args)
+    gym = tools.compute_deadline(spec, sender_kind="gym", **args)
+    assert (company["due_date"], company["confidence"]) == ("2026-09-21", "high")
+    assert company["warnings"] == gym["warnings"] == [PRIVATE_SENDER_WARNING]
+    assert company["assumed"]["received_date"] == "2026-09-07"
+    assert company["steps"][0]["rule_id"] == "private_sender_arrival"
 
 
 @pytest.mark.parametrize(

@@ -145,8 +145,9 @@ flowchart LR
   letter dated after today is flagged, and a result is always for the server's today — a caller's
   `today` far from it only adds that day's view (the benchmark's server, started with
   `rules_server_config(today=…)`, ignores it). Whether a sender has deemed delivery at all is the
-  engine's rule, so the tools and the app agree (a company's letter counts from its arrival, never
-  later than an authority's letter would count as delivered for a kind a public body may be filed as),
+  engine's rule, so the tools and the app agree (a company's letter counts from its arrival; for a
+  kind a public body may be filed as, or a period whose own words name an administrative act, a late
+  arrival never makes the date later than counting from the day a letter usually counts as delivered),
   and so
   is the warning about a holiday of only part of a Land (15 August in Bavaria) that a date is counted
   back over. A stated posting or delivery day without the letter's date cannot be checked, so the

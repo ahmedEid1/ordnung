@@ -580,9 +580,9 @@ def from_arrival(spec: DateSpec, ctx: RuleContext) -> DateSpec:
     posting day in ``anchor_date`` is no arrival day, so it is dropped — and a delivery rule on a period
     from the letter's or another date is dropped: that period keeps its date (the letter says it runs
     from there), so its arrival day is never asked for. Without a confirmed arrival day a period from
-    arrival runs from the letter's date, never later than with deemed delivery; a confirmed one later
-    than an authority's letter would count as delivered does not move it later either when the sender
-    may be a public body after all (``private_sender_late_arrival`` in :func:`compute_due`). Words
+    arrival runs from the letter's date, never later than with deemed delivery; a confirmed one after
+    the day a letter usually counts as delivered does not move it later either when the sender may be a
+    public body after all (``private_sender_late_arrival`` in :func:`compute_due`). Words
     alone never bring deemed delivery back: counted from arrival, the date is never later than with it.
     Anything else is returned unchanged (the same object), so callers can tell whether it applied
     (and by the anchor, which of the two).
@@ -709,10 +709,16 @@ def _late_receipt_note(
     region: str | None,
     shift: bool,
 ) -> None:
+    """The note on a confirmed arrival after the deemed delivery day: the date from it, once shown.
+
+    None when the arrival day gives the same date (a weekend or holiday between the two days).
+    """
     received = ctx.received_date if ctx.received_confirmed else None
     if received is None or received <= event:
         return
     alt = _date_from(received, period, region, shift)
+    if alt == due:
+        return
     trace.warnings.append(
         f"{TOLD_ARRIVAL} {fmt_date(received)}, after the day it legally counts as delivered "
         f"({fmt_date(event)}). If you can show that (keep the envelope), the deadline may be "
@@ -767,23 +773,43 @@ def may_be_public(spec: DateSpec, ctx: RuleContext) -> bool:
     )
 
 
+#: How a letter's own day reads by how it was sent: posted, sent electronically, or put in a portal.
+_SENT_ON: dict[DeliveryChannel, str] = {
+    "post": "posted on",
+    "electronic": "sent on",
+    "portal": "made available on",
+}
+
+
 @dataclass(frozen=True)
 class _LateArrival:
-    """A private sender's confirmed arrival after the day its letter would usually count as delivered."""
+    """A private sender's confirmed arrival after the day its letter would usually count as delivered.
+
+    ``later`` is the date counted from the arrival day (``None`` for a period counted backwards)."""
 
     arrived: date
     posted: _Anchor
+    channel: DeliveryChannel
     deemed: date
+    later: date | None
 
     @property
     def usually(self) -> str:
         """How the capped start reads: "a letter dated … usually counts as delivered (…)"."""
-        what = "dated" if self.posted.source == "document_date" else "posted on"
-        return f"a letter {what} {fmt_date(self.posted.day)} usually counts as delivered ({fmt_date(self.deemed)})"
+        what = "dated" if self.posted.source == "document_date" else _SENT_ON[self.channel]
+        usual = fmt_date(self.deemed)
+        return f"a letter {what} {fmt_date(self.posted.day)} usually counts as delivered ({usual})"
 
 
 def _private_late_arrival(
-    read: DateSpec, ctx: RuleContext, arrived: date, region: str | None
+    read: DateSpec,
+    ctx: RuleContext,
+    arrived: date,
+    region: str | None,
+    *,
+    period: tuple[int, PeriodUnit],
+    place: str | None,
+    shift: bool,
 ) -> _LateArrival | None:
     """A private sender's confirmed arrival day that the period does not run from, else ``None``.
 
@@ -795,7 +821,8 @@ def _private_late_arrival(
     later arrival too (§ 41 Abs. 2 S. 3 VwVfG, § 122 Abs. 2 AO, § 37 Abs. 2 S. 3 SGB X).
     :func:`_private_late_note` says so and gives the date from the arrival day. A kind no public body
     goes by (a gym, a landlord, a bank …) whose words name no administrative act counts from the day it
-    arrived.
+    arrived — and so does any sender's letter when a ``period`` running forward ends on the same date
+    from either day (a weekend or holiday in between): there is nothing to cap and nothing to warn about.
     """
     if not may_be_public(read, ctx):
         return None
@@ -804,20 +831,25 @@ def _private_late_arrival(
         return None
     channel = _CHANNEL_BY_RULE.get(read.delivery_rule, "post")
     deemed = resolve_delivery(posted.day, scope=None, channel=channel, region=region).day
-    return _LateArrival(arrived, posted, deemed) if arrived > deemed else None
+    if arrived <= deemed:
+        return None
+    if period[0] < 0:
+        return _LateArrival(arrived, posted, channel, deemed, None)
+    later = _date_from(arrived, period, place, shift)
+    if later == _date_from(deemed, period, place, shift):
+        return None
+    return _LateArrival(arrived, posted, channel, deemed, later)
 
 
-def _private_late_note(
-    trace: Trace, ctx: RuleContext, late: _LateArrival, due: date, later: date | None
-) -> None:
+def _private_late_note(trace: Trace, ctx: RuleContext, late: _LateArrival, due: date) -> None:
     """The warning for a late arrival the period did not run from, in place of "runs from the day it
-    arrived", with one level less confidence: the sender's kind was read, and the later date may hold.
-    ``later`` is the date from the arrival day (``None`` for a period counted backwards)."""
+    arrived", with one level less confidence: the sender's kind was read, and the later date may hold."""
+    later = late.later
     may_be = f"may be {fmt_date(later)}" if later is not None else "may be later"
     trace.soft(
         f"{TOLD_ARRIVAL} {fmt_date(late.arrived)}, later than {late.usually}. If you can show that (keep the "
-        f"envelope), the deadline {may_be} — for an authority's letter too; we show the earlier, safe date."
-        + _still_open(ctx, due, later)
+        f"envelope), the deadline {may_be}, whether or not the sender is an authority; we show the earlier, "
+        "safe date." + _still_open(ctx, due, later)
     )
 
 
@@ -845,7 +877,13 @@ def _compute_relative(
     from_receipt = no_delivery and spec.anchor == "receipt"
     # the arrival day the period then runs from (from_arrival dropped any stated day), unless it came late
     arrived = ctx.received_date if from_receipt and ctx.received_confirmed else None
-    late = _private_late_arrival(read, ctx, arrived, region) if arrived is not None else None
+    late = (
+        _private_late_arrival(
+            read, ctx, arrived, region, period=(amount, unit), place=place, shift=_shift_applies(spec)
+        )
+        if arrived is not None
+        else None
+    )
     if no_delivery and late is None:
         trace.warnings.append(PRIVATE_SENDER_WARNING if from_receipt else PRIVATE_SENDER_DATED_WARNING)
     anchor = _resolve_anchor(spec, ctx, trace)
@@ -968,8 +1006,7 @@ def _compute_relative(
     if uses_delivery and not backward:
         _late_receipt_note(ctx, trace, event, due, (amount, unit), place, shift)
     if late is not None:
-        later = None if backward else _date_from(late.arrived, (amount, unit), place, shift)
-        _private_late_note(trace, ctx, late, due, later)
+        _private_late_note(trace, ctx, late, due)
 
     send_by = (
         _send_by(trace, ctx, due, spec.nature, place, postal_buffer_days)

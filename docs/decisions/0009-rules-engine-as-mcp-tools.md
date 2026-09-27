@@ -31,7 +31,7 @@ Claude reads through it also reaches every other MCP server loaded there, throug
   deadline look missed.
 - The tools add no law of their own: whether a sender has deemed delivery at all (a company's letter
   counts from its arrival, but for a kind a public body may be filed as, or a period whose own words
-  name an administrative act, never later than an authority's letter would count as delivered; an
+  name an administrative act, never later than from the day a letter usually counts as delivered; an
   unknown sender's keeps the earliest plausible deemed delivery; and an *Einspruch*, *Widerspruch* or
   *Klage* makes a letter an authority's only with a notice naming an administrative route — a
   period's words alone never do), and which

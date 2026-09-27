@@ -333,9 +333,10 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "Whether a sender is an authority is read from its letter, not known: a public body's Bescheid "
         "may come from a sender filed as a company, an insurer, a utility or an employer, or name itself "
         "in its own words. When such a letter arrived later than a letter usually counts as delivered "
-        "(the 3rd or 4th day after posting), Ordnung counts from that earlier day. The later arrival "
-        "counts once it can be shown — for a private sender's letter and an authority's alike — and the "
-        "warning gives the date from the day it arrived.",
+        "(a few days after posting, or the day after it was made available in a portal), and the "
+        "deadline from the day it arrived would be later, Ordnung counts from that earlier day. The later "
+        "arrival counts once it can be shown — for a private sender's letter and an authority's alike — "
+        "and the warning gives the date from the day it arrived.",
         f"{_GII}/bgb/__130.html",
         None,
     ),
