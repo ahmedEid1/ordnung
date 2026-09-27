@@ -221,7 +221,13 @@ def span_views(
 
 def document_trace(store: Store, doc_id: str, trace_id: str | None = None) -> DocumentTrace:
     """How ``doc_id`` was read: the reading ``trace_id`` (default: the newest kept) and every reading
-    kept. Raises :class:`TraceNotFound` for a ``trace_id`` that is not one of them."""
+    kept. Raises :class:`TraceNotFound` for a ``trace_id`` that is not one of them. Every query reads
+    the same state of the database (a reading stored meanwhile is wholly in the view or not at all)."""
+    with store.snapshot():
+        return _document_trace(store, doc_id, trace_id)
+
+
+def _document_trace(store: Store, doc_id: str, trace_id: str | None) -> DocumentTrace:
     roots = store.trace_runs(doc_id)
     calls = store.trace_calls(doc_id)
     model_steps: dict[str, list[TraceSpanRecord]] = {}

@@ -152,8 +152,9 @@ flowchart LR
   `gen_ai.response.model`, `gen_ai.prompt.name`, `gen_ai.usage.input_tokens` (the whole prompt,
   prompt-cache tokens included), `gen_ai.usage.cache_read.input_tokens`,
   `gen_ai.usage.cache_creation.input_tokens` and `…output_tokens`; everything else is under
-  `ordnung.*`. Every id in the file (many are hashes of a file, a name or a sentence) is replaced by
-  an HMAC with a key made for that export, and a sender's other candidates keep only their scores.
+  `ordnung.*`. Every record id in the file (many are hashes of a file, a name or a sentence) is
+  replaced by an HMAC with a key made for that export — a rule's public id (`zpo_692`) stays — and a
+  sender's other candidates keep only their scores.
 - **Time waiting for Claude** is the union of the model steps' intervals, so the pages of a photo,
   read at the same time, count once.
 

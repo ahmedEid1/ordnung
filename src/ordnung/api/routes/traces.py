@@ -54,15 +54,16 @@ def compare_trace(
     doc_id: str, store: StoreDep, base: RunQuery = None, head: RunQuery = None
 ) -> TraceComparison:
     """What a later reading of the letter decided differently from an earlier one."""
-    later = _trace(store, doc_id, head)
-    if later.run is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, NOTHING_TO_COMPARE)
-    if base is None:
-        older = compare_base(later.runs, later.run)
-        if older is None:
+    with store.snapshot():  # both readings as of one moment
+        later = _trace(store, doc_id, head)
+        if later.run is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, NOTHING_TO_COMPARE)
-        base = older.trace_id
-    return compare_traces(_trace(store, doc_id, base), later)
+        if base is None:
+            older = compare_base(later.runs, later.run)
+            if older is None:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, NOTHING_TO_COMPARE)
+            base = older.trace_id
+        return compare_traces(_trace(store, doc_id, base), later)
 
 
 @router.get("/traces", response_model=TraceExport)

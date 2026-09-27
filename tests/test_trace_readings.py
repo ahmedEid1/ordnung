@@ -6,6 +6,7 @@ an older reading's key facts are not named after the newest one's."""
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -21,7 +22,7 @@ from ordnung.llm.base import ClaudeRateLimited, LLMRequest, LLMResponse
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import TraceSpanRecord
 from ordnung.trace.compare import compare_base
-from ordnung.trace.runs import INTERRUPTIONS, KEPT_READINGS, recover_readings, start_trace
+from ordnung.trace.runs import INTERRUPTIONS, KEPT_READINGS, finish_trace, recover_readings, start_trace
 from ordnung.trace.spans import trace_id_for
 from ordnung.trace.view import busy_ms, document_trace
 
@@ -179,6 +180,47 @@ async def test_the_compare_route_defaults_to_the_newest_earlier_reading_that_was
         comparison = (await api.client.get(f"/api/documents/{doc_id}/trace/compare")).json()
     assert (comparison["head"]["reading"], comparison["base"]["reading"]) == (3, 1)
     assert comparison["base"]["ended"] == "done"
+
+
+def _store_a_reading(ctx: AppContext, doc_id: str) -> None:
+    """A reading as the pipeline stores one: its model call is logged while it runs, its steps at its end."""
+    tracer = start_trace(ctx.store, doc_id, job_id=None, again=True, recorded=False)
+    with tracer.root.span("model", "Extract", key="extract") as step:
+        ctx.store.log_llm_call(
+            "extract", "sonnet", "fake", LLMResponse().usage, doc_ids=[doc_id], span_id=step.id
+        )
+    assert finish_trace(ctx.store, tracer)
+
+
+@pytest.mark.parametrize("moment", range(1, 9))
+async def test_a_reading_stored_while_the_trace_is_shown_is_wholly_in_the_view_or_not_at_all(
+    ctx: AppContext, moment: int
+) -> None:
+    doc_id = await read(ctx)
+    for _ in range(KEPT_READINGS - 1):
+        await read_again(ctx, doc_id)  # five kept: the next one pushes the first out
+    before = document_trace(ctx.store, doc_id)
+    selects = 0
+
+    def another_reading_ends(sql: str) -> None:
+        # at the view's ``moment``-th query, another thread (its own connection) stores a reading
+        nonlocal selects
+        if sql.lstrip().upper().startswith("SELECT"):
+            selects += 1
+            if selects == moment:
+                meanwhile = threading.Thread(target=_store_a_reading, args=(ctx, doc_id))
+                meanwhile.start()
+                meanwhile.join()
+
+    conn = ctx.store._conn()
+    conn.set_trace_callback(another_reading_ends)
+    try:
+        shown = document_trace(ctx.store, doc_id)
+    finally:
+        conn.set_trace_callback(None)
+    after = document_trace(ctx.store, doc_id)
+    assert selects >= moment and [run.reading for run in after.runs] == [6, 5, 4, 3, 2]
+    assert shown in (before, after)
 
 
 # --------------------------------------------------------------------------------------------------

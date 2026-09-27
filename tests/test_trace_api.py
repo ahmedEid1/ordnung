@@ -242,6 +242,13 @@ def test_otel_keeps_candidates_scores_not_which_they_were() -> None:
     assert ids.record(slot).startswith("slot_")
 
 
+def test_otel_keeps_a_rules_public_id() -> None:
+    law = {"rule_id": "zpo_692", "rule_ids": ["zpo_692", "weekend_holiday"], "item_id": "itm_aaaaaaaaaaaa"}
+    out = Pseudonyms(b"k").attributes(law)
+    assert (out["rule_id"], out["rule_ids"]) == ("zpo_692", ["zpo_692", "weekend_holiday"])
+    assert out["item_id"].startswith("itm_") and out["item_id"] != law["item_id"]
+
+
 def test_otel_failed_steps_say_how_never_the_message() -> None:
     run = TraceRun(
         trace_id="trc_1", started_at="2026-09-28T08:00:00.000000Z", ended_at="2026-09-28T08:00:01.000000Z"

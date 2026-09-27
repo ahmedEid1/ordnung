@@ -174,8 +174,8 @@ class _Table(Generic[M]):
         if unknown:
             raise ValueError(f"unknown or read-only {self.name} field(s): {', '.join(unknown)}")
 
-    def decode(self, row: sqlite3.Row) -> M:
-        """Row → model (JSON columns parsed, columns renamed to field names)."""
+    def decode(self, row: sqlite3.Row | Mapping[str, Any]) -> M:
+        """Row (or column → value mapping) → model (JSON columns parsed, columns renamed to fields)."""
         data: dict[str, Any] = {}
         for column in row.keys():  # noqa: SIM118 - sqlite3.Row is not iterable by key
             value = row[column]
@@ -648,6 +648,22 @@ class Store:
             conn.execute(f"RELEASE {name}")
         finally:
             state.depth -= 1
+
+    @contextmanager
+    def snapshot(self) -> Iterator[None]:
+        """Reads in the block see one state of the database: a read transaction (``BEGIN`` … end),
+        so a write another thread commits meanwhile is not half seen. Inside a :meth:`tx` or another
+        snapshot it joins that transaction. Only for reads: a :meth:`tx` inside it raises."""
+        conn = self._conn()
+        if conn.in_transaction:
+            yield
+            return
+        conn.execute("BEGIN")
+        try:
+            yield
+        finally:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
 
     def _after_commit(self, callback: Callable[[], None]) -> None:
         """Inside :meth:`tx`: run ``callback`` once the outermost transaction commits (never on rollback)."""
@@ -1915,16 +1931,19 @@ class Store:
         )
 
     def trace_calls(self, doc_id: str) -> dict[str, list[LLMCallRecord]]:
-        """The usage-log rows of the model steps of a letter's kept readings, by trace id."""
-        model_steps = "SELECT id, trace_id FROM trace_spans WHERE doc_id = ? AND kind = 'model'"
-        owner = {row["id"]: row["trace_id"] for row in self._conn().execute(model_steps, (doc_id,))}
-        calls: dict[str, list[LLMCallRecord]] = {}
-        for call in self._many(
-            _LLM_CALLS,
-            "WHERE span_id IN (SELECT id FROM trace_spans WHERE doc_id = ? AND kind = 'model') ORDER BY id",
+        """The usage-log rows of the model steps of a letter's kept readings, by trace id.
+
+        One query joins each row to its step, so a reading stored meanwhile (its rows are logged
+        while it runs, its steps at its end) is either wholly in the result or not at all."""
+        rows = self._conn().execute(
+            f"SELECT s.trace_id AS owner, {_LLM_CALLS.columns('c')} FROM llm_calls c "
+            "JOIN trace_spans s ON s.id = c.span_id WHERE s.doc_id = ? AND s.kind = 'model' ORDER BY c.id",
             (doc_id,),
-        ):
-            calls.setdefault(owner[call.span_id or ""], []).append(call)
+        )
+        calls: dict[str, list[LLMCallRecord]] = {}
+        for row in rows:
+            fields = {column: row[column] for column in row.keys() if column != "owner"}  # noqa: SIM118
+            calls.setdefault(row["owner"], []).append(_LLM_CALLS.decode(fields))
         return calls
 
     def export_traces(self) -> tuple[list[TraceSpanRecord], list[LLMCallRecord]]:

@@ -21,11 +21,12 @@ Written policy:
   its name's, a to-do's slot the sentence it was read from), so every id — and the trace and span
   ids — is replaced by a keyed hash (HMAC-SHA256) with a key made for this export and then thrown
   away: the same record has the same id within the file, and nobody can confirm a guessed sender or
-  sentence from it. A sender's match keeps the scores of the other candidates, not which ones they
-  were. A step that failed says only how (a code such as ``paused`` or the error's class), never its
-  message. What the file still shows is listed in docs/privacy.md: the dates Ordnung computed and the
-  letter's dates they came from, the holiday calendar (the Bundesland), counts, scores, prompt
-  versions and models.
+  sentence from it. Only the ids in :data:`PUBLIC_IDS` stay: they name a rule of the rules engine
+  (``zpo_692``), the same in every Ordnung, not a record of yours. A sender's match keeps the scores
+  of the other candidates, not which ones they were. A step that failed says only how (a code such
+  as ``paused`` or the error's class), never its message. What the file still shows is listed in
+  docs/privacy.md: the dates Ordnung computed and the letter's dates they came from, the rules that
+  computed them, the holiday calendar (the Bundesland), counts, scores, prompt versions and models.
 """
 
 from __future__ import annotations
@@ -64,6 +65,8 @@ _GEN_AI_KEYS = frozenset(
 )
 
 
+#: Facts named ``…_id`` that are no record's id: a rule of the rules engine (``zpo_692``) is public.
+PUBLIC_IDS = frozenset({"rule_id"})
 #: A to-do's slot key (sha1 hex of its kind and sentence), also inside a step's key.
 _SLOT = re.compile(r"[0-9a-f]{40}")
 #: An Ordnung record id: ``doc_…``, ``pty_…``, ``cas_…``, ``itm_…`` …
@@ -96,12 +99,17 @@ class Pseudonyms:
         return _SLOT.sub(lambda match: f"slot_{self.digest(match.group())[:12]}", key)
 
     def attributes(self, values: dict[str, Any]) -> dict[str, Any]:
-        """A step's facts with their ids replaced and the candidates' ids left out."""
+        """A step's facts with their record ids replaced (not :data:`PUBLIC_IDS`) and the candidates'
+        ids left out."""
         out: dict[str, Any] = {}
         for key, value in values.items():
             if key == "candidates" and isinstance(value, list):
                 value = [{"score": c.get("score")} for c in value if isinstance(c, dict)]
-            elif (key.endswith("_id") or key == "slot_key") and isinstance(value, str):
+            elif (
+                (key.endswith("_id") or key == "slot_key")
+                and key not in PUBLIC_IDS
+                and isinstance(value, str)
+            ):
                 value = self.record(value)
             out[key] = value
         return out
