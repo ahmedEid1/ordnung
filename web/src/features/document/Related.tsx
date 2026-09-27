@@ -36,7 +36,7 @@ export function ThreadSection({ detail }: { detail: DocumentDetail }) {
   if (!related.length) return null;
   const all = [...related, doc].sort((a, b) => (docDate(a) < docDate(b) ? 1 : -1));
   return (
-    <PanelSection id="thread" title="Thread" icon={Layers} count={all.length}>
+    <PanelSection id="thread" title="Thread" icon={Layers} count={all.length} countLabel={`${all.length} letters`}>
       <div className="card overflow-hidden">
         {thread ? (
           <div className="border-b border-line px-4 py-3 sm:px-5">

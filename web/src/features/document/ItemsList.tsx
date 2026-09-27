@@ -57,7 +57,7 @@ export function ItemsList({ items, docId, pages, scam }: { items: Item[]; docId:
   const open = list.filter(isOpenItem).length;
   return (
     // a scam letter's demands are no to-dos of yours: no count
-    <PanelSection id="todos" title="To-dos & dates" icon={ListTodo} count={scam ? undefined : open}>
+    <PanelSection id="todos" title="To-dos & dates" icon={ListTodo} count={scam ? undefined : open} countLabel={`${open} open`}>
       <ul className="card divide-y divide-line overflow-hidden">
         {list.map((it) => (scam && isOpenItem(it) ? <ScamRow key={it.id} item={it} docId={docId} pages={pages} /> : <ItemRow key={it.id} item={it} docId={docId} pages={pages} />))}
       </ul>
@@ -217,7 +217,7 @@ function ItemRow({ item, docId, pages }: { item: Item; docId: string; pages?: nu
               Set by law
             </span>
           ) : null}
-          {item.computation ? <WhyThisDate receipt={item.computation} spec={item.date_spec} area={item.area} origin={item.origin} context={item.title} /> : null}
+          {item.computation ? <WhyThisDate receipt={item.computation} spec={item.date_spec} area={item.area} origin={item.origin} item={item} context={item.title} /> : null}
           {item.due_date_source === "manual" ? <span className="text-[12px] text-muted">Date set by you</span> : null}
         </div>
         {editing ? (

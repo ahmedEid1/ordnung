@@ -5,7 +5,7 @@
  * unclear how), "Please check" to-dos, the "When did this letter arrive?" question and any other
  * warnings from reading the letter.
  */
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { ArrowRight, CalendarCheck, Check, EyeOff, Pencil, Scale, ShieldAlert, TriangleAlert, X } from "lucide-react";
@@ -17,6 +17,7 @@ import { GROUNDING_COPY } from "@/lib/copy";
 import { formatDate, toISODate } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { Button } from "@/components/ui/Button";
+import { DateText } from "@/components/ui/DateText";
 import { Callout } from "@/components/ui/Callout";
 import { ADVICE_LINKS } from "@/components/ui/Disclaimer";
 import { Glossary } from "@/components/ui/Glossary";
@@ -33,19 +34,74 @@ export const SAFE_NOTE = "No warning does not mean it is safe.";
 
 const HIGH_STAKES = new Set<string>(HIGH_STAKES_KINDS);
 
-const isHiddenTextWarning = (w: string) => /invisible text|hidden text/i.test(w);
+/**
+ * A reading's warning about text meant for software — the hidden-text banner says it (UI audit round 1: "text
+ * addressed to an AI (“Hinweis an KI-Assistenten”) … Ordnung treated it as ordinary content" repeated the
+ * banner as a scam sign, and contradicted it).
+ */
+const isHiddenTextWarning = (w: string) =>
+  /invisible text|hidden text|addressed to (?:an? )?(?:AI|KI)\b|\bKI-Assistent|AI assistant|prompt injection|instructions? (?:aimed at|for|to) (?:an? )?AI\b/i.test(w);
 
 /** A reading's warning that only repeats the arrival question ("…when it arrived", "…when it was delivered"). */
 export const REPEATS_ARRIVAL_QUESTION = /arriv|received|zugang|deliver|zustell/i;
 
 /**
+ * The reading's own count of dates it couldn't confirm ("Please check: 1 date could not be confirmed against the
+ * letter's text."): each of those to-dos has its own "Please check" card, which says it — and once they are
+ * confirmed, the count is out of date (UI audit round 1: "Please check" three times on one letter).
+ */
+const UNCONFIRMED_DATES = /^please check:\s*\d+\s+dates?\s+could not be confirmed/i;
+
+/** A claim about an IBAN's checksum ("does not pass the standard IBAN checksum"). */
+const IBAN_CHECK_CLAIM =
+  /\biban\b.*(?:check ?sum|check digits?|prüfsumme|prüfziffer|mod(?:ulo)?[ -]?97)|(?:check ?sum|check digits?|prüfsumme|prüfziffer).*\biban\b/i;
+const NEGATIVE = /n't\b|\b(?:not|fails?|failed|failing|invalid|wrong|incorrect|ungültig|falsch|nicht)\b/i;
+
+/** Ordnung's own sentence for an IBAN that fails the bank check (as under the bank details). */
+export const IBAN_FAILS_CHECK = "The IBAN in this letter doesn't pass the bank check — most likely a misprint. Compare it with the paper letter before you pay.";
+
+/** A warning's sentences (a full stop, then a capital letter or an opening quote). */
+const sentences = (w: string) => w.split(/(?<=[.!?])\s+(?=[A-ZÄÖÜ„“"(])/);
+
+/**
+ * The reading's claims about the IBAN's checksum, squared with Ordnung's own check (`payment.iban_valid`): a
+ * failure the check doesn't confirm is dropped (UI audit round 1: "IBAN … does not pass the standard IBAN
+ * checksum" on a valid IBAN), a confirmed one is said in Ordnung's words, once. Without a check, as read.
+ */
+export function squareIbanClaims(warnings: string[], ibanValid: boolean | null | undefined): string[] {
+  if (ibanValid == null) return warnings;
+  const out: string[] = [];
+  for (const w of warnings) {
+    const parts = sentences(w.trim());
+    // a valid IBAN keeps a claim that agrees ("the IBAN's check digits are valid, but …")
+    const wrong = (s: string) => IBAN_CHECK_CLAIM.test(s) && (!ibanValid || NEGATIVE.test(s));
+    const kept = parts.filter((s) => !wrong(s));
+    if (kept.length < parts.length && !ibanValid && !out.includes(IBAN_FAILS_CHECK)) out.push(IBAN_FAILS_CHECK);
+    if (kept.length) out.push(kept.join(" "));
+  }
+  return out;
+}
+
+/** "Please check: the amount…" under the card's own "Please check" heading: "The amount…". */
+function withoutPleaseCheck(w: string): string {
+  const rest = w.replace(/^please check\s*[:—–-]\s*/i, "");
+  return rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : w;
+}
+
+/**
  * Warnings shown in the scam banner / generic list (the hidden-text one has its own banner, the online demo's
- * own note sits in the verdict).
+ * own note sits in the verdict, the count of unconfirmed dates is said by their own cards).
  */
 function otherWarnings(doc: Document): string[] {
-  return doc.warnings.filter(
-    (w) => w.trim() && w.trim() !== SAFE_NOTE && !(doc.hidden_text && isHiddenTextWarning(w)) && !w.startsWith(DEMO_NOTE),
+  const shown = doc.warnings.filter(
+    (w) =>
+      w.trim() &&
+      w.trim() !== SAFE_NOTE &&
+      !(doc.hidden_text && isHiddenTextWarning(w)) &&
+      !w.startsWith(DEMO_NOTE) &&
+      !UNCONFIRMED_DATES.test(w.trim()),
   );
+  return squareIbanClaims(shown, doc.payment?.iban ? doc.payment.iban_valid : null);
 }
 
 export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
@@ -119,7 +175,8 @@ function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc:
           </p>
           {shown.length ? (
             <>
-              <h3 className="mt-3 text-[12px] font-semibold uppercase tracking-[0.07em] text-danger-ink/80">
+              {/* the full ink: at 80 % the 12 px caps fell under 4.5:1 on the pink (UI audit round 1) */}
+              <h3 className="eyebrow mt-3 text-danger-ink">
                 {signs.length === 1 ? "The warning sign" : all || signs.length <= TOP_SIGNS ? `${signs.length} warning signs` : `The ${TOP_SIGNS} strongest of ${signs.length} warning signs`}
               </h3>
               <ul className="mt-1.5 space-y-1.5">
@@ -135,7 +192,8 @@ function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc:
                   type="button"
                   onClick={() => setAll(!all)}
                   aria-expanded={all}
-                  className="mt-2 text-[13px] font-semibold text-danger-ink underline-offset-2 hover:underline"
+                  // a 24 px tall target (WCAG 2.5.8; UI audit round 1)
+                  className="mt-1.5 inline-flex min-h-6 items-center rounded-md text-[13px] font-semibold text-danger-ink underline-offset-2 hover:underline"
                 >
                   {all ? "Show fewer" : `Show all ${signs.length} signs`}
                 </button>
@@ -386,57 +444,74 @@ function PleaseCheckItem({ item }: { item: Item }) {
   const notFound = item.grounding === "unverified" || ev?.grounding === "unverified";
 
   return (
+    <CheckCard>
+      <p className="mt-1 text-[15px] font-medium leading-snug text-ink wrap-break-word">
+        {item.title}
+        {item.due_date ? (
+          <span className="font-normal text-ink/80">
+            {" "}
+            — by <DateText date={item.due_date} />
+          </span>
+        ) : null}
+      </p>
+      <p className="mt-1 text-[13px] leading-5 text-ink/75">
+        {notFound ? GROUNDING_COPY.unverified.label + "." : "The date or amount doesn't match the sentence it came from."}
+      </p>
+      {ev?.quote ? (
+        <blockquote lang="de" className="mt-2 text-[13.5px] leading-relaxed text-ink">
+          <button type="button" onClick={() => select(`item:${item.id}:${item.evidence.indexOf(ev)}`)} className="text-left hover:underline">
+            <span className="marker box-decoration-clone px-0.5">“{ev.quote}”</span>
+          </button>
+        </blockquote>
+      ) : null}
+      {editing ? (
+        <form
+          className="mt-3 flex flex-wrap items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (date) changeDate(item, date, () => setEditing(false));
+          }}
+        >
+          <label className="sr-only" htmlFor={`date-${item.id}`}>
+            New date for {item.title}
+          </label>
+          <Input id={`date-${item.id}`} type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-8 w-auto bg-surface" autoFocus />
+          <Button type="submit" size="sm" variant="primary" disabled={!date} loading={pending}>
+            Save date
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
+            Cancel
+          </Button>
+        </form>
+      ) : (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button size="sm" variant="secondary" icon={Check} onClick={() => confirmItem(item)} disabled={pending}>
+            Correct
+          </Button>
+          <Button size="sm" variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>
+            Change date
+          </Button>
+          <Button size="sm" variant="ghost" icon={X} onClick={() => dismiss(item)} disabled={pending}>
+            Not a real to-do
+          </Button>
+        </div>
+      )}
+    </CheckCard>
+  );
+}
+
+/**
+ * The one "Please check" card — a to-do to confirm and the reading's other warnings look alike: the same
+ * box, icon and heading (UI audit round 1: an eyebrow h2 on one, a callout's bold title on the other).
+ */
+function CheckCard({ children }: { children: ReactNode }) {
+  return (
     <div className="rounded-2xl border border-warn/30 bg-warn-soft px-4 py-4 sm:px-5">
       <div className="flex gap-3">
-        <TriangleAlert className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
+        <TriangleAlert className="mt-px size-5 shrink-0 text-warn" aria-hidden />
         <div className="min-w-0 flex-1">
-          <h2 className="text-[12px] font-semibold uppercase tracking-[0.07em] text-warn-ink">Please check</h2>
-          <p className="mt-1 text-[15px] font-medium leading-snug text-ink">
-            {item.title}
-            {item.due_date ? <span className="font-normal text-ink/80"> — by {formatDate(item.due_date, { style: "short" })}</span> : null}
-          </p>
-          <p className="mt-1 text-[13px] leading-5 text-ink/75">
-            {notFound ? GROUNDING_COPY.unverified.label + "." : "The date or amount doesn't match the sentence it came from."}
-          </p>
-          {ev?.quote ? (
-            <blockquote lang="de" className="mt-2 text-[13.5px] leading-relaxed text-ink">
-              <button type="button" onClick={() => select(`item:${item.id}:${item.evidence.indexOf(ev)}`)} className="text-left hover:underline">
-                <span className="marker box-decoration-clone px-0.5">“{ev.quote}”</span>
-              </button>
-            </blockquote>
-          ) : null}
-          {editing ? (
-            <form
-              className="mt-3 flex flex-wrap items-center gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (date) changeDate(item, date, () => setEditing(false));
-              }}
-            >
-              <label className="sr-only" htmlFor={`date-${item.id}`}>
-                New date for {item.title}
-              </label>
-              <Input id={`date-${item.id}`} type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-8 w-auto bg-surface" autoFocus />
-              <Button type="submit" size="sm" variant="primary" disabled={!date} loading={pending}>
-                Save date
-              </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
-                Cancel
-              </Button>
-            </form>
-          ) : (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" variant="secondary" icon={Check} onClick={() => confirmItem(item)} disabled={pending}>
-                Correct
-              </Button>
-              <Button size="sm" variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>
-                Change date
-              </Button>
-              <Button size="sm" variant="ghost" icon={X} onClick={() => dismiss(item)} disabled={pending}>
-                Not a real to-do
-              </Button>
-            </div>
-          )}
+          <h2 className="eyebrow leading-5 text-warn-ink">Please check</h2>
+          {children}
         </div>
       </div>
     </div>
@@ -444,13 +519,22 @@ function PleaseCheckItem({ item }: { item: Item }) {
 }
 
 function GeneralWarnings({ warnings }: { warnings: string[] }) {
+  const lines = warnings.map(withoutPleaseCheck);
+  const text = "text-[14px] leading-relaxed text-ink/85 wrap-break-word";
   return (
-    <Callout tone="warn" title="Please check">
-      <ul className="space-y-1">
-        {warnings.map((w) => (
-          <li key={w}>{w}</li>
-        ))}
-      </ul>
-    </Callout>
+    <CheckCard>
+      {lines.length === 1 ? (
+        <p className={cn("mt-1", text)}>{lines[0]}</p>
+      ) : (
+        <ul className="mt-1.5 space-y-1.5">
+          {lines.map((w) => (
+            <li key={w} className={cn("flex gap-2", text)}>
+              <span aria-hidden className="mt-[9px] size-1.5 shrink-0 rounded-full bg-warn" />
+              <span className="min-w-0">{w}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </CheckCard>
   );
 }
