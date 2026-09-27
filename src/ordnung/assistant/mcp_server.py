@@ -807,19 +807,31 @@ def _explain_item(item: Item) -> ToolAnswer:
     return ToolAnswer(record, letters.by_id)
 
 
+FLAT_LET_FIXED_TERM = (
+    "For a flat let only where § 575 Abs. 1 BGB (a legal reason given in writing) or § 549 BGB allows a "
+    "fixed term; otherwise the lease counts as open-ended — see if_not_cancelled."
+)
+"""What the ``fixed_term`` rule of the catalog means for a flat let (its title says contracts with a fixed
+term end by themselves, which § 575 Abs. 1 S. 2 BGB limits for residential leases)."""
+
+
 def _explain_contract(contract: Contract, comp: ContractComputation, *, today: date) -> ToolAnswer:
-    from ordnung.views import fixed_term_summary
+    """The engine's computation and rules; for a fixed-term job or flat let also ``if_not_cancelled``,
+    which its summary points to (ending it earlier, what makes it open-ended)."""
+    from ordnung.views import continuation, fixed_term_summary
 
     letters = LetterText()
     computation = comp.model_dump()
+    record: dict[str, Any] = {**_contract_ref(contract, letters), "computation": computation}
+    rules = _rules(comp.rule_ids, comp.steps)
     if summary := fixed_term_summary(comp, today=today):
         computation["summary"] = summary  # never "no cancellation needed" for a job or flat let
-    record: dict[str, Any] = {
-        **_contract_ref(contract, letters),
-        "computation": computation,
-        "rules": _rules(comp.rule_ids, comp.steps),
-        "disclaimer": _disclaimer(),
-    }
+        record["if_not_cancelled"] = continuation(contract, comp, today=today)
+        if comp.regime == "rent573c":  # the catalog's "Fixed-term contracts end by themselves"
+            for rule in rules:
+                if rule["id"] == "fixed_term":
+                    rule["note"] = FLAT_LET_FIXED_TERM
+    record |= {"rules": rules, "disclaimer": _disclaimer()}
     _terms_into(record, contract, letters)
     return ToolAnswer(record, letters.by_id)
 

@@ -675,28 +675,38 @@ _FIXED_TERM_CAVEATS = {
 nothing (§ 15 Abs. 1 and 6 TzBfG, § 545 BGB)."""
 _FIXED_TERM_NOTICE = {
     "employment622": (
-        " A fixed-term job ends then by itself, with no notice (§ 15 Abs. 1 TzBfG). Ending it earlier takes "
-        "notice, which is possible only if the contract or a collective agreement allows it (§ 15 Abs. 4 "
-        "TzBfG) — many do, for example after the probation period."
+        " A fixed-term job ends then by itself, with no notice (§ 15 Abs. 1 TzBfG). Ending it earlier by "
+        "ordinary notice needs a notice clause in the contract or a collective agreement (§ 15 Abs. 4 TzBfG) "
+        "— many have one, for example after the probation period; without one it can still end earlier by "
+        "a written agreement with the employer (§ 623 BGB), or for a serious reason by notice without a "
+        "notice period (§ 626 BGB). If you may claim unemployment benefit afterwards, register as "
+        "job-seeking with the Agentur für Arbeit at least 3 months before it ends, or within 3 days of "
+        "learning the end date if that is later (§ 38 Abs. 1 SGB III); registering late can block the "
+        "benefit for a week (§ 159 Abs. 6 SGB III)."
     ),
     "rent573c": (
         " A flat let for a fixed term usually counts as open-ended unless the landlord gave one of the legal "
-        "reasons for the fixed term in writing when it was signed (§ 575 Abs. 1 BGB); then leaving needs "
-        "notice like any open-ended lease (§ 573c BGB). That rule does not apply to a room in a student or "
-        "youth hall of residence, a flat let only for temporary use, or a furnished room in the landlord's "
-        "own flat (§ 549 Abs. 2 and 3 BGB): there a fixed term ends by itself. So check the contract before "
-        "relying on the end date."
+        "reasons for the fixed term in writing when it was signed (§ 575 Abs. 1 BGB). If it counts as "
+        "open-ended, leaving needs notice like any open-ended lease (§ 573c BGB). Exceptions include a "
+        "room in a student or youth hall of residence, a flat let only for temporary use, a furnished room "
+        "in the landlord's own flat that is not let for lasting use with a family or partner, and housing a "
+        "public body or welfare organisation rents to pass on to people in urgent need (§ 549 Abs. 2 and 3 "
+        "BGB): there a fixed term ends by itself. So check the contract before relying on the end date."
     ),
 }
 """What the end date of a fixed-term job or flat let means. A job ends by itself on its date (§ 15 Abs. 1
-TzBfG); only ending it *earlier* needs an agreed notice clause (§ 15 Abs. 4 TzBfG). A flat let's fixed
-term usually needs a written legal reason, or the lease counts as open-ended and leaving needs notice
-(§ 575 Abs. 1 S. 2 BGB) — except in a student or youth hall, for temporary use or for a furnished room
-in the landlord's flat, where § 575 does not apply (§ 549 Abs. 2 and 3 BGB). The rules engine reads none
-of these clauses (it applies ``fixed_term`` to every such contract with an end date), so for a flat let
-Ask's record says notice may still be needed. The contract page still prints the engine's "ends by itself
-— no cancellation needed" (``rules/explain.py``) for a flat let: a release blocker for the rules
-workstream (docs/SPEC.md §10)."""
+TzBfG); ending it *earlier* by ordinary notice needs an agreed notice clause (§ 15 Abs. 4 TzBfG) — a
+written termination agreement (§ 623 BGB) or notice for cause (§ 626 BGB) end it early without one —, and
+whoever may claim unemployment benefit must register as job-seeking 3 months before the end (§ 38 Abs. 1
+SGB III; a late registration costs a one-week block, § 159 Abs. 1 S. 2 Nr. 9 and Abs. 6 SGB III). A flat
+let's fixed term usually needs a written legal reason, or the lease counts as open-ended and leaving
+needs notice (§ 575 Abs. 1 S. 2 BGB) — except where § 575 does not apply (§ 549 Abs. 2 and 3 BGB: student
+or youth halls, temporary use, a furnished room in the landlord's flat not let for lasting use with a
+family or partner, housing a public body or welfare organisation lets on to people in urgent need). The
+rules engine reads none of these clauses (it applies ``fixed_term`` to every such contract with an end
+date), so for a flat let Ask's record says notice may still be needed. The contract page still prints
+the engine's "ends by itself — no cancellation needed" (``rules/explain.py``) for a flat let: a release
+blocker for the rules workstream (docs/SPEC.md §10)."""
 
 
 def continuation(contract: Contract, comp: ContractComputation, *, today: date | None = None) -> str:
@@ -732,7 +742,8 @@ def fixed_term_summary(comp: ContractComputation, *, today: date) -> str | None:
     if comp.regime == "employment622":
         return (
             f"This job's fixed term ends on {fmt_date(end)}: it ends then by itself, with no notice (§ 15 Abs. 1 "
-            "TzBfG) — see if_not_cancelled for ending it earlier and for what makes it open-ended."
+            "TzBfG) — see if_not_cancelled for ending it earlier, for registering as job-seeking and for what "
+            "makes it open-ended."
         )
     return (
         f"This contract's fixed term ends on {fmt_date(end)}; it may still need notice to end then or "

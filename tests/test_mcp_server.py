@@ -19,6 +19,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from helpers_secretary import TODAY, seed_ledger
 from ordnung.assistant import mcp_server
+from ordnung.assistant.ask import known_laws
 from ordnung.assistant.channels import (
     LETTER_CLOSE,
     LETTER_OPEN,
@@ -771,3 +772,39 @@ def test_a_fixed_term_job_ends_by_itself_on_its_date(tools: LedgerTools, ids: di
     assert "ends then by itself" in job["dates"]["summary"]
     explained = tools.explain_date(job["id"]).record["computation"]["summary"]
     assert "ends then by itself" in explained and "may still need notice" not in explained
+
+
+def test_a_fixed_term_job_can_still_end_early_and_the_record_says_how(
+    tools: LedgerTools, ids: dict[str, str]
+) -> None:
+    """Final review 2: the record said ending the job earlier "is possible only if the contract or a
+    collective agreement allows it" — § 15 Abs. 4 TzBfG limits only *ordinary* notice; a written
+    termination agreement (§ 623 BGB) or notice for cause (§ 626 BGB) end it early too, and the model
+    repeated the record as "you are locked in". It also left out the duty to register as job-seeking 3
+    months before the end (§ 38 Abs. 1 SGB III). And explain_date's summary pointed to if_not_cancelled,
+    which explain_date did not give."""
+    rows = tools.list_contracts().record["contracts"]
+    job = next(row for row in rows if row["category"] == "employment")
+    text = job["if_not_cancelled"]
+    assert "possible only if" not in text and "by ordinary notice" in text
+    assert "(§ 623 BGB)" in text and "(§ 626 BGB)" in text and "(§ 38 Abs. 1 SGB III)" in text
+    explained = tools.explain_date(job["id"]).record
+    assert explained["if_not_cancelled"] == text  # the summary's "see if_not_cancelled" is answered
+    assert all("note" not in rule for rule in explained["rules"])  # only a flat let's rule gets one
+    # every law the record names is one the answer check knows from the record (never a removed sentence)
+    evidence = TurnEvidence.from_results(
+        [render_result(tools.explain_date(job["id"]))], today=TODAY, catalog=known_laws()
+    )
+    for number, law in (("623", "BGB"), ("626", "BGB"), ("38", "SGB III"), ("159", "SGB III")):
+        assert evidence.knows_paragraph(number, law), (number, law)
+
+
+def test_a_flat_lets_fixed_term_rule_says_what_it_needs(store: Store, ids: dict[str, str]) -> None:
+    """Final review 2: explain_date gave a fixed-term flat let the catalog's rule "Fixed-term contracts end
+    by themselves" next to a summary saying it may still need notice (§ 575 Abs. 1 S. 2 BGB)."""
+    store.update_contract(ids["job"], category="rent", end_date="2027-03-31")
+    record = LedgerTools(store, today=TODAY).explain_date(ids["job"]).record
+    assert record["computation"]["regime"] == "rent573c"
+    (rule,) = [rule for rule in record["rules"] if rule["id"] == "fixed_term"]
+    assert rule["note"] == mcp_server.FLAT_LET_FIXED_TERM
+    assert "§ 575 Abs. 1 BGB" in record["if_not_cancelled"]

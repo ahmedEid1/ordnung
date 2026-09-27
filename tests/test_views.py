@@ -323,15 +323,24 @@ def test_a_fixed_term_contract_ends_by_itself(category: str, notice: str, caveat
     if category == "employment":
         assert text.startswith(
             "Its fixed term ends on Wed 31 Mar 2027. A fixed-term job ends then by itself, with no notice "
-            "(§ 15 Abs. 1 TzBfG). Ending it earlier takes notice"
+            "(§ 15 Abs. 1 TzBfG). Ending it earlier by ordinary notice needs a notice clause"
         )
         assert notice in text and text.endswith(caveat) and "may still need notice" not in text
+        # final review 2: never "possible only if …" — an agreement or notice for cause end it early too
+        assert "possible only if" not in text
+        assert "(§ 623 BGB)" in text and "(§ 626 BGB)" in text
+        assert "register as job-seeking" in text and "(§ 38 Abs. 1 SGB III)" in text
+        assert "job-seeking" in (summary or "")
         assert summary is not None and "ends then by itself" in summary and "(§ 15 Abs. 1 TzBfG)" in summary
         assert "may still need notice" not in summary
     elif notice:
         assert text.startswith("Its fixed term ends on Wed 31 Mar 2027.")
         assert notice in text and "check the contract" in text and text.endswith(caveat)
         assert "student or youth hall of residence" in text and "(§ 549 Abs. 2 and 3 BGB)" in text
+        # final review 2: "then" read as the case the landlord gave a reason; the exceptions are examples
+        assert "If it counts as open-ended, leaving needs notice" in text and "; then leaving" not in text
+        assert "Exceptions include" in text and "people in urgent need" in text
+        assert "not let for lasting use with a family or partner" in text
         assert "no cancellation" not in text
         assert summary is not None and "may still need notice" in summary
     else:
