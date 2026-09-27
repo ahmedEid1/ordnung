@@ -23,7 +23,8 @@ Written policy (ADR 0007) — nothing here guesses:
 * **Back up, then replace atomically.** Before an existing file changes, a copy is written next to
   it (``<file>.bak-<YYYYmmdd-HHMMSS>``, never overwriting an earlier backup). The new content goes to
   a temporary file in the same folder that then replaces the original, with the original's
-  permissions (``0600`` for a new file). A symlinked config is written through to its target.
+  permissions (``0600`` for a new file). A symlinked config is written through to its target; a
+  ``.mcp.json`` that links to a file of another name is still a project's (the full server stays out).
 * **The command is absolute.** Apps start servers with a minimal ``PATH``, so the entry runs this
   Python (``sys.executable -m ordnung``) and, for the full server, names the data folder. That path
   shows this computer's folders (the user name too), so wherever an entry goes into a project's
@@ -284,7 +285,7 @@ def write_config(plan: Plan, *, now: datetime | None = None, remove_ledger: bool
     path = plan.path
     if path.is_symlink():
         path = path.resolve()
-    if not plan.rules_only and path.name == CODE_PROJECT_CONFIG_NAME:
+    if not plan.rules_only and is_project_file(plan, path):
         raise InstallError(
             f"Nothing was changed: {path} is a project's shared server list, usually committed with the "
             "project, so Ordnung doesn't put your ledger there. Run the printed `claude mcp add --scope "
@@ -511,9 +512,16 @@ def written_message(plan: Plan, result: WriteResult) -> str:
         line += (
             f" It still has “{result.other}”, which reads your ledger: add --remove-ledger to take it out."
         )
-    if result.path.name == CODE_PROJECT_CONFIG_NAME:
+    if is_project_file(plan, result.path):
         line += f" {project_file_note(plan)}"
     return line
+
+
+def is_project_file(plan: Plan, path: Path) -> bool:
+    """Whether ``plan`` writes a project's shared ``.mcp.json``: by the name it is reached by, or the
+    name of the file it links to (``path``, resolved). A project's ``.mcp.json`` linked to a shared file
+    with another name (a monorepo's, say) is still one."""
+    return CODE_PROJECT_CONFIG_NAME in (plan.path.name, path.name)
 
 
 def project_file_note(plan: Plan) -> str:

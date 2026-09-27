@@ -406,6 +406,39 @@ def test_the_ledger_is_never_written_into_a_projects_shared_mcp_json(tmp_path: P
     assert list(project.iterdir()) == [project / ".mcp.json"]  # no backup either
 
 
+def test_a_symlinked_mcp_json_is_still_a_projects_shared_file(tmp_path: Path) -> None:
+    """Reviewer repro: a monorepo's project .mcp.json links to ../shared/mcp-servers.json. The name
+    checked was the target's, so the full server — with the data folder's path — went into the shared
+    file. Either name makes it a project's file: the ledger stays out, the rules tools go in with the note."""
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    target = shared / "mcp-servers.json"
+    target.write_text(json.dumps(EXISTING), encoding="utf-8")
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / ".mcp.json").symlink_to(Path("..") / "shared" / "mcp-servers.json")
+    full = plan_install("claude-code", rules_only=False, data_dir=tmp_path / "data", cwd=project)
+    with pytest.raises(InstallError, match="usually committed with the project"):
+        write_config(full, now=NOW)
+    assert json.loads(target.read_text(encoding="utf-8")) == EXISTING
+    assert list(shared.iterdir()) == [target]  # no backup either
+    rules = plan_install("claude-code", rules_only=True, cwd=project)
+    result = write_config(rules, now=NOW)
+    assert result.path == target and (project / ".mcp.json").is_symlink()
+    assert RULES_SERVER_NAME in json.loads(target.read_text(encoding="utf-8"))["mcpServers"]
+    assert "if you commit .mcp.json" in written_message(rules, result)
+    # and a config of another name linked to a project's .mcp.json is one too
+    second = tmp_path / "second"
+    second.mkdir()
+    (second / ".mcp.json").write_text("{}", encoding="utf-8")
+    elsewhere = tmp_path / "servers.json"
+    elsewhere.symlink_to(second / ".mcp.json")
+    other = plan_install("claude-code", rules_only=False, data_dir=tmp_path / "data", config=elsewhere)
+    with pytest.raises(InstallError, match="usually committed with the project"):
+        write_config(other, now=NOW)
+    assert (second / ".mcp.json").read_text(encoding="utf-8") == "{}"
+
+
 def test_the_rules_tools_do_not_hide_a_ledger_left_in_the_config(tmp_path: Path) -> None:
     """Re-running the default install to take back ledger access must not say "none of your data"
     while the full server stays in the file."""
