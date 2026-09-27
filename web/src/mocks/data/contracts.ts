@@ -23,7 +23,7 @@ function comp(c: Partial<ContractComputation> & Pick<ContractComputation, "regim
 export const CONTRACTS: Contract[] = [
   contract({
     id: "ctr_rent",
-    name: "Flat Musterweg 12",
+    name: "Flat Beispielweg 5",
     category: "rent",
     party_id: "pty_wohnbau",
     case_id: "cas_flat",
@@ -234,7 +234,7 @@ export const CONTRACTS: Contract[] = [
     evidence: [ev("doc_bank", Q.bank.fee)],
     computed: comp({
       regime: "as_written",
-      summary: "You can close a current account at any time. The bank wants to raise the fee to 6,90 € from 1 Dec — only with your consent.",
+      summary: "You can close a current account at any time. The bank wants to raise the fee to €6.90 from 1 Dec — only with your consent.",
       confidence: "medium",
     }),
   }),

@@ -36,7 +36,7 @@ import { renderLetter, svgDataUrl, PAGE_H, PAGE_W } from "./pages";
 import { icsDataUrl, itemsToIcs } from "./ics";
 import { BRIEF_TEXT, DEMO_CHECKS, RULES, USAGE } from "./data/system";
 import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
-import { CHECKS_OK, phoneGuidance } from "./data/drafts";
+import { draftChecks, phoneGuidance } from "./data/drafts";
 import { SAM, sha } from "./data/constants";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
 
@@ -266,7 +266,7 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     const dDate = doc?.doc_date ? format(parseISO(doc.doc_date), "dd.MM.yyyy") : "…";
     subject = `Einspruch gegen den Bescheid vom ${dDate}${ref ? ` – ${refLabel} ${ref}` : ""}`;
     bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit lege ich gegen den Bescheid vom ${dDate}${ref ? `, ${refLabel} ${ref},` : ""} Einspruch ein. Eine Begründung reiche ich nach.\n\n${body.instructions ? "Die Aufwendungen für meinen Laptop (1.049,00 EUR) nutze ich überwiegend beruflich; eine Bestätigung meines Arbeitgebers füge ich bei.\n\n" : ""}Mit freundlichen Grüßen\n\n${SAM.name}`;
-    bodyEn = `Dear Sir or Madam,\n\nI hereby file an objection (Einspruch) against the decision of ${doc?.doc_date ? format(parseISO(doc.doc_date), "d MMM yyyy") : "…"}${ref ? `, ${refLabel} ${ref}` : ""}. I will submit my reasons separately.\n\n${body.instructions ? "I use my laptop (1,049.00 EUR) mainly for work; I enclose a confirmation from my employer.\n\n" : ""}Kind regards\n\n${SAM.name}`;
+    bodyEn = `Dear Sir or Madam,\n\nI hereby file an objection (Einspruch) against the decision of ${doc?.doc_date ? format(parseISO(doc.doc_date), "d MMM yyyy") : "…"}${ref ? `, ${refLabel} ${ref}` : ""}. I will submit my reasons separately.\n\n${body.instructions ? "I use my laptop (€1,049.00) mainly for work; I enclose a confirmation from my employer.\n\n" : ""}Kind regards\n\n${SAM.name}`;
   } else {
     subject = `Ihr Schreiben${doc?.doc_date ? ` vom ${format(parseISO(doc.doc_date), "dd.MM.yyyy")}` : ""}${ref ? ` – ${refLabel} ${ref}` : ""}`;
     bodyDe = `Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihr Schreiben. ${body.instructions ? "Ich habe dazu folgende Frage: …" : "Bitte teilen Sie mir mit, wie wir weiter verfahren."}\n\nMit freundlichen Grüßen\n\n${SAM.name}`;
@@ -289,8 +289,7 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
           ],
           tips: ["Keep a copy of what you sent."],
         };
-  const hasPlaceholder = bodyDe.includes("…");
-  return {
+  const draft: Draft = {
     id: newId("drf"),
     kind: body.kind,
     language: body.language ?? "de",
@@ -306,7 +305,7 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     body_translation: bodyEn,
     enclosures: body.kind === "objection" && body.instructions ? ["Bestätigung des Arbeitgebers"] : [],
     notes_for_user: body.kind === "objection" ? ["An objection is free. It only needs to arrive in time — reasons can follow later."] : [],
-    checks: CHECKS_OK.map((c) => (c.id === "no_placeholders" ? { ...c, ok: !hasPlaceholder, detail: hasPlaceholder ? "Replace the … before sending." : null } : c)),
+    checks: [],
     send_guidance: guidance,
     sent_channel: null,
     status: "draft",
@@ -314,6 +313,22 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     created_at: now,
     updated_at: now,
   };
+  return { ...draft, checks: checksFor(db, draft) };
+}
+
+/** The API's checks for a draft as it stands now (they run again whenever it is saved). */
+function checksFor(db: MockDb, d: Draft): Draft["checks"] {
+  const contract = d.contract_id ? db.state.contracts.find((c) => c.id === d.contract_id) : undefined;
+  const doc = d.doc_id ? db.document(d.doc_id) : null;
+  const party = db.party(d.party_id);
+  const channel = d.send_guidance?.channels.find((c) => c.channel === d.sent_channel);
+  return draftChecks({
+    ...d,
+    references: [contract?.customer_number, ...(doc?.references ?? []).map((r) => r.value), ...(party?.identifiers ?? []).map((r) => r.value)],
+    letterDate: doc?.doc_date ? format(parseISO(doc.doc_date), "dd.MM.yyyy") : null,
+    formNote: d.send_guidance?.form_note,
+    sentVia: d.status === "sent" ? (channel?.label ?? null) : null,
+  });
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -360,14 +375,15 @@ function askStream(ctx: Ctx): Response {
       try {
         controller.enqueue(enc.encode(": connected\n\n"));
         await sleep(250 * speed, signal);
-        const text = rec?.text ?? FALLBACK_ANSWER;
+        // the online demo's Ask page explains a question without a recording in a note of its own
+        const text = rec?.text ?? (ctx.opts.staticDemo ? "" : FALLBACK_ANSWER);
         for (const t of rec?.tools ?? []) {
           send({ type: "tool_use", name: t.name, input: t.input });
           await sleep(550 * speed, signal);
           send({ type: "tool_result", name: t.name, text: t.result });
           await sleep(200 * speed, signal);
         }
-        const chunks = text.match(/\S+\s*/g) ?? [text];
+        const chunks = text.match(/\S+\s*/g) ?? [];
         for (let i = 0; i < chunks.length; i += 3) {
           if (signal?.aborted) break;
           send({ type: "text", text: chunks.slice(i, i + 3).join("") });
@@ -783,6 +799,7 @@ const routes: [string, string, Handler][] = [
     ({ db, params, body }) => {
       const d = db.state.drafts.find((x) => x.id === params.id) ?? notFound("Unknown letter.");
       Object.assign(d, pick<Draft>(body, ["subject", "body", "body_translation", "sender_block", "recipient_block", "place_date", "enclosures", "status"]), { updated_at: nowTs() });
+      d.checks = checksFor(db, d);
       return d;
     },
   ],
@@ -818,6 +835,7 @@ const routes: [string, string, Handler][] = [
       d.sent_channel = b.channel ?? "letter";
       d.sent_at = `${date}T12:00:00Z`;
       d.updated_at = nowTs();
+      d.checks = checksFor(db, d);
       const party = db.party(d.party_id);
       db.state.items.push(
         makeItem({

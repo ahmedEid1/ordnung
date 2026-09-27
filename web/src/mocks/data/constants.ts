@@ -11,7 +11,7 @@ export function ts(date: string, time = "09:00"): string {
 export const SAM = {
   name: "Sam Rivera",
   first: "Sam",
-  street: "Musterweg 12",
+  street: "Beispielweg 5",
   city: "12345 Musterstadt",
   email: "sam.rivera@example.org",
   phone: "+49 151 2345 6789",

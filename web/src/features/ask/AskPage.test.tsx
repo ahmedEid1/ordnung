@@ -94,4 +94,20 @@ describe("Ask page", () => {
     await user.type(screen.getByLabelText("Your question"), "Who won the football?{Enter}");
     expect(await screen.findByText(/install Ordnung to ask anything about your own letters/, {}, { timeout: 3000 })).toBeInTheDocument();
   });
+
+  it("the online demo explains an unknown question once, in its note — no repeated answer to copy", async () => {
+    vi.stubEnv("VITE_STATIC_DEMO", "1");
+    try {
+      useMockApi({ staticDemo: true });
+      const user = userEvent.setup();
+      renderWithProviders(<AskPage />, { route: "/ask" });
+      await user.type(screen.getByLabelText("Your question"), "Who won the football?{Enter}");
+      await screen.findByText("Answer ready.", {}, { timeout: 3000 });
+      expect(screen.getAllByText(/install Ordnung to ask anything about your own letters/)).toHaveLength(1);
+      expect(screen.queryByText(/I can only replay a few questions/)).toBeNull();
+      expect(screen.queryByRole("button", { name: /Copy answer/ })).toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });

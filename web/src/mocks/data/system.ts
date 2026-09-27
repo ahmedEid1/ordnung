@@ -160,4 +160,4 @@ export const USAGE: UsageStats = {
 };
 
 export const BRIEF_TEXT =
-  "Good morning, Sam. Two small payments this week: TechMarkt's reminder (94,99 €) is due Wednesday and the library wants 4,50 € by Friday. Please tell me when the parking fine arrived — until then I count from the letter date, so pay by tomorrow to be safe. Next week: dentist on Thursday, and your phone-contract decision (post by Thu 8 Oct).";
+  "Good morning, Sam. Two small payments this week: TechMarkt's reminder (€94.99) is due Wednesday and the library wants €4.50 by Friday. Please tell me when the parking fine arrived — until then I count from the letter date, so pay by tomorrow to be safe. Next week: dentist on Thursday, and your phone-contract decision (post by Thu 8 Oct).";

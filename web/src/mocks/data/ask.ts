@@ -31,14 +31,14 @@ export const RECORDED: RecordedAnswer[] = [
       { name: "list_items", input: { kind: "payment", status: "open", to: "2026-10-15" }, result: "Found 8 to-dos & dates" },
     ],
     text:
-      "Up to 15 October you have **6 payments**, about **1.046,79 €** in total:\n\n" +
-      "- **Parking fine, 30,00 €** — by **Tue 29 Sep** to be safe [item:itm_parking]\n" +
-      "- **TechMarkt reminder, 94,99 €** — by **Wed 30 Sep** [item:itm_tm_dunning]\n" +
-      "- **Library fee, 4,50 €** — by **Fri 2 Oct** [item:itm_library_fee]\n" +
-      "- **Rent for October, 640,00 €** — by **Mon 5 Oct**, the third working day [item:itm_rent_oct]\n" +
-      "- **Utility back payment, 184,30 €** — by **Fri 9 Oct** [doc:doc_nebenkosten]\n" +
-      "- **Residence permit fee, 93,00 €** — paid at your appointment on **Wed 14 Oct** [item:itm_abh_fee]\n\n" +
-      "On 15 October itself, your electricity instalment (48,00 €) and your health insurance contribution (142,86 €) are due as well [item:itm_power_abschlag][item:itm_bkk].",
+      "Up to 15 October you have **6 payments**, about **€1,046.79** in total:\n\n" +
+      "- **Parking fine, €30.00** — by **Tue 29 Sep** to be safe [item:itm_parking]\n" +
+      "- **TechMarkt reminder, €94.99** — by **Wed 30 Sep** [item:itm_tm_dunning]\n" +
+      "- **Library fee, €4.50** — by **Fri 2 Oct** [item:itm_library_fee]\n" +
+      "- **Rent for October, €640.00** — by **Mon 5 Oct**, the third working day [item:itm_rent_oct]\n" +
+      "- **Utility back payment, €184.30** — by **Fri 9 Oct** [doc:doc_nebenkosten]\n" +
+      "- **Residence permit fee, €93.00** — paid at your appointment on **Wed 14 Oct** [item:itm_abh_fee]\n\n" +
+      "On 15 October itself, your electricity instalment (€48.00) and your health insurance contribution (€142.86) are due as well [item:itm_power_abschlag][item:itm_bkk].",
     citations: [
       { type: "item", id: "itm_parking" },
       { type: "item", id: "itm_tm_dunning" },
@@ -60,8 +60,8 @@ export const RECORDED: RecordedAnswer[] = [
     ],
     text:
       "Finanzamt Musterstadt [party:pty_finanzamt] sent your **income tax assessment for 2025** (Bescheid of 15 Sep 2026) [doc:doc_tax]:\n\n" +
-      "- You get **324,00 €** back.\n" +
-      "- They did **not accept your laptop (1.049,00 €)** as a work expense, because proof of work use was missing.\n\n" +
+      "- You get **€324.00** back.\n" +
+      "- They did **not accept your laptop (€1,049.00)** as a work expense, because proof of work use was missing.\n\n" +
       "If you disagree, you can file an **Einspruch** (objection). It is free, a short letter is enough and the reasons can follow later. It must reach the Finanzamt by **Wed 21 Oct** [item:itm_tax_objection].\n\n" +
       "The letter was read from a phone photo, so please compare the date with the paper letter.",
     citations: [
@@ -79,8 +79,8 @@ export const RECORDED: RecordedAnswer[] = [
     ],
     text:
       "October brings **six dates**, the first ones right at the start:\n\n" +
-      "- **Fri 2 Oct** — return the library books and pay **4,50 €** [item:itm_library_fee]\n" +
-      "- **Mon 5 Oct** — rent for October, **640,00 €** [item:itm_rent_oct]\n" +
+      "- **Fri 2 Oct** — return the library books and pay **€4.50** [item:itm_library_fee]\n" +
+      "- **Mon 5 Oct** — rent for October, **€640.00** [item:itm_rent_oct]\n" +
       "- **Thu 8 Oct, 09:15** — dentist, check-up and cleaning [item:itm_dentist]\n" +
       "- **Thu 8 Oct** — post your phone-contract cancellation by then if you want to switch; it must arrive by **Wed 14 Oct** [item:itm_phone_cancel]\n" +
       "- **Wed 14 Oct, 10:30** — residence permit appointment at the Ausländerbehörde [item:itm_abh_appt]\n" +
@@ -103,9 +103,9 @@ export const RECORDED: RecordedAnswer[] = [
     ],
     text:
       "Here's your week, most urgent first:\n\n" +
-      "1. **Parking fine, 30 €** — pay by **Tue 29 Sep** to be safe [item:itm_parking]. I don't know when the letter arrived, so I counted from the letter date; if it came later you have a bit more time [doc:doc_parking].\n" +
-      "2. **TechMarkt reminder, 94,99 €** — due **Wed 30 Sep**, otherwise it may go to a debt collector [doc:doc_tm_dunning].\n" +
-      "3. **Library** — return the two books and pay **4,50 €** by **Fri 2 Oct** [item:itm_library_fee].\n\n" +
+      "1. **Parking fine, €30** — pay by **Tue 29 Sep** to be safe [item:itm_parking]. I don't know when the letter arrived, so I counted from the letter date; if it came later you have a bit more time [doc:doc_parking].\n" +
+      "2. **TechMarkt reminder, €94.99** — due **Wed 30 Sep**, otherwise it may go to a debt collector [doc:doc_tm_dunning].\n" +
+      "3. **Library** — return the two books and pay **€4.50** by **Fri 2 Oct** [item:itm_library_fee].\n\n" +
       "Nothing else is due before Sunday. Next week brings rent (Mon 5 Oct), the dentist (Thu 8 Oct, 09:15) and your phone-contract decision.",
     citations: [
       { type: "item", id: "itm_parking" },
@@ -119,7 +119,7 @@ export const RECORDED: RecordedAnswer[] = [
     match: [["phone"], ["funknetz"], ["handy"], ["mobile"]],
     tools: [
       { name: "search", input: { query: "FunkNetz Kündigung" }, result: "1 letter: Phone contract — FunkNetz Allnet L" },
-      { name: "list_contracts", input: { category: "mobile" }, result: "1 contract: FunkNetz Allnet L (34,99 €/month)" },
+      { name: "list_contracts", input: { category: "mobile" }, result: "1 contract: FunkNetz Allnet L (€34.99/month)" },
       { name: "explain_date", input: { id: "itm_phone_cancel" }, result: "Due Wed 14 Oct 2026, send by Thu 8 Oct (§ 56 TKG)" },
     ],
     text:
@@ -136,16 +136,16 @@ export const RECORDED: RecordedAnswer[] = [
     question: "How much do I pay every month?",
     match: [["month"], ["fixed"], ["costs"], ["pay", "every"]],
     tools: [
-      { name: "money_summary", input: {}, result: "Fixed costs 987,00 €/month across 9 contracts" },
+      { name: "money_summary", input: {}, result: "Fixed costs €987.00/month across 9 contracts" },
       { name: "list_contracts", input: { status: "active" }, result: "10 active contracts" },
     ],
     text:
-      "Your fixed costs are about **987 € a month** [contract:ctr_rent]:\n\n" +
-      "- Rent (incl. utilities): **640,00 €**\n" +
-      "- Health insurance: **142,86 €** from October [doc:doc_bkk]\n" +
-      "- Deutschlandticket: **63,00 €** [contract:ctr_dticket]\n" +
-      "- Electricity: **48,00 €** (55 € from November if you stay)\n" +
-      "- Phone: **34,99 €** · Gym: **29,90 €** · Broadcasting fee: **18,36 €** · Liability insurance: **4,99 €** · Bank account: **4,90 €**\n\n" +
+      "Your fixed costs are about **€987 a month** [contract:ctr_rent]:\n\n" +
+      "- Rent (incl. utilities): **€640.00**\n" +
+      "- Health insurance: **€142.86** from October [doc:doc_bkk]\n" +
+      "- Deutschlandticket: **€63.00** [contract:ctr_dticket]\n" +
+      "- Electricity: **€48.00** (€55 from November if you stay)\n" +
+      "- Phone: **€34.99** · Gym: **€29.90** · Broadcasting fee: **€18.36** · Liability insurance: **€4.99** · Bank account: **€4.90**\n\n" +
       "Tip: your semester fee already includes a Deutschlandsemesterticket — you may be paying for public transport twice [doc:doc_uni].",
     citations: [
       { type: "contract", id: "ctr_rent" },
@@ -164,7 +164,7 @@ export const RECORDED: RecordedAnswer[] = [
     text:
       "Your appointment is **Wed 14 Oct, 10:30**, Rathausplatz 1, room 2.14 [item:itm_abh_appt]. The letter asks you to bring [doc:doc_abh]:\n\n" +
       "- your valid **passport**\n- a current **biometric photo**\n- your **enrolment certificate** (Immatrikulationsbescheinigung)\n- proof of **health insurance**\n- proof that you can **support yourself** (e.g. blocked account or work contract)\n\n" +
-      "The fee is **93 €**, paid at the appointment. One more thing: your passport expires on 10 Feb 2027, so the office may only extend your permit until then [item:itm_passport_expiry].",
+      "The fee is **€93**, paid at the appointment. One more thing: your passport expires on 10 Feb 2027, so the office may only extend your permit until then [item:itm_passport_expiry].",
     citations: [
       { type: "item", id: "itm_abh_appt" },
       { type: "document", id: "doc_abh" },
@@ -173,5 +173,10 @@ export const RECORDED: RecordedAnswer[] = [
   },
 ];
 
+/**
+ * The answer to a question without a recording in mock mode (`?mock=1`). The zero-install demo
+ * answers with no text at all: the Ask page explains it in a note under the question ("This online
+ * demo replays recorded answers"), which the text would only repeat.
+ */
 export const FALLBACK_ANSWER =
   "The demo uses recorded answers, so I can only replay a few questions here. Try one of the suggestions — or install Ordnung to ask anything about your own letters.";
