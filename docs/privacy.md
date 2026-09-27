@@ -51,10 +51,18 @@ run locally. On screen every number of yours is **hidden until you choose Show**
 characters stay visible), so someone looking over your shoulder doesn't read it; *Copy* works without
 showing it.
 
-The numbers live in your ledger like the rest of each letter: deleting a letter deletes its numbers.
-They reach Claude only when you use *Ask* and it looks them up (the `get_my_numbers` tool, like every
-other ledger tool — a letter you marked *Keep private (no AI)* gives it nothing), or when you give
-another Claude client your ledger with `ordnung mcp install --with-ledger` (see below).
+The numbers live in your ledger with the letters that show them. *My numbers* lists a number only
+while a letter in your ledger shows it: delete that letter and the number leaves the page (a letter in
+the trash keeps its numbers until you delete it for good). One copy outlives the letter: when a letter
+is read, Ordnung notes the sender's customer, contract and membership numbers — and some document
+numbers, such as a passport number on an authority's letter — on that organisation's record, so later
+letters are matched to it. That copy stays after the letter is deleted, *Ask* can read it (the
+`get_party` tool), and only *Settings → Delete everything* removes it.
+
+The numbers reach Claude only when you use *Ask* and it looks them up (the `get_my_numbers` tool, like
+every other ledger tool — it can hand over just one organisation's numbers or one part of the page, and
+a letter you marked *Keep private (no AI)* gives it nothing), or when you give another Claude client
+your ledger with `ordnung mcp install --with-ledger` (see below).
 
 The weekly session (*This week*) stores only the moments you finished it or said "Not now".
 

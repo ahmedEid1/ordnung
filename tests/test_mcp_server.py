@@ -4,6 +4,7 @@ and over a real stdio handshake) and the read-only database."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import subprocess
@@ -967,3 +968,137 @@ def test_asks_check_keeps_a_number_and_supports_the_expiry(
         f"Your passport X1234567 is valid until 10 Feb 2027 [item:{passport}].",
     ):
         assert check_answer(text, evidence, citable=evidence.seen_ids).text == text
+
+
+def test_get_my_numbers_hands_over_only_what_was_asked(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """ "What's my FunkNetz customer number?" needs one call sheet — never the Steuer-ID or the passport."""
+    _numbers_ledger(store, ids)
+    one = tools.get_my_numbers(organisation="FunkNetz")
+    rendered = render_result(one)
+    assert "about_you" not in one.record and "documents" not in one.record
+    assert [sheet["party_id"] for sheet in one.record["organisations"]] == [ids["funknetz"]]
+    assert "FN-123456" in rendered
+    for private in ("86095742719", "65 140300 R 004", "X1234567"):
+        assert private not in rendered, private
+    by_id = tools.get_my_numbers(organisation=ids["funknetz"]).record
+    assert [sheet["party_id"] for sheet in by_id["organisations"]] == [ids["funknetz"]]
+    # a section: the person's own numbers and documents only
+    own = tools.get_my_numbers(section="about_you")
+    assert set(own.record) == {"today", "about_you", "documents", "numbers", "note"}
+    assert "FN-123456" not in render_result(own)
+    cases = tools.get_my_numbers(section="open_cases").record
+    assert set(cases) == {"today", "open_cases", "numbers", "note"}
+    # nothing matches, or the call makes no sense: said, not guessed
+    assert tools.get_my_numbers(organisation="Nobody GmbH").record["found"] is False
+    with pytest.raises(ToolInputError):
+        tools.get_my_numbers(section="everything")
+    with pytest.raises(ToolInputError):
+        tools.get_my_numbers(section="about_you", organisation="FunkNetz")
+
+
+def _clubs(store: Store, count: int, numbers: int) -> None:
+    """``count`` organisations, each with a letter (one a day in August) showing ``numbers`` of yours."""
+    for n in range(count):
+        party = store.add_party(name=f"Verein {n:02d}", kind="other").id
+        doc = store.add_document(
+            sha256=hashlib.sha256(f"verein-{n}-{numbers}".encode()).hexdigest(),
+            filename=f"v{n}.pdf",
+            mime="application/pdf",
+            file_path=f"files/v{n}-{numbers}.pdf",
+        ).id
+        store.update_document(
+            doc,
+            status="processed",
+            party_id=party,
+            doc_date=f"2026-08-{n + 1:02d}",
+            references=[
+                Identifier(label=f"Mitgliedsnummer {k}", value=f"M-{n:02d}-{k:02d}") for k in range(numbers)
+            ],
+        )
+
+
+def test_get_my_numbers_shows_at_most_so_many_call_sheets(tools: LedgerTools, store: Store) -> None:
+    _clubs(store, mcp_server.MAX_NUMBER_SHEETS + 5, 1)
+    answer = tools.get_my_numbers()
+    record = answer.record
+    assert len(record["organisations"]) == mcp_server.MAX_NUMBER_SHEETS
+    assert record["truncated"] is True and record["left_out"] == {"organisations": 5}
+    assert record["left_out_note"].startswith("Some call sheets")
+    names = [answer.letters[sheet["party_id"]]["name"] for sheet in record["organisations"]]
+    assert names[0] == "Verein 24" and "Verein 00" not in names  # the latest letters first
+
+
+def test_get_my_numbers_stays_within_its_budget_with_every_ref_resolvable(
+    tools: LedgerTools, store: Store
+) -> None:
+    """Many numbers: the tool leaves out whole call sheets itself and says how many, so the generic cut
+    of an oversized result (which could leave a ref pointing at a row it cut) never happens."""
+    _clubs(store, mcp_server.MAX_NUMBER_SHEETS + 5, mcp_server.MAX_SHEET_NUMBERS + 3)
+    answer = tools.get_my_numbers()
+    record = answer.record
+    shown = record["organisations"]
+    assert 0 < len(shown) < mcp_server.MAX_NUMBER_SHEETS
+    assert record["left_out"]["organisations"] == mcp_server.MAX_NUMBER_SHEETS + 5 - len(shown)
+    assert all(len(sheet["numbers"]) <= mcp_server.MAX_SHEET_NUMBERS for sheet in shown)
+    assert all(sheet["numbers_left_out"] == 3 for sheet in shown)
+    assert len(record["numbers"]) <= mcp_server.MAX_NUMBER_ROWS
+    refs = {row["ref"] for row in record["numbers"]}
+    assert {ref for sheet in shown for ref in (*sheet["numbers"], *sheet["their_numbers"])} <= refs
+    rendered = render_result(answer)
+    assert len(rendered) <= RESULT_BUDGET and "left_out_rows" not in rendered
+
+
+def test_get_my_numbers_flags_unconfirmed_dates_and_in_person_fees(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    _numbers_ledger(store, ids)
+    store.update_item(ids["passport_expiry"], grounding="model_read")
+    record = tools.get_my_numbers().record
+    (passport,) = [doc for doc in record["documents"] if doc["document"] == "passport"]
+    assert passport["needs_check"] is True
+    (case,) = record["open_cases"]
+    assert case["next_item"]["id"] == ids["parking_payment"] and case["next_item"]["needs_check"] is True
+    store.update_item(ids["parking_payment"], grounding="user")
+    (case,) = tools.get_my_numbers().record["open_cases"]
+    assert case["next_item"]["needs_check"] is None
+
+
+def test_get_my_numbers_gives_no_transfer_day_for_a_fee_paid_at_the_appointment(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    _numbers_ledger(store, ids)
+    abh = ids["abh"]
+    doc = store.add_document(
+        sha256=hashlib.sha256(b"abh-letter").hexdigest(),
+        filename="abh.pdf",
+        mime="application/pdf",
+        file_path="files/abh.pdf",
+    ).id
+    store.update_document(
+        doc,
+        status="processed",
+        kind="residence_permit",
+        party_id=abh,
+        doc_date="2026-09-16",
+        references=[Identifier(label="Aktenzeichen", value="32.2-AE-24-08815")],
+    )
+    fee = add_item(
+        store,
+        kind="payment",
+        title="Fee for the extension",
+        due_date="2026-10-02",
+        due_time="10:30",
+        send_by="2026-10-01",
+        amount=100.0,
+        doc_id=doc,
+    )
+    add_item(
+        store, kind="appointment", title="Appointment", due_date="2026-10-02", due_time="10:30", doc_id=doc
+    )
+    cases = [c for c in tools.get_my_numbers().record["open_cases"] if c["doc_id"] == doc]
+    (case,) = cases
+    assert case["next_item"]["kind"] == "appointment"  # the appointment first on its day
+    rows = tools.list_items(kind="payment").record["items"]
+    assert {row["id"]: row["send_by"] for row in rows}[fee] is None

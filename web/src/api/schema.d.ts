@@ -1301,8 +1301,17 @@ export interface components {
             kind: "deadline" | "payment" | "appointment" | "task" | "expiry" | "reminder" | "milestone";
             /** Due Date */
             due_date: string | null;
-            /** Send By */
+            /**
+             * Send By
+             * @description None for a fee paid at an appointment
+             */
             send_by: string | null;
+            /**
+             * Needs Check
+             * @description Its date or amount is not confirmed against the letter (compare it)
+             * @default false
+             */
+            needs_check: boolean;
         };
         /**
          * CitationRef
@@ -2124,6 +2133,12 @@ export interface components {
              * @description The expiry to-do
              */
             item_id: string | null;
+            /**
+             * Needs Check
+             * @description The expiry date is not confirmed against the letter (compare it)
+             * @default false
+             */
+            needs_check: boolean;
             letter: components["schemas"]["LetterRef"] | null;
         };
         /** Item */
@@ -2762,7 +2777,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "tax_id" | "tax_number" | "social_insurance" | "health_insurance" | "student" | "broadcasting_fee" | "passport" | "residence_permit" | "id_card" | "customer" | "contract" | "policy" | "member" | "employee" | "account" | "mandate" | "meter" | "other" | "case_file" | "payment_reference" | "invoice" | "order" | "reference" | "vat_id" | "register" | "creditor_id" | "iban" | "bic" | "their_tax_number" | "their_other";
+            kind: "tax_id" | "tax_number" | "social_insurance" | "health_insurance" | "student" | "broadcasting_fee" | "vehicle" | "passport" | "residence_permit" | "id_card" | "customer" | "contract" | "policy" | "member" | "employee" | "account" | "mandate" | "meter" | "other" | "case_file" | "payment_reference" | "invoice" | "order" | "tracking" | "reference" | "vat_id" | "register" | "creditor_id" | "iban" | "bic" | "their_tax_number" | "their_other";
             /**
              * Group
              * @enum {string}
@@ -3606,7 +3621,12 @@ export interface components {
             /** Date */
             date: string | null;
             /** Date Role */
-            date_role: ("added" | "due" | "send_by" | "pay_by" | "collected" | "decide_by" | "sent" | "reply_by" | "done") | null;
+            date_role: ("added" | "due" | "by" | "on" | "expires" | "send_by" | "transfer_by" | "pay_by" | "act_today" | "at_appointment" | "collected" | "decide_by" | "sent" | "reply_by" | "done") | null;
+            /**
+             * Due Date
+             * @description The due date, when the row's date is an earlier day to act (send by, act today)
+             */
+            due_date: string | null;
             /** Amount */
             amount: number | null;
             /** Currency */
@@ -3647,7 +3667,7 @@ export interface components {
              * Id
              * @enum {string}
              */
-            id: "new" | "check" | "pay" | "post" | "waiting" | "decide" | "file";
+            id: "now" | "new" | "check" | "pay" | "post" | "waiting" | "decide" | "file";
             /** Title */
             title: string;
             /** Summary */
@@ -3672,7 +3692,8 @@ export interface components {
         };
         /**
          * WeeklySession
-         * @description The guided weekly review: seven steps, what comes next and whether Today should suggest it.
+         * @description The guided weekly review: seven steps (and *Act now* first when something is overdue or due
+         *     today), how it ends and whether Today should suggest it.
          */
         WeeklySession: {
             /** Today */
@@ -3690,13 +3711,24 @@ export interface components {
              */
             due: boolean;
             /**
+             * Next Prompt
+             * @description The day Today suggests the session next (none while it is due)
+             */
+            next_prompt: string | null;
+            /**
              * Minutes
              * @default 10
              */
             minutes: number;
             /** Steps */
             steps: components["schemas"]["WeekStep"][];
-            /** @description “All clear until …” */
+            /**
+             * Overdue
+             * @description Deadlines, payments and tasks past their due date: never “All clear”
+             * @default 0
+             */
+            overdue: number;
+            /** @description The earliest day to act from today on: “All clear until …” */
             next_deadline: components["schemas"]["WeekEntry"] | null;
         };
         /**

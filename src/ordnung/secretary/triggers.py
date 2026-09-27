@@ -277,6 +277,33 @@ def action_day(item: Item) -> date | None:
     return due
 
 
+def paid_at_appointment(item: Item, items: Iterable[Item]) -> bool:
+    """Whether a payment is made in person at an appointment: it has a clock time, and its letter sets an
+    appointment on the same day (``items``: the ledger's). Its send-by date is a bank transfer's
+    (§ 675s BGB), which means nothing there: it is paid on the day, not transferred ahead."""
+    if item.kind != "payment" or not item.due_time or item.doc_id is None:
+        return False
+    return any(
+        other.kind == "appointment" and other.doc_id == item.doc_id and other.due_date == item.due_date
+        for other in items
+    )
+
+
+UNCONFIRMED_REASONS = ("mismatch", "unverified", "model_read")
+"""Why a value is not confirmed against its letter (:func:`unconfirmed_reason`)."""
+
+
+def unconfirmed_reason(item: Item) -> str | None:
+    """Why an item's date or amount is not confirmed against its letter: ``mismatch`` (its quote does
+    not state the value), ``unverified`` (not found in the letter) or ``model_read`` (read by AI from a
+    photo) — ``None`` once the person confirmed it (grounding ``user``) or when the letter confirms it."""
+    if item.grounding == "user":
+        return None
+    if any(not evidence.value_consistent for evidence in item.evidence):
+        return "mismatch"
+    return item.grounding if item.grounding in UNCONFIRMED_REASONS else None
+
+
 #: An item whose date was already this many days in the past when its letter was read is history
 #: (e.g. the first meter reading in an old contract confirmation), not an overdue obligation.
 HISTORICAL_GRACE_DAYS = 14

@@ -13,14 +13,19 @@ import pytest
 from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
 from ordnung import clock
 from ordnung.db.store import Store
-from ordnung.models import DateSpec, WeeklySession, WeekStep
+from ordnung.models import DateSpec, Evidence, WeeklySession, WeekStep
 from ordnung.secretary.week import (
+    AT_APPOINTMENT_NOTE,
     DISMISSED_KEY,
     MAX_ROWS,
+    MISSED_POST_NOTE,
+    MISSED_TRANSFER_NOTE,
+    OVERDUE_NOTE,
     PROOF_BY_CHANNEL,
     SESSION_KEY,
     Moment,
     SessionState,
+    next_prompt_day,
     prompt_due,
     session_state,
 )
@@ -103,6 +108,25 @@ def test_prompt_policy(state: SessionState, today: date, due: bool) -> None:
     assert prompt_due(state, today) is due
 
 
+@pytest.mark.parametrize(
+    ("state", "today", "upcoming"),
+    [
+        (SessionState(), TODAY, None),  # due now
+        (SessionState(last_session=_moment(TODAY)), TODAY, SUNDAY),  # Monday → the Sunday after (6 days)
+        (SessionState(last_session=_moment(date(2026, 9, 30))), date(2026, 9, 30), SUNDAY),  # Wed → Sun (4)
+        (SessionState(last_session=_moment(date(2026, 10, 1))), date(2026, 10, 1), date(2026, 10, 8)),
+        (SessionState(dismissed=_moment(TODAY)), date(2026, 9, 29), SUNDAY),
+    ],
+)
+def test_the_session_says_when_today_suggests_it_next(
+    state: SessionState, today: date, upcoming: date | None
+) -> None:
+    """ "Session saved — Today suggests the next one on …": the day the policy names, not "in a week"."""
+    assert next_prompt_day(state, today) == upcoming
+    if upcoming is not None:
+        assert prompt_due(state, upcoming) and not prompt_due(state, upcoming - timedelta(days=1))
+
+
 def test_an_unreadable_stored_moment_counts_as_never(store: Store) -> None:
     store.set_meta(SESSION_KEY, "last Tuesday")
     store.set_meta(DISMISSED_KEY, _stored(TODAY))
@@ -120,7 +144,9 @@ def test_an_unreadable_stored_moment_counts_as_never(store: Store) -> None:
 def test_no_prompt_when_there_is_nothing_to_review(store: Store) -> None:
     week = weekly_session(store, TODAY)
     assert week.last_session is None and not any(step.entries for step in week.steps)
-    assert week.due is False and week.next_deadline is None
+    assert week.due is False and week.next_deadline is None and week.overdue == 0
+    # nothing overdue or due today: no "Act now" step; the first session looks at the last 7 days
+    assert week.steps[0].title == "New in the last 7 days"
     assert [step.summary for step in week.steps] == [
         "No new letters since Mon 21 Sep",
         "Nothing to check",
@@ -140,7 +166,17 @@ def test_no_prompt_when_there_is_nothing_to_review(store: Store) -> None:
 def test_the_steps_over_the_seeded_ledger(store: Store, ids: dict[str, str]) -> None:
     _all_created(store, _stamp(TODAY - timedelta(days=1)))
     week = weekly_session(store, TODAY)
-    assert [step.id for step in week.steps] == ["new", "check", "pay", "post", "waiting", "decide", "file"]
+    # an overdue task opens the session ("Act now"); then the seven steps
+    assert [step.id for step in week.steps] == [
+        "now",
+        "new",
+        "check",
+        "pay",
+        "post",
+        "waiting",
+        "decide",
+        "file",
+    ]
     assert (week.today, week.since, week.last_session, week.due, week.minutes) == (
         "2026-09-28",
         "2026-09-21",
@@ -148,6 +184,15 @@ def test_the_steps_over_the_seeded_ledger(store: Store, ids: dict[str, str]) -> 
         True,
         10,
     )
+    now = _step(week, "now")
+    assert _refs(now) == [ids["library_task"]] and now.summary == "1 overdue"
+    assert (now.entries[0].date, now.entries[0].date_role, now.entries[0].overdue) == (
+        "2026-09-20",
+        "by",
+        True,
+    )
+    assert now.entries[0].note == OVERDUE_NOTE and now.entries[0].tone == "danger"
+    assert week.overdue == 1
 
     new = _step(week, "new")
     assert new.summary == "12 letters since Mon 21 Sep" and len(new.entries) == MAX_ROWS and new.more == 4
@@ -177,6 +222,8 @@ def test_the_steps_over_the_seeded_ledger(store: Store, ids: dict[str, str]) -> 
     decide = _step(week, "decide")
     assert _refs(decide) == [ids["phone"], ids["tax_objection"]]
     assert [entry.date_role for entry in decide.entries] == ["decide_by", "send_by"]
+    # the day to post it, with the deadline itself beside it
+    assert (decide.entries[1].date, decide.entries[1].due_date) == ("2026-10-15", "2026-10-21")
     assert _step(week, "post").entries == [] and _step(week, "file").entries == []
 
     # all clear until the next day to act
@@ -257,6 +304,301 @@ def test_a_direct_debit_is_to_cover_and_other_currencies_add_up_apart(
     assert pay.total == 440.49 and pay.total_other_currencies == {"USD": 50.0}
     assert rows[dollars].currency == "USD"
     assert pay.summary.startswith("4 transfers to make, 1 direct debit to cover")
+
+
+# --------------------------------------------------------------------------------------------------
+# the day to act: a missed send-by day, overdue rows and how the session ends
+# --------------------------------------------------------------------------------------------------
+
+
+def _authority(store: Store) -> tuple[str, str]:
+    store.save_profile({"name": "Sam", "onboarded": True, "region": "NW"})
+    party = store.add_party(name="Jobcenter", kind="authority").id
+    doc = add_doc(
+        store, "bescheid", kind="authority_letter", party_id=party, doc_date="2026-09-01", title="Bescheid"
+    )
+    return party, doc
+
+
+def _objection(store: Store, doc: str, due: str, send_by: str) -> str:
+    return add_item(
+        store,
+        kind="deadline",
+        title="Widerspruch einlegen",
+        due_date=due,
+        send_by=send_by,
+        doc_id=doc,
+        date_spec=DateSpec(type="fixed", date=due, nature="objection"),
+    )
+
+
+def test_a_missed_send_by_day_means_act_today_not_overdue(store: Store) -> None:
+    """An objection due Wed 30 Sep whose day to post it was Fri 25 Sep: on Mon 28 Sep it is still open —
+    act today, with the due date beside it; never "3 days overdue", never left out of the ending."""
+    _, doc = _authority(store)
+    objection = _objection(store, doc, "2026-09-30", "2026-09-25")
+    later = add_item(store, kind="deadline", title="Hand in Anlage", due_date="2026-10-20", doc_id=doc)
+    week = weekly_session(store, TODAY)
+    (row,) = _step(week, "now").entries
+    assert (row.ref.id, row.date, row.date_role, row.due_date, row.overdue) == (
+        objection,
+        "2026-09-28",
+        "act_today",
+        "2026-09-30",
+        False,
+    )
+    assert row.note == MISSED_POST_NOTE
+    assert objection not in _refs(_step(week, "decide"))  # Act now lists it, once
+    assert week.overdue == 0
+    assert week.next_deadline is not None
+    assert (week.next_deadline.ref.id, week.next_deadline.date) == (objection, "2026-09-28")
+    assert later != week.next_deadline.ref.id
+
+
+def test_the_decide_step_shows_the_day_to_post_and_the_deadline(store: Store) -> None:
+    _, doc = _authority(store)
+    objection = _objection(store, doc, "2026-10-14", "2026-10-08")
+    (row,) = _step(weekly_session(store, TODAY), "decide").entries
+    assert (row.ref.id, row.date, row.date_role, row.due_date) == (
+        objection,
+        "2026-10-08",
+        "send_by",
+        "2026-10-14",
+    )
+    # on 12 Oct the day to post it has passed, the deadline has not: act today, not "4 days overdue"
+    later = date(2026, 10, 12)
+    clock.set_today(later)
+    week = weekly_session(store, later)
+    (row,) = _step(week, "now").entries
+    assert (row.date, row.date_role, row.due_date, row.overdue) == (
+        "2026-10-12",
+        "act_today",
+        "2026-10-14",
+        False,
+    )
+    assert _step(week, "decide").entries == []
+
+
+def test_overdue_to_dos_are_listed_and_the_session_never_ends_all_clear(store: Store) -> None:
+    _, doc = _authority(store)
+    task = add_item(
+        store, kind="task", title="Send documents to the Jobcenter", due_date="2026-09-25", doc_id=doc
+    )
+    deadline = add_item(store, kind="deadline", title="Hand in Anlage", due_date="2026-09-26", doc_id=doc)
+    add_item(store, kind="deadline", title="Next form", due_date="2026-10-20", doc_id=doc)
+    add_item(
+        store, kind="payment", title="Refund", due_date="2026-09-20", amount=50.0, direction="in", doc_id=doc
+    )
+    week = weekly_session(store, TODAY)
+    now = _step(week, "now")
+    assert _refs(now) == [task, deadline] and now.summary == "2 overdue"
+    assert all(row.overdue and row.tone == "danger" for row in now.entries)
+    assert week.overdue == 2  # money coming in is never overdue
+    assert week.next_deadline is not None and week.next_deadline.date == "2026-10-20"
+    assert week.due is True and "now" in {step.id for step in week.steps}
+
+
+def test_a_contract_decision_is_a_day_to_act(store: Store) -> None:
+    """FunkNetz must be cancelled by 8 Oct or it renews: the session never says "All clear until 25 Oct"."""
+    store.save_profile({"name": "Sam", "onboarded": True, "region": "NW"})
+    funk = store.add_party(name="FunkNetz", kind="telecom").id
+    contract = store.add_contract(
+        name="FunkNetz mobile",
+        category="mobile",
+        party_id=funk,
+        concluded_date="2024-11-15",
+        start_date="2024-11-15",
+        initial_term_months=24,
+        notice_value=1,
+        notice_unit="months",
+        notice_basis="end_of_term",
+        cost_amount=29.99,
+        cost_interval="monthly",
+    ).id
+    doc = add_doc(store, "x", kind="authority_letter", title="Letter", doc_date="2026-09-01")
+    add_item(store, kind="deadline", title="Hand in the form", due_date="2026-10-25", doc_id=doc)
+    week = weekly_session(store, TODAY)
+    assert _refs(_step(week, "decide")) == [contract]
+    assert week.next_deadline is not None
+    assert (week.next_deadline.ref.id, week.next_deadline.date_role) == (contract, "decide_by")
+    assert week.next_deadline.date == _step(week, "decide").entries[0].date
+
+
+def test_a_snoozed_to_do_keeps_its_letter_open(store: Store) -> None:
+    """The person put the form off, not away: the letter is not filed, and its date is still to come."""
+    doc = add_doc(store, "x", kind="authority_letter", title="Anhörung", doc_date="2026-09-10")
+    store.set_meta(SESSION_KEY, _stored(TODAY - timedelta(days=7)))
+    add_item(
+        store,
+        kind="task",
+        title="Call the office",
+        due_date="2026-09-20",
+        doc_id=doc,
+        status="done",
+        completed_at=_stamp(TODAY - timedelta(days=1)),
+    )
+    snoozed = add_item(
+        store,
+        kind="deadline",
+        title="Return the Anhörungsbogen",
+        due_date="2026-10-20",
+        doc_id=doc,
+        status="snoozed",
+        snoozed_until="2026-10-10",
+    )
+    week = weekly_session(store, TODAY)
+    file = _step(week, "file")
+    assert doc not in _refs(file) and file.summary == "1 to-do done"
+    assert week.next_deadline is not None and week.next_deadline.ref.id == snoozed
+
+
+def test_payments_count_overdue_from_their_due_date_and_a_missed_transfer_day_is_today(
+    store: Store,
+) -> None:
+    _, doc = _authority(store)
+    missed = add_item(
+        store,
+        kind="payment",
+        title="Pay the invoice",
+        due_date="2026-09-29",
+        send_by="2026-09-25",
+        amount=20.0,
+        doc_id=doc,
+    )
+    late = add_item(
+        store,
+        kind="payment",
+        title="Pay the fine",
+        due_date="2026-09-26",
+        send_by="2026-09-24",
+        amount=30.0,
+        doc_id=doc,
+    )
+    week = weekly_session(store, TODAY)
+    rows = {row.ref.id: row for row in _step(week, "pay").entries}
+    assert (rows[missed].date, rows[missed].date_role, rows[missed].due_date, rows[missed].overdue) == (
+        "2026-09-28",
+        "act_today",
+        "2026-09-29",
+        False,
+    )
+    assert rows[missed].note == MISSED_TRANSFER_NOTE
+    assert (rows[late].date, rows[late].date_role, rows[late].overdue, rows[late].tone) == (
+        "2026-09-26",
+        "pay_by",
+        True,
+        "danger",
+    )
+    assert week.overdue == 1 and _step(week, "pay").total == 50.0
+
+
+def test_a_fee_paid_at_the_appointment_is_not_a_transfer(store: Store) -> None:
+    """The Ausländerbehörde's fee is paid on site by card: no Pay button, not in the transfer total, and
+    the session does not end at its bank-transfer day."""
+    party, doc = _authority(store)
+    appointment = add_item(
+        store,
+        kind="appointment",
+        title="Appointment at the Ausländerbehörde",
+        due_date="2026-10-02",
+        due_time="10:30",
+        doc_id=doc,
+        party_id=party,
+    )
+    fee = add_item(
+        store,
+        kind="payment",
+        title="Fee for the extension",
+        due_date="2026-10-02",
+        due_time="10:30",
+        send_by="2026-10-01",
+        amount=100.0,
+        doc_id=doc,
+        party_id=party,
+    )
+    transfer = add_item(
+        store, kind="payment", title="Pay the invoice", due_date="2026-10-01", amount=20.0, doc_id=doc
+    )
+    week = weekly_session(store, TODAY)
+    pay = _step(week, "pay")
+    rows = {row.ref.id: row for row in pay.entries}
+    assert _refs(pay) == [transfer, fee]
+    assert (rows[fee].date, rows[fee].date_role, rows[fee].note) == (
+        "2026-10-02",
+        "at_appointment",
+        AT_APPOINTMENT_NOTE,
+    )
+    assert pay.total == 20.0
+    assert pay.summary == "1 transfer to make, 1 fee to pay at an appointment"
+    assert week.next_deadline is not None and week.next_deadline.ref.id == transfer
+    store.update_item(transfer, status="done")
+    week = weekly_session(store, TODAY)
+    assert week.next_deadline is not None
+    # the appointment and the fee share the day: never the fee's transfer day (1 Oct)
+    assert week.next_deadline.date == "2026-10-02" and week.next_deadline.ref.id in (appointment, fee)
+
+
+async def test_looks_right_takes_a_mismatched_value_off_please_check(data_dir: Path) -> None:
+    """A quote that doesn't state its value asks to be checked — until the person says it looks right."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        _, doc = _authority(store)
+        objection = _objection(store, doc, "2026-10-14", "2026-10-08")
+        evidence = Evidence.model_validate(
+            {"doc_id": doc, "page": 1, "quote": "innerhalb eines Monats", "value_consistent": False}
+        )
+        store.update_item(objection, evidence=[evidence])
+        check = _step(weekly_session(store, TODAY), "check")
+        assert _refs(check) == [objection]
+        assert (
+            check.entries[0].note == "Doesn't match its sentence in the letter — compare it with the letter."
+        )
+        confirmed = await api.client.post(f"/api/items/{objection}/confirm")
+        assert confirmed.status_code == 200
+        assert _step(weekly_session(store, TODAY), "check").entries == []
+
+
+def test_rows_say_what_their_day_is(store: Store) -> None:
+    """One wording for every step, as Today's: an appointment is on its day, an expiry expires, a
+    transfer has its day to transfer (the same day in Please check as in Pay this week)."""
+    _, doc = _authority(store)
+    appointment = add_item(
+        store,
+        kind="appointment",
+        title="Dental check-up",
+        due_date="2026-10-08",
+        doc_id=doc,
+        grounding="model_read",
+    )
+    expiry = add_item(
+        store,
+        kind="expiry",
+        title="Passport expires",
+        due_date="2027-02-10",
+        doc_id=doc,
+        grounding="model_read",
+    )
+    fine = add_item(
+        store,
+        kind="payment",
+        title="Pay the fine",
+        due_date="2026-10-02",
+        send_by="2026-10-01",
+        amount=30.0,
+        doc_id=doc,
+        grounding="model_read",
+    )
+    week = weekly_session(store, TODAY)
+    check = {row.ref.id: row for row in _step(week, "check").entries}
+    assert (check[appointment].date_role, check[appointment].date) == ("on", "2026-10-08")
+    assert (check[expiry].date_role, check[expiry].date) == ("expires", "2027-02-10")
+    assert (check[fine].date_role, check[fine].date, check[fine].due_date) == (
+        "transfer_by",
+        "2026-10-01",
+        "2026-10-02",
+    )
+    (paid,) = _step(week, "pay").entries
+    assert (paid.date_role, paid.date) == (check[fine].date_role, check[fine].date)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -348,6 +690,7 @@ async def test_week_endpoints(data_dir: Path) -> None:
         body: dict[str, Any] = (await api.client.get("/api/week")).json()
         assert body["due"] is True and body["last_session"] is None
         assert [step["id"] for step in body["steps"]] == [
+            "now",
             "new",
             "check",
             "pay",

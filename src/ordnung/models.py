@@ -1208,6 +1208,7 @@ NumberKind = Literal[
     "health_insurance",
     "student",
     "broadcasting_fee",
+    "vehicle",
     "passport",
     "residence_permit",
     "id_card",
@@ -1224,6 +1225,7 @@ NumberKind = Literal[
     "payment_reference",
     "invoice",
     "order",
+    "tracking",
     "reference",
     "vat_id",
     "register",
@@ -1280,6 +1282,9 @@ class IdentityDocument(_Model):
     status: Literal["ok", "renew_soon", "expired", "unknown"] = "unknown"
     note: str | None = Field(default=None, description="What to do about it (written by code)")
     item_id: str | None = Field(default=None, description="The expiry to-do")
+    needs_check: bool = Field(
+        default=False, description="The expiry date is not confirmed against the letter (compare it)"
+    )
     letter: LetterRef | None = None
 
 
@@ -1290,7 +1295,10 @@ class CaseItemRef(_Model):
     title: str
     kind: ItemKind
     due_date: str | None = None
-    send_by: str | None = None
+    send_by: str | None = Field(default=None, description="None for a fee paid at an appointment")
+    needs_check: bool = Field(
+        default=False, description="Its date or amount is not confirmed against the letter (compare it)"
+    )
 
 
 class OpenCase(_Model):
@@ -1337,9 +1345,26 @@ class MyNumbers(_Model):
 # The weekly session (``GET /api/week``, :mod:`ordnung.secretary.week`)
 # --------------------------------------------------------------------------------------------------
 
-WeekStepId = Literal["new", "check", "pay", "post", "waiting", "decide", "file"]
+WeekStepId = Literal["now", "new", "check", "pay", "post", "waiting", "decide", "file"]
+#: What a row's day means (:mod:`ordnung.secretary.week`, "The day on a row"): ``act_today`` once a
+#: send-by day has passed but the due date has not (the due date is then ``WeekEntry.due_date``),
+#: ``at_appointment`` for a fee paid in person on the appointment's day.
 WeekDateRole = Literal[
-    "added", "due", "send_by", "pay_by", "collected", "decide_by", "sent", "reply_by", "done"
+    "added",
+    "due",
+    "by",
+    "on",
+    "expires",
+    "send_by",
+    "transfer_by",
+    "pay_by",
+    "act_today",
+    "at_appointment",
+    "collected",
+    "decide_by",
+    "sent",
+    "reply_by",
+    "done",
 ]
 
 
@@ -1352,6 +1377,10 @@ class WeekEntry(_Model):
     kind: str = Field(description="The item's, letter's or draft's kind, or “contract”")
     date: str | None = None
     date_role: WeekDateRole | None = None
+    due_date: str | None = Field(
+        default=None,
+        description="The due date, when the row's date is an earlier day to act (send by, act today)",
+    )
     amount: float | None = None
     currency: str | None = None
     party_id: str | None = None
@@ -1377,15 +1406,24 @@ class WeekStep(_Model):
 
 
 class WeeklySession(_Model):
-    """The guided weekly review: seven steps, what comes next and whether Today should suggest it."""
+    """The guided weekly review: seven steps (and *Act now* first when something is overdue or due
+    today), how it ends and whether Today should suggest it."""
 
     today: str
     since: str = Field(description="New since this day (the last session, else a week ago)")
     last_session: str | None = None
     due: bool = Field(description="Today shows its one gentle prompt")
+    next_prompt: str | None = Field(
+        default=None, description="The day Today suggests the session next (none while it is due)"
+    )
     minutes: int = 10
     steps: list[WeekStep] = Field(default_factory=list)
-    next_deadline: WeekEntry | None = Field(default=None, description="“All clear until …”")
+    overdue: int = Field(
+        default=0, description="Deadlines, payments and tasks past their due date: never “All clear”"
+    )
+    next_deadline: WeekEntry | None = Field(
+        default=None, description="The earliest day to act from today on: “All clear until …”"
+    )
 
 
 LaneBar.model_rebuild()

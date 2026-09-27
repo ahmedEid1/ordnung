@@ -134,14 +134,20 @@ apart from two `meta` moments:
   its payment IBAN — is classified by value shape, then label words, then context (a Steuernummer is
   yours only from a tax office; an "Ausweisnummer" is an ID card only from an authority), grouped into
   About you, identity documents, call sheets and open cases, and tested with its public check-digit
-  algorithm. Ask reads it through `get_my_numbers`, values in the letter-text channel (ADR 0008).
+  algorithm. Ask reads it through `get_my_numbers` (one organisation or one section when asked, bounded
+  by its own row caps), values in the letter-text channel (ADR 0008).
 - **The weekly session** (`ordnung/secretary/week.py`; `views.weekly_session`, `GET /api/week`) arranges
-  `build_agenda`, the money summary, drafts and to-dos as seven steps and the next day to act; `POST
+  `build_agenda`, the money summary, drafts and to-dos as seven steps (and *Act now* first when
+  something is overdue or due today) and how it ends — overdue, or the next day to act; `POST
   /api/week/done|dismiss` store the moment (`day|timestamp`) that the prompt policy and "new since your
-  last session" read.
+  last session" read. The facts both read models share with the Ideas and Ask live in
+  `secretary/triggers.py`: `action_day`, `is_overdue`, `paid_at_appointment` (a fee paid on site is no
+  transfer), `unconfirmed_reason` (a value not confirmed against its letter, until "Looks right") and
+  the identity documents' renewal windows.
 - **The static demo** gets both from the same code: `scripts/gen_mock_numbers.py` files the mock world
   (`web/scripts/mock-world.mjs`) in a throw-away ledger and writes `web/src/mocks/data/numbers.ts`; the
-  mock handlers (`web/src/mocks/numbers.ts`) only follow the visitor's changes.
+  mock handlers (`web/src/mocks/numbers.ts`) only follow the visitor's changes. CI's end-to-end job
+  (the one with both toolchains) checks the file is up to date (`tests/test_mock_numbers.py`).
 
 ## The rules engine for other Claude clients
 

@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 
     from ordnung.db.store import Store
     from ordnung.models import (
+        CallSheet,
         ComputationReceipt,
         Contract,
         ContractComputation,
@@ -63,6 +64,11 @@ MAX_TIMELINE_DAYS = 731
 MAX_TIMELINE_ENTRIES = 150
 MAX_PARTY_MATCHES = 3
 MAX_PARTY_ROWS = 15
+MAX_NUMBER_SHEETS = 20
+MAX_OPEN_CASES = 20
+MAX_SHEET_NUMBERS = 20
+MAX_NUMBER_ROWS = 150
+NUMBER_SECTIONS = ("about_you", "organisations", "open_cases")
 PARTY_MATCH_SCORE = 80.0
 ITEM_STATUSES = ("open", "done", "dismissed", "snoozed", "missed", "all")
 CONTRACT_STATUSES = ("active", "cancelled", "ended", "all")
@@ -520,56 +526,81 @@ class LedgerTools:
         }
         return ToolAnswer(record, letters.by_id)
 
-    def get_my_numbers(self) -> ToolAnswer:
+    def get_my_numbers(self, section: str = "all", organisation: str | None = None) -> ToolAnswer:
         """The person's numbers sorted by whose they are (:mod:`ordnung.numbers`); private letters left out.
 
+        ``section`` asks for part of it: ``about_you`` (the person's own numbers and identity documents),
+        ``organisations`` (call sheets) or ``open_cases``; ``organisation`` (an id or name) for one
+        organisation's call sheet and open cases only — never the person's own numbers. At most
+        :data:`MAX_NUMBER_SHEETS` call sheets (latest letter first), :data:`MAX_OPEN_CASES` open cases and
+        :data:`MAX_SHEET_NUMBERS` numbers of a kind per sheet, and no further call sheet once
+        :data:`MAX_NUMBER_ROWS` numbers are listed (the result stays within its size budget whole, every
+        ``ref`` resolvable); ``left_out`` counts the rest.
+
         The record holds what code decided: each number's kind and group, its check-digit result, the
-        letter and party it came from, an identity document's expiry (its to-do's due date) and an open
-        case's next to-do. Labels, values, names, contact details and titles are letter text, under the
-        id of the letter (or organisation) they come from; a row's ``ref`` names its value there.
+        letter and party it came from, an identity document's expiry (its to-do's due date, flagged
+        ``needs_check`` when not confirmed against the letter) and an open case's next to-do. Labels,
+        values, names, contact details and titles are letter text, under the id of the letter (or
+        organisation) they come from; a row's ``ref`` names its value there.
         """
         from ordnung.views import my_numbers
 
+        wanted = set(NUMBER_SECTIONS) if section == "all" else {section}
+        if not wanted <= set(NUMBER_SECTIONS):
+            raise ToolInputError(f"section is all or one of {', '.join(NUMBER_SECTIONS)}")
+        parties: set[str] | None = None
+        if organisation is not None and organisation.strip():
+            matches = self._find_parties(organisation.strip())
+            if not matches:
+                return _not_found("organisation", organisation.strip())
+            parties = {party.id for party in matches}
+            wanted.discard("about_you")
+            if not wanted:
+                raise ToolInputError("about_you holds the person's own numbers: ask without organisation")
         page = my_numbers(self.store, self.current_day(), shareable_only=True)
+        sheets = [s for s in page.organisations if parties is None or s.party_id in parties]
+        sheets.sort(key=lambda s: (s.last_letter.date or "") if s.last_letter else "", reverse=True)
+        cases = [c for c in page.open_cases if parties is None or c.party_id in parties]
+        left_out = {"open_cases": max(0, len(cases) - MAX_OPEN_CASES) if "open_cases" in wanted else 0}
         rows = _NumberRows()
-        record = {
-            "today": page.today,
-            "about_you": [rows.number(found) for found in page.about_you],
-            "documents": [
+        record: dict[str, Any] = {"today": page.today}
+        if "about_you" in wanted:
+            record["about_you"] = [rows.number(found) for found in page.about_you]
+            record["documents"] = [
                 {
                     "id": doc.item_id,
                     "kind": "expiry" if doc.item_id else None,
                     "document": doc.kind,
                     "due_date": doc.valid_until,
+                    "needs_check": doc.needs_check or None,
                     "status": doc.status,
                     "note": doc.note,
                     "doc_id": doc.letter.id if doc.letter else None,
                     "number": rows.number(doc.number) if doc.number else None,
                 }
                 for doc in page.documents
-            ],
-            "open_cases": [rows.case(found) for found in page.open_cases],
-            "organisations": [
-                {
-                    "party_id": sheet.party_id,
-                    "kind": sheet.kind,
-                    "numbers": [rows.number(found) for found in sheet.numbers],
-                    "their_numbers": [rows.number(found) for found in sheet.their_numbers],
-                    "open_cases": [rows.case(found) for found in sheet.open_cases],
-                    "last_letter": {"doc_id": sheet.last_letter.id, "date": sheet.last_letter.date}
-                    if sheet.last_letter
-                    else None,
-                    "open_items": sheet.open_items,
-                }
-                for sheet in page.organisations
-            ],
-            "numbers": rows.numbers,
-            "note": NUMBERS_NOTE,
-        }
-        for sheet in page.organisations:
-            rows.letters.add(
-                sheet.party_id, name=sheet.name, phone=sheet.phone, email=sheet.email, website=sheet.website
-            )
+            ]
+        if "open_cases" in wanted:
+            record["open_cases"] = [rows.case(found) for found in cases[:MAX_OPEN_CASES]]
+        if "organisations" in wanted:
+            shown: list[dict[str, Any]] = []
+            record["organisations"] = shown
+            for index, sheet in enumerate(sheets):
+                size = sum(
+                    min(len(found), MAX_SHEET_NUMBERS) for found in (sheet.numbers, sheet.their_numbers)
+                )
+                size += sum(len(case.references) for case in sheet.open_cases)
+                if index >= MAX_NUMBER_SHEETS or (shown and len(rows.numbers) + size > MAX_NUMBER_ROWS):
+                    left_out["organisations"] = len(sheets) - index
+                    break
+                shown.append(rows.sheet(sheet, left_out))
+        record["numbers"] = rows.numbers
+        shown_out = {key: count for key, count in left_out.items() if count}
+        if shown_out:
+            record["truncated"] = True
+            record["left_out"] = shown_out
+            record["left_out_note"] = NUMBERS_LEFT_OUT
+        record["note"] = NUMBERS_NOTE
         for owner, found in rows.values.items():
             rows.letters.add(owner, numbers=found)
         return ToolAnswer(record, rows.letters.by_id)
@@ -631,11 +662,35 @@ class _NumberRows:
             "doc_id": found.letter.id if found.letter else None,
             "party_id": found.party_id,
             "references": [self.number(ref) for ref in found.references],
-            "next_item": {"id": nxt.id, "kind": nxt.kind, "due_date": nxt.due_date, "send_by": nxt.send_by}
+            "next_item": {
+                "id": nxt.id,
+                "kind": nxt.kind,
+                "due_date": nxt.due_date,
+                "send_by": nxt.send_by,
+                "needs_check": nxt.needs_check or None,
+            }
             if nxt
             else None,
             "open_items": found.open_items,
         }
+        return row
+
+    def sheet(self, sheet: CallSheet, left_out: dict[str, int]) -> dict[str, Any]:
+        """A call sheet's row (its name and contact details are letter text under its party id)."""
+        self.letters.add(
+            sheet.party_id, name=sheet.name, phone=sheet.phone, email=sheet.email, website=sheet.website
+        )
+        row: dict[str, Any] = {"party_id": sheet.party_id, "kind": sheet.kind}
+        for key, found in (("numbers", sheet.numbers), ("their_numbers", sheet.their_numbers)):
+            row[key] = [self.number(number) for number in found[:MAX_SHEET_NUMBERS]]
+            if len(found) > MAX_SHEET_NUMBERS:
+                row[f"{key}_left_out"] = len(found) - MAX_SHEET_NUMBERS
+                left_out[f"sheet_{key}"] = left_out.get(f"sheet_{key}", 0) + len(found) - MAX_SHEET_NUMBERS
+        row["open_cases"] = [self.case(found) for found in sheet.open_cases]
+        row["last_letter"] = (
+            {"doc_id": sheet.last_letter.id, "date": sheet.last_letter.date} if sheet.last_letter else None
+        )
+        row["open_items"] = sheet.open_items
         return row
 
 
@@ -744,15 +799,12 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
 
 
 def paid_at_appointment(ledger: Ledger, item: Item) -> bool:
-    """Whether a payment is made in person at an appointment: it has a clock time, and its letter sets an
-    appointment on the same day. Its send-by date is a bank transfer's (§ 675s BGB), which means nothing
-    there, so Ask's record leaves it out — the model gave it as the day to cancel the appointment by."""
-    if item.kind != "payment" or not item.due_time or item.doc_id is None:
-        return False
-    return any(
-        other.kind == "appointment" and other.doc_id == item.doc_id and other.due_date == item.due_date
-        for other in ledger.items
-    )
+    """A payment made in person at an appointment (:func:`ordnung.secretary.triggers.paid_at_appointment`):
+    its send-by date is a bank transfer's, so Ask's record leaves it out — the model gave it as the day to
+    cancel the appointment by."""
+    from ordnung.secretary.triggers import paid_at_appointment as in_person
+
+    return in_person(item, ledger.items)
 
 
 AMOUNT_READ_BY_AI = (
@@ -767,6 +819,10 @@ CANCELLATION_PENDING = (
     "A letter says this contract is cancelled, but the person has not confirmed it in Ordnung yet, so "
     "the contract is still active here and its dates stand; the end date the letter gives is only in "
     "the letter text."
+)
+NUMBERS_LEFT_OUT = (
+    "Some call sheets, open cases or numbers are not shown (left_out counts them): ask for one "
+    "organisation by name or id (organisation) or for one section."
 )
 NUMBERS_NOTE = (
     "Each number's label and value are in the letter text of the letter it comes from (under numbers, by "
@@ -1212,13 +1268,29 @@ def build_server(store: Store, *, today: date | None = None, rules_tools: bool =
         return answer(lambda: tools.explain_date(item_or_contract_id))
 
     @tool
-    def get_my_numbers() -> str:
+    def get_my_numbers(
+        section: Annotated[
+            str,
+            Field(
+                description="all, about_you (Steuer-ID, social and health insurance, student number, "
+                "passport, residence permit), organisations (call sheets) or open_cases"
+            ),
+        ] = "all",
+        organisation: Annotated[
+            str | None,
+            Field(
+                description="Only this organisation's call sheet and open cases: a party id (pty_…) or name"
+            ),
+        ] = None,
+    ) -> str:
         """The person's own numbers — Steuer-ID, social and health insurance numbers, student number,
         Rundfunkbeitrag number, passport and residence permit with their expiry — then, per organisation,
         the customer, contract and member numbers its letters show, its contact details and open cases
         (Aktenzeichen, Kassenzeichen, invoice numbers), and each organisation's own registry numbers apart.
-        Values are letter text; the record says whose each number is and whether its check digit passes."""
-        return answer(tools.get_my_numbers)
+        Ask only for what the question needs: organisation for one organisation's numbers, section for
+        one part. Values are letter text; the record says whose each number is and whether its check
+        digit passes."""
+        return answer(lambda: tools.get_my_numbers(section, organisation))
 
     @tool
     def get_profile() -> str:

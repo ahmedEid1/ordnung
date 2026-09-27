@@ -3529,7 +3529,14 @@
                 "type": "null"
               }
             ],
-            "title": "Send By"
+            "title": "Send By",
+            "description": "None for a fee paid at an appointment"
+          },
+          "needs_check": {
+            "type": "boolean",
+            "title": "Needs Check",
+            "description": "Its date or amount is not confirmed against the letter (compare it)",
+            "default": false
           }
         },
         "type": "object",
@@ -3538,7 +3545,8 @@
           "title",
           "kind",
           "due_date",
-          "send_by"
+          "send_by",
+          "needs_check"
         ],
         "title": "CaseItemRef",
         "description": "The next open to-do of a case."
@@ -6320,6 +6328,12 @@
             "title": "Item Id",
             "description": "The expiry to-do"
           },
+          "needs_check": {
+            "type": "boolean",
+            "title": "Needs Check",
+            "description": "The expiry date is not confirmed against the letter (compare it)",
+            "default": false
+          },
           "letter": {
             "anyOf": [
               {
@@ -6341,6 +6355,7 @@
           "status",
           "note",
           "item_id",
+          "needs_check",
           "letter"
         ],
         "title": "IdentityDocument",
@@ -8155,6 +8170,7 @@
               "health_insurance",
               "student",
               "broadcasting_fee",
+              "vehicle",
               "passport",
               "residence_permit",
               "id_card",
@@ -8171,6 +8187,7 @@
               "payment_reference",
               "invoice",
               "order",
+              "tracking",
               "reference",
               "vat_id",
               "register",
@@ -10499,8 +10516,14 @@
                 "enum": [
                   "added",
                   "due",
+                  "by",
+                  "on",
+                  "expires",
                   "send_by",
+                  "transfer_by",
                   "pay_by",
+                  "act_today",
+                  "at_appointment",
                   "collected",
                   "decide_by",
                   "sent",
@@ -10513,6 +10536,18 @@
               }
             ],
             "title": "Date Role"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date",
+            "description": "The due date, when the row's date is an earlier day to act (send by, act today)"
           },
           "amount": {
             "anyOf": [
@@ -10628,6 +10663,7 @@
           "kind",
           "date",
           "date_role",
+          "due_date",
           "amount",
           "currency",
           "party_id",
@@ -10647,6 +10683,7 @@
           "id": {
             "type": "string",
             "enum": [
+              "now",
               "new",
               "check",
               "pay",
@@ -10738,6 +10775,18 @@
             "title": "Due",
             "description": "Today shows its one gentle prompt"
           },
+          "next_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Prompt",
+            "description": "The day Today suggests the session next (none while it is due)"
+          },
           "minutes": {
             "type": "integer",
             "title": "Minutes",
@@ -10750,6 +10799,12 @@
             "type": "array",
             "title": "Steps"
           },
+          "overdue": {
+            "type": "integer",
+            "title": "Overdue",
+            "description": "Deadlines, payments and tasks past their due date: never “All clear”",
+            "default": 0
+          },
           "next_deadline": {
             "anyOf": [
               {
@@ -10759,7 +10814,7 @@
                 "type": "null"
               }
             ],
-            "description": "“All clear until …”"
+            "description": "The earliest day to act from today on: “All clear until …”"
           }
         },
         "type": "object",
@@ -10768,12 +10823,14 @@
           "since",
           "last_session",
           "due",
+          "next_prompt",
           "minutes",
           "steps",
+          "overdue",
           "next_deadline"
         ],
         "title": "WeeklySession",
-        "description": "The guided weekly review: seven steps, what comes next and whether Today should suggest it."
+        "description": "The guided weekly review: seven steps (and *Act now* first when something is overdue or due\ntoday), how it ends and whether Today should suggest it."
       },
       "BriefUpdatedEvent": {
         "additionalProperties": false,

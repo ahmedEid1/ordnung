@@ -6,56 +6,77 @@ them all into ``Document.references`` and the sender's identifiers; this module 
 written policy (ADR 0007). Tests pin every rule; cases it does not decide are limitations, listed below.
 
 **Where numbers come from.** Only live letters without scam signs: their references, the sender's
-identifiers in their stored reading, and the IBAN a letter gives for payment. A number lives as long as a
-letter that shows it (the party's merged identifier list is not read: it outlives deleted letters). A
-letter with scam signs contributes nothing — its numbers are the sender's claims.
+identifiers in their stored reading, and the IBAN a letter gives for payment (always where to pay the
+sender — the person's own account only when it is the profile's IBAN — whatever the payee is called). A
+number lives as long as a letter that shows it (the party's merged identifier list is not read: it
+outlives deleted letters). A letter with scam signs contributes nothing — its numbers are the sender's
+claims.
 
-**What a number is** (:func:`classify`; the first rule that matches decides):
+**What a number is** (:func:`classify`; the first rule that matches decides). A label *names a matter*
+when it says the number is a case reference or one of yours with the organisation (customer, contract,
+order, Aktenzeichen, "Ihr Zeichen" …, not an account); such a label wins over the value's look.
 
 1. *Not a number*: a value without a digit, or with a word in small letters ("Nr. 05-2-03, 2. OG links"
    is a description of a flat).
 2. *By its shape* — a German creditor identifier (``DE98ZZZ09999999999``) is the organisation's
-   Gläubiger-ID and ``DE`` + nine digits its USt-IdNr., whatever the label; a well-formed IBAN is the
-   organisation's account (where to pay it) — except at a bank, where it is the person's account there.
+   Gläubiger-ID and ``DE`` + nine digits its USt-IdNr. (unless the label names a matter: a
+   "Kundennummer DE123456789" is a customer number); an IBAN — a valid one, or one that fails only its
+   check digits or stands under an IBAN label (a misread IBAN, which then "does not check"; not under a
+   label that names a matter) — is the organisation's account (where to pay it), except the person's:
+   the profile's IBAN, any IBAN at a bank, and one labelled as theirs ("Ihre IBAN", "Kontoinhaber",
+   "IBAN des Zahlungspflichtigen", "Kunden-IBAN").
 3. *By its label*, matched as words after folding case and umlauts (a keyword of four letters or less
    must be the whole label, so "USt-IdNr." is never "IdNr"):
 
-   - **the organisation's own**: USt-IdNr./VAT, a register (by its label, or HRB, HRA, GnR, VR in the
-     value), Gläubiger-ID, BIC, a bank account number (at a bank it is the person's account), WEEE and
-     Betriebsnummer, and a *Steuernummer* — which is the person's only on a letter from a tax office
-     (every invoice prints the seller's);
-   - **about you** (issued to the person, kept for years): Steuer-ID (a bare "Identifikationsnummer"
-     or "IdNr" only with eleven digits — other offices number people too),
-     Rentenversicherungs-/SV-Nummer (a "Versicherungsnummer" only in its shape: 2 + 6 digits, a letter,
-     3 digits — otherwise it is an insurance policy number), Krankenversichertennummer, Matrikelnummer,
+   - **the organisation's own**: USt-IdNr./VAT, a register (by its label; or in the value HRB, HRA or
+     GnR with its number, and VR or PR with its number only beside a court or register word — "PR 12" is
+     as often a ticket — never under a label that names a matter), Gläubiger-ID, BIC, a bank account
+     number (at a bank it is the person's account), WEEE and Betriebsnummer, and a *Steuernummer* —
+     which is the person's only on a letter from a tax office (every invoice prints the seller's);
+   - **about you** (issued to the person, kept for years) — never when the label names someone else
+     ("des Kindes", "Ehegatte", "partner", "spouse": a family member's number is theirs): Steuer-ID (a
+     bare "Identifikationsnummer" or a label ending in "IdNr" — "St.-IdNr.", "Steuerliche IdNr." — only
+     with eleven digits: other offices number people too), Rentenversicherungs-/SV-Nummer (by its
+     label, or by its shape — 2 + 6 digits, a letter, 3 digits — under a label that mentions an
+     insurance: "Versicherungs-Nr."), Krankenversichertennummer (by its label, "KV-Nummer", or by its
+     shape — a letter and 9 digits — under an insurance label from a health insurer), Matrikelnummer,
      the Rundfunkbeitrag's Beitragsnummer (from the Beitragsservice or on a broadcasting-fee letter), a
-     Steuernummer from a tax office, and identity documents: passport, residence permit and ID card
-     (an "Ausweisnummer" only from an authority — at a library or gym it is a membership card);
-   - **a case reference** (one matter): Aktenzeichen, Geschäftszeichen, Kassenzeichen, invoice, order and
-     claim numbers, "Unser/Ihr Zeichen", Vorgang;
+     Steuernummer from a tax office, a car's number plate (Kfz-Kennzeichen), and identity documents:
+     passport, residence permit and ID card (an "Ausweisnummer" only from an authority — at a library
+     or gym it is a membership card);
+   - **a case reference** (one matter): Aktenzeichen, Geschäftszeichen, Kassenzeichen, invoice, order,
+     tracking (Sendungsnummer) and claim numbers, "Unser/Ihr Zeichen", Vorgang;
    - **yours with this organisation**: customer, contract, policy, member, employee, account, SEPA mandate
      and meter numbers.
 4. *Anything else* is a number of yours with the organisation: a call sheet may show one number too many,
    but never hides one you need.
 
 **Where it is shown.** *About you* lists the personal numbers once, with the latest letter that shows
-them; *documents* the identity documents with their expiry (the letter's expiry to-do) and the renewal
-window the Ideas use (passport and ID card 180 days, residence permit 90 days, § 81 Abs. 4 AufenthG).
-Each organisation gets a *call sheet* — contact details, every number of yours its letters show, its open
+them; *documents* the identity documents with their expiry (the letter's expiry to-do — only of an
+identity-document or residence-permit letter, or one whose title names a passport, ID card or residence
+title: a library card, student ID or Visa card that expires is none — flagged when that date is not
+confirmed against the letter) and the renewal window the Ideas use
+(:data:`~ordnung.secretary.triggers.IDENTITY_WINDOW_DAYS`, :data:`~ordnung.secretary.triggers.PERMIT_WINDOW_DAYS`;
+a residence permit's note says what § 81 Abs. 4 AufenthG means before it expires and after). Each
+organisation gets a *call sheet* — contact details, every number of yours its letters show, its open
 cases, its own numbers apart, its last letter — when it has a number of yours that is not an identity
 document's, or an open case. A *case reference* is listed while its thread (else its letter) has an open
-one-off to-do: a recurring payment keeps a contract going, not a case, so an old order number drops out.
-Within an organisation the same number (compared without spaces and marks) is one entry; the latest
-letter's label wins.
+one-off to-do — the thread's own or one of its letters' (a to-do added to a letter of the thread keeps
+it open): a recurring payment keeps a contract going, not a case, so an old order number drops out. Its
+next step is the earliest (on the same day a deadline or appointment before its fee or paperwork); a fee
+paid at the appointment (:func:`~ordnung.secretary.triggers.paid_at_appointment`) counts on its day,
+never on a transfer day. Within an organisation the same number (compared without spaces and marks) is
+one entry; the latest letter's label wins.
 
-**Check digits** (:func:`check_number`), where a public algorithm exists: the Steuer-ID (§ 139b AO: eleven
-digits, not starting with 0, in the first ten one digit twice — or three times, never three in a row —
-and the ISO/IEC 7064 MOD 11,10 check digit), the Rentenversicherungsnummer (§ 147 SGB VI: the letter as
-its place in the alphabet, weights 2 1 2 5 7 1 2 1 2 1 2 1, cross sums, modulo 10), the
-Krankenversichertennummer (§ 290 SGB V: the letter as its place, weights 1 2 1 2 …, cross sums, modulo 10)
-and the IBAN (ISO 13616, :mod:`ordnung.money.iban`). A passing check rules out almost every misread digit;
-it never proves the number is the person's. A number of such a kind that fails says "does not check —
-compare with the letter"; every other number has no check.
+**Check digits** (:func:`check_number`), where a public algorithm exists: the Steuer-ID (§ 139b AO; the
+BZSt's specification: eleven digits, not starting with 0, in the first ten one digit twice — or three
+times, never three in a row — and the ISO/IEC 7064 MOD 11,10 check digit), the Rentenversicherungsnummer
+(§ 147 SGB VI, § 2 Abs. 6 VKVV: the letter as its place in the alphabet, weights 2 1 2 5 7 1 2 1 2 1 2 1,
+cross sums, modulo 10), the Krankenversichertennummer (§ 290 SGB V, the GKV-Spitzenverband's guideline:
+the letter as its place, weights 1 2 1 2 …, cross sums, modulo 10) and the IBAN (ISO 13616,
+:mod:`ordnung.money.iban`). A passing check rules out almost every misread digit; it never proves the
+number is the person's. A number of such a kind that fails says "does not check — compare with the
+letter"; every other number has no check.
 
 **Copying** puts a number as forms want it: a Steuer-ID, social or health insurance number or IBAN
 without spaces, a number of digit groups separated by spaces as one run of digits, anything else as
@@ -66,7 +87,8 @@ rule 4; a Steuernummer on a tax adviser's letter counts as the adviser's; a priv
 member number of another shape has no check; the Steuernummer's own check digits (they differ per Land)
 are not checked; the published Rentenversicherungsnummer check lets a 0/4 or 3/7 misread in its fifth
 digit pass (weight 7 with one cross sum); a value the model split or joined differently on two letters
-is two entries.
+is two entries; a label that only says "Kontoinhaber" beside the organisation's own IBAN makes it the
+person's (hidden on screen, never lost).
 """
 
 from __future__ import annotations
@@ -97,6 +119,12 @@ from ordnung.models import (
 from ordnung.money.iban import grouped as iban_grouped
 from ordnung.money.iban import inspect_iban
 from ordnung.money.iban import normalize as iban_normalize
+from ordnung.secretary.triggers import (
+    IDENTITY_WINDOW_DAYS,
+    PERMIT_WINDOW_DAYS,
+    paid_at_appointment,
+    unconfirmed_reason,
+)
 
 # --------------------------------------------------------------------------------------------------
 # Kinds
@@ -111,6 +139,7 @@ KINDS: dict[str, tuple[NumberGroup, str]] = {
     "health_insurance": ("about_you", "Health insurance number (Krankenversichertennummer)"),
     "student": ("about_you", "Student number (Matrikelnummer)"),
     "broadcasting_fee": ("about_you", "Broadcasting fee number (Beitragsnummer)"),
+    "vehicle": ("about_you", "Number plate (Kfz-Kennzeichen)"),
     # identity documents
     "passport": ("document", "Passport number"),
     "residence_permit": ("document", "Residence permit number"),
@@ -130,6 +159,7 @@ KINDS: dict[str, tuple[NumberGroup, str]] = {
     "payment_reference": ("case", "Payment reference (Kassenzeichen)"),
     "invoice": ("case", "Invoice number"),
     "order": ("case", "Order number"),
+    "tracking": ("case", "Tracking number (Sendungsnummer)"),
     "reference": ("case", "Reference"),
     # the organisation's own
     "vat_id": ("theirs", "VAT ID (USt-IdNr.)"),
@@ -146,11 +176,14 @@ CHECKED_KINDS = frozenset({"tax_id", "social_insurance", "health_insurance", "ib
 
 TAX_OFFICE_DOC_KINDS = frozenset({"tax_assessment", "tax_letter"})
 AUTHORITY_PARTY_KINDS = frozenset({"authority", "immigration_office", "tax_office"})
-IDENTITY_WINDOW_DAYS = 180
-PERMIT_WINDOW_DAYS = 90
 RESIDENCE_EXTENSION_NOTE = (
-    "Apply to extend it before it expires: if you apply in time, it keeps counting until the office "
-    "decides (§ 81 Abs. 4 AufenthG)."
+    "Apply before it expires: your permit then counts as still valid until the office decides "
+    "(§ 81 Abs. 4 S. 1 AufenthG; not for a Schengen visa) — ask for a Fiktionsbescheinigung."
+)
+RESIDENCE_EXPIRED_NOTE = (
+    "If you applied before it expired, it counts as valid until the office decides (§ 81 Abs. 4 S. 1 "
+    "AufenthG) — keep your Fiktionsbescheinigung. If not, contact the Ausländerbehörde now: after a late "
+    "application the office may keep it in force only to avoid undue hardship (§ 81 Abs. 4 S. 3 AufenthG)."
 )
 IDENTITY_NOTE = (
     "Renewing a passport can take months, and a residence permit usually runs only as long as the passport."
@@ -211,7 +244,8 @@ def _cross_sum(value: int) -> int:
 
 
 def tax_id_problem(value: str) -> str | None:
-    """Why ``value`` is no valid Steuer-ID (§ 139b AO), or ``None`` when it passes every rule."""
+    """Why ``value`` is no valid Steuer-ID (§ 139b AO; the digit rules are the BZSt's specification),
+    or ``None`` when it passes every rule."""
     digits = compact(value)
     if not digits.isdigit() or len(digits) != 11:
         return f"A Steuer-ID has 11 digits; this has {sum(char.isdigit() for char in digits)}"
@@ -244,7 +278,8 @@ def is_social_insurance_shape(value: str) -> bool:
 
 
 def social_insurance_problem(value: str) -> str | None:
-    """Why ``value`` is no valid Rentenversicherungsnummer (§ 147 SGB VI), or ``None``."""
+    """Why ``value`` is no valid Rentenversicherungsnummer (§ 147 SGB VI; check digit: § 2 Abs. 6 VKVV),
+    or ``None``."""
     match = _RVNR.match(compact(value))
     if match is None:
         return "A Rentenversicherungsnummer has 12 characters: 8 digits, a letter and 3 digits"
@@ -263,7 +298,8 @@ def is_health_insurance_shape(value: str) -> bool:
 
 
 def health_insurance_problem(value: str) -> str | None:
-    """Why ``value`` is no valid Krankenversichertennummer (§ 290 SGB V), or ``None``."""
+    """Why ``value`` is no valid Krankenversichertennummer (§ 290 SGB V; its check digit is the
+    GKV-Spitzenverband's guideline), or ``None``."""
     match = _KVNR.match(compact(value))
     if match is None:
         return "A Krankenversichertennummer has a letter and nine digits"
@@ -284,13 +320,17 @@ def _check(problem: str | None, what: str, law: str) -> DigitCheck:
 def check_number(kind: str, value: str) -> DigitCheck:
     """The check-digit test for a number of ``kind`` (``none`` for kinds without a public algorithm)."""
     if kind == "tax_id":
-        return _check(tax_id_problem(value), "Steuer-ID", "§ 139b AO")
+        return _check(tax_id_problem(value), "Steuer-ID", "§ 139b AO, the BZSt's specification")
     if kind == "social_insurance":
-        return _check(social_insurance_problem(value), "Rentenversicherungsnummer", "§ 147 SGB VI")
+        return _check(social_insurance_problem(value), "Rentenversicherungsnummer", "§ 147 SGB VI, § 2 VKVV")
     if kind == "health_insurance":
         if not is_health_insurance_shape(value):
             return NO_CHECK  # a private insurer's member number has its own shape
-        return _check(health_insurance_problem(value), "Krankenversichertennummer", "§ 290 SGB V")
+        return _check(
+            health_insurance_problem(value),
+            "Krankenversichertennummer",
+            "§ 290 SGB V, the GKV-Spitzenverband's guideline",
+        )
     if kind == "iban" or (kind == "account" and inspect_iban(value).shape_ok):
         found = inspect_iban(value)
         if found.valid:
@@ -304,6 +344,9 @@ def check_number(kind: str, value: str) -> DigitCheck:
 # --------------------------------------------------------------------------------------------------
 # Classification
 # --------------------------------------------------------------------------------------------------
+
+
+_IBAN_WORDS = ("iban", "kontonummer", "kontonr", "kto", "ktonr", "bankverbindung", "bankaccount")
 
 
 @dataclass(frozen=True)
@@ -320,9 +363,23 @@ def _has(key: str, words: Iterable[str]) -> bool:
     return any(key == word if len(word) <= 4 else word in key for word in words)
 
 
+def _label_words(label: str) -> list[str]:
+    """``"IBAN des Zahlungspflichtigen"`` → ``["iban", "des", "zahlungspflichtigen"]`` (folded)."""
+    folded = unicodedata.normalize("NFKC", label).casefold().translate(_TRANSLIT)
+    return re.findall(r"[^\W_]+", folded)
+
+
+def _word_starts(label: str, stems: Iterable[str]) -> bool:
+    """Whether a word of the label starts with one of ``stems``."""
+    stems = tuple(stems)
+    return any(word.startswith(stems) for word in _label_words(label))
+
+
 _CREDITOR_ID = re.compile(r"^DE\d{2}ZZZ\d{11}$")
 _VAT_ID = re.compile(r"^DE\d{9}$")
-_REGISTER_IN_VALUE = re.compile(r"\b(?:HRB|HRA|GnR|VR|PR)\b", re.I)
+_REGISTER_IN_VALUE = re.compile(r"\b(?:HRB|HRA|GnR)\s*\d+")
+_ASSOCIATION_IN_VALUE = re.compile(r"\b(?:VR|PR)\s+\d+\b")
+_REGISTER_WORDS = ("register", "amtsgericht", "registergericht")
 
 _THEIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("vat_id", ("ustid", "umsatzsteuer", "vatid", "vatno", "vatnumber", "vat", "uid", "ustidnr")),
@@ -335,13 +392,14 @@ _THEIRS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "hrb",
             "hra",
             "gnr",
+            "vr",
             "registergericht",
             "weeereg",
         ),
     ),
     ("creditor_id", ("glaeubiger", "creditor", "ci", "credid")),
     ("bic", ("bic", "swift")),
-    ("iban", ("iban", "kontonummer", "kontonr", "kto", "ktonr", "bankverbindung", "bankaccount")),
+    ("iban", _IBAN_WORDS),
     ("their_other", ("betriebsnummer", "versicherungsteuer")),
 )
 _TAX_NUMBER = ("steuernummer", "steuernr", "stnr", "taxnumber", "taxno")
@@ -351,11 +409,13 @@ _ABOUT_YOU: tuple[tuple[str, tuple[str, ...]], ...] = (
         "social_insurance",
         (
             "rentenversicherungsnummer",
+            "rentenversicherungsnr",
             "rvnr",
             "rvnummer",
             "svnr",
             "svnummer",
             "sozialversicherungsnummer",
+            "sozialversicherungsnr",
             "sozialversicherung",
             "socialsecurity",
             "socialinsurance",
@@ -368,6 +428,7 @@ _ABOUT_YOU: tuple[tuple[str, tuple[str, ...]], ...] = (
             "krankenversichertennummer",
             "krankenversicherungsnummer",
             "kvnr",
+            "kvnummer",
             "versichertennummer",
             "versichertennr",
             "healthinsurancenumber",
@@ -379,13 +440,60 @@ _ABOUT_YOU: tuple[tuple[str, tuple[str, ...]], ...] = (
         "residence_permit",
         ("aufenthaltstitel", "aufenthaltserlaubnis", "residencepermit", "eatnummer", "eatnr"),
     ),
+    (
+        "vehicle",
+        (
+            "kfzkennzeichen",
+            "fahrzeugkennzeichen",
+            "amtlicheskennzeichen",
+            "amtlkennzeichen",
+            "numberplate",
+            "licenseplate",
+            "licenceplate",
+            "registrationplate",
+        ),
+    ),
 )
 _TAX_ID_BY_SHAPE = ("identifikationsnummer", "idnr")
 """Labels that are a Steuer-ID only with its eleven digits (other offices number people too)."""
 _ID_CARD = ("personalausweis", "idcard", "identitycard")
 _ID_CARD_AT_AUTHORITY = ("ausweisnummer", "ausweisnr", "ausweis")
-_BROADCASTING = ("beitragsnummer", "rundfunk")
-_SOCIAL_INSURANCE_BY_SHAPE = ("versicherungsnummer", "versnr", "vsnr", "insurancenumber")
+_BROADCASTING = ("beitragsnummer", "beitragsnr", "rundfunk")
+_SOCIAL_INSURANCE_BY_SHAPE = ("vers", "rv", "sv", "sozial", "renten", "pension", "insurance")
+"""Label parts that make a number of the Rentenversicherungsnummer's shape one (``Versicherungs-Nr.``)."""
+_HEALTH_INSURANCE_BY_SHAPE = ("vers", "kv", "kranken", "health")
+"""Label parts that make a number of the Krankenversichertennummer's shape one, at a health insurer."""
+_OTHER_PERSON = (
+    "kind",
+    "child",
+    "sohn",
+    "tochter",
+    "daughter",
+    "ehegatt",
+    "ehepartner",
+    "ehefrau",
+    "ehemann",
+    "lebenspartner",
+    "partner",
+    "spouse",
+    "husband",
+    "wife",
+)
+"""Label words that name someone else ("Identifikationsnummer des Kindes"): never *about you*."""
+_YOUR_ACCOUNT = (
+    "ihr",
+    "your",
+    "kontoinhab",
+    "zahlungspflicht",
+    "zahler",
+    "payer",
+    "debtor",
+    "debitor",
+    "mandatsgeber",
+    "kunde",
+    "customer",
+)
+"""Label words that make an IBAN the person's own ("Ihre IBAN", "IBAN des Zahlungspflichtigen")."""
 _CASE: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("payment_reference", ("kassenzeichen", "buchungszeichen")),
     (
@@ -402,7 +510,8 @@ _CASE: tuple[tuple[str, tuple[str, ...]], ...] = (
         ),
     ),
     ("invoice", ("rechnung", "invoice", "rgnr", "belegnr", "belegnummer", "mahnnummer")),
-    ("order", ("bestell", "auftrag", "order", "sendungsnummer", "tracking")),
+    ("tracking", ("sendungsnummer", "sendungsnr", "paketnummer", "tracking", "trackingnummer")),
+    ("order", ("bestell", "auftrag", "order")),
 )
 _MANDATE = ("mandat",)
 _REFERENCE = (
@@ -447,10 +556,44 @@ def _first(key: str, table: Sequence[tuple[str, tuple[str, ...]]]) -> str | None
     return next((kind for kind, words in table if _has(key, words)), None)
 
 
-def _iban_kind(value: str, ctx: Context) -> str:
-    """A well-formed IBAN: the person's account at a bank (or their own), else where to pay the sender."""
+def _names_a_matter(key: str) -> bool:
+    """A label that says what the number is — a case, or yours with the organisation (not an account):
+    it wins over a value's look (a "Kundennummer" of the VAT ID's shape, "Bestellnummer PR 2024")."""
+    return (
+        _has(key, _MANDATE)
+        or _has(key, _REFERENCE)
+        or _first(key, _CASE) is not None
+        or _first(key, [row for row in _YOURS if row[0] != "account"]) is not None
+    )
+
+
+def _is_register(key: str, value: str) -> bool:
+    """A register entry in the value: HRB, HRA or GnR with its number; VR (Vereinsregister) or PR
+    (Partnerschaftsregister) only beside a court or register word — "PR 12" is as often a ticket."""
+    if _REGISTER_IN_VALUE.search(value):
+        return True
+    return _ASSOCIATION_IN_VALUE.search(value) is not None and (
+        _has(key, _REGISTER_WORDS) or _has(label_key(value), _REGISTER_WORDS)
+    )
+
+
+def _is_iban(key: str, flat: str) -> bool:
+    """A valid IBAN; or one that fails only its check digits (its country's length) or stands under an
+    IBAN label — a misread IBAN, which :func:`check_number` then reports."""
+    found = inspect_iban(flat)
+    if found.valid:
+        return True
+    return found.shape_ok and (
+        (found.country is not None and found.length_ok is True) or _has(key, ("iban",))
+    )
+
+
+def _iban_kind(label: str, value: str, ctx: Context) -> str:
+    """An IBAN: the person's account — their own, at a bank, or labelled as theirs ("Ihre IBAN") —
+    else the organisation's, where to pay it."""
     own = ctx.own_iban and iban_normalize(ctx.own_iban) == iban_normalize(value)
-    return "account" if own or ctx.party_kind == "bank" else "iban"
+    theirs_by_label = _word_starts(label, _YOUR_ACCOUNT)
+    return "account" if own or ctx.party_kind == "bank" or theirs_by_label else "iban"
 
 
 def classify(label: str, value: str, ctx: Context | None = None) -> str | None:
@@ -459,15 +602,16 @@ def classify(label: str, value: str, ctx: Context | None = None) -> str | None:
     if not is_number(value):
         return None
     key, flat = label_key(label), compact(value)
+    matter = _names_a_matter(key)
     # 2. by shape
     if _CREDITOR_ID.match(flat):
         return "creditor_id"
-    if _VAT_ID.match(flat):
+    if _VAT_ID.match(flat) and not matter:
         return "vat_id"
-    if inspect_iban(flat).valid:
-        return _iban_kind(value, ctx)
+    if _is_iban(key, flat) and not (matter and not inspect_iban(flat).valid):
+        return _iban_kind(label, value, ctx)
     # 3. by label: the organisation's own first (a register is never a number of yours)
-    if _REGISTER_IN_VALUE.search(value):
+    if not matter and _is_register(key, value):
         return "register"
     if _has(key, _TAX_NUMBER):
         from_tax_office = ctx.party_kind == "tax_office" or ctx.doc_kind in TAX_OFFICE_DOC_KINDS
@@ -477,17 +621,29 @@ def classify(label: str, value: str, ctx: Context | None = None) -> str | None:
         return "account" if ctx.party_kind == "bank" else "their_other"  # an account number, not an IBAN
     if theirs is not None:
         return theirs
-    return _personal(key, value, ctx) or _case_or_yours(key)
+    return _personal(label, key, value, ctx) or _case_or_yours(key)
 
 
-def _personal(key: str, value: str, ctx: Context) -> str | None:
+def _personal(label: str, key: str, value: str, ctx: Context) -> str | None:
+    if _word_starts(label, _OTHER_PERSON):
+        return None  # a child's or spouse's number is not about you
     kind = _first(key, _ABOUT_YOU)
     if kind is not None:
         return kind
-    if _has(key, _TAX_ID_BY_SHAPE) and compact(value).isdigit() and len(compact(value)) == 11:
+    if key.startswith("kennzeichen"):
+        return "vehicle"
+    flat = compact(value)
+    tax_id_label = _has(key, _TAX_ID_BY_SHAPE) or (key.endswith("idnr") and not _has(key, ("ustidnr",)))
+    if tax_id_label and flat.isdigit() and len(flat) == 11:
         return "tax_id"
-    if _has(key, _SOCIAL_INSURANCE_BY_SHAPE) and is_social_insurance_shape(value):
+    if is_social_insurance_shape(value) and any(part in key for part in _SOCIAL_INSURANCE_BY_SHAPE):
         return "social_insurance"
+    if (
+        ctx.party_kind == "health_insurer"
+        and is_health_insurance_shape(value)
+        and any(part in key for part in _HEALTH_INSURANCE_BY_SHAPE)
+    ):
+        return "health_insurance"
     if _has(key, _BROADCASTING) and (
         "rundfunk" in key or ctx.party_kind == "public_broadcaster" or ctx.doc_kind == "broadcasting_fee"
     ):
@@ -548,6 +704,7 @@ class Sighting:
     value: str
     doc: Document
     party: Party | None
+    kind: str | None = None  # decided by where it stands, not by its label (a payment IBAN)
 
 
 @dataclass
@@ -591,9 +748,11 @@ def _sightings(data: NumbersInput) -> list[Sighting]:
         for identifier in (*doc.references, *sender):
             found.append(Sighting(identifier.label, identifier.value, doc, party))
         if doc.payment and doc.payment.iban:
+            # where to pay the sender — the payee's name in the label never makes it a number of yours
             payee = printed(doc.payment.payee or "")
             label = f"IBAN for payments to {payee}" if payee else "IBAN for payments"
-            found.append(Sighting(label, doc.payment.iban, doc, party))
+            own = bool(data.own_iban) and compact(doc.payment.iban) == compact(data.own_iban or "")
+            found.append(Sighting(label, doc.payment.iban, doc, party, "account" if own else "iban"))
     return found
 
 
@@ -642,7 +801,7 @@ def _collect(data: NumbersInput) -> tuple[dict[tuple[str, str], _Entry], dict[tu
     personal: dict[tuple[str, str], _Entry] = {}
     for s in _sightings(data):
         ctx = Context(s.party.kind if s.party else None, s.doc.kind, data.own_iban)
-        kind = classify(s.label, s.value, ctx)
+        kind = (s.kind if is_number(s.value) else None) if s.kind else classify(s.label, s.value, ctx)
         flat = compact(s.value)
         if kind is None or (kind == "account" and data.own_iban and flat == compact(data.own_iban)):
             continue  # the person's own IBAN is in their profile
@@ -671,8 +830,22 @@ def _one_off(item: Item) -> bool:
     return item.recurrence is None and item.kind not in ("expiry", "milestone")
 
 
+def _next_item(data: NumbersInput, item: Item) -> CaseItemRef:
+    """A case's next to-do as the record gives it: a fee paid at the appointment has no transfer day."""
+    in_person = paid_at_appointment(item, data.items)
+    return CaseItemRef(
+        id=item.id,
+        title=item.title,
+        kind=item.kind,
+        due_date=item.due_date,
+        send_by=None if in_person else item.send_by,
+        needs_check=unconfirmed_reason(item) is not None,
+    )
+
+
 def _open_cases(data: NumbersInput, entries: Iterable[_Entry]) -> list[OpenCase]:
-    """Case references grouped by thread (else letter), while it has an open one-off to-do."""
+    """Case references grouped by thread (else letter), while it has an open one-off to-do — of the
+    thread (its own, or of one of its letters), else of the letter."""
     groups: dict[str, list[_Entry]] = {}
     for entry in entries:
         if KINDS[entry.kind][0] != "case":
@@ -681,25 +854,31 @@ def _open_cases(data: NumbersInput, entries: Iterable[_Entry]) -> list[OpenCase]
             groups.setdefault(thread, []).append(entry)
     cases: list[OpenCase] = []
     documents = {doc.id: doc for doc in data.documents}
+    thread_letters: dict[str, set[str]] = {}
+    for doc in data.documents:
+        if doc.case_id:
+            thread_letters.setdefault(doc.case_id, set()).add(doc.id)
     for thread, refs in groups.items():
         by_doc = thread.startswith("doc:")
         wanted = thread.removeprefix("doc:")
-        items = sorted(
-            (
-                item
-                for item in data.open_items
-                if _one_off(item) and (item.doc_id if by_doc else item.case_id) == wanted
-            ),
-            key=lambda item: (_first_day(item.due_date, item.send_by), _KIND_RANK.get(item.kind, 9), item.id),
-        )
-        if not items:
+        letters_of = {wanted} if by_doc else thread_letters.get(wanted, set())
+        found = [
+            _next_item(data, item)
+            for item in data.open_items
+            if _one_off(item)
+            and ((not by_doc and item.case_id == wanted) or (item.doc_id or "") in letters_of)
+        ]
+        if not found:
             continue
+        nxt = min(
+            found,
+            key=lambda ref: (_first_day(ref.due_date, ref.send_by), _KIND_RANK.get(ref.kind, 9), ref.id),
+        )
         case = None if by_doc else data.cases.get(wanted)
         letters = _newest_first(
             documents[doc_id] for entry in refs for doc_id in entry.letters if doc_id in documents
         )
         party = refs[0].sighting.party
-        nxt = items[0]
         cases.append(
             OpenCase.model_validate(
                 {
@@ -709,10 +888,8 @@ def _open_cases(data: NumbersInput, entries: Iterable[_Entry]) -> list[OpenCase]
                     "party_id": party.id if party else None,
                     "party_name": party.name if party else None,
                     "references": [entry.model() for entry in refs],
-                    "next_item": CaseItemRef(
-                        id=nxt.id, title=nxt.title, kind=nxt.kind, due_date=nxt.due_date, send_by=nxt.send_by
-                    ),
-                    "open_items": len(items),
+                    "next_item": nxt,
+                    "open_items": len(found),
                     "letter": _letter_ref(letters[0]),
                 }
             )
@@ -743,6 +920,32 @@ _DOCUMENT_NAMES = {
 }
 
 
+_IDENTITY_TITLE = ("passport", "reisepass", "personalausweis", "identity card", "national id")
+_PERMIT_TITLE = (
+    "aufenthalt",
+    "residence permit",
+    "residence title",
+    "fiktionsbescheinigung",
+    "blue card",
+    "blaue karte",
+    "visum",
+)
+_VISA = re.compile(r"\bvisa\b(?!\s*(?:card|karte|debit|credit))", re.I)
+
+
+def is_identity_expiry(item: Item, klass: str, doc: Document | None) -> bool:
+    """An expiry of an identity document or residence title: from such a letter, or with a title that
+    names one — not a library card, student ID ("Studierendenausweis") or Visa card that expires."""
+    if doc is not None and doc.kind in ("identity_document", "residence_permit"):
+        return True
+    title = item.title.casefold()
+    if klass == "identity":
+        return any(word in title for word in _IDENTITY_TITLE)
+    return klass == "permit" and (
+        any(word in title for word in _PERMIT_TITLE) or _VISA.search(item.title) is not None
+    )
+
+
 def _identity_kind(item: Item, klass: str, numbers: Sequence[MyNumber]) -> str:
     if klass == "permit":
         return "residence_permit"
@@ -771,6 +974,7 @@ def _identity_documents(
         and data.expiry_classes.get(item.id) in ("permit", "identity")
         and item.doc_id not in data.suspicious
         and (item.doc_id is None or item.doc_id in documents)
+        and is_identity_expiry(item, data.expiry_classes[item.id], documents.get(item.doc_id or ""))
     ]
     for item in sorted(expiries, key=lambda i: (i.due_date or "9999", i.id)):
         klass = data.expiry_classes[item.id]
@@ -795,7 +999,9 @@ def _identity_document(
 ) -> IdentityDocument:
     until = date.fromisoformat(item.due_date) if item and item.due_date else None
     status = _document_status(kind, until, data.today)
-    note = RESIDENCE_EXTENSION_NOTE if kind == "residence_permit" else None
+    note = None
+    if kind == "residence_permit":
+        note = RESIDENCE_EXPIRED_NOTE if status == "expired" else RESIDENCE_EXTENSION_NOTE
     if kind == "passport" and status in ("renew_soon", "expired"):
         note = IDENTITY_NOTE
     letter = doc or next(
@@ -811,6 +1017,7 @@ def _identity_document(
             "status": status,
             "note": note,
             "item_id": item.id if item else None,
+            "needs_check": item is not None and unconfirmed_reason(item) is not None,
             "letter": _letter_ref(letter) if letter else None,
         }
     )

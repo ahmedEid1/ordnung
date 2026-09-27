@@ -19,6 +19,8 @@ from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.models import DocumentExtraction, Identifier
 from ordnung.numbers import (
+    RESIDENCE_EXPIRED_NOTE,
+    RESIDENCE_EXTENSION_NOTE,
     Context,
     check_number,
     classify,
@@ -210,10 +212,34 @@ BROADCASTER = Context(party_kind="public_broadcaster", doc_kind="broadcasting_fe
         ("Bankverbindung", "DE89 3704 0044 0532 0130 00", None, "iban"),
         ("IBAN", "DE89 3704 0044 0532 0130 00", BANK, "account"),
         ("IBAN", "DE89 3704 0044 0532 0130 00", Context(own_iban="DE89370400440532013000"), "account"),
+        # a misread IBAN is still an IBAN (and then does not check): its country's length, or its label
+        ("IBAN", "DE89 3704 0044 0532 0130 01", None, "iban"),
+        ("Bankverbindung", "DE89 3704 0044 0532 0130 01", None, "iban"),
+        ("IBAN", "DE89 3704 0044 0532 0130 0", None, "iban"),  # a digit short
+        ("Kundennummer", "DE89370400440532013001", None, "customer"),  # the label names what it is
+        ("Kundennummer", "DE123456789", None, "customer"),
+        # an IBAN labelled as the person's is theirs, hidden on screen
+        ("Ihre IBAN", "DE89 3704 0044 0532 0130 00", None, "account"),
+        ("Ihre Bankverbindung", "DE89 3704 0044 0532 0130 00", None, "account"),
+        ("Kontoinhaber IBAN", "DE89 3704 0044 0532 0130 00", None, "account"),
+        ("IBAN des Zahlungspflichtigen", "DE89 3704 0044 0532 0130 00", None, "account"),
+        ("Your IBAN", "DE89 3704 0044 0532 0130 00", None, "account"),
         # 3a. the organisation's own
         ("Amtsgericht", "Musterstadt HRB 31045", None, "register"),
         ("Amtsgericht/GnR", "Amtsgericht Musterstadt GnR 88", None, "register"),
         ("Handelsregister", "HRB 4711", None, "register"),
+        ("", "HRB 4711", None, "register"),
+        ("Vereinsregister", "VR 1234", None, "register"),
+        ("Registergericht", "Amtsgericht Musterstadt VR 1234", None, "register"),
+        # a register abbreviation in a case or order number is no register
+        ("Vertragsnummer", "VR-2024-001", None, "contract"),
+        ("Order", "VR-2024-1234", None, "order"),
+        ("Bestellnummer", "PR-2024-1234", None, "order"),
+        ("Kassenzeichen", "PR 2024 1234", None, "payment_reference"),
+        ("Az.", "VR 123/24", None, "case_file"),
+        ("Geschäftszeichen", "II/3-4711 PR", None, "case_file"),
+        ("Ticket", "PR 12", None, "reference"),
+        ("Aktenzeichen", "HRB 12345", None, "case_file"),
         ("WEEE-Reg.-Nr.", "DE 00000000", None, "register"),
         ("Foundation register", "Berlin 3/GT-2011", None, "register"),
         ("BIC", "MUBKDEM1XXX", None, "bic"),
@@ -236,15 +262,30 @@ BROADCASTER = Context(party_kind="public_broadcaster", doc_kind="broadcasting_fe
         ("Identifikationsnummer", "86095742719", None, "tax_id"),
         ("Identifikationsnummer", "4711", None, "other"),  # other offices number people too
         ("IdNr", "86095742719", None, "tax_id"),
+        ("Steuerliche IdNr.", "86095742719", None, "tax_id"),
+        ("St.-IdNr.", "86 095 742 719", None, "tax_id"),
         ("SV-Nummer", "65 140300 R 004", None, "social_insurance"),
         ("Rentenversicherungsnummer", "15 070649 C 103", None, "social_insurance"),
+        ("Rentenversicherungs-Nr.", "15 070649 C 103", None, "social_insurance"),
         ("Versicherungsnummer", "15 070649 C 103", None, "social_insurance"),
+        ("Versicherungs-Nr.", "15 070649 C 103", Context(party_kind="authority"), "social_insurance"),
+        ("Versicherungs-Nr.", "PHV-4471-2290", Context(party_kind="insurer"), "policy"),
         ("Versicherungsnummer", "PHV-4471-2290", Context(party_kind="insurer"), "policy"),
         ("Versicherten-Nr.", "R482019375", Context(party_kind="health_insurer"), "health_insurance"),
         ("Krankenversichertennummer", "A123456780", None, "health_insurance"),
+        ("KV-Nummer", "A123456780", None, "health_insurance"),
+        ("Versicherungsnummer", "A123456780", Context(party_kind="health_insurer"), "health_insurance"),
+        ("Versicherungsnummer", "A123456780", Context(party_kind="insurer"), "policy"),
+        # someone else's number is not about you
+        ("Identifikationsnummer des Kindes", "86095742719", AUTHORITY, "other"),
+        ("Steuer-ID Ehegatte", "86095742719", TAX_OFFICE, "other"),
+        ("Reisepass des Kindes", "C01X00T47", AUTHORITY, "other"),
+        ("Kfz-Kennzeichen", "B-AB 1234", None, "vehicle"),
+        ("Kennzeichen", "M-XY 99", None, "vehicle"),
         ("Matrikelnummer", "4711123", None, "student"),
         ("Matr.-Nr.", "4711123", None, "student"),
         ("Beitragsnummer", "512 345 678", BROADCASTER, "broadcasting_fee"),
+        ("Beitragsnr.", "512 345 678", Context(party_kind="public_broadcaster"), "broadcasting_fee"),
         ("Beitragsnummer", "512 345 678", Context(party_kind="health_insurer"), "other"),
         (
             "Passport No.",
@@ -265,6 +306,7 @@ BROADCASTER = Context(party_kind="public_broadcaster", doc_kind="broadcasting_fe
         ("Rechnungs-Nr.", "TM-2026-0048213", None, "invoice"),
         ("Bestellnummer", "302-5512094", None, "order"),
         ("Auftragsnummer", "A-2024-5518290", None, "order"),
+        ("Sendungsnummer", "RR123456785DE", None, "tracking"),
         ("Unser Zeichen", "BZ-S/2026/0917", None, "reference"),
         ("Vorgang", "BS-2026-99812", None, "reference"),
         ("Mediennummer", "30031 004 812", None, "reference"),
@@ -588,7 +630,49 @@ def test_identity_documents_carry_their_number_and_expiry(store: Store, ledger: 
     )
     permit = docs["residence_permit"]
     assert permit.number is None and permit.valid_until == "2026-11-30" and permit.status == "renew_soon"
-    assert permit.note and "§ 81 Abs. 4 AufenthG" in permit.note
+    assert permit.note == RESIDENCE_EXTENSION_NOTE
+    assert "§ 81 Abs. 4 S. 1 AufenthG" in permit.note and "Fiktionsbescheinigung" in permit.note
+
+
+def test_an_expired_permit_is_never_told_to_apply_before_it_expires(
+    store: Store, ledger: dict[str, str]
+) -> None:
+    """§ 81 Abs. 4 AufenthG: an application in time keeps the permit in force (S. 1); after a late one
+    only the office can order that, to avoid undue hardship (S. 3)."""
+    store.update_item(ledger["permit_expiry"], due_date="2026-09-20")
+    (permit,) = [d for d in _numbers(store).documents if d.kind == "residence_permit"]
+    assert permit.status == "expired" and permit.note == RESIDENCE_EXPIRED_NOTE
+    assert "before it expires" not in permit.note
+    assert "§ 81 Abs. 4 S. 3 AufenthG" in permit.note and "Ausländerbehörde" in permit.note
+
+
+def test_an_expiry_date_read_by_ai_says_so(store: Store, ledger: dict[str, str]) -> None:
+    store.update_item(ledger["passport_expiry"], grounding="model_read")
+    (passport,) = [d for d in _numbers(store).documents if d.kind == "passport"]
+    assert passport.needs_check is True
+    store.update_item(ledger["passport_expiry"], grounding="user")  # "Looks right"
+    (passport,) = [d for d in _numbers(store).documents if d.kind == "passport"]
+    assert passport.needs_check is False
+
+
+@pytest.mark.parametrize(
+    ("title", "doc_kind", "shown"),
+    [
+        ("Bibliotheksausweis läuft ab", "other", False),
+        ("Studierendenausweis gültig bis", "university", False),
+        ("Student ID card expires", "university", False),
+        ("Visa card expires", "bank_letter", False),
+        ("Reisepass läuft ab", "other", True),
+        ("Visa expires", "other", True),
+        ("Ausweis expires", "identity_document", True),
+    ],
+)
+def test_only_identity_documents_and_residence_titles_are_documents(
+    store: Store, ledger: dict[str, str], title: str, doc_kind: str, shown: bool
+) -> None:
+    letter = _letter(store, f"card-{title}", kind=doc_kind, doc_date="2026-09-01")
+    item = store.add_item(kind="expiry", title=title, due_date="2027-01-31", doc_id=letter).id
+    assert (item in {d.item_id for d in _numbers(store).documents}) is shown
 
 
 @pytest.mark.parametrize(
@@ -652,6 +736,97 @@ def test_open_cases_while_a_one_off_to_do_is_open(store: Store, ledger: dict[str
     assert "fine" not in {c.title for c in _numbers(store).open_cases}
 
 
+def test_a_to_do_added_to_a_letter_of_the_thread_keeps_the_case_open(
+    store: Store, ledger: dict[str, str]
+) -> None:
+    """POST /api/items takes a letter and an optional thread: a to-do with only the letter still belongs
+    to the letter's thread."""
+    for item in store.list_items():
+        if item.case_id == ledger["permit_case"] and item.kind == "appointment":
+            store.update_item(item.id, status="done")
+    assert "Residence permit extension" not in {c.title for c in _numbers(store).open_cases}
+    added = store.add_item(
+        kind="task", title="Bring the biometric photo", due_date="2026-10-10", doc_id=ledger["permit_letter"]
+    ).id
+    (case,) = [c for c in _numbers(store).open_cases if c.title == "Residence permit extension"]
+    assert case.next_item is not None and case.next_item.id == added
+
+
+def test_a_fee_paid_at_the_appointment_is_no_transfer(store: Store, ledger: dict[str, str]) -> None:
+    """The fee is paid on site on the appointment's day: no transfer day, and the appointment first."""
+    fee = store.add_item(
+        kind="payment",
+        title="Fee for the extension",
+        due_date="2026-10-14",
+        due_time="10:30",
+        send_by="2026-10-13",
+        amount=100.0,
+        doc_id=ledger["permit_letter"],
+        case_id=ledger["permit_case"],
+    ).id
+    (case,) = [c for c in _numbers(store).open_cases if c.title == "Residence permit extension"]
+    assert case.next_item is not None and case.next_item.id == ledger["appointment"]
+    store.update_item(ledger["appointment"], kind="task")
+    (case,) = [c for c in _numbers(store).open_cases if c.title == "Residence permit extension"]
+    # without an appointment that day the fee is a transfer: its send-by day counts
+    assert case.next_item is not None and (case.next_item.id, case.next_item.send_by) == (fee, "2026-10-13")
+
+
+def test_an_unconfirmed_next_step_says_so(store: Store, ledger: dict[str, str]) -> None:
+    store.update_item(ledger["fine_payment"], grounding="unverified")
+    (fine,) = [c for c in _numbers(store).open_cases if c.title == "fine"]
+    assert fine.next_item is not None and fine.next_item.needs_check is True
+    store.update_item(ledger["fine_payment"], grounding="user")
+    (fine,) = [c for c in _numbers(store).open_cases if c.title == "fine"]
+    assert fine.next_item is not None and fine.next_item.needs_check is False
+
+
+def test_a_misread_payment_iban_does_not_check_and_is_never_one_of_yours(store: Store) -> None:
+    """The IBAN a letter gives for payment is where to pay the sender, whatever the payee is called — also
+    when a digit was misread, which its check then reports."""
+    insurer = _party(store, "pty_insurer", "Allianz Versicherungs-AG", "insurer")
+    customer = _party(store, "pty_kunden", "Kundenservice Zahlungen GmbH", "company")
+    _letter(
+        store,
+        "insurance-bill",
+        kind="insurance",
+        party_id=insurer,
+        references=_refs(("Versicherungsnummer", "AS-123456")),
+        payment={"iban": "DE89370400440532013001", "payee": "Allianz Versicherungs-AG", "iban_valid": False},
+    )
+    _letter(
+        store,
+        "service-bill",
+        kind="invoice",
+        party_id=customer,
+        references=_refs(("Kundennummer", "K-1")),
+        payment={"iban": "DE89370400440532013000", "payee": "Kundenservice Zahlungen GmbH"},
+    )
+    sheets = {s.name: s for s in _numbers(store).organisations}
+    allianz = sheets["Allianz Versicherungs-AG"]
+    assert [(n.kind, n.value) for n in allianz.numbers] == [("policy", "AS-123456")]
+    (iban,) = allianz.their_numbers
+    assert (iban.kind, iban.check) == ("iban", "fails")
+    assert iban.check_note is not None and "Compare it with the letter" in iban.check_note
+    service = sheets["Kundenservice Zahlungen GmbH"]
+    assert [n.kind for n in service.their_numbers] == ["iban"]  # "Kunden…" in the payee is no label
+
+
+def test_the_persons_own_payment_iban_stays_in_the_profile(store: Store) -> None:
+    store.save_profile({"name": "Sam", "iban": "DE89 3704 0044 0532 0130 00", "onboarded": True})
+    refund = _party(store, "pty_refund", "Finanzamt", "tax_office")
+    _letter(
+        store,
+        "refund",
+        kind="tax_assessment",
+        party_id=refund,
+        references=_refs(("Steuernummer", "331/5012/4471")),
+        payment={"iban": "DE89370400440532013000", "payee": "Sam Rivera"},
+    )
+    (sheet,) = _numbers(store).organisations
+    assert [n.kind for n in sheet.numbers] == ["tax_number"] and sheet.their_numbers == []
+
+
 # --------------------------------------------------------------------------------------------------
 # the demo's own numbers
 # --------------------------------------------------------------------------------------------------
@@ -670,7 +845,10 @@ def test_the_demo_numbers(demo_store: Store) -> None:
     page = my_numbers(demo_store, TODAY)
     about = {n.kind: (n.label, n.value, n.check, n.party_name) for n in page.about_you}
     assert about == {
-        # the sample letters' numbers are made up, so their check digits fail — as a misread would
+        # A known defect of the sample life, pinned until the demo is re-recorded: scripts/samplelife/
+        # persona.py prints numbers whose check digits fail (as a misread would). The fix is the
+        # integrator's — give the persona 57 216 480 354, 65 140300 R 005 and R482019379 (the static
+        # demo's numbers), re-render the samples and re-record the fixtures, then pin "ok" here.
         "tax_id": ("Steuer-ID", "57 216 480 393", "fails", "Muster Tech GmbH"),
         "social_insurance": ("SV-Nummer", "65 140300 R 004", "fails", "Muster Tech GmbH"),
         "health_insurance": ("Versicherten-Nr.", "R482019375", "fails", "Muster BKK"),
