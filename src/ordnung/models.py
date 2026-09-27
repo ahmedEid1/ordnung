@@ -1169,6 +1169,9 @@ class TraceRun(_Model):
     repairs: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
+    #: prompt tokens read from or written to the model's prompt cache (not in ``input_tokens``)
+    cache_read_tokens: int = 0
+    cache_creation_tokens: int = 0
     cost_usd: float = 0.0
     model_ms: float = 0.0
 

@@ -53,6 +53,7 @@ import { doc as makeDoc, item as makeItem } from "./data/helpers";
 import { isOpenItem } from "@/features/document/verdict";
 import { documentKindLabel } from "@/lib/copy";
 import { DEMO_NOTE } from "./mode";
+import { addReading, compareReadings, defaultReadings, documentTrace, exportTraces, type TraceLedger } from "./data/traces";
 
 const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
@@ -220,6 +221,17 @@ function adviceFor(db: MockDb, d: Document): LetterAdvice | null {
   const steps = card.kind === "operating_costs" ? card.steps : card.steps.filter((s) => !ASKS_FOR_DELIVERY.test(s));
   return { ...card, urgent: false, handled: true, steps };
 }
+
+const traceLedger = (db: MockDb): TraceLedger => ({
+  documents: db.state.documents,
+  items: db.state.items,
+  parties: db.state.parties,
+  cases: db.state.cases,
+  contracts: db.state.contracts,
+});
+const readingsOf = (db: MockDb, d: Document) => db.state.readings[d.id] ?? defaultReadings(d);
+const READING_GONE = "That reading of the letter isn't kept any more — Ordnung keeps the last five.";
+const NOTHING_TO_COMPARE = "There is nothing to compare yet: this letter has been read only once.";
 
 function documentDetail(db: MockDb, id: string): DocumentDetail {
   const d = db.document(id) ?? notFound("This letter doesn't exist (anymore).");
@@ -771,7 +783,7 @@ const routes: [string, string, Handler][] = [
       if (opts.staticDemo) throw new HttpError(409, "This online demo keeps nothing — reload the page to start over with Sam's letters.");
       if (db.state.health.demo) throw new HttpError(409, DEMO_DELETE_MESSAGE);
       const st = db.state;
-      Object.assign(st, { parties: [], cases: [], documents: [], items: [], contracts: [], suggestions: [], drafts: [], activity: [], chat: [], tray: [], uploads: {} });
+      Object.assign(st, { parties: [], cases: [], documents: [], items: [], contracts: [], suggestions: [], drafts: [], activity: [], chat: [], tray: [], uploads: {}, readings: {} });
       st.profile = { ...st.profile, name: "", address: "", email: "", phone: "", onboarded: false };
       return { removed: ["derived", "drafts", "files", "ordnung.db"], kept: [] } satisfies DataDeleted;
     },
@@ -931,10 +943,43 @@ const routes: [string, string, Handler][] = [
       const prev = { ...d };
       d.status = "processing";
       const job = makeJob(d.id, "reprocess");
-      void runJob(ctx.db, job, d.text_mode === "vision", () => ctx.db.upsertDocument({ ...prev, updated_at: nowTs(), ai_processed_at: nowTs() }), (ctx.opts.latency ?? 1) * 0.6);
+      const kept = readingsOf(ctx.db, prev);
+      void runJob(
+        ctx.db,
+        job,
+        d.text_mode === "vision",
+        () => {
+          ctx.db.upsertDocument({ ...prev, updated_at: nowTs(), ai_processed_at: nowTs() });
+          ctx.db.state.readings[d.id] = addReading(kept, { trigger: "read_again", started_at: job.created_at, job_id: job.id });
+        },
+        (ctx.opts.latency ?? 1) * 0.6,
+      );
       return new Reply(202, job);
     },
   ],
+  // "How this was read" (data/traces.ts)
+  [
+    "GET",
+    "/documents/:id/trace",
+    ({ db, params, query }) => {
+      const d = db.document(params.id!) ?? notFound("This letter doesn't exist (any more).");
+      return documentTrace(traceLedger(db), d, readingsOf(db, d), query.get("run")) ?? notFound(READING_GONE);
+    },
+  ],
+  [
+    "GET",
+    "/documents/:id/trace/compare",
+    ({ db, params, query }) => {
+      const d = db.document(params.id!) ?? notFound("This letter doesn't exist (any more).");
+      const ledger = traceLedger(db);
+      const seeds = readingsOf(db, d);
+      const head = documentTrace(ledger, d, seeds, query.get("head")) ?? notFound(READING_GONE);
+      const headRun = head.run ?? notFound(NOTHING_TO_COMPARE);
+      const baseId = query.get("base") ?? head.runs.find((r) => r.reading < headRun.reading)?.trace_id ?? notFound(NOTHING_TO_COMPARE);
+      return compareReadings(documentTrace(ledger, d, seeds, baseId) ?? notFound(READING_GONE), head);
+    },
+  ],
+  ["GET", "/traces", ({ db }) => exportTraces(traceLedger(db), Object.fromEntries(db.liveDocuments().map((d) => [d.id, readingsOf(db, d)])))],
 
   // items
   [

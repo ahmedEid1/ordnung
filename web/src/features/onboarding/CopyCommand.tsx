@@ -11,19 +11,30 @@ import { useClipboard } from "@/features/today/clipboard";
 export function CopyCommand({ command, label, className }: { command: string; label?: string; className?: string }) {
   const { copy, copied } = useClipboard();
   const done = copied === command;
-  const parts = command.split(/(?<=\/)/);
+  // words wrap at spaces and after a "/"; a long option ("--otel") never breaks after its dashes
+  const words = command.split(/(\s+)/);
   return (
     <div className={cn("flex items-start gap-2 rounded-xl border border-line bg-[#1d1b16] py-1.5 pl-3.5 pr-1.5 text-[#f2efe7] dark:bg-canvas", className)}>
       <span aria-hidden className="select-none py-1.5 font-mono text-[13px] leading-5 text-[#9a937f]">
         $
       </span>
       <code className="min-w-0 flex-1 whitespace-pre-wrap py-1.5 font-mono text-[13px] leading-5 [overflow-wrap:anywhere]">
-        {parts.map((p, i) => (
-          <Fragment key={i}>
-            {i > 0 ? <wbr /> : null}
-            {p}
-          </Fragment>
-        ))}
+        {words.map((word, i) =>
+          word.startsWith("--") ? (
+            <span key={i} className="whitespace-nowrap">
+              {word}
+            </span>
+          ) : (
+            <Fragment key={i}>
+              {word.split(/(?<=\/)/).map((part, j) => (
+                <Fragment key={j}>
+                  {j > 0 ? <wbr /> : null}
+                  {part}
+                </Fragment>
+              ))}
+            </Fragment>
+          ),
+        )}
       </code>
       <button
         type="button"

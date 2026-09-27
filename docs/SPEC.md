@@ -137,7 +137,9 @@ Key additions in v2 (to implement in models.py):
 SQLite `<data>/ordnung.db`. Every connection: `isolation_level=None` (autocommit; explicit
 transactions), `PRAGMA journal_mode=WAL; busy_timeout=5000; synchronous=NORMAL; foreign_keys=ON`.
 `Store.tx()` = `BEGIN IMMEDIATE … COMMIT/ROLLBACK` (re-entrant per thread). Migrations: `PRAGMA
-user_version` + `db/migrations/NNNN_name.sql` applied in order on open (0001 = the v1 schema).
+user_version` + `db/migrations/NNNN_name.sql` applied in order on open (0001 = the v1 schema;
+0004 = reading traces). Numbers are handed out per piece of work, so a gap is allowed (0004 before
+0002/0003 are merged) but never a duplicate; the demo snapshot is rebuilt whenever one is added.
 The MCP server opens the DB read-only (`mode=ro` URI + `PRAGMA query_only=ON`).
 
 **Deterministic IDs** (so recorded demo/replay references stay valid):
@@ -151,8 +153,8 @@ for substring matches inside German compounds. User queries are escaped (each to
 `delete_document` purges items, pages, jobs, FTS rows (then `optimize`s the indexes), derived files,
 the original, `llm_cache` rows of every call that carried the document (cache rows carry `doc_sha`,
 `doc_a|doc_b` for several), the Ideas and activity entries about it, its quotes in kept contracts and
-its id in `llm_calls`; connections run with `secure_delete=ON`. `llm_calls` never stores prompt or
-response bodies.
+its id, replay keys, spans and jobs in `llm_calls`, and the `trace_spans` of its readings;
+connections run with `secure_delete=ON`. `llm_calls` never stores prompt or response bodies.
 
 The Store API contract is Appendix A (unchanged names; additions: `tx()`, `reconcile_suggestions`,
 `upsert_item_by_slot`, `list_pages`, `set_page_text`, `purge_cache_for(sha)`, `jobs` queue methods).
@@ -317,6 +319,10 @@ claude -p --input-format stream-json --output-format stream-json --verbose
 - **Keys**: `llm_key(req) = f"{purpose}:{prompt_version}:{model}:{sha256(canonical(stable_inputs))}"`
   — callers pass `cache_key` = canonical stable inputs (e.g. extract: file sha + page modes + language +
   region + simulated today). Used for `llm_cache` and fixture paths `<fixtures>/<purpose>/<sha256(key)[:24]>.json`.
+- **Usage log** (`llm_calls`, one row per call): accounting (tokens, cost, latency, cache hit) plus
+  the replay/cache key, the prompt template and version, the model the CLI says answered, and — when
+  the caller passes its trace step — job, pipeline stage and span; `repair_of` links a repair to the
+  call it retried and `outcome` is `ok | invalid | repaired | failed` (`LLMService`, one policy).
 - **Replay**: strict in CI/`demo --check` (miss = failure); in the interactive demo a miss becomes a
   friendly "The demo uses recorded answers" event, never an error dialog.
 - `doctor` is zero-token: `claude --version`, `claude auth status` (JSON), warns if
@@ -347,6 +353,13 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    payments, never its recurring ones); upsert items by `slot_key`
    (`sha1(kind|normalised quote)`), never overwriting `user_modified` rows; reconcile triggers.
 7. **done** — status `processed`/`needs_review`, `ai_processed_at`, activity log entry, SSE events.
+
+**Trace** (`ordnung/trace`): every reading is one trace — a tree of spans (`run` → `ocr` · `model` ·
+`verify` · `rules` · `link` · `plan`) recorded through an explicit tracer the pipeline passes down
+(no global state; the default `NO_SPAN` records nothing) and stored in one insert when the reading
+ends, however it ends. A span keeps only counts, codes, scores, computed dates and record ids — never
+letter text (`trace/facts.py` is the vocabulary); a letter keeps its newest five readings. The demo
+lays its spans out from the recorded latencies, so a rebuild stores the same trace.
 
 Rate limits pause the worker globally (`paused_until`, SSE `llm.paused` banner); jobs stay queued.
 On startup `running` jobs return to `queued`. Reprocess = `force` (skip cache read) and replaces
@@ -601,7 +614,10 @@ and `attachment` unless PDF/JPEG/PNG/WEBP; `--no-token` for tests only.
 Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT), `onboarding`
 (POST), `documents` (POST upload `files[]`, `combine`, `private`; GET list), `documents/{id}`
 (GET detail / PATCH / DELETE), `documents/{id}/file`, `documents/{id}/pages/{n}.jpg`,
-`documents/{id}/thumbnail.jpg`, `documents/{id}/reprocess` (POST), `items` (GET/POST),
+`documents/{id}/thumbnail.jpg`, `documents/{id}/reprocess` (POST), `documents/{id}/trace`
+(`?run=` a reading's trace id; default the newest kept: its steps, their model calls and the kept
+readings), `documents/{id}/trace/compare` (`?base&head`: what a later reading decided differently),
+`traces` (every kept reading, for the data export), `items` (GET/POST),
 `items/{id}` (PATCH/DELETE; PATCH with `due_date` sets `due_date_source=manual`, `user_modified`),
 `items/{id}/confirm` (POST: grounding=user), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
 (PATCH), `parties`, `parties/{id}`, `cases/{id}`, `timeline?from&to`, `lanes?from&to`, `dashboard`,
@@ -618,7 +634,8 @@ obligations towards authorities or a job — a job gets "Draft resignation").
 
 View models (in models.py): `Dashboard`, `TimelineEntry`, `Lane{id,label,area,bars[]}`,
 `LaneBar{id,label,start,end,kind,marker_dates[],ref}`, `DocumentDetail`, `PartyDetail`,
-`CaseDetail`, `UsageStats`, `Health`, `RuleInfo`, `TourState`, `MailTrayItem`.
+`CaseDetail`, `UsageStats`, `Health`, `RuleInfo`, `TourState`, `MailTrayItem`, `DocumentTrace`,
+`TraceRun`, `TraceSpan`, `TraceComparison`, `TraceExport`.
 
 Contract details: list endpoints answer plain JSON arrays. `health` carries `rules_last_checked`
 (the catalog's `LAST_CHECKED`, shown as "Based on the law as of …"); `health?probe=1` ("Run check")
@@ -657,7 +674,14 @@ Pages:
 3. **Document viewer** — verdict card first; page images with highlight overlays (click fact → scroll
    + pulse); "Explained simply"; key facts; to-dos with "Why this date?" popover; warnings (scam
    banner); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
-   … · text of 2 pages" badge; 390 px layout stacks the image below the card.
+   … · text of 2 pages" badge; 390 px layout stacks the image below the card. A second tab, **How
+   this was read** (`?view=trace`), shows the reading as a waterfall: summary (time, calls to
+   Claude, tokens, API-equivalent cost, how it ended), then every step with its duration, opened to
+   its facts (a model call's prompt and version, tokens and outcome, a repair linked to the call it
+   retried; each quote's grounding and digit check; each date's DateSpec → date with the same "Why
+   this date?" receipt; how the sender, thread and contract were linked; what happened to each
+   to-do); a reading picker and "Compare with reading N" when it was read again; the
+   `ordnung trace … --otel` command. Phones and tablets leave the page images out on this tab.
 4. **Timeline** — year-ahead **life lanes** (Residence, Contracts, Tax, Study, Money, Health…) with a
    today line; below, month-grouped list (past/future), filters.
 5. **Contracts** — lanes chart (bars, hatched notice windows, send-by marker, today line), cards,
@@ -685,7 +709,9 @@ dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighte
 `brief` · `ask "…"` · `demo [--serve] [--reset] [--check] [--live] [--no-browser]` · `doctor
 [--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--data-dir D] [--print-config]
 [--rules-only]` · `mcp install --client claude-desktop|claude-code [--rules-only|--with-ledger]
-[--data-dir D] [--config PATH] [--remove-ledger] [--write]` · `openapi`.
+[--data-dir D] [--config PATH] [--remove-ledger] [--write]` · `openapi` · `trace DOC_ID [--otel]
+[--reading N] [-o FILE]` (a reading as JSON; `--otel`: OpenTelemetry OTLP/JSON with the GenAI
+semantic conventions, ids instead of names).
 If a server is running (`server.json` + live pid) `add`/`ask`/`brief` go through its API; otherwise
 they run in-process under an exclusive data-dir lock.
 
@@ -789,7 +815,8 @@ add_draft · get_draft · update_draft · list_drafts · delete_draft · add_not
 enqueue_job(kind, doc_id, force=False) · claim_next_job(kinds) · update_job(id, **f) · get_job · list_jobs(active_only) · requeue_running_jobs()
 # activity / accounting / cache
 log_activity(kind, message, ref_type, ref_id, data) · list_activity(limit)
-log_llm_call(purpose, model, backend, usage, ok, error, cache_hit) · usage_stats(recent)
+log_llm_call(purpose, model, backend, usage, ok, error, cache_hit, …, request_key, prompt_name, prompt_version, served_model, job_id, stage, span_id, repair_of, outcome) → id · usage_stats(recent)
+save_trace(spans, keep) · trace_runs(doc_id) · trace_spans(trace_id) · trace_calls(doc_id) · next_trace_reading(doc_id) · export_traces()
 cache_get(key) · cache_put(key, purpose, model, response, doc_sha=None) · purge_cache_for(doc_sha)
 counts()
 ```

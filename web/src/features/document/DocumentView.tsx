@@ -5,11 +5,18 @@
  *
  * Panel order: verdict → warnings / Please check → Explained simply → To-dos & dates → Key facts →
  * Thread, contract, drafts, Ideas → provenance + Reprocess / Download / Delete.
+ *
+ * Two tabs above the panel (`?view=trace` for the second, so it can be linked): the letter, and "How
+ * this was read" — every step of its reading (`./trace`). The pages stay beside it on wide screens.
  */
 import { useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router";
 import { useReducedMotion } from "motion/react";
+import { FileText, Route } from "lucide-react";
 import type { DocumentDetail } from "@/api/types";
 import { SkeletonCard, SkeletonText } from "@/components/ui/Skeleton";
+import { TabPanel, Tabs } from "@/components/ui/Tabs";
+import { cn } from "@/lib/utils";
 import { EvidenceProvider } from "./EvidenceContext";
 import { collectAnchors } from "./evidence";
 import { decisionSuggestion, leadsWithDecision, selectPrimaryItem, scamSuggestion } from "./verdict";
@@ -22,6 +29,33 @@ import { KeyFacts } from "./KeyFacts";
 import { ContractsSection, DraftsSection, IdeasSection, ThreadSection } from "./Related";
 import { DocumentFooter } from "./DocumentFooter";
 import { ProcessingCard } from "./ProcessingCard";
+import { TracePanel } from "./trace/TracePanel";
+
+type DocView = "letter" | "trace";
+const VIEW_TABS = [
+  { value: "letter" as const, label: "The letter", icon: FileText },
+  { value: "trace" as const, label: "How this was read", shortLabel: "How it was read", icon: Route },
+];
+
+/** The tab shown (`?view=trace`), kept in the address without adding a history entry per switch. */
+function useDocView(): [DocView, (view: DocView) => void] {
+  const [params, setParams] = useSearchParams();
+  const view: DocView = params.get("view") === "trace" ? "trace" : "letter";
+  const setView = useCallback(
+    (next: DocView) =>
+      setParams(
+        (prev) => {
+          const out = new URLSearchParams(prev);
+          if (next === "trace") out.set("view", "trace");
+          else out.delete("view");
+          return out;
+        },
+        { replace: true },
+      ),
+    [setParams],
+  );
+  return [view, setView];
+}
 
 export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const doc = detail.document;
@@ -36,6 +70,8 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const scam = Boolean(scamSuggestion(detail));
   const busy = doc.status === "queued" || doc.status === "processing" || doc.status === "failed";
   const neverRead = busy && !doc.kind && !doc.title;
+  const [view, setView] = useDocView();
+  const trace = view === "trace";
 
   const askArrival = useCallback(() => {
     const el = document.getElementById("arrival-question");
@@ -47,12 +83,20 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
     <EvidenceProvider anchors={anchors}>
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.04fr)_minmax(0,1fr)] xl:gap-x-8 xl:gap-y-6">
         <div className="min-w-0 space-y-4 xl:col-start-2 xl:row-start-1">
-          {busy ? <ProcessingCard doc={doc} /> : null}
-          {!neverRead ? <VerdictCard detail={detail} primary={primary} onAskArrival={askArrival} /> : null}
-          {!neverRead ? <DocumentWarnings detail={detail} /> : null}
+          <Tabs<DocView> id="doc-view" label="Show" value={view} onChange={setView} items={VIEW_TABS} fill />
+          <TabPanel id="doc-view" value="trace" current={view}>
+            <TracePanel detail={detail} />
+          </TabPanel>
+          {/* the letter's panel is its verdict and warnings; the rest of the letter follows the pages */}
+          <TabPanel id="doc-view" value="letter" current={view} className="space-y-4 empty:hidden">
+            {busy ? <ProcessingCard doc={doc} /> : null}
+            {!neverRead ? <VerdictCard detail={detail} primary={primary} onAskArrival={askArrival} /> : null}
+            {!neverRead ? <DocumentWarnings detail={detail} /> : null}
+          </TabPanel>
         </div>
 
-        <div className="min-w-0 xl:sticky xl:top-[72px] xl:col-start-1 xl:row-span-2 xl:row-start-1 xl:self-start">
+        {/* on phones and tablets the pages would follow a long list of steps: the trace tab leaves them out */}
+        <div className={cn("min-w-0 xl:sticky xl:top-[72px] xl:col-start-1 xl:row-span-2 xl:row-start-1 xl:self-start", trace && "max-xl:hidden")}>
           <PageViewer
             docId={doc.id}
             pages={detail.pages}
@@ -62,27 +106,29 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
           />
         </div>
 
-        <div className="min-w-0 space-y-7 xl:col-start-2 xl:row-start-2">
-          {neverRead ? (
-            <div className="space-y-4" aria-hidden>
-              <SkeletonCard lines={3} />
-              <div className="card p-5">
-                <SkeletonText lines={4} />
+        {trace ? null : (
+          <div className="min-w-0 space-y-7 xl:col-start-2 xl:row-start-2">
+            {neverRead ? (
+              <div className="space-y-4" aria-hidden>
+                <SkeletonCard lines={3} />
+                <div className="card p-5">
+                  <SkeletonText lines={4} />
+                </div>
               </div>
-            </div>
-          ) : (
-            <>
-              <ExplainedSimply doc={doc} />
-              <ItemsList items={detail.items} docId={doc.id} />
-              <KeyFacts doc={doc} scam={scam} />
-              <ThreadSection detail={detail} />
-              <ContractsSection contracts={detail.contracts} />
-              <DraftsSection drafts={detail.drafts} />
-              <IdeasSection suggestions={lead ? detail.suggestions.filter((s) => s.id !== lead.id) : detail.suggestions} />
-            </>
-          )}
-          <DocumentFooter detail={detail} />
-        </div>
+            ) : (
+              <>
+                <ExplainedSimply doc={doc} />
+                <ItemsList items={detail.items} docId={doc.id} />
+                <KeyFacts doc={doc} scam={scam} />
+                <ThreadSection detail={detail} />
+                <ContractsSection contracts={detail.contracts} />
+                <DraftsSection drafts={detail.drafts} />
+                <IdeasSection suggestions={lead ? detail.suggestions.filter((s) => s.id !== lead.id) : detail.suggestions} />
+              </>
+            )}
+            <DocumentFooter detail={detail} />
+          </div>
+        )}
       </div>
     </EvidenceProvider>
   );

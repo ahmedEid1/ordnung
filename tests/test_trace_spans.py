@@ -239,7 +239,7 @@ def usage_store(tmp_path: Path) -> Store:
 
 async def test_a_traced_call_writes_its_row_and_describes_its_step(usage_store: Store) -> None:
     served = LLMResponse(
-        data={"answer": "x"}, model="claude-sonnet-5", usage=Usage(input_tokens=7, duration_ms=1234)
+        data={"answer": "x"}, model="model-that-answered", usage=Usage(input_tokens=7, duration_ms=1234)
     )
     llm = LLMService(FakeBackend({"extract": served}), usage_store)
     tracer = recorded()
@@ -253,7 +253,7 @@ async def test_a_traced_call_writes_its_row_and_describes_its_step(usage_store: 
         "8.7.1",
     )
     assert (row.served_model, row.job_id, row.stage, row.outcome) == (
-        "claude-sonnet-5",
+        "model-that-answered",
         "job_1",
         "extract",
         "ok",
@@ -262,7 +262,8 @@ async def test_a_traced_call_writes_its_row_and_describes_its_step(usage_store: 
     assert step.recorded_ms == 1234
     assert step.attributes["call_id"] == row.id and step.attributes["outcome"] == "ok"
     assert (
-        step.attributes["request_model"] == "sonnet" and step.attributes["served_model"] == "claude-sonnet-5"
+        step.attributes["request_model"] == "sonnet"
+        and step.attributes["served_model"] == "model-that-answered"
     )
     assert "call_id" not in response.model_dump(), "the log id never reaches the cache or a recording"
 
@@ -307,7 +308,7 @@ async def test_an_erroring_call_is_logged_as_failed_on_its_step(usage_store: Sto
 
 
 async def test_a_cache_hit_is_logged_with_the_same_key_and_takes_no_recorded_time(usage_store: Store) -> None:
-    served = LLMResponse(data={"answer": "x"}, model="claude-sonnet-5", usage=Usage(duration_ms=900))
+    served = LLMResponse(data={"answer": "x"}, model="model-that-answered", usage=Usage(duration_ms=900))
     llm = LLMService(FakeBackend({"extract": served}), usage_store)
     await llm.complete(_request())
     tracer = recorded()
@@ -316,7 +317,7 @@ async def test_a_cache_hit_is_logged_with_the_same_key_and_takes_no_recorded_tim
     assert again.cache_hit and step.recorded_ms == 0 and step.attributes["cache_hit"] is True
     rows = usage_store.usage_stats().recent
     assert rows[0].cache_hit and rows[0].request_key == rows[1].request_key
-    assert rows[0].served_model == "claude-sonnet-5"
+    assert rows[0].served_model == "model-that-answered"
 
 
 async def test_without_a_trace_or_a_log_nothing_breaks() -> None:

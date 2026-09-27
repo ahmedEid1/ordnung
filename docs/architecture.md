@@ -97,6 +97,53 @@ Every stage updates the durable `jobs` queue and publishes `job.progress` events
 live stepper in the UI. Rate limits pause the whole worker until the reset time instead of failing
 documents; a restart resumes queued work.
 
+## Observability: how a letter was read
+
+Every reading of a letter — on arrival or read again — is kept as a **trace**: a tree of spans
+(`ordnung/trace`, migration 0004) that says what Claude was asked and what code decided. The letter's
+page shows it in the **How this was read** tab; `ordnung trace <doc> --otel` exports it for any
+OpenTelemetry viewer.
+
+```mermaid
+flowchart LR
+  run["run · Read letter<br/>reading, trigger, result"]
+  run --> ocr["ocr · Text layer<br/>pages, words, hidden text"]
+  run --> tr["ocr · Transcribe (parallel)"] --> p1["model · Page 1 …"]
+  run --> ex["model · Extract"] -.->|"repair_of"| rep["model · Extract · repair"]
+  run --> q["verify · Check quotes"] --> q1["verify · Quote per item, key fact …<br/>grounding, score, digit groups"]
+  run --> snd["link · Sender<br/>decision, candidates + scores"]
+  run --> d["rules · Compute dates"] --> d1["rules · Date<br/>DateSpec structure → due, send-by, rule ids"]
+  run --> l["link · Thread & contract<br/>payment check, thread, contract, reminder"]
+  run --> pl["plan · Plan to-dos"] --> pl1["plan · To-do<br/>created · updated · kept_edited · kept_later_date"]
+  ex & rep & p1 -.->|"span_id"| calls[("llm_calls<br/>tokens, cost, latency, key,<br/>prompt + version, outcome")]
+```
+
+- **Explicit, never in the way.** The pipeline creates one `Tracer` per reading and passes spans
+  down as a `trace` argument; every function defaults to `NO_SPAN`, which records nothing and reads
+  no clock. Spans live in memory until the reading ends — finished, failed, paused by a rate limit
+  or stopped — and are then stored in one insert; storing never raises (a trace that can't be
+  written is logged and dropped). A letter keeps its newest five readings.
+- **Model calls join by id.** `LLMService` writes one `llm_calls` row per call (never the prompt or
+  the answer) with its replay/cache key, prompt name and version, the model the CLI says answered,
+  job, stage and span, and an `outcome` decided by one policy (`ok`, `invalid` → a repair follows,
+  `repaired`, `failed`); a repair's row names the call it retried (`repair_of`).
+- **No letter text.** A span holds counts, codes, scores, the dates Ordnung computed and the ids of
+  the records it used — the written vocabulary is `trace/facts.py`. The view looks the records up
+  when the trace is shown (a to-do's title, a sender's name), so a deleted record keeps its id and
+  loses its label, and the OTLP export carries ids only.
+- **Stable keys, comparable readings.** A span's key is its path (`run/verify:quotes/verify:item:<slot>`),
+  the same in every reading; ids hash the trace id and the key. "Compare with reading N"
+  (`trace/compare.py`) lists what a later reading *decided* differently (a date, a grounding, a
+  model call's outcome, the sender it linked) — never timings.
+- **Deterministic demo.** In the demo (`recorded` timing) no clock is read: a reading starts at a
+  fixed time on the demo's day and is laid out from the recorded model latencies (steps of code take
+  no time; parallel pages start together, ordered by key), so `ordnung demo --check` rebuilds the
+  same spans.
+- **OpenTelemetry.** `trace/otel.py` writes OTLP/JSON: model steps are `CLIENT` spans named
+  `chat <model>` with `gen_ai.operation.name`, `gen_ai.provider.name`, `gen_ai.request.model`,
+  `gen_ai.response.model`, `gen_ai.usage.input_tokens` and `…output_tokens`; everything else is under
+  `ordnung.*`.
+
 ## Asking a question
 
 ```mermaid
@@ -188,6 +235,7 @@ erDiagram
   CONTRACT ||--o{ ITEM : "milestones"
   ITEM }o--o{ SUGGESTION : "referenced by"
   DOCUMENT ||--o{ DRAFT : "answered by"
+  DOCUMENT ||--o{ TRACE_SPAN : "read as (per reading)"
   DOCUMENT {
     string id "doc_ + sha256"
     string kind
@@ -233,6 +281,7 @@ normalised name), so re-processing is idempotent and recorded demo outputs stay 
 | Text & verification | Generated PDFs (rotated pages, CropBox offsets, hidden text, scans), exact-digit and consistency rules |
 | Store | CRUD round-trips, search escaping, idempotent upserts, purge-on-delete, concurrency, migrations |
 | Pipeline & services | `FakeBackend` scripted model outputs end-to-end through the real pipeline |
+| Traces | The tracer's keys, ids and layouts; the span tree of a text letter and a photo letter through the pipeline; the repair link and outcomes; that no letter text reaches a span; delete-means-delete; the API, the comparison, `ordnung trace` and the OTLP export; migration 0004 on an empty database and the demo's |
 | CLI subprocess layer | A fake `claude` executable replaying captured CLI outputs (errors, timeouts, huge lines) |
 | Demo | `ordnung demo --check`: rebuild twice with strict replay → zero misses, identical dumps, all references resolve |
 | Web app | Vitest units + Playwright tour over demo mode with axe accessibility checks |

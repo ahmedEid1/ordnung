@@ -134,6 +134,16 @@ function call(id: number, date: string, time: string, purpose: string, model: st
     doc_ids: [],
     pages_sent: 0,
     bytes_sent: 0,
+    // what each call was and how its answer turned out (a trace's model steps point here)
+    request_key: null,
+    prompt_name: purpose,
+    prompt_version: "1",
+    served_model: model,
+    job_id: null,
+    stage: null,
+    span_id: null,
+    repair_of: null,
+    outcome: extra.ok === false ? "failed" : "ok",
     ...extra,
   };
 }

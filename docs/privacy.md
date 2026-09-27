@@ -14,7 +14,8 @@ goes where.
 | Your ledger (letters, to-dos, contracts, ideas, drafts) | `<data dir>/ordnung.db` (SQLite) | Excerpts, when you use *Ask*, *Ideas review* or *Letters* |
 | Profile (name, address, region, the IBAN you may add for refunds) | `ordnung.db` | Name, language and region in prompts; the address and IBAN you enter here are never put into a prompt (a letter you add is read as printed, with the address in its window; letters Ordnung drafts that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation) |
 | Model responses | `ordnung.db` (`llm_cache`) | — (they came from Anthropic) |
-| Usage log (tokens, cost, which document) | `ordnung.db` (`llm_calls`) — **no prompt or response bodies** | Never |
+| Usage log (tokens, cost, which document, the prompt's name and version, how the answer turned out) | `ordnung.db` (`llm_calls`) — **no prompt or response bodies** | Never |
+| How each letter was read (its steps: counts, scores, computed dates, ids of records) | `ordnung.db` (`trace_spans`) — **no letter text**, the newest five readings per letter | Never (unless you export one with `ordnung trace`) |
 | Fonts, UI, rules engine | bundled in the package | Never (no CDN, no web fonts) |
 
 `<data dir>` defaults to your platform's user data folder (e.g. `~/.local/share/ordnung`,
@@ -49,11 +50,19 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   delete while it still waits to be read is never sent either.
 - **Delete means delete** — deleting a letter removes it for good: the original, page images,
   everything read from it, its to-dos and Ideas, its search-index entries, its entries in the
-  activity log, quotes from it in contracts you keep, and the cached model responses of every call
-  that carried it (a secretary's note or review built from several letters included). The usage log
-  keeps only anonymous numbers, and deleted database rows are overwritten rather than left behind.
+  activity log, quotes from it in contracts you keep, the record of how it was read, and the cached
+  model responses of every call that carried it (a secretary's note or review built from several
+  letters included). The usage log keeps only anonymous numbers (its calls' replay keys, which hash the
+  letter's content, are cleared too), and deleted database rows are overwritten rather than left behind.
   Contracts and letters you drafted stay, without the link to it; your *Ask* conversations stay as
   they are. *Settings → Delete everything* wipes the whole database.
+- **How this was read** — each letter's page shows how it was read: every step, what Claude was
+  asked (the prompt's name and version, tokens, API-equivalent cost), what code checked and what was
+  filed. Only the steps' numbers, codes and the ids of what they found are kept — never the letter's
+  text; the names shown are looked up when you open it. *Download a copy of your records* includes
+  these traces. `ordnung trace <letter id> --otel` writes one reading as OpenTelemetry JSON with ids
+  only (no titles or names), so you can load it into a tracing tool or share it to debug a reading
+  without sharing the letter.
 - **Models** — choose which Claude model handles each purpose.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself.

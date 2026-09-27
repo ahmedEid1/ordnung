@@ -75,6 +75,8 @@ def run_summary(root: TraceSpanRecord, calls: Sequence[LLMCallRecord]) -> TraceR
         repairs=sum(call.repair_of is not None for call in calls),
         input_tokens=sum(call.input_tokens for call in calls),
         output_tokens=sum(call.output_tokens for call in calls),
+        cache_read_tokens=sum(call.cache_read_tokens for call in calls),
+        cache_creation_tokens=sum(call.cache_creation_tokens for call in calls),
         cost_usd=round(sum(call.cost_usd for call in calls), 6),
         model_ms=float(sum(call.duration_ms for call in calls)),
     )

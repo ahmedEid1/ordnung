@@ -10121,6 +10121,16 @@
             "title": "Output Tokens",
             "default": 0
           },
+          "cache_read_tokens": {
+            "type": "integer",
+            "title": "Cache Read Tokens",
+            "default": 0
+          },
+          "cache_creation_tokens": {
+            "type": "integer",
+            "title": "Cache Creation Tokens",
+            "default": 0
+          },
           "cost_usd": {
             "type": "number",
             "title": "Cost Usd",
@@ -10150,6 +10160,8 @@
           "repairs",
           "input_tokens",
           "output_tokens",
+          "cache_read_tokens",
+          "cache_creation_tokens",
           "cost_usd",
           "model_ms"
         ],

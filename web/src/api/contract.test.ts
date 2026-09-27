@@ -178,6 +178,10 @@ const CASES = {
   fileUrl: { run: (ids) => api.fileUrl(ids.doc), asset: true },
   pageUrl: { run: (ids) => api.pageUrl(ids.doc, 1), asset: true },
   thumbnailUrl: { run: (ids) => api.thumbnailUrl(ids.doc), asset: true },
+  documentTrace: { run: (ids) => api.documentTrace(ids.doc) },
+  // the parking fine was read twice (mocks/data/traces.ts)
+  traceComparison: { run: () => api.traceComparison("doc_parking") },
+  traces: { run: () => api.traces() },
 
   items: { run: () => api.items({ status: "open", from: "2026-09-01", to: "2026-12-31", include_undated: true, limit: 50 }) },
   createItem: { run: () => api.createItem({ kind: "task", title: "Call the bank", due_date: "2026-10-05", area: "money" }) },

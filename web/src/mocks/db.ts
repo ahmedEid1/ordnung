@@ -37,6 +37,7 @@ import { ACTIVITY, HEALTH, MAIL_TRAY, PROFILE, SETTINGS, TOUR, TRAY_DOC } from "
 import { LETTERS } from "./data/letters";
 import { renderLetter, type RenderedLetter } from "./pages";
 import { TODAY } from "./data/constants";
+import type { ReadingSeed } from "./data/traces";
 
 const clone = <T>(v: T): T => (typeof structuredClone === "function" ? structuredClone(v) : JSON.parse(JSON.stringify(v)));
 
@@ -91,6 +92,8 @@ export interface MockState {
   lastCalendarExport: string;
   /** documents uploaded in this session (for page images of unknown files) */
   uploads: Record<string, { name: string; objectUrl?: string }>;
+  /** readings added in this session ("Read again"); others follow from the letter (`data/traces.ts`) */
+  readings: Record<string, ReadingSeed[]>;
 }
 
 export class MockDb {
@@ -114,6 +117,7 @@ export class MockDb {
       tour: clone(TOUR),
       lastCalendarExport: "2026-09-20T16:00:00Z",
       uploads: {},
+      readings: {},
     };
   }
 

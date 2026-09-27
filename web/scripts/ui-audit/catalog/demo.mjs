@@ -292,6 +292,24 @@ export async function demoCatalog({ api, server }) {
   docState(photoDoc, "zoom-150", "switch the page viewer zoom to 150 %", "Phone photo at 150 %.", (c) => c.click(c.page.getByRole("radiogroup", { name: "Zoom" }).getByRole("radio", { name: /150/ })));
   docState(reviewDoc, "change-date", "click “Change date” in the Please-check warning", "Please-check warning with the date editor open.", (c) => c.click(main(c.page).getByRole("button", { name: "Change date" })));
   docState(glossaryDoc, "glossary-tooltip", "hover the first German term with a dotted underline", "Glossary tooltip (German term explained).", (c) => c.hover(main(c.page).locator("span.cursor-help")));
+  // "How this was read": the reading's steps (a text PDF with a payment, a phone photo), opened steps, the receipt
+  const traceTab = (c) => c.click(main(c.page).getByRole("tab", { name: "How this was read" }));
+  const openStep = (c, name) => c.click(main(c.page).getByRole("list", { name: "Steps of this reading" }).getByRole("button", { name }).first());
+  docState(payDoc, "trace", "click the “How this was read” tab", "How this was read: the reading's summary and its steps (text PDF: quotes, dates, sender, thread, payment check).", traceTab);
+  docState(photoDoc, "trace", "click the “How this was read” tab", "How this was read for a phone photo: the page transcribed by Claude, then the rest.", traceTab);
+  docState(payDoc, "trace-open", "“How this was read” → open Claude's step, the quotes and the dates", "Opened steps: the model call (prompt, tokens, cost), each quote checked on the page, each date computed.", async (c) => {
+    await traceTab(c);
+    await openStep(c, /^Claude reads the letter/);
+    await openStep(c, /^Quotes checked on the page/);
+    await openStep(c, /^Dates computed/);
+  });
+  docState(payDoc, "trace-why-this-date", "“How this was read” → Dates computed → a date → “Why this date?”", "The rules engine's receipt opened from a date's step.", async (c) => {
+    await traceTab(c);
+    await openStep(c, /^Dates computed/);
+    const steps = main(c.page).getByRole("list", { name: /^Steps of “Dates computed”/ });
+    await c.click(steps.getByRole("button").first());
+    await c.click(steps.getByRole("button", { name: /Why this date\?/ }));
+  });
 
   // ---------------------------------------------------------------------------------------------
   // Timeline
@@ -1137,6 +1155,23 @@ export async function demoCatalog({ api, server }) {
   letterPage("letter-sent", "sent", "A letter marked as sent (read-only, follow-up reminder).");
   letterPage("letter-sent--menu", "sent", "The More-actions menu of a sent letter.", (c) => c.click(main(c.page).getByRole("button", { name: "More actions" })));
   mutations.push({ id: "letters-with-sent", group: "letters", route: "/letters", how: "open /letters after the audit drafted three letters and marked one as sent", description: "Letters list with in-progress and sent letters.", run: (c) => c.goto("/letters") });
+  if (payDoc) {
+    mutations.push({
+      id: `${docSlug(payDoc)}--trace-compare`,
+      group: "document",
+      route: `/documents/${payDoc.id}?view=trace`,
+      how: "the audit read the letter again (POST …/reprocess), then “How this was read” → “Compare with reading 1”",
+      description: "Two readings of a letter: the reading picker and what the newer one decided differently.",
+      run: async (c) => {
+        const d = extra.readAgain;
+        if (!d) throw new Error("the letter was not read again");
+        await c.goto(`/documents/${d}?view=trace`);
+        await c.click(main(c.page).getByRole("button", { name: /^Compare with reading/ }));
+        await c.visible(main(c.page).getByRole("heading", { name: /decided differently/ }));
+        await settle(c.page);
+      },
+    });
+  }
   if (objectionDoc) {
     mutations.push({
       id: `${docSlug(objectionDoc)}--with-draft`,
@@ -1260,6 +1295,13 @@ export async function demoCatalog({ api, server }) {
               instructions: "Please send me the receipts for the operating-costs statement and let me pay in two instalments.",
               language: "en",
             });
+          // read one letter again (the demo replays its recorded answers) so it has two readings to compare
+          const again = find(payDoc);
+          if (again) {
+            await api.post(`/api/documents/${again.id}/reprocess`, {});
+            for (let i = 0; i < 120 && (await api.get("/api/jobs?active_only=true")).length; i += 1) await new Promise((r) => setTimeout(r, 500));
+            extra.readAgain = again.id;
+          }
           const gym = contracts2.find((c) => /FitWell/.test(c.name)) ?? contracts2.find((c) => c.id !== phoneContract?.id);
           if (gym) {
             const d = await api.post("/api/drafts", { kind: "cancellation", contract_id: gym.id, doc_id: gym.source_doc_id ?? null, party_id: gym.party_id ?? null, language: "en" });

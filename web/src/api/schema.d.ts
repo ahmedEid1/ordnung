@@ -3432,6 +3432,16 @@ export interface components {
              */
             output_tokens: number;
             /**
+             * Cache Read Tokens
+             * @default 0
+             */
+            cache_read_tokens: number;
+            /**
+             * Cache Creation Tokens
+             * @default 0
+             */
+            cache_creation_tokens: number;
+            /**
              * Cost Usd
              * @default 0
              */
