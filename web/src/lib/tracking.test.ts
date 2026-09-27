@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DOMESTIC_NOTE, NOT_REGISTERED, WRONG_CHECK_DIGIT, asciiDigits, checkTracking, displayTracking, normaliseTracking, s10CheckDigit } from "./tracking";
+import { DOMESTIC_NOTE, NOT_A_NUMBER, NOT_REGISTERED, ONLINE_STAMP_NOTE, WRONG_CHECK_DIGIT, asciiDigits, checkTracking, displayTracking, normaliseTracking, s10CheckDigit, trackingComplete } from "./tracking";
 
 describe("tracking numbers (the server's policy, checked while typing)", () => {
   it("computes the S10 check digit like the server's worked examples", () => {
@@ -22,7 +22,7 @@ describe("tracking numbers (the server's policy, checked while typing)", () => {
 
   it("reads spacing and case the same way", () => {
     expect(normaliseTracking(" rt 123-456.785/de ")).toBe("RT123456785DE");
-    expect(checkTracking("rt 123 456 785 de")).toEqual({ state: "valid", number: "RT123456785DE", display: "RT 123 456 785 DE", checked: true, note: null });
+    expect(checkTracking("rt 123 456 785 de")).toEqual({ state: "valid", number: "RT123456785DE", display: "RT 123 456 785 DE", format: "s10", checked: true, note: null });
     expect(displayTracking("003404341234")).toBe("0034 0434 1234");
   });
 
@@ -34,6 +34,33 @@ describe("tracking numbers (the server's policy, checked while typing)", () => {
   it("keeps unregistered and twelve-digit numbers with a note", () => {
     expect(checkTracking("LX123456785DE")).toMatchObject({ state: "valid", checked: true, note: NOT_REGISTERED });
     expect(checkTracking("0034 0434 1234")).toMatchObject({ state: "valid", checked: false, note: DOMESTIC_NOTE, display: "0034 0434 1234" });
+  });
+
+  it("keeps the number of an online stamp (Internetmarke) unchecked with a note, as tests/test_tracking.py", () => {
+    for (const typed of ["A0 0123 45D6 0000 123C EC", "a0012345d60000123cec", "A0-0123-45D6-0000-123C-EC"]) {
+      expect(checkTracking(typed)).toEqual({
+        state: "valid",
+        number: "A0012345D60000123CEC",
+        display: "A0 0123 45D6 0000 123C EC",
+        format: "online_stamp",
+        checked: false,
+        note: ONLINE_STAMP_NOTE,
+      });
+    }
+    for (const text of ["A0012345D60000123CE", "A0012345D60000123CEC0", "G0012345D60000123CEC"]) {
+      expect(checkTracking(text)).toEqual({ state: "invalid", message: NOT_A_NUMBER });
+    }
+    expect(NOT_A_NUMBER).toContain("20 characters next to the square code");
+    expect(NOT_A_NUMBER).not.toContain("12 digits");
+  });
+
+  it("calls a number complete (a mistake is said while typing) only when it can't still become one", () => {
+    expect(trackingComplete("RT 123 456 78")).toBe(false);
+    expect(trackingComplete("RT 123 456 784 DE")).toBe(true); // 13 characters of an S10 number
+    expect(trackingComplete("A0 0123 45D6 0000 12")).toBe(false); // an online stamp's, 18 of 20
+    expect(trackingComplete("A0 0123 45D6 0000 123C EC")).toBe(true);
+    expect(trackingComplete("1234567890123")).toBe(false); // digits only could still be a stamp's
+    expect(trackingComplete("HELLO WORLD HELLO")).toBe(true);
   });
 
   it("refuses everything else with what a number looks like", () => {

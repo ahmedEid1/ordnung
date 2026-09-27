@@ -12,6 +12,7 @@ import {
   CHANNEL_WORDS,
   DELIVERY_DAY_KINDS,
   MISSING,
+  NOT_FROM_AN_AUTHORITY,
   PROOF_CAVEAT,
   PROOF_TEXTS,
   SENDING_DAY_KINDS,
@@ -39,7 +40,9 @@ export interface ProofReplies {
   empty: () => unknown;
 }
 
-const nowTs = () => new Date().toISOString().replace(/\.\d+Z$/, "Z");
+/** A timestamp on the demo's day (the real demo stamps its pinned day, `clock.now_iso`), so an undated proof is
+ * never "added" after the demo's today. */
+const nowTs = (db: MockDb) => `${db.today}T${new Date().toISOString().slice(11, 19)}Z`;
 let seq = 0;
 const newId = (prefix: string) => `${prefix}_${Date.now().toString(36)}${(++seq).toString(36).padStart(3, "0")}`;
 const day = (value: string | null | undefined) => (value ? value.slice(0, 10) : null);
@@ -67,7 +70,7 @@ function trackingInfo(number: string | null): TrackingInfo | null {
   if (!number) return null;
   const read = checkTracking(number);
   if (read.state !== "valid") return { number, display: number, format: "unknown", checked: false, note: read.state === "invalid" ? read.message : null };
-  return { number: read.number, display: grouped(read.number), format: read.checked ? "s10" : "domestic", checked: read.checked, note: read.note };
+  return { number: read.number, display: grouped(read.number), format: read.format, checked: read.checked, note: read.note };
 }
 
 function liveProofs(db: MockDb, draftId: string): Proof[] {
@@ -98,18 +101,26 @@ function answerOf(db: MockDb, d: Draft): { day: string; doc: Document | null; ho
   return confirmation ? { day: letterDay(confirmation), doc: confirmation, how: "confirmation" } : null;
 }
 
-function missing(d: Draft, kinds: string[], answered: boolean, today: string): string[] {
+/** What would make the proof stronger (drafts/proof.py `missing`): the person's word that it was answered ("noted")
+ * closes the wait but shows nothing about arrival. */
+function missing(d: Draft, kinds: string[], answer: { how: "letter" | "noted" | "confirmation" } | null, today: string): string[] {
   if (d.status !== "sent") return [];
-  const arrived = answered || kinds.some((k) => PROOF_TEXTS[k as ProofKind]?.arrival);
+  const answered = Boolean(answer);
+  const arrived = (answer !== null && answer.how !== "noted") || kinds.some((k) => PROOF_TEXTS[k as ProofKind]?.arrival);
   const sent = day(d.sent_at);
   const obtainable = !sent || today <= format(addMonths(parseISO(sent), 15), "yyyy-MM-dd");
   const out: string[] = [];
   switch (d.sent_channel) {
-    case "registered_letter":
-      if (!d.tracking_number) out.push(MISSING.tracking);
-      if (!kinds.includes("posting_receipt")) out.push(MISSING.posting);
-      if (!arrived) out.push(obtainable ? MISSING.delivery : MISSING.deliveryLate);
+    case "registered_letter": {
+      const tracking = trackingInfo(d.tracking_number);
+      const online = tracking?.format === "online_stamp";
+      if (!tracking) out.push(MISSING.tracking);
+      if (online && !kinds.includes("posting_receipt") && !kinds.includes("other")) out.push(MISSING.onlineStamp);
+      else if (!online && !kinds.includes("posting_receipt")) out.push(MISSING.posting);
+      if (!arrived && obtainable) out.push(MISSING.delivery);
+      else if (!arrived && !answered) out.push(MISSING.deliveryLate);
       break;
+    }
     case "fax":
       if (!kinds.includes("fax_report") && !answered) out.push(MISSING.fax);
       break;
@@ -132,9 +143,23 @@ function missing(d: Draft, kinds: string[], answered: boolean, today: string): s
 function conflicts(d: Draft, proofs: Proof[]): string[] {
   const sent = day(d.sent_at);
   if (d.status !== "sent" || !sent) return [];
-  return proofs
-    .filter((p) => p.on_date && SENDING_DAY_KINDS.includes(p.kind) && p.on_date !== sent)
-    .map((p) => `Your ${PROOF_TEXTS[p.kind].label.toLowerCase()} says ${longWords(p.on_date!)}, but the letter is marked as sent on ${longWords(sent)} — correct one of them, so your records agree.`);
+  return proofs.flatMap((p) => {
+    const label = PROOF_TEXTS[p.kind].label.toLowerCase();
+    if (p.on_date && SENDING_DAY_KINDS.includes(p.kind) && p.on_date !== sent)
+      return [`Your ${label} says ${longWords(p.on_date)}, but the letter is marked as sent on ${longWords(sent)} — correct one of them, so your records agree.`];
+    if (p.on_date && DELIVERY_DAY_KINDS.includes(p.kind) && p.on_date < sent)
+      return [`Your ${label} says it was delivered on ${longWords(p.on_date)}, before the day the letter is marked as sent (${longWords(sent)}) — correct one of them, so your records agree.`];
+    return [];
+  });
+}
+
+/** Why a sent letter can't be marked as sent on `date`: a delivery its proof records before it (drafts/compose.py). */
+export function deliveredBefore(db: MockDb, d: Draft, date: string): string | null {
+  if (d.status !== "sent") return null;
+  const early = db.state.proofs.find((p) => p.draft_id === d.id && DELIVERY_DAY_KINDS.includes(p.kind) && p.on_date && p.on_date < date);
+  if (!early) return null;
+  const label = PROOF_TEXTS[early.kind].label.toLowerCase();
+  return `Your ${label} says it was delivered on ${longWords(early.on_date!)} — a letter can't be sent after it was delivered. Correct the ${label}'s day first, or choose an earlier day.`;
 }
 
 type Ordered = ProofEvent & { order: number };
@@ -164,7 +189,7 @@ function timeline(db: MockDb, d: Draft, tracking: TrackingInfo | null, proofs: P
   const possible = replyTo(db, d);
   if (answer) {
     const title = answer.doc ? `“${answer.doc.title ?? answer.doc.filename}”` : "";
-    const label = answer.how === "noted" ? "Answered — as you noted" : answer.how === "confirmation" ? `Cancellation confirmed: ${title}` : `Answer received: ${title}`;
+    const label = answer.how === "noted" ? "You marked it as answered" : answer.how === "confirmation" ? `Cancellation confirmed: ${title}` : `Answer received: ${title}`;
     events.push(event({ date: answer.day, kind: "answered", label, ref: answer.doc ? { type: "document", id: answer.doc.id } : null, order: 5 }));
   } else if (possible) {
     events.push(
@@ -204,7 +229,9 @@ function letterEntry(db: MockDb, d: Draft): WaitingEntry | null {
     .filter((p) => PROOF_TEXTS[p.kind].arrival && p.on_date)
     .map((p) => p.on_date!)
     .sort()[0];
-  const context = WAITING_CONTEXT[d.kind] ? ` ${WAITING_CONTEXT[d.kind]}` : "";
+  const answers = d.doc_id ? db.document(d.doc_id) : null;
+  const why = d.kind === "objection" && answers?.kind && NOT_FROM_AN_AUTHORITY.includes(answers.kind) ? null : WAITING_CONTEXT[d.kind];
+  const context = why ? ` ${why}` : "";
   const extra = `${delivered ? ` Your proof shows it was delivered on ${words(delivered)}.` : ""}${tracking ? ` Tracking number ${tracking.display}.` : ""}${context}`;
   const link = reply && isConfirmation(d, reply) ? "confirms the cancellation" : "is in the same thread";
   const note =
@@ -212,7 +239,7 @@ function letterEntry(db: MockDb, d: Draft): WaitingEntry | null {
       ? `Their letter “${reply.title ?? reply.filename}”${reply.doc_date ? ` of ${words(reply.doc_date)}` : ""} ${link}. Check that it answers yours, then close this.`
       : st === "closed"
         ? d.answered_on
-          ? `${sentWords}. You said it was answered on ${words(d.answered_on)}.`
+          ? `${sentWords}. You marked it as answered on ${words(d.answered_on)}.`
           : `${sentWords}. You closed the follow-up.`
         : st === "overdue"
           ? `${sentWords}; nothing linked to it has arrived since.${extra} Send a short reminder or call them — and note what they say.`
@@ -237,6 +264,7 @@ function letterEntry(db: MockDb, d: Draft): WaitingEntry | null {
     answered_on: reply ? (reply.doc_date ?? reply.created_at.slice(0, 10)) : null,
     followup_item_id: followup?.id ?? null,
     doc_id: d.doc_id && db.document(d.doc_id) ? d.doc_id : null,
+    case_id: d.case_id,
   };
 }
 
@@ -274,6 +302,7 @@ function moneyEntries(db: MockDb): WaitingEntry[] {
         answered_on: null,
         followup_item_id: i.id,
         doc_id: d?.id ?? null,
+        case_id: null,
       };
     });
 }
@@ -313,6 +342,7 @@ function callEntry(db: MockDb, c: CallNote): WaitingEntry | null {
     answered_on: answer ? (answer.doc_date ?? answer.created_at.slice(0, 10)) : null,
     followup_item_id: null,
     doc_id: null,
+    case_id: c.case_id,
   };
 }
 
@@ -349,7 +379,7 @@ export function proofOverview(db: MockDb, d: Draft): ProofOverview {
     missing: missing(
       d,
       proofs.map((p) => p.kind),
-      Boolean(answerOf(db, d)),
+      answerOf(db, d),
       db.today,
     ),
     conflicts: conflicts(d, proofs),
@@ -424,7 +454,7 @@ export function proofRoutes({ fail, created, empty }: ProofReplies): Route[] {
     return value;
   };
   const touched = (db: MockDb, d: Draft) => {
-    d.updated_at = nowTs();
+    d.updated_at = nowTs(db);
     return proofOverview(db, d);
   };
 
@@ -463,7 +493,7 @@ export function proofRoutes({ fail, created, empty }: ProofReplies): Route[] {
         if (note && note.length > 500) fail(422, "Keep the note under 500 characters.");
         const id = newId("doc");
         db.state.uploads[id] = { name: file.name, objectUrl: objectUrl(file) };
-        const now = nowTs();
+        const now = nowTs(db);
         db.upsertDocument(
           makeDoc({
             id,
@@ -501,7 +531,7 @@ export function proofRoutes({ fail, created, empty }: ProofReplies): Route[] {
         if ("on_date" in patch) p.on_date = checkedDay(db, patch.on_date, p.kind, d);
         else if (p.on_date) checkedDay(db, p.on_date, p.kind, d);
         if (patch.note !== undefined) p.note = patch.note?.trim() || null;
-        p.updated_at = nowTs();
+        p.updated_at = nowTs(db);
         return touched(db, d);
       },
     ],
@@ -570,7 +600,7 @@ export function proofRoutes({ fail, created, empty }: ProofReplies): Route[] {
         if ((b.promise_due || b.promise_amount != null) && !promise) fail(422, "Say what they promised, too.");
         if (b.promise_due && b.promise_due < b.called_on) fail(422, "The promised day is before the call.");
         if (b.promise_amount != null && !(b.promise_amount >= 0 && b.promise_amount <= 1_000_000)) fail(422, "Type an amount between 0 and 1.000.000 euros.");
-        const now = nowTs();
+        const now = nowTs(db);
         const note: CallNote = {
           id: newId("cal"),
           party_id: partyId,
@@ -598,7 +628,7 @@ export function proofRoutes({ fail, created, empty }: ProofReplies): Route[] {
         if (!c.promise) fail(422, "This call has no promise to keep.");
         const kept = Boolean((body as { kept?: boolean } | null)?.kept);
         c.promise_kept_on = kept ? db.today : null;
-        c.updated_at = nowTs();
+        c.updated_at = nowTs(db);
         return c;
       },
     ],

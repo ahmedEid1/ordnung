@@ -9,7 +9,7 @@ import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { doc } from "@/mocks/data/helpers";
 import WaitingPage from "@/pages/WaitingPage";
 import LettersPage from "@/pages/LettersPage";
-import { groupWaiting, waitingSummary } from "./model";
+import { asksForACall, groupWaiting, waitingSummary } from "./model";
 
 beforeEach(() => {
   vi.stubGlobal("scrollTo", () => {});
@@ -45,6 +45,30 @@ function renderWaiting() {
     { route: "/letters/waiting" },
   );
 }
+
+describe("Note a call", () => {
+  it("is offered where the note says to call them — an overdue letter or promise with a known sender", () => {
+    const base = { party_id: "pty_x" } as const;
+    expect(asksForACall({ ...base, source: "letter", status: "overdue" })).toBe(true);
+    expect(asksForACall({ ...base, source: "call", status: "overdue" })).toBe(true);
+    expect(asksForACall({ ...base, source: "letter", status: "waiting" })).toBe(false);
+    expect(asksForACall({ ...base, source: "money", status: "overdue" })).toBe(false);
+    expect(asksForACall({ party_id: null, source: "letter", status: "overdue" })).toBe(false);
+  });
+
+  it("opens who they called with the form, from an overdue row", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.calls[0]!.case_id = "cas_flat";
+    const user = userEvent.setup();
+    const { router } = renderWaiting();
+    const overdue = await screen.findByRole("region", { name: /Overdue/ });
+    await user.click(within(overdue).getByRole("button", { name: "Note a call" }));
+    const params = new URLSearchParams(router.state.location.search);
+    expect([params.get("party"), params.get("call")]).toEqual(["pty_fitwell", "cas_flat"]);
+    // nothing to chase on a row that is only waiting
+    expect(within(screen.getByRole("region", { name: /^Waiting/ })).queryByRole("button", { name: "Note a call" })).not.toBeInTheDocument();
+  });
+});
 
 describe("Waiting for page", () => {
   it("lists replies, money and callbacks, overdue first", async () => {

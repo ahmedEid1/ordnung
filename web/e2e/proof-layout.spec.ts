@@ -226,3 +226,55 @@ test("keyboard focus never falls to <body> after the proof, Waiting-for and call
   await expect(note).toHaveCount(0);
   await expect(calls.getByRole("heading", { name: /^Calls/ })).toBeFocused();
 });
+
+/** An unsent cancellation of the FunkNetz contract (a new one each time: marking it sent uses it up). */
+async function unsentLetter(page: Page): Promise<string> {
+  const contracts = await apiGet<{ id: string; name: string | null }[]>(page, "/api/contracts");
+  const contract = contracts.find((c) => /FunkNetz/.test(c.name ?? ""))!;
+  const made = await page.request.post("/api/drafts", { data: { kind: "cancellation", contract_id: contract.id }, headers: CLIENT });
+  expect(made.status(), "draft a cancellation").toBe(201);
+  return ((await made.json()) as { id: string }).id;
+}
+
+for (const width of [320, 1280]) {
+  test(`Mark as sent: a mistyped number's message is never under the dialog's footer, and focus lands on the banner (${width} px)`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width < 400 ? 640 : 800 });
+    await open(page, `/letters/${await unsentLetter(page)}`);
+    await page.getByRole("button", { name: "Mark as sent" }).first().click();
+    const dialog = page.getByRole("dialog", { name: "Mark as sent" });
+    await dialog.getByText("Einwurf-Einschreiben", { exact: false }).first().click();
+    const field = dialog.getByRole("textbox", { name: /Tracking number/ });
+    await field.fill("RT 123 456 784 DE");
+    await dialog.getByRole("button", { name: "Mark as sent" }).click();
+    const message = dialog.getByText(/The last digit doesn't match the others/);
+    await expect(message).toBeVisible();
+    await expect(field).toBeFocused();
+    await settle(page);
+    const said = (await message.boundingBox())!;
+    const footer = (await dialog.getByRole("button", { name: "Cancel" }).evaluate((el) => el.parentElement!.getBoundingClientRect().top)) as number;
+    expect(said.y + said.height, "the message ends above the footer").toBeLessThanOrEqual(footer + 1);
+
+    // sent without a number: the "Mark as sent" button is gone — focus goes to the banner that says it was sent
+    await field.fill("");
+    await dialog.getByRole("button", { name: "Mark as sent" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.locator("#letter-sent")).toBeFocused();
+    await expect(page.locator("#letter-sent")).toContainText("Sent by Einschreiben");
+  });
+}
+
+test("“Note a call” on an overdue promise opens the drawer with the form, on its first field", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const { partyName } = setup!;
+  await open(page, "/letters/waiting", "Waiting for");
+  const row = page.getByRole("region", { name: /Overdue/ }).getByRole("listitem").filter({ hasText: "Written confirmation of the cancellation" }).first();
+  await row.getByRole("button", { name: "Note a call" }).click();
+  const calls = page.getByRole("dialog", { name: partyName }).getByRole("region", { name: /^Calls/ });
+  const form = calls.getByRole("form", { name: "Note a call" });
+  await expect(form.getByLabel("When")).toBeFocused();
+  await settle(page);
+  expect(await faultsIn(calls), "Calls opened to note a call").toEqual([]);
+  await form.getByRole("button", { name: "Cancel" }).click();
+  await expect(calls.getByRole("button", { name: "Note a call" })).toBeFocused();
+  expect(new URL(page.url()).searchParams.get("call")).toBeNull();
+});

@@ -19,9 +19,13 @@ export function proofKindsFor(channel: string | null | undefined): ProofKind[] {
   return [...fitting, ...PROOF_KINDS.filter((k) => !fitting.includes(k))];
 }
 
+/** An Einschreiben bought online has no posting receipt: the printout of its stamp ("other") comes first. */
+const ONLINE_STAMP_PROOFS: readonly ProofKind[] = ["other", "delivery_record", "return_receipt"];
+
 /** The kind to suggest next: the first fitting one the letter doesn't have yet, else "other". */
-export function suggestedKind(channel: string | null | undefined, have: readonly ProofKind[]): ProofKind {
-  return (CHANNEL_PROOFS[channel ?? ""] ?? []).find((k) => !have.includes(k)) ?? "other";
+export function suggestedKind(channel: string | null | undefined, have: readonly ProofKind[], trackingFormat?: string | null): ProofKind {
+  const fitting = channel === "registered_letter" && trackingFormat === "online_stamp" ? ONLINE_STAMP_PROOFS : (CHANNEL_PROOFS[channel ?? ""] ?? []);
+  return fitting.find((k) => !have.includes(k)) ?? "other";
 }
 
 /** What the day of a proof means, per kind ("Posted on", "Delivered on" …). */
@@ -62,11 +66,12 @@ export function hasPicture(doc: Pick<Document, "mime">): boolean {
   return doc.mime.startsWith("image/") || doc.mime === "application/pdf";
 }
 
-/** What to add first, by how the letter went ("your posting receipt"); `null` when nothing fits. */
-export function startWith(channel: string | null | undefined): string | null {
+/** What to add first, by how the letter went ("your posting receipt"; an Einschreiben bought online has none — the
+ * printout of its stamp); `null` when nothing fits. */
+export function startWith(channel: string | null | undefined, trackingFormat?: string | null): string | null {
   switch (channel) {
     case "registered_letter":
-      return "a photo of your posting receipt";
+      return trackingFormat === "online_stamp" ? "a printout or screenshot of your online stamp" : "a photo of your posting receipt";
     case "fax":
       return "your fax transmission report";
     case "email":
@@ -78,10 +83,10 @@ export function startWith(channel: string | null | undefined): string | null {
   }
 }
 
-/** How the waiting box looks for each status. */
-export const WAITING_TONE: Record<WaitingStatus, "info" | "warn" | "success"> = {
+/** How the waiting box looks for each status (overdue in red, as on Waiting for and the Letters count). */
+export const WAITING_TONE: Record<WaitingStatus, "info" | "danger" | "success"> = {
   waiting: "info",
-  overdue: "warn",
+  overdue: "danger",
   answered: "success",
   closed: "info",
 };

@@ -58,13 +58,13 @@ describe("call note checks", () => {
   });
 });
 
-function renderDrawer(party = "pty_fitwell") {
+function renderDrawer(party = "pty_fitwell", extra = "") {
   return renderWithProviders(
     <>
       <PartyDrawer />
       <Toaster />
     </>,
-    { route: `/?party=${party}` },
+    { route: `/?party=${party}${extra}` },
   );
 }
 
@@ -122,6 +122,34 @@ describe("Calls in the party drawer", () => {
     expect(waiting).toContainEqual(expect.objectContaining({ source: "call", title: "Refund of the September fee" }));
     // and nothing asked AI anything
     expect(calls.some((c) => c.path.startsWith("/ask") || c.path.startsWith("/chat"))).toBe(false);
+  });
+
+  it("opens with the form and the thread chosen when Waiting for asks to note a call", async () => {
+    const { calls, srv } = useMockApi();
+    srv.db.state.cases.push({ ...srv.db.state.cases[0]!, id: "cas_fitwell", title: "Membership FW-20931", party_id: "pty_fitwell", reference: "FW-20931" });
+    const user = userEvent.setup();
+    const { router } = renderDrawer("pty_fitwell", "&call=cas_fitwell");
+    const section = await screen.findByRole("region", { name: /^Calls/ });
+    const form = await within(section).findByRole("form", { name: "Note a call" });
+    expect(within(form).getByLabelText(/Thread/)).toHaveValue("cas_fitwell");
+    await waitFor(() => expect(within(form).getByLabelText("When")).toHaveFocus());
+    await user.type(within(form).getByLabelText("What was said"), "Still nothing in writing; they'll send it Friday.");
+    await user.click(within(form).getByRole("button", { name: "Save note" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/calls")?.body).toMatchObject({ party_id: "pty_fitwell", case_id: "cas_fitwell" }));
+    // done: a reload doesn't open the form again, and the drawer stays
+    await waitFor(() => expect(router.state.location.search).toBe("?party=pty_fitwell"));
+    expect(await within(section).findByRole("button", { name: "Note a call" })).toBeInTheDocument();
+  });
+
+  it("opens the form without a thread when the call is about none", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    const { router } = renderDrawer("pty_fitwell", "&call=new");
+    const section = await screen.findByRole("region", { name: /^Calls/ });
+    const form = await within(section).findByRole("form", { name: "Note a call" });
+    await user.click(within(form).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(router.state.location.search).toBe("?party=pty_fitwell"));
+    await waitFor(() => expect(within(section).queryByRole("form", { name: "Note a call" })).not.toBeInTheDocument());
   });
 
   it("deletes a note after asking", async () => {

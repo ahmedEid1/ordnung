@@ -45,7 +45,8 @@ export function ProofFileView({ detail, draftId }: { detail: DocumentDetail; dra
           </p>
           <p className="mt-1 flex items-center gap-1.5 text-[13px] text-muted">
             <Lock className="size-3.5 shrink-0" aria-hidden />
-            {doc.ai_private ? "Kept private — never sent to AI." : "This file was in Ordnung before it became a proof, and AI has read it."}
+            {/* private *and* never read: a letter AI read before someone marked it private is said to be so */}
+            {doc.ai_private && !doc.ai_processed_at ? "Kept private — never sent to AI." : "This file was in Ordnung before it became a proof, and it was given to AI to read."}
           </p>
         </div>
       </header>

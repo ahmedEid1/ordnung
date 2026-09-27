@@ -28,6 +28,11 @@ export function closeLabel(entry: Pick<WaitingEntry, "status" | "answered_by">):
   return entry.status === "answered" && entry.answered_by ? "It's the answer — close this" : "I got an answer — close this";
 }
 
+/** Where the note says "call them — and note what they say": an overdue letter or promise whose sender is known. */
+export function asksForACall(entry: Pick<WaitingEntry, "source" | "status" | "party_id">): boolean {
+  return Boolean(entry.party_id) && entry.status === "overdue" && (entry.source === "letter" || entry.source === "call");
+}
+
 /** A button whose label may be longer than a phone's row ("I got an answer — close this"): it wraps inside
  * itself (pass the label as an element — a plain string label is truncated by `Button`). */
 export const WRAPPING_BUTTON = "h-auto min-h-8 min-w-0 max-w-full shrink whitespace-normal py-1.5 text-left leading-snug";

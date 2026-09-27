@@ -30,6 +30,10 @@ import { PdfPreview } from "./PdfPreview";
 import { ProofPanel } from "./ProofPanel";
 import { SendGuidancePanel } from "./SendGuidancePanel";
 import { contractHref } from "@/features/contracts/links";
+import { focusWhenReady } from "@/features/today/focus";
+
+/** The "Sent by … on …" banner: where focus goes once a letter is marked as sent (its button is gone). */
+const SENT_BANNER = "letter-sent";
 
 const MOD_KEY = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘" : "Ctrl";
 
@@ -166,8 +170,11 @@ export function LetterView({ draft }: { draft: Draft }) {
     try {
       if (dirty) await save();
       const again = isSent;
-      await markSent.mutateAsync({ id: draft.id, channel, date, ...(trackingNumber ? { tracking_number: trackingNumber } : {}) });
+      // an emptied number is sent as "" (it removes the stored one), no number at all for other channels
+      await markSent.mutateAsync({ id: draft.id, channel, date, ...(trackingNumber !== null ? { tracking_number: trackingNumber } : {}) });
       setSentOpen(false);
+      // "Mark as sent" is gone with the dialog: focus the banner that says so, above the proof card
+      if (!again) focusWhenReady(() => document.getElementById(SENT_BANNER));
       if (again) toast.success("Changed how and when you sent it", { description: `Sent ${sentVia(channel)} on ${formatDate(date, { style: "short", today })}.` });
       else
         toast.success(`We'll remind you to check for a reply on ${formatDate(followUpDate(date, draft.kind), { style: "short", today })}`, {
@@ -243,14 +250,15 @@ export function LetterView({ draft }: { draft: Draft }) {
       </header>
 
       {isSent ? (
-        <Callout
-          tone="success"
-          className="mb-6"
-          title={["Sent", sentVia(draft.sent_channel), "on", formatDate(draft.sent_at?.slice(0, 10) ?? today, { style: "short", today })].filter(Boolean).join(" ")}
-        >
-          {/* what it waits for, and when Ordnung reminds, is in the proof card below */}
-          Keep your proof of sending with it below.
-        </Callout>
+        <div id={SENT_BANNER} tabIndex={-1} className="mb-6 rounded-xl outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          <Callout
+            tone="success"
+            title={["Sent", sentVia(draft.sent_channel), "on", formatDate(draft.sent_at?.slice(0, 10) ?? today, { style: "short", today })].filter(Boolean).join(" ")}
+          >
+            {/* what it waits for, and when Ordnung reminds, is in the proof card below */}
+            Keep your proof of sending with it below.
+          </Callout>
+        </div>
       ) : dirty ? (
         <p className="mb-4 flex items-center gap-2 text-[12.5px] text-muted" role="status">
           <span className="size-1.5 rounded-full bg-warn" aria-hidden /> Unsaved changes · <Kbd>{MOD_KEY}</Kbd>

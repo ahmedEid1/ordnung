@@ -55,15 +55,17 @@ export const PROOF_TEXTS: Record<ProofKind, { label: string; shows: string; does
     doesNotShow: "That they processed it, if it is only your saved page — their confirmation e-mail shows that.",
     arrival: true,
   },
-  other: { label: "Other proof", shows: "What it shows — describe it in the note.", doesNotShow: "Ordnung can't tell; proof files are never read by AI.", arrival: false },
+  other: { label: "Other proof", shows: "What it shows — describe it in the note.", doesNotShow: "Ordnung can't tell — say what it shows in the note.", arrival: false },
 };
 
 export const PROOF_CAVEAT =
   "Proof of sending shows that something was sent or delivered — never what was inside. Keep a copy of the letter as sent and, for a letter that matters, have someone see you put it in the envelope. Whether a proof is enough is for a court to decide; this is not legal advice.";
 
 export const MISSING = {
-  tracking: "Add the tracking number from your posting receipt (Einlieferungsbeleg).",
+  tracking: "Add the tracking number — from your posting receipt (Einlieferungsbeleg), or next to the square code of an online stamp.",
   posting: "Add a photo of the posting receipt — it shows the day you posted the letter.",
+  onlineStamp:
+    "An Einschreiben bought online comes with no posting receipt: keep a printout or screenshot of the online stamp with its number (add it as other proof). When a deadline depends on a letter, hand it in at a post office counter instead — you get a posting receipt with the day, which courts have looked at together with the delivery record (BAG 2 AZR 68/24).",
   delivery:
     "Ask Deutsche Post for a copy of the delivery record (Auslieferungsbeleg) — they issue it only within 15 months of posting, so best right after delivery — or keep the return receipt (Rückschein) if you sent it with one. The online tracking status alone was not accepted as proof that a letter arrived (BAG 2 AZR 68/24).",
   deliveryLate:
@@ -78,7 +80,7 @@ export const MISSING = {
 
 export const WAITING_FOR: Record<string, string | null> = {
   cancellation: "A written confirmation of the end date",
-  objection: "A decision on your objection",
+  objection: "An acknowledgement of your objection",
   general_reply: "An answer to your letter",
   withdrawal: "Your money back after the withdrawal",
   extension_request: "An answer to your request for more time",
@@ -90,11 +92,16 @@ export const WAITING_FOR: Record<string, string | null> = {
   address_change: null,
 };
 
-/** Why a kind waits for an answer on *when* (drafts/proof.py `WAITING_CONTEXT`). */
+/** Why a kind waits for an answer on *when*, or for an acknowledgement (drafts/proof.py `WAITING_CONTEXT`). */
 export const WAITING_CONTEXT: Record<string, string> = {
   deposit_return:
     "A landlord has a reasonable time to settle the deposit after you move out — how long depends on the case and can be more than six months (BGH, 18 January 2006, VIII ZR 71/05) — but can tell you when to expect it.",
+  objection:
+    "The decision itself often takes months. If an authority doesn't decide, an action for failure to act (Untätigkeitsklage) is as a rule possible only after three months (§ 75 VwGO, § 88 Abs. 2 SGG) — against the tax office after six (§ 46 Abs. 1 FGO).",
 };
+
+/** Letters an objection may answer that come from a court or a landlord: no authority decides on it (drafts/proof.py). */
+export const NOT_FROM_AN_AUTHORITY: readonly string[] = ["court_payment_order", "enforcement_order", "landlord_notice"];
 
 /** The proof kinds whose day is the sending day, and those whose day is the delivery (drafts/proof.py). */
 export const SENDING_DAY_KINDS: readonly ProofKind[] = ["posting_receipt", "fax_report", "sent_email", "cancel_confirmation"];

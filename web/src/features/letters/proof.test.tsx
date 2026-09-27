@@ -15,7 +15,7 @@ import ProofFilePage from "@/pages/ProofFilePage";
 import { closeLabel } from "@/features/waiting/model";
 import { TrackingField } from "./TrackingField";
 import { startDay } from "./AddProofDialog";
-import { hasPicture, nachweisFileName, proofKindsFor, startWith, suggestedKind, takesTrackingNumber, waitingTitle } from "./proof";
+import { WAITING_TONE, hasPicture, nachweisFileName, proofKindsFor, startWith, suggestedKind, takesTrackingNumber, waitingTitle } from "./proof";
 
 function renderLetter(route: string, extra?: ReactElement) {
   const client = makeTestQueryClient();
@@ -72,6 +72,9 @@ describe("proof helpers", () => {
     expect(suggestedKind("registered_letter", ["posting_receipt"])).toBe("delivery_record");
     expect(suggestedKind("online_button", ["cancel_confirmation"])).toBe("other");
     expect(suggestedKind("letter", [])).toBe("other");
+    // an Einschreiben bought online has no posting receipt: the printout of its stamp first
+    expect(suggestedKind("registered_letter", [], "online_stamp")).toBe("other");
+    expect(suggestedKind("registered_letter", ["other"], "online_stamp")).toBe("delivery_record");
   });
 
   it("asks for a tracking number only for registered letters — a plain letter has none", () => {
@@ -101,6 +104,9 @@ describe("proof helpers", () => {
     expect(hasPicture({ mime: "text/plain" })).toBe(false);
     expect(hasPicture({ mime: "message/rfc822" })).toBe(false);
     expect(startWith("registered_letter")).toBe("a photo of your posting receipt");
+    expect(startWith("registered_letter", "online_stamp")).toBe("a printout or screenshot of your online stamp");
+    // overdue is red here as on Waiting for and the Letters count
+    expect(WAITING_TONE.overdue).toBe("danger");
     expect(startWith("letter")).toBeNull();
   });
 
@@ -132,7 +138,7 @@ describe("TrackingField", () => {
     const user = userEvent.setup();
     render(<Controlled />);
     const input = screen.getByLabelText("Tracking number");
-    expect(screen.getByText(/As printed on your posting receipt/)).toBeInTheDocument();
+    expect(screen.getByText(/As on your posting receipt/)).toHaveTextContent(/next to the square code of an online stamp/);
     await user.type(input, "rt123456785de");
     expect(screen.getByText(/Check digit correct/)).toBeInTheDocument();
     expect(screen.getByText("RT 123 456 785 DE")).toBeInTheDocument();
@@ -162,6 +168,36 @@ describe("TrackingField", () => {
     expect(screen.queryByText(/this one has 4 digits/)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "elsewhere" }));
     expect(screen.getByText(/this one has 4 digits/)).toBeInTheDocument();
+  });
+
+  it("takes an online stamp's number — no mistake while its 20 characters are still being typed", async () => {
+    const user = userEvent.setup();
+    render(<Controlled />);
+    const input = screen.getByLabelText("Tracking number");
+    await user.type(input, "A0 0123 45D6 0000 12");
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    expect(screen.queryByText(/doesn't look like a tracking number/)).not.toBeInTheDocument();
+    await user.type(input, "3C EC");
+    expect(screen.getByText(/The number of an online stamp \(Internetmarke\)/)).toBeInTheDocument();
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("brings the mistake into view with the field (never left under a dialog's footer)", async () => {
+    const scrolled: Element[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this);
+    };
+    try {
+      const user = userEvent.setup();
+      render(<Controlled />);
+      const input = screen.getByLabelText("Tracking number");
+      await user.type(input, "RT 123 456 784 DE");
+      const error = screen.getByText(/The last digit doesn't match the others/);
+      expect(scrolled.some((el) => el.contains(input) && el.contains(error))).toBe(true);
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
   });
 
   it("keeps twelve-digit numbers with a note that they can't be checked", async () => {
@@ -201,6 +237,43 @@ describe("Mark as sent by Einschreiben", () => {
     // the sent letter now shows its proof, with the number saved
     const proof = await screen.findByRole("region", { name: "Proof of sending" });
     expect(await within(proof).findByText("RT 123 456 785 DE")).toBeInTheDocument();
+    // "Mark as sent" is gone: focus is on the banner that says it was sent, never <body>
+    await waitFor(() => expect(document.getElementById("letter-sent")).toHaveFocus());
+    expect(document.getElementById("letter-sent")).toHaveTextContent(/Sent by Einschreiben on Mon 28 Sep/);
+  });
+
+  it("removes the number when the field is emptied while changing how it was sent", async () => {
+    const { calls, srv } = useMockApi();
+    const user = userEvent.setup();
+    renderLetter("/letters/drf_gym");
+    await user.click(await screen.findByRole("button", { name: "More actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Change how or when you sent it" }));
+    const dialog = await screen.findByRole("dialog", { name: "Change how or when you sent it" });
+    await user.clear(within(dialog).getByLabelText(/Tracking number/));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(calls.find((c) => c.path === "/drafts/drf_gym/sent")?.body).toMatchObject({ tracking_number: "" }));
+    await waitFor(() => expect(srv.db.state.drafts.find((d) => d.id === "drf_gym")?.tracking_number).toBeNull());
+  });
+
+  it("won't move the sending day past a recorded delivery", async () => {
+    const { calls, srv } = useMockApi();
+    srv.db.state.proofs.push({ ...srv.db.state.proofs[0]!, id: "prf_gym_delivered", kind: "delivery_record", on_date: "2026-09-24", doc_id: null, note: null });
+    const user = userEvent.setup();
+    renderLetter("/letters/drf_gym");
+    await user.click(await screen.findByRole("button", { name: "More actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Change how or when you sent it" }));
+    const dialog = await screen.findByRole("dialog", { name: "Change how or when you sent it" });
+    const when = within(dialog).getByLabelText("When?");
+    await user.clear(when);
+    await user.type(when, "2026-09-26");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    // refused like the API (the error is the app's toast): the dialog stays, the day is unchanged
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/drafts/drf_gym/sent")).toBe(true));
+    expect(screen.getByRole("dialog", { name: "Change how or when you sent it" })).toBeInTheDocument();
+    expect(srv.db.state.drafts.find((d) => d.id === "drf_gym")?.sent_at?.slice(0, 10)).toBe("2026-09-22");
+    await expect(srv.handle("POST", "/drafts/drf_gym/sent", new URLSearchParams(), { channel: "registered_letter", date: "2026-09-26" }).then((r) => r.json())).resolves.toMatchObject({
+      detail: expect.stringContaining("says it was delivered on Thu 24 Sep 2026 — a letter can't be sent after it was delivered"),
+    });
   });
 });
 
@@ -281,9 +354,13 @@ describe("Proof of sending", () => {
     renderLetter("/letters/drf_gym");
     const proof = await screen.findByRole("region", { name: "Proof of sending" });
     await user.click(await within(proof).findByRole("button", { name: "Actions for Posting receipt (Einlieferungsbeleg)" }));
+    // a label that fits the menu whole — the "days don't match" hint names it
+    expect(await screen.findByRole("menuitem", { name: "Change kind or day" })).toBeInTheDocument();
     await user.click(await screen.findByRole("menuitem", { name: "Remove this proof" }));
-    const dialog = await screen.findByRole("dialog", { name: "Remove this proof?" });
-    expect(within(dialog).getByText(/deleted from Ordnung for good/)).toBeInTheDocument();
+    // it says which proof and which file go, for good — and offers to keep a copy first
+    const dialog = await screen.findByRole("dialog", { name: "Remove the posting receipt (Einlieferungsbeleg)?" });
+    expect(within(dialog).getByText(/deleted from Ordnung for good/)).toHaveTextContent(/“Einlieferungsbeleg_FitWell\.jpg” is deleted/);
+    expect(within(dialog).getByRole("link", { name: "download it first" })).toHaveAttribute("download", "Einlieferungsbeleg_FitWell.jpg");
     await user.click(within(dialog).getByRole("button", { name: "Remove" }));
     await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.path === "/drafts/drf_gym/proofs/prf_gym_receipt")).toBe(true));
     // never "a photo is enough": what to start with
@@ -328,7 +405,7 @@ describe("Proof of sending", () => {
     const proof = await screen.findByRole("region", { name: "Proof of sending" });
     await user.click(await within(proof).findByRole("button", { name: "I got an answer — close this" }));
     await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/drafts/drf_gym/answered")?.body).toEqual({ doc_id: null }));
-    expect(await within(proof).findByText(/You said it was answered on/)).toBeInTheDocument();
+    expect(await within(proof).findByText(/You marked it as answered on/)).toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: "Undo" }));
     await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.path === "/drafts/drf_gym/answered")).toBe(true));
     expect(await within(proof).findByRole("button", { name: "I got an answer — close this" })).toBeInTheDocument();
@@ -352,6 +429,7 @@ describe("Proof of sending", () => {
     renderLetter("/letters/drf_gym");
     const proof = await screen.findByRole("region", { name: "Proof of sending" });
     expect(await within(proof).findByText("These days don't match")).toBeInTheDocument();
+    expect(within(proof).getByText(/use its menu \(⋯ → Change kind or day\)/)).toBeInTheDocument();
     expect(within(proof).getByText(/says Thu 24 Sep 2026, but the letter is marked as sent on Tue 22 Sep 2026/)).toBeInTheDocument();
     await user.click(within(proof).getByRole("button", { name: "Change the sending day" }));
     const dialog = await screen.findByRole("dialog", { name: "Change how or when you sent it" });

@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { CircleCheck, Phone, PhoneCall, Trash2 } from "lucide-react";
 import { useCalls, useCreateCall, useDeleteCall, useUpdateCall } from "@/api/hooks";
 import type { Case, CallNote } from "@/api/types";
@@ -10,6 +10,7 @@ import { Money } from "@/components/ui/Money";
 import { MoneyInput, moneyReadBack } from "@/components/ui/MoneyInput";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
+import { useNoteCallRequest } from "@/lib/party-drawer";
 import { useFormatDate, useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { focusWhenReady } from "@/features/today/focus";
@@ -19,10 +20,10 @@ const SUMMARY_MAX = 2000;
 const PROMISE_MAX = 300;
 const CONTACT_MAX = 120;
 
-function NoteForm({ partyId, cases, onDone }: { partyId: string; cases: Case[]; onDone: () => void }) {
+function NoteForm({ partyId, cases, caseId = "", onDone }: { partyId: string; cases: Case[]; caseId?: string; onDone: () => void }) {
   const today = useTodayISO();
   const create = useCreateCall();
-  const [d, setD] = useState<Draft>({ calledOn: today, contact: "", summary: "", promise: "", promiseDue: "", amount: "", caseId: "" });
+  const [d, setD] = useState<Draft>({ calledOn: today, contact: "", summary: "", promise: "", promiseDue: "", amount: "", caseId });
   const [tried, setTried] = useState(false);
   const ids = useId();
   const fieldId = (k: keyof Draft) => `${ids}-${k}`;
@@ -204,21 +205,33 @@ function NoteRow({ note, headingId }: { note: CallNote; headingId: string }) {
 /**
  * "Calls" in the People & organisations drawer: phone calls the person noted (Gesprächsnotizen)
  * and an inline form to note one — when, with whom, what was said, what they promised. A promise
- * with a day is waited for. Nothing is sent anywhere; no AI reads it.
+ * with a day is waited for. Nothing is sent anywhere; no AI reads it. Opened with `?call=` (Waiting
+ * for's "Note a call"), the form is open from the start, with the letter's or the call's thread chosen.
  */
 export function CallNotes({ partyId, cases }: { partyId: string; cases: Case[] }) {
   const q = useCalls({ party_id: partyId });
-  const [open, setOpen] = useState(false);
+  const request = useNoteCallRequest();
+  const asked = request.asked;
+  const [opened, setOpen] = useState(false);
+  // open when the person asked here, or came asking (also again while the drawer is open)
+  const open = opened || asked !== null;
   const headingId = useId();
   const noteButtonId = `${headingId}-note`;
   const notes = q.data ?? [];
-  // the form goes: back to the button that opened it
+  const askedCase = asked && cases.some((c) => c.id === asked) ? asked : "";
+  const section = useRef<HTMLElement>(null);
+  // came to note a call: the section comes to the top of the drawer, the form's first field focused below
+  useEffect(() => {
+    if (asked !== null) section.current?.scrollIntoView?.({ block: "start" });
+  }, [asked]);
+  // the form goes: back to the button that opened it (the request is done: a reload doesn't reopen it)
   const close = () => {
     setOpen(false);
+    request.done();
     focusWhenReady(() => document.getElementById(noteButtonId));
   };
   return (
-    <section aria-labelledby={headingId} className="mt-7 first:mt-0">
+    <section ref={section} aria-labelledby={headingId} className="mt-7 scroll-mt-4 first:mt-0">
       <div className="mb-2.5 flex items-center gap-2">
         <h3 id={headingId} tabIndex={-1} className="flex-1 text-[12px] font-semibold uppercase tracking-[0.07em] text-muted outline-none">
           Calls
@@ -230,7 +243,7 @@ export function CallNotes({ partyId, cases }: { partyId: string; cases: Case[] }
           </Button>
         ) : null}
       </div>
-      {open ? <NoteForm partyId={partyId} cases={cases} onDone={close} /> : null}
+      {open ? <NoteForm key={askedCase} partyId={partyId} cases={cases} caseId={askedCase} onDone={close} /> : null}
       {q.isPending ? (
         <Skeleton className="h-16 w-full rounded-xl" />
       ) : q.isError ? (

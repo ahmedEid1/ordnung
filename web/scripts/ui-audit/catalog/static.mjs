@@ -227,9 +227,28 @@ export async function staticCatalog({ webDir }) {
       await field.fill("");
       await c.type(field, "RT 123 456 784 DE");
     });
-    addPf("letter-proof--remove", "/letters/drf_gym", "Sent letter: “Remove this proof?” confirmation.", async (c) => {
+    addPf("letter-proof--remove", "/letters/drf_gym", "Sent letter: “Remove the posting receipt?” names the file, offers to download it first.", async (c) => {
       await c.click(proofCard(c).getByRole("button", { name: /^Actions for / }).first());
       await c.click(c.page.getByRole("menuitem", { name: "Remove this proof" }));
+    });
+    addPf("letter-proof--row-menu", "/letters/drf_gym", "Sent letter: a proof's ⋯ menu (“Change kind or day” whole, never cut off).", async (c) => {
+      await c.click(proofCard(c).getByRole("button", { name: /^Actions for / }).first());
+    });
+    addPf("letter-proof--conflict", "/letters/drf_gym", "Sent letter: the receipt's day changed to another day than the sending: “These days don't match”.", async (c) => {
+      await c.click(proofCard(c).getByRole("button", { name: /^Actions for / }).first());
+      await c.click(c.page.getByRole("menuitem", { name: "Change kind or day" }));
+      const dialog = await c.visible(c.page.getByRole("dialog"));
+      await dialog.getByLabel(/Posted on/).fill("2026-09-24");
+      await c.click(dialog.getByRole("button", { name: /^Save/ }));
+      await c.centre(await c.visible(proofCard(c).getByText("These days don't match")));
+    });
+    addPf("letter-proof--online-stamp", "/letters/drf_gym", "Sent letter: an Einschreiben bought online — the online stamp's 20-character number, and what to keep instead of a receipt.", async (c) => {
+      await c.click(proofCard(c).getByRole("button", { name: "Change" }));
+      const field = proofCard(c).getByRole("textbox", { name: "Tracking number" });
+      await field.fill("");
+      await c.type(field, "A0 0123 45D6 0000 123C EC");
+      await c.click(proofCard(c).getByRole("button", { name: "Save number" }));
+      await c.centre(await c.visible(proofCard(c).getByText(/online stamp/).first()));
     });
     addPf("mark-sent--tracking", "/letters/drf_phone", "Mark as sent by Einwurf-Einschreiben with a mistyped tracking number (the check digit error).", async (c) => {
       await c.click(c.page.getByRole("button", { name: "Mark as sent" }).first());
@@ -260,6 +279,11 @@ export async function staticCatalog({ webDir }) {
       await settle(c.page);
     }, { pinToasts: true });
     addPf("party-calls", "/letters?party=pty_fitwell", "FitWell's drawer: the “Calls” section with the noted call and its promise.", (c) => c.scrollTo(callsOf(c)));
+    addPf("waiting--note-call", "/letters/waiting", "Waiting for: “Note a call” on the overdue promise opens FitWell's drawer with the form.", async (c) => {
+      const row = inMain(c.page).getByRole("region", { name: /Overdue/ });
+      await c.click(row.getByRole("button", { name: "Note a call" }).first());
+      await c.visible(callsOf(c).getByRole("form", { name: "Note a call" }));
+    });
     addPf("party-calls--form", "/letters?party=pty_fitwell", "FitWell's drawer: “Note a call” form, saved empty (what's missing).", async (c) => {
       await c.click(callsOf(c).getByRole("button", { name: "Note a call" }));
       const form = callsOf(c).getByRole("form", { name: "Note a call" });

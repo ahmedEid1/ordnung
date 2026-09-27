@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { CalendarClock, CircleCheck, CircleDashed, CircleHelp, Ellipsis, FileDown, Hourglass, Info, PenLine, Plus, ShieldCheck, Trash2, TriangleAlert, Undo2 } from "lucide-react";
+import { CalendarClock, CircleCheck, CircleDashed, CircleHelp, Download, Ellipsis, FileDown, Hourglass, Info, PenLine, Phone, Plus, ShieldCheck, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { api } from "@/api/endpoints";
 import { useDraftProof, useMarkAnswered, useRemoveProof, useSetTracking } from "@/api/hooks";
 import type { Draft, ProofEntry, ProofEvent, ProofOverview, WaitingEntry } from "@/api/types";
@@ -14,11 +14,12 @@ import { Menu } from "@/components/ui/Menu";
 import { SkeletonText } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { PROOF_KIND_COPY, TONES, copyFor } from "@/lib/copy";
+import { usePartyDrawer } from "@/lib/party-drawer";
 import { displayTracking } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
 import { composerHref } from "@/features/today/selection";
 import { focusWhenReady } from "@/features/today/focus";
-import { WRAPPING_BUTTON, closeLabel } from "@/features/waiting/model";
+import { WRAPPING_BUTTON, asksForACall, closeLabel } from "@/features/waiting/model";
 import { AddProofDialog } from "./AddProofDialog";
 import { TrackingField, trackingSavable } from "./TrackingField";
 import { hasPicture, kindsIn, proofFileHref, nachweisFileName, startWith, suggestedKind, takesTrackingNumber, waitingTitle, WAITING_TONE } from "./proof";
@@ -33,6 +34,8 @@ const BOX_ID = "proof-waiting";
 const LIST_ID = "proof-list";
 const TRACKING_INPUT = "proof-tracking-input";
 const TRACKING_CHANGE = "proof-tracking-change";
+/** The proof row menu's item — and the words the "days don't match" callout points to. */
+const CHANGE_PROOF = "Change kind or day";
 
 /** Focus an element by id once it's there (the control that was used has just gone); `always`: even if focus
  * is still on the control that was used (it stays, but what it does changed). */
@@ -44,6 +47,7 @@ const focusId = (id: string, always = false) => focusWhenReady(() => document.ge
  */
 function WaitingBox({ entry, draft }: { entry: WaitingEntry; draft: Draft }) {
   const answered = useMarkAnswered();
+  const drawer = usePartyDrawer();
   const title = waitingTitle(entry);
   const set = (value: boolean) => {
     const docId = entry.status === "answered" ? (entry.answered_by?.id ?? null) : null;
@@ -100,6 +104,12 @@ function WaitingBox({ entry, draft }: { entry: WaitingEntry; draft: Draft }) {
                 <PenLine aria-hidden />
                 Write a reminder
               </Link>
+            ) : null}
+            {asksForACall(entry) ? (
+              // "call them — and note what they say": the form, with the letter's thread chosen
+              <Button size="sm" variant="secondary" icon={Phone} onClick={() => drawer.open(entry.party_id!, { noteCall: { caseId: entry.case_id } })}>
+                Note a call
+              </Button>
             ) : null}
           </div>
         }
@@ -235,7 +245,7 @@ function ProofRow({ entry, onEdit, onRemove }: { entry: ProofEntry; onEdit: () =
             heading={copy.label}
             items={[
               {
-                label: "Change what it is or its day",
+                label: CHANGE_PROOF,
                 icon: PenLine,
                 onSelect: onEdit,
               },
@@ -378,8 +388,8 @@ export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeS
               className="mb-5"
               action={
                 onChangeSending ? (
-                  <Button size="sm" variant="secondary" icon={PenLine} onClick={onChangeSending}>
-                    Change the sending day
+                  <Button size="sm" variant="secondary" icon={PenLine} onClick={onChangeSending} className={WRAPPING_BUTTON}>
+                    <span>Change the sending day</span>
                   </Button>
                 ) : undefined
               }
@@ -389,7 +399,7 @@ export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeS
                   <li key={c}>{c}</li>
                 ))}
               </ul>
-              <p className="mt-1 text-[13px] text-muted">To correct a proof's day, use its menu (⋯ → Change what it is or its day).</p>
+              <p className="mt-1 text-[13px] text-muted">To correct a proof's day, use its menu (⋯ → {CHANGE_PROOF}).</p>
             </Callout>
           ) : null}
           <div className="@container">
@@ -409,7 +419,7 @@ export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeS
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-[13px] leading-5 text-muted">{`Nothing added yet${startWith(overview.channel) ? ` — start with ${startWith(overview.channel)}` : ""}.`}</p>
+                    <p className="text-[13px] leading-5 text-muted">{`Nothing added yet${startWith(overview.channel, overview.tracking?.format) ? ` — start with ${startWith(overview.channel, overview.tracking?.format)}` : ""}.`}</p>
                   )}
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button size="sm" variant="soft" icon={Plus} onClick={() => setAdding(true)}>
@@ -465,7 +475,7 @@ export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeS
               draftId={draft.id}
               channel={overview.channel}
               sentOn={draft.sent_at?.slice(0, 10) ?? null}
-              suggested={suggestedKind(overview.channel, kindsIn(overview))}
+              suggested={suggestedKind(overview.channel, kindsIn(overview), overview.tracking?.format)}
             />
           ) : null}
           {editing ? (
@@ -485,8 +495,8 @@ export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeS
             onClose={() => setRemoving(null)}
             returnFocus={listHeading}
             size="sm"
-            title="Remove this proof?"
-            description={removing?.document?.source === "proof" ? "Its file is deleted from Ordnung for good." : "The file stays in Ordnung; only the link to this letter goes."}
+            title={removing ? `Remove the ${lowerFirst(copyFor(PROOF_KIND_COPY, removing.proof.kind).label)}?` : "Remove this proof?"}
+            description={removing ? removalWords(removing) : undefined}
             footer={
               <>
                 <Button onClick={() => setRemoving(null)}>Keep it</Button>
@@ -513,9 +523,35 @@ export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeS
                 </Button>
               </>
             }
-          />
+          >
+            {/* deleted for good (docs/decisions/0014): a photographed receipt may be the only copy — keep one first */}
+            {removing?.document && removing.document.source === "proof" ? (
+              <p className="text-[13.5px] leading-5 text-ink/85">
+                If it's your only copy,{" "}
+                <a href={api.fileUrl(removing.document.id)} download={removing.document.filename} className="inline-flex min-h-6 items-center gap-1 font-medium text-accent underline underline-offset-2">
+                  <Download className="size-3.5" aria-hidden />
+                  download it first
+                </a>
+                .
+              </p>
+            ) : null}
+          </Dialog>
         </>
       )}
     </Card>
+  );
+}
+
+const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
+
+/** What removing a proof does to its file, naming it: deleted for good, or (a letter it was linked to) kept. */
+function removalWords(entry: ProofEntry): ReactNode {
+  const doc = entry.document;
+  if (!doc) return "Its entry is removed from this letter.";
+  // a file name is one long word: it wraps anywhere rather than widen the dialog
+  return (
+    <span className="[overflow-wrap:anywhere]">
+      {doc.source === "proof" ? `“${doc.filename}” is deleted from Ordnung for good — this can't be undone.` : `“${doc.filename}” stays in Ordnung; only its link to this letter goes.`}
+    </span>
   );
 }

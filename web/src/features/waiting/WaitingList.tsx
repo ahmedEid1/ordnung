@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useRef, type RefObject } from "react";
 import { Link } from "react-router";
-import { CircleCheck, HandCoins, PenLine } from "lucide-react";
+import { CircleCheck, HandCoins, PenLine, Phone } from "lucide-react";
 import { useMarkAnswered, useParties, useUpdateCall, useUpdateItem } from "@/api/hooks";
 import type { Party, WaitingEntry } from "@/api/types";
 import { Button, buttonVariants } from "@/components/ui/Button";
@@ -11,9 +11,10 @@ import { PartyChip } from "@/components/ui/PartyChip";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { toast } from "@/components/ui/Toast";
 import { TONES, WAITING_SOURCE_COPY, WAITING_STATUS_COPY, copyFor } from "@/lib/copy";
+import { usePartyDrawer } from "@/lib/party-drawer";
 import { cn } from "@/lib/utils";
 import { focusWhenReady } from "@/features/today/focus";
-import { WAITING_GROUPS, WRAPPING_BUTTON, closeLabel, groupWaiting } from "./model";
+import { WAITING_GROUPS, WRAPPING_BUTTON, asksForACall, closeLabel, groupWaiting } from "./model";
 
 const rowHeadingId = (entryId: string) => `waiting-row-${entryId}`;
 
@@ -51,6 +52,7 @@ function Actions({ entry }: { entry: WaitingEntry }) {
   const item = useUpdateItem();
   const call = useUpdateCall();
   const answered = useMarkAnswered();
+  const drawer = usePartyDrawer();
   const focus = useContext(RowFocusContext);
   // The row leaves the list once settled, so the toast follows the promise (a `mutate` callback
   // would be dropped with the unmounted row); errors are shown by the mutation's own toast.
@@ -124,6 +126,12 @@ function Actions({ entry }: { entry: WaitingEntry }) {
       {entry.source === "call" ? (
         <Button size="sm" variant="soft" icon={CircleCheck} loading={call.isPending} onClick={kept}>
           They kept it
+        </Button>
+      ) : null}
+      {asksForACall(entry) ? (
+        // the note says "call them — and note what they say": the form, with this thread chosen
+        <Button size="sm" variant="secondary" icon={Phone} onClick={() => drawer.open(entry.party_id!, { noteCall: { caseId: entry.case_id } })}>
+          Note a call
         </Button>
       ) : null}
     </div>

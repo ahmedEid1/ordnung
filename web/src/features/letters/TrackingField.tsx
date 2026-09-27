@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CircleCheck, Info } from "lucide-react";
 import { Field, Input } from "@/components/ui/Field";
-import { checkTracking, TRACKING_EXAMPLE, TRACKING_MAX, type TrackingCheck } from "@/lib/tracking";
+import { checkTracking, trackingComplete, TRACKING_EXAMPLE, TRACKING_MAX, type TrackingCheck } from "@/lib/tracking";
 
 export interface TrackingFieldProps {
   value: string;
@@ -24,8 +24,6 @@ export function trackingSavable(value: string): boolean {
   return checkTracking(value).state !== "invalid";
 }
 
-/** An S10 number is complete at 13 characters; only then (or on leaving the field) a mistake is said. */
-const COMPLETE = 13;
 export const TRACKING_REQUIRED = "Type the tracking number from your posting receipt.";
 
 function hintFor(check: TrackingCheck) {
@@ -50,37 +48,49 @@ function hintFor(check: TrackingCheck) {
   }
   return (
     <>
-      As printed on your posting receipt, like <span className="font-ident whitespace-nowrap">{TRACKING_EXAMPLE}</span>.
+      As on your posting receipt (like <span className="font-ident whitespace-nowrap">{TRACKING_EXAMPLE}</span>), or the 20 characters next to the square code of an online stamp.
     </>
   );
 }
 
 /**
  * The Einschreiben's tracking number with the check the server makes, as the person types: a
- * correct check digit is confirmed, a mistake is named once the number is complete, the field is left
- * or the person tries to save; twelve-digit numbers are accepted with a note that they can't be
- * checked. No placeholder: an example number in the empty field would look like a saved one.
+ * correct check digit is confirmed, a mistake is named once the number is complete (13 characters, or
+ * 20 for what may still become an online stamp's number), the field is left or the person tries to
+ * save; an online stamp's and a twelve-digit number are accepted with a note that they can't be
+ * checked. A mistake opens under the field: it is brought into view with the field (never left under a
+ * dialog's footer). No placeholder: an example number in the empty field would look like a saved one.
  */
 export function TrackingField({ value, onChange, id, label = "Tracking number", optional, required, showError, autoFocus, className }: TrackingFieldProps) {
   const [left, setLeft] = useState(false);
   const check = checkTracking(value);
-  const complete = value.replace(/[\s./-]/g, "").length >= COMPLETE;
+  const complete = trackingComplete(value);
   const error = check.state === "invalid" && (left || complete || showError) ? check.message : required && showError && check.state === "empty" ? TRACKING_REQUIRED : undefined;
+  const wrapper = useRef<HTMLDivElement>(null);
+  const said = Boolean(error);
+  useEffect(() => {
+    // focusing the field scrolls only the field into view: the message under it comes too (while the
+    // person is on the field — typing, or sent back to it — never when they just left it)
+    const box = wrapper.current;
+    if (said && box?.contains(document.activeElement)) box.scrollIntoView?.({ block: "nearest" });
+  }, [said]);
   return (
-    <Field id={id} label={label} optional={optional} hint={hintFor(check)} error={error} className={className}>
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={() => setLeft(true)}
-        onFocus={() => setLeft(false)}
-        maxLength={TRACKING_MAX}
-        autoComplete="off"
-        autoCapitalize="characters"
-        spellCheck={false}
-        inputMode="text"
-        autoFocus={autoFocus}
-        className="font-ident tracking-wide"
-      />
-    </Field>
+    <div ref={wrapper} className={className}>
+      <Field id={id} label={label} optional={optional} hint={hintFor(check)} error={error}>
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={() => setLeft(true)}
+          onFocus={() => setLeft(false)}
+          maxLength={TRACKING_MAX}
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          inputMode="text"
+          autoFocus={autoFocus}
+          className="font-ident tracking-wide"
+        />
+      </Field>
+    </div>
   );
 }

@@ -46,7 +46,7 @@ export default function WaitingPage() {
           illustration="clear"
           headingLevel={2}
           title="Nothing to wait for"
-          description="Mark a letter as sent, note a promise from a phone call, or add a letter that says money is coming — it shows here until it's settled."
+          description="Mark a letter as sent, add a letter that says money is coming, or note a promise from a phone call (open who you spoke to — from a letter or a contract — and choose Note a call). It shows here until it's settled."
           action={
             <Link to="/letters" className={buttonVariants({ variant: "primary" })}>
               Go to your letters

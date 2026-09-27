@@ -20,7 +20,8 @@ export interface MarkSentDialogProps {
   open: boolean;
   onClose: () => void;
   draft: Draft;
-  /** `trackingNumber`: what the person typed for a letter by post (checked; `null` when left empty). */
+  /** `trackingNumber`: what the person typed for a registered letter (checked; `""` when left empty — on a sent
+   * letter that removes the stored number), `null` for a way of sending that has none. */
   onConfirm: (channel: SendChannelKind, date: string, trackingNumber: string | null) => void;
   pending?: boolean;
 }
@@ -48,7 +49,9 @@ export function MarkSentDialog({ open, onClose, draft, onConfirm, pending }: Mar
       document.getElementById(TRACKING_ID)?.focus();
       return;
     }
-    onConfirm(channel, date, withTracking && tracking.trim() ? tracking : null);
+    // an emptied field on a letter that had a number removes it ("" — the API keeps the number when none is sent)
+    const removed = sent && draft.tracking_number ? "" : null;
+    onConfirm(channel, date, withTracking ? tracking.trim() || removed : null);
   };
   const chosen = choices.find((c) => c.channel === channel) ?? null;
   const sendBy = draft.send_guidance?.send_by ?? null;

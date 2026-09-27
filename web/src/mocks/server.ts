@@ -52,7 +52,7 @@ import { PARTIES } from "./data/parties";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
 import { isOpenItem } from "@/features/document/verdict";
 import { checkTracking } from "@/lib/tracking";
-import { proofRoutes, resolveProofAsset, sentFollowup } from "./proof";
+import { deliveredBefore, proofRoutes, resolveProofAsset, sentFollowup } from "./proof";
 
 const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
@@ -1147,11 +1147,15 @@ const routes: [string, string, Handler][] = [
       const channel = b.channel ?? "letter";
       // like the API: only a registered letter has a tracking number; another channel drops a stored one
       if (tracking.state === "valid" && channel !== "registered_letter") throw new HttpError(422, "Only a registered letter (Einschreiben) has a tracking number.");
+      // like the API: a sending day after a recorded delivery is refused
+      const delivered = deliveredBefore(db, d, date);
+      if (delivered) throw new HttpError(422, delivered);
       d.status = "sent";
       d.sent_channel = channel;
       d.sent_at = `${date}T12:00:00Z`;
+      // an emptied field ("") removes the number; none sent keeps it
       if (tracking.state === "valid") d.tracking_number = tracking.number;
-      else if (channel !== "registered_letter") d.tracking_number = null;
+      else if (channel !== "registered_letter" || typeof b.tracking_number === "string") d.tracking_number = null;
       d.updated_at = nowTs();
       d.checks = checksFor(db, d);
       const party = db.party(d.party_id);

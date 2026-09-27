@@ -1213,6 +1213,24 @@ export async function demoCatalog({ api, server }) {
     await c.goto(`/letters/${extra.sent.id}`);
     await c.centre(await c.visible(proofRegion(c)));
   });
+  proofState("proof-sent--overdue", "sent", "Nothing came by the follow-up day (faked): “Still waiting for …” in red, “Write a reminder” and “Note a call”.", async (c) => {
+    await fakeApi(
+      c.page,
+      "GET",
+      /\/api\/drafts\/[^/]+\/proof$/,
+      (_r, o) => ({
+        json: {
+          ...o,
+          waiting: o.waiting
+            ? { ...o.waiting, status: "overdue", note: `${o.waiting.note.split(".")[0]}; nothing linked to it has arrived since. Send a short reminder or call them — and note what they say.` }
+            : o.waiting,
+        },
+      }),
+      { passthrough: true },
+    );
+    await c.goto(`/letters/${extra.sent.id}`);
+    await c.centre(await c.visible(proofRegion(c)));
+  });
   proofState("proof-sent--conflict", "sent2", "A receipt's day and the sending day disagree (faked): “These days don't match”.", async (c) => {
     await fakeApi(
       c.page,
@@ -1234,7 +1252,7 @@ export async function demoCatalog({ api, server }) {
   proofState("proof-sent2--top", "sent2", "The top of a sent letter: the banner (no second reminder) above the proof card.", async (c) => c.wait(200));
   proofState("proof-sent2--edit", "sent2", "“Change this proof” dialog.", async (c) => {
     await c.click(proofRegion(c).getByRole("button", { name: /^Actions for / }).first());
-    await c.click(c.page.getByRole("menuitem", { name: /Change what it is/ }));
+    await c.click(c.page.getByRole("menuitem", { name: "Change kind or day" }));
   });
   mutations.push({
     id: "proof-file-page",
