@@ -181,12 +181,20 @@ function pageInfos(db: MockDb, d: Document): PageInfo[] {
 /**
  * Whether the person has dealt with a high-stakes letter, as the server decides it (`advice.settles`): every
  * to-do that carries its legal deadline — one the law added, or one whose receipt cites a rule of the card —
- * is closed, and there is one. Another to-do of the letter (the arrears, a handover appointment) never counts.
+ * is closed, and there is one. Another to-do of the letter (the arrears, a handover appointment) never counts,
+ * nor a recurring one (it moves on when done) or a rent increase's new rent (the consent decision carries it).
  */
 function settles(card: LetterAdvice, items: Item[]): boolean {
-  const carrying = items.filter((i) => i.origin === "rule" || Boolean(i.computation?.rule_ids.some((r) => card.rule_ids.includes(r))));
+  const carries = (i: Item) =>
+    !i.recurrence &&
+    !(card.kind === "rent_increase" && i.kind === "payment") &&
+    (i.origin === "rule" || Boolean(i.computation?.rule_ids.some((r) => card.rule_ids.includes(r))));
+  const carrying = items.filter(carries);
   return carrying.length > 0 && !carrying.some(isOpenItem);
 }
+
+/** The tag a letter carries once the person said they dealt with a card no to-do can close (`DEALT_WITH_TAG`). */
+const DEALT_WITH_TAG = "dealt-with";
 
 /** The steps that ask for the delivery (or receipt) day, which a handled card leaves out (`advice._unless`). */
 const ASKS_FOR_DELIVERY = /^(Find the delivery date|Enter the day you received|The period counts from the delivery date|The three weeks count from the day you received)/;
@@ -200,8 +208,10 @@ function adviceFor(db: MockDb, d: Document): LetterAdvice | null {
   const own = ADVICE_BY_DOC[d.id];
   const card = own && d.kind === db.seedKind(d.id) ? own : isHighStakes(d.kind) ? (d.received_date ? ADVICE_ARRIVED_BY_KIND : ADVICE_BY_KIND)[d.kind] : null;
   // as on the server: once the person dealt with the letter, its card is no longer urgent and says so (the
-  // demo's landlord cards are ordinary notices with an objection to-do, which can settle)
-  if (!card || !settles(card, db.state.items.filter((i) => i.doc_id === d.id))) return card;
+  // demo's landlord cards are ordinary notices with an objection to-do, which can settle); a card no to-do
+  // can close once the person marked it dealt with
+  const dealt = card?.closable ? d.tags.includes(DEALT_WITH_TAG) : card ? settles(card, db.state.items.filter((i) => i.doc_id === d.id)) : false;
+  if (!card || !dealt) return card;
   const steps = card.kind === "operating_costs" ? card.steps : card.steps.filter((s) => !ASKS_FOR_DELIVERY.test(s));
   return { ...card, urgent: false, handled: true, steps };
 }

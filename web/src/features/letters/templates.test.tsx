@@ -218,6 +218,7 @@ describe("statutory objections and follow-ups", () => {
       rule_ids: [],
       draft: null,
       handled: false,
+      closable: true,
     };
     expect(objectionCheck(notice, fristlos)).toMatchObject({ ok: false, reason: "no_hardship", title: "This reads as a notice without notice period (fristlos)" });
     expect(objectionCheck(notice, { ...fristlos, draft: "objection" })).toMatchObject({ ok: true, term: "Widerspruch" });

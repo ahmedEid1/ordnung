@@ -10,6 +10,7 @@ import {
   Check,
   CircleCheckBig,
   Clock,
+  Info,
   Landmark,
   ListChecks,
   Mail,
@@ -99,6 +100,8 @@ const NOT_OWED: Record<NotOwed, string> = {
     "Check before you pay: this statement seems to have come too late, so you may owe no back-payment (§\u00a0556 Abs.\u00a03 BGB). See the card on this page.",
   consent:
     "Decide before you pay: the higher rent is only owed once you agree to the increase (§\u00a0558b Abs.\u00a01 BGB), and paying it can count as agreeing. See the card on this page.",
+  if_agreed:
+    "Only if you agreed to the increase: the higher rent is due from this date. If you didn't, keep paying your current rent — paying the higher one can count as agreeing (§\u00a0558b Abs.\u00a01 BGB).",
 };
 
 /** What the verdict says about a letter that must be acted on when no to-do carries its date. */
@@ -215,7 +218,13 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
               </p>
             ) : null}
             {debit ? <p className="mt-1 text-[13px] text-muted">Collected automatically by direct debit — nothing to transfer.</p> : null}
-            {notOwed ? (
+            {notOwed === "if_agreed" ? (
+              // decided, but Ordnung doesn't know which way: a plain note, not a warning
+              <p className="mt-2 flex items-start gap-1.5 text-[13.5px] leading-snug text-ink/80">
+                <Info className="mt-0.5 size-3.5 shrink-0 text-muted" aria-hidden />
+                <span>{NOT_OWED[notOwed]}</span>
+              </p>
+            ) : notOwed ? (
               <p className="mt-2 flex items-start gap-1.5 text-[13.5px] leading-snug text-warn-ink">
                 <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                 <span>{NOT_OWED[notOwed]}</span>

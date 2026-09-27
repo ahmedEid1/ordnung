@@ -3,13 +3,21 @@
  * a rent increase, an operating-cost statement): what the letter means, the steps in order, the
  * facts Ordnung worked out from the law (time-bar, rent cap, a late statement) and free or
  * low-cost help nearby. The card comes from the backend (`DocumentDetail.advice`); nothing here is
- * computed. Urgent letters (court orders, a dismissal) are styled as a warning.
+ * computed. Urgent letters (court orders, a dismissal) are styled as a warning. A handled card
+ * (`advice.handled`: the person closed the to-dos that carry its deadline) says so and offers no letter
+ * to draft; a card no to-do can close (`advice.closable`: a landlord's notice without notice period)
+ * lets the person say they have dealt with it — stored as the letter's `dealt-with` tag, and undoable.
  */
-import { ArrowUpRight, CircleCheck, FileSearch, Info, PenLine, Scale, TriangleAlert, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, CircleCheck, CircleCheckBig, FileSearch, Info, PenLine, Scale, TriangleAlert, type LucideIcon } from "lucide-react";
 import type { AdviceFact, Document, DraftKind, LetterAdvice } from "@/api/types";
+import { useUpdateDocument } from "@/api/hooks";
 import { Button } from "@/components/ui/Button";
+import { toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { useStartDraft } from "./actions";
+
+/** The tag a letter carries once the person said they dealt with a card no to-do can close (the server's `DEALT_WITH_TAG`). */
+export const DEALT_WITH_TAG = "dealt-with";
 
 const FACT_TONE: Record<AdviceFact["tone"], { box: string; icon: LucideIcon; iconClass: string; title: string }> = {
   info: { box: "border-line bg-surface-2/60", icon: Info, iconClass: "text-muted", title: "text-ink" },
@@ -31,10 +39,45 @@ const CARD_ACTION: Partial<Record<DraftKind, { label: string; icon: LucideIcon }
   receipts_inspection: { label: "Ask to see the receipts", icon: FileSearch },
 };
 
-export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: Pick<Document, "id" | "party_id" | "case_id"> }) {
+/** "I've dealt with this" on a card no to-do can close, and its undo once it is handled that way. */
+function DealtWith({ advice, doc }: { advice: LetterAdvice; doc: Pick<Document, "id" | "tags"> }) {
+  const update = useUpdateDocument();
+  const tags = doc.tags ?? [];
+  const mark = (dealt: boolean) =>
+    update.mutate(
+      { id: doc.id, patch: { tags: dealt ? [...tags.filter((t) => t !== DEALT_WITH_TAG), DEALT_WITH_TAG] : tags.filter((t) => t !== DEALT_WITH_TAG) } },
+      {
+        onSuccess: () =>
+          dealt
+            ? toast.success("Marked as dealt with", {
+                description: "The card stays on the letter for reference. Nothing was sent.",
+                undo: () => update.mutate({ id: doc.id, patch: { tags: tags.filter((t) => t !== DEALT_WITH_TAG) } }),
+              })
+            : toast.success("Back to “get advice now”"),
+      },
+    );
+  if (advice.handled) {
+    return tags.includes(DEALT_WITH_TAG) ? (
+      <Button size="sm" variant="ghost" loading={update.isPending} onClick={() => mark(false)}>
+        Not dealt with yet
+      </Button>
+    ) : null;
+  }
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[13px] leading-snug text-ink/80">Had advice, moved out, or settled it? No to-do can close this letter — say so here. Nothing is sent.</p>
+      <Button size="sm" variant="secondary" icon={CircleCheckBig} loading={update.isPending} onClick={() => mark(true)}>
+        I've dealt with this
+      </Button>
+    </div>
+  );
+}
+
+export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: Pick<Document, "id" | "party_id" | "case_id" | "tags"> }) {
   const draft = useStartDraft();
   const urgent = advice.urgent;
-  const draftKind = advice.draft ?? null;
+  // a handled letter has nothing left to object to in time: no letter to draft
+  const draftKind = advice.handled ? null : (advice.draft ?? null);
   const action = draftKind ? CARD_ACTION[draftKind] : undefined;
   const titleId = `advice-${doc.id}`;
   return (
@@ -63,6 +106,16 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
 
       {/* the summary lines up with the steps below it: under the title on a wide card, full width on a narrow one */}
       <div className="space-y-4 px-4 pb-4 pt-2 sm:px-5 @[34rem]:pl-[68px]">
+        {advice.handled ? (
+          <p role="status" className="flex items-start gap-2 rounded-xl border border-ok/25 bg-ok-soft px-3 py-2 text-[13.5px] font-medium leading-snug text-ok-ink">
+            <CircleCheck className="mt-0.5 size-4 shrink-0 text-ok" aria-hidden />
+            <span>
+              {doc.tags?.includes(DEALT_WITH_TAG) && advice.closable
+                ? "You marked this letter as dealt with. The card stays here for reference."
+                : "You've closed the to-dos that carry this letter's deadline. The card stays here for reference."}
+            </span>
+          </p>
+        ) : null}
         <p className="text-[14px] leading-relaxed text-ink/85">{keepCitations(advice.summary)}</p>
         {advice.steps.length ? (
           <div>
@@ -155,6 +208,7 @@ export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: P
             </Button>
           </div>
         ) : null}
+        {advice.closable ? <DealtWith advice={advice} doc={doc} /> : null}
       </div>
 
       <p className={cn("border-t px-4 py-2 text-[12px] leading-5 text-muted sm:px-5", urgent ? "border-warn/20 bg-surface/40" : "border-line bg-surface-2/40")}>

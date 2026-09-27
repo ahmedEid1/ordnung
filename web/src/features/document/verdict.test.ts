@@ -138,8 +138,15 @@ describe("chooseMainAction", () => {
     expect(notOwedReason(rent, null, [rent, decision])).toBe("consent");
     const done = { ...decision, status: "done" as const };
     expect(consentDecided([rent, done])).toBe(true);
-    expect(notOwedReason(rent, null, [rent, done])).toBeNull();
-    expect(consentDecided([rent, { ...decision, status: "dismissed" as const }])).toBe(true);
+    // final review 3: decided — but which way isn't known, so the new rent is owed only if they agreed, and
+    // "Pay" never leads (paying it can count as agreeing, § 558b Abs. 1 BGB)
+    expect(notOwedReason(rent, null, [rent, done])).toBe("if_agreed");
+    const dismissed = { ...decision, status: "dismissed" as const };
+    expect(consentDecided([rent, dismissed])).toBe(true);
+    const dated = { ...rent, due_date: "2026-12-01" };
+    for (const closed of [done, dismissed]) {
+      expect(chooseMainAction(makeDetail({ items: [dated, closed] }), dated).type).toBe("calendar");
+    }
     // the rent payment itself (which cites § 558b for its note) is no decision
     expect(consentDecided([{ ...rent, status: "done" as const }])).toBe(false);
   });

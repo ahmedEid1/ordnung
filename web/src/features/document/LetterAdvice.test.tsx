@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderWithProviders, makeTestQueryClient } from "@/test/render";
 import { qk } from "@/api/hooks";
 import type { DocumentDetail } from "@/api/types";
@@ -382,8 +383,9 @@ describe("the advice card of a high-stakes letter", () => {
     expect(screen.queryByRole("button", { name: /^Pay/ })).toBeNull();
   });
 
-  it("stops saying 'decide before you pay' once the person closed the consent decision", () => {
-    // final review 2: agreed and marked "Decide whether to agree" done — the new rent is what they pay now
+  it("stops saying 'decide before you pay' once the person closed the consent decision, without leading with Pay", () => {
+    // final review 2: decided and marked "Decide whether to agree" done; final review 3: done (or dismissed)
+    // doesn't say which way, so the verdict says the new rent is owed only if they agreed — no Pay button
     const doc = makeDoc({ id: "doc_increase", kind: "rent_increase", area: "home", title: "Rent increase request" });
     const rent = makeItem({
       id: "rent",
@@ -398,7 +400,56 @@ describe("the advice card of a high-stakes letter", () => {
     const detail = makeDetail({ document: doc, items: [rent, decided], advice: ADVICE_BY_KIND.rent_increase });
     renderWithProviders(<VerdictCard detail={detail} primary={rent} onAskArrival={() => {}} />, { client: client() });
     expect(screen.queryByText(/Decide before you pay/)).toBeNull();
-    expect(chooseMainAction(detail, rent).type).toBe("pay");
+    expect(screen.getByText(/Only if you agreed to the increase: the higher rent is due from this date. If you didn't, keep paying your current rent/)).toBeInTheDocument();
+    expect(chooseMainAction(detail, rent).type).toBe("calendar");
+    expect(screen.queryByRole("button", { name: /^Pay/ })).toBeNull();
+  });
+
+  it("says a handled card is handled and offers no letter to draft any more", () => {
+    // final review 3: the docs promised the card says so (advice.handled)
+    const notice = makeDoc({ id: "doc_notice", kind: "landlord_notice", area: "home", title: "Kündigung" });
+    const handled = { ...ADVICE_BY_KIND.landlord_notice, handled: true };
+    renderWithProviders(<LetterAdviceCard advice={handled} doc={notice} />, { client: client() });
+    expect(screen.getByRole("status")).toHaveTextContent("You've closed the to-dos that carry this letter's deadline.");
+    expect(screen.queryByRole("button", { name: "Draft a hardship objection" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "I've dealt with this" })).toBeNull(); // its to-dos close it
+  });
+
+  it("lets the person say they dealt with a notice no to-do can close, and undo it", async () => {
+    // final review 3: a notice without notice period has no to-do that carries it — without this it would say
+    // "get advice now" for good
+    const user = userEvent.setup();
+    const calls: { url: string; body: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        calls.push({ url: String(url), body: init?.body ? JSON.parse(String(init.body)) : undefined });
+        return new Response(JSON.stringify(makeDoc({ id: "doc_notice" })), { status: 200, headers: { "Content-Type": "application/json" } });
+      }),
+    );
+    const notice = makeDoc({ id: "doc_notice", kind: "landlord_notice", area: "home", title: "Fristlose Kündigung", tags: ["kept"] });
+    const fristlos = { ...ADVICE_BY_KIND.landlord_notice, urgent: true, closable: true, draft: null };
+    const { unmount } = renderWithProviders(<LetterAdviceCard advice={fristlos} doc={notice} />, { client: client() });
+    await user.click(screen.getByRole("button", { name: "I've dealt with this" }));
+    const patch = calls.find((c) => c.url.includes("/documents/doc_notice"));
+    expect(patch?.body).toEqual({ tags: ["kept", "dealt-with"] });
+    unmount();
+    // once marked, the card says so and offers the way back
+    const dealt = { ...fristlos, urgent: false, handled: true };
+    renderWithProviders(<LetterAdviceCard advice={dealt} doc={{ ...notice, tags: ["kept", "dealt-with"] }} />, { client: client() });
+    expect(screen.getByRole("status")).toHaveTextContent("You marked this letter as dealt with.");
+    calls.length = 0;
+    await user.click(screen.getByRole("button", { name: "Not dealt with yet" }));
+    expect(calls.find((c) => c.url.includes("/documents/doc_notice"))?.body).toEqual({ tags: ["kept"] });
+  });
+
+  it("static demo: a card no to-do can close is handled once the letter is tagged dealt with", async () => {
+    const srv = createMockServer({ staticDemo: false, latency: 0 });
+    srv.openAllMail();
+    const get = async () => (await (await srv.handle("GET", "/documents/doc_mahnbescheid", new URLSearchParams(), undefined)).json()) as DocumentDetail;
+    // the tag means nothing on a card its to-dos close
+    await srv.handle("PATCH", "/documents/doc_mahnbescheid", new URLSearchParams(), { tags: ["dealt-with"] });
+    expect((await get()).advice?.handled).toBe(false);
   });
 
   it("marks to-dos the law adds as set by law", () => {

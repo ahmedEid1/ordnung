@@ -174,7 +174,7 @@ export function isLetterSettled(detail: Pick<DocumentDetail, "advice" | "items">
 }
 
 /** Why a payment may not be owed yet (see {@link notOwedReason}). */
-export type NotOwed = "late_statement" | "consent";
+export type NotOwed = "late_statement" | "consent" | "if_agreed";
 
 /** A rent increase's consent decision (§ 558b BGB): the law's to-do, or the letter's own date for it — never a payment. */
 function isConsentDecision(i: Item): boolean {
@@ -183,7 +183,9 @@ function isConsentDecision(i: Item): boolean {
 
 /**
  * The person has decided about a rent increase: it has a consent decision to-do, and they closed every one
- * (done or dismissed). Its new rent is then no longer "decide before you pay".
+ * (done or dismissed). Its new rent is then no longer "decide before you pay" — but closing the to-do only
+ * says they decided, not which way (dismissing it is the natural way to say "I won't agree"), so the new
+ * rent is owed only if they agreed ({@link notOwedReason}: `if_agreed`).
  */
 export function consentDecided(items: Item[]): boolean {
   const decisions = items.filter(isConsentDecision);
@@ -194,14 +196,16 @@ export function consentDecided(items: Item[]): boolean {
  * Why money the person would pay may not be owed, or null: the back-payment of an operating-cost statement
  * that came after its twelve-month deadline (§ 556 Abs. 3 BGB; the server cites `bgb_556_3`, and the card
  * is urgent — so even an undated one is caught; never a credit or the new monthly prepayment), or a rent
- * increase's new rent, only owed once the person agrees (§ 558b Abs. 1 BGB; the server cites `bgb_558b`) —
- * until they closed the decision to-do among the letter's `items` ({@link consentDecided}).
+ * increase's new rent, only owed once the person agrees (§ 558b Abs. 1 BGB; the server cites `bgb_558b`):
+ * "decide first" until they closed the decision to-do among the letter's `items` ({@link consentDecided}),
+ * then "only if you agreed" — Ordnung doesn't know which way they decided, and paying the higher rent can
+ * count as agreeing, so it never leads with "Pay" for it.
  * It stays open (nothing is dismissed for the person), but "Pay" is no longer the main button.
  */
 export function notOwedReason(i: Item, advice: DocumentDetail["advice"], items: Item[] = []): NotOwed | null {
   if (i.kind !== "payment" || i.direction === "in") return null;
   const cites = (rule: string) => Boolean(i.computation?.rule_ids.includes(rule));
-  if (cites("bgb_558b") || advice?.kind === "rent_increase") return consentDecided(items) ? null : "consent";
+  if (cites("bgb_558b") || advice?.kind === "rent_increase") return consentDecided(items) ? "if_agreed" : "consent";
   if (i.recurrence) return null;
   return cites("bgb_556_3") || (advice?.kind === "operating_costs" && advice.urgent) ? "late_statement" : null;
 }
