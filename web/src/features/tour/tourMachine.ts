@@ -3,7 +3,8 @@
  *
  *   inactive ──restart──▶ step 0 ──next──▶ 1 ──next──▶ 2 ──next──▶ 3 ──next/finish──▶ completed
  *                           ▲  ◀──back──    ◀──back──    ◀──back──
- *   any active step ──skip──▶ completed (hidden, not shown again)
+ *   any active step ──skip──▶ completed (hidden until restarted: from the Demo badge, the Finish
+ *   toast, or the Skip toast's Undo — which restarts at the step it was skipped at)
  *   step 0 ──idea-arrived (a new Idea after opening a letter)──▶ step 1
  */
 import type { TourState } from "@/api/types";
@@ -14,7 +15,8 @@ export type TourEvent =
   | { type: "back" }
   | { type: "skip" }
   | { type: "finish" }
-  | { type: "restart" }
+  /** Show the tour again: at the first step, or at `step`. */
+  | { type: "restart"; step?: number }
   | { type: "goto"; step: number }
   | { type: "idea-arrived" };
 
@@ -32,7 +34,7 @@ export function normalizeTour(s: TourState, total = TOUR_STEPS.length): TourStat
 /** Apply one event. Inactive or completed tours ignore everything except `restart`. */
 export function reduceTour(state: TourState, ev: TourEvent, total = TOUR_STEPS.length): TourState {
   const s = normalizeTour(state, total);
-  if (ev.type === "restart") return { active: true, step: 0, completed: false };
+  if (ev.type === "restart") return { active: true, step: clamp(ev.step ?? 0, total), completed: false };
   if (!s.active) return s;
   switch (ev.type) {
     case "next":

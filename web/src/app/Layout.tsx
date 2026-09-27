@@ -109,6 +109,8 @@ export function AppLayout() {
         <NavigationProgress />
         <div className="flex min-h-dvh bg-canvas">
           <Sidebar />
+          {/* fixed over the page, but here in the tab order: after the navigation, before the page */}
+          <DemoTour />
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar />
             <PausedBanner />
@@ -123,7 +125,6 @@ export function AppLayout() {
           <UploadCenter />
         </Toaster>
         <PartyDrawer />
-        <DemoTour />
         <ScrollRestoration getKey={(loc) => loc.pathname} />
       </AddLettersProvider>
     </PageMetaProvider>
