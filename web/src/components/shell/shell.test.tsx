@@ -290,7 +290,7 @@ describe("sidebar", () => {
     qc.setQueryData(qk.documents.list({ status: "needs_review" }), [{ id: "a" }]);
     renderSidebar("/", qc);
     const nav = screen.getByRole("navigation", { name: "Primary" });
-    for (const item of NAV_ITEMS) expect(within(nav).getByText(item.label)).toBeVisible();
+    for (const item of NAV_ITEMS) expect(within(nav).getByText(item.short ?? item.label)).toBeVisible();
     const inbox = within(nav).getByRole("link", { name: "Inbox, 1 letter to check" });
     expect(within(inbox).getByText("1")).toBeInTheDocument();
     // no toggle on tablets: the rail always has its labels

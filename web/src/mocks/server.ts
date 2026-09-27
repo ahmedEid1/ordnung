@@ -46,6 +46,7 @@ import { ADVICE_ARRIVED_BY_KIND, ADVICE_BY_DOC, ADVICE_BY_KIND } from "./data/ad
 import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
 import { SAM, sha } from "./data/constants";
+import { mockNumbers, mockWeek, mockWeekDismiss, mockWeekDone } from "./numbers";
 import { TRAY_DOCUMENTS } from "./data/documents";
 import { TRAY_ITEMS } from "./data/items";
 import { PARTIES } from "./data/parties";
@@ -1013,6 +1014,10 @@ const routes: [string, string, Handler][] = [
   ["GET", "/timeline", ({ db, query }) => db.timeline(query.get("from"), query.get("to"))],
   ["GET", "/lanes", ({ db, query }) => db.lanes(query.get("from"), query.get("to"))],
   ["GET", "/dashboard", ({ db }) => db.dashboard()],
+  ["GET", "/numbers", ({ db }) => mockNumbers(db)],
+  ["GET", "/week", ({ db }) => mockWeek(db)],
+  ["POST", "/week/done", ({ db }) => mockWeekDone(db)],
+  ["POST", "/week/dismiss", ({ db }) => mockWeekDismiss(db)],
 
   // ideas & brief
   [

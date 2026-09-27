@@ -28,7 +28,7 @@ how many it left out:
    exists.)
 6. *Decide in the next 30 days* — the agenda's contract decisions (a cancellation that must be sent within
    30 days, or the contract renews) and deadlines for an objection, a declaration or a notice due from
-   today to 30 days on.
+   today to 30 days on — not those of a contract already listed (its row is the decision).
 7. *File or archive* — to-dos done since the last session, letters whose last open to-do was closed since
    then (file the paper), and letters that turned a year old since then with nothing open (archive the
    paper; tax-relevant ones stay with the tax papers). Each letter is listed in the week it qualifies, not
@@ -464,6 +464,7 @@ def _decide(ledger: Ledger, agenda: Agenda) -> WeekStep:
                 }
             )
         )
+    decided = {entry.id for entry in agenda.decisions}
     for item in ledger.actionable_items():
         act, due = action_day(item), parse_day(item.due_date)
         nature = item.date_spec.nature if item.date_spec else "other"
@@ -471,6 +472,7 @@ def _decide(ledger: Ledger, agenda: Agenda) -> WeekStep:
             item.kind != "deadline"
             or nature not in DECISION_NATURES
             or item.origin == "draft"
+            or item.contract_id in decided  # the contract's own decision row says it
             or act is None
             or due is None
             or due < today

@@ -483,6 +483,18 @@ export type SearchHit = Schemas["SearchHit"];
 export type TourState = Schemas["TourState"];
 /** A letter waiting in the demo's "New mail" tray. */
 export type MailTrayItem = Schemas["MailTrayItem"];
+/** `GET /api/numbers`: About you, identity documents, a call sheet per organisation, open cases. */
+export type MyNumbers = Schemas["MyNumbers"];
+/** One number, sorted by whose it is, with its check-digit test and the letter that shows it. */
+export type MyNumber = Schemas["MyNumber"];
+export type IdentityDocument = Schemas["IdentityDocument"];
+export type CallSheet = Schemas["CallSheet"];
+export type OpenCase = Schemas["OpenCase"];
+export type LetterRef = Schemas["LetterRef"];
+/** `GET /api/week`: the weekly session's seven steps and "All clear until …". */
+export type WeeklySession = Schemas["WeeklySession"];
+export type WeekStep = Schemas["WeekStep"];
+export type WeekEntry = Schemas["WeekEntry"];
 
 // ------------------------------------------------------------------------------------------------
 // Responses that are not models.py view models (defined next to their routes)

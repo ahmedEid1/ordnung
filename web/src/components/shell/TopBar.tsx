@@ -11,6 +11,7 @@ import { usePageMeta } from "./page-meta";
 import { DemoBadge } from "./DemoBadge";
 import { SHELL_GUTTERS, shellWidth } from "./layout";
 import { useHeadingUnderBar } from "./useHeadingUnderBar";
+import { TOP_BAR_ITEMS } from "./nav";
 
 /** A back arrow in the logo's place (phones), as big as the bar's other icon buttons. */
 const backButton = buttonVariants({ variant: "ghost", className: "-ml-1.5 size-9 px-0 text-ink [&_svg]:size-5" });
@@ -37,7 +38,8 @@ export function TopBar() {
         scrolled ? "border-line shadow-[0_1px_0_rgb(0_0_0/0.02)]" : "border-transparent",
       )}
     >
-      <div className={cn("mx-auto flex h-full w-full items-center gap-2", SHELL_GUTTERS, shellWidth(width))}>
+      {/* below 360 px the icons sit closer, so a page title still fits beside them */}
+      <div className={cn("mx-auto flex h-full w-full items-center gap-2 max-[359px]:gap-1", SHELL_GUTTERS, shellWidth(width))}>
         <Link to="/" className={cn("mr-1 shrink-0 rounded-lg md:hidden", parent && "max-sm:hidden")} aria-label="Ordnung — Today">
           <LogoMark className="size-7" />
         </Link>
@@ -83,6 +85,19 @@ export function TopBar() {
           Add letters
         </Button>
         <IconButton icon={Plus} label="Add letters" variant="primary" onClick={openPicker} loading={uploading} className="sm:hidden" />
+        {TOP_BAR_ITEMS.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            aria-label={item.label}
+            title={item.label}
+            className={({ isActive }) =>
+              cn("grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-surface-3/70 hover:text-ink md:hidden", isActive && "text-accent")
+            }
+          >
+            <item.icon className="size-[18px]" aria-hidden />
+          </NavLink>
+        ))}
         <NavLink
           to="/settings"
           aria-label="Settings"

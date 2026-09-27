@@ -347,12 +347,34 @@ non-user-modified extracted rows in one transaction. "Keep private (no AI)" skip
 - **Review** — compact snapshot → ≤ 6 new Ideas with refs to existing ids (validated; duplicates by
   fuzzy title dropped); `source="review"`.
 - **Brief** — deterministic agenda + optional 2–3 sentence prose (cached per day + agenda hash).
+- **Weekly session** (`secretary/week.py`, policy in its docstring; `views.weekly_session`) — a guided
+  ~10-minute review composed from the agenda, the money summary, drafts and to-dos: new since the last
+  session · please check (values not confirmed against the letter) · pay this week (transfers with their
+  total, direct debits to cover) · post and keep proof · waiting for (follow-ups of sent letters; the hook
+  for a dedicated list) · decide in the next 30 days (contract decisions, objection/declaration/notice
+  deadlines) · file or archive. It ends "All clear until <next day to act>". Only the moments of the last
+  session and of a dismissed prompt are stored (`meta`: `weekly_session_at`, `weekly_prompt_dismissed_at`,
+  each `day|timestamp`). Today suggests it once — 7 days after the last session or "Not now", on a
+  Sunday 4 days after — and only when a step has something to show. Nothing is paid, sent or closed.
+- **My numbers** (`numbers.py`, pure, policy in its docstring; `views.my_numbers`) — every number the
+  letters show (references, the sender's identifiers in the stored reading, a payment IBAN; never a
+  trashed or scam letter's), sorted by whose it is: *about you* (Steuer-ID, SV-Nummer,
+  Krankenversichertennummer, Matrikelnummer, Rundfunkbeitrag Beitragsnummer, a tax office's
+  Steuernummer), identity documents (passport, residence permit, ID card, with the expiry to-do's date
+  and the Ideas' renewal windows), yours with one organisation (customer, contract, policy, member,
+  employee, account, mandate, meter), a case reference (Aktenzeichen, Kassenzeichen, invoice/order
+  numbers — listed while its thread has an open one-off to-do) or the organisation's own (USt-IdNr.,
+  register, Gläubiger-ID, BIC, IBAN; a retailer's Steuernummer). Check digits where a public algorithm
+  exists: Steuer-ID (§ 139b AO: ISO/IEC 7064 MOD 11,10 and the digit-repetition rule),
+  Rentenversicherungsnummer (§ 147 SGB VI), Krankenversichertennummer (§ 290 SGB V), IBAN (ISO 13616) —
+  "check digit OK" or "does not check — compare with the letter". A call sheet per organisation adds its
+  phone, e-mail and website, open cases and last letter.
 
 ## 10. Ask — `assistant/`
 
 MCP server (`python -m ordnung mcp --data-dir D`, read-only DB, lazy imports): `search`,
 `get_document`, `list_items`, `list_contracts`, `get_party`, `timeline`, `money_summary`,
-`explain_date`, `get_profile`, `today` — the ledger tools. Ask runs `claude -p` with `--tools ""`,
+`explain_date`, `get_profile`, `today`, `get_my_numbers` — the ledger tools. Ask runs `claude -p` with `--tools ""`,
 `--allowedTools` naming exactly these ledger tools (`mcp__ordnung__search`, …), `--mcp-config`
 (absolute `sys.executable`, the server started `--ledger-only`), `--max-budget-usd 0.50`, 120 s
 timeout. **Ask keeps to the ledger** (ADR 0011): the ledger-free rules tools (below) are not on its
@@ -376,6 +398,12 @@ HTML and without remote images.
   not found on the page, flagged `amount_unverified`/`terms_unverified`). A tool keeps each result
   within a size budget by leaving out rows (and says how many); the answer is checked against the whole
   result the model read.
+- **My numbers.** `get_my_numbers` keeps every label and value in the letter text of the letter that
+  shows it (a number is what the model read, never verified against the page) and puts what code decided
+  in the record: each number's kind, group and check-digit result (with its code-written note and law),
+  the letter and party ids to cite, an identity document's expiry as its to-do (`id`, `due_date`) and an
+  open case's next to-do. Letters marked private give nothing. Numbers are no date, time or amount, so
+  the claim check leaves them as the model wrote them.
 - **What the record says.** `money_summary` lists open payments with no stored due date and, apart, the
   demands of letters with scam signs (`do_not_pay`: not to be paid until the person has checked with
   the sender — a real sender whose bank details changed shows the same signs), with `today` and each
@@ -567,7 +595,8 @@ Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT
 `items/{id}/confirm` (POST: grounding=user), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
 (PATCH), `parties`, `parties/{id}`, `cases/{id}`, `timeline?from&to`, `lanes?from&to`, `dashboard`,
 `suggestions` (GET), `suggestions/{id}` (PATCH status/snooze), `suggestions/review` (POST),
-`brief` (GET cached, POST regenerate), `ask` (POST → SSE), `chat/{thread_id}`, `drafts`
+`brief` (GET cached, POST regenerate), `numbers` (GET: My numbers), `week` (GET: the weekly session),
+`week/done` and `week/dismiss` (POST: remember the session or a "Not now"; answer the session), `ask` (POST → SSE), `chat/{thread_id}`, `drafts`
 (GET/POST), `drafts/{id}` (GET/PATCH/DELETE), `drafts/{id}/pdf`, `drafts/{id}/sent` (POST),
 `drafts/{id}/translate` (POST: translate the edited letter again, purpose `draft`; 409 in the
 replay-only demo), `calendar.ics`, `calendar/exported` (POST), `activity`, `usage`, `rules`, `jobs`,
@@ -595,8 +624,9 @@ JSON doesn't validate against it.
 
 ## 14. Web app — `web/`
 
-Navigation (6 + footer): **Today · Inbox · Timeline · Contracts · Letters · Ask**; footer:
-Settings (incl. "Privacy & AI usage" with the activity log). People & organisations open as a drawer
+Navigation (7 + footer): **Today · Inbox · Timeline · Contracts · My numbers · Letters · Ask**; footer:
+Settings (incl. "Privacy & AI usage" with the activity log). The phone tab bar keeps six sections; My
+numbers is an icon in the phone top bar (`NavItem.tabBar: false`). People & organisations open as a drawer
 from any party chip. Global drop zone; upload toast with live stepper.
 
 UI copy table (enforced by a test that rendered text never shows raw enum values):
@@ -627,13 +657,23 @@ Pages:
    side-by-side German letter and translation, checks, PDF preview, "How to send it", mark as sent.
 7. **Ask** — chat, streamed tool-trace chips ("Searched your letters for 'Kündigung'"),
    citation chips → viewer, suggested questions (recorded in demo).
-8. **Settings** — profile & address, region (affects holidays), language, reminders, models,
+8. **My numbers** — tabs About you (your numbers, your documents with expiry badges) · Open cases ·
+   Organisations (a call sheet each: phone, e-mail, website, your numbers, open cases, their own numbers
+   folded away, last letter; a search box). Every value of yours is **hidden until "Show"** (the last
+   characters stay, screen readers hear "hidden, ends in …"); "Copy" works while hidden (forms get the
+   Steuer-ID, social insurance number and IBAN without spaces) and is announced; the check-digit badge
+   explains itself in a tooltip; each number links to the letter it came from.
+   **This week** (`/week`, from Today) — the weekly session as a stepper (step list beside the step on
+   wide pages, dots on phones; `?step=`), rows linking to where the person acts, Pay (the Pay panel) and
+   "Looks right" (confirm) in place, "Finish" → "All clear until …". Today shows one gentle prompt
+   (Start · Not now) when the session is due, else a quiet "Weekly review" link at its foot.
+9. **Settings** — profile & address, region (affects holidays), language, reminders, models,
    privacy statement + "Privacy & AI usage" (activity, tokens, API-equivalent cost, cache hits),
    Claude status (doctor), "How dates are computed" (rules catalog), data location, disclaimer.
-9. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
+10. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
    name/address (skippable) → Claude check (copyable fixes; "Continue without AI") → drop zone +
    "Explore the demo instead".
-10. **Demo tour**: 4 steps (New mail → Idea arrives → Ask → Timeline), skippable, tracked in meta;
+11. **Demo tour**: 4 steps (New mail → Idea arrives → Ask → Timeline), skippable, tracked in meta;
    ending it can be undone, and the Demo badge restarts it. Docked in the sidebar when it fits,
    else a card (wide screens) or a slim bar (phones, tablets, short laptops) that never covers the
    page's end.

@@ -195,6 +195,10 @@ const CASES = {
   timeline: { run: () => api.timeline("2026-09-01", "2026-12-31") },
   lanes: { run: () => api.lanes() },
   dashboard: { run: () => api.dashboard() },
+  numbers: { run: () => api.numbers() },
+  week: { run: () => api.week() },
+  weekDone: { run: () => api.weekDone() },
+  weekDismiss: { run: () => api.weekDismiss() },
 
   suggestions: { run: () => api.suggestions({ limit: 20 }) },
   updateSuggestion: { run: (ids) => api.updateSuggestion(ids.suggestion, { status: "snoozed", snoozed_until: "2026-10-05" }) },

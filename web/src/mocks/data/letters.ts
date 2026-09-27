@@ -482,6 +482,8 @@ export const LETTERS: Record<string, LetterSpec> = {
     info: [
       ["Abrechnungsmonat", "August 2026"],
       ["Personalnummer", "WS-0417"],
+      ["Steuer-ID", "57 216 480 354"],
+      ["SV-Nummer", "65 140300 R 005"],
     ],
     pages: [
       {

@@ -13,7 +13,7 @@ import pytest
 from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
 from ordnung import clock
 from ordnung.db.store import Store
-from ordnung.models import WeeklySession, WeekStep
+from ordnung.models import DateSpec, WeeklySession, WeekStep
 from ordnung.secretary.week import (
     DISMISSED_KEY,
     MAX_ROWS,
@@ -182,6 +182,48 @@ def test_the_steps_over_the_seeded_ledger(store: Store, ids: dict[str, str]) -> 
     # all clear until the next day to act
     assert week.next_deadline is not None
     assert (week.next_deadline.ref.id, week.next_deadline.date) == (ids["parking_payment"], "2026-09-29")
+
+
+def test_decisions_are_listed_once_and_only_within_30_days(store: Store, ids: dict[str, str]) -> None:
+    notice = DateSpec(type="fixed", date="2026-10-10", nature="notice")
+    same_contract = add_item(
+        store,
+        kind="deadline",
+        title="Cancel the phone contract if you want to switch",
+        due_date="2026-10-10",
+        send_by="2026-10-08",
+        contract_id=ids["phone"],
+        date_spec=notice,
+    )
+    consent = add_item(
+        store,
+        kind="deadline",
+        title="Agree to the new account fees",
+        due_date="2026-10-20",
+        date_spec=DateSpec(type="fixed", date="2026-10-20", nature="declaration"),
+    )
+    later = add_item(
+        store,
+        kind="deadline",
+        title="Object to the statement",
+        due_date="2026-11-20",
+        date_spec=DateSpec(type="fixed", date="2026-11-20", nature="objection"),
+    )
+    payment_deadline = add_item(
+        store,
+        kind="deadline",
+        title="Pay by",
+        due_date="2026-10-03",
+        date_spec=DateSpec(type="fixed", date="2026-10-03", nature="payment"),
+    )
+    decide = _step(weekly_session(store, TODAY), "decide")
+    refs = _refs(decide)
+    assert same_contract not in refs  # the contract's own row is the decision
+    assert consent in refs and later not in refs and payment_deadline not in refs
+    rows = {entry.ref.id: entry for entry in decide.entries}
+    assert rows[consent].note == "Decide and answer before then."
+    assert rows[ids["tax_objection"]].note == "Decide whether to object before then."
+    assert decide.summary == "3 decisions in the next 30 days"
 
 
 def test_a_direct_debit_is_to_cover_and_other_currencies_add_up_apart(

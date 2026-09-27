@@ -12,6 +12,7 @@
 import { fakeApi, failApi, pinToasts, settle } from "../browser.mjs";
 import { inMain } from "../steps.mjs";
 import { commonSettingsSections, loadingAndErrorStates, SETTINGS_SECTIONS } from "./shared.mjs";
+import { numbersAndWeekDemoStates, numbersAndWeekMutationStates } from "./numbers-week.mjs";
 
 const slug = (s) =>
   s
@@ -429,6 +430,9 @@ export async function demoCatalog({ api, server }) {
       await c.hover(main(c.page).getByRole("list", { name: "Lanes" }).getByRole("button"));
     },
   });
+
+  // My numbers and the weekly session
+  for (const s of numbersAndWeekDemoStates()) add(s);
 
   // ---------------------------------------------------------------------------------------------
   // Letters (drafts) and the composer
@@ -982,6 +986,7 @@ export async function demoCatalog({ api, server }) {
   letterPage("letter-reply", "reply", "A reply draft to the operating-costs statement, with instructions.");
   letterPage("letter-sent", "sent", "A letter marked as sent (read-only, follow-up reminder).");
   letterPage("letter-sent--menu", "sent", "The More-actions menu of a sent letter.", (c) => c.click(main(c.page).getByRole("button", { name: "More actions" })));
+  mutations.push(...numbersAndWeekMutationStates());
   mutations.push({ id: "letters-with-sent", group: "letters", route: "/letters", how: "open /letters after the audit drafted three letters and marked one as sent", description: "Letters list with in-progress and sent letters.", run: (c) => c.goto("/letters") });
   if (objectionDoc) {
     mutations.push({

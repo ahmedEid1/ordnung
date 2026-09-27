@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { CountBadge } from "@/components/ui/Badge";
-import { NAV_ITEMS, isNavItemActive } from "./nav";
+import { TAB_BAR_ITEMS, isNavItemActive } from "./nav";
 import { usePleaseCheckCount } from "./Sidebar";
 
 /**
@@ -17,7 +17,7 @@ export function MobileTabBar() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md backdrop-saturate-150 md:hidden"
     >
       <ul className="mx-auto grid h-16 max-w-lg grid-cols-6">
-        {NAV_ITEMS.map((item) => {
+        {TAB_BAR_ITEMS.map((item) => {
           const Icon = item.icon;
           const badge = item.badge === "please-check" ? pleaseCheck : 0;
           const active = isNavItemActive(item, pathname);

@@ -144,6 +144,14 @@ export const api = {
   timeline: (from?: string, to?: string) => call("get", "/api/timeline", { query: { from, to } }),
   lanes: (from?: string, to?: string) => call("get", "/api/lanes", { query: { from, to } }),
   dashboard: () => call("get", "/api/dashboard"),
+  /** My numbers: yours, your documents, a call sheet per organisation, open cases (worked out on read). */
+  numbers: () => call("get", "/api/numbers"),
+  /** The weekly session: seven steps and "All clear until …". */
+  week: () => call("get", "/api/week"),
+  /** "Done": remembers the session (answers the session as it stands afterwards). */
+  weekDone: () => call("post", "/api/week/done"),
+  /** "Not now" on Today's prompt. */
+  weekDismiss: () => call("post", "/api/week/dismiss"),
 
   // -- ideas & brief -----------------------------------------------------------------------------
   suggestions: (params: SuggestionListParams = {}) => call("get", "/api/suggestions", { query: { ...params } }),
