@@ -60,12 +60,25 @@ export function normalizeLeadDays(days: readonly number[]): number[] {
     .sort((a, b) => b - a);
 }
 
+/** "1 day", "3 days", "1 week", "2 weeks" (exact multiples of 7 read as weeks) — a lead time > 0. */
+export function leadSpan(d: number): string {
+  if (d % 7 === 0 && d >= 7) return d === 7 ? "1 week" : `${d / 7} weeks`;
+  return d === 1 ? "1 day" : `${d} days`;
+}
+
 /** "on the day", "1 day before", "2 weeks before" (exact multiples of 7 read as weeks). */
 export function leadLabel(d: number): string {
-  if (d === 0) return "On the day";
-  if (d % 7 === 0 && d >= 14) return `${d / 7} weeks before`;
-  if (d === 7) return "1 week before";
-  return d === 1 ? "1 day before" : `${d} days before`;
+  return d === 0 ? "On the day" : `${leadSpan(d)} before`;
+}
+
+/** Why a typed lead time can't be added (null: it can). */
+export function leadDaysError(text: string, existing: readonly number[]): string | null {
+  const t = text.trim();
+  if (!/^\d+$/.test(t)) return "Enter a number of days, like 5";
+  const n = Number(t);
+  if (n > MAX_LEAD_DAYS) return `Up to ${MAX_LEAD_DAYS} days`;
+  if (existing.includes(n)) return `Already in the list (${leadLabel(n).toLowerCase()})`;
+  return null;
 }
 
 /** Profile reminder days with every kind present (missing kinds → empty list). */

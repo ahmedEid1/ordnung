@@ -59,15 +59,15 @@ describe("unsaved edits", () => {
     const nav = screen.getByRole("navigation", { name: "Settings sections" });
 
     await user.click(within(nav).getByRole("link", { name: "Reminders" }));
-    const dialog = await screen.findByRole("dialog", { name: "Discard your changes?" });
-    expect(dialog).toHaveTextContent("You changed something in Profile & address and haven't saved it — going to Reminders throws it away.");
+    const dialog = await screen.findByRole("dialog", { name: "Save your changes?" });
+    expect(dialog).toHaveTextContent("You changed something in Profile & address and haven't saved it — going to Reminders without saving throws it away.");
     await user.click(within(dialog).getByRole("button", { name: "Keep editing" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), { timeout: 3000 });
     expect(router.state.location.search).toBe("?section=profile");
     expect(screen.getByLabelText("Full name")).toHaveValue("Sam R.");
 
     await user.click(within(nav).getByRole("link", { name: "Reminders" }));
-    await user.click(within(await screen.findByRole("dialog", { name: "Discard your changes?" })).getByRole("button", { name: "Discard changes" }));
+    await user.click(within(await screen.findByRole("dialog", { name: "Save your changes?" })).getByRole("button", { name: "Discard changes" }));
     expect(await screen.findByRole("heading", { level: 2, name: "Reminders" })).toBeInTheDocument();
     expect(router.state.location.search).toBe("?section=reminders");
 
@@ -84,7 +84,7 @@ describe("unsaved edits", () => {
     renderWithProviders(<SettingsPage />, { route: "/settings?section=profile" });
     await user.type(await screen.findByLabelText(/^Phone/), "1");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
-    await screen.findByText("All changes saved");
+    await screen.findByText("Saved.");
     await user.click(within(screen.getByRole("navigation", { name: "Settings sections" })).getByRole("link", { name: "Calendar" }));
     expect(await screen.findByRole("heading", { level: 2, name: "Calendar" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

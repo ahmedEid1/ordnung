@@ -360,9 +360,12 @@ describe("copy", () => {
   });
 
   it("describes calendar reminders from the profile", () => {
-    expect(reminderSentence([14, 7, 3, 1])).toBe("Reminders: 14, 7, 3 and 1 days before each deadline (change them in Settings).");
-    expect(reminderSentence([1])).toBe("Reminders: 1 day before each deadline (change them in Settings).");
-    expect(reminderSentence(undefined)).toMatch(/follow your settings/);
+    // Settings → Calendar says it in the words of the Reminders chips
+    expect(reminderSentence([14, 7, 3, 1])).toBe("2 weeks, 1 week, 3 days and 1 day before each deadline");
+    expect(reminderSentence([1])).toBe("1 day before each deadline");
+    expect(reminderSentence([0, 21, 21])).toBe("3 weeks before each deadline and on the day");
+    expect(reminderSentence([0])).toBe("on the day of each deadline");
+    expect(reminderSentence(undefined)).toBeNull();
     expect(reminderDays([3, 14, 3])).toBe("14 and 3 days before each deadline");
     expect(reminderDays([])).toBeNull();
   });

@@ -88,7 +88,9 @@ describe("Settings page", () => {
     await user.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.path === "/profile")).toBe(true));
     expect(calls.find((c) => c.method === "PUT")?.body).toMatchObject({ name: "Sam R. Rivera" });
-    expect(await screen.findByText("All changes saved")).toBeInTheDocument();
+    // confirmed in the save bar (no toast over it)
+    expect(await screen.findByText("New letters use this name and address.")).toBeInTheDocument();
+    expect(screen.getByText("Saved.")).toBeInTheDocument();
   });
 
   it("changes reminder lead days", async () => {
@@ -152,7 +154,9 @@ describe("Settings page", () => {
     await user.click(screen.getByRole("button", { name: "Run check" }));
     await waitFor(() => expect(calls.some((c) => c.path === "/health" && c.method === "GET")).toBe(true));
     // the probe's answer replaces the cached status
-    expect(await screen.findByText("2.1.4 (Claude Code)")).toBeInTheDocument();
+    // the row is called "Claude Code": its value is the bare version
+    expect(await screen.findByText("2.1.4")).toBeInTheDocument();
+    expect(screen.queryByText(/\(Claude Code\)/)).not.toBeInTheDocument();
   });
 
   it("switches sections from the sub-navigation", async () => {

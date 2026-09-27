@@ -1,62 +1,116 @@
-import { useState, type FormEvent } from "react";
-import { BellRing, Mailbox, Plus, X } from "lucide-react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { Link } from "react-router";
+import { BellRing, Plus, X } from "lucide-react";
 import { useUpdateProfile } from "@/api/hooks";
 import type { ItemKind, Profile } from "@/api/types";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { Button } from "@/components/ui/Button";
-import { Select, Switch } from "@/components/ui/Field";
+import { Field, Select, Switch } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { setBrowserNotifications, showNotification, useNotifyState } from "@/features/notifications/useBrowserNotifications";
 import { isStaticDemo } from "@/mocks/mode";
-import { completeReminderDays, leadLabel, MAX_LEAD_DAYS, normalizeLeadDays, REMINDER_KINDS, sameReminderDays } from "./logic";
-import { SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
+import { completeReminderDays, leadDaysError, leadLabel, normalizeLeadDays, REMINDER_KINDS, sameReminderDays } from "./logic";
+import { FIELD_WIDTH, SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
 
-function AddLead({ kind, label, onAdd }: { kind: ItemKind; label: string; onAdd: (d: number) => void }) {
+/** The recommended head start for letters by post (working days). */
+const POSTAL_BUFFER_RECOMMENDED = 4;
+
+/**
+ * "+ Add" → a small "days" field. A number that can't be added (not a number, over 365, already in
+ * the list) keeps the field open with the reason; Enter adds, Escape cancels — both hand focus back
+ * to "+ Add".
+ */
+function AddLead({ kind, label, existing, onAdd }: { kind: ItemKind; label: string; existing: readonly number[]; onAdd: (d: number) => void }) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
-  const n = Number(value);
-  const valid = value !== "" && Number.isInteger(n) && n >= 0 && n <= MAX_LEAD_DAYS;
+  const [error, setError] = useState<string | null>(null);
+  const addRef = useRef<HTMLButtonElement>(null);
+  const refocus = useRef(false);
+  const id = useId();
+  const what = label.toLowerCase();
+
+  useEffect(() => {
+    if (open || !refocus.current) return;
+    refocus.current = false;
+    addRef.current?.focus();
+  }, [open]);
+
+  const close = (focusAdd: boolean) => {
+    refocus.current = focusAdd;
+    setOpen(false);
+    setValue("");
+    setError(null);
+  };
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!valid) return;
-    onAdd(n);
-    setValue("");
-    setOpen(false);
+    const why = leadDaysError(value, existing);
+    if (why) {
+      setError(why);
+      return;
+    }
+    onAdd(Number(value.trim()));
+    close(true);
   };
+
   if (!open) {
     return (
       <button
+        ref={addRef}
         type="button"
+        data-add={kind}
         onClick={() => setOpen(true)}
         className="inline-flex h-7 items-center gap-1 rounded-full border border-dashed border-line-strong px-2.5 text-[12.5px] font-medium text-muted transition-colors hover:border-accent/60 hover:text-accent"
-        aria-label={`Add a reminder for ${label.toLowerCase()}`}
+        aria-label={`Add a reminder for ${what}`}
       >
         <Plus className="size-3.5" aria-hidden /> Add
       </button>
     );
   }
   return (
-    <form onSubmit={submit} className="inline-flex items-center gap-1">
+    <form onSubmit={submit} noValidate className="flex flex-wrap items-center gap-1">
       <label className="sr-only" htmlFor={`lead-${kind}`}>
-        Days before, for {label.toLowerCase()}
+        Days before, for {what}
       </label>
-      <input
-        id={`lead-${kind}`}
-        autoFocus
-        type="number"
-        inputMode="numeric"
-        min={0}
-        max={MAX_LEAD_DAYS}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
-        onBlur={() => !value && setOpen(false)}
-        placeholder="days"
-        className="h-7 w-16 rounded-full border border-accent/60 bg-surface px-2.5 text-[12.5px] text-ink outline-none ring-3 ring-accent/15"
-      />
-      <button type="submit" disabled={!valid} className="h-7 rounded-full bg-accent px-2.5 text-[12.5px] font-medium text-on-accent disabled:opacity-50">
+      <span className="relative inline-flex">
+        <input
+          id={`lead-${kind}`}
+          autoFocus
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={3}
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key !== "Escape") return;
+            e.preventDefault();
+            e.stopPropagation();
+            close(true);
+          }}
+          // leaving an empty field puts "+ Add" back (focus stays where you went)
+          onBlur={() => !value.trim() && close(false)}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-err` : undefined}
+          className="h-7 w-20 rounded-full border border-control-border bg-surface pl-3 pr-10 text-[12.5px] tabular-nums text-ink outline-none transition-[border-color,box-shadow] focus-visible:border-accent focus-visible:ring-3 focus-visible:ring-accent/20 aria-invalid:border-danger aria-invalid:ring-danger/15"
+        />
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[12px] text-muted">
+          days
+        </span>
+      </span>
+      <button
+        type="submit"
+        className="h-7 rounded-full bg-accent px-3 text-[12.5px] font-medium text-on-accent transition-colors hover:bg-accent-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
         Add
       </button>
+      {error ? (
+        <p id={`${id}-err`} role="alert" className="w-full text-xs font-medium text-danger-ink">
+          {error}
+        </p>
+      ) : null}
     </form>
   );
 }
@@ -129,20 +183,48 @@ export function RemindersSection({ profile }: { profile: Profile }) {
   const [days, setDays] = useState(saved);
   const [buffer, setBuffer] = useState(profile.postal_buffer_days);
   const dirty = !sameReminderDays(days, saved) || buffer !== profile.postal_buffer_days;
+  const listRef = useRef<HTMLUListElement>(null);
+  // after a removal: the next chip's remove button (or the previous one, or "+ Add") gets focus
+  const focusAfter = useRef<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+
+  useEffect(() => {
+    const target = focusAfter.current;
+    if (!target) return;
+    focusAfter.current = null;
+    listRef.current?.querySelector<HTMLElement>(target)?.focus();
+  }, [days]);
 
   const setKind = (k: ItemKind, list: number[]) => setDays((d) => ({ ...d, [k]: normalizeLeadDays(list) }));
+  const add = (k: ItemKind, label: string, list: number[], d: number) => {
+    setKind(k, [...list, d]);
+    setAnnouncement(`Added: ${leadLabel(d).toLowerCase()}, for ${label.toLowerCase()}`);
+  };
+  const remove = (k: ItemKind, label: string, list: number[], d: number) => {
+    const i = list.indexOf(d);
+    const next = list[i + 1] ?? list[i - 1];
+    focusAfter.current = next === undefined ? `[data-add="${k}"]` : `[data-remove="${k}:${next}"]`;
+    setKind(
+      k,
+      list.filter((x) => x !== d),
+    );
+    setAnnouncement(`Removed: ${leadLabel(d).toLowerCase()}, for ${label.toLowerCase()}`);
+  };
 
   const save = () =>
-    update.mutate(
-      { reminder_days: days, postal_buffer_days: buffer },
-      {
-        onSuccess: (p) => {
-          setDays(completeReminderDays(p.reminder_days));
-          setBuffer(p.postal_buffer_days);
-          toast.success("Reminders saved", { description: "Download your calendar file again so its alarms match." });
-        },
-      },
-    );
+    update.mutateAsync({ reminder_days: days, postal_buffer_days: buffer }).then((p) => {
+      setDays(completeReminderDays(p.reminder_days));
+      setBuffer(p.postal_buffer_days);
+      return (
+        <>
+          Download your{" "}
+          <Link to="/settings?section=calendar" preventScrollReset className="font-medium text-accent underline underline-offset-2 hover:no-underline">
+            calendar file
+          </Link>{" "}
+          again so its alarms match.
+        </>
+      );
+    });
 
   return (
     <section aria-labelledby="set-reminders">
@@ -151,41 +233,58 @@ export function RemindersSection({ profile }: { profile: Profile }) {
         title="Reminders"
         description="When Ordnung nudges you before a date — in the app and as alarms in your calendar file."
       />
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
       <div className="space-y-5">
-        <SettingsCard footer={<SaveBar dirty={dirty} saving={update.isPending} onSave={save} onDiscard={() => { setDays(saved); setBuffer(profile.postal_buffer_days); }} />}>
-          <ul className="-my-3 divide-y divide-line">
+        <SettingsCard
+          footer={
+            <SaveBar
+              dirty={dirty}
+              saving={update.isPending}
+              onSave={save}
+              onDiscard={() => {
+                setDays(saved);
+                setBuffer(profile.postal_buffer_days);
+              }}
+            />
+          }
+        >
+          <ul ref={listRef} className="-my-3 divide-y divide-line">
             {REMINDER_KINDS.map(({ kind, label, hint }) => {
               const list = days[kind] ?? [];
               return (
-                <li key={kind} className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center">
+                <li key={kind} className="flex flex-col gap-2.5 py-3.5 sm:flex-row sm:items-center sm:gap-4">
                   <div className="flex min-w-0 items-center gap-3 sm:w-60 sm:shrink-0">
                     <KindIcon kind={kind} size="sm" />
                     <div className="min-w-0">
                       <p className="text-[14px] font-medium text-ink">{label}</p>
-                      <p className="truncate text-[12.5px] text-muted">{hint}</p>
+                      <p className="text-[12.5px] leading-snug text-muted">{hint}</p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5 sm:justify-end sm:flex-1" role="list" aria-label={`Reminders for ${label.toLowerCase()}`}>
+                  {/* the chips are the list; "+ Add" follows them in the same wrapping row */}
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
                     {list.length ? (
-                      list.map((d) => (
-                        <span key={d} role="listitem" className="inline-flex h-7 items-center gap-1 rounded-full bg-surface-2 pl-2.5 pr-1 text-[12.5px] font-medium text-ink">
-                          {leadLabel(d)}
-                          <button
-                            type="button"
-                            onClick={() => setKind(kind, list.filter((x) => x !== d))}
-                            className="grid size-5 place-items-center rounded-full text-muted transition-colors hover:bg-surface-3 hover:text-ink"
-                            aria-label={`Remove reminder ${leadLabel(d).toLowerCase()} for ${label.toLowerCase()}`}
-                          >
-                            <X className="size-3" aria-hidden />
-                          </button>
-                        </span>
-                      ))
+                      <ul className="contents" aria-label={`Reminders for ${label.toLowerCase()}`}>
+                        {list.map((d) => (
+                          <li key={d} className="inline-flex h-7 items-center gap-0.5 rounded-full bg-surface-2 pl-2.5 pr-0.5 text-[12.5px] font-medium text-ink">
+                            {leadLabel(d)}
+                            <button
+                              type="button"
+                              data-remove={`${kind}:${d}`}
+                              onClick={() => remove(kind, label, list, d)}
+                              className="grid size-6 place-items-center rounded-full text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+                              aria-label={`Remove reminder ${leadLabel(d).toLowerCase()} for ${label.toLowerCase()}`}
+                            >
+                              <X className="size-3.5" aria-hidden />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
                     ) : (
-                      <span role="listitem" className="text-[12.5px] text-muted">
-                        No reminders
-                      </span>
+                      <p className="text-[12.5px] text-muted">No reminders</p>
                     )}
-                    <AddLead kind={kind} label={label} onAdd={(d) => setKind(kind, [...list, d])} />
+                    <AddLead kind={kind} label={label} existing={list} onAdd={(d) => add(kind, label, list, d)} />
                   </div>
                 </li>
               );
@@ -196,26 +295,28 @@ export function RemindersSection({ profile }: { profile: Profile }) {
             <p className="mt-1 text-[13px] leading-relaxed text-muted">
               Letters that must arrive by a deadline get an earlier “send by” date, so the post has time. Online forms, email and fax need no head start.
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-              <span className="grid size-9 place-items-center rounded-lg bg-surface-2 text-muted">
-                <Mailbox className="size-4" aria-hidden />
-              </span>
-              <label htmlFor="postal-buffer" className="text-[14px] text-ink">
-                Send letters
-              </label>
-              <Select id="postal-buffer" value={String(buffer)} onChange={(e) => setBuffer(Number(e.target.value))} className="w-44">
+            <Field
+              id="postal-buffer"
+              label="Time to allow for the post"
+              className="mt-4"
+              hint={
+                <>
+                  Recommended: {POSTAL_BUFFER_RECOMMENDED} working days. Since 2025 Deutsche Post only has to deliver most letters within 3 working days, so
+                  less is risky.
+                  {buffer < POSTAL_BUFFER_RECOMMENDED ? (
+                    <strong className="font-medium text-warn-ink"> Less than {POSTAL_BUFFER_RECOMMENDED} days may be too short.</strong>
+                  ) : null}
+                </>
+              }
+            >
+              <Select value={String(buffer)} onChange={(e) => setBuffer(Number(e.target.value))} className={FIELD_WIDTH}>
                 {[2, 3, 4, 5, 6, 7].map((n) => (
                   <option key={n} value={n}>
                     {n} working days
                   </option>
                 ))}
               </Select>
-              <span className="text-[14px] text-ink">before they must arrive</span>
-            </div>
-            <p className="mt-3 text-[12.5px] leading-5 text-muted">
-              Recommended: 4 working days. Since 2025 Deutsche Post only has to deliver most letters within three working days, so less is risky.
-              {buffer < 4 ? <strong className="font-medium text-warn-ink"> Less than 4 days may be too short.</strong> : null}
-            </p>
+            </Field>
           </div>
         </SettingsCard>
         <BrowserNotificationsCard />
