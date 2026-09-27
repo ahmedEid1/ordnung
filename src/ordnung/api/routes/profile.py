@@ -26,6 +26,7 @@ from ordnung.config import Paths
 from ordnung.ingest.pipeline import ledger_lock
 from ordnung.models import AppSettings, Profile
 from ordnung.rules import normalize_region
+from ordnung.secretary.scam import iban_valid, normalize_iban
 
 router = APIRouter(tags=["profile"])
 
@@ -51,6 +52,19 @@ class ProfilePatch(BaseModel):
     postal_buffer_days: int | None = Field(default=None, ge=0, le=30)
     is_student_visa: bool | None = None
     onboarded: bool | None = None
+    iban: str | None = Field(
+        default=None, max_length=50, description="your account, for refunds (empty: none)"
+    )
+
+    @field_validator("iban")
+    @classmethod
+    def _valid_iban(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None if value is None else ""
+        iban = normalize_iban(value)
+        if not iban_valid(iban):
+            raise ValueError("That IBAN isn't valid — check it against your bank card or banking app.")
+        return iban
 
     @field_validator("region")
     @classmethod

@@ -44,8 +44,10 @@ export function ThreadSection({ detail }: { detail: DocumentDetail }) {
                   <KindIcon docKind={d.kind} size="sm" className="mt-0.5" />
                   <div className="min-w-0 flex-1">
                     {current ? (
-                      <p className="truncate text-[13.5px] font-semibold text-ink">
-                        {d.title ?? d.filename} <span className="ml-1 rounded bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent">This letter</span>
+                      // the badge sits outside the truncated title, so a long title never hides it
+                      <p className="flex min-w-0 items-center gap-2 text-[13.5px] font-semibold text-ink">
+                        <span className="min-w-0 truncate">{d.title ?? d.filename}</span>
+                        <span className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold leading-4 text-accent">This letter</span>
                       </p>
                     ) : (
                       <Link to={`/documents/${d.id}`} className="block truncate text-[13.5px] font-medium text-ink hover:text-accent hover:underline">

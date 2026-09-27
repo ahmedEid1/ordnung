@@ -45,15 +45,20 @@ from ordnung.ingest.intake import (
 )
 from ordnung.ingest.link import ensure_party, link_document
 from ordnung.ingest.plan import (
+    KIND_CHOSEN,
     PlanResult,
     Verification,
     compute_item,
     corrections,
+    filed_kind,
+    law_deadlines,
     payment_details,
+    payment_note,
     remedy_warnings,
     rule_context,
     verify_extraction,
     with_corrections,
+    with_payment_note,
     write_plan,
 )
 from ordnung.ingest.text import PageText, detect_injection_phrases, extract_pdf_pages, text_file_pages
@@ -406,29 +411,45 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
     Letter facts the person corrected (title, kind, area, letter date) win over a new reading. The
     payment's IBAN is the one printed on the page when the model misread it
     (:func:`~ordnung.ingest.plan.payment_details`), so the scam check and the sender's known IBANs
-    see the account the letter shows.
+    see the account the letter shows. The letter is read again inside the transaction (the caller
+    holds :func:`ledger_lock`): a kind the person chose while it was being read — the patch and its
+    :data:`KIND_CHOSEN` entry are written together under the same lock — is kept.
     """
     with store.tx():
-        full_text = store.get_document_text(data.document.id)
-        corrected = corrections(data.document, store.get_extraction(data.document.id))
+        document = store.get_document(data.document.id) or data.document
+        full_text = store.get_document_text(document.id)
+        chosen = store.last_activity("document", document.id, [KIND_CHOSEN])
+        corrected = corrections(
+            document,
+            store.get_extraction(document.id),
+            chosen_kind=chosen.data.get("kind") if chosen else None,
+        )
         reading = with_corrections(data.extraction, corrected)
         reading = reading.model_copy(update={"payment": payment_details(reading.payment, full_text)})
+        kind = filed_kind(reading, corrected)
         party = ensure_party(store, reading)
         ctx = rule_context(
             party,
-            data.document,
+            document,
             reading,
             data.today,
             recipient_region=data.recipient_region,
             country=data.country,
+            filed_as=kind,
+            pages=store.list_pages(document.id),
         )
+        note = payment_note(kind, reading, reading.title, full_text, ctx)
         computed = [
-            compute_item(verified, ctx, postal_buffer_days=data.postal_buffer_days)
+            with_payment_note(
+                compute_item(verified, ctx, postal_buffer_days=data.postal_buffer_days),
+                verified.item,
+                note,
+            )
             for verified in data.verification.items
         ]
         links = link_document(
             store,
-            document=data.document,
+            document=document,
             extraction=reading,
             party=party,
             contract_evidence=data.verification.contract_evidence,
@@ -443,7 +464,7 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
         ]
         return write_plan(
             store,
-            document=data.document,
+            document=document,
             extraction=reading,
             model_reading=data.extraction,
             today=data.today,
@@ -456,6 +477,8 @@ def commit_ledger(store: Store, data: LedgerInput) -> PlanResult:
             text_mode=data.text_mode,
             hidden_text=data.hidden_text,
             full_text=full_text,
+            kind=kind,
+            derived=law_deadlines(kind, reading, ctx),
         )
 
 

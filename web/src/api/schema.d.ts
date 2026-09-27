@@ -724,8 +724,9 @@ export interface paths {
         put?: never;
         /**
          * Create Draft
-         * @description Draft a cancellation, objection or reply: fixed legal wording, model-written courtesy text and
-         *     translation, automatic checks and "how to send it".
+         * @description Draft a cancellation, objection, reply or template letter (withdrawal, more time, instalments,
+         *     defect, data access, receipts, deposit, new address): fixed legal wording, model-written courtesy
+         *     text and translation, automatic checks and "how to send it".
          */
         post: operations["create_draft_api_drafts_post"];
         delete?: never;
@@ -972,6 +973,24 @@ export interface components {
             data: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * AdviceFact
+         * @description One computed or legal point on a high-stakes letter's card (e.g. the rent cap check).
+         */
+        AdviceFact: {
+            /** Title */
+            title: string;
+            /** Text */
+            text: string;
+            /**
+             * Tone
+             * @default info
+             * @enum {string}
+             */
+            tone: "info" | "warn" | "good";
+            /** Citation */
+            citation: string | null;
         };
         /** AppSettings */
         AppSettings: {
@@ -1607,7 +1626,7 @@ export interface components {
             /** Error */
             error: string | null;
             /** Kind */
-            kind: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other") | null;
+            kind: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
             /** Area */
             area: ("home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other") | null;
             /** Title */
@@ -1671,6 +1690,7 @@ export interface components {
         /** DocumentDetail */
         DocumentDetail: {
             document: components["schemas"]["Document"];
+            advice: components["schemas"]["LetterAdvice"] | null;
             /** Pages */
             pages: components["schemas"]["PageInfo"][];
             /** Items */
@@ -1690,13 +1710,14 @@ export interface components {
          * DocumentPatch
          * @description Corrections the person can make to a letter. ``received_date`` (when the letter arrived) and
          *     ``doc_date`` recompute the letter's to-dos with the rules engine unless ``received_confirmed`` is
-         *     ``false``.
+         *     ``false``; so does ``kind``, which decides the rules of high-stakes letters (a court order, a
+         *     dismissal …).
          */
         DocumentPatch: {
             /** Title */
             title?: string | null;
             /** Kind */
-            kind?: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other") | null;
+            kind?: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
             /** Area */
             area?: ("home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other") | null;
             /** Tags */
@@ -1724,7 +1745,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "cancellation" | "objection" | "general_reply";
+            kind: "cancellation" | "objection" | "general_reply" | "withdrawal" | "extension_request" | "payment_plan" | "defect_notice" | "data_access" | "receipts_inspection" | "deposit_return" | "address_change";
             /**
              * Language
              * @default de
@@ -1810,7 +1831,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "cancellation" | "objection" | "general_reply";
+            kind: "cancellation" | "objection" | "general_reply" | "withdrawal" | "extension_request" | "payment_plan" | "defect_notice" | "data_access" | "receipts_inspection" | "deposit_return" | "address_change";
             /** Party Id */
             party_id?: string | null;
             /** Doc Id */
@@ -1833,6 +1854,14 @@ export interface components {
              * @enum {string}
              */
             language?: "de" | "en";
+            /** @description the facts a template letter needs (withdrawal, payment plan …) */
+            details?: components["schemas"]["LetterDetails"] | null;
+            /**
+             * Suspend Enforcement
+             * @description an objection also applies to suspend enforcement (einstweilige Einstellung at a court, Aussetzung der Vollziehung at an authority); ignored for other letters and a court payment order
+             * @default false
+             */
+            suspend_enforcement?: boolean;
         };
         /**
          * DraftPatch
@@ -1923,6 +1952,18 @@ export interface components {
              * @description The doctor's checks — only with ``?probe=1`` (“Run check”)
              */
             checks: components["schemas"]["DoctorCheck"][];
+        };
+        /**
+         * HelpLink
+         * @description Independent, free or low-cost help for a high-stakes letter (information, not legal advice).
+         */
+        HelpLink: {
+            /** Name */
+            name: string;
+            /** What */
+            what: string;
+            /** Url */
+            url: string | null;
         };
         /** Identifier */
         Identifier: {
@@ -2288,6 +2329,143 @@ export interface components {
             ref: components["schemas"]["RefLink"] | null;
         };
         /**
+         * LetterAdvice
+         * @description The "get advice" card of a high-stakes letter, worked out on read (:mod:`ordnung.rules.advice`).
+         *
+         *     ``urgent`` letters (court orders, a dismissal) always carry it; the others show it as information.
+         */
+        LetterAdvice: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs";
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /**
+             * Urgent
+             * @default false
+             */
+            urgent: boolean;
+            /** Steps */
+            steps: string[];
+            /** Facts */
+            facts: components["schemas"]["AdviceFact"][];
+            /** Help */
+            help: components["schemas"]["HelpLink"][];
+            /** Rule Ids */
+            rule_ids: string[];
+            /** Draft */
+            draft: ("cancellation" | "objection" | "general_reply" | "withdrawal" | "extension_request" | "payment_plan" | "defect_notice" | "data_access" | "receipts_inspection" | "deposit_return" | "address_change") | null;
+            /**
+             * Handled
+             * @default false
+             */
+            handled: boolean;
+            /**
+             * Closable
+             * @default false
+             */
+            closable: boolean;
+        };
+        /**
+         * LetterDetails
+         * @description Facts a template letter needs besides the letter, contract or person it is about.
+         *
+         *     Everything is optional here; each template names the facts it requires
+         *     (:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused
+         *     with a clear message, never a server error), amounts in euros.
+         */
+        LetterDetails: {
+            /**
+             * Subject Matter
+             * @description what was ordered or agreed, e.g. 'Kaffeemaschine'
+             */
+            subject_matter?: string | null;
+            /**
+             * Ordered On
+             * @description the day the contract was concluded
+             */
+            ordered_on?: string | null;
+            /**
+             * Received On
+             * @description the day the goods arrived
+             */
+            received_on?: string | null;
+            /**
+             * Instructions Missing
+             * @description no (or wrong) instructions about the right of withdrawal were given
+             * @default false
+             */
+            instructions_missing?: boolean;
+            /**
+             * Deadline
+             * @description the deadline that should be extended
+             */
+            deadline?: string | null;
+            /**
+             * Until
+             * @description the new date asked for
+             */
+            until?: string | null;
+            /**
+             * Amount
+             * @description the total owed, or the deposit
+             */
+            amount?: number | null;
+            /**
+             * Instalment
+             * @description the monthly instalment offered
+             */
+            instalment?: number | null;
+            /**
+             * First Instalment
+             * @description the day of the first instalment
+             */
+            first_instalment?: string | null;
+            /**
+             * Defect
+             * @description what is broken or wrong
+             */
+            defect?: string | null;
+            /**
+             * Noticed On
+             * @description since when the defect exists
+             */
+            noticed_on?: string | null;
+            /**
+             * Fix By
+             * @description the day by which it should be repaired
+             */
+            fix_by?: string | null;
+            /**
+             * Period
+             * @description the billing period
+             */
+            period?: string | null;
+            /**
+             * Moved Out On
+             * @description the day the flat was handed back
+             */
+            moved_out_on?: string | null;
+            /**
+             * Moved On
+             * @description the day of the move
+             */
+            moved_on?: string | null;
+            /** Old Address */
+            old_address?: string | null;
+            /** New Address */
+            new_address?: string | null;
+            /**
+             * Recipient
+             * @description name and address of a recipient not in Ordnung yet
+             */
+            recipient?: string | null;
+        };
+        /**
          * MailOpenRequest
          * @description Which tray letter to open.
          */
@@ -2553,6 +2731,11 @@ export interface components {
              * @default false
              */
             onboarded: boolean;
+            /**
+             * Iban
+             * @default
+             */
+            iban: string;
         };
         /**
          * ProfilePatch
@@ -2585,6 +2768,11 @@ export interface components {
             is_student_visa?: boolean | null;
             /** Onboarded */
             onboarded?: boolean | null;
+            /**
+             * Iban
+             * @description your account, for refunds (empty: none)
+             */
+            iban?: string | null;
         };
         /**
          * PublicHealth
@@ -3163,7 +3351,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "cancellation" | "objection" | "general_reply";
+            kind: "cancellation" | "objection" | "general_reply" | "withdrawal" | "extension_request" | "payment_plan" | "defect_notice" | "data_access" | "receipts_inspection" | "deposit_return" | "address_change";
         };
         /**
          * DraftSentEvent
@@ -3656,7 +3844,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string | null;
-                kind?: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other") | null;
+                kind?: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
                 party_id?: string | null;
                 case_id?: string | null;
                 status?: ("queued" | "processing" | "processed" | "needs_review" | "failed") | null;

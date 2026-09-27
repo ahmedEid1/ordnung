@@ -6,9 +6,10 @@ database, the API and the LLM outputs. Timestamps are ISO-8601 UTC strings.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from datetime import date
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 # --------------------------------------------------------------------------------------------------
 # Enums
@@ -44,6 +45,25 @@ DocumentKind = Literal[
     "other",
 ]
 DOCUMENT_KINDS: tuple[str, ...] = DocumentKind.__args__  # type: ignore[attr-defined]
+#: Letters whose deadlines the rules engine handles specially. Only code assigns these kinds, from
+#: the model's reading (:mod:`ordnung.rules.routing`), so the extraction schema and the benchmark keep
+#: the model's own vocabulary (:data:`DocumentKind`) and its recorded answers stay valid.
+HighStakesKind = Literal[
+    "court_payment_order",
+    "enforcement_order",
+    "dismissal",
+    "landlord_notice",
+    "rent_increase",
+    "operating_costs",
+]
+HIGH_STAKES_KINDS: tuple[str, ...] = HighStakesKind.__args__  # type: ignore[attr-defined]
+#: Letters that demand an earlier invoice's money again and take over its payment: a reminder, and a
+#: court order about the claim (the model may read a Mahnbescheid as a reminder; code files it as a
+#: court order, and it must still count as one).
+PAYMENT_DEMAND_KINDS: tuple[str, ...] = ("dunning", "court_payment_order", "enforcement_order")
+#: The kind stored on a letter: the model's reading, or a high-stakes kind code assigned.
+LetterKind = Literal[DocumentKind, HighStakesKind]
+LETTER_KINDS: tuple[str, ...] = (*DOCUMENT_KINDS, *HIGH_STAKES_KINDS)
 
 DocumentStatus = Literal["queued", "processing", "processed", "needs_review", "failed"]
 Direction = Literal["incoming", "outgoing", "note"]
@@ -90,7 +110,20 @@ SuggestionKind = Literal[
     "deadline", "saving", "risk", "followup", "hygiene", "tax", "opportunity", "scam", "info"
 ]
 SuggestionStatus = Literal["new", "accepted", "dismissed", "snoozed", "done", "expired"]
-DraftKind = Literal["cancellation", "objection", "general_reply"]
+#: Letters an Idea may offer to draft (part of the review model's schema, so kept as it was).
+SuggestedDraftKind = Literal["cancellation", "objection", "general_reply"]
+#: Letters written from fixed templates only (:mod:`ordnung.drafts.templates`).
+TemplateDraftKind = Literal[
+    "withdrawal",
+    "extension_request",
+    "payment_plan",
+    "defect_notice",
+    "data_access",
+    "receipts_inspection",
+    "deposit_return",
+    "address_change",
+]
+DraftKind = Literal[SuggestedDraftKind, TemplateDraftKind]
 ContractCategory = Literal[
     "mobile",
     "internet",
@@ -283,7 +316,7 @@ class Document(_Model):
     source: str = "upload"
     status: DocumentStatus = "queued"
     error: str | None = None
-    kind: DocumentKind | None = None
+    kind: LetterKind | None = None
     area: Area | None = None
     title: str | None = None
     summary: str | None = None
@@ -446,7 +479,7 @@ class SuggestionRef(_Model):
 
 class SuggestionAction(_Model):
     type: Literal["draft", "open", "mark_done", "snooze", "none"] = "none"
-    draft_kind: DraftKind | None = None
+    draft_kind: SuggestedDraftKind | None = None
     target_type: str | None = None
     target_id: str | None = None
     label: str | None = None
@@ -520,6 +553,59 @@ class Draft(_Model):
     sent_at: str | None = None
     created_at: str
     updated_at: str
+
+
+def _iso_day(value: str) -> str:
+    try:
+        return date.fromisoformat(value.strip()).isoformat()
+    except ValueError as exc:
+        raise ValueError(f"“{value}” is not a date; use the form YYYY-MM-DD.") from exc
+
+
+#: A ``YYYY-MM-DD`` day (validated and normalised).
+IsoDay = Annotated[str, AfterValidator(_iso_day)]
+
+
+def _one_line(value: str) -> str:
+    return " ".join(value.split())
+
+
+#: Text that ends up in a letter's subject line: line breaks and runs of spaces become one space.
+OneLine = Annotated[str, AfterValidator(_one_line)]
+
+
+class LetterDetails(_Model):
+    """Facts a template letter needs besides the letter, contract or person it is about.
+
+    Everything is optional here; each template names the facts it requires
+    (:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused
+    with a clear message, never a server error), amounts in euros.
+    """
+
+    subject_matter: OneLine | None = Field(
+        default=None, max_length=200, description="what was ordered or agreed, e.g. 'Kaffeemaschine'"
+    )
+    ordered_on: IsoDay | None = Field(default=None, description="the day the contract was concluded")
+    received_on: IsoDay | None = Field(default=None, description="the day the goods arrived")
+    instructions_missing: bool = Field(
+        default=False, description="no (or wrong) instructions about the right of withdrawal were given"
+    )
+    deadline: IsoDay | None = Field(default=None, description="the deadline that should be extended")
+    until: IsoDay | None = Field(default=None, description="the new date asked for")
+    amount: float | None = Field(default=None, ge=0, description="the total owed, or the deposit")
+    instalment: float | None = Field(default=None, gt=0, description="the monthly instalment offered")
+    first_instalment: IsoDay | None = Field(default=None, description="the day of the first instalment")
+    defect: str | None = Field(default=None, max_length=1000, description="what is broken or wrong")
+    noticed_on: IsoDay | None = Field(default=None, description="since when the defect exists")
+    fix_by: IsoDay | None = Field(default=None, description="the day by which it should be repaired")
+    period: OneLine | None = Field(default=None, max_length=80, description="the billing period")
+    moved_out_on: IsoDay | None = Field(default=None, description="the day the flat was handed back")
+    moved_on: IsoDay | None = Field(default=None, description="the day of the move")
+    old_address: str | None = Field(default=None, max_length=300)
+    new_address: str | None = Field(default=None, max_length=300)
+    recipient: str | None = Field(
+        default=None, max_length=300, description="name and address of a recipient not in Ordnung yet"
+    )
 
 
 class Note(_Model):
@@ -615,6 +701,8 @@ class Profile(_Model):
     postal_buffer_days: int = 4
     is_student_visa: bool = False
     onboarded: bool = False
+    #: The person's own account, only for letters that ask for money back (e.g. the deposit).
+    iban: str = ""
 
     @property
     def known_region(self) -> str | None:
@@ -897,8 +985,55 @@ class Page(PageInfo):
     hidden: str = ""  # invisible text found on the page (never sent to a model)
 
 
+class HelpLink(_Model):
+    """Independent, free or low-cost help for a high-stakes letter (information, not legal advice)."""
+
+    name: str
+    what: str
+    url: str | None = None
+
+
+class AdviceFact(_Model):
+    """One computed or legal point on a high-stakes letter's card (e.g. the rent cap check)."""
+
+    title: str
+    text: str
+    tone: Literal["info", "warn", "good"] = "info"
+    citation: str | None = None
+
+
+class LetterAdvice(_Model):
+    """The "get advice" card of a high-stakes letter, worked out on read (:mod:`ordnung.rules.advice`).
+
+    ``urgent`` letters (court orders, a dismissal) always carry it; the others show it as information.
+    """
+
+    kind: HighStakesKind
+    title: str
+    summary: str
+    urgent: bool = False
+    steps: list[str] = Field(default_factory=list)
+    facts: list[AdviceFact] = Field(default_factory=list)
+    help: list[HelpLink] = Field(default_factory=list)
+    rule_ids: list[str] = Field(default_factory=list)
+    #: The letter the card offers to draft; ``None`` when none fits (no hardship objection to a notice
+    #: without notice period; court orders get theirs from the verdict's main button).
+    draft: DraftKind | None = None
+    #: The person has dealt with the letter (:func:`ordnung.rules.advice.settles`, or ``closable`` and they said
+    #: so): it has a to-do that carries
+    #: its legal deadline (never a recurring one or a rent increase's new rent), and every such to-do is
+    #: closed — an operating-cost statement that came in time has none, so it is never handled. The card is
+    #: then no longer urgent, and the verdict says it is filed.
+    handled: bool = False
+    #: No to-do carries this letter's deadline (a landlord's notice without notice period, or with no
+    #: objection to-do), so only the person can say they have dealt with it: the card offers "I've dealt
+    #: with this", stored as the letter's tag ``dealt-with`` (ADR 0006: nothing is closed for them).
+    closable: bool = False
+
+
 class DocumentDetail(_Model):
     document: Document
+    advice: LetterAdvice | None = None
     pages: list[PageInfo] = Field(default_factory=list)
     items: list[Item] = Field(default_factory=list)
     contracts: list[Contract] = Field(default_factory=list)

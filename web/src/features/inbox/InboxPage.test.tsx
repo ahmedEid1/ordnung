@@ -56,9 +56,9 @@ describe("Inbox", () => {
   it("shows the New-mail tray and the letters list with sender, kind, status and to-dos", async () => {
     const { container } = renderInbox();
     const tray = await screen.findByRole("region", { name: /New mail/ });
-    expect(within(tray).getAllByRole("button", { name: "Let Ordnung read it" })).toHaveLength(3);
+    expect(within(tray).getAllByRole("button", { name: "Let Ordnung read it" })).toHaveLength(5);
     expect(within(tray).getByText("Finanzamt Musterstadt")).toBeInTheDocument();
-    expect(within(tray).getByRole("button", { name: "Read all 3" })).toBeInTheDocument();
+    expect(within(tray).getByRole("button", { name: "Read all 5" })).toBeInTheDocument();
 
     const parking = await screen.findByRole("link", { name: "Parking fine (Verwarnungsgeld)" });
     expect(parking).toHaveAttribute("href", "/documents/doc_parking");
@@ -163,7 +163,7 @@ describe("Inbox", () => {
 
   it("keeps a New-mail letter that couldn't be read actionable, names it in one alert and keeps focus on it", async () => {
     const { client } = renderInbox();
-    const tray = await screen.findByRole("region", { name: /New mail, 3 letters/ });
+    const tray = await screen.findByRole("region", { name: /New mail, 5 letters/ });
     const card = within(tray).getByText("Finanzamt Musterstadt").closest("li")!;
     const user = userEvent.setup();
     await user.click(within(card).getByRole("button", { name: "Let Ordnung read it" }));
@@ -188,7 +188,7 @@ describe("Inbox", () => {
     await user.click(within(card).getByRole("button", { name: "Remove from New mail" }));
     await waitFor(() => expect(card).not.toBeInTheDocument());
     expect(within(tray).getByRole("group", { name: "Letter from Stadtwerke Musterstadt" })).toHaveFocus();
-    expect(within(tray).getByRole("heading", { name: /New mail, 2 letters/ })).toBeInTheDocument();
+    expect(within(tray).getByRole("heading", { name: /New mail, 4 letters/ })).toBeInTheDocument();
   });
 
   it("recaps a batch with the letters that couldn't be read, the tile's count matching Please check, then returns focus to the letters", async () => {

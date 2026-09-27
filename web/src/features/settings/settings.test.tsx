@@ -127,7 +127,10 @@ describe("Settings page", () => {
     expect(within(table).getByText("Cache")).toBeInTheDocument();
     expect(within(calls).getAllByRole("list")[0]).toHaveTextContent("1 page of 1 letter · 2.1 KB");
     // screen-reader table behind the chart
-    expect(screen.getByRole("table", { name: "API-equivalent cost by purpose" })).toBeInTheDocument();
+    const costs = screen.getByRole("table", { name: "API-equivalent cost by purpose" });
+    // a table grows to fit its cells whatever its width, so sr-only on the table itself widened phone pages
+    expect(costs).not.toHaveClass("sr-only");
+    expect(costs.parentElement).toHaveClass("sr-only");
     expect(await screen.findByText("Weekly review: 2 new Ideas")).toBeInTheDocument();
     assertNoRawEnumsInElement(container);
   });
@@ -157,6 +160,14 @@ describe("Settings page", () => {
     // the row is called "Claude Code": its value is the bare version
     expect(await screen.findByText("2.1.4")).toBeInTheDocument();
     expect(screen.queryByText(/\(Claude Code\)/)).not.toBeInTheDocument();
+  });
+
+  it("promises only what is true about the address and IBAN: they stay out of Ordnung's requests, letters are read as printed", async () => {
+    useMockApi();
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    expect(await screen.findByText(/never puts the address and IBAN you enter here into its requests to Claude/)).toBeInTheDocument();
+    expect(screen.getByText(/letters you add are read as they are printed/)).toBeInTheDocument();
+    expect(screen.queryByText(/Your address and IBAN are never sent to Claude/)).toBeNull();
   });
 
   it("switches sections from the sub-navigation", async () => {

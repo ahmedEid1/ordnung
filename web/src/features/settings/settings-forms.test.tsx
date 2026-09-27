@@ -47,18 +47,20 @@ describe("settings helpers", () => {
     expect(leadDaysError("5.5", [])).toMatch(/Enter a number/);
   });
 
-  it("a profile is saved without stray spaces, and needs a name and a real e-mail address", () => {
-    expect(cleanProfile({ name: "  Sam   Rivera ", address: " Weg 1 \n 12345 Stadt ", email: " sam@example.de ", phone: " 0170 " })).toEqual({
+  it("a profile is saved without stray spaces, and needs a name, a real e-mail address and a valid IBAN", () => {
+    expect(cleanProfile({ name: "  Sam   Rivera ", address: " Weg 1 \n 12345 Stadt ", email: " sam@example.de ", phone: " 0170 ", iban: " de89 3704 0044 0532 0130 00 " })).toEqual({
       name: "Sam Rivera",
       address: "Weg 1\n12345 Stadt",
       email: "sam@example.de",
       phone: "0170",
+      iban: "DE89370400440532013000",
     });
-    expect(profileErrors({ name: "   ", address: "", email: "sam.rivera@", phone: "" })).toEqual({
+    expect(profileErrors({ name: "   ", address: "", email: "sam.rivera@", phone: "", iban: "DE89 3704 0044 0532 0130 01" })).toEqual({
       name: expect.stringMatching(/Enter your name/),
       email: expect.stringMatching(/doesn't look like an email address/),
+      iban: expect.stringMatching(/That IBAN isn't valid/),
     });
-    expect(profileErrors({ name: "Sam", address: "", email: "", phone: "" })).toEqual({});
+    expect(profileErrors({ name: "Sam", address: "", email: "", phone: "", iban: "" })).toEqual({});
   });
 
   it("names the Claude Code version once; says what the calendar file will hold", () => {

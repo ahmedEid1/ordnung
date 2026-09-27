@@ -3,13 +3,16 @@ import { Lock } from "lucide-react";
 import { useUpdateProfile } from "@/api/hooks";
 import type { Profile } from "@/api/types";
 import { Field, Input, Textarea } from "@/components/ui/Field";
+import { formatIban, ibanLooksValid, normalizeIban } from "@/lib/format";
 import { SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
 
-type ProfileForm = Pick<Profile, "name" | "address" | "email" | "phone">;
+type ProfileForm = Pick<Profile, "name" | "address" | "email" | "phone" | "iban">;
 
-const pick = (p: Profile): ProfileForm => ({ name: p.name, address: p.address, email: p.email, phone: p.phone });
+// the IBAN is shown in blocks of four and compared (and saved) without spaces
+const pick = (p: Profile): ProfileForm => ({ name: p.name, address: p.address, email: p.email, phone: p.phone, iban: p.iban ? formatIban(p.iban) : "" });
+const same = (k: keyof ProfileForm, a: ProfileForm, b: ProfileForm) => (k === "iban" ? normalizeIban(a.iban) === normalizeIban(b.iban) : a[k] === b[k]);
 
-/** What gets saved: no stray spaces around the values (the address keeps its lines). */
+/** What gets saved: no stray spaces around the values (the address keeps its lines), the IBAN without any. */
 export function cleanProfile(f: ProfileForm): ProfileForm {
   return {
     name: f.name.trim().replace(/\s+/g, " "),
@@ -20,6 +23,7 @@ export function cleanProfile(f: ProfileForm): ProfileForm {
       .trim(),
     email: f.email.trim(),
     phone: f.phone.trim(),
+    iban: normalizeIban(f.iban),
   };
 }
 
@@ -31,15 +35,16 @@ export function profileErrors(f: ProfileForm): Partial<Record<keyof ProfileForm,
   const errors: Partial<Record<keyof ProfileForm, string>> = {};
   if (!clean.name) errors.name = "Enter your name — it's the sender on your letters.";
   if (clean.email && !EMAIL.test(clean.email)) errors.email = "This doesn't look like an email address — like name@example.de.";
+  if (clean.iban && !ibanLooksValid(clean.iban)) errors.iban = "That IBAN isn't valid — check it against your bank card or banking app.";
   return errors;
 }
 
-/** "Profile & address": the sender block of every letter. */
+/** "Profile & address": the sender block of every letter, and the account refunds go to. */
 export function ProfileSection({ profile }: { profile: Profile }) {
   const update = useUpdateProfile();
   const [form, setForm] = useState<ProfileForm>(() => pick(profile));
   const saved = pick(profile);
-  const dirty = (Object.keys(saved) as (keyof ProfileForm)[]).some((k) => saved[k] !== form[k]);
+  const dirty = (Object.keys(saved) as (keyof ProfileForm)[]).some((k) => !same(k, saved, form));
   // a mistake shows once you leave the field (or try to save), not while you type
   const [touched, setTouched] = useState<ReadonlySet<keyof ProfileForm>>(() => new Set());
   const [attempted, setAttempted] = useState(false);
@@ -48,6 +53,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
   const shown = (k: keyof ProfileForm) => (attempted || touched.has(k) ? errors[k] : undefined);
   const nameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
+  const ibanRef = useRef<HTMLInputElement>(null);
 
   const set = (k: keyof ProfileForm) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const leave = (k: keyof ProfileForm) => () => setTouched((t) => (t.has(k) ? t : new Set(t).add(k)));
@@ -62,7 +68,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
 
   const showErrors = () => {
     setAttempted(true);
-    const first = errors.name ? nameRef : emailRef;
+    const first = errors.name ? nameRef : errors.email ? emailRef : ibanRef;
     requestAnimationFrame(() => first.current?.focus());
   };
 
@@ -106,9 +112,27 @@ export function ProfileSection({ profile }: { profile: Profile }) {
           <Field label="Phone" optional>
             <Input type="tel" value={form.phone} onChange={set("phone")} autoComplete="tel" />
           </Field>
+          <Field label="IBAN for refunds" optional className="sm:col-span-2" hint="Printed only in letters that ask for money back, like your deposit." error={shown("iban")}>
+            <Input
+              ref={ibanRef}
+              value={form.iban}
+              onChange={set("iban")}
+              onBlur={() => {
+                leave("iban")();
+                // a valid IBAN is shown in blocks of four once you leave the field
+                if (form.iban.trim() && ibanLooksValid(form.iban)) setForm((f) => ({ ...f, iban: formatIban(normalizeIban(f.iban)) }));
+              }}
+              placeholder="DE00 0000 0000 0000 0000 00"
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              className="font-mono tracking-wide sm:max-w-sm"
+            />
+          </Field>
         </div>
         <p className="mt-5 flex items-start gap-2 text-[12.5px] leading-5 text-muted">
-          <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden /> Stored only on this computer and printed on your letters.
+          <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden /> Stored only on this computer and printed on your letters. Ordnung never puts
+          the address and IBAN you enter here into its requests to Claude — letters you add are read as they are printed.
         </p>
       </SettingsCard>
     </section>

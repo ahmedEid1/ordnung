@@ -1,6 +1,7 @@
 /**
  * Everything that needs the person's eyes, right under the verdict: the scam banner, the
- * hidden-text banner, "get advice" when the letter can only be challenged in court (or it is
+ * hidden-text banner, the "get advice" card of a high-stakes letter (a court order, a dismissal, a
+ * landlord's letter), "get advice" when the letter can only be challenged in court (or it is
  * unclear how), "Please check" to-dos, the "When did this letter arrive?" question and any other
  * warnings from reading the letter.
  */
@@ -21,13 +22,17 @@ import { ADVICE_LINKS } from "@/components/ui/Disclaimer";
 import { Glossary } from "@/components/ui/Glossary";
 import { Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
-import { arrivalSavedNote, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
+import { arrivalSavedNote, isServed, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
 import { useItemActions } from "./actions";
 import { useEvidence } from "./EvidenceContext";
+import { LetterAdviceCard } from "./LetterAdvice";
 
 export const SAFE_NOTE = "No warning does not mean it is safe.";
 
 const isHiddenTextWarning = (w: string) => /invisible text|hidden text/i.test(w);
+
+/** A reading's warning that only repeats the arrival question ("…when it arrived", "…when it was delivered"). */
+export const REPEATS_ARRIVAL_QUESTION = /arriv|received|zugang|deliver|zustell/i;
 
 /** Warnings shown in the scam banner / generic list (the hidden-text one has its own banner). */
 function otherWarnings(doc: Document): string[] {
@@ -41,18 +46,26 @@ export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
   const arrival = detail.items.filter((i) => needsArrivalDate(i, doc));
   const remedy = doc.remedy?.type;
   const warnings = otherWarnings(doc);
-  // the arrival question already explains the "we don't know when it arrived" warning
-  const general = arrival.length ? warnings.filter((w) => !/arriv|received|zugang/i.test(w)) : warnings;
+  // the arrival question already explains the "we don't know when it arrived / was delivered" warning — and
+  // once the person has dealt with the letter (objected, paid), when it arrived no longer matters
+  const general =
+    arrival.length || detail.advice?.handled ? warnings.filter((w) => !REPEATS_ARRIVAL_QUESTION.test(w)) : warnings;
+
+  // a high-stakes letter's own card replaces the generic "get advice" one; urgent cards go first
+  const advice = detail.advice && !scam ? <LetterAdviceCard key="letter-advice" advice={detail.advice} doc={doc} /> : null;
+  const urgent = Boolean(detail.advice?.urgent);
 
   const blocks = [
     scam ? <ScamBanner key="scam" suggestion={scam} doc={doc} reasons={warnings} /> : null,
     doc.hidden_text ? <HiddenTextBanner key="hidden" /> : null,
-    remedy === "klage" || remedy === "unclear" ? <AdviceCard key="advice" type={remedy} addressee={doc.remedy?.addressee ?? null} /> : null,
+    urgent ? advice : null,
+    !detail.advice && (remedy === "klage" || remedy === "unclear") ? <AdviceCard key="advice" type={remedy} addressee={doc.remedy?.addressee ?? null} /> : null,
     arrival.length ? (
       <ArrivalQuestion key="arrival" doc={doc} items={arrival} mayBePublic={Boolean(detail.party && MAY_BE_PUBLIC_KINDS.includes(detail.party.kind))} />
     ) : null,
     ...checks.map((it) => <PleaseCheckItem key={it.id} item={it} />),
     !scam && general.length ? <GeneralWarnings key="general" warnings={general} /> : null,
+    urgent ? null : advice,
   ].filter(Boolean);
 
   if (!blocks.length) return null;
@@ -213,19 +226,26 @@ function AdviceCard({ type, addressee }: { type: "klage" | "unclear"; addressee:
 function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: Item[]; mayBePublic: boolean }) {
   const todayISO = useTodayISO();
   const qc = useQueryClient();
+  const served = isServed(doc, items);
   const update = useUpdateDocument();
-  const [date, setDate] = useState(doc.received_date ?? todayISO);
+  // A court's letter counts from the date the postman wrote on the envelope, often days before it was
+  // opened: nothing is filled in for it, so one Save can never move a court deadline later by mistake.
+  const [date, setDate] = useState(doc.received_date ?? (served ? "" : todayISO));
   const min = doc.doc_date ?? undefined;
   const valid = Boolean(date) && date <= todayISO && (!min || date >= min);
-  const quick = [0, 1, 2].map((n) => {
-    const d = new Date(`${todayISO}T00:00:00`);
-    d.setDate(d.getDate() - n);
-    return toISODate(d);
-  }).filter((d) => !min || d >= min);
+  const quick = served
+    ? []
+    : [0, 1, 2]
+        .map((n) => {
+          const d = new Date(`${todayISO}T00:00:00`);
+          d.setDate(d.getDate() - n);
+          return toISODate(d);
+        })
+        .filter((d) => !min || d >= min);
 
   const subject = items.length === 1 ? `“${items[0]!.title}” counts` : "These dates count";
   // a letter that may be an authority's never counts from later than it would usually count as delivered
-  const unlessLate = mayBePublic
+  const unlessLate = mayBePublic && !served
     ? " — unless it took longer than letters usually do: this sender may be an authority, so we then still count from the day it would usually have arrived"
     : "";
 
@@ -236,14 +256,24 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
       { id: doc.id, patch: { received_date: date } },
       {
         onSuccess: async () => {
+          if (served) {
+            // a start the letter itself names counts when it is earlier (see "Why this date?")
+            toast.success("Thanks — dates updated", {
+              description: `Counting from ${formatDate(date, { style: "short" })}, the delivery date on the envelope — or from an earlier start the letter names.`,
+            });
+            return;
+          }
           // the items as recomputed with the arrival day: they say what the date now counts from
           const fresh = await qc
             .fetchQuery({ queryKey: qk.documents.detail(doc.id), queryFn: () => api.document(doc.id), staleTime: 5_000 })
             .catch(() => undefined);
           const asked = new Set(items.map((i) => i.id));
           const recomputed = (fresh?.items ?? []).filter((i) => asked.has(i.id));
+          // a delivery day the letter states counts when it is earlier than the one entered
+          const named = recomputed.some((i) => i.date_spec?.anchor === "receipt" && Boolean(i.date_spec.anchor_date));
+          const note = recomputed.length ? arrivalSavedNote(date, recomputed) : "See “Why this date?” for what each date counts from.";
           toast.success("Thanks — dates updated", {
-            description: recomputed.length ? arrivalSavedNote(date, recomputed) : "See “Why this date?” for what each date counts from.",
+            description: named ? `${note} Where the letter names an earlier delivery day, that day counts.` : note,
           });
         },
       },
@@ -255,10 +285,20 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
       <div className="flex gap-3">
         <CalendarCheck className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
         <div className="min-w-0 flex-1">
-          <h2 className="text-[15px] font-semibold text-warn-ink">When did this letter arrive?</h2>
+          <h2 className="text-[15px] font-semibold text-warn-ink">{served ? "When was it delivered?" : "When did this letter arrive?"}</h2>
           <p className="mt-1 text-[13.5px] leading-relaxed text-ink/85">
-            {subject} from the day the letter reached you{unlessLate}. Until you tell us, we count from the letter date
-            {doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""} — the earliest possible, so you're never late.
+            {served ? (
+              <>
+                {subject} from the day the court's letter was delivered — the postman wrote that date on the yellow envelope it
+                came in. Until you tell us, we count from the letter date{doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""}, the
+                earliest possible.
+              </>
+            ) : (
+              <>
+                {subject} from the day the letter reached you{unlessLate}. Until you tell us, we count from the letter date
+                {doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""} — the earliest possible, so you're never late.
+              </>
+            )}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {quick.map((d, i) => (
@@ -275,8 +315,8 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
                 {i === 0 ? "Today" : i === 1 ? "Yesterday" : formatDate(d, { style: "short" })}
               </button>
             ))}
-            <label className="sr-only" htmlFor="arrival-date">
-              Arrival date
+            <label className={served ? "text-[13px] font-medium text-ink" : "sr-only"} htmlFor="arrival-date">
+              {served ? "Date on the yellow envelope" : "Arrival date"}
             </label>
             <Input
               id="arrival-date"
@@ -286,7 +326,8 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
               max={todayISO}
               onChange={(e) => setDate(e.target.value)}
               className="h-8 w-auto bg-surface"
-              aria-invalid={!valid || undefined}
+              // an empty field (a court's envelope date isn't prefilled) is not an error: Save waits for a date
+              aria-invalid={(Boolean(date) && !valid) || undefined}
             />
             <Button type="submit" size="sm" variant="primary" loading={update.isPending} disabled={!valid}>
               Save

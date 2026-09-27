@@ -10,10 +10,12 @@ import {
   Check,
   CircleCheckBig,
   Clock,
+  Info,
   Landmark,
   ListChecks,
   Mail,
   PenLine,
+  Scale,
   ShieldAlert,
   TriangleAlert,
   type LucideIcon,
@@ -40,13 +42,20 @@ import {
   incomingMoney,
   isOpenItem,
   isOptionalObjection,
+  isServed,
+  isLetterSettled,
   leadsWithDecision,
+  mustAct,
   needsArrivalDate,
   needsCheck,
+  notOwedReason,
+  otherLawDeadlines,
   scamSuggestion,
   type MainAction,
+  type NotOwed,
 } from "./verdict";
 import { icsFileName, icsHref, useItemActions, useStartDraft } from "./actions";
+import { KindPicker } from "./KindPicker";
 import { PayPanel } from "./PayPanel";
 import { GlossaryText } from "./Explained";
 import { adviceFor, WhyThisDate } from "./WhyThisDate";
@@ -85,6 +94,23 @@ function Section({ label, icon: Icon, children, className }: { label: string; ic
   );
 }
 
+/** What the verdict says under a payment that may not be owed yet ({@link notOwedReason}). */
+const NOT_OWED: Record<NotOwed, string> = {
+  late_statement:
+    "Check before you pay: this statement seems to have come too late, so you may owe no back-payment (§\u00a0556 Abs.\u00a03 BGB). See the card on this page.",
+  consent:
+    "Decide before you pay: the higher rent is only owed once you agree to the increase (§\u00a0558b Abs.\u00a01 BGB), and paying it can count as agreeing. See the card on this page.",
+  if_agreed:
+    "Only if you agreed to the increase: the higher rent is due from this date. If you didn't, keep paying your current rent — paying the higher one can count as agreeing (§\u00a0558b Abs.\u00a01 BGB).",
+};
+
+/** What the verdict says about a letter that must be acted on when no to-do carries its date. */
+const ADVICE_NOW: Record<string, string> = {
+  landlord_notice: "Get advice now: your landlord is ending your tenancy. Have the notice checked by a tenants' association — see the card on this page.",
+  dismissal: "Get advice now: only a court action within three weeks of receiving a dismissal keeps your rights — see the card on this page.",
+  default: "Get advice now: this is a court order with a short deadline — see the card on this page.",
+};
+
 export interface VerdictCardProps {
   detail: DocumentDetail;
   primary: Item | null;
@@ -105,8 +131,13 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
   const checkDate = open ? needsCheck(open) : false;
   const isAppointment = open?.kind === "appointment";
   const debit = open ? isDirectDebit(open) : false;
-  const optional = open ? isOptionalObjection(open) : false;
+  // a court order's or a dismissal's deadline isn't optional: doing nothing has consequences
+  const optional = open ? isOptionalObjection(open) && !mustAct(doc) : false;
+  const alsoByLaw = !scam && !decision ? otherLawDeadlines(detail.items, open) : [];
   const refund = incomingMoney(detail.items);
+  // a late operating-cost statement's back-payment, a rent increase's new rent: still a to-do, but
+  // checked (or decided) before it is paid
+  const notOwed = open ? notOwedReason(open, detail.advice, detail.items) : null;
   const refundText = refund?.amount != null ? `${formatMoney(refund.amount, { currency: refund.currency })} comes back to you` : null;
 
   return (
@@ -120,6 +151,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
         <p className="sr-only">What this is</p>
         <div className="flex flex-wrap items-center gap-1.5">
           <KindBadge docKind={doc.kind} />
+          {!scam && doc.status !== "queued" && doc.status !== "processing" ? <KindPicker doc={doc} /> : null}
           {scam ? (
             <Badge tone="danger" icon={ShieldAlert}>
               Possible scam
@@ -134,18 +166,21 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
         </h1>
         <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px] text-muted">
           {detail.party ? <PartyChip party={detail.party} /> : null}
-          {doc.doc_date ? (
+          {/* one run of text: when it wraps, no separator is left at the start of a line */}
+          {doc.doc_date || doc.received_date ? (
             <span>
-              Letter of <DateText date={doc.doc_date} style="medium" className="text-ink/85" />
+              {doc.doc_date ? (
+                <>
+                  Letter of <DateText date={doc.doc_date} style="medium" className="text-ink/85" />
+                </>
+              ) : null}
+              {doc.doc_date && doc.received_date ? ", " : null}
+              {doc.received_date ? (
+                <>
+                  {doc.doc_date ? "arrived" : "Arrived"} <DateText date={doc.received_date} style="day" className="text-ink/85" />
+                </>
+              ) : null}
             </span>
-          ) : null}
-          {doc.received_date ? (
-            <>
-              <span aria-hidden>·</span>
-              <span>
-                arrived <DateText date={doc.received_date} style="day" className="text-ink/85" />
-              </span>
-            </>
           ) : null}
         </div>
         {doc.summary ? <p className="mt-3 text-[15px] leading-relaxed text-ink/80">{doc.summary}</p> : null}
@@ -183,7 +218,46 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
               </p>
             ) : null}
             {debit ? <p className="mt-1 text-[13px] text-muted">Collected automatically by direct debit — nothing to transfer.</p> : null}
+            {notOwed === "if_agreed" ? (
+              // decided, but Ordnung doesn't know which way: a plain note, not a warning
+              <p className="mt-2 flex items-start gap-1.5 text-[13.5px] leading-snug text-ink/80">
+                <Info className="mt-0.5 size-3.5 shrink-0 text-muted" aria-hidden />
+                <span>{NOT_OWED[notOwed]}</span>
+              </p>
+            ) : notOwed ? (
+              <p className="mt-2 flex items-start gap-1.5 text-[13.5px] leading-snug text-warn-ink">
+                <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                <span>{NOT_OWED[notOwed]}</span>
+              </p>
+            ) : null}
+            {alsoByLaw.length ? (
+              <ul className="mt-3 space-y-1.5" aria-label="Also due by law">
+                {alsoByLaw.map((i) => (
+                  <li key={i.id} className="flex items-start gap-2 rounded-lg bg-surface-2/70 px-3 py-2 text-[13.5px] leading-snug text-ink">
+                    <Scale className="mt-0.5 size-3.5 shrink-0 text-muted" aria-hidden />
+                    <span className="min-w-0">
+                      <span className="font-medium">Also: </span>
+                      <GlossaryText text={i.title} />
+                      {i.due_date ? (
+                        <>
+                          {" "}
+                          — by <DateText date={i.due_date} style="medium" className="font-semibold" />
+                        </>
+                      ) : null}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </>
+        ) : mustAct(doc) && !isLetterSettled(detail) ? (
+          // a court order, a dismissal or a landlord's notice without an open to-do (a notice without notice
+          // period, or one whose end we couldn't read) is never "nothing to do" — unless the person has dealt
+          // with it (objected, went to court: the server's `advice.handled`): then it is filed
+          <p className="flex items-start gap-2 text-[16px] font-medium leading-snug text-ink">
+            <Scale className="mt-0.5 size-[18px] shrink-0 text-warn" aria-hidden />
+            <span>{ADVICE_NOW[doc.kind ?? "default"] ?? ADVICE_NOW.default}</span>
+          </p>
         ) : (
           <p className="flex items-center gap-2 text-[15px] font-medium text-ink">
             <CircleCheckBig className="size-[18px] text-ok" aria-hidden />
@@ -258,7 +332,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
                   Counted from the letter date — the earliest possible.{" "}
                   {onAskArrival ? (
                     <button type="button" onClick={onAskArrival} className="font-semibold underline underline-offset-2 hover:no-underline">
-                      Tell us when it arrived
+                      {isServed(doc, [open]) ? "Tell us when it was delivered" : "Tell us when it arrived"}
                     </button>
                   ) : null}
                 </span>

@@ -45,16 +45,32 @@ export interface CheckFacts {
   sentVia?: string | null;
 }
 
+/** Template letters that need a date in them: (passed, what to add) — `checks._DATED_TEMPLATES`. */
+const DATED_TEMPLATES: Partial<Record<DraftKind, readonly [string, string]>> = {
+  withdrawal: ["Names when you ordered or received it.", "Add when you ordered or received it, so they find your order."],
+  extension_request: ["Names the new date you ask for.", "Name the new date you ask for."],
+  payment_plan: ["Names when the instalments start.", "Name the day of the first instalment."],
+  defect_notice: ["Says since when, or by when it should be fixed.", "Say since when the defect exists or by when it should be fixed."],
+  deposit_return: ["Names when you handed the flat back.", "Add the day you handed the flat back."],
+};
+/** A date as the server's check reads one (`checks._any_date`): "09.10.2026" or "9 October 2026". */
+const ANY_DATE = /\b\d{1,2}\.\d{1,2}\.\d{4}\b|\b\d{1,2} (?:January|February|March|April|May|June|July|August|September|October|November|December) \d{4}\b/;
+
 /**
  * The checks the API runs on a draft (`src/ordnung/drafts/checks.py`), worked out the same way for
- * the demo's letters: a cancellation names its end date, an objection the decision's date, and a
- * reply needs neither.
+ * the demo's letters: a cancellation names its end date, an objection the decision's date, a
+ * template letter the date it is about (a withdrawal, a request for more time …), and a reply needs
+ * neither.
  */
 export function draftChecks(f: CheckFacts): DraftCheck[] {
   const text = `${f.subject}\n${f.body}`;
   const check = (id: CheckId, ok: boolean, detail: string | null): DraftCheck => ({ id, label: CHECK_LABELS[id], ok, detail });
-  const dates =
-    f.kind === "cancellation"
+  const dated = DATED_TEMPLATES[f.kind];
+  const dates = dated
+    ? ANY_DATE.test(f.body)
+      ? check("has_dates", true, dated[0])
+      : check("has_dates", false, dated[1])
+    : f.kind === "cancellation"
       ? check("has_dates", true, "Says when the contract should end.")
       : f.kind === "objection"
         ? f.letterDate && text.includes(f.letterDate)

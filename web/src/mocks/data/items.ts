@@ -1,6 +1,7 @@
 import type { Item } from "@/api/types";
 import { ts } from "./constants";
 import { ev, item, receipt, spec, step } from "./helpers";
+import { DISMISSAL_RULES, ORDER_RECEIPTS } from "./highStakes";
 import { Q } from "./letters";
 
 export const ITEMS: Item[] = [
@@ -445,8 +446,55 @@ export const ITEMS: Item[] = [
   }),
 ];
 
+/** The dismissal's deadlines set by law, as the pipeline files them (`origin: "rule"`, no quote). */
+function dismissalRule(ruleId: "kschg_4" | "sgb3_38", id: string): Item {
+  const rule = DISMISSAL_RULES[ruleId]!;
+  return item({
+    id,
+    kind: "deadline",
+    title: rule.title,
+    action: rule.action,
+    consequence: rule.consequence,
+    due_date: rule.receipt.due_date,
+    send_by: rule.receipt.send_by,
+    priority: rule.priority,
+    area: "work",
+    party_id: "pty_mustertech",
+    case_id: "cas_job",
+    doc_id: "doc_dismissal",
+    origin: "rule",
+    grounding: "model_read",
+    slot_key: `rule:${ruleId}`,
+    filed_on: "2026-09-28",
+    date_spec: rule.spec,
+    computation: rule.receipt,
+    created_at: ts("2026-09-28", "09:06"),
+  });
+}
+
 /** Items created when a New-mail tray letter is processed (keyed by document). */
 export const TRAY_ITEMS: Record<string, Item[]> = {
+  doc_mahnbescheid: [
+    item({
+      id: "itm_court_objection",
+      kind: "deadline",
+      title: "Pay or object to the court payment order",
+      description: "Streamline Media claims €111.88 for a 2022 subscription.",
+      action: "If you don't owe the money, object (Widerspruch) on the enclosed form or online — no reasons needed. If you owe it, pay Streamline Media.",
+      consequence: "Streamline Media can get an enforcement order (Vollstreckungsbescheid) and have the money collected by a bailiff.",
+      due_date: ORDER_RECEIPTS.unknown!.due_date,
+      send_by: ORDER_RECEIPTS.unknown!.send_by,
+      priority: "critical",
+      area: "money",
+      party_id: "pty_mahngericht",
+      doc_id: "doc_mahnbescheid",
+      evidence: [ev("doc_mahnbescheid", Q.court.period)],
+      date_spec: spec({ type: "relative", anchor: "receipt", amount: 2, unit: "weeks", nature: "objection", text: "binnen zwei Wochen seit der Zustellung dieses Bescheids" }),
+      computation: ORDER_RECEIPTS.unknown!,
+      created_at: ts("2026-09-28", "09:05"),
+    }),
+  ],
+  doc_dismissal: [dismissalRule("kschg_4", "itm_dismissal_court"), dismissalRule("sgb3_38", "itm_dismissal_register")],
   doc_power_price: [
     item({
       id: "itm_power_cancel",

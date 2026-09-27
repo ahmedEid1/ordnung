@@ -199,3 +199,28 @@ describe("Data → delete everything", () => {
     expect(within(where).getByRole("button", { name: "Copy the folder path" })).toBeInTheDocument();
   });
 });
+
+describe("refund IBAN", () => {
+  it("flags a wrong IBAN once you leave it, won't save it, and saves a right one without spaces", async () => {
+    const { calls } = useMockApi();
+    const user = userEvent.setup();
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=profile" });
+    const iban = await screen.findByLabelText(/IBAN for refunds/);
+    await user.type(iban, "DE89 3704 0044 0532 0130 01");
+    expect(iban).not.toHaveAttribute("aria-invalid");
+    await user.tab();
+    expect(iban).toHaveAttribute("aria-invalid", "true");
+    expect(iban).toHaveAccessibleDescription(/That IBAN isn't valid/);
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(screen.getByText("Fix the highlighted field to save")).toBeInTheDocument();
+    await waitFor(() => expect(iban).toHaveFocus());
+    expect(calls.some((c) => c.method === "PUT")).toBe(false);
+    await user.clear(iban);
+    await user.type(iban, "de89 3704 0044 0532 0130 00");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.path === "/profile")).toBe(true));
+    expect(calls.find((c) => c.method === "PUT")?.body).toMatchObject({ iban: "DE89370400440532013000" });
+    expect(await screen.findByText("Saved.")).toBeInTheDocument();
+    expect(iban).toHaveValue("DE89 3704 0044 0532 0130 00");
+  });
+});

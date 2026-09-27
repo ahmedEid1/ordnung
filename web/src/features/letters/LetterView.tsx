@@ -161,7 +161,7 @@ export function LetterView({ draft }: { draft: Draft }) {
       if (dirty) await save();
       await markSent.mutateAsync({ id: draft.id, channel, date });
       setSentOpen(false);
-      toast.success(`We'll remind you to check for a reply on ${formatDate(followUpDate(date), { style: "short", today })}`, {
+      toast.success(`We'll remind you to check for a reply on ${formatDate(followUpDate(date, draft.kind), { style: "short", today })}`, {
         description: `Marked as sent ${sentVia(channel)} on ${formatDate(date, { style: "short", today })}.`,
       });
     } catch {
@@ -240,7 +240,7 @@ export function LetterView({ draft }: { draft: Draft }) {
           className="mb-6"
           title={["Sent", sentVia(draft.sent_channel), "on", formatDate(draft.sent_at?.slice(0, 10) ?? today, { style: "short", today })].filter(Boolean).join(" ")}
         >
-          We'll remind you to check for a reply on {formatDate(followUpDate(draft.sent_at ?? today), { style: "short", today })}. Keep your proof of sending.
+          We'll remind you to check for a reply on {formatDate(followUpDate(draft.sent_at ?? today, draft.kind), { style: "short", today })}. Keep your proof of sending.
         </Callout>
       ) : dirty ? (
         <p className="mb-4 flex items-center gap-2 text-[12.5px] text-muted" role="status">

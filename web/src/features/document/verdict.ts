@@ -113,14 +113,16 @@ export function needsCheck(i: Item): boolean {
 /**
  * The period starts when the letter arrived (`receipt` anchor) — or the engine counted it from the
  * arrival because the sender is no authority (`private_sender_arrival`, § 130 BGB), whatever anchor
- * it was read with — and we don't know that date yet: the rules engine fell back to the letter date
- * (earliest possible) until the person tells us. The computation decides, not the stored reading: a
- * private sender's period from a date the letter gives (`private_sender_no_delivery`) never asks.
+ * it was read with, or, for a court order, from when it was delivered (§ 180 ZPO) — and we don't know
+ * that date yet: the rules engine fell back to the letter date (earliest possible) until the person
+ * tells us. The computation decides, not the stored reading: a private sender's period from a date the
+ * letter gives (`private_sender_no_delivery`) never asks.
  */
 export function needsArrivalDate(i: Item, doc: Pick<Document, "received_date">): boolean {
   if (!isOpenItem(i)) return false;
   const fromArrival = Boolean(i.computation?.rule_ids.includes("private_sender_arrival"));
-  if (i.date_spec?.anchor !== "receipt" && !fromArrival) return false;
+  const served = Boolean(i.computation?.rule_ids.includes("zpo_180"));
+  if (i.date_spec?.anchor !== "receipt" && !fromArrival && !served) return false;
   if (!doc.received_date) return true;
   return Boolean(i.computation?.rule_ids.some((r) => r.includes("fallback")));
 }
@@ -153,6 +155,102 @@ export function arrivalSavedNote(arrived: string, items: readonly Item[]): strin
   return `${from} — but ${which} ${why}`;
 }
 
+/** The law gives these an objection whatever their instructions say (§ 694, § 700 ZPO). */
+const COURT_ORDERS = new Set<Document["kind"]>(["court_payment_order", "enforcement_order"]);
+
+/**
+ * A court's letter whose period runs from formal delivery (§ 180 ZPO), so the question is "when was it
+ * delivered?" (the date on the yellow envelope), never "when did it arrive?" with a Today button: filed
+ * as a court order, or any to-do whose receipt cites § 180 ZPO (a Versäumnisurteil's Einspruch, an
+ * order filed as another kind) — the same test as {@link needsArrivalDate}.
+ */
+export function isServed(doc: Pick<Document, "kind">, items: Item[]): boolean {
+  return COURT_ORDERS.has(doc.kind) || items.some((i) => Boolean(i.computation?.rule_ids.includes("zpo_180")));
+}
+
+/**
+ * A court order: its objection deadline is not "only if you disagree" — doing nothing lets the claim
+ * be enforced, so the person must pay or object.
+ */
+export function isCourtOrder(doc: Pick<Document, "kind">): boolean {
+  return COURT_ORDERS.has(doc.kind);
+}
+
+/**
+ * Letters whose law-set deadline is never "only if you disagree": a court order (pay or object, or it
+ * is enforced), a dismissal (only a court action in time keeps the person's rights, and the
+ * registration as job-seeking is due either way) and a landlord's notice (the home ends: have it
+ * checked, and object in time if moving out is a hardship).
+ */
+const MUST_ACT = new Set<Document["kind"]>([...COURT_ORDERS, "dismissal", "landlord_notice"]);
+
+export function mustAct(doc: Pick<Document, "kind">): boolean {
+  return MUST_ACT.has(doc.kind);
+}
+
+/**
+ * The person has dealt with the letter: it has to-dos, and they closed every one (done or dismissed) —
+ * objected, went to court, registered. For a letter without a "get advice" card (an authority's decision).
+ */
+export function isSettled(items: Item[]): boolean {
+  return !items.some(isOpenItem) && items.some((i) => i.status === "done" || i.status === "dismissed");
+}
+
+/**
+ * Whether the letter is filed, never "get advice now" again: a high-stakes letter as its card says — the
+ * server decides from the to-dos that carry its legal deadline (`advice.handled`: paying the arrears a
+ * notice without notice period demands never settles it) — any other one once every to-do is closed.
+ */
+export function isLetterSettled(detail: Pick<DocumentDetail, "advice" | "items">): boolean {
+  return detail.advice ? detail.advice.handled : isSettled(detail.items);
+}
+
+/** Why a payment may not be owed yet (see {@link notOwedReason}). */
+export type NotOwed = "late_statement" | "consent" | "if_agreed";
+
+/** A rent increase's consent decision (§ 558b BGB): the law's to-do, or the letter's own date for it — never a payment. */
+function isConsentDecision(i: Item): boolean {
+  return i.kind !== "payment" && Boolean(i.computation?.rule_ids.includes("bgb_558b"));
+}
+
+/**
+ * The person has decided about a rent increase: it has a consent decision to-do, and they closed every one
+ * (done or dismissed). Its new rent is then no longer "decide before you pay" — but closing the to-do only
+ * says they decided, not which way (dismissing it is the natural way to say "I won't agree"), so the new
+ * rent is owed only if they agreed ({@link notOwedReason}: `if_agreed`).
+ */
+export function consentDecided(items: Item[]): boolean {
+  const decisions = items.filter(isConsentDecision);
+  return decisions.length > 0 && !decisions.some(isOpenItem);
+}
+
+/**
+ * Why money the person would pay may not be owed, or null: the back-payment of an operating-cost statement
+ * that came after its twelve-month deadline (§ 556 Abs. 3 BGB; the server cites `bgb_556_3`, and the card
+ * is urgent — so even an undated one is caught; never a credit or the new monthly prepayment), or a rent
+ * increase's new rent, only owed once the person agrees (§ 558b Abs. 1 BGB; the server cites `bgb_558b`):
+ * "decide first" until they closed the decision to-do among the letter's `items` ({@link consentDecided}),
+ * then "only if you agreed" — Ordnung doesn't know which way they decided, and paying the higher rent can
+ * count as agreeing, so it never leads with "Pay" for it.
+ * It stays open (nothing is dismissed for the person), but "Pay" is no longer the main button.
+ */
+export function notOwedReason(i: Item, advice: DocumentDetail["advice"], items: Item[] = []): NotOwed | null {
+  if (i.kind !== "payment" || i.direction === "in") return null;
+  const cites = (rule: string) => Boolean(i.computation?.rule_ids.includes(rule));
+  if (cites("bgb_558b") || advice?.kind === "rent_increase") return consentDecided(items) ? "if_agreed" : "consent";
+  if (i.recurrence) return null;
+  return cites("bgb_556_3") || (advice?.kind === "operating_costs" && advice.urgent) ? "late_statement" : null;
+}
+
+export function mayNotBeOwed(i: Item, advice: DocumentDetail["advice"], items: Item[] = []): boolean {
+  return notOwedReason(i, advice, items) !== null;
+}
+
+/** The other open deadlines the law sets for this letter (a dismissal's registration), earliest first. */
+export function otherLawDeadlines(items: Item[], primary: Item | null): Item[] {
+  return items.filter((i) => i.origin === "rule" && isOpenItem(i) && i.id !== primary?.id && i.due_date).sort(compareItems);
+}
+
 export type MainAction =
   | { type: "draft"; draftKind: Extract<DraftKind, "objection" | "cancellation">; label: string; item: Item | null }
   | { type: "pay"; item: Item }
@@ -165,9 +263,10 @@ export type MainAction =
 /**
  * The one main button of the verdict card:
  * scam → never "Pay" (offer to compare with a real letter) · Einspruch/Widerspruch → draft the
- * objection (type comes from the Rechtsbehelfsbelehrung, never a guess) · a notice deadline on a
- * contract → draft the cancellation · a payment → Pay · a dated to-do → Add to calendar ·
- * otherwise Mark done.
+ * objection (type comes from the Rechtsbehelfsbelehrung, never a guess), unless the person has dealt
+ * with the letter ({@link isLetterSettled}) · a notice deadline on a
+ * contract → draft the cancellation · a payment → Pay (not when it may not be owed, see
+ * {@link mayNotBeOwed}) · a dated to-do → Add to calendar · otherwise Mark done.
  */
 export function chooseMainAction(detail: DocumentDetail, primary: Item | null): MainAction {
   const scam = scamSuggestion(detail);
@@ -176,14 +275,24 @@ export function chooseMainAction(detail: DocumentDetail, primary: Item | null): 
     return { type: "scam", realDocId: real?.id ?? null };
   }
   const remedy = detail.document.remedy?.type;
-  if ((remedy === "einspruch" || remedy === "widerspruch") && (!primary || isOpenItem(primary))) {
+  const courtOrder = isCourtOrder(detail.document);
+  // once the person dealt with the letter (objected, or paid), it is settled: no objection to draft
+  const stillOpen = primary ? isOpenItem(primary) : !isLetterSettled(detail);
+  if ((remedy === "einspruch" || remedy === "widerspruch" || courtOrder) && stillOpen) {
     return { type: "draft", draftKind: "objection", label: "Draft objection", item: primary };
   }
   if (!primary || !isOpenItem(primary)) return { type: "none" };
   if (primary.date_spec?.nature === "notice" && primary.contract_id) {
     return { type: "draft", draftKind: "cancellation", label: "Draft cancellation", item: primary };
   }
-  if (primary.kind === "payment" && primary.direction !== "in" && primary.amount != null && !isDirectDebit(primary)) return { type: "pay", item: primary };
+  if (
+    primary.kind === "payment" &&
+    primary.direction !== "in" &&
+    primary.amount != null &&
+    !isDirectDebit(primary) &&
+    !mayNotBeOwed(primary, detail.advice, detail.items)
+  )
+    return { type: "pay", item: primary };
   if (primary.due_date) return { type: "calendar", item: primary };
   return { type: "done", item: primary };
 }

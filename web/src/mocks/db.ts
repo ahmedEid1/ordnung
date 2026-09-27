@@ -135,6 +135,28 @@ export class MockDb {
     return this.state.documents.filter((d) => !d.deleted_at);
   }
 
+  /** The kind a demo letter was filed as when it was read (its seed), or `null` for an upload. */
+  seedKind(docId: string): Document["kind"] | null {
+    return (TRAY_DOCUMENTS[docId] ?? DOCUMENTS.find((d) => d.id === docId))?.kind ?? null;
+  }
+
+  /**
+   * The person chose a letter's kind: the deadlines the law added to the kind it was read as leave with
+   * it (open, unedited ones — as the real app files them), and come back when it is filed as that kind
+   * again. The demo can't work out the deadlines of a kind it wasn't read as.
+   */
+  refileRuleItems(d: Document) {
+    const seeded = [...(TRAY_ITEMS[d.id] ?? []), ...ITEMS.filter((i) => i.doc_id === d.id)].filter((i) => i.origin === "rule");
+    if (d.kind === this.seedKind(d.id)) {
+      const now = nowTs();
+      for (const it of resolveAll(clone(seeded))) {
+        if (!this.state.items.some((x) => x.id === it.id)) this.state.items.push({ ...it, created_at: now, updated_at: now });
+      }
+      return;
+    }
+    this.state.items = this.state.items.filter((i) => !(i.doc_id === d.id && i.origin === "rule" && i.status === "open" && !i.user_modified));
+  }
+
   /** Apply the processed result of a New-mail tray letter (docs, items, ideas, parties). */
   applyTrayDocument(docId: string): Document | null {
     const full = TRAY_DOCUMENTS[docId];

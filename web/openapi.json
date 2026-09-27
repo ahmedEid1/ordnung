@@ -491,7 +491,13 @@
                     "broadcasting_fee",
                     "certificate",
                     "personal",
-                    "other"
+                    "other",
+                    "court_payment_order",
+                    "enforcement_order",
+                    "dismissal",
+                    "landlord_notice",
+                    "rent_increase",
+                    "operating_costs"
                   ],
                   "type": "string"
                 },
@@ -2211,7 +2217,7 @@
           "drafts"
         ],
         "summary": "Create Draft",
-        "description": "Draft a cancellation, objection or reply: fixed legal wording, model-written courtesy text and\ntranslation, automatic checks and \"how to send it\".",
+        "description": "Draft a cancellation, objection, reply or template letter (withdrawal, more time, instalments,\ndefect, data access, receipts, deposit, new address): fixed legal wording, model-written courtesy\ntext and translation, automatic checks and \"how to send it\".",
         "operationId": "create_draft_api_drafts_post",
         "requestBody": {
           "content": {
@@ -2786,6 +2792,48 @@
           "data"
         ],
         "title": "Activity"
+      },
+      "AdviceFact": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warn",
+              "good"
+            ],
+            "title": "Tone",
+            "default": "info"
+          },
+          "citation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "text",
+          "tone",
+          "citation"
+        ],
+        "title": "AdviceFact",
+        "description": "One computed or legal point on a high-stakes letter's card (e.g. the rent cap check)."
       },
       "AppSettings": {
         "properties": {
@@ -4750,7 +4798,13 @@
                   "broadcasting_fee",
                   "certificate",
                   "personal",
-                  "other"
+                  "other",
+                  "court_payment_order",
+                  "enforcement_order",
+                  "dismissal",
+                  "landlord_notice",
+                  "rent_increase",
+                  "operating_costs"
                 ]
               },
               {
@@ -5066,6 +5120,16 @@
           "document": {
             "$ref": "#/components/schemas/Document"
           },
+          "advice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LetterAdvice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "pages": {
             "items": {
               "$ref": "#/components/schemas/PageInfo"
@@ -5132,6 +5196,7 @@
         "type": "object",
         "required": [
           "document",
+          "advice",
           "pages",
           "items",
           "contracts",
@@ -5187,7 +5252,13 @@
                   "broadcasting_fee",
                   "certificate",
                   "personal",
-                  "other"
+                  "other",
+                  "court_payment_order",
+                  "enforcement_order",
+                  "dismissal",
+                  "landlord_notice",
+                  "rent_increase",
+                  "operating_costs"
                 ]
               },
               {
@@ -5321,7 +5392,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "DocumentPatch",
-        "description": "Corrections the person can make to a letter. ``received_date`` (when the letter arrived) and\n``doc_date`` recompute the letter's to-dos with the rules engine unless ``received_confirmed`` is\n``false``."
+        "description": "Corrections the person can make to a letter. ``received_date`` (when the letter arrived) and\n``doc_date`` recompute the letter's to-dos with the rules engine unless ``received_confirmed`` is\n``false``; so does ``kind``, which decides the rules of high-stakes letters (a court order, a\ndismissal …)."
       },
       "Draft": {
         "properties": {
@@ -5334,7 +5405,15 @@
             "enum": [
               "cancellation",
               "objection",
-              "general_reply"
+              "general_reply",
+              "withdrawal",
+              "extension_request",
+              "payment_plan",
+              "defect_notice",
+              "data_access",
+              "receipts_inspection",
+              "deposit_return",
+              "address_change"
             ],
             "title": "Kind"
           },
@@ -5558,7 +5637,15 @@
             "enum": [
               "cancellation",
               "objection",
-              "general_reply"
+              "general_reply",
+              "withdrawal",
+              "extension_request",
+              "payment_plan",
+              "defect_notice",
+              "data_access",
+              "receipts_inspection",
+              "deposit_return",
+              "address_change"
             ],
             "title": "Kind"
           },
@@ -5621,6 +5708,23 @@
             ],
             "title": "Language",
             "default": "de"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LetterDetails"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the facts a template letter needs (withdrawal, payment plan …)"
+          },
+          "suspend_enforcement": {
+            "type": "boolean",
+            "title": "Suspend Enforcement",
+            "description": "an objection also applies to suspend enforcement (einstweilige Einstellung at a court, Aussetzung der Vollziehung at an authority); ignored for other letters and a court payment order",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -5874,6 +5978,37 @@
           "checks"
         ],
         "title": "Health"
+      },
+      "HelpLink": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "what": {
+            "type": "string",
+            "title": "What"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "what",
+          "url"
+        ],
+        "title": "HelpLink",
+        "description": "Independent, free or low-cost help for a high-stakes letter (information, not legal advice)."
       },
       "Identifier": {
         "properties": {
@@ -7068,6 +7203,336 @@
         ],
         "title": "LaneBar"
       },
+      "LetterAdvice": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "court_payment_order",
+              "enforcement_order",
+              "dismissal",
+              "landlord_notice",
+              "rent_increase",
+              "operating_costs"
+            ],
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "urgent": {
+            "type": "boolean",
+            "title": "Urgent",
+            "default": false
+          },
+          "steps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Steps"
+          },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/AdviceFact"
+            },
+            "type": "array",
+            "title": "Facts"
+          },
+          "help": {
+            "items": {
+              "$ref": "#/components/schemas/HelpLink"
+            },
+            "type": "array",
+            "title": "Help"
+          },
+          "rule_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Rule Ids"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "cancellation",
+                  "objection",
+                  "general_reply",
+                  "withdrawal",
+                  "extension_request",
+                  "payment_plan",
+                  "defect_notice",
+                  "data_access",
+                  "receipts_inspection",
+                  "deposit_return",
+                  "address_change"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft"
+          },
+          "handled": {
+            "type": "boolean",
+            "title": "Handled",
+            "default": false
+          },
+          "closable": {
+            "type": "boolean",
+            "title": "Closable",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "title",
+          "summary",
+          "urgent",
+          "steps",
+          "facts",
+          "help",
+          "rule_ids",
+          "draft",
+          "handled",
+          "closable"
+        ],
+        "title": "LetterAdvice",
+        "description": "The \"get advice\" card of a high-stakes letter, worked out on read (:mod:`ordnung.rules.advice`).\n\n``urgent`` letters (court orders, a dismissal) always carry it; the others show it as information."
+      },
+      "LetterDetails": {
+        "properties": {
+          "subject_matter": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Matter",
+            "description": "what was ordered or agreed, e.g. 'Kaffeemaschine'"
+          },
+          "ordered_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ordered On",
+            "description": "the day the contract was concluded"
+          },
+          "received_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received On",
+            "description": "the day the goods arrived"
+          },
+          "instructions_missing": {
+            "type": "boolean",
+            "title": "Instructions Missing",
+            "description": "no (or wrong) instructions about the right of withdrawal were given",
+            "default": false
+          },
+          "deadline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deadline",
+            "description": "the deadline that should be extended"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until",
+            "description": "the new date asked for"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount",
+            "description": "the total owed, or the deposit"
+          },
+          "instalment": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instalment",
+            "description": "the monthly instalment offered"
+          },
+          "first_instalment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Instalment",
+            "description": "the day of the first instalment"
+          },
+          "defect": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Defect",
+            "description": "what is broken or wrong"
+          },
+          "noticed_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Noticed On",
+            "description": "since when the defect exists"
+          },
+          "fix_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fix By",
+            "description": "the day by which it should be repaired"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period",
+            "description": "the billing period"
+          },
+          "moved_out_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moved Out On",
+            "description": "the day the flat was handed back"
+          },
+          "moved_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moved On",
+            "description": "the day of the move"
+          },
+          "old_address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Address"
+          },
+          "new_address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Address"
+          },
+          "recipient": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient",
+            "description": "name and address of a recipient not in Ordnung yet"
+          }
+        },
+        "type": "object",
+        "title": "LetterDetails",
+        "description": "Facts a template letter needs besides the letter, contract or person it is about.\n\nEverything is optional here; each template names the facts it requires\n(:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused\nwith a clear message, never a server error), amounts in euros."
+      },
       "MailOpenRequest": {
         "properties": {
           "id": {
@@ -7655,6 +8120,11 @@
             "type": "boolean",
             "title": "Onboarded",
             "default": false
+          },
+          "iban": {
+            "type": "string",
+            "title": "Iban",
+            "default": ""
           }
         },
         "type": "object",
@@ -7670,7 +8140,8 @@
           "reminder_days",
           "postal_buffer_days",
           "is_student_visa",
-          "onboarded"
+          "onboarded",
+          "iban"
         ],
         "title": "Profile"
       },
@@ -7823,6 +8294,19 @@
               }
             ],
             "title": "Onboarded"
+          },
+          "iban": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iban",
+            "description": "your account, for refunds (empty: none)"
           }
         },
         "additionalProperties": false,
@@ -9339,7 +9823,15 @@
             "enum": [
               "cancellation",
               "objection",
-              "general_reply"
+              "general_reply",
+              "withdrawal",
+              "extension_request",
+              "payment_plan",
+              "defect_notice",
+              "data_access",
+              "receipts_inspection",
+              "deposit_return",
+              "address_change"
             ],
             "title": "Kind",
             "type": "string"

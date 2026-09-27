@@ -1082,7 +1082,7 @@ def test_a_private_senders_letter_without_a_date_still_asks_for_the_arrival_day(
 
 def test_the_periods_own_words_never_bring_deemed_delivery_back() -> None:
     """Reviewer repro: words that may name an administrative act are no proof — a gym writes "nach
-    Bekanntgabe der Preiserhöhung", an employer's certificate cites "§ 38 Abs. 1 SGB III". A sender filed
+    Bekanntgabe der Preiserhöhung", an employer's certificate cites "§ 312 Abs. 1 SGB III". A sender filed
     as private keeps counting from the day it arrived, the earliest plausible start: deemed delivery
     would make these dates 3 days late (Mon 19 Oct)."""
     arrived = {"received_date": D("2026-10-02"), "received_confirmed": True}
@@ -1100,14 +1100,37 @@ def test_the_periods_own_words_never_bring_deemed_delivery_back() -> None:
     assert receipt.steps[0].rule_id == "private_sender_arrival"
     assert not {"posting_day", "early_receipt"} & set(receipt.rule_ids)
     assert compute_due(gym, context).due_date == "2026-10-15"  # the letter's date until it is given
+    # (§ 38 Abs. 1 SGB III itself is routed to the job-seeking registration's own rule, rules.letters)
     employer = gym.model_copy(
-        update={"legal_basis": "§ 38 Abs. 1 SGB III", "text": "innerhalb von zwei Wochen"}
+        update={"legal_basis": "§ 312 Abs. 1 SGB III", "text": "innerhalb von zwei Wochen"}
     )
     certificate = compute_due(employer, replace(context, sender_kind="employer", **arrived))
     assert certificate.due_date == "2026-10-16" and "private_sender_arrival" in certificate.rule_ids
     # a remedy statute is more than a word: it names the authority's own procedure, which keeps its rule
     statute = notice_spec(legal_basis="§ 70 VwGO")
     assert from_arrival(statute, context) is statute
+
+
+def test_the_private_sender_rule_and_the_court_rules_meet() -> None:
+    """Integration of the private-sender rule (a company's letter counts from arrival) with the court
+    rules: a court's letter, and a court order filed by its kind, is never re-anchored as a private
+    sender's, even from a sender filed under a private kind — its periods run from formal service
+    (§ 180 ZPO). A private-law period a private sender's letter names — the Kündigungsschutzklage's
+    three weeks from the dismissal's receipt (§ 4 S. 1 KSchG) — still runs from arrival, never 3 days
+    late from a delivery fiction."""
+    spec = notice_spec(amount=2, unit="weeks")
+    company = ctx(today="2026-09-28", document_date="2026-09-23", private_sender=True, sender_kind="company")
+    assert from_arrival(spec, company) is not spec
+    assert from_arrival(spec, replace(company, court=True)) is spec
+    assert from_arrival(spec, replace(company, letter_kind="court_payment_order")) is spec
+    court = compute_due(spec, replace(company, court=True))
+    assert "private_sender_arrival" not in court.rule_ids and "zpo_180" in court.rule_ids
+    kschg = notice_spec(amount=3, unit="weeks", legal_basis="§ 4 KSchG")
+    employer = ctx(today="2026-09-26", document_date="2026-09-01", private_sender=True, sender_kind="employer")
+    counted = from_arrival(kschg, employer)
+    assert counted is not kschg and counted.anchor == "receipt"
+    dismissal = compute_due(kschg, employer)
+    assert dismissal.due_date == "2026-09-22" and {"kschg_4", "private_sender_arrival"} <= set(dismissal.rule_ids)
 
 
 @pytest.mark.parametrize(

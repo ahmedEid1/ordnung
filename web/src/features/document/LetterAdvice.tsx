@@ -1,0 +1,219 @@
+/**
+ * The "get advice" card of a high-stakes letter (a court order, a dismissal, a landlord's notice,
+ * a rent increase, an operating-cost statement): what the letter means, the steps in order, the
+ * facts Ordnung worked out from the law (time-bar, rent cap, a late statement) and free or
+ * low-cost help nearby. The card comes from the backend (`DocumentDetail.advice`); nothing here is
+ * computed. Urgent letters (court orders, a dismissal) are styled as a warning. A handled card
+ * (`advice.handled`: the person closed the to-dos that carry its deadline) says so and offers no letter
+ * to draft; a card no to-do can close (`advice.closable`: a landlord's notice without notice period)
+ * lets the person say they have dealt with it — stored as the letter's `dealt-with` tag, and undoable.
+ */
+import { ArrowUpRight, CircleCheck, CircleCheckBig, FileSearch, Info, PenLine, Scale, TriangleAlert, type LucideIcon } from "lucide-react";
+import type { AdviceFact, Document, DraftKind, LetterAdvice } from "@/api/types";
+import { useUpdateDocument } from "@/api/hooks";
+import { Button } from "@/components/ui/Button";
+import { toast } from "@/components/ui/Toast";
+import { cn } from "@/lib/utils";
+import { useStartDraft } from "./actions";
+
+/** The tag a letter carries once the person said they dealt with a card no to-do can close (the server's `DEALT_WITH_TAG`). */
+export const DEALT_WITH_TAG = "dealt-with";
+
+const FACT_TONE: Record<AdviceFact["tone"], { box: string; icon: LucideIcon; iconClass: string; title: string }> = {
+  info: { box: "border-line bg-surface-2/60", icon: Info, iconClass: "text-muted", title: "text-ink" },
+  warn: { box: "border-warn/30 bg-warn-soft", icon: TriangleAlert, iconClass: "text-warn", title: "text-warn-ink" },
+  good: { box: "border-ok/25 bg-ok-soft", icon: CircleCheck, iconClass: "text-ok", title: "text-ok-ink" },
+};
+
+/** Keep a citation's parts on one line ("§ 38 Abs. 1 S. 4 SGB III" never breaks after "§"). */
+export function keepCitations(text: string): string {
+  return text.replace(/(§|Abs\.|S\.|Nr\.|Art\.)\s+(?=\d)/g, "$1\u00a0");
+}
+
+/**
+ * How the card's letter reads (`advice.draft`, decided by the backend: none for a notice without
+ * notice period, where the hardship objection doesn't apply; court orders get theirs from the verdict).
+ */
+const CARD_ACTION: Partial<Record<DraftKind, { label: string; icon: LucideIcon }>> = {
+  objection: { label: "Draft a hardship objection", icon: PenLine },
+  receipts_inspection: { label: "Ask to see the receipts", icon: FileSearch },
+};
+
+/** "I've dealt with this" on a card no to-do can close, and its undo once it is handled that way. */
+function DealtWith({ advice, doc }: { advice: LetterAdvice; doc: Pick<Document, "id" | "tags"> }) {
+  const update = useUpdateDocument();
+  const tags = doc.tags ?? [];
+  const mark = (dealt: boolean) =>
+    update.mutate(
+      { id: doc.id, patch: { tags: dealt ? [...tags.filter((t) => t !== DEALT_WITH_TAG), DEALT_WITH_TAG] : tags.filter((t) => t !== DEALT_WITH_TAG) } },
+      {
+        onSuccess: () =>
+          dealt
+            ? toast.success("Marked as dealt with", {
+                description: "The card stays on the letter for reference. Nothing was sent.",
+                undo: () => update.mutate({ id: doc.id, patch: { tags: tags.filter((t) => t !== DEALT_WITH_TAG) } }),
+              })
+            : toast.success("Back to “get advice now”"),
+      },
+    );
+  if (advice.handled) {
+    return tags.includes(DEALT_WITH_TAG) ? (
+      <Button size="sm" variant="ghost" loading={update.isPending} onClick={() => mark(false)}>
+        Not dealt with yet
+      </Button>
+    ) : null;
+  }
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[13px] leading-snug text-ink/80">Had advice, moved out, or settled it? No to-do can close this letter — say so here. Nothing is sent.</p>
+      <Button size="sm" variant="secondary" icon={CircleCheckBig} loading={update.isPending} onClick={() => mark(true)}>
+        I've dealt with this
+      </Button>
+    </div>
+  );
+}
+
+export function LetterAdviceCard({ advice, doc }: { advice: LetterAdvice; doc: Pick<Document, "id" | "party_id" | "case_id" | "tags"> }) {
+  const draft = useStartDraft();
+  const urgent = advice.urgent;
+  // a handled letter has nothing left to object to in time: no letter to draft
+  const draftKind = advice.handled ? null : (advice.draft ?? null);
+  const action = draftKind ? CARD_ACTION[draftKind] : undefined;
+  const titleId = `advice-${doc.id}`;
+  return (
+    <section
+      aria-labelledby={titleId}
+      className={cn("@container overflow-hidden rounded-2xl border", urgent ? "border-warn/35 bg-warn-soft" : "border-line bg-surface shadow-[var(--shadow-card)]")}
+    >
+      <div className="flex gap-3 px-4 pb-1 pt-4 sm:px-5">
+        <span
+          className={cn(
+            "grid size-9 shrink-0 place-items-center rounded-xl",
+            urgent ? "bg-warn text-white dark:text-canvas" : "bg-accent-soft text-accent",
+          )}
+        >
+          <Scale className="size-5" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className={cn("text-[12px] font-semibold uppercase tracking-[0.07em]", urgent ? "text-warn-ink" : "text-muted")}>
+            {urgent ? "Act now — and get advice" : "Know your rights"}
+          </p>
+          <h2 id={titleId} className="mt-0.5 text-[15.5px] font-semibold leading-snug text-ink [overflow-wrap:anywhere]">
+            {advice.title}
+          </h2>
+        </div>
+      </div>
+
+      {/* the summary lines up with the steps below it: under the title on a wide card, full width on a narrow one */}
+      <div className="space-y-4 px-4 pb-4 pt-2 sm:px-5 @[34rem]:pl-[68px]">
+        {advice.handled ? (
+          <p role="status" className="flex items-start gap-2 rounded-xl border border-ok/25 bg-ok-soft px-3 py-2 text-[13.5px] font-medium leading-snug text-ok-ink">
+            <CircleCheck className="mt-0.5 size-4 shrink-0 text-ok" aria-hidden />
+            <span>
+              {doc.tags?.includes(DEALT_WITH_TAG) && advice.closable
+                ? "You marked this letter as dealt with. The card stays here for reference."
+                : "You've closed the to-dos that carry this letter's deadline. The card stays here for reference."}
+            </span>
+          </p>
+        ) : null}
+        <p className="text-[14px] leading-relaxed text-ink/85">{keepCitations(advice.summary)}</p>
+        {advice.steps.length ? (
+          <div>
+            <h3 className={cn("text-[12px] font-semibold uppercase tracking-[0.07em]", urgent ? "text-warn-ink/85" : "text-muted")}>What to do</h3>
+            <ol className="mt-2 space-y-2">
+              {advice.steps.map((s, i) => (
+                <li key={s} className="flex gap-2.5 text-[13.5px] leading-snug text-ink/90">
+                  <span
+                    className={cn(
+                      "grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-bold tabular-nums",
+                      urgent ? "bg-surface/80 text-warn-ink ring-1 ring-warn/30" : "bg-surface-3 text-muted",
+                    )}
+                    aria-hidden
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 pt-px">{keepCitations(s)}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : null}
+
+        {advice.facts.length ? (
+          <ul className="space-y-2" aria-label="What Ordnung worked out">
+            {advice.facts.map((f) => {
+              const t = FACT_TONE[f.tone] ?? FACT_TONE.info;
+              return (
+                <li key={f.title} className={cn("flex gap-2.5 rounded-xl border px-3 py-2.5", t.box, urgent && f.tone === "info" && "bg-surface/70")}>
+                  <t.icon className={cn("mt-0.5 size-4 shrink-0", t.iconClass)} aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("text-[13.5px] font-semibold leading-5", t.title)}>{f.title}</p>
+                    <p className="mt-0.5 text-[13px] leading-relaxed text-ink/85">{keepCitations(f.text)}</p>
+                    {f.citation ? <p className="mt-1 text-[12px] leading-4 text-muted">{keepCitations(f.citation)}</p> : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+
+        {advice.help.length ? (
+          <div>
+            <h3 className={cn("text-[12px] font-semibold uppercase tracking-[0.07em]", urgent ? "text-warn-ink/85" : "text-muted")}>Free or low-cost help</h3>
+            <ul className="mt-2 grid gap-2 @[34rem]:grid-cols-2">
+              {advice.help.map((h) => {
+                const box = cn(
+                  "flex h-full flex-col rounded-xl border px-3 py-2.5",
+                  urgent ? "border-warn/25 bg-surface/70" : "border-line bg-surface-2/40",
+                );
+                return (
+                  <li key={h.name} className="min-w-0">
+                    {h.url ? (
+                      <a
+                        href={h.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className={cn(box, "group transition-colors", urgent ? "hover:bg-surface" : "hover:border-line-strong hover:bg-surface-2/70")}
+                      >
+                        <span className="flex items-start gap-1 text-[13.5px] font-semibold leading-5 text-accent">
+                          <span className="min-w-0 [overflow-wrap:anywhere] group-hover:underline group-hover:underline-offset-2">{h.name}</span>
+                          <ArrowUpRight className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                          <span className="sr-only"> (opens in a new tab)</span>
+                        </span>
+                        <span className="mt-0.5 text-[12.5px] leading-snug text-muted">{keepCitations(h.what)}</span>
+                      </a>
+                    ) : (
+                      <div className={box}>
+                        <span className="text-[13.5px] font-semibold leading-5 text-ink [overflow-wrap:anywhere]">{h.name}</span>
+                        <span className="mt-0.5 text-[12.5px] leading-snug text-muted">{h.what}</span>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
+
+        {action && draftKind ? (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={action.icon}
+              loading={draft.pending}
+              onClick={() => draft.start(draftKind, { doc_id: doc.id, party_id: doc.party_id, case_id: doc.case_id })}
+            >
+              {action.label}
+            </Button>
+          </div>
+        ) : null}
+        {advice.closable ? <DealtWith advice={advice} doc={doc} /> : null}
+      </div>
+
+      <p className={cn("border-t px-4 py-2 text-[12px] leading-5 text-muted sm:px-5", urgent ? "border-warn/20 bg-surface/40" : "border-line bg-surface-2/40")}>
+        Not legal advice. Ordnung reads the letter and applies the law as written; only an advice service or a lawyer can check your case.
+      </p>
+    </section>
+  );
+}

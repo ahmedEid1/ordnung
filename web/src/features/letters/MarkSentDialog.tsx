@@ -87,7 +87,7 @@ export function MarkSentDialog({ open, onClose, draft, onConfirm, pending }: Mar
         </Callout>
       ) : null}
 
-      <Field label="When?" className="mt-5" hint={validDate ? `We'll remind you to check for a reply on ${formatDate(followUpDate(date), { style: "short", today })}.` : "Choose a date up to today."}>
+      <Field label="When?" className="mt-5" hint={validDate ? `We'll remind you to check for a reply on ${formatDate(followUpDate(date, draft.kind), { style: "short", today })}.` : "Choose a date up to today."}>
         <Input type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} className="w-48" />
       </Field>
 

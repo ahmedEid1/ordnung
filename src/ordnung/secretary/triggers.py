@@ -27,6 +27,7 @@ from ordnung.db.store import Store
 from ordnung.ids import content_id
 from ordnung.ingest.link import reminder_covers
 from ordnung.models import (
+    PAYMENT_DEMAND_KINDS,
     Area,
     Contract,
     ContractComputation,
@@ -406,7 +407,9 @@ class Ledger:
         """
         if self._covered is None:
             reminders = [
-                doc for doc in self.documents.values() if doc.kind == "dunning" and not self.scam_reasons(doc)
+                doc
+                for doc in self.documents.values()
+                if doc.kind in PAYMENT_DEMAND_KINDS and not self.scam_reasons(doc)
             ]
             self._covered = {
                 doc.id: reminder

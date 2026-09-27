@@ -448,6 +448,51 @@ export const DOCUMENTS: Document[] = [
 
 /** Documents produced by opening New-mail tray letters (full processed state). */
 export const TRAY_DOCUMENTS: Record<string, Document> = {
+  doc_mahnbescheid: doc({
+    id: "doc_mahnbescheid",
+    filename: "Mahnbescheid_AG_Hagen.pdf",
+    title: "Court payment order (Mahnbescheid) — Streamline Media",
+    kind: "court_payment_order",
+    area: "money",
+    doc_date: "2026-09-23",
+    received_date: null,
+    party_id: "pty_mahngericht",
+    source: "demo_mail",
+    urgency: "critical",
+    summary:
+      "Amtsgericht Hagen sent a court payment order for €111.88 that Streamline Media GmbH claims for a 2022 subscription. Within two weeks of delivery you pay or object (Widerspruch).",
+    explanation:
+      "This is not an ordinary reminder: a court sent it on behalf of Streamline Media, without checking whether they are right. If you don't recognise the subscription or it was cancelled, object on the enclosed form or online — no reasons needed. If you do nothing, Streamline Media can get an enforcement order and have the money collected.",
+    key_facts: [
+      fact("Claimed", "€111.88 (€59.88 subscription 2022 + interest and costs)", ev("doc_mahnbescheid", Q.court.total)),
+      fact("Object within", "two weeks of delivery", ev("doc_mahnbescheid", Q.court.period)),
+      fact("The court checked the claim", "No", ev("doc_mahnbescheid", Q.court.unchecked)),
+    ],
+    references: [{ label: "Geschäftsnummer", value: "26-4471902-0-3" }],
+    remedy: { type: "widerspruch", addressee: "Amtsgericht Hagen", period_text: "binnen zwei Wochen seit der Zustellung dieses Bescheids", form_text: null, quote: Q.court.period },
+    warnings: ["We don't know yet when the letter was delivered — the date is on the yellow envelope. Until you tell us, dates count from the letter date (23 Sep), the earliest possible."],
+  }),
+  doc_dismissal: doc({
+    id: "doc_dismissal",
+    filename: "Kuendigung_MusterTech.pdf",
+    title: "Dismissal by Muster Tech — your job ends on 31 Oct",
+    kind: "dismissal",
+    area: "work",
+    doc_date: "2026-09-25",
+    received_date: "2026-09-28",
+    party_id: "pty_mustertech",
+    case_id: "cas_job",
+    source: "demo_mail",
+    urgency: "critical",
+    summary: "Muster Tech ends your Werkstudent job with notice on 31 Oct 2026. The letter gives no reason.",
+    explanation:
+      "Your employer has dismissed you. If you think the dismissal is wrong, only a court action at the labour court within three weeks keeps your rights — get advice now. Either way, register as job-seeking with the Agentur für Arbeit within three days.",
+    key_facts: [
+      fact("Job ends", "31 Oct 2026", ev("doc_dismissal", Q.dismissal.notice)),
+      fact("Register as job-seeking", "straight away (§ 38 SGB III)", ev("doc_dismissal", Q.dismissal.register)),
+    ],
+    references: [{ label: "Personalnummer", value: "WS-0417" }],
+  }),
   doc_power_price: doc({
     id: "doc_power_price",
     filename: "Stadtwerke_Preisanpassung.pdf",

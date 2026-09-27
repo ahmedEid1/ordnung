@@ -67,6 +67,7 @@ from ordnung.ingest.plan import (
     ComputedDate,
     VerifiedItem,
     compute_item,
+    end_date_grounding,
     remedy_text,
     remedy_warnings,
     verify_extraction,
@@ -92,6 +93,7 @@ from ordnung.models import ContractTerms, DocumentExtraction, DocumentKind, Item
 from ordnung.rules import RuleContext, compute_contract, is_private_sender, scope_for_party_kind
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
+from ordnung.rules.routing import announced_end, is_court, is_labour_court, letter_kind
 from ordnung.secretary.scam import iban_valid, invalid_iban_message, normalize_iban
 
 EVALS_DIR = Path(__file__).resolve().parent
@@ -316,16 +318,23 @@ async def transcribe_missing(
     return updated, warnings
 
 
-def ordnung_rule_context(entry: Entry, extraction: DocumentExtraction) -> RuleContext:
+def ordnung_rule_context(
+    entry: Entry, extraction: DocumentExtraction, pages: Sequence[Page] = ()
+) -> RuleContext:
     """The rules engine's context: the entry's today and Länder, the extracted letter date and scope.
 
     The holiday region is the authority's Land when the letterhead names one (``None`` → nationwide
-    holidays only, which the dataset guarantees gives the legal date); the delivery scope — and
-    whether the sender has deemed delivery at all — follows the sender's kind, name and remedy notice
-    exactly as in the app (``ingest.plan.rule_context``).
+    holidays only, which the dataset guarantees gives the legal date). As in the app
+    (``ingest.plan.rule_context``), the delivery scope — and whether the sender has deemed delivery at
+    all — follows the sender's kind, name and remedy notice; the letter's kind and the end a termination
+    announces (graded against the letter's ``pages``) route the dates of high-stakes letters
+    (``rules.routing``); and a court's letter is marked as one, and a labour court's, from the sender's
+    name. Only what the app learns from the person is left out: the benchmark has no confirmed arrival
+    day and no sender record with its Land.
     """
     sender = extraction.sender
     remedy = extraction.remedy
+    name = sender.name if sender else ""
     kind = sender.kind if sender else None
     remedy_type = remedy.type if remedy else None
     notice = remedy_text(remedy)
@@ -340,6 +349,11 @@ def ordnung_rule_context(entry: Entry, extraction: DocumentExtraction) -> RuleCo
         recipient_region=entry.recipient_region or PERSONA_REGION,
         private_sender=is_private_sender(kind, scope=scope, remedy_type=remedy_type, remedy_text=notice),
         sender_kind=kind,
+        letter_kind=letter_kind(extraction),
+        end_date=announced_end(extraction),
+        end_date_grounding=end_date_grounding(extraction, pages),
+        court=is_court(name),
+        labour_court=is_labour_court(name),
     )
 
 
@@ -442,7 +456,7 @@ async def run_ordnung(entry: Entry, document: PreparedDocument, llm: LLMService,
     except (ExtractionError, ClaudeBadOutput) as exc:
         return base.model_copy(update={"failed": str(exc), "warnings": warnings, "signals": signals})
     verification = verify_extraction(entry.id, extraction, pages)
-    ctx = ordnung_rule_context(entry, extraction)
+    ctx = ordnung_rule_context(entry, extraction, pages)
     computed = [compute_item(v, ctx, postal_buffer_days=POSTAL_BUFFER_DAYS) for v in verification.items]
     terms = contract_terms(extraction)
     contract = None

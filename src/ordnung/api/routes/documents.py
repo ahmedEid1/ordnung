@@ -14,6 +14,7 @@ import asyncio
 import hashlib
 from collections.abc import Sequence
 from datetime import date
+from functools import partial
 from pathlib import Path
 from typing import Annotated
 
@@ -39,19 +40,26 @@ from ordnung.ingest.intake import (
 )
 from ordnung.ingest.link import DUNNING_ITEM_NOTE
 from ordnung.ingest.pipeline import add_file, ledger_lock, reprocess
+from ordnung.ingest.plan import KIND_CHOSEN, is_statement
 from ordnung.llm.replay import ReplayBackend
 from ordnung.models import (
+    HIGH_STAKES_KINDS,
     Area,
     Direction,
     Document,
     DocumentDetail,
-    DocumentKind,
     DocumentStatus,
     Item,
     Job,
+    LetterAdvice,
+    LetterKind,
     PageInfo,
     Suggestion,
 )
+from ordnung.rules.advice import letter_advice, settles
+from ordnung.rules.deadlines import parse_date
+from ordnung.rules.routing import alternative_notice, announced_end, extraordinary_notice, is_labour_court
+from ordnung.rules.tenancy import notice_objection_deadline
 from ordnung.secretary.triggers import Ledger
 
 router = APIRouter(tags=["documents"])
@@ -88,12 +96,13 @@ class UploadResult(BaseModel):
 class DocumentPatch(BaseModel):
     """Corrections the person can make to a letter. ``received_date`` (when the letter arrived) and
     ``doc_date`` recompute the letter's to-dos with the rules engine unless ``received_confirmed`` is
-    ``false``."""
+    ``false``; so does ``kind``, which decides the rules of high-stakes letters (a court order, a
+    dismissal …)."""
 
     model_config = ConfigDict(extra="forbid")
 
     title: str | None = None
-    kind: DocumentKind | None = None
+    kind: LetterKind | None = None
     area: Area | None = None
     tags: list[str] | None = None
     doc_date: IsoDate | None = None
@@ -122,7 +131,7 @@ class DeleteResult(BaseModel):
 def list_documents(
     store: StoreDep,
     q: str | None = None,
-    kind: DocumentKind | None = None,
+    kind: LetterKind | None = None,
     party_id: str | None = None,
     case_id: str | None = None,
     status_: Annotated[DocumentStatus | None, Query(alias="status")] = None,
@@ -184,9 +193,68 @@ def _with_reminder_notes(store: Store, items: list[Item], today: date) -> list[I
     ]
 
 
+#: The tag a letter carries once the person said they dealt with a card no to-do can settle
+#: (``LetterAdvice.closable``: a landlord's notice without notice period, or without an objection to-do).
+DEALT_WITH_TAG = "dealt-with"
+
+
+def letter_card(store: Store, document: Document, today: date) -> LetterAdvice | None:
+    """The "get advice" card of a high-stakes letter, worked out on read from its kind, its dates,
+    the amounts read from it, its text and its to-dos (:func:`ordnung.rules.advice.letter_advice`).
+
+    Whether a to-do carries a landlord's notice is read from the to-dos themselves: one computed under
+    § 574b BGB (the law's to-do or the letter's own objection date), whatever the reading's end date.
+    A letter is ``handled`` once the person closed every to-do that carries its legal deadline
+    (:func:`ordnung.rules.advice.settles`): its card is then no longer urgent. A card no to-do can settle
+    (``closable``) is handled once the person tagged the letter :data:`DEALT_WITH_TAG` ("I've dealt with
+    this" on the card)."""
+    extraction = store.get_extraction(document.id)
+    kind: str | None = document.kind
+    if kind not in HIGH_STAKES_KINDS:
+        # an operating-cost statement's dates don't depend on its kind: recognised on read only
+        kind = "operating_costs" if is_statement(kind, extraction) else None
+    if kind is None:
+        return None
+    change = extraction.change if extraction is not None else None
+    letter_date = parse_date(document.doc_date)
+    arrived = parse_date(document.received_date) or letter_date
+    notice = extraction if kind == "landlord_notice" else None
+    end = announced_end(notice) if notice is not None else None
+    party = store.get_party(document.party_id) if document.party_id else None
+    sender = party or (extraction.sender if extraction else None)
+    items = store.list_items(doc_id=document.id)
+    card = partial(
+        letter_advice,
+        kind,
+        today=today,
+        arrived=arrived,
+        arrival_confirmed=document.received_date is not None,
+        letter_date=letter_date,
+        region=store.get_profile().known_region,
+        old_amount=change.old_amount if change is not None else None,
+        new_amount=change.new_amount if change is not None else None,
+        # the title may name the billing year ("Operating-cost statement 2025")
+        text=f"{document.title or ''}\n{store.get_document_text(document.id)}",
+        extraordinary=notice is not None and extraordinary_notice(notice, letter_date),
+        alternative=notice is not None and alternative_notice(notice),
+        labour_court=sender is not None and is_labour_court(sender.name, sender.kind),
+        objection_todo=any(
+            item.computation is not None and "bgb_574b" in item.computation.rule_ids for item in items
+        ),
+        end_unknown=notice is not None and end is None,
+        objection_passed=end is not None
+        and letter_date is not None
+        and notice_objection_deadline(end) < letter_date,
+        dealt_with=DEALT_WITH_TAG in document.tags,
+    )
+    advice = card()
+    # which to-dos carry the letter's deadline follows from the card's rules
+    return card(handled=True) if advice is not None and settles(advice, items) else advice
+
+
 def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
     """The document viewer's data: the letter, its pages, to-dos, contracts, sender, thread, related
-    letters, Ideas and drafts."""
+    letters, Ideas, drafts and, for a high-stakes letter, its "get advice" card."""
     document = require(store.get_document(doc_id), NOT_FOUND)
     items = _with_reminder_notes(store, store.list_items(doc_id=doc_id), today)
     linked = {item.contract_id for item in items if item.contract_id}
@@ -199,6 +267,7 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
     ]
     return DocumentDetail(
         document=document,
+        advice=letter_card(store, document, today),
         pages=_page_infos(store, doc_id),
         items=items,
         contracts=contracts_with_computations(store, contracts, today),
@@ -342,27 +411,53 @@ def _apply_patch(store: Store, doc_id: str, changes: dict[str, object]) -> Docum
     return store.update_document(document.id, **changes) if changes else document
 
 
+def _patch(
+    store: Store, doc_id: str, changes: dict[str, object], confirmed: bool | None, today: date
+) -> tuple[Document, list[Item] | None]:
+    """Apply a patch and, when it changes the kind or confirms a date, recompute the letter's to-dos —
+    in one transaction, with the :data:`KIND_CHOSEN` entry written with the kind, so a re-read that
+    commits before or after (both under :func:`ledger_lock`) sees the person's choice and keeps it.
+    Returns the letter and the to-dos that changed (``None``: nothing to recompute)."""
+    with store.tx():
+        before = require(store.get_document(doc_id), NOT_FOUND)
+        document = _apply_patch(store, doc_id, changes)
+        kind_changed = "kind" in changes and before.kind != document.kind
+        dates_changed = bool({"received_date", "doc_date"} & changes.keys()) or confirmed is True
+        if kind_changed:
+            # a kind the person chose is kept when the letter is read again (ingest.plan.corrections)
+            store.log_activity(
+                KIND_CHOSEN,
+                f"You filed “{document.title or document.filename}” as “{(document.kind or 'other').replace('_', ' ')}”",
+                ref_type="document",
+                ref_id=doc_id,
+                data={"kind": document.kind, "was": before.kind},
+            )
+        # a chosen kind always re-routes the dates; ``received_confirmed: false`` only holds back a date change
+        if not (kind_changed or (dates_changed and confirmed is not False)):
+            return document, None
+        changed = recompute_document_items(store, document, today, refile_rules=kind_changed)
+        if "received_date" in changes and document.received_date:
+            store.log_activity(
+                "document.received_date",
+                f"You confirmed that “{document.title or document.filename}” arrived on {document.received_date}",
+                ref_type="document",
+                ref_id=doc_id,
+                data={"recomputed_items": [item.id for item in changed]},
+            )
+        return document, changed
+
+
 @router.patch("/documents/{doc_id}", response_model=Document)
 async def update_document(doc_id: str, patch: DocumentPatch, ctx: CtxDep, today: TodayDep) -> Document:
     """Correct a letter's facts; a confirmed arrival date or corrected letter date recomputes its to-dos."""
     changes = patch.model_dump(exclude_unset=True)
     confirmed = changes.pop("received_confirmed", None)
-    dates_changed = bool({"received_date", "doc_date"} & changes.keys()) or confirmed is True
-    document = await asyncio.to_thread(_apply_patch, ctx.store, doc_id, changes)
-    if not (dates_changed and confirmed is not False):
+    async with ledger_lock():
+        document, changed = await asyncio.to_thread(_patch, ctx.store, doc_id, changes, confirmed, today)
+    if changed is None:
         if changes:
             ctx.bus.publish("document.updated", doc_id=doc_id)
         return document
-    async with ledger_lock():
-        changed = await asyncio.to_thread(recompute_document_items, ctx.store, document, today)
-    if "received_date" in changes and document.received_date:
-        ctx.store.log_activity(
-            "document.received_date",
-            f"You confirmed that “{document.title or document.filename}” arrived on {document.received_date}",
-            ref_type="document",
-            ref_id=doc_id,
-            data={"recomputed_items": [item.id for item in changed]},
-        )
     ctx.bus.publish("document.updated", doc_id=doc_id)
     await ledger_changed(ctx)
     return require(ctx.store.get_document(doc_id), NOT_FOUND)

@@ -12,7 +12,7 @@ goes where.
 | Original files (PDFs, photos) | `<data dir>/files/` | Never by Ordnung itself |
 | Page images, thumbnails | `<data dir>/derived/` | Only as part of a *Read* call (see below) |
 | Your ledger (letters, to-dos, contracts, ideas, drafts) | `<data dir>/ordnung.db` (SQLite) | Excerpts, when you use *Ask*, *Ideas review* or *Letters* |
-| Profile (name, address, region) | `ordnung.db` | Name, language and region in prompts; your address is never sent |
+| Profile (name, address, region, the IBAN you may add for refunds) | `ordnung.db` | Name, language and region in prompts; the address and IBAN you enter here are never put into a prompt (a letter you add is read as printed, with the address in its window; letters Ordnung drafts that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation) |
 | Model responses | `ordnung.db` (`llm_cache`) | — (they came from Anthropic) |
 | Usage log (tokens, cost, which document) | `ordnung.db` (`llm_calls`) — **no prompt or response bodies** | Never |
 | Fonts, UI, rules engine | bundled in the package | Never (no CDN, no web fonts) |
@@ -37,7 +37,7 @@ Check your Claude privacy settings before processing sensitive documents.
 | **Ideas review** (weekly; can be switched off in Settings) | a compact summary of open to-dos, contracts, recent letter summaries and warnings, the organisations involved, and your language, region and whether you are on a student visa | Sonnet |
 | **Secretary's note** (optional) | today's agenda (titles, dates, amounts, organisations) and your first name | Haiku |
 | **Ask** | your question and the last few messages of the conversation; the assistant then reads what it needs through Ordnung's **read-only** tools (search results, document excerpts) | Sonnet |
-| **Letters** | the related letter's title, date, summary and reference numbers, the contract's name and customer number, the letter's fixed wording, the recipient's name (first line only) and your instructions | Sonnet |
+| **Letters** | the related letter's title, date, summary and reference numbers, the contract's name and customer number, the letter's fixed wording (with your addresses and IBAN replaced by placeholders), the recipient's name (first line only) and your instructions — including facts you typed for a template letter, such as a defect's description. *Translate again* sends the letter's subject and text as they stand, with your profile's address and IBAN, the sender block's address, every IBAN and the addresses a template letter wrote replaced by placeholders; other text you typed into the letter yourself is sent as you wrote it | Sonnet |
 
 You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
 pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache.

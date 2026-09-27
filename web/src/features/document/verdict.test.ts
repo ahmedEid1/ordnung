@@ -5,7 +5,13 @@ import {
   decisionSuggestion,
   incomingMoney,
   isOptionalObjection,
+  isServed,
   leadsWithDecision,
+  isSettled,
+  isLetterSettled,
+  consentDecided,
+  mayNotBeOwed,
+  notOwedReason,
   needsArrivalDate,
   needsCheck,
   openItemCounts,
@@ -95,6 +101,74 @@ describe("chooseMainAction", () => {
     expect(chooseMainAction(makeDetail({ items: [notice] }), notice)).toMatchObject({ type: "draft", draftKind: "cancellation" });
   });
 
+  it("doesn't lead with Pay for a back-payment that may not be owed (a late operating-cost statement)", () => {
+    const pay = makeItem({ kind: "payment", amount: 120, due_date: "2026-09-30", computation: makeReceipt({ rule_ids: ["date_as_written", "bgb_556_3"] }) });
+    expect(mayNotBeOwed(pay, null)).toBe(true);
+    expect(chooseMainAction(makeDetail({ items: [pay] }), pay).type).toBe("calendar");
+    // an undated one is caught by the letter's urgent card
+    const undated = makeItem({ kind: "payment", amount: 120 });
+    const card = { kind: "operating_costs", urgent: true } as NonNullable<Parameters<typeof mayNotBeOwed>[1]>;
+    expect(mayNotBeOwed(undated, card)).toBe(true);
+    expect(mayNotBeOwed(undated, { ...card, urgent: false })).toBe(false);
+    expect(mayNotBeOwed(makeItem({ kind: "deadline", computation: makeReceipt({ rule_ids: ["bgb_556_3"] }) }), card)).toBe(false);
+  });
+
+  it("never says a late statement's credit or new monthly prepayment may not be owed", () => {
+    const card = { kind: "operating_costs", urgent: true } as NonNullable<Parameters<typeof mayNotBeOwed>[1]>;
+    const credit = makeItem({ kind: "payment", amount: 85, direction: "in", computation: makeReceipt({ rule_ids: ["bgb_556_3"] }) });
+    const prepayment = makeItem({ kind: "payment", amount: 210, recurrence: { interval: 1, unit: "months" }, computation: makeReceipt({ rule_ids: ["bgb_556_3"] }) });
+    expect(notOwedReason(credit, card)).toBeNull();
+    expect(notOwedReason(prepayment, card)).toBeNull();
+    expect(notOwedReason(makeItem({ kind: "payment", amount: 120 }), card)).toBe("late_statement");
+  });
+
+  it("holds a rent increase's new rent until the person agrees", () => {
+    const rent = makeItem({ kind: "payment", amount: 670, due_date: "2026-12-01", recurrence: { interval: 1, unit: "months" }, computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
+    expect(notOwedReason(rent, null)).toBe("consent");
+    const card = { kind: "rent_increase", urgent: false } as NonNullable<Parameters<typeof mayNotBeOwed>[1]>;
+    expect(notOwedReason(makeItem({ kind: "payment", amount: 670 }), card)).toBe("consent");
+    expect(notOwedReason(makeItem({ kind: "payment", amount: 30, direction: "in" }), card)).toBeNull();
+    expect(chooseMainAction(makeDetail({ items: [rent] }), rent).type).toBe("calendar");
+  });
+
+  it("holds a rent increase's new rent only until the person closed the consent decision", () => {
+    const rent = makeItem({ id: "rent", kind: "payment", amount: 670, recurrence: { interval: 1, unit: "months" }, computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
+    const decision = makeItem({ id: "consent", origin: "rule", computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
+    expect(consentDecided([rent])).toBe(false); // no decision to-do: still hold the rent
+    expect(consentDecided([rent, decision])).toBe(false);
+    expect(notOwedReason(rent, null, [rent, decision])).toBe("consent");
+    const done = { ...decision, status: "done" as const };
+    expect(consentDecided([rent, done])).toBe(true);
+    // final review 3: decided — but which way isn't known, so the new rent is owed only if they agreed, and
+    // "Pay" never leads (paying it can count as agreeing, § 558b Abs. 1 BGB)
+    expect(notOwedReason(rent, null, [rent, done])).toBe("if_agreed");
+    const dismissed = { ...decision, status: "dismissed" as const };
+    expect(consentDecided([rent, dismissed])).toBe(true);
+    const dated = { ...rent, due_date: "2026-12-01" };
+    for (const closed of [done, dismissed]) {
+      expect(chooseMainAction(makeDetail({ items: [dated, closed] }), dated).type).toBe("calendar");
+    }
+    // the rent payment itself (which cites § 558b for its note) is no decision
+    expect(consentDecided([{ ...rent, status: "done" as const }])).toBe(false);
+  });
+
+  it("a high-stakes letter is settled as its card says, any other once every to-do is closed", () => {
+    const done = makeItem({ status: "done" });
+    const card = { kind: "landlord_notice", urgent: true, handled: false } as NonNullable<Parameters<typeof isLetterSettled>[0]["advice"]>;
+    expect(isLetterSettled({ advice: card, items: [done] })).toBe(false); // the paid arrears of a fristlos notice
+    expect(isLetterSettled({ advice: { ...card, handled: true }, items: [makeItem({ status: "open" })] })).toBe(true);
+    expect(isLetterSettled({ advice: null, items: [done] })).toBe(true);
+    expect(isLetterSettled({ advice: null, items: [] })).toBe(false);
+  });
+
+  it("settles a letter once the person closed every to-do it has", () => {
+    const done = makeItem({ status: "done" });
+    expect(isSettled([done, makeItem({ status: "dismissed" })])).toBe(true);
+    expect(isSettled([done, makeItem({ status: "open" })])).toBe(false);
+    expect(isSettled([done, makeItem({ status: "missed" })])).toBe(false);
+    expect(isSettled([])).toBe(false); // no to-do was ever filed (a notice without notice period)
+  });
+
   it("pays payments, calendars dated to-dos, otherwise marks done", () => {
     const pay = makeItem({ kind: "payment", amount: 184.3, due_date: "2026-10-09" });
     const incoming = makeItem({ kind: "payment", amount: 324, direction: "in", due_date: "2026-10-09" });
@@ -176,6 +250,18 @@ describe("what needs the person's eyes", () => {
     const spec = { type: "relative" as const, date: null, time: null, anchor: "document_date" as const, anchor_date: null, amount: 14, unit: "days" as const, delivery_rule: "de_admin_post" as const, shift_rule: "auto" as const, nature: "payment" as const, legal_basis: null, text: "" };
     const invoice = makeItem({ date_spec: spec, computation: makeReceipt({ rule_ids: ["private_sender_no_delivery", "bgb_187_1"] }) });
     expect(needsArrivalDate(invoice, { received_date: null })).toBe(false);
+  });
+
+  it("asks for a court order's delivery date whatever anchor its period was read with", () => {
+    const spec = { type: "relative" as const, date: null, time: null, anchor: "document_date" as const, anchor_date: null, amount: 2, unit: "weeks" as const, delivery_rule: "none" as const, shift_rule: "auto" as const, nature: "objection" as const, legal_basis: null, text: "" };
+    const court = makeItem({ date_spec: spec, computation: makeReceipt({ rule_ids: ["zpo_692", "bgb_187_1", "zpo_180", "zpo_222"] }) });
+    expect(needsArrivalDate(court, { received_date: null })).toBe(true);
+    expect(needsArrivalDate(court, { received_date: "2026-09-25" })).toBe(false);
+    expect(needsArrivalDate(makeItem({ date_spec: spec }), { received_date: null })).toBe(false);
+    // any court letter whose period runs from delivery is "served", whatever kind it was filed as
+    expect(isServed(makeDoc({ kind: "authority_letter" }), [court])).toBe(true);
+    expect(isServed(makeDoc({ kind: "enforcement_order" }), [])).toBe(true);
+    expect(isServed(makeDoc({ kind: "authority_letter" }), [makeItem({ date_spec: spec })])).toBe(false);
   });
 
   it("finds the active scam warning", () => {

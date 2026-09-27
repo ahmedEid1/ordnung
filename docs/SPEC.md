@@ -193,6 +193,80 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
 - Every result has steps with rule ids + citations and a one-sentence plain explanation
   (`ComputationReceipt.summary`), e.g. "Letter dated 15 Sep counts as delivered on Sat 19 Sep →
   moved to Mon 21 Sep; one month later is Wed 21 Oct."
+- **High-stakes letters** (`routing.py`, `letters.py`, `advice.py`; `docs/deadline-rules.md` § 7):
+  code recognises a court payment order, an enforcement order, a dismissal, a landlord's notice and
+  a rent increase request from the model's reading (a written policy; the extraction prompt is
+  unchanged) and files the letter under that kind (`Document.kind`, a `HighStakesKind` only code
+  assigns). `RuleContext.letter_kind` routes its dates (two weeks from the envelope date for court
+  orders, § 692/§ 339 ZPO; § 38 SGB III; the end-of-month consent period, § 558b BGB; two months
+  before the end, § 574b BGB; the 14-day withdrawal that only has to be sent, § 355 BGB), and
+  `routing.derived_deadlines` adds the deadlines the law sets that the letter doesn't state (the
+  three weeks of § 4 KSchG) as `origin="rule"` to-dos, unless one of the letter's own dates was
+  computed under that rule (a date that only mentions it, like a severance "if you don't sue",
+  isn't; nor is a court order's payment date, which is only half of "pay or object"). A court order
+  is only one when a court's letter (a kind of court by name, also in the genitive or abbreviated
+  before its place — "AG Hagen" — never any word ending in "gericht") asks the person to answer it (a
+  Widerspruch/Einspruch remedy or an objection date) and its title or remedy says which — three
+  signals, no list of exceptions: a bailiff's letter, the court's notices to a claimant and
+  enforcement-stage letters state no such remedy or date. A date
+  follows a letter rule only when its nature fits (an appointment is never re-dated as a
+  registration; a hearing never follows the court-action rule; a withdrawal is a declaration). No
+  date on a court order is ever `high`, fixed or relative, and a court order's envelope date, once
+  entered, is its start whatever anchor it was read with — unless the reading names an earlier start
+  of its own, then the earlier, with a warning naming both. Deadlines the law adds that count from the
+  end a termination announces (§ 574b, § 38 SGB III) are only as sure as that end: `medium` when it is
+  written elsewhere in the letter than the notice's sentence, `low` with "Please check" when it isn't
+  written at all (`termination_end`). Every letter from a court
+  (`RuleContext.court`), whatever kind it is filed as, runs from delivery — never from an authority's
+  4-day fiction — and is never `high`; a labour court's orders give one week (§ 46a Abs. 3, § 59 ArbGG;
+  `RuleContext.labour_court`), in their dates, to-dos, card and sending advice. A landlord's notice is
+  one without notice period only when its own quote or the title says so, not negated, not only
+  reserved (a reservation of the notice itself) or "mit (der) gesetzlichen / gesetzlicher Frist" (§ 573d BGB;
+  "with statutory notice" in the title) said of the notice itself — not denied ("without statutory notice")
+  and not after *hilfsweise* (the alternative notice's period) — and the tenancy ends
+  within two months; then there is no hardship objection to-do, and the card and the composer offer no
+  objection letter (unless its own words give notice in the alternative — then the card and the letter's
+  note say the objection is excluded against that one too when the grounds for the notice without notice
+  period existed, BGH VIII ZR 323/18, so object anyway only if they didn't). Without a to-do computed under
+  § 574b (no notice period, no end read, or an ordinary notice whose objection date had passed when it was
+  written — the card then says so) the landlord's card is urgent and the verdict says "get advice
+  now"; once the person has closed every to-do that carries a high-stakes letter's legal deadline (the
+  law's, or one citing a rule of its card — never the arrears a notice demands or a handover appointment)
+  its card is no longer urgent and says so (`advice.handled`, which the verdict uses; never by a recurring
+  to-do), stops asking for the delivery day and offers no letter, and the verdict says it is filed; a
+  landlord's notice no objection to-do carries is `closable` instead: the person files it with "I've dealt
+  with this" (the letter's `dealt-with` tag, undoable). The objection is for a home only (not a garage or business premises, § 578
+  BGB). A rent increase is a
+  consent request unless its own quote or title names another kind of increase or a quote says consent
+  isn't needed; its payment to-dos say the higher rent is only owed once the person agrees (§ 558b Abs. 1
+  BGB), and the verdict never leads with "Pay" for it: "Decide before you pay" until the person closed the
+  consent decision (which handles the letter), then "Only if you agreed …" — closing it doesn't say which
+  way they decided. What a termination ends is decided by its contract, then the letter's kind, then the sender's (an
+  employer's company flat is a landlord's notice); a court's abbreviation ("AG Hagen") counts only before a
+  place and from a sender read as an authority (not a retailer, landlord or company, nor a recipient typed
+  in without its kind — only a court's full name makes that one a court; an abbreviation typed in may be
+  one, so an objection, reply or request for more time to it gets the court's channels with e-mail last
+  and allowed "if it isn't a court"), and every court letter's periods cite § 180 ZPO — except a court's
+  own period the letter counts from its own date (§ 221 ZPO), which the envelope date never moves (unless
+  the letter's date is missing: then it is the latest start). Rule to-dos are filed on read and when the person chooses the kind; a
+  changed region, postal buffer or arrival day only recomputes those left, so a deleted one stays
+  deleted. An operating-cost statement is recognised on read only, never from a reminder about one, and
+  counts from the statement's own date when a later letter dates it ("Abrechnung 2023 vom 15.11.2024": after
+  the billing period, of that period's year — never another year's statement's date); a date without its
+  year ("unsere Abrechnung vom 15.11.2024", an enclosure's) may be either, so the letter's arrival counts
+  but the statement is never called late when that date would make it on time (the card says both
+  readings); its card
+  checks the 12-month limit of § 556 Abs. 3 BGB from the latest billing period the letter names (in
+  figures, words, ISO dates or months, or a billing year) and calls a statement late only when it
+  certainly is: only a range the letter calls its billing period decides (any other range or a billing
+  year: at most "probably"), and when the latest range found is the previous year's comparison nothing
+  is claimed. When it calls a statement (probably) late, the letter's one-off back-payments (never a
+  credit or the new monthly prepayment) carry a "may not be owed — check before you pay" warning, the card
+  is urgent and the verdict doesn't lead with Pay; nothing is dismissed. The rent cap is compared exactly, in cents. The person can correct a letter's kind on its
+  page ("What kind of letter is this?"); a kind the person chose is kept when the letter is read again
+  (the kind and its "kind chosen" entry are written together under the ledger lock, and a re-read reads
+  the letter again inside it), a kind an older version filed — the model's, or a high-stakes kind the
+  policy no longer gives — is not.
 
 ## 7. LLM layer — `llm/` (implemented; update to v2 invocation)
 
@@ -353,14 +427,32 @@ tools only) takes the full server's entry out in the same backed-up write.
 
 ## 11. Letters — `drafts/`
 
-Kinds: `cancellation`, `objection` (Einspruch/Widerspruch), `general_reply`. Compose → `DraftOutput
+Kinds: `cancellation`, `objection` (Einspruch/Widerspruch — for a court order or a landlord's notice
+the remedy the law gives it), `general_reply`, and the template letters `withdrawal`,
+`extension_request`, `payment_plan` (Stundung under § 222 AO to a tax office), `defect_notice`
+(§ 536c BGB), `data_access` (Art. 15 GDPR, the free SCHUFA copy), `receipts_inspection` (§ 556 Abs. 4
+BGB), `deposit_return` (the profile's IBAN) and `address_change`, written entirely from fixed German
+and English sentences (`drafts/template_letters.py`) filled from `LetterDetails` (`POST /api/drafts`
+`details`); a missing required fact is refused with what to add, and so is more time against a
+deadline the law sets (a court order, a dismissal) or instalments offered to a court instead of the
+claimant (`compose.template_refusal`). A withdrawal's date is the 14 days while they run, even when
+the person says the instructions were missing (the 12 months and 14 days are then a note). An
+objection to a court payment order objects to the whole claim (a partial one goes on the court's
+form, which the note says); the application to suspend enforcement is added only when the person
+ticks it (`suspend_enforcement`), never from the wishes, and never against a payment order.
+Single-line facts (what was ordered, the billing period) have their line breaks collapsed. A letter's title never becomes what was ordered, the
+deadline to extend is never one the law sets, and a letter whose sender isn't in Ordnung takes a
+typed recipient; letters flagged as a possible scam aren't offered. Compose → `DraftOutput
 {subject, body, body_translation, enclosures, notes_for_user}` (letter in German for German
 recipients; translation in the user's language) → checks (`has_reference`, `has_dates`,
 `recipient_complete`, `sender_complete`, `no_placeholders`, `language_matches`) → DIN 5008 Form B PDF
 (fpdf2, DejaVu). `send_guidance` (rules): send-by date, channel ranking (provider's cancel button
 § 312k BGB; text form/email where allowed § 309 Nr. 13 BGB; signed paper where required: rent § 568,
-employment § 623 BGB; "Einschreiben Einwurf — keep the receipt"). Marking sent asks for channel +
-date and creates a 21-day follow-up item.
+employment § 623 BGB; "Einschreiben Einwurf — keep the receipt"; the objection to a court order in
+writing or at online-mahnantrag.de, never by e-mail — nor any other letter to a court; a withdrawal
+only has to be sent in time).
+Marking sent asks for channel + date and creates a follow-up item 21 days later (35 for a data access
+request, which has one month from receipt).
 
 ## 12. Calendar — `calendar/ics.py`
 One-click `.ics` export of open dated items + contract send_by dates, VALARMs from

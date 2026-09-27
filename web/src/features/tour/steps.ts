@@ -39,7 +39,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
   {
     id: "new-mail",
     title: "You have new mail",
-    body: "Three letters just arrived for Sam. Open one and watch Ordnung read it — every date and amount is checked against the page.",
+    body: "New letters just arrived for Sam. Open one and watch Ordnung read it — every date and amount is checked against the page.",
     route: "/inbox",
     target: TOUR_TARGETS.newMail,
     showLabel: "Show me the mail",
