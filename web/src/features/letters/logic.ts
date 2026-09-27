@@ -241,9 +241,15 @@ export function draftTitle(d: Pick<Draft, "kind" | "recipient_block">, partyName
   return to ? `${KIND_TITLE[d.kind]} to ${to}` : `${KIND_TITLE[d.kind]} letter`;
 }
 
-/** A readable PDF file name: "Kuendigung-FunkNetz-Mobil-GmbH-2026-09-28.pdf". */
-export function pdfFileName(d: Pick<Draft, "kind" | "recipient_block" | "created_at">): string {
-  const kind = PDF_STEM[d.kind];
+/** The objection's own term, as its subject names it ("Widerspruch gegen …", "Objection (Widerspruch) …"). */
+function objectionStem(subject: string | undefined): string {
+  const m = /\b(Einspruch|Widerspruch)\b/.exec(subject ?? "");
+  return m ? m[1]! : PDF_STEM.objection;
+}
+
+/** A readable PDF file name: "Kuendigung-FunkNetz-Mobil-GmbH-2026-09-28.pdf" ("Widerspruch-…" for a Widerspruch). */
+export function pdfFileName(d: Pick<Draft, "kind" | "recipient_block" | "created_at"> & Partial<Pick<Draft, "subject">>): string {
+  const kind = d.kind === "objection" ? objectionStem(d.subject) : PDF_STEM[d.kind];
   const to = firstLine(d.recipient_block)
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
@@ -317,22 +323,60 @@ export interface SendChoice {
   label: string;
   allowed: boolean;
   recommended: boolean;
+  /** not one of the ways "How to send it" names for this letter ("Another way" in the dialog) */
+  other: boolean;
 }
 
-/** The ways offered in the dialog: the guidance's channels (best first), then the usual others. */
+/**
+ * The ways offered in the dialog: the guidance's channels with the guidance's own labels (best
+ * first, the ones that don't count last), then — as "Another way" — the usual others.
+ */
 export function sendChoices(guidance: Draft["send_guidance"]): SendChoice[] {
   const fromGuidance = rankChannels(guidance?.channels ?? []).map((c: SendChannel) => ({
     channel: c.channel,
     label: c.label || copyFor(SEND_CHANNEL_COPY, c.channel).label,
     allowed: c.allowed,
     recommended: c.recommended,
+    other: false,
   }));
   const seen = new Set(fromGuidance.map((c) => c.channel));
   const common: SendChannelKind[] = ["registered_letter", "letter", "email", "online_button", "portal", "fax", "in_person"];
   const rest = common
     .filter((c) => (SEND_CHANNELS as readonly string[]).includes(c) && !seen.has(c))
-    .map((c) => ({ channel: c, label: copyFor(SEND_CHANNEL_COPY, c).label, allowed: guidance?.form !== "written_form" || c === "registered_letter" || c === "letter" || c === "in_person", recommended: false }));
-  return [...fromGuidance.filter((c) => c.allowed), ...rest, ...fromGuidance.filter((c) => !c.allowed)];
+    .map((c) => ({
+      channel: c,
+      label: copyFor(SEND_CHANNEL_COPY, c).label,
+      allowed: guidance?.form !== "written_form" || c === "registered_letter" || c === "letter" || c === "in_person",
+      recommended: false,
+      other: fromGuidance.length > 0,
+    }));
+  return [...fromGuidance, ...rest];
+}
+
+/** Whether sending it this way counts for this letter (a way the guidance doesn't name counts unless it needs signed paper). */
+export function channelCounts(guidance: Draft["send_guidance"], channel: string | null | undefined): boolean {
+  if (!channel) return true;
+  const choice = sendChoices(guidance).find((c) => c.channel === channel);
+  return choice ? choice.allowed : true;
+}
+
+/** "Based on the law as of …" among a letter's notes: the page's own disclaimer says it (with advice links). */
+const DISCLAIMER_NOTE = /^Based on the law as of\b/;
+
+/** The letter's "Good to know" notes, without the disclaimer the page shows anyway. */
+export function notesToShow(notes: string[]): string[] {
+  return notes.filter((n) => !DISCLAIMER_NOTE.test(n.trim()));
+}
+
+/** "All 9 checks passed" / "1 thing needs a look". */
+export function checksSummary(checks: DraftCheck[]): { failed: number; text: string } {
+  const failed = checks.filter((c) => !c.ok).length;
+  return { failed, text: failed ? `${failed} ${failed === 1 ? "thing needs" : "things need"} a look` : `All ${checks.length} checks passed` };
+}
+
+/** An API message as plain text: the demo's "Run `ordnung serve` …" without the code marks. */
+export function plainText(message: string): string {
+  return message.replace(/`([^`]*)`/g, "“$1”");
 }
 
 /**

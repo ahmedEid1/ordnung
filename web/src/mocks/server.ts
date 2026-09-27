@@ -1161,22 +1161,27 @@ const routes: [string, string, Handler][] = [
       d.updated_at = nowTs();
       d.checks = checksFor(db, d);
       const party = db.party(d.party_id);
-      db.state.items.push(
-        makeItem({
-          id: newId("itm"),
-          kind: "task",
-          title: `Follow up: has ${party?.name ?? "the recipient"} confirmed your letter?`,
-          description: d.subject,
-          due_date: format(addDays(parseISO(date), d.kind === "data_access" ? 35 : 21), "yyyy-MM-dd"),
-          party_id: d.party_id,
-          case_id: d.case_id,
-          contract_id: d.contract_id,
-          origin: "draft",
-          grounding: "user",
-          created_at: nowTs(),
-          updated_at: nowTs(),
-        }),
-      );
+      const due = format(addDays(parseISO(date), d.kind === "data_access" ? 35 : 21), "yyyy-MM-dd");
+      // marking the same letter again moves its follow-up (like the API) instead of adding another one
+      const followUp = db.state.items.find((i) => i.origin === "draft" && i.description === d.subject && i.party_id === d.party_id);
+      if (followUp) Object.assign(followUp, { due_date: due, updated_at: nowTs() });
+      else
+        db.state.items.push(
+          makeItem({
+            id: newId("itm"),
+            kind: "task",
+            title: `Follow up: has ${party?.name ?? "the recipient"} confirmed your letter?`,
+            description: d.subject,
+            due_date: due,
+            party_id: d.party_id,
+            case_id: d.case_id,
+            contract_id: d.contract_id,
+            origin: "draft",
+            grounding: "user",
+            created_at: nowTs(),
+            updated_at: nowTs(),
+          }),
+        );
       db.log("draft.sent", `You sent “${d.subject}”`, "draft", d.id);
       emit("item.updated", {});
       return d;
@@ -1321,7 +1326,8 @@ export function createMockServer(opts: MockOptions): MockServer {
     if (m) return pageOf(m[1]!, Number(m[2]));
     m = /^\/documents\/([^/]+)\/(thumbnail\.jpg|file)$/.exec(path);
     if (m) return pageOf(m[1]!, 1);
-    m = /^\/drafts\/([^/]+)\/pdf$/.exec(path);
+    // the PDF and its print preview: the letter drawn as an image
+    m = /^\/drafts\/([^/]+)\/(?:pdf|preview\.png)$/.exec(path);
     if (m) {
       const d = db.state.drafts.find((x) => x.id === decodeURIComponent(m![1]!));
       if (!d) return null;

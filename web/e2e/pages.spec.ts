@@ -90,18 +90,17 @@ test.describe("pages", () => {
     // the recipient's whole name and address, the address on a line of its own (never cut off)
     await expect(composer).toContainText("ToFMFunkNetz Mobil GmbHWellenweg 7, 12351 Beispielhausen");
 
-    const pdf = page.waitForResponse((r) => /\/api\/drafts\/[^/]+\/pdf/.test(r.url()));
+    // the print preview is an image of the printed letter (phones show no PDF inline); the PDF is a link away
+    const png = page.waitForResponse((r) => /\/api\/drafts\/[^/]+\/preview\.png/.test(r.url()));
     await composer.getByRole("button", { name: "Write the letter" }).click();
     await page.waitForURL(/\/letters\/drf_/);
 
-    const response = await pdf;
+    const response = await png;
     expect(response.status()).toBe(200);
-    expect(response.headers()["content-type"]).toBe("application/pdf");
+    expect(response.headers()["content-type"]).toBe("image/png");
     const preview = page.getByRole("region", { name: "Print preview" });
-    const frame = preview.locator("iframe");
-    await expect(frame).toHaveAttribute("title", "Preview of the printable letter (PDF)");
-    await expect(frame).toBeVisible();
-    const file = await page.request.get((await frame.getAttribute("src"))!.split("#")[0]!);
+    await expect(preview.getByRole("img", { name: "Preview of the printable letter" })).toBeVisible();
+    const file = await page.request.get((await preview.getByRole("link", { name: /Open the PDF/ }).getAttribute("href"))!);
     expect(file.headers()["content-type"]).toBe("application/pdf");
     expect((await file.body()).subarray(0, 5).toString()).toBe("%PDF-");
 

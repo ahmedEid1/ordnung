@@ -275,12 +275,19 @@ describe("Letter editor", () => {
     const { container } = renderAt(<LetterPage />, "/letters/:id", "/letters/drf_phone");
     expect(await screen.findByRole("heading", { level: 1, name: "Cancellation to FunkNetz Mobil GmbH" })).toBeInTheDocument();
     expect((screen.getByLabelText("Letter text (German)") as HTMLTextAreaElement).value).toContain("hiermit kündige ich meinen Mobilfunkvertrag");
-    // phones: a toggle switches to the translation
+    // a narrow card: a toggle switches to the translation (a wide one shows both, by a container query)
+    const english = container.querySelector<HTMLElement>("[data-pane=english]")!;
+    const letter = container.querySelector<HTMLElement>("[data-pane=letter]")!;
+    expect(english.className).toMatch(/@max-\[47\.5rem\]\/letter:hidden/);
+    expect(letter.className).not.toMatch(/letter:hidden/);
     await user.click(screen.getByRole("radio", { name: "In English" }));
-    expect(screen.getByText(/I hereby cancel my mobile contract/)).toBeInTheDocument();
-    expect(screen.getByText(/For your understanding only/)).toBeInTheDocument();
-    // checks
-    expect(screen.getByText("All 9 checks passed")).toBeInTheDocument();
+    expect(within(english).getByText(/I hereby cancel my mobile contract/)).toBeInTheDocument();
+    expect(english.className).not.toMatch(/letter:hidden/);
+    expect(letter.className).toMatch(/@max-\[47\.5rem\]\/letter:hidden/);
+    expect(screen.getByText(/For your understanding only — send the German letter/)).toBeInTheDocument();
+    // checks — summed up at the top too, with a way down to them
+    expect(within(screen.getByRole("region", { name: "Checks" })).getByText("All 9 checks passed")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "All 9 checks passed" })).toHaveAttribute("href", "#letter-checks");
     // how to send it
     const send = screen.getByRole("region", { name: "How to send it" });
     expect(within(send).getByText("Send it by")).toBeInTheDocument();
@@ -297,8 +304,12 @@ describe("Letter editor", () => {
     renderAt(<LetterPage />, "/letters/:id", "/letters/drf_phone");
     const body = await screen.findByLabelText("Letter text (German)");
     expect(screen.getByRole("button", { name: /Saved/ })).toBeDisabled();
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
     await user.type(body, " Danke.");
-    expect(screen.getByText(/Unsaved changes/)).toBeInTheDocument();
+    // said to screen readers; on screen a dot on Save — no line above the letter that pushed everything down
+    expect(screen.getAllByRole("status").some((s) => s.textContent === "Unsaved changes")).toBe(true);
+    expect(screen.getByRole("button", { name: /^Save$/ }).querySelector("[data-unsaved]")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Save$/ })).toHaveAttribute("title", "Unsaved changes — save (Ctrl+S)");
     await user.click(screen.getByRole("button", { name: /^Save$/ }));
     await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
     const patch = calls.find((c) => c.method === "PATCH")!;

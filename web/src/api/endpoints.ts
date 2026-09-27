@@ -181,6 +181,8 @@ export const api = {
   /** Translate the (edited) letter again; only `body_translation` changes. 409 in the demo. */
   translateDraft: (id: string) => call("post", "/api/drafts/{draft_id}/translate", { params: { draft_id: id } }),
   draftPdfUrl: (id: string) => assetUrl(apiRoute("/api/drafts/{draft_id}/pdf", { draft_id: id })),
+  /** The printable letter as one image, page under page (the print preview: phones show no PDF inline). */
+  draftPreviewUrl: (id: string) => assetUrl(apiRoute("/api/drafts/{draft_id}/preview.png", { draft_id: id })),
   markDraftSent: (id: string, body: MarkSentRequest) =>
     call("post", "/api/drafts/{draft_id}/sent", { params: { draft_id: id }, body }),
 
