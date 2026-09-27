@@ -135,7 +135,7 @@ async def test_pause_survives_a_restart(ctx: AppContext) -> None:
 
 async def test_auth_error_fails_the_document_with_a_readable_message(ctx: AppContext, router: Router) -> None:
     message = (
-        "Claude Code is not signed in (or the key is invalid). Run `claude` once in a terminal and log in."
+        "Claude Code is not signed in (or the key is invalid). Run “claude” once in a terminal and sign in."
     )
     router.errors["extract"] = lambda: ClaudeAuthError(message)
     events = record_events(ctx.bus)

@@ -224,9 +224,9 @@ export const RECORDED: RecordedAnswer[] = [
 ];
 
 /**
- * The message of the `demo_miss` error a question without a recording gets (like the local demo's
- * `tour.DEMO_MISS_MESSAGE`). The Ask page shows its own note for the code ("No recorded answer for this
- * question"); the message is for anything else that reads the stream.
+ * The message of the `demo_miss` error a question without a recording gets (the local demo's one
+ * `DEMO_MISS` in `ordnung/assistant/ask.py`). The Ask page shows its own note for the code ("No recorded
+ * answer for this question"); the message is for anything else that reads the stream.
  */
 export const FALLBACK_ANSWER =
-  "The demo uses recorded answers, so I can only replay a few questions here. Try one of the suggestions — or install Ordnung to ask anything about your own letters.";
+  "The demo replays answers recorded for its sample letters, and there is none for this question. Try one of the suggested questions.";

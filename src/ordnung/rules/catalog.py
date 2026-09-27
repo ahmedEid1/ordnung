@@ -229,7 +229,7 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "Deadlines are about when a letter arrives, not when it is sent. The post must deliver 95 % of "
         "letters by the 3rd and 99 % by the 4th working day after posting, so Ordnung suggests posting 4 "
         "business days before the last business day on or before the deadline (0 for online buttons, "
-        "portals, fax and e-mail where allowed).",
+        "portals, fax and email where allowed).",
         None,
         None,
     ),
@@ -277,7 +277,7 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "§ 122a Abs. 4 AO",
         "A tax decision made available for download (Mein ELSTER) counts as delivered on the 4th day "
         "after it was made available (decisions issued from 2026). For decisions issued in 2025 the 4th day "
-        "after the notification e-mail counts, before 2025 the 3rd day.",
+        "after the notification email counts, before 2025 the 3rd day.",
         f"{_GII}/ao_1977/__122a.html",
         "2025-01-01",
     ),
@@ -434,7 +434,7 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "Objection to an authority (Widerspruch): one month",
         "§ 70 Abs. 1 VwGO",
         "An objection must reach the authority within one month after delivery, in writing or for the "
-        "record; a plain e-mail is not enough.",
+        "record; a plain email is not enough.",
         f"{_GII}/vwgo/__70.html",
         None,
     ),
@@ -840,7 +840,7 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "bgb_309_13",
         "Text form is enough for cancellations",
         "§ 309 Nr. 13 BGB",
-        "Standard terms cannot require more than text form (e.g. e-mail) for notices in most consumer "
+        "Standard terms cannot require more than text form (e.g. email) for notices in most consumer "
         "contracts.",
         f"{_GII}/bgb/__309.html",
         "2016-10-01",
@@ -849,7 +849,7 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "bgb_568",
         "Tenancy notice needs a signature",
         "§ 568 Abs. 1 BGB; § 126 BGB",
-        "Notice on a flat must be in writing with a handwritten signature; e-mail, fax or text message "
+        "Notice on a flat must be in writing with a handwritten signature; email, fax or text message "
         "is not enough.",
         f"{_GII}/bgb/__568.html",
         None,
@@ -866,7 +866,7 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "ao_357",
         "How to file a tax objection",
         "§ 357 Abs. 1 AO",
-        "A tax objection can be filed in writing, electronically (ELSTER or e-mail) or in person for the "
+        "A tax objection can be filed in writing, electronically (ELSTER or email) or in person for the "
         "record.",
         f"{_GII}/ao_1977/__357.html",
         None,

@@ -26,7 +26,7 @@ function renderPage(fetchImpl: (url: string) => Response | Promise<Response>, { 
 }
 
 const tray = (opened: boolean): MailTrayItem[] => [
-  { id: "stadtwerke", filename: "24.pdf", sender: "Stadtwerke", subject: "Preisanpassung", kind_hint: "price_increase", photo: false, opened, doc_id: null },
+  { id: "stadtwerke", filename: "24.pdf", sender: "Stadtwerke", subject: "Preisanpassung", kind_hint: "price_increase", photo: false, opened, doc_id: null, received_date: "2026-09-26" },
 ];
 
 afterEach(() => {

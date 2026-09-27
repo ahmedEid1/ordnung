@@ -95,8 +95,10 @@ UNSUPPORTED_ANSWER_DE = (
     "können den Brief, die Aufgabe oder den Vertrag in Ordnung öffnen und dort Daten und Beträge ansehen."
 )
 CHECK_FAILED = "Ordnung couldn't check this answer against your records, so it isn't shown. Please ask again."
+#: The one message for a question the demo has no recorded answer for (sent with ``error_code`` ``demo_miss``).
 DEMO_MISS = (
-    "The demo uses recorded answers, and there is none for this question. Try one of the suggested questions."
+    "The demo replays answers recorded for its sample letters, and there is none for this question. "
+    "Try one of the suggested questions."
 )
 EMPTY_QUESTION = "Please type a question."
 
@@ -297,7 +299,7 @@ async def ask_stream(
         else:
             failure = event
     if failure is not None or done is None:
-        yield _failure(ctx, failure, thread)
+        yield _failure(ctx, failure)
         return
     answer = (done.response.text if done.response is not None else "") or "".join(turn.deltas)
     try:  # the check reads whole tool results: off the event loop, so a long answer never blocks the API
@@ -311,12 +313,19 @@ async def ask_stream(
     yield _finish(store, turn, checked, question=question, thread_id=thread)
 
 
-def _failure(ctx: AskContext, event: StreamEvent | None, thread_id: str) -> StreamEvent:
-    """An error event — or, in the demo, a friendly note when no recorded answer exists."""
+def _failure(ctx: AskContext, event: StreamEvent | None) -> StreamEvent:
+    """An error event — with the code ``demo_miss`` and :data:`DEMO_MISS` when the replayed demo has no
+    recorded answer (asking again can't help; the web app shows a note, not a failure)."""
     message = (event.error if event is not None else None) or "The answer stopped unexpectedly."
     if ctx.llm.backend_name == "replay" and message.startswith("no recorded response"):
-        return AskEvent(type="done", text=DEMO_MISS, citations=[], thread_id=thread_id)
+        return demo_miss_event()
     return StreamEvent(type="error", error=message)
+
+
+def demo_miss_event() -> AskEvent:
+    """The event shown instead of an answer the demo has no recording for (nothing was stored, so it
+    names no thread)."""
+    return AskEvent(type="error", error=DEMO_MISS, text=DEMO_MISS, error_code="demo_miss")
 
 
 @dataclass

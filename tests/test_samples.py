@@ -108,7 +108,8 @@ def test_manifest_top_level(manifest: dict[str, Any]) -> None:
     persona = manifest["persona"]
     profile = models.Profile(**persona)
     assert profile.name == "Sam Rivera"
-    assert persona["address"] == "Beispielweg 5, 12345 Musterstadt"
+    # UI audit R1-backend-12: one line per part, as the Profile asks for it (and the letters print it)
+    assert persona["address"] == "Beispielweg 5\n12345 Musterstadt"
     assert persona["email"] == "sam.rivera@example.org"
     assert (persona["language"], persona["country"], persona["region"]) == ("en", "DE", "NW")
     assert persona["is_student_visa"] is True

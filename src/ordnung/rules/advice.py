@@ -722,7 +722,7 @@ def _labour_court_order(kind: str, today: date, delivered: str | None, *, handle
         handled=handled,
         steps=[
             *step,
-            "To object, write to the labour court that issued the order — not by e-mail — or make it for the "
+            "To object, write to the labour court that issued the order — not by email — or make it for the "
             "record at the court's office.",
             "An objection doesn't stop enforcement by itself; ask for advice about suspending it.",
             "If you do owe the money, paying it stops further enforcement costs.",
@@ -1001,7 +1001,7 @@ def letter_advice(
                 "If you don't owe the money, or not all of it, object on the enclosed form (or online) and send "
                 "it to the court. You don't have to give reasons.",
                 "If you do owe it, pay the claimant — not the court — including the costs listed.",
-                "Check it's real: a genuine order comes from a court in a yellow envelope, never by e-mail.",
+                "Check it's real: a genuine order comes from a court in a yellow envelope, never by email.",
             ],
             facts=[_time_bar(today)],
             help=[COURT_DESK, ONLINE_OBJECTION, DEBT_ADVICE, LEGAL_AID],
@@ -1023,7 +1023,7 @@ def letter_advice(
                     delivered
                     or "Find the delivery date on the yellow envelope (or the bailiff's papers) and enter it.",
                 ),
-                "To object, write to the court that issued the order — not by e-mail — or go to its "
+                "To object, write to the court that issued the order — not by email — or go to its "
                 "Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their "
                 "record reaches the issuing court, so go early.",
                 "An objection doesn't stop enforcement by itself; ask for advice about suspending it.",

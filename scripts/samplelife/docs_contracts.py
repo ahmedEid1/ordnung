@@ -410,7 +410,7 @@ def _versicherung(letter: Letter) -> None:
     )
     letter.kv(
         [
-            ("Versicherungsnehmer", f"Herr {sam.NAME}, {sam.ADDRESS}, geb. 14.03.2000"),
+            ("Versicherungsnehmer", f"Herr {sam.NAME}, {sam.STREET}, {sam.CITY}, geb. 14.03.2000"),
             ("Produkt", "Privat-Haftpflichtversicherung, Tarif Basis Single"),
             ("Versicherungsbeginn", "01.12.2023, 00:00 Uhr"),
             ("Versicherungsjahr", "01.12. – 30.11."),

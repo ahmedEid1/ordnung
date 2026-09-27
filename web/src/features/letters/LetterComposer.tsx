@@ -384,7 +384,7 @@ function StatutoryNote({ kind, term }: { kind: Document["kind"]; term: "Einspruc
     return (
       <>
         If moving out would be a real hardship for you or your family, the law lets you object — a <Glossary term={term} /> (§{"\u00a0"}574 BGB). Text form is
-        enough, so e-mail counts; a signed letter by Einwurf-Einschreiben is the safest proof. A tenants' association can check your reasons first.
+        enough, so email counts; a signed letter by Einwurf-Einschreiben is the safest proof. A tenants' association can check your reasons first.
       </>
     );
   }

@@ -22,8 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from ordnung.assistant.ask import DEMO_MISS as ASK_DEMO_MISS
-from ordnung.assistant.ask import AskEvent
+from ordnung.assistant.ask import demo_miss_event
 from ordnung.config import PACKAGE_DIR
 from ordnung.db.store import Store
 from ordnung.demo import DemoError, Manifest, SampleDocument, load_manifest, samples_root
@@ -41,8 +40,11 @@ TRAY_META_KEY = "demo_tray"
 TOUR_META_KEY = "demo_tour"
 ASKS_FILE = PACKAGE_DIR / "demo" / "asks.json"
 REPLAY_MISS_PREFIX = "no recorded response"
-DEMO_MISS_MESSAGE = (
-    "The demo uses recorded answers — install Ordnung and connect Claude to ask your own questions."
+#: A model call (other than Ask, whose miss says :data:`~ordnung.assistant.ask.DEMO_MISS`) the demo has
+#: no recording for: reading a new letter, translating an edited one.
+DEMO_UNRECORDED_MESSAGE = (
+    "The demo replays recorded answers only, and there is none for this. Install Ordnung and connect "
+    "Claude to use it with your own letters."
 )
 
 
@@ -129,6 +131,7 @@ def _tray_item(sample: SampleDocument, opened: Mapping[str, str]) -> MailTrayIte
         photo=sample.photo,
         opened=sample.slug in opened,
         doc_id=opened.get(sample.slug),
+        received_date=sample.received_date,
     )
 
 
@@ -281,19 +284,17 @@ async def open_tray_item(
 
 def is_replay_miss(event: StreamEvent) -> bool:
     """Whether a stream event reports that the demo has no recording for this request."""
-    if event.type == "error":
-        return (event.error or "").startswith(REPLAY_MISS_PREFIX)
-    return event.type == "done" and event.text == ASK_DEMO_MISS
-
-
-def demo_miss_event() -> StreamEvent:
-    """The one event shown instead of an answer the demo has no recording for: an error with the code
-    ``demo_miss``, which the web app shows as a note (asking again can't help) instead of a failure."""
-    return AskEvent(type="error", error=DEMO_MISS_MESSAGE, text=DEMO_MISS_MESSAGE, error_code="demo_miss")
+    if event.type != "error":
+        return False
+    return getattr(event, "error_code", None) == "demo_miss" or (event.error or "").startswith(
+        REPLAY_MISS_PREFIX
+    )
 
 
 async def demo_safe_stream(events: AsyncIterator[StreamEvent], *, demo: bool) -> AsyncIterator[StreamEvent]:
-    """Pass ``events`` through; in demo mode a replay miss ends the stream with :func:`demo_miss_event`."""
+    """Pass ``events`` through; in demo mode a replay miss ends the stream with Ask's one ``demo_miss``
+    event (:data:`~ordnung.assistant.ask.DEMO_MISS`), which the web app shows as a note — asking again
+    can't help — instead of a failure."""
     async for event in events:
         if demo and is_replay_miss(event):
             yield demo_miss_event()
@@ -325,5 +326,5 @@ async def paced_replay(
 def friendly_llm_error(exc: LLMError, *, demo: bool) -> str:
     """The message to show for a failed model call (the demo explains missing recordings kindly)."""
     if demo and (isinstance(exc, ReplayMiss) or str(exc).startswith(REPLAY_MISS_PREFIX)):
-        return DEMO_MISS_MESSAGE
+        return DEMO_UNRECORDED_MESSAGE
     return str(exc)

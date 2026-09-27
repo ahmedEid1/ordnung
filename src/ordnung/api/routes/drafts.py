@@ -22,7 +22,7 @@ router = APIRouter(tags=["drafts"])
 NOT_FOUND = "Unknown letter."
 DEMO_TRANSLATE_MESSAGE = (
     "The demo replays recorded answers, so it can't translate your changes. "
-    "Run `ordnung serve` (with Claude Code signed in) to re-translate letters you edited."
+    "Run “ordnung serve” (with Claude Code signed in) to re-translate letters you edited."
 )
 
 

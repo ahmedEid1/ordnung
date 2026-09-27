@@ -118,7 +118,7 @@ def classify_result(result: dict[str, Any], stderr: str = "") -> LLMError | None
     text = " ".join(str(x) for x in (result.get("result"), result.get("terminal_reason"), stderr) if x)
     if status in (401, 403) or _AUTH_RE.search(text):
         return ClaudeAuthError(
-            "Claude Code is not signed in (or the key is invalid). Run `claude` once in a terminal and log in."
+            "Claude Code is not signed in (or the key is invalid). Run “claude” once in a terminal and sign in."
         )
     if status == 429 or _RATE_LIMIT_RE.search(text):
         m = _RESET_RE.search(text)
@@ -255,8 +255,8 @@ class ClaudeCLIBackend:
     def _require_binary(self) -> str:
         if not self.binary:
             raise ClaudeNotInstalled(
-                "The `claude` CLI was not found. Install Claude Code (https://claude.com/claude-code), "
-                "sign in by running `claude` once, then try again."
+                "The “claude” command was not found. Install Claude Code (https://claude.com/claude-code), "
+                "sign in by running “claude” once, then try again."
             )
         return self.binary
 

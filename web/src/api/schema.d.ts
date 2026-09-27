@@ -2327,6 +2327,13 @@ export interface components {
             /** Markers */
             markers: components["schemas"]["TimelineMarker"][];
             ref: components["schemas"]["RefLink"] | null;
+            /** Area */
+            area: ("home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other") | null;
+            /**
+             * Open End
+             * @default false
+             */
+            open_end: boolean;
         };
         /**
          * LetterAdvice
@@ -2505,6 +2512,8 @@ export interface components {
             opened: boolean;
             /** Doc Id */
             doc_id: string | null;
+            /** Received Date */
+            received_date: string | null;
         };
         /**
          * MarkSentRequest
@@ -3219,6 +3228,9 @@ export interface components {
              * @enum {string}
              */
             kind: "deadline" | "send_by" | "cancel_by" | "renewal" | "expiry" | "payment" | "appointment" | "other";
+            /** Area */
+            area: ("home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other") | null;
+            ref: components["schemas"]["RefLink"] | null;
         };
         /**
          * TourPatch

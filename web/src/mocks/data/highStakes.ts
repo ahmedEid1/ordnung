@@ -456,7 +456,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
       "must_arrive_by": null,
       "post_too_late": false,
       "form": "written_form",
-      "form_note": "In writing to the court that issued the order (§ 694 ZPO) — best on the form that came with it (tick how much you object to and sign it), or online. No reasons are needed; e-mail is not valid.",
+      "form_note": "In writing to the court that issued the order (§ 694 ZPO) — best on the form that came with it (tick how much you object to and sign it), or online. No reasons are needed; email is not valid.",
       "channels": [
         {
           "channel": "registered_letter",
@@ -492,7 +492,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
         },
         {
           "channel": "letter",
-          "label": "Signed letter by normal post",
+          "label": "Signed letter by post",
           "allowed": true,
           "recommended": false,
           "note": "Works, but you can't prove it arrived.",
@@ -500,7 +500,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
         },
         {
           "channel": "email",
-          "label": "E-mail",
+          "label": "Email",
           "allowed": false,
           "recommended": false,
           "note": "Not valid at a court.",
@@ -513,7 +513,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
       ]
     },
     "notes": [
-      "In writing to the court that issued the order (§ 694 ZPO) — best on the form that came with it (tick how much you object to and sign it), or online. No reasons are needed; e-mail is not valid.",
+      "In writing to the court that issued the order (§ 694 ZPO) — best on the form that came with it (tick how much you object to and sign it), or online. No reasons are needed; email is not valid.",
       "This letter objects to the whole claim; no reasons are needed. To object to only part of it (for example only the interest or the costs), don't send this letter: use the form that came with the order and tick how much you object to, or go to the court's Rechtsantragstelle. Send the form or this letter, not both. Get advice if you're unsure."
     ]
   },
@@ -523,7 +523,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
       "must_arrive_by": null,
       "post_too_late": false,
       "form": "written_form",
-      "form_note": "In writing to the court that issued the order (§ 700, § 340 ZPO; not by e-mail), or for the record at its Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record reaches the issuing court (§ 129a Abs. 3 S. 2 ZPO) — go early. The period can't be extended.",
+      "form_note": "In writing to the court that issued the order (§ 700, § 340 ZPO; not by email), or for the record at its Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record reaches the issuing court (§ 129a Abs. 3 S. 2 ZPO) — go early. The period can't be extended.",
       "channels": [
         {
           "channel": "registered_letter",
@@ -551,7 +551,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
         },
         {
           "channel": "letter",
-          "label": "Signed letter by normal post",
+          "label": "Signed letter by post",
           "allowed": true,
           "recommended": false,
           "note": "Works, but you can't prove it arrived.",
@@ -559,7 +559,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
         },
         {
           "channel": "email",
-          "label": "E-mail",
+          "label": "Email",
           "allowed": false,
           "recommended": false,
           "note": "Not valid at a court.",
@@ -572,7 +572,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
       ]
     },
     "notes": [
-      "In writing to the court that issued the order (§ 700, § 340 ZPO; not by e-mail), or for the record at its Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record reaches the issuing court (§ 129a Abs. 3 S. 2 ZPO) — go early. The period can't be extended."
+      "In writing to the court that issued the order (§ 700, § 340 ZPO; not by email), or for the record at its Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their record reaches the issuing court (§ 129a Abs. 3 S. 2 ZPO) — go early. The period can't be extended."
     ]
   },
   "landlord_notice": {
@@ -601,7 +601,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
         },
         {
           "channel": "email",
-          "label": "E-mail",
+          "label": "Email",
           "allowed": true,
           "recommended": false,
           "note": "Valid (text form); ask the landlord to confirm receipt.",
@@ -609,7 +609,7 @@ export const STATUTORY_OBJECTIONS: Record<string, { guidance: SendGuidance; note
         },
         {
           "channel": "letter",
-          "label": "Letter by normal post",
+          "label": "Letter by post",
           "allowed": true,
           "recommended": false,
           "note": "Works, but you can't prove it arrived.",
@@ -637,10 +637,10 @@ export const WITHDRAWAL_GUIDANCE: SendGuidance = {
   "channels": [
     {
       "channel": "email",
-      "label": "E-mail",
+      "label": "Email",
       "allowed": true,
       "recommended": true,
-      "note": "Valid; keep the sent e-mail as proof of when you sent it.",
+      "note": "Valid; keep the sent email as proof of when you sent it.",
       "citation": "§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB"
     },
     {
@@ -669,7 +669,7 @@ export const WITHDRAWAL_GUIDANCE: SendGuidance = {
     },
     {
       "channel": "letter",
-      "label": "Letter by normal post",
+      "label": "Letter by post",
       "allowed": true,
       "recommended": false,
       "note": "Valid, but you can't prove when you sent it.",

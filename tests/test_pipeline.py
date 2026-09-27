@@ -18,7 +18,7 @@ from fixtures_llm import (
     fake_backend,
     record_events,
 )
-from helpers_docs import INJECTION, hidden_text_pdf, photo
+from helpers_docs import INJECTION, hidden_text_pdf, photo, scanned_pdf
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest import pipeline
@@ -303,7 +303,7 @@ async def test_job_events_are_published_in_stage_order(ctx: AppContext) -> None:
 
     progress = [data for kind, data in events if kind == "job.progress"]
     assert progress[0]["status"] == "queued"
-    assert [data["stage"] for data in progress[1:]] == list(STAGES)
+    assert [data["stage"] for data in progress[1:]] == [stage for stage in STAGES if stage != "transcribe"]
     assert [data["progress"] for data in progress[1:]] == sorted(data["progress"] for data in progress[1:])
     assert progress[-1]["status"] == "done"
     assert {data["job_id"] for data in progress} == {ctx.store.list_jobs()[0].id}
@@ -316,15 +316,27 @@ async def test_job_events_are_published_in_stage_order(ctx: AppContext) -> None:
     assert job.status == "done" and job.stage == "done" and job.progress == 1.0
 
 
-async def test_on_stage_callback_sees_every_stage(ctx: AppContext) -> None:
-    document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
+async def _stages_seen(ctx: AppContext, content: bytes, filename: str) -> list[str]:
+    document = await add_file(ctx, content, filename)
     seen: list[str] = []
 
     async def on_stage(stage: str, progress: float) -> None:
         seen.append(stage)
 
     await ingest_document(ctx, document.id, on_stage=on_stage)
-    assert seen == list(STAGES)
+    return seen
+
+
+async def test_on_stage_callback_sees_every_stage_that_happens(ctx: AppContext) -> None:
+    """UI audit R1-backend-5: the stepper said "Reading the photo" for a PDF with text and "Reading the
+    text" for a phone photo. Only the stages that happen are reported: a PDF's text layer is read, a photo
+    and a PDF page without text are transcribed."""
+    after = ["extract", "verify", "compute", "link", "plan", "done"]
+    assert await _stages_seen(ctx, TAX_LETTER.pdf(), "bescheid.pdf") == ["intake", "text", *after]
+    photo_stages = await _stages_seen(ctx, photo("JPEG", size=(600, 800)), "IMG_0001.jpg")
+    assert photo_stages == ["intake", "transcribe", *after]
+    assert await _stages_seen(ctx, scanned_pdf(), "scan.pdf") == ["intake", "text", "transcribe", *after]
+    assert set(photo_stages) | {"text"} == set(STAGES)
 
 
 async def test_blank_scan_fails_with_a_readable_error(ctx: AppContext, router: Router) -> None:

@@ -14,7 +14,7 @@
   },
   "persona": {
     "name": "Sam Rivera",
-    "address": "Beispielweg 5, 12345 Musterstadt",
+    "address": "Beispielweg 5\n12345 Musterstadt",
     "email": "sam.rivera@example.org",
     "phone": "0123 98765432",
     "language": "en",

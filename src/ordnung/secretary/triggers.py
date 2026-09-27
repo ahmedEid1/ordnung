@@ -194,6 +194,17 @@ def _sentences(*parts: str | None) -> str:
     return " ".join(part.strip() for part in parts if part and part.strip())
 
 
+#: A reading's own verdict at the end of a title: "… (Likely Scam)", "… [possible scam]".
+_SCAM_VERDICT = re.compile(r"\s*[(\[][^()\[\]]*\b(?:scam|fraud|betrug|phishing)\b[^()\[\]]*[)\]]\s*$", re.I)
+_STRAIGHT_QUOTED = re.compile(r'"([^"\n]*)"')
+
+
+def _letter_title(title: str) -> str:
+    """A letter's title inside an Idea's: without the reading's own scam verdict (the Idea says it) and
+    with the app's typographic quotes."""
+    return _STRAIGHT_QUOTED.sub("“\\1”", _SCAM_VERDICT.sub("", title)).strip() or title
+
+
 def _ref(type_: str, id_: str) -> SuggestionRef:
     return SuggestionRef.model_validate({"type": type_, "id": id_})
 
@@ -325,8 +336,15 @@ def is_decision(computation: ContractComputation) -> bool:
     return bool(computation.cancel_by and computation.send_by and computation.next_renewal)
 
 
+#: Contracts for the flat: its lease, energy, phone and internet. Never the residence-permit area.
+_HOME_CATEGORIES = frozenset({"rent", "energy", "gas", "internet", "mobile"})
+
+
 def contract_area(contract: Contract) -> Area:
-    """The life area of a contract (its own, or derived from its category)."""
+    """The life area of a contract (its own, or derived from its category). "residence" is the
+    residence-permit area: a lease or an energy, phone or internet contract read under it is "home"."""
+    if contract.area == "residence" and contract.category in _HOME_CATEGORIES:
+        return "home"
     if contract.area != "other":
         return contract.area
     by_category: dict[str, Area] = {
@@ -1093,8 +1111,27 @@ def _earlier_invoice(ledger: Ledger, dunning: Document) -> Document | None:
     return max(candidates, key=lambda doc: (doc.doc_date or "", doc.id), default=None)
 
 
+#: Senders that are public bodies: a library's, a university's or an authority's fee is never taken to
+#: a debt collector or a court payment order — they add reminder fees and, in the end, collect it
+#: themselves (administrative enforcement). UI audit R1-backend-7: a €4.50 library fee warned of a
+#: Mahnbescheid.
+PUBLIC_CREDITOR_KINDS = frozenset(
+    {"authority", "tax_office", "immigration_office", "university", "public_broadcaster"}
+)
+_PRIVATE_UNPAID = (
+    "If it stays unpaid, the next step is usually a debt collector or a court payment order "
+    "(Mahnbescheid), which adds costs."
+)
+_PUBLIC_UNPAID = (
+    "If it stays unpaid, more reminder fees can follow, and a public body can in the end collect it "
+    "itself (administrative enforcement)."
+)
+
+
 def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
-    """Payment reminders (Mahnungen) with an open payment: pay, or object if you don't owe it."""
+    """Payment reminders (Mahnungen) with an open payment: pay, or object if you don't owe it. What
+    follows if it stays unpaid depends on the sender: a company's claim goes to a debt collector or a
+    court payment order, a public body's is collected by the body itself (:data:`PUBLIC_CREDITOR_KINDS`)."""
     ideas: list[Suggestion] = []
     today = ledger.today
     active = ledger.active_items()
@@ -1121,11 +1158,11 @@ def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
         )
         invoice = _earlier_invoice(ledger, doc)
         invoice_day = parse_day(invoice.doc_date) if invoice else None
+        party = ledger.parties.get(doc.party_id) if doc.party_id else None
         body = _sentences(
             "This is a payment reminder (Mahnung)"
             + (f" for the invoice of {day_label(invoice_day, today)}." if invoice_day else "."),
-            "If it stays unpaid, the next step is usually a debt collector or a court payment order "
-            "(Mahnbescheid), which adds costs.",
+            _PUBLIC_UNPAID if party is not None and party.kind in PUBLIC_CREDITOR_KINDS else _PRIVATE_UNPAID,
             f"If you already paid, tell {who} when and keep the proof; if you don't owe it, say so in writing.",
         )
         refs = [_ref("document", doc.id), _ref("item", payment.id)]
@@ -1217,7 +1254,7 @@ def scam_warning(ledger: Ledger) -> list[Suggestion]:
                 doc.id,
                 tuple(sorted(reasons)),
                 IdeaText(
-                    f"This may be a scam: {doc.title or doc.filename}",
+                    f"Possible scam: {_letter_title(doc.title or doc.filename)}",
                     body,
                     "1 warning sign." if len(reasons) == 1 else f"{len(reasons)} warning signs.",
                 ),

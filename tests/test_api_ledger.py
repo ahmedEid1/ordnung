@@ -183,9 +183,24 @@ async def test_profile_is_merged_and_validated(data_dir: Path) -> None:
             {"timezone": "Mars/Olympus"},
             {"postal_buffer_days": -1},
             {"shoe": 42},
+            # UI audit R1-settings-b-3: the server checks what the Profile form checks
+            {"name": "   "},
+            {"email": "sam at example"},
+            {"email": "sam@example"},
         ):
             assert (await api.client.put("/api/profile", json=bad)).status_code == 422, bad
         assert (await api.client.get("/api/profile")).json()["region"] == "BY"
+        tidy = await api.client.put(
+            "/api/profile", json={"name": "  Sam   Rivera ", "email": " sam@example.org ", "phone": " 0123 "}
+        )
+        assert tidy.status_code == 200
+        assert (tidy.json()["name"], tidy.json()["email"], tidy.json()["phone"]) == (
+            "Sam Rivera",
+            "sam@example.org",
+            "0123",
+        )
+        cleared = await api.client.put("/api/profile", json={"email": ""})
+        assert cleared.status_code == 200 and cleared.json()["email"] == ""
 
 
 async def test_settings_are_merged_and_the_inbox_is_guarded(data_dir: Path, tmp_path: Path) -> None:

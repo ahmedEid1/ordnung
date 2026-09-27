@@ -20,11 +20,13 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Collection, Mapping
+from datetime import date
 from typing import Any, Literal, NamedTuple
 
 from pydantic import BaseModel
 
 from ordnung.assistant.channels import parse_tool_result
+from ordnung.rules.explain import fmt_date
 
 MARKER_TYPES: tuple[str, ...] = ("doc", "item", "contract", "party")
 """Canonical marker types, as written in answers."""
@@ -166,22 +168,23 @@ def tool_name(raw: str | None) -> str:
 
 
 def tool_label(name: str, args: Mapping[str, Any] | None = None, title_of: TitleLookup | None = None) -> str:
-    """A past-tense, human label for a tool call, e.g. ``Searched your letters for "Kündigung"``.
+    """A past-tense, human label for a tool call, e.g. ``Searched your letters for “Kündigung”``, in
+    the app's words: typographic quotes, dates like ``Mon 28 Sep 2026``.
 
-    ``title_of`` resolves ids to titles (``Read "Mobile contract"``); without it ids stay generic.
+    ``title_of`` resolves ids to titles (``Read “Mobile contract”``); without it ids stay generic.
     """
     args = args or {}
     short = tool_name(name)
     if short in _FIXED_LABELS:
         return _FIXED_LABELS[short]
     if short == "search":
-        return f'Searched your letters for "{_text(args.get("query"))}"'
+        return f"Searched your letters for “{_text(args.get('query'))}”"
     if short == "get_document":
         return _titled("Read", args.get("doc_id"), title_of, fallback="Read a letter")
     if short == "list_items":
         return _items_label(args)
     if short == "get_party":
-        return f'Looked up "{_text(args.get("party_id_or_name"), title_of)}"'
+        return f"Looked up “{_text(args.get('party_id_or_name'), title_of)}”"
     if short == "timeline":
         return f"Checked your timeline from {_day(args.get('from_date'))} to {_day(args.get('to_date'))}"
     if short == "explain_date":
@@ -199,7 +202,7 @@ def result_summary(name: str, text: str | None) -> str:
     if data.get("found") is False:
         return "Nothing found"
     if short == "today" and isinstance(data.get("today"), str):
-        return f"Today is {data['today']}"
+        return f"Today is {_day(data['today'])}" + (" (demo date)" if data.get("simulated") else "")
     if short in _COUNTED_RESULTS:
         key, singular, plural = _COUNTED_RESULTS[short]
         values = data.get(key)
@@ -223,7 +226,7 @@ def _items_label(args: Mapping[str, Any]) -> str:
 
 def _titled(verb: str, ref_id: Any, title_of: TitleLookup | None, *, fallback: str) -> str:
     title = title_of(ref_id) if title_of is not None and isinstance(ref_id, str) else None
-    return f'{verb} "{title}"' if title else fallback
+    return f"{verb} “{title}”" if title else fallback
 
 
 _WITH_DIGIT = re.compile(r"[^\s\"“”„]*\d[^\s\"“”„]*")
@@ -269,8 +272,14 @@ def _masked(raw: str) -> str:
 
 
 def _day(value: Any) -> str:
-    """A date argument (the tool accepts only ``YYYY-MM-DD``); anything else is shown as "…"."""
-    return value if isinstance(value, str) and _ISO_DAY.fullmatch(value) else "…"
+    """A date argument (the tool accepts only ``YYYY-MM-DD``) as the app writes dates (``Mon 28 Sep
+    2026``); anything else is shown as "…"."""
+    if not isinstance(value, str) or not _ISO_DAY.fullmatch(value):
+        return "…"
+    try:
+        return fmt_date(date.fromisoformat(value))
+    except ValueError:
+        return "…"
 
 
 _ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")

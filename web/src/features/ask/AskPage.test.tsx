@@ -115,7 +115,7 @@ describe("Ask page", () => {
       await user.type(screen.getByLabelText("Your question"), "Who won the football?{Enter}");
       await screen.findByText("No recorded answer for this question", {}, { timeout: 3000 });
       expect(screen.getAllByText(/To ask about your own letters, install Ordnung/)).toHaveLength(1);
-      expect(screen.queryByText(/I can only replay a few questions/)).toBeNull();
+      expect(screen.queryByText(/there is none for this question/)).toBeNull();
       expect(screen.queryByRole("button", { name: /Copy answer/ })).toBeNull();
       expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
     } finally {

@@ -12,7 +12,7 @@ export const CHECK_LABELS = {
   no_placeholders: "No placeholders left to fill in",
   language_matches: "Written in the letter's language",
   citations_known: "Only laws Ordnung knows are cited",
-  no_new_identifiers: "No unknown account numbers, e-mails or ID numbers",
+  no_new_identifiers: "No unknown account numbers, emails or ID numbers",
   delivery_channel_ok: "Sent in a way that counts",
 } as const;
 type CheckId = keyof typeof CHECK_LABELS;

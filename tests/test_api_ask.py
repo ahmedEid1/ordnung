@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from ordnung import clock
 from ordnung.api.app import create_app
 from ordnung.app_context import build_context
+from ordnung.assistant.ask import DEMO_MISS
 from ordnung.llm.base import LLMRequest, LLMResponse, StreamEvent
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.replay import ReplayBackend
@@ -237,7 +238,7 @@ async def test_events_stream_bus_events_until_the_client_leaves(data_dir: Path) 
 
 
 async def test_demo_turns_a_missing_recording_into_a_friendly_event(data_dir: Path, tmp_path: Path) -> None:
-    tour = pytest.importorskip("ordnung.demo.tour")
+    pytest.importorskip("ordnung.demo.tour")
     async with api_for(data_dir, demo=True) as api:
         api.ctx.llm.backend = ReplayBackend(tmp_path / "no-fixtures")
         response = await api.client.post("/api/ask", json={"question": "Something never recorded?"})
@@ -246,8 +247,8 @@ async def test_demo_turns_a_missing_recording_into_a_friendly_event(data_dir: Pa
         assert events == [
             {
                 "type": "error",
-                "text": tour.DEMO_MISS_MESSAGE,
-                "error": tour.DEMO_MISS_MESSAGE,
+                "text": DEMO_MISS,
+                "error": DEMO_MISS,
                 "error_code": "demo_miss",
             }
         ]
