@@ -7,10 +7,44 @@ test enforces it). Wording is plain English; German terms appear in parentheses.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from ordnung.models import RuleInfo
 
 #: Date on which the rules and links below were last checked against the law.
 LAST_CHECKED = "2026-09-25"
+
+
+@dataclass(frozen=True)
+class PendingChange:
+    """A change to the law that is on its way and would change rules or copy here: what it changes, where it
+    stands (as of :data:`LAST_CHECKED`), the rules it touches, what in Ordnung to update when it passes, and a
+    source."""
+
+    change: str
+    status: str
+    rule_ids: tuple[str, ...]
+    update: str
+    source: str
+
+
+#: Changes to re-check whenever :data:`LAST_CHECKED` is next updated (docs/deadline-rules.md, "Pending
+#: changes"): until they pass, Ordnung says what holds "under current law".
+PENDING_CHANGES: tuple[PendingChange, ...] = (
+    PendingChange(
+        change=(
+            "Mietrecht II (BT-Drs. 21/6807), new § 573 Abs. 4 BGB: paying the rent arrears within the grace "
+            "period (Schonfristzahlung) also undoes an ordinary notice for arrears, once per tenancy"
+        ),
+        status="Adopted by the federal cabinet on 29 Apr 2026; first reading on 9 Jul 2026, now in committee",
+        rule_ids=("bgb_574b",),
+        update=(
+            "ARREARS_CURE in ordnung.rules.advice (the card's fact, the ordinary card's step and the composer's "
+            "refusal NO_HARDSHIP_OBJECTION) and the landlord's notice section of docs/deadline-rules.md"
+        ),
+        source="https://www.deubner-recht.de/themen/neues-mietrecht/mietrechtsreform-2026/schonfristzahlung.html",
+    ),
+)
 
 _GII = "https://www.gesetze-im-internet.de"
 _DEJURE = "https://dejure.org/dienste/vernetzung/rechtsprechung"

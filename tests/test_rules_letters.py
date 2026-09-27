@@ -10,7 +10,7 @@ sources are in ``test_rules_letter_golden.py``.
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import pytest
@@ -25,10 +25,13 @@ from ordnung.models import (
     ExtractedItem,
     ExtractedParty,
     Item,
+    LetterAdvice,
+    Recurrence,
     Remedy,
 )
 from ordnung.rules import catalog, routing, send_guidance
 from ordnung.rules.advice import (
+    HARDSHIP_EXCLUDED,
     BillingPeriod,
     billing_period,
     billing_period_text,
@@ -841,6 +844,75 @@ def test_a_special_termination_with_the_statutory_period_keeps_the_hardship_obje
     assert not routing.extraordinary_notice(_notice(quote, end=None, title=title))
     # the same letter said fristlos is one
     assert routing.extraordinary_notice(_notice("Wir kündigen das Mietverhältnis fristlos.", end=None))
+
+
+@pytest.mark.parametrize(
+    ("quote", "title"),
+    [
+        # the usual arrears notice: the statutory period belongs to the notice given in the alternative
+        (
+            "Hiermit kündigen wir das Mietverhältnis fristlos wegen Zahlungsverzugs, hilfsweise ordentlich unter "
+            "Einhaltung der gesetzlichen Kündigungsfrist zum 31.12.2026.",
+            "Kündigung des Mietverhältnisses",
+        ),
+        (
+            "Hiermit kündigen wir das Mietverhältnis fristlos. Hilfsweise kündigen wir ordentlich mit der "
+            "gesetzlichen Frist.",
+            "Kündigung des Mietverhältnisses",
+        ),
+        (
+            "Wir kündigen fristlos, vorsorglich auch ordentlich unter Wahrung der gesetzlichen Frist.",
+            "Kündigung",
+        ),
+        ("Wir kündigen fristlos.", "Termination without notice, alternatively with statutory notice"),
+        # a statutory period the wording denies
+        (
+            "Hiermit kündigen wir fristlos wegen Zahlungsverzugs.",
+            "Termination of tenancy without statutory notice",
+        ),
+        ("fristlos wegen Zahlungsverzugs", "Termination without statutory notice period"),
+        ("Wir kündigen fristlos und nicht mit der gesetzlichen Frist.", "Kündigung"),
+    ],
+)
+def test_a_statutory_period_of_the_alternative_notice_or_denied_keeps_it_without_notice_period(
+    quote: str, title: str
+) -> None:
+    """Final review 3: "mit der gesetzlichen Frist" and "statutory notice" make a special termination only
+    when they are said of the notice itself — not of the notice given in the alternative (after *hilfsweise*,
+    *vorsorglich … ordentlich*, "alternatively"), and not denied ("without statutory notice"). Such a notice
+    stays one without notice period: urgent, with the fact, and never filed as handled."""
+    extraction = _notice(quote, end=None, title=title)
+    assert routing.extraordinary_notice(extraction)
+    card = letter_advice(
+        "landlord_notice",
+        today=TODAY,
+        extraordinary=True,
+        alternative=routing.alternative_notice(extraction),
+        handled=True,
+    )
+    assert card is not None and card.urgent and not card.handled
+    assert card.facts[0].title == "This reads as a notice without notice period (fristlos)"
+
+
+def test_the_standard_arrears_notice_with_an_end_date_reads_as_without_notice_period() -> None:
+    """Final review 3: the exact wording from the review, with the alternative notice's end date: before, the
+    statutory period in the *hilfsweise* clause made it an ordinary notice that could be filed as handled."""
+    quote = (
+        "Hiermit kündigen wir das Mietverhältnis fristlos wegen Zahlungsverzugs, hilfsweise ordentlich unter "
+        "Einhaltung der gesetzlichen Kündigungsfrist zum 31.12.2026."
+    )
+    both = _notice(quote, end="2026-12-31")
+    assert routing.extraordinary_notice(both) and routing.alternative_notice(both)
+    fristgerecht = _notice(
+        quote.replace("ordentlich unter Einhaltung der gesetzlichen Kündigungsfrist", "fristgerecht")
+    )
+    assert routing.extraordinary_notice(fristgerecht)
+    # a statutory period said of the notice itself, before any alternative, still counts
+    special = _notice(
+        "Wir kündigen außerordentlich mit gesetzlicher Frist (§ 573d BGB), hilfsweise ordentlich zum 31.12.2026.",
+        end="2026-12-31",
+    )
+    assert not routing.extraordinary_notice(special)
 
 
 def test_the_letter_date_given_wins_over_the_readings() -> None:
@@ -1833,7 +1905,35 @@ def test_a_notice_without_notice_period_says_so_and_offers_no_useless_objection(
     # a hardship objection only against the notice given with a notice period in the alternative
     assert card.draft == ("objection" if alternative else None)
     assert ("hilfsweise" in fact.text) is alternative
-    assert not any(step.startswith("A notice without notice period") for step in card.steps)  # not twice
+    assert not any(step.startswith("No hardship objection when") for step in card.steps)  # not twice
+
+
+def test_the_hardship_objection_is_excluded_against_the_notice_in_the_alternative_too() -> None:
+    """Final review 3: § 574 Abs. 1 S. 2 BGB excludes the hardship objection whenever the landlord had grounds
+    for a notice without notice period — also against the ordinary notice given in the alternative, and a
+    payment within the grace period doesn't revive it (BGH, 01.07.2020, VIII ZR 323/18). The card never says
+    the objection applies to the alternative notice; it keeps the objection letter (the safe side) and says
+    to object anyway only if those grounds didn't exist. The ordinary card's step and the objection letter's
+    note say the same."""
+    from ordnung.drafts.compose import NO_HARDSHIP_OBJECTION
+
+    card = letter_advice("landlord_notice", today=TODAY, extraordinary=True, alternative=True)
+    ordinary = letter_advice("landlord_notice", today=TODAY)
+    assert card is not None and ordinary is not None
+    [fact] = card.facts
+    assert card.draft == "objection"
+    assert "only to the notice the landlord gives" not in fact.text
+    assert HARDSHIP_EXCLUDED in fact.text and "VIII ZR 323/18" in (fact.citation or "")
+    assert HARDSHIP_EXCLUDED.startswith(
+        "The hardship objection is excluded whenever the landlord had grounds for a notice without notice "
+        "period — also against the notice given in the alternative, and paying the arrears doesn't change that "
+        "(§ 574 Abs. 1 S. 2 BGB; BGH, 01.07.2020, VIII ZR 323/18)."
+    )
+    assert "Object in time anyway if you think those grounds didn't exist" in HARDSHIP_EXCLUDED
+    [step] = [step for step in ordinary.steps if step.startswith("No hardship objection when")]
+    assert "even against a notice with a notice period, and even once the arrears are paid" in step
+    assert "VIII ZR 323/18" in step and "can't be met with this objection" not in step
+    assert "excluded whenever the landlord had grounds for such a notice" in NO_HARDSHIP_OBJECTION
 
 
 def test_paying_the_arrears_is_never_said_to_undo_more_than_the_law_does() -> None:
@@ -1847,12 +1947,30 @@ def test_paying_the_arrears_is_never_said_to_undo_more_than_the_law_does() -> No
     fristlos = letter_advice("landlord_notice", today=TODAY, extraordinary=True)
     ordinary = letter_advice("landlord_notice", today=TODAY)
     assert alternative is not None and fristlos is not None and ordinary is not None
-    [step] = [step for step in ordinary.steps if step.startswith("A notice without notice period")]
+    [step] = [step for step in ordinary.steps if step.startswith("No hardship objection when")]
     for text in (alternative.facts[0].text, fristlos.facts[0].text, step, NO_HARDSHIP_OBJECTION):
         assert "can undo the notice without notice period" in text
         assert "not if that already happened within the last two years" in text
-        assert "but not a notice with a notice period given as well" in text
+        assert "but under current law not a notice with a notice period given as well" in text
         assert "still undo it" not in text
+
+
+def test_paying_the_arrears_names_what_must_be_paid_and_the_public_body_undertaking() -> None:
+    """Final review 3: § 569 Abs. 3 Nr. 2 S. 1 BGB counts all rent due and the compensation for use (§ 546a
+    Abs. 1 BGB) by then — and a public body (Jobcenter, Sozialamt) undertaking to pay it, the usual route
+    for a tenant who can't pay. The "never a notice with a notice period" part holds under current law only:
+    the pending Mietrecht II bill would change it, and the rules' re-check list says where to update."""
+    from ordnung.drafts.compose import NO_HARDSHIP_OBJECTION
+    from ordnung.rules.advice import ARREARS_CURE
+
+    for text in (ARREARS_CURE, NO_HARDSHIP_OBJECTION):
+        assert "all rent due by then" in text and "(§ 546a BGB)" in text
+        assert "Jobcenter or Sozialamt promising to pay it" in text
+        assert "under current law not a notice with a notice period given as well" in text
+    [pending] = catalog.PENDING_CHANGES
+    assert "Mietrecht II" in pending.change and "§ 573 Abs. 4 BGB" in pending.change
+    assert all(catalog.get_rule(rule_id) for rule_id in pending.rule_ids)
+    assert "ARREARS_CURE" in pending.update and pending.source.startswith("https://")
 
 
 def test_a_short_notice_names_the_usual_period_not_a_minimum() -> None:
@@ -2374,11 +2492,11 @@ def test_a_later_letter_counts_from_the_statements_own_date() -> None:
     """Final review 1: never the reminder's (or reply's) date as the statement's arrival when its text
     dates the statement earlier — then that date counts, never confirmed."""
     letter = D("2026-09-20")
-    assert statement_arrival(REMINDER_QUOTE, letter, True, letter) == (D("2024-11-15"), False)
+    assert statement_arrival(REMINDER_QUOTE, letter, True, letter) == (D("2024-11-15"), False, None)
     # the statement itself: its own date isn't earlier than the letter's, so the arrival entered counts
     own = "Betriebskostenabrechnung 2025 vom 08.09.2026\nAbrechnungszeitraum 01.01.2025 - 31.12.2025"
-    assert statement_arrival(own, D("2026-09-11"), True, D("2026-09-08")) == (D("2026-09-11"), True)
-    assert statement_arrival(REMINDER_QUOTE, letter, False, None) == (letter, False)  # no letter date
+    assert statement_arrival(own, D("2026-09-11"), True, D("2026-09-08")) == (D("2026-09-11"), True, None)
+    assert statement_arrival(REMINDER_QUOTE, letter, False, None) == (letter, False, None)  # no letter date
     card = letter_advice(
         "operating_costs",
         today=TODAY,
@@ -2405,26 +2523,125 @@ NAMING_LAST_YEARS = (
 )
 
 
-@pytest.mark.parametrize("text", [ENCLOSING_STATEMENT, NAMING_LAST_YEARS], ids=["enclosure", "last-year"])
-def test_a_date_the_statement_names_for_something_else_never_replaces_its_arrival(text: str) -> None:
-    """Final review 2: a statement that prints its own billing period is the statement itself: an earlier
-    "Abrechnung … vom" in it (an enclosure, the previous year's statement) is not its date, so the arrival
-    the person entered counts — and the late statement stays late, on the card and on its back-payment."""
-    letter, arrived = D("2026-01-15"), D("2026-01-17")
-    assert statement_arrival(text, arrived, True, letter) == (arrived, True)
-    assert statement_arrival(text, None, False, letter) == (None, False)
+def _statement_card(text: str, arrived: date | None, letter: date, today: date) -> LetterAdvice:
     card = letter_advice(
         "operating_costs",
-        today=D("2026-01-20"),
-        arrived=arrived,
-        arrival_confirmed=True,
+        today=today,
+        arrived=arrived or letter,
+        arrival_confirmed=arrived is not None,
         letter_date=letter,
         text=text,
     )
-    assert card is not None and card.urgent
-    assert card.facts[0].title == "This statement came too late"
+    assert card is not None
+    return card
+
+
+def test_another_years_statement_never_replaces_the_arrival() -> None:
+    """Final review 2: an earlier "Abrechnung 2023 vom" in the 2024 statement is the previous year's
+    statement, not this one's date, so the arrival the person entered counts — and the late statement
+    stays late, on the card and on its back-payment."""
+    letter, arrived = D("2026-01-15"), D("2026-01-17")
+    assert statement_arrival(NAMING_LAST_YEARS, arrived, True, letter) == (arrived, True, None)
+    assert statement_arrival(NAMING_LAST_YEARS, None, False, letter) == (None, False, None)
+    card = _statement_card(NAMING_LAST_YEARS, arrived, letter, D("2026-01-20"))
+    assert card.urgent and card.facts[0].title == "This statement came too late"
     # the back-payment's warning is worked out the same way (:func:`ordnung.ingest.plan.late_statement_warning`)
-    assert statement_late(text, *statement_arrival(text, arrived, True, letter), None)
+    arrival = statement_arrival(NAMING_LAST_YEARS, arrived, True, letter)
+    assert statement_late(NAMING_LAST_YEARS, arrival.arrived, arrival.confirmed, None, named=arrival.named)
+
+
+#: Final review 3: later letters that repeat the statement's billing period and date it without its year —
+#: a reply to objections (one with the period in brackets, one in its subject) and a corrected statement.
+#: Each is about the 2023 statement of 15 Nov 2024, which was on time (due by 31 Dec 2024).
+REPLY_WITH_PERIOD = (
+    "zu Ihren Einwendungen gegen unsere Nebenkostenabrechnung vom 15.11.2024 (Abrechnungszeitraum 01.01.2023 "
+    "bis 31.12.2023) nehmen wir wie folgt Stellung. Die Nachzahlung von 312,40 EUR bleibt bestehen."
+)
+REPLY_WITH_PERIOD_IN_SUBJECT = (
+    "Betreff: Betriebskostenabrechnung, Abrechnungszeitraum 01.01.2023 – 31.12.2023\nSehr geehrte Frau Weber, "
+    "zu Ihren Einwendungen gegen unsere Abrechnung vom 15.11.2024 nehmen wir wie folgt Stellung … Bitte "
+    "überweisen Sie die Nachzahlung von 312,40 EUR bis 28.02.2025."
+)
+CORRECTED_STATEMENT = (
+    "Korrigierte Betriebskostenabrechnung\nAbrechnungszeitraum 01.01.2023 – 31.12.2023\n"
+    "Diese Abrechnung ersetzt unsere Abrechnung vom 15.11.2024. Nachzahlung: 312,40 EUR"
+)
+
+
+@pytest.mark.parametrize(
+    ("text", "letter"),
+    [
+        (REPLY_WITH_PERIOD, D("2026-09-20")),
+        (REPLY_WITH_PERIOD_IN_SUBJECT, D("2025-02-10")),
+        (CORRECTED_STATEMENT, D("2025-02-10")),
+    ],
+    ids=["reply", "reply-subject", "corrected"],
+)
+@pytest.mark.parametrize("entered", [True, False], ids=["arrival-entered", "letter-date-only"])
+def test_a_later_letter_that_repeats_the_period_is_never_certainly_late(
+    text: str, letter: date, entered: bool
+) -> None:
+    """Final review 3: a later letter often prints the statement's billing period too, so a date it gives
+    "unsere Abrechnung" without the year may be the statement it is about — never proof that the letter is
+    the statement. The card says both readings, isn't urgent and never says "came too late", and the
+    back-payment carries no warning."""
+    arrived = letter + timedelta(days=2) if entered else None
+    arrival = statement_arrival(text, arrived or letter, entered, letter)
+    assert arrival == (arrived or letter, entered, D("2024-11-15"))
+    assert not statement_late(text, arrival.arrived, arrival.confirmed, None, named=arrival.named)
+    card = _statement_card(text, arrived, letter, letter + timedelta(days=5))
+    fact = card.facts[0]
+    assert not card.urgent and not any(step.startswith("Don't pay") for step in card.steps)
+    assert fact.title == "Too late only if this letter is the statement itself" and fact.tone == "info"
+    assert "names a statement dated Fri 15 Nov 2024" in fact.text
+    assert "probably on time and the back-payment (Nachzahlung) is owed" in fact.text
+    assert ("This letter arrived later" if entered else "This letter is dated later") in fact.text
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        ENCLOSING_STATEMENT,
+        # final review 3: a statement that gives only its billing year, with the same enclosure
+        "Betriebskostenabrechnung 2024\nAnlage: Heizkostenabrechnung der Techem vom 20.03.2025\nNachzahlung: 412,00 EUR",
+    ],
+    ids=["period", "billing-year"],
+)
+def test_a_statement_dating_an_enclosure_says_both_readings(text: str) -> None:
+    """Final review 3: a date without its year may be an enclosure's (the metering company's heating
+    statement) in the statement itself, or the statement a later letter is about: Ordnung can't tell which.
+    Counting from the day this letter arrived, it is late; from the enclosure's date it would be on time —
+    so the card names both and neither calls it certainly late nor probably on time."""
+    letter, arrived = D("2026-01-15"), D("2026-01-17")
+    assert statement_arrival(text, arrived, True, letter) == (arrived, True, D("2025-03-20"))
+    card = _statement_card(text, arrived, letter, D("2026-01-20"))
+    fact = card.facts[0]
+    assert not card.urgent and fact.title == "Too late only if this letter is the statement itself"
+    assert "Only if this letter is the statement itself" in fact.text and "20 Mar 2025" in fact.text
+    if "Abrechnungszeitraum" not in text:
+        assert fact.text.startswith("The letter names the billing year (2024) but not its dates.")
+
+
+def test_a_named_statement_date_that_is_late_too_keeps_the_statement_late() -> None:
+    """Final review 3: when the date the letter also gives a statement is past the deadline as well, both
+    readings say late — the card says so with certainty and the back-payment is warned about."""
+    text = "Abrechnungszeitraum: 01.01.2023 - 31.12.2023\nzu Ihren Einwendungen gegen unsere Abrechnung vom 15.01.2025"
+    letter, arrived = D("2025-03-10"), D("2025-03-12")
+    arrival = statement_arrival(text, arrived, True, letter)
+    assert arrival == (arrived, True, D("2025-01-15"))
+    assert statement_late(text, arrival.arrived, arrival.confirmed, None, named=arrival.named)
+    card = _statement_card(text, arrived, letter, D("2025-03-20"))
+    assert card.urgent and card.facts[0].title == "This statement came too late"
+
+
+def test_a_later_letter_that_arrived_in_time_is_on_time_either_way() -> None:
+    """Final review 3: a statement date the letter gives without its year changes nothing when the letter's
+    own arrival was in time: whichever reading holds, the statement arrived by then."""
+    arrived = D("2024-11-20")
+    arrival = statement_arrival(REPLY_WITH_PERIOD, arrived, True, D("2024-11-18"))
+    assert arrival == (arrived, True, D("2024-11-15"))
+    card = _statement_card(REPLY_WITH_PERIOD, arrived, D("2024-11-18"), D("2024-11-25"))
+    assert card.facts[0].title == "On time"
 
 
 @pytest.mark.parametrize(
@@ -2435,29 +2652,48 @@ def test_a_date_the_statement_names_for_something_else_never_replaces_its_arriva
         (
             "Ihr Widerspruch gegen unsere Betriebskostenabrechnung 2023 vom 15.11.2024 ist unbegründet.\n"
             "Abrechnungszeitraum: 01.01.2023 - 31.12.2023",
-            True,
+            "counts",
         ),
-        # … or without a year, when it prints no period of its own (the title names the year)
-        ("Operating-cost statement 2023\nIhr Widerspruch gegen unsere Abrechnung vom 15.11.2024 …", True),
+        # without a year, it may be this statement's — or an enclosure's: named, the arrival stays
+        ("Operating-cost statement 2023\nIhr Widerspruch gegen unsere Abrechnung vom 15.11.2024 …", "named"),
+        (REPLY_WITH_PERIOD, "named"),
+        (REPLY_WITH_PERIOD_IN_SUBJECT, "named"),
+        (CORRECTED_STATEMENT, "named"),
         # another year's statement, even without a period of its own
-        ("Betriebskostenabrechnung 2024\nDie Abrechnung 2023 vom 15.01.2025 wurde korrigiert.", False),
+        ("Betriebskostenabrechnung 2024\nDie Abrechnung 2023 vom 15.01.2025 wurde korrigiert.", "ignored"),
+        # … or named with its year before this statement's own period ended (the period the card checks)
+        (
+            "Abrechnungszeitraum: 01.01.2025 - 31.12.2025\nDas Guthaben aus der Abrechnung 2024 vom 10.11.2025 "
+            "wurde erstattet.",
+            "ignored",
+        ),
         # dated before the billing period ended: the previous statement
-        ("Betriebskostenabrechnung 2024\nDas Guthaben aus der letzten Abrechnung vom 10.11.2024 …", False),
+        (
+            "Betriebskostenabrechnung 2024\nDas Guthaben aus der letzten Abrechnung vom 10.11.2024 …",
+            "ignored",
+        ),
         # no billing period at all: nothing to check it against
-        ("Ihr Widerspruch gegen unsere Abrechnung vom 15.11.2024 ist unbegründet.", False),
+        ("Ihr Widerspruch gegen unsere Abrechnung vom 15.11.2024 ist unbegründet.", "ignored"),
     ],
 )
-def test_which_statement_date_a_later_letter_counts_from(text: str, counts: bool) -> None:
+def test_which_statement_date_a_later_letter_counts_from(text: str, counts: str) -> None:
     letter, arrived = D("2026-09-20"), D("2026-09-22")
     dated = statement_date(text)
     assert dated is not None
-    expected = (dated, False) if counts else (arrived, True)
+    expected = {
+        "counts": (dated, False, None),
+        "named": (arrived, True, dated),
+        "ignored": (arrived, True, None),
+    }[counts]
     assert statement_arrival(text, arrived, True, letter) == expected
 
 
 def test_two_dates_on_one_day_are_sorted_by_date_alone() -> None:
     text = "Operating-cost statement 2023\nAbrechnung 2023 vom 15.11.2024 und Abrechnung vom 15.11.2024"
-    assert statement_arrival(text, D("2026-09-22"), True, D("2026-09-20")) == (D("2024-11-15"), False)
+    assert statement_arrival(text, D("2026-09-22"), True, D("2026-09-20")) == (D("2024-11-15"), False, None)
+    # the earliest of several dates without a year is the one named
+    text = "Abrechnungszeitraum 01.01.2023 - 31.12.2023\nAbrechnung vom 20.11.2024 ersetzt die Abrechnung vom 15.11.2024"
+    assert statement_arrival(text, D("2026-09-22"), True, D("2026-09-20")).named == D("2024-11-15")
 
 
 def test_a_rent_increase_card_says_which_month_ends_the_decision() -> None:
@@ -2517,6 +2753,40 @@ def test_a_typed_recipient_is_a_court_only_by_its_full_name(name: str) -> None:
     )
     assert not routing.is_court(name, "retailer") and not routing.is_court(name, "company")
     assert routing.is_court("Amtsgericht Hagen", "other")  # a court's full name counts from any sender kind
+    # final review 3: … but it may be one, which its sending advice says (:func:`test_a_typed_name_that_may_be_a_court`)
+    assert routing.may_be_court(name)
+
+
+@pytest.mark.parametrize(
+    ("name", "maybe"),
+    [
+        ("AG Hagen", True),
+        ("LG Köln", True),
+        ("AG Hagen – Abteilung 12", True),
+        ("Amtsgericht Hagen", True),
+        ("LG Electronics", True),  # can't be told apart from a court
+        ("LG Electronics Deutschland GmbH", False),
+        ("Gerichtsvollzieher beim AG Hagen", False),
+        ("Stadtwerke Hagen", False),
+    ],
+)
+def test_a_typed_name_that_may_be_a_court(name: str, maybe: bool) -> None:
+    """Final review 3: a request for more time sent to "AG Hagen" by plain e-mail isn't validly filed, so a
+    typed name that abbreviates a court before a place gets the court's channels — a signed letter first —
+    with e-mail last and allowed only for the case it isn't a court. Only for letters sent to a court (an
+    objection, a reply, a request for more time): a withdrawal to "LG Electronics" keeps its own channels."""
+    assert routing.may_be_court(name) is maybe
+    unsure = maybe and not routing.is_court(name, None)
+    guidance = send_guidance(
+        "extension_request", court=routing.is_court(name, None), court_unsure=unsure, today=TODAY
+    )
+    [email] = [channel for channel in guidance.channels if channel.channel == "email"]
+    assert guidance.channels[0].channel == ("letter" if maybe else "email")
+    assert email.allowed is (not maybe or unsure) and email.recommended is not maybe
+    if unsure:
+        assert email.note is not None and email.note.startswith("Not valid if this is a court")
+    withdrawal = send_guidance("withdrawal", court=False, court_unsure=unsure, today=TODAY)
+    assert withdrawal.channels[0].channel == "email" and withdrawal.channels[0].allowed
 
 
 def test_an_lg_order_confirmation_keeps_the_consumer_withdrawal_rules() -> None:
@@ -2704,6 +2974,15 @@ def test_a_landlords_notice_no_to_do_carries_is_never_handled(facts: dict[str, A
     assert card is not None and card.urgent and not card.handled
     ordinary = letter_advice("landlord_notice", today=TODAY, handled=True)
     assert ordinary is not None and ordinary.handled and not ordinary.urgent
+    # final review 3: … until the person says they dealt with it (had advice, moved out, settled): the card
+    # offers that itself, as no to-do can close it
+    assert card.closable and not ordinary.closable
+    dealt = letter_advice("landlord_notice", today=TODAY, dealt_with=True, **facts)
+    assert dealt is not None and dealt.handled and not dealt.urgent and dealt.closable
+    assert dealt.model_copy(update={"urgent": True, "handled": False}) == card
+    # the tag means nothing on a card its to-dos settle
+    other = letter_advice("landlord_notice", today=TODAY, dealt_with=True)
+    assert other is not None and not other.handled
 
 
 def _todo(status: str, *rule_ids: str, origin: str = "extracted") -> Item:
@@ -2732,6 +3011,78 @@ def test_only_the_to_dos_that_carry_the_letters_deadline_settle_it() -> None:
     assert settles(card, [_todo("dismissed", origin="rule")])
     assert not settles(card, [_todo("done", "zpo_692", origin="rule"), _todo("snoozed", "zpo_180")])
     assert not settles(card, [_todo("missed", "zpo_692")])
+
+
+def test_a_rent_increase_is_handled_once_the_consent_decision_is_closed() -> None:
+    """Final review 3: a rent increase's new rent cites § 558b BGB for its payment note, and a recurring to-do
+    stays open after "done" (it moves to its next occurrence): neither carries the letter's deadline, so
+    closing the consent decision handles the letter."""
+    card = letter_advice("rent_increase", today=TODAY)
+    assert card is not None
+    decision = _todo("done", "bgb_558b", origin="rule")
+    recurring_rent = _todo("open", "bgb_558b").model_copy(
+        update={"id": "rent", "kind": "payment", "recurrence": Recurrence(freq="monthly")}
+    )
+    one_off_rent = recurring_rent.model_copy(update={"id": "rent-once", "recurrence": None})
+    assert settles(card, [decision, recurring_rent, one_off_rent])
+    assert not settles(card, [decision.model_copy(update={"status": "open"}), recurring_rent])
+    assert not settles(card, [recurring_rent])  # only the new rent: nothing that carries the deadline
+    # a recurring to-do never carries a court order's deadline either; a one-off payment under its rule does
+    order = letter_advice("court_payment_order", today=TODAY)
+    assert order is not None
+    pay = _todo("open", "zpo_692").model_copy(update={"id": "pay", "kind": "payment"})
+    assert not settles(order, [_todo("done", "zpo_692", origin="rule"), pay])
+    monthly = pay.model_copy(update={"recurrence": Recurrence(freq="monthly")})
+    assert settles(order, [_todo("done", "zpo_692", origin="rule"), monthly])
+
+
+def test_an_on_time_statement_has_no_to_do_that_carries_a_deadline() -> None:
+    """Final review 3: an operating-cost statement that came in time has no to-do carrying a legal deadline
+    (its back-payment cites § 556 Abs. 3 BGB only when it is late), so it is never handled — its card is
+    information, and the page keeps asking when it arrived (the objection period counts from then). A late
+    one is handled once its back-payment is closed."""
+    card = letter_advice("operating_costs", today=TODAY)
+    assert card is not None
+    back_payment = _todo("done").model_copy(update={"kind": "payment"})
+    assert not settles(card, [back_payment])
+    late = back_payment.model_copy(
+        update={"computation": ComputationReceipt(due_date=None, rule_ids=["bgb_286", "bgb_556_3"])}
+    )
+    assert settles(card, [late])
+
+
+@pytest.mark.parametrize("own_date", ["today", "document_date"])
+@pytest.mark.parametrize("court", [True, False], ids=["court", "other-sender"])
+def test_a_period_from_the_letters_own_date_without_its_date_counts_from_the_arrival_entered(
+    own_date: str, court: bool
+) -> None:
+    """Final review 3: a letter that counts from its own date ("ab heute") but whose date wasn't read can be
+    dated at the latest the day it arrived — the envelope date the person entered — never the (later) day it
+    is processed. A court's letter then runs from the envelope date as before (§ 180 ZPO, 18 Sep, not 12 Oct);
+    both say the real deadline may be earlier. Another sender's "ab dem Datum dieses Schreibens" without the
+    date still computes nothing."""
+    date_spec = spec(anchor=own_date, nature="declaration", text="binnen zwei Wochen ab heute")
+    undated = ctx(
+        today=D("2026-09-27"),
+        document_date=None,
+        received_date=D("2026-09-04"),
+        received_confirmed=True,
+        court=court,
+    )
+    receipt = compute_due(date_spec, undated)
+    if not court and own_date == "document_date":
+        assert receipt.due_date is None
+        return
+    assert receipt.due_date == "2026-09-18" and receipt.confidence == "low"
+    assert any("which is missing; we counted from Fri 4 Sep 2026" in warning for warning in receipt.warnings)
+    assert ("zpo_180" in receipt.rule_ids) is court
+    # nothing entered: from today, as before (the real deadline may be earlier)
+    unknown = replace(undated, received_date=None, received_confirmed=False)
+    if own_date == "today":
+        assert compute_due(date_spec, unknown).due_date == "2026-10-12"
+        # an arrival entered as today changes nothing
+        same_day = replace(undated, received_date=D("2026-09-27"))
+        assert compute_due(date_spec, same_day).due_date == "2026-10-12"
 
 
 def test_every_court_letters_period_runs_from_delivery() -> None:

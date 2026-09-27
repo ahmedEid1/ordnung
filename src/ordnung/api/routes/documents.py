@@ -193,6 +193,11 @@ def _with_reminder_notes(store: Store, items: list[Item], today: date) -> list[I
     ]
 
 
+#: The tag a letter carries once the person said they dealt with a card no to-do can settle
+#: (``LetterAdvice.closable``: a landlord's notice without notice period, or without an objection to-do).
+DEALT_WITH_TAG = "dealt-with"
+
+
 def letter_card(store: Store, document: Document, today: date) -> LetterAdvice | None:
     """The "get advice" card of a high-stakes letter, worked out on read from its kind, its dates,
     the amounts read from it, its text and its to-dos (:func:`ordnung.rules.advice.letter_advice`).
@@ -200,7 +205,9 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
     Whether a to-do carries a landlord's notice is read from the to-dos themselves: one computed under
     § 574b BGB (the law's to-do or the letter's own objection date), whatever the reading's end date.
     A letter is ``handled`` once the person closed every to-do that carries its legal deadline
-    (:func:`ordnung.rules.advice.settles`): its card is then no longer urgent."""
+    (:func:`ordnung.rules.advice.settles`): its card is then no longer urgent. A card no to-do can settle
+    (``closable``) is handled once the person tagged the letter :data:`DEALT_WITH_TAG` ("I've dealt with
+    this" on the card)."""
     extraction = store.get_extraction(document.id)
     kind: str | None = document.kind
     if kind not in HIGH_STAKES_KINDS:
@@ -238,6 +245,7 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
         objection_passed=end is not None
         and letter_date is not None
         and notice_objection_deadline(end) < letter_date,
+        dealt_with=DEALT_WITH_TAG in document.tags,
     )
     advice = card()
     # which to-dos carry the letter's deadline follows from the card's rules

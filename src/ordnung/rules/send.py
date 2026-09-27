@@ -457,8 +457,24 @@ def _template(kind: str, party_kind: str | None) -> SendGuidance:
     return guidance
 
 
-def _court_channels() -> list[SendChannel]:
-    """How to write to a court: in writing, signed — plain e-mail isn't valid there."""
+#: The letters a person may send to a court whose name they typed in (:func:`send_guidance`).
+_SENT_TO_A_COURT: tuple[GuidanceKind, ...] = ("objection", "general_reply", "extension_request")
+
+
+def _court_channels(*, unsure: bool = False) -> list[SendChannel]:
+    """How to write to a court: in writing, signed — plain e-mail isn't valid there. ``unsure``: the
+    recipient only may be a court (a name typed in that starts like one, "AG Hagen", "LG Electronics"),
+    so e-mail stays allowed with that caveat."""
+    email = (
+        _channel(
+            "email",
+            "E-mail",
+            "Not valid if this is a court (AG, LG … before a place) — then send the signed letter. Fine for a "
+            "company whose name only starts like one.",
+        )
+        if unsure
+        else _channel("email", "E-mail", "Not valid at a court.", allowed=False)
+    )
     return [
         _channel(
             "letter",
@@ -472,7 +488,7 @@ def _court_channels() -> list[SendChannel]:
             "At the court's Rechtsantragstelle",
             "Free: staff take it down for you; bring the court's letter.",
         ),
-        _channel("email", "E-mail", "Not valid at a court.", allowed=False),
+        email,
     ]
 
 
@@ -501,13 +517,18 @@ def send_guidance(
     postal_buffer_days: int = POSTAL_BUFFER_DAYS,
     court: bool = False,
     labour_court: bool = False,
+    court_unsure: bool = False,
 ) -> SendGuidance:
     """Ranked channels, form requirement and dates for sending a letter of ``kind``.
 
     ``letter_kind`` is the kind of the letter being answered: an objection to a court order or to a
     landlord's notice has its own form. ``court``: the letter goes to a court, which takes it only in
     writing — never by plain e-mail; ``labour_court``: it is a labour court, whose orders are answered
-    there within one week. ``due`` is the day it must *arrive* (``must_arrive_by``).
+    there within one week; ``court_unsure``: the recipient's name only may be a court's (a name typed in,
+    :func:`~ordnung.rules.routing.may_be_court`): a letter people send to a court (an objection, a reply,
+    a request for more time) then gets the court's channels, a signed letter first, with e-mail last and
+    allowed only for the case it isn't a court; other letters (a withdrawal to "LG Electronics") keep their
+    own. ``due`` is the day it must *arrive* (``must_arrive_by``).
     ``send_by`` is the latest day to post a letter: ``postal_buffer_days`` business days before the
     last business day on or before ``due``, never before ``today``; ``None`` without a due date or
     once it has passed. A withdrawal only has to be *sent* by ``due`` (§ 355 Abs. 1 S. 5 BGB).
@@ -531,8 +552,11 @@ def send_guidance(
         guidance = _general_reply()
     else:
         guidance = _template(kind, party_kind)
-    if court and not (kind == "objection" and letter_kind in ("court_payment_order", "enforcement_order")):
-        guidance.channels = _court_channels()
+    unsure = court_unsure and not court and kind in _SENT_TO_A_COURT
+    if (court or unsure) and not (
+        kind == "objection" and letter_kind in ("court_payment_order", "enforcement_order")
+    ):
+        guidance.channels = _court_channels(unsure=unsure)
     guidance.tips.append("Keep a copy of what you send and any proof of delivery.")
     if due is None:
         return guidance

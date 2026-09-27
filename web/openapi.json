@@ -7250,6 +7250,11 @@
             "type": "boolean",
             "title": "Handled",
             "default": false
+          },
+          "closable": {
+            "type": "boolean",
+            "title": "Closable",
+            "default": false
           }
         },
         "type": "object",
@@ -7263,7 +7268,8 @@
           "help",
           "rule_ids",
           "draft",
-          "handled"
+          "handled",
+          "closable"
         ],
         "title": "LetterAdvice",
         "description": "The \"get advice\" card of a high-stakes letter, worked out on read (:mod:`ordnung.rules.advice`).\n\n``urgent`` letters (court orders, a dismissal) always carry it; the others show it as information."

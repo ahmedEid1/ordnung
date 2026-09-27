@@ -2341,6 +2341,11 @@ export interface components {
              * @default false
              */
             handled: boolean;
+            /**
+             * Closable
+             * @default false
+             */
+            closable: boolean;
         };
         /**
          * LetterDetails

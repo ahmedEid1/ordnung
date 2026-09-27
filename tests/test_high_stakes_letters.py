@@ -1008,9 +1008,16 @@ def test_only_a_statement_the_card_calls_late_warns_its_payments() -> None:
     )
     assert late_statement_warning(True, None, text, entered) == LATE_STATEMENT_WARNING
     assert late_statement_warning(True, None, text, replace(entered, received_confirmed=False)) is None
-    # final review 2: an earlier date the statement gives an enclosure doesn't replace the arrival entered
+    # final review 2: an earlier date of another year's statement doesn't replace the arrival entered
+    last_years = f"{text}\nDas Guthaben aus der Abrechnung 2024 vom 10.11.2025 wurde erstattet."
+    assert late_statement_warning(True, None, last_years, entered) == LATE_STATEMENT_WARNING
+    # final review 3: a date without its year may be the statement a later letter is about (a reply that
+    # repeats the period) or an enclosure's: ambiguous, so the back-payment is never warned about when that
+    # date would make the statement on time — the card says both readings
     enclosing = f"{text}\nAnlage: Heizkostenabrechnung der Techem vom 20.03.2026"
-    assert late_statement_warning(True, None, enclosing, entered) == LATE_STATEMENT_WARNING
+    assert late_statement_warning(True, None, enclosing, entered) is None
+    reply = f"{text}\nzu Ihren Einwendungen gegen unsere Abrechnung vom 20.11.2026 nehmen wir Stellung."
+    assert late_statement_warning(True, None, reply, entered) is None
     assert is_statement("operating_costs", None) and not is_statement("dismissal", _reading(STATEMENT))
     assert is_statement("utility_bill", _reading(STATEMENT)) and not is_statement("utility_bill", None)
 
@@ -1198,6 +1205,16 @@ async def test_paying_the_arrears_doesnt_settle_a_notice_without_notice_period(d
         advice = (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]
         assert advice["urgent"] and not advice["handled"]
         assert advice["facts"][0]["title"].startswith("This reads as a notice without notice period")
+        # final review 3: only the person can close it ("I've dealt with this" on the card: a tag), and undo it
+        assert advice["closable"]
+        response = await api.client.patch(
+            f"/api/documents/{doc_id}", json={"tags": [documents.DEALT_WITH_TAG]}
+        )
+        assert response.status_code == 200
+        dealt = (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]
+        assert dealt["handled"] and not dealt["urgent"] and dealt["closable"]
+        await api.client.patch(f"/api/documents/{doc_id}", json={"tags": []})
+        assert (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]["urgent"]
 
 
 async def test_another_to_do_of_a_dismissal_doesnt_settle_it(data_dir: Path) -> None:

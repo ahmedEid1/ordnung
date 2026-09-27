@@ -42,7 +42,17 @@ from ordnung.drafts.template_letters import (
 )
 from ordnung.llm.base import LLMError, LLMRequest, LLMResponse
 from ordnung.llm.fake import FakeBackend
-from ordnung.models import DateSpec, Draft, Identifier, LetterDetails, Profile, Remedy
+from ordnung.models import (
+    DateSpec,
+    DocumentExtraction,
+    Draft,
+    ExtractedChange,
+    Identifier,
+    LetterDetails,
+    Profile,
+    Remedy,
+)
+from ordnung.rules.advice import HARDSHIP_EXCLUDED
 from test_api_support import api_for
 
 TODAY = date(2026, 9, 28)
@@ -479,6 +489,42 @@ async def test_objection_to_a_landlords_notice(ctx: AppContext, ids: dict[str, s
     assert _check(draft, "citations_known")
 
 
+async def test_objection_to_a_notice_in_the_alternative_says_when_the_hardship_objection_is_excluded(
+    ctx: AppContext, ids: dict[str, str]
+) -> None:
+    """Final review 3: the hardship objection is excluded whenever the landlord had grounds for a notice
+    without notice period — also against the notice given in the alternative (§ 574 Abs. 1 S. 2 BGB; BGH,
+    01.07.2020, VIII ZR 323/18). The letter is still drafted (the safe side), with the card's note; an
+    ordinary notice's letter has no such note."""
+    reading = DocumentExtraction(
+        kind="rent_lease",
+        title="Kündigung fristlos, hilfsweise fristgerecht",
+        summary="Your landlord ends the tenancy.",
+        explanation="Get advice.",
+        document_date="2026-09-20",
+        change=ExtractedChange(
+            type="termination_by_provider",
+            effective_date="2027-03-31",
+            quote="hiermit kündigen wir das Mietverhältnis fristlos, hilfsweise fristgerecht zum 31.03.2027.",
+        ),
+    )
+    ctx.store.update_document(ids["notice"], extraction=reading)
+    draft = await compose(ctx, "objection", doc_id=ids["notice"])
+    assert "widerspreche ich Ihrer Kündigung" in draft.body
+    assert HARDSHIP_EXCLUDED in draft.notes_for_user
+    ordinary = reading.model_copy(
+        update={
+            "title": "Kündigung",
+            "change": reading.change.model_copy(  # type: ignore[union-attr]
+                update={"quote": "hiermit kündigen wir das Mietverhältnis fristgerecht zum 31.03.2027."}
+            ),
+        }
+    )
+    ctx.store.update_document(ids["notice"], extraction=ordinary)
+    plain = await compose(ctx, "objection", doc_id=ids["notice"])
+    assert HARDSHIP_EXCLUDED not in plain.notes_for_user
+
+
 async def test_withdrawal_draft_shows_the_period(ctx: AppContext, ids: dict[str, str]) -> None:
     details = LetterDetails(subject_matter="Kaffeemaschine", received_on="2026-09-24")
     draft = await compose(ctx, "withdrawal", party_id=ids["shop"], details=details)
@@ -898,6 +944,23 @@ async def test_a_withdrawal_to_a_company_named_like_a_court_may_go_by_email(
     assert draft.send_guidance is not None
     [email] = [channel for channel in draft.send_guidance.channels if channel.channel == "email"]
     assert email.allowed is not court
+
+
+@pytest.mark.parametrize(
+    "recipient", ["AG Hagen\nHeinitzstraße 42\n58097 Hagen", "LG Köln\nLuxemburger Str. 101"]
+)
+async def test_a_request_for_more_time_to_a_court_typed_by_its_abbreviation_goes_in_writing(
+    ctx: AppContext, recipient: str
+) -> None:
+    """Final review 3: "AG Hagen" typed in may be a court, where a plain e-mail doesn't count: the letter's
+    sending advice leads with the signed letter and says e-mail is valid only if it isn't a court."""
+    details = LetterDetails(recipient=recipient, until="2026-11-15", subject_matter="Stellungnahme")
+    draft = await compose(ctx, "extension_request", details=details)
+    assert draft.send_guidance is not None
+    channels = draft.send_guidance.channels
+    assert channels[0].channel == "letter" and channels[0].recommended
+    [email] = [channel for channel in channels if channel.channel == "email"]
+    assert not email.recommended and (email.note or "").startswith("Not valid if this is a court")
 
 
 @pytest.mark.parametrize(

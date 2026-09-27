@@ -21,7 +21,8 @@ means reading some German wording in code — the kind of clause parsing ADR 000
 2. **Court orders: three signals, no list of exceptions.** The sender is a court (its name names a kind of
    court, or abbreviates one before a place from a sender read as an authority or of no particular kind —
    a company whose name starts like "LG" or "AG" is none, nor a recipient typed in without its kind unless
-   it gives the court's full name), the letter asks the person to answer it as the
+   it gives the court's full name — though such a recipient may be one, so a letter people send to a court
+   gets the court's channels, with e-mail allowed only "if it isn't a court"), the letter asks the person to answer it as the
    respondent (a *Widerspruch*/*Einspruch* remedy or an objection date), and it names the order (the
    title first, else the remedy). Later court letters about an order give the person no remedy, so they drop out without
    a list of "later letter" wordings, which kept growing and vetoing genuine orders.
@@ -33,11 +34,16 @@ means reading some German wording in code — the kind of clause parsing ADR 000
 4. **Errors go to the safe side.** Where the wording parser is unsure, it keeps the to-do and offers the
    letter: a *fristlos* wording that is negated, reserved or far from its end counts as an ordinary notice
    (the objection to-do is kept), and any *hilfsweise* in the notice's own words counts as a notice in
-   the alternative, even one that only reserves it (an objection is offered that may not be needed); any
-   statutory period ("mit gesetzlicher Frist", "with statutory notice") makes it a special termination
-   with the objection. The late-statement check only calls a statement late when it certainly is, and
-   never counts from a later letter's date — nor replaces the arrival of a statement that prints its own
-   billing period with an earlier date it gives an enclosure or another year's statement.
+   the alternative, even one that only reserves it (an objection is offered that may not be needed — and
+   kept though the objection is excluded against it too when the grounds for the notice without notice
+   period existed, BGH VIII ZR 323/18, which the card says); a statutory period ("mit gesetzlicher Frist",
+   "with statutory notice") said of the notice itself makes it a special termination with the objection —
+   never one that is denied ("without statutory notice") or belongs to the notice given in the alternative
+   (after *hilfsweise*), which would turn a *fristlos* notice into an ordinary one. The late-statement check
+   only calls a statement late when it certainly is, and never counts from a later letter's date: a date
+   the letter gives a statement without its year may be the statement a later letter is about (a reply
+   repeats the billing period too) or an enclosure's, so it never lets the statement be called late when
+   it would make it on time; the card says both readings. Another year's statement's date never counts.
 5. **The prompt change is deferred, not dropped.** The next extraction prompt should let the model name
    the letter kind itself (a `letter_kind` field with these kinds); the wording rules then become a check
    on the model's answer rather than the decision.
@@ -51,7 +57,9 @@ means reading some German wording in code — the kind of clause parsing ADR 000
   order: the safe side for a two-week *Notfrist*); "Hilfsweise behalten wir uns eine ordentliche
   Kündigung vor" read as a notice in the alternative; a reply to objections about an old statement that
   names the statement in its title without dating it; an enclosure a statement dates with the statement's
-  own year ("Heizkostenabrechnung 2024 der Techem vom …"), which is taken for the statement's date.
+  own year ("Heizkostenabrechnung 2024 der Techem vom …"), which is taken for the statement's date; a
+  statement that dates its enclosure without the year is not called late with certainty, only "too late
+  if this letter is the statement itself".
 - When a review round finds a new counter-example in one of the wording rules, the fix follows ADR
   0007: prefer moving the error to the safe side (keep the to-do, show the caveat) over more clause
   parsing; the real fix is the `letter_kind` prompt field.

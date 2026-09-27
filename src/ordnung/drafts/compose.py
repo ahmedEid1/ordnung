@@ -65,10 +65,16 @@ from ordnung.models import (
     TemplateDraftKind,
 )
 from ordnung.rules import LAST_CHECKED, RuleContext, compute_due, send_guidance
-from ordnung.rules.advice import ARREARS_CURE, billing_period_text
+from ordnung.rules.advice import ARREARS_CURE, HARDSHIP_EXCLUDED, billing_period_text
 from ordnung.rules.consumer import long_withdrawal_end
 from ordnung.rules.explain import fmt_date
-from ordnung.rules.routing import alternative_notice, extraordinary_notice, is_court, is_labour_court
+from ordnung.rules.routing import (
+    alternative_notice,
+    extraordinary_notice,
+    is_court,
+    is_labour_court,
+    may_be_court,
+)
 from ordnung.secretary.review import language_name, split_sentences, stable_hash, untrusted_json
 from ordnung.secretary.scam import ibans_in_text, normalize_iban
 from ordnung.secretary.triggers import Ledger, contract_area, contract_computation, parse_day, postal_buffer
@@ -385,8 +391,9 @@ def _person_name(kind: str, party: Party | None) -> str | None:
 #: Why there is no hardship objection against a notice without notice period (the card says the same).
 NO_HARDSHIP_OBJECTION = (
     "This reads as a notice without notice period (fristlos). The hardship objection (§ 574 BGB) doesn't apply "
-    "to it (§ 574 Abs. 1 S. 2 BGB), so Ordnung doesn't draft one. If it is for rent arrears (§ 569 Abs. 3 Nr. 2 "
-    f"BGB), {ARREARS_CURE}. Get advice at once, for example from a tenants' association."
+    "to it: it is excluded whenever the landlord had grounds for such a notice (§ 574 Abs. 1 S. 2 BGB), so "
+    f"Ordnung doesn't draft one. If it is for rent arrears (§ 569 Abs. 3 Nr. 2 BGB), {ARREARS_CURE}. Get advice "
+    "at once, for example from a tenants' association."
 )
 
 
@@ -707,8 +714,11 @@ def plan_letter(
     reference_language: LetterLanguage = "de" if translation == "de" else "en"
     reference = frame(reference_language) if translation else None
     party = sources.party
-    # a recipient typed in has no kind: only a court's full name makes it one ("LG Electronics" is none)
+    # a recipient typed in has no kind: only a court's full name makes it one; "AG Hagen" (or "LG
+    # Electronics", which can't be told apart) may be one, so it gets a court's channels and a note
     recipient = party.name if party else (facts.recipient or "").strip().split("\n")[0]
+    court = is_court(recipient, party.kind if party else None)
+    unsure = party is None and not court and may_be_court(recipient)
     guidance = send_guidance(
         kind,
         contract_category=sources.contract.category if sources.contract else None,
@@ -718,8 +728,9 @@ def plan_letter(
         region=party.region if party else None,
         today=today,
         postal_buffer_days=postal_buffer(sources.profile),
-        court=is_court(recipient, party.kind if party else None),
+        court=court,
         labour_court=is_labour_court(recipient, party.kind if party else None),
+        court_unsure=unsure,
     )
     return Plan(
         kind, language, letter, reference, translation, guidance, tuple(notes), private_values(sources, facts)
@@ -1098,7 +1109,16 @@ def _kind_notes(plan: Plan, sources: Sources) -> list[str]:
     """Notes about what this kind of letter does and doesn't do."""
     letter_kind = sources.document.kind if sources.document else None
     if plan.kind == "objection":
-        return [STATUTORY_OBJECTION_NOTES.get(letter_kind or "", _OBJECTION_NOTE)]
+        notes = [STATUTORY_OBJECTION_NOTES.get(letter_kind or "", _OBJECTION_NOTE)]
+        reading = sources.extraction
+        if (
+            letter_kind == "landlord_notice"
+            and reading is not None
+            and extraordinary_notice(reading, sources.doc_date)
+        ):
+            # only drafted for the notice given in the alternative (:func:`objection_remedy`)
+            notes.append(HARDSHIP_EXCLUDED)
+        return notes
     notes = list(_TEMPLATE_NOTES.get(plan.kind, ()))
     if plan.kind == "payment_plan":
         tax = sources.party is not None and sources.party.kind == "tax_office"

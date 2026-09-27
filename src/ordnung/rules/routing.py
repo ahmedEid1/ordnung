@@ -58,10 +58,11 @@ Nebenkostenabrechnung in its title, or with a tenancy or a billing period; the m
 reminder (``dunning``), which quotes an old statement without being it; and the sender is not a utility
 or a public body, which may ask for a statement without sending one). A later letter about a statement
 that isn't a reminder (a reply to objections) may still be recognised: its card and its payments count
-from the statement's own date when the letter gives one ("Abrechnung 2023 vom 15.11.2024" — the statement
-whose billing period it names, :func:`~ordnung.rules.advice.statement_arrival`), never from the later
-letter's date. The person may
-still file a letter as ``operating_costs``.
+from the statement's own date when the letter gives one with its year ("Abrechnung 2023 vom 15.11.2024" —
+the statement whose billing period it names, :func:`~ordnung.rules.advice.statement_arrival`), never from
+the later letter's date alone; a date without the year ("unsere Abrechnung vom 15.11.2024") may be that or
+an enclosure's, so it never lets the statement be called late when it would make it on time. The person
+may still file a letter as ``operating_costs``.
 
 "The reading names" means its title, summary, quotes, date wordings and legal bases, never the
 model's advice prose (``explanation``, ``warnings``), which may mention a Mahnbescheid as a threat.
@@ -89,12 +90,16 @@ order's payment date, which would turn "pay or object" into "pay"). A landlord's
 without notice period (:func:`extraordinary_notice`: its own quote or the title says *fristlos*, not
 negated ("nicht nur fristlos" is no negation), not only reserved — the reservation must govern the
 notice, "eine fristlose Kündigung behalten wir uns vor" — and not "mit (der) gesetzlichen Frist" or "mit
-gesetzlicher Kündigungsfrist" (§ 573d BGB; "with statutory notice"), and the tenancy ends within two
-months) gets no
+gesetzlicher Kündigungsfrist" (§ 573d BGB; "with statutory notice") said of the notice itself: not
+denied ("without statutory notice"), not after *hilfsweise* (the notice given in the alternative's
+period); and the tenancy ends within two months) gets no
 objection to-do: the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB) — unless its own
-quote or the title also gives notice with a notice period in the alternative (*hilfsweise fristgemäß*),
-which it applies to. Any *hilfsweise* in them counts, even one that only reserves the ordinary notice:
-offering an objection that may not be needed is the safe side of missing one (ADR 0008). An ordinary
+quote or the title also gives notice with a notice period in the alternative (*hilfsweise fristgemäß*).
+The objection is excluded against that one too when the grounds for the notice without notice period
+existed, even once the arrears are paid (BGH, 01.07.2020, VIII ZR 323/18), but they may not have: its
+to-do and letter are kept (the card says when it is excluded). Any *hilfsweise* in them counts, even one
+that only reserves the ordinary notice: offering an objection that may not be needed is the safe side of
+missing one (ADR 0008). An ordinary
 notice whose objection date had passed when it was written (it ends less than two months later) gets
 no to-do either; its card says so (§ 574b Abs. 2 S. 2 BGB, § 573c BGB). The objection is for a home only
 (§§ 549, 574 BGB): its to-do and card say it
@@ -224,6 +229,10 @@ _STATUTORY_PERIOD = re.compile(
     re.I,
 )
 
+#: … which only counts when it is said of the notice itself: not denied before it in its sentence ("without
+#: statutory notice", "nicht mit der gesetzlichen Frist") — "ohne" and "without" deny it too.
+_STATUTORY_DENIED = re.compile(r"\b(?:nicht|kein\w*|ohne|not|no|without)\b[^.!?;\n]{0,30}$", re.I)
+
 #: A notice without notice period that also gives notice with one "in the alternative".
 _ALTERNATIVE_NOTICE = re.compile(
     r"hilfsweise|vorsorglich\s+(?:\S+\s+){0,4}?(?:ordentlich|fristgerecht|fristgemäß)|alternatively|"
@@ -341,18 +350,35 @@ def _names_a_place(rest: str) -> bool:
     return 1 <= len(words) <= 2 and not _LEGAL_FORM.search(rest)
 
 
+def _abbreviates_court(name: str) -> bool:
+    """Whether ``name`` abbreviates a court before its place (*AG Hagen*, *ArbG Berlin*, *LG Köln*): no
+    company's legal form, and a place of a word or two (:func:`_names_a_place`)."""
+    abbreviation = _COURT_ABBREVIATION.search(name.strip())
+    return abbreviation is not None and _names_a_place(abbreviation.group("rest"))
+
+
 def is_court(name: str, kind: str | None = None) -> bool:
     """Whether a sender's name is a court's (policy 1): it names a kind of court (*Amtsgericht*, also *des
     Amtsgerichts*; *Zentrales Mahngericht*), or abbreviates one before its place (*AG Hagen*, *ArbG
     Berlin*) when the sender's ``kind`` is an authority or ``other`` — a retailer "LG Electronics", a
-    landlord "OLG Immobilien", or a name of unknown kind (``None``: a recipient typed in) is no court — and
-    is no bailiff or court cashier. Not recognised: a court named only in English."""
+    landlord "OLG Immobilien", or a name of unknown kind (``None``: a recipient typed in, see
+    :func:`may_be_court`) is no court — and is no bailiff or court cashier. Not recognised: a court named
+    only in English."""
     if _NOT_A_COURT.search(name):
         return False
     if _COURT_SENDER.search(name):
         return True
-    abbreviation = _COURT_ABBREVIATION.search(name.strip())
-    return kind in _COURT_KINDS and abbreviation is not None and _names_a_place(abbreviation.group("rest"))
+    return kind in _COURT_KINDS and _abbreviates_court(name)
+
+
+def may_be_court(name: str) -> bool:
+    """Whether a name of unknown kind (a recipient typed into a template letter) may be a court's: it
+    abbreviates one before a place (*AG Hagen*, *LG Köln*, *AG Hagen – Abteilung 12*) and is no bailiff or
+    court cashier. A company whose name starts like one without a legal form (*LG Electronics*) can't be
+    told apart, so such a recipient gets a court's sending advice with a note that e-mail is fine if it
+    isn't one: a request sent to a court by plain e-mail isn't validly filed, and a letter is always fine
+    (the safe side, ADR 0008)."""
+    return not _NOT_A_COURT.search(name) and (bool(_COURT_SENDER.search(name)) or _abbreviates_court(name))
 
 
 def is_labour_court(name: str, kind: str | None = None) -> bool:
@@ -433,6 +459,21 @@ def _asserted(text: str, match: re.Match[str]) -> bool:
     return notice is None or not (_RESERVING.search(before) or _RESERVED_AFTER.match(rest, notice.end()))
 
 
+def _gives_statutory_period(text: str) -> bool:
+    """Whether ``text`` (the title, or the termination's own quote) gives the notice itself the statutory
+    period (:data:`_STATUTORY_PERIOD`): not denied in its sentence ("without statutory notice"), and not in
+    the notice given in the alternative — anything after *hilfsweise* ("fristlos, hilfsweise ordentlich
+    unter Einhaltung der gesetzlichen Kündigungsfrist") is that notice's period, not this one's."""
+    alternative = _ALTERNATIVE_NOTICE.search(text)
+    for match in _STATUTORY_PERIOD.finditer(text):
+        if alternative is not None and alternative.start() < match.start():
+            return False  # the rest of the text is the notice given in the alternative
+        starts = [end.end() for end in _SENTENCE_END.finditer(text, 0, match.start())]
+        if not _STATUTORY_DENIED.search(text[starts[-1] if starts else 0 : match.start()]):
+            return True
+    return False
+
+
 def extraordinary_notice(extraction: DocumentExtraction, letter_date: date | None = None) -> bool:
     """Whether a termination is one without notice period (*fristlos*), the only one the hardship
     objection doesn't apply to (§ 574 Abs. 1 S. 2 BGB).
@@ -440,18 +481,20 @@ def extraordinary_notice(extraction: DocumentExtraction, letter_date: date | Non
     Only the termination's own quote and the reading's title count — never the model's summary or
     other quotes, which may mention a *fristlose Kündigung* the landlord only reserves. The wording must
     say it (*fristlos*, *außerordentlich*, "ohne Einhaltung einer Kündigungsfrist", § 543 or § 569 BGB),
-    not deny or reserve it, and not give the statutory period (*mit der gesetzlichen Frist*, *mit
-    gesetzlicher Kündigungsfrist*, "with statutory notice": a special
-    termination the objection applies to). And the tenancy must end soon: no end stated, or one less
-    than two months after the letter's date (``letter_date``, else the reading's) — unless it is the end
-    of a notice given in the alternative (*hilfsweise*). When unsure, it is an ordinary notice: its
+    not deny or reserve it, and not give the notice itself the statutory period (*mit der gesetzlichen
+    Frist*, *mit gesetzlicher Kündigungsfrist*, "with statutory notice": a special termination the
+    objection applies to) — a statutory period that is denied ("without statutory notice") or belongs to
+    the notice given in the alternative ("fristlos, hilfsweise ordentlich unter Einhaltung der gesetzlichen
+    Kündigungsfrist") doesn't count (:func:`_gives_statutory_period`). And the tenancy must end soon: no
+    end stated, or one less than two months after the letter's date (``letter_date``, else the reading's)
+    — unless it is the end of a notice given in the alternative (*hilfsweise*). When unsure, it is an ordinary notice: its
     objection to-do is kept, and the card says it doesn't apply to a notice without notice period.
     """
     own = extraction.change.quote if extraction.change is not None else ""
     text = f"{extraction.title}\n{own}"
-    if _STATUTORY_PERIOD.search(text) or not any(
-        _asserted(text, match) for match in _EXTRAORDINARY.finditer(text)
-    ):
+    if _gives_statutory_period(extraction.title) or _gives_statutory_period(own):
+        return False
+    if not any(_asserted(text, match) for match in _EXTRAORDINARY.finditer(text)):
         return False
     end = announced_end(extraction)
     written = letter_date or _parse_day(extraction.document_date)
@@ -462,7 +505,9 @@ def extraordinary_notice(extraction: DocumentExtraction, letter_date: date | Non
 
 def alternative_notice(extraction: DocumentExtraction) -> bool:
     """Whether a notice without notice period also gives notice with one in the alternative
-    (*hilfsweise fristgemäß*): the hardship objection applies to that one (§ 574 Abs. 1 S. 2 BGB). Like
+    (*hilfsweise fristgemäß*): its objection to-do and letter are kept — the hardship objection is excluded
+    against it too if the grounds for the notice without notice period existed (§ 574 Abs. 1 S. 2 BGB; BGH
+    VIII ZR 323/18), but they may not have, and the card says so. Like
     :func:`extraordinary_notice`, only the termination's own quote and the reading's title count — never
     the model's summary ("alternatively you may pay the arrears")."""
     own = extraction.change.quote if extraction.change is not None else ""

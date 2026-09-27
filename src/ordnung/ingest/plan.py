@@ -426,8 +426,8 @@ def late_statement_warning(statement: bool, title: str | None, text: str, ctx: R
         return None
     body = f"{title or ''}\n{text}"
     received = ctx.received_date if ctx.received_confirmed and ctx.received_date else ctx.document_date
-    arrived, confirmed = statement_arrival(body, received, ctx.received_confirmed, ctx.document_date)
-    late = statement_late(body, arrived, confirmed, ctx.recipient_region)
+    arrival = statement_arrival(body, received, ctx.received_confirmed, ctx.document_date)
+    late = statement_late(body, arrival.arrived, arrival.confirmed, ctx.recipient_region, named=arrival.named)
     return LATE_STATEMENT_WARNING if late else None
 
 

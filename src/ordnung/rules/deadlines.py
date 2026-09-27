@@ -554,9 +554,15 @@ def _today_anchor(ctx: RuleContext, trace: Trace) -> _Anchor:
     """A letter's "today" is the day it was written: its date, never the (later) day it is processed.
 
     Counting from the processing day would move the deadline later on every reprocess, and that day is
-    neither stated in the letter nor confirmed by the person (SPEC § 21 rubric).
+    neither stated in the letter nor confirmed by the person (SPEC § 21 rubric). Without the letter's date,
+    the day the person entered as its arrival is the latest it can be dated (a court's letter: its envelope
+    date), and only then the processing day — both with a warning that the real deadline may be earlier.
     """
     written = ctx.document_date
+    if written is None and ctx.received_confirmed and ctx.received_date and ctx.received_date < ctx.today:
+        # the letter can be dated at the latest the day it arrived: nearer its real date than today
+        trace.hard(_undated_note(ctx.received_date))
+        return _Anchor(ctx.received_date, "receipt")
     if written is None:
         trace.hard(
             "The letter counts from 'today', but its date is missing, so we counted from today — the real "
@@ -685,8 +691,19 @@ def _served(spec: DateSpec, ctx: RuleContext, trace: Trace) -> _Anchor | None:
     if stated is not None and (ctx.document_date is None or stated >= ctx.document_date):
         return _resolve_anchor(spec, ctx, trace)
     if ctx.received_confirmed and ctx.received_date:
+        if spec.anchor in _OWN_DATE_ANCHORS and ctx.document_date is None:
+            trace.hard(_undated_note(ctx.received_date))
         return _Anchor(ctx.received_date, "receipt")
     return _resolve_anchor(spec, ctx, trace)
+
+
+def _undated_note(received: date) -> str:
+    """Why a period the letter counts from its own date ("ab heute") ran from the day it arrived."""
+    return (
+        f"The letter counts from its own date, which is missing; we counted from {fmt_date(received)}, the day "
+        "you entered as its arrival — the latest it can be dated, so the real deadline may be earlier. Check "
+        "the letter's date."
+    )
 
 
 def _formal_service_note(trace: Trace, spec: DateSpec, anchor: _Anchor, statute: str) -> None:
@@ -789,7 +806,10 @@ def _compute_relative(
     # ... except a court's own period that the letter counts from its own date ("binnen zwei Wochen ab dem
     # Datum dieses Schreibens"): a court may set another start than delivery (§ 221 ZPO), so the envelope
     # date entered never moves it later. A statute's period (a Mahnbescheid's) always runs from delivery.
-    served = statute in _FORMAL_SERVICE or (ctx.court and spec.anchor not in _OWN_DATE_ANCHORS)
+    # Without the letter's date, though, the envelope date is the latest it can be dated: counted from there.
+    served = statute in _FORMAL_SERVICE or (
+        ctx.court and (spec.anchor not in _OWN_DATE_ANCHORS or ctx.document_date is None)
+    )
     anchor = _served(spec, ctx, trace) if served else _resolve_anchor(spec, ctx, trace)
     if anchor is None:
         return _receipt(

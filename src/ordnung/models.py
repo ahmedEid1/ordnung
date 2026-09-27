@@ -1019,9 +1019,16 @@ class LetterAdvice(_Model):
     #: The letter the card offers to draft; ``None`` when none fits (no hardship objection to a notice
     #: without notice period; court orders get theirs from the verdict's main button).
     draft: DraftKind | None = None
-    #: The person has dealt with the letter (:func:`ordnung.rules.advice.settles`): every to-do that carries
-    #: its legal deadline is closed. The card is then no longer urgent, and the verdict says it is filed.
+    #: The person has dealt with the letter (:func:`ordnung.rules.advice.settles`, or ``closable`` and they said
+    #: so): it has a to-do that carries
+    #: its legal deadline (never a recurring one or a rent increase's new rent), and every such to-do is
+    #: closed — an operating-cost statement that came in time has none, so it is never handled. The card is
+    #: then no longer urgent, and the verdict says it is filed.
     handled: bool = False
+    #: No to-do carries this letter's deadline (a landlord's notice without notice period, or with no
+    #: objection to-do), so only the person can say they have dealt with it: the card offers "I've dealt
+    #: with this", stored as the letter's tag ``dealt-with`` (ADR 0006: nothing is closed for them).
+    closable: bool = False
 
 
 class DocumentDetail(_Model):
