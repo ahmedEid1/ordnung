@@ -11,6 +11,7 @@ import {
   packBars,
   placeBarLabels,
   placeCaptions,
+  freeSegments,
   placeMarkers,
 } from "./layout";
 import { createTimeScale } from "./scale";
@@ -142,12 +143,29 @@ describe("placeMarkers", () => {
     expect(ms[0]!.primary.marker.kind).toBe("deadline");
   });
 
-  it("keeps markers a few days apart separate, puts lane markers on track 0 and skips dates outside the range", () => {
-    const l = lane([], [mk("2026-10-05", "Rent", "payment"), mk("2026-10-09", "Utility back payment", "payment"), mk("2028-01-01", "Far away", "other")]);
+  it("merges markers closer than 24 px into one mark, keeps the others apart, puts lane markers on track 0 and skips dates outside the range", () => {
+    const l = lane(
+      [],
+      [mk("2026-10-05", "Rent", "payment"), mk("2026-10-09", "Utility back payment", "payment"), mk("2026-10-20", "Fee", "payment"), mk("2028-01-01", "Far away", "other")],
+    );
     const ms = placeMarkers(l, [], scale, TODAY);
-    expect(ms.map((m) => m.primary.marker.label)).toEqual(["Rent", "Utility back payment"]);
+    // 5 and 9 Oct are 8 px apart: one mark (drawn at the first), its tooltip lists both
+    expect(ms.map((m) => m.entries.map((e) => e.marker.label))).toEqual([["Rent", "Utility back payment"], ["Fee"]]);
     expect(ms.every((m) => m.track === 0)).toBe(true);
-    expect(ms[1]!.x - ms[0]!.x).toBe(8);
+    expect(ms[0]!.x).toBe(scale.mid("2026-10-05"));
+    expect(ms[1]!.x - ms[0]!.x).toBe(30);
+  });
+
+  it("keeps merging until every mark on a track is at least 24 px from the next — a chain never overlaps", () => {
+    // a date every 5 days (10 px): pairwise close, so they collapse into marks ≥ 24 px apart
+    const dates = ["2026-10-01", "2026-10-06", "2026-10-11", "2026-10-16", "2026-10-21", "2026-10-26"];
+    const ms = placeMarkers(lane([], dates.map((d, i) => mk(d, `Date ${i}`, i === 3 ? "deadline" : "payment"))), [], scale, TODAY);
+    for (let i = 1; i < ms.length; i++) expect(ms[i]!.x - ms[i - 1]!.x).toBeGreaterThanOrEqual(LANE_METRICS.markerGap);
+    expect(ms.flatMap((m) => m.entries)).toHaveLength(dates.length);
+    // the deadline is the most important entry of its mark and decides where it is drawn
+    const withDeadline = ms.find((m) => m.entries.some((e) => e.marker.kind === "deadline"))!;
+    expect(withDeadline.primary.marker.kind).toBe("deadline");
+    expect(withDeadline.x).toBe(scale.mid("2026-10-16"));
   });
 
   it("marks past markers so they can be drawn muted", () => {
@@ -184,7 +202,7 @@ describe("labels", () => {
     expect(labels.tight!.labelMode).toBe("none");
   });
 
-  it("truncates (with the tooltip carrying the text) when a marker cuts a long bar short", () => {
+  it("truncates in the widest free stretch (the tooltip carries the text) when no stretch between markers fits it", () => {
     const l = lane([
       bar({ id: "ws", label: "Winter semester 2026/27 at the University of Musterstadt", kind: "period", start: "2026-10-01", end: "2027-03-31" }),
     ], [mk("2026-12-15", "Scholarship report", "deadline")]);
@@ -193,7 +211,32 @@ describe("labels", () => {
     const [p] = placeBarLabels(placed, scale, approxTextWidth, markers);
     expect(p!.labelMode).toBe("inside");
     expect(p!.labelMax).not.toBeNull();
-    expect(p!.x + p!.labelStart + p!.labelMax!).toBeLessThan(markers[0]!.x);
+    // 1 Oct – 15 Dec is narrower than 15 Dec – 31 Mar: the label goes after the marker, clear of it
+    expect(p!.x + p!.labelStart).toBeGreaterThan(markers[0]!.x + 9);
+    expect(p!.x + p!.labelStart + p!.labelMax!).toBeLessThanOrEqual(p!.x + p!.width - LANE_METRICS.labelPad);
+  });
+
+  it("puts a label that doesn't fit before a marker into the free stretch after it, instead of dropping it", () => {
+    // a work contract with a marker a little way in: "Be…" before it, the whole label after it
+    const l = lane([
+      bar({ id: "job", label: "Befristeter Arbeitsvertrag", start: "2026-06-01", end: "2027-03-31", markers: [mk("2026-06-20", "Probation ends", "other")] }),
+    ]);
+    const { placed } = packBars(l.bars, scale);
+    const markers = placeMarkers(l, placed, scale, TODAY);
+    const [p] = placeBarLabels(placed, scale, approxTextWidth, markers);
+    expect(p!.labelMode).toBe("inside");
+    expect(p!.labelMax).toBeNull();
+    expect(p!.x + p!.labelStart).toBeGreaterThan(markers[0]!.x);
+  });
+
+  it("finds the free stretches between blocked intervals", () => {
+    expect(freeSegments(0, 100, [{ s: 20, e: 30 }, { s: 50, e: 60 }])).toEqual([
+      { s: 0, e: 20 },
+      { s: 30, e: 50 },
+      { s: 60, e: 100 },
+    ]);
+    expect(freeSegments(10, 50, [{ s: 0, e: 15 }, { s: 45, e: 90 }])).toEqual([{ s: 15, e: 45 }]);
+    expect(freeSegments(10, 50, [{ s: 0, e: 90 }])).toEqual([]);
   });
 
   it("captions upcoming deadlines without overlaps, most important first", () => {
@@ -214,6 +257,17 @@ describe("labels", () => {
       expect(c.x).toBeGreaterThanOrEqual(0);
       expect(c.x + c.width).toBeLessThanOrEqual(scale.width);
     }
+  });
+
+  it("keeps captions inside the plot (with an inset on the right) and clear of the today line", () => {
+    const todayX = scale.mid(TODAY);
+    // due two days after today: the caption would start 2 px left of the marker, across the line
+    const soon = placeCaptions(placeMarkers(lane([], [mk("2026-09-30", "Ends", "expiry")]), [], scale, TODAY), scale, TODAY);
+    expect(soon).toHaveLength(1);
+    expect(soon[0]!.x).toBeGreaterThanOrEqual(todayX + 1 + LANE_METRICS.todayClear);
+    // the last day of the range: the caption ends 8 px before the plot's right edge
+    const last = placeCaptions(placeMarkers(lane([], [mk("2027-09-29", "Send by", "send_by")]), [], scale, TODAY), scale, TODAY);
+    expect(last[0]!.x + last[0]!.width).toBeLessThanOrEqual(scale.width - LANE_METRICS.captionInset);
   });
 
   it("writes short captions for marker kinds", () => {
@@ -261,10 +315,30 @@ describe("whole lane", () => {
     expect(nextOnLane(l, TODAY)).toEqual({ date: "2026-10-14", kind: "appointment", label: "Appointment 10:30" });
     expect(nextOnLane(lane([bar({ id: "v", start: "2026-01-01", end: "2027-02-10", kind: "validity" })]), TODAY)).toEqual({
       date: "2027-02-10",
-      kind: "other",
+      kind: "expiry",
       label: "Valid until",
     });
-    expect(nextOnLane(lane([bar({ id: "c", start: "2026-01-01", end: "2027-12-31" })]), TODAY)).toBeNull();
+  });
+
+  it("names the next date to act on: renewals are skipped, a fixed term's end counts, open or cut-off ends never do", () => {
+    const ref = { type: "contract", id: "ctr" };
+    // the Contracts lane: a contract that runs on (renewal on 1 Oct) and a send-by date on 8 Oct
+    const contracts = lane([
+      bar({ id: "power", start: "2025-10-01", end: "2026-09-30", markers: [mk("2026-10-01", "Continues · cancel any time", "renewal")] }),
+      bar({ id: "phone", start: "2026-09-08", end: "2026-10-14", kind: "notice_window", ref, markers: [mk("2026-10-08", "Send by", "send_by")] }),
+    ]);
+    expect(nextOnLane(contracts, TODAY)).toEqual({ date: "2026-10-08", kind: "send_by", label: "Send by" });
+    // the Work lane: a fixed-term contract with no markers still says when it ends
+    expect(nextOnLane(lane([bar({ id: "job", start: "2025-04-01", end: "2027-03-31" })]), TODAY)).toEqual({ date: "2027-03-31", kind: "other", label: "Ends" });
+    // no end date, an end the chart cut off, or a term that renews: nothing to say
+    expect(nextOnLane(lane([bar({ id: "rent", start: "2025-10-01", end: "2027-10-01", open_end: true })]), TODAY)).toBeNull();
+    expect(nextOnLane(lane([bar({ id: "gym", start: "2026-06-01", end: TO })]), TODAY, { to: TO })).toBeNull();
+    expect(nextOnLane(lane([bar({ id: "ins", start: "2025-12-01", end: "2026-11-30", markers: [mk("2026-12-01", "Renews", "renewal")] })]), TODAY)).toBeNull();
+  });
+
+  it("keeps the whole marker label (the label column truncates it, not the text)", () => {
+    const long = mk("2026-10-02", "Return overdue library items to the Stadtbibliothek (§ 5 Benutzungsordnung)", "deadline");
+    expect(nextOnLane(lane([], [long]), TODAY)?.label).toBe("Return overdue library items to the Stadtbibliothek");
   });
 });
 
@@ -281,7 +355,7 @@ describe("refTarget", () => {
 });
 
 describe("marker hit targets", () => {
-  it("are 24 px wide, narrowed between close neighbours so they never overlap", () => {
+  it("are always 24 px wide and never overlap: close neighbours become one mark", () => {
     const l = lane([
       bar({
         id: "w",
@@ -293,11 +367,12 @@ describe("marker hit targets", () => {
     ], [mk("2027-01-15", "Semester fee", "payment")]);
     const { placed } = packBars(l.bars, scale);
     const ms = placeMarkers(l, placed, scale, TODAY);
-    const [send, cancel, fee] = ms;
-    expect(cancel!.x - send!.x).toBe(12);
-    expect(send!.hitWidth).toBe(12);
-    expect(cancel!.hitWidth).toBe(12);
-    expect(send!.x + send!.hitWidth / 2).toBeLessThanOrEqual(cancel!.x - cancel!.hitWidth / 2);
-    expect(fee!.hitWidth).toBe(24);
+    // send-by and must-arrive-by are 12 px apart: one mark, drawn at the send-by date
+    expect(ms).toHaveLength(2);
+    const [window, fee] = ms;
+    expect(window!.entries.map((e) => e.marker.kind)).toEqual(["send_by", "cancel_by"]);
+    expect(window!.x).toBe(scale.mid("2026-10-08"));
+    expect(ms.every((m) => m.hitWidth === 24)).toBe(true);
+    expect(window!.x + window!.hitWidth / 2).toBeLessThanOrEqual(fee!.x - fee!.hitWidth / 2);
   });
 });

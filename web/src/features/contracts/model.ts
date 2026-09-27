@@ -271,11 +271,11 @@ export function contractLanes(contracts: Contract[], range: { from: string; to: 
           }),
         );
       } else {
-        bars.push(bar("after", "Cancellable any time", next, beyond));
+        bars.push(bar("after", "Cancellable any time", next, beyond, { open_end: true }));
       }
     } else {
       const anyTime = c.notice_basis === "any_time" || comp?.regime === "bgb309_new" || comp?.regime === "stromgvv20";
-      bars.push(bar("open", anyTime ? "Cancellable any time" : "Open-ended", start, beyond));
+      bars.push(bar("open", anyTime ? "Cancellable any time" : "Open-ended", start, beyond, { open_end: true }));
     }
 
     // a contract you can cancel any month has no window that closes — just when it would end

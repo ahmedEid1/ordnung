@@ -53,8 +53,11 @@ test.describe("pages", () => {
     await expect(funknetz).toContainText("post your Kündigung (cancellation / notice) by Thu 8 Oct");
     await expect(funknetz).toContainText("must arrive by Wed 14 Oct");
     await expect(funknetz.getByRole("link", { name: "Draft cancellation for FunkNetz Smart M" })).toBeVisible();
-    // the lanes chart marks the same send-by date
-    await expect(page.getByRole("button", { name: /^Send by · Thu 8 Oct, in 10 days\. FunkNetz Smart M/ })).toBeVisible();
+    // the lanes chart marks the same send-by date (with the must-arrive-by date six days later, when
+    // the two sit too close to tell apart they are one mark that names both)
+    await expect(
+      page.getByRole("button", { name: /^Send by · Thu 8 Oct, in 10 days(; Must arrive by · Wed 14 Oct, in 16 days)?\. FunkNetz Smart M/ }),
+    ).toBeVisible();
   });
 
   test("Ask: a suggested question streams an answer whose citation opens the letter", async ({ page }) => {

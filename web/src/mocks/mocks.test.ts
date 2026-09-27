@@ -65,6 +65,11 @@ describe("mock dataset", () => {
     const lanes = await get<Lane[]>(s, "/lanes");
     expect(lanes.map((l) => l.id)).toContain("lane_residence");
     expect(lanes.find((l) => l.id === "lane_tax")).toBeUndefined();
+    // like the API, a range clips the bars to it (the chart says "continues after", never an invented end)
+    const ranged = await get<Lane[]>(s, "/lanes", "from=2026-06-01&to=2027-09-30");
+    const lease = ranged.find((l) => l.id === "lane_home")!.bars[0]!;
+    expect([lease.start, lease.end]).toEqual(["2026-06-01", "2027-09-30"]);
+    for (const b of ranged.flatMap((l) => l.bars)) for (const m of b.markers) expect(m.date >= "2026-06-01" && m.date <= "2027-09-30").toBe(true);
   });
 
   it("processes a New-mail letter live: stages, then items, ideas and lanes appear", async () => {

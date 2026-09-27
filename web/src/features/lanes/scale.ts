@@ -164,8 +164,9 @@ export function monthsInScale(from: string, to: string): number {
 }
 
 /**
- * Plot width for a zoom level: `fit` stretches the whole domain over the available width but never
- * below `minMonthPx` per month; `detail` shows about `visibleMonths` months at once.
+ * Plot width for a zoom level: `fit` puts the whole domain into the available width — nothing
+ * scrolls, narrow months show their initial only; `detail` shows about `visibleMonths` months at
+ * once, never narrower than `minMonthPx` per month (and never narrower than `fit`).
  */
 export function plotWidth(
   from: string,
@@ -174,14 +175,10 @@ export function plotWidth(
   zoom: "fit" | "detail",
   opts: { minMonthPx?: number; visibleMonths?: number } = {},
 ): number {
-  const months = monthsInScale(from, to);
-  const minMonthPx = opts.minMonthPx ?? 64;
-  const avail = Math.max(0, available);
-  if (zoom === "detail") {
-    const perMonth = Math.max(minMonthPx * 1.8, avail / (opts.visibleMonths ?? 4));
-    return Math.round(perMonth * months);
-  }
-  return Math.round(Math.max(avail, minMonthPx * months));
+  const avail = Math.max(0, Math.floor(available));
+  if (zoom === "fit") return avail;
+  const perMonth = Math.max(opts.minMonthPx ?? 64, avail / (opts.visibleMonths ?? 4));
+  return Math.max(avail, Math.round(perMonth * monthsInScale(from, to)));
 }
 
 /** scrollLeft that puts `iso` at `ratio` (0..1) of the visible plot width. */

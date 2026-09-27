@@ -200,6 +200,8 @@ export function ContractsView() {
               to={range.to}
               today={today}
               loading={loading}
+              loadingLabel="Loading your contracts…"
+              headingLevel={3}
               labelHeading="Contract"
               ariaLabel="Contract terms and notice windows"
               title="Terms & notice windows"

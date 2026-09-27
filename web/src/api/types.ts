@@ -431,9 +431,15 @@ export type PublicHealth = Schemas["PublicHealth"];
 /** An entry of the legal rules catalog ("How dates are computed"). */
 export type RuleInfo = Schemas["RuleInfo"];
 export type TimelineMarker = Schemas["TimelineMarker"];
-export type LaneBar = Schemas["LaneBar"];
+/**
+ * A bar on the life lanes. `open_end` marks a bar with no end date (an open-ended contract, or
+ * "cancellable any time" after a minimum term): its `end` is only where the chart stops drawing
+ * it, so it is never shown as a date. Set by the contract lanes the web app builds itself
+ * (`contractLanes`) and by the static demo; the server does not send it yet.
+ */
+export type LaneBar = Schemas["LaneBar"] & { open_end?: boolean };
 /** A "life lane" (Residence, Contracts, Tax, Study, …) on the year-ahead timeline. */
-export type Lane = Schemas["Lane"];
+export type Lane = Omit<Schemas["Lane"], "bars"> & { bars: LaneBar[] };
 export type SearchHit = Schemas["SearchHit"];
 export type TourState = Schemas["TourState"];
 /** A letter waiting in the demo's "New mail" tray. */
