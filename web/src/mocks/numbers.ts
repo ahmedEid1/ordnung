@@ -4,7 +4,7 @@
  * what the visitor does: a letter deleted in the demo takes its numbers along, a to-do marked done leaves
  * its step, and "Finish" / "Not now" are remembered for this mock database.
  */
-import type { CallSheet, MyNumber, MyNumbers, OpenCase, WeekEntry, WeekStep, WeeklySession } from "@/api/types";
+import type { CallSheet, Item, MyNumber, MyNumbers, OpenCase, WeekEntry, WeekStep, WeeklySession } from "@/api/types";
 import type { MockDb } from "./db";
 import { MOCK_NUMBERS, MOCK_WEEK } from "./data/numbers";
 
@@ -56,8 +56,17 @@ export function mockNumbers(db: MockDb): MyNumbers {
   };
 }
 
-/** Whether a row still stands in the demo: its letter kept, its to-do still open, its draft there. */
-function stillThere(db: MockDb, entry: WeekEntry): boolean {
+/** Whether a to-do's date or amount still waits to be compared with its letter (`unconfirmed_reason`). */
+export function unconfirmed(item: Pick<Item, "grounding" | "evidence">): boolean {
+  if (item.grounding === "user") return false;
+  return item.evidence.some((e) => !e.value_consistent) || item.grounding === "unverified" || item.grounding === "model_read";
+}
+
+/**
+ * Whether a row still stands in the demo: its letter kept, its to-do still open (in Please check: still
+ * unconfirmed — "Looks right" takes it off), its draft there.
+ */
+function stillThere(db: MockDb, entry: WeekEntry, step?: WeekStep["id"]): boolean {
   if (entry.doc_id && !db.document(entry.doc_id)) return false;
   switch (entry.ref.type) {
     case "document":
@@ -65,6 +74,7 @@ function stillThere(db: MockDb, entry: WeekEntry): boolean {
     case "item": {
       const item = db.state.items.find((i) => i.id === entry.ref.id);
       if (!item) return false;
+      if (step === "check" && !unconfirmed(item)) return false;
       return entry.date_role === "done" ? item.status === "done" : item.status === "open" || item.status === "snoozed";
     }
     case "contract":
@@ -76,10 +86,13 @@ function stillThere(db: MockDb, entry: WeekEntry): boolean {
   }
 }
 
+const transfers = (e: WeekEntry) => e.date_role !== "collected" && e.date_role !== "at_appointment";
+
 function followStep(db: MockDb, step: WeekStep): WeekStep {
-  const entries = step.entries.filter((e) => stillThere(db, e));
+  const entries = step.entries.filter((e) => stillThere(db, e, step.id));
   if (entries.length === step.entries.length) return step;
-  const total = step.id === "pay" ? entries.reduce((sum, e) => sum + (e.date_role !== "collected" && (e.currency ?? "EUR") === "EUR" ? (e.amount ?? 0) : 0), 0) : step.total;
+  const total =
+    step.id === "pay" ? entries.reduce((sum, e) => sum + (transfers(e) && (e.currency ?? "EUR") === "EUR" ? (e.amount ?? 0) : 0), 0) : step.total;
   return {
     ...step,
     entries,
@@ -88,19 +101,38 @@ function followStep(db: MockDb, step: WeekStep): WeekStep {
   };
 }
 
+const DAY_MS = 86_400_000;
+const addDays = (iso: string, days: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+
+/** The day Today suggests the session again after one done or dismissed on `day` (`prompt_due`): a week
+ * on, or the first Sunday at least 4 days on. */
+export function nextPromptDay(day: string): string {
+  for (let n = 1; n < 7; n += 1) {
+    const d = addDays(day, n);
+    if (n >= 4 && new Date(`${d}T00:00:00Z`).getUTCDay() === 0) return d;
+  }
+  return addDays(day, 7);
+}
+
 /** The weekly session as it stands in the demo. */
 export function mockWeek(db: MockDb): WeeklySession {
   const week = clone(MOCK_WEEK);
   const state = stateOf(db);
-  const steps = week.steps.map((s) => followStep(db, s));
+  const steps = week.steps.map((s) => followStep(db, s)).filter((s) => s.id !== "now" || s.entries.length > 0);
   const next = week.next_deadline && stillThere(db, week.next_deadline) ? week.next_deadline : null;
+  const leftOverdue = new Set(week.steps.flatMap((s) => s.entries).filter((e) => e.overdue).map((e) => e.key));
+  const stillOverdue = new Set(steps.flatMap((s) => s.entries).filter((e) => e.overdue).map((e) => e.key));
+  const known = [state.lastSession, state.dismissed].filter((d): d is string => d !== null).sort();
+  const last = known[known.length - 1];
   return {
     ...week,
     steps,
     next_deadline: next,
+    overdue: Math.max(0, week.overdue - (leftOverdue.size - stillOverdue.size)),
     last_session: state.lastSession,
-    // "Finish" or "Not now" today: no prompt until a week on (the demo's today doesn't move)
-    due: !state.lastSession && !state.dismissed && steps.some((s) => s.entries.length > 0),
+    // "Finish" or "Not now" today: no prompt until the next one is due (the demo's today doesn't move)
+    due: !last && steps.some((s) => s.entries.length > 0),
+    next_prompt: last ? nextPromptDay(last) : null,
   };
 }
 

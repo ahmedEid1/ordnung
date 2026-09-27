@@ -10,6 +10,7 @@ import { CalendarCheck, ChevronRight } from "lucide-react";
 import { useWeek, useWeekDismiss } from "@/api/hooks";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
+import { focusWhenReady } from "@/features/today/focus";
 import { fadeUp } from "@/features/today/motion";
 import { useFormatDate } from "@/lib/today";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ import { sessionHighlights } from "./steps";
 export function WeeklyPrompt() {
   const week = useWeek();
   const dismiss = useWeekDismiss();
+  const formatDate = useFormatDate();
   const data = week.data;
   if (!data?.due) return null;
   const highlights = sessionHighlights(data);
@@ -49,7 +51,12 @@ export function WeeklyPrompt() {
             loading={dismiss.isPending}
             onClick={() =>
               dismiss.mutate(undefined, {
-                onSuccess: () => toast({ title: "Not now", description: "Today suggests it again next week — or open it any time from the foot of this page." }),
+                onSuccess: (after) => {
+                  const when = after.next_prompt ? `on ${formatDate(after.next_prompt)}` : "when it is due";
+                  toast({ title: "Not now", description: `Today suggests it again ${when} — or open it any time from the foot of this page.` });
+                  // the prompt is gone: the focus goes on to the next section, never to the page's top
+                  focusWhenReady(() => document.getElementById("coming-up-title"));
+                },
               })
             }
           >

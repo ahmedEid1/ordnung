@@ -31,16 +31,26 @@ const DESCRIPTION =
 /** Cards side by side as the column allows, each at least 20rem (never wider than a phone). */
 const CARD_GRID = "grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] items-start gap-4";
 
-/** Search the call sheets: the organisation's name or any number on its sheet. */
-export function matchesSheet(sheet: MyNumbers["organisations"][number], query: string): boolean {
+type Sheet = MyNumbers["organisations"][number];
+
+/**
+ * Where a search finds a call sheet: `sheet` (its name, or a number of yours or of an open case),
+ * `theirs` (only among the organisation's own numbers, which are folded away — the card opens them) or
+ * nowhere (`null`).
+ */
+export function sheetMatch(sheet: Sheet, query: string): "sheet" | "theirs" | null {
   const q = query.trim().toLowerCase();
-  if (!q) return true;
+  if (!q) return "sheet";
   const flat = q.replace(/[\s./-]+/g, "");
-  const values = [...sheet.numbers, ...sheet.their_numbers, ...sheet.open_cases.flatMap((c) => c.references)];
-  return (
-    sheet.name.toLowerCase().includes(q) ||
-    values.some((n) => n.label.toLowerCase().includes(q) || (flat.length >= 3 && n.value.toLowerCase().replace(/[\s./-]+/g, "").includes(flat)))
-  );
+  const hit = (n: Sheet["numbers"][number]) =>
+    n.label.toLowerCase().includes(q) || (flat.length >= 3 && n.value.toLowerCase().replace(/[\s./-]+/g, "").includes(flat));
+  if (sheet.name.toLowerCase().includes(q) || [...sheet.numbers, ...sheet.open_cases.flatMap((c) => c.references)].some(hit)) return "sheet";
+  return sheet.their_numbers.some(hit) ? "theirs" : null;
+}
+
+/** Search the call sheets: the organisation's name or any number on its sheet. */
+export function matchesSheet(sheet: Sheet, query: string): boolean {
+  return sheetMatch(sheet, query) !== null;
 }
 
 function NumbersSkeleton() {
@@ -163,7 +173,10 @@ function OpenCases({ data }: { data: MyNumbers }) {
 
 function Organisations({ data }: { data: MyNumbers }) {
   const [query, setQuery] = useState("");
-  const shown = useMemo(() => data.organisations.filter((s) => matchesSheet(s, query)), [data.organisations, query]);
+  const shown = useMemo(
+    () => data.organisations.map((s) => ({ sheet: s, match: sheetMatch(s, query) })).filter((m) => m.match !== null),
+    [data.organisations, query],
+  );
   if (!data.organisations.length) {
     return (
       <EmptyState
@@ -197,9 +210,9 @@ function Organisations({ data }: { data: MyNumbers }) {
       </p>
       {shown.length ? (
         <ul className={CARD_GRID} aria-label={plural(shown.length, "organisation")}>
-          {shown.map((sheet) => (
+          {shown.map(({ sheet, match }) => (
             <li key={sheet.party_id} className="flex min-w-0">
-              <CallSheetCard sheet={sheet} />
+              <CallSheetCard sheet={sheet} openTheirs={match === "theirs"} />
             </li>
           ))}
         </ul>
@@ -273,7 +286,7 @@ export function NumbersView() {
   const items: TabItem<NumbersTab>[] = [
     { value: "you", label: "About you", shortLabel: "You", count: data.about_you.length + data.documents.length },
     { value: "cases", label: "Open cases", shortLabel: "Cases", count: data.open_cases.length },
-    { value: "organisations", label: "Organisations", count: data.organisations.length },
+    { value: "organisations", label: "Organisations", shortLabel: "Orgs", count: data.organisations.length },
   ];
   return (
     <>

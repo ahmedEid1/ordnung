@@ -16,7 +16,7 @@ export const MOCK_NUMBERS: MyNumbers = {
       "display": "57 216 480 354",
       "copy_value": "57216480354",
       "check": "ok",
-      "check_note": "Passes the Steuer-ID check (§ 139b AO). A misread digit would almost always fail it; it doesn't prove the number is yours.",
+      "check_note": "Passes the Steuer-ID check (§ 139b AO, the BZSt's specification). A misread digit would almost always fail it; it doesn't prove the number is yours.",
       "party_id": "pty_mustertech",
       "party_name": "Muster Tech GmbH",
       "letter": {
@@ -37,7 +37,7 @@ export const MOCK_NUMBERS: MyNumbers = {
       "display": "65 140300 R 005",
       "copy_value": "65140300R005",
       "check": "ok",
-      "check_note": "Passes the Rentenversicherungsnummer check (§ 147 SGB VI). A misread digit would almost always fail it; it doesn't prove the number is yours.",
+      "check_note": "Passes the Rentenversicherungsnummer check (§ 147 SGB VI, § 2 VKVV). A misread digit would almost always fail it; it doesn't prove the number is yours.",
       "party_id": "pty_mustertech",
       "party_name": "Muster Tech GmbH",
       "letter": {
@@ -49,16 +49,16 @@ export const MOCK_NUMBERS: MyNumbers = {
       "letters": 1
     },
     {
-      "key": "num_0a6c5e089eca",
+      "key": "num_30193cef07d3",
       "kind": "health_insurance",
       "group": "about_you",
       "name": "Health insurance number (Krankenversichertennummer)",
       "label": "Versichertennummer",
-      "value": "R123456786",
-      "display": "R123456786",
-      "copy_value": "R123456786",
+      "value": "R482019379",
+      "display": "R482019379",
+      "copy_value": "R482019379",
       "check": "ok",
-      "check_note": "Passes the Krankenversichertennummer check (§ 290 SGB V). A misread digit would almost always fail it; it doesn't prove the number is yours.",
+      "check_note": "Passes the Krankenversichertennummer check (§ 290 SGB V, the GKV-Spitzenverband's guideline). A misread digit would almost always fail it; it doesn't prove the number is yours.",
       "party_id": "pty_bkk",
       "party_name": "Muster BKK",
       "letter": {
@@ -120,8 +120,9 @@ export const MOCK_NUMBERS: MyNumbers = {
       "number": null,
       "valid_until": "2026-11-30",
       "status": "renew_soon",
-      "note": "Apply to extend it before it expires: if you apply in time, it keeps counting until the office decides (§ 81 Abs. 4 AufenthG).",
+      "note": "Apply before it expires: your permit then counts as still valid until the office decides (§ 81 Abs. 4 S. 1 AufenthG; not for a Schengen visa) — ask for a Fiktionsbescheinigung.",
       "item_id": "itm_permit_expiry",
+      "needs_check": false,
       "letter": {
         "id": "doc_abh",
         "title": "Residence permit extension — appointment 14 Oct",
@@ -158,6 +159,7 @@ export const MOCK_NUMBERS: MyNumbers = {
       "status": "renew_soon",
       "note": "Renewing a passport can take months, and a residence permit usually runs only as long as the passport.",
       "item_id": "itm_passport_expiry",
+      "needs_check": true,
       "letter": {
         "id": "doc_passport",
         "title": "Passport (photo)",
@@ -211,7 +213,8 @@ export const MOCK_NUMBERS: MyNumbers = {
             "title": "Prepare documents for the Ausländerbehörde",
             "kind": "task",
             "due_date": "2026-10-13",
-            "send_by": null
+            "send_by": null,
+            "needs_check": false
           },
           "open_items": 3,
           "letter": {
@@ -443,16 +446,16 @@ export const MOCK_NUMBERS: MyNumbers = {
       "website": null,
       "numbers": [
         {
-          "key": "num_0a6c5e089eca",
+          "key": "num_30193cef07d3",
           "kind": "health_insurance",
           "group": "about_you",
           "name": "Health insurance number (Krankenversichertennummer)",
           "label": "Versichertennummer",
-          "value": "R123456786",
-          "display": "R123456786",
-          "copy_value": "R123456786",
+          "value": "R482019379",
+          "display": "R482019379",
+          "copy_value": "R482019379",
           "check": "ok",
-          "check_note": "Passes the Krankenversichertennummer check (§ 290 SGB V). A misread digit would almost always fail it; it doesn't prove the number is yours.",
+          "check_note": "Passes the Krankenversichertennummer check (§ 290 SGB V, the GKV-Spitzenverband's guideline). A misread digit would almost always fail it; it doesn't prove the number is yours.",
           "party_id": "pty_bkk",
           "party_name": "Muster BKK",
           "letter": {
@@ -492,7 +495,7 @@ export const MOCK_NUMBERS: MyNumbers = {
           "display": "57 216 480 354",
           "copy_value": "57216480354",
           "check": "ok",
-          "check_note": "Passes the Steuer-ID check (§ 139b AO). A misread digit would almost always fail it; it doesn't prove the number is yours.",
+          "check_note": "Passes the Steuer-ID check (§ 139b AO, the BZSt's specification). A misread digit would almost always fail it; it doesn't prove the number is yours.",
           "party_id": "pty_mustertech",
           "party_name": "Muster Tech GmbH",
           "letter": {
@@ -513,7 +516,7 @@ export const MOCK_NUMBERS: MyNumbers = {
           "display": "65 140300 R 005",
           "copy_value": "65140300R005",
           "check": "ok",
-          "check_note": "Passes the Rentenversicherungsnummer check (§ 147 SGB VI). A misread digit would almost always fail it; it doesn't prove the number is yours.",
+          "check_note": "Passes the Rentenversicherungsnummer check (§ 147 SGB VI, § 2 VKVV). A misread digit would almost always fail it; it doesn't prove the number is yours.",
           "party_id": "pty_mustertech",
           "party_name": "Muster Tech GmbH",
           "letter": {
@@ -662,7 +665,8 @@ export const MOCK_NUMBERS: MyNumbers = {
             "title": "Pay the parking fine",
             "kind": "payment",
             "due_date": "2026-09-29",
-            "send_by": null
+            "send_by": null,
+            "needs_check": false
           },
           "open_items": 1,
           "letter": {
@@ -787,7 +791,8 @@ export const MOCK_NUMBERS: MyNumbers = {
             "title": "Pay TechMarkt reminder",
             "kind": "payment",
             "due_date": "2026-09-30",
-            "send_by": null
+            "send_by": null,
+            "needs_check": false
           },
           "open_items": 1,
           "letter": {
@@ -904,7 +909,8 @@ export const MOCK_NUMBERS: MyNumbers = {
         "title": "Pay the parking fine",
         "kind": "payment",
         "due_date": "2026-09-29",
-        "send_by": null
+        "send_by": null,
+        "needs_check": false
       },
       "open_items": 1,
       "letter": {
@@ -948,7 +954,8 @@ export const MOCK_NUMBERS: MyNumbers = {
         "title": "Pay TechMarkt reminder",
         "kind": "payment",
         "due_date": "2026-09-30",
-        "send_by": null
+        "send_by": null,
+        "needs_check": false
       },
       "open_items": 1,
       "letter": {
@@ -992,7 +999,8 @@ export const MOCK_NUMBERS: MyNumbers = {
         "title": "Prepare documents for the Ausländerbehörde",
         "kind": "task",
         "due_date": "2026-10-13",
-        "send_by": null
+        "send_by": null,
+        "needs_check": false
       },
       "open_items": 3,
       "letter": {
@@ -1011,11 +1019,12 @@ export const MOCK_WEEK: WeeklySession = {
   "since": "2026-09-21",
   "last_session": null,
   "due": true,
+  "next_prompt": null,
   "minutes": 10,
   "steps": [
     {
       "id": "new",
-      "title": "New since your last session",
+      "title": "New in the last 7 days",
       "summary": "5 letters since Mon 21 Sep",
       "entries": [
         {
@@ -1028,6 +1037,7 @@ export const MOCK_WEEK: WeeklySession = {
           "kind": "dunning",
           "date": "2026-09-26",
           "date_role": "added",
+          "due_date": null,
           "amount": null,
           "currency": null,
           "party_id": "pty_library",
@@ -1049,6 +1059,7 @@ export const MOCK_WEEK: WeeklySession = {
           "kind": "appointment",
           "date": "2026-09-25",
           "date_role": "added",
+          "due_date": null,
           "amount": null,
           "currency": null,
           "party_id": "pty_dentist",
@@ -1070,6 +1081,7 @@ export const MOCK_WEEK: WeeklySession = {
           "kind": "fine",
           "date": "2026-09-24",
           "date_role": "added",
+          "due_date": null,
           "amount": null,
           "currency": null,
           "party_id": "pty_ordnungsamt",
@@ -1091,6 +1103,7 @@ export const MOCK_WEEK: WeeklySession = {
           "kind": "university",
           "date": "2026-09-23",
           "date_role": "added",
+          "due_date": null,
           "amount": null,
           "currency": null,
           "party_id": "pty_hochschule",
@@ -1112,6 +1125,7 @@ export const MOCK_WEEK: WeeklySession = {
           "kind": "residence_permit",
           "date": "2026-09-22",
           "date_role": "added",
+          "due_date": null,
           "amount": null,
           "currency": null,
           "party_id": "pty_abh",
@@ -1142,7 +1156,8 @@ export const MOCK_WEEK: WeeklySession = {
           "title": "Passport expires",
           "kind": "expiry",
           "date": "2027-02-10",
-          "date_role": "due",
+          "date_role": "expires",
+          "due_date": null,
           "amount": null,
           "currency": null,
           "party_id": null,
@@ -1217,6 +1232,7 @@ export const MOCK_WEEK: WeeklySession = {
           "kind": "fine",
           "date": null,
           "date_role": null,
+          "due_date": null,
           "amount": null,
           "currency": null,
           "party_id": "pty_ordnungsamt",
@@ -1247,7 +1263,8 @@ export const MOCK_WEEK: WeeklySession = {
           "title": "Pay the parking fine",
           "kind": "payment",
           "date": "2026-09-29",
-          "date_role": "due",
+          "date_role": "pay_by",
+          "due_date": null,
           "amount": 30.0,
           "currency": "EUR",
           "party_id": "pty_ordnungsamt",
@@ -1368,7 +1385,8 @@ export const MOCK_WEEK: WeeklySession = {
           "title": "Pay TechMarkt reminder",
           "kind": "payment",
           "date": "2026-09-30",
-          "date_role": "due",
+          "date_role": "pay_by",
+          "due_date": null,
           "amount": 94.99,
           "currency": "EUR",
           "party_id": "pty_techmarkt",
@@ -1455,7 +1473,8 @@ export const MOCK_WEEK: WeeklySession = {
           "title": "Pay library fee",
           "kind": "payment",
           "date": "2026-10-02",
-          "date_role": "due",
+          "date_role": "pay_by",
+          "due_date": null,
           "amount": 4.5,
           "currency": "EUR",
           "party_id": "pty_library",
@@ -1536,7 +1555,8 @@ export const MOCK_WEEK: WeeklySession = {
           "title": "Rent for October",
           "kind": "payment",
           "date": "2026-10-05",
-          "date_role": "due",
+          "date_role": "pay_by",
+          "due_date": null,
           "amount": 640.0,
           "currency": "EUR",
           "party_id": "pty_wohnbau",
@@ -1682,6 +1702,7 @@ export const MOCK_WEEK: WeeklySession = {
           "kind": "cancellation",
           "date": "2026-10-08",
           "date_role": "send_by",
+          "due_date": null,
           "amount": null,
           "currency": null,
           "party_id": "pty_funknetz",
@@ -1713,6 +1734,7 @@ export const MOCK_WEEK: WeeklySession = {
           "kind": "task",
           "date": "2026-10-06",
           "date_role": "reply_by",
+          "due_date": null,
           "amount": null,
           "currency": null,
           "party_id": "pty_wohnbau",
@@ -1779,6 +1801,7 @@ export const MOCK_WEEK: WeeklySession = {
           "kind": "deadline",
           "date": "2026-10-06",
           "date_role": "send_by",
+          "due_date": "2026-10-12",
           "amount": null,
           "currency": null,
           "party_id": "pty_fitwell",
@@ -1923,6 +1946,7 @@ export const MOCK_WEEK: WeeklySession = {
           "kind": "contract",
           "date": "2026-10-08",
           "date_role": "decide_by",
+          "due_date": null,
           "amount": null,
           "currency": null,
           "party_id": null,
@@ -1949,6 +1973,7 @@ export const MOCK_WEEK: WeeklySession = {
       "total_other_currencies": {}
     }
   ],
+  "overdue": 0,
   "next_deadline": {
     "key": "item:itm_parking",
     "ref": {
@@ -1958,7 +1983,8 @@ export const MOCK_WEEK: WeeklySession = {
     "title": "Pay the parking fine",
     "kind": "payment",
     "date": "2026-09-29",
-    "date_role": "due",
+    "date_role": "pay_by",
+    "due_date": null,
     "amount": 30.0,
     "currency": "EUR",
     "party_id": "pty_ordnungsamt",

@@ -78,7 +78,7 @@ export const PARTIES: Party[] = [
     id: "pty_bkk",
     name: "Muster BKK",
     kind: "health_insurer",
-    identifiers: [{ label: "Versichertennummer", value: "R123456786" }],
+    identifiers: [{ label: "Versichertennummer", value: "R482019379" }],
     address: "Gesundheitsweg 5, 12345 Musterstadt",
     email: "post@muster-bkk.example",
     ibans: ["DE46200400000628374650"],

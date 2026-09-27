@@ -6,6 +6,19 @@ import { fakeApi, pinToasts } from "../browser.mjs";
 import { inMain } from "../steps.mjs";
 
 const STEPS = ["new", "check", "pay", "post", "waiting", "decide", "file"];
+
+/** The day Today suggests the session again after one done or dismissed on `day` (`week.prompt_due`). */
+function nextPromptDay(day) {
+  const at = (n) => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000);
+  for (let n = 4; n < 7; n += 1) if (at(n).getUTCDay() === 0) return at(n).toISOString().slice(0, 10);
+  return at(7).toISOString().slice(0, 10);
+}
+
+/** `GET /api/week` as `POST /api/week/done|dismiss` would answer it (the audit stores nothing). */
+async function weekAfter(c) {
+  const week = await c.page.evaluate(() => fetch("/api/week").then((r) => r.json()));
+  return { ...week, due: false, next_prompt: nextPromptDay(week.today) };
+}
 const NUMBERS = "numbers";
 const WEEK = "week";
 
@@ -85,11 +98,11 @@ export function numbersAndWeekDemoStates() {
     id: "numbers-organisations-search-empty",
     group: NUMBERS,
     route: "/numbers?tab=organisations",
-    how: "open the Organisations tab, search for “zzz”",
+    how: "open the Organisations tab, search for “no such organisation” (words no number holds)",
     description: "Call sheets searched with nothing matching.",
     run: async (c) => {
       await c.goto("/numbers?tab=organisations");
-      await c.type(main(c.page).getByRole("searchbox", { name: /Find an organisation/ }), "zzz");
+      await c.type(main(c.page).getByRole("searchbox", { name: /Find an organisation/ }), "no such organisation");
     },
   });
 
@@ -121,7 +134,7 @@ export function numbersAndWeekDemoStates() {
     how: "open the last step, press “Finish” (the POST is answered by the audit: nothing is stored)",
     description: "“All clear until …” at the end of the session.",
     run: async (c) => {
-      await fakeApi(c.page, "POST", /^\/api\/week\/done$/, async (_req) => ({ json: { ...(await c.page.evaluate(() => fetch("/api/week").then((r) => r.json()))), due: false } }));
+      await fakeApi(c.page, "POST", /^\/api\/week\/done$/, async (_req) => ({ json: await weekAfter(c) }));
       await pinToasts(c.page);
       await c.goto("/week?step=file");
       await c.click(main(c.page).getByRole("button", { name: /^Finish/ }));
@@ -134,7 +147,7 @@ export function numbersAndWeekDemoStates() {
     how: "open /, “Not now” on the weekly-review prompt (answered by the audit), scroll to the foot",
     description: "Today after “Not now”: the quiet “Weekly review” link at the foot of the page.",
     run: async (c) => {
-      await fakeApi(c.page, "POST", /^\/api\/week\/dismiss$/, async (_req) => ({ json: { ...(await c.page.evaluate(() => fetch("/api/week").then((r) => r.json()))), due: false } }));
+      await fakeApi(c.page, "POST", /^\/api\/week\/dismiss$/, async (_req) => ({ json: await weekAfter(c) }));
       await c.goto("/");
       const notNow = main(c.page).getByRole("button", { name: "Not now" });
       if (await c.exists(notNow)) await c.click(notNow);

@@ -3,7 +3,7 @@
  * quote, and a call sheet per organisation (contact, your numbers, its open cases, its own numbers).
  */
 import { Link } from "react-router";
-import { AtSign, CalendarClock, ExternalLink, FileText, Globe, Phone } from "lucide-react";
+import { AtSign, CalendarClock, ChevronRight, ExternalLink, FileText, Globe, Phone, TriangleAlert } from "lucide-react";
 import type { CallSheet, IdentityDocument, OpenCase } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -11,9 +11,10 @@ import { Countdown } from "@/components/ui/Countdown";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { mailtoUrl, websiteUrl } from "@/features/party/timeline";
 import { usePartyDrawer } from "@/lib/party-drawer";
+import { glueText } from "@/lib/format";
 import { useFormatDate } from "@/lib/today";
 import { cn, plural } from "@/lib/utils";
-import { NumberRow } from "./NumberRow";
+import { NumberRow, Sep } from "./NumberRow";
 
 const letterHref = (id: string) => `/documents/${encodeURIComponent(id)}`;
 
@@ -26,9 +27,14 @@ function LetterLink({ id, title, date, prefix }: { id: string; title: string; da
       <span className="min-w-0">
         {prefix}{" "}
         <Link to={letterHref(id)} className="rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent [overflow-wrap:anywhere]">
-          {title}
+          {glueText(title)}
         </Link>
-        {date ? <span className="whitespace-nowrap"> · {formatDate(date, { style: "day" })}</span> : null}
+        {date ? (
+          <>
+            <Sep />
+            <span className="whitespace-nowrap">{formatDate(date, { style: "day" })}</span>
+          </>
+        ) : null}
       </span>
     </p>
   );
@@ -54,7 +60,9 @@ export function DocumentCard({ doc }: { doc: IdentityDocument }) {
             <p className="flex flex-wrap items-center gap-x-2 text-[13px] leading-5 text-muted">
               <span className="inline-flex items-center gap-1">
                 <CalendarClock className="size-3.5 shrink-0" aria-hidden />
-                Valid until {formatDate(doc.valid_until, { style: "medium" })}
+                <span>
+                  Valid until <span className="whitespace-nowrap">{formatDate(doc.valid_until, { style: "medium" })}</span>
+                </span>
               </span>
               <Countdown date={doc.valid_until} mode="event" className="text-[13px]" />
             </p>
@@ -66,6 +74,8 @@ export function DocumentCard({ doc }: { doc: IdentityDocument }) {
           {status.label}
         </Badge>
       </div>
+      {/* the card's full width: beside the badge it would be a narrow column on a phone */}
+      {doc.valid_until && doc.needs_check ? <Unconfirmed what="this date" className="mt-2" /> : null}
       {doc.number ? (
         <NumberRow number={doc.number} showLetter={false} className="mt-1 border-t border-line" />
       ) : (
@@ -81,15 +91,36 @@ export function DocumentCard({ doc }: { doc: IdentityDocument }) {
   );
 }
 
-/** "Next: Pay the fine · by Thu 1 Oct". */
+/** "Compare this date with the letter": Ordnung could not confirm it (read by AI from a photo, not found). */
+function Unconfirmed({ what, className }: { what: string; className?: string }) {
+  return (
+    <p className={cn("mt-0.5 flex items-start gap-1 text-[12.5px] leading-5 text-warn-ink", className)}>
+      <TriangleAlert className="mt-[3px] size-3.5 shrink-0" aria-hidden />
+      <span>Compare {what} with the letter: Ordnung couldn't confirm it.</span>
+    </p>
+  );
+}
+
+/** "Next: Pay the fine · by Thu 1 Oct" (a fee paid at the appointment: on its day). */
 function NextStep({ item }: { item: NonNullable<OpenCase["next_item"]> }) {
   const formatDate = useFormatDate();
   const day = item.send_by && (!item.due_date || item.send_by <= item.due_date) ? item.send_by : item.due_date;
+  const on = item.kind === "appointment" || (item.kind === "payment" && !item.send_by);
   return (
-    <p className="text-[13px] leading-5 text-ink/85">
-      <span className="font-medium text-ink">Next:</span> <span className="[overflow-wrap:anywhere]">{item.title}</span>
-      {day ? <span className="whitespace-nowrap text-muted"> · {item.kind === "appointment" ? "on" : "by"} {formatDate(day)}</span> : null}
-    </p>
+    <>
+      <p className="text-[13px] leading-5 text-ink/85">
+        <span className="font-medium text-ink">Next:</span> <span className="[overflow-wrap:anywhere]">{glueText(item.title)}</span>
+        {day ? (
+          <>
+            <Sep />
+            <span className="whitespace-nowrap text-muted">
+              {on ? "on" : "by"} {formatDate(day)}
+            </span>
+          </>
+        ) : null}
+      </p>
+      {item.needs_check ? <Unconfirmed what="it" /> : null}
+    </>
   );
 }
 
@@ -97,17 +128,22 @@ export function OpenCaseCard({ found, showParty = true }: { found: OpenCase; sho
   const drawer = usePartyDrawer();
   return (
     <Card as="article" padding="md" className="flex min-w-0 flex-1 flex-col">
-      <h3 className="text-[15px] font-semibold leading-6 text-ink [overflow-wrap:anywhere]">{found.title}</h3>
+      <h3 className="text-[15px] font-semibold leading-6 text-ink [overflow-wrap:anywhere]">{glueText(found.title)}</h3>
       {showParty && found.party_name ? (
         <p className="text-[13px] leading-5 text-muted">
           {found.party_id ? (
             <button type="button" onClick={() => drawer.open(found.party_id!)} className="inline min-h-6 rounded text-left font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent [overflow-wrap:anywhere]">
-              {found.party_name}
+              {glueText(found.party_name)}
             </button>
           ) : (
-            found.party_name
+            glueText(found.party_name)
           )}
-          {found.open_items > 1 ? <span className="whitespace-nowrap"> · {plural(found.open_items, "open to-do")}</span> : null}
+          {found.open_items > 1 ? (
+            <>
+              <Sep />
+              <span className="whitespace-nowrap">{plural(found.open_items, "open to-do")}</span>
+            </>
+          ) : null}
         </p>
       ) : null}
       {found.next_item ? (
@@ -118,7 +154,7 @@ export function OpenCaseCard({ found, showParty = true }: { found: OpenCase; sho
       <ul className="mt-1 divide-y divide-line" aria-label="References to quote">
         {found.references.map((ref) => (
           <li key={ref.key}>
-            <NumberRow number={ref} showLetter={false} />
+            <NumberRow number={ref} showLetter={Boolean(ref.letter && ref.letter.id !== found.letter?.id)} compactLetter />
           </li>
         ))}
       </ul>
@@ -174,7 +210,7 @@ function Contact({ sheet }: { sheet: CallSheet }) {
   );
 }
 
-export function CallSheetCard({ sheet }: { sheet: CallSheet }) {
+export function CallSheetCard({ sheet, openTheirs = false }: { sheet: CallSheet; openTheirs?: boolean }) {
   const drawer = usePartyDrawer();
   const headingId = `sheet-${sheet.party_id}`;
   return (
@@ -184,7 +220,7 @@ export function CallSheetCard({ sheet }: { sheet: CallSheet }) {
         <div className="min-w-0 flex-1">
           <h3 id={headingId} className="text-[15px] font-semibold leading-6 text-ink [overflow-wrap:anywhere]">
             <button type="button" onClick={() => drawer.open(sheet.party_id)} className="rounded text-left outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
-              {sheet.name}
+              {glueText(sheet.name)}
             </button>
           </h3>
           {sheet.open_items ? <p className="text-[13px] leading-5 text-muted">{plural(sheet.open_items, "open to-do")}</p> : null}
@@ -195,10 +231,11 @@ export function CallSheetCard({ sheet }: { sheet: CallSheet }) {
       </div>
       {sheet.numbers.length ? (
         <div className="mt-3 border-t border-line">
+          {/* each number says which letter it is from when that is not the last letter named below */}
           <ul className="divide-y divide-line">
             {sheet.numbers.map((n) => (
               <li key={n.key}>
-                <NumberRow number={n} showLetter={false} />
+                <NumberRow number={n} showLetter={Boolean(n.letter && n.letter.id !== sheet.last_letter?.id)} compactLetter />
               </li>
             ))}
           </ul>
@@ -207,20 +244,22 @@ export function CallSheetCard({ sheet }: { sheet: CallSheet }) {
       {sheet.open_cases.map((found) => (
         <div key={found.key} className="mt-1 rounded-lg bg-surface-2/70 px-3 pt-2">
           <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-muted">Open case</p>
-          <p className="text-[13.5px] font-medium leading-5 text-ink [overflow-wrap:anywhere]">{found.title}</p>
+          <p className="text-[13.5px] font-medium leading-5 text-ink [overflow-wrap:anywhere]">{glueText(found.title)}</p>
           {found.next_item ? <NextStep item={found.next_item} /> : null}
           <ul className="divide-y divide-line">
             {found.references.map((ref) => (
               <li key={ref.key}>
-                <NumberRow number={ref} showLetter={false} />
+                <NumberRow number={ref} showLetter={Boolean(ref.letter && ref.letter.id !== sheet.last_letter?.id)} compactLetter />
               </li>
             ))}
           </ul>
         </div>
       ))}
       {sheet.their_numbers.length ? (
-        <details className="group mt-3 border-t border-line pt-2">
-          <summary className="inline-flex min-h-8 cursor-pointer items-center gap-1 rounded text-[13px] font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
+        // open when a search matched only here, so the person sees why the sheet was found
+        <details key={openTheirs ? "open" : "closed"} open={openTheirs} className="group mt-3 border-t border-line pt-2">
+          <summary className="inline-flex min-h-8 cursor-pointer list-none items-center gap-1 rounded text-[13px] font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+            <ChevronRight className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden />
             Their own numbers ({sheet.their_numbers.length})
           </summary>
           <p className="mt-1 text-[12.5px] leading-5 text-muted">Registry, tax and bank numbers of {sheet.name} — not yours, but handy to recognise their letters and direct debits.</p>

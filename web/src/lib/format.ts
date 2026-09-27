@@ -515,6 +515,14 @@ export function formatInlineText(text: string, opts: InlineTextOptions = {}): st
   );
 }
 
+/**
+ * A letter's words kept whole where the line wraps, as written: money ("30 €"), dates, law references
+ * and references with hyphens ("TM-2026-0048213") never split — titles, names and notes in rows.
+ */
+export function glueText(text: string): string {
+  return formatInlineText(text, { rewrite: false });
+}
+
 const GERMAN_WORDS = /\b(der|die|das|und|nicht|wir|Sie|Ihr|Ihre|Ihren|ist|wird|werden|bei|mit|zu|auf|dem|den|des|ein|eine|einen|für|oder|von|bis|zum|zur|im|am|sich|bitte|sicherstellen|müssen|Betrag|Frist)\b/g;
 const ENGLISH_WORDS = /\b(the|and|you|your|to|of|is|will|be|for|by|if|it|this|with)\b/gi;
 

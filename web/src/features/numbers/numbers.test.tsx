@@ -1,11 +1,12 @@
 /**
- * My numbers: hidden until "Show" (with an accessible name and a pressed state), Copy works while hidden
+ * My numbers: hidden until "Show" (its name says what a press does), Copy works while hidden
  * and is announced, the check-digit result, the tabs, the call-sheet search, and the static demo's data
  * following what the visitor does (a deleted letter takes its numbers along).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { api } from "@/api/endpoints";
 import type { MyNumbers } from "@/api/types";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
@@ -14,13 +15,14 @@ import { MOCK_NUMBERS } from "@/mocks/data/numbers";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { hiddenLabel, maskValue, visibleTail } from "./mask";
-import { NumbersView, matchesSheet } from "./NumbersView";
+import { NumbersView, matchesSheet, sheetMatch } from "./NumbersView";
 import { numberTitle, printedLabel } from "./NumberRow";
 
 beforeEach(() => {
   vi.stubGlobal("scrollTo", () => {});
 });
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   act(() => __clearToasts());
 });
@@ -73,12 +75,14 @@ describe("the page", () => {
     expect(screen.getByText(maskValue(tax.display))).toHaveAttribute("aria-hidden");
     expect(screen.getAllByText(hiddenLabel(tax.display)).length).toBeGreaterThan(0);
 
+    // the name says what a press does; no aria-pressed as well ("Hide …, pressed" says it twice)
     const show = screen.getByRole("button", { name: "Show Tax ID (Steuer-ID)" });
-    expect(show).toHaveAttribute("aria-pressed", "false");
+    expect(show).not.toHaveAttribute("aria-pressed");
     await user.click(show);
     expect(screen.getByText(tax.display)).toBeInTheDocument();
     const hide = screen.getByRole("button", { name: "Hide Tax ID (Steuer-ID)" });
-    expect(hide).toHaveAttribute("aria-pressed", "true");
+    expect(hide).not.toHaveAttribute("aria-pressed");
+    expect(hide).toHaveTextContent("Hide");
     await user.click(hide);
     expect(screen.queryByText(tax.display)).toBeNull();
   });
@@ -122,16 +126,22 @@ describe("the page", () => {
     await renderNumbers();
     const docs = screen.getByRole("heading", { name: /Your documents/ }).closest("section")!;
     expect(within(docs).getByRole("heading", { name: "Passport" })).toBeInTheDocument();
-    expect(within(docs).getByText(/Valid until 10 Feb 2027/)).toBeInTheDocument();
+    expect(within(docs).getAllByText((_, el) => el?.textContent === "Valid until 10 Feb 2027").length).toBeGreaterThan(0);
     expect(within(docs).getAllByText("Renew soon").length).toBe(2);
-    expect(within(docs).getByText(/§ 81 Abs\. 4 AufenthG/)).toBeInTheDocument();
+    expect(within(docs).getByText(/§ 81 Abs\. 4 S\. 1 AufenthG/)).toBeInTheDocument();
+    // the passport's expiry was read by AI from a photo: the card says to compare it
+    const passport = within(docs).getByRole("heading", { name: "Passport" }).closest("article")!;
+    expect(within(passport).getByText(/Compare this date with the letter/)).toBeInTheDocument();
+    // "Valid until" and its date never part at the line's end
+    expect(within(passport).getByText("10 Feb 2027")).toHaveClass("whitespace-nowrap");
   });
 
   it("lists open cases and a searchable call sheet per organisation", async () => {
     useMockApi();
     const { user } = await renderNumbers("/numbers?tab=cases");
     expect(screen.getByRole("tab", { name: /Open cases/ })).toHaveAttribute("aria-selected", "true");
-    expect(await screen.findByRole("heading", { name: "Parking fine OA-VW-2026-55012" })).toBeInTheDocument();
+    // references never break at their hyphens (non-breaking hyphens on screen)
+    expect(await screen.findByRole("heading", { name: "Parking fine OA\u2011VW\u20112026\u201155012" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: /Organisations/ }));
     const sheets = screen.getByRole("list", { name: /organisations/ });
@@ -140,8 +150,45 @@ describe("the page", () => {
     await user.type(screen.getByRole("searchbox", { name: /Find an organisation/ }), "fitwell");
     expect(within(screen.getByRole("list", { name: "1 organisation" })).getByRole("heading", { name: "FitWell Studios" })).toBeInTheDocument();
     await user.clear(screen.getByRole("searchbox", { name: /Find an organisation/ }));
-    await user.type(screen.getByRole("searchbox", { name: /Find an organisation/ }), "zzz");
+    await user.type(screen.getByRole("searchbox", { name: /Find an organisation/ }), "no such organisation");
     expect(screen.getByRole("heading", { name: "No organisation matches" })).toBeInTheDocument();
+  });
+
+  it("opens an organisation's own numbers when only they match the search", async () => {
+    useMockApi();
+    const { user } = await renderNumbers("/numbers?tab=organisations");
+    const beitrag = MOCK_NUMBERS.organisations.find((s) => s.name === "Beitragsservice Musterstadt")!;
+    const iban = beitrag.their_numbers.find((n) => n.kind === "iban")!;
+    const tail = iban.value.slice(-6);
+    expect(sheetMatch(beitrag, tail)).toBe("theirs");
+    expect(sheetMatch(beitrag, "beitrag")).toBe("sheet");
+    await user.type(screen.getByRole("searchbox", { name: /Find an organisation/ }), tail);
+    const card = screen.getByRole("heading", { name: "Beitragsservice Musterstadt" }).closest("article")!;
+    expect(card.querySelector("details")).toHaveAttribute("open");
+    await user.clear(screen.getByRole("searchbox", { name: /Find an organisation/ }));
+    const again = screen.getByRole("heading", { name: "Beitragsservice Musterstadt" }).closest("article")!;
+    expect(again.querySelector("details")).not.toHaveAttribute("open");
+  });
+
+  it("links each number on a call sheet to its letter when that is not the last letter", async () => {
+    useMockApi();
+    const stadtwerke = MOCK_NUMBERS.organisations.find((s) => s.name === "Stadtwerke Musterstadt")!;
+    const older = { id: "doc_contract", title: "Electricity contract 2024", date: "2024-03-01", kind: "contract" as const };
+    const meter = { ...stadtwerke.numbers[0]!, key: "num_meter", kind: "meter" as const, name: "Meter or supply point", label: "Zählernummer", value: "1EMH0012345678", display: "1EMH0012345678", copy_value: "1EMH0012345678", letter: older };
+    const data = { ...MOCK_NUMBERS, organisations: MOCK_NUMBERS.organisations.map((s) => (s === stadtwerke ? { ...s, numbers: [...s.numbers, meter] } : s)) };
+    vi.spyOn(api, "numbers").mockResolvedValue(data);
+    await renderNumbers("/numbers?tab=organisations");
+    const card = screen.getByRole("heading", { name: "Stadtwerke Musterstadt" }).closest("article")!;
+    expect(within(card).getByRole("link", { name: "Electricity contract 2024" })).toHaveAttribute("href", "/documents/doc_contract");
+    // the customer number is from the last letter, which the card names once, at its foot
+    expect(within(card).getAllByRole("link", { name: stadtwerke.last_letter!.title })).toHaveLength(1);
+  });
+
+  it("names the organisations tab so voice control finds it by its short label too", async () => {
+    useMockApi();
+    await renderNumbers();
+    expect(screen.getByRole("tab", { name: /^Orgs Organisations/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^About you/ })).toBeInTheDocument(); // "You" is in "About you"
   });
 
   it("finds a call sheet by a number without its spaces", () => {

@@ -35,8 +35,16 @@ for (const width of [320, 390, 768, 1280, 1920]) {
     await page.setViewportSize({ width, height: 800 });
     await open(page, "/numbers", "My numbers");
     expect(await outOfBounds(page)).toEqual([]);
+    // every tab inside the tab row, none cut (a phone shows "You", "Cases", "Orgs")
+    const tabs = page.getByRole("tablist", { name: "Which numbers" });
+    const row = (await tabs.boundingBox())!;
+    for (const tab of await tabs.getByRole("tab").all()) {
+      const box = (await tab.boundingBox())!;
+      expect(box.x, "tab starts inside the row").toBeGreaterThanOrEqual(row.x - 0.5);
+      expect(box.x + box.width, "tab ends inside the row").toBeLessThanOrEqual(row.x + row.width + 0.5);
+    }
     const show = page.getByRole("main").getByRole("button", { name: "Show Tax ID (Steuer-ID)" });
-    await expect(show).toHaveAttribute("aria-pressed", "false");
+    await expect(show).not.toHaveAttribute("aria-pressed");
     const box = await show.boundingBox();
     expect(box!.height).toBeGreaterThanOrEqual(24);
     await show.click();

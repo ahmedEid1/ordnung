@@ -6,19 +6,20 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { ArrowLeft, ArrowRight, Check, CircleCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CircleCheck, Plus, Sparkles, TriangleAlert } from "lucide-react";
 import { useWeek, useWeekDone } from "@/api/hooks";
 import type { WeekStep, WeeklySession } from "@/api/types";
+import { useAddLetters } from "@/components/shell/AddLetters";
 import { PageHeader } from "@/components/shell/Page";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Countdown } from "@/components/ui/Countdown";
-import { EmptyArt } from "@/components/ui/EmptyState";
+import { EmptyArt, EmptyState } from "@/components/ui/EmptyState";
 import { LoadError } from "@/components/ui/LoadError";
 import { Money } from "@/components/ui/Money";
 import { LoadingLabel, Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { Stepper } from "@/components/ui/Stepper";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, glueText } from "@/lib/format";
 import { useFormatDate } from "@/lib/today";
 import { cn, prefersReducedMotion } from "@/lib/utils";
 import { STEP_META, entryHref, stepCount, type StepId } from "./steps";
@@ -73,6 +74,7 @@ function StepList({ steps, current, visited, onPick }: { steps: WeekStep[]; curr
 }
 
 function StepPanel({ step, index, total }: { step: WeekStep; index: number; total: number }) {
+  const last = index === total - 1;
   const meta = STEP_META[step.id];
   const headingRef = useRef<HTMLHeadingElement>(null);
   const first = useRef(true);
@@ -117,7 +119,7 @@ function StepPanel({ step, index, total }: { step: WeekStep; index: number; tota
       ) : (
         <div className="mt-4 flex items-center gap-3 rounded-lg bg-ok-soft/60 px-3 py-3 text-[14px] text-ok-ink">
           <CircleCheck className="size-5 shrink-0" aria-hidden />
-          Nothing here this week — on to the next step.
+          {last ? "Nothing here this week — you're done: press Finish." : "Nothing here this week — on to the next step."}
         </div>
       )}
       {step.more ? (
@@ -132,34 +134,111 @@ function StepPanel({ step, index, total }: { step: WeekStep; index: number; tota
   );
 }
 
-function AllClear({ week }: { week: WeeklySession }) {
+/** "Today suggests the next one on Sun 4 Oct" — the day the prompt policy names. */
+export function nextPromptText(week: Pick<WeeklySession, "next_prompt">, formatDate: (d: string) => string): string {
+  return week.next_prompt ? `Today suggests the next one on ${formatDate(week.next_prompt)}` : "Today suggests the next one when it is due";
+}
+
+function AllClear({ week, onShow }: { week: WeeklySession; onShow: (step: StepId) => void }) {
   const formatDate = useFormatDate();
   const next = week.next_deadline;
   const heading = useRef<HTMLHeadingElement>(null);
   // the card replaces the step the person finished: the focus (and a screen reader) goes to it
   useEffect(() => heading.current?.focus(), []);
+  const overdue = week.overdue;
+  const overdueStep = week.steps.find((s) => s.entries.some((e) => e.overdue));
+  const title = overdue
+    ? `${overdue} ${overdue === 1 ? "thing is" : "things are"} overdue`
+    : next?.date
+      ? next.date <= week.today
+        ? "One thing to do today"
+        : `All clear until ${formatDate(next.date)}`
+      : "All clear";
   return (
     <Card as="section" padding="lg" aria-labelledby="week-done-title" className="flex flex-col items-center text-center">
-      <EmptyArt kind="clear" className="mb-3" />
+      {overdue ? (
+        <span className="mb-3 grid size-14 place-items-center rounded-full bg-danger-soft text-danger-ink" aria-hidden>
+          <TriangleAlert className="size-7" />
+        </span>
+      ) : (
+        <EmptyArt kind="clear" className="mb-3" />
+      )}
       <h2 id="week-done-title" ref={heading} tabIndex={-1} className="display text-[26px] font-semibold leading-tight text-ink outline-none">
-        {next?.date ? `All clear until ${formatDate(next.date)}` : "All clear"}
+        {title}
       </h2>
+      {overdue ? (
+        <p className="mt-2 max-w-md text-[14.5px] leading-relaxed text-muted">
+          {overdue === 1 ? "Its date has passed: act on it first" : "Their dates have passed: act on them first"}, or contact the sender if you
+          can't.{" "}
+          {overdueStep ? (
+            <button
+              type="button"
+              onClick={() => onShow(overdueStep.id)}
+              className="inline min-h-6 rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              See {overdue === 1 ? "it" : "them"}
+            </button>
+          ) : null}
+        </p>
+      ) : null}
       {next?.date ? (
         <p className="mt-2 max-w-md text-[14.5px] leading-relaxed text-muted">
           Next:{" "}
           <Link to={entryHref(next)} className="rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent [overflow-wrap:anywhere]">
-            {next.title}
-          </Link>{" "}
-          · <Countdown date={next.date} className="text-[14.5px]" />
+            {glueText(next.title)}
+          </Link>
+          <span aria-hidden>{"\u00a0·"}</span> <Countdown date={next.date} className="text-[14.5px]" />
         </p>
-      ) : (
+      ) : !overdue ? (
         <p className="mt-2 max-w-md text-[14.5px] leading-relaxed text-muted">Nothing is due from today on.</p>
-      )}
-      <p className="mt-2 text-[13.5px] text-muted">Session saved — Today suggests the next one in a week.</p>
+      ) : null}
+      <p className="mt-2 text-[13.5px] text-muted">Session saved — {nextPromptText(week, (d) => formatDate(d))}.</p>
       <Link to="/" className={cn(buttonVariants({ variant: "primary" }), "mt-5")}>
         Back to Today
       </Link>
     </Card>
+  );
+}
+
+/** Every step is empty: a first run (no letters yet) or a quiet week. */
+function NothingToReview({ week }: { week: WeeklySession }) {
+  const { openPicker, uploading } = useAddLetters();
+  const formatDate = useFormatDate();
+  const next = week.next_deadline;
+  if (!week.last_session && !next) {
+    return (
+      <EmptyState
+        illustration="letter"
+        title="Nothing to review yet"
+        description="Add your letters: each week this review walks you through what they ask of you — new mail, payments, replies and decisions — in about ten minutes."
+        action={
+          <>
+            <Button variant="primary" icon={Plus} onClick={openPicker} loading={uploading}>
+              Add letters
+            </Button>
+            <Link to="/" className={buttonVariants({ variant: "secondary" })}>
+              Back to Today
+            </Link>
+          </>
+        }
+      />
+    );
+  }
+  return (
+    <EmptyState
+      illustration="clear"
+      title="Nothing to review this week"
+      description={
+        next?.date
+          ? `No new letters, nothing to check, pay, post or decide. Next: ${next.title} on ${formatDate(next.date)}.`
+          : "No new letters, nothing to check, pay, post or decide."
+      }
+      action={
+        <Link to="/" className={buttonVariants({ variant: "primary" })}>
+          Back to Today
+        </Link>
+      }
+    />
   );
 }
 
@@ -253,7 +332,21 @@ export function WeekView() {
     return (
       <>
         {header}
-        <AllClear week={week} />
+        <AllClear
+          week={week}
+          onShow={(id) => {
+            setFinished(false);
+            go(steps.findIndex((s) => s.id === id));
+          }}
+        />
+      </>
+    );
+  }
+  if (week.overdue === 0 && steps.every((s) => stepCount(s) === 0)) {
+    return (
+      <>
+        {header}
+        <NothingToReview week={week} />
       </>
     );
   }
@@ -265,11 +358,13 @@ export function WeekView() {
       {header}
       <div className="@container">
         <div className="mb-5 @[52rem]:hidden">
+          {/* ticks only on the steps looked at (as the step list beside it); the card says "Step n of m" */}
           <Stepper
             steps={steps.map((s) => ({ id: s.id, label: s.title, short: STEP_META[s.id].short }))}
             current={index}
+            doneIds={visited}
             labels="all"
-            fallback="current"
+            fallback="none"
             size="sm"
             label="Steps of the session"
           />
@@ -287,8 +382,17 @@ export function WeekView() {
                   Finish — all done
                 </Button>
               ) : (
-                <Button variant="primary" onClick={() => go(index + 1)} aria-label={`Next: ${nextStep?.title ?? ""}`} className="min-w-0 max-w-full">
-                  <span className="truncate">Next: {nextStep ? STEP_META[nextStep.id].short : ""}</span>
+                // the accessible name starts with the visible words ("Next: Check — Please check"), WCAG 2.5.3
+                <Button variant="primary" onClick={() => go(index + 1)} className="min-w-0 max-w-full">
+                  <span className="truncate">
+                    Next: {nextStep ? STEP_META[nextStep.id].short : ""}
+                    {nextStep && nextStep.title !== STEP_META[nextStep.id].short ? (
+                      <>
+                        {" "}
+                        <span className="sr-only">— {nextStep.title}</span>
+                      </>
+                    ) : null}
+                  </span>
                   <ArrowRight className="size-4 shrink-0" aria-hidden />
                 </Button>
               )}

@@ -9,9 +9,20 @@ import type { MyNumber } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useClipboard } from "@/features/today/clipboard";
+import { glueText } from "@/lib/format";
+import { NBSP } from "@/lib/glue";
 import { useFormatDate } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { hiddenLabel, maskValue } from "./mask";
+
+/** " · " that never starts a line: the dot stays with the text before it. */
+export function Sep() {
+  return (
+    <>
+      <span aria-hidden>{`${NBSP}·`}</span>{" "}
+    </>
+  );
+}
 
 /** Kinds whose plain-English name says less than the letter's own label ("Your number" → "Scholarship ID"). */
 const LABEL_FIRST = new Set<MyNumber["kind"]>(["other", "their_other", "reference", "register"]);
@@ -56,10 +67,12 @@ export interface NumberRowProps {
   showParty?: boolean;
   /** Link to the letter it came from. */
   showLetter?: boolean;
+  /** Only "From <letter>" (a card that names the organisation and its latest letter already). */
+  compactLetter?: boolean;
   className?: string;
 }
 
-export function NumberRow({ number, masked = true, showParty = false, showLetter = true, className }: NumberRowProps) {
+export function NumberRow({ number, masked = true, showParty = false, showLetter = true, compactLetter = false, className }: NumberRowProps) {
   const [shown, setShown] = useState(!masked);
   const { copy, copied } = useClipboard();
   const formatDate = useFormatDate();
@@ -87,11 +100,12 @@ export function NumberRow({ number, masked = true, showParty = false, showLetter
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {masked ? (
+          // the name says what a press does ("Show …" / "Hide …"): no aria-pressed as well, which would
+          // announce the state twice with opposite meanings
           <Button
             variant="ghost"
             size="sm"
             icon={shown ? EyeOff : Eye}
-            aria-pressed={shown}
             aria-label={`${shown ? "Hide" : "Show"} ${title}`}
             aria-controls={valueId}
             onClick={() => setShown((s) => !s)}
@@ -124,11 +138,26 @@ export function NumberRow({ number, masked = true, showParty = false, showLetter
                 to={`/documents/${encodeURIComponent(letter.id)}`}
                 className="inline rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent [overflow-wrap:anywhere]"
               >
-                {letter.title}
+                {glueText(letter.title)}
               </Link>
-              {showParty && number.party_name ? <span> · {number.party_name}</span> : null}
-              {letter.date ? <span className="whitespace-nowrap"> · {formatDate(letter.date, { style: "day" })}</span> : null}
-              {number.letters > 1 ? <span className="whitespace-nowrap"> · on {number.letters} letters</span> : null}
+              {showParty && number.party_name ? (
+                <>
+                  <Sep />
+                  <span>{glueText(number.party_name)}</span>
+                </>
+              ) : null}
+              {letter.date && !compactLetter ? (
+                <>
+                  <Sep />
+                  <span className="whitespace-nowrap">{formatDate(letter.date, { style: "day" })}</span>
+                </>
+              ) : null}
+              {number.letters > 1 && !compactLetter ? (
+                <>
+                  <Sep />
+                  <span className="whitespace-nowrap">on {number.letters} letters</span>
+                </>
+              ) : null}
             </span>
           ) : null}
         </div>

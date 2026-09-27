@@ -28,6 +28,11 @@ export interface StepperProps {
   live?: boolean;
   /** Accessible name, e.g. "Reading Nebenkostenabrechnung.pdf". */
   label?: string;
+  /**
+   * The ids of the steps that count as done, for steps taken in any order (a review the person can
+   * jump around in): only these get a tick. Default: every step before the current one.
+   */
+  doneIds?: ReadonlySet<string>;
   className?: string;
 }
 
@@ -107,13 +112,14 @@ function useFittingLabels(steps: readonly StepperStep[], wanted: boolean) {
  * labels are used, and when even those don't fit, one line under the track names the current step
  * (or nothing, with `fallback="none"`). Respects reduced motion via the global MotionConfig.
  */
-export function Stepper({ steps, current, status = "active", size = "md", labels = "all", fallback = "current", live, label, className }: StepperProps) {
+export function Stepper({ steps, current, status = "active", size = "md", labels = "all", fallback = "current", live, label, doneIds, className }: StepperProps) {
   const n = steps.length;
   const done = current >= n;
   const dot = size === "sm" ? 16 : 20;
   const activeLabel = done ? "Done" : steps[current]?.label ?? "";
+  const isDone = (i: number) => (doneIds ? doneIds.has(steps[i]!.id) : i < current);
   const stateOf = (i: number): StepState =>
-    i < current ? "done" : i === current && !done ? (status === "error" ? "error" : "current") : "todo";
+    i === current && !done ? (status === "error" ? "error" : "current") : isDone(i) || done ? "done" : "todo";
   const { ref, fit } = useFittingLabels(steps, labels === "all");
   const mode = labels === "all" ? (fit ?? fallback) : labels;
   // the filled part of the track reaches the current dot

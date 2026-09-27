@@ -132,6 +132,29 @@ test.describe("tablet 768 px: the rail", () => {
   });
 });
 
+for (const viewport of [
+  { width: 900, height: 640 },
+  { width: 800, height: 600 },
+]) {
+  test.describe(`${viewport.width}×${viewport.height}: a short rail`, () => {
+    test.use({ viewport });
+
+    test("keeps Settings and the theme toggle on screen: the sections scroll inside the rail", async ({ page }) => {
+      await open(page, "/", /Sam/);
+      const sidebar = page.getByRole("complementary", { name: "Sidebar" });
+      for (const target of [sidebar.getByRole("link", { name: "Settings" }), sidebar.getByRole("button", { name: /theme|mode/i })]) {
+        const box = (await target.boundingBox())!;
+        expect(box.y + box.height, "inside the window").toBeLessThanOrEqual(viewport.height);
+      }
+      // every section can still be reached: the last one scrolls into view when it takes the focus
+      const ask = sidebar.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Ask" });
+      await ask.focus();
+      const box = (await ask.boundingBox())!;
+      expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+    });
+  });
+}
+
 test.describe("laptop: sidebar", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 

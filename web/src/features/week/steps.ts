@@ -2,7 +2,7 @@
  * The weekly session's steps as the page shows them (the backend decides what is in each —
  * `ordnung/secretary/week.py`): a short label for tight rows, an icon, and where the full list lives.
  */
-import { Archive, CalendarRange, FileSearch, Hourglass, Inbox, Landmark, Send, type LucideIcon } from "lucide-react";
+import { Archive, CalendarRange, FileSearch, Hourglass, Inbox, Landmark, Send, Siren, type LucideIcon } from "lucide-react";
 import type { WeekEntry, WeekStep, WeeklySession } from "@/api/types";
 import { contractHref } from "@/features/contracts/links";
 import { plural } from "@/lib/utils";
@@ -17,6 +17,7 @@ export interface StepMeta {
 }
 
 export const STEP_META: Record<StepId, StepMeta> = {
+  now: { short: "Now", icon: Siren, more: { to: "/timeline", label: "See everything on the timeline" } },
   new: { short: "New", icon: Inbox, more: { to: "/inbox", label: "See all in the Inbox" } },
   check: { short: "Check", icon: FileSearch, more: { to: "/inbox?filter=check", label: "See all letters to check" } },
   pay: { short: "Pay", icon: Landmark, more: { to: "/timeline", label: "See every payment on the timeline" } },
@@ -45,14 +46,16 @@ export function stepCount(step: Pick<WeekStep, "entries" | "more">): number {
   return step.entries.length + step.more;
 }
 
-/** "22 new letters · 1 to check · 3 to pay · 2 decisions" — what Today's prompt says is waiting. */
-export function sessionHighlights(week: Pick<WeeklySession, "steps">): string[] {
+/** "2 overdue · 22 new letters · 1 to check · 3 to pay · 2 decisions" — what Today's prompt says is waiting. */
+export function sessionHighlights(week: Pick<WeeklySession, "steps" | "overdue">): string[] {
   const count = (id: StepId) => {
     const step = week.steps.find((s) => s.id === id);
     return step ? stepCount(step) : 0;
   };
-  const transfers = week.steps.find((s) => s.id === "pay")?.entries.filter((e) => e.date_role !== "collected").length ?? 0;
+  const transfers =
+    week.steps.find((s) => s.id === "pay")?.entries.filter((e) => e.date_role !== "collected" && e.date_role !== "at_appointment").length ?? 0;
   const parts: string[] = [];
+  if (week.overdue) parts.push(`${week.overdue} overdue`);
   if (count("new")) parts.push(plural(count("new"), "new letter"));
   if (count("check")) parts.push(`${count("check")} to check`);
   if (transfers) parts.push(`${transfers} to pay`);

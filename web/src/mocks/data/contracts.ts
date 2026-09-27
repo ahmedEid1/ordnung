@@ -185,7 +185,7 @@ export const CONTRACTS: Contract[] = [
     name: "Muster BKK student insurance",
     category: "insurance",
     party_id: "pty_bkk",
-    customer_number: "R123456786",
+    customer_number: "R482019379",
     cost_amount: 142.86,
     cost_interval: "monthly",
     area: "health",
