@@ -2,27 +2,52 @@
  * "Pay" — Ordnung never pays for you. It lays out exactly what to type into your banking app
  * (payee, IBAN, reference, amount) with copy buttons, and lets you mark the payment as done.
  */
+import type { ReactNode } from "react";
 import { Check, Copy, Landmark, ShieldAlert } from "lucide-react";
 import type { Document, Item } from "@/api/types";
-import { formatIban, formatMoney } from "@/lib/format";
+import { daysUntil, formatIban, formatMoney } from "@/lib/format";
+import { isTransfer } from "@/lib/payments";
+import { useToday } from "@/lib/today";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
+import { DateText } from "@/components/ui/DateText";
 import { copyText } from "./actions";
 
-function Row({ label, value, copy, mono }: { label: string; value: string; copy?: string; mono?: boolean }) {
+/** An IBAN in groups of four that never split: the line breaks only between groups (UI audit round 1: "…2130 0" / "0"). */
+function IbanGroups({ iban }: { iban: string }) {
+  const groups = formatIban(iban).split(" ");
+  return (
+    <>
+      {groups.map((g, i) => (
+        <span key={i}>
+          <span className="whitespace-nowrap">{g}</span>
+          {i < groups.length - 1 ? " " : null}
+        </span>
+      ))}
+    </>
+  );
+}
+
+/**
+ * One transfer detail. `copy` is what the button copies; `what` names it as written in a sentence ("Copy IBAN",
+ * "Copy reference" and "Reference copied" — UI audit round 1: "Copy iban"), the label by default.
+ */
+function Row({ label, children, copy, what, className }: { label: string; children: ReactNode; copy?: string; what?: string; className?: string }) {
+  const name = what ?? label;
   return (
     <div className="flex items-center gap-3 py-2">
       <div className="min-w-0 flex-1">
-        <div className="text-[11.5px] font-medium uppercase tracking-[0.06em] text-muted">{label}</div>
-        <div className={mono ? "mt-0.5 font-ident text-[14px] font-medium text-ink wrap-anywhere" : "mt-0.5 text-[14px] font-medium text-ink"}>{value}</div>
+        <div className="eyebrow">{label}</div>
+        <div className={cn("mt-0.5 text-[14px] font-medium text-ink", className)}>{children}</div>
       </div>
       {copy ? (
         <button
           type="button"
-          onClick={() => void copyText(copy, label)}
+          onClick={() => void copyText(copy, name.charAt(0).toUpperCase() + name.slice(1))}
           className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-          aria-label={`Copy ${label.toLowerCase()}`}
-          title={`Copy ${label.toLowerCase()}`}
+          aria-label={`Copy ${name}`}
+          title={`Copy ${name}`}
         >
           <Copy className="size-4" aria-hidden />
         </button>
@@ -32,26 +57,59 @@ function Row({ label, value, copy, mono }: { label: string; value: string; copy?
 }
 
 export function PayPanel({ item, doc, onPaid, close }: { item: Item; doc: Document; onPaid: () => void; close?: () => void }) {
+  const today = useToday();
   const p = doc.payment;
   const amount = item.amount != null ? formatMoney(item.amount, { currency: item.currency }) : null;
+  const due = item.due_date;
+  // a transfer has to go out a day or so before it must arrive: that day leads while it is ahead, as in the verdict
+  const transferBy =
+    isTransfer(item) && item.send_by && item.send_by !== due && daysUntil(item.send_by, today) >= 0 ? item.send_by : null;
   return (
     <div>
-      <div className="flex items-center gap-2.5">
-        <span className="grid size-8 place-items-center rounded-lg bg-k-payment-soft text-k-payment">
+      <div className="flex items-start gap-2.5">
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-k-payment-soft text-k-payment">
           <Landmark className="size-4" aria-hidden />
         </span>
-        <div>
+        <div className="min-w-0">
           <p className="text-[15px] font-semibold text-ink">Pay {amount ?? "this bill"}</p>
-          {item.due_date ? <Countdown date={item.due_date} prefix="by" className="text-[12.5px]" /> : null}
+          {transferBy ? (
+            <p className="text-[12.5px] leading-5">
+              <Countdown date={transferBy} prefix="Transfer by" />
+              {due ? (
+                <span className="text-muted">
+                  {" "}
+                  (must arrive <DateText date={due} />)
+                </span>
+              ) : null}
+            </p>
+          ) : due ? (
+            <Countdown date={due} prefix="by" className="text-[12.5px]" />
+          ) : null}
         </div>
       </div>
 
       {p && (p.iban || p.payee) ? (
         <div className="mt-3 divide-y divide-line rounded-lg border border-line px-3">
-          {p.payee ? <Row label="To" value={p.payee} /> : null}
-          {p.iban ? <Row label="IBAN" value={formatIban(p.iban)} copy={p.iban.replace(/\s+/g, "")} mono /> : null}
-          {p.reference ? <Row label="Reference" value={p.reference} copy={p.reference} /> : null}
-          {amount ? <Row label="Amount" value={amount} copy={item.amount!.toFixed(2).replace(".", ",")} /> : null}
+          {p.payee ? (
+            <Row label="To" className="wrap-anywhere">
+              {p.payee}
+            </Row>
+          ) : null}
+          {p.iban ? (
+            <Row label="IBAN" copy={p.iban.replace(/\s+/g, "")} className="font-ident">
+              <IbanGroups iban={p.iban} />
+            </Row>
+          ) : null}
+          {p.reference ? (
+            <Row label="Reference" what="reference" copy={p.reference} className="font-ident wrap-anywhere">
+              {p.reference}
+            </Row>
+          ) : null}
+          {amount ? (
+            <Row label="Amount" what="amount" copy={item.amount!.toFixed(2).replace(".", ",")}>
+              {amount}
+            </Row>
+          ) : null}
         </div>
       ) : (
         <p className="mt-3 rounded-lg bg-surface-2 px-3 py-2.5 text-[13px] leading-5 text-muted">
@@ -69,7 +127,16 @@ export function PayPanel({ item, doc, onPaid, close }: { item: Item; doc: Docume
       <p className="mt-3 text-[12.5px] leading-5 text-muted">
         Ordnung never pays for you — use your banking app. Compare the IBAN with an earlier letter from this sender.
       </p>
-      <div className="mt-3 flex justify-end gap-2">
+      {/*
+        stays in view at the bottom of the panel, however far its details scroll (as in Today's Pay panel): it
+        covers the panel's bottom padding (a sticky box stops at the padding edge, so it is pulled down by it)
+      */}
+      <div
+        className={cn(
+          "sticky -bottom-4 z-10 -mb-4 mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-line bg-surface py-3",
+          "in-sheet:bottom-[calc(-1.25rem-env(safe-area-inset-bottom))] in-sheet:mb-[calc(-1.25rem-env(safe-area-inset-bottom))] in-sheet:pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
+        )}
+      >
         {close ? (
           <Button size="sm" variant="ghost" onClick={close} className="in-sheet:hidden">
             Close

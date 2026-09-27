@@ -21,7 +21,7 @@ import {
   TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
-import type { DocumentDetail, DraftKind, Item, Suggestion } from "@/api/types";
+import type { DocumentDetail, DocumentKind, DraftKind, Item, PartyKind, Suggestion } from "@/api/types";
 import { useUpdateSuggestion } from "@/api/hooks";
 import { isDirectDebit } from "@/lib/payments";
 import { toast } from "@/components/ui/Toast";
@@ -206,7 +206,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
   const sameDay = Boolean(doc.doc_date && doc.received_date && doc.doc_date === doc.received_date);
   // "Based on the law as of …" only where a law worked the date out — not under a passport's expiry
   const law = !scam && (Boolean(decision) || Boolean(open?.due_date && usesLaw(open)));
-  const advice = open && (open.priority === "high" || open.priority === "critical") ? verdictAdvice(detail.advice, open.area) : undefined;
+  const advice = open && (open.priority === "high" || open.priority === "critical") ? verdictAdvice(detail.advice, open.area, doc.kind, detail.party?.kind) : undefined;
   const footer = law ? <Disclaimer advice={advice} /> : !scam && advice?.length ? <AdviceLinks advice={advice} className="block text-xs leading-5 text-muted" /> : null;
 
   return (
@@ -556,7 +556,7 @@ function DateBox({
         ) : null}
         {item.computation ? (
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <WhyThisDate receipt={item.computation} spec={item.date_spec} area={item.area} origin={item.origin} />
+            <WhyThisDate receipt={item.computation} spec={item.date_spec} area={item.area} origin={item.origin} item={item} />
             {item.computation.confidence !== "high" ? (
               <span className="text-[12px] text-muted">{item.computation.confidence === "medium" ? "Worth a second look" : "Please check this date"}</span>
             ) : null}
@@ -641,11 +641,12 @@ const TENANCY_KINDS = new Set(["landlord_notice", "rent_increase", "operating_co
  * The verdict's "Unsure? Get independent advice" link: a high-stakes letter's from its card's kind — the
  * tenants' association for a tenancy letter, none for the others (the card lists its own help: a court's
  * desk, a union) — never the area's (review round 2: a statement read under "residence" pointed to the
- * Studierendenwerk while its card listed the Mieterverein); any other letter's from its area.
+ * Studierendenwerk while its card listed the Mieterverein); any other letter's from its kind, sender and area
+ * ({@link adviceFor}).
  */
-function verdictAdvice(advice: DocumentDetail["advice"], area: Item["area"]) {
+function verdictAdvice(advice: DocumentDetail["advice"], area: Item["area"], docKind?: DocumentKind | null, partyKind?: PartyKind | null) {
   if (advice) return TENANCY_KINDS.has(advice.kind) ? ADVICE_LINKS.rent : undefined;
-  return adviceFor(area);
+  return adviceFor(area, docKind, partyKind);
 }
 
 /** "Keep it": the person decided not to cancel — the decision Idea goes (with undo). */

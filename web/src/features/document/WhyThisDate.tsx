@@ -4,12 +4,24 @@
  * the rules" with every step, its citation and the holiday calendar. Always ends with the
  * point-of-use disclaimer (SPEC §21), with independent advice for high-stakes areas.
  */
-import type { Area, ComputationReceipt, DateSpec, ItemOrigin } from "@/api/types";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Area, ComputationReceipt, DateSpec, DocumentDetail, DocumentKind, Item, ItemOrigin, PartyKind } from "@/api/types";
+import { qk } from "@/api/hooks";
+import { isTransfer } from "@/lib/payments";
 import { ADVICE_LINKS, type AdviceLink } from "@/components/ui/Disclaimer";
 import { Receipt, ReceiptPopover, useReceiptSteps, type ReceiptDate } from "@/components/ui/Receipt";
 
-/** Independent advice links for high-stakes areas (tax, residence, rent, fines). */
-export function adviceFor(area: Area | null | undefined): AdviceLink[] | undefined {
+/** Letters about a tenancy: the tenants' association advises, whatever area the letter was read under. */
+const TENANCY_KINDS: ReadonlySet<DocumentKind> = new Set<DocumentKind>(["rent_lease", "operating_costs", "rent_increase", "landlord_notice"]);
+
+/**
+ * Companies whose letters are consumer matters (an electricity contract, a phone bill, a gym): the consumer
+ * advice centre, not the tenants' association or student services, when such a letter is filed under a home
+ * or residence area.
+ */
+const CONSUMER_PARTIES: ReadonlySet<PartyKind> = new Set<PartyKind>(["utility", "telecom", "retailer", "gym", "bank", "insurer", "transport"]);
+
+function areaAdvice(area: Area | null | undefined): AdviceLink[] | undefined {
   switch (area) {
     case "tax":
       return ADVICE_LINKS.tax;
@@ -24,6 +36,45 @@ export function adviceFor(area: Area | null | undefined): AdviceLink[] | undefin
   }
 }
 
+/**
+ * Independent advice links for high-stakes areas (tax, residence, rent, fines). The letter's kind and its
+ * sender's kind come first when known: a lease or an operating-cost statement is the tenants' association's
+ * (UI audit round 1: a landlord's statement read under "residence" pointed to the Studierendenwerk), a
+ * residence permit the student services', a Stadtwerke bill filed under housing the consumer advice centre's.
+ */
+export function adviceFor(area: Area | null | undefined, docKind?: DocumentKind | null, partyKind?: PartyKind | null): AdviceLink[] | undefined {
+  if ((docKind && TENANCY_KINDS.has(docKind)) || partyKind === "landlord") return ADVICE_LINKS.rent;
+  if (docKind === "residence_permit" || partyKind === "immigration_office") return ADVICE_LINKS.residence;
+  if (docKind === "tax_assessment" || docKind === "tax_letter" || partyKind === "tax_office") return ADVICE_LINKS.tax;
+  if (docKind === "fine") return ADVICE_LINKS.fines;
+  const byArea = areaAdvice(area);
+  if (byArea && (area === "home" || area === "residence") && partyKind && CONSUMER_PARTIES.has(partyKind)) return ADVICE_LINKS.consumer;
+  return byArea;
+}
+
+/** The to-do a receipt belongs to: what kind of date it is, and its letter. */
+export type ReceiptItem = Pick<Item, "kind" | "direction" | "title" | "action" | "description" | "doc_id">;
+
+/**
+ * The receipt's key dates in the words the verdict uses: a bank transfer is made by its send-by day ("Transfer
+ * by", UI audit round 1: not "Send by" / "Post it by" beside the verdict's "Transfer it by"), anything else is
+ * sent by it; the due date is the day it must arrive.
+ */
+export function receiptDates(receipt: ComputationReceipt, item?: ReceiptItem | null): ReceiptDate[] {
+  const dates: ReceiptDate[] = [];
+  if (receipt.send_by) dates.push({ label: item && isTransfer(item) ? "Transfer by" : "Send by", date: receipt.send_by });
+  if (receipt.due_date) dates.push({ label: "Must arrive by", date: receipt.due_date });
+  if (receipt.safe_date && receipt.safe_date !== receipt.due_date) dates.push({ label: "Safe date (a working day)", date: receipt.safe_date });
+  return dates;
+}
+
+/** The kinds of the to-do's letter and sender, from the letter already loaded for the page (nothing is fetched). */
+function useLetterKinds(docId: string | null | undefined): { docKind: DocumentKind | null; partyKind: PartyKind | null } {
+  const qc = useQueryClient();
+  const detail = docId ? qc.getQueryData<DocumentDetail>(qk.documents.detail(docId)) : undefined;
+  return { docKind: detail?.document.kind ?? null, partyKind: detail?.party?.kind ?? null };
+}
+
 export interface ReceiptViewProps {
   receipt: ComputationReceipt;
   /** What the letter says (shown as the quote the date came from). */
@@ -36,17 +87,16 @@ export interface ReceiptViewProps {
    * words — never shown as what the letter says.
    */
   origin?: ItemOrigin | null;
+  /** The to-do: a transfer's "Transfer by", and its letter's kind for the advice links. */
+  item?: ReceiptItem | null;
 }
 
-export function ReceiptView({ receipt, spec, area, defaultShowRules = false, origin }: ReceiptViewProps) {
+export function ReceiptView({ receipt, spec, area, defaultShowRules = false, origin, item }: ReceiptViewProps) {
   const steps = useReceiptSteps(receipt.steps);
-  const dates: ReceiptDate[] = [];
-  if (receipt.send_by) dates.push({ label: "Send by", date: receipt.send_by });
-  if (receipt.due_date) dates.push({ label: "Must arrive by", date: receipt.due_date });
-  if (receipt.safe_date && receipt.safe_date !== receipt.due_date) dates.push({ label: "Safe date (a working day)", date: receipt.safe_date });
+  const { docKind, partyKind } = useLetterKinds(item?.doc_id);
   return (
     <Receipt
-      dates={dates}
+      dates={receiptDates(receipt, item)}
       summary={receipt.summary}
       confidence={receipt.confidence}
       warnings={receipt.warnings}
@@ -54,7 +104,7 @@ export function ReceiptView({ receipt, spec, area, defaultShowRules = false, ori
       steps={steps}
       holidayCalendar={receipt.holiday_calendar}
       defaultShowRules={defaultShowRules}
-      advice={adviceFor(area)}
+      advice={adviceFor(area, docKind, partyKind)}
     />
   );
 }
@@ -62,13 +112,14 @@ export function ReceiptView({ receipt, spec, area, defaultShowRules = false, ori
 /**
  * A "Why this date?" trigger that opens the receipt in a popover.
  *
- * @example <WhyThisDate receipt={item.computation} spec={item.date_spec} />
+ * @example <WhyThisDate receipt={item.computation} spec={item.date_spec} item={item} />
  */
 export function WhyThisDate({
   receipt,
   spec,
   area,
   origin,
+  item,
   context,
   className,
 }: {
@@ -77,11 +128,17 @@ export function WhyThisDate({
   area?: Area | null;
   /** Where the to-do came from (see {@link ReceiptViewProps.origin}). */
   origin?: ItemOrigin | null;
+  /** The to-do (see {@link ReceiptViewProps.item}). */
+  item?: ReceiptItem | null;
   /** What the date belongs to (the to-do's title), for screen readers. */
   context?: string;
   className?: string;
 }) {
   return (
-    <ReceiptPopover content={<ReceiptView receipt={receipt} spec={spec} area={area} origin={origin} />} context={context} className={className} />
+    <ReceiptPopover
+      content={<ReceiptView receipt={receipt} spec={spec} area={area} origin={origin} item={item} />}
+      context={context}
+      className={className}
+    />
   );
 }
