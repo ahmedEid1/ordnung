@@ -2463,6 +2463,42 @@
         }
       }
     },
+    "/api/drafts/{draft_id}/preview.png": {
+      "get": {
+        "tags": [
+          "drafts"
+        ],
+        "summary": "Draft Preview",
+        "description": "The printable letter as one PNG, page under page (the web app's print preview).",
+        "operationId": "draft_preview_api_drafts__draft_id__preview_png_get",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/drafts/{draft_id}/sent": {
       "post": {
         "tags": [

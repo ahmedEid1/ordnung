@@ -58,6 +58,10 @@ async def test_objection_draft_flow(data_dir: Path) -> None:
         assert pdf.status_code == 200
         assert pdf.headers["content-type"] == "application/pdf"
         assert pdf.content.startswith(b"%PDF-") and len(pdf.content) > 1000
+        preview = await api.client.get(f"/api/drafts/{draft['id']}/preview.png")
+        assert preview.status_code == 200
+        assert preview.headers["content-type"] == "image/png"
+        assert preview.content.startswith(b"\x89PNG\r\n\x1a\n")
 
         sent = await api.client.post(
             f"/api/drafts/{draft['id']}/sent", json={"channel": "letter", "date": TODAY}
@@ -72,6 +76,7 @@ async def test_objection_draft_flow(data_dir: Path) -> None:
         assert (await api.client.delete(f"/api/drafts/{draft['id']}")).status_code == 204
         assert (await api.client.get(f"/api/drafts/{draft['id']}")).status_code == 404
         assert (await api.client.get(f"/api/drafts/{draft['id']}/pdf")).status_code == 404
+        assert (await api.client.get(f"/api/drafts/{draft['id']}/preview.png")).status_code == 404
 
 
 async def test_letters_that_cannot_be_drafted_or_sent(data_dir: Path) -> None:

@@ -14,18 +14,25 @@ Layout (mm from the top-left corner):
 
 The letter carries no software branding. Output is deterministic: the PDF creation date is the
 draft's ``created_at``, so the same draft always gives the same bytes.
+
+:func:`render_preview` draws the same PDF as one PNG, page under page, for the web app's print
+preview (browsers on phones show no PDF inline, and a PDF viewer in a frame can't follow the theme).
 """
 
 from __future__ import annotations
 
+import io
 import re
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pypdfium2 as pdfium
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
+from PIL import Image
 
 from ordnung.drafts.templates import closing
+from ordnung.ingest.intake import PDFIUM_LOCK
 from ordnung.models import Draft, Profile
 
 FONT_DIR = Path(__file__).resolve().parent / "fonts"
@@ -248,3 +255,41 @@ def render(draft: Draft, profile: Profile) -> bytes:
     """The letter as PDF bytes (A4, DIN 5008 Form B; page numbers only on multi-page letters)."""
     pages = _layout(draft, profile, total_pages=1).pages_count
     return bytes(_layout(draft, profile, total_pages=pages).output())
+
+
+#: Width of the print preview in pixels: twice the preview's widest CSS size (560 px), so it is sharp.
+PREVIEW_WIDTH = 1120
+#: Transparent gap between two pages of the preview, in pixels (the page's frame shows through).
+PREVIEW_GAP = 32
+
+
+def render_preview(draft: Draft, profile: Profile, *, width: int = PREVIEW_WIDTH) -> bytes:
+    """The letter as it prints: every page of :func:`render`'s PDF, ``width`` pixels wide, one under
+    the other with a transparent gap between them, as a PNG."""
+    data = render(draft, profile)
+    pages: list[Image.Image] = []
+    with PDFIUM_LOCK:
+        pdf = pdfium.PdfDocument(data)
+        try:
+            for index in range(len(pdf)):
+                page = pdf[index]
+                try:
+                    page_width, _ = page.get_size()
+                    bitmap = page.render(scale=width / page_width)
+                    try:
+                        pages.append(bitmap.to_pil().convert("RGB"))
+                    finally:
+                        bitmap.close()
+                finally:
+                    page.close()
+        finally:
+            pdf.close()
+    height = sum(image.height for image in pages) + PREVIEW_GAP * (len(pages) - 1)
+    sheet = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    top = 0
+    for image in pages:
+        sheet.paste(image, (0, top))
+        top += image.height + PREVIEW_GAP
+    buffer = io.BytesIO()
+    sheet.save(buffer, "PNG", optimize=False, compress_level=6)
+    return buffer.getvalue()

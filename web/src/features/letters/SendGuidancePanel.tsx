@@ -1,4 +1,4 @@
-import { Lightbulb, Send, Signature, TriangleAlert } from "lucide-react";
+import { Ban, Lightbulb, Send, Signature, TriangleAlert } from "lucide-react";
 import type { SendChannel, SendGuidance } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { Countdown } from "@/components/ui/Countdown";
@@ -43,35 +43,36 @@ function ChannelRow({ c, n }: { c: SendChannel; n: number }) {
   const t = TONES[c.allowed ? copy.tone : "neutral"];
   return (
     // a channel that isn't allowed is said in full-contrast text (review round 2: the faded row failed WCAG
-    // 1.4.3 — and a court's letter depends on this row to say that e-mail is invalid): only its name is struck
+    // 1.4.3 — and a court's letter depends on this row to say that e-mail is invalid): only its name is struck.
+    // The rank is a plain "1." before the name (a number on the icon's corner read as a notification count).
     <li className="flex gap-3 py-3 first:pt-0 last:pb-0">
-      <span className="relative mt-0.5 shrink-0">
-        <span className={cn("grid size-8 place-items-center rounded-lg", t.soft, t.icon)}>
-          <Icon className="size-4" aria-hidden />
-        </span>
-        {c.allowed ? (
-          <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-surface text-[10px] font-bold text-muted ring-1 ring-line" aria-hidden>
-            {n}
-          </span>
-        ) : null}
+      <span className={cn("mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg", t.soft, t.icon)}>
+        <Icon className="size-4" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className={cn("text-[14px] font-medium", c.allowed ? "text-ink" : "text-ink/80 line-through decoration-ink/40")}>{c.label || copy.label}</span>
+          <span className={cn("text-[14px] font-medium [overflow-wrap:anywhere]", c.allowed ? "text-ink" : "text-ink/80 line-through decoration-ink/40")}>
+            {c.allowed ? (
+              <span className="mr-1 tabular-nums text-muted" aria-hidden>
+                {n}.
+              </span>
+            ) : null}
+            {c.label || copy.label}
+          </span>
           {c.recommended && c.allowed ? (
             <Badge tone="ok" size="sm">
               Recommended
             </Badge>
           ) : null}
           {!c.allowed ? (
-            <Badge tone="warn" size="sm">
+            <Badge tone="neutral" size="sm" icon={Ban}>
               Not enough for this letter
             </Badge>
           ) : null}
         </div>
         {c.note ? <p className={cn("mt-0.5 text-[13px] leading-5", c.allowed ? "text-muted" : "text-ink/80")}>{c.note}</p> : null}
         {c.citation ? (
-          <p className="mt-1 inline-flex rounded-md bg-surface-2 px-1.5 py-px text-[11.5px] font-medium text-muted" title="Legal basis">
+          <p className="mt-1 inline-flex rounded-md bg-surface-2 px-1.5 py-px text-[12px] font-medium text-muted" title="Legal basis">
             {c.citation}
           </p>
         ) : null}
@@ -109,7 +110,7 @@ export function SendGuidancePanel({ guidance, sent }: { guidance: SendGuidance |
             u === "overdue" || u === "today" || u === "soon" ? "border-danger/25 bg-danger-soft/60" : u === "week" ? "border-warn/30 bg-warn-soft/60" : "border-accent/20 bg-accent-soft/50",
           )}
         >
-          <p className="text-[11.5px] font-semibold uppercase tracking-[0.07em] text-muted">{guidance.send_by && !late ? "Send it by" : "Must arrive by"}</p>
+          <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">{guidance.send_by && !late ? "Send it by" : "Must arrive by"}</p>
           <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <DateText date={due} style="short" className="display text-[26px] font-semibold leading-tight text-ink" />
             <Countdown date={due} variant="pill" />

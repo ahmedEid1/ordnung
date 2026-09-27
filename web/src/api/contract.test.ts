@@ -212,6 +212,7 @@ const CASES = {
   deleteDraft: { run: (ids) => api.deleteDraft(ids.draft) },
   translateDraft: { run: (ids) => api.translateDraft(ids.draft), status: 409 },
   draftPdfUrl: { run: (ids) => api.draftPdfUrl(ids.draft), asset: true },
+  draftPreviewUrl: { run: (ids) => api.draftPreviewUrl(ids.draft), asset: true },
   markDraftSent: { run: (ids) => api.markDraftSent(ids.draft, { channel: "registered_letter", date: "2026-09-28" }) },
 
   calendarIcsUrl: { run: () => api.calendarIcsUrl(), asset: true },

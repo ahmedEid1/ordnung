@@ -1,5 +1,6 @@
 """Letters (drafts): compose, read, edit (checks re-run), translate again after edits, delete, the DIN
-5008 PDF and "I sent it" (which creates a follow-up to-do 21 days later)."""
+5008 PDF (and its print preview as an image) and "I sent it" (which creates a follow-up to-do 21 days
+later)."""
 
 from __future__ import annotations
 
@@ -156,6 +157,17 @@ async def draft_pdf(draft_id: str, store: StoreDep) -> Response:
         media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="{draft_id}.pdf"', "Cache-Control": "no-store"},
     )
+
+
+def _preview(store: Store, draft_id: str) -> bytes:
+    return pdf.render_preview(require(store.get_draft(draft_id), NOT_FOUND), store.get_profile())
+
+
+@router.get("/drafts/{draft_id}/preview.png", response_class=Response)
+async def draft_preview(draft_id: str, store: StoreDep) -> Response:
+    """The printable letter as one PNG, page under page (the web app's print preview)."""
+    body = await asyncio.to_thread(_preview, store, draft_id)
+    return Response(body, media_type="image/png", headers={"Cache-Control": "no-store"})
 
 
 @router.post("/drafts/{draft_id}/sent", response_model=Draft)

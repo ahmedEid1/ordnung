@@ -180,6 +180,7 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         await _get_file(api, contract, f"/api/items/{ids['item']}.ics", "text/calendar")
         await _get_file(api, contract, "/api/calendar.ics", "text/calendar")
         await _get_file(api, contract, f"/api/drafts/{ids['draft']}/pdf", "application/pdf")
+        await _get_file(api, contract, f"/api/drafts/{ids['draft']}/preview.png", "image/png")
 
         assert not contract.problems, "\n".join(contract.problems)
         get_routes = {path for path, operations in contract.schema["paths"].items() if "get" in operations}
