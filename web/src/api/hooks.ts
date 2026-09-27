@@ -21,6 +21,7 @@ import { ApiError } from "./client";
 import type {
   ContractListParams,
   ContractPatch,
+  DesktopMode,
   DocumentListParams,
   DocumentPatch,
   DraftCreate,
@@ -649,6 +650,29 @@ export function useMarkDraftSent() {
 export function useMarkCalendarExported() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: () => api.calendarExported(), meta: { errorTitle: "Couldn't note the calendar download" }, onSuccess: () => invalidateLedger(qc) });
+}
+
+/** The morning desktop notification: its tool, today's text in each mode, and start at login. */
+export function useDesktopReminders() {
+  return useQuery({ queryKey: ["reminders", "desktop"] as const, queryFn: api.desktopReminders, staleTime: 30_000 });
+}
+
+/** "Send a test notification" (the answer says whether the system showed it, and why not). */
+export function useTestDesktopNotification() {
+  return useMutation({ mutationFn: (mode: DesktopMode) => api.testDesktopNotification(mode), meta: { errorTitle: "Couldn't send a test notification" } });
+}
+
+/** What an encrypted backup made now would hold (letters, files, size). */
+export function useBackupInfo() {
+  return useQuery({ queryKey: ["backup", "info"] as const, queryFn: api.backupInfo, staleTime: 30_000 });
+}
+
+/** The encrypted backup as a Blob; its errors are shown in the backup dialog, next to the passphrase. */
+export function useDownloadBackup() {
+  return useMutation({
+    mutationFn: ({ passphrase, signal }: { passphrase: string; signal?: AbortSignal }) => api.downloadBackup(passphrase, signal),
+    meta: { silent: true },
+  });
 }
 
 export function useActivity(limit = 100) {

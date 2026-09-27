@@ -14,6 +14,7 @@ import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { DEMO_CMD } from "@/features/onboarding/options";
 import { useClipboard } from "@/features/today/clipboard";
 import { useTodayISO } from "@/lib/today";
+import { BackupCard } from "./BackupCard";
 import { exportFileName } from "./logic";
 import { SectionHeading, SettingsCard } from "./SettingsCard";
 
@@ -181,8 +182,10 @@ export function DataSection({ health }: { health: Health }) {
               {copied === health.data_dir ? "Copied" : "Copy"} <span className="sr-only">the folder path</span>
             </Button>
           </div>
-          <p className="mt-3 text-sm leading-5 text-muted">To back up, copy this folder while Ordnung isn't running — for example to an external drive.</p>
+          <p className="mt-3 text-sm leading-5 text-muted">To take everything to another drive or computer, download an encrypted backup below.</p>
         </SettingsCard>
+
+        <BackupCard />
 
         <SettingsCard
           title="Download a copy of your records"

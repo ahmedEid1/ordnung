@@ -11,6 +11,7 @@
  */
 import { fakeApi, failApi, pinToasts, settle } from "../browser.mjs";
 import { inMain } from "../steps.mjs";
+import { remindersBackupStates } from "./reminders-backup.mjs";
 import { commonSettingsSections, loadingAndErrorStates, SETTINGS_SECTIONS } from "./shared.mjs";
 
 const slug = (s) =>
@@ -832,6 +833,7 @@ export async function demoCatalog({ api, server }) {
       await c.click(btn);
     },
   });
+  for (const s of remindersBackupStates()) add(s);
 
   // ---------------------------------------------------------------------------------------------
   // Shell & overlays

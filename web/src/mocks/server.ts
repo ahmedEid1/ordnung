@@ -13,6 +13,8 @@ import type {
   Contract,
   DataDeleted,
   DeleteResult,
+  DesktopMode,
+  DesktopTestResult,
   Document,
   DocumentDetail,
   Draft,
@@ -47,6 +49,15 @@ import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
 import { SAM, sha } from "./data/constants";
 import { TRAY_DOCUMENTS } from "./data/documents";
+import {
+  BACKUP_STATIC_MESSAGE,
+  DESKTOP_STATIC_MESSAGE,
+  SAMPLE_NOTIFICATION,
+  mockBackupFile,
+  mockBackupInfo,
+  mockDesktopReminders,
+  mockNotification,
+} from "./data/reminders";
 import { TRAY_ITEMS } from "./data/items";
 import { PARTIES } from "./data/parties";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
@@ -1155,6 +1166,29 @@ const routes: [string, string, Handler][] = [
       if (s) s.status = "done";
       db.log("calendar.exported", "Exported your dates to your calendar");
       return { last_calendar_export_at: db.state.lastCalendarExport };
+    },
+  ],
+  // reminders outside the browser & the encrypted backup (a browser tab can do neither for real)
+  ["GET", "/reminders/desktop", ({ db }) => mockDesktopReminders(db)],
+  [
+    "POST",
+    "/reminders/desktop/test",
+    ({ db, body, opts }) => {
+      if (opts.staticDemo) throw new HttpError(403, DESKTOP_STATIC_MESSAGE, "static_demo");
+      const mode = (body as { mode?: DesktopMode } | null)?.mode ?? "discreet";
+      if (mode !== "discreet" && mode !== "full") throw new HttpError(422, "Choose discreet or full.");
+      return { shown: true, tool: "notify-send", notification: mockNotification(db, mode) ?? SAMPLE_NOTIFICATION, detail: null } satisfies DesktopTestResult;
+    },
+  ],
+  ["GET", "/backup", ({ db }) => mockBackupInfo(db)],
+  [
+    "POST",
+    "/backup",
+    ({ body, opts }) => {
+      if (opts.staticDemo) throw new HttpError(403, BACKUP_STATIC_MESSAGE, "static_demo");
+      const passphrase = (body as { passphrase?: unknown } | null)?.passphrase;
+      if (typeof passphrase !== "string" || passphrase.length < 12) throw new HttpError(422, "Use a passphrase of at least 12 characters — a short sentence works well.");
+      return new Response(mockBackupFile(), { status: 200, headers: { "Content-Type": "application/octet-stream" } });
     },
   ],
   ["GET", "/activity", ({ db, query }) => db.state.activity.slice(0, Number(query.get("limit") ?? 100))],

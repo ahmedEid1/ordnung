@@ -17,6 +17,7 @@ import type {
   AskRequest,
   ContractListParams,
   ContractPatch,
+  DesktopMode,
   DocumentListParams,
   DocumentPatch,
   DraftCreate,
@@ -187,6 +188,21 @@ export const api = {
   // -- calendar ----------------------------------------------------------------------------------
   calendarIcsUrl: () => assetUrl(apiRoute("/api/calendar.ics")),
   calendarExported: () => call("post", "/api/calendar/exported"),
+
+  // -- reminders outside the browser & backup ----------------------------------------------------
+  desktopReminders: () => call("get", "/api/reminders/desktop"),
+  /** Show today's notification now (a sample when nothing is due); the morning one still comes. */
+  testDesktopNotification: (mode: DesktopMode) => call("post", "/api/reminders/desktop/test", { body: { mode } }),
+  backupInfo: () => call("get", "/api/backup"),
+  /**
+   * The encrypted backup file. The passphrase goes to this computer's Ordnung only, in the request
+   * body; the file comes back as it is made (a Blob once complete).
+   */
+  downloadBackup: async (passphrase: string, signal?: AbortSignal): Promise<Blob> => {
+    const body: ApiBody<"/api/backup", "post"> = { passphrase };
+    const res = await requestRaw(apiRoute("/api/backup"), { method: "POST", body, signal });
+    return res.blob();
+  },
 
   // -- privacy & AI usage ------------------------------------------------------------------------
   activity: (limit = 100) => call("get", "/api/activity", { query: { limit } }),

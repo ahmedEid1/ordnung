@@ -112,6 +112,9 @@ async function responseProblems(op: Operation, res: Response): Promise<string[]>
     return schema ? events.flatMap((event, i) => strict.check(event, schema, `event[${i}]`)) : [];
   }
   const schema = content["application/json"]?.schema;
+  // a file download (the encrypted backup): the declared media type, not JSON
+  const file = Object.keys(content).find((type) => type !== "application/json");
+  if (!schema && file) return res.headers.get("content-type")?.startsWith(file) ? [] : [`expected a ${file} file, got ${res.headers.get("content-type")}`];
   if (!schema) return text ? [`unexpected body for a ${res.status} without JSON content`] : [];
   if (!text) return ["empty body, the API returns JSON"];
   return strict.check(JSON.parse(text), schema, "response");
@@ -216,6 +219,11 @@ const CASES = {
 
   calendarIcsUrl: { run: () => api.calendarIcsUrl(), asset: true },
   calendarExported: { run: () => api.calendarExported() },
+
+  desktopReminders: { run: () => api.desktopReminders() },
+  testDesktopNotification: { run: () => api.testDesktopNotification("full") },
+  backupInfo: { run: () => api.backupInfo() },
+  downloadBackup: { run: () => api.downloadBackup("correct horse battery staple") },
 
   activity: { run: () => api.activity(50) },
   usage: { run: () => api.usage() },

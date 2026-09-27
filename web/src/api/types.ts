@@ -503,6 +503,17 @@ export type CalendarExportResult = Schemas["CalendarExportResult"];
 export type ReviewStarted = Schemas["ReviewStarted"];
 /** `DELETE /api/data` ("Delete everything"): what was removed, and entries Ordnung left alone. */
 export type DataDeleted = Schemas["DataDeleted"];
+/** `GET /api/reminders/desktop`: the notification tool, today's text in each mode, start at login. */
+export type DesktopReminders = Schemas["DesktopReminders"];
+export type NotificationText = Schemas["NotificationText"];
+/** Whether `ordnung autostart` starts Ordnung at login, and for which data folder. */
+export type AutostartInfo = Schemas["AutostartInfo"];
+/** `POST /api/reminders/desktop/test`. */
+export type DesktopTestResult = Schemas["DesktopTestResult"];
+/** The two modes a desktop notification can be shown in (the setting also has `off`). */
+export type DesktopMode = NonNullable<Schemas["DesktopTestRequest"]["mode"]>;
+/** `GET /api/backup`: what an encrypted backup made now would hold. */
+export type BackupInfo = Schemas["BackupInfo"];
 
 // ------------------------------------------------------------------------------------------------
 // Requests

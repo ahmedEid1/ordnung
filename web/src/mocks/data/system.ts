@@ -50,6 +50,8 @@ export const SETTINGS: AppSettings = {
   ocr: true,
   llm_brief: true,
   llm_review: true,
+  desktop_notifications: "off",
+  desktop_notify_time: "08:00",
   demo: true,
   simulated_today: TODAY,
 };

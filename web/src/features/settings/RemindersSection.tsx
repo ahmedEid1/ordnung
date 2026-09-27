@@ -9,6 +9,7 @@ import { Field, Select, Switch } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { setBrowserNotifications, showNotification, useNotifyState } from "@/features/notifications/useBrowserNotifications";
 import { isStaticDemo } from "@/mocks/mode";
+import { DesktopNotificationsCard } from "./DesktopNotificationsCard";
 import { completeReminderDays, leadDaysError, leadLabel, normalizeLeadDays, REMINDER_KINDS, sameReminderDays } from "./logic";
 import { FIELD_WIDTH, SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
 
@@ -231,7 +232,7 @@ export function RemindersSection({ profile }: { profile: Profile }) {
       <SectionHeading
         id="set-reminders"
         title="Reminders"
-        description="When Ordnung nudges you before a date — in the app and as alarms in your calendar file."
+        description="When Ordnung nudges you before a date — in the app, on your desktop and as alarms in your calendar file."
       />
       <p role="status" className="sr-only">
         {announcement}
@@ -320,6 +321,7 @@ export function RemindersSection({ profile }: { profile: Profile }) {
           </div>
         </SettingsCard>
         <BrowserNotificationsCard />
+        <DesktopNotificationsCard />
       </div>
     </section>
   );
