@@ -330,12 +330,39 @@ describe("the advice card of a high-stakes letter", () => {
   it("settles a court order once the person has dealt with every to-do", () => {
     // objected and marked "Pay or object" done: filed — no "get advice now", no objection to draft
     const done = makeItem({ title: "Pay or object to the court payment order (Mahnbescheid)", origin: "rule", status: "done", due_date: "2026-10-06" });
-    const detail = makeDetail({ document: courtDoc, items: [done], advice: { ...ADVICE_BY_KIND.court_payment_order, urgent: false } });
+    const detail = makeDetail({ document: courtDoc, items: [done], advice: { ...ADVICE_BY_KIND.court_payment_order, urgent: false, handled: true } });
     renderWithProviders(<VerdictCard detail={detail} primary={null} onAskArrival={() => {}} />, { client: client() });
     expect(screen.queryByText(/Get advice now/)).toBeNull();
     expect(screen.getByText(/Nothing right now — it's filed/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Draft objection" })).toBeNull();
     expect(chooseMainAction(detail, null).type).toBe("none");
+  });
+
+  it("never files a notice without notice period away because the arrears it demands were paid", () => {
+    // final review 2: the server decides — the paid arrears carry no deadline of the notice, so it isn't handled
+    const doc = makeDoc({ id: "doc_notice", kind: "landlord_notice", area: "home", title: "Fristlose Kündigung" });
+    const arrears = makeItem({ kind: "payment", title: "Pay the rent arrears", amount: 1920, status: "done", due_date: "2026-10-10" });
+    const advice = { ...ADVICE_BY_KIND.landlord_notice, urgent: true, handled: false, draft: null };
+    const detail = makeDetail({ document: doc, items: [arrears], advice });
+    renderWithProviders(<VerdictCard detail={detail} primary={null} onAskArrival={() => {}} />, { client: client() });
+    expect(screen.queryByText(/Nothing right now/)).toBeNull();
+    expect(screen.getByText(/Get advice now: your landlord is ending your tenancy/)).toBeInTheDocument();
+  });
+
+  it("static demo: a settled court order stops asking for its envelope date and repeating the arrival warning", async () => {
+    const srv = createMockServer({ staticDemo: false, latency: 0 });
+    srv.openAllMail();
+    const get = async () => (await (await srv.handle("GET", "/documents/doc_mahnbescheid", new URLSearchParams(), undefined)).json()) as DocumentDetail;
+    const before = await get();
+    expect(before.advice?.handled).toBe(false);
+    for (const item of before.items) await srv.handle("PATCH", `/items/${item.id}`, new URLSearchParams(), { status: "done" });
+    const settled = await get();
+    expect(settled.advice).toMatchObject({ urgent: false, handled: true });
+    expect(settled.advice?.steps.some((step) => step.startsWith("Find the delivery date"))).toBe(false);
+    renderWithProviders(<DocumentWarnings detail={settled} />, { client: client() });
+    expect(screen.queryByText("When was it delivered?")).toBeNull();
+    expect(screen.queryByText("Please check")).toBeNull();
+    expect(screen.queryByText(/We don't know yet when the letter was delivered/)).toBeNull();
   });
 
   it("says a rent increase's new rent is only owed once the person agrees, and doesn't lead with Pay", () => {
@@ -353,6 +380,25 @@ describe("the advice card of a high-stakes letter", () => {
     });
     expect(screen.getByText(/Decide before you pay: the higher rent is only owed once you agree/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Pay/ })).toBeNull();
+  });
+
+  it("stops saying 'decide before you pay' once the person closed the consent decision", () => {
+    // final review 2: agreed and marked "Decide whether to agree" done — the new rent is what they pay now
+    const doc = makeDoc({ id: "doc_increase", kind: "rent_increase", area: "home", title: "Rent increase request" });
+    const rent = makeItem({
+      id: "rent",
+      kind: "payment",
+      title: "New monthly rent",
+      amount: 670,
+      due_date: "2026-12-01",
+      recurrence: { interval: 1, unit: "months" },
+      computation: makeReceipt({ rule_ids: ["date_as_written", "bgb_558b"] }),
+    });
+    const decided = makeItem({ id: "consent", origin: "rule", status: "done", title: "Decide whether to agree to the rent increase", computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
+    const detail = makeDetail({ document: doc, items: [rent, decided], advice: ADVICE_BY_KIND.rent_increase });
+    renderWithProviders(<VerdictCard detail={detail} primary={rent} onAskArrival={() => {}} />, { client: client() });
+    expect(screen.queryByText(/Decide before you pay/)).toBeNull();
+    expect(chooseMainAction(detail, rent).type).toBe("pay");
   });
 
   it("marks to-dos the law adds as set by law", () => {

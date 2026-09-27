@@ -7,6 +7,8 @@ import {
   isServed,
   leadsWithDecision,
   isSettled,
+  isLetterSettled,
+  consentDecided,
   mayNotBeOwed,
   notOwedReason,
   needsArrivalDate,
@@ -126,6 +128,29 @@ describe("chooseMainAction", () => {
     expect(notOwedReason(makeItem({ kind: "payment", amount: 670 }), card)).toBe("consent");
     expect(notOwedReason(makeItem({ kind: "payment", amount: 30, direction: "in" }), card)).toBeNull();
     expect(chooseMainAction(makeDetail({ items: [rent] }), rent).type).toBe("calendar");
+  });
+
+  it("holds a rent increase's new rent only until the person closed the consent decision", () => {
+    const rent = makeItem({ id: "rent", kind: "payment", amount: 670, recurrence: { interval: 1, unit: "months" }, computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
+    const decision = makeItem({ id: "consent", origin: "rule", computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
+    expect(consentDecided([rent])).toBe(false); // no decision to-do: still hold the rent
+    expect(consentDecided([rent, decision])).toBe(false);
+    expect(notOwedReason(rent, null, [rent, decision])).toBe("consent");
+    const done = { ...decision, status: "done" as const };
+    expect(consentDecided([rent, done])).toBe(true);
+    expect(notOwedReason(rent, null, [rent, done])).toBeNull();
+    expect(consentDecided([rent, { ...decision, status: "dismissed" as const }])).toBe(true);
+    // the rent payment itself (which cites § 558b for its note) is no decision
+    expect(consentDecided([{ ...rent, status: "done" as const }])).toBe(false);
+  });
+
+  it("a high-stakes letter is settled as its card says, any other once every to-do is closed", () => {
+    const done = makeItem({ status: "done" });
+    const card = { kind: "landlord_notice", urgent: true, handled: false } as NonNullable<Parameters<typeof isLetterSettled>[0]["advice"]>;
+    expect(isLetterSettled({ advice: card, items: [done] })).toBe(false); // the paid arrears of a fristlos notice
+    expect(isLetterSettled({ advice: { ...card, handled: true }, items: [makeItem({ status: "open" })] })).toBe(true);
+    expect(isLetterSettled({ advice: null, items: [done] })).toBe(true);
+    expect(isLetterSettled({ advice: null, items: [] })).toBe(false);
   });
 
   it("settles a letter once the person closed every to-do it has", () => {

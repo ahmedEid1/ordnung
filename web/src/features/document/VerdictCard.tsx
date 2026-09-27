@@ -42,7 +42,7 @@ import {
   isOpenItem,
   isOptionalObjection,
   isServed,
-  isSettled,
+  isLetterSettled,
   leadsWithDecision,
   mustAct,
   needsArrivalDate,
@@ -134,7 +134,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
   const refund = incomingMoney(detail.items);
   // a late operating-cost statement's back-payment, a rent increase's new rent: still a to-do, but
   // checked (or decided) before it is paid
-  const notOwed = open ? notOwedReason(open, detail.advice) : null;
+  const notOwed = open ? notOwedReason(open, detail.advice, detail.items) : null;
   const refundText = refund?.amount != null ? `${formatMoney(refund.amount, { currency: refund.currency })} comes back to you` : null;
 
   return (
@@ -241,10 +241,10 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
               </ul>
             ) : null}
           </>
-        ) : mustAct(doc) && !isSettled(detail.items) ? (
+        ) : mustAct(doc) && !isLetterSettled(detail) ? (
           // a court order, a dismissal or a landlord's notice without an open to-do (a notice without notice
-          // period, or one whose end we couldn't read) is never "nothing to do" — unless the person has closed
-          // every to-do it had (objected, went to court): then it is filed
+          // period, or one whose end we couldn't read) is never "nothing to do" — unless the person has dealt
+          // with it (objected, went to court: the server's `advice.handled`): then it is filed
           <p className="flex items-start gap-2 text-[16px] font-medium leading-snug text-ink">
             <Scale className="mt-0.5 size-[18px] shrink-0 text-warn" aria-hidden />
             <span>{ADVICE_NOW[doc.kind ?? "default"] ?? ADVICE_NOW.default}</span>

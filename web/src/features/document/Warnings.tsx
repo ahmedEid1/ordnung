@@ -44,8 +44,10 @@ export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
   const arrival = detail.items.filter((i) => needsArrivalDate(i, doc));
   const remedy = doc.remedy?.type;
   const warnings = otherWarnings(doc);
-  // the arrival question already explains the "we don't know when it arrived / was delivered" warning
-  const general = arrival.length ? warnings.filter((w) => !REPEATS_ARRIVAL_QUESTION.test(w)) : warnings;
+  // the arrival question already explains the "we don't know when it arrived / was delivered" warning — and
+  // once the person has dealt with the letter (objected, paid), when it arrived no longer matters
+  const general =
+    arrival.length || detail.advice?.handled ? warnings.filter((w) => !REPEATS_ARRIVAL_QUESTION.test(w)) : warnings;
 
   // a high-stakes letter's own card replaces the generic "get advice" one; urgent cards go first
   const advice = detail.advice && !scam ? <LetterAdviceCard key="letter-advice" advice={detail.advice} doc={doc} /> : null;

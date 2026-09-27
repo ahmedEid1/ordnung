@@ -16,6 +16,7 @@ import type {
   Document,
   DocumentDetail,
   Draft,
+  DraftCheck,
   DraftCreate,
   Health,
   Item,
@@ -46,7 +47,7 @@ import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
 import { SAM, sha } from "./data/constants";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
-import { isSettled } from "@/features/document/verdict";
+import { isOpenItem } from "@/features/document/verdict";
 
 const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
@@ -178,6 +179,19 @@ function pageInfos(db: MockDb, d: Document): PageInfo[] {
 }
 
 /**
+ * Whether the person has dealt with a high-stakes letter, as the server decides it (`advice.settles`): every
+ * to-do that carries its legal deadline — one the law added, or one whose receipt cites a rule of the card —
+ * is closed, and there is one. Another to-do of the letter (the arrears, a handover appointment) never counts.
+ */
+function settles(card: LetterAdvice, items: Item[]): boolean {
+  const carrying = items.filter((i) => i.origin === "rule" || Boolean(i.computation?.rule_ids.some((r) => card.rule_ids.includes(r))));
+  return carrying.length > 0 && !carrying.some(isOpenItem);
+}
+
+/** The steps that ask for the delivery (or receipt) day, which a handled card leaves out (`advice._unless`). */
+const ASKS_FOR_DELIVERY = /^(Find the delivery date|Enter the day you received|The period counts from the delivery date|The three weeks count from the day you received)/;
+
+/**
  * The letter's "get advice" card as the real app works it out on read: a card from the letter itself
  * only while it is filed as it was read, else its kind's — without asking again for an arrival day
  * the person entered.
@@ -185,8 +199,11 @@ function pageInfos(db: MockDb, d: Document): PageInfo[] {
 function adviceFor(db: MockDb, d: Document): LetterAdvice | null {
   const own = ADVICE_BY_DOC[d.id];
   const card = own && d.kind === db.seedKind(d.id) ? own : isHighStakes(d.kind) ? (d.received_date ? ADVICE_ARRIVED_BY_KIND : ADVICE_BY_KIND)[d.kind] : null;
-  // as on the server: once the person closed every to-do of the letter, its card is no longer urgent
-  return card?.urgent && isSettled(db.state.items.filter((i) => i.doc_id === d.id)) ? { ...card, urgent: false } : card;
+  // as on the server: once the person dealt with the letter, its card is no longer urgent and says so (the
+  // demo's landlord cards are ordinary notices with an objection to-do, which can settle)
+  if (!card || !settles(card, db.state.items.filter((i) => i.doc_id === d.id))) return card;
+  const steps = card.kind === "operating_costs" ? card.steps : card.steps.filter((s) => !ASKS_FOR_DELIVERY.test(s));
+  return { ...card, urgent: false, handled: true, steps };
 }
 
 function documentDetail(db: MockDb, id: string): DocumentDetail {
@@ -396,6 +413,14 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
         };
   if (!statutory && isCourtName(party?.name)) guidance.channels = courtChannels();
   const hasPlaceholder = bodyDe.includes("…");
+  // as the server's check (checks.has_dates): an objection names the decision's date, a cancellation its end
+  const dated = /\d{2}\.\d{2}\.\d{4}/.test(bodyDe);
+  const dates: Pick<DraftCheck, "ok" | "detail"> =
+    body.kind === "cancellation"
+      ? { ok: true, detail: "Says when the contract should end." }
+      : body.kind === "objection"
+        ? { ok: dated, detail: dated ? "Names the date of the decision." : "Add the date of the decision you object to." }
+        : { ok: true, detail: "No dates are needed for this letter." };
   return {
     id: newId("drf"),
     kind: body.kind,
@@ -412,7 +437,13 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     body_translation: bodyEn,
     enclosures: body.kind === "objection" && body.instructions ? ["Bestätigung des Arbeitgebers"] : [],
     notes_for_user: statutory ? [...statutory.notes] : body.kind === "objection" ? ["An objection is free. It only needs to arrive in time — reasons can follow later."] : [],
-    checks: CHECKS_OK.map((c) => (c.id === "no_placeholders" ? { ...c, ok: !hasPlaceholder, detail: hasPlaceholder ? "Replace the … before sending." : null } : c)),
+    checks: CHECKS_OK.map((c) =>
+      c.id === "no_placeholders"
+        ? { ...c, ok: !hasPlaceholder, detail: hasPlaceholder ? "Replace the … before sending." : null }
+        : c.id === "has_dates"
+          ? { ...c, label: "States the dates that matter", ...dates }
+          : c,
+    ),
     send_guidance: guidance,
     sent_channel: null,
     status: "draft",

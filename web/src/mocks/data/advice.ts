@@ -50,7 +50,8 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "zpo_222",
       "bgb_195"
     ],
-    "draft": null
+    "draft": null,
+    "handled": false
   },
   "enforcement_order": {
     "kind": "enforcement_order",
@@ -95,7 +96,8 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "zpo_129a",
       "bgb_195"
     ],
-    "draft": null
+    "draft": null,
+    "handled": false
   },
   "dismissal": {
     "kind": "dismissal",
@@ -143,7 +145,8 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "sgb3_38",
       "sgb3_141"
     ],
-    "draft": null
+    "draft": null,
+    "handled": false
   },
   "landlord_notice": {
     "kind": "landlord_notice",
@@ -155,7 +158,7 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "If you object, keep proof that it arrived; a letter is safest, text form is enough since 2025.",
       "If the landlord didn't tell you in time about your right to object, its form and its deadline, you can still object at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB).",
       "There is no hardship objection for a garage, parking space or business premises let on its own (§ 578 BGB), nor for a short let or a furnished room in the flat your landlord lives in (§ 549 Abs. 2 BGB) — ask a tenants' association.",
-      "A notice without notice period (fristlos) can't be met with this objection. If it is for rent arrears, paying all of them in time can still undo it (§ 569 Abs. 3 Nr. 2 BGB) — get advice at once."
+      "A notice without notice period (fristlos) can't be met with this objection. If it is for rent arrears (§ 569 Abs. 3 Nr. 2 BGB), paying all of them — at the latest two months after an eviction suit is served — can undo the notice without notice period (not if that already happened within the last two years), but not a notice with a notice period given as well. Get advice at once."
     ],
     "facts": [],
     "help": [
@@ -174,7 +177,8 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "bgb_574b",
       "bgb_549"
     ],
-    "draft": "objection"
+    "draft": "objection",
+    "handled": false
   },
   "rent_increase": {
     "kind": "rent_increase",
@@ -206,7 +210,8 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "bgb_558_3",
       "bgb_549"
     ],
-    "draft": null
+    "draft": null,
+    "handled": false
   },
   "operating_costs": {
     "kind": "operating_costs",
@@ -240,7 +245,8 @@ export const ADVICE_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "rule_ids": [
       "bgb_556_3"
     ],
-    "draft": "receipts_inspection"
+    "draft": "receipts_inspection",
+    "handled": false
   }
 };
 
@@ -293,7 +299,8 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "zpo_222",
       "bgb_195"
     ],
-    "draft": null
+    "draft": null,
+    "handled": false
   },
   "enforcement_order": {
     "kind": "enforcement_order",
@@ -338,7 +345,8 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "zpo_129a",
       "bgb_195"
     ],
-    "draft": null
+    "draft": null,
+    "handled": false
   },
   "dismissal": {
     "kind": "dismissal",
@@ -386,7 +394,8 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "sgb3_38",
       "sgb3_141"
     ],
-    "draft": null
+    "draft": null,
+    "handled": false
   },
   "landlord_notice": {
     "kind": "landlord_notice",
@@ -398,7 +407,7 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "If you object, keep proof that it arrived; a letter is safest, text form is enough since 2025.",
       "If the landlord didn't tell you in time about your right to object, its form and its deadline, you can still object at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB).",
       "There is no hardship objection for a garage, parking space or business premises let on its own (§ 578 BGB), nor for a short let or a furnished room in the flat your landlord lives in (§ 549 Abs. 2 BGB) — ask a tenants' association.",
-      "A notice without notice period (fristlos) can't be met with this objection. If it is for rent arrears, paying all of them in time can still undo it (§ 569 Abs. 3 Nr. 2 BGB) — get advice at once."
+      "A notice without notice period (fristlos) can't be met with this objection. If it is for rent arrears (§ 569 Abs. 3 Nr. 2 BGB), paying all of them — at the latest two months after an eviction suit is served — can undo the notice without notice period (not if that already happened within the last two years), but not a notice with a notice period given as well. Get advice at once."
     ],
     "facts": [],
     "help": [
@@ -417,7 +426,8 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "bgb_574b",
       "bgb_549"
     ],
-    "draft": "objection"
+    "draft": "objection",
+    "handled": false
   },
   "rent_increase": {
     "kind": "rent_increase",
@@ -449,7 +459,8 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
       "bgb_558_3",
       "bgb_549"
     ],
-    "draft": null
+    "draft": null,
+    "handled": false
   },
   "operating_costs": {
     "kind": "operating_costs",
@@ -483,7 +494,8 @@ export const ADVICE_ARRIVED_BY_KIND: Record<HighStakesKind, LetterAdvice> = {
     "rule_ids": [
       "bgb_556_3"
     ],
-    "draft": "receipts_inspection"
+    "draft": "receipts_inspection",
+    "handled": false
   }
 };
 
@@ -521,6 +533,7 @@ export const ADVICE_BY_DOC: Record<string, LetterAdvice> = {
     "rule_ids": [
       "bgb_556_3"
     ],
-    "draft": "receipts_inspection"
+    "draft": "receipts_inspection",
+    "handled": false
   }
 };
