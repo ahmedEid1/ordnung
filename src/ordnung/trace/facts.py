@@ -16,8 +16,9 @@ One function per kind of step, so the whole vocabulary is on this page:
 kind      attributes
 ========  ===============================================================================
 run       ``reading`` (1, 2 …), ``trigger`` (``read`` | ``read_again``), ``private``, ``timing``;
-          at the end :func:`outcome`: ``result`` (the letter's status), ``text_mode``, ``pages``,
-          ``items``, ``needs_check``, ``warnings``
+          at the end ``ended`` (``done`` | ``failed`` | ``paused`` | ``stopped``; the span's error
+          is a code — :mod:`ordnung.trace.runs` — never a message) and :func:`outcome`: ``result``
+          (the letter's status), ``text_mode``, ``pages``, ``items``, ``needs_check``, ``warnings``
 ocr       :func:`text_layer` (pages, text pages, pages to transcribe, words, hidden text);
           the transcription group: ``pages`` (and ``parallel``)
 model     :func:`model_call` (call id, purpose, prompt, models, cache hit, outcome, repair of);

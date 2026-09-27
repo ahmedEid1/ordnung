@@ -9,6 +9,9 @@ passes the step it belongs to (``trace``, :mod:`ordnung.trace`) — the job, pip
 The row's ``outcome`` is decided here, by one policy (:func:`call_outcome`): the caller may pass a
 ``validate`` function (it raises when the answer is unusable) and, for a repair, the usage-log id of
 the call it retries (``repair_of``, from :attr:`~ordnung.llm.base.LLMResponse.call_id`).
+
+A letter deleted while a call that carried it was under way is treated as deleted after the call: the
+sink writes the call's row without the letter's id, replay key, span or job, and caches nothing.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ import contextlib
 import hashlib
 import logging
 import os
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -38,8 +41,15 @@ class UsageSink(Protocol):
     def cache_get(self, key: str) -> dict[str, Any] | None: ...
 
     def cache_put(
-        self, key: str, purpose: str, model: str, response: dict[str, Any], doc_sha: str | None = None
-    ) -> None: ...
+        self,
+        key: str,
+        purpose: str,
+        model: str,
+        response: dict[str, Any],
+        doc_sha: str | None = None,
+        *,
+        doc_ids: Sequence[str] = (),
+    ) -> bool: ...
 
     def log_llm_call(
         self,
@@ -258,6 +268,7 @@ class LLMService:
                     resp.model or req.model,
                     resp.model_dump(),
                     doc_sha=self._cache_doc_sha(req),
+                    doc_ids=list(req.doc_ids),
                 )
             except Exception:
                 log.warning("llm cache write failed", exc_info=True)

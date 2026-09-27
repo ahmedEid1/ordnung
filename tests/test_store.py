@@ -1427,6 +1427,7 @@ def test_log_llm_call_matches_the_usage_sink_protocol(store: Store) -> None:
 
 def test_usage_stats_aggregates(store: Store) -> None:
     assert store.usage_stats() == store.usage_stats(recent=0)
+    store.add_document(id="doc_1", sha256="a" * 64, filename="a.pdf", mime="application/pdf", file_path="a")
     store.log_llm_call(
         "extract",
         "sonnet",
@@ -1461,6 +1462,7 @@ def test_usage_stats_aggregates(store: Store) -> None:
 
 
 async def test_llm_service_uses_the_store_as_cache_and_ledger(store: Store) -> None:
+    store.add_document(id="doc_1", sha256="a" * 64, filename="a.pdf", mime="application/pdf", file_path="a")
     service = LLMService(FakeBackend({"extract": {"kind": "invoice"}}), sink=store)
     request = LLMRequest(purpose="extract", prompt="p", system="s", cache_key="file-sha", doc_ids=["doc_1"])
     first = await service.complete(request)

@@ -20,13 +20,16 @@ Written policy (ADR 0007):
   differently has a new key, so it shows as one step gone and one added.
 * **Order:** the later reading's display order, then the steps only the earlier one had. Labels and
   references are the later reading's (the earlier one's for steps only it had).
+* **Compared with what.** By default a reading is compared with the newest earlier reading that was
+  done (:func:`compare_base`): a paused or stopped attempt has almost no steps, so nearly every step
+  would show as new. Only a letter with no such reading is compared with the newest earlier one.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 
-from ordnung.models import DocumentTrace, SpanKind, TraceChange, TraceComparison, TraceSpan
+from ordnung.models import DocumentTrace, SpanKind, TraceChange, TraceComparison, TraceRun, TraceSpan
 
 DECIDED: dict[SpanKind, tuple[str, ...]] = {
     "run": ("result", "needs_check", "items"),
@@ -67,6 +70,12 @@ def _changes_of(before: TraceSpan, after: TraceSpan) -> list[TraceChange]:
         for field in DECIDED.get(after.kind, ())
         if _decided(before, field) != _decided(after, field)
     ]
+
+
+def compare_base(runs: Sequence[TraceRun], head: TraceRun) -> TraceRun | None:
+    """The reading ``head`` is compared with by default (``runs`` newest first; see the module docstring)."""
+    older = [run for run in runs if run.reading < head.reading]
+    return next((run for run in older if run.ended == "done"), older[0] if older else None)
 
 
 def compare_spans(base: Sequence[TraceSpan], head: Sequence[TraceSpan]) -> list[TraceChange]:

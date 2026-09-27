@@ -154,7 +154,9 @@ for substring matches inside German compounds. User queries are escaped (each to
 the original, `llm_cache` rows of every call that carried the document (cache rows carry `doc_sha`,
 `doc_a|doc_b` for several), the Ideas and activity entries about it, its quotes in kept contracts and
 its id, replay keys, spans and jobs in `llm_calls`, and the `trace_spans` of its readings;
-connections run with `secure_delete=ON`. `llm_calls` never stores prompt or response bodies.
+connections run with `secure_delete=ON`. `llm_calls` never stores prompt or response bodies. A call
+that finishes after a letter it carried was deleted is logged without that id, key, span or job, and
+its answer is not cached (`log_llm_call`/`cache_put` check in their transaction).
 
 The Store API contract is Appendix A (unchanged names; additions: `tx()`, `reconcile_suggestions`,
 `upsert_item_by_slot`, `list_pages`, `set_page_text`, `purge_cache_for(sha)`, `jobs` queue methods).
@@ -358,8 +360,13 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
 `verify` · `rules` · `link` · `plan`) recorded through an explicit tracer the pipeline passes down
 (no global state; the default `NO_SPAN` records nothing) and stored in one insert when the reading
 ends, however it ends. A span keeps only counts, codes, scores, computed dates and record ids — never
-letter text (`trace/facts.py` is the vocabulary); a letter keeps its newest five readings. The demo
-lays its spans out from the recorded latencies, so a rebuild stores the same trace.
+letter text (`trace/facts.py` is the vocabulary); how a reading ended is a code (`done`, `failed` +
+the kind of failure, `paused`, `stopped`), never the error's message. A reading's number is reserved
+when it starts (its root span is stored as `running`, shown nowhere; one left running by a killed
+process is marked stopped at the next start) and a measured reading's trace id is random, so a lost
+trace or two readings at once never share a number or a call. A letter keeps its newest five readings
+that ran to the end, plus its newest paused or stopped attempt while it is within them. The demo
+lays its spans out from the recorded latencies and hashes its trace ids, so a rebuild stores the same trace.
 
 Rate limits pause the worker globally (`paused_until`, SSE `llm.paused` banner); jobs stay queued.
 On startup `running` jobs return to `queued`. Reprocess = `force` (skip cache read) and replaces
@@ -616,7 +623,8 @@ Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT
 (GET detail / PATCH / DELETE), `documents/{id}/file`, `documents/{id}/pages/{n}.jpg`,
 `documents/{id}/thumbnail.jpg`, `documents/{id}/reprocess` (POST), `documents/{id}/trace`
 (`?run=` a reading's trace id; default the newest kept: its steps, their model calls and the kept
-readings), `documents/{id}/trace/compare` (`?base&head`: what a later reading decided differently),
+readings), `documents/{id}/trace/compare` (`?base&head`: what a later reading decided differently;
+`base` defaults to the newest earlier reading that was done, not a paused or stopped attempt),
 `traces` (every kept reading, for the data export), `items` (GET/POST),
 `items/{id}` (PATCH/DELETE; PATCH with `due_date` sets `due_date_source=manual`, `user_modified`),
 `items/{id}/confirm` (POST: grounding=user), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
@@ -711,7 +719,8 @@ dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighte
 [--rules-only]` · `mcp install --client claude-desktop|claude-code [--rules-only|--with-ledger]
 [--data-dir D] [--config PATH] [--remove-ledger] [--write]` · `openapi` · `trace DOC_ID [--otel]
 [--reading N] [-o FILE]` (a reading as JSON; `--otel`: OpenTelemetry OTLP/JSON with the GenAI
-semantic conventions, ids instead of names).
+semantic conventions, no names, every id replaced by a keyed hash made for that file; a letter with no
+kept reading is an error).
 If a server is running (`server.json` + live pid) `add`/`ask`/`brief` go through its API; otherwise
 they run in-process under an exclusive data-dir lock.
 
@@ -816,8 +825,8 @@ enqueue_job(kind, doc_id, force=False) · claim_next_job(kinds) · update_job(id
 # activity / accounting / cache
 log_activity(kind, message, ref_type, ref_id, data) · list_activity(limit)
 log_llm_call(purpose, model, backend, usage, ok, error, cache_hit, …, request_key, prompt_name, prompt_version, served_model, job_id, stage, span_id, repair_of, outcome) → id · usage_stats(recent)
-save_trace(spans, keep) · trace_runs(doc_id) · trace_spans(trace_id) · trace_calls(doc_id) · next_trace_reading(doc_id) · export_traces()
-cache_get(key) · cache_put(key, purpose, model, response, doc_sha=None) · purge_cache_for(doc_sha)
+reserve_trace(root) · end_running_traces(ended, error) · save_trace(spans, keep, interrupted) · trace_runs(doc_id) · trace_spans(trace_id) · trace_steps(doc_id, kind) · trace_calls(doc_id) · next_trace_reading(doc_id) · count_trace_runs() · export_traces()
+cache_get(key) · cache_put(key, purpose, model, response, doc_sha=None, doc_ids=()) → stored · purge_cache_for(doc_sha)
 counts()
 ```
 

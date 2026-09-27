@@ -78,9 +78,20 @@ def test_an_exception_marks_the_step_with_its_class_name_only() -> None:
             raise ValueError("the letter says Musterstraße 5")
     record = by_key(tracer)["run/link:sender"]
     assert record["status"] == "error" and record["error"] == "ValueError"
-    tracer.finish(error="Something went wrong while reading this document.")
+    tracer.finish(error="unexpected", ended="failed")
     root = by_key(tracer)["run"]
-    assert root["status"] == "error" and root["error"].startswith("Something went wrong")
+    assert (root["status"], root["error"], root["attributes"]["ended"]) == ("error", "unexpected", "failed")
+
+
+def test_a_reservation_is_the_open_root_and_leaves_the_reading_open() -> None:
+    tracer = recorded()
+    reserved = tracer.reservation()
+    assert (reserved.key, reserved.started_at) == ("run", reserved.ended_at)
+    with tracer.root.span("ocr", "Text layer", key="text") as step:
+        step.record_call(recorded_ms=1500)
+    tracer.finish()
+    root = by_key(tracer)["run"]
+    assert root["id"] == reserved.id and root["ended_at"] > reserved.ended_at
 
 
 def test_the_inactive_span_records_nothing() -> None:
@@ -234,7 +245,10 @@ def _request(**overrides: object) -> LLMRequest:
 
 @pytest.fixture
 def usage_store(tmp_path: Path) -> Store:
-    return Store.open(Paths(tmp_path / "data"))
+    store = Store.open(Paths(tmp_path / "data"))
+    # the letter the calls carry (a call of a letter that no longer exists keeps no key)
+    store.add_document(id="doc_1", sha256="a" * 64, filename="a.pdf", mime="application/pdf", file_path="a")
+    return store
 
 
 async def test_a_traced_call_writes_its_row_and_describes_its_step(usage_store: Store) -> None:

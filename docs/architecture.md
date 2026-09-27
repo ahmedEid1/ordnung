@@ -120,9 +120,17 @@ flowchart LR
 
 - **Explicit, never in the way.** The pipeline creates one `Tracer` per reading and passes spans
   down as a `trace` argument; every function defaults to `NO_SPAN`, which records nothing and reads
-  no clock. Spans live in memory until the reading ends — finished, failed, paused by a rate limit
+  no clock. Spans live in memory until the reading ends — done, failed, paused by a rate limit
   or stopped — and are then stored in one insert; storing never raises (a trace that can't be
-  written is logged and dropped). A letter keeps its newest five readings.
+  written is logged and dropped).
+- **One number per reading.** `start_trace` reserves the reading's number in one transaction (its
+  root span is stored as `running` and shown nowhere; the worker's startup recovery marks one left by
+  a killed process `stopped`), and a measured reading's trace id is random — so a reading whose trace
+  was lost, or two readings of one letter at once, never share a number or each other's calls. How a
+  reading ended is a code (`done`, `failed` with its kind, `paused`, `stopped`); the view turns it
+  into a sentence, so no error message (which may quote the model) is kept. A letter keeps its newest
+  five readings that ran to the end and its newest interrupted attempt while it is within them, and
+  "Compare" defaults to the newest earlier reading that was done.
 - **Model calls join by id.** `LLMService` writes one `llm_calls` row per call (never the prompt or
   the answer) with its replay/cache key, prompt name and version, the model the CLI says answered,
   job, stage and span, and an `outcome` decided by one policy (`ok`, `invalid` → a repair follows,
@@ -130,7 +138,7 @@ flowchart LR
 - **No letter text.** A span holds counts, codes, scores, the dates Ordnung computed and the ids of
   the records it used — the written vocabulary is `trace/facts.py`. The view looks the records up
   when the trace is shown (a to-do's title, a sender's name), so a deleted record keeps its id and
-  loses its label, and the OTLP export carries ids only.
+  loses its label. Key facts have no stable identity, so only the newest reading names them.
 - **Stable keys, comparable readings.** A span's key is its path (`run/verify:quotes/verify:item:<slot>`),
   the same in every reading; ids hash the trace id and the key. "Compare with reading N"
   (`trace/compare.py`) lists what a later reading *decided* differently (a date, a grounding, a
@@ -141,8 +149,13 @@ flowchart LR
   same spans.
 - **OpenTelemetry.** `trace/otel.py` writes OTLP/JSON: model steps are `CLIENT` spans named
   `chat <model>` with `gen_ai.operation.name`, `gen_ai.provider.name`, `gen_ai.request.model`,
-  `gen_ai.response.model`, `gen_ai.usage.input_tokens` and `…output_tokens`; everything else is under
-  `ordnung.*`.
+  `gen_ai.response.model`, `gen_ai.prompt.name`, `gen_ai.usage.input_tokens` (the whole prompt,
+  prompt-cache tokens included), `gen_ai.usage.cache_read.input_tokens`,
+  `gen_ai.usage.cache_creation.input_tokens` and `…output_tokens`; everything else is under
+  `ordnung.*`. Every id in the file (many are hashes of a file, a name or a sentence) is replaced by
+  an HMAC with a key made for that export, and a sender's other candidates keep only their scores.
+- **Time waiting for Claude** is the union of the model steps' intervals, so the pages of a photo,
+  read at the same time, count once.
 
 ## Asking a question
 

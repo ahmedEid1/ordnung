@@ -930,14 +930,21 @@ def trace(
     """How a letter was read: every step, its model calls and what code checked — as JSON.
 
     The plain JSON is what the letter's "How this was read" tab shows (with the names of the to-dos
-    and organisations it points to); ``--otel`` holds no letter text and no names, only ids.
+    and organisations it points to); ``--otel`` holds no letter text and no names, and its ids are
+    replaced for this file (docs/privacy.md says what it still shows). A letter with no kept reading
+    is an error.
     """
     from ordnung.trace.otel import to_otlp
 
     with _friendly(), contextlib.ExitStack() as stack:
         get = _trace_getter(resolve_paths(_chosen(ctx, data_dir)), document_id, stack)
         found = get(None)
-        if reading is not None and (found.run is None or found.run.reading != reading):
+        if found.run is None:
+            raise _fail(
+                "This letter has no kept reading yet.",
+                "“Read again” on its page records one (it asks Claude again).",
+            )
+        if reading is not None and found.run.reading != reading:
             kept = [run for run in found.runs if run.reading == reading]
             if not kept:
                 numbers = ", ".join(str(run.reading) for run in found.runs) or "none"

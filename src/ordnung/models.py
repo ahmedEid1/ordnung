@@ -165,6 +165,9 @@ CallOutcome = Literal["ok", "invalid", "repaired", "failed"]
 #: What a step of reading a letter did (``run`` is the reading itself, the root of its spans).
 SpanKind = Literal["run", "model", "ocr", "verify", "rules", "link", "plan"]
 SpanStatus = Literal["ok", "error"]
+#: How a reading of a letter ended: ran to the end (``done``), ``failed``, or was interrupted —
+#: ``paused`` by a usage limit or ``stopped`` by a shutdown — and is read again later.
+ReadingEnd = Literal["done", "failed", "paused", "stopped"]
 
 
 class _Model(BaseModel):
@@ -1157,6 +1160,9 @@ class TraceRun(_Model):
     ended_at: str
     duration_ms: float = 0.0
     status: SpanStatus = "ok"
+    #: how it ended (``paused`` and ``stopped`` readings are read again later)
+    ended: ReadingEnd = "done"
+    #: why it did not run to the end, in words (``None`` when it was done)
     error: str | None = None
     trigger: Literal["read", "read_again"] = "read"
     #: ``measured`` by the computer's clock; ``recorded`` in the demo: laid out from the recorded
@@ -1173,6 +1179,7 @@ class TraceRun(_Model):
     cache_read_tokens: int = 0
     cache_creation_tokens: int = 0
     cost_usd: float = 0.0
+    #: how long at least one call to Claude was under way (calls at the same time count once)
     model_ms: float = 0.0
 
 

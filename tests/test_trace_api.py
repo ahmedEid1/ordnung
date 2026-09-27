@@ -24,11 +24,12 @@ from ordnung.config import Paths
 from ordnung.db.migrate import MIGRATIONS_DIR, latest_version, migrate
 from ordnung.db.store import Store
 from ordnung.demo.loader import DEFAULT_SNAPSHOT
+from ordnung.ingest.link import party_id_for
 from ordnung.ingest.pipeline import add_file
 from ordnung.llm.fake import FakeBackend
-from ordnung.models import DocumentTrace
+from ordnung.models import DocumentTrace, TraceRun, TraceSpan
 from ordnung.server import ServerInfo
-from ordnung.trace.otel import SPAN_KIND_CLIENT, SPAN_KIND_INTERNAL, any_value, to_otlp
+from ordnung.trace.otel import SPAN_KIND_CLIENT, SPAN_KIND_INTERNAL, Pseudonyms, any_value, to_otlp
 from ordnung.trace.view import document_trace
 from test_api_support import TODAY, ApiRouter, api_for
 
@@ -138,12 +139,16 @@ async def test_the_export_holds_every_kept_reading_of_live_letters(data_dir: Pat
 # --------------------------------------------------------------------------------------------------
 
 
+def _attributes(span: dict[str, Any]) -> dict[str, Any]:
+    return {entry["key"]: entry["value"] for entry in span["attributes"]}
+
+
 async def test_the_otel_export_follows_otlp_json_and_the_genai_conventions(data_dir: Path) -> None:
     doc_id = await _read_tax_letter(data_dir)
     with Store.open(Paths(data_dir)) as store:
         trace = document_trace(store, doc_id)
-    exported = to_otlp(trace)
-    assert exported == to_otlp(trace), "the same reading exports the same file"
+    exported = to_otlp(trace, key=b"k")
+    assert exported == to_otlp(trace, key=b"k"), "one key, one file"
     [resource] = exported["resourceSpans"]
     assert {"key": "service.name", "value": {"stringValue": "ordnung"}} in resource["resource"]["attributes"]
     [scope] = resource["scopeSpans"]
@@ -156,16 +161,97 @@ async def test_the_otel_export_follows_otlp_json_and_the_genai_conventions(data_
     for span in spans:
         assert int(span["endTimeUnixNano"]) >= int(span["startTimeUnixNano"]) > 1_700_000_000 * 10**9
     model = next(span for span in spans if span["kind"] == SPAN_KIND_CLIENT)
-    attributes = {entry["key"]: entry["value"] for entry in model["attributes"]}
+    attributes = _attributes(model)
     assert model["name"] == "chat sonnet"
     assert attributes["gen_ai.operation.name"] == {"stringValue": "chat"}
     assert attributes["gen_ai.provider.name"] == {"stringValue": "anthropic"}
     assert attributes["gen_ai.request.model"] == {"stringValue": "sonnet"}
+    assert attributes["gen_ai.prompt.name"] == {"stringValue": "extract"}
     assert attributes["gen_ai.usage.input_tokens"]["intValue"].isdigit()
     assert attributes["ordnung.llm.outcome"] == {"stringValue": "ok"}
     assert {span["kind"] for span in spans} == {SPAN_KIND_CLIENT, SPAN_KIND_INTERNAL}
     text = json.dumps(exported, ensure_ascii=False)
     assert "Finanzamt" not in text and "Income tax" not in text, "no names, only ids"
+
+
+async def test_otel_input_tokens_count_the_whole_prompt(data_dir: Path) -> None:
+    doc_id = await _read_tax_letter(data_dir)
+    with Store.open(Paths(data_dir)) as store:
+        trace = document_trace(store, doc_id)
+    # Claude reports the prompt-cache tokens apart from ``input_tokens`` (2 tokens for a 9,809-token prompt)
+    spans = [
+        span.model_copy(
+            update={
+                "call": span.call.model_copy(
+                    update={"input_tokens": 2, "cache_read_tokens": 6755, "cache_creation_tokens": 3052}
+                )
+            }
+        )
+        if span.call is not None
+        else span
+        for span in trace.spans
+    ]
+    exported = to_otlp(trace.model_copy(update={"spans": spans}))
+    model = next(
+        span
+        for span in exported["resourceSpans"][0]["scopeSpans"][0]["spans"]
+        if span["kind"] == SPAN_KIND_CLIENT
+    )
+    attributes = _attributes(model)
+    assert attributes["gen_ai.usage.input_tokens"] == {"intValue": "9809"}
+    assert attributes["gen_ai.usage.cache_read.input_tokens"] == {"intValue": "6755"}
+    assert attributes["gen_ai.usage.cache_creation.input_tokens"] == {"intValue": "3052"}
+
+
+async def test_otel_ids_cannot_be_traced_back_to_the_letter(data_dir: Path) -> None:
+    doc_id = await _read_tax_letter(data_dir)
+    with Store.open(Paths(data_dir)) as store:
+        trace = document_trace(store, doc_id)
+        items = store.list_items(doc_id=doc_id)
+        party = store.get_document(doc_id).party_id  # type: ignore[union-attr]
+    assert party == party_id_for("Finanzamt Musterstadt"), "a sender's id is a hash of its name"
+    exported = to_otlp(trace)
+    text = json.dumps(exported)
+    derived = [doc_id, party, trace.run.trace_id]  # type: ignore[union-attr]
+    derived += [item.id for item in items] + [item.slot_key for item in items if item.slot_key]
+    derived += [span.id for span in trace.spans]
+    for value in derived:
+        assert value not in text, value
+    assert (
+        to_otlp(trace)["resourceSpans"][0]["scopeSpans"][0]["spans"][0]["traceId"]
+        != (exported["resourceSpans"][0]["scopeSpans"][0]["spans"][0]["traceId"])
+    ), "every export has its own key"
+    spans = exported["resourceSpans"][0]["scopeSpans"][0]["spans"]
+    sender = next(
+        span for span in spans if _attributes(span)["ordnung.step.key"] == {"stringValue": "run/link:sender"}
+    )
+    within = _attributes(sender)["ordnung.party_id"]["stringValue"]
+    assert within.startswith("pty_") and within == _attributes(sender)["ordnung.ref.id"]["stringValue"]
+
+
+def test_otel_keeps_candidates_scores_not_which_they_were() -> None:
+    ids = Pseudonyms(b"k")
+    facts = {"candidates": [{"party_id": "pty_aaaaaaaaaaaa", "score": 71.5}], "party_id": "pty_bbbbbbbbbbbb"}
+    out = ids.attributes(facts)
+    assert out["candidates"] == [{"score": 71.5}]
+    assert out["party_id"].startswith("pty_") and out["party_id"] != facts["party_id"]
+    slot = "0123456789abcdef0123456789abcdef01234567"
+    assert (
+        ids.step_key(f"run/plan:plan/plan:item:{slot}#2") == f"run/plan:plan/plan:item:{ids.record(slot)}#2"
+    )
+    assert ids.record(slot).startswith("slot_")
+
+
+def test_otel_failed_steps_say_how_never_the_message() -> None:
+    run = TraceRun(
+        trace_id="trc_1", started_at="2026-09-28T08:00:00.000000Z", ended_at="2026-09-28T08:00:01.000000Z"
+    )
+    root = TraceSpan(
+        id="spn_1", key="run", kind="run", name="Read letter", status="error", error="claude_error"
+    )
+    exported = to_otlp(DocumentTrace(doc_id="doc_1", run=run, spans=[root]))
+    [span] = exported["resourceSpans"][0]["scopeSpans"][0]["spans"]
+    assert span["status"] == {"code": 2, "message": "claude_error"}
 
 
 def test_otlp_any_values() -> None:
@@ -207,6 +293,17 @@ async def test_ordnung_trace_prints_json_and_otel_in_process(data_dir: Path, tmp
     assert unknown.exit_code == 1 and "There is no letter doc_nothere" in unknown.output
     empty = runner.invoke(app, ["trace", doc_id, "--data-dir", str(tmp_path / "nothing")])
     assert empty.exit_code == 1 and "There is no Ordnung data" in empty.output
+
+
+async def test_ordnung_trace_of_a_letter_with_no_kept_reading_fails(data_dir: Path, tmp_path: Path) -> None:
+    doc_id = await _read_tax_letter(data_dir)
+    with Store.open(Paths(data_dir)) as store, store.tx() as conn:
+        conn.execute("DELETE FROM trace_spans")  # read before traces were kept
+    target = tmp_path / "trace.json"
+    for args in (["--otel", "-o", str(target)], []):
+        result = runner.invoke(app, ["trace", doc_id, *args, "--data-dir", str(data_dir)])
+        assert result.exit_code == 1 and "This letter has no kept reading yet" in result.output
+    assert not target.exists()
 
 
 class _TraceApi(BaseHTTPRequestHandler):

@@ -22,8 +22,8 @@ Written policy (ADR 0007):
 * **What a span holds** is the caller's choice, written down in :mod:`ordnung.trace.facts`: counts,
   codes, scores, dates Ordnung computed and ids of records — never letter text.
 * **Errors.** An exception leaving a span marks it ``error`` with the exception's class name only
-  (its message may quote the letter); the pipeline gives the reading itself the message it showed
-  the person.
+  (its message may quote the letter); the pipeline ends the reading itself with a code saying how it
+  ended (:mod:`ordnung.trace.runs`).
 """
 
 from __future__ import annotations
@@ -246,7 +246,8 @@ class Tracer:
             span.end_ns = max(span.start_ns, self._now())
 
     def finish(self, *, error: str | None = None, **attributes: Any) -> None:
-        """End the reading: its outcome's facts, and ``error`` (written for people) if it failed."""
+        """End the reading: its outcome's facts, and ``error`` (a code, never a message) if it did not
+        run to the end."""
         self.root.set(**attributes)
         if error is not None:
             self.root.fail(error)
@@ -279,6 +280,12 @@ class Tracer:
         for child in self._children(span):
             yield from self._walk(child)
 
+    def reservation(self) -> TraceSpanRecord:
+        """The reading's root span as it is while the reading runs (ending where it started): what
+        the store keeps to reserve the reading's number (:func:`ordnung.trace.runs.start_trace`)."""
+        with self._lock:
+            return self._record(0, self.root, open_=True)
+
     def records(self) -> list[TraceSpanRecord]:
         """The reading's spans as rows, depth-first in display order (``seq``)."""
         with self._lock:
@@ -289,7 +296,8 @@ class Tracer:
                 self._layout(self.root, 0)
             return [self._record(seq, span) for seq, span in enumerate(spans)]
 
-    def _record(self, seq: int, span: Span) -> TraceSpanRecord:
+    def _record(self, seq: int, span: Span, *, open_: bool = False) -> TraceSpanRecord:
+        end_ns = span.start_ns if open_ or span.end_ns is None else span.end_ns
         return TraceSpanRecord(
             id=span_id(self.trace_id, span.key),
             trace_id=self.trace_id,
@@ -302,7 +310,7 @@ class Tracer:
             name=span.name,
             stage=span.stage,
             started_at=iso_utc(self._started_at + timedelta(microseconds=span.start_ns // 1000)),
-            ended_at=iso_utc(self._started_at + timedelta(microseconds=(span.end_ns or 0) // 1000)),
+            ended_at=iso_utc(self._started_at + timedelta(microseconds=end_ns // 1000)),
             status=span.status,
             error=span.error,
             attributes=span.attributes,

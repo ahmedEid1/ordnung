@@ -2,7 +2,8 @@
 
 ``GET /api/documents/{doc_id}/trace`` returns one reading (``?run=<trace id>``; default the newest kept)
 with its steps and the list of kept readings; ``…/trace/compare`` what a later reading decided
-differently (``head`` default: the newest; ``base`` default: the reading before ``head``);
+differently (``head`` default: the newest; ``base`` default: the newest earlier reading that was done —
+a paused or stopped attempt, or a failed one, only when there is no such reading);
 ``GET /api/traces`` every kept reading as stored, for "Download your records". All side-effect free.
 """
 
@@ -16,7 +17,7 @@ from ordnung.api.deps import StoreDep
 from ordnung.api.routes.common import require
 from ordnung.db.store import Store
 from ordnung.models import DocumentTrace, TraceComparison, TraceExport
-from ordnung.trace.compare import compare_traces
+from ordnung.trace.compare import compare_base, compare_traces
 from ordnung.trace.view import TraceNotFound, document_trace
 
 router = APIRouter(tags=["traces"])
@@ -57,10 +58,10 @@ def compare_trace(
     if later.run is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOTHING_TO_COMPARE)
     if base is None:
-        older = [run for run in later.runs if run.reading < later.run.reading]
-        if not older:
+        older = compare_base(later.runs, later.run)
+        if older is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, NOTHING_TO_COMPARE)
-        base = older[0].trace_id
+        base = older.trace_id
     return compare_traces(_trace(store, doc_id, base), later)
 
 

@@ -60,9 +60,15 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   asked (the prompt's name and version, tokens, API-equivalent cost), what code checked and what was
   filed. Only the steps' numbers, codes and the ids of what they found are kept — never the letter's
   text; the names shown are looked up when you open it. *Download a copy of your records* includes
-  these traces. `ordnung trace <letter id> --otel` writes one reading as OpenTelemetry JSON with ids
-  only (no titles or names), so you can load it into a tracing tool or share it to debug a reading
-  without sharing the letter.
+  these traces. `ordnung trace <letter id> --otel` writes one reading as OpenTelemetry JSON for a
+  tracing tool: no letter text, titles or names, and every id replaced by a code made for that file
+  (Ordnung's own ids are hashes of a file, a sender's name or a sentence, so they could confirm a
+  guess). It still shows the dates Ordnung computed and the letter's dates they came from, your
+  Bundesland's holiday calendar, how many pages, quotes and to-dos there were, match scores, and the
+  prompts' versions and models — look it over before you share it.
+- **A letter deleted while it is being read** — if a call to Claude about it is still under way,
+  its answer is not cached and the usage log keeps only the anonymous numbers, as for a letter
+  deleted afterwards.
 - **Models** — choose which Claude model handles each purpose.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself.

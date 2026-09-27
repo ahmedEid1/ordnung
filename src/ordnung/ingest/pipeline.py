@@ -67,11 +67,11 @@ from ordnung.ingest.plan import (
 )
 from ordnung.ingest.text import PageText, detect_injection_phrases, extract_pdf_pages, text_file_pages
 from ordnung.ingest.transcribe import transcribe_pages
-from ordnung.llm.base import ClaudeRateLimited, LLMError
+from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited, ClaudeTimeout, LLMError
 from ordnung.models import Document, DocumentExtraction, Job, Page
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS, RuleContext
 from ordnung.trace import facts
-from ordnung.trace.runs import keep_trace, start_trace
+from ordnung.trace.runs import finish_trace, start_trace
 from ordnung.trace.spans import NO_SPAN, Span
 
 if TYPE_CHECKING:
@@ -112,10 +112,6 @@ HIDDEN_TEXT_WARNING = (
 NO_TEXT_ERROR = "We couldn't find any readable text in this document."
 UNEXPECTED_ERROR = "Something went wrong while reading this document. Try “Reprocess”; if it keeps failing, please report it."
 TRASHED_ERROR = "This letter was deleted before it was read, so it was not sent to Claude."
-PAUSED_TRACE = "Paused: Claude's usage limit was reached. The letter is read again when it resets."
-STOPPED_TRACE = (
-    "Stopped: Ordnung was closed before the letter was finished. It is read again at the next start."
-)
 
 _LEDGER_LOCKS: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = (
     weakref.WeakKeyDictionary()
@@ -682,6 +678,26 @@ def describe_error(exc: BaseException) -> str:
     return UNEXPECTED_ERROR
 
 
+def failure_code(exc: BaseException) -> str:
+    """Why a reading failed, as the code its trace keeps (:data:`ordnung.trace.runs.FAILURES`) — an
+    error's message may quote the letter or the model, so a trace never keeps it."""
+    if isinstance(exc, IntakeError):
+        return "trashed" if str(exc) == TRASHED_ERROR else "file"
+    if isinstance(exc, ExtractionError):
+        return "no_text" if str(exc) == NO_TEXT_ERROR else "unusable_answer"
+    if isinstance(exc, NotFoundError):
+        return "gone"
+    for kind, code in (
+        (ClaudeNotInstalled, "not_installed"),
+        (ClaudeAuthError, "not_signed_in"),
+        (ClaudeTimeout, "timeout"),
+        (LLMError, "claude_error"),
+    ):
+        if isinstance(exc, kind):
+            return code
+    return "unexpected"
+
+
 def _mark_failed(store: Store, doc_id: str, message: str) -> None:
     try:
         store.update_document(doc_id, status="failed", error=message)
@@ -717,24 +733,20 @@ async def ingest_document(
         document = await _run_stages(ctx, document, progress, force=force, trace=tracer.root)
     except ClaudeRateLimited:
         _set_status_quietly(store, doc_id, "queued")
-        tracer.finish(error=PAUSED_TRACE)
-        keep_trace(store, tracer)
+        finish_trace(store, tracer, "paused")
         raise
     except asyncio.CancelledError:
         _set_status_quietly(store, doc_id, "queued")
-        tracer.finish(error=STOPPED_TRACE)
-        keep_trace(store, tracer)
+        finish_trace(store, tracer, "stopped")
         raise
     except Exception as exc:
         message = describe_error(exc)
         log.warning("reading document %s failed: %s", doc_id, message, exc_info=message == UNEXPECTED_ERROR)
         _mark_failed(store, doc_id, message)
         progress.failed(message)
-        tracer.finish(error=message, result="failed")
-        keep_trace(store, tracer)
+        finish_trace(store, tracer, "failed", failure_code(exc))
         raise
-    tracer.finish()
-    keep_trace(store, tracer)
+    finish_trace(store, tracer)
     ctx.bus.publish("document.processed", doc_id=doc_id, status=document.status)
     return document
 

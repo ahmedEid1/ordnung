@@ -23,12 +23,12 @@ from fixtures_llm import (
 from helpers_docs import photo
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
-from ordnung.ingest.pipeline import PAUSED_TRACE, add_file, reprocess
+from ordnung.ingest.pipeline import add_file, reprocess
 from ordnung.llm.base import ClaudeRateLimited, LLMRequest
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import DocumentTrace, TraceSpan
 from ordnung.trace.compare import compare_traces
-from ordnung.trace.runs import KEPT_READINGS
+from ordnung.trace.runs import FAILURES, INTERRUPTIONS, KEPT_READINGS
 from ordnung.trace.view import document_trace
 
 
@@ -218,7 +218,7 @@ async def test_a_repair_names_the_call_it_retried(data_dir: Path, router: Router
     assert trace.run is not None and trace.run.repairs == 1 and trace.run.result == "processed"
 
 
-async def test_a_reading_that_fails_keeps_its_trace_with_the_message_shown(
+async def test_a_reading_that_fails_keeps_its_trace_with_a_code_never_the_message(
     data_dir: Path, router: Router
 ) -> None:
     ctx = build_context(data_dir, backend_obj=FakeBackend(invalid_first(router, repair_valid=False)))
@@ -226,10 +226,14 @@ async def test_a_reading_that_fails_keeps_its_trace_with_the_message_shown(
         doc_id = await read(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
         document = ctx.store.get_document(doc_id)
         trace = document_trace(ctx.store, doc_id)
+        stored = stored_spans(ctx)
     finally:
         ctx.close()
-    assert document is not None and document.status == "failed"
-    assert trace.run is not None and trace.run.status == "error" and trace.run.error == document.error
+    assert document is not None and document.status == "failed" and document.error
+    assert trace.run is not None and trace.run.status == "error" and trace.run.ended == "failed"
+    # the person's message quotes what the model answered; the trace keeps only the kind of failure
+    assert trace.run.error == FAILURES["unusable_answer"]
+    assert steps(trace)["run"].error == "unusable_answer" and document.error not in stored
     by_key = steps(trace)
     assert by_key["run/model:extract_repair"].status == "error"
     assert by_key["run/model:extract_repair"].error == "ExtractionError"
@@ -243,7 +247,10 @@ async def test_a_paused_reading_says_so(ctx: AppContext, router: Router) -> None
     document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
     await ctx.worker.run_until_idle()
     trace = document_trace(ctx.store, document.id)
-    assert trace.run is not None and trace.run.error == PAUSED_TRACE and trace.run.status == "error"
+    assert (
+        trace.run is not None and trace.run.error == INTERRUPTIONS["paused"] and trace.run.status == "error"
+    )
+    assert trace.run.ended == "paused" and steps(trace)["run"].error == "paused"
     assert steps(trace)["run/model:extract"].attributes["outcome"] == "failed"
 
 
