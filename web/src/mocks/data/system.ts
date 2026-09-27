@@ -1,5 +1,6 @@
 import type { Activity, AppSettings, DoctorCheck, Health, LLMCallRecord, MailTrayItem, Profile, RuleInfo, TourState, UsageStats } from "@/api/types";
 import { SAM, TODAY, ts } from "./constants";
+import { FOLDER_PATH } from "./folder";
 
 export const HEALTH: Health = {
   version: "0.1.0",
@@ -46,7 +47,8 @@ export const PROFILE: Profile = {
 export const SETTINGS: AppSettings = {
   models: { transcribe: "sonnet", extract: "sonnet", review: "sonnet", ask: "sonnet", draft: "sonnet", brief: "haiku", capture: "haiku", bank: "haiku" },
   concurrency: 2,
-  inbox_dir: null,
+  inbox_dir: FOLDER_PATH,
+  inbox_auto_read: false,
   ocr: true,
   llm_brief: true,
   llm_review: true,

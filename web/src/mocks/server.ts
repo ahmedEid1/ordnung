@@ -17,6 +17,8 @@ import type {
   DocumentDetail,
   Draft,
   DraftCreate,
+  FolderStatus,
+  HeldResult,
   Health,
   Item,
   ItemAside,
@@ -47,6 +49,7 @@ import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
 import { SAM, sha } from "./data/constants";
 import { TRAY_DOCUMENTS } from "./data/documents";
+import { EMAIL_ATTACHMENTS, SUGGESTED_INBOX } from "./data/folder";
 import { TRAY_ITEMS } from "./data/items";
 import { PARTIES } from "./data/parties";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
@@ -239,7 +242,61 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
     related: related.sort((a, b) => ((a.doc_date ?? "") < (b.doc_date ?? "") ? 1 : -1)),
     suggestions,
     drafts: db.state.drafts.filter((x) => x.doc_id === id),
+    // like the API: an attachment's letter is linked while it exists; an attachment names its e-mail
+    attachments: (EMAIL_ATTACHMENTS[id] ?? []).map((a) => ({ ...a, doc_id: a.doc_id && db.document(a.doc_id) ? a.doc_id : null })),
+    email: d.source.startsWith("email:") ? db.document(d.source.slice("email:".length)) : null,
   };
+}
+
+// ------------------------------------------------------------------------------------------------
+// The watched folder
+// ------------------------------------------------------------------------------------------------
+
+/** Like `inbox_dir_problem`: a full path, not a drive's root, not the home folder. */
+function inboxDirProblem(value: string): string | null {
+  const v = value.trim();
+  if (!(v.startsWith("/") || v.startsWith("~") || /^[A-Za-z]:[\\/]/.test(v))) return "Please choose a full folder path (for example /home/you/Scans).";
+  if (/^(\/|[A-Za-z]:[\\/]?)$/.test(v)) return "The inbox can't be the root of a drive.";
+  if (/^(~|\/home\/[^/]+|\/Users\/[^/]+)\/?$/.test(v)) return "The inbox can't be your whole home folder — choose a dedicated folder.";
+  return null;
+}
+
+function folderStatus(db: MockDb): FolderStatus {
+  const s = db.state.settings;
+  return {
+    folder: s.inbox_dir,
+    state: s.inbox_dir ? "watching" : "off",
+    problem: null,
+    auto_read: s.inbox_auto_read,
+    waiting: db.liveDocuments().filter((d) => d.status === "held").length,
+    suggested: SUGGESTED_INBOX,
+    recent: db.state.folderRecent.map((p) => {
+      const d = p.doc_id ? db.document(p.doc_id) : null;
+      return { ...p, doc_id: d ? d.id : null, status: d ? d.status : null };
+    }),
+  };
+}
+
+/** The held letters among `ids`, a held e-mail's held attachments after it; the rest are skipped. */
+function answeredTogether(db: MockDb, ids: string[]): { docs: Document[]; skipped: string[] } {
+  const docs = new Map<string, Document>();
+  const skipped: string[] = [];
+  for (const id of new Set(ids)) {
+    const d = db.document(id);
+    if (!d || d.status !== "held") {
+      skipped.push(id);
+      continue;
+    }
+    docs.set(d.id, d);
+    for (const a of db.liveDocuments()) if (a.status === "held" && a.source === `email:${d.id}`) docs.set(a.id, a);
+  }
+  return { docs: [...docs.values()], skipped };
+}
+
+function heldIds(body: unknown): string[] {
+  const ids = (body as { doc_ids?: unknown } | null)?.doc_ids;
+  if (!Array.isArray(ids) || !ids.length || ids.some((x) => typeof x !== "string")) throw new HttpError(422, "Choose which letters you mean.");
+  return ids as string[];
 }
 
 /**
@@ -740,8 +797,18 @@ const routes: [string, string, Handler][] = [
         if (key in patch && patch[key] !== db.state.settings[key]) throw new HttpError(422, `“${key}” is set by how Ordnung was started.`);
       }
       const models = { ...db.state.settings.models, ...(patch.models ?? {}) };
-      const cleared = body && typeof body === "object" && (body as { inbox_dir?: unknown }).inbox_dir === null ? { inbox_dir: null } : {};
-      return (db.state.settings = { ...db.state.settings, ...patch, models, ...cleared });
+      const sent = body && typeof body === "object" ? (body as { inbox_dir?: unknown }).inbox_dir : undefined;
+      // like the API: an empty folder stops watching; anything else must be a folder it may watch
+      const cleared = sent === null || (typeof sent === "string" && !sent.trim()) ? { inbox_dir: null } : {};
+      if (typeof patch.inbox_dir === "string" && patch.inbox_dir.trim()) {
+        const problem = inboxDirProblem(patch.inbox_dir);
+        if (problem) throw new HttpError(422, problem);
+        patch.inbox_dir = patch.inbox_dir.trim();
+      }
+      const before = db.state.settings.inbox_dir;
+      db.state.settings = { ...db.state.settings, ...patch, models, ...cleared };
+      if (db.state.settings.inbox_dir !== before) emit("folder.updated", { state: db.state.settings.inbox_dir ? "watching" : "off" });
+      return db.state.settings;
     },
   ],
   [
@@ -859,6 +926,56 @@ const routes: [string, string, Handler][] = [
     },
   ],
   ["GET", "/documents/:id", ({ db, params }) => documentDetail(db, params.id!)],
+  // the watched folder: its state, and the person's answer for the letters waiting
+  ["GET", "/folder", ({ db }) => folderStatus(db)],
+  [
+    "POST",
+    "/documents/held/read",
+    (ctx) => {
+      needsClaude(ctx);
+      const { db } = ctx;
+      const { docs, skipped } = answeredTogether(db, heldIds(ctx.body));
+      const jobs: Job[] = [];
+      for (const d of docs) {
+        Object.assign(d, { ai_private: false, status: "processing", updated_at: nowTs() });
+        db.log("document.released", `You let Claude read “${d.title ?? d.filename}”`, "document", d.id);
+        const job = makeJob(d.id);
+        jobs.push(job);
+        void runJob(
+          db,
+          job,
+          false,
+          () =>
+            Object.assign(d, {
+              status: "processed",
+              kind: "other",
+              area: "other",
+              summary: "Demo mode: in the installed app, Claude reads it now and files every date, amount and deadline.",
+              ai_processed_at: nowTs(),
+              processed_at: nowTs(),
+              updated_at: nowTs(),
+            }),
+          ctx.opts.latency ?? 1,
+        );
+      }
+      emit("folder.updated", { state: db.state.settings.inbox_dir ? "watching" : "off" });
+      return { documents: docs, jobs, skipped } satisfies HeldResult;
+    },
+  ],
+  [
+    "POST",
+    "/documents/held/keep-private",
+    ({ db, body }) => {
+      const { docs, skipped } = answeredTogether(db, heldIds(body));
+      for (const d of docs) {
+        Object.assign(d, { status: "processed", updated_at: nowTs() });
+        db.log("document.private", `You kept “${d.title ?? d.filename}” private · not sent to AI`, "document", d.id);
+        emit("document.updated", { doc_id: d.id });
+      }
+      emit("folder.updated", { state: db.state.settings.inbox_dir ? "watching" : "off" });
+      return { documents: docs, jobs: [], skipped } satisfies HeldResult;
+    },
+  ],
   [
     "PATCH",
     "/documents/:id",

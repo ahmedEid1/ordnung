@@ -106,7 +106,8 @@ export const HIGH_STAKES_KINDS = [
 ] as const satisfies readonly DocumentKind[];
 export type HighStakesKind = (typeof HIGH_STAKES_KINDS)[number];
 
-export const DOCUMENT_STATUSES = ["queued", "processing", "processed", "needs_review", "failed"] as const;
+/** `held`: from the watched folder (or attached to an e-mail from it), waiting for "Read these". */
+export const DOCUMENT_STATUSES = ["queued", "processing", "processed", "needs_review", "failed", "held"] as const;
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 
 export const DIRECTIONS = ["incoming", "outgoing", "note"] as const;
@@ -483,6 +484,13 @@ export type SearchHit = Schemas["SearchHit"];
 export type TourState = Schemas["TourState"];
 /** A letter waiting in the demo's "New mail" tray. */
 export type MailTrayItem = Schemas["MailTrayItem"];
+/** An e-mail's attachment and what became of it (`DocumentDetail.attachments`). */
+export type EmailAttachment = Schemas["EmailAttachment"];
+export type AttachmentOutcome = EmailAttachment["outcome"];
+/** `GET /api/folder`: the watched folder, its state, the letters waiting and the last files it brought in. */
+export type FolderStatus = Schemas["FolderStatus"];
+export type FolderState = FolderStatus["state"];
+export type FolderPickup = Schemas["FolderPickup"];
 
 // ------------------------------------------------------------------------------------------------
 // Responses that are not models.py view models (defined next to their routes)
@@ -503,6 +511,8 @@ export type CalendarExportResult = Schemas["CalendarExportResult"];
 export type ReviewStarted = Schemas["ReviewStarted"];
 /** `DELETE /api/data` ("Delete everything"): what was removed, and entries Ordnung left alone. */
 export type DataDeleted = Schemas["DataDeleted"];
+/** `POST /api/documents/held/read` · `…/keep-private`: the letters answered for, jobs queued, ids no longer waiting. */
+export type HeldResult = Schemas["HeldResult"];
 
 // ------------------------------------------------------------------------------------------------
 // Requests
@@ -521,6 +531,7 @@ export type DraftPatch = Schemas["DraftPatch"];
 export type MarkSentRequest = Schemas["MarkSentRequest"];
 export type AskRequest = Schemas["AskRequest"];
 export type TourPatch = Schemas["TourPatch"];
+export type HeldRequest = Schemas["HeldRequest"];
 
 export type DocumentListParams = ApiQuery<"/api/documents", "get">;
 export type ItemListParams = ApiQuery<"/api/items", "get">;

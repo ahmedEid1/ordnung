@@ -4,7 +4,9 @@
  * verdict first, then warnings, the pages and the rest.
  *
  * Panel order: verdict → warnings / Please check → Explained simply → To-dos & dates → Key facts →
- * Thread, contract, drafts, Ideas → provenance + Reprocess / Download / Delete.
+ * the e-mail it came with / an e-mail's attachments → Thread, contract, drafts, Ideas → provenance +
+ * Reprocess / Download / Delete. A letter that waits for the person (from the watched folder) shows
+ * its waiting card in the verdict's place, and nothing read from it (nothing was).
  */
 import { useCallback, useMemo } from "react";
 import { useReducedMotion } from "motion/react";
@@ -22,6 +24,8 @@ import { KeyFacts } from "./KeyFacts";
 import { ContractsSection, DraftsSection, IdeasSection, ThreadSection } from "./Related";
 import { DocumentFooter } from "./DocumentFooter";
 import { ProcessingCard } from "./ProcessingCard";
+import { HeldCard } from "./HeldCard";
+import { EmailParts } from "./EmailParts";
 
 export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const doc = detail.document;
@@ -36,6 +40,7 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const scam = Boolean(scamSuggestion(detail));
   const busy = doc.status === "queued" || doc.status === "processing" || doc.status === "failed";
   const neverRead = busy && !doc.kind && !doc.title;
+  const held = doc.status === "held";
 
   const askArrival = useCallback(() => {
     const el = document.getElementById("arrival-question");
@@ -48,8 +53,8 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.04fr)_minmax(0,1fr)] xl:gap-x-8 xl:gap-y-6">
         <div className="min-w-0 space-y-4 xl:col-start-2 xl:row-start-1">
           {busy ? <ProcessingCard doc={doc} /> : null}
-          {!neverRead ? <VerdictCard detail={detail} primary={primary} onAskArrival={askArrival} /> : null}
-          {!neverRead ? <DocumentWarnings detail={detail} /> : null}
+          {held ? <HeldCard detail={detail} /> : !neverRead ? <VerdictCard detail={detail} primary={primary} onAskArrival={askArrival} /> : null}
+          {!neverRead && !held ? <DocumentWarnings detail={detail} /> : null}
         </div>
 
         <div className="min-w-0 xl:sticky xl:top-[72px] xl:col-start-1 xl:row-span-2 xl:row-start-1 xl:self-start">
@@ -70,11 +75,14 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
                 <SkeletonText lines={4} />
               </div>
             </div>
+          ) : held ? (
+            <EmailParts detail={detail} />
           ) : (
             <>
               <ExplainedSimply doc={doc} />
               <ItemsList items={detail.items} docId={doc.id} />
               <KeyFacts doc={doc} scam={scam} />
+              <EmailParts detail={detail} />
               <ThreadSection detail={detail} />
               <ContractsSection contracts={detail.contracts} />
               <DraftsSection drafts={detail.drafts} />

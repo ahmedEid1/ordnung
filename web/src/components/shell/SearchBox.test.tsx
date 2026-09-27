@@ -246,9 +246,10 @@ describe("the empty phone sheet", () => {
     const options = within(recent).getAllByRole("option");
     expect(options.length).toBeGreaterThan(0);
     for (const o of options) expect(o).toHaveAttribute("aria-selected", "false");
-    // the date sits in the meta line; the kind is the icon's name
-    expect(options[0]!.querySelector("time")).not.toBeNull();
-    expect(within(options[0]!).getByRole("img")).toHaveAccessibleName();
+    // the date sits in the meta line (a letter waiting from the folder has none yet); the kind is the icon's name
+    const dated = options.find((o) => o.querySelector("time"));
+    expect(dated).toBeDefined();
+    expect(within(dated!).getByRole("img")).toHaveAccessibleName();
     const field = within(sheet).getByRole("combobox", { name: "Search your letters" });
     await waitFor(() => expect(field).toHaveFocus());
     await user.keyboard("{ArrowDown}");

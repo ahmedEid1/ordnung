@@ -87,6 +87,7 @@ export const qk = {
   usage: ["usage"] as const,
   rules: ["rules"] as const,
   jobs: ["jobs"] as const,
+  folder: ["folder"] as const,
   tour: ["demo", "tour"] as const,
   mail: ["demo", "mail"] as const,
   questions: ["demo", "questions"] as const,
@@ -107,6 +108,7 @@ const LEDGER_PREFIXES = [
   qk.drafts.all,
   qk.activity,
   qk.jobs,
+  qk.folder,
 ] as const;
 
 /** Invalidate every ledger-derived query (documents, items, contracts, views, ideas…). */
@@ -186,7 +188,10 @@ export function useUpdateSettings() {
   return useMutation({
     mutationFn: (s: SettingsPatch) => api.updateSettings(s),
     meta: { errorTitle: "Couldn't save your settings" },
-    onSuccess: (settings) => qc.setQueryData(qk.settings, settings),
+    onSuccess: (settings) => {
+      qc.setQueryData(qk.settings, settings);
+      void qc.invalidateQueries({ queryKey: qk.folder }); // a new folder restarts the watcher
+    },
   });
 }
 
@@ -276,6 +281,35 @@ export function useReprocessDocument() {
   return useMutation({
     mutationFn: (id: string) => api.reprocessDocument(id),
     meta: { errorTitle: "Couldn't read the letter again" },
+    onSuccess: () => invalidateLedger(qc),
+  });
+}
+
+// ------------------------------------------------------------------------------------------------
+// The watched folder
+// ------------------------------------------------------------------------------------------------
+
+/** `GET /folder`: the watched folder's state, how many letters wait and the last files it brought in. */
+export function useFolder(opts: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: qk.folder, queryFn: api.folder, staleTime: 30_000, enabled: opts.enabled });
+}
+
+/** "Read these N": the waiting letters (as shown) may be sent to Claude; they are queued for reading. */
+export function useReadHeld() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (docIds: string[]) => api.readHeld(docIds),
+    meta: { errorTitle: "Couldn't start reading them" },
+    onSuccess: () => invalidateLedger(qc),
+  });
+}
+
+/** "Keep private": the waiting letters stay on this computer and are never sent to Claude. */
+export function useKeepHeldPrivate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (docIds: string[]) => api.keepHeldPrivate(docIds),
+    meta: { errorTitle: "Couldn't keep them private" },
     onSuccess: () => invalidateLedger(qc),
   });
 }

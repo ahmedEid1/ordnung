@@ -25,6 +25,7 @@ import type {
   AppSettings,
   Health,
   Area,
+  FolderPickup,
 } from "@/api/types";
 import { addDays, differenceInCalendarDays, parseISO, format } from "date-fns";
 import { PARTIES, TRAY_ONLY_PARTIES } from "./data/parties";
@@ -35,6 +36,7 @@ import { SUGGESTIONS, TRAY_SUGGESTIONS } from "./data/suggestions";
 import { DRAFTS } from "./data/drafts";
 import { ACTIVITY, HEALTH, MAIL_TRAY, PROFILE, SETTINGS, TOUR, TRAY_DOC } from "./data/system";
 import { LETTERS } from "./data/letters";
+import { FOLDER_DOCUMENTS, FOLDER_LETTERS, FOLDER_RECENT } from "./data/folder";
 import { renderLetter, type RenderedLetter } from "./pages";
 import { TODAY } from "./data/constants";
 
@@ -45,7 +47,7 @@ const rendered = new Map<string, RenderedLetter>();
 /** Rendered page images + layout for a document (cached). */
 export function letterFor(docId: string): RenderedLetter | null {
   if (rendered.has(docId)) return rendered.get(docId)!;
-  const spec = LETTERS[docId];
+  const spec = LETTERS[docId] ?? FOLDER_LETTERS[docId];
   if (!spec) return null;
   const r = renderLetter(spec);
   rendered.set(docId, r);
@@ -91,6 +93,8 @@ export interface MockState {
   lastCalendarExport: string;
   /** documents uploaded in this session (for page images of unknown files) */
   uploads: Record<string, { name: string; objectUrl?: string }>;
+  /** the last files the watched folder brought in, newest first */
+  folderRecent: FolderPickup[];
 }
 
 export class MockDb {
@@ -103,7 +107,7 @@ export class MockDb {
       settings: clone(SETTINGS),
       parties: clone(PARTIES.filter((p) => !TRAY_ONLY_PARTIES.has(p.id))),
       cases: clone(CASES),
-      documents: clone(DOCUMENTS).map(resolveDoc),
+      documents: clone([...DOCUMENTS, ...FOLDER_DOCUMENTS]).map(resolveDoc),
       items: resolveAll(clone(ITEMS)),
       contracts: resolveAll(clone(CONTRACTS)),
       suggestions: clone(SUGGESTIONS),
@@ -114,6 +118,7 @@ export class MockDb {
       tour: clone(TOUR),
       lastCalendarExport: "2026-09-20T16:00:00Z",
       uploads: {},
+      folderRecent: clone(FOLDER_RECENT),
     };
   }
 

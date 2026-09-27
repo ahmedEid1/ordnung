@@ -146,6 +146,7 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         await _get(api, contract, "/api/health")
         await _get(api, contract, "/api/profile")
         await _get(api, contract, "/api/settings")
+        await _get(api, contract, "/api/folder")
         await _get(api, contract, "/api/dashboard")
         await _get(api, contract, "/api/brief")
         await _get(api, contract, "/api/documents")

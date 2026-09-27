@@ -8,10 +8,13 @@
  *  2. tour       — the guided tour at every step (server-side tour state, so one at a time)
  *  3. mutations  — on a second, reset demo data folder: extra drafts, a sent letter
  *  4. mail       — the New-mail letters read the way the e2e helper `openMail` does it
+ *  5. folder     — the watched folder on its own demo data folder (./folder.mjs)
+ *  6. high-stakes — letters re-filed as high-stakes kinds on another demo data folder
  */
 import { fakeApi, failApi, pinToasts, settle } from "../browser.mjs";
 import { inMain } from "../steps.mjs";
 import { commonSettingsSections, loadingAndErrorStates, SETTINGS_SECTIONS } from "./shared.mjs";
+import { folderPhase } from "./folder.mjs";
 
 const slug = (s) =>
   s
@@ -1269,6 +1272,7 @@ export async function demoCatalog({ api, server }) {
         },
       },
       { name: "mail", parallel: false, states: mailStates },
+      folderPhase({ api, server }),
       {
         name: "high-stakes",
         parallel: true,

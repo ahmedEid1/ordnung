@@ -16,6 +16,11 @@ export function parseFilter(v: string | null): InboxFilter {
 /** Letters that need the person: "Please check" (or reading failed). */
 export const needsYou = (d: Document) => d.status === "needs_review" || d.status === "failed";
 export const isReading = (d: Document) => d.status === "queued" || d.status === "processing";
+/**
+ * From the watched folder (or attached to an e-mail from it) and not read yet: these wait for the
+ * person's "Read these" in their own group above the list, and are in no other group or filter.
+ */
+export const isHeld = (d: Document) => d.status === "held" && !d.deleted_at;
 
 export function matchesFilter(d: Document, filter: InboxFilter): boolean {
   if (filter === "check") return needsYou(d);
@@ -24,11 +29,11 @@ export function matchesFilter(d: Document, filter: InboxFilter): boolean {
 }
 
 export function filterDocuments(docs: Document[], opts: { filter: InboxFilter; kind?: DocumentKind | null }): Document[] {
-  return docs.filter((d) => !d.deleted_at && matchesFilter(d, opts.filter) && (!opts.kind || d.kind === opts.kind));
+  return docs.filter((d) => !d.deleted_at && !isHeld(d) && matchesFilter(d, opts.filter) && (!opts.kind || d.kind === opts.kind));
 }
 
 export function filterCounts(docs: Document[]): Record<InboxFilter, number> {
-  const live = docs.filter((d) => !d.deleted_at);
+  const live = docs.filter((d) => !d.deleted_at && !isHeld(d));
   return {
     all: live.length,
     check: live.filter(needsYou).length,

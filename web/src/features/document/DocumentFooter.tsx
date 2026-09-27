@@ -31,6 +31,7 @@ const joinAnd = (parts: string[]) => (parts.length < 2 ? parts.join("") : `${par
 
 export function provenanceText(doc: DocumentDetail["document"]): string {
   const pages = plural(doc.pages, "page");
+  if (doc.status === "held") return `Waiting for you — not read by AI yet · ${pages}`;
   if (doc.ai_private) return `Kept private — not read by AI · ${pages}`;
   if (!doc.ai_processed_at) return `Not read yet · ${pages}`;
   const when = formatDate(doc.ai_processed_at, { style: "medium" });
