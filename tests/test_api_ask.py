@@ -77,7 +77,8 @@ async def test_the_check_note_travels_apart_from_the_answer(data_dir: Path) -> N
         done = json.loads(sse_messages(response.text)[-1]["data"])
         assert done["text"] == "Keep the letter."
         assert done["note"] == (
-            "Left out 1 sentence: its date, time or amount isn't in Ordnung's record of what it cites. "
+            "Left out 1 sentence: its date, time or amount isn't among the dates and amounts Ordnung saved for "
+            "the linked letter, to-do or contract. "
             "Left out 1 line that looked like this note: only Ordnung writes it."
         )
         # no event before "done" carried a word of the unchecked answer

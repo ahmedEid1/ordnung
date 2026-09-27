@@ -206,6 +206,11 @@ def test_tool_labels_never_show_a_value_the_model_chose() -> None:
         ("Termin um 14h", "Termin um …"),
         ("late may fee", "late may fee"),  # the verb, as the check reads it
         ("Kündigung Oktober", "Kündigung Oktober"),  # a month alone is no value the check reads
+        # final review 3: masked on the words as the check reads them (a Unicode hyphen, markup)
+        ("mid\u2010January fee", "… fee"),
+        ("Frist Ende **Januar**", "Frist …"),
+        ("Frist _Ende_ Januar", "Frist …"),
+        ("the thirty-first of October", "the …"),
     ],
 )
 def test_tool_labels_hide_every_value_the_check_reads(query: str, shown: str) -> None:

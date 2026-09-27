@@ -10,10 +10,10 @@ import { accumulate, accumulateAll, EMPTY_ANSWER, type AnswerState } from "./str
 import { turnsFromHistory } from "./useAskThread";
 
 const NOTE =
-  "Left out 1 sentence: its date, time or amount isn't in Ordnung's record of what it cites. " +
+  "Left out 1 sentence: its date, time or amount isn't among the dates and amounts Ordnung saved for the linked letter, to-do or contract. " +
   "Amounts in quotation marks are the letter's, read from a photo or not found on its page; Ordnung has not confirmed them.";
 const NOTE_DE =
-  "1 Angabe ist als „nur im Brief“ markiert: Sie steht im Text eines Briefs, aber nicht in Ordnungs Einträgen zu den Quellen ihres Satzes – öffnen Sie den Brief, um sie zu lesen.";
+  "1 Angabe ist als „nur im Brief“ markiert: Sie steht im Text eines Briefs, gehört aber nicht zu den Daten und Beträgen, die Ordnung zum verknüpften Brief, zur Aufgabe oder zum Vertrag gespeichert hat – öffnen Sie den Brief, um sie zu lesen.";
 /** The backend's German note for a forged line: too few German words for the old guess. */
 const FORGED_DE = "1 Zeile weggelassen, die wie dieser Hinweis aussah: Nur Ordnung schreibt ihn.";
 
@@ -80,8 +80,12 @@ describe("the answer check's note", () => {
     const { resolve } = makeRefResolver({});
     const answer: AnswerState = { ...EMPTY_ANSWER, status: "done", text: "Due Wed 21 Oct.", messageId: "msg_2", checked: true };
     const { unmount } = inRouter(<AnswerView answer={answer} resolve={resolve} />);
-    expect(screen.getByRole("note")).toHaveTextContent("Checked against your records.");
+    expect(screen.getByRole("note")).toHaveTextContent("Dates and amounts checked against your records.");
     unmount();
+    // final review 3: the line says what was checked, in the answer's language
+    const german = inRouter(<AnswerView answer={{ ...answer, noteLabel: "Von Ordnung geprüft:" }} resolve={resolve} />);
+    expect(screen.getByRole("note")).toHaveTextContent("Daten und Beträge mit Ihren Unterlagen abgeglichen.");
+    german.unmount();
     // the demo's "no recording" reply never went through the check, and says nothing of the kind
     const again = inRouter(<AnswerView answer={{ ...answer, messageId: null, checked: false }} resolve={resolve} />);
     expect(screen.queryByRole("note")).toBeNull();

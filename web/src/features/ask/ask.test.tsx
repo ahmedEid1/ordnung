@@ -273,6 +273,9 @@ describe("tool trace labels", () => {
     // final review 2: a part of a month is a date the check reads ("Ende Januar": 31 January)
     expect(fallbackToolLabel("search", { query: "Frist verlängert Ende Januar" })).toBe("Searched your letters for “Frist verlängert …”");
     expect(fallbackToolLabel("search", { query: "mid-October payment" })).toBe("Searched your letters for “… payment”");
+    // final review 3: read as the check reads the words (a Unicode hyphen, emphasis markup)
+    expect(fallbackToolLabel("search", { query: "mid\u2010January fee" })).toBe("Searched your letters for “… fee”");
+    expect(fallbackToolLabel("search", { query: "Frist Ende **Januar**" })).toBe("Searched your letters for “Frist …”");
     expect(fallbackToolLabel("search", { query: "bis Ende Dezember 2027 zahlen" })).toBe("Searched your letters for “bis … zahlen”");
   });
 });

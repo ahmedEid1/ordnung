@@ -104,7 +104,7 @@ describe("mock dataset", () => {
       .filter((block) => block.startsWith("data: "))
       .map((block) => JSON.parse(block.slice(6)) as { type: string; message_id?: string; thread_id?: string; text?: string })
       .find((e) => e.type === "done")!;
-    // the UI marks an answer "Checked against your records" only when it was stored — this one never was checked
+    // the UI marks an answer "Dates and amounts checked against your records" only when it was stored — this one never was checked
     expect(done.message_id).toBeUndefined();
     expect(done.text).toMatch(/recorded answers/);
     const history = await s.handle("GET", `/chat/${done.thread_id}`, new URLSearchParams(), undefined);
@@ -145,7 +145,7 @@ describe("mock dataset", () => {
     expect(done.text).toContain("**“324,00 €”**");
     // the note travels in its own field, like the API's
     expect(done.text).not.toContain("Checked by Ordnung");
-    expect(done.note).toMatch(/^Left out 1 sentence: its date, time or amount isn't in Ordnung's record of what it cites/);
+    expect(done.note).toMatch(/^Left out 1 sentence: its date, time or amount isn't among the dates and amounts Ordnung saved/);
     const threadId = (done as { thread_id?: string }).thread_id;
     const history = await s.handle("GET", `/chat/${threadId}`, new URLSearchParams(), undefined);
     const thread = (await history.json()) as { role: string; note: string | null; note_label: string | null; checked: boolean }[];

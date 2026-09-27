@@ -87,7 +87,7 @@ export const RECORDED: RecordedAnswer[] = [
       "If you disagree, you can file an **Einspruch** (objection). It is free, a short letter is enough and the reasons can follow later. It must reach the Finanzamt by **Wed 21 Oct** [item:itm_tax_objection]; post it by **Thu 15 Oct** to be safe.\n\n" +
       "The letter was read from a phone photo, so please compare the date with the paper letter.",
     note:
-      "Left out 1 sentence: its date, time or amount isn't in Ordnung's record of what it cites. " +
+      "Left out 1 sentence: its date, time or amount isn't among the dates and amounts Ordnung saved for the linked letter, to-do or contract. " +
       "Amounts in quotation marks are the letter's, read from a photo or not found on its page; Ordnung has not confirmed them.",
     citations: [
       { type: "party", id: "pty_finanzamt" },

@@ -239,16 +239,21 @@ def _text(value: Any, title_of: TitleLookup | None = None) -> str:
 
 
 def _masked(raw: str) -> str:
-    """``raw`` with each word that holds a digit or a part of a stated value (the check's own reading:
-    :func:`ordnung.assistant.support.stated_values`) as "…", neighbouring ones as one."""
-    from ordnung.assistant.support import stated_values  # support reads this module's markers
+    """``raw`` with each word that holds a digit or a part of a stated value as "…", neighbouring ones as
+    one. The values are the check's own reading of the words as shown — markup dropped, punctuation
+    folded (:func:`ordnung.assistant.support.read_as_shown`, then
+    :func:`~ordnung.assistant.support.stated_values`: ``Ende **Januar**``, ``mid‐January``) — mapped back
+    to the words as written."""
+    from ordnung.assistant.support import read_as_shown, stated_values  # support reads this module's markers
 
-    values = stated_values(raw)
+    reading = read_as_shown(raw)
+    values = stated_values(reading.text)
     if any(value.start < 0 for value in values):
         return "…"  # a value that cannot be placed: show none of the words
     hidden = bytearray(len(raw))
     for value in values:
-        hidden[value.start : value.end] = b"\x01" * (value.end - value.start)
+        start, end = reading.source_span(value.start, value.end)
+        hidden[start:end] = b"\x01" * (end - start)
     words: list[str] = []
     for match in _WORD_RUN.finditer(raw):
         masked = hidden.find(1, *match.span()) >= 0 or _WITH_DIGIT.fullmatch(match.group())

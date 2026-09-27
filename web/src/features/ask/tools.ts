@@ -44,8 +44,12 @@ const MONTH_PART = new RegExp(`\\b(?:${MONTH_WORDS.parts})\\s*(?:${MONTH_WORD})\
 function str(v: unknown): string {
   // the model's own words: every word with a digit, and every part of a month, shows as "…" (the trace is
   // shown before the answer check, so it never shows a date or amount a letter could have put there —
-  // ADR 0008)
+  // ADR 0008); read as the check reads them: emphasis markup dropped, dashes folded ("Ende **Januar**",
+  // "mid‐January")
   const s = String(v ?? "")
+    .normalize("NFKC")
+    .replace(/[\u2010-\u2015\u2212]/g, "-")
+    .replace(/[*_`]+/g, "")
     .replace(/\s+/g, " ")
     .trim()
     .replace(MONTH_PART, "…")

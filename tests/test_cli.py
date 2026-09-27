@@ -220,16 +220,29 @@ def test_ask_prints_the_check_note_apart(data_dir: Path, monkeypatch: pytest.Mon
 
 def test_ask_says_an_unchanged_answer_was_checked(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Final review: the CLI printed no check line for an answer the check did not change (ADR 0008 says
-    it reads "Checked against your records"); the demo's "no recording" answer was never checked."""
+    it reads "Dates and amounts checked against your records" — final review 3: not "Checked against
+    your records", which read as if every claim was checked); the demo's "no recording" answer was never
+    checked."""
     answers = FakeBackend({"ask": "I couldn't find that. Keep the letter."})
     monkeypatch.setattr(cli, "open_context", lambda folder: build_context(folder, backend_obj=answers))
     result = invoke("ask", "What is due?", "--data-dir", str(data_dir))
     assert result.exit_code == 0, result.output
     assert cli.CHECKED_LINE in result.output
+    assert cli.CHECKED_LINE == "Dates and amounts checked against your records."
     printer = cli._AnswerPrinter()
     with cli.console.capture() as shown:
         printer.handle({"type": "done", "text": "The demo uses recorded answers …"})
     assert cli.CHECKED_LINE not in shown.get()
+    with cli.console.capture() as german:
+        printer.handle(
+            {
+                "type": "done",
+                "text": "Frist: Mi. 21.10.2026",
+                "message_id": "msg_1",
+                "note_label": "Von Ordnung geprüft:",
+            }
+        )
+    assert cli.CHECKED_LINE_DE in german.get()
 
 
 # --------------------------------------------------------------------------------------------------

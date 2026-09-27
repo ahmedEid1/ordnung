@@ -55,8 +55,12 @@ export function checkNoteLabel(note: string, label?: string | null): string {
   return looksGerman(note) ? CHECK_NOTE_LABEL_DE : CHECK_NOTE_LABEL;
 }
 
-/** Shown under a checked answer the check did not change. */
-export const CHECKED_LINE = "Checked against your records.";
+/**
+ * Shown under a checked answer the check did not change, in the answer's language. It says what was
+ * checked — the dates, times, amounts and laws, not every claim ("there is no deadline" is never read).
+ */
+export const CHECKED_LINE = "Dates and amounts checked against your records.";
+export const CHECKED_LINE_DE = "Daten und Beträge mit Ihren Unterlagen abgeglichen.";
 
 /**
  * What Ordnung's answer check did (ADR 0008): dates or amounts left out because the records their
@@ -77,7 +81,7 @@ export function CheckNote({ text, label }: { text: string | null; label?: string
             <span className="font-medium text-ink">{checkNoteLabel(text, label)}</span> {text}
           </>
         ) : (
-          <span className="font-medium text-ink">{CHECKED_LINE}</span>
+          <span className="font-medium text-ink">{label === CHECK_NOTE_LABEL_DE ? CHECKED_LINE_DE : CHECKED_LINE}</span>
         )}
       </span>
     </p>

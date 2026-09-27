@@ -7,9 +7,9 @@ computed, the person confirmed or the pipeline filed with verified evidence) and
 1. **What is read.** Each sentence as the person will see it: bidirectional formatting characters are
    removed from the answer (they would make the browser show digits in another order); citation
    markers, Markdown emphasis, code and link syntax, backslash escapes and invisible characters are
-   dropped and typographic punctuation folded before reading (``31.**12**.2027`` reads as 31.12.2027),
-   except an underscore between two letters or digits and an asterisk between two digits, which the web
-   shows. A sentence ends at ``.``, ``!`` or ``?`` before a capital letter (after optional quotes,
+   dropped, typographic punctuation folded and the digits of any script read as digits before reading
+   (``31.**12**.2027`` reads as 31.12.2027, ``٣١`` as 31), except an underscore between two letters or
+   digits and an asterisk between two digits, which the web shows. A sentence ends at ``.``, ``!`` or ``?`` before a capital letter (after optional quotes,
    markup or citation markers), never after a one-letter or listed abbreviation (:data:`ABBREVIATION`);
    every line is split on its own, except that a line continuing its paragraph, list item or quote joins
    the line before it when a value stands across the soft break (``21.10.`` / ``2027``). A line that
@@ -21,26 +21,40 @@ computed, the person confirmed or the pipeline filed with verified evidence) and
      ``Dec-31-2027``, ``31Dec2027``, ``December the 31st, 2027``); eight digits that are a date
      (``20271231``); ``31.12.'27``; and any run of digit groups joined by single marks (:data:`_RUN`:
      ``31|12|2027``, ``2027.12.31``, ``31/12/'27``, look-alike letters ``2O27``, ``31.l2.2027``) that
-     holds a day, a month and a year. Groups shaped like a date that are no calendar date (``31.02.2027``,
-     year 0) are *unreadable*: never supported. A time right after a date belongs to it
-     (``2027-12-31T23:59``). A run after a label (``Tel.``, ``Wohnung``, ``Az.``) is a number;
+     holds a day, a month and a year; year, month and day with their CJK signs (``2027年12月31日``); the
+     year written after a date (``Dec 31 of 2027``); and a bare day after a date and a range word
+     (``Oct 21–31, 2026``, ``Oct 21 through 31``, ``21. Oktober bis 31.``): the range's end, in the same
+     month. Groups shaped like a date that are no calendar date (``31.02.2027``, year 0) are *unreadable*:
+     never supported. So is a day, one word and a year when the word is no month the check knows
+     (``31 décembre 2027``, ``31 de diciembre de 2027``, ``31 Aralık 2027``: Ask answers in the language of
+     the question, and the check knows English and German month names only — it fails closed), and a
+     day in words before a month (``the thirty-first of October``; ``31. des Monats Oktober`` is a date).
+     A time right after a date belongs to it (``2027-12-31T23:59``). A run after a label (``Tel.``,
+     ``Wohnung``, ``Az.``) is a number;
    - a month with a year and no day (``December 2027``, ``Dec '27``, ``12/2027``, ``2027-12``), and a
      *part* of a month as the days it stands for: its end (``Ende Oktober``, ``end of October``, ``late
      October``: the last day; ``end of 2027``: 31 December), middle (``Mitte``, ``mid-``: the 11th to
      20th) or beginning (``Anfang``, ``early``: the 1st to 10th). Without a year, "may", "march" and
      "mar" are months only when capitalised ("paying late may add a fee" is the verb);
-   - a clock time: ``16:00``, ``4 pm``, ``4:30 p.m.``, ``10 Uhr``, ``14h``, ``14 h``, ``14h30``, and
-     ``10.30`` with its unit after it or after the other end of its range (``8.00–12.00 Uhr``). A
-     lower-case "am" before a number or a capitalised word is the German word — except before an English
-     weekday or month (``4 am Wednesday``);
+   - a clock time: ``16:00``, ``4 pm``, ``4:30 p.m.``, ``10 Uhr``, ``10 Uhr 45``, ``14h``, ``14 h``,
+     ``14h30``, ``14 h 30``, and ``10.30`` with its unit after it or after the other end of its range
+     (``8.00–12.00 Uhr``). A time moved by words before it (``halb 10 Uhr`` is 9:30, ``Viertel nach``,
+     ``quarter past``, ``5 nach``) or followed by a bare number (``10 am 45``) is *unreadable*. In an
+     English answer a lower-case "am" after a number is the time; otherwise, before a number or a
+     capitalised word it is the German word — except before an English weekday or month (``4 am
+     Wednesday``);
    - an amount: what :func:`~ordnung.ingest.verify.amount_matches` finds next to a currency or currency
-     word, one decimal or ``.-`` next to a currency (``18,4 €``), glued to a code (``999EUR``), cents
+     word, thousands groups joined by a space or an apostrophe as one number (``1 094,99 €``, ``1'094.99
+     CHF``; other groups next to a currency are unreadable: ``1 09,99 €``), one decimal or ``.-`` next to
+     a currency (``18,4 €``), glued to a code (``999EUR``), cents
      (``999 ct``), a scale word (``1,5k €``, ``1 Mio. €``), or a bare two-decimal number that is neither
      a label number (``Raum 2.14``) nor a clock time with its unit — "from 18.36 to 21.50" and "at 23.59"
      are money (when in doubt it is money). A rate (``2,90 %``) is no amount; a number next to a currency
      too long to be one (16 digits or more) is *unreadable*.
 
-   A sentence that starts like Ordnung's own note (:data:`NOTE_LABELS`) is left out, and the note says so.
+   A sentence that starts like Ordnung's own note (:data:`NOTE_LABELS`) is left out, and the note says so —
+   read with look-alike letters as Latin ones (``Оrdnung`` with a Cyrillic О) and across a soft line
+   break, as the web shows it.
 2. **Cited records.** The records the sentence cites. A sentence that cites none takes those of the
    nearest sentence before it on its line that cites some, else of the nearest after it; a list item
    that cites none takes those of the line ending in ``:`` that leads the list.
@@ -71,9 +85,11 @@ computed, the person confirmed or the pipeline filed with verified evidence) and
    one standing, the sentence is removed. The note then gives the own dates and amounts of the records
    concerned — never as what the left-out value should have been, never those of a scam record: "For
    the records concerned, Ordnung has on file: deadline Wed 21 Oct 2026".
-6. **Laws.** A § must be in the rules catalog, among the laws Ordnung's own Ideas state
-   (:func:`ordnung.assistant.ask.known_laws`) or in a record part (``§ 622 Abs. 1, 3, 6 BGB`` keeps its
-   law). Any other § — also one only a letter names — removes its whole sentence.
+6. **Laws.** A § — or a law cited in words: ``section 355 AO``, ``Paragraf 999 AO``, ``Art. 99 EGAO``;
+   a law named in words (``of the Fiscal Code``) leaves the number to match any law — must be in the
+   rules catalog, among the laws Ordnung's own Ideas state (:func:`ordnung.assistant.ask.known_laws`) or
+   in a record part (``§ 622 Abs. 1, 3, 6 BGB`` keeps its law). Any other § — also one only a letter
+   names — removes its whole sentence.
 
 The note — in the answer's language, under its label — says how many values, sentences and lines were
 left out and why, and how many citations were added; the caller adds the citations it removed and the
@@ -93,13 +109,18 @@ Known limits — documented, not bugs:
   its record part (a contract's code-written warning "…would end on Sun 1 Nov 2026"), even where another
   sentence's copy of that date was left out because the record it cites does not hold it.
 - Not read (the prompt and the record are the only defence): dates in words without a named month or
-  number ("next Friday", "end of the month", a bare year, "in October" with no year), calendar weeks,
-  rates, times without a unit ("at 4"), a duration in hours read as a clock time ("2 h"), claims without
-  a value or § ("there is no deadline"); ``31.12/27`` (read as an amount), six digits (``311227``), other
-  scripts, letters other than O, o, I, l and Z for digits, amounts in words. A dotted time after a date
-  or "at" (``14 Oct, 14.00``, "at 23.59") is read as money: left out as an amount, not as a time. In a
-  sentence with right-to-left letters, both orders of spaced day, month and year are read, other runs
-  are not.
+  number ("next Friday", "end of the month", a bare year, "in October" with no year), a day and a month
+  name of another language without a year (``31 décembre``), a month name of another language before
+  its day (``diciembre 31``), calendar weeks, rates, times without a unit ("at 4") or in words ("half
+  nine"), a duration in hours read as a clock time ("2 h"), claims without a value or § ("there is no
+  deadline"), the start of a range written as a bare day before its date (``1. bis 14. Oktober``: the
+  end, which a deadline is, is read); ``31.12/27`` (read as an amount), six digits (``311227``), letters
+  other than O, o, I, l and Z for digits, amounts in words. A dotted time after a date or "at" (``14
+  Oct, 14.00``, "at 23.59") is read as money: left out as an amount, not as a time. In a sentence with
+  right-to-left letters, both orders of spaced day, month and year are read, other runs are not.
+- Failing closed has a cost: a correct date written with another language's month name (``21 octobre
+  2026``) is left out like a wrong one, and a day, a word and a year that is no date at all (``3 Briefe
+  2026``) is left out as a date. The note and the placeholders are English or German.
 - A sentence whose value was left out keeps its words ("the deadline moved to [date only in the
   letter]" — also when it repeats a letter's claim as if it were true); the placeholder and the note, with
   Ordnung's own dates, show whose value it is. A correct value only a letter holds, or a correct § only
@@ -125,7 +146,7 @@ from ordnung.assistant.channels import parse_tool_result
 from ordnung.assistant.citations import ID_PREFIXES, marker_spans, parse_citations
 from ordnung.ingest.normalize import fold_punctuation
 from ordnung.ingest.verify import MONTH_NUMBERS, DateMention, amount_matches, parse_dates
-from ordnung.secretary.review import paragraph_spans, paragraphs_in
+from ordnung.secretary.review import paragraph_spans
 
 CITABLE_ID = re.compile(r"(?:doc|itm|ctr|pty)_[a-z0-9]+")
 LINK_KEYS = ("doc_id", "contract_id", "party_id", "source_doc_id")
@@ -279,6 +300,20 @@ _APOSTROPHE_YEAR = re.compile(
     r"(?<![\w.,/-])(?P<d>\d{1,2})(?P<s>[./-])(?P<m>\d{1,2})(?P=s)['’](?P<y>\d{2})(?![\w]|[.,]\d)"
 )
 """``31.12.'27``, ``31/12/'27``: :func:`~ordnung.ingest.verify.parse_dates` reads only ``31.12.``."""
+_ANY_WORD = r"[^\s\d!-/:-@\[-`{-~]+"
+"""A word of any script, with its marks: no space, digit or ASCII punctuation."""
+_OTHER_NAMED_DATE = re.compile(
+    rf"(?<![\w.,/-])(?P<d>0?[1-9]|[12]\d|3[01])(?:\.|°|-?[^\W\d_]{{1,3}}\.?)?\s+(?:(?:de|of|the)\s+)?"
+    rf"(?P<w>{_ANY_WORD})\.?,?\s+(?:(?:de|del|of)\s+)?(?P<y>(?:19|20)\d{{2}})(?!\d)",
+    re.IGNORECASE,
+)
+"""A day, one word and a year (``31 décembre 2027``, ``31 de diciembre de 2027``, ``31 grudnia 2027 r.``,
+``31 Aralık 2027``, ``31 декабря 2027``): a date in a language whose month names the check does not
+know — *unreadable* unless the word is a month it knows (rule 1: fail closed)."""
+_CJK_DATE = re.compile(
+    r"(?<!\d)(?:(?P<y>\d{4})\s?年\s?)?(?P<m>0?[1-9]|1[0-2])\s?月(?:\s?(?P<d>0?[1-9]|[12]\d|3[01])\s?[日号])?"
+)
+"""``2027年12月31日``, ``12月31日`` and ``2027年12月``: year, month and day with their signs."""
 _PART_WORDS = (
     r"(?:the\s+)?end\s+of(?:\s+the\s+month\s+of)?|ende|late|monatsende|ultimo|mid-?|(?:the\s+)?middle\s+of"
     r"|mitte|early|(?:the\s+)?(?:beginning|start)\s+of|anfang|beginn|monatsanfang"
@@ -295,6 +330,27 @@ part of a month, with or without a year: ``Ende Oktober 2026``, ``end of October
 (the month's last day), ``mid-October`` / ``Mitte Oktober`` (its 11th to 20th), ``early October`` /
 ``Anfang Oktober`` (its 1st to 10th); ``end of 2027`` is 31 December. A bare month is supported by
 any record date in it (rule 3), a part of a month only by a record date in that part."""
+_EN_UNITS = (
+    "one|two|three|four|five|six|seven|eight|nine|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth"
+)
+_DE_UNITS = "ein|zwei|drei|vier|fünf|sechs|sieben|acht|neun"
+_NUMBER_WORD = (
+    rf"(?:(?:twenty|thirty)(?:[-\s]?(?:{_EN_UNITS}))?|twentieth|thirtieth|{_EN_UNITS}|ten|tenth|eleven|eleventh"
+    r"|twelve|twelfth|(?:thir|four|fif|six|seven|eigh|nine)teen(?:th)?"
+    rf"|(?:(?:{_DE_UNITS})und)?(?:zwanzig|dreißig|dreissig)(?:ste[nrms]?)?"
+    r"|(?:erste|zweite|dritte|vierte|fünfte|sechste|siebte|siebente|achte|neunte|zehnte|elfte|zwölfte"
+    r"|(?:drei|vier|fünf|sech|sieb|acht|neun)zehnte)[nrms]?"
+    rf"|eins|{_DE_UNITS}|zehn|elf|zwölf|(?:drei|vier|fünf|sech|sieb|acht|neun)zehn)"
+)
+_WORD_DAY = re.compile(
+    rf"\b(?:(?P<w>{_NUMBER_WORD})\s+(?:of\s+(?:the\s+month\s+of\s+)?)?"
+    rf"|(?P<n>0?[1-9]|[12]\d|3[01])(?:st|nd|rd|th|\.)?\s+(?:of\s+the\s+month\s+of|des\s+Monats|im\s+Monat)\s+)"
+    rf"(?P<m>{_MONTH_NAME})\b(?!['’]\w)\.?(?:,?\s*(?P<y>{_YEAR4})(?![\dOoIlZ]))?",
+    re.IGNORECASE,
+)
+"""A day before a month name that the other forms do not read: in words (``the thirty-first of October
+2026``, ``einunddreißigsten Oktober``) — *unreadable*, never read as the month (a day ten days late would
+pass as a date in it) —, or in digits with "des Monats" (``31. des Monats Oktober 2026``: a date)."""
 _VERB_MONTHS = frozenset({"may", "march", "mar"})
 """Month names that are also English verbs: after a part word and with no year, only capitalised ones
 are months ("late May", never "filed late may be rejected")."""
@@ -326,9 +382,22 @@ _COLON_TIME = re.compile(
     r"(?<![\w.,:])(?P<h>[01]?\d|2[0-4]):(?P<m>[0-5]\d)(?::[0-5]\d)?(?![\d:])(?:\s?(?:Uhr|h)\b)?"
 )
 _HOUR_TIME = re.compile(
-    r"(?<![\w.,:])(?:(?P<h>[01]?\d|2[0-4])\s?(?:Uhr|o'clock)\b|(?P<hh>[01]?\d|2[0-3])\s?h(?P<m>[0-5]\d)?\b)",
+    r"(?<![\w.,:])(?:(?P<h>[01]?\d|2[0-4])\s?(?:Uhr|o'clock)\b(?:\s?(?P<um>[0-5]\d)(?![\d:]|[.,]\d))?"
+    r"|(?P<hh>[01]?\d|2[0-3])\s?h(?:\s?(?P<m>[0-5]\d)(?![\d:]|[.,]\d))?\b)",
     re.IGNORECASE,
 )
+_TIME_WORDS_BEFORE = re.compile(
+    r"\b(?:halb|(?:viertel|dreiviertel|drei\s+viertel)(?:\s+(?:nach|vor))?|(?:a\s+)?quarter\s+(?:past|to|till|after|of)"
+    r"|half\s+past|(?:kurz|gleich)\s+(?:vor|nach)"
+    r"|(?:\d{1,2}|five|ten|twenty|twenty[-\s]five|fünf|zehn|zwanzig|fünfundzwanzig)\s+(?:minutes?\s+|Minuten\s+)?"
+    r"(?:past|after|before|nach|vor)|(?:five|ten|twenty|twenty[-\s]five)\s+(?:minutes?\s+)?(?:to|till))\s+$",
+    re.IGNORECASE,
+)
+"""Words that move a clock time (``halb 10 Uhr`` is 9:30, ``quarter past 10 am`` 10:15): with them the
+time is *unreadable* (rule 1). A bare number before "to" or "bis" is the start of a range (``9 to 10
+am``), not a move."""
+_NUMBER_AFTER_TIME = re.compile(r"\s?\d{1,2}(?![\d:]|[.,/]\d)")
+"""A bare number right after an hour (``10 am 45``): minutes the check cannot place — *unreadable*."""
 _DOT_TIME = re.compile(r"(?<![\w.,])(?P<h>[01]?\d|2[0-4])[.,](?P<m>[0-5]\d)(?!\d|[.,]\d)")
 """Clock times (rule 1): ``16:00``, ``4 pm``, ``4:30 p.m.``, ``10 Uhr``, ``14h``, ``14 h``, ``14h30``, and
 ``10.30`` only with its unit after it or after the other end of its range (``10.30 Uhr``, ``8.00–12.00
@@ -379,12 +448,29 @@ _LABEL_BEFORE = re.compile(
     r"Door|Schalter|Counter|Desk|Platz|Seat)\.?|§)\s*$",
     re.IGNORECASE,
 )
-_FORGED_NOTE = re.compile(
-    r"^[\W\d_]*(?:checked\s+by\s+ordnung|von\s+ordnung\s+gepr(?:ü|ue)ft)\s*(?:[^\w\s']|$)", re.IGNORECASE
-)
+_NOTE_LABEL = r"checked\s+by\s+ordnung|von\s+ordnung\s+gepru(?:e)?ft"
+_FORGED_NOTE = re.compile(rf"^[\W\d_]*(?:{_NOTE_LABEL})\s*(?:[^\w\s']|$)", re.IGNORECASE)
 """A sentence that starts like the check's note (after any symbols, emoji, numbers or markup) and goes
 on with punctuation or a symbol (``:``, ``—``, ``✓``, ``)``) or ends there — but not a sentence such as
-"Checked by Ordnung's records, …", which is checked like any other."""
+"Checked by Ordnung's records, …", which is checked like any other. It is matched on the sentence's
+:func:`skeleton`, so look-alike letters (``Оrdnung`` with a Cyrillic О) are the label too, and on the
+paragraph as the web shows it (a soft line break inside the label joins its lines: :func:`_units`)."""
+_LABEL_ANYWHERE = re.compile(_NOTE_LABEL, re.IGNORECASE)
+_LOOKALIKES = str.maketrans(
+    "АВЕЅІЈКМНОРСТУХаеіјкорсухԁһӏԛԝьгпΑΒΕΖΗΙΚΜΝΟΡΤΥΧαιοκνρτυχɡı",
+    "ABESIJKMHOPCTYXaeijkopcyxdhlqwbrnABEZHIKMNOPTYXaiokvptuxgi",
+)
+"""Cyrillic and Greek letters that look like Latin ones (Unicode's confusables, the letters of the
+note's label and their neighbours)."""
+
+
+def skeleton(text: str) -> str:
+    """``text`` as it looks: NFKD without combining marks, look-alike letters as Latin ones
+    (``Сhеckеd`` → ``Checked``, ``geprüft`` → ``geprueft`` is matched as ``gepruft``)."""
+    decomposed = unicodedata.normalize("NFKD", text)
+    return "".join(char for char in decomposed if not unicodedata.combining(char)).translate(_LOOKALIKES)
+
+
 _QUOTE_CLOSERS: Mapping[str, str] = {
     '"': '"', "“": "”", "„": "“”", "«": "»", "»": "«", "‚": "‘’", "‹": "›", "›": "‹",
 }  # fmt: skip
@@ -489,10 +575,23 @@ def read_as_shown(source: str) -> Reading:
             index += 1
             continue
         for folded in fold_punctuation(char):
-            chars.append(folded)
+            chars.append(_as_ascii_digit(folded))
             offsets.append(index)
         index += 1
     return Reading("".join(chars), tuple(offsets))
+
+
+_OTHER_NUMBER_MARKS = {"\u066b": ",", "\u066c": "."}
+"""The Arabic decimal and thousands separators, read as the German marks (``١٬٠٩٤٫٩٩`` is 1.094,99)."""
+
+
+def _as_ascii_digit(char: str) -> str:
+    """A digit of another script as the digit it stands for (``٣١`` reads as 31): every reader reads
+    ASCII digits, so no script's digits pass unread (rule 1)."""
+    if char.isascii():
+        return char
+    value = unicodedata.decimal(char, None)
+    return str(value) if value is not None else _OTHER_NUMBER_MARKS.get(char, char)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -593,10 +692,18 @@ def times_in(text: str) -> set[tuple[int, int]]:
 
 def amounts_in(text: str) -> list[float]:
     """:func:`~ordnung.ingest.verify.amount_matches` (except rates: ``2,90 %``) plus amounts with a
-    currency word, the one-decimal or ``.-`` amounts next to a currency, and the forms of
-    :func:`_more_amounts` (``999EUR``, ``99900 Cent``, ``1,5k €``)."""
+    currency word, the one-decimal or ``.-`` amounts next to a currency, the forms of
+    :func:`_more_amounts` (``999EUR``, ``99900 Cent``, ``1,5k €``) and thousands groups joined by
+    spaces or apostrophes (``1 094,99 €``, read whole)."""
     folded = fold_punctuation(text)
-    values = [match.value for match in amount_matches(text) if not _PERCENT_AFTER.match(folded, match.end)]
+    grouped = [(start, end, value) for start, end, value in _grouped_amounts(folded)]
+    values = [
+        match.value
+        for match in amount_matches(text)
+        if not _PERCENT_AFTER.match(folded, match.end)
+        and not any(start <= match.start < end for start, end, _ in grouped)
+    ]
+    values += [value for _, _, value in grouped if value is not None]
     values += [value for match in _WORD_CURRENCY.finditer(folded) if (value := _word_amount(match))]
     values += [value for _, _, value in _short_amounts(folded)]
     values += [value for _, _, value in _more_amounts(folded)]
@@ -652,6 +759,42 @@ _LONG_AMOUNT = re.compile(
     re.IGNORECASE,
 )
 """A number next to a currency too long to be an amount: *unreadable*, never supported (rule 1)."""
+_GROUP_RUN = re.compile(r"(?<![\w.,'])(?<!\d[ '])\d++(?:[ ']\d++)++(?:[.,]\d++)?+")
+"""Digit groups joined by single spaces or apostrophes, from the run's first group (a no-break, narrow
+no-break or thin space reads as a space): each run is read once, whatever its length."""
+_GROUP_PART = re.compile(r"\d+")
+
+
+def _grouped_amounts(plain: str) -> Iterator[tuple[int, int, float | None]]:
+    """``(start, end, value)`` of the thousands groups of DIN 5008, SI and Swiss writing (``1 094,99``,
+    ``1'094.99``) that are money — next to a currency, or with two decimals (rule 1): a first group of
+    one to three digits and then groups of exactly three are one number (``1 094,99 €`` is 1094.99,
+    never 94.99); other groups next to a currency are *unreadable* (``None``: ``1 09,99 €``,
+    ``1 094,999 €``)."""
+    for run in _GROUP_RUN.finditer(plain):
+        end = run.end()
+        if end < len(plain) and (plain[end].isalnum() or plain[end] == "_"):
+            continue  # "1 2 3x": no number
+        parts = [(match.start() + run.start(), match.group()) for match in _GROUP_PART.finditer(run.group())]
+        decimal = run.group()[-len(parts[-1][1]) - 1] in ".,"
+        groups, decimals = (parts[:-1], parts[-1][1]) if decimal else (parts, "")
+        first = len(groups) - 1  # where the thousands groups start: the last group with 1-3 digits before
+        while first > 0 and len(groups[first][1]) == 3:
+            first -= 1
+        if not (first < len(groups) - 1 and 1 <= len(groups[first][1]) <= 3 and len(decimals) <= 2):
+            first = max(0, len(groups) - 2)  # none: the last two groups
+        start = groups[first][0]
+        currency = bool(
+            _CURRENCY_AFTER.match(plain, end)
+            or _CURRENCY_BEFORE.search(plain, max(0, start - _WINDOW), start)
+        )
+        shaped = len(decimals) <= 2 and all(len(group) == 3 for _, group in groups[first + 1 :])
+        if shaped and 1 <= len(groups[first][1]) <= 3 and len(groups) - first >= 2:
+            if currency or len(decimals) == 2:
+                number = int("".join(group for _, group in groups[first:]))
+                yield start, end, number + (int(decimals) / 10 ** len(decimals) if decimals else 0.0)
+        elif currency and len(groups) - first >= 2 and len(groups[first][1]) <= 3:
+            yield start, end, None
 
 
 def _decimal(number: str) -> float:
@@ -925,10 +1068,15 @@ class _Taken:
             self.mask[start:end] = b"\x01" * (end - start)
 
 
-def stated_values(plain: str) -> list[Value]:
+def stated_values(plain: str, *, german: bool | None = None) -> list[Value]:
     """The dates, months, clock times and amounts a sentence states, in reading order (``plain``: the
-    sentence as read). A one-decimal amount next to a currency (``€ 18.4``) is read before the dates,
-    so it is never taken for a date without a year; a time with its unit (``10.10 Uhr``) too."""
+    sentence as read; ``german``: the answer's language — in an English answer a lower-case "am" after
+    a number is always the time, ``None`` decides by the word after it). A one-decimal amount next to
+    a currency (``€ 18.4``) is read before the dates, so it is never taken for a date without a year;
+    a time with its unit (``10.10 Uhr``) too. What only the words around a value say is read last:
+    the year after a date that has none (``Dec 31 of 2027``), the end of a range after a date
+    (``Oct 21–31, 2026``) and a day, a word and a year in a language whose month names the check does
+    not know (unreadable)."""
     taken = _Taken(len(plain))
     values: list[Value] = []
 
@@ -939,6 +1087,8 @@ def stated_values(plain: str) -> list[Value]:
 
     for match in _LONG_AMOUNT.finditer(plain):
         claim(Value(match.group(), "unreadable", *match.span()))
+    for start, end, grouped in _grouped_amounts(plain):
+        claim(Value(plain[start:end], "amount", start, end, amount=grouped))
     for start, end, worth in (*_short_amounts(plain), *_more_amounts(plain)):
         claim(Value(plain[start:end], "amount", start, end, amount=worth))
     for value in _dotted_times(plain):
@@ -954,9 +1104,11 @@ def stated_values(plain: str) -> list[Value]:
     for pattern, reading in _DATE_FORMS[_FIRST_FORMS:]:
         for value in _form_values(plain, pattern, reading):
             claim(value)
+    for value in (*_cjk_values(plain), *_word_day_values(plain)):
+        claim(value)
     for value in _month_values(plain):
         claim(value)
-    for value in _time_values(plain, taken):
+    for value in _time_values(plain, taken, german=german):
         claim(value)
     for amount in amount_matches(plain):
         span = (amount.start, amount.end)
@@ -969,7 +1121,111 @@ def stated_values(plain: str) -> list[Value]:
         span = match.span("num")
         if taken.free(*span) and (words := _word_amount(match)) is not None:
             claim(Value(match.group("num"), "amount", *span, amount=words))
+    for value in _other_named_values(plain):
+        claim(value)
+    for index, value in enumerate(values):
+        if (longer := _with_year_after(plain, value, taken)) is not None:
+            values[index] = longer
+            taken.take(longer.start, longer.end)
+    for value in list(values):
+        for range_end in _range_ends(plain, value, taken):
+            claim(range_end)
     return sorted(values, key=lambda value: value.start)
+
+
+def _other_named_values(plain: str) -> Iterator[Value]:
+    """:data:`_OTHER_NAMED_DATE`: a date when the word is a month the check knows, else *unreadable*."""
+    for match in _OTHER_NAMED_DATE.finditer(plain):
+        if _after_label(match):
+            continue
+        start, end = match.span()
+        month = MONTH_NUMBERS.get(match.group("w").casefold())
+        readings = (
+            _valid_mention(plain[start:end], int(match.group("d")), month, int(match.group("y")))
+            if month
+            else []
+        )
+        yield Value(plain[start:end], "date" if readings else "unreadable", start, end, dates=tuple(readings))
+
+
+def _cjk_values(plain: str) -> Iterator[Value]:
+    """:data:`_CJK_DATE`: a date, a day and month, or a month with its year (a month alone is not read)."""
+    for match in _CJK_DATE.finditer(plain):
+        start, end = match.span()
+        year, day = match.group("y"), match.group("d")
+        if day is None:
+            if year is not None:
+                yield Value(plain[start:end], "date", start, end, month=(int(year), int(match.group("m"))))
+            continue
+        readings = _valid_mention(
+            plain[start:end], int(day), int(match.group("m")), int(year) if year else None
+        )
+        yield Value(plain[start:end], "date" if readings else "unreadable", start, end, dates=tuple(readings))
+
+
+def _word_day_values(plain: str) -> Iterator[Value]:
+    """:data:`_WORD_DAY`: a day in words is *unreadable*; a day in digits with "des Monats" a date."""
+    for match in _WORD_DAY.finditer(plain):
+        name = match.group("m")
+        if name.casefold() in _VERB_MONTHS and not name[0].isupper():
+            continue  # "one may object": the verb
+        start, end = match.span()
+        if match.group("w"):
+            yield Value(plain[start:end], "unreadable", start, end)
+            continue
+        year = _digits(match.group("y")) if match.group("y") else None
+        readings = _valid_mention(
+            plain[start:end], int(match.group("n")), MONTH_NUMBERS[name.casefold()], year
+        )
+        yield Value(plain[start:end], "date" if readings else "unreadable", start, end, dates=tuple(readings))
+
+
+_YEAR_AFTER = re.compile(r",?\s+(?:of|in|de|del)\s+(?P<y>(?:19|20)\d{2})(?!\d)", re.IGNORECASE)
+"""The year written after a date without one: ``Dec 31 of 2027`` is 31 Dec 2027."""
+_RANGE_END = re.compile(
+    r"\s?(?:-|through|thru|to|until|till|bis(?:\s+(?:zum|einschließlich))?)\s?(?P<d>0?[1-9]|[12]\d|3[01])"
+    r"(?:st|nd|rd|th|\.)?(?![\d\w]|[.,:/]\d|\s?(?:Uhr|h|am|pm|a\.m|p\.m|o'clock)\b|\s?(?:%|€))"
+    r"(?:,?\s(?P<y>(?:19|20)\d{2})(?!\d))?",
+    re.IGNORECASE,
+)
+"""The end of a range written as a bare day after a date (``Oct 21–31, 2026``, ``Oct 21 through 31``,
+``21. Oktober bis 31.``): a date in the same month (and year, unless the range gives its own)."""
+
+
+def _one_day(value: Value) -> DateMention | None:
+    """The date of a date value with one reading (a part of a month or a slash date has more)."""
+    if value.kind != "date" or value.month is not None or value.start < 0 or len(value.dates) != 1:
+        return None
+    return value.dates[0]
+
+
+def _with_year_after(plain: str, value: Value, taken: _Taken) -> Value | None:
+    """``value`` with the year written after it (:data:`_YEAR_AFTER`), when it has none."""
+    day = _one_day(value)
+    if day is None or day.year is not None or value.clock is not None:
+        return None
+    found = _YEAR_AFTER.match(plain, value.end)
+    if found is None or not taken.free(value.end, found.end()):
+        return None
+    text = plain[value.start : found.end()]
+    readings = _valid_mention(text, day.day, day.month, int(found.group("y")))
+    kind: ValueKind = "date" if readings else "unreadable"
+    return Value(text, kind, value.start, found.end(), dates=tuple(readings))
+
+
+def _range_ends(plain: str, value: Value, taken: _Taken) -> Iterator[Value]:
+    """The end of a range after ``value`` (:data:`_RANGE_END`): a later day of the same month."""
+    first = _one_day(value)
+    found = _RANGE_END.match(plain, value.end) if first is not None else None
+    if first is None or found is None or not taken.free(found.start("d"), found.end()):
+        return
+    day = int(found.group("d"))
+    if day <= first.day:
+        return  # "Oct 21 - 3 payments": no range
+    year = int(found.group("y")) if found.group("y") else first.year
+    start, end = found.start("d"), found.end()
+    readings = _valid_mention(plain[start:end], day, first.month, year)
+    yield Value(plain[start:end], "date" if readings else "unreadable", start, end, dates=tuple(readings))
 
 
 def _form_values(
@@ -1011,25 +1267,56 @@ def _dotted_times(plain: str) -> Iterator[Value]:
         )
 
 
-def _time_values(plain: str, taken: _Taken) -> Iterator[Value]:
+def _time_values(plain: str, taken: _Taken, *, german: bool | None = None) -> Iterator[Value]:
     """Clock times (:data:`_AMPM_TIME`, :data:`_COLON_TIME`, :data:`_HOUR_TIME`, :func:`_dotted_times`)
-    not inside a value already read (``T23:59`` belongs to its date)."""
+    not inside a value already read (``T23:59`` belongs to its date); a time moved by words before it
+    (:data:`_TIME_WORDS_BEFORE`) or followed by a bare number (:data:`_NUMBER_AFTER_TIME`) is
+    *unreadable* — a time value without a clock, left out as a time. ``german``: see
+    :func:`stated_values`."""
     for match in _AMPM_TIME.finditer(plain):
         if not taken.free(*match.span()):
             continue
         ap = match.group("ap")
-        if ap == "a" and not match.group().rstrip().endswith(".") and _german_am(plain, match.end()):
+        if (
+            ap == "a"
+            and german is not False
+            and not match.group().rstrip().endswith(".")
+            and _german_am(plain, match.end())
+        ):
             continue  # "3 am 14.10.", "4 am Montag": the German word
         hour = int(match.group("h")) % 12 + (12 if ap in "Pp" else 0)
-        yield Value(match.group(), "time", *match.span(), clock=(hour, int(match.group("m") or 0)))
+        clock = (hour, int(match.group("m") or 0))
+        yield _moved(plain, taken, match, clock, minutes=match.group("m") is not None)
     for match in _COLON_TIME.finditer(plain):
-        yield Value(
-            match.group(), "time", *match.span(), clock=(int(match.group("h")), int(match.group("m")))
-        )
+        clock = (int(match.group("h")), int(match.group("m")))
+        yield _moved(plain, taken, match, clock, minutes=True)
     for match in _HOUR_TIME.finditer(plain):
-        clock = (int(match.group("h") or match.group("hh")), int(match.group("m") or 0))
-        yield Value(match.group(), "time", *match.span(), clock=clock)
-    yield from _dotted_times(plain)
+        minutes = match.group("m") or match.group("um")
+        clock = (int(match.group("h") or match.group("hh")), int(minutes or 0))
+        yield _moved(plain, taken, match, clock, minutes=minutes is not None)
+    for value in _dotted_times(plain):
+        yield _moved_value(
+            plain, value, _TIME_WORDS_BEFORE.search(plain, max(0, value.start - 40), value.start)
+        )
+
+
+def _moved(
+    plain: str, taken: _Taken, match: re.Match[str], clock: tuple[int, int], *, minutes: bool
+) -> Value:
+    """The time of ``match`` — *unreadable* when words move it or a bare number follows an hour."""
+    start, end = match.span()
+    value = Value(match.group(), "time", start, end, clock=clock)
+    words = _TIME_WORDS_BEFORE.search(plain, max(0, start - 40), start)
+    after = _NUMBER_AFTER_TIME.match(plain, end) if words is None and not minutes else None
+    if after is not None and taken.free(after.start(), after.end()):
+        return Value(plain[start : after.end()], "time", start, after.end())
+    return _moved_value(plain, value, words)
+
+
+def _moved_value(plain: str, value: Value, words: re.Match[str] | None) -> Value:
+    if words is None:
+        return value
+    return Value(plain[words.start() : value.end], "time", words.start(), value.end)
 
 
 def _german_am(plain: str, end: int) -> bool:
@@ -1070,6 +1357,31 @@ def _date_values(plain: str) -> list[Value]:
         end, clock = _with_time(plain, end)
         values.append(Value(plain[start:end], "date", start, end, dates=tuple(group), clock=clock))
     return values
+
+
+_WORDED_LAW = re.compile(
+    r"\b(?i:section|sec\.|paragraph|paragraf|paragraphen|art\.|artikel|article)\s*(?P<num>\d+[a-z]?)"
+    r"(?:\(\d+[a-z]?\))*(?:\s*(?i:Abs\.|Absatz|S\.|Satz|Nr\.|Nummer|subsection|para\.|sentence|no\.)\s*\d+[a-z]?)*"
+    r"(?:\s+(?:of\s+the\s+)?(?P<law>[A-ZÄÖÜ][A-Za-zÄÖÜäöü]*[A-Z](?:\s+[IVX]{1,4}\b)?)(?![\w]))?"
+)
+"""A law cited in words (``section 999 of the Fiscal Code``, ``Paragraf 999 AO``, ``Art. 99 EGAO``): a
+§ citation like any other (rule 6) — a law named in words (``the Fiscal Code``) is no abbreviation, so
+the number must be known for some law."""
+
+
+def law_spans(text: str) -> Iterator[tuple[str, str | None, int, int]]:
+    """The § citations of ``text`` (:func:`~ordnung.secretary.review.paragraph_spans`) and the laws cited
+    in words (:data:`_WORDED_LAW`), as ``(number, law or None, start, end)``."""
+    yield from paragraph_spans(text)
+    for match in _WORDED_LAW.finditer(text):
+        law = match.group("law")
+        yield match.group("num").lower(), " ".join(law.split()) if law else None, *match.span()
+
+
+def laws_in(text: str) -> Iterator[tuple[str, str | None]]:
+    """:func:`law_spans` without where they stand."""
+    for number, law, _, _ in law_spans(text):
+        yield number, law
 
 
 def _is_money(plain: str, start: int, end: int) -> bool:
@@ -1198,7 +1510,7 @@ class TurnEvidence:
         for text in person:
             words.add_text(text)
         for text in catalog:
-            collector.paragraphs.update(paragraphs_in(text))
+            collector.paragraphs.update(laws_in(text))
         letter_fields: list[tuple[str, Any]] = []
         for text in results:
             parsed = parse_tool_result(text)
@@ -1371,7 +1683,7 @@ class _Collector:
             if CITABLE_ID.fullmatch(value):
                 self.seen.add(value)
                 return
-            self.paragraphs.update(paragraphs_in(value))
+            self.paragraphs.update(laws_in(value))
             for bag in bags:
                 bag.add_text(value)
         elif isinstance(value, int | float) and not isinstance(value, bool) and (money or key in AMOUNT_KEYS):
@@ -1513,54 +1825,67 @@ PLACEHOLDERS = tuple(
 
 def style_for(text: str) -> Style:
     """German when the answer has more common German than English words, else English."""
+    return GERMAN if language_of(text) else ENGLISH
+
+
+def language_of(text: str) -> bool | None:
+    """Whether ``text`` is German (``True``: more common German than English words), English
+    (``False``: more English ones) or neither (``None``)."""
     german = english = 0
     for word in _WORD.findall(text):
         folded = word.casefold()
         german += folded in _DE_WORDS
         english += folded in _EN_WORDS
-    return GERMAN if german > english else ENGLISH
+    return True if german > english else False if english > german else None
 
 
 _NOTE_TEXTS: Mapping[str, tuple[str, str, str, str]] = {
     # (English one, English many, German one, German many); {n} is the count. The label says who
     # checked ("Checked by Ordnung:"), so the texts do not start with "Ordnung" again.
     "removed_value": (
-        "Left out 1 sentence: its date, time or amount isn't in Ordnung's record of what it cites.",
-        "Left out {n} sentences: their dates, times or amounts aren't in Ordnung's record of what they cite.",
-        "1 Satz weggelassen: Sein Datum, seine Uhrzeit oder sein Betrag steht nicht in Ordnungs Einträgen zu "
-        "seinen Quellen.",
-        "{n} Sätze weggelassen: Ihre Daten, Uhrzeiten oder Beträge stehen nicht in Ordnungs Einträgen zu "
-        "ihren Quellen.",
+        "Left out 1 sentence: its date, time or amount isn't among the dates and amounts Ordnung saved for "
+        "the linked letter, to-do or contract.",
+        "Left out {n} sentences: their dates, times or amounts aren't among the dates and amounts Ordnung saved "
+        "for the linked letters, to-dos or contracts.",
+        "1 Satz weggelassen: Sein Datum, seine Uhrzeit oder sein Betrag gehört nicht zu den Daten und Beträgen, "
+        "die Ordnung zum verknüpften Brief, zur Aufgabe oder zum Vertrag gespeichert hat.",
+        "{n} Sätze weggelassen: Ihre Daten, Uhrzeiten oder Beträge gehören nicht zu den Daten und Beträgen, "
+        "die Ordnung zu den verknüpften Briefen, Aufgaben oder Verträgen gespeichert hat.",
     ),
     "removed_letter": (
-        "Left out 1 sentence: its date, time or amount is in a letter's text but not in Ordnung's record of "
-        "what it cites — open the letter to read it.",
-        "Left out {n} sentences: their dates, times or amounts are in a letter's text but not in Ordnung's "
-        "record of what they cite — open the letter to read them.",
-        "1 Satz weggelassen: Sein Datum, seine Uhrzeit oder sein Betrag steht im Text eines Briefs, aber "
-        "nicht in Ordnungs Einträgen zu seinen Quellen – öffnen Sie den Brief, um ihn zu lesen.",
-        "{n} Sätze weggelassen: Ihre Daten, Uhrzeiten oder Beträge stehen im Text eines Briefs, aber nicht "
-        "in Ordnungs Einträgen zu ihren Quellen – öffnen Sie den Brief, um sie zu lesen.",
+        "Left out 1 sentence: its date, time or amount is in a letter's text, but not among the dates and "
+        "amounts Ordnung saved for the linked letter, to-do or contract — open the letter to read it.",
+        "Left out {n} sentences: their dates, times or amounts are in a letter's text, but not among the dates "
+        "and amounts Ordnung saved for the linked letters, to-dos or contracts — open the letter to read them.",
+        "1 Satz weggelassen: Sein Datum, seine Uhrzeit oder sein Betrag steht im Text eines Briefs, gehört aber "
+        "nicht zu den Daten und Beträgen, die Ordnung zum verknüpften Brief, zur Aufgabe oder zum Vertrag gespeichert hat – öffnen Sie den "
+        "Brief, um ihn zu lesen.",
+        "{n} Sätze weggelassen: Ihre Daten, Uhrzeiten oder Beträge stehen im Text eines Briefs, gehören aber "
+        "nicht zu den Daten und Beträgen, die Ordnung zu den verknüpften Briefen, Aufgaben oder Verträgen gespeichert hat – öffnen "
+        "Sie den Brief, um sie zu lesen.",
     ),
     "redacted": (
-        "1 date, time or amount is marked “left out”: it isn't in Ordnung's record of what its sentence "
-        "cites.",
-        "{n} dates, times or amounts are marked “left out”: they aren't in Ordnung's record of what their "
-        "sentences cite.",
-        "1 Angabe ist als „weggelassen“ markiert: Sie steht nicht in Ordnungs Einträgen zu den Quellen ihres "
-        "Satzes.",
-        "{n} Angaben sind als „weggelassen“ markiert: Sie stehen nicht in Ordnungs Einträgen zu den Quellen "
-        "ihrer Sätze.",
+        "1 date, time or amount is marked “left out”: it isn't among the dates and amounts Ordnung saved for "
+        "the linked letter, to-do or contract.",
+        "{n} dates, times or amounts are marked “left out”: they aren't among the dates and amounts Ordnung "
+        "saved for the linked letters, to-dos or contracts.",
+        "1 Angabe ist als „weggelassen“ markiert: Sie gehört nicht zu den Daten und Beträgen, die Ordnung "
+        "zum verknüpften Brief, zur Aufgabe oder zum Vertrag gespeichert hat.",
+        "{n} Angaben sind als „weggelassen“ markiert: Sie gehören nicht zu den Daten und Beträgen, die Ordnung "
+        "zu den verknüpften Briefen, Aufgaben oder Verträgen gespeichert hat.",
     ),
     "redacted_letter": (
-        "1 date, time or amount is marked “only in the letter”: a letter's text has it, but Ordnung's record "
-        "of what its sentence cites doesn't — open the letter to read it.",
-        "{n} dates, times or amounts are marked “only in the letter”: a letter's text has them, but "
-        "Ordnung's record of what their sentences cite doesn't — open the letter to read them.",
-        "1 Angabe ist als „nur im Brief“ markiert: Sie steht im Text eines Briefs, aber nicht in Ordnungs "
-        "Einträgen zu den Quellen ihres Satzes – öffnen Sie den Brief, um sie zu lesen.",
-        "{n} Angaben sind als „nur im Brief“ markiert: Sie stehen im Text eines Briefs, aber nicht in "
-        "Ordnungs Einträgen zu den Quellen ihrer Sätze – öffnen Sie den Brief, um sie zu lesen.",
+        "1 date, time or amount is marked “only in the letter”: a letter's text has it, but it isn't among the "
+        "dates and amounts Ordnung saved for the linked letter, to-do or contract — open the letter to read it.",
+        "{n} dates, times or amounts are marked “only in the letter”: a letter's text has them, but they aren't "
+        "among the dates and amounts Ordnung saved for the linked letters, to-dos or contracts — open the letter to read "
+        "them.",
+        "1 Angabe ist als „nur im Brief“ markiert: Sie steht im Text eines Briefs, gehört aber nicht zu den Daten "
+        "und Beträgen, die Ordnung zum verknüpften Brief, zur Aufgabe oder zum Vertrag gespeichert hat – öffnen Sie den Brief, um sie "
+        "zu lesen.",
+        "{n} Angaben sind als „nur im Brief“ markiert: Sie stehen im Text eines Briefs, gehören aber nicht zu "
+        "den Daten und Beträgen, die Ordnung zu den verknüpften Briefen, Aufgaben oder Verträgen gespeichert hat – öffnen Sie den "
+        "Brief, um sie zu lesen.",
     ),
     "removed_law": (
         "Left out 1 sentence: it names a law that is in neither Ordnung's rules nor its records.",
@@ -1746,12 +2071,13 @@ def check_answer(
     answer's bidirectional formatting characters are dropped first (rule 1)."""
     text = strip_bidi(text)
     style = style or style_for(text)
+    german = language_of(text)  # how "3 am 14.10." reads: the German word, unless the answer is English
     answer_cited = tuple(dict.fromkeys(c.id for c in parse_citations(text) if c.id in citable))
     lines: list[str] = []
     checks: list[SentenceCheck] = []
     forged = 0
     lead: list[str] = []  # the records the line leading a list cites (rule 2)
-    for unit in _units(text.splitlines()):
+    for unit in _units(text.splitlines(), german=german):
         line = unit[0]
         start = _line_prefix(line)
         body = line[len(start) :]
@@ -1766,7 +2092,7 @@ def check_answer(
         kept = []
         for sentence, mine, cited in zip(sentences, own, _inherit(own, lead if item else []), strict=True):
             reading = read_as_shown(sentence)
-            if _FORGED_NOTE.match(reading.text):
+            if _FORGED_NOTE.match(skeleton(reading.text)):
                 forged += 1
                 continue
             check = check_sentence(
@@ -1777,6 +2103,7 @@ def check_answer(
                 reading=reading,
                 answer_cited=() if mine else answer_cited,
                 cites_own=bool(mine),
+                german=german,
             )
             if check is None:
                 kept.append(sentence)
@@ -1856,20 +2183,37 @@ def soft_breaks(lines: Sequence[str]) -> list[bool]:
     return breaks
 
 
-def _units(lines: Sequence[str]) -> list[list[str]]:
+def _units(lines: Sequence[str], *, german: bool | None = None) -> list[list[str]]:
     """The lines, each on its own (rule 1) — except that a line continuing its block after a soft line
     break joins the line before it when a value stands across the break (``21.10.`` / ``2027``)."""
     breaks = soft_breaks(lines)
     units: list[list[str]] = []
     for index, line in enumerate(lines):
-        if index and breaks[index - 1] and _value_across(lines[index - 1], line, first=len(units[-1]) == 1):
+        if (
+            index
+            and breaks[index - 1]
+            and (
+                _value_across(lines[index - 1], line, first=len(units[-1]) == 1, german=german)
+                or _label_across(lines[index - 1], line)
+            )
+        ):
             units[-1].append(line)
         else:
             units.append([line])
     return units
 
 
-def _value_across(before: str, after: str, *, first: bool) -> bool:
+def _label_across(before: str, after: str) -> bool:
+    """Whether the note's label stands across the soft break between two lines (``Checked by`` /
+    ``Ordnung: …``): the web shows it as one line, so it is read as one."""
+    left = skeleton(read_as_shown(before[-_JUNCTION:]).text)
+    right = skeleton(read_as_shown(after[:_JUNCTION]).text)
+    joined = f"{left}\n{right}"
+    count = len(_LABEL_ANYWHERE.findall(joined))
+    return count > len(_LABEL_ANYWHERE.findall(left)) + len(_LABEL_ANYWHERE.findall(right))
+
+
+def _value_across(before: str, after: str, *, first: bool, german: bool | None = None) -> bool:
     """Whether a date or amount (with its currency or weekday) spans the break between two lines."""
     head = before[len(_line_prefix(before) if first else _continuation_prefix(before)) :]
     tail = after[len(_continuation_prefix(after)) :]
@@ -1880,7 +2224,7 @@ def _value_across(before: str, after: str, *, first: bool) -> bool:
         cut = reading.offsets.index(len(left))
     except ValueError:
         return False
-    for value in stated_values(reading.text):
+    for value in stated_values(reading.text, german=german):
         begin, end = _widen(reading.text, value.start, value.end, value.kind)
         if value.start >= 0 and begin < cut < end:
             return True
@@ -1953,17 +2297,18 @@ def check_sentence(
     reading: Reading | None = None,
     answer_cited: Sequence[str] = (),
     cites_own: bool | None = None,
+    german: bool | None = None,
 ) -> SentenceCheck | None:
     """The verdict on one sentence (``None`` when it states no date, time, amount or §); ``cited`` are
     the citable records it cites or inherits (rule 2); ``answer_cited`` those the whole answer cites,
     for a sentence without citations of its own (rule 3: its values must be in the record part of one
     of them, and the check cites the record they belong to); ``cites_own``: whether it has citations
     of its own (default: whether ``cited`` is non-empty) — only a sentence without may state an
-    overview total."""
+    overview total; ``german``: the answer's language, as :func:`stated_values` reads it."""
     reading = reading or read_as_shown(sentence)
     plain = reading.text
-    values = stated_values(plain)
-    laws = list(paragraph_spans(plain))
+    values = stated_values(plain, german=german)
+    laws = list(law_spans(plain))
     if not values and not laws:
         return None
     stated = tuple(value.text for value in values)
@@ -2042,7 +2387,7 @@ def check_sentence(
             in_letter=in_letter,
         )
     result = _apply(sentence, reading, values, quoted, left, letter, style)
-    if result is None or _still_shows(result, left_texts):
+    if result is None or _still_shows(result, left_texts, german=german):
         return SentenceCheck(
             sentence,
             "removed",
@@ -2120,11 +2465,11 @@ def _apply(
     return result
 
 
-def _still_shows(result: str, left_texts: Sequence[str]) -> bool:
+def _still_shows(result: str, left_texts: Sequence[str], *, german: bool | None = None) -> bool:
     """Whether a value that was left out can still be read in the edited sentence (then it goes)."""
     if not left_texts:
         return False
-    remaining = {value.text for value in stated_values(read_as_shown(result).text)}
+    remaining = {value.text for value in stated_values(read_as_shown(result).text, german=german)}
     return any(text in remaining for text in left_texts)
 
 
