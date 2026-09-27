@@ -15,8 +15,8 @@ legal rules, not guessed by a model.
 
 **Honest privacy statement (use this wording everywhere):** *Your files and your database stay on
 this computer. When Claude reads a letter, that letter's text or image is sent to Anthropic through
-your own Claude account (the `claude` CLI you installed and signed in to). Ordnung has no server,
-no telemetry and never sees your credentials.*
+your own Claude account (Claude Code, the Claude program you installed and signed in to). Ordnung
+has no server, no telemetry and never sees your credentials.*
 
 ### 1.1 What makes it different
 

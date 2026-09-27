@@ -203,11 +203,12 @@ export function useDeleteEverything() {
   });
 }
 
+/** The wizard shows a failure next to its "Finish setup" button (a toast would outlive a retry). */
 export function useCompleteOnboarding() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: OnboardingRequest) => api.onboarding(body),
-    meta: { errorTitle: "Couldn't finish setting up" },
+    meta: { silent: true },
     onSuccess: (profile) => {
       qc.setQueryData(qk.profile, profile);
       void qc.invalidateQueries({ queryKey: qk.health });
