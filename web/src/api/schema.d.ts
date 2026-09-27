@@ -2714,6 +2714,11 @@ export interface components {
             url: string | null;
             /** Effective From */
             effective_from: string | null;
+            /**
+             * Topic
+             * @description The group it is listed under (“Counting periods”, “Price increases” …)
+             */
+            topic: string | null;
         };
         /** SendChannel */
         SendChannel: {

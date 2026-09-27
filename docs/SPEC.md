@@ -171,7 +171,7 @@ is_business_day(d, region) · next_business_day(d, region) · add_business_days(
 add_period(event_day, amount, unit, region) -> (date, steps)       # §§ 187(1), 188(2)(3) BGB
 deemed_delivery(posted, rule, region) -> (date, steps)
 send_guidance(kind, contract_category) -> SendGuidance            # channels & form requirements
-catalog: RULES[rule_id] -> RuleInfo(title, citation, url, effective_from, summary)
+catalog: RULES[rule_id] -> RuleInfo(title, citation, url, effective_from, summary, topic)
 ```
 
 Semantics (final text follows the verified research in `docs/deadline-rules.md`):

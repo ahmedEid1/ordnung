@@ -1,5 +1,5 @@
 /** Settings (SPEC §14.8): pure helpers for reminders, AI usage and the data export. */
-import type { ItemKind, LLMCallRecord, UsageStats } from "@/api/types";
+import type { Activity, ItemKind, LLMCallRecord, RuleInfo, UsageStats } from "@/api/types";
 import { ITEM_KINDS } from "@/api/types";
 import { LLM_PURPOSE_LABELS, humanize } from "@/lib/copy";
 
@@ -132,6 +132,82 @@ export function sentSummary(c: Pick<LLMCallRecord, "doc_ids" | "pages_sent" | "b
   if (c.purpose === "ask") return "Your question and what Claude looked up";
   if (c.purpose === "brief" || c.purpose === "review") return "A summary of your dates and Ideas — no letters";
   return size || "Instructions only — no letters";
+}
+
+// ------------------------------------------------------------------------------------------------
+// Activity
+// ------------------------------------------------------------------------------------------------
+
+/** Where an activity entry leads: its letter, its draft, or Ask for the checks of an answer. */
+export function activityHref(a: Pick<Activity, "ref_type" | "ref_id">): string | null {
+  if (a.ref_type === "chat") return "/ask";
+  if (!a.ref_id) return null;
+  if (a.ref_type === "document") return `/documents/${a.ref_id}`;
+  if (a.ref_type === "draft") return `/letters/${a.ref_id}`;
+  return null;
+}
+
+/** One row of the activity log: an entry and how many identical ones came right before it. */
+export interface ActivityRow {
+  entry: Activity;
+  /** 1, or e.g. 10 for ten "Checked an answer in Ask…" in a row (`entry` is the newest). */
+  count: number;
+}
+
+/** Runs of the same entry (same kind, message and target) become one row with a count. */
+export function groupActivity(list: readonly Activity[]): ActivityRow[] {
+  const rows: ActivityRow[] = [];
+  for (const entry of list) {
+    const last = rows[rows.length - 1];
+    if (last && last.entry.kind === entry.kind && last.entry.message === entry.message && activityHref(last.entry) === activityHref(entry)) last.count += 1;
+    else rows.push({ entry, count: 1 });
+  }
+  return rows;
+}
+
+// ------------------------------------------------------------------------------------------------
+// Rules ("How dates are computed")
+// ------------------------------------------------------------------------------------------------
+
+/** "§ 193 BGB; §§ 269, 270 Abs. 4 BGB" → each source on its own (a ";" inside brackets stays). */
+export function splitCitation(citation: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < citation.length; i++) {
+    const ch = citation[i];
+    if (ch === "(") depth++;
+    else if (ch === ")") depth = Math.max(0, depth - 1);
+    else if (ch === ";" && depth === 0) {
+      parts.push(citation.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(citation.slice(start));
+  return parts.map((p) => p.trim()).filter(Boolean);
+}
+
+/** Heading for rules the catalog files under no topic. */
+export const OTHER_RULES_TOPIC = "More rules";
+
+/** Rules grouped by topic, topics in catalog order (rules without one come last). */
+export function groupRules<T extends Pick<RuleInfo, "topic">>(rules: readonly T[]): { topic: string; rules: T[] }[] {
+  const groups = new Map<string, T[]>();
+  for (const r of rules) {
+    const topic = r.topic?.trim() || OTHER_RULES_TOPIC;
+    groups.set(topic, [...(groups.get(topic) ?? []), r]);
+  }
+  const other = groups.get(OTHER_RULES_TOPIC);
+  groups.delete(OTHER_RULES_TOPIC);
+  if (other) groups.set(OTHER_RULES_TOPIC, other);
+  return [...groups].map(([topic, list]) => ({ topic, rules: list }));
+}
+
+/** Search the rules: title, citation, summary and topic, ignoring case. */
+export function matchesRule(r: Pick<RuleInfo, "title" | "citation" | "summary" | "topic">, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  return [r.title, r.citation, r.summary, r.topic ?? ""].some((s) => s.toLowerCase().includes(needle));
 }
 
 // ------------------------------------------------------------------------------------------------

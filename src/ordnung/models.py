@@ -1006,6 +1006,9 @@ class RuleInfo(_Model):
     summary: str
     url: str | None = None
     effective_from: str | None = None
+    topic: str | None = Field(
+        default=None, description="The group it is listed under (“Counting periods”, “Price increases” …)"
+    )
 
 
 class LaneBar(_Model):

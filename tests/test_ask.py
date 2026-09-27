@@ -188,6 +188,8 @@ async def test_ask_streams_trace_and_validated_answer(
     (removed,) = [a for a in store.list_activity() if a.kind == "ask.citations_removed"]
     assert removed.data["ids"] == [FAKE_DOC]
     assert removed.ref_id == done.message_id
+    # the activity log reads on its own: which answer, and what was taken out
+    assert removed.message == "Checked an answer in Ask: took out 1 source it hadn't looked up"
     assert not [a for a in store.list_activity() if a.kind == "ask.sentences_removed"]
 
     (call,) = store.usage_stats().recent
@@ -246,6 +248,8 @@ async def test_sentences_with_unsupported_dates_or_amounts_are_removed(
     assert done.text == f"The deadline is Wed 21 Oct 2026 [item:{item}].\n- Keep the letter."
     (removed,) = [a for a in store.list_activity() if a.kind == "ask.sentences_removed"]
     assert removed.data["unsupported"] == ["4 Nov 2026", "359.88"]
+    assert removed.message.startswith("Checked an answer in Ask: took out sentences")
+    assert (removed.ref_type, removed.ref_id) == ("chat", done.message_id)
 
 
 async def test_answer_left_empty_by_the_checks_gets_a_fallback(

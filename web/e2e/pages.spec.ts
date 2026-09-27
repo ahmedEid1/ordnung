@@ -210,6 +210,38 @@ test.describe("phone", () => {
     await expectAccessible(page, testInfo, "today-phone");
   });
 
+  test("Settings fit a 320 px phone: the privacy log, every rule's sources and the data folder", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+
+    // Privacy: nothing (not even the screen-reader table behind the chart) widens the page
+    await open(page, "/settings?section=privacy", "Settings");
+    const usage = page.getByRole("region", { name: "AI usage" });
+    await expect(usage.getByRole("term").first()).toBeVisible();
+    await expectNoSideways(page);
+    // a label that wraps keeps the values of its row on one line
+    const valueTops = await usage.locator("dl > div").evaluateAll((tiles) => tiles.map((t) => Math.round(t.querySelector("dd")!.getBoundingClientRect().top)));
+    expect(valueTops[0]).toBe(valueTops[1]);
+    expect(valueTops[2]).toBe(valueTops[3]);
+
+    // Rules: every citation chip stays inside its card (no source cut off at the edge)
+    await open(page, "/settings?section=rules", "Settings");
+    await expect(page.getByRole("navigation", { name: "Rule topics" })).toBeVisible();
+    const cutOff = await page.locator("#main section[aria-labelledby='set-rules'] .card").evaluateAll((cards) =>
+      cards.flatMap((card) => {
+        const box = card.getBoundingClientRect();
+        return [...card.querySelectorAll<HTMLElement>("h4 ~ span")].filter((chip) => chip.getBoundingClientRect().right > box.right - 1).map((chip) => chip.textContent);
+      }),
+    );
+    expect(cutOff).toEqual([]);
+    await expectNoSideways(page);
+
+    // Data: the whole folder path is on screen (it wraps instead of scrolling or clipping)
+    await open(page, "/settings?section=data", "Settings");
+    const path = page.getByRole("region", { name: "Where your data lives" }).locator("code");
+    expect(await path.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    await expectNoSideways(page);
+  });
+
   test("the letter viewer stacks the page images below the verdict card", async ({ page }, testInfo) => {
     await open(page, `/documents/${await documentId(page, /FunkNetz/)}`);
     const verdict = page.getByRole("article").first();
