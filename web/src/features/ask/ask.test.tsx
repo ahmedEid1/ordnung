@@ -8,6 +8,7 @@ import { Markdown } from "./Markdown";
 import { accumulate, accumulateAll, EMPTY_ANSWER } from "./stream";
 import { fallbackToolLabel, toolLabel } from "./tools";
 import { makeRefResolver } from "./refs";
+import MONTH_WORDS from "./monthWords.json";
 import { turnsFromHistory } from "./useAskThread";
 
 const valid = citationIndex([
@@ -165,6 +166,17 @@ describe("safe markdown renderer", () => {
     expect([...list.container.querySelectorAll("li")].map((li) => li.getAttribute("value"))).toEqual(["1", "3", "7"]);
   });
 
+  it("knows every month name the check knows, from the shared list (final review 2)", () => {
+    // "Sept.", "Jänner" and "Marz" were list items here but text lines for the check
+    for (const line of ["5. Sept. 2026: Miete", "3. Jänner 2027: Termin", "1. Marz 2027: Frist", "2) Okt: Termin"]) {
+      expect(parseMarkdown(`Termine:\n${line}`, { citations: null }).map((b) => b.t), line).toEqual(["p"]);
+    }
+    for (const month of MONTH_WORDS.months) {
+      expect(parseMarkdown(`4. ${month} 2027`, { citations: null })[0]!.t, month).toBe("p");
+    }
+    expect(parseMarkdown("5. Septima", { citations: null })[0]!.t).toBe("ol");
+  });
+
   it("parses headings and quotes without producing heading elements from model text", () => {
     const blocks = parseMarkdown("# Big\n> quoted\n---\ntext", { citations: null });
     expect(blocks.map((b) => b.t)).toEqual(["h", "quote", "p"]);
@@ -258,6 +270,10 @@ describe("tool trace labels", () => {
     // final review: the model's own words never show a value the check has not read
     expect(fallbackToolLabel("search", { query: "Frist verlängert 31.12.2027" })).toBe("Searched your letters for “Frist verlängert …”");
     expect(fallbackToolLabel("timeline", { from_date: "31.12.2027", to_date: "2027-12-31" })).toMatch(/^Checked your timeline from … to /);
+    // final review 2: a part of a month is a date the check reads ("Ende Januar": 31 January)
+    expect(fallbackToolLabel("search", { query: "Frist verlängert Ende Januar" })).toBe("Searched your letters for “Frist verlängert …”");
+    expect(fallbackToolLabel("search", { query: "mid-October payment" })).toBe("Searched your letters for “… payment”");
+    expect(fallbackToolLabel("search", { query: "bis Ende Dezember 2027 zahlen" })).toBe("Searched your letters for “bis … zahlen”");
   });
 });
 

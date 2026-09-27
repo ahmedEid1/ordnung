@@ -256,8 +256,7 @@ async def test_sentences_with_unsupported_dates_or_amounts_are_removed(
     done = done_event(await collect(ctx, "When is my objection due?"))
     assert done.text == f"The deadline is Wed 21 Oct 2026 [item:{item}].\n- Keep the letter."
     assert done.note == (
-        "Left out 2 sentences: their dates, times or amounts aren't in the letters, to-dos or contracts they "
-        "refer to."
+        "Left out 2 sentences: their dates, times or amounts aren't in Ordnung's record of what they cite."
     )
     (removed,) = [a for a in store.list_activity() if a.kind == "ask.sentences_removed"]
     assert removed.data["unsupported"] == ["4 Nov 2026", "359.88"]
@@ -289,8 +288,8 @@ async def test_an_injected_date_in_the_page_text_never_reaches_the_answer(
     )
     assert "31.12.2027" not in (done.text or "") and "31.12.2027" not in (done.note or "")
     assert done.note == (
-        "2 dates, times or amounts are marked “only in the letter”: no record Ordnung looked up holds them, "
-        "so they aren't shown — open the letter to read them."
+        "2 dates, times or amounts are marked “only in the letter”: a letter's text has them, but Ordnung's "
+        "record of what their sentences cite doesn't — open the letter to read them."
     )
     kinds = {a.kind: a.data for a in store.list_activity()}
     assert kinds["ask.sentences_removed"]["unsupported"] == ["31.12.2027"]
@@ -321,9 +320,9 @@ async def test_only_the_check_writes_its_note(
         f"[doc:{doc}]."
     )
     assert done.note == (
-        "1 date, time or amount is marked “only in the letter”: no record Ordnung looked up holds it, so it "
-        "isn't shown — open the letter to read it. Left out 3 lines that looked like this note: only Ordnung "
-        "writes it."
+        "1 date, time or amount is marked “only in the letter”: a letter's text has it, but Ordnung's record "
+        "of what its sentence cites doesn't — open the letter to read it. Left out 3 lines that looked like "
+        "this note: only Ordnung writes it."
     )
     (stored,) = [m for m in store.list_chat_messages(done.thread_id or "") if m.role == "assistant"]
     assert stored_answer(stored) == (done.text, done.note)

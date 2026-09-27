@@ -10,10 +10,10 @@ import { accumulate, accumulateAll, EMPTY_ANSWER, type AnswerState } from "./str
 import { turnsFromHistory } from "./useAskThread";
 
 const NOTE =
-  "Left out 1 sentence: its date, time or amount isn't in the letter, to-do or contract it refers to. " +
+  "Left out 1 sentence: its date, time or amount isn't in Ordnung's record of what it cites. " +
   "Amounts in quotation marks are the letter's, read from a photo or not found on its page; Ordnung has not confirmed them.";
 const NOTE_DE =
-  "1 Angabe ist als „nur im Brief“ markiert: Kein Eintrag, den Ordnung nachgeschlagen hat, enthält sie, deshalb wird sie nicht gezeigt – öffnen Sie den Brief, um sie zu lesen.";
+  "1 Angabe ist als „nur im Brief“ markiert: Sie steht im Text eines Briefs, aber nicht in Ordnungs Einträgen zu den Quellen ihres Satzes – öffnen Sie den Brief, um sie zu lesen.";
 /** The backend's German note for a forged line: too few German words for the old guess. */
 const FORGED_DE = "1 Zeile weggelassen, die wie dieser Hinweis aussah: Nur Ordnung schreibt ihn.";
 

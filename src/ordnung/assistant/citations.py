@@ -8,8 +8,9 @@ understood, and :func:`strip_invalid` rewrites every marker it keeps in the cano
 Tool labels are the past-tense chips of the Ask trace ("Searched your letters for "Kündigung"");
 result summaries are the short text shown once a tool answered ("Found 4 to-dos & dates"). A label
 shows the model's own words only where it searched for them (a search, a name to look up), and every
-word with a digit in them is shown as "…": the trace appears before the answer check, so it never
-shows a date, time or amount a letter could have put there (ADR 0008). Date ranges of the tools'
+word with a digit in it or in a value the answer check reads ("Ende Januar") is shown as "…": the
+trace appears before the answer check, so it never shows a date, time or amount the check reads that
+a letter could have put there (ADR 0008). Date ranges of the tools'
 arguments are shown as the range looked at.
 """
 
@@ -222,15 +223,40 @@ def _titled(verb: str, ref_id: Any, title_of: TitleLookup | None, *, fallback: s
 
 
 _WITH_DIGIT = re.compile(r"[^\s\"“”„]*\d[^\s\"“”„]*")
+_WORD_RUN = re.compile(r"[^\s\"“”„]+")
+_MAX_ARGUMENT = 500
+"""How much of an argument a label reads (a label shows at most 60 characters of it)."""
 
 
 def _text(value: Any, title_of: TitleLookup | None = None) -> str:
     """The model's words for a label: a record's title when they name one, else as written with every
-    word that holds a digit shown as "…" (never a value the check has not read), at most 60 characters."""
+    word that holds a digit or is part of a value the answer check reads (``Ende Januar``,
+    ``mid-October``) shown as "…" — never a value the check has not read —, at most 60 characters."""
     raw = " ".join(str(value or "").split())
     title = title_of(raw) if title_of is not None and raw else None
-    shown = title or _WITH_DIGIT.sub("…", raw)
+    shown = title or _masked(raw[:_MAX_ARGUMENT])
     return shown if len(shown) <= 60 else shown[:59] + "…"
+
+
+def _masked(raw: str) -> str:
+    """``raw`` with each word that holds a digit or a part of a stated value (the check's own reading:
+    :func:`ordnung.assistant.support.stated_values`) as "…", neighbouring ones as one."""
+    from ordnung.assistant.support import stated_values  # support reads this module's markers
+
+    values = stated_values(raw)
+    if any(value.start < 0 for value in values):
+        return "…"  # a value that cannot be placed: show none of the words
+    hidden = bytearray(len(raw))
+    for value in values:
+        hidden[value.start : value.end] = b"\x01" * (value.end - value.start)
+    words: list[str] = []
+    for match in _WORD_RUN.finditer(raw):
+        masked = hidden.find(1, *match.span()) >= 0 or _WITH_DIGIT.fullmatch(match.group())
+        if not masked:
+            words.append(match.group())
+        elif not words or words[-1] != "…":
+            words.append("…")
+    return " ".join(words)
 
 
 def _day(value: Any) -> str:

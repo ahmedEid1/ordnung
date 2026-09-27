@@ -16,9 +16,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from hypothesis import HealthCheck, example, given, settings
+from hypothesis import strategies as st
 
 from helpers_secretary import TODAY, seed_ledger
-from ordnung.assistant.ask import known_laws
+from helpers_timing import assert_linear
+from ordnung.assistant import support
+from ordnung.assistant.ask import check_turn, known_laws
 from ordnung.assistant.channels import ToolAnswer, render_tool_result
 from ordnung.assistant.mcp_server import LedgerTools, render_result
 from ordnung.assistant.support import (
@@ -26,6 +30,7 @@ from ordnung.assistant.support import (
     NOTE_PREFIX_DE,
     PLACEHOLDERS,
     CheckedAnswer,
+    FactSet,
     TurnEvidence,
     check_answer,
     labelled_note,
@@ -35,6 +40,7 @@ from ordnung.assistant.support import (
     stated_values,
 )
 from ordnung.db.store import Store
+from ordnung.ingest.verify import MONTH_NUMBERS
 from ordnung.secretary.review import catalog_texts, paragraphs_in
 
 INLINE_DATE_FORMS = Path(__file__).resolve().parents[1] / "web" / "src" / "lib" / "inlineDateForms.json"
@@ -88,8 +94,9 @@ def test_the_injected_deadline_is_caught(tools: LedgerTools, ids: dict[str, str]
     assert checked.text == f"The objection deadline was extended to [date only in the letter] [doc:{doc}]."
     assert [s.verdict for s in checked.sentences] == ["redacted"]
     assert checked.note() == (
-        f"{NOTE_PREFIX} 1 date, time or amount is marked “only in the letter”: no record Ordnung looked up "
-        "holds it, so it isn't shown — open the letter to read it. For the records concerned, Ordnung has on "
+        f"{NOTE_PREFIX} 1 date, time or amount is marked “only in the letter”: a letter's text has it, but "
+        "Ordnung's record of what its sentence cites doesn't — open the letter to read it. For the records "
+        "concerned, Ordnung has on "
         "file: incoming payment Mon 5 Oct 2026; deadline Wed 21 Oct 2026."
     )
     # the same date would have passed the old check: it *is* in the tool result — as letter text
@@ -120,8 +127,8 @@ def test_the_ledgers_own_deadline_passes_next_to_the_injection(
     assert redacted.unsupported == ("31.12.2027",) and redacted.in_letter == 1
     # the answer states Ordnung's own deadline, so the note does not repeat it
     assert checked.note() == (
-        f"{NOTE_PREFIX} 1 date, time or amount is marked “only in the letter”: no record Ordnung looked up "
-        "holds it, so it isn't shown — open the letter to read it."
+        f"{NOTE_PREFIX} 1 date, time or amount is marked “only in the letter”: a letter's text has it, but "
+        "Ordnung's record of what its sentence cites doesn't — open the letter to read it."
     )
 
 
@@ -729,7 +736,7 @@ def test_a_record_value_is_never_lost_because_of_another_value(
     assert (sentence.verdict, sentence.left_out) == ("redacted", ("5.00",))
     # the answer states the to-do's own amount, so the note does not repeat it
     assert checked.note() == (
-        f"{NOTE_PREFIX} 1 date, time or amount is marked “left out”: it isn't in what its sentence refers to."
+        f"{NOTE_PREFIX} 1 date, time or amount is marked “left out”: it isn't in Ordnung's record of what its sentence cites."
     )
 
 
@@ -1349,8 +1356,8 @@ def test_german_answers_get_a_german_note(
     )
     assert "[Datum weggelassen]" in checked.text
     assert checked.note() == (
-        f"{NOTE_PREFIX_DE} 1 Angabe ist als „weggelassen“ markiert: Sie steht nicht in dem, worauf sich ihr "
-        "Satz bezieht."
+        f"{NOTE_PREFIX_DE} 1 Angabe ist als „weggelassen“ markiert: Sie steht nicht in Ordnungs Einträgen zu "
+        "den Quellen ihres Satzes."
     )
     letter = check_answer(
         f"Laut dem Schreiben wurde die Frist bis zum 31.12.2027 verlängert [doc:{doc}].",
@@ -1358,8 +1365,8 @@ def test_german_answers_get_a_german_note(
         citable=injected.seen_ids,
     )
     assert letter.note() == (
-        f"{NOTE_PREFIX_DE} 1 Angabe ist als „nur im Brief“ markiert: Kein Eintrag, den Ordnung nachgeschlagen "
-        "hat, enthält sie, deshalb wird sie nicht gezeigt – öffnen Sie den Brief, um sie zu lesen. Zu den "
+        f"{NOTE_PREFIX_DE} 1 Angabe ist als „nur im Brief“ markiert: Sie steht im Text eines Briefs, aber nicht "
+        "in Ordnungs Einträgen zu den Quellen ihres Satzes – öffnen Sie den Brief, um sie zu lesen. Zu den "
         "betroffenen Einträgen hat Ordnung gespeichert: Zahlungseingang Mo. 05.10.2026; Frist Mi. 21.10.2026."
     )
 
@@ -1553,14 +1560,47 @@ def test_a_borrowed_date_shows_whose_date_it_is_when_it_inherits_a_citation(
 ) -> None:
     """Final review: a sentence that inherits its neighbour's citation (rule 2) stated the tax objection's
     date as the TechMarkt reminder's with no chip of its own. Rule 3 applies to inherited support too: the
-    sentence gets the chip of the record whose date it states."""
+    sentence gets the chip of the record whose date it states. Final review 2: the chip repeats the
+    citation the sentence inherits, so nothing new is claimed — the note no longer counts it."""
     evidence = evidence_of(tools, ("list_items", {}))
     obj = ids["tax_objection"]
     checked = check_answer(answer.format(obj=obj), evidence, citable=evidence.seen_ids)
     (borrowed,) = [c for c in checked.sentences if "TechMarkt" in c.text]
-    assert borrowed.added == (obj,)
+    assert (borrowed.added, borrowed.repeated) == ((), (obj,))
     assert f"Wed 21 Oct 2026 [item:{obj}]" in borrowed.result
-    assert (checked.note() or "").startswith(f"{NOTE_PREFIX} Added 1 source")
+    assert checked.note() is None and not checked.changed
+
+
+def test_a_repeated_citation_is_no_news_but_a_new_one_is(tools: LedgerTools, ids: dict[str, str]) -> None:
+    """Final review 2: "… by Wed 21 Oct 2026 [item:T]. Post it by Thu 15 Oct 2026 to be safe." got a second
+    [item:T] chip and the note "Added 1 source …" instead of "Checked against your records", and every item
+    of a list under a lead line citing a letter got the letter's chip and a count in the note. A citation
+    the sentence already inherits is shown again (whose value it is) but not counted; a citation of
+    another record still is (the chip then names a record the sentence does not inherit)."""
+    evidence = evidence_of(tools, ("list_items", {}), ("get_document", {"doc_id": ids["doc_tax"]}))
+    obj, doc, refund = ids["tax_objection"], ids["doc_tax"], ids["tax_refund"]
+    same = check_answer(
+        f"Your objection must arrive by Wed 21 Oct 2026 [item:{obj}]. Post it by Thu 15 Oct 2026 to be safe.",
+        evidence,
+        citable=evidence.seen_ids,
+    )
+    assert same.note() is None and not same.changed
+    assert [c.repeated for c in same.sentences] == [(), (obj,)]
+    listed = check_answer(
+        f"Your tax letter [doc:{doc}]:\n- Objection: Wed 21 Oct 2026\n- Refund: Mon 5 Oct 2026",
+        evidence,
+        citable=evidence.seen_ids,
+    )
+    assert listed.note() is None and not any(c.added for c in listed.sentences)
+    other = check_answer(
+        f"Your objection must arrive by Wed 21 Oct 2026 [item:{obj}]. The refund comes Mon 5 Oct 2026.\n\n"
+        f"The refund is filed too [item:{refund}].",
+        evidence,
+        citable=evidence.seen_ids,
+    )
+    (moved,) = [c for c in other.sentences if "refund comes" in c.text]
+    assert moved.added == (refund,) and f"Mon 5 Oct 2026 [item:{refund}]" in moved.result
+    assert (other.note() or "").startswith(f"{NOTE_PREFIX} Added 1 source")
 
 
 def test_a_demand_not_to_pay_is_never_cited_by_the_check(
@@ -1619,18 +1659,18 @@ def test_the_note_never_names_a_demand_not_to_pay_as_on_file(tools: LedgerTools,
 def test_the_demo_never_cites_a_demand_not_to_pay_for_the_answer() -> None:
     """Final review: the recorded demo answer to "What do I have to pay in the next four weeks?" got the
     scam demand's chip on its "Payments with a due date" heading."""
+    payments = 0
     for name, record, answer in _demo_records():
         evidence = TurnEvidence.from_results(record["results"], today=TODAY, catalog=known_laws())
         for sentence in answer.sentences:
-            assert not set(sentence.added) & evidence.suspicious, (name, sentence.text)
-    (heading,) = {
-        line
-        for _, record, answer in _demo_records()
-        if record["question"] == "What do I have to pay in the next four weeks?"
-        for line in answer.text.splitlines()
-        if line.startswith("**Payments with a due date (Sept 30")
-    }
-    assert "[item:" not in heading
+            assert not {*sentence.added, *sentence.repeated} & evidence.suspicious, (name, sentence.text)
+        if record["question"] == "What do I have to pay in the next four weeks?":
+            payments += 1
+            raw = record["response"]["text"].splitlines()
+            for line in answer.text.splitlines():  # a heading keeps exactly the citations the model wrote
+                if line.startswith("**") and line.rstrip().endswith((":", ":**")):
+                    assert line in raw, (name, line)
+    assert payments == 8  # one answer per tray state
 
 
 @pytest.mark.parametrize(
@@ -1721,13 +1761,16 @@ def test_more_forms_of_an_amount_are_read(tools: LedgerTools, ids: dict[str, str
     assert check(f"The refund is 41200 Cent [item:{refund}].", evidence)[1] == ["kept"]  # 412.00 €
 
 
-def test_a_letter_value_a_record_holds_is_left_out_not_the_letters(
+def test_a_cited_letters_value_is_the_letters_whoever_else_holds_it(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
     """Final review: "the original invoice of 89.99 € [doc:dunning]" became "[amount only in the letter]"
-    with a note saying Ordnung's records don't hold it — the invoice to-do holds 89.99 €. A value the
-    record part of any record read in this turn holds is marked "left out" (not in what its sentence
-    refers to), never "only in the letter"."""
+    with a note saying no record Ordnung looked up holds it — the invoice to-do holds 89.99 €. Final review
+    2: marking it "left out" instead gave the note "it isn't in what its sentence refers to" — false, the
+    cited letter's text has it — and no longer told the person to open the letter (the price letter's
+    effective date, which a contract's warning also holds). A value the cited letter's text holds is
+    marked "only in the letter"; the notes say only what is true of both cases: the letter's text has it,
+    Ordnung's record of what the sentence cites does not."""
     page = {"page": 1, "width": 1000, "height": 1414, "image_path": "derived/p1.jpg"}
     store.set_pages(
         ids["doc_dunning"], [page | {"text": "Mahnung\nRechnungsbetrag 89,99 €, Mahngebühr 5,00 €"}]
@@ -1736,11 +1779,25 @@ def test_a_letter_value_a_record_holds_is_left_out_not_the_letters(
         tools, ("list_items", {"status": "all"}), ("get_document", {"doc_id": ids["doc_dunning"]})
     )
     dunning = ids["doc_dunning"]
-    text, _ = check(f"Pay 94.99 € now: the invoice of 89.99 € plus a 5.00 € fee [doc:{dunning}].", evidence)
-    assert (
-        text
-        == f"Pay 94.99 € now: the invoice of [amount left out] plus a [amount only in the letter] fee [doc:{dunning}]."
+    checked = check_answer(
+        f"Pay 94.99 € now: the invoice of 89.99 € plus a 5.00 € fee [doc:{dunning}].",
+        evidence,
+        citable=evidence.seen_ids,
     )
+    assert checked.text == (
+        f"Pay 94.99 € now: the invoice of [amount only in the letter] plus a [amount only in the letter] fee "
+        f"[doc:{dunning}]."
+    )
+    assert checked.note() == (
+        f"{NOTE_PREFIX} 2 dates, times or amounts are marked “only in the letter”: a letter's text has them, "
+        "but Ordnung's record of what their sentences cite doesn't — open the letter to read them."
+    )
+    # a value no letter of the turn holds is "left out", and its note never mentions a letter
+    other = check_answer(
+        f"Pay 94.99 € now, or 97.50 € later [doc:{dunning}].", evidence, citable=evidence.seen_ids
+    )
+    assert other.text == f"Pay 94.99 € now, or [amount left out] later [doc:{dunning}]."
+    assert "letter" not in (other.note() or "")
 
 
 def test_the_check_reads_a_line_that_starts_with_a_day_as_the_web_shows_it(
@@ -1760,3 +1817,200 @@ def test_the_check_reads_a_line_that_starts_with_a_day_as_the_web_shows_it(
 def test_the_placeholders_are_shared_with_the_web() -> None:
     """The web marks every placeholder the check writes (its test reads the same file)."""
     assert tuple(json.loads(PLACEHOLDER_FILE.read_text(encoding="utf-8"))) == PLACEHOLDERS
+
+
+# --------------------------------------------------------------------------------------------------
+# final review 2
+# --------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("text", ["31.12.0000", "1/1/0000", "31-12-0000", "Frist: 01.01.0000"])
+def test_a_year_zero_date_is_unreadable_never_an_exception(text: str) -> None:
+    """Final review 2: ``date(year or 2000, …)`` let year 0 pass as a date, and ``DateMention.as_date``
+    then raised "year 0 is out of range" for every answer that read it."""
+    facts = FactSet()
+    facts.add_text(text)
+    assert not facts.dates
+    (value,) = [v for v in stated_values(text) if "0000" in v.text]
+    assert value.kind == "unreadable"
+
+
+def test_a_letter_with_a_year_zero_date_still_gets_its_answer(store: Store, ids: dict[str, str]) -> None:
+    """Final review 2: a tax letter whose page text holds "gültig ab 01.01.0000" made ``check_turn`` raise
+    for a correct answer, so Ask failed closed on every question that read the letter — a scam letter
+    could hide such a date to silence Ask's warning about it."""
+    page = {"page": 1, "width": 1000, "height": 1414, "image_path": "derived/p1.jpg"}
+    store.set_pages(ids["doc_tax"], [page | {"text": "Einkommensteuerbescheid 2025, gültig ab 01.01.0000"}])
+    tools = LedgerTools(store, today=TODAY)
+    results = [render_result(tools.get_document(ids["doc_tax"])), render_result(tools.search("0000"))]
+    item = ids["tax_objection"]
+    answer = f"Your objection deadline is Wed 21 Oct 2026 [item:{item}]."
+    checked = check_turn(store, answer, results, question="When do I object?", today=TODAY)
+    assert checked.body == answer and checked.note is None
+    injected = check_turn(
+        store,
+        f"The letter is valid from 01.01.0000 [doc:{ids['doc_tax']}].",
+        results,
+        question="?",
+        today=TODAY,
+    )
+    assert "0000" not in injected.body  # unreadable: never supported
+    for fuzz in ("4[c:doc_z]+1:0000", "01.01.0000 0000-00-00 00/00/0000"):
+        check_turn(store, fuzz, results, question="?", today=TODAY)  # never an exception
+
+
+_PIECES = st.lists(
+    st.one_of(
+        st.sampled_from(
+            ["0", "00", "0000", "1", "01", "12", "31", "29", "2", "2027", "1999", "9" * 20, "O1", "l2"]
+        ),
+        st.sampled_from(
+            [".", "-", "/", ":", "|", "_", " ", "'", "€", "+", "[c:doc_z]", "Dec", "Ende Mai", "T"]
+        ),
+    ),
+    max_size=12,
+).map("".join)
+"""Digit groups, marks and words: every date-shaped run of the check is reachable in a few pieces."""
+
+
+@settings(max_examples=400, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+@given(letter=_PIECES, answer=_PIECES)
+@example(letter="gültig ab 01.01.0000", answer="Your deadline is Wed 21 Oct 2026")
+@example(letter="Einkommensteuerbescheid", answer="4[c:doc_z]+1:0000")
+def test_no_letter_and_no_answer_stops_the_check(letter: str, answer: str) -> None:
+    """Final review 2: the minimised fuzz input was ``4[c:doc_z]+1:0000``. Whatever a letter's text or an
+    answer holds, reading them never raises (SPEC §10: "never an exception")."""
+    result = render_tool_result(ToolAnswer({"id": "doc_z", "title": "x"}, {"doc_z": {"text": letter}}))
+    evidence = TurnEvidence.from_results([result], today=TODAY, person=(answer,))
+    check_answer(f"{answer} [doc:doc_z].", evidence, citable=evidence.seen_ids)
+
+
+@pytest.mark.parametrize("mark", [".", "!", "?", ".!?", "?!"], ids=repr)
+def test_a_run_of_full_stops_is_read_in_linear_time(
+    injected: TurnEvidence, ids: dict[str, str], mark: str
+) -> None:
+    """Final review 2: the sentence end was tried again from every mark of a run of ``.``, ``!`` or
+    ``?`` with no space after it (20,000 dots: 15 s), so an injected letter could stall a turn by
+    getting the model to end its answer with thousands of dots."""
+    doc = ids["doc_tax"]
+
+    def build(n: int) -> str:
+        return f"Your deadline is 31.12.2027 [doc:{doc}]" + mark * (n // len(mark)) + "x"
+
+    assert_linear(build, 5000, lambda text: check_answer(text, injected, citable=injected.seen_ids))
+    assert_linear(build, 5000, sentences_of)
+
+
+@pytest.mark.parametrize(
+    ("value", "shown"),
+    [
+        ("at 2 pm", "at [time left out]"),
+        ("at 2 p.m.", "at [time left out]"),
+        ("at **2 pm**", "at **[time left out]**"),
+        ("for 999 ct", "for [amount left out]"),
+        ("for € 1 Mio", "for [amount left out]"),
+    ],
+)
+def test_a_value_before_a_citation_keeps_the_citation_and_the_full_stop(
+    tools: LedgerTools, ids: dict[str, str], value: str, shown: str
+) -> None:
+    """Final review 2: patterns that end in an optional ``.`` (``pm.``, ``ct.``, ``Mio.``, ``Ende
+    Dezember.``) took the sentence's own full stop, which the reading puts right after the value once the
+    citation marker is dropped — so the edit deleted the marker and the full stop with the value."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    item = ids["abh_appointment"]
+    checked = check_answer(
+        f"Your appointment is on Wed 14 Oct 2026 {value} [item:{item}].", evidence, citable=evidence.seen_ids
+    )
+    assert checked.text == f"Your appointment is on Wed 14 Oct 2026 {shown} [item:{item}]."
+    # with no citation after it, the sentence keeps its full stop too
+    bare = check_answer(
+        f"It is on Wed 14 Oct 2026 [item:{item}], {value}.", evidence, citable=evidence.seen_ids
+    )
+    assert bare.text == f"It is on Wed 14 Oct 2026 [item:{item}], {shown}."
+
+
+def test_a_part_of_a_month_before_a_citation_keeps_its_sentence_apart(
+    tools: LedgerTools, ids: dict[str, str]
+) -> None:
+    """Final review 2: "Die Frist endet Ende Dezember [item:X]. Bitte prüfen Sie den Brief." became "Die
+    Frist endet [Datum weggelassen] Bitte prüfen Sie den Brief." — two sentences run together, no source."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    item = ids["tax_objection"]
+    checked = check_answer(
+        f"Die Frist endet am Mi. 21.10.2026, nicht Ende Dezember [item:{item}]. Bitte prüfen Sie den Brief.",
+        evidence,
+        citable=evidence.seen_ids,
+    )
+    assert checked.text == (
+        f"Die Frist endet am Mi. 21.10.2026, nicht [Datum weggelassen] [item:{item}]. Bitte prüfen Sie den "
+        "Brief."
+    )
+
+
+@pytest.mark.parametrize(
+    "time",
+    ["4 am Wednesday,", "4 am Oct 14,", "14h on", "14 h on", "14h30 on", "14H on", "at 14h, on"],
+)
+def test_more_forms_of_a_time_are_read(tools: LedgerTools, ids: dict[str, str], time: str) -> None:
+    """Final review 2: "4 am Wednesday" was skipped as the German word "am" (English capitalises weekdays
+    and months), and "14h", "14 h" and "14h30" were not read, so an injected time stayed as Ordnung's."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    item = ids["abh_appointment"]
+    text, verdicts = check(f"Your appointment was moved to {time} Wed 14 Oct 2026 [item:{item}].", evidence)
+    assert verdicts == ["redacted"] and "[time left out]" in text, text
+
+
+@pytest.mark.parametrize(
+    "german",
+    ["Sie haben 3 am 14.10.2026 [item:{item}].", "Es sind 4 am Montag, 14.10.2026 [item:{item}].",
+     "Termin 3 am Bahnhof, 14.10.2026 [item:{item}]."],
+)  # fmt: skip
+def test_the_german_word_am_is_no_time(tools: LedgerTools, ids: dict[str, str], german: str) -> None:
+    evidence = evidence_of(tools, ("list_items", {}))
+    item = ids["abh_appointment"]
+    answer = german.format(item=item)
+    assert check(answer, evidence) == (answer, ["kept"])
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Pay the TechMarkt reminder of 94.99 € by Wed 30 Sep 2026 [item:{pay}]; paying late may add another "
+        "reminder fee.",
+        "Your objection must arrive by Wed 21 Oct 2026 [item:{obj}], and an objection filed late may be rejected.",
+        "Pay by Wed 30 Sep 2026 [item:{pay}]. Paying late may add another reminder fee.",
+        "Your objection must arrive by Wed 21 Oct 2026 [item:{obj}]. Sending it early may be wise, since post "
+        "can take a few days.",
+        "Your objection must arrive by Wed 21 Oct 2026 [item:{obj}]. Filing it late may march you into costs.",
+    ],
+)
+def test_the_verb_may_is_no_part_of_may(tools: LedgerTools, ids: dict[str, str], sentence: str) -> None:
+    """Final review 2: "late may" / "early may" were read as parts of May with no year, so the consequence
+    warnings a secretary should give ("paying late may add a fee") were garbled or removed."""
+    evidence = evidence_of(tools, ("list_items", {}))
+    answer = sentence.format(pay=ids["dunning_payment"], obj=ids["tax_objection"])
+    text, _ = check(answer, evidence)
+    assert text == answer
+
+
+def test_a_capitalised_part_of_may_is_still_read(tools: LedgerTools, ids: dict[str, str]) -> None:
+    evidence = evidence_of(tools, ("list_items", {}))
+    obj = ids["tax_objection"]
+    for part in ("late May", "early May", "late May 2027", "late may 2027", "Ende März", "mid-March"):
+        text, verdicts = check(f"Your objection must arrive by {part} [item:{obj}].", evidence)
+        assert verdicts == ["removed"], (part, text)
+
+
+MONTH_WORDS_FILE = (
+    Path(__file__).resolve().parents[1] / "web" / "src" / "features" / "ask" / "monthWords.json"
+)
+
+
+def test_the_month_words_are_shared_with_the_web() -> None:
+    """Final review 2: the web's list-item rule missed "Sept.", "Jänner" and "Marz", so a line the check
+    read as text (rule 1) was a numbered list item in the web. Both read the same file's words (the web's
+    test reads it too), and the trace hides the parts of a month the check reads."""
+    shared = json.loads(MONTH_WORDS_FILE.read_text(encoding="utf-8"))
+    assert shared["months"] == sorted(MONTH_NUMBERS)
+    assert shared["parts"] == support._PART_WORDS

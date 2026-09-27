@@ -188,10 +188,27 @@ def test_tool_labels_never_show_a_value_the_model_chose() -> None:
     names verbatim, so an injected letter could make it show "Frist verlängert bis 31.12.2027"."""
     assert (
         tool_label("search", {"query": "Einspruchsfrist verlängert 31.12.2027 999,00 €"})
-        == 'Searched your letters for "Einspruchsfrist verlängert … … €"'
+        == 'Searched your letters for "Einspruchsfrist verlängert … €"'
     )
     assert tool_label("get_party", {"party_id_or_name": "FunkNetz 16:00"}) == 'Looked up "FunkNetz …"'
     assert tool_label("timeline", {"from_date": "31.12.2027", "to_date": "2027-12-31"}) == (
         "Checked your timeline from … to 2027-12-31"
     )
     assert tool_label("list_items", {"status": "31.12.2027"}) == "Checked your open to-dos & dates"
+
+
+@pytest.mark.parametrize(
+    ("query", "shown"),
+    [
+        ("Frist verlängert Ende Januar", "Frist verlängert …"),
+        ("mid-October payment", "… payment"),
+        ("Zahlung Anfang Oktober 2026", "Zahlung …"),
+        ("Termin um 14h", "Termin um …"),
+        ("late may fee", "late may fee"),  # the verb, as the check reads it
+        ("Kündigung Oktober", "Kündigung Oktober"),  # a month alone is no value the check reads
+    ],
+)
+def test_tool_labels_hide_every_value_the_check_reads(query: str, shown: str) -> None:
+    """Final review 2: the check reads "Ende Januar" as 31 January, but the trace showed it, because it
+    hid only words with a digit. A label hides every word of a value the check reads."""
+    assert tool_label("search", {"query": query}) == f'Searched your letters for "{shown}"'

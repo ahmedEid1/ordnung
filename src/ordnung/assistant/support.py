@@ -1,148 +1,111 @@
 """Claim-level support: which parts of an Ask answer may stay (ADR 0007, ADR 0008).
 
-Ask's tools answer in two channels (:mod:`ordnung.assistant.channels`): Ordnung's *record* (what
-code computed, the person confirmed or the pipeline filed with verified evidence) and the *letter
-text* (every word that comes from a letter). An answer is checked sentence by sentence against the
-record of the records it cites, with this written policy:
+Ask's tools answer in two channels (:mod:`ordnung.assistant.channels`): Ordnung's *record* (what code
+computed, the person confirmed or the pipeline filed with verified evidence) and the *letter text*
+(every word that comes from a letter). An answer is checked sentence by sentence with this policy:
 
-1. **What is read.** Each sentence as the person will see it: the answer's bidirectional formatting
-   characters (``U+202E`` …) are removed from it — they would make the browser show digits in another
-   order than they were read —, citation markers, Markdown emphasis, code and link syntax (a link
-   needs text: the web shows ``[](…)`` as written), backslash escapes and invisible characters (format
-   characters and the other default-ignorable code points) are dropped and typographic punctuation is
-   folded before reading, so ``31.**12**.2027`` reads as 31.12.2027 — except that an underscore
-   between two letters or digits stays (the web shows it as written) and so does an asterisk between
-   two digits. A sentence ends at ``.``, ``!`` or ``?`` followed by a capital letter (after optional
-   quotes, markup or citation markers), never after a one-letter or listed abbreviation
-   (:data:`ABBREVIATION`: ``z. B.``, ``vgl.``, ``Nr.``, ``Wed.``, ``p.``); every line is split on its
-   own — except that a line continuing its paragraph, list item or quote after a soft line break (the
-   web shows them as one text) joins the line before it when a date or amount stands across the break
-   (``21.10.`` / ``2027``). A line that starts with a day (``21. Oktober 2026``) is read whole: the
-   web shows it as written, never as a renumbered list item. A sentence *states*
+1. **What is read.** Each sentence as the person will see it: bidirectional formatting characters are
+   removed from the answer (they would make the browser show digits in another order); citation
+   markers, Markdown emphasis, code and link syntax, backslash escapes and invisible characters are
+   dropped and typographic punctuation folded before reading (``31.**12**.2027`` reads as 31.12.2027),
+   except an underscore between two letters or digits and an asterisk between two digits, which the web
+   shows. A sentence ends at ``.``, ``!`` or ``?`` before a capital letter (after optional quotes,
+   markup or citation markers), never after a one-letter or listed abbreviation (:data:`ABBREVIATION`);
+   every line is split on its own, except that a line continuing its paragraph, list item or quote joins
+   the line before it when a value stands across the soft break (``21.10.`` / ``2027``). A line that
+   starts with a day (``21. Oktober 2026``) is read whole, as the web shows it. A sentence *states*
 
-   - a date when :func:`~ordnung.ingest.verify.parse_dates` finds one; in day, month (digits or
-     Roman) and year apart by spaces, dots or middle dots (``31 12 2027``, ``31·XII·2027``, ``31 12
-     27``) or year, month and day apart by the same separator (``2027 12 31``); in a month name joined
-     to digit groups by one mark or none, in any order (``31-Dec-27``, ``2027-Dec-31``,
-     ``Dec-31-2027``, ``31Dec2027``, ``December the 31st, 2027``); in eight digits that are a date
-     (``20271231``, ``31122027``); or in ``31.12.'27``;
-   - a date in any run of digit groups joined by single punctuation marks or symbols (:data:`_RUN`:
-     ``31|12|2027``, ``31_12_2027``, ``31。12。2027``, ``2027.12.31``, ``31/12/'27``; letters that
-     look like digits inside or at the ends of a group: ``2O27``, ``31.l2.2027``, ``O1.O1.2028``)
-     that holds a day, a month and a year — or a year, a month and a day — anywhere in it and
-     whatever follows it; the two marks between them may differ only around a four-digit year. When
-     those groups are no calendar date the value is *unreadable*: it is never supported. A time after
-     a date belongs to it (``2027-12-31T23:59``, ``2027-12-31Z``). A run after a label such as
-     ``Tel.``, ``Wohnung`` or ``Az.`` is a number, and a phone number has no date shape;
-   - a month with a year and no day: ``December 2027``, ``Dec '27``, ``Dezember 2O27``, ``12/2027``,
-     ``12.2027``, ``2027-12``; and a *part* of a month, with or without a year, as the days it stands
-     for: its end (``Ende Oktober 2026``, ``end of October``, ``late October``: the last day; ``end of
-     2027``: 31 December), its middle (``Mitte Oktober``, ``mid-October``: the 11th to the 20th) or its
-     beginning (``Anfang Oktober``, ``early October``: the 1st to the 10th);
-   - a clock time: ``16:00``, ``4 pm``, ``4:30 p.m.``, ``10 Uhr``, and ``10.30`` with its unit after it
-     or after the other end of its range (``10.30 Uhr``, ``8.00–12.00 Uhr``);
-   - an amount when :func:`~ordnung.ingest.verify.amount_matches` finds a number next to a currency
-     (or a currency word: ``dollars``, ``pounds``, ``francs``), a number with one decimal or ``.-``
-     next to a currency (``18,4 €``, ``€ 18.4``, ``18.- €``), a number glued to a currency code
-     (``999EUR``, ``EUR999``), cents (``99900 Cent``, ``999 ct``), a scale word next to a currency
-     (``1,5k €``, ``1 Mio. €``), or a bare number with two decimals that is neither a label number
-     (``Raum 2.14``, ``Nr. 2.14``, ``Version 1.25``) nor a clock time: "from 18.36 to 21.50" is money.
-     A number followed by ``%``, "Prozent" or "percent" is a rate, not an amount. A number next to a
-     currency too long to be an amount (16 digits or more) is *unreadable*.
+   - a date: what :func:`~ordnung.ingest.verify.parse_dates` finds; day, month (digits or Roman) and
+     year apart by spaces, dots or middle dots (``31 12 2027``, ``31·XII·2027``) or in the other order
+     (``2027 12 31``); a month name joined to digit groups by one mark or none (``31-Dec-27``,
+     ``Dec-31-2027``, ``31Dec2027``, ``December the 31st, 2027``); eight digits that are a date
+     (``20271231``); ``31.12.'27``; and any run of digit groups joined by single marks (:data:`_RUN`:
+     ``31|12|2027``, ``2027.12.31``, ``31/12/'27``, look-alike letters ``2O27``, ``31.l2.2027``) that
+     holds a day, a month and a year. Groups shaped like a date that are no calendar date (``31.02.2027``,
+     year 0) are *unreadable*: never supported. A time right after a date belongs to it
+     (``2027-12-31T23:59``). A run after a label (``Tel.``, ``Wohnung``, ``Az.``) is a number;
+   - a month with a year and no day (``December 2027``, ``Dec '27``, ``12/2027``, ``2027-12``), and a
+     *part* of a month as the days it stands for: its end (``Ende Oktober``, ``end of October``, ``late
+     October``: the last day; ``end of 2027``: 31 December), middle (``Mitte``, ``mid-``: the 11th to
+     20th) or beginning (``Anfang``, ``early``: the 1st to 10th). Without a year, "may", "march" and
+     "mar" are months only when capitalised ("paying late may add a fee" is the verb);
+   - a clock time: ``16:00``, ``4 pm``, ``4:30 p.m.``, ``10 Uhr``, ``14h``, ``14 h``, ``14h30``, and
+     ``10.30`` with its unit after it or after the other end of its range (``8.00–12.00 Uhr``). A
+     lower-case "am" before a number or a capitalised word is the German word — except before an English
+     weekday or month (``4 am Wednesday``);
+   - an amount: what :func:`~ordnung.ingest.verify.amount_matches` finds next to a currency or currency
+     word, one decimal or ``.-`` next to a currency (``18,4 €``), glued to a code (``999EUR``), cents
+     (``999 ct``), a scale word (``1,5k €``, ``1 Mio. €``), or a bare two-decimal number that is neither
+     a label number (``Raum 2.14``) nor a clock time with its unit — "from 18.36 to 21.50" and "at 23.59"
+     are money (when in doubt it is money). A rate (``2,90 %``) is no amount; a number next to a currency
+     too long to be one (16 digits or more) is *unreadable*.
 
-   A sentence that starts like Ordnung's own note (:data:`NOTE_LABELS`, after any symbols, emoji or
-   markup, followed by punctuation, a symbol or nothing — ``Checked by Ordnung:``, ``… Ordnung —``,
-   ``… Ordnung ✓``) is left out, and the note says so: only the check writes that note.
+   A sentence that starts like Ordnung's own note (:data:`NOTE_LABELS`) is left out, and the note says so.
 2. **Cited records.** The records the sentence cites. A sentence that cites none takes those of the
-   nearest sentence before it on its line that cites some, else of the nearest one after it (a
-   trailing citation covers its line); a list item that cites none takes those of the line ending in
-   ``:`` that leads the list.
-3. **Supported.** A value is supported when it is in the record part of a cited record — a record that
-   appeared in a record part of this turn's tool results. A record's part includes the records listed
-   inside it or linked to it: a letter's to-dos and contracts, a contract's letter, a person's to-dos
-   (``doc_id``, ``contract_id``, ``party_id``, ``source_doc_id``). Dates without a year match by day
-   and month; a month without a day matches a record date in that month, a part of a month only a
-   record date in that part; a clock time must be a time of the record (a to-do's ``due_time``), and a
-   date written with a time is supported only together with it. Today's date needs no citation. The
-   overview totals Ordnung's code adds up over many records (``due_this_month``,
-   ``fixed_costs_monthly``, a category's ``fixed_costs_by_category``: two contracts can share a
-   category) support only a sentence without a citation of its own — a total can equal one record's
-   amount, so it never backs a claim about a record. A sentence without a citation of its own — one
-   that inherits its neighbour's (rule 2) too — states a record's value only when it can say whose it
-   is: the value must be in the record part of a record the answer cites, and when all the sentence's
-   values belong to one such record (the most direct: a to-do before its letter, contract or person),
-   the check adds that record's citation and says so in the note, so the person sees whose value it
-   is ("… also cancelled by Wed 21 Oct 2026 [item:tax objection]" shows the tax objection's chip, not
-   the phone contract's). When they belong to several records, no citation is added — never all of
-   them. A record with scam signs (a to-do or letter flagged ``scam_warning`` or listed in
-   ``do_not_pay``, with its letter and sender) is never cited by the check (ADR 0006): a value it holds
-   stays (a warning such as "do not transfer the 254.35 € it asks for" keeps its amount) but gets no
-   citation, alone or shared with a real record.
-4. **Shown as unconfirmed.** Two other kinds of value stay, in quotation marks (“…”, or „…“ in a
-   German answer; quotation marks the answer already puts around it are used, straight ones turned
-   into these): the flagged, unverified amount of a cited to-do or contract (``amount_unverified``,
-   ``terms_unverified``: the record itself says the amount is only the letter's), so a real payment
-   stays in a list; and a value the person wrote in this conversation — their words, never
-   Ordnung's. The note says that quoted values are not confirmed.
-5. **Left out.** Every other value is left out. One that only a letter's text holds (of a cited
-   record; citing nothing, of any record read in this turn) and no record part of this turn holds is
-   replaced by "[date only in the letter]", "[time only in the letter]" or "[amount only in the
-   letter]": Ordnung shows a value as its answer only when its record holds it, and the note says to
-   open the letter. Any other is replaced by "[date left out]", "[time left out]" or "[amount left
-   out]" (with a month range's start: "Oct–" never stands alone). A sentence that keeps no supported
-   or quoted value is removed — its words would carry the claim alone — unless the text of a letter it
-   refers to holds every value it leaves out: then its words are about the letter ("the letter claims
-   the deadline moved to [date only in the letter]"), and a warning about injected text stays. A left-out value is never
-   shown: when the edits of a sentence would leave one standing, the sentence is removed. When a value
-   was left out or a person's value quoted, and the answer states none of the own dates (with their
-   times) or amounts of the records those sentences cite (citing nothing: of the records whose letter
-   text holds the value), the note gives them with what they are — never as what the left-out value
-   should have been, and never those of a record with scam signs: "For the records concerned, Ordnung
-   has on file: deadline Wed 21 Oct 2026" (money coming in is an "incoming payment").
-6. **Laws.** A § must be in the rules catalog, among the laws Ordnung's own Ideas state (the
-   caller's ``catalog``: :func:`ordnung.assistant.ask.known_laws`, which adds
-   :data:`~ordnung.secretary.triggers.IDEA_LAWS`) or in a record part (a list such as ``§ 622 Abs. 1,
-   3, 6 BGB`` keeps its law, so ``§ 622 BGB`` is known). Any other § — also one that only a letter
-   names — removes its whole sentence: an unvouched legal basis can change what the sentence says
-   ("under § 999 AO the deadline no longer applies"), so it is never kept with the law blanked.
+   nearest sentence before it on its line that cites some, else of the nearest after it; a list item
+   that cites none takes those of the line ending in ``:`` that leads the list.
+3. **Supported.** A value is supported when it is in the record part of a cited record that appeared in
+   a record part of this turn's tool results. A record's part includes the records listed in it or linked
+   to it (``doc_id``, ``contract_id``, ``party_id``, ``source_doc_id``). Dates without a year match by day
+   and month; a month without a day matches a record date in that month, a part of a month only one in
+   that part; a clock time must be a time of the record (a to-do's ``due_time``), and a date written with
+   a time is supported only with it. Today needs no citation. Overview totals (``due_this_month``,
+   ``fixed_costs_monthly``, ``fixed_costs_by_category``) support only a sentence without citations of its
+   own — a total can equal one record's amount. A sentence without citations of its own (also one that
+   inherits them) states a record's value only when the value is in the record part of a record the
+   answer cites; when all its values belong to one such record (the most direct: a to-do before its
+   letter, contract or person), the check adds that record's citation, so its chip shows whose value it
+   is — never for several records, never for a record with scam signs (``scam_warning``, ``do_not_pay``;
+   ADR 0006), whose values stay without a chip. A citation the sentence already inherits is shown again
+   but not counted in the note: nothing new is claimed.
+4. **Shown as unconfirmed.** Two other kinds of value stay, in quotation marks (“…”, „…“ in German; the
+   answer's own quotation marks are reused): the flagged, unverified amount of a cited to-do or contract
+   (``amount_unverified``, ``terms_unverified``) and a value the person wrote in this conversation.
+5. **Left out.** Every other value is left out: as "[date only in the letter]" (time, amount) when the
+   letter text of a record the sentence cites holds it (citing nothing: of any record read in this turn)
+   — the note says to open the letter —, else as "[date left out]" (with a month range's start:
+   "Oct–" never stands alone). An edit replaces only the value: a full stop its pattern took that also
+   ends the sentence, and a citation after it, stay. A sentence that keeps no supported or quoted value
+   is removed unless every value it leaves out is in the text of a letter it refers to (a warning about
+   injected text stays). Within its sentence a left-out value is never shown: when the edits would leave
+   one standing, the sentence is removed. The note then gives the own dates and amounts of the records
+   concerned — never as what the left-out value should have been, never those of a scam record: "For
+   the records concerned, Ordnung has on file: deadline Wed 21 Oct 2026".
+6. **Laws.** A § must be in the rules catalog, among the laws Ordnung's own Ideas state
+   (:func:`ordnung.assistant.ask.known_laws`) or in a record part (``§ 622 Abs. 1, 3, 6 BGB`` keeps its
+   law). Any other § — also one only a letter names — removes its whole sentence.
 
-The note — in the answer's language, under its label (:data:`NOTE_LABELS`) — says how many values,
-sentences and lines were left out, and why, and how many citations were added; the caller adds the
-citations it removed and the weekday names it corrected (:meth:`CheckedAnswer.note`). When nothing is
-left, Ask answers with a fixed fallback and the note still says why.
+The note — in the answer's language, under its label — says how many values, sentences and lines were
+left out and why, and how many citations were added; the caller adds the citations it removed and the
+weekday names it corrected (:meth:`CheckedAnswer.note`). When nothing is left, Ask answers with a fixed
+fallback and the note still says why.
 
-The check is deterministic and linear in the size of the answer and the tool results: each sentence
-is read a bounded number of times, each value is looked up in hash maps of the cited records, and
-every pattern is bounded or cannot start twice inside the same run of characters (a run of ``[``, of
-digits or of spaces is read once).
+The check is deterministic and linear in the size of the answer and the tool results: each sentence is
+read a bounded number of times, values are looked up in hash maps, and no pattern starts twice inside
+one run of characters (a run of ``[``, digits, spaces or full stops is read once).
 
 Known limits — documented, not bugs:
 
-- Support is literal, not semantic: a value in a cited record supports a sentence that says
-  something else about it ("you owe the library 640.00 € [item:rent]" passes when the rent to-do
-  holds 640.00 €), and a value that belongs to several cited records is kept with no added citation.
-  A letter can therefore still steer *which* record the model cites.
-- Not read — the prompt and the record are the only defence there: dates in words without a named
-  month or with no number ("next Friday", "end of the month", "early 2027", a bare year, "in
-  October" with no year), calendar weeks (``KW 52/2027``), rates ("2.90 %"), times without a unit
-  ("at 4") and claims without a value or § ("there is no deadline"); day, month and two-digit year
-  joined by two different marks (``31.12/27``: its ``31.12`` is read as an amount); six digits
-  (``311227``); dates in other scripts (``2027年12月31日``); letters other than O, o, I, l and Z in
-  place of digits, or look-alike letters in the spaced and named forms' separators; amounts in words
-  ("tausend Euro"). In a sentence with right-to-left letters (an Arabic or Persian answer) the
-  browser may show digit groups apart by spaces in another order; both orders of day, month and
-  year are read, other runs are not. A sentence whose value was left out keeps its words ("the
-  deadline moved to [date left out]"); the placeholder and the note show it, and Ordnung's own date
-  stays wherever it is cited.
-- A correct value that only a letter's text holds is shown only as "[date only in the letter]", and
-  a correct § that only a letter names removes its sentence. A sentence whose values are all a
-  letter's keeps its words — a warning about injected text, but also a sentence that repeats the
-  letter's claim as if it were true ("the deadline was extended to [date only in the letter]"); the
-  placeholder and the note, with Ordnung's own dates, show whose value it is. Which words of a
-  sentence quote a letter is never decided from its wording; quotes the model marks for code are
-  the next step if this costs too much in use (ADR 0008).
-- A value the person wrote stays as their words even in a sentence that agrees with it; the note
-  then gives Ordnung's own value next to it.
+- Support is literal, not semantic: a value in a cited record supports a sentence that says something
+  else about it ("you owe the library 640.00 € [item:rent]"), and a value several cited records hold
+  keeps no added citation. A letter can still steer *which* record the model cites. Rule 5 holds within
+  a sentence: a sentence without its own citation may keep a date that a cited record holds anywhere in
+  its record part (a contract's code-written warning "…would end on Sun 1 Nov 2026"), even where another
+  sentence's copy of that date was left out because the record it cites does not hold it.
+- Not read (the prompt and the record are the only defence): dates in words without a named month or
+  number ("next Friday", "end of the month", a bare year, "in October" with no year), calendar weeks,
+  rates, times without a unit ("at 4"), a duration in hours read as a clock time ("2 h"), claims without
+  a value or § ("there is no deadline"); ``31.12/27`` (read as an amount), six digits (``311227``), other
+  scripts, letters other than O, o, I, l and Z for digits, amounts in words. A dotted time after a date
+  or "at" (``14 Oct, 14.00``, "at 23.59") is read as money: left out as an amount, not as a time. In a
+  sentence with right-to-left letters, both orders of spaced day, month and year are read, other runs
+  are not.
+- A sentence whose value was left out keeps its words ("the deadline moved to [date only in the
+  letter]" — also when it repeats a letter's claim as if it were true); the placeholder and the note, with
+  Ordnung's own dates, show whose value it is. A correct value only a letter holds, or a correct § only
+  a letter names, is never shown. Which words quote a letter is never decided from wording (ADR 0008).
+- A value the person wrote stays as their words even in a sentence that agrees with it; the note then
+  gives Ordnung's own value next to it.
 """
 
 from __future__ import annotations
@@ -222,8 +185,10 @@ QuoteSource = Literal["letter", "person"]
 RemovalReason = Literal["value", "letter", "law"]
 
 _SENTENCE_END = re.compile(
-    r"[.!?]+(?P<close>[\"'”“’»)\]*_]*)(?P<cites>(?:[ \t]*\[[^\[\]\n]{1,300}\])*)(?P<gap>[ \t]+)"
+    r"(?<![.!?])[.!?]+(?P<close>[\"'”“’»)\]*_]*)(?P<cites>(?:[ \t]*\[[^\[\]\n]{1,300}\])*)(?P<gap>[ \t]+)"
 )
+"""A sentence's end; a run of ``.``, ``!`` or ``?`` is tried only from its first mark, so a run of
+thousands of dots is read once (not again from each of its marks)."""
 _OPENERS = "\"'“„‘«(*_["
 _LINE_PREFIX = re.compile(r"^(\s*(?:[-*+•]\s+|#{1,6}\s+|>\s*)?)")
 _LINK = re.compile(
@@ -330,6 +295,9 @@ part of a month, with or without a year: ``Ende Oktober 2026``, ``end of October
 (the month's last day), ``mid-October`` / ``Mitte Oktober`` (its 11th to 20th), ``early October`` /
 ``Anfang Oktober`` (its 1st to 10th); ``end of 2027`` is 31 December. A bare month is supported by
 any record date in it (rule 3), a part of a month only by a record date in that part."""
+_VERB_MONTHS = frozenset({"may", "march", "mar"})
+"""Month names that are also English verbs: after a part word and with no year, only capitalised ones
+are months ("late May", never "filed late may be rejected")."""
 _PART_DAYS = {"end": None, "mid": (11, 20), "early": (1, 10)}
 """The days a part of a month stands for (``None``: the month's last day)."""
 _LEAD = "[OoIlZ]"
@@ -357,11 +325,24 @@ _AMPM_TIME = re.compile(
 _COLON_TIME = re.compile(
     r"(?<![\w.,:])(?P<h>[01]?\d|2[0-4]):(?P<m>[0-5]\d)(?::[0-5]\d)?(?![\d:])(?:\s?(?:Uhr|h)\b)?"
 )
-_HOUR_TIME = re.compile(r"(?<![\w.,:])(?P<h>[01]?\d|2[0-4])\s?(?:Uhr|o'clock)\b", re.IGNORECASE)
+_HOUR_TIME = re.compile(
+    r"(?<![\w.,:])(?:(?P<h>[01]?\d|2[0-4])\s?(?:Uhr|o'clock)\b|(?P<hh>[01]?\d|2[0-3])\s?h(?P<m>[0-5]\d)?\b)",
+    re.IGNORECASE,
+)
 _DOT_TIME = re.compile(r"(?<![\w.,])(?P<h>[01]?\d|2[0-4])[.,](?P<m>[0-5]\d)(?!\d|[.,]\d)")
-"""Clock times (rule 1): ``16:00``, ``4 pm``, ``4:30 p.m.``, ``10 Uhr``, and ``10.30`` only with its unit
-after it or after the other end of its range (``10.30 Uhr``, ``8.00–12.00 Uhr``). A lower-case "am"
-before a number or a capital is the German word (``3 am 14.10.``), not a time."""
+"""Clock times (rule 1): ``16:00``, ``4 pm``, ``4:30 p.m.``, ``10 Uhr``, ``14h``, ``14 h``, ``14h30``, and
+``10.30`` only with its unit after it or after the other end of its range (``10.30 Uhr``, ``8.00–12.00
+Uhr``). A lower-case "am" before a number or a capitalised word is the German word (``3 am 14.10.``,
+``4 am Montag``, ``3 am Bahnhof``), not a time — except before an English weekday or month (``4 am
+Wednesday``, ``4 am Oct 14``): English capitalises those."""
+_ENGLISH_AFTER_AM = re.compile(
+    r"(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tues?|Wed|Thur?s?|Fri|Sat|Sun|January|"
+    r"February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|"
+    r"Jul|Aug|Sept?|Oct|Nov|Dec)\b"
+)
+_GERMAN_AM = re.compile(r"\s+(?:\d|[A-ZÄÖÜ])")
+"""After a lower-case "am" (no dot): a number or a capitalised word makes it the German word — unless the
+word is an English weekday or month (:data:`_ENGLISH_AFTER_AM`)."""
 
 
 def _with_time(plain: str, end: int) -> tuple[int, tuple[int, int] | None]:
@@ -447,6 +428,18 @@ class Reading:
     def source_span(self, start: int, end: int) -> tuple[int, int]:
         """The span in the sentence of ``text[start:end]`` (markup inside it included)."""
         return self.offsets[start], self.offsets[end - 1] + 1
+
+    def value_span(self, start: int, end: int, *, last_word: int) -> tuple[int, int]:
+        """The span in the sentence of the value ``text[start:end]``, without a full stop the value's
+        pattern took (``2 pm.``, ``Ende Dezember.``, ``999 ct.``) when that stop also ends the sentence
+        (no letter, digit or other full stop after it: ``last_word`` is the index of the reading's last
+        letter or digit) or stands after something the reading dropped (``2 pm [item:…].``): an edit of
+        the value keeps the sentence's full stop and the citation before it."""
+        if end - start > 1 and self.text[end - 1] == ".":
+            apart = self.offsets[end - 1] != self.offsets[end - 2] + 1
+            if apart or (last_word < end and not self.text.startswith(".", end)):
+                end -= 1
+        return self.source_span(start, end)
 
 
 def is_invisible(char: str) -> bool:
@@ -756,8 +749,11 @@ _FIRST_FORMS = 3
 
 
 def _valid_mention(text: str, day: int, month: int, year: int | None) -> list[DateMention]:
+    """The date as a reading, or none when it is no calendar date — year 0 included (``01.01.0000``):
+    every reading this returns can become a :class:`~datetime.date`, so no letter can make the check
+    raise."""
     try:
-        date(year or 2000, month, day)
+        date(2000 if year is None else year, month, day)
     except (ValueError, OverflowError):
         return []
     return [DateMention(text, day, month, year)]
@@ -775,6 +771,8 @@ def _month_values(plain: str) -> Iterator[Value]:
             continue
         if match.group("ym"):
             part, month_name, year_found = match.group("ypart"), match.group("ym"), None
+            if month_name.casefold() in _VERB_MONTHS and not month_name[0].isupper():
+                continue  # "paying late may add a fee": the verb, not a part of May
         else:
             part, month_name = match.group("part"), match.group("m")
             year_found = _digits(match.group("y")) if match.group("y") else _year(match.group("ay"))
@@ -1020,11 +1018,7 @@ def _time_values(plain: str, taken: _Taken) -> Iterator[Value]:
         if not taken.free(*match.span()):
             continue
         ap = match.group("ap")
-        if (
-            ap == "a"
-            and not match.group().rstrip().endswith(".")
-            and re.match(r"\s+(?:\d|[A-ZÄÖÜ])", plain[match.end() :])
-        ):
+        if ap == "a" and not match.group().rstrip().endswith(".") and _german_am(plain, match.end()):
             continue  # "3 am 14.10.", "4 am Montag": the German word
         hour = int(match.group("h")) % 12 + (12 if ap in "Pp" else 0)
         yield Value(match.group(), "time", *match.span(), clock=(hour, int(match.group("m") or 0)))
@@ -1033,8 +1027,17 @@ def _time_values(plain: str, taken: _Taken) -> Iterator[Value]:
             match.group(), "time", *match.span(), clock=(int(match.group("h")), int(match.group("m")))
         )
     for match in _HOUR_TIME.finditer(plain):
-        yield Value(match.group(), "time", *match.span(), clock=(int(match.group("h")), 0))
+        clock = (int(match.group("h") or match.group("hh")), int(match.group("m") or 0))
+        yield Value(match.group(), "time", *match.span(), clock=clock)
     yield from _dotted_times(plain)
+
+
+def _german_am(plain: str, end: int) -> bool:
+    """Whether the lower-case "am" ending at ``end`` is the German word (:data:`_GERMAN_AM`)."""
+    after = _GERMAN_AM.match(plain, end)
+    return after is not None and not (
+        plain[after.end() - 1].isupper() and _ENGLISH_AFTER_AM.match(plain, after.end() - 1)
+    )
 
 
 def _date_values(plain: str) -> list[Value]:
@@ -1252,10 +1255,6 @@ class TurnEvidence:
         found = [ref for ref in records if ref in held]
         ranks = [_HOLDER_ORDER.get(ref.split("_", 1)[0], len(_HOLDER_ORDER)) for ref in found]
         return [ref for ref, rank in zip(found, ranks, strict=True) if rank == min(ranks)]
-
-    def in_record(self, value: Value) -> bool:
-        """Whether the record part of any record read in this turn holds ``value``."""
-        return bool(self.record_index.holders(value))
 
     def in_letter(self, value: Value, cited: Collection[str]) -> bool:
         """Whether the letter text of a cited record holds ``value`` (citing nothing: of any record
@@ -1526,40 +1525,42 @@ _NOTE_TEXTS: Mapping[str, tuple[str, str, str, str]] = {
     # (English one, English many, German one, German many); {n} is the count. The label says who
     # checked ("Checked by Ordnung:"), so the texts do not start with "Ordnung" again.
     "removed_value": (
-        "Left out 1 sentence: its date, time or amount isn't in the letter, to-do or contract it refers to.",
-        "Left out {n} sentences: their dates, times or amounts aren't in the letters, to-dos or contracts "
-        "they refer to.",
-        "1 Satz weggelassen: Sein Datum, seine Uhrzeit oder sein Betrag steht nicht im Brief, in der Aufgabe "
-        "oder im Vertrag, auf den er sich bezieht.",
-        "{n} Sätze weggelassen: Ihre Daten, Uhrzeiten oder Beträge stehen nicht in den Briefen, Aufgaben oder "
-        "Verträgen, auf die sie sich beziehen.",
+        "Left out 1 sentence: its date, time or amount isn't in Ordnung's record of what it cites.",
+        "Left out {n} sentences: their dates, times or amounts aren't in Ordnung's record of what they cite.",
+        "1 Satz weggelassen: Sein Datum, seine Uhrzeit oder sein Betrag steht nicht in Ordnungs Einträgen zu "
+        "seinen Quellen.",
+        "{n} Sätze weggelassen: Ihre Daten, Uhrzeiten oder Beträge stehen nicht in Ordnungs Einträgen zu "
+        "ihren Quellen.",
     ),
     "removed_letter": (
-        "Left out 1 sentence: its date, time or amount is only in a letter's text, which Ordnung has not "
-        "confirmed — open the letter to read it.",
-        "Left out {n} sentences: their dates, times or amounts are only in a letter's text, which Ordnung "
-        "has not confirmed — open the letter to read them.",
-        "1 Satz weggelassen: Sein Datum, seine Uhrzeit oder sein Betrag steht nur im Text eines Briefs, den "
-        "Ordnung nicht bestätigt hat – öffnen Sie den Brief, um ihn zu lesen.",
-        "{n} Sätze weggelassen: Ihre Daten, Uhrzeiten oder Beträge stehen nur im Text eines Briefs, den "
-        "Ordnung nicht bestätigt hat – öffnen Sie den Brief, um sie zu lesen.",
+        "Left out 1 sentence: its date, time or amount is in a letter's text but not in Ordnung's record of "
+        "what it cites — open the letter to read it.",
+        "Left out {n} sentences: their dates, times or amounts are in a letter's text but not in Ordnung's "
+        "record of what they cite — open the letter to read them.",
+        "1 Satz weggelassen: Sein Datum, seine Uhrzeit oder sein Betrag steht im Text eines Briefs, aber "
+        "nicht in Ordnungs Einträgen zu seinen Quellen – öffnen Sie den Brief, um ihn zu lesen.",
+        "{n} Sätze weggelassen: Ihre Daten, Uhrzeiten oder Beträge stehen im Text eines Briefs, aber nicht "
+        "in Ordnungs Einträgen zu ihren Quellen – öffnen Sie den Brief, um sie zu lesen.",
     ),
     "redacted": (
-        "1 date, time or amount is marked “left out”: it isn't in what its sentence refers to.",
-        "{n} dates, times or amounts are marked “left out”: they aren't in what their sentences refer to.",
-        "1 Angabe ist als „weggelassen“ markiert: Sie steht nicht in dem, worauf sich ihr Satz bezieht.",
-        "{n} Angaben sind als „weggelassen“ markiert: Sie stehen nicht in dem, worauf sich ihre Sätze "
-        "beziehen.",
+        "1 date, time or amount is marked “left out”: it isn't in Ordnung's record of what its sentence "
+        "cites.",
+        "{n} dates, times or amounts are marked “left out”: they aren't in Ordnung's record of what their "
+        "sentences cite.",
+        "1 Angabe ist als „weggelassen“ markiert: Sie steht nicht in Ordnungs Einträgen zu den Quellen ihres "
+        "Satzes.",
+        "{n} Angaben sind als „weggelassen“ markiert: Sie stehen nicht in Ordnungs Einträgen zu den Quellen "
+        "ihrer Sätze.",
     ),
     "redacted_letter": (
-        "1 date, time or amount is marked “only in the letter”: no record Ordnung looked up holds it, so it "
-        "isn't shown — open the letter to read it.",
-        "{n} dates, times or amounts are marked “only in the letter”: no record Ordnung looked up holds them, "
-        "so they aren't shown — open the letter to read them.",
-        "1 Angabe ist als „nur im Brief“ markiert: Kein Eintrag, den Ordnung nachgeschlagen hat, enthält sie, "
-        "deshalb wird sie nicht gezeigt – öffnen Sie den Brief, um sie zu lesen.",
-        "{n} Angaben sind als „nur im Brief“ markiert: Kein Eintrag, den Ordnung nachgeschlagen hat, enthält "
-        "sie, deshalb werden sie nicht gezeigt – öffnen Sie den Brief, um sie zu lesen.",
+        "1 date, time or amount is marked “only in the letter”: a letter's text has it, but Ordnung's record "
+        "of what its sentence cites doesn't — open the letter to read it.",
+        "{n} dates, times or amounts are marked “only in the letter”: a letter's text has them, but "
+        "Ordnung's record of what their sentences cite doesn't — open the letter to read them.",
+        "1 Angabe ist als „nur im Brief“ markiert: Sie steht im Text eines Briefs, aber nicht in Ordnungs "
+        "Einträgen zu den Quellen ihres Satzes – öffnen Sie den Brief, um sie zu lesen.",
+        "{n} Angaben sind als „nur im Brief“ markiert: Sie stehen im Text eines Briefs, aber nicht in "
+        "Ordnungs Einträgen zu den Quellen ihrer Sätze – öffnen Sie den Brief, um sie zu lesen.",
     ),
     "removed_law": (
         "Left out 1 sentence: it names a law that is in neither Ordnung's rules nor its records.",
@@ -1658,7 +1659,10 @@ class SentenceCheck:
     of them only in a letter's text); ``reason``: why a sentence was removed; ``result``: the sentence
     as it stays in the answer (empty when removed; with the citations the check added);
     ``record_refs``: for each value left out or quoted as the person's words, its kind and the records
-    it belongs to (whose own values the note gives); ``added``: the ids whose citation the check added.
+    it belongs to (whose own values the note gives); ``added``: the ids whose citation the check added
+    (rule 3); ``repeated``: those it added although the sentence already inherits them (rule 2) — the
+    chip still shows whose value the sentence states, but nothing new is claimed, so the note does not
+    count them.
     """
 
     text: str
@@ -1673,6 +1677,7 @@ class SentenceCheck:
     record_refs: tuple[tuple[ValueKind, frozenset[str]], ...] = ()
     in_letter: int = 0
     added: tuple[str, ...] = ()
+    repeated: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1986,11 +1991,12 @@ def check_sentence(
         if holders:  # a demand not to pay is never cited by the check, and a value it holds gets no chip
             owners.append(set() if evidence.suspicious.intersection(holders) else set(holders))
     common = set.intersection(*owners) if owners else set()
-    added = tuple(common) if len(common) == 1 else ()  # the citation says whose value it is
+    single = tuple(common) if len(common) == 1 else ()  # the citation says whose value it is
+    repeated = single if common <= set(cited) else ()  # already inherited: shown again, not news
+    added = () if repeated else single
     quoted: dict[int, tuple[QuoteSource, frozenset[str]]] = {}
     left: list[int] = []
-    letter: set[int] = set()  # left out, only a letter's text holds it: "[date only in the letter]"
-    from_letter: set[int] = set()  # left out, a cited letter's text holds it (the sentence is about it)
+    letter: set[int] = set()  # left out, a cited letter's text holds it: "[date only in the letter]"
     refs: list[tuple[ValueKind, frozenset[str]]] = []
     for index, value in enumerate(values):
         if supported[index]:
@@ -2004,21 +2010,25 @@ def check_sentence(
             quoted[index] = ("person", holders_of)
         else:
             left.append(index)
-            if evidence.in_letter(value, cited):
-                from_letter.add(index)
-                if not evidence.in_record(value):
-                    letter.add(index)
+            if evidence.in_letter(value, cited):  # "[date only in the letter]": open it to read it
+                letter.add(index)
     in_letter = len(letter)
     unsupported = tuple(values[i].text for i in sorted([*quoted, *left]))
-    ids = added
+    ids = (*added, *repeated)
     if not unsupported:
         cited_result = _add_citations(sentence, ids)
         return SentenceCheck(
-            sentence, "kept", stated, result=cited_result, supported=tuple(values), added=ids
+            sentence,
+            "kept",
+            stated,
+            result=cited_result,
+            supported=tuple(values),
+            added=added,
+            repeated=repeated,
         )
     left_texts = tuple(values[i].text for i in left)
     unplaced = any(values[i].start < 0 for i in (*quoted, *left))
-    only_letters = bool(left) and len(from_letter) == len(left)
+    only_letters = bool(left) and len(letter) == len(left)
     if unplaced or not (quoted or any(supported) or only_letters):
         reason: RemovalReason = "letter" if only_letters else "value"
         return SentenceCheck(
@@ -2054,7 +2064,8 @@ def check_sentence(
         supported=tuple(value for value, ok in zip(values, supported, strict=True) if ok),
         record_refs=tuple(refs),
         in_letter=in_letter,
-        added=ids,
+        added=added,
+        repeated=repeated,
     )
 
 
@@ -2084,7 +2095,10 @@ def _apply(
     ``letter``: the left-out values a letter's text holds."""
     pairs = _QuotePairs(sentence)
     edits: list[tuple[int, int, str]] = []
-    spans = {i: reading.source_span(values[i].start, values[i].end) for i in (*quoted, *left)}
+    last_word = next((i for i in range(len(reading.text) - 1, -1, -1) if reading.text[i].isalnum()), -1)
+    spans = {
+        i: reading.value_span(values[i].start, values[i].end, last_word=last_word) for i in (*quoted, *left)
+    }
     previous_end = 0
     for index in sorted(spans, key=lambda i: spans[i][0]):
         core_begin, core_end = spans[index]

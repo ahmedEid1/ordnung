@@ -10,6 +10,7 @@
  * only their alt text. Citation markers become `cite` nodes when validated and vanish otherwise.
  */
 import { markerAt, type CitationRef } from "./citations";
+import MONTH_WORDS from "./monthWords.json";
 
 export type Inline =
   | { t: "text"; v: string }
@@ -49,8 +50,9 @@ const FENCE = /^\s{0,3}(```|~~~)/;
 const HEADING = /^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$/;
 const RULE = /^\s{0,3}([-*_])(?:\s*\1){2,}\s*$/;
 const UL = /^\s*[-*+•]\s+(.*)$/;
-const MONTH_WORD =
-  "jan|feb|m[aä]r|apr|ma[iy]|jun|jul|aug|sep|o[ck]t|nov|de[cz]|januar|februar|märz|maerz|juni|juli|oktober|dezember|january|february|march|april|june|july|august|september|october|november|december";
+/** Every month name and abbreviation Ordnung's check reads (`ordnung.ingest.verify.MONTH_NUMBERS`, shared
+ * through `monthWords.json`), longest first. */
+export const MONTH_WORD = [...MONTH_WORDS.months].sort((a, b) => b.length - a.length).join("|");
 /** An ordered list item: a number, then `.` or `)` — but not a day before a month ("21. Oktober 2026",
  * "5) Okt"): that line is a date, shown as written, as Ordnung's check reads it. */
 const OL = new RegExp(`^\\s*(\\d{1,4})[.)]\\s+(?!(?:${MONTH_WORD})\\b)(.*)$`, "i");
