@@ -3730,6 +3730,8 @@ export interface components {
             answered_on: string | null;
             /** Followup Item Id */
             followup_item_id: string | null;
+            /** Doc Id */
+            doc_id: string | null;
         };
         /**
          * BriefUpdatedEvent

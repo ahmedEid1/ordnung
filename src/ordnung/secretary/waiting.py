@@ -142,6 +142,7 @@ def letter_entry(ledger: Ledger, draft: Draft) -> WaitingEntry | None:
             "answered_by": RefLink(type="document", id=reply.id) if reply else None,
             "answered_on": (day.isoformat() if (day := _letter_day(reply)) else None) if reply else None,
             "followup_item_id": followup.id if followup is not None else None,
+            "doc_id": draft.doc_id if ledger.document(draft.doc_id) else None,
         }
     )
 
@@ -198,6 +199,7 @@ def _money_entry(ledger: Ledger, item: Item) -> WaitingEntry:
             "area": item.area,
             "ref": RefLink(type="item", id=item.id),
             "followup_item_id": item.id,
+            "doc_id": doc.id if doc is not None else None,
         }
     )
 

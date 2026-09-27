@@ -1148,6 +1148,8 @@ class WaitingEntry(_Model):
     answered_by: RefLink | None = None
     answered_on: str | None = None
     followup_item_id: str | None = None
+    #: the letter it comes from: the one a sent letter answers, or the one that promised the money
+    doc_id: str | None = None
 
 
 class ProofOverview(_Model):

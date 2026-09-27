@@ -54,6 +54,14 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   keeps only anonymous numbers, and deleted database rows are overwritten rather than left behind.
   Contracts and letters you drafted stay, without the link to it; your *Ask* conversations stay as
   they are. *Settings → Delete everything* wipes the whole database.
+- **Proof of sending stays private** — a receipt, delivery record, fax report or saved e-mail you
+  add to a sent letter is stored like any upload but always with *Keep private (no AI)* on: it is
+  never sent to Claude, not even when you ask about the letter, and it isn't listed among your
+  letters. Its kind, day and note are what you chose — Ordnung doesn't read them from the file. The
+  *Nachweis* PDF is made on your computer from the letter and these files. Removing a proof deletes
+  its file for good (unless another proof uses it); deleting the letter deletes its proofs too.
+  Tracking numbers are checked on your computer; Ordnung never asks a tracking website.
+- **Call notes** — what you note about a phone call is kept as you typed it; no AI reads it.
 - **Models** — choose which Claude model handles each purpose.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself.

@@ -137,7 +137,8 @@ Key additions in v2 (to implement in models.py):
 SQLite `<data>/ordnung.db`. Every connection: `isolation_level=None` (autocommit; explicit
 transactions), `PRAGMA journal_mode=WAL; busy_timeout=5000; synchronous=NORMAL; foreign_keys=ON`.
 `Store.tx()` = `BEGIN IMMEDIATE … COMMIT/ROLLBACK` (re-entrant per thread). Migrations: `PRAGMA
-user_version` + `db/migrations/NNNN_name.sql` applied in order on open (0001 = the v1 schema).
+user_version` + `db/migrations/NNNN_name.sql` applied in order on open (0001 = the v1 schema;
+numbers start at 0001 and increase, gaps are allowed and duplicates are not — see `db/migrate.py`).
 The MCP server opens the DB read-only (`mode=ro` URI + `PRAGMA query_only=ON`).
 
 **Deterministic IDs** (so recorded demo/replay references stay valid):
@@ -342,7 +343,12 @@ non-user-modified extracted rows in one transaction. "Keep private (no AI)" skip
   (send_by within 60 days), `price_increase_right`, `expiry_soon` (passport/ID 180 d, residence
   permit 90 d — apply before expiry, § 81 Abs. 4 AufenthG), `passport_before_permit`,
   `followup_due` (a sent letter's follow-up item became due), `please_check`, `dunning_escalation`,
-  `scam_warning`, `tax_documents` (Jan–Jul), `calendar_outdated` (new dates since last .ics export).
+  `scam_warning`, `tax_documents` (Jan–Jul), `calendar_outdated` (new dates since last .ics export),
+  `proof_missing` (a cancellation or objection sent by Einschreiben has no tracking number and no
+  proof two days on — not once an answer arrived or the follow-up was closed; expires when either is
+  added). `followup_due` and `confirm_cancellation` read the letter's proof: a recorded delivery day
+  and the tracking number are named for the reminder, an answer that arrived is named instead;
+  without proof they say what they said before.
   Fingerprint = rule_id + entity id + hash(triggering values). Savings are yearly-normalised.
 - **Review** — compact snapshot → ≤ 6 new Ideas with refs to existing ids (validated; duplicates by
   fuzzy title dropped); `source="review"`.
@@ -544,6 +550,45 @@ only has to be sent in time).
 Marking sent asks for channel + date and creates a follow-up item 21 days later (35 for a data access
 request, which has one month from receipt).
 
+**Proof of sending** (`drafts/tracking.py`, `drafts/proof.py` = the policy, `drafts/sent.py` = the
+service; migration 0003). A letter sent by post takes an Einschreiben tracking number, when marking
+it sent or later: normalised (spaces, dots, hyphens, slashes dropped; upper case), UPU S10
+(`RT 123 456 785 DE`) accepted only with the right check digit (weights 8 6 4 2 3 5 9 7, 11 − sum mod
+11; 10 → 0, 11 → 5), not starting with R kept with a note, Deutsche Post's twelve-digit numbers kept
+unchecked with a note, anything else refused with what a number looks like; the web app checks the
+same as the person types. Proofs (`posting_receipt`, `delivery_record`, `return_receipt`,
+`fax_report`, `sent_email`, `cancel_confirmation`, `other`; ≤ 20 per letter, a day that isn't in the
+future, a note) are files uploaded through the normal intake as documents with direction `outgoing`,
+`source="proof"` and *Keep private (no AI)* on — never sent to a model, never listed as letters (Inbox,
+search, Today, timeline, life areas), deleted with their letter. Each kind states what it shows and
+what it doesn't; *What would make it stronger* depends on the channel (Einschreiben: tracking number,
+posting receipt, and the delivery record or return receipt — the posting receipt with the online
+status alone was not accepted as prima facie proof of arrival, BAG 30.01.2025 2 AZR 68/24; fax: the
+transmission report; e-mail: the sent message; cancel button: the saved page and the provider's
+confirmation, § 312k Abs. 3/4 BGB; a plain letter: nothing shows arrival, said once); an answer
+linked to the letter counts as proof of arrival. The timeline lists only what the person recorded
+(drafted, sent, tracking number, each proof on its day, the answer). **Nachweis** (`GET
+drafts/{id}/proof.pdf`, `drafts/pdf.render_nachweis`): a German summary page with the timeline and the
+caveat, then the letter as sent, then every proof file (PDF pages merged, images placed on a page;
+pypdfium2 under the intake lock, fpdf2). Ordnung never says a proof is enough: every overview and the
+PDF carry the caveat that proof of sending never shows what was inside and that sufficiency is for a
+court to decide.
+
+**Waiting for** (`secretary/waiting.py`, derived on read, `views.waiting`, `GET waiting`): (1) each
+sent letter waits for what its kind asks for (an address change for nothing) until the date of its
+follow-up to-do; (2) open one-off payments to the person (to-dos of kind payment, direction `in`, no
+recurrence — a deposit, a refund; not from a scam-flagged letter) until marked received; (3) call
+notes' promises with a day. Status: *overdue* after the day, *answered* when a linked letter arrived
+(same thread on or after the sending/call day, or the confirmation of the cancelled contract) — the
+entry names it and says so, but closing stays the person's click (ADR 0006) — *closed* once the
+follow-up is done/dismissed or the promise marked kept (then not listed). Order: overdue, waiting by
+day (undated last), answered.
+
+**Call notes** (Gesprächsnotizen, `secretary/calls.py`, `GET/POST calls`, `PATCH/DELETE calls/{id}`):
+when, with whom, what was said, what was promised (with a day and an amount), for a person or
+organisation and/or a thread; typed by the person, no model call; a promise with a day is waited for;
+*kept* is the person's click and can be taken back.
+
 ## 12. Calendar — `calendar/ics.py`
 One-click `.ics` export of open dated items + contract send_by dates, VALARMs from
 `profile.reminder_days`, stable UIDs, per-item `.ics`; guides for Google/Apple/Outlook import;
@@ -570,7 +615,12 @@ Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT
 `brief` (GET cached, POST regenerate), `ask` (POST → SSE), `chat/{thread_id}`, `drafts`
 (GET/POST), `drafts/{id}` (GET/PATCH/DELETE), `drafts/{id}/pdf`, `drafts/{id}/sent` (POST),
 `drafts/{id}/translate` (POST: translate the edited letter again, purpose `draft`; 409 in the
-replay-only demo), `calendar.ics`, `calendar/exported` (POST), `activity`, `usage`, `rules`, `jobs`,
+replay-only demo), `drafts/{id}/proof` (GET the proof overview), `drafts/{id}/tracking` (PUT
+`{tracking_number}`, `null` removes; 422 with the reason for a wrong check digit), `drafts/{id}/proofs`
+(POST multipart `file`, `kind`, `on_date`, `note` → 201), `drafts/{id}/proofs/{proof_id}`
+(PATCH kind/day/note, DELETE), `drafts/{id}/proof.pdf` (the Nachweis), `waiting` (GET), `calls`
+(GET `?party_id&case_id` / POST), `calls/{id}` (PATCH `{kept}` / DELETE),
+`calendar.ics`, `calendar/exported` (POST), `activity`, `usage`, `rules`, `jobs`,
 `events` (SSE), `data` (DELETE `{"confirm": "DELETE"}`: "Delete everything" — empties the database
 in place and removes Ordnung's files, keeping the lock and `server.json`; 409 in the demo),
 `demo/tour` (GET tour state), `demo/mail` (GET tray, POST `{id}` → ingest a tray letter).
@@ -624,7 +674,15 @@ Pages:
 5. **Contracts** — lanes chart (bars, hatched notice windows, send-by marker, today line), cards,
    fixed costs total, "Decide by" callouts.
 6. **Letters** — list + composer (kind, recipient, related letter/contract, instructions) →
-   side-by-side German letter and translation, checks, PDF preview, "How to send it", mark as sent.
+   side-by-side German letter and translation, checks, PDF preview, "How to send it", mark as sent
+   (a letter by post takes its tracking number, checked as it is typed). A sent letter shows **Proof
+   of sending**: what it waits for (and the letter that may have answered it, to check and close),
+   the tracking number, *Add proof* (a file kept private, its kind, day and note), each proof with
+   what it shows and doesn't, *What would make it stronger*, the timeline and *Download Nachweis
+   (PDF)*. **Waiting for** (`/letters/waiting`, linked from Letters with its count) lists replies,
+   money and phone promises: overdue → waiting → "a letter may have answered", with *It's answered —
+   close this*, *It arrived*, *They kept it* (each with Undo). The People & organisations drawer has
+   **Calls**: the noted calls and a form to note one.
 7. **Ask** — chat, streamed tool-trace chips ("Searched your letters for 'Kündigung'"),
    citation chips → viewer, suggested questions (recorded in demo).
 8. **Settings** — profile & address, region (affects holidays), language, reminders, models,

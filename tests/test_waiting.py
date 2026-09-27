@@ -224,7 +224,7 @@ def test_money_a_letter_promised_is_waited_for_until_marked_received(ctx: AppCon
     )
     assert entry.about == "Betriebskostenabrechnung 2025" and entry.since == "2026-09-08"
     assert "€85.20 by Thu 8 Oct" in entry.note and "can't see your bank account" in entry.note
-    assert entry.followup_item_id == credit.id and entry.area == "home"
+    assert entry.followup_item_id == credit.id and entry.area == "home" and entry.doc_id == doc
     late = _only(ctx, date(2026, 10, 12))
     assert late.status == "overdue" and "ask FitWell Studios GmbH about it" in late.note
     ctx.store.update_item(credit.id, status="done")
