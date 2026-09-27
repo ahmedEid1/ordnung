@@ -44,6 +44,8 @@ export interface AnswerState {
   messageId: string | null;
   threadId: string | null;
   error: string | null;
+  /** why there is no answer when asking again can't help: `demo_miss` — the demo has no recording for it */
+  errorCode: "demo_miss" | null;
 }
 
 export const EMPTY_ANSWER: AnswerState = {
@@ -58,6 +60,7 @@ export const EMPTY_ANSWER: AnswerState = {
   messageId: null,
   threadId: null,
   error: null,
+  errorCode: null,
 };
 
 const TOOL_PREFIX = "mcp__ordnung__";
@@ -113,6 +116,7 @@ export function accumulate(state: AnswerState, ev: StreamEvent): AnswerState {
         status: "error",
         writing: false,
         error: ev.error || "Something went wrong.",
+        errorCode: ev.error_code ?? null,
         tools: state.tools.map((t) => (t.done ? t : { ...t, done: true })),
       };
     default:

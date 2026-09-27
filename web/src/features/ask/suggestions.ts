@@ -17,6 +17,19 @@ export const SUGGESTED_QUESTIONS: readonly SuggestedQuestion[] = [
   { question: "When does my residence permit expire, and what should I do before then?", icon: Stamp },
 ];
 
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/**
+ * The questions offered outside the demo, from the person's own situation (UI audit round 1: a fresh
+ * install offered the demo's "October" and a residence permit to everyone): the month ahead — this one
+ * until mid-month, then the next — and the residence permit only with a student visa (Settings → Region).
+ */
+export function suggestedQuestions({ today, studentVisa }: { today: Date; studentVisa: boolean }): SuggestedQuestion[] {
+  const [phone, pay, , permit] = SUGGESTED_QUESTIONS as [SuggestedQuestion, SuggestedQuestion, SuggestedQuestion, SuggestedQuestion];
+  const month = MONTH_NAMES[(today.getMonth() + (today.getDate() > 15 ? 1 : 0)) % 12];
+  return [phone, pay, { question: `Which deadlines are coming up in ${month}?`, icon: CalendarClock }, ...(studentVisa ? [permit] : [])];
+}
+
 export function isSuggestedQuestion(q: string): boolean {
   const norm = q.trim().toLowerCase();
   return SUGGESTED_QUESTIONS.some((s) => s.question.toLowerCase() === norm);

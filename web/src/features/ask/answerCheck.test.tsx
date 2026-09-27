@@ -220,11 +220,12 @@ describe("citation chips stay with their fact", () => {
     [...container.querySelectorAll("span.whitespace-nowrap")].filter((g) => g.querySelector("[data-cite]")).map((g) => g.textContent);
 
   it("the word before a chip wraps with it, so the chip never starts a line (review round 2)", () => {
-    // a no-break space alone did not do it: a line may break between text and an inline-grid chip
+    // a no-break space alone did not do it: a line may break between text and an inline-grid chip.
+    // The chip follows the word like a footnote, without a space (UI audit round 1: "GmbH [1] .")
     const valid = citationIndex([{ type: "item", id: "itm_a" }]);
     const { container } = inRouter(<Markdown text="Due by **Wed 21 Oct** [item:itm_a]." citations={valid} renderCitation={renderCite} />);
-    expect(groups(container)).toEqual(["Wed\u00a021\u00a0Oct\u00a01."]);
-    expect(container.textContent).toBe("Due by Wed\u00a021\u00a0Oct\u00a01.");
+    expect(groups(container)).toEqual(["Wed\u00a021\u00a0Oct1."]);
+    expect(container.textContent).toBe("Due by Wed\u00a021\u00a0Oct1.");
     // the bold stays bold inside the group
     expect(container.querySelector("span.whitespace-nowrap strong")?.textContent).toBe("Wed\u00a021\u00a0Oct");
   });
@@ -237,16 +238,30 @@ describe("citation chips stay with their fact", () => {
     const { container } = inRouter(
       <Markdown text="Your assessment for 2025 [doc:doc_b]: pay by 1 Oct [item:itm_a] [doc:doc_b]. Done." citations={valid} renderCitation={renderCite} />,
     );
-    expect(groups(container)).toEqual(["2025\u00a01:", "1\u00a0Oct\u00a01\u00a01."]);
-    expect(container.textContent).toBe("Your assessment for 2025\u00a01: pay by 1\u00a0Oct\u00a01\u00a01. Done.");
+    // two chips in a row keep a no-break space between them
+    expect(groups(container)).toEqual(["20251:", "1\u00a0Oct1\u00a01."]);
+    expect(container.textContent).toBe("Your assessment for 20251: pay by 1\u00a0Oct1\u00a01. Done.");
   });
 
-  it("a word too long to wrap on a phone stays outside the group", () => {
+  it("a word too long to wrap on a phone stays outside the group, joined to its chip by a word joiner", () => {
     const valid = citationIndex([{ type: "document", id: "doc_b" }]);
     const { container } = inRouter(
       <Markdown text="Bring your certificate (Immatrikulationsbescheinigung) [doc:doc_b]." citations={valid} renderCitation={renderCite} />,
     );
-    expect(groups(container)).toEqual(["1."]);
+    expect(groups(container)).toEqual(["\u20601."]);
+    expect(container.textContent).toBe("Bring your certificate (Immatrikulationsbescheinigung)\u20601.");
+  });
+
+  it("law references and reference numbers never break inside (UI audit round 1: a break after the section sign)", () => {
+    const { container } = inRouter(
+      <Markdown text={"Object within a month (\u00a7 56 Abs. 3 TKG, Art. 6 DSGVO), quoting TM-2026-0048213."} citations={null} renderCitation={() => null} />,
+    );
+    expect(container.textContent).toBe("Object within a month (\u00a7\u00a056 Abs.\u00a03 TKG, Art.\u00a06 DSGVO), quoting TM\u20112026\u20110048213.");
+  });
+
+  it("a long word wraps anywhere rather than widen the page", () => {
+    const { container } = inRouter(<Markdown text={"Wohnungsgeberbest\u00e4tigung"} citations={null} renderCitation={() => null} />);
+    expect((container.firstElementChild as HTMLElement).className).toContain("[overflow-wrap:anywhere]");
   });
 
   it("amounts and dates never break across lines", () => {

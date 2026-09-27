@@ -50,6 +50,11 @@ class StreamEvent(BaseModel):
     name: str | None = Field(default=None, description="tool name (tool_use / tool_result)")
     input: dict[str, Any] | None = Field(default=None, description="tool input (tool_use)")
     error: str | None = None
+    error_code: Literal["demo_miss"] | None = Field(
+        default=None,
+        description="why there is no answer (error), when asking again can't help: demo_miss — the demo has no "
+        "recorded answer for this question",
+    )
     note: str | None = Field(
         default=None, description="what the answer check left out or quoted (done); shown apart from the text"
     )

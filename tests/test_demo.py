@@ -534,6 +534,7 @@ async def test_recorded_questions_replay_after_opening_tray_letters(life: Sample
         ]
         assert [event.type for event in missed] == ["error"]
         assert missed[0].error == tour.DEMO_MISS_MESSAGE
+        assert getattr(missed[0], "error_code", None) == "demo_miss"
     finally:
         ctx.close()
 

@@ -4,7 +4,7 @@
  *
  * The thread id is remembered in localStorage, so the conversation is still there after a
  * reload. History is loaded once per thread; new turns live locally (no refetch → no flicker,
- * no duplicates). "New chat" forgets the thread.
+ * no duplicates). "New chat" forgets the thread — and hands back an undo that brings it back.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -64,6 +64,7 @@ export function turnsFromHistory(messages: ChatMessage[]): AskTurn[] {
         messageId: m.id,
         threadId: m.thread_id,
         error: null,
+        errorCode: null,
       },
     });
     pending = null;
@@ -152,13 +153,36 @@ export function useAskThread() {
     [ask, turns],
   );
 
-  const newChat = useCallback(() => {
+  /** Start over; returns an undo that brings the conversation back as it was (an answer being written stops). */
+  const newChat = useCallback((): (() => void) => {
     abortRef.current?.abort();
     abortRef.current = null;
+    const before = {
+      thread: threadRef.current,
+      history: historyThread,
+      turns: turns.map((t) =>
+        t.answer.status === "streaming"
+          ? { ...t, answer: { ...t.answer, status: "stopped" as const, writing: false, tools: t.answer.tools.map((s) => ({ ...s, done: true })) } }
+          : t,
+      ),
+    };
     setTurns([]);
     setHistoryThread(null);
     setThread(null);
-  }, [setThread]);
+    return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+      setTurns(before.turns);
+      setHistoryThread(before.history);
+      setThread(before.thread);
+    };
+  }, [historyThread, setThread, turns]);
+
+  // a thread the server doesn't know (any more) quietly starts empty (the next question continues it);
+  // other failures are shown, with a retry
+  const missing = history.error instanceof ApiError && history.error.status === 404;
+  const { refetch } = history;
+  const retryHistory = useCallback(() => void refetch(), [refetch]);
 
   const past = useMemo(() => {
     const local = new Set(turns.map((t) => t.answer.messageId).filter(Boolean));
@@ -172,8 +196,10 @@ export function useAskThread() {
     past,
     turns,
     all: [...past, ...turns],
-    loadingHistory: Boolean(historyThread) && history.isPending,
-    historyError: history.isError,
+    loadingHistory: Boolean(historyThread) && history.isPending && !history.isError,
+    /** The stored conversation could not be loaded (not: the server doesn't know it). */
+    historyError: Boolean(historyThread) && history.isError && !missing,
+    retryHistory,
     streaming,
     ask,
     stop,

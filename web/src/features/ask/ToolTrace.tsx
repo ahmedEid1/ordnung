@@ -2,10 +2,11 @@ import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Check, ChevronRight } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
+import { keepCitations } from "@/lib/glue";
 import { cn } from "@/lib/utils";
 import type { ToolStep } from "./stream";
 import { Wrench } from "lucide-react";
-import { TOOL_ICONS, toolLabel, toolResultText, unbreakDates, type TitleLookup } from "./tools";
+import { TOOL_ICONS, toolLabel, toolResultText, traceSummary, unbreakDates, type TitleLookup } from "./tools";
 
 /**
  * One step: its icon, its label and, once done, its result. The label wraps at every width (a cut-off
@@ -14,7 +15,8 @@ import { TOOL_ICONS, toolLabel, toolResultText, unbreakDates, type TitleLookup }
  */
 function StepChip({ step, titleOf }: { step: ToolStep; titleOf?: TitleLookup }) {
   const Icon = TOOL_ICONS[step.name] ?? Wrench;
-  const result = step.done && step.result ? unbreakDates(toolResultText(step.result)) : null;
+  // a date or a law ("§ 556 Abs. 3 BGB") never splits across two lines (UI audit round 1)
+  const result = step.done && step.result ? keepCitations(unbreakDates(toolResultText(step.result))) : null;
   const label = toolLabel(step, titleOf);
   return (
     <>
@@ -35,7 +37,7 @@ function StepChip({ step, titleOf }: { step: ToolStep; titleOf?: TitleLookup }) 
           data-testid="tool-step-label"
           className={cn("min-w-0 break-words", step.done ? "text-ink/80" : "text-ink")}
         >
-          {unbreakDates(label)}
+          {keepCitations(unbreakDates(label))}
         </span>
         {result ? (
           <span
@@ -65,26 +67,29 @@ function StepChip({ step, titleOf }: { step: ToolStep; titleOf?: TitleLookup }) 
 }
 
 /**
- * The visible tool trace ("Searched your letters for "Kündigung"", "Opened …"): live while the
- * answer streams, folded into "Looked at 3 things" once it is done.
+ * The visible tool trace ("Searched your letters for “Kündigung”", "Opened …"): live while the
+ * answer streams, folded into "Looked at 3 things in your records" once it is done — a single step
+ * is simply shown (a toggle that opens one line is no shortcut).
  */
 export function ToolTrace({ steps, live, titleOf }: { steps: ToolStep[]; live: boolean; titleOf?: TitleLookup }) {
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
   if (!steps.length) return null;
-  const expanded = live || open;
-  const n = steps.length;
+  const single = steps.length === 1;
+  const folds = !live && !single;
+  const expanded = !folds || open;
   return (
     <div className="mb-3">
-      {!live ? (
+      {folds ? (
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          className="-ml-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[12.5px] font-medium text-muted transition-colors hover:text-ink"
+          // at least 28 px tall: a target of its own, not a line of small print (UI audit round 1: 22.8 px)
+          className="-ml-1 inline-flex min-h-7 items-center gap-1 rounded-md px-1 text-left text-[12.5px] font-medium text-muted transition-colors hover:text-ink"
         >
-          <ChevronRight className={cn("size-3.5 transition-transform", open && "rotate-90")} aria-hidden />
-          {n === 1 ? "Looked at 1 thing" : `Looked at ${n} things`} in your records
+          <ChevronRight className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-90")} aria-hidden />
+          {traceSummary(steps)}
         </button>
       ) : null}
       <AnimatePresence initial={false}>
@@ -96,7 +101,7 @@ export function ToolTrace({ steps, live, titleOf }: { steps: ToolStep[]; live: b
             animate={{ opacity: 1, height: "auto" }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, height: 0 }}
             transition={{ duration: 0.18 }}
-            className={cn("space-y-1.5 overflow-hidden", !live && "mt-2 border-l border-line pl-3")}
+            className={cn("space-y-1.5 overflow-hidden", folds && "mt-1 border-l border-line pl-3")}
           >
             {steps.map((s, i) => (
               <motion.li

@@ -209,8 +209,10 @@ def result_summary(name: str, text: str | None) -> str:
 
 
 def _items_label(args: Mapping[str, Any]) -> str:
-    status = args.get("status") if args.get("status") in _STATUSES else "open"
-    scope = "your to-dos & dates" if status == "all" else f"your {status} to-dos & dates"
+    status = str(args.get("status")) if args.get("status") in _STATUSES else "open"
+    # a kind filter names the kind, so two filtered calls ("open deadlines", "open payments") read apart
+    what = _ITEM_KINDS.get(str(args.get("kind")), "to-dos & dates")
+    scope = f"your {what}" if status == "all" else f"your {_STATUS_WORDS.get(status, status)} {what}"
     start, end = args.get("from_date"), args.get("to_date")
     if start and end:
         return f"Checked {scope} from {_day(start)} to {_day(end)}"
@@ -273,6 +275,18 @@ def _day(value: Any) -> str:
 
 _ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
 _STATUSES = frozenset({"open", "done", "dismissed", "snoozed", "missed", "all"})
+#: A status in a label, as the app says it ("finished", not "done").
+_STATUS_WORDS = {"done": "finished"}
+#: ``list_items(kind=…)`` in a label (the kinds of :data:`ordnung.models.ItemKind`).
+_ITEM_KINDS = {
+    "deadline": "deadlines",
+    "payment": "payments",
+    "appointment": "appointments",
+    "task": "tasks",
+    "expiry": "expiry dates",
+    "reminder": "reminders",
+    "milestone": "milestones",
+}
 
 
 def _count(n: int, singular: str, plural: str) -> str:

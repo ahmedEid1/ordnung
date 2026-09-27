@@ -242,4 +242,12 @@ async def test_demo_turns_a_missing_recording_into_a_friendly_event(data_dir: Pa
         api.ctx.llm.backend = ReplayBackend(tmp_path / "no-fixtures")
         response = await api.client.post("/api/ask", json={"question": "Something never recorded?"})
         events = [json.loads(message["data"]) for message in sse_messages(response.text)]
-        assert events == [{"type": "error", "text": tour.DEMO_MISS_MESSAGE, "error": tour.DEMO_MISS_MESSAGE}]
+        # the code tells the web app to show a note (asking again can't help), not a failure to retry
+        assert events == [
+            {
+                "type": "error",
+                "text": tour.DEMO_MISS_MESSAGE,
+                "error": tour.DEMO_MISS_MESSAGE,
+                "error_code": "demo_miss",
+            }
+        ]

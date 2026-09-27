@@ -8891,6 +8891,19 @@
             ],
             "title": "Error"
           },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "demo_miss"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code",
+            "description": "why there is no answer (error), when asking again can't help: demo_miss — the demo has no recorded answer for this question"
+          },
           "note": {
             "anyOf": [
               {

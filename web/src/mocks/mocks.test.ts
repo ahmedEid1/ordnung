@@ -251,19 +251,17 @@ describe("mock dataset", () => {
     expect([...times].sort().reverse()).toEqual(times);
   });
 
-  it("keeps no unrecorded question, and its reply carries no message id (like the API's demo miss)", async () => {
+  it("keeps no unrecorded question, and answers it with the API's demo miss", async () => {
     const s = srv();
     const res = await s.handle("POST", "/ask", new URLSearchParams(), { question: "What is the meaning of life?" });
-    const done = (await res.text())
+    const events = (await res.text())
       .split("\n\n")
       .filter((block) => block.startsWith("data: "))
-      .map((block) => JSON.parse(block.slice(6)) as { type: string; message_id?: string; thread_id?: string; text?: string })
-      .find((e) => e.type === "done")!;
-    // the UI marks an answer "Dates and amounts checked against your records" only when it was stored — this one never was checked
-    expect(done.message_id).toBeUndefined();
-    expect(done.text).toMatch(/recorded answers/);
-    const history = await s.handle("GET", `/chat/${done.thread_id}`, new URLSearchParams(), undefined);
-    expect(await history.json()).toEqual([]);
+      .map((block) => JSON.parse(block.slice(6)) as { type: string; error?: string; error_code?: string });
+    // like the local demo: one error whose code makes the Ask page show a note, not a failure to retry
+    expect(events).toEqual([{ type: "error", error: FALLBACK_ANSWER, text: FALLBACK_ANSWER, error_code: "demo_miss" }]);
+    const threads = s.db.state.chat.filter((m) => m.content === "What is the meaning of life?");
+    expect(threads).toEqual([]);
   });
 
   it("streams recorded Ask answers as SSE", async () => {
@@ -339,7 +337,7 @@ describe("mock dataset", () => {
     expect(PROFILE.address).toBe("Beispielweg 5\n12345 Musterstadt");
   });
 
-  it("answers a question without a recording with nothing in the online demo (its Ask page says why)", async () => {
+  it("answers a question without a recording with the demo miss in the online demo too (its Ask page says why)", async () => {
     // every suggested question has a recording, so only questions of one's own get the note
     for (const q of SUGGESTED_QUESTIONS) {
       const lower = q.toLowerCase();
@@ -349,11 +347,13 @@ describe("mock dataset", () => {
       const res = await createMockServer({ staticDemo, latency: 0 }).handle("POST", "/ask", new URLSearchParams(), { question: "Who won the football?" });
       return res.text();
     };
-    const online = await ask(true);
-    expect(online).not.toContain('"type":"text"');
-    expect(online).toContain('data: {"type":"done","text":""');
-    // mock mode (?mock=1) has no such note: it says it in the answer
-    expect(await ask(false)).toContain("install Ordnung to ask anything about your own letters");
+    // no words, no "writing" line: the page shows its note for the code, the same in mock mode (?mock=1)
+    for (const staticDemo of [true, false]) {
+      const reply = await ask(staticDemo);
+      expect(reply).not.toContain('"type":"text"');
+      expect(reply).not.toContain('"type":"done"');
+      expect(reply).toContain('"error_code":"demo_miss"');
+    }
   });
 
   it("sends no word before the check, then the checked answer with Ordnung's note (like the API)", async () => {

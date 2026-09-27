@@ -39,7 +39,7 @@ from collections import deque
 from collections.abc import AsyncIterator, Collection, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from ordnung import clock
 from ordnung.assistant.citations import (
@@ -120,10 +120,17 @@ class AskContext(Protocol):
     def settings(self) -> AppSettings: ...
 
 
+#: Why an answer could not be given, when the UI shows more than the message: ``demo_miss`` — the demo
+#: has no recorded answer for the question (asking again cannot help, a suggested question can).
+AskErrorCode = Literal["demo_miss"]
+
+
 class AskEvent(StreamEvent):
     """A stream event; the final ``done`` event also carries the answer check's note (without its
-    label), the label in the answer's language, the answer's ids and citations."""
+    label), the label in the answer's language, the answer's ids and citations; an ``error`` event may
+    carry an :data:`AskErrorCode`."""
 
+    error_code: AskErrorCode | None = None
     note: str | None = None
     note_label: str | None = None
     citations: list[CitationRef] | None = None

@@ -544,7 +544,7 @@ export async function demoCatalog({ api, server }) {
       run: async (c) => {
         await c.goto("/ask");
         await c.click(c.page.getByRole("list", { name: "Suggested questions" }).getByRole("button", { name: q }), { settleAfter: false });
-        await c.page.getByRole("main").getByRole("status").filter({ hasText: /Answer ready|could not be completed|Stopped/ }).waitFor({ timeout: 60_000 });
+        await c.page.getByRole("main").getByRole("status").filter({ hasText: /Answer ready|could not be completed|No recorded answer|Stopped/ }).waitFor({ timeout: 60_000 });
         const trace = main(c.page).getByRole("button", { name: /^Looked at \d+ things?/ });
         if (await c.exists(trace)) await c.click(trace.last());
         await settle(c.page);
@@ -560,7 +560,7 @@ export async function demoCatalog({ api, server }) {
     run: async (c) => {
       await c.goto("/ask");
       await c.click(c.page.getByRole("list", { name: "Suggested questions" }).getByRole("button").first(), { settleAfter: false });
-      await c.page.getByRole("main").getByRole("status").filter({ hasText: /Answer ready|could not be completed/ }).waitFor({ timeout: 60_000 });
+      await c.page.getByRole("main").getByRole("status").filter({ hasText: /Answer ready|could not be completed|No recorded answer/ }).waitFor({ timeout: 60_000 });
       await settle(c.page);
       await c.hover(main(c.page).getByRole("article").locator('a[aria-label^="Source"], button[aria-label^="Source"]'));
     },
@@ -575,7 +575,7 @@ export async function demoCatalog({ api, server }) {
       await c.goto("/ask");
       await c.type(main(c.page).getByRole("textbox"), "Which of my letters mention a Kaution?", { settleAfter: false });
       await c.page.keyboard.press("Enter");
-      await c.page.getByRole("main").getByRole("status").filter({ hasText: /Answer ready|could not be completed|Stopped/ }).waitFor({ timeout: 60_000 });
+      await c.page.getByRole("main").getByRole("status").filter({ hasText: /Answer ready|could not be completed|No recorded answer|Stopped/ }).waitFor({ timeout: 60_000 });
       await settle(c.page);
     },
   });
