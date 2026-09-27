@@ -75,24 +75,32 @@ export const RECORDED: RecordedAnswer[] = [
     match: [["deadline", "october"], ["dates", "october"], ["due", "october"]],
     tools: [
       { name: "today", input: {}, result: "Today is Mon 28 Sep 2026 (demo date)" },
-      { name: "list_items", input: { from: "2026-10-01", to: "2026-10-31", status: "open" }, result: "Found 7 to-dos & dates" },
+      { name: "list_items", input: { from: "2026-10-01", to: "2026-10-31", status: "open" }, result: "Found 13 to-dos & dates" },
     ],
     text:
-      "October brings **seven dates**, the first ones right at the start:\n\n" +
-      "- **Fri 2 Oct** — return the library books and pay **4,50 €** [item:itm_library_fee]\n" +
+      "October brings **13 open to-dos and dates**, the first ones right at the start:\n\n" +
+      "- **Fri 2 Oct** — return the two library books and pay the **4,50 €** fee [item:itm_library_return][item:itm_library_fee]\n" +
       "- **Mon 5 Oct** — rent for October, **640,00 €** [item:itm_rent_oct]\n" +
-      "- **Tue 6 Oct** — post your objection to FitWell's price increase by then if you want to make one; it must arrive by **Mon 12 Oct** (an email is enough) [item:itm_gym_price]\n" +
+      "- **Tue 6 Oct** — post your objection to FitWell's price increase by then if you want to make one; it must arrive by **Mon 12 Oct** (an email is enough) [item:itm_gym_price]. It's also the day to chase Wohnbau, which hasn't answered your request [item:itm_followup_wohnbau]\n" +
       "- **Thu 8 Oct, 09:15** — dentist, check-up and cleaning [item:itm_dentist]\n" +
       "- **Thu 8 Oct** — post your phone-contract cancellation by then if you want to switch; it must arrive by **Wed 14 Oct** [item:itm_phone_cancel]\n" +
-      "- **Wed 14 Oct, 10:30** — residence permit appointment at the Ausländerbehörde [item:itm_abh_appt]\n" +
-      "- **Thu 15 Oct** — health insurance contribution [item:itm_bkk]",
+      "- **Fri 9 Oct** — utility back payment (Nebenkosten), **184,30 €** [item:itm_nk]\n" +
+      "- **Tue 13 Oct** — get your documents ready for the Ausländerbehörde [item:itm_abh_docs]\n" +
+      "- **Wed 14 Oct, 10:30** — residence permit appointment at the Ausländerbehörde, where you pay the **93,00 €** fee [item:itm_abh_appt][item:itm_abh_fee]\n" +
+      "- **Thu 15 Oct** — electricity instalment, **48,00 €**, and health insurance contribution, **142,86 €** [item:itm_power_abschlag][item:itm_bkk]",
     citations: [
+      { type: "item", id: "itm_library_return" },
       { type: "item", id: "itm_library_fee" },
       { type: "item", id: "itm_rent_oct" },
       { type: "item", id: "itm_gym_price" },
+      { type: "item", id: "itm_followup_wohnbau" },
       { type: "item", id: "itm_dentist" },
       { type: "item", id: "itm_phone_cancel" },
+      { type: "item", id: "itm_nk" },
+      { type: "item", id: "itm_abh_docs" },
       { type: "item", id: "itm_abh_appt" },
+      { type: "item", id: "itm_abh_fee" },
+      { type: "item", id: "itm_power_abschlag" },
       { type: "item", id: "itm_bkk" },
     ],
   },
@@ -108,13 +116,14 @@ export const RECORDED: RecordedAnswer[] = [
       "1. **Parking fine, 30 €** — pay by **Tue 29 Sep** to be safe [item:itm_parking]. I don't know when the letter arrived, so I counted from the letter date; if it came later you have a bit more time [doc:doc_parking].\n" +
       "2. **TechMarkt reminder, 94,99 €** — due **Wed 30 Sep**, otherwise it may go to a debt collector [doc:doc_tm_dunning].\n" +
       "3. **Library** — return the two books and pay **4,50 €** by **Fri 2 Oct** [item:itm_library_fee].\n\n" +
-      "Nothing else is due before Sunday. Next week brings rent (Mon 5 Oct), your objection to FitWell's price increase if you want to make one (post it by Tue 6 Oct, or email it by Mon 12 Oct) [item:itm_gym_price], the dentist (Thu 8 Oct, 09:15) and your phone-contract decision.",
+      "Nothing else is due before Sunday. Next week brings rent (Mon 5 Oct), your objection to FitWell's price increase if you want to make one (post it by Tue 6 Oct, or email it by Mon 12 Oct) [item:itm_gym_price], the dentist (Thu 8 Oct, 09:15), your phone-contract decision and the Nebenkosten back payment, **184,30 €** by **Fri 9 Oct** [item:itm_nk].",
     citations: [
       { type: "item", id: "itm_parking" },
       { type: "document", id: "doc_parking" },
       { type: "document", id: "doc_tm_dunning" },
       { type: "item", id: "itm_library_fee" },
       { type: "item", id: "itm_gym_price" },
+      { type: "item", id: "itm_nk" },
     ],
   },
   {

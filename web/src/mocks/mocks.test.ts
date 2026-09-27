@@ -5,6 +5,8 @@ import type { Activity, Dashboard, DocumentDetail, Evidence, Item, Lane, RuleInf
 import { findRawEnums } from "@/lib/copy";
 import { needsArrivalDate } from "@/features/document/verdict";
 import { RECORDED } from "./data/ask";
+import { ITEMS } from "./data/items";
+import { BRIEF_TEXT } from "./data/system";
 
 const srv = () => createMockServer({ staticDemo: false, latency: 0 });
 
@@ -180,11 +182,22 @@ describe("mock dataset", () => {
       expect(answer.text, question).toContain("Tue 6 Oct");
       expect(answer.citations).toContainEqual({ type: "item", id: "itm_gym_price" });
     }
+    // the October answer states what its list_items call returns: every open October to-do of the mock ledger
     const october = RECORDED.find((a) => a.question === "Which deadlines are coming up in October?")!;
-    const dated = october.text.split("\n").filter((line) => line.startsWith("- **"));
-    expect(dated).toHaveLength(7);
-    expect(october.tools.find((t) => t.name === "list_items")?.result).toBe("Found 7 to-dos & dates");
-    expect(october.text).toMatch(/seven dates/);
+    const query = october.tools.find((t) => t.name === "list_items")!;
+    const open = ITEMS.filter(
+      (i) => i.status === query.input.status && i.due_date && i.due_date >= String(query.input.from) && i.due_date <= String(query.input.to),
+    );
+    expect(open.length).toBeGreaterThan(7);
+    expect(query.result).toBe(`Found ${open.length} to-dos & dates`);
+    expect(october.text).toContain(`**${open.length} open to-dos and dates**`);
+    const cited = new Set([...october.text.matchAll(/\[item:(itm_[a-z_]+)\]/g)].map((m) => m[1]));
+    expect([...cited].sort()).toEqual(open.map((i) => i.id).sort());
+    expect(new Set(october.citations.map((c) => c.id))).toEqual(cited);
+    // this week's answer and the brief name next week's payment too (Nebenkosten, Fri 9 Oct)
+    const week = RECORDED.find((a) => a.question === "What do I need to do this week?")!;
+    expect(week.text).toContain("[item:itm_nk]");
+    expect(BRIEF_TEXT).toMatch(/Nebenkosten back payment \(184,30 €/);
     const activity = await get<Activity[]>(srv(), "/activity");
     expect(activity.find((a) => a.ref_id === "doc_gym_price")?.message).toBe("Read “Gym price increase — FitWell” (1 page)");
     expect(new Set(activity.map((a) => a.id)).size).toBe(activity.length);
