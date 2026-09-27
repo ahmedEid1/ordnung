@@ -5,7 +5,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import { LANE_METRICS, type PlacedBar, type PlacedCaption, type PlacedMarker } from "./layout";
-import { MARKER_LOOK, barAriaLabel, barStatusLabel, formatRange, markerWhen } from "./marks";
+import { MARKER_LOOK, barAriaLabel, barSpan, barStatusLabel, markerWhen, type ChartRange } from "./marks";
 import { LANE_BAR_KIND_COPY, copyFor } from "@/lib/copy";
 
 const H = LANE_METRICS.barHeight;
@@ -14,7 +14,8 @@ const MIN_LABEL_ROOM = 44;
 
 interface MarkCommon {
   markKey: string;
-  laneIndex: number;
+  /** keyboard row (a track of a lane) the mark belongs to */
+  row: number;
   tabIndex: number;
   onActivate: (key: string) => void;
   today: string;
@@ -48,6 +49,8 @@ export function BarMark({
   trackY,
   labelInset,
   viewLeft = 0,
+  scrolls = true,
+  range,
   reduced,
   delay,
   onSelect,
@@ -55,16 +58,20 @@ export function BarMark({
 }: MarkCommon & {
   placed: PlacedBar;
   trackY: number;
+  /** the chart's first and last day — a bar cut off there has no known start or end */
+  range?: ChartRange;
   /** px the sticky label column covers (sticky offset of the label inside long bars) */
   labelInset: number;
   /** horizontal scroll of the chart (plot px scrolled out of view on the left) */
   viewLeft?: number;
+  /** the chart scrolls sideways (zoomed in): the label slides along; otherwise it stays put */
+  scrolls?: boolean;
   reduced: boolean;
   delay: number;
   onSelect: () => void;
 }) {
   const { bar } = placed;
-  const status = barStatusLabel(bar);
+  const status = barStatusLabel(bar, common.today);
   // When the start of the bar is scrolled away the sticky label slides along; it gets only the
   // room left in view (truncated), and none at all when that is too little — never a cut-off word.
   const hidden = Math.max(0, viewLeft + LANE_METRICS.labelPad - (placed.x + 1 + placed.labelStart));
@@ -77,8 +84,7 @@ export function BarMark({
     <div className="space-y-0.5">
       <div className="font-semibold">{bar.label}</div>
       <div className="opacity-85">
-        {kind} · {formatRange(bar.start, bar.end, common.today)}
-        {placed.continuesBefore || placed.continuesAfter ? " (continues beyond the chart)" : ""}
+        {kind} · {barSpan(bar, common.today, range)}
       </div>
       {status ? <div className="font-medium">{status}</div> : null}
       {common.hint ? <div className="pt-0.5 opacity-70">{common.hint}</div> : null}
@@ -90,11 +96,11 @@ export function BarMark({
         <motion.button
           type="button"
           data-mark-key={common.markKey}
-          data-mark-lane={common.laneIndex}
+          data-mark-row={common.row}
           tabIndex={common.tabIndex}
           onFocus={() => common.onActivate(common.markKey)}
           onClick={onSelect}
-          aria-label={barAriaLabel(bar, common.today, common.hint)}
+          aria-label={barAriaLabel(bar, common.today, common.hint, range)}
           data-kind={bar.kind}
           data-status={bar.status}
           data-overlay={placed.overlay || undefined}
@@ -102,8 +108,7 @@ export function BarMark({
           data-after={placed.continuesAfter || undefined}
           data-cap={capFor(bar, placed)}
           className={cn(
-            "lane-bar absolute flex items-center overflow-visible whitespace-nowrap text-left text-[12px] font-medium leading-none",
-            hatched && "hatch",
+            "lane-bar absolute flex items-center overflow-visible whitespace-nowrap text-left text-xs font-medium leading-none",
             placed.continuesBefore ? "rounded-r-md" : placed.continuesAfter ? "rounded-l-md" : "rounded-md",
             placed.continuesBefore && placed.continuesAfter && "rounded-none",
           )}
@@ -125,11 +130,11 @@ export function BarMark({
             <span className="pointer-events-none relative flex h-full items-center" style={{ width: placed.labelRoom }}>
               <span
                 className={cn(
-                  "sticky",
+                  scrolls && "sticky",
                   (labelMax !== null || hidden > 0) && "truncate",
                   hatched ? "rounded-[4px] bg-surface/90 px-1.5 py-[3px] text-ink" : bar.status === "past" ? "text-muted" : "text-ink",
                 )}
-                style={{ left: labelInset + LANE_METRICS.labelPad, maxWidth: labelMax ?? undefined }}
+                style={{ left: scrolls ? labelInset + LANE_METRICS.labelPad : undefined, maxWidth: labelMax ?? undefined }}
               >
                 {bar.label}
               </span>
@@ -140,7 +145,7 @@ export function BarMark({
       {placed.labelMode === "after" ? (
         <span
           aria-hidden
-          className="pointer-events-none absolute z-10 whitespace-nowrap text-[12px] font-medium leading-none text-muted"
+          className="pointer-events-none absolute z-10 whitespace-nowrap text-xs font-medium leading-none text-muted"
           style={{ left: placed.afterX, top: trackY - 6 }}
         >
           {bar.label}
@@ -165,10 +170,14 @@ export function MarkerMark({
 }) {
   const { primary, entries } = placed;
   const look = MARKER_LOOK[primary.marker.kind] ?? MARKER_LOOK.other;
+  // several dates merged into this mark: the next one peeks out behind it
+  const stacked = entries[1] ?? null;
+  const stackLook = stacked ? (MARKER_LOOK[stacked.marker.kind] ?? MARKER_LOOK.other) : null;
   const lines = entries.map((e) => {
     const date = formatDate(e.marker.date, { style: "short", today: common.today });
     return { e, text: `${e.marker.label} · ${date}`, when: markerWhen(e.marker.date, common.today) };
   });
+  // a merged mark names every date it stands for
   const aria = `${lines.map((l) => `${l.text}, ${l.when}`).join("; ")}. ${context}.${common.hint ? ` ${common.hint}.` : ""}`;
   const tip = (
     <div className="space-y-1">
@@ -190,7 +199,7 @@ export function MarkerMark({
       <button
         type="button"
         data-mark-key={common.markKey}
-        data-mark-lane={common.laneIndex}
+        data-mark-row={common.row}
         tabIndex={common.tabIndex}
         onFocus={() => common.onActivate(common.markKey)}
         onClick={onSelect}
@@ -198,6 +207,16 @@ export function MarkerMark({
         className="lane-mark absolute z-20 grid h-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full"
         style={{ left: placed.x, top: trackY, width: placed.hitWidth }}
       >
+        {stacked && stackLook ? (
+          <span
+            aria-hidden
+            className="lane-marker lane-mark-stack"
+            data-kind={stacked.marker.kind}
+            data-shape={stackLook.shape}
+            data-hollow={stackLook.hollow || undefined}
+            data-past={stacked.past || undefined}
+          />
+        ) : null}
         <span
           aria-hidden
           className="lane-marker"
@@ -215,7 +234,8 @@ export function MarkerCaption({ caption, trackY }: { caption: PlacedCaption; tra
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute z-20 whitespace-nowrap text-center text-[11px] font-semibold leading-[13px] text-ink/80"
+      data-testid="lanes-caption"
+      className="pointer-events-none absolute z-20 whitespace-nowrap text-center text-xs font-semibold leading-[14px] text-ink"
       style={{ left: caption.x, width: caption.width, top: trackY + H / 2 + 3 }}
     >
       {caption.text}

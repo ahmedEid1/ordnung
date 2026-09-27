@@ -1,56 +1,78 @@
 /*
  * Life lanes — bar and marker looks. Colours come from the design tokens (`--color-k-*`, status),
- * so light and dark mode follow automatically. Marks are thin (22 px bars), softly tinted, with a
+ * so light and dark mode follow automatically. Marks are thin (24 px bars), softly tinted with a
+ * 1 px edge in the bar's hue (≥ 3:1 on the surface, so a bar's extent reads without the tint), a
  * 2 px surface ring around markers (dataviz mark spec); notice windows are hatched.
+ *
+ * A bar's paint (tint, edge, hatch and the fade of a part that runs past the chart) lives on its
+ * `::before`, never on the bar itself: the fade is a mask, and a mask on the button would also
+ * clip away its keyboard focus ring.
  */
 
 .lane-bar {
   --bar: var(--color-k-contract);
-  background-color: color-mix(in srgb, var(--bar) 17%, var(--color-surface));
+  --bar-tint: 17%;
+  /* ≥ 3:1 against the surface and the past-dates tint, for every bar colour (light: 85 %, dark: 72 %) */
+  --bar-edge-mix: 85%;
+  --bar-edge: color-mix(in srgb, var(--bar) var(--bar-edge-mix), var(--color-surface));
+  isolation: isolate;
   color: var(--color-ink);
 }
 .dark .lane-bar {
-  background-color: color-mix(in srgb, var(--bar) 27%, var(--color-surface));
+  --bar-tint: 27%;
+  --bar-edge-mix: 72%;
+}
+.lane-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-color: color-mix(in srgb, var(--bar) var(--bar-tint), var(--color-surface));
+  box-shadow: inset 0 0 0 1px var(--bar-edge);
 }
 .lane-bar[data-kind="validity"] { --bar: var(--color-k-expiry); }
 .lane-bar[data-kind="period"] { --bar: var(--color-k-milestone); }
 .lane-bar[data-kind="event"] { --bar: var(--color-k-appointment); }
 
-/* Notice windows: hatched (the `.hatch` texture, a touch denser for a 22 px bar). */
+/* Notice windows: hatched (denser than `.hatch` for a 24 px bar), coloured by how soon they close. */
 .lane-bar[data-kind="notice_window"] {
   --bar: var(--color-k-contract);
-  color: var(--bar);
-  background-color: color-mix(in srgb, var(--bar) 12%, var(--color-surface));
+  --bar-tint: 12%;
+}
+.dark .lane-bar[data-kind="notice_window"] {
+  --bar-tint: 16%;
+}
+.lane-bar[data-kind="notice_window"]::before {
   background-image: repeating-linear-gradient(
     -45deg,
     color-mix(in srgb, var(--bar) 58%, transparent) 0 1.6px,
     transparent 1.6px 6px
   );
 }
-.dark .lane-bar[data-kind="notice_window"] {
-  background-color: color-mix(in srgb, var(--bar) 16%, var(--color-surface));
-}
 .lane-bar[data-kind="notice_window"][data-status="attention"] { --bar: var(--color-warn); }
 .lane-bar[data-kind="notice_window"][data-status="urgent"] { --bar: var(--color-danger); }
-.lane-bar[data-overlay] {
-  box-shadow: 0 0 0 2px var(--color-surface);
+/* a window drawn on top of its contract's term bar keeps a surface gap around it */
+.lane-bar[data-overlay]::before {
+  box-shadow: inset 0 0 0 1px var(--bar-edge), 0 0 0 2px var(--color-surface);
 }
 
 .lane-bar[data-status="past"] {
   --bar: var(--color-faint);
+  --bar-edge: var(--color-faint);
   color: var(--color-muted);
 }
 
-/* The part of a bar that continues outside the visible range fades out. */
-.lane-bar[data-before] {
+/* The part of a bar that continues outside the visible range fades out (edge included). */
+.lane-bar[data-before]::before {
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 22px);
   mask-image: linear-gradient(to right, transparent 0, #000 22px);
 }
-.lane-bar[data-after] {
+.lane-bar[data-after]::before {
   -webkit-mask-image: linear-gradient(to left, transparent 0, #000 22px);
   mask-image: linear-gradient(to left, transparent 0, #000 22px);
 }
-.lane-bar[data-before][data-after] {
+.lane-bar[data-before][data-after]::before {
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
   mask-image: linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
 }
@@ -67,14 +89,22 @@
 }
 .lane-bar[data-cap="urgent"]::after { background: var(--color-danger); }
 
-.lane-bar:hover:not([data-status="past"]) {
-  background-color: color-mix(in srgb, var(--bar) 25%, var(--color-surface));
+.lane-bar:hover:not([data-status="past"]) { --bar-tint: 25%; }
+.dark .lane-bar:hover:not([data-status="past"]) { --bar-tint: 36%; }
+.lane-bar[data-kind="notice_window"]:hover { --bar-tint: 20%; }
+
+/*
+ * Keyboard focus: the app's ring, a little clear of the bar (the bar itself is never masked). A
+ * bar that runs past the chart's edge sits flush against the pinned label column or the card's
+ * edge, which would hide that side of an outer ring: its ring is drawn just inside instead.
+ */
+.lane-bar:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
-.dark .lane-bar:hover:not([data-status="past"]) {
-  background-color: color-mix(in srgb, var(--bar) 36%, var(--color-surface));
-}
-.lane-bar[data-kind="notice_window"]:hover {
-  background-color: color-mix(in srgb, var(--bar) 20%, var(--color-surface));
+.lane-bar[data-before]:focus-visible,
+.lane-bar[data-after]:focus-visible {
+  outline-offset: -2px;
 }
 
 /* Markers */
@@ -108,10 +138,25 @@
 .lane-marker[data-kind="renewal"] { --mk: var(--color-k-contract); }
 .lane-marker[data-past] { --mk: var(--color-faint); }
 
-.lane-mark:hover .lane-marker[data-shape="diamond"],
-.lane-mark:focus-visible .lane-marker[data-shape="diamond"] { transform: rotate(45deg) scale(1.2); }
-.lane-mark:hover .lane-marker:not([data-shape="diamond"]),
-.lane-mark:focus-visible .lane-marker:not([data-shape="diamond"]) { transform: scale(1.2); }
+/*
+ * A mark that stands for several dates (merged because they sit too close to tell apart): the
+ * next glyph peeks out behind it, up and to the right, like a small stack.
+ */
+.lane-mark .lane-marker {
+  position: relative;
+}
+.lane-mark .lane-mark-stack {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  transform: translate(3.5px, -3.5px);
+}
+.lane-mark-stack.lane-marker[data-shape="diamond"] { transform: translate(3.5px, -3.5px) rotate(45deg); }
+
+.lane-mark:hover .lane-marker[data-shape="diamond"]:not(.lane-mark-stack),
+.lane-mark:focus-visible .lane-marker[data-shape="diamond"]:not(.lane-mark-stack) { transform: rotate(45deg) scale(1.2); }
+.lane-mark:hover .lane-marker:not([data-shape="diamond"]):not(.lane-mark-stack),
+.lane-mark:focus-visible .lane-marker:not([data-shape="diamond"]):not(.lane-mark-stack) { transform: scale(1.2); }
 
 @media (prefers-reduced-motion: reduce) {
   .lane-marker { transition: none; }
@@ -119,7 +164,7 @@
 
 /* Forced colours (Windows high contrast): keep marks visible. */
 @media (forced-colors: active) {
-  .lane-bar { border: 1px solid CanvasText; }
+  .lane-bar::before { border: 1px solid CanvasText; }
   .lane-marker { background: CanvasText; }
 }
 
@@ -127,9 +172,9 @@
 .lane-mark:focus-visible {
   outline: none;
 }
-.lane-mark:focus-visible .lane-marker {
+.lane-mark:focus-visible .lane-marker:not(.lane-mark-stack) {
   box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-accent);
 }
-.lane-mark:focus-visible .lane-marker[data-hollow] {
+.lane-mark:focus-visible .lane-marker[data-hollow]:not(.lane-mark-stack) {
   box-shadow: inset 0 0 0 2.25px var(--mk), 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-accent);
 }

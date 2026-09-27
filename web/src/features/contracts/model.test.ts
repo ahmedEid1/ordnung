@@ -119,6 +119,8 @@ describe("contracts-only lanes", () => {
       ["Cancellable any time", "contract", "2026-11-15", "2027-10-01"],
       ["Time to cancel", "notice_window", "2026-09-08", "2026-10-14"],
     ]);
+    // what follows the minimum term has no end date: the chart never shows its drawn end as one
+    expect(bars.map((b) => Boolean(b.open_end))).toEqual([false, true, false]);
     const notice = bars[2]!;
     expect(notice.status).toBe("urgent"); // send by 8 Oct is 10 days away
     expect(notice.markers).toEqual([
@@ -140,7 +142,8 @@ describe("contracts-only lanes", () => {
     expect(lane("ctr_job").bars[0]).toMatchObject({ label: "Fixed term", end: "2027-03-31" });
     expect(lane("ctr_gym").bars[0]!.label).toBe("Cancellable any time");
     expect(lane("ctr_gym").markers).toEqual([{ date: "2026-10-28", label: "Earliest end (if you cancel now)", kind: "other" }]);
-    expect(lane("ctr_bkk").bars[0]!.label).toBe("Open-ended");
+    expect(lane("ctr_bkk").bars[0]).toMatchObject({ label: "Open-ended", open_end: true });
+    expect(lane("ctr_job").bars[0]!.open_end).toBeUndefined();
   });
 
   it("lays out on the chart: the notice window rides on the term bar", () => {
@@ -149,6 +152,8 @@ describe("contracts-only lanes", () => {
     expect(ly.tracks).toBe(1);
     const notice = ly.bars.find((b) => b.bar.kind === "notice_window")!;
     expect(notice.overlay).toBe(true);
-    expect(ly.markers.map((m) => m.primary.marker.kind)).toEqual(["send_by", "cancel_by", "other"]);
+    // send-by and must-arrive-by sit 6 days (15 px) apart: one mark that names both dates
+    expect(ly.markers.map((m) => m.primary.marker.kind)).toEqual(["send_by", "other"]);
+    expect(ly.markers[0]!.entries.map((e) => e.marker.kind)).toEqual(["send_by", "cancel_by"]);
   });
 });

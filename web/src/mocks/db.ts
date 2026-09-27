@@ -506,11 +506,16 @@ export class MockDb {
     if (!from && !to) return lanes;
     const f = from ?? "0000-01-01";
     const t = to ?? "9999-12-31";
+    // like the API: bars are clipped to the range (the chart then says "started before" /
+    // "continues after" instead of showing an edge as a date), markers outside it are dropped
+    const inRange = (mk: TimelineMarker) => mk.date >= f && mk.date <= t;
     return lanes
       .map((l) => ({
         ...l,
-        bars: l.bars.filter((b) => b.end >= f && b.start <= t),
-        markers: l.markers.filter((mk) => mk.date >= f && mk.date <= t),
+        bars: l.bars
+          .filter((b) => b.end >= f && b.start <= t)
+          .map((b) => ({ ...b, start: b.start < f ? f : b.start, end: b.end > t ? t : b.end, markers: b.markers.filter(inRange) })),
+        markers: l.markers.filter(inRange),
       }))
       .filter((l) => l.bars.length || l.markers.length);
   }

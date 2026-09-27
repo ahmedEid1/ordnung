@@ -102,15 +102,21 @@ describe("default range and month grid", () => {
 describe("plot sizing and initial scroll", () => {
   const range = { from: "2026-06-01", to: "2027-09-30" };
 
-  it("fits the whole year into the available width, but never below the minimum per month", () => {
+  it("fits every month into the available width — “Fit all” never scrolls", () => {
     expect(monthsInScale(range.from, range.to)).toBeCloseTo(16, 0);
     expect(plotWidth(range.from, range.to, 1000, "fit", { minMonthPx: 50 })).toBe(1000);
-    expect(plotWidth(range.from, range.to, 360, "fit", { minMonthPx: 66 })).toBeGreaterThan(1000);
+    // a tablet-sized plot (16 months in 470 px): narrow months, but no scrolling
+    expect(plotWidth(range.from, range.to, 470.6, "fit", { minMonthPx: 90 })).toBe(470);
+    expect(plotWidth(range.from, range.to, 360, "fit", { minMonthPx: 66 })).toBe(360);
   });
 
-  it("zooms in to show about a handful of months at once", () => {
+  it("zooms in to show about a handful of months at once, never narrower than the minimum per month", () => {
     const w = plotWidth(range.from, range.to, 900, "detail", { visibleMonths: 5 });
     expect(w / monthsInScale(range.from, range.to)).toBeCloseTo(180, 0);
+    const phone = plotWidth(range.from, range.to, 300, "detail", { minMonthPx: 66, visibleMonths: 4.5 });
+    expect(phone / monthsInScale(range.from, range.to)).toBeCloseTo(66.7, 0);
+    // never narrower than the whole range fitted
+    expect(plotWidth("2026-09-01", "2026-10-31", 900, "detail", { visibleMonths: 5 })).toBe(900);
   });
 
   it("scrolls so that today sits near the left third, clamped to the content", () => {
