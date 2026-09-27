@@ -50,6 +50,7 @@ from ordnung.api.security import (
     inline_script_hashes,
 )
 from ordnung.app_context import AppContext
+from ordnung.calendar import caldav
 from ordnung.config import web_dist_dir
 from ordnung.db.store import NotFoundError
 from ordnung.doctor import web_app_fix
@@ -117,7 +118,7 @@ def _lifespan(state: ApiState) -> Callable[[FastAPI], AbstractAsyncContextManage
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         ctx = state.ctx
         ctx.bus.bind_loop(asyncio.get_running_loop())
-        tick = DailyTick(ctx)
+        tick = DailyTick(ctx, calendar_sync=caldav.scheduled_sync)
         await ctx.worker.start()
         tick.start()
         try:

@@ -743,6 +743,62 @@ class AppSettings(_Model):
     simulated_today: str | None = None
 
 
+CalendarSyncMode = Literal["discreet", "full"]
+CalendarSyncErrorKind = Literal[
+    "address",
+    "auth",
+    "forbidden",
+    "not_found",
+    "not_calendar",
+    "network",
+    "tls",
+    "conflict",
+    "server",
+    "unavailable",
+]
+
+
+class CalendarSyncReport(_Model):
+    """What one calendar sync did (:mod:`ordnung.calendar.caldav`)."""
+
+    at: str
+    sent: int = 0
+    removed: int = 0
+    unchanged: int = 0
+    failed: int = 0
+    error: str | None = None
+    error_kind: CalendarSyncErrorKind | None = None
+
+
+class CalendarSyncState(_Model):
+    """The calendar-sync connection (meta ``calendar_sync``): where, in which mode, and a digest of
+    every event Ordnung put there. Never the password (that lives in the OS keyring)."""
+
+    url: str
+    username: str
+    mode: CalendarSyncMode = "discreet"
+    calendar_name: str | None = None
+    #: resource name (``ordnung-<id>.ics``) → SHA-256 of the event as last sent
+    events: dict[str, str] = Field(default_factory=dict)
+    last: CalendarSyncReport | None = None
+    #: automatic syncing waits after the server refused the password (until a manual sync or reconnect)
+    paused: bool = False
+
+
+class CalendarEventPreview(_Model):
+    """One event exactly as calendar sync would send it."""
+
+    uid: str
+    summary: str
+    #: ISO date (all-day) or local date-time with offset
+    start: str
+    all_day: bool
+    description: str
+    location: str | None = None
+    #: when each alarm rings, in words ("3 days before at 09:00")
+    alarms: list[str] = Field(default_factory=list)
+
+
 # --------------------------------------------------------------------------------------------------
 # LLM structured outputs
 # --------------------------------------------------------------------------------------------------

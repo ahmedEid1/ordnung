@@ -59,6 +59,12 @@ dev = [
   "types-python-dateutil",
   "hypothesis>=6.100",
   "jsonschema>=4.20",
+  # calendar sync's password store, so its tests exercise the real adapter (with an in-memory backend)
+  "keyring>=25",
+]
+# calendar sync (CalDAV): the app password is kept in the OS keyring, never in the database
+caldav = [
+  "keyring>=25",
 ]
 eval = [
   "matplotlib>=3.8",
