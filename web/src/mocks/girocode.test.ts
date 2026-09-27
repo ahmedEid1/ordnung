@@ -11,6 +11,7 @@ import { readPayload } from "@/features/girocode/qr";
 import { GIROCODE_REFUSALS, GIROCODES, GIROCODES_CHECKED } from "./data/girocodes";
 import { ITEMS, TRAY_ITEMS } from "./data/items";
 import { letterFor } from "./db";
+import { amountText } from "./girocode";
 import { createMockServer } from "./server";
 
 const PAYMENTS = [...ITEMS, ...Object.values(TRAY_ITEMS).flat()].filter((i) => i.kind === "payment");
@@ -94,6 +95,36 @@ describe("“These match the letter” in the demo", () => {
 
     await srv.handle("PATCH", "/items/itm_parking", new URLSearchParams(), { status: "done" });
     expect((await detail(srv, "doc_parking")).girocodes[0]).toMatchObject({ status: "blocked", reason: "settled", message: "No code: you marked this as paid." });
+  });
+
+  it("asks for the paper letter again when a code's amount was changed, then carries the new amount", async () => {
+    const srv = server();
+    const patch = (id: string, amount: number) => srv.handle("PATCH", `/items/${id}`, new URLSearchParams(), { amount });
+    // a code from the letter's text layer: the new amount isn't the letter's
+    await patch("itm_nk", 190);
+    const [asks] = (await detail(srv, "doc_nebenkosten")).girocodes;
+    expect(asks).toMatchObject({ status: "blocked", reason: "check_letter", to_check: ["amount"], message: "No code yet: the amount wasn't found in the letter's text. Compare it with the paper letter, then confirm." });
+    const values = (asks as Extract<GiroCode, { status: "blocked" }>).values!;
+    expect(values).toEqual({ payee: "Wohnbau Musterstadt eG", iban: "DE05123456000004455660", reference: "MV-2025-0412 NK 2025", amount: 190 });
+    await confirm(srv, "itm_nk", { ...values, amount: 184.3 }).then((res) => expect(res.status).toBe(409));
+    const res = await confirm(srv, "itm_nk", values);
+    expect(res.status).toBe(200);
+    const ready = (await res.json()) as GiroCode;
+    expect(ready).toEqual({ status: "ready", item_id: "itm_nk", checked: true, payload: (GIROCODES.itm_nk as Extract<GiroCode, { status: "ready" }>).payload.replace("EUR184.3", "EUR190") });
+    // back to the letter's amount: the letter's own code
+    await patch("itm_nk", 184.3);
+    expect((await detail(srv, "doc_nebenkosten")).girocodes).toEqual([GIROCODES.itm_nk]);
+
+    // a photo's code compared at €30 no longer covers €35
+    await confirm(srv, "itm_parking", PARKING);
+    await patch("itm_parking", 35);
+    const [again] = (await detail(srv, "doc_parking")).girocodes;
+    expect(again).toMatchObject({ status: "blocked", reason: "check_letter", to_check: ["amount", "iban", "reference"], values: { ...PARKING, amount: 35 } });
+    expect((await (await confirm(srv, "itm_parking", { ...PARKING, amount: 35 })).json()).payload).toContain("\nEUR35\n");
+  });
+
+  it("writes amounts as the payload builder does", () => {
+    expect([30, 184.3, 184.35, 100, 0.1, 1000.5].map(amountText)).toEqual(["EUR30", "EUR184.3", "EUR184.35", "EUR100", "EUR0.1", "EUR1000.5"]);
   });
 
   it("refuses other values, a ready code, a scam and unknown to-dos, like the API", async () => {

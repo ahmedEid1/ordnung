@@ -328,12 +328,15 @@ export function useConfirmItem() {
 /**
  * "These match the letter": the person compared a payment's transfer details with the paper letter,
  * which unlocks its GiroCode. The letter's detail is updated in place with the answer (and refetched).
+ * A refusal (the details changed meanwhile …) shows in the GiroCode block itself — a toast would wait
+ * behind a phone's sheet — and the detail is refetched, so the block shows the details as they are now.
  */
 export function useConfirmGiroCode() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ itemId, values }: { itemId: string; docId: string; values: TransferValues }) => api.confirmGiroCode(itemId, values),
-    meta: { errorTitle: "Couldn't confirm the payment details" },
+    meta: { silent: true },
+    onError: (_err, { docId }) => qc.invalidateQueries({ queryKey: qk.documents.detail(docId) }),
     onSuccess: (code, { docId }) => {
       qc.setQueryData<DocumentDetail>(qk.documents.detail(docId), (detail) =>
         detail ? { ...detail, girocodes: detail.girocodes.map((g) => (g.item_id === code.item_id ? code : g)) } : detail,

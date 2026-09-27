@@ -113,6 +113,33 @@ export async function demoCatalog({ api, server }) {
       else c.note("no “Show code”: this payment has no GiroCode");
     },
   });
+  const payFine = async (c) => {
+    await c.goto("/");
+    const pay = main(c.page).getByRole("button", { name: /^Pay: .*(Verwarnungsgeld|traffic fine|parking)/i }).first();
+    if (await c.exists(pay)) await c.click(pay);
+    else c.note("no Top-3 “Pay” for the photographed fine");
+  };
+  add({
+    id: "today-pay-girocode-check",
+    group: "today",
+    route: "/",
+    how: "open /, click the Top-3 “Pay: …Verwarnungsgeld…” button",
+    description: "Today's Pay panel of a letter read from a photo: compare the details with the paper letter first.",
+    run: payFine,
+  });
+  add({
+    id: "today-pay-girocode-mismatch",
+    group: "today",
+    route: "/",
+    how: "open /, click the Top-3 “Pay: …Verwarnungsgeld…” button, then “They don't match”",
+    description: "Today's Pay panel after “They don't match”: type the details from the paper letter, or read the letter again.",
+    run: async (c) => {
+      await payFine(c);
+      const mismatch = c.page.getByRole("button", { name: "They don't match" });
+      if (await c.exists(mismatch)) await c.click(mismatch);
+      else c.note("no “They don't match”: already compared");
+    },
+  });
   add({
     id: "today-why-this-date",
     group: "today",
@@ -310,6 +337,17 @@ export async function demoCatalog({ api, server }) {
   };
   docState(statementDoc, "girocode", "click the verdict card's “Pay …” button", "The Pay popover with the letter's GiroCode (EPC-QR) and how to use it.", openPay);
   docState(photoFineDoc, "girocode-check", "click the verdict card's “Pay …” button", "The Pay popover of a letter read from a photo: compare the details with the paper letter first (“These match the letter”).", openPay);
+  docState(photoFineDoc, "girocode-mismatch", "click the verdict card's “Pay …” button, then “They don't match”", "The Pay popover of a photographed letter after “They don't match”.", async (c) => {
+    await openPay(c);
+    const mismatch = c.page.getByRole("button", { name: "They don't match" });
+    if (await c.exists(mismatch)) await c.click(mismatch);
+    else c.note("no “They don't match”: already compared");
+  });
+  // no code for a reason the person can't resolve here (a reminder took over), and a lease's deposit
+  const replacedInvoiceDoc = docs.find((d) => d.kind === "invoice" && /techmarkt/i.test(`${d.filename} ${d.title}`));
+  const leaseDoc = docs.find((d) => /mietvertrag|lease/i.test(`${d.filename} ${d.title}`));
+  docState(replacedInvoiceDoc, "girocode-replaced", "click the verdict card's “Pay …” button", "The Pay popover of an invoice a payment reminder took over: why there is no code.", openPay);
+  docState(leaseDoc, "girocode-lease", "click the verdict card's “Pay …” button", "The Pay popover of the lease's deposit: its sentence doesn't state the amount, so compare with the paper letter first (the monthly rent next to it gets no code: several payments).", openPay);
   docState(multiDoc, "zoom-150", "switch the page viewer zoom to 150 %", "Page viewer at 150 % (horizontal scrolling inside the viewer).", (c) => c.click(c.page.getByRole("radiogroup", { name: "Zoom" }).getByRole("radio", { name: /150/ })));
   docState(multiDoc, "page-2", "click the page-2 thumbnail", "Page viewer scrolled to page 2.", (c) => c.click(c.page.getByRole("button", { name: /^Go to page 2/ })));
   docState(photoDoc, "zoom-150", "switch the page viewer zoom to 150 %", "Phone photo at 150 %.", (c) => c.click(c.page.getByRole("radiogroup", { name: "Zoom" }).getByRole("radio", { name: /150/ })));
@@ -1017,6 +1055,22 @@ export async function demoCatalog({ api, server }) {
     });
   }
 
+  mutations.push({
+    id: "today-pay-girocode-confirmed",
+    group: "today",
+    route: "/",
+    how: "open /, click the Top-3 “Pay: …Verwarnungsgeld…” button, then “These match the letter” (later captures find it done and unfold the code)",
+    description: "Today's Pay panel right after “These match the letter”: the code and its confirmation line scrolled clear of the sticky footer.",
+    run: async (c) => {
+      await payFine(c);
+      const match = c.page.getByRole("button", { name: "These match the letter" });
+      const show = c.page.getByRole("button", { name: "Show code" });
+      if (await c.exists(match)) await c.click(match, { settleAfter: false });
+      else if (await c.exists(show)) await c.click(show);
+      await c.page.getByRole("img", { name: /^GiroCode: transfer/ }).waitFor({ timeout: 30_000 });
+      await settle(c.page);
+    },
+  });
   if (photoFineDoc) {
     mutations.push({
       id: `${docSlug(photoFineDoc)}--girocode-confirmed`,

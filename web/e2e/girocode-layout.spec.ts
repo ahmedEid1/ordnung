@@ -2,10 +2,12 @@
  * The GiroCode (EPC-QR) in the Pay panels on the real demo, where jsdom can't look: the code is a
  * square of black modules on white with its quiet zone in both themes, big enough to scan and
  * wholly on screen from 320 px up, the panel's actions stay in view, phones fold it behind
- * "Show code", and a photographed letter asks to compare with the paper first.
+ * "Show code", a photographed letter asks to compare with the paper first — and once compared,
+ * the code and its confirmation line scroll clear of the panel's sticky footer, on the letter
+ * and on Today, even where they don't fit.
  */
 import type { Locator, Page } from "@playwright/test";
-import { documentId, expect, expectAccessible, open, setTour, settle, test } from "./helpers";
+import { apiGet, apiPatch, documentId, expect, expectAccessible, open, setTour, settle, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -114,5 +116,85 @@ test.describe("phone 390×844", () => {
     const b = (await code.boundingBox())!;
     expect(b.y + b.height).toBeLessThanOrEqual(844);
     expect(await reachable(sheet.getByRole("button", { name: "Mark as paid" }))).toBe(true);
+  });
+});
+
+test.describe("phone turned sideways 844×390", () => {
+  test.use({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+
+  test("the code still waits behind “Show code”, and the actions don't pin themselves over the little room", async ({ page }) => {
+    const id = await documentId(page, /Operating and Heating Cost Statement|Betriebs/);
+    await open(page, `/documents/${id}`);
+    await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €184\.30/ }).click();
+    const panel = page.getByRole("dialog");
+    await expect(panel.getByRole("button", { name: "Show code" })).toHaveAttribute("aria-expanded", "false");
+    await expect(panel.getByRole("img", { name: /^GiroCode:/ })).toHaveCount(0);
+    expect(await panel.locator("[data-sticky-footer]").evaluate((el) => getComputedStyle(el).position)).toBe("static");
+  });
+});
+
+// ------------------------------------------------------------------------------------------------
+// "These match the letter" where the code doesn't fit: it scrolls clear of the sticky footer
+// ------------------------------------------------------------------------------------------------
+
+interface Detail {
+  items: { id: string; kind: string; amount: number | null }[];
+}
+
+/** The photographed fine's payment to-do, asking for the paper letter again (a new amount re-arms it). */
+async function rearmedFine(page: Page, amount: number): Promise<{ docId: string; itemId: string }> {
+  const docId = await documentId(page, /Verwarnung|traffic fine/i);
+  const detail = await apiGet<Detail>(page, `/api/documents/${docId}`);
+  const item = detail.items.find((i) => i.kind === "payment")!;
+  await apiPatch(page, `/api/items/${item.id}`, { amount });
+  return { docId, itemId: item.id };
+}
+
+/** The confirmation line and the code end above the panel's sticky footer (once scrolling stopped). */
+async function clearOfFooter(panel: Locator): Promise<void> {
+  const line = panel.getByText("You compared these details with the paper letter.", { exact: true });
+  await expect(line).toBeVisible();
+  const code = panel.getByRole("img", { name: /^GiroCode: transfer/ });
+  const footer = panel.locator("[data-sticky-footer]");
+  const gap = async (l: Locator) => {
+    const [a, f] = [(await l.boundingBox())!, (await footer.boundingBox())!];
+    return f.y - (a.y + a.height);
+  };
+  await expect.poll(() => gap(line), { message: "the confirmation line ends above the sticky footer" }).toBeGreaterThanOrEqual(0);
+  expect(await gap(code), "the code ends above the sticky footer").toBeGreaterThanOrEqual(0);
+  await expect(panel.getByRole("heading", { name: "GiroCode (EPC-QR)" })).toBeFocused();
+}
+
+test.describe("confirming where the code doesn't fit", () => {
+  // back to the letter's amount afterwards: the fine asks for the paper letter again, as it started
+  test.afterAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await rearmedFine(page, 30);
+    await page.close();
+  });
+
+  const cases = [
+    [320, 640, "letter", "reduce"],
+    [360, 740, "letter", "reduce"],
+    [360, 740, "letter", "no-preference"],
+    [320, 640, "today", "reduce"],
+    [360, 740, "today", "reduce"],
+  ] as const;
+  cases.forEach(([width, height, where, motion], i) => {
+    test(`${width}×${height} on ${where === "letter" ? "the letter" : "Today"}${motion === "no-preference" ? ", smooth scrolling" : ""}`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: motion });
+      await page.setViewportSize({ width, height });
+      const { docId } = await rearmedFine(page, 31 + i);
+      if (where === "letter") {
+        await open(page, `/documents/${docId}`);
+        await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €/ }).click();
+      } else {
+        await open(page, "/", /Sam/);
+        await page.getByRole("region", { name: "Top 3 this week" }).getByRole("button", { name: /^Pay: .*(Verwarnungsgeld|traffic fine|parking)/i }).first().click();
+      }
+      const panel = page.getByRole("dialog");
+      await panel.getByRole("button", { name: "These match the letter" }).click();
+      await clearOfFooter(panel);
+    });
   });
 });

@@ -40,7 +40,8 @@ import { receiptForContract, receiptForItem } from "./receipt";
 import { ReadMore } from "./ReadMore";
 import { WhyThisDate } from "./WhyThisDate";
 import { LetterText } from "@/components/ui/LetterText";
-import { GiroCodeSection } from "@/features/girocode/GiroCode";
+import { GiroCodeSection, ibanFailsCheck } from "@/features/girocode/GiroCode";
+import { paymentReference } from "@/lib/payments";
 
 const VERB: Record<ActionVerb, { label: string; icon: LucideIcon }> = {
   pay: { label: "Pay", icon: Wallet },
@@ -186,6 +187,7 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
   const pay = doc.data?.document.payment;
   const item = action.item;
   const code = item ? doc.data?.girocodes.find((g) => g.item_id === item.id) : undefined;
+  const letter = doc.data?.document;
 
   const markPaid = () => {
     if (!item) return;
@@ -227,13 +229,13 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
           {action.amount ? (
             <CopyRow label="Amount" value={amountForTransfer(action.amount)} display={formatMoney(action.amount, { currency: action.currency })} copyId="amount" />
           ) : null}
-          {pay.reference ? <CopyRow label="Reference" value={pay.reference} copyId="reference" ident /> : null}
+          {pay.reference ? <CopyRow label="Reference" value={paymentReference(pay.reference)} copyId="reference" ident /> : null}
         </dl>
       ) : (
         <p className="mt-3 text-sm leading-relaxed text-muted">{item?.action ?? "The payment details are in the letter."}</p>
       )}
 
-      {pay?.iban_valid === false ? (
+      {ibanFailsCheck(pay?.iban_valid, code) ? (
         <p className="mt-3 flex gap-2 rounded-lg bg-danger-soft px-3 py-2.5 text-sm leading-5 text-danger-ink">
           <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           This IBAN fails its checksum. Don't pay until you've confirmed the account with the sender.
@@ -245,7 +247,15 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
         </p>
       ) : null}
 
-      {action.docId ? <GiroCodeSection code={code} docId={action.docId} collapsible className="mt-3" /> : null}
+      {action.docId ? (
+        <GiroCodeSection
+          code={code}
+          docId={action.docId}
+          collapsible
+          canReadAgain={Boolean(letter && !letter.ai_private && letter.status !== "processing" && letter.status !== "queued")}
+          className="mt-3"
+        />
+      ) : null}
 
       {/*
         stays in view at the bottom of the panel, however far its details scroll: it covers the

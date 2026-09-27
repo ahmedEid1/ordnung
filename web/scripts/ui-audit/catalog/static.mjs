@@ -62,6 +62,13 @@ export async function staticCatalog({ webDir }) {
     await c.click(inMain(c.page).getByRole("button", { name: /^Pay: / }).first());
     await c.click(c.page.getByRole("button", { name: "Show code" }));
   });
+  if (pick("doc_parking")) {
+    add("girocode-photo-mismatch", "/documents/doc_parking", "Static demo: the parking fine after “They don't match”.", async (c) => {
+      await pay(c);
+      await c.click(c.page.getByRole("button", { name: "They don't match" }));
+    });
+  }
+  if (pick("doc_lease")) add("girocode-several", "/documents/doc_lease", "Static demo: the lease's Pay panel — several payments, so no code.", pay);
   if (pick("doc_tax")) add("doc-link-before-opening", "/documents/doc_tax", "Static demo: a link to a New-mail letter that hasn't been opened yet.");
   for (const id of draftIds.slice(0, 2)) add(id.replace(/_/g, "-"), `/letters/${id}`, `Static demo: draft ${id}.`);
   add("ask-answer", "/ask", "Static demo: a suggested question answered from the mock data.", async (c) => {

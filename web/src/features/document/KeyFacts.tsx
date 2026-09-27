@@ -124,7 +124,7 @@ export function KeyFacts({ doc, scam, girocodes = [] }: { doc: Document; scam: b
             {scamCode?.status === "blocked" ? (
               <p className="mt-2 flex items-start gap-1.5 text-[12.5px] leading-5 text-danger-ink">
                 <QrCode className="mt-[3px] size-3.5 shrink-0" aria-hidden />
-                <span>
+                <span className="min-w-0 wrap-break-word">
                   <span className="font-semibold">GiroCode (EPC-QR): </span>
                   {scamCode.message}
                 </span>
