@@ -3390,6 +3390,12 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "error";
+            /**
+             * Ended
+             * @default done
+             * @enum {string}
+             */
+            ended: "done" | "failed" | "paused" | "stopped";
             /** Error */
             error: string | null;
             /**

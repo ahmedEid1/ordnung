@@ -8,6 +8,8 @@
  *
  * Two tabs above the panel (`?view=trace` for the second, so it can be linked): the letter, and "How
  * this was read" — every step of its reading (`./trace`). The pages stay beside it on wide screens.
+ * The letter's content is split around the pages (verdict first, then the pages on phones, then the
+ * rest), so "The letter" controls two panels: its verdict and warnings, and the rest of the letter.
  */
 import { useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router";
@@ -32,8 +34,10 @@ import { ProcessingCard } from "./ProcessingCard";
 import { TracePanel } from "./trace/TracePanel";
 
 type DocView = "letter" | "trace";
+/** The second panel of the letter tab: the rest of the letter, after the pages. */
+const LETTER_MORE_PANEL = "doc-view-panel-letter-more";
 const VIEW_TABS = [
-  { value: "letter" as const, label: "The letter", icon: FileText },
+  { value: "letter" as const, label: "The letter", icon: FileText, controls: [LETTER_MORE_PANEL] },
   { value: "trace" as const, label: "How this was read", shortLabel: "How it was read", icon: Route },
 ];
 
@@ -107,7 +111,12 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
         </div>
 
         {trace ? null : (
-          <div className="min-w-0 space-y-7 xl:col-start-2 xl:row-start-2">
+          <div
+            role="tabpanel"
+            id={LETTER_MORE_PANEL}
+            aria-labelledby="doc-view-tab-letter"
+            className="min-w-0 space-y-7 xl:col-start-2 xl:row-start-2"
+          >
             {neverRead ? (
               <div className="space-y-4" aria-hidden>
                 <SkeletonCard lines={3} />

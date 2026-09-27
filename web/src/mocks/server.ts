@@ -51,6 +51,7 @@ import { TRAY_ITEMS } from "./data/items";
 import { PARTIES } from "./data/parties";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
 import { isOpenItem } from "@/features/document/verdict";
+import { compareBase } from "@/features/document/trace/copy";
 import { documentKindLabel } from "@/lib/copy";
 import { DEMO_NOTE } from "./mode";
 import { addReading, compareReadings, defaultReadings, documentTrace, exportTraces, type TraceLedger } from "./data/traces";
@@ -943,7 +944,9 @@ const routes: [string, string, Handler][] = [
       const prev = { ...d };
       d.status = "processing";
       const job = makeJob(d.id, "reprocess");
+      // the readings kept so far stay shown while the letter is read again
       const kept = readingsOf(ctx.db, prev);
+      ctx.db.state.readings[d.id] = kept;
       void runJob(
         ctx.db,
         job,
@@ -975,7 +978,7 @@ const routes: [string, string, Handler][] = [
       const seeds = readingsOf(db, d);
       const head = documentTrace(ledger, d, seeds, query.get("head")) ?? notFound(READING_GONE);
       const headRun = head.run ?? notFound(NOTHING_TO_COMPARE);
-      const baseId = query.get("base") ?? head.runs.find((r) => r.reading < headRun.reading)?.trace_id ?? notFound(NOTHING_TO_COMPARE);
+      const baseId = query.get("base") ?? compareBase(head.runs, headRun)?.trace_id ?? notFound(NOTHING_TO_COMPARE);
       return compareReadings(documentTrace(ledger, d, seeds, baseId) ?? notFound(READING_GONE), head);
     },
   ],

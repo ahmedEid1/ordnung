@@ -1,11 +1,20 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "@/test/render";
+import { makeTestQueryClient, renderWithProviders, TEST_HEALTH } from "@/test/render";
+import { qk } from "@/api/hooks";
+import { handleServerEvent } from "@/api/sse";
 import { useMockApi } from "@/test/mockFetch";
-import type { DocumentDetail, DocumentTrace } from "@/api/types";
+import type { DocumentDetail, DocumentTrace, TraceRun } from "@/api/types";
 import { DocumentView } from "../DocumentView";
 import { TracePanel } from "./TracePanel";
+
+const mode = vi.hoisted(() => ({ staticDemo: false }));
+vi.mock("@/mocks/mode", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/mocks/mode")>()), isStaticDemo: () => mode.staticDemo }));
+
+beforeEach(() => {
+  mode.staticDemo = false;
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -44,9 +53,7 @@ describe("How this was read", () => {
     expect(within(summary).getByText("Calls to Claude")).toBeInTheDocument();
     expect(within(summary).getByText("API-equivalent cost")).toBeInTheDocument();
     expect(within(summary).getByText("Filed")).toBeInTheDocument();
-    const rows = within(steps())
-      .getAllByRole("button", { expanded: false })
-      .map((b) => b.textContent ?? "");
+    const rows = [...steps().children].map((li) => li.textContent ?? "");
     expect(rows[0]).toMatch(/^Text layer/);
     expect(rows[1]).toMatch(/^Claude reads the letter/);
     expect(rows[2]).toMatch(/^Quotes checked on the page/);
@@ -109,13 +116,30 @@ describe("How this was read", () => {
 
     await userEvent.click(screen.getByRole("radio", { name: "Reading 2" }));
     const compare = await screen.findByRole("button", { name: "Compare with reading 1" });
+    expect(compare).toHaveAttribute("aria-pressed", "false");
     await userEvent.click(compare);
+    // a toggle keeps its name: pressed says whether the comparison is shown
     expect(compare).toHaveAttribute("aria-pressed", "true");
+    expect(compare).toHaveAccessibleName("Compare with reading 1");
+    expect(compare).toHaveAttribute("aria-controls", "trace-compare");
+    expect(screen.getByRole("status")).toHaveTextContent("What reading 2 decided differently from reading 1 is shown below.");
     const changes = await screen.findByRole("region", { name: "What reading 2 decided differently from reading 1" });
+    expect(changes.id).toBe("trace-compare");
+    expect(within(changes).getByRole("heading", { level: 2 })).toBeInTheDocument();
     await waitFor(() => expect(within(changes).getByText("Answer: didn't fit → usable")).toBeInTheDocument());
     expect(within(changes).getByText(/^Prompt version: 8\.6\.1 → 8\.7\.1/)).toBeInTheDocument();
     expect(within(changes).getByText("Claude, asked again")).toBeInTheDocument();
     expect(within(changes).getByText("Only in the earlier reading")).toBeInTheDocument();
+    // one entry per step, however many ways it changed
+    const entries = within(changes).getAllByRole("listitem");
+    const extract = entries.filter((li) => li.firstElementChild?.textContent === "Claude reads the letter");
+    expect(extract).toHaveLength(1);
+    expect(extract[0]!.textContent).toMatch(/Answer: didn't fit → usable/);
+    expect(extract[0]!.textContent).toMatch(/Prompt version: 8\.6\.1 → 8\.7\.1/);
+    await userEvent.click(compare);
+    expect(compare).toHaveAttribute("aria-pressed", "false");
+    expect(compare).toHaveAccessibleName("Compare with reading 1");
+    expect(screen.queryByRole("region", { name: /decided differently/ })).toBeNull();
   });
 
   it("shows a photo's pages transcribed by Claude", async () => {
@@ -135,6 +159,10 @@ describe("How this was read", () => {
     vi.stubGlobal("fetch", async () => new Response(JSON.stringify(empty), { status: 200, headers: { "Content-Type": "application/json" } }));
     const first = renderWithProviders(<TracePanel detail={detail} />);
     expect(await screen.findByRole("heading", { name: "No reading kept for this letter" })).toBeInTheDocument();
+    // the way to fill it is right here, and it says what that does (the test server is a demo: it replays)
+    expect(screen.getByText(/reading it again replays Claude's recorded answers/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Read it again" })).toBeInTheDocument();
+    expect(screen.queryByText(/below the letter/)).toBeNull();
     first.unmount();
 
     vi.stubGlobal("fetch", async () => new Response(JSON.stringify({ detail: "boom" }), { status: 500, headers: { "Content-Type": "application/json" } }));
@@ -145,11 +173,147 @@ describe("How this was read", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Rental agreement — Beispielweg 5" })).toBeInTheDocument();
   });
 
-  it("offers the OpenTelemetry export command for this letter", async () => {
+  it("offers the OpenTelemetry export command for the reading shown, in the server's data folder", async () => {
     const { srv } = useMockApi();
-    renderWithProviders(<TracePanel detail={await detailOf(srv, "doc_nebenkosten")} />);
-    expect(await screen.findByRole("button", { name: /Copy command to export this reading: ordnung trace doc_nebenkosten --otel -o trace\.json/ })).toBeInTheDocument();
+    renderWithProviders(<TracePanel detail={await detailOf(srv, "doc_parking")} />);
+    // the demo keeps its data in its own folder: `ordnung trace` needs it to find the letter
+    expect(
+      await screen.findByRole("button", { name: `Copy command to export this reading: ordnung trace doc_parking --otel -o trace.json --data-dir "${TEST_HEALTH.data_dir}"` }),
+    ).toBeInTheDocument();
     // a long option never breaks after its dashes on a narrow screen ("--" / "otel")
     expect(screen.getByText("--otel")).toHaveClass("whitespace-nowrap");
+    // an older reading: the command exports that one, not the newest
+    await userEvent.click(screen.getByRole("radio", { name: "Reading 1" }));
+    expect(
+      await screen.findByRole("button", {
+        name: `Copy command to export this reading: ordnung trace doc_parking --reading 1 --otel -o trace.json --data-dir "${TEST_HEALTH.data_dir}"`,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("the online demo has no install: it says where the export is, without a command to copy", async () => {
+    mode.staticDemo = true;
+    const { srv } = useMockApi({ staticDemo: true });
+    renderWithProviders(<TracePanel detail={await detailOf(srv, "doc_nebenkosten")} />);
+    expect(await screen.findByText(/exports a reading for an OpenTelemetry viewer/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Copy command/ })).toBeNull();
+  });
+});
+
+describe("How this was read — what it links to and offers", () => {
+  it("offers a date step's receipt only while the to-do still has that date; else says it changed", async () => {
+    const { srv } = useMockApi();
+    const detail = await detailOf(srv, "doc_parking");
+    const fine = detail.items.find((i) => i.title === "Pay the parking fine")!;
+    // the person moved the date after this reading
+    const moved = { ...fine, due_date: "2026-10-07", due_date_source: "manual" as const, computation: { ...fine.computation!, due_date: "2026-10-07", send_by: "2026-10-06" } };
+    renderWithProviders(<TracePanel detail={{ ...detail, items: detail.items.map((i) => (i.id === fine.id ? moved : i)) }} />);
+    await userEvent.click(await within(await screen.findByRole("list", { name: "Steps of this reading" })).findByRole("button", { name: /^Dates computed/ }));
+    const dates = screen.getByRole("list", { name: /^Steps of “Dates computed”/ });
+    await userEvent.click(within(dates).getByRole("button", { name: /^Pay the parking fine/ }));
+    expect(within(dates).queryByText("The rules engine's receipt for this date:")).toBeNull();
+    expect(within(dates).getByText(/The to-do's date has changed since this reading — it is now Wed 7 Oct \(you set it yourself\)/)).toBeInTheDocument();
+    expect(within(dates).queryByRole("button", { name: /^Why this date\?/ })).toBeNull();
+    await userEvent.click(within(dates).getByRole("button", { name: /^Why the date is Wed 7 Oct now/ }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("makes a step with nothing more to show a plain row, not a button that opens to nothing", async () => {
+    const { srv } = useMockApi();
+    renderWithProviders(<TracePanel detail={await detailOf(srv, "doc_nebenkosten")} />);
+    const list = await screen.findByRole("list", { name: "Steps of this reading" });
+    const sender = [...list.children].find((li) => /Sender · Known/.test(li.textContent ?? ""))!;
+    expect(within(sender as HTMLElement).queryByRole("button")).toBeNull();
+    expect(within(list).getByRole("button", { name: /^Claude reads the letter/ })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("compares with the newest earlier reading that was done, not a paused attempt", async () => {
+    const { srv } = useMockApi();
+    const detail = await detailOf(srv, "doc_parking");
+    const res = await srv.handle("GET", "/documents/doc_parking/trace", new URLSearchParams(), undefined);
+    const trace = (await res.json()) as DocumentTrace;
+    const [second, first] = trace.runs as [TraceRun, TraceRun];
+    const paused: TraceRun = { ...second, trace_id: "trc_paused", reading: 2, status: "error", ended: "paused", error: "Paused: Claude's usage limit was reached." };
+    const newest: TraceRun = { ...second, reading: 3 };
+    const shown: DocumentTrace = { ...trace, run: newest, runs: [newest, paused, first] };
+    const handle = srv.handle.bind(srv);
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      const url = new URL(String(input), "http://localhost");
+      const path = url.pathname.replace(/^\/api/, "");
+      if (path.endsWith("/trace")) return new Response(JSON.stringify(shown), { status: 200, headers: { "Content-Type": "application/json" } });
+      return handle("GET", path, url.searchParams, undefined);
+    });
+    renderWithProviders(<TracePanel detail={detail} />);
+    expect(await screen.findByRole("button", { name: "Compare with reading 1" })).toBeInTheDocument();
+  });
+
+  it("offers to read the letter again and compare, and says when a new reading is on its way", async () => {
+    const { srv, calls } = useMockApi();
+    const detail = await detailOf(srv, "doc_nebenkosten");
+    const first = renderWithProviders(<TracePanel detail={detail} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Read again and compare" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/documents/doc_nebenkosten/reprocess")).toBe(true));
+    // the new reading, when it is there (the server says so), opens compared with the one before
+    await waitFor(async () => expect((await detailOf(srv, "doc_nebenkosten")).document.status).not.toBe("processing"));
+    handleServerEvent(first.client, { type: "document.processed", data: { doc_id: "doc_nebenkosten", status: "processed" } });
+    expect(await screen.findByRole("region", { name: "What reading 2 decided differently from reading 1" }, { timeout: 4000 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: /^Reading 2 · read again on/ })).toBeInTheDocument();
+    first.unmount();
+
+    renderWithProviders(<TracePanel detail={{ ...detail, document: { ...detail.document, status: "processing" } }} />);
+    expect(await screen.findByText("Being read again — the new reading appears here when it's done.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Read again and compare" })).toBeNull();
+  });
+
+  it("says reading again asks Claude again, outside the demo", async () => {
+    const { srv } = useMockApi();
+    const client = makeTestQueryClient();
+    client.setQueryData(qk.health, { ...TEST_HEALTH, demo: false });
+    renderWithProviders(<TracePanel detail={await detailOf(srv, "doc_nebenkosten")} />, { client });
+    expect(await screen.findByText("Reading it again asks Claude again, with your Claude account.")).toBeInTheDocument();
+  });
+
+  it("gives a private letter its own words, with no Read again it doesn't have", async () => {
+    const { srv } = useMockApi();
+    const detail = await detailOf(srv, "doc_lease");
+    const empty: DocumentTrace = { doc_id: "doc_lease", run: null, runs: [], spans: [] };
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify(empty), { status: 200, headers: { "Content-Type": "application/json" } }));
+    renderWithProviders(<TracePanel detail={{ ...detail, document: { ...detail.document, ai_private: true } }} />);
+    expect(await screen.findByText(/It is kept private, so Claude never reads it/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Read it again" })).toBeNull();
+  });
+
+  it("moves focus to the way back when the reading picked is no longer kept", async () => {
+    const { srv } = useMockApi();
+    const detail = await detailOf(srv, "doc_parking");
+    renderWithProviders(<TracePanel detail={detail} />);
+    const reading1 = await screen.findByRole("radio", { name: "Reading 1" });
+    const handle = srv.handle.bind(srv);
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.searchParams.get("run")) return new Response(JSON.stringify({ detail: "gone" }), { status: 404, headers: { "Content-Type": "application/json" } });
+      return handle("GET", url.pathname.replace(/^\/api/, ""), url.searchParams, undefined);
+    });
+    await userEvent.click(reading1);
+    const back = await screen.findByRole("button", { name: "Show the newest reading" });
+    await waitFor(() => expect(back).toHaveFocus());
+  });
+});
+
+describe("The letter tab", () => {
+  it("controls every part of the letter: its verdict and, after the pages, the rest", async () => {
+    const { srv } = useMockApi();
+    const detail = await detailOf(srv, "doc_nebenkosten");
+    renderWithProviders(<DocumentView detail={detail} />, { route: "/documents/doc_nebenkosten" });
+    const tab = screen.getByRole("tab", { name: "The letter" });
+    const ids = (tab.getAttribute("aria-controls") ?? "").split(" ");
+    expect(ids).toHaveLength(2);
+    const panels = ids.map((id) => document.getElementById(id)!);
+    for (const panel of panels) {
+      expect(panel).toHaveAttribute("role", "tabpanel");
+      expect(panel).toHaveAccessibleName("The letter");
+    }
+    // the explanation, the to-dos and the footer are inside the tab's panels
+    expect(panels[1]!.querySelector("footer")).not.toBeNull();
   });
 });

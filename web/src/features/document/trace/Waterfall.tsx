@@ -1,14 +1,17 @@
 /**
  * The steps of one reading as a waterfall: one row per step (its title, what it decided, how long it
- * took and a bar placed on the reading's time line), grouped by stage. A row opens to its facts; a
- * stage row also opens to its steps. A dated to-do's step links to the same "Why this date?" receipt
- * the letter shows, a repair call to the call it retried.
+ * took and a bar placed on the reading's time line), grouped by stage. A row with facts or steps of
+ * its own opens to them; a row with nothing more to show is not a button. A dated to-do's step links
+ * to the same "Why this date?" receipt the letter shows — only while the to-do still has the date
+ * this reading computed (else it says the date has changed since) — and a repair call to the call it
+ * retried.
  */
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useState } from "react";
 import { ChevronRight, FileSearch, Link2, ListChecks, type LucideIcon, Quote, Scale, ScanText, Sparkles } from "lucide-react";
 import type { Item, RuleInfo, SpanKind, TraceSpan } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { TONES } from "@/lib/copy";
+import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useTodayISO } from "@/lib/today";
 import { WhyThisDate } from "../WhyThisDate";
@@ -57,24 +60,44 @@ function Bar({ span, total }: { span: TraceSpan; total: number }) {
   );
 }
 
-function Details({ span, ctx }: { span: TraceSpan; ctx: WaterfallContext }) {
-  const rows = spanDetails(span, ctx.partyName, ctx.today);
+/** What a step shows when opened: its facts, the call a repair retried, a date's receipt. */
+interface StepDetails {
+  rows: { label: string; value: string }[];
+  repairOf: TraceSpan | undefined;
+  /** The to-do of a date step (the rules engine's receipt is on it). */
+  dated: Item | undefined;
+}
+
+function stepDetails(span: TraceSpan, ctx: WaterfallContext): StepDetails {
   const a = span.attributes;
-  const item = span.ref?.type === "item" ? ctx.items.get(span.ref.id) : undefined;
+  const rows = spanDetails(span, ctx.partyName, ctx.today);
   const ruleIds = Array.isArray(a.rule_ids) ? (a.rule_ids as string[]) : [];
   const citations = [...new Set(ruleIds.map((id) => ctx.rules.get(id)?.citation || ctx.rules.get(id)?.title).filter(Boolean))];
-  const repairOf = typeof a.repair_of === "number" ? ctx.callStep.get(a.repair_of) : undefined;
-  const extra: ReactNode[] = [];
-  if (citations.length) extra.push(<Row key="rules" label="Rules applied" value={citations.join(" · ")} />);
+  if (citations.length) rows.push({ label: "Rules applied", value: citations.join(" · ") });
+  const item = span.kind === "rules" && span.ref?.type === "item" ? ctx.items.get(span.ref.id) : undefined;
+  return {
+    rows,
+    repairOf: typeof a.repair_of === "number" ? ctx.callStep.get(a.repair_of) : undefined,
+    dated: item?.computation ? item : undefined,
+  };
+}
+
+const hasDetails = (d: StepDetails) => Boolean(d.rows.length || d.repairOf || d.dated);
+
+function Details({ details, span, ctx }: { details: StepDetails; span: TraceSpan; ctx: WaterfallContext }) {
+  const { rows, repairOf, dated } = details;
   return (
     <div className="space-y-3">
-      {rows.length || extra.length ? (
-        <dl className="grid grid-cols-[minmax(6.5rem,2fr)_minmax(0,3fr)] gap-x-3 gap-y-1.5 text-[13px] leading-5 sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] sm:gap-x-4">
-          {rows.map((r) => (
-            <Row key={r.label} label={r.label} value={r.value} />
-          ))}
-          {extra}
-        </dl>
+      {rows.length ? (
+        // label beside value when the step is wide enough; on a narrow one (a phone, a nested step)
+        // the label goes above its value, so values never wrap a word or two per line
+        <div className="@container">
+          <dl className="grid grid-cols-1 text-[13px] leading-5 @[20rem]:grid-cols-[minmax(0,max-content)_minmax(0,1fr)] @[20rem]:gap-x-4 @[20rem]:gap-y-1.5">
+            {rows.map((r) => (
+              <Row key={r.label} label={r.label} value={r.value} />
+            ))}
+          </dl>
+        </div>
       ) : null}
       {repairOf ? (
         <p className="text-[13px] leading-5 text-muted">
@@ -89,12 +112,7 @@ function Details({ span, ctx }: { span: TraceSpan; ctx: WaterfallContext }) {
           , with the problems listed.
         </p>
       ) : null}
-      {span.kind === "rules" && item?.computation ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted">
-          <span>The rules engine's receipt for this date:</span>
-          <WhyThisDate receipt={item.computation} spec={item.date_spec} area={item.area} origin={item.origin} context={item.title} />
-        </div>
-      ) : null}
+      {dated ? <DateReceipt span={span} item={dated} today={ctx.today} /> : null}
     </div>
   );
 }
@@ -102,72 +120,136 @@ function Details({ span, ctx }: { span: TraceSpan; ctx: WaterfallContext }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <>
-      <dt className="text-muted">{label}</dt>
-      <dd className="min-w-0 break-words text-ink">{value}</dd>
+      <dt className="text-[12px] text-muted @[20rem]:max-w-[9rem] @[20rem]:text-[13px] @[30rem]:max-w-[11rem]">{label}</dt>
+      <dd className="mb-1.5 min-w-0 text-ink hyphens-auto [overflow-wrap:anywhere] last:mb-0 @[20rem]:mb-0">{value}</dd>
     </>
   );
 }
 
-/** One step: a disclosure row, then (open) its facts and its own steps. */
-function StepRow({ span, steps, childrenOf, ctx }: { span: TraceSpan; steps: TraceSpan[]; childrenOf: Map<string, TraceSpan[]>; ctx: WaterfallContext }) {
-  const open = ctx.open.has(span.id);
+/**
+ * A date step's link to the to-do's "Why this date?" receipt — the receipt is the to-do's as it is
+ * now, so it is offered as this date's receipt only while the to-do still has the dates this reading
+ * computed; otherwise the step says the date has changed since and what it is now.
+ */
+function DateReceipt({ span, item, today }: { span: TraceSpan; item: Item; today: string }) {
+  const receipt = item.computation!;
+  const due = typeof span.attributes.due_date === "string" ? span.attributes.due_date : null;
+  const sendBy = typeof span.attributes.send_by === "string" ? span.attributes.send_by : null;
+  const receiptProps = { receipt, spec: item.date_spec, area: item.area, origin: item.origin, context: item.title };
+  if (receipt.due_date === due && (receipt.send_by ?? null) === sendBy) {
+    return (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted">
+        <span>The rules engine's receipt for this date:</span>
+        <WhyThisDate {...receiptProps} />
+      </div>
+    );
+  }
+  const now = receipt.due_date ? formatDate(receipt.due_date, { style: "short", today }) : null;
+  const why = item.due_date_source === "manual" ? "you set it yourself" : "it was worked out again after this reading";
+  return (
+    <div className="space-y-1 text-[13px] leading-5 text-muted">
+      <p>
+        The to-do's date has changed since this reading{now ? ` — it is now ${now}` : ""} ({why}).
+      </p>
+      {now ? <WhyThisDate {...receiptProps} title={`Why the date is ${now} now`} /> : null}
+    </div>
+  );
+}
+
+/** One step: a disclosure row, then (open) its facts and its own steps — or a plain row when it has neither. */
+function StepRow({
+  span,
+  steps,
+  childrenOf,
+  ctx,
+  nested = false,
+}: {
+  span: TraceSpan;
+  steps: TraceSpan[];
+  childrenOf: Map<string, TraceSpan[]>;
+  ctx: WaterfallContext;
+  /** A step inside a stage: on phones it drops the kind icon, so its text keeps the width. */
+  nested?: boolean;
+}) {
   const panelId = useId();
+  const details = stepDetails(span, ctx);
+  const count = steps.length;
+  const opens = count > 0 || hasDetails(details);
+  const open = opens && ctx.open.has(span.id);
   const copy = spanCopy(span, ctx.today);
   const Icon = KIND_ICON[span.kind];
-  const count = steps.length;
   // the demo replays Claude's answers with their recorded times; steps of code are not timed there
   const unmeasured = ctx.recorded && span.kind !== "model" && span.duration_ms === 0;
   // a group of steps (its own facts are none) says which steps it holds
   const summary = count && !Object.keys(span.attributes).length ? steps.map((s) => s.name).join(" · ") : copy.summary;
-  return (
-    <li id={`step-${span.id}`} className="scroll-mt-24">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={open ? panelId : undefined}
-        onClick={() => ctx.toggle(span.id)}
-        className="group flex w-full min-w-0 items-start gap-2.5 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-surface-2/70 focus-visible:-outline-offset-2 sm:px-3"
-      >
+  const rowClass = "flex w-full min-w-0 items-start gap-2 rounded-lg px-2 py-2.5 text-left sm:gap-2.5 sm:px-3";
+  const content = (
+    <>
+      {opens ? (
         <ChevronRight className={cn("mt-1 size-4 shrink-0 text-muted transition-transform motion-reduce:transition-none", open && "rotate-90")} aria-hidden />
-        <span
-          className={cn("mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border border-line bg-surface", span.kind === "model" ? "text-accent" : "text-muted")}
-          aria-hidden
+      ) : (
+        <span className="size-4 shrink-0" aria-hidden />
+      )}
+      <span
+        className={cn(
+          "mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border border-line bg-surface",
+          span.kind === "model" ? "text-accent" : "text-muted",
+          nested && "max-sm:hidden",
+        )}
+        aria-hidden
+      >
+        <Icon className="size-3.5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex min-w-0 items-start justify-between gap-3">
+          <span className="min-w-0 text-[14px] font-medium leading-5 text-ink hyphens-auto [overflow-wrap:anywhere]">{copy.title}</span>
+          <span className="shrink-0 pt-px text-[12.5px] tabular-nums leading-5 text-muted">
+            {unmeasured ? (
+              <>
+                <span aria-hidden>—</span>
+                <span className="sr-only">not measured</span>
+              </>
+            ) : (
+              formatMs(span.duration_ms)
+            )}
+          </span>
+        </span>
+        <span className="mt-0.5 block text-[13px] leading-5 text-muted hyphens-auto [overflow-wrap:anywhere]">
+          {summary}
+          {count ? <span className="sr-only">. {count === 1 ? "1 step inside" : `${count} steps inside`}</span> : null}
+        </span>
+        {copy.flag ? (
+          <Badge tone={copy.flag.tone} className="mt-1.5">
+            {copy.flag.text}
+          </Badge>
+        ) : null}
+        <Bar span={span} total={ctx.total} />
+      </span>
+    </>
+  );
+  return (
+    <li id={`step-${span.id}`}>
+      {opens ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={open ? panelId : undefined}
+          onClick={() => ctx.toggle(span.id)}
+          className={cn(rowClass, "group transition-colors hover:bg-surface-2/70 focus-visible:-outline-offset-2")}
         >
-          <Icon className="size-3.5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex min-w-0 items-start justify-between gap-3">
-            <span className="min-w-0 break-words text-[14px] font-medium leading-5 text-ink">{copy.title}</span>
-            <span className="shrink-0 pt-px text-[12.5px] tabular-nums leading-5 text-muted">
-              {unmeasured ? (
-                <>
-                  <span aria-hidden>—</span>
-                  <span className="sr-only">not measured</span>
-                </>
-              ) : (
-                formatMs(span.duration_ms)
-              )}
-            </span>
-          </span>
-          <span className="mt-0.5 block break-words text-[13px] leading-5 text-muted">
-            {summary}
-            {count ? <span className="sr-only">. {count === 1 ? "1 step inside" : `${count} steps inside`}</span> : null}
-          </span>
-          {copy.flag ? (
-            <Badge tone={copy.flag.tone} className="mt-1.5">
-              {copy.flag.text}
-            </Badge>
-          ) : null}
-          <Bar span={span} total={ctx.total} />
-        </span>
-      </button>
+          {content}
+        </button>
+      ) : (
+        <div className={rowClass}>{content}</div>
+      )}
       {open ? (
-        <div id={panelId} className="pb-3 pl-[2.125rem] pr-2 sm:pl-[2.375rem] sm:pr-3">
-          <Details span={span} ctx={ctx} />
+        // phones: a nested step is indented by the chevron only (the kind icon's gutter goes)
+        <div id={panelId} className="pb-3 pl-3 pr-1 sm:pl-[2.375rem] sm:pr-3">
+          <Details details={details} span={span} ctx={ctx} />
           {count ? (
-            <ol aria-label={`Steps of “${copy.title}”`} className="mt-2 border-l border-line pl-1.5 sm:pl-2">
+            <ol aria-label={`Steps of “${copy.title}”`} className="mt-2 border-l border-line pl-1 sm:pl-2">
               {steps.map((child) => (
-                <StepRow key={child.id} span={child} steps={childrenOf.get(child.id) ?? []} childrenOf={childrenOf} ctx={ctx} />
+                <StepRow key={child.id} span={child} steps={childrenOf.get(child.id) ?? []} childrenOf={childrenOf} ctx={ctx} nested />
               ))}
             </ol>
           ) : null}
@@ -225,7 +307,7 @@ export function Waterfall({ spans, recorded, items, rules, partyName }: Waterfal
       requestAnimationFrame(() => {
         const row = document.getElementById(`step-${id}`);
         if (typeof row?.scrollIntoView === "function") row.scrollIntoView({ block: "center" });
-        row?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+        row?.querySelector<HTMLButtonElement>(":scope > button")?.focus({ preventScroll: true });
       });
     },
   };

@@ -10049,6 +10049,17 @@
             "title": "Status",
             "default": "ok"
           },
+          "ended": {
+            "type": "string",
+            "enum": [
+              "done",
+              "failed",
+              "paused",
+              "stopped"
+            ],
+            "title": "Ended",
+            "default": "done"
+          },
           "error": {
             "anyOf": [
               {
@@ -10151,6 +10162,7 @@
           "ended_at",
           "duration_ms",
           "status",
+          "ended",
           "error",
           "trigger",
           "timing",

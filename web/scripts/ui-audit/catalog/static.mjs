@@ -56,6 +56,10 @@ export async function staticCatalog({ webDir }) {
       await c.visible(steps(c).getByRole("button", { name: /^Claude, asked again/ }));
       await c.click(steps(c).getByRole("button", { name: /^Claude, asked again/ }));
     });
+    add("doc-parking--trace-date", "/documents/doc_parking?view=trace", "Static demo: a date's step opened — the DateSpec, the dates, the rules and its “Why this date?” receipt.", async (c) => {
+      await c.click(steps(c).getByRole("button", { name: /^Dates computed/ }));
+      await c.click(inMain(c.page).getByRole("list", { name: /^Steps of “Dates computed”/ }).getByRole("button").first());
+    });
     add("doc-parking--trace-compare", "/documents/doc_parking?view=trace", "Static demo: what the second reading decided differently from the first.", async (c) => {
       await c.click(inMain(c.page).getByRole("button", { name: /^Compare with reading/ }));
       await c.visible(inMain(c.page).getByRole("heading", { name: /decided differently/ }));

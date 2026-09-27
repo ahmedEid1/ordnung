@@ -632,6 +632,7 @@ export function buildReading(ledger: TraceLedger, doc: Document, seed: ReadingSe
     ended_at: at(seed.started_at, total),
     duration_ms: round3(total),
     status: "ok",
+    ended: "done",
     error: null,
     trigger: seed.trigger,
     timing: "measured",
@@ -644,9 +645,22 @@ export function buildReading(ledger: TraceLedger, doc: Document, seed: ReadingSe
     cache_read_tokens: calls.reduce((s, c) => s + c.cache_read_tokens, 0),
     cache_creation_tokens: calls.reduce((s, c) => s + c.cache_creation_tokens, 0),
     cost_usd: Math.round(calls.reduce((s, c) => s + c.cost_usd, 0) * 1e6) / 1e6,
-    model_ms: calls.reduce((s, c) => s + c.duration_ms, 0),
+    model_ms: busyMs(spans.filter((sp) => sp.kind === "model")),
   };
   return { run, spans, records };
+}
+
+/** How long at least one of `spans` was under way: the pages of a photo, read at the same time, count once. */
+function busyMs(spans: TraceSpan[]): number {
+  let total = 0;
+  let reach = -Infinity;
+  for (const sp of [...spans].sort((a, b) => a.start_ms - b.start_ms)) {
+    const end = sp.start_ms + sp.duration_ms;
+    if (sp.start_ms > reach) total += sp.duration_ms;
+    else if (end > reach) total += end - reach;
+    reach = Math.max(reach, end);
+  }
+  return round3(total);
 }
 
 /** `GET /documents/{id}/trace`: the reading `traceId` (default: the newest kept) and every kept reading. */

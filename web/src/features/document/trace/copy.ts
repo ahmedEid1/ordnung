@@ -506,11 +506,38 @@ export function runTitle(run: TraceRun, several: boolean): string {
 
 /** How a reading ended, in words. */
 export function runResult(run: TraceRun): { text: string; tone: Tone } {
-  // the message itself is shown next to the steps; a paused or stopped reading is read again later
-  if (run.status === "error") return run.result === "failed" ? { text: "Couldn't be read", tone: "danger" } : { text: "Stopped — read again later", tone: "warn" };
+  // the sentence itself is shown next to the steps; a paused or stopped reading is read again later
+  if (run.ended === "paused") return { text: "Paused — read again later", tone: "warn" };
+  if (run.ended === "stopped") return { text: "Stopped — read again later", tone: "warn" };
+  if (run.ended === "failed" || run.status === "error") return { text: "Couldn't be read", tone: "danger" };
   if (run.result === "needs_review") return { text: "Filed — something to check", tone: "warn" };
   if (run.result === "failed") return { text: "Couldn't be read", tone: "danger" };
   return { text: "Filed", tone: "ok" };
+}
+
+/**
+ * The reading `run` is compared with by default (`runs` newest first): the newest earlier reading
+ * that was done — a paused or stopped attempt has almost no steps, so nearly every step would show
+ * as new — else the newest earlier one (as `ordnung/trace/compare.py` decides).
+ */
+export function compareBase(runs: TraceRun[], run: TraceRun): TraceRun | undefined {
+  const older = runs.filter((r) => r.reading < run.reading);
+  return older.find((r) => r.ended === "done") ?? older[0];
+}
+
+/** A folder for the shell, in double quotes (single quotes when it has a `"`, `$` or backtick). */
+export function shellPath(path: string): string {
+  return /["$`]/.test(path) ? `'${path.replace(/'/g, "'\\''")}'` : `"${path}"`;
+}
+
+/**
+ * `ordnung trace` for one reading: `--reading N` unless it is the newest kept, and the data folder
+ * of the server this app talks to (the demo's is not the default one `ordnung trace` looks in).
+ */
+export function exportCommand(docId: string, { reading, dataDir }: { reading: number | null; dataDir: string | null }): string {
+  return [`ordnung trace ${docId}`, reading ? `--reading ${reading}` : null, "--otel -o trace.json", dataDir ? `--data-dir ${shellPath(dataDir)}` : null]
+    .filter(Boolean)
+    .join(" ");
 }
 
 const FIELD: Record<string, string> = {
@@ -601,6 +628,9 @@ export function changeText(
     };
   const field = FIELD[change.field] ?? change.field.replace(/_/g, " ");
   if (/_id$/.test(change.field)) return { what, detail: `A different ${field} than before` };
+  // a newer model of the same family: its family alone would read "Sonnet → Sonnet"
+  if (change.field === "served_model" && typeof change.before === "string" && typeof change.after === "string" && modelName(change.before) === modelName(change.after))
+    return { what, detail: `Model: ${change.before} → ${change.after}` };
   return {
     what,
     detail: `${field.charAt(0).toUpperCase()}${field.slice(1)}: ${valueText(change.field, change.before, today)} → ${valueText(change.field, change.after, today)}`,

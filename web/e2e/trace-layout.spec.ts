@@ -2,7 +2,9 @@
  * "How this was read" on the real demo (its prebuilt database has a recorded trace for every letter):
  * the tab keeps its steps inside the panel at every width — no row, bar or detail past its card,
  * nothing wider than the screen — its steps open with the keyboard, the page images make room for
- * the steps on phones, and axe finds nothing serious in the opened steps.
+ * the steps on phones, and axe finds nothing serious in the opened steps. Every step opened, a value
+ * never gets squeezed into a sliver beside its label (on a narrow step the label goes above it), every
+ * row that opens has something to show, and the summary's figures line up however their labels wrap.
  */
 import type { Page } from "@playwright/test";
 import { documentId, expect, expectAccessible, open, setTour, test } from "./helpers";
@@ -65,3 +67,50 @@ test("a photo's reading shows its transcribed page; steps open with the keyboard
   expect(await outOfBounds(page)).toEqual([]);
   await expectAccessible(page, testInfo, "trace-photo");
 });
+
+/** Opens every step, stage by stage. */
+async function openEverything(page: Page): Promise<void> {
+  const list = page.getByRole("list", { name: "Steps of this reading" });
+  for (let round = 0; round < 3; round += 1) {
+    const closed = list.locator('li > button[aria-expanded="false"]');
+    const n = await closed.count();
+    if (!n) return;
+    for (let i = n - 1; i >= 0; i -= 1) await closed.nth(i).click();
+  }
+}
+
+for (const width of [320, 390, 1280, 1920]) {
+  test(`How this was read at ${width}px: opened steps read well and the figures line up`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await openTrace(page, /Payment Reminder|Mahnung/);
+    await openEverything(page);
+    const problems = await page.evaluate(() => {
+      const out: string[] = [];
+      const list = document.querySelector<HTMLElement>('ol[aria-label="Steps of this reading"]')!;
+      // a value beside its label keeps room for a few words; else it sits under the label
+      for (const dd of list.querySelectorAll<HTMLElement>("dd")) {
+        const dt = dd.previousElementSibling as HTMLElement | null;
+        const r = dd.getBoundingClientRect();
+        const beside = dt && Math.abs(dt.getBoundingClientRect().top - r.top) < 2 && dt.getBoundingClientRect().right <= r.left;
+        if (beside && r.width < 150) out.push(`"${dd.textContent?.slice(0, 30)}" is ${Math.round(r.width)} px wide beside its label`);
+      }
+      // a row that opens shows something when it is open
+      for (const button of list.querySelectorAll<HTMLButtonElement>('button[aria-expanded="true"]')) {
+        const panel = document.getElementById(button.getAttribute("aria-controls") ?? "");
+        if (!panel || !panel.textContent?.trim()) out.push(`"${button.textContent?.slice(0, 30)}" opens to nothing`);
+      }
+      // the summary's values sit on one line per row of figures
+      const values = [...document.querySelectorAll<HTMLElement>('section[aria-labelledby="trace-run-title"] dl > div > dd:first-of-type')];
+      const rows = new Map<number, number[]>();
+      for (const v of values) {
+        const tile = v.parentElement!.getBoundingClientRect();
+        const key = Math.round(tile.top);
+        rows.set(key, [...(rows.get(key) ?? []), Math.round(v.getBoundingClientRect().top)]);
+      }
+      for (const tops of rows.values()) if (new Set(tops).size > 1) out.push(`the figures of one row sit at ${[...new Set(tops)].join(", ")} px`);
+      return out;
+    });
+    expect(problems).toEqual([]);
+    expect(await outOfBounds(page)).toEqual([]);
+  });
+}

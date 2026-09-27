@@ -303,6 +303,22 @@ export async function demoCatalog({ api, server }) {
     await openStep(c, /^Quotes checked on the page/);
     await openStep(c, /^Dates computed/);
   });
+  docState(payDoc, "trace-all-open", "“How this was read” → open every stage and every step in it", "Every step opened: the facts of nested steps (label beside or above its value), long German names wrapping.", async (c) => {
+    await traceTab(c);
+    const list = main(c.page).getByRole("list", { name: "Steps of this reading" });
+    for (let round = 0; round < 3; round += 1) {
+      const closed = list.locator('li > button[aria-expanded="false"]');
+      const n = await closed.count();
+      if (!n) break;
+      for (let i = n - 1; i >= 0; i -= 1) await c.click(closed.nth(i), { settleAfter: false });
+    }
+    await settle(c.page);
+  });
+  docState(payDoc, "trace-empty", "answer the trace route with no reading (a letter read before traces were kept), then the tab", "No reading kept: why, and “Read it again” (it asks Claude again).", async (c) => {
+    await c.page.route("**/api/documents/*/trace**", (route) => route.fulfill({ json: { doc_id: payDoc.id, run: null, runs: [], spans: [] } }));
+    await traceTab(c);
+    await c.visible(main(c.page).getByRole("heading", { name: "No reading kept for this letter" }));
+  });
   docState(payDoc, "trace-why-this-date", "“How this was read” → Dates computed → a date → “Why this date?”", "The rules engine's receipt opened from a date's step.", async (c) => {
     await traceTab(c);
     await openStep(c, /^Dates computed/);

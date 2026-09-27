@@ -70,6 +70,7 @@ export function WhyThisDate({
   area,
   origin,
   context,
+  title,
   className,
 }: {
   receipt: ComputationReceipt;
@@ -79,9 +80,16 @@ export function WhyThisDate({
   origin?: ItemOrigin | null;
   /** What the date belongs to (the to-do's title), for screen readers. */
   context?: string;
+  /** The trigger's words (default "Why this date?"). */
+  title?: string;
   className?: string;
 }) {
   return (
-    <ReceiptPopover content={<ReceiptView receipt={receipt} spec={spec} area={area} origin={origin} />} context={context} className={className} />
+    <ReceiptPopover
+      content={<ReceiptView receipt={receipt} spec={spec} area={area} origin={origin} />}
+      context={context}
+      title={title}
+      className={className}
+    />
   );
 }

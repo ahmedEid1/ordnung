@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TraceChange, TraceRun, TraceSpan } from "@/api/types";
 import { assertNoRawEnums } from "@/lib/copy";
-import { changeText, formatMs, runResult, spanCopy, spanDetails, specText } from "./copy";
+import { changeText, compareBase, exportCommand, formatMs, runResult, shellPath, spanCopy, spanDetails, specText } from "./copy";
 
 const span = (s: Partial<TraceSpan>): TraceSpan => ({
   id: "spn_1",
@@ -122,10 +122,36 @@ describe("trace copy", () => {
   });
 
   it("names how a reading ended", () => {
-    const run = { status: "ok", result: "processed", error: null } as TraceRun;
+    const run = { status: "ok", ended: "done", result: "processed", error: null } as TraceRun;
     expect(runResult(run)).toEqual({ text: "Filed", tone: "ok" });
     expect(runResult({ ...run, result: "needs_review" })).toEqual({ text: "Filed — something to check", tone: "warn" });
-    expect(runResult({ ...run, status: "error", result: "failed", error: "x" }).tone).toBe("danger");
-    expect(runResult({ ...run, status: "error", result: null, error: "Paused" })).toEqual({ text: "Stopped — read again later", tone: "warn" });
+    expect(runResult({ ...run, status: "error", ended: "failed", result: "failed", error: "x" }).tone).toBe("danger");
+    expect(runResult({ ...run, status: "error", ended: "paused", result: null, error: "Paused" })).toEqual({ text: "Paused — read again later", tone: "warn" });
+    expect(runResult({ ...run, status: "error", ended: "stopped", result: null, error: "Stopped" })).toEqual({ text: "Stopped — read again later", tone: "warn" });
+  });
+
+  it("compares with the newest earlier reading that was done", () => {
+    const r = (reading: number, ended: TraceRun["ended"]) => ({ reading, ended, trace_id: `trc_${reading}` }) as TraceRun;
+    const runs = [r(4, "done"), r(3, "paused"), r(2, "stopped"), r(1, "done")];
+    expect(compareBase(runs, runs[0]!)?.reading).toBe(1);
+    expect(compareBase(runs, runs[1]!)?.reading).toBe(1);
+    expect(compareBase([r(2, "done"), r(1, "failed")], r(2, "done"))?.reading).toBe(1);
+    expect(compareBase(runs, runs[3]!)).toBeUndefined();
+  });
+
+  it("writes the export command for the reading shown and the server's folder", () => {
+    expect(exportCommand("doc_a", { reading: null, dataDir: null })).toBe("ordnung trace doc_a --otel -o trace.json");
+    expect(exportCommand("doc_a", { reading: 2, dataDir: "/Users/sam/Library/Application Support/ordnung-demo" })).toBe(
+      'ordnung trace doc_a --reading 2 --otel -o trace.json --data-dir "/Users/sam/Library/Application Support/ordnung-demo"',
+    );
+    expect(shellPath('/tmp/a"b')).toBe(`'/tmp/a"b'`);
+    expect(shellPath("/tmp/it's $HOME")).toBe(`'/tmp/it'\\''s $HOME'`);
+  });
+
+  it("names a newer model of the same family by its full id", () => {
+    const same = changeText(change({ kind: "model", name: "Extract", field: "served_model", before: "claude-sonnet-4-5", after: "claude-sonnet-4-6" }));
+    expect(same.detail).toBe("Model: claude-sonnet-4-5 → claude-sonnet-4-6");
+    const other = changeText(change({ kind: "model", name: "Extract", field: "served_model", before: "claude-sonnet-4-5", after: "claude-opus-4-1" }));
+    expect(other.detail).toBe("Model: Sonnet → Opus");
   });
 });
