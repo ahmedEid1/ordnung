@@ -20,12 +20,21 @@ export const ATTACHMENT_OUTCOME_COPY = {
   over_limit: { label: "Not read", icon: CircleDashed, tone: "warn" },
 } satisfies Record<AttachmentOutcome, { label: string; icon: LucideIcon; tone: Tone }>;
 
-const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+/**
+ * A reason the server wrote as a sentence, continued after "Not added — ": its first letter
+ * lower-cased — unless its first word is a name ("Ordnung isn't allowed…", "Claude…") or an
+ * abbreviation ("PDF…"), which keep their capitals.
+ */
+export function reasonClause(reason: string): string {
+  const first = reason.match(/^[^\s,.;:—–-]+/)?.[0] ?? "";
+  if (/^(Ordnung|Claude)(\b|'|’)/.test(first) || /^[A-Z0-9]{2,}/.test(first)) return reason;
+  return reason.charAt(0).toLowerCase() + reason.slice(1);
+}
 
 /** The line under an attachment's name: what became of it — and why, when the server said (a refusal's reason). */
 export function attachmentLine(a: Pick<EmailAttachment, "outcome" | "detail">): string {
   const label = ATTACHMENT_OUTCOME_COPY[a.outcome].label;
-  return (a.outcome === "refused" || a.outcome === "over_limit") && a.detail ? `${label} — ${lowerFirst(a.detail)}` : label;
+  return (a.outcome === "refused" || a.outcome === "over_limit") && a.detail ? `${label} — ${reasonClause(a.detail)}` : label;
 }
 
 export function EmailParts({ detail }: { detail: DocumentDetail }) {

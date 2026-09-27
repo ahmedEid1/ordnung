@@ -98,8 +98,36 @@ describe("the letters waiting from the folder", () => {
     const read = within(g).getByRole("button", { name: "Read these 3 with Claude" });
     await user.click(read);
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/documents/held/read")).toBe(true));
-    await waitFor(() => expect(read).toBeEnabled());
+    await waitFor(() => expect(read).not.toHaveAttribute("aria-busy"));
+    // it stayed focusable while it ran: a keyboard user is still on it and can try again
+    expect(read).toHaveFocus();
+    expect(read).toBeEnabled();
     expect(screen.getByRole("region", { name: /From your folder/ })).toBeInTheDocument();
     expect(srv.db.document("doc_folder_scan")!.status).toBe("held");
+  });
+
+  it("an answer keeps focus on its button while it runs", async () => {
+    useMockApi();
+    const mocked = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes("/documents/held/keep-private") ? new Promise<Response>(() => undefined) : mocked(input, init),
+    );
+    const user = userEvent.setup();
+    renderInbox();
+    const keep = within(await group()).getByRole("button", { name: "Keep private" });
+    await user.click(keep);
+    await waitFor(() => expect(keep).toHaveAttribute("aria-busy", "true"));
+    expect(keep).not.toBeDisabled();
+    expect(keep).toHaveFocus();
+  });
+
+  it("one waiting letter is spoken of as one", async () => {
+    const { srv } = useMockApi();
+    await srv.handle("POST", "/documents/held/keep-private", new URLSearchParams(), { doc_ids: ["doc_folder_mail"] });
+    renderInbox();
+    const g = await group();
+    expect(within(g).getByRole("button", { name: "Read it with Claude" })).toBeInTheDocument();
+    expect(within(g).getByText(/Claude reads it like a letter you add\./)).toBeInTheDocument();
+    expect(within(g).queryByText(/reads them/)).toBeNull();
   });
 });

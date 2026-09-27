@@ -249,6 +249,7 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
     }),
     attachments_more: 0,
     email: d.source.startsWith("email:") ? db.document(d.source.slice("email:".length)) : null,
+    can_wait_again: wasKeptFromWaiting(db, d),
   };
 }
 
@@ -297,6 +298,13 @@ function answeredTogether(db: MockDb, ids: string[]): { docs: Document[]; skippe
     for (const a of db.liveDocuments()) if (a.status === "held" && a.source === `email:${d.id}`) docs.set(a.id, a);
   }
   return { docs: [...docs.values()], skipped };
+}
+
+/** Like `held.was_kept_from_waiting`: kept private by answering its wait, and not read since. */
+function wasKeptFromWaiting(db: MockDb, d: Document): boolean {
+  if (d.deleted_at || !d.ai_private || d.ai_processed_at || d.status !== "processed") return false;
+  const answer = db.state.activity.find((e) => e.ref_id === d.id && ["document.kept_private", "document.released", "document.waiting"].includes(e.kind));
+  return answer?.kind === "document.kept_private";
 }
 
 function heldIds(body: unknown): string[] {
@@ -986,20 +994,24 @@ const routes: [string, string, Handler][] = [
     "POST",
     "/documents/held/wait",
     ({ db, body }) => {
-      // undo "Keep private": like the API, only a letter kept private from waiting, not read since
-      const documents: Document[] = [];
+      // undo "Keep private": like the API, only a letter kept private from waiting, not read since —
+      // an e-mail with its attachments kept private with it
+      const chosen = new Map<string, Document>();
       const skipped: string[] = [];
       for (const id of new Set(heldIds(body))) {
         const d = db.document(id);
-        const answer = d ? db.state.activity.find((e) => e.ref_id === d.id && ["document.kept_private", "document.released", "document.waiting"].includes(e.kind)) : null;
-        if (!d || !d.ai_private || d.ai_processed_at || d.status !== "processed" || answer?.kind !== "document.kept_private") {
+        if (!d || !wasKeptFromWaiting(db, d)) {
           skipped.push(id);
           continue;
         }
+        chosen.set(d.id, d);
+        for (const a of db.liveDocuments()) if (a.source === `email:${d.id}` && wasKeptFromWaiting(db, a) && !chosen.has(a.id)) chosen.set(a.id, a);
+      }
+      const documents = [...chosen.values()];
+      for (const d of documents) {
         Object.assign(d, { status: "held", updated_at: nowTs() });
         db.log("document.waiting", `“${d.title ?? d.filename}” waits for you again`, "document", d.id);
         emit("document.updated", { doc_id: d.id });
-        documents.push(d);
       }
       emit("folder.updated", { state: db.state.settings.inbox_dir ? "watching" : "off" });
       return { documents, jobs: [], skipped } satisfies HeldResult;

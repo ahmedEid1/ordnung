@@ -86,6 +86,21 @@ export async function staticCatalog({ webDir }) {
     await c.wait(600);
     await settle(c.page, { idle: false });
   });
+  add("doc-folder-scan-kept-undo", "/documents/doc_folder_scan", "Static demo: “Keep private”, then “Undo “Keep private”” on the letter's page — it waits again, focus on the waiting card's title.", async (c) => {
+    await c.click(inMain(c.page).getByRole("button", { name: "Keep private" }), { settleAfter: false });
+    await c.wait(600);
+    await c.click(inMain(c.page).getByRole("button", { name: "Undo “Keep private”" }), { settleAfter: false });
+    await c.wait(600);
+    await settle(c.page, { idle: false });
+  });
+  add("inbox-waiting-one", "/documents/doc_folder_mail", "Static demo: one letter still waits (the e-mail was kept private with its bill): the Inbox's group speaks of one.", async (c) => {
+    await c.click(inMain(c.page).getByRole("button", { name: "Keep private" }), { settleAfter: false });
+    await c.wait(600);
+    // in the page (the mock database lives there): a reload would start the demo over
+    await c.click(c.page.getByRole("link", { name: /^Inbox/ }).first());
+    await c.page.getByRole("region", { name: /From your folder/ }).waitFor({ timeout: 10_000 });
+    await settle(c.page);
+  });
   add("search-waiting", "/", "Static demo: the empty search sheet on phones — a waiting letter says it waits, with the day it came.", async (c) => {
     const open = c.page.getByRole("button", { name: "Search letters" });
     if (await c.exists(open)) await c.click(open.first());

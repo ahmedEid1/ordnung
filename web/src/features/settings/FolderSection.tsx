@@ -34,6 +34,7 @@ import { LoadingLabel, SkeletonText } from "@/components/ui/Skeleton";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { toast } from "@/components/ui/Toast";
 import { copyText } from "@/features/document/actions";
+import { reasonClause } from "@/features/document/EmailParts";
 import { SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
 
 type FolderForm = { folder: string; autoRead: boolean };
@@ -297,8 +298,6 @@ const PICKUP_ICON: Record<FolderPickup["outcome"], { icon: LucideIcon; cls: stri
   refused: { icon: CircleX, cls: "bg-danger-soft text-danger" },
 };
 
-const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
-
 function PickupRow({ pickup: p }: { pickup: FolderPickup }) {
   const today = useTodayISO();
   const { icon: Icon, cls } = PICKUP_ICON[p.outcome];
@@ -331,7 +330,7 @@ function PickupRow({ pickup: p }: { pickup: FolderPickup }) {
           ) : p.outcome === "known" ? (
             <span>Already in Ordnung</span>
           ) : (
-            <span className="text-danger-ink">{p.detail ? `Not added — ${lowerFirst(p.detail)}` : "Not added"}</span>
+            <span className="text-danger-ink">{p.detail ? `Not added — ${reasonClause(p.detail)}` : "Not added"}</span>
           )}
           {"\u00a0· "}
           <span className="whitespace-nowrap">{when}</span>

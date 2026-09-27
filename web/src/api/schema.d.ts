@@ -735,7 +735,7 @@ export interface paths {
         };
         /**
          * Read Brief
-         * @description Today's note: the stored one, else the agenda written by code.
+         * @description Today's note: the stored one Claude wrote, else the agenda written by code as it stands now.
          */
         get: operations["read_brief_api_brief_get"];
         put?: never;
@@ -1782,6 +1782,11 @@ export interface components {
              */
             attachments_more: number;
             email: components["schemas"]["Document"] | null;
+            /**
+             * Can Wait Again
+             * @default false
+             */
+            can_wait_again: boolean;
         };
         /**
          * DocumentPatch

@@ -62,6 +62,8 @@ import { PayPanel } from "./PayPanel";
 import { GlossaryText } from "./Explained";
 import { adviceFor, WhyThisDate } from "./WhyThisDate";
 import { LetterText } from "@/components/ui/LetterText";
+import { AnswerButton } from "@/features/inbox/AnswerButton";
+import { focusFirstHeading } from "./HeldCard";
 
 const countdownTone: Record<Urgency, string> = {
   overdue: "bg-danger text-white dark:text-canvas",
@@ -115,12 +117,12 @@ const ADVICE_NOW: Record<string, string> = {
 
 /**
  * A private letter nobody read: Ordnung can't say what it asks, so it never says "nothing to do".
- * One kept private from the watched folder can wait again (its "Keep private" undone): from there
- * the person can let Claude read it.
+ * One kept private while it waited for the person (the server's `can_wait_again`) can wait again (its
+ * "Keep private" undone): from there the person can let Claude read it. The waiting card then takes
+ * this card's place, so focus moves to its heading; a failed undo leaves focus on the button.
  */
-function NotRead({ doc }: { doc: DocumentDetail["document"] }) {
+function NotRead({ doc, canWaitAgain }: { doc: DocumentDetail["document"]; canWaitAgain: boolean }) {
   const wait = useWaitAgain();
-  const fromFolder = doc.source === "folder" || doc.source.startsWith("email:");
   return (
     <>
       <p className="flex items-start gap-2 text-[16px] font-medium leading-snug text-ink">
@@ -130,25 +132,28 @@ function NotRead({ doc }: { doc: DocumentDetail["document"] }) {
       <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">
         It was kept private, so none of its dates, amounts or deadlines were read. Look through it yourself.
       </p>
-      {fromFolder ? (
+      {canWaitAgain ? (
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <Button
+          <AnswerButton
             size="sm"
             icon={Undo2}
-            loading={wait.isPending}
+            busy={wait.isPending}
             onClick={() =>
               wait
                 .mutateAsync([doc.id])
-                .then((res) =>
-                  res.documents.length
-                    ? toast({ title: "It waits for you again", description: "Choose “Read it with Claude” to have it read.", tone: "info" })
-                    : toast({ title: "It can't wait again", description: "Only a letter kept private from your folder, and not read since, can.", tone: "warn" }),
-                )
-                .catch(() => undefined)
+                .then((res) => {
+                  if (!res.documents.length) {
+                    toast({ title: "It can't wait again", description: "Only a letter kept private from your folder, and not read since, can.", tone: "warn" });
+                    return;
+                  }
+                  toast({ title: "It waits for you again", description: "Choose “Read it” to have Claude read it.", tone: "info" });
+                  focusFirstHeading();
+                })
+                .catch(() => undefined) // the request's own error toast says what went wrong
             }
           >
             Undo “Keep private”
-          </Button>
+          </AnswerButton>
           <span className="text-[13px] text-muted">It goes back to the letters waiting for you, where you can let Claude read it.</span>
         </div>
       ) : null}
@@ -304,7 +309,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
             <span>{ADVICE_NOW[doc.kind ?? "default"] ?? ADVICE_NOW.default}</span>
           </p>
         ) : doc.ai_private && !doc.ai_processed_at ? (
-          <NotRead doc={doc} />
+          <NotRead doc={doc} canWaitAgain={detail.can_wait_again} />
         ) : (
           <p className="flex items-center gap-2 text-[15px] font-medium text-ink">
             <CircleCheckBig className="size-[18px] text-ok" aria-hidden />

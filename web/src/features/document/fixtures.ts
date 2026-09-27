@@ -142,6 +142,7 @@ export function makeDetail(d: Partial<DocumentDetail> = {}): DocumentDetail {
     attachments: [],
     attachments_more: 0,
     email: null,
+    can_wait_again: false,
     ...d,
   };
 }

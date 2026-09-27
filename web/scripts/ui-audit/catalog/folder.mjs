@@ -13,7 +13,7 @@ import { inMain } from "../steps.mjs";
 const SAMPLES = (webDir) => join(webDir, "..", "src", "ordnung", "demo", "samples");
 
 /** A sample PDF made new to Ordnung: a comment after `%%EOF` changes its hash, not what it shows. */
-function freshPdf(webDir, sample, tag) {
+export function freshPdf(webDir, sample, tag) {
   return Buffer.concat([readFileSync(join(SAMPLES(webDir), sample)), Buffer.from(`\n% ui-audit copy: ${tag}\n`)]);
 }
 

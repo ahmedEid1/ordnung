@@ -17,9 +17,9 @@ import { formatDateTime } from "@/lib/format";
 import { protectRefs } from "@/lib/glue";
 import { useTodayISO } from "@/lib/today";
 import { cn, plural } from "@/lib/utils";
-import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { toast } from "@/components/ui/Toast";
+import { AnswerButton } from "./AnswerButton";
 import { Thumb } from "./LettersList";
 import { fileKindLabel, readLabel, waitingRows, type WaitingRow } from "./waiting";
 
@@ -95,21 +95,21 @@ export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Documen
         </ul>
         <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-3 border-t border-line bg-surface-2/40 px-4 py-3 sm:px-5">
           <p className="mr-auto min-w-0 basis-full text-sm leading-5 text-muted sm:basis-auto sm:flex-1">
-            Claude reads them like letters you add.{" "}
+            {n === 1 ? "Claude reads it like a letter you add." : "Claude reads them like letters you add."}{" "}
             <Link to="/settings?section=folder" className="font-medium text-accent underline-offset-2 hover:underline">
               Watched folder settings
             </Link>
           </p>
           {/* phones: the two answers share the row */}
           <div className="flex w-full gap-2 sm:w-auto">
-            <Button size="sm" icon={Lock} onClick={keepThem} loading={keep.isPending} disabled={busy && !keep.isPending} className="max-sm:flex-1">
+            <AnswerButton size="sm" icon={Lock} onClick={keepThem} busy={keep.isPending} blocked={busy} className="max-sm:flex-1">
               Keep private
-            </Button>
-            <Button size="sm" variant="primary" icon={Sparkles} onClick={readThem} loading={read.isPending} disabled={busy && !read.isPending} className="max-sm:flex-1">
+            </AnswerButton>
+            <AnswerButton size="sm" variant="primary" icon={Sparkles} onClick={readThem} busy={read.isPending} blocked={busy} className="max-sm:flex-1">
               {readLabel(n)}
               {" "}
               <span className="sr-only">with Claude</span>
-            </Button>
+            </AnswerButton>
           </div>
         </div>
       </div>

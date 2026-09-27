@@ -16,7 +16,7 @@ import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import DocumentPage from "@/pages/DocumentPage";
 import { DocumentView } from "./DocumentView";
 import { waitingAttachments } from "./HeldCard";
-import { attachmentLine } from "./EmailParts";
+import { attachmentLine, reasonClause } from "./EmailParts";
 import { provenanceText } from "./DocumentFooter";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -92,6 +92,15 @@ describe("what became of an attachment, in words", () => {
     expect(attachmentLine({ outcome: "known", detail: "Already in Ordnung" })).toBe("Already in Ordnung");
   });
 
+  it("keeps the capitals of a name or an abbreviation that starts the reason", () => {
+    expect(attachmentLine({ outcome: "refused", detail: "Ordnung isn't allowed to read this file. Check its permissions." })).toBe(
+      "Not added — Ordnung isn't allowed to read this file. Check its permissions.",
+    );
+    expect(reasonClause("Ordnung's own letter")).toBe("Ordnung's own letter");
+    expect(reasonClause("PDF files over 50 MB are refused")).toBe("PDF files over 50 MB are refused");
+    expect(reasonClause("This PDF could not be opened.")).toBe("this PDF could not be opened.");
+  });
+
   it("a waiting letter's provenance says it wasn't read", () => {
     expect(provenanceText({ status: "held", ai_private: true, pages: 2, ai_processed_at: null, text_mode: "text" } as DocumentDetail["document"])).toBe(
       "Waiting for you — not read by AI yet · 2 pages",
@@ -138,7 +147,7 @@ describe("answering on the letter's page", () => {
     expect(await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" })).toBeInTheDocument();
   });
 
-  it("a letter kept private from the folder can wait again from its page", async () => {
+  it("a letter kept private from the folder can wait again from its page — focus goes to the waiting card", async () => {
     const { srv } = useMockApi();
     const user = userEvent.setup();
     await srv.handle("POST", "/documents/held/keep-private", new URLSearchParams(), { doc_ids: ["doc_folder_scan"] });
@@ -146,6 +155,61 @@ describe("answering on the letter's page", () => {
     await user.click(await screen.findByRole("button", { name: "Undo “Keep private”" }));
     await waitFor(() => expect(srv.db.document("doc_folder_scan")!.status).toBe("held"));
     expect(await screen.findByText("It waits for you again")).toBeInTheDocument();
+    // named as the button looks on every screen ("with Claude" is hidden on phones)
+    expect(screen.getByText("Choose “Read it” to have Claude read it.")).toBeInTheDocument();
+    const card = await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" });
+    await waitFor(() => expect(within(card).getByRole("heading", { level: 1 })).toHaveFocus());
+  });
+
+  it("an e-mail waits again with the attachment kept private with it", async () => {
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    await srv.handle("POST", "/documents/held/keep-private", new URLSearchParams(), { doc_ids: ["doc_folder_mail"] });
+    renderPage("doc_folder_mail");
+    await user.click(await screen.findByRole("button", { name: "Undo “Keep private”" }));
+    await waitFor(() => expect(srv.db.document("doc_folder_invoice")!.status).toBe("held"));
+    expect(srv.db.document("doc_folder_mail")!.status).toBe("held");
+    expect(await screen.findByText(/Its attachment that waits goes with it\./)).toBeInTheDocument();
+  });
+
+  it("a letter kept private when it was added never offers to wait again", async () => {
+    const { srv } = useMockApi();
+    const d = await detail(srv, "doc_folder_scan");
+    const kept = { ...d, document: { ...d.document, status: "processed" as const, ai_private: true }, can_wait_again: false };
+    renderWithProviders(<DocumentView detail={kept} />, { client: client() });
+    expect(screen.getByText("Not read — Ordnung can't tell you what this letter asks, or by when.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Undo “Keep private”" })).toBeNull();
+  });
+
+  it("an answer keeps focus on its button while it runs (disabling it would drop focus to the page)", async () => {
+    useMockApi();
+    const mocked = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes("/documents/held/read") ? new Promise<Response>(() => undefined) : mocked(input, init),
+    );
+    const user = userEvent.setup();
+    renderPage("doc_folder_scan");
+    const card = await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" });
+    const read = within(card).getByRole("button", { name: "Read it with Claude" });
+    await user.click(read);
+    await waitFor(() => expect(read).toHaveAttribute("aria-busy", "true"));
+    expect(read).not.toBeDisabled();
+    expect(read).toHaveAttribute("aria-disabled", "true");
+    expect(read).toHaveFocus();
+    expect(within(card).getByRole("button", { name: "Keep private" })).toBeDisabled(); // the other answer waits
+  });
+
+  it("a failed answer leaves focus on its button", async () => {
+    const { calls } = useMockApi({ staticDemo: true }); // the online demo can't read new letters
+    const user = userEvent.setup();
+    renderPage("doc_folder_scan");
+    const card = await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" });
+    const read = within(card).getByRole("button", { name: "Read it with Claude" });
+    await user.click(read);
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/documents/held/read")).toBe(true));
+    await waitFor(() => expect(read).not.toHaveAttribute("aria-busy"));
+    expect(read).toHaveFocus();
+    expect(within(card).getByRole("button", { name: "Keep private" })).toBeEnabled();
   });
 
   it("“Read it with Claude” and “Keep private” come in the Inbox's order, the main answer last", async () => {

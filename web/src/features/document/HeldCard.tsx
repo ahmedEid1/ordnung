@@ -6,14 +6,15 @@
  * until the person answers.
  *
  * The answer's toast and the focus move run from the request's own promise, so they happen even
- * though the card is gone by then (the letter's refetch can land before the answer returns).
+ * though the card is gone by then (the letter's refetch can land before the answer returns). While an
+ * answer runs its button keeps focus, so a failed one leaves the person where they were.
  */
 import { Hourglass, Lock, Sparkles } from "lucide-react";
 import type { DocumentDetail } from "@/api/types";
 import { useKeepHeldPrivate, useReadHeld, useWaitAgain } from "@/api/hooks";
 import { cn, plural } from "@/lib/utils";
-import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
+import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { heldOrigin } from "@/features/inbox/waiting";
 
 /** Once answered the card goes: focus moves to the page's new first heading (never to the page). */
@@ -89,14 +90,14 @@ export function HeldCard({ detail, className }: { detail: DocumentDetail; classN
         </p>
         {/* the same order as the Inbox's group (the main answer last); phones: the two share the row */}
         <div className="mt-4 flex w-full gap-2 sm:w-auto">
-          <Button icon={Lock} loading={keep.isPending} disabled={busy && !keep.isPending} onClick={keepIt} className="max-sm:flex-1">
+          <AnswerButton icon={Lock} busy={keep.isPending} blocked={busy} onClick={keepIt} className="max-sm:flex-1">
             Keep private
-          </Button>
-          <Button variant="primary" icon={Sparkles} loading={read.isPending} disabled={busy && !read.isPending} onClick={readIt} className="max-sm:flex-1">
+          </AnswerButton>
+          <AnswerButton variant="primary" icon={Sparkles} busy={read.isPending} blocked={busy} onClick={readIt} className="max-sm:flex-1">
             <span>
               Read it <span className="max-sm:sr-only">with Claude</span>
             </span>
-          </Button>
+          </AnswerButton>
         </div>
       </div>
     </article>

@@ -168,6 +168,31 @@ for (const width of [320, 1280]) {
   });
 }
 
+test("focus never falls to the page: a refused answer keeps it, and “Undo “Keep private”” moves it to the waiting card", async ({ page }) => {
+  // in a real browser a focused button that becomes `disabled` loses focus (jsdom can't show this)
+  await page.setViewportSize({ width: 390, height: 844 });
+  const waiting = await apiGet<{ id: string; filename: string }[]>(page, "/api/documents?status=held");
+  const scan = waiting.find((d) => d.filename === SCAN)!;
+  await open(page, `/documents/${scan.id}`);
+  const card = page.getByRole("article", { name: SCAN });
+  // the demo only replays recorded answers: "Read it with Claude" is refused
+  const read = card.getByRole("button", { name: "Read it with Claude" });
+  await read.focus();
+  const refused = page.waitForResponse((r) => r.url().includes("/api/documents/held/read"));
+  await page.keyboard.press("Enter");
+  expect((await refused).ok()).toBe(false);
+  await expect(read).not.toHaveAttribute("aria-busy", "true");
+  await expect(read).toBeFocused();
+
+  await card.getByRole("button", { name: "Keep private" }).click();
+  const undo = page.getByRole("main").getByRole("button", { name: "Undo “Keep private”" });
+  await undo.focus();
+  await page.keyboard.press("Enter");
+  const heading = page.getByRole("article", { name: SCAN }).getByRole("heading", { level: 1 });
+  await expect(heading).toBeFocused();
+  await expect.poll(async () => (await apiGet<{ waiting: number }>(page, "/api/folder")).waiting).toBe(3);
+});
+
 for (const scheme of ["light", "dark"] as const) {
   test.describe(`without axe violations (${scheme})`, () => {
     test.use({ colorScheme: scheme });

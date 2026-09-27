@@ -2211,7 +2211,7 @@
           "brief"
         ],
         "summary": "Read Brief",
-        "description": "Today's note: the stored one, else the agenda written by code.",
+        "description": "Today's note: the stored one Claude wrote, else the agenda written by code as it stands now.",
         "operationId": "read_brief_api_brief_get",
         "responses": {
           "200": {
@@ -5321,6 +5321,11 @@
                 "type": "null"
               }
             ]
+          },
+          "can_wait_again": {
+            "type": "boolean",
+            "title": "Can Wait Again",
+            "default": false
           }
         },
         "type": "object",
@@ -5337,7 +5342,8 @@
           "drafts",
           "attachments",
           "attachments_more",
-          "email"
+          "email",
+          "can_wait_again"
         ],
         "title": "DocumentDetail"
       },
