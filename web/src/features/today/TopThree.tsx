@@ -39,6 +39,7 @@ import { actionHref } from "./useTodayData";
 import { receiptForContract, receiptForItem } from "./receipt";
 import { ReadMore } from "./ReadMore";
 import { WhyThisDate } from "./WhyThisDate";
+import { waitingTitle } from "./WaitingCard";
 import { LetterText } from "@/components/ui/LetterText";
 
 const VERB: Record<ActionVerb, { label: string; icon: LucideIcon }> = {
@@ -421,18 +422,22 @@ function ActionCard({ action, index, party, today }: { action: TodayAction; inde
 /**
  * "Top 3 this week": the three most urgent actions, each with a countdown, a reason, the
  * person/organisation, one verb button and "Why this date?". Shows "All clear until …" when
- * nothing is due. When a card leaves (paid, done) focus moves to the card now in its place.
+ * nothing is due — unless letters from the watched folder wait unread: then it says so. When a card
+ * leaves (paid, done) focus moves to the card now in its place.
  */
 export function TopThree({
   actions,
   next,
   partyById,
   today,
+  waiting = 0,
 }: {
   actions: TodayAction[];
   next: TodayAction | undefined;
   partyById: Map<string, Party>;
   today: string;
+  /** Letters from the watched folder nobody read yet: while any wait, nothing is "all clear". */
+  waiting?: number;
 }) {
   const section = useRef<HTMLElement>(null);
   const focus = useTopFocus(section);
@@ -453,11 +458,13 @@ export function TopThree({
             illustration="clear"
             size="sm"
             headingLevel={3}
-            title={allClearTitle(next?.actionDate, today)}
+            title={waiting ? "Nothing due from the letters that were read" : allClearTitle(next?.actionDate, today)}
             description={
-              next
-                ? `Nothing needs you this week. Next up: ${next.title}.`
-                : "Nothing needs you right now. New letters show up here as soon as they are read."
+              waiting
+                ? `${waitingTitle(waiting)} — their dates show up here once they're read.`
+                : next
+                  ? `Nothing needs you this week. Next up: ${next.title}.`
+                  : "Nothing needs you right now. New letters show up here as soon as they are read."
             }
           />
         )}

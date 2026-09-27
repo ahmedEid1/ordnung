@@ -282,7 +282,12 @@ export class MockDb {
       },
       areas: this.areas(),
       suggestions: this.state.suggestions.filter((s) => s.status === "new").sort((a, b) => prio(b.priority) - prio(a.priority)),
-      recent_documents: [...this.liveDocuments()].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, 6),
+      // like the API: letters waiting from the watched folder are not filed yet — Today counts them apart
+      recent_documents: [...this.liveDocuments()]
+        .filter((d) => d.status !== "held")
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+        .slice(0, 6),
+      waiting: this.liveDocuments().filter((d) => d.status === "held").length,
       stats: {
         documents: this.liveDocuments().length,
         open_items: this.openItems().length,

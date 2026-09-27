@@ -130,6 +130,8 @@ export const api = {
   readHeld: (docIds: string[]) => call("post", "/api/documents/held/read", { body: { doc_ids: docIds } }),
   /** "Keep private": the waiting letters stay on this computer, never sent to Claude. */
   keepHeldPrivate: (docIds: string[]) => call("post", "/api/documents/held/keep-private", { body: { doc_ids: docIds } }),
+  /** Undo "Keep private": letters kept private from waiting (never read since) wait again. */
+  waitAgain: (docIds: string[]) => call("post", "/api/documents/held/wait", { body: { doc_ids: docIds } }),
 
   // -- to-dos & dates ----------------------------------------------------------------------------
   items: (params: ItemListParams = {}) => call("get", "/api/items", { query: { ...params } }),

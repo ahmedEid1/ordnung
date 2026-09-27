@@ -5,12 +5,16 @@
  * "Keep private" keeps them on this computer for good (docs/privacy.md, "The watched folder").
  *
  * When they are answered the group goes; `onAnswered` then says where focus goes (the letters list).
+ * The toast and the focus move run from the request's own promise (the group is gone by then), and
+ * "Keep private" can be undone from its toast. More letters than one request may name are answered
+ * in several (the hooks do that).
  */
 import { Link } from "react-router";
 import { FolderInput, Lock, Sparkles } from "lucide-react";
 import type { Document } from "@/api/types";
-import { useKeepHeldPrivate, useReadHeld } from "@/api/hooks";
+import { useKeepHeldPrivate, useReadHeld, useWaitAgain } from "@/api/hooks";
 import { formatDateTime } from "@/lib/format";
+import { protectRefs } from "@/lib/glue";
 import { useTodayISO } from "@/lib/today";
 import { cn, plural } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -23,14 +27,16 @@ export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Documen
   const rows = waitingRows(docs);
   const read = useReadHeld();
   const keep = useKeepHeldPrivate();
+  const wait = useWaitAgain();
   if (!rows.length) return null;
   const ids = rows.map((r) => r.doc.id);
   const n = ids.length;
   const busy = read.isPending || keep.isPending;
 
   const readThem = () =>
-    read.mutate(ids, {
-      onSuccess: (res) => {
+    read
+      .mutateAsync(ids)
+      .then((res) => {
         const count = res.documents.length;
         if (count)
           toast.success(count === 1 ? "Claude is reading it" : `Claude is reading ${plural(count, "letter")}`, {
@@ -43,18 +49,27 @@ export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Documen
             tone: "info",
           });
         onAnswered?.();
-      },
-    });
+      })
+      .catch(() => undefined); // the request's own error toast says what went wrong
   const keepThem = () =>
-    keep.mutate(ids, {
-      onSuccess: (res) => {
-        const count = res.documents.length;
+    keep
+      .mutateAsync(ids)
+      .then((res) => {
+        const kept = res.documents.map((d) => d.id);
+        const count = kept.length;
         toast.success(count === 1 ? "Kept private" : `Kept ${plural(count, "letter")} private`, {
-          description: "They stay on this computer and are never sent to Claude.",
+          description: `${count === 1 ? "It stays" : "They stay"} on this computer and ${count === 1 ? "is" : "are"} never sent to Claude — nothing in ${count === 1 ? "it" : "them"} was read.`,
+          undo: count
+            ? () =>
+                wait
+                  .mutateAsync(kept)
+                  .then((back) => void toast({ title: back.documents.length === 1 ? "It waits for you again" : "They wait for you again", tone: "info" }))
+                  .catch(() => undefined)
+            : undefined,
         });
         onAnswered?.();
-      },
-    });
+      })
+      .catch(() => undefined);
 
   return (
     <section aria-labelledby="waiting-title" className="mb-10">
@@ -105,6 +120,9 @@ export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Documen
 function WaitingItem({ row }: { row: WaitingRow }) {
   const today = useTodayISO();
   const { doc, email, nested } = row;
+  // an e-mail is named by its subject and sender (read on this computer); anything else by its file name
+  const title = doc.title ?? doc.filename;
+  const emailName = email ? (email.title ?? email.filename) : "";
   return (
     <li
       className={cn("group relative flex items-start gap-3.5 px-4 py-3.5 transition-colors hover:bg-surface-2/50 focus-within:bg-surface-2/50 sm:px-5", nested && "pl-10 sm:pl-12")}
@@ -113,18 +131,18 @@ function WaitingItem({ row }: { row: WaitingRow }) {
       <div className="min-w-0 flex-1">
         <Link
           to={`/documents/${doc.id}`}
-          title={doc.filename}
+          title={title === doc.filename ? title : `${title} (${doc.filename})`}
           className="line-clamp-2 break-words text-[14.5px] font-medium leading-snug text-ink outline-none [overflow-wrap:anywhere] after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-accent"
         >
-          {doc.filename}
+          {protectRefs(title)}
         </Link>
         <p className="mt-1 text-sm leading-5 text-muted">
           {fileKindLabel(doc.mime)}
-          {doc.pages > 1 ? ` · ${plural(doc.pages, "page")}` : ""} · added {formatDateTime(doc.created_at, { today })}
+          {doc.pages > 1 ? ` · ${plural(doc.pages, "page")}` : ""} · <span className="whitespace-nowrap">added {formatDateTime(doc.created_at, { today })}</span>
         </p>
         {email ? (
-          <p className="mt-0.5 text-sm leading-5 text-muted [overflow-wrap:anywhere]" title={email.filename}>
-            Attached to “{email.title ?? email.filename}”
+          <p className="mt-0.5 line-clamp-2 text-sm leading-5 text-muted [overflow-wrap:anywhere]" title={`Attached to “${emailName}”`}>
+            Attached to “{protectRefs(emailName)}”
           </p>
         ) : null}
       </div>

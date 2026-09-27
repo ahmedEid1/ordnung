@@ -11,7 +11,7 @@ import { doc } from "./helpers";
 export const FOLDER_PATH = "/home/sam/Scans";
 export const SUGGESTED_INBOX = "/home/sam/.local/share/ordnung-demo/inbox";
 
-/** A held letter as the server stores it: private, titled by its file name, read on this computer only. */
+/** A held letter as the server stores it: private, titled by its file name (an e-mail by its subject and sender), read on this computer only. */
 function held(d: Pick<Document, "id" | "filename" | "mime" | "source" | "created_at"> & Partial<Document>): Document {
   return doc({
     title: d.filename,
@@ -38,6 +38,8 @@ export const FOLDER_DOCUMENTS: Document[] = [
   }),
   held({
     id: "doc_folder_mail",
+    // an e-mail is named by its subject and sender, read on this computer (no model)
+    title: "Ihre Rechnung September 2026 · FunkNetz Kundenservice",
     filename: "Ihre Rechnung September 2026.eml",
     mime: "message/rfc822",
     source: "folder",
@@ -60,18 +62,21 @@ export const EMAIL_ATTACHMENTS: Record<string, EmailAttachment[]> = {
       outcome: "added",
       detail: "Added as its own letter",
       doc_id: "doc_folder_invoice",
+      status: "held",
     },
     {
       filename: "funknetz-logo.png",
       outcome: "inline",
       detail: "A picture inside the e-mail (a logo or similar) — not read",
       doc_id: null,
+      status: null,
     },
     {
       filename: "Preisliste_Tarife_2026.docx",
       outcome: "not_read",
       detail: "Ordnung reads PDFs and photos from e-mails — this file is listed only",
       doc_id: null,
+      status: null,
     },
   ],
 };

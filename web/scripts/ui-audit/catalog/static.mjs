@@ -76,9 +76,21 @@ export async function staticCatalog({ webDir }) {
     await c.wait(600);
     await settle(c.page, { idle: false });
   });
-  add("inbox-waiting-kept-private", "/inbox", "Static demo: “Keep private” for the waiting letters (toast; the group is gone).", async (c) => {
+  add("inbox-waiting-kept-private", "/inbox", "Static demo: “Keep private” for the waiting letters (toast with Undo; the group is gone).", async (c) => {
     await c.click(inMain(c.page).getByRole("button", { name: "Keep private" }), { settleAfter: false });
     await c.wait(600);
+    await settle(c.page, { idle: false });
+  });
+  add("doc-folder-scan-kept-private", "/documents/doc_folder_scan", "Static demo: “Keep private” on the waiting scan's page — the toast, focus on the verdict, “Not read” with Undo.", async (c) => {
+    await c.click(inMain(c.page).getByRole("button", { name: "Keep private" }), { settleAfter: false });
+    await c.wait(600);
+    await settle(c.page, { idle: false });
+  });
+  add("search-waiting", "/", "Static demo: the empty search sheet on phones — a waiting letter says it waits, with the day it came.", async (c) => {
+    const open = c.page.getByRole("button", { name: "Search letters" });
+    if (await c.exists(open)) await c.click(open.first());
+    else await c.click(c.page.getByRole("combobox", { name: "Search your letters" }).first());
+    await c.wait(400);
     await settle(c.page, { idle: false });
   });
   add("dev-ui", "/dev/ui", "Static demo: the design-system gallery with its mock examples.");
@@ -237,7 +249,11 @@ export async function staticCatalog({ webDir }) {
 
   return {
     phases: [
-      { name: "static", parallel: true, states: S.map((s) => ({ ...s, pinToasts: s.id.endsWith("unavailable") || s.id.startsWith("static-inbox-waiting-") })) },
+      {
+        name: "static",
+        parallel: true,
+        states: S.map((s) => ({ ...s, pinToasts: s.id.endsWith("unavailable") || s.id.startsWith("static-inbox-waiting-") || s.id.endsWith("-kept-private") })),
+      },
       { name: "high-stakes", parallel: true, states: hs },
     ],
   };

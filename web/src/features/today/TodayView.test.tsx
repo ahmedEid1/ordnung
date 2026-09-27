@@ -69,9 +69,27 @@ describe("Today page", () => {
       ...d,
       attention: [],
       decisions: [],
+      waiting: 0,
       upcoming: d.upcoming.filter((i) => (i.send_by ?? i.due_date ?? "") >= "2026-10-14"),
     }));
     renderWithProviders(<TodayView />, { client });
     expect(await screen.findByRole("heading", { name: "All clear until Wed 14 Oct" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /from your folder/ })).toBeNull();
+  });
+
+  it("never says 'all clear' while letters from the folder wait unread, and points to them", async () => {
+    const client = await seededClient((d) => ({
+      ...d,
+      attention: [],
+      decisions: [],
+      waiting: 2,
+      upcoming: d.upcoming.filter((i) => (i.send_by ?? i.due_date ?? "") >= "2026-10-14"),
+    }));
+    renderWithProviders(<TodayView />, { client });
+    const card = await screen.findByRole("region", { name: "2 letters from your folder wait for you" });
+    expect(within(card).getByRole("link", { name: /Review them/ })).toHaveAttribute("href", "/inbox");
+    expect(screen.getByRole("heading", { name: "Nothing due from the letters that were read" })).toBeInTheDocument();
+    expect(screen.queryByText(/All clear/)).toBeNull();
+    expect(screen.queryByText(/Nothing needs you/)).toBeNull();
   });
 });

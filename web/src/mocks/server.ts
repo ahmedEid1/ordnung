@@ -242,8 +242,12 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
     related: related.sort((a, b) => ((a.doc_date ?? "") < (b.doc_date ?? "") ? 1 : -1)),
     suggestions,
     drafts: db.state.drafts.filter((x) => x.doc_id === id),
-    // like the API: an attachment's letter is linked while it exists; an attachment names its e-mail
-    attachments: (EMAIL_ATTACHMENTS[id] ?? []).map((a) => ({ ...a, doc_id: a.doc_id && db.document(a.doc_id) ? a.doc_id : null })),
+    // like the API: an attachment's letter is linked (with its status now) while it exists; an attachment names its e-mail
+    attachments: (EMAIL_ATTACHMENTS[id] ?? []).map((a) => {
+      const linked = a.doc_id ? db.document(a.doc_id) : null;
+      return { ...a, doc_id: linked ? linked.id : null, status: linked ? linked.status : null };
+    }),
+    attachments_more: 0,
     email: d.source.startsWith("email:") ? db.document(d.source.slice("email:".length)) : null,
   };
 }
@@ -261,13 +265,15 @@ function inboxDirProblem(value: string): string | null {
   return null;
 }
 
-function folderStatus(db: MockDb): FolderStatus {
+function folderStatus(db: MockDb, canRead: boolean): FolderStatus {
   const s = db.state.settings;
   return {
     folder: s.inbox_dir,
     state: s.inbox_dir ? "watching" : "off",
     problem: null,
     auto_read: s.inbox_auto_read,
+    // the static demo reads nothing with Claude: files always wait (like the replay-only demo)
+    can_read: canRead,
     waiting: db.liveDocuments().filter((d) => d.status === "held").length,
     suggested: SUGGESTED_INBOX,
     recent: db.state.folderRecent.map((p) => {
@@ -927,7 +933,7 @@ const routes: [string, string, Handler][] = [
   ],
   ["GET", "/documents/:id", ({ db, params }) => documentDetail(db, params.id!)],
   // the watched folder: its state, and the person's answer for the letters waiting
-  ["GET", "/folder", ({ db }) => folderStatus(db)],
+  ["GET", "/folder", ({ db, opts }) => folderStatus(db, !opts.staticDemo)],
   [
     "POST",
     "/documents/held/read",
@@ -969,11 +975,34 @@ const routes: [string, string, Handler][] = [
       const { docs, skipped } = answeredTogether(db, heldIds(body));
       for (const d of docs) {
         Object.assign(d, { status: "processed", updated_at: nowTs() });
-        db.log("document.private", `You kept “${d.title ?? d.filename}” private · not sent to AI`, "document", d.id);
+        db.log("document.kept_private", `You kept “${d.title ?? d.filename}” private · not sent to AI`, "document", d.id);
         emit("document.updated", { doc_id: d.id });
       }
       emit("folder.updated", { state: db.state.settings.inbox_dir ? "watching" : "off" });
       return { documents: docs, jobs: [], skipped } satisfies HeldResult;
+    },
+  ],
+  [
+    "POST",
+    "/documents/held/wait",
+    ({ db, body }) => {
+      // undo "Keep private": like the API, only a letter kept private from waiting, not read since
+      const documents: Document[] = [];
+      const skipped: string[] = [];
+      for (const id of new Set(heldIds(body))) {
+        const d = db.document(id);
+        const answer = d ? db.state.activity.find((e) => e.ref_id === d.id && ["document.kept_private", "document.released", "document.waiting"].includes(e.kind)) : null;
+        if (!d || !d.ai_private || d.ai_processed_at || d.status !== "processed" || answer?.kind !== "document.kept_private") {
+          skipped.push(id);
+          continue;
+        }
+        Object.assign(d, { status: "held", updated_at: nowTs() });
+        db.log("document.waiting", `“${d.title ?? d.filename}” waits for you again`, "document", d.id);
+        emit("document.updated", { doc_id: d.id });
+        documents.push(d);
+      }
+      emit("folder.updated", { state: db.state.settings.inbox_dir ? "watching" : "off" });
+      return { documents, jobs: [], skipped } satisfies HeldResult;
     },
   ],
   [

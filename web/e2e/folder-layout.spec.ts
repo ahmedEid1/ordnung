@@ -4,8 +4,10 @@
  * running watcher picks them up and holds them (the demo can't read new letters). The Inbox's "From
  * your folder — waiting for you", a waiting letter and Settings → Watched folder fit from 320 to
  * 1280 px without sideways scrolling, long names wrap inside their cards, the answers are ≥ 24 px
- * targets, and axe finds nothing serious in either theme. Afterwards the folder is unset and the
- * waiting letters deleted, so the other specs see the demo as it was.
+ * targets that don't spill out of their buttons, and axe finds nothing serious in either theme.
+ * Today says the letters wait (its card, the Inbox's count) instead of "all clear", and on a wide
+ * screen a waiting letter's page has no empty band under its card. Afterwards the folder is unset
+ * and the waiting letters deleted, so the other specs see the demo as it was.
  * Runs in the "layout" project (its name ends in `layout.spec.ts`).
  */
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -99,11 +101,13 @@ for (const width of [320, 390, 768, 1280]) {
     await expect(links).toHaveCount(3);
     for (const link of await links.all()) {
       expect(await inside(link, list), `${await link.textContent()} stays inside the card`).toBe(true);
-      // wrapped, never cut: the whole name is on screen (and in the tooltip)
+      // wrapped, never cut: the whole name is on screen (and in the tooltip, with the file name)
       expect(await link.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
-      expect(await link.getAttribute("title")).toBe((await link.textContent())?.trim());
+      const shown = (await link.textContent())?.trim().replace(/\u2011/g, "-") ?? "";
+      expect((await link.getAttribute("title")) ?? "").toContain(shown);
     }
-    await expect(list.getByText(/^Attached to “Ihre Rechnung September 2026\.eml”$/)).toBeVisible();
+    // the e-mail is named by its subject and sender, read on this computer
+    await expect(list.getByText(/^Attached to “Ihre Rechnung September 2026 · FunkNetz Kundenservice”$/)).toBeVisible();
     for (const name of ["Keep private", /^Read these 3 with Claude$/]) {
       const button = group.getByRole("button", { name });
       expect(await bigEnough(button), `${name} is a 24 px target`).toBe(true);
@@ -131,9 +135,36 @@ for (const width of [320, 1280]) {
     await open(page, `/documents/${scan.id}`);
     const card = page.getByRole("article", { name: SCAN });
     await expect(card.getByText("Waiting for you")).toBeVisible();
-    for (const name of ["Read it with Claude", "Keep private"]) expect(await bigEnough(card.getByRole("button", { name }))).toBe(true);
+    for (const name of ["Read it with Claude", "Keep private"]) {
+      const button = card.getByRole("button", { name });
+      expect(await bigEnough(button)).toBe(true);
+      expect(await inside(button, card), `${name} stays inside the card`).toBe(true);
+      // the label never spills out of its button
+      expect(await button.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), `${name}'s label fits`).toBe(true);
+    }
     expect(await inside(card.getByRole("heading", { level: 1 }), card), "the long file name wraps inside the card").toBe(true);
     expect(await sideways(page), "the page scrolls sideways").toBe(0);
+    if (width >= 1280) {
+      // the page image spans both rows: the first is only as tall as the card, so no empty band under it
+      const next = page.getByText(/Waiting for you — not read by AI yet/).first();
+      const [cardBox, nextBox] = [await card.boundingBox(), await next.boundingBox()];
+      expect(cardBox && nextBox && nextBox.y - (cardBox.y + cardBox.height), "the gap under the waiting card").toBeLessThan(48);
+    }
+  });
+}
+
+for (const width of [320, 1280]) {
+  test(`${width} px: Today says the letters wait instead of "all clear", and so does the Inbox's count`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, "/");
+    const card = page.getByRole("region", { name: "3 letters from your folder wait for you" });
+    await expect(card).toBeVisible();
+    const review = card.getByRole("link", { name: /Review them/ });
+    expect(await bigEnough(review)).toBe(true);
+    expect(await inside(review, card), "“Review them” stays inside the card").toBe(true);
+    expect(await sideways(page), "the page scrolls sideways").toBe(0);
+    await expect(page.getByText(/Nothing needs you/)).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /^Inbox\b.*3 waiting for you$/ })).toBeVisible();
   });
 }
 

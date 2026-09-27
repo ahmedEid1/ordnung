@@ -79,6 +79,9 @@ export function folderPhase({ api, server }) {
   add("folder-doc-held", "/documents/…", "open the waiting scan", "A waiting letter: “Read it with Claude” / “Keep private”, its page image.", openDoc("scan"));
   add("folder-doc-held-email", "/documents/…", "open the waiting e-mail", "A waiting e-mail and what became of its attachment.", openDoc("mail"));
   add("folder-doc-held-attachment", "/documents/…", "open the e-mail's waiting PDF", "A waiting attachment: “Came with an e-mail”.", openDoc("attachment"));
+  add("folder-today-waiting", "/", "open / (Today) while three letters from the folder wait", "Today says letters wait (its card above Top 3) instead of “all clear”; the Inbox's count includes them.", (c) =>
+    c.goto("/"),
+  );
   add(
     "folder-settings-refused",
     "/settings?section=folder",
@@ -105,6 +108,23 @@ export function folderPhase({ api, server }) {
       await c.page.getByText(/can't find this folder/).first().waitFor({ timeout: 15_000 }).catch(() => c.note("no problem shown"));
       await settle(c.page);
     },
+  );
+
+  // last: it answers for the scan (and makes it wait again first, for every viewport and theme)
+  add(
+    "folder-doc-kept-private",
+    "/documents/…",
+    "open the waiting scan, click “Keep private”",
+    "The toast with Undo; the verdict says the letter wasn't read and offers “Undo “Keep private””; focus on its title.",
+    async (c) => {
+      await api.post("/api/documents/held/wait", { doc_ids: [docs.scan] });
+      await openDoc("scan")(c);
+      await c.click(inMain(c.page).getByRole("button", { name: "Keep private" }), { settleAfter: false });
+      await c.wait(800);
+      await pinToasts(c.page);
+      await settle(c.page, { idle: false });
+    },
+    { pinToasts: true },
   );
 
   return {

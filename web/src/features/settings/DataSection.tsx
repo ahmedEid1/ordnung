@@ -92,7 +92,7 @@ function DeleteEverythingDialog({ open, onClose, onExport, exporting }: { open: 
       onClose={close}
       size="md"
       title="Delete everything?"
-      description="Every letter and its original file, all dates, contracts, drafts, chats and your settings are deleted from this computer. This can't be undone."
+      description="Every letter and its original file, all dates, contracts, drafts, chats and your settings are deleted from this computer — and every file in Ordnung's own inbox folder, even ones it couldn't add. A watched folder of your own is left as it is. This can't be undone."
       initialFocus={inputRef}
       dismissible={!remove.isPending}
       footer={
@@ -224,8 +224,9 @@ export function DataSection({ health }: { health: Health }) {
                 <Trash2 className="size-4 shrink-0" aria-hidden /> Delete everything
               </h3>
               <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-ink/85">
-                Deletes every letter and its original file, all dates, contracts, drafts and chats, and your settings — Ordnung starts over empty. There is
-                no account and no copy anywhere else. Letters Claude already read were processed through your Claude account under Anthropic's terms.
+                Deletes every letter and its original file, all dates, contracts, drafts and chats, and your settings — Ordnung starts over empty. Files in
+                Ordnung's own inbox folder go too, even ones it couldn't add; a watched folder of your own is never touched. There is no account and no
+                copy anywhere else. Letters Claude already read were processed through your Claude account under Anthropic's terms.
               </p>
             </div>
             {/* the action where the other cards on this page have theirs: in the footer, on the right */}

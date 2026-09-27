@@ -4,14 +4,18 @@
  * attachment (linked when it became a letter), an attachment links back to its e-mail.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
+import { Route, Routes } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { qk } from "@/api/hooks";
 import type { DocumentDetail } from "@/api/types";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { useMockApi } from "@/test/mockFetch";
+import { Toaster, __clearToasts } from "@/components/ui/Toast";
+import DocumentPage from "@/pages/DocumentPage";
 import { DocumentView } from "./DocumentView";
+import { waitingAttachments } from "./HeldCard";
 import { attachmentLine } from "./EmailParts";
 import { provenanceText } from "./DocumentFooter";
 
@@ -56,7 +60,10 @@ describe("a letter waiting from the folder", () => {
     const { srv } = useMockApi();
     const d = await detail(srv, "doc_folder_mail");
     renderWithProviders(<DocumentView detail={d} />, { client: client() });
-    expect(screen.getByText(/Its attachment goes with it\./)).toBeInTheDocument();
+    expect(screen.getByText(/Its attachment that waits goes with it\./)).toBeInTheDocument();
+    // named by its subject and sender (read on this computer), its file name under it
+    const card = screen.getByRole("article", { name: "Ihre Rechnung September 2026 · FunkNetz Kundenservice" });
+    expect(within(card).getByText("Ihre Rechnung September 2026.eml")).toBeInTheDocument();
     const section = screen.getByRole("region", { name: /Attachments/ });
     const rows = within(section).getAllByRole("listitem");
     expect(rows).toHaveLength(3);
@@ -71,7 +78,7 @@ describe("a letter waiting from the folder", () => {
     const { srv } = useMockApi();
     renderWithProviders(<DocumentView detail={await detail(srv, "doc_folder_invoice")} />, { client: client() });
     const card = screen.getByRole("article", { name: "Rechnung_2026-09_FunkNetz.pdf" });
-    expect(within(card).getByText(/came attached to the e-mail “Ihre Rechnung September 2026\.eml”/)).toBeInTheDocument();
+    expect(within(card).getByText(/came attached to the e-mail “Ihre Rechnung September 2026 · FunkNetz Kundenservice”/)).toBeInTheDocument();
     const email = screen.getByRole("region", { name: "Came with an e-mail" });
     expect(within(email).getByRole("link")).toHaveAttribute("href", "/documents/doc_folder_mail");
   });
@@ -89,5 +96,74 @@ describe("what became of an attachment, in words", () => {
     expect(provenanceText({ status: "held", ai_private: true, pages: 2, ai_processed_at: null, text_mode: "text" } as DocumentDetail["document"])).toBe(
       "Waiting for you — not read by AI yet · 2 pages",
     );
+  });
+});
+
+describe("answering on the letter's page", () => {
+  function renderPage(id: string) {
+    const qc = client();
+    return renderWithProviders(
+      <>
+        <main>
+          <Routes>
+            <Route path="/documents/:id" element={<DocumentPage />} />
+          </Routes>
+        </main>
+        <Toaster />
+      </>,
+      { route: `/documents/${id}`, client: qc },
+    );
+  }
+
+  afterEach(() => act(() => __clearToasts()));
+
+  it("“Keep private” says so and moves focus although the card is gone by then — and can be undone", async () => {
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    renderPage("doc_folder_scan");
+    const card = await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" });
+    await user.click(within(card).getByRole("button", { name: "Keep private" }));
+    // the letter's refetch lands first and the card unmounts: the toast and the focus move still happen
+    expect(await screen.findByText("Kept private")).toBeInTheDocument();
+    const verdict = await screen.findByRole("heading", { level: 1 });
+    await waitFor(() => expect(verdict).toHaveFocus());
+    expect(verdict.className).toContain("outline-none");
+    // nothing was read: the verdict says so instead of "nothing to do"
+    expect(screen.getByText("Not read — Ordnung can't tell you what this letter asks, or by when.")).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing right now/)).toBeNull();
+    expect(srv.db.document("doc_folder_scan")!.status).toBe("processed");
+
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(srv.db.document("doc_folder_scan")!.status).toBe("held"));
+    expect(await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" })).toBeInTheDocument();
+  });
+
+  it("a letter kept private from the folder can wait again from its page", async () => {
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    await srv.handle("POST", "/documents/held/keep-private", new URLSearchParams(), { doc_ids: ["doc_folder_scan"] });
+    renderPage("doc_folder_scan");
+    await user.click(await screen.findByRole("button", { name: "Undo “Keep private”" }));
+    await waitFor(() => expect(srv.db.document("doc_folder_scan")!.status).toBe("held"));
+    expect(await screen.findByText("It waits for you again")).toBeInTheDocument();
+  });
+
+  it("“Read it with Claude” and “Keep private” come in the Inbox's order, the main answer last", async () => {
+    const { srv } = useMockApi();
+    renderWithProviders(<DocumentView detail={await detail(srv, "doc_folder_scan")} />, { client: client() });
+    const card = screen.getByRole("article", { name: "Scan_2026-09-28_0914.pdf" });
+    const names = within(card)
+      .getAllByRole("button")
+      .map((b) => b.textContent);
+    expect(names).toEqual(["Keep private", "Read it with Claude"]);
+  });
+
+  it("an e-mail's card counts only the attachments that still wait", async () => {
+    const { srv } = useMockApi();
+    await srv.handle("POST", "/documents/held/keep-private", new URLSearchParams(), { doc_ids: ["doc_folder_invoice"] });
+    const d = await detail(srv, "doc_folder_mail");
+    expect(waitingAttachments(d)).toBe(0);
+    renderWithProviders(<DocumentView detail={d} />, { client: client() });
+    expect(screen.queryByText(/goes with it/)).toBeNull();
   });
 });

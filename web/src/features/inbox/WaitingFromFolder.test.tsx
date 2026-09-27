@@ -40,8 +40,9 @@ describe("the letters waiting from the folder", () => {
     const names = within(list)
       .getAllByRole("link")
       .map((a) => a.textContent);
-    expect(names).toEqual(["Scan_2026-09-28_0914.pdf", "Ihre Rechnung September 2026.eml", "Rechnung_2026-09_FunkNetz.pdf"]);
-    expect(within(list).getByText("Attached to “Ihre Rechnung September 2026.eml”")).toBeInTheDocument();
+    // an e-mail is named by its subject and sender (read on this computer, no model)
+    expect(names).toEqual(["Scan_2026-09-28_0914.pdf", "Ihre Rechnung September 2026 · FunkNetz Kundenservice", "Rechnung_2026-09_FunkNetz.pdf"]);
+    expect(within(list).getByText("Attached to “Ihre Rechnung September 2026 · FunkNetz Kundenservice”")).toBeInTheDocument();
     expect(within(g).getByText(/nothing has been sent to Claude/)).toBeInTheDocument();
     expect(within(g).getByRole("link", { name: "Watched folder settings" })).toHaveAttribute("href", "/settings?section=folder");
     // not in the letters list below, nor counted there
@@ -72,6 +73,21 @@ describe("the letters waiting from the folder", () => {
     const doc = srv.db.document("doc_folder_scan")!;
     expect([doc.status, doc.ai_private]).toEqual(["processed", true]);
     await waitFor(() => expect(screen.queryByRole("region", { name: /From your folder/ })).toBeNull());
+  });
+
+  it("“Keep private” can be undone from its toast: they wait again", async () => {
+    const { calls, srv } = useMockApi();
+    const user = userEvent.setup();
+    renderInbox();
+    await user.click(within(await group()).getByRole("button", { name: "Keep private" }));
+    expect(await screen.findByText(/nothing in them was read/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(srv.db.document("doc_folder_scan")!.status).toBe("held"));
+    expect(calls.find((c) => c.method === "POST" && c.path === "/documents/held/wait")?.body).toEqual({
+      doc_ids: ["doc_folder_scan", "doc_folder_mail", "doc_folder_invoice"],
+    });
+    expect(await group()).toBeInTheDocument();
+    expect(await screen.findByText("They wait for you again")).toBeInTheDocument();
   });
 
   it("the online demo can't read new letters: they keep waiting (the app's error toast explains)", async () => {

@@ -50,7 +50,8 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
 
   return (
     <EvidenceProvider anchors={anchors}>
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.04fr)_minmax(0,1fr)] xl:gap-x-8 xl:gap-y-6">
+      {/* the first row is as tall as the verdict (or waiting) card; the page viewer's spare height goes to the rest */}
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.04fr)_minmax(0,1fr)] xl:grid-rows-[auto_1fr] xl:gap-x-8 xl:gap-y-6">
         <div className="min-w-0 space-y-4 xl:col-start-2 xl:row-start-1">
           {busy ? <ProcessingCard doc={doc} /> : null}
           {held ? <HeldCard detail={detail} /> : !neverRead ? <VerdictCard detail={detail} primary={primary} onAskArrival={askArrival} /> : null}

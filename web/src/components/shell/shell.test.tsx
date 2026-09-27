@@ -120,6 +120,23 @@ describe("tab bar", () => {
     expect(badge.className).toContain("text-2xs");
   });
 
+  it("counts the letters waiting from the watched folder too, and names both", () => {
+    const qc = makeTestQueryClient();
+    qc.setQueryData(qk.documents.list({ status: "needs_review" }), [{ id: "a" }]);
+    qc.setQueryData(qk.documents.list({ status: "held" }), [{ id: "b" }, { id: "c" }, { id: "d" }]);
+    renderWithProviders(<MobileTabBar />, { client: qc });
+    const inbox = screen.getByRole("link", { name: "Inbox, 1 to check, 3 waiting for you" });
+    expect(within(inbox).getByText("4")).toBeInTheDocument();
+  });
+
+  it("with only letters waiting, the bubble is not the warning colour", () => {
+    const qc = makeTestQueryClient();
+    qc.setQueryData(qk.documents.list({ status: "held" }), [{ id: "b" }, { id: "c" }]);
+    renderWithProviders(<MobileTabBar />, { client: qc });
+    const inbox = screen.getByRole("link", { name: "Inbox, 2 waiting for you" });
+    expect(within(inbox).getByText("2").className).toContain("bg-accent");
+  });
+
   it("is nearly opaque, so page text doesn't show through", () => {
     renderWithProviders(<MobileTabBar />);
     expect(screen.getByRole("navigation", { name: "Primary" }).className).toContain("bg-surface/95");

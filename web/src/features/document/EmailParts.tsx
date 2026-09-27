@@ -30,6 +30,7 @@ export function attachmentLine(a: Pick<EmailAttachment, "outcome" | "detail">): 
 
 export function EmailParts({ detail }: { detail: DocumentDetail }) {
   const { email, attachments } = detail;
+  const more = detail.attachments_more;
   if (!email && !attachments.length) return null;
   return (
     <>
@@ -49,12 +50,17 @@ export function EmailParts({ detail }: { detail: DocumentDetail }) {
         </PanelSection>
       ) : null}
       {attachments.length ? (
-        <PanelSection id="attachments" title="Attachments" icon={Paperclip} count={attachments.length}>
+        <PanelSection id="attachments" title="Attachments" icon={Paperclip} count={attachments.length + more}>
           <ul className="card divide-y divide-line overflow-hidden">
             {attachments.map((a, i) => (
               <AttachmentRow key={`${a.filename}-${i}`} attachment={a} />
             ))}
           </ul>
+          {more ? (
+            <p className="mt-2 text-[13px] leading-5 text-muted">
+              {more === 1 ? "1 more part of this e-mail isn't listed" : `${more} more parts of this e-mail aren't listed`} — Ordnung lists the first {attachments.length}.
+            </p>
+          ) : null}
         </PanelSection>
       ) : null}
     </>

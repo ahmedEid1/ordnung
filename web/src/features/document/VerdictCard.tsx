@@ -10,6 +10,7 @@ import {
   Check,
   CircleCheckBig,
   Clock,
+  EyeOff,
   Info,
   Landmark,
   ListChecks,
@@ -18,10 +19,11 @@ import {
   Scale,
   ShieldAlert,
   TriangleAlert,
+  Undo2,
   type LucideIcon,
 } from "lucide-react";
 import type { DocumentDetail, Item, Suggestion } from "@/api/types";
-import { useUpdateSuggestion } from "@/api/hooks";
+import { useUpdateSuggestion, useWaitAgain } from "@/api/hooks";
 import { isDirectDebit } from "@/lib/payments";
 import { toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -111,6 +113,49 @@ const ADVICE_NOW: Record<string, string> = {
   default: "Get advice now: this is a court order with a short deadline — see the card on this page.",
 };
 
+/**
+ * A private letter nobody read: Ordnung can't say what it asks, so it never says "nothing to do".
+ * One kept private from the watched folder can wait again (its "Keep private" undone): from there
+ * the person can let Claude read it.
+ */
+function NotRead({ doc }: { doc: DocumentDetail["document"] }) {
+  const wait = useWaitAgain();
+  const fromFolder = doc.source === "folder" || doc.source.startsWith("email:");
+  return (
+    <>
+      <p className="flex items-start gap-2 text-[16px] font-medium leading-snug text-ink">
+        <EyeOff className="mt-0.5 size-[18px] shrink-0 text-muted" aria-hidden />
+        <span>Not read — Ordnung can't tell you what this letter asks, or by when.</span>
+      </p>
+      <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">
+        It was kept private, so none of its dates, amounts or deadlines were read. Look through it yourself.
+      </p>
+      {fromFolder ? (
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <Button
+            size="sm"
+            icon={Undo2}
+            loading={wait.isPending}
+            onClick={() =>
+              wait
+                .mutateAsync([doc.id])
+                .then((res) =>
+                  res.documents.length
+                    ? toast({ title: "It waits for you again", description: "Choose “Read it with Claude” to have it read.", tone: "info" })
+                    : toast({ title: "It can't wait again", description: "Only a letter kept private from your folder, and not read since, can.", tone: "warn" }),
+                )
+                .catch(() => undefined)
+            }
+          >
+            Undo “Keep private”
+          </Button>
+          <span className="text-[13px] text-muted">It goes back to the letters waiting for you, where you can let Claude read it.</span>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 export interface VerdictCardProps {
   detail: DocumentDetail;
   primary: Item | null;
@@ -161,7 +206,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
           ) : null}
           {doc.ai_private ? <Badge tone="neutral">Private — not read by AI</Badge> : null}
         </div>
-        <h1 id="verdict-title" className="display mt-3 text-[26px] font-semibold leading-[1.15] text-ink [overflow-wrap:anywhere] hyphens-auto sm:text-[29px]">
+        <h1 id="verdict-title" className="display mt-3 text-[26px] font-semibold leading-[1.15] text-ink outline-none [overflow-wrap:anywhere] hyphens-auto sm:text-[29px]">
           {doc.title ?? doc.filename}
         </h1>
         <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px] text-muted">
@@ -258,6 +303,8 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
             <Scale className="mt-0.5 size-[18px] shrink-0 text-warn" aria-hidden />
             <span>{ADVICE_NOW[doc.kind ?? "default"] ?? ADVICE_NOW.default}</span>
           </p>
+        ) : doc.ai_private && !doc.ai_processed_at ? (
+          <NotRead doc={doc} />
         ) : (
           <p className="flex items-center gap-2 text-[15px] font-medium text-ink">
             <CircleCheckBig className="size-[18px] text-ok" aria-hidden />

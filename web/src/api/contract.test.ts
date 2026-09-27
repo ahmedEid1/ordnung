@@ -184,6 +184,7 @@ const CASES = {
   folder: { run: () => api.folder() },
   readHeld: { run: (ids) => api.readHeld([ids.held, "doc_gone"]) },
   keepHeldPrivate: { run: (ids) => api.keepHeldPrivate([ids.otherHeld]) },
+  waitAgain: { run: (ids) => api.waitAgain([ids.otherHeld]) }, // after keepHeldPrivate: undoes it
 
   items: { run: () => api.items({ status: "open", from: "2026-09-01", to: "2026-12-31", include_undated: true, limit: 50 }) },
   createItem: { run: () => api.createItem({ kind: "task", title: "Call the bank", due_date: "2026-10-05", area: "money" }) },

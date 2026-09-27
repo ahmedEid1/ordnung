@@ -25,6 +25,7 @@ import type {
   DocumentPatch,
   DraftCreate,
   DraftPatch,
+  HeldResult,
   ItemCreate,
   ItemListParams,
   ItemPatch,
@@ -294,13 +295,31 @@ export function useFolder(opts: { enabled?: boolean } = {}) {
   return useQuery({ queryKey: qk.folder, queryFn: api.folder, staleTime: 30_000, enabled: opts.enabled });
 }
 
+/** The most letters one answer request names (the API's limit); more go in several requests. */
+export const HELD_CHUNK = 500;
+
+/**
+ * An answer for many waiting letters, sent `HELD_CHUNK` ids at a time and merged into one result
+ * (a folder of old scans can hold more than one request may name). Stops at the first failure.
+ */
+export async function answerInChunks(ids: readonly string[], send: (chunk: string[]) => Promise<HeldResult>): Promise<HeldResult> {
+  const merged: HeldResult = { documents: [], jobs: [], skipped: [] };
+  for (let at = 0; at < ids.length; at += HELD_CHUNK) {
+    const res = await send(ids.slice(at, at + HELD_CHUNK));
+    merged.documents.push(...res.documents);
+    merged.jobs.push(...res.jobs);
+    merged.skipped.push(...res.skipped);
+  }
+  return merged;
+}
+
 /** "Read these N": the waiting letters (as shown) may be sent to Claude; they are queued for reading. */
 export function useReadHeld() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (docIds: string[]) => api.readHeld(docIds),
+    mutationFn: (docIds: string[]) => answerInChunks(docIds, api.readHeld),
     meta: { errorTitle: "Couldn't start reading them" },
-    onSuccess: () => invalidateLedger(qc),
+    onSettled: () => invalidateLedger(qc), // a failure halfway still answered the first ones
   });
 }
 
@@ -308,9 +327,19 @@ export function useReadHeld() {
 export function useKeepHeldPrivate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (docIds: string[]) => api.keepHeldPrivate(docIds),
+    mutationFn: (docIds: string[]) => answerInChunks(docIds, api.keepHeldPrivate),
     meta: { errorTitle: "Couldn't keep them private" },
-    onSuccess: () => invalidateLedger(qc),
+    onSettled: () => invalidateLedger(qc),
+  });
+}
+
+/** Undo "Keep private" (the toast's action): those letters wait for the person again. */
+export function useWaitAgain() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (docIds: string[]) => answerInChunks(docIds, api.waitAgain),
+    meta: { errorTitle: "Couldn't undo that" },
+    onSettled: () => invalidateLedger(qc),
   });
 }
 

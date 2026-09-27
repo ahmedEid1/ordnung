@@ -140,6 +140,7 @@ export function makeDetail(d: Partial<DocumentDetail> = {}): DocumentDetail {
     suggestions: [],
     drafts: [],
     attachments: [],
+    attachments_more: 0,
     email: null,
     ...d,
   };

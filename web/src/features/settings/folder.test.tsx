@@ -60,11 +60,39 @@ describe("Settings → Watched folder", () => {
     const auto = await screen.findByRole("switch", { name: /Read new files with Claude straight away/ });
     expect(auto).toHaveAttribute("aria-checked", "false");
     expect(screen.getByText(/nothing is sent to Claude before that/)).toBeInTheDocument();
+    // only later arrivals are read at once: the files already there still wait
+    expect(screen.getByText(/files that arrive in the folder from now on are sent to Claude.*The files already in the folder when you choose it.*still wait for you/)).toBeInTheDocument();
     expect(screen.getByText("A cloud-synced folder is already shared")).toBeInTheDocument();
+    const status = await screen.findByRole("region", { name: "Status" });
+    expect(await within(status).findByText("New files wait for you before anything is sent to Claude.")).toBeInTheDocument();
     await user.click(auto);
     await user.click(screen.getByRole("button", { name: "Save changes" }));
-    expect(await screen.findByText("Ordnung watches this folder now.")).toBeInTheDocument();
+    // the note says what changed: only the switch
+    expect(await screen.findByText(/New files from the folder are read with Claude from now on\./)).toBeInTheDocument();
     expect(calls.find((c) => c.method === "PUT" && c.path === "/settings")?.body).toEqual({ inbox_dir: "/home/sam/Scans", inbox_auto_read: true });
+    expect(await within(status).findByText("New files are read with Claude as soon as they arrive.")).toBeInTheDocument();
+  });
+
+  it("in the online demo, says files always wait whatever the switch says", async () => {
+    useMockApi({ staticDemo: true });
+    renderFolder();
+    const auto = await screen.findByRole("switch", { name: /Read new files with Claude straight away/ });
+    expect(auto).toBeInTheDocument();
+    expect(await screen.findByText(/This demo reads no new letters with Claude: files from the folder always wait/)).toBeInTheDocument();
+    const status = await screen.findByRole("region", { name: "Status" });
+    expect(await within(status).findByText("New files wait for you — this demo reads nothing with Claude.")).toBeInTheDocument();
+  });
+
+  it("the status's load error sits in its card as a plain level-3 message", async () => {
+    const { srv } = useMockApi();
+    const handle = srv.handle.bind(srv);
+    vi.spyOn(srv, "handle").mockImplementation((method, path, ...rest) =>
+      path === "/folder" ? Promise.resolve(new Response(JSON.stringify({ detail: "boom" }), { status: 500 })) : handle(method, path, ...rest),
+    );
+    renderFolder();
+    const status = await screen.findByRole("region", { name: "Status" });
+    const heading = await within(status).findByRole("heading", { name: "Couldn't load the folder's status" }, { timeout: 5000 });
+    expect(heading.tagName).toBe("H3");
   });
 
   it("shows the server's reason under the field, focuses it, and saves nothing", async () => {
@@ -88,10 +116,14 @@ describe("Settings → Watched folder", () => {
     const { calls } = useMockApi();
     const user = userEvent.setup();
     renderFolder();
+    expect(await screen.findByRole("button", { name: "Copy the inbox folder's path" })).toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: /Use Ordnung's own inbox folder/ }));
     const field = screen.getByLabelText("Folder");
     expect(field).toHaveValue("/home/sam/.local/share/ordnung-demo/inbox");
     expect(screen.queryByRole("button", { name: /Use Ordnung's own inbox folder/ })).toBeNull();
+    // the button went: focus is on the field it filled, not lost to the page
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(screen.getByText(/File pickers often hide this folder/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(calls.some((c) => c.method === "PUT" && (c.body as { inbox_dir?: string }).inbox_dir === "/home/sam/.local/share/ordnung-demo/inbox")).toBe(true));
   });
@@ -105,5 +137,16 @@ describe("Settings → Watched folder", () => {
     expect(await within(status).findByText(/No folder is watched/)).toBeInTheDocument();
     expect(calls.find((c) => c.method === "PUT")?.body).toEqual({ inbox_dir: null });
     await waitFor(() => expect(screen.getByLabelText("Folder")).toHaveValue(""));
+    // the button went: focus is on the (now empty) folder field, not lost to the page
+    await waitFor(() => expect(screen.getByLabelText("Folder")).toHaveFocus());
+  });
+
+  it("with no folder and nothing picked up, the list says what it will show", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.settings.inbox_dir = null;
+    srv.db.state.folderRecent = [];
+    renderFolder();
+    const status = await screen.findByRole("region", { name: "Status" });
+    expect(await within(status).findByText("Nothing picked up yet. Once a folder is watched, the files it brings in are listed here.")).toBeInTheDocument();
   });
 });

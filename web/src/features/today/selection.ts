@@ -517,9 +517,12 @@ function verbPhrase(a: TodayAction): string {
  * Code-generated fallback for the secretary's note (when the AI note is unavailable): one or two
  * plain sentences built only from the ledger, so every date and amount is right by construction.
  */
-export function agendaSentence(top: readonly TodayAction[], upcoming: readonly TodayAction[], today: string): string {
+export function agendaSentence(top: readonly TodayAction[], upcoming: readonly TodayAction[], today: string, waiting = 0): string {
+  // letters from the watched folder nobody read: their dates are unknown, so nothing is "all clear"
+  const unread = waiting ? ` ${waiting === 1 ? "One letter" : `${waiting} letters`} from your folder ${waiting === 1 ? "waits" : "wait"} for you — not read yet.` : "";
   if (!top.length) {
     const next = upcoming[0];
+    if (waiting) return `Nothing due from the letters that were read.${unread}`;
     if (!next) return "Nothing needs you right now. New letters will show up here as soon as they're read.";
     return `Nothing needs you this week. Next up: ${verbPhrase(next)} ${next.dateRole === "on" ? "on" : "by"} ${shortDay(next.actionDate, today)}.`;
   }
@@ -533,7 +536,7 @@ export function agendaSentence(top: readonly TodayAction[], upcoming: readonly T
   const list = parts.length > 1 ? `${parts.slice(0, -1).join("; ")}; and ${parts[parts.length - 1]}` : parts[0];
   const check = top.find((a) => a.needsCheck);
   const tail = check ? " One date needs a quick check from you." : "";
-  return `${head} ${list}.${tail}`;
+  return `${head} ${list}.${tail}${unread}`;
 }
 
 /** "All clear until Friday" (next date within a week) / "until Wed 14 Oct" / "All clear". */

@@ -38,9 +38,11 @@ function Emphasised({ text }: { text: string }) {
 
 /**
  * The secretary's note: a short plain-English brief from `/api/brief` (Claude, validated against
- * the ledger) with a "write a new note" button. Falls back to a code-generated agenda sentence.
+ * the ledger) with a "write a new note" button. Falls back to a code-generated agenda sentence. The
+ * note is written from what was read: while letters from the watched folder wait unread, it says so
+ * (the fallback sentence names them itself).
  */
-export function SecretaryNote({ fallback }: { fallback: string }) {
+export function SecretaryNote({ fallback, waiting = 0 }: { fallback: string; waiting?: number }) {
   const brief = useBrief();
   const regen = useRegenerateBrief();
   const data = brief.data;
@@ -106,6 +108,12 @@ export function SecretaryNote({ fallback }: { fallback: string }) {
         </>
       )}
 
+      {waiting && data?.text?.trim() ? (
+        // the note is written from what was read: letters that wait unread are not in it
+        <p className="relative mt-3 text-[13.5px] leading-snug text-ink/80">
+          Not in this note: {waiting === 1 ? "1 letter" : `${waiting} letters`} from your folder that {waiting === 1 ? "waits" : "wait"} for you — not read yet.
+        </p>
+      ) : null}
       <p className="relative mt-4 flex items-start gap-1.5 text-[12px] leading-5 text-muted">
         <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
         {fromAi

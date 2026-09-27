@@ -5,7 +5,7 @@ import { SEARCH_LIMIT, useDocuments, useParties, useSearchDocuments } from "@/ap
 import type { Document } from "@/api/types";
 import { cn, plural } from "@/lib/utils";
 import { useDebounced, useHotkey } from "@/lib/hooks";
-import { documentKindLabel } from "@/lib/copy";
+import { DOCUMENT_STATUS_COPY, documentKindLabel } from "@/lib/copy";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { DateText } from "@/components/ui/DateText";
 import { Kbd } from "@/components/ui/Kbd";
@@ -162,8 +162,10 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
   const optionRow = (d: Document, i: number) => {
     const title = d.title ?? d.filename;
     const sender = d.party_id ? partyName.get(d.party_id) : undefined;
-    const date = d.doc_date ?? d.received_date;
-    const kind = documentKindLabel(d.kind);
+    // a letter waiting from the watched folder has no kind or date read yet: it says so, with the day it came
+    const waiting = d.status === "held";
+    const date = waiting ? d.created_at.slice(0, 10) : (d.doc_date ?? d.received_date);
+    const kind = waiting ? DOCUMENT_STATUS_COPY.held.label : documentKindLabel(d.kind);
     const isActive = i === activeIndex;
     return (
       <li

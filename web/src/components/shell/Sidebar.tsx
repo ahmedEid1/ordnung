@@ -20,12 +20,46 @@ export function usePleaseCheckCount(): number {
   return data?.length ?? 0;
 }
 
+/** What the Inbox asks of the person: letters to check, and letters waiting from the watched folder. */
+export interface InboxCounts {
+  check: number;
+  waiting: number;
+}
+
+/** The Inbox's counts: "Please check" letters and letters from the watched folder that wait for "Read these". */
+export function useInboxCounts(): InboxCounts {
+  const check = usePleaseCheckCount();
+  const { data } = useDocuments({ status: "held" });
+  return { check, waiting: data?.length ?? 0 };
+}
+
 const toCheck = (n: number) => `${n} ${n === 1 ? "letter" : "letters"} to check`;
 
-function NavEntry({ item, rail, badge }: { item: NavItem; rail: boolean; badge?: number }) {
+/** "1 letter to check, 3 waiting for you" (`short`: "1 to check, 3 waiting for you"). */
+export function inboxCountText({ check, waiting }: InboxCounts, short = false): string {
+  return [check ? (short ? `${check} to check` : toCheck(check)) : "", waiting ? `${waiting} waiting for you` : ""].filter(Boolean).join(", ");
+}
+
+/** Hover text of the Inbox's count: what each number is. */
+export function inboxCountTitle({ check, waiting }: InboxCounts): string {
+  return [
+    check ? `${check} ${check === 1 ? "letter needs" : "letters need"} a check from you (“Please check”)` : "",
+    waiting ? `${waiting} ${waiting === 1 ? "letter" : "letters"} from your folder ${waiting === 1 ? "waits" : "wait"} for your OK` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** One bubble on an icon's corner: the letters that need the person, warn-coloured while any is to check. */
+export function InboxBubble({ counts, className }: { counts: InboxCounts; className?: string }) {
+  return <CountBadge count={counts.check + counts.waiting} tone={counts.check ? "warn" : "accent"} variant="solid" size="compact" className={className} />;
+}
+
+function NavEntry({ item, rail, counts }: { item: NavItem; rail: boolean; counts?: InboxCounts }) {
   const { pathname } = useLocation();
   const active = isNavItemActive(item, pathname);
   const Icon = item.icon;
+  const badge = counts ? counts.check + counts.waiting : 0;
 
   if (rail) {
     // icon over a short label (like the phone tab bar): the rail is readable without hovering
@@ -33,7 +67,8 @@ function NavEntry({ item, rail, badge }: { item: NavItem; rail: boolean; badge?:
       <Link
         to={item.to}
         aria-current={active ? "page" : undefined}
-        aria-label={badge ? `${item.label}, ${toCheck(badge)}` : undefined}
+        aria-label={counts && badge ? `${item.label}, ${inboxCountText(counts)}` : undefined}
+        title={counts && badge ? inboxCountTitle(counts) : undefined}
         className={cn(
           "group flex w-full flex-col items-center gap-1 rounded-lg py-1.5 text-xs font-medium outline-none transition-colors",
           "focus-visible:ring-2 focus-visible:ring-accent",
@@ -47,9 +82,7 @@ function NavEntry({ item, rail, badge }: { item: NavItem; rail: boolean; badge?:
           )}
         >
           <Icon className="size-[18px]" aria-hidden />
-          {badge ? (
-            <CountBadge count={badge} tone="warn" variant="solid" size="compact" className="absolute -right-1 -top-1 ring-2 ring-surface-2 dark:ring-surface" />
-          ) : null}
+          {counts && badge ? <InboxBubble counts={counts} className="absolute -right-1 -top-1 ring-2 ring-surface-2 dark:ring-surface" /> : null}
         </span>
         <span className="max-w-full truncate leading-4">{item.short ?? item.label}</span>
       </Link>
@@ -68,10 +101,11 @@ function NavEntry({ item, rail, badge }: { item: NavItem; rail: boolean; badge?:
     >
       <Icon className={cn("size-[18px] shrink-0 transition-colors", active ? "text-accent" : "text-muted group-hover:text-ink")} aria-hidden />
       <span className="flex-1 truncate">{item.label}</span>
-      {badge ? (
-        // the count says what it is on hover too, not only to screen readers
-        <span title={`${badge} ${badge === 1 ? "letter needs" : "letters need"} a check from you (“Please check”)`} className="inline-flex">
-          <CountBadge count={badge} tone="warn" label={toCheck(badge)} />
+      {counts && badge ? (
+        // the counts say what they are on hover too, not only to screen readers
+        <span title={inboxCountTitle(counts)} className="inline-flex gap-1">
+          <CountBadge count={counts.check} tone="warn" label={toCheck(counts.check)} />
+          <CountBadge count={counts.waiting} tone="accent" label={`${counts.waiting} waiting for you`} />
         </span>
       ) : null}
     </Link>
@@ -116,7 +150,8 @@ function ProfileLink() {
 }
 
 /**
- * Left sidebar: wordmark, primary navigation (with the "Please check" count on Inbox), and the
+ * Left sidebar: wordmark, primary navigation (with the letters to check and those waiting from the
+ * watched folder counted on Inbox), and the
  * footer (demo badge, Settings, profile, theme). An icon rail with short labels on tablets, or on
  * laptops when the person collapses it (remembered in localStorage). Hidden on phones (tab bar
  * instead).
@@ -125,7 +160,7 @@ export function Sidebar() {
   const isDesktop = useIsDesktop();
   const [collapsed, setCollapsed] = useLocalStorage("ordnung.sidebar.collapsed", false);
   const rail = !isDesktop || collapsed;
-  const pleaseCheck = usePleaseCheckCount();
+  const inbox = useInboxCounts();
   const toggleLabel = collapsed ? "Expand sidebar" : "Collapse sidebar";
 
   return (
@@ -160,7 +195,7 @@ export function Sidebar() {
 
       <nav aria-label="Primary" className={cn("mt-3 flex flex-col", rail ? "w-full gap-1" : "gap-0.5")}>
         {NAV_ITEMS.map((item) => (
-          <NavEntry key={item.to} item={item} rail={rail} badge={item.badge === "please-check" ? pleaseCheck : undefined} />
+          <NavEntry key={item.to} item={item} rail={rail} counts={item.badge === "please-check" ? inbox : undefined} />
         ))}
       </nav>
 
