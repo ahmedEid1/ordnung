@@ -63,6 +63,7 @@ flowchart LR
 | Upload → machine | Checked before anything decodes it: PDF stream expansion, image pixels and text pages are capped; the data folder is private to the account (`0700`, files `0600`) |
 | Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs |
 | Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence`. The desktop notification's texts (letters' titles in *full* mode) reach `notify-send` / `osascript` / PowerShell as separate arguments of a fixed script or in environment variables — never a shell line; markup is escaped, control and bidi characters removed. The start-at-login entry is a file Ordnung writes (quoted per format, a line break refused) and discards the server's standard output, so the session token never reaches a journal |
+| Ordnung → your calendar provider (opt-in) | Nothing is sent until a calendar is connected; `https://` only, TLS verified, no redirects followed to another host; discreet by default (dates, times and alarms — no titles, names or amounts); only resources Ordnung created are replaced or deleted; the app password lives in the OS keyring, never in `ordnung.db`, a log or an answer; a server's XML is size-capped and read without a DTD |
 | Backup file → data folder | Authenticated encryption end to end (header MAC, AES-256-GCM chunks bound to the header, their order and the last one), a newer format refused before any key is derived, scrypt costs capped when read; the archive extracted under a name policy (regular files in three folders only) into a staging folder, read to its authenticated end and checked against its manifest before it replaces anything; a folder with data is moved aside, never deleted ([ADR 0013](decisions/0013-backups-and-reminders-outside-the-browser.md)) |
 
 ## Reading a letter
@@ -189,6 +190,8 @@ flowchart LR
   SRV --> TICK["Daily tick<br/>(every 15 min)"]
   TICK -->|"build_agenda (code, no model)"| NOTE["notify/desktop.py<br/>discreet: a count · full: 3 things"]
   NOTE -->|"argv / env, never a shell"| OS["notify-send · osascript · PowerShell toast"]
+  TICK -->|"only what changed (opt-in)"| CAL["calendar/caldav.py<br/>the .ics events, discreet by default"]
+  CAL -->|"https PUT/DELETE, password from the OS keyring"| DAV["your CalDAV calendar"]
   DB[("ordnung.db + files/ derived/ drafts/")] --> BK["backup/ — snapshot in memory → tar →<br/>AES-256-GCM chunks (key: scrypt)"]
   BK --> FILE["one .ordnung-backup file"]
   FILE -->|"ordnung restore: verify all, then swap"| DB2[("a data folder")]
@@ -200,6 +203,10 @@ flowchart LR
   the same functions (`GET /api/reminders/desktop`, `POST …/test`).
 - **Start at login** (`autostart.py`) writes one entry and runs nothing; `status` reads it back
   (which folder it starts, whether it is current) for the CLI and for Settings.
+- **Calendar sync** (`calendar/caldav.py`, opt-in) puts the calendar file's events into the
+  person's own CalDAV calendar — discreet by default — and keeps them current from the same tick:
+  it remembers a digest per event it sent, so an unchanged ledger sends nothing and a finished
+  to-do's event is removed. The password is in the OS keyring (`calendar/secrets.py`).
 - **The backup** (`backup/`) is a pull-based stream (`BackupStream`, one step per file): the CLI
   writes it to a file atomically, the API sends it as the HTTP response while it is made. Restore is
   all or nothing (`backup/restore.py`). The format and its policies are in
@@ -271,3 +278,4 @@ normalised name), so re-processing is idempotent and recorded demo outputs stay 
 | Ask | Unit tests of the two channels and the claim policy (incl. injected dates and ids), and the Ask benchmark in [evals-ask](evals-ask.md), replayed in CI with gates |
 | Backup and restore | Byte-for-byte round trips with equal row counts (a seeded ledger and the whole demo life), every byte flipped, chunks cut, swapped, appended or taken from another backup, hostile header parameters, a Hypothesis round-trip-and-flip property, hostile archives inside validly encrypted files (`..`, absolute names, links, duplicates, extras, a damaged or newer database), and the restore policy (free folder, `--force` moves aside, a held lock, a failed swap) |
 | Reminders outside the browser | Notification text in both modes from seeded agendas (discreet never names a title, party or amount), argv/env per system with hostile titles, the once-a-day policy and the tick; autostart entries per system written into temporary home folders, quoting of awkward paths, status and removal |
+| Calendar sync | A small fake CalDAV server (in-process and on a loopback socket) that checks the password, one event per resource and UID conflicts: discreet events never carry a title, name or amount; only changed events are sent, only Ordnung's own removed; discovery (well-known, principal, calendar home, another https host); every refusal (password, not a calendar, tasks only, redirects, DTDs, oversized answers, TLS, the network); the pause after a refused password; the password never in the data folder; the keyring adapter with an in-memory backend |

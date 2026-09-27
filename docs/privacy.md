@@ -18,6 +18,7 @@ goes where.
 | Fonts, UI, rules engine | bundled in the package | Never (no CDN, no web fonts) |
 | Encrypted backups (`ordnung backup`, Settings → Data) | wherever you save the file | Only where you put it — encrypted, so without your passphrase nobody can read it |
 | The morning desktop notification | your system's notification area | Never — Ordnung writes it on this computer from your dates |
+| Calendar sync (only if you connect a calendar) | the calendar you connect (Nextcloud, iCloud, mailbox.org, …); the app password in your system's password store | To that calendar's provider: dates, times and alarms (discreet, the default) — or the events' titles, what to do, amounts and who it is with (with details) |
 
 `<data dir>` defaults to your platform's user data folder (e.g. `~/.local/share/ordnung`,
 `~/Library/Application Support/ordnung`, `%LOCALAPPDATA%\ordnung`) and can be changed with
@@ -58,7 +59,8 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   they are. *Settings → Delete everything* wipes the whole database.
 - **Models** — choose which Claude model handles each purpose.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
-  them yourself.
+  them yourself. (The one thing that keeps itself current is calendar sync, and only after you
+  connect a calendar: it updates Ordnung's own events there — see below.)
 
 ## Reminders while Ordnung is closed
 
@@ -75,6 +77,29 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   anything else. The server's sign-in link carries the session token, so the service throws away
   what `serve` prints: the token never lands in the system journal or a log file.
   `ordnung autostart disable` removes the file.
+
+## Calendar sync (optional)
+
+Settings → Calendar → *Sync with your own calendar* puts your dates into a calendar you already use,
+so your phone reminds you. It is off until you connect a calendar, and it **sends event text to a
+third party** — your calendar provider — so:
+
+- **Discreet by default.** The events keep their date, time and alarms, and are titled "Ordnung:
+  deadline" (or "… payment", "… appointment") with a note to look in Ordnung — no letter's title,
+  no name or organisation, no amount, no place. *With details* sends what Ordnung's calendar file
+  holds (the title, what to do, the amount, who it is with, why that date); choose it only if you
+  are comfortable with your provider storing it. Settings shows every event exactly as it would be
+  sent, in either mode, before you connect.
+- **Your app password stays in your system's password store** (Keychain, Credential Locker, GNOME
+  Keyring / KWallet — the `ordnung[caldav]` extra), never in Ordnung's database, a log or a backup;
+  use an app password from your provider, not your main password. Ordnung talks to the calendar only
+  over `https://` and checks its certificate.
+- **Only Ordnung's own events.** Ordnung adds, updates and removes the events it created, and never
+  reads or changes anything else in that calendar — a calendar of its own, named "Ordnung", keeps
+  things tidy. Disconnecting forgets the password and can remove Ordnung's events first. "Delete
+  everything" doesn't reach into your calendar: disconnect first to remove the events there too.
+- **When.** When you connect, when you press *Sync now*, and every 15 minutes while `ordnung serve`
+  runs — only what changed is sent. The activity log notes each sync that sent or removed events.
 
 ## Encrypted backups
 

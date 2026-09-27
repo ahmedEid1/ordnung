@@ -6,8 +6,9 @@
 Until now reminders were a calendar file and browser notifications that only appear while a tab is
 open, and the daily tick ran only inside `ordnung serve`. The data export was JSON without the
 original letters — for a local-first app, whose folder is the person's only copy, that is no
-backup. Both gaps sit where Ordnung touches the rest of the computer: the login session, the
-notification system, files that leave for another drive or a cloud. Mistakes there are hard to see
+backup. Both gaps sit where Ordnung touches the rest of the computer and beyond: the login
+session, the notification system, the person's own calendar, files that leave for another drive or
+a cloud. Mistakes there are hard to see
 and hard to undo, so each gets a short written policy (ADR 0007) rather than cleverness.
 
 ## Decision
@@ -27,6 +28,23 @@ days) is a choice with a stated consequence. Letters' words reach the system too
 fixed script or in environment variables, never a shell line. Once a day, at or after the chosen
 time; the attempt uses the day up, so a missing tool is not retried every 15 minutes. Policy:
 `ordnung/notify/desktop.py`.
+
+**Calendar sync is opt-in, discreet, and touches only Ordnung's own events.** Pushing events to
+the person's own calendar (CalDAV) is the one reminder that leaves the computer, so: nothing is
+sent until a calendar is connected in Settings, after the person has seen every event exactly as
+it would be sent; the default mode keeps only the date, the time and the alarms ("Ordnung:
+deadline" — no titles, names or amounts); *with details* is a choice with a stated consequence.
+It sends the `.ics` export's events, one resource per stable UID, so re-sending replaces instead
+of duplicating; a digest per sent event means only changes are sent and only resources Ordnung
+created are ever replaced or deleted. It keeps itself current from the tick of `ordnung serve` —
+the person's own calendar, opted into, is not a counterparty, so this is not an automatic
+"sending" in the sense of ADR 0006; a refused password pauses it (repeated failed logins lock
+accounts). The app password goes to the OS keyring through the optional `keyring` package
+(`ordnung[caldav]`) — never the database — and without a usable keyring calendar sync is
+unavailable rather than falling back to a file. Discovery (well-known URI, principal, calendar
+home) makes "iCloud with an app password" work without hunting for a calendar URL. Chosen over
+publishing a feed URL (a public link to the ledger) and over the `caldav` library (a large
+dependency for four requests). Policy: `ordnung/calendar/caldav.py`.
 
 **The backup is one authenticated, versioned file.** AES-256-GCM in the STREAM construction (1 MiB
 chunks; nonce = random prefix ‖ counter ‖ last flag; the header as associated data), a key from
@@ -53,6 +71,7 @@ data unless asked (`--force`), and then moves it aside; it never runs under a he
   stores it. The web app offers a random one to put into a password manager.
 - The browser download holds the whole backup in memory before saving it (a Blob); very large data
   folders are better backed up with `ordnung backup`.
-- Not decided here, left as a follow-up: pushing events to the person's own calendar over CalDAV
-  (credentials in the OS keyring, a discreet event text, an event-by-event preview). It sends event
-  text to a third party, so it needs its own opt-in design and a fake CalDAV server in the tests.
+- Calendar sync overwrites an event of Ordnung's that the person edited in their calendar app at
+  the next change in Ordnung — Ordnung's dates are changed in Ordnung. Servers that only accept
+  Digest authentication or OAuth (Google Calendar) are not supported; Google users keep the `.ics`
+  download.
