@@ -44,6 +44,7 @@ import { contractHref } from "@/features/contracts/links";
 import { isRollingContract } from "@/features/contracts/model";
 import { actionDate, asideNote, countdownMode, dateRole, identifierDisplay, identifierStyle, keepNumbersTogether, looksAbroad, partyTodos, repeatsLabel } from "./model";
 import { byYear, letterTimeline, mailtoUrl, regionName, websiteUrl } from "./timeline";
+import { CallNotes } from "./CallNotes";
 
 /** To-dos listed before "Show N more". */
 const FIRST_TODOS = 6;
@@ -565,6 +566,8 @@ export function PartyDrawer() {
               </p>
             </Section>
           ) : null}
+
+          <CallNotes partyId={party.id} cases={data.cases} />
 
           {todos.open.length || todos.aside.length ? <Todos items={data.items} setAside={data.set_aside} documents={data.documents} /> : null}
 

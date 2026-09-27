@@ -140,6 +140,10 @@ interface Ids {
   suggestion: string;
   mail: string;
   thread: string;
+  /** a letter that was sent (proof belongs to sent letters) */
+  sentDraft: string;
+  proof: string;
+  call: string;
 }
 
 interface Case {
@@ -157,6 +161,7 @@ async function drain(stream: AsyncGenerator<StreamEvent>): Promise<StreamEvent[]
 }
 
 const pdf = () => new File(["%PDF-1.4\n%demo\n"], "letter.pdf", { type: "application/pdf" });
+const photo = () => new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], "zustellung.jpg", { type: "image/jpeg" });
 
 /** One case per endpoint function (the type makes adding an endpoint without a case a compile error). */
 const CASES = {
@@ -212,7 +217,22 @@ const CASES = {
   deleteDraft: { run: (ids) => api.deleteDraft(ids.draft) },
   translateDraft: { run: (ids) => api.translateDraft(ids.draft), status: 409 },
   draftPdfUrl: { run: (ids) => api.draftPdfUrl(ids.draft), asset: true },
-  markDraftSent: { run: (ids) => api.markDraftSent(ids.draft, { channel: "registered_letter", date: "2026-09-28" }) },
+  markDraftSent: { run: (ids) => api.markDraftSent(ids.draft, { channel: "registered_letter", date: "2026-09-28", tracking_number: "RT 123 456 785 DE" }) },
+
+  draftProof: { run: (ids) => api.draftProof(ids.sentDraft) },
+  setTracking: { run: (ids) => api.setTracking(ids.sentDraft, { tracking_number: "0034 0434 1234" }) },
+  addProof: { run: (ids) => api.addProof(ids.sentDraft, { file: photo(), kind: "delivery_record", onDate: "2026-09-24", note: "Copy from Deutsche Post" }) },
+  updateProof: { run: (ids) => api.updateProof(ids.sentDraft, ids.proof, { on_date: "2026-09-22", note: "Filiale Mitte" }) },
+  removeProof: { run: (ids) => api.removeProof(ids.sentDraft, ids.proof) },
+  proofPdfUrl: { run: (ids) => api.proofPdfUrl(ids.sentDraft), asset: true },
+  waiting: { run: () => api.waiting() },
+  calls: { run: (ids) => api.calls({ party_id: ids.party }) },
+  createCall: {
+    run: (ids) =>
+      api.createCall({ party_id: ids.party, called_on: "2026-09-25", contact: "Frau Weber", summary: "Asked about my letter.", promise: "Call back", promise_due: "2026-10-02", promise_amount: null }),
+  },
+  updateCall: { run: (ids) => api.updateCall(ids.call, { kept: true }) },
+  deleteCall: { run: (ids) => api.deleteCall(ids.call) },
 
   calendarIcsUrl: { run: () => api.calendarIcsUrl(), asset: true },
   calendarExported: { run: () => api.calendarExported() },
@@ -236,8 +256,11 @@ const ORDER: (keyof Api)[] = [
   "markDraftSent",
   "translateDraft",
   ...(Object.keys(CASES) as (keyof Api)[]).filter(
-    (name) => !["ask", "chat", "markDraftSent", "translateDraft", "deleteDraft", "deleteDocument", "deleteItem", "deleteEverything"].includes(name),
+    (name) =>
+      !["ask", "chat", "markDraftSent", "translateDraft", "deleteDraft", "deleteDocument", "deleteItem", "deleteEverything", "removeProof", "deleteCall"].includes(name),
   ),
+  "removeProof",
+  "deleteCall",
   "deleteDraft",
   "deleteItem",
   "deleteDocument",
@@ -288,6 +311,9 @@ function ids(): Ids {
     suggestion: s.suggestions[0]!.id,
     mail: s.tray.find((t) => !t.opened)!.id,
     thread: "",
+    sentDraft: s.drafts.find((d) => d.status === "sent" && d.sent_channel === "registered_letter")!.id,
+    proof: s.proofs[0]!.id,
+    call: s.calls[0]!.id,
   };
 }
 

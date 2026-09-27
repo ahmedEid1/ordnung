@@ -15,6 +15,9 @@ import type {
   ApiQuery,
   ApiResponse,
   AskRequest,
+  CallListParams,
+  CallNoteCreate,
+  CallNotePatch,
   ContractListParams,
   ContractPatch,
   DocumentListParams,
@@ -29,12 +32,15 @@ import type {
   OnboardingRequest,
   PathsWith,
   ProfilePatch,
+  ProofKind,
+  ProofPatch,
   PublicHealth,
   SettingsPatch,
   StreamEvent,
   SuggestionListParams,
   SuggestionPatch,
   TourPatch,
+  TrackingUpdate,
 } from "./types";
 
 const enc = encodeURIComponent;
@@ -84,6 +90,14 @@ export interface UploadOptions {
   combine?: boolean;
   /** "Keep private — no AI": store and index only, never send to Claude. */
   private?: boolean;
+}
+
+/** A proof to attach to a sent letter: the file (kept private, never read by AI), what it is and the day it shows. */
+export interface ProofUpload {
+  file: File;
+  kind: ProofKind;
+  onDate?: string | null;
+  note?: string | null;
 }
 
 export const api = {
@@ -183,6 +197,38 @@ export const api = {
   draftPdfUrl: (id: string) => assetUrl(apiRoute("/api/drafts/{draft_id}/pdf", { draft_id: id })),
   markDraftSent: (id: string, body: MarkSentRequest) =>
     call("post", "/api/drafts/{draft_id}/sent", { params: { draft_id: id }, body }),
+
+  // -- proof of a sent letter --------------------------------------------------------------------
+  /** Tracking number, proofs (what each shows and doesn't), timeline, what's missing, what it waits for. */
+  draftProof: (id: string) => call("get", "/api/drafts/{draft_id}/proof", { params: { draft_id: id } }),
+  /** Save or (with `null`) remove the tracking number; a mistyped check digit answers 422 with the reason. */
+  setTracking: (id: string, body: TrackingUpdate) =>
+    call("put", "/api/drafts/{draft_id}/tracking", { params: { draft_id: id }, body }),
+  /** Multipart: `file`, `kind`, `on_date`, `note` → 201 with the letter's new proof overview. */
+  addProof: (id: string, upload: ProofUpload) => {
+    const form = new FormData();
+    form.append("file", upload.file);
+    form.append("kind", upload.kind);
+    if (upload.onDate) form.append("on_date", upload.onDate);
+    if (upload.note?.trim()) form.append("note", upload.note.trim());
+    return call("post", "/api/drafts/{draft_id}/proofs", { params: { draft_id: id }, body: form });
+  },
+  updateProof: (id: string, proofId: string, patch: ProofPatch) =>
+    call("patch", "/api/drafts/{draft_id}/proofs/{proof_id}", { params: { draft_id: id, proof_id: proofId }, body: patch }),
+  /** Removes the proof; its file is deleted for good unless another proof uses it. */
+  removeProof: (id: string, proofId: string) =>
+    call("delete", "/api/drafts/{draft_id}/proofs/{proof_id}", { params: { draft_id: id, proof_id: proofId } }),
+  /** The Nachweis: summary and timeline, the letter as sent, every proof file — one PDF. */
+  proofPdfUrl: (id: string) => assetUrl(apiRoute("/api/drafts/{draft_id}/proof.pdf", { draft_id: id })),
+
+  // -- waiting for & call notes ------------------------------------------------------------------
+  /** Replies, money and callbacks the person is owed: overdue first, then by day, then answered. */
+  waiting: () => call("get", "/api/waiting"),
+  calls: (params: CallListParams = {}) => call("get", "/api/calls", { query: { ...params } }),
+  createCall: (body: CallNoteCreate) => call("post", "/api/calls", { body }),
+  /** Say the promise made on the call was kept (or take that back). */
+  updateCall: (id: string, patch: CallNotePatch) => call("patch", "/api/calls/{call_id}", { params: { call_id: id }, body: patch }),
+  deleteCall: (id: string) => call("delete", "/api/calls/{call_id}", { params: { call_id: id } }),
 
   // -- calendar ----------------------------------------------------------------------------------
   calendarIcsUrl: () => assetUrl(apiRoute("/api/calendar.ics")),

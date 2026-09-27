@@ -43,6 +43,11 @@ export const routes: RouteObject[] = [
           { path: "contracts", lazy: page(() => import("@/pages/ContractsPage")), handle: { title: "Contracts" } satisfies RouteHandle },
           { path: "letters", lazy: page(() => import("@/pages/LettersPage")), handle: { title: "Letters" } satisfies RouteHandle },
           {
+            path: "letters/waiting",
+            lazy: page(() => import("@/pages/WaitingPage")),
+            handle: { title: "Waiting for", parent: { to: "/letters", label: "Letters" } } satisfies RouteHandle,
+          },
+          {
             path: "letters/:id",
             lazy: page(() => import("@/pages/LetterPage")),
             handle: { title: "Letter draft", parent: { to: "/letters", label: "Letters" } } satisfies RouteHandle,

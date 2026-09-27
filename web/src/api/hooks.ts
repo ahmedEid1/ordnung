@@ -16,9 +16,11 @@ import {
   useQueryClient,
   type QueryClient,
 } from "@tanstack/react-query";
-import { api, type UploadOptions } from "./endpoints";
+import { api, type ProofUpload, type UploadOptions } from "./endpoints";
 import { ApiError } from "./client";
 import type {
+  CallListParams,
+  CallNoteCreate,
   ContractListParams,
   ContractPatch,
   DocumentListParams,
@@ -31,6 +33,8 @@ import type {
   MarkSentRequest,
   OnboardingRequest,
   ProfilePatch,
+  ProofOverview,
+  ProofPatch,
   SettingsPatch,
   StreamEvent,
   SuggestionListParams,
@@ -82,6 +86,12 @@ export const qk = {
     all: ["drafts"] as const,
     list: () => ["drafts", "list"] as const,
     detail: (id: string) => ["drafts", "detail", id] as const,
+    proof: (id: string) => ["drafts", "proof", id] as const,
+  },
+  waiting: ["waiting"] as const,
+  calls: {
+    all: ["calls"] as const,
+    list: (params: CallListParams = {}) => ["calls", "list", params] as const,
   },
   activity: ["activity"] as const,
   usage: ["usage"] as const,
@@ -107,6 +117,7 @@ const LEDGER_PREFIXES = [
   qk.drafts.all,
   qk.activity,
   qk.jobs,
+  qk.waiting,
 ] as const;
 
 /** Invalidate every ledger-derived query (documents, items, contracts, views, ideas…). */
@@ -638,6 +649,112 @@ export function useMarkDraftSent() {
     mutationFn: ({ id, ...body }: { id: string } & MarkSentRequest) => api.markDraftSent(id, body),
     meta: { errorTitle: "Couldn't mark the letter as sent" },
     onSuccess: () => invalidateLedger(qc),
+  });
+}
+
+// ------------------------------------------------------------------------------------------------
+// Proof of a sent letter, "Waiting for" and call notes
+// ------------------------------------------------------------------------------------------------
+
+/** A letter's proof: tracking number, proofs, timeline, what's missing and what it waits for. */
+export function useDraftProof(id: string | null | undefined, opts: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: qk.drafts.proof(id ?? ""),
+    queryFn: () => api.draftProof(id!),
+    enabled: Boolean(id) && (opts.enabled ?? true),
+    staleTime: 30_000,
+  });
+}
+
+/** Every proof write answers the new overview: show it at once, then refresh what derives from it. */
+function proofChanged(qc: QueryClient, overview: ProofOverview) {
+  qc.setQueryData(qk.drafts.proof(overview.draft_id), overview);
+  void qc.invalidateQueries({ queryKey: qk.drafts.detail(overview.draft_id) });
+  void qc.invalidateQueries({ queryKey: qk.waiting });
+  void qc.invalidateQueries({ queryKey: qk.suggestions.all }); // "Keep the proof" Ideas come and go
+  void qc.invalidateQueries({ queryKey: qk.dashboard });
+}
+
+/** Save (or with `null` remove) the tracking number. A mistyped check digit fails with the server's reason. */
+export function useSetTracking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, trackingNumber }: { id: string; trackingNumber: string | null }) => api.setTracking(id, { tracking_number: trackingNumber }),
+    meta: { errorTitle: "Couldn't save the tracking number" },
+    onSuccess: (overview) => proofChanged(qc, overview),
+  });
+}
+
+export function useAddProof() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, upload }: { id: string; upload: ProofUpload }) => api.addProof(id, upload),
+    meta: { errorTitle: "Couldn't add the proof" },
+    onSuccess: (overview) => proofChanged(qc, overview),
+  });
+}
+
+export function useUpdateProof() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, proofId, patch }: { id: string; proofId: string; patch: ProofPatch }) => api.updateProof(id, proofId, patch),
+    meta: { errorTitle: "Couldn't change the proof" },
+    onSuccess: (overview) => proofChanged(qc, overview),
+  });
+}
+
+export function useRemoveProof() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, proofId }: { id: string; proofId: string }) => api.removeProof(id, proofId),
+    meta: { errorTitle: "Couldn't remove the proof" },
+    onSuccess: (overview) => proofChanged(qc, overview),
+  });
+}
+
+/** Replies, money and callbacks the person is owed (worked out on read by the server). */
+export function useWaiting() {
+  return useQuery({ queryKey: qk.waiting, queryFn: api.waiting, staleTime: 30_000 });
+}
+
+export function useCalls(params: CallListParams, opts: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: qk.calls.list(params), queryFn: () => api.calls(params), staleTime: 30_000, enabled: opts.enabled ?? true });
+}
+
+/** Call notes feed "Waiting for" (a dated promise) and the activity log. */
+function callsChanged(qc: QueryClient) {
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: qk.calls.all }),
+    qc.invalidateQueries({ queryKey: qk.waiting }),
+    qc.invalidateQueries({ queryKey: qk.activity }),
+  ]).then(() => undefined);
+}
+
+export function useCreateCall() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CallNoteCreate) => api.createCall(body),
+    meta: { errorTitle: "Couldn't save the call note" },
+    onSuccess: () => callsChanged(qc),
+  });
+}
+
+/** Say a call's promise was kept (or take that back). */
+export function useUpdateCall() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, kept }: { id: string; kept: boolean }) => api.updateCall(id, { kept }),
+    meta: { errorTitle: "Couldn't update the call note" },
+    onSuccess: () => callsChanged(qc),
+  });
+}
+
+export function useDeleteCall() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteCall(id),
+    meta: { errorTitle: "Couldn't delete the call note" },
+    onSuccess: () => callsChanged(qc),
   });
 }
 

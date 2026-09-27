@@ -51,6 +51,8 @@ import { TRAY_ITEMS } from "./data/items";
 import { PARTIES } from "./data/parties";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
 import { isOpenItem } from "@/features/document/verdict";
+import { checkTracking } from "@/lib/tracking";
+import { proofRoutes, resolveProofAsset, sentFollowup } from "./proof";
 
 const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
@@ -342,6 +344,7 @@ function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDr
     id: newId("drf"),
     kind: body.kind,
     language: body.language ?? "de",
+    tracking_number: null,
     party_id: party?.id ?? null,
     case_id: contract?.case_id ?? doc?.case_id ?? null,
     doc_id: body.doc_id ?? null,
@@ -449,6 +452,7 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     id: newId("drf"),
     kind: body.kind,
     language: body.language ?? "de",
+    tracking_number: null,
     party_id: partyId,
     case_id: body.case_id ?? contract?.case_id ?? doc?.case_id ?? null,
     doc_id: body.doc_id ?? null,
@@ -761,7 +765,7 @@ const routes: [string, string, Handler][] = [
       if (opts.staticDemo) throw new HttpError(409, "This online demo keeps nothing — reload the page to start over with Sam's letters.");
       if (db.state.health.demo) throw new HttpError(409, DEMO_DELETE_MESSAGE);
       const st = db.state;
-      Object.assign(st, { parties: [], cases: [], documents: [], items: [], contracts: [], suggestions: [], drafts: [], activity: [], chat: [], tray: [], uploads: {} });
+      Object.assign(st, { parties: [], cases: [], documents: [], items: [], contracts: [], suggestions: [], drafts: [], activity: [], chat: [], tray: [], uploads: {}, proofs: [], calls: [] });
       st.profile = { ...st.profile, name: "", address: "", email: "", phone: "", onboarded: false };
       return { removed: ["derived", "drafts", "files", "ordnung.db"], kept: [] } satisfies DataDeleted;
     },
@@ -1106,6 +1110,10 @@ const routes: [string, string, Handler][] = [
     "DELETE",
     "/drafts/:id",
     ({ db, params }) => {
+      // like the API: the letter's proofs and their files go with it
+      const files = new Set(db.state.proofs.filter((p) => p.draft_id === params.id && p.doc_id).map((p) => p.doc_id!));
+      db.state.proofs = db.state.proofs.filter((p) => p.draft_id !== params.id);
+      db.state.documents = db.state.documents.filter((d) => !(files.has(d.id) && d.source === "proof"));
       db.state.drafts = db.state.drafts.filter((d) => d.id !== params.id);
       return new Reply(204);
     },
@@ -1115,24 +1123,30 @@ const routes: [string, string, Handler][] = [
     "/drafts/:id/sent",
     ({ db, params, body }) => {
       const d = db.state.drafts.find((x) => x.id === params.id) ?? notFound("Unknown letter.");
-      const b = (body ?? {}) as { channel?: string; date?: string };
+      const b = (body ?? {}) as { channel?: string; date?: string; tracking_number?: string | null };
       const date = b.date ?? db.today;
+      const tracking = checkTracking(b.tracking_number ?? "");
+      if (tracking.state === "invalid") throw new HttpError(422, tracking.message);
       d.status = "sent";
       d.sent_channel = b.channel ?? "letter";
       d.sent_at = `${date}T12:00:00Z`;
+      if (tracking.state === "valid") d.tracking_number = tracking.number;
       d.updated_at = nowTs();
       d.checks = checksFor(db, d);
       const party = db.party(d.party_id);
+      const followup = sentFollowup(d, date);
+      db.state.items = db.state.items.filter((i) => i.id !== followup.id); // marking it sent again replaces it
       db.state.items.push(
         makeItem({
-          id: newId("itm"),
+          id: followup.id,
           kind: "task",
-          title: `Follow up: has ${party?.name ?? "the recipient"} confirmed your letter?`,
+          title: `Check for a reply from ${party?.name ?? "the recipient"}`,
           description: d.subject,
-          due_date: format(addDays(parseISO(date), d.kind === "data_access" ? 35 : 21), "yyyy-MM-dd"),
+          due_date: followup.due,
           party_id: d.party_id,
           case_id: d.case_id,
           contract_id: d.contract_id,
+          doc_id: d.doc_id,
           origin: "draft",
           grounding: "user",
           created_at: nowTs(),
@@ -1144,6 +1158,15 @@ const routes: [string, string, Handler][] = [
       return d;
     },
   ],
+
+  // proof of sending, waiting for, call notes (src/mocks/proof.ts)
+  ...proofRoutes({
+    fail: (status, message) => {
+      throw new HttpError(status, message);
+    },
+    created: (body) => new Reply(201, body),
+    empty: () => new Reply(204),
+  }),
 
   // calendar, privacy, jobs
   [
@@ -1266,6 +1289,8 @@ export function createMockServer(opts: MockOptions): MockServer {
   }
 
   function resolveAsset(path: string): string | null {
+    const proof = resolveProofAsset(db, path);
+    if (proof) return proof;
     let m = /^\/documents\/([^/]+)\/pages\/(\d+)\.jpg$/.exec(path);
     const pageOf = (id: string, n: number) => {
       const letter = letterFor(decodeURIComponent(id));

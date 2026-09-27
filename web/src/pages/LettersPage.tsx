@@ -1,9 +1,10 @@
 import { useCallback, useLayoutEffect, useMemo } from "react";
-import { useSearchParams } from "react-router";
-import { FileCheck2, Languages, PenLine, Plus, Send, ShieldCheck } from "lucide-react";
-import { useDrafts, useParties } from "@/api/hooks";
+import { Link, useSearchParams } from "react-router";
+import { FileCheck2, Hourglass, Languages, PenLine, Plus, Send, ShieldCheck } from "lucide-react";
+import { useDrafts, useParties, useWaiting } from "@/api/hooks";
 import { Page, PageHeader } from "@/components/shell/Page";
-import { Button } from "@/components/ui/Button";
+import { CountBadge } from "@/components/ui/Badge";
+import { Button, buttonVariants } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Disclaimer } from "@/components/ui/Disclaimer";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -12,6 +13,7 @@ import { DraftGroup } from "@/features/letters/DraftList";
 import { LetterComposer } from "@/features/letters/LetterComposer";
 import { COMPOSER_PARAMS, parsePrefill } from "@/features/letters/logic";
 import { PARTY_PARAM } from "@/lib/party-drawer";
+import { waitingSummary } from "@/features/waiting/model";
 
 const HOW = [
   { icon: PenLine, title: "Pick what you want to do", body: "Cancel a contract, object to a decision or reply to a letter." },
@@ -25,6 +27,7 @@ export default function LettersPage() {
   const [params, setParams] = useSearchParams();
   const drafts = useDrafts();
   const parties = useParties();
+  const waiting = waitingSummary(useWaiting().data ?? []);
 
   // Older links used `party=` for the recipient (it would also open the People drawer): read it as `to=`.
   useLayoutEffect(() => {
@@ -69,9 +72,17 @@ export default function LettersPage() {
         title="Letters"
         description="Cancellations, objections and replies — drafted in German with an English translation, checked, and ready to send."
         actions={
-          <Button variant="primary" icon={Plus} onClick={openComposer}>
-            New letter
-          </Button>
+          <>
+            <Link to="/letters/waiting" className={buttonVariants({ variant: "secondary" })}>
+              <Hourglass aria-hidden />
+              Waiting for
+              <CountBadge count={waiting.count} tone={waiting.overdue ? "warn" : "neutral"} />
+              {waiting.overdue ? <span className="sr-only">, {waiting.overdue} overdue</span> : null}
+            </Link>
+            <Button variant="primary" icon={Plus} onClick={openComposer}>
+              New letter
+            </Button>
+          </>
         }
       />
 

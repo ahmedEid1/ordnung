@@ -265,6 +265,24 @@ export const SEND_CHANNELS = [
 ] as const;
 export type SendChannelKind = (typeof SEND_CHANNELS)[number];
 
+/** What a proof of a sent letter is (`drafts.proof.PROOF_KINDS` says what each one shows). */
+export const PROOF_KINDS = [
+  "posting_receipt",
+  "delivery_record",
+  "return_receipt",
+  "fax_report",
+  "sent_email",
+  "cancel_confirmation",
+  "other",
+] as const;
+export type ProofKind = (typeof PROOF_KINDS)[number];
+
+/** Where a "Waiting for" entry comes from, and how it stands (`secretary.waiting`). */
+export const WAITING_SOURCES = ["letter", "money", "call"] as const;
+export type WaitingSource = (typeof WAITING_SOURCES)[number];
+export const WAITING_STATUSES = ["waiting", "overdue", "answered", "closed"] as const;
+export type WaitingStatus = (typeof WAITING_STATUSES)[number];
+
 export const SEND_FORMS = ["text_form", "written_form", "any"] as const;
 export type SendForm = (typeof SEND_FORMS)[number];
 
@@ -362,6 +380,9 @@ export type EnumContract = [
   Same<DraftStatus, Schemas["Draft"]["status"]>,
   Same<SendChannelKind, Schemas["SendChannel"]["channel"]>,
   Same<SendForm, Schemas["SendGuidance"]["form"]>,
+  Same<ProofKind, Schemas["Proof"]["kind"]>,
+  Same<WaitingSource, Schemas["WaitingEntry"]["source"]>,
+  Same<WaitingStatus, Schemas["WaitingEntry"]["status"]>,
   Same<TimelineType, Schemas["TimelineEntry"]["type"]>,
   Same<AreaStatusLevel, Schemas["AreaStatus"]["status"]>,
   Same<LaneBarKind, Schemas["LaneBar"]["kind"]>,
@@ -419,6 +440,10 @@ export type DraftCheck = Schemas["DraftCheck"];
 export type LetterDetails = Schemas["LetterDetails"];
 /** A letter Ordnung drafted for the user ("Letters"). */
 export type Draft = Schemas["Draft"];
+/** One piece of proof of a sent letter; its file is a private outgoing document (never read by AI). */
+export type Proof = Schemas["Proof"];
+/** A phone call the person noted (Gesprächsnotiz); a promise with a day is waited for. */
+export type CallNote = Schemas["CallNote"];
 export type Activity = Schemas["Activity"];
 export type LLMCallRecord = Schemas["LLMCallRecord"];
 export type Job = Schemas["Job"];
@@ -483,6 +508,15 @@ export type SearchHit = Schemas["SearchHit"];
 export type TourState = Schemas["TourState"];
 /** A letter waiting in the demo's "New mail" tray. */
 export type MailTrayItem = Schemas["MailTrayItem"];
+/** A letter's tracking number as the server read it (S10 check digit, or twelve digits unchecked). */
+export type TrackingInfo = Schemas["TrackingInfo"];
+/** A proof with its file and, in code-written words, what it shows and what it does not. */
+export type ProofEntry = Schemas["ProofEntry"];
+export type ProofEvent = Schemas["ProofEvent"];
+/** `GET /api/drafts/{id}/proof`: tracking number, proofs, timeline, what's missing, what it waits for. */
+export type ProofOverview = Schemas["ProofOverview"];
+/** Something the person is owed — a reply, money or a callback ("Waiting for"). */
+export type WaitingEntry = Schemas["WaitingEntry"];
 
 // ------------------------------------------------------------------------------------------------
 // Responses that are not models.py view models (defined next to their routes)
@@ -519,6 +553,10 @@ export type SuggestionPatch = Schemas["SuggestionPatch"];
 export type DraftCreate = Schemas["DraftCreate"];
 export type DraftPatch = Schemas["DraftPatch"];
 export type MarkSentRequest = Schemas["MarkSentRequest"];
+export type TrackingUpdate = Schemas["TrackingUpdate"];
+export type ProofPatch = Schemas["ProofPatch"];
+export type CallNoteCreate = Schemas["CallNoteCreate"];
+export type CallNotePatch = Schemas["CallNotePatch"];
 export type AskRequest = Schemas["AskRequest"];
 export type TourPatch = Schemas["TourPatch"];
 
@@ -526,6 +564,7 @@ export type DocumentListParams = ApiQuery<"/api/documents", "get">;
 export type ItemListParams = ApiQuery<"/api/items", "get">;
 export type ContractListParams = ApiQuery<"/api/contracts", "get">;
 export type SuggestionListParams = ApiQuery<"/api/suggestions", "get">;
+export type CallListParams = ApiQuery<"/api/calls", "get">;
 
 // ------------------------------------------------------------------------------------------------
 // Streams: POST /api/ask and GET /api/events (their payloads are OpenAPI components too)

@@ -26,6 +26,7 @@ import { DraftKindIcon } from "./DraftList";
 import { LetterEditor } from "./LetterEditor";
 import { MarkSentDialog } from "./MarkSentDialog";
 import { PdfPreview } from "./PdfPreview";
+import { ProofPanel } from "./ProofPanel";
 import { SendGuidancePanel } from "./SendGuidancePanel";
 import { contractHref } from "@/features/contracts/links";
 
@@ -156,10 +157,10 @@ export function LetterView({ draft }: { draft: Draft }) {
     void save().then((d) => triggerDownload(versioned(api.draftPdfUrl(d.id), d.updated_at), fileName));
   };
 
-  const confirmSent = async (channel: SendChannelKind, date: string) => {
+  const confirmSent = async (channel: SendChannelKind, date: string, trackingNumber: string | null) => {
     try {
       if (dirty) await save();
-      await markSent.mutateAsync({ id: draft.id, channel, date });
+      await markSent.mutateAsync({ id: draft.id, channel, date, ...(trackingNumber ? { tracking_number: trackingNumber } : {}) });
       setSentOpen(false);
       toast.success(`We'll remind you to check for a reply on ${formatDate(followUpDate(date, draft.kind), { style: "short", today })}`, {
         description: `Marked as sent ${sentVia(channel)} on ${formatDate(date, { style: "short", today })}.`,
@@ -251,6 +252,7 @@ export function LetterView({ draft }: { draft: Draft }) {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_370px]">
         <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
+          {isSent ? <ProofPanel draft={draft} /> : null}
           <LetterEditor
             value={form}
             onChange={setForm}

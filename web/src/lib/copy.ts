@@ -91,6 +91,8 @@ import {
   ScrollText,
   Recycle,
   Repeat,
+  MailCheck,
+  Phone,
 } from "lucide-react";
 import {
   AREAS,
@@ -118,6 +120,9 @@ import {
   REMEDY_TYPES,
   SEND_CHANNELS,
   SEND_FORMS,
+  PROOF_KINDS,
+  WAITING_SOURCES,
+  WAITING_STATUSES,
   SUGGESTION_KINDS,
   SUGGESTION_STATUSES,
   TIMELINE_TYPES,
@@ -146,6 +151,9 @@ import {
   type RemedyType,
   type SendChannelKind,
   type SendForm,
+  type ProofKind,
+  type WaitingSource,
+  type WaitingStatus,
   type SuggestionKind,
   type SuggestionStatus,
   type TimelineType,
@@ -483,6 +491,32 @@ export const SEND_CHANNEL_COPY: CopyMap<SendChannelKind> = {
   portal: { label: "Online portal", icon: Globe, tone: "accent" },
 };
 
+/** Proof of a sent letter: the German term the receipt carries is in the label, what it shows is the server's. */
+export const PROOF_KIND_COPY: CopyMap<ProofKind> = {
+  posting_receipt: { label: "Posting receipt (Einlieferungsbeleg)", icon: ReceiptText, tone: "contract", hint: "The slip from the post office, with the tracking number" },
+  delivery_record: { label: "Delivery record (Auslieferungsbeleg)", icon: MailCheck, tone: "ok", hint: "Deutsche Post's record of the day it was put in their letterbox" },
+  return_receipt: { label: "Return receipt (Rückschein)", icon: Signature, tone: "ok", hint: "The card signed by whoever took the letter" },
+  fax_report: { label: "Fax report (Sendebericht)", icon: Printer, tone: "neutral", hint: "The transmission report your fax printed" },
+  sent_email: { label: "Sent e-mail", icon: Mail, tone: "appointment", hint: "The e-mail as it left your mailbox" },
+  cancel_confirmation: { label: "Cancel-button confirmation", icon: MousePointerClick, tone: "accent", hint: "The page the cancel button showed, or their confirmation e-mail" },
+  other: { label: "Other proof", icon: FileText, tone: "neutral" },
+};
+
+/** "Waiting for": where an entry comes from … */
+export const WAITING_SOURCE_COPY: CopyMap<WaitingSource> = {
+  letter: { label: "Reply to your letter", icon: Send, tone: "contract" },
+  money: { label: "Money owed to you", icon: HandCoins, tone: "ok" },
+  call: { label: "Promised on the phone", icon: Phone, tone: "appointment" },
+};
+
+/** … and how it stands (nothing is closed for the person: "answered" asks them to check). */
+export const WAITING_STATUS_COPY: CopyMap<WaitingStatus> = {
+  waiting: { label: "Waiting", icon: Hourglass, tone: "neutral" },
+  overdue: { label: "Overdue", icon: AlarmClock, tone: "danger" },
+  answered: { label: "Answered — check it", icon: CircleCheck, tone: "ok" },
+  closed: { label: "Closed", icon: CircleCheckBig, tone: "neutral" },
+};
+
 export const SEND_FORM_COPY: CopyMap<SendForm> = {
   text_form: { label: "Text form — email or letter is fine", icon: Mail, tone: "ok" },
   written_form: { label: "Written form — signed by hand", icon: Signature, tone: "warn" },
@@ -631,6 +665,9 @@ export const ENUM_COVERAGE: { name: string; values: readonly string[]; map: Reco
   { name: "PartyKind", values: PARTY_KINDS, map: PARTY_KIND_COPY },
   { name: "Confidence", values: CONFIDENCES, map: CONFIDENCE_COPY },
   { name: "JobStage", values: JOB_STAGES, map: JOB_STAGE_COPY },
+  { name: "ProofKind", values: PROOF_KINDS, map: PROOF_KIND_COPY },
+  { name: "WaitingSource", values: WAITING_SOURCES, map: WAITING_SOURCE_COPY },
+  { name: "WaitingStatus", values: WAITING_STATUSES, map: WAITING_STATUS_COPY },
 ];
 
 // ------------------------------------------------------------------------------------------------
@@ -650,7 +687,7 @@ const DISTINCTIVE_RAW = new Set<string>(
 const WORD_RAW = new Set<string>(ENUM_COVERAGE.flatMap((c) => c.values).filter((v) => !/[_\d]/.test(v)));
 
 /** A ledger record id (`doc_0b2t88kqsf2n`, `itm_…`) — never shown as text (see `RefText`). */
-export const RECORD_ID_RE = /\b(doc|itm|ctr|pty|cas|drf|sug|thr)_[a-z0-9]{8,}\b/;
+export const RECORD_ID_RE = /\b(doc|itm|ctr|pty|cas|drf|sug|thr|prf|cal)_[a-z0-9]{8,}\b/;
 
 /** Record id prefix → the kind of record it names (those a person can open). */
 export const RECORD_TYPES: Partial<Record<string, "document" | "item" | "contract" | "party">> = {
