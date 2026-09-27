@@ -970,6 +970,25 @@ def test_the_ci_gate_leaves_out_a_baseline_without_recordings(
     assert "llm_rules_tool has no recorded answer for 2 letter(s)" in capsys.readouterr().err
 
 
+def test_the_ci_gate_replay_writes_no_results_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Review round 3 of phase 2: running the CI gate locally left an untracked results file in the tree.
+    The gate's replay only checks; with --results-dir, or without thresholds, the file is written."""
+    default = tmp_path / "default-results"
+    monkeypatch.setattr(eval_run, "RESULTS_DIR", default)
+    args = ["--split", "dev", "--ids", "dev-tax_assessment-A1", "--date", "2026-09-25", "--resamples", "50"]
+    gate = [*args, "--no-docs", "--min-accuracy", "0.5", "--max-dangerous-late", "1"]
+    assert eval_run.run_cli(gate, backend=FakeBackend(Responder())) == 0
+    assert not default.exists() or not any(default.glob("*.json"))
+    assert "results not written" in capsys.readouterr().err
+    kept = tmp_path / "kept"
+    assert eval_run.run_cli([*gate, "--results-dir", str(kept)], backend=FakeBackend(Responder())) == 0
+    assert list(kept.glob("*.json"))
+    assert eval_run.run_cli([*args, "--no-docs"], backend=FakeBackend(Responder())) == 0
+    assert list(default.glob("*.json"))
+
+
 @pytest.mark.parametrize("condition", ["llm_only", "llm_rules_text"])
 def test_the_ci_gate_fails_when_a_published_baseline_no_longer_replays(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], condition: str

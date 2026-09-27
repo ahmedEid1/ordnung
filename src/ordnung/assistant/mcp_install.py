@@ -17,9 +17,10 @@ Written policy (ADR 0007) — nothing here guesses:
   ledger private to this person and project. The rules tools, which expose nothing, are offered for
   all projects (``--scope user``).
 * **Merge, never clobber.** Only ``mcpServers.<name>`` is added or replaced; every other key and
-  server stays as it was, in order. An empty file counts as ``{}``. A file that is not JSON, whose
-  top level is not an object or whose ``mcpServers`` is not an object is refused and left untouched.
-  An identical entry writes nothing.
+  server stays as it was, in order, every number as written (``1e400`` stays ``1e400``). An empty file
+  counts as ``{}``. A file that is not JSON (``NaN`` and ``Infinity`` included, which Python would
+  read), whose top level is not an object or whose ``mcpServers`` is not an object is refused and left
+  untouched. An identical entry writes nothing.
 * **Back up, then replace atomically.** Before an existing file changes, a copy is written next to
   it (``<file>.bak-<YYYYmmdd-HHMMSS>``, never overwriting an earlier backup). The new content goes to
   a temporary file in the same folder that then replaces the original, with the original's
@@ -221,9 +222,54 @@ def _cmd_arg(arg: str) -> str:
     return '"' + "".join(out) + "\\" * (2 * slashes) + '"'
 
 
+class JsonNumber(str):
+    """A number of a config file as it is written there (``1e400``, ``1E5``, ``123456789012345678901234567890.5``):
+    read as text and written back verbatim (:func:`render_json`), so a merge never changes another key's number
+    (review round 3 of phase 2: ``1e400`` became ``Infinity``, which the apps can't read, and long numbers lost
+    digits)."""
+
+
+def _refuse_constant(name: str) -> Any:
+    raise ValueError(f"{name} is not a JSON number")
+
+
+def parse_config(text: str) -> Any:
+    """A config's JSON with every number kept as written (:class:`JsonNumber`); a key twice in one object and
+    ``NaN``/``Infinity`` (not JSON, though Python reads them) raise :class:`ValueError`."""
+    return json.loads(
+        text,
+        object_pairs_hook=_unique_keys,
+        parse_float=JsonNumber,
+        parse_int=JsonNumber,
+        parse_constant=_refuse_constant,
+    )
+
+
 def render_json(data: Mapping[str, Any]) -> str:
-    """JSON as the apps write it: two-space indent, UTF-8 kept, a final newline."""
-    return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    """JSON as the apps write it: two-space indent, UTF-8 kept, a final newline — and a number read from the
+    file (:class:`JsonNumber`) exactly as it was written."""
+    return _dump(data, 0) + "\n"
+
+
+def _dump(value: Any, level: int) -> str:
+    """``json.dumps(value, indent=2, ensure_ascii=False)``, with :class:`JsonNumber` written verbatim."""
+    if isinstance(value, JsonNumber):
+        return str.__str__(value)
+    pad, inner = "  " * level, "  " * (level + 1)
+    if isinstance(value, Mapping):
+        if not value:
+            return "{}"
+        rows = [
+            f"{inner}{json.dumps(str(key), ensure_ascii=False)}: {_dump(item, level + 1)}"
+            for key, item in value.items()
+        ]
+        return "{\n" + ",\n".join(rows) + f"\n{pad}}}"
+    if isinstance(value, list | tuple):
+        if not value:
+            return "[]"
+        rows = [f"{inner}{_dump(item, level + 1)}" for item in value]
+        return "[\n" + ",\n".join(rows) + f"\n{pad}]"
+    return json.dumps(value, ensure_ascii=False)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -240,7 +286,7 @@ def merge_server(text: str | None, name: str, entry: dict[str, Any]) -> tuple[di
     data: Any = {}
     if text is not None and text.strip():
         try:
-            data = json.loads(text, object_pairs_hook=_unique_keys)
+            data = parse_config(text)
         except ValueError as exc:
             raise InstallError(f"it is not valid JSON ({exc})") from exc
     if not isinstance(data, dict):

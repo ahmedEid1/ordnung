@@ -121,6 +121,10 @@ class RunConfig:
     #: the rules tools' descriptions change in code, is then left out with a warning (see
     #: :data:`GATE_MAY_LEAVE_OUT`); every other condition must still replay.
     gate_ordnung_only: bool = False
+    #: Whether the results file is written: the CI gate's replay (thresholds, no ``--live``) only checks and
+    #: writes nothing unless ``--results-dir`` is given (review round 3 of phase 2: running the gate locally
+    #: left an untracked ``evals/results/<today>-sonnet-test.json`` in the tree).
+    write_results: bool = True
     seed: int = DEFAULT_SEED
     resamples: int = DEFAULT_RESAMPLES
     manifest_path: Path = MANIFEST_PATH
@@ -174,7 +178,7 @@ class RunOutcome:
 
     @property
     def ok(self) -> bool:
-        return all(run.results_path is not None and run.fatal is None for run in self.runs)
+        return all(run.results is not None and run.fatal is None for run in self.runs)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -561,6 +565,9 @@ async def run_benchmark(
             predictions=run.predictions,
             evaluation=evaluation,
         )
+        if not config.write_results:
+            say(f"{model}: results not written (the gate's replay; pass --results-dir to keep them)")
+            continue
         name = report.results_filename(config.date, model, config.split, partial=config.partial)
         run.results_path = report.write_json(config.results_dir / name, run.results)
         say(f"{model}: results → {run.results_path}")
@@ -727,7 +734,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--manifest", type=Path, default=MANIFEST_PATH, help=argparse.SUPPRESS)
     parser.add_argument("--recorded-dir", type=Path, default=RECORDED_DIR, help="recorded outputs root")
-    parser.add_argument("--results-dir", type=Path, default=RESULTS_DIR, help="results directory")
+    parser.add_argument(
+        "--results-dir",
+        type=Path,
+        default=None,
+        help=f"results directory (default: {RESULTS_DIR.name}/; the gate's replay writes none unless given)",
+    )
     parser.add_argument("--docs-path", type=Path, default=report.DOCS_PATH, help=argparse.SUPPRESS)
     parser.add_argument("--chart-path", type=Path, default=report.CHART_PATH, help=argparse.SUPPRESS)
     parser.add_argument("--quiet", action="store_true", help="no per-letter progress lines")
@@ -770,7 +782,7 @@ def config_from_args(ns: argparse.Namespace) -> RunConfig:
         resamples=ns.resamples,
         manifest_path=ns.manifest,
         recorded_dir=ns.recorded_dir,
-        results_dir=ns.results_dir,
+        results_dir=ns.results_dir or RESULTS_DIR,
         docs_path=ns.docs_path,
         chart_path=ns.chart_path,
     )
@@ -791,6 +803,7 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
         parser.error("--refresh needs --live")
     # With thresholds this is the CI gate, which checks Ordnung: the tool condition may lack recordings.
     config.gate_ordnung_only = ns.min_accuracy is not None or ns.max_dangerous_late is not None
+    config.write_results = config.live or not config.gate_ordnung_only or ns.results_dir is not None
     progress: Progress = (lambda _message: None) if ns.quiet else _stderr
     try:
         outcome = asyncio.run(run_benchmark(config, backend=backend, progress=progress))

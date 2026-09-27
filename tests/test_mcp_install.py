@@ -284,6 +284,41 @@ def test_merge_refuses_what_it_cannot_understand(text: str, message: str) -> Non
         merge_server(text, RULES_SERVER_NAME, RULES_ENTRY)
 
 
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_merge_refuses_numbers_json_does_not_have(constant: str) -> None:
+    """Python reads NaN and Infinity; JSON (and the apps) don't — such a file is refused untouched."""
+    with pytest.raises(InstallError, match="it is not valid JSON"):
+        merge_server(f'{{"limits": {{"x": {constant}}}}}', RULES_SERVER_NAME, RULES_ENTRY)
+
+
+def test_render_json_writes_like_json_dumps() -> None:
+    data = {"a": [1, 2.5, {"b": None, "c": True}], "d": {}, "e": [], "f": 'ü "q"', "g": [[]]}
+    assert mcp_install.render_json(data) == json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+
+
+def test_write_keeps_every_other_number_as_written(tmp_path: Path) -> None:
+    """Review round 3 of phase 2: re-rendering the file turned 1e400 into Infinity (which Claude Desktop can't
+    read) and 1E5 into 100000.0, and cut long numbers."""
+    config = settings_folder(tmp_path) / "claude_desktop_config.json"
+    numbers = '{"big": 1e400, "x": 1E5, "huge": 123456789012345678901234567890.5, "n": -0, "i": 12345678901234567890123}'
+    config.write_text(f'{{"limits": {numbers}, "mcpServers": {{}}}}', encoding="utf-8")
+    write_config(desktop_plan(tmp_path), now=NOW)
+    written = config.read_text(encoding="utf-8")
+    for literal in ("1e400", "1E5", "123456789012345678901234567890.5", "-0", "12345678901234567890123"):
+        assert f": {literal}" in written, literal
+    assert "Infinity" not in written and "100000.0" not in written
+    assert json.loads(written)["mcpServers"][RULES_SERVER_NAME] == RULES_ENTRY
+
+
+def test_a_file_with_nan_is_left_untouched(tmp_path: Path) -> None:
+    config = settings_folder(tmp_path) / "claude_desktop_config.json"
+    config.write_text('{"x": NaN}', encoding="utf-8")
+    with pytest.raises(InstallError, match="Nothing was changed"):
+        write_config(desktop_plan(tmp_path), now=NOW)
+    assert config.read_text(encoding="utf-8") == '{"x": NaN}'
+    assert list(config.parent.iterdir()) == [config]  # no backup either
+
+
 # --------------------------------------------------------------------------------------------------
 # writing
 # --------------------------------------------------------------------------------------------------
