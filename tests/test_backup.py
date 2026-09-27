@@ -688,7 +688,14 @@ def test_the_new_commands_are_listed() -> None:
 
 @pytest.mark.parametrize(
     ("size", "text"),
-    [(0, "0 bytes"), (999, "999 bytes"), (1000, "1.0 KB"), (10_635_532, "10.6 MB"), (2_400_000_000, "2.4 GB"), (5 * 10**15, "5000.0 TB")],
+    [
+        (0, "0 bytes"),
+        (999, "999 bytes"),
+        (1000, "1.0 KB"),
+        (10_635_532, "10.6 MB"),
+        (2_400_000_000, "2.4 GB"),
+        (5 * 10**15, "5000.0 TB"),
+    ],
 )
 def test_human_sizes(size: int, text: str) -> None:
     from ordnung.cli import human_size

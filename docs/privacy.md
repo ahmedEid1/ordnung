@@ -16,6 +16,8 @@ goes where.
 | Model responses | `ordnung.db` (`llm_cache`) | — (they came from Anthropic) |
 | Usage log (tokens, cost, which document) | `ordnung.db` (`llm_calls`) — **no prompt or response bodies** | Never |
 | Fonts, UI, rules engine | bundled in the package | Never (no CDN, no web fonts) |
+| Encrypted backups (`ordnung backup`, Settings → Data) | wherever you save the file | Only where you put it — encrypted, so without your passphrase nobody can read it |
+| The morning desktop notification | your system's notification area | Never — Ordnung writes it on this computer from your dates |
 
 `<data dir>` defaults to your platform's user data folder (e.g. `~/.local/share/ordnung`,
 `~/Library/Application Support/ordnung`, `%LOCALAPPDATA%\ordnung`) and can be changed with
@@ -57,6 +59,42 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
 - **Models** — choose which Claude model handles each purpose.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself.
+
+## Reminders while Ordnung is closed
+
+- **The morning desktop notification** (Settings → Reminders; off until you switch it on) is written
+  by Ordnung's own code from the day's agenda — no model call, nothing sent anywhere — and shown by
+  your system's notification tool (`notify-send`, macOS notifications, Windows toasts). A
+  notification can be seen on a lock screen, a shared screen or in the system's notification
+  history, so the app switches it on as **Discreet**: "Ordnung — 2 things due this week", never a
+  title, a name, an organisation or an amount. **With details** shows the first three things with
+  their amounts and days; choose it only on a screen nobody else sees. Letters with scam signs are
+  never in it. The activity log notes that it was shown, with the count only.
+- **Start at login** (`ordnung autostart enable`) writes one file that starts `ordnung serve` when you
+  log in (a systemd user service, a LaunchAgent or a Startup-folder entry), and prints it before
+  anything else. The server's sign-in link carries the session token, so the service throws away
+  what `serve` prints: the token never lands in the system journal or a log file.
+  `ordnung autostart disable` removes the file.
+
+## Encrypted backups
+
+`ordnung backup` (and Settings → Data → *Download encrypted backup*) makes one file with everything
+Ordnung keeps: the database (letters' text and what was read from them, to-dos, contracts, drafts,
+your *Ask* conversations, the usage log and cached model answers), your original files, the page
+images and the letter PDFs. Not in it: the watched folder (those files are your own; what Ordnung
+took from them is), the lock and the running server's session file.
+
+- **Encrypted before it is written.** AES-256-GCM in authenticated chunks, the key derived from your
+  passphrase with scrypt (N = 2¹⁷, r = 8); the file starts with a versioned header and nothing else
+  in plain text. The database snapshot is made in memory, so no unencrypted copy is written to disk.
+- **Your passphrase stays yours.** At least 12 characters; Ordnung never stores or logs it and
+  can't recover it — without it the backup can't be opened, by anyone. In the browser the
+  passphrase goes only to the Ordnung on this computer (in the request body, never in a web address).
+- **Restoring checks everything.** `ordnung restore` refuses a wrong passphrase, a file that was
+  changed, cut short or reordered, a newer format, and anything in the archive Ordnung never writes;
+  every file must match the backup's own list of hashes and row counts. It never replaces a data
+  folder that holds data unless you add `--force`, and then moves the old folder aside instead of
+  deleting it. `ordnung restore FILE --check` verifies a backup without restoring anything.
 
 ## Hardening built into every model call
 

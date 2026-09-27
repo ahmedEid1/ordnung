@@ -62,7 +62,8 @@ flowchart LR
 | Other clients → Ordnung | `ordnung mcp --rules-only` serves only the rules tools: no data folder is opened, results are computed from the arguments alone. The full server gives a client the same read-only ledger Ask has; `ordnung mcp install` prints before it writes and never clobbers a client's config |
 | Upload → machine | Checked before anything decodes it: PDF stream expansion, image pixels and text pages are capped; the data folder is private to the account (`0700`, files `0600`) |
 | Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs |
-| Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence` |
+| Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence`. The desktop notification's texts (letters' titles in *full* mode) reach `notify-send` / `osascript` / PowerShell as separate arguments of a fixed script or in environment variables — never a shell line; markup is escaped, control and bidi characters removed. The start-at-login entry is a file Ordnung writes (quoted per format, a line break refused) and discards the server's standard output, so the session token never reaches a journal |
+| Backup file → data folder | Authenticated encryption end to end (header MAC, AES-256-GCM chunks bound to the header, their order and the last one), a newer format refused before any key is derived, scrypt costs capped when read; the archive extracted under a name policy (regular files in three folders only) into a staging folder, read to its authenticated end and checked against its manifest before it replaces anything; a folder with data is moved aside, never deleted ([ADR 0013](decisions/0013-backups-and-reminders-outside-the-browser.md)) |
 
 ## Reading a letter
 
@@ -174,6 +175,36 @@ flowchart LR
 - The benchmark's fourth condition runs exactly this server next to the *LLM only* prompt, to
   measure an agent with a calculator against the fixed pipeline ([evals](evals.md)).
 
+## While the browser is closed: reminders and backups
+
+A secretary that only speaks while its tab is open doesn't do the job, and for a local-first app
+the backup is the person's only copy. Both work without the browser and without a model.
+
+```mermaid
+flowchart LR
+  subgraph login["At login"]
+    AS["systemd user unit · LaunchAgent · Startup .cmd<br/>(written by ordnung autostart enable)"]
+  end
+  AS -->|"python -m ordnung serve --no-browser"| SRV["ordnung serve"]
+  SRV --> TICK["Daily tick<br/>(every 15 min)"]
+  TICK -->|"build_agenda (code, no model)"| NOTE["notify/desktop.py<br/>discreet: a count · full: 3 things"]
+  NOTE -->|"argv / env, never a shell"| OS["notify-send · osascript · PowerShell toast"]
+  DB[("ordnung.db + files/ derived/ drafts/")] --> BK["backup/ — snapshot in memory → tar →<br/>AES-256-GCM chunks (key: scrypt)"]
+  BK --> FILE["one .ordnung-backup file"]
+  FILE -->|"ordnung restore: verify all, then swap"| DB2[("a data folder")]
+```
+
+- **The notification** is the agenda's words, not a model's: `notify/desktop.py` counts what is
+  overdue or due within 7 days and, in *full* mode, lists the first three. The tick shows it once a
+  day at or after the chosen time; a missing tool shows nothing. The web app's preview and test use
+  the same functions (`GET /api/reminders/desktop`, `POST …/test`).
+- **Start at login** (`autostart.py`) writes one entry and runs nothing; `status` reads it back
+  (which folder it starts, whether it is current) for the CLI and for Settings.
+- **The backup** (`backup/`) is a pull-based stream (`BackupStream`, one step per file): the CLI
+  writes it to a file atomically, the API sends it as the HTTP response while it is made. Restore is
+  all or nothing (`backup/restore.py`). The format and its policies are in
+  [ADR 0013](decisions/0013-backups-and-reminders-outside-the-browser.md).
+
 ## Data model (simplified)
 
 ```mermaid
@@ -238,3 +269,5 @@ normalised name), so re-processing is idempotent and recorded demo outputs stay 
 | Model quality | The benchmark in [evals](evals.md), recomputed deterministically in CI from recorded outputs |
 | MCP tools and install | In-memory MCP client and a real stdio handshake (`python -m ordnung mcp --rules-only`); config merge, backup and refusal in temporary home folders |
 | Ask | Unit tests of the two channels and the claim policy (incl. injected dates and ids), and the Ask benchmark in [evals-ask](evals-ask.md), replayed in CI with gates |
+| Backup and restore | Byte-for-byte round trips with equal row counts (a seeded ledger and the whole demo life), every byte flipped, chunks cut, swapped, appended or taken from another backup, hostile header parameters, a Hypothesis round-trip-and-flip property, hostile archives inside validly encrypted files (`..`, absolute names, links, duplicates, extras, a damaged or newer database), and the restore policy (free folder, `--force` moves aside, a held lock, a failed swap) |
+| Reminders outside the browser | Notification text in both modes from seeded agendas (discreet never names a title, party or amount), argv/env per system with hostile titles, the once-a-day policy and the tick; autostart entries per system written into temporary home folders, quoting of awkward paths, status and removal |
