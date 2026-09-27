@@ -8,7 +8,8 @@ const run = (events: TourEvent[], start: TourState = INITIAL_TOUR) => events.red
 describe("tour state machine", () => {
   it("has four steps: new mail → Idea → Ask → Timeline", () => {
     expect(TOUR_STEPS.map((s) => s.route)).toEqual(["/inbox", "/", "/ask", "/timeline"]);
-    expect(TOUR_STEPS.map((s) => s.title)).toEqual(["You have new mail", "An idea just arrived", "Ask anything", "Your year ahead"]);
+    // (the Idea step says "An idea just arrived" only when a letter brought one — see stepCopy)
+    expect(TOUR_STEPS.map((s) => s.title)).toEqual(["You have new mail", "Ideas from your secretary", "Ask anything", "Your year ahead"]);
   });
 
   it("walks forward and completes after the last step", () => {
@@ -27,6 +28,13 @@ describe("tour state machine", () => {
     expect(skipped).toEqual({ active: false, step: 1, completed: true });
     expect(run([{ type: "next" }, { type: "goto", step: 3 }], skipped)).toEqual(skipped);
     expect(run([{ type: "restart" }], skipped)).toEqual({ active: true, step: 0, completed: false });
+  });
+
+  it("restarts at a given step (Undo after ending it), clamped", () => {
+    const ended = run([{ type: "next" }, { type: "next" }, { type: "skip" }]);
+    expect(run([{ type: "restart", step: 2 }], ended)).toEqual({ active: true, step: 2, completed: false });
+    expect(run([{ type: "restart", step: 9 }], ended).step).toBe(3);
+    expect(run([{ type: "restart", step: 3 }]).step).toBe(3); // also while it runs
   });
 
   it("advances to 'An idea just arrived' when a new Idea arrives during step 1 only", () => {

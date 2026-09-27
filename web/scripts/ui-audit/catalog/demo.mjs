@@ -926,7 +926,7 @@ export async function demoCatalog({ api, server }) {
       run: async (c) => {
         await setTour(c.api, step);
         await c.goto(path);
-        await c.visible(c.page.getByRole("complementary", { name: "Demo tour" }).or(c.page.getByRole("button", { name: /^Resume the demo tour/ }))).catch(() => c.note("tour card not visible"));
+        await c.visible(c.page.getByRole("region", { name: "Demo tour" }).or(c.page.getByRole("button", { name: /^Demo tour · \d of \d — resume/ }))).catch(() => c.note("tour card not visible"));
         if (run) await run(c);
         await settle(c.page);
       },
@@ -938,14 +938,24 @@ export async function demoCatalog({ api, server }) {
   tourState("step-3", 2, "/ask", "Tour step 3 “Ask anything” (spotlight on the suggested questions).");
   tourState("step-4", 3, "/timeline", "Tour step 4 “Your year ahead” (spotlight on the lanes).");
   tourState("minimised", 1, "/", "The minimised tour pill.", null, { storage: { "ordnung.tour.minimised": "true" } });
-  tourState("phone-open", 1, "/", "Phones: the tour bar expanded to the full step card.", async (c) => {
-    if (!c.phone) c.notApplicable("the one-line tour bar exists on phones only");
-    await c.click(c.page.getByRole("button", { name: /^Demo tour, step .* Show the whole step$/ }));
+  const openBar = async (c) => {
+    const bar = c.page.getByRole("button", { name: /^Demo tour · \d of \d: .* — show the whole step$/ });
+    if (await c.exists(bar)) await c.click(bar);
+    return c.page.getByRole("region", { name: "Demo tour" });
+  };
+  tourState("phone-open", 1, "/", "Phones, tablets and short screens: the slim tour bar opened into the whole step card.", async (c) => {
+    const bar = c.page.getByRole("button", { name: /^Demo tour · \d of \d: .* — show the whole step$/ });
+    if (!(await c.exists(bar))) c.notApplicable("the slim tour bar shows on phones, tablets and short screens only");
+    await c.click(bar);
   });
-  tourState("finished-toast", 3, "/timeline", "After “Finish”: the “That's the tour” toast.", async (c) => {
-    const tourCard = c.page.getByRole("complementary", { name: "Demo tour" });
-    if (c.phone && (await c.exists(c.page.getByRole("button", { name: /Show the whole step$/ })))) await c.click(c.page.getByRole("button", { name: /Show the whole step$/ }));
-    await c.click(tourCard.getByRole("button", { name: /^Finish/ }).or(c.page.getByRole("button", { name: /^Finish/ })));
+  tourState("finished-toast", 3, "/timeline", "After “Finish”: the “That's the tour” toast (with “Restart the tour”).", async (c) => {
+    const tourCard = await openBar(c);
+    await c.click(tourCard.getByRole("button", { name: /^Finish/ }));
+    await pinToasts(c.page);
+  }, { pinToasts: true });
+  tourState("ended-toast", 2, "/ask", "After “End the tour” (×): the “Tour hidden” toast with Undo and where to restart it.", async (c) => {
+    const tourCard = await openBar(c);
+    await c.click(tourCard.getByRole("button", { name: "End the tour" }));
     await pinToasts(c.page);
   }, { pinToasts: true });
 

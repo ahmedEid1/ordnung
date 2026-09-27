@@ -2,8 +2,10 @@
  * The demo tour (SPEC §14.10, §16): four short steps, each pointing at one element of a page.
  *
  * Pages mark the element with `data-tour="<target>"` (see {@link TOUR_TARGETS}). When the target
- * is on screen the tour draws a soft pulsing spotlight around it; when it is missing the card
- * still works (no spotlight).
+ * is on screen the tour draws a soft spotlight around it (two pulses, then a still ring); when it
+ * is missing the card still works (no spotlight). Two steps follow the demo's data
+ * ({@link stepCopy}): the New-mail step counts the letters still in the tray, and the Idea step
+ * says "An idea just arrived" only when a letter really brought one.
  */
 export const TOUR_TARGETS = {
   /** Inbox: the demo's "New mail" tray. */
@@ -44,16 +46,17 @@ export const TOUR_STEPS: readonly TourStep[] = [
   },
   {
     id: "idea",
-    title: "An idea just arrived",
+    // neutral: the step is also reached with Next or the dots, before any letter brought an Idea
+    title: "Ideas from your secretary",
     body: "When a letter changes something — a price increase, a suspicious payment demand — your secretary suggests what to do, with the reason and the rule behind it. Nothing is ever sent or paid for you.",
     route: "/",
     target: TOUR_TARGETS.ideas,
-    showLabel: "Show me the Idea",
+    showLabel: "Show me the Ideas",
   },
   {
     id: "ask",
     title: "Ask anything",
-    body: "Ask in plain English — try “When does my phone contract end, and by when do I have to cancel it?”. Answers point to the letters they come from.",
+    body: "Ask in plain English — try “When does my phone contract end, and by when do I have to cancel it?” Answers point to the letters they come from.",
     route: "/ask",
     target: TOUR_TARGETS.askChips,
     showLabel: "Try a question",
@@ -72,4 +75,49 @@ export const TOUR_STEPS: readonly TourStep[] = [
 export function onStepRoute(step: Pick<TourStep, "route">, pathname: string): boolean {
   if (step.route === "/") return pathname === "/";
   return pathname === step.route || pathname.startsWith(`${step.route}/`);
+}
+
+/** What the demo's data says right now (each part unknown while it loads). */
+export interface TourFacts {
+  /** The New-mail tray: letters not opened yet, of how many. */
+  tray?: { unread: number; total: number };
+  /** A letter from the tray brought a headline Idea (a price increase, a scam warning…). */
+  ideaFromMail?: boolean;
+}
+
+const NUMBER_WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+const inWords = (n: number) => NUMBER_WORDS[n] ?? String(n);
+
+/**
+ * A step as it should read now. The New-mail step follows the tray: the letters that just arrived,
+ * then the ones still waiting (with a way on when a letter brought no Idea), then "all read". The
+ * Idea step announces an Idea only when one came with the mail. Other steps read as written.
+ */
+export function stepCopy(step: TourStep, facts: TourFacts = {}): TourStep {
+  if (step.id === "new-mail" && facts.tray && facts.tray.total > 0) {
+    const { unread, total } = facts.tray;
+    if (unread <= 0) {
+      return {
+        ...step,
+        title: "All new mail read",
+        body: "Every new letter has been read and filed. Next, see what your secretary suggests about them.",
+      };
+    }
+    if (unread < total) {
+      const waiting = unread === 1 ? "One letter is" : `${inWords(unread)} letters are`;
+      return {
+        ...step,
+        body: `${waiting} still waiting for Sam. Open ${unread === 1 ? "it" : "another"} to watch Ordnung read it — or go on and see what your secretary suggests.`,
+      };
+    }
+    const arrived = unread === 1 ? "One letter just arrived" : `${inWords(unread)} letters just arrived`;
+    return {
+      ...step,
+      body: `${arrived} for Sam. Open ${unread === 1 ? "it" : "one"} and watch Ordnung read it — every date and amount is checked against the page.`,
+    };
+  }
+  if (step.id === "idea" && facts.ideaFromMail) {
+    return { ...step, title: "An idea just arrived", showLabel: "Show me the Idea" };
+  }
+  return step;
 }

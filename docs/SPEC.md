@@ -379,7 +379,10 @@ Pages:
 9. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
    name/address (skippable) → Claude check (copyable fixes; "Continue without AI") → drop zone +
    "Explore the demo instead".
-10. **Demo tour**: 4 steps (New mail → Idea arrives → Ask → Timeline), skippable, tracked in meta.
+10. **Demo tour**: 4 steps (New mail → Idea arrives → Ask → Timeline), skippable, tracked in meta;
+   ending it can be undone, and the Demo badge restarts it. Docked in the sidebar when it fits,
+   else a card (wide screens) or a slim bar (phones, tablets, short laptops) that never covers the
+   page's end.
 
 Design: "calm paper" tokens in `web/src/styles/index.css`; Fraunces display headings; Inter UI;
 dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighter in dark mode.

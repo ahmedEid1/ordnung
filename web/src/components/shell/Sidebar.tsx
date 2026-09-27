@@ -164,8 +164,14 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* the demo tour docks in this free space, clear of the page (see DemoTour) */}
-      {rail ? <div className="flex-1" /> : <div id={TOUR_DOCK_ID} className="flex min-h-0 flex-1 flex-col justify-end overflow-y-auto py-4 scrollbar-thin" />}
+      {/* the demo tour docks in this free space, clear of the page, when the whole card fits (see
+          DemoTour); `safe` end: if it ever overflows, its top stays reachable. -mx-1/px-1: room for
+          the pill's focus ring inside the scroll area. */}
+      {rail ? (
+        <div className="flex-1" />
+      ) : (
+        <div id={TOUR_DOCK_ID} className="-mx-1 flex min-h-0 flex-1 flex-col justify-end-safe overflow-y-auto px-1 py-3 scrollbar-thin" />
+      )}
 
       <div className={cn("flex flex-col gap-2 pb-4", rail && "w-full items-center")}>
         <DemoBadge compact={rail} className={rail ? undefined : "self-start"} />
