@@ -831,12 +831,27 @@ SHORT_NOTICE = (
 )
 
 
-def _no_objection_todo(end_unknown: bool, passed: bool) -> str:
+#: A notice whose end is earlier than its notice period allows, though more than two months after the letter
+#: (review round 4 of phase 2: its objection was shown as passed while the one from the end the notice usually
+#: has instead was still open).
+SHORT_PERIOD = (
+    "Your tenancy would end earlier than a landlord's notice that arrived when this one did can end it: at the "
+    "earliest at the end of the month after next when it arrives by the third working day of a month, else a "
+    "month later — and later after five or eight years of tenancy (§ 573c Abs. 1 BGB). A notice that is too "
+    "short usually ends the tenancy at the next date the law allows instead, and the objection is then due two "
+    "months before that: so even when the date counted from the end the notice names has passed, the objection "
+    "may still be open. The to-do counts back from the earliest such end. Get advice now."
+)
+
+
+def _no_objection_todo(end_unknown: bool, passed: bool, short: bool = False) -> str:
     """The step of a landlord's card about its objection when the notice's own end doesn't give one: too
-    short (``passed``: :data:`SHORT_NOTICE`, whose to-do counts from the next permissible end), not read, or
-    no to-do for a reason Ordnung doesn't know (the notice has a period)."""
+    short (``passed``: :data:`SHORT_NOTICE`; ``short``: :data:`SHORT_PERIOD` — their to-do counts from the
+    next permissible end), not read, or no to-do for a reason Ordnung doesn't know (the notice has a period)."""
     if passed:
         return SHORT_NOTICE
+    if short:
+        return SHORT_PERIOD
     if end_unknown:
         return (
             "We couldn't read when your tenancy ends, so there is no to-do for the objection. Find the end in "
@@ -926,6 +941,7 @@ def letter_advice(
     objection_todo: bool = True,
     end_unknown: bool = False,
     objection_passed: bool = False,
+    short_period: bool = False,
     handled: bool = False,
     dealt_with: bool = False,
 ) -> LetterAdvice | None:
@@ -942,8 +958,9 @@ def letter_advice(
     ``objection_todo``: a to-do carries the objection to a landlord's notice (§ 574b BGB) — the law's, or
     the letter's own objection date. Without one the card is urgent (shown first) and says why:
     ``end_unknown`` (the notice's end wasn't read), ``objection_passed`` (the end is less than two months
-    after the letter, so the objection date had passed when it was written), or else no reason Ordnung
-    knows. ``handled``: the person has closed every to-do that carries the letter's legal deadline
+    after the letter, so the objection date had passed when it was written), ``short_period`` (the end is
+    earlier than the notice's period allows, :func:`~ordnung.rules.routing.short_notice`), or else no reason
+    Ordnung knows. ``handled``: the person has closed every to-do that carries the letter's legal deadline
     (:func:`settles`), so the card is no longer urgent and says so (``LetterAdvice.handled``) — it stays as
     information without asking for the delivery day, and the verdict says the letter is filed instead of
     "get advice now". A landlord's notice that no to-do carries the objection for (``objection_todo``
@@ -1065,8 +1082,9 @@ def letter_advice(
                 f"rent arrears (§ 569 Abs. 3 Nr. 2 BGB), {ARREARS_CURE}. Object in time anyway if you think "
                 "there were no such grounds, and get advice at once."
             )
-        if (objection_passed or not objection_todo) and not extraordinary:
-            steps.insert(0, _no_objection_todo(end_unknown, objection_passed))
+        too_short = objection_passed or short_period
+        if (too_short or not objection_todo) and not extraordinary:
+            steps.insert(0, _no_objection_todo(end_unknown, objection_passed, short_period))
         return LetterAdvice(
             kind=kind,
             title="Notice from your landlord — get advice before you act",
@@ -1075,11 +1093,11 @@ def letter_advice(
                 "out would be a hardship, you can object and ask to stay; the objection must reach the landlord "
                 "at the latest two months before the tenancy ends."
             ),
-            urgent=(extraordinary or not objection_todo or objection_passed) and not handled,
+            urgent=(extraordinary or not objection_todo or too_short) and not handled,
             handled=handled,
             closable=closable,
             steps=steps,
-            facts=[_notice_without_period(alternative, end_unknown or objection_passed, probable)]
+            facts=[_notice_without_period(alternative, end_unknown or too_short, probable)]
             if extraordinary
             else [],
             help=[TENANTS, LEGAL_AID],

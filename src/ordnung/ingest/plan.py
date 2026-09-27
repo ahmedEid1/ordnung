@@ -82,6 +82,7 @@ from ordnung.rules.routing import (
     is_social_court,
     letter_kind,
     names_statement,
+    notice_without_period,
     objection_dated,
     objection_excluded,
 )
@@ -353,6 +354,8 @@ def rule_context(
         letter_kind=filed_as or letter_kind(extraction),
         end_date=announced_end(extraction),
         end_date_grounding=end_date_grounding(extraction, pages),
+        ends_on_arrival=(filed_as or letter_kind(extraction)) == "dismissal"
+        and notice_without_period(extraction, parse_date(extraction.document_date)) is not None,
         court=is_court(name, kind),
         labour_court=is_labour_court(name, kind),
         social_court=is_social_court(name, kind),
@@ -879,7 +882,8 @@ def law_deadlines(
     kind: str | None, extraction: DocumentExtraction | None, ctx: RuleContext
 ) -> list[DerivedDeadline]:
     """The deadlines the law adds to a letter of ``kind`` (:func:`ordnung.rules.routing.derived_deadlines`)
-    with the facts its reading gives: the end a termination announces, the letter's date, whether the
+    with the facts its reading gives: the end a termination announces, the letter's date and arrival (a
+    notice too short for its period, :func:`~ordnung.rules.routing.short_notice`), whether the
     hardship objection is out of the question (:func:`~ordnung.rules.routing.objection_excluded`), whether
     the notice is given in the alternative and whether the letter gives an objection date of its own that
     can be computed without the end (:func:`~ordnung.rules.routing.objection_dated`)."""
@@ -887,6 +891,8 @@ def law_deadlines(
         kind,
         end=ctx.end_date,
         letter_date=ctx.document_date,
+        arrived=ctx.received_date if ctx.received_confirmed else None,
+        region=ctx.recipient_region,
         labour_court=ctx.labour_court,
         extraordinary=extraction is not None and objection_excluded(extraction, ctx.document_date),
         alternative=extraction is not None and alternative_notice(extraction),

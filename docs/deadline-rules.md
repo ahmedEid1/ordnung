@@ -482,8 +482,9 @@ day with no date filled in (never today, as for a landlord's notice, a rent incr
 says so; until then the three weeks count from the letter's own date, the earliest possible. The action may be filed at the labour
 court of the employer's seat or of the place of work (§ 48 Abs. 1a ArbGG), which may be in another Land: a
 regional holiday moves the end only when it holds both at the employer's seat and where the person lives
-(the place of work's stand-in), else nationwide holidays only — the earlier date, with the warning that a
-Land's holiday may make it later. Examples: received Mon 6 Jan 2025 → Mon 27 Jan 2025; received Fri 11 Dec 2026 (Berlin)
+(the place of work's stand-in) — a joint calendar of the two Länder, whose receipt names both and warns when
+the end falls on a holiday only one of them has —, and with either Land unknown nationwide holidays only: the
+earlier date, with the warning that a Land's holiday may make it later. Examples: received Mon 6 Jan 2025 → Mon 27 Jan 2025; received Fri 11 Dec 2026 (Berlin)
 → Fri 1 Jan → **Mon 4 Jan 2027** ([Arbeitsgericht Hamburg](https://justiz.hamburg.de/gerichte/arbeitsgericht-hamburg/informationen-merkblaetter-und-klagevordrucke-641146)).
 
 **Registering as job-seeking** (`sgb3_38`, § 38 Abs. 1 SGB III). At the latest three months before the
@@ -491,8 +492,12 @@ job ends; when less than three months are left, within three days of learning th
 months before" counts back from the last day (ends 30 Sep → by 30 Jun; ends 31 Dec → by 30 Sep; some
 guides say 1 Oct — the earlier day is used; on that reading, someone who learns the end on 1 Oct still
 had three months, so the deadline is that very day, earlier than three days later). The three days are not moved off a weekend: § 26 Abs. 3
-SGB X may extend them, but registering online or by phone works on any day, so Ordnung keeps the
-earlier date and says so. Without a known end date the three-day rule is used (the earlier of the two).
+SGB X may extend them, but registering online works on any day (the Agentur's phone line is open on
+working days only), so Ordnung keeps the earlier date and says so. Without a known end date the three-day
+rule is used (the earlier of the two). A dismissal without notice period (*fristlos*, also *außerordentlich*
+with an ordinary notice given in the alternative) ends the job when it arrives: the three days count from
+then, and an end the letter gives for the notice in the alternative is only noted (§ 38 Abs. 1 S. 2, 3 SGB III:
+the duty holds even when the dismissal is challenged).
 No postal buffer: it counts the day you register. A date the letter names that is earlier than the law's
 is used; a later one is noted in the receipt next to the law's (earlier) date, which is kept, and the
 date is no longer `high` — the end it counts from may be misread (the same holds for the objection to a
@@ -566,9 +571,12 @@ Ordnung still keeps the to-do and the letter for a notice given in the alternati
 have existed — the safe side), and the card, the ordinary card's step and the objection letter's note say
 when it is excluded: "Object in time anyway if you think those grounds didn't exist, and get advice at
 once." A notice counts as one only when **its own
-quote or the title** says so (*fristlos*, "ohne Einhaltung einer Kündigungsfrist", § 543 or § 569 BGB) —
-never the model's summary or another quote, which may mention a *fristlose Kündigung* the landlord only
-reserves. A notice only called *außerordentlich* ("außerordentliche Kündigung", "kündigen … außerordentlich";
+quote or the title** says so (*fristlos*, "ohne Einhaltung einer Kündigungsfrist") — never the model's summary
+or another quote, which may mention a *fristlose Kündigung* the landlord only reserves. A statute alone (§ 543
+or § 569 BGB; § 626 BGB for a job) makes it only *probably* one: a citation is named in a reservation, a threat
+or a refusal as often as in the notice itself, and any reservation in its sentence ("Eine fristlose Kündigung
+nach § 543 BGB behalten wir uns vor") makes it none. A refusal is no notice either: "von einer fristlosen
+Kündigung sehen wir ab", "verzichten wir", "wir wären … berechtigt". A notice only called *außerordentlich* ("außerordentliche Kündigung", "kündigen … außerordentlich";
 never the adverb of something else, "wegen Ihres außerordentlich störenden Verhaltens") is only *probably*
 one: a special termination with the statutory period is called extraordinary too (§ 573d BGB), so its
 objection to-do and letter are kept and its card says "This may be a notice without notice period". The
@@ -595,7 +603,9 @@ that notice. Whether a to-do carries the notice is read from the to-dos themselv
 none does — a notice without notice period, or one whose end wasn't read — its card is urgent and comes
 first, and the verdict says "get advice now", never "nothing to do". **A notice too short for its period**
 — an ordinary notice ending less than two months after its date, so the objection date counted from that
-end had passed when it was written — usually ends the tenancy at the next permissible date instead. Its
+end had passed when it was written, or ending before the earliest end a notice that arrived when it did can
+have (dated 25 Aug "zum 31.10.", arriving after the third working day of August: 30 Nov at the earliest) —
+usually ends the tenancy at the next permissible date instead. Its
 objection to-do (`bgb_573c_landlord`; `low` until the arrival day is entered) counts back two months from the
 **earliest end a landlord's ordinary notice can have** (§ 573c Abs. 1 S. 1 BGB): the end of the month after
 next when the notice arrived by the third working day of a month (*Werktag*: Saturday counts, BGH VIII ZR
@@ -605,7 +615,9 @@ working day; after five and eight years of tenancy the period is longer (S. 2), 
 later. The card is urgent and says both readings: if the stated end is right, the objection date had passed
 before the letter was written, so the objection can still be raised at the first hearing of an eviction suit
 (§ 574b Abs. 2 S. 2 BGB); if the notice is too short, the objection is due two months before the next
-permissible end and may still be open. A notice given in the alternative (*hilfsweise fristgemäß*) that names
+permissible end and may still be open. For a notice that is short only for its period, the card says that the
+date counted from the stated end may have passed while the one from the next permissible end is still open.
+A notice given in the alternative (*hilfsweise fristgemäß*) that names
 no end of its own (none read, or the immediate one) gets the same to-do, and its card says which end it
 counts from — never the immediate one. So does **any other notice whose end wasn't read** ("fristgerecht zum
 nächstmöglichen Termin", or an end the reading missed): the real end can only be later than the earliest

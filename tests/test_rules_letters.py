@@ -118,6 +118,24 @@ def test_a_court_payment_order_is_recognised_from_a_court_sender() -> None:
     assert routing.letter_kind(extraction) == "court_payment_order"
 
 
+@pytest.mark.parametrize(
+    ("title", "period"),
+    [
+        ("European order for payment (Europäischer Zahlungsbefehl)", "binnen 30 Tagen (Art. 16 EuMahnVO)"),
+        ("Europäischer Zahlungsbefehl", "innerhalb von 30 Tagen"),
+        ("Order for payment", "30 Tage, Verordnung (EG) Nr. 1896/2006"),
+    ],
+)
+def test_a_european_order_for_payment_is_no_mahnbescheid(title: str, period: str) -> None:
+    """Review round 4 of phase 2: a European order for payment was filed as a Mahnbescheid — two weeks, a
+    Widerspruch, an enforcement order after it. It gives 30 days for an Einspruch at the issuing court (Art. 16
+    Abs. 2 VO (EG) 1896/2006), has no Vollstreckungsbescheid, and a late Einspruch needs a review (Art. 20): it
+    keeps the model's kind, dated as a court's letter."""
+    court = ExtractedParty(name="Amtsgericht Wedding", kind="authority")
+    remedy = Remedy(type="einspruch", quote="Einspruch", period_text=period)
+    assert routing.classify_letter(reading(title=title, sender=court, remedy=remedy)) is None
+
+
 def test_an_enforcement_order_wins_over_the_payment_order_it_mentions() -> None:
     extraction = reading(
         title="Vollstreckungsbescheid",
@@ -670,6 +688,46 @@ def test_consent_must_be_asked_for_in_the_letters_own_wording() -> None:
 
 
 @pytest.mark.parametrize(
+    ("quote", "title"),
+    [
+        (
+            "Bitte stimmen Sie der Erhöhung der Nettokaltmiete auf 780 € ab dem 01.12.2026 zu. Die "
+            "Betriebskostenvorauszahlung wird nicht erhöht.",
+            "Mieterhöhungsverlangen",
+        ),
+        (
+            "Bitte stimmen Sie der Erhöhung der Nettokaltmiete auf 780 € ab dem 01.12.2026 zu.",
+            "Rent increase request and adjustment of operating-cost prepayments",
+        ),
+        (
+            "Hiermit verlangen wir Ihre Zustimmung zur Erhöhung der Nettokaltmiete auf 780 €; die Vorauszahlungen "
+            "werden angepasst.",
+            "Mieterhöhung",
+        ),
+        ("Wir bitten Sie, Ihre Zustimmung zu erteilen; die Vorauszahlung wird erhöht.", "Mieterhöhung"),
+        ("Ihre Zustimmung zur Mieterhöhung; die Vorauszahlung wird auf 250 € erhöht.", "Mieterhöhung"),
+        # the increase's own quote asks for consent, whatever statute it names: a § 559 increase never asks
+        ("Die Miete steigt nach § 559 BGB; bitte stimmen Sie der Vergleichsmiete zu.", "Rent increase"),
+    ],
+)
+def test_the_usual_ways_of_asking_for_consent_make_a_rent_increase_request(quote: str, title: str) -> None:
+    """Review round 4 of phase 2: "Bitte stimmen Sie … zu" and "verlangen wir Ihre Zustimmung" were not read as
+    asking for consent, and "die Vorauszahlung wird nicht erhöht" read as a prepayment increase — the letter
+    was not filed as a § 558 request, and its new rent looked like a plain payment."""
+    facts = [ExtractedFact(label="Mietspiegel", value="Mietspiegel 2025", quote="Mietspiegel 2025")]
+    assert routing.classify_letter(_increase(quote, title=title, key_facts=facts)) == "rent_increase"
+
+
+def test_a_prepayment_that_is_not_raised_is_no_cost_increase() -> None:
+    facts = [ExtractedFact(label="Mietspiegel", value="Mietspiegel 2025", quote="Mietspiegel 2025")]
+    # the rent itself rises to the Mietspiegel; nothing in the quote asks for consent, and the prepayment stays
+    stays = _increase("Die Nettokaltmiete steigt; die Vorauszahlung wird nicht erhöht.", key_facts=facts)
+    assert routing.classify_letter(stays) == "rent_increase"
+    raised = _increase("Die Nettokaltmiete steigt; die Vorauszahlung wird ab Januar erhöht.", key_facts=facts)
+    assert routing.classify_letter(raised) is None  # a § 560 adjustment: no consent asked for
+
+
+@pytest.mark.parametrize(
     "text",
     [
         "Die Staffelmiete erhöht sich gemäß Vertrag; Ihre Zustimmung ist nicht nötig.",
@@ -830,7 +888,6 @@ def test_prepayments_or_559_560_without_a_consent_request_are_none(quote: str, t
         ("Modernisierungsmieterhöhung zum 01.01.2027", "Rent increase"),
         ("Die Miete steigt ab 01.01.2027 um 80,00 EUR.", "Rent increase after modernisation"),
         (REQUEST, "Rent increase after modernisation (§ 559 BGB)"),
-        ("Die Miete steigt nach § 559 BGB; bitte stimmen Sie der Vergleichsmiete zu.", "Rent increase"),
     ],
 )
 def test_a_modernisation_increase_without_its_own_consent_request_is_none(quote: str, title: str) -> None:
@@ -1747,6 +1804,70 @@ def test_registration_without_any_start_gives_no_date() -> None:
     assert receipt.due_date is None and receipt.confidence == "low"
 
 
+def test_a_dismissal_without_notice_period_counts_the_registration_from_its_arrival() -> None:
+    """Review round 4 of phase 2: "außerordentlich fristlos, hilfsweise fristgerecht zum 31.12.2026" counted
+    § 38 SGB III from the end given in the alternative (Wed 30 Sep, high) — but a notice without notice period
+    ends the job when it arrives, so the three days of § 38 Abs. 1 S. 2 SGB III count from then (Mon 28 Sep),
+    whether or not the dismissal is challenged (S. 3). The alternative end is only noted."""
+    dismissal = ctx(
+        document_date="2026-09-24",
+        received_date="2026-09-25",
+        received_confirmed=True,
+        end_date="2026-12-31",
+        letter_kind="dismissal",
+    )
+    register = spec(amount=3, unit="days", nature="declaration", legal_basis="§ 38 Abs. 1 SGB III")
+    assert compute_due(register, dismissal).due_date == "2026-09-30"  # an ordinary notice to 31 Dec
+    fristlos = compute_due(register, replace(dismissal, ends_on_arrival=True))
+    assert fristlos.due_date == "2026-09-28"
+    assert "without notice period arrived (Fri 25 Sep 2026)" in fristlos.summary
+    assert any("fristlos) ends the job when it arrives" in step.label for step in fristlos.steps)
+    assert any("names Thu 31 Dec 2026" in w and "§ 38 Abs. 1 S. 3 SGB III" in w for w in fristlos.warnings)
+    # the letter's own "three months before the end" counts from the arrival too
+    wording = spec(
+        anchor="explicit_date",
+        anchor_date="2026-12-31",
+        amount=-3,
+        unit="months",
+        nature="declaration",
+        text="sich spätestens drei Monate vor Beendigung arbeitsuchend zu melden",
+    )
+    assert compute_due(wording, replace(dismissal, ends_on_arrival=True)).due_date == "2026-09-28"
+    # no end given: nothing to note
+    bare = compute_due(register, replace(dismissal, ends_on_arrival=True, end_date=None))
+    assert bare.due_date == "2026-09-28" and not any("names" in w for w in bare.warnings)
+    assert not any("don't know when the job ends" in w for w in bare.warnings)
+
+
+def test_registering_on_a_weekend_is_said_to_work_online_only() -> None:
+    """Review round 4 of phase 2: the Agentur's phone line is open on working days only."""
+    weekend = compute_due(
+        spec(amount=3, unit="days", nature="declaration", legal_basis="§ 38 SGB III"),
+        ctx(document_date="2026-09-30", received_date="2026-10-01", received_confirmed=True),
+    )
+    [note] = [w for w in weekend.warnings if "§ 26 Abs. 3 SGB X" in w]
+    assert "registering online works on any day" in note and "phone" not in note
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "Hiermit kündigen wir das Arbeitsverhältnis außerordentlich fristlos, hilfsweise fristgerecht zum "
+        "31.12.2026.",
+        "Wir kündigen das Arbeitsverhältnis außerordentlich, hilfsweise ordentlich zum 31.12.2026.",
+        "Wir kündigen das Arbeitsverhältnis gemäß § 626 BGB, hilfsweise zum 31.12.2026.",
+    ],
+)
+def test_a_dismissal_without_notice_period_is_recognised_like_a_landlords(quote: str) -> None:
+    change = ExtractedChange(type="termination_by_provider", effective_date="2026-12-31", quote=quote)
+    dismissal = reading(kind="employment", change=change, document_date="2026-09-24")
+    assert routing.notice_without_period(dismissal) is not None
+    ordinary = change.model_copy(
+        update={"quote": "Wir kündigen das Arbeitsverhältnis fristgerecht zum 31.12.2026."}
+    )
+    assert routing.notice_without_period(reading(kind="employment", change=ordinary)) is None
+
+
 # ------------------------------------------------------------------------------------ tenancy
 
 
@@ -1962,6 +2083,16 @@ def test_withdrawal_period_helpers() -> None:
     assert long_withdrawal_end(D("2024-02-16")) == (D("2025-03-01"), True)
     assert limitation_end(D("2022-06-15")) == D("2025-12-31")
     assert latest_barred_year(D("2026-09-26")) == 2022
+
+
+def test_a_withdrawal_cites_the_bgbs_counting_rule_only() -> None:
+    """Review round 4 of phase 2: a consumer's § 355 BGB period cited the AO, VwVfG and SGB X for its start."""
+    receipt = compute_due(
+        spec(amount=14, unit="days", nature="declaration", text="Widerrufsfrist"),
+        ctx(document_date="2026-09-20", received_date="2026-09-22", received_confirmed=True),
+    )
+    [start] = [step for step in receipt.steps if step.rule_id == "bgb_187_1"]
+    assert start.citation == "§ 187 Abs. 1 BGB"
 
 
 def test_withdrawal_receipts() -> None:
@@ -2226,6 +2357,47 @@ def test_paying_the_arrears_names_what_must_be_paid_and_the_public_body_undertak
     assert "ARREARS_CURE" in pending.update and pending.source.startswith("https://")
 
 
+def test_a_notice_too_short_for_its_period_counts_from_its_arrival() -> None:
+    """Review round 4 of phase 2: an ordinary notice dated 25 Aug 2026 "zum 31.10.2026" that arrived on Fri
+    28 Aug (after the third working day of August) can end the tenancy on 30 Nov at the earliest (§ 573c Abs. 1
+    BGB). Only the stated end's objection (Mon 31 Aug, passed three days after it arrived) was filed, and the
+    card said it had passed; the objection from the end such a notice usually has instead is open until 30 Sep."""
+    end, written, arrived = D("2026-10-31"), D("2026-08-25"), D("2026-08-28")
+    assert routing.short_notice(end, letter_date=written, arrived=arrived) == "short"
+    assert (
+        routing.short_notice(end, letter_date=written) == "short"
+    )  # arrived late in the month: from its date too
+    assert routing.short_notice(D("2026-11-30"), letter_date=written, arrived=arrived) is None
+    assert routing.short_notice(D("2026-10-31"), letter_date=D("2026-08-03"), arrived=D("2026-08-04")) is None
+    assert routing.short_notice(D("2026-10-15"), letter_date=D("2026-09-20")) == "passed"
+    assert routing.short_notice(None, letter_date=written) is None
+    assert routing.short_notice(end, letter_date=None) is None
+    [objection] = routing.derived_deadlines("landlord_notice", end=end, letter_date=written, arrived=arrived)
+    assert objection.spec.legal_basis == "§ 574b Abs. 2, § 573c Abs. 1 BGB"
+    receipt = compute_due(
+        objection.spec,
+        ctx(
+            document_date="2026-08-25",
+            received_date="2026-08-28",
+            received_confirmed=True,
+            today="2026-09-02",
+            letter_kind="landlord_notice",
+        ),
+    )
+    assert receipt.due_date == "2026-09-30"
+    card = letter_advice("landlord_notice", today=D("2026-09-02"), short_period=True)
+    assert card is not None and card.urgent
+    assert card.steps[0].startswith("Your tenancy would end earlier than a landlord's notice")
+    assert "may still be open" in card.steps[0] and "(§ 573c Abs. 1 BGB)" in card.steps[0]
+    alternative = letter_advice(
+        "landlord_notice", today=D("2026-09-02"), extraordinary=True, alternative=True, short_period=True
+    )
+    assert (
+        alternative is not None
+        and "counts back two months from that earliest end" in alternative.facts[0].text
+    )
+
+
 def test_a_short_notice_names_the_usual_period_not_a_minimum() -> None:
     """Final review 2: § 573c BGB sets about three months (and less for a furnished room, Abs. 3), no fixed
     minimum."""
@@ -2269,6 +2441,26 @@ def test_a_notice_hilfsweise_with_notice_period_keeps_its_objection_to_do() -> N
         "Wir kündigen fristlos, für den Fall der Unwirksamkeit zum nächstmöglichen Termin.",
         "Wir kündigen fristlos, für den Fall, dass die fristlose Kündigung unwirksam ist, zum 31.1.27.",
         "We terminate without notice, at the latest at the next possible date.",
+        # review round 4 of phase 2: "zum/mit Ablauf des …", abbreviated or ISO dates, a month's end, the next
+        # permissible date in two words and the end of the notice period
+        "Wir kündigen das Mietverhältnis fristlos, spätestens zum Ablauf des 31.12.2026.",
+        "Wir kündigen das Mietverhältnis fristlos, spätestens mit Ablauf des 31. Dezember 2026.",
+        "Wir kündigen das Mietverhältnis fristlos, jedenfalls aber zum nächsten zulässigen Termin.",
+        "Wir kündigen das Mietverhältnis fristlos, spätestens zum nächsten möglichen Termin.",
+        "Wir kündigen das Mietverhältnis fristlos und vorsorglich zum Ende der gesetzlichen Kündigungsfrist.",
+        "Wir kündigen fristlos, vorsorglich zum Ablauf des 31.01.2027.",
+        "Wir kündigen fristlos, zugleich vorsorglich mit Ablauf des 31.01.2027.",
+        "Wir kündigen fristlos, vorsorglich zum 31. Jan. 2027.",
+        "Wir kündigen fristlos, vorsorglich auch zum Ende Januar 2027.",
+        "Wir kündigen fristlos, vorsorglich per Ende Januar 2027.",
+        "Wir kündigen fristlos, vorsorglich zum Monatsende Januar 2027.",
+        "Wir kündigen fristlos, vorsorglich zum 2027-01-31.",
+        "Wir kündigen fristlos. Ersatzweise kündigen wir zum Ablauf des 31.01.2027.",
+        # the words alone, with no end (review round 4: each branch needs its own case)
+        "Wir kündigen fristlos. Ersatzweise kündigen wir fristgerecht.",
+        "Wir kündigen fristlos, andernfalls ordentlich.",
+        "Wir kündigen fristlos. Sollte die fristlose Kündigung unwirksam sein, kündigen wir ordentlich.",
+        "Wir kündigen fristlos, vorsorglich zum 30.09.2026.",
     ],
 )
 @pytest.mark.parametrize("end", [None, "2026-09-30"])
@@ -2301,6 +2493,75 @@ def test_a_notice_without_notice_period_that_names_a_later_end_gives_one_in_the_
 def test_an_end_of_the_notice_itself_gives_no_notice_in_the_alternative(quote: str, letter_date: str) -> None:
     notice = _notice(quote, document_date=letter_date)
     assert not routing.alternative_notice(notice)
+
+
+@pytest.mark.parametrize(
+    ("quote", "end"),
+    [
+        (
+            "Hiermit kündigen wir das Mietverhältnis unter Einhaltung der vertraglichen Kündigungsfrist. Eine "
+            "fristlose Kündigung nach § 543 BGB behalten wir uns ausdrücklich vor.",
+            None,
+        ),
+        (
+            "Hiermit kündigen wir das Mietverhältnis wegen Eigenbedarfs. Eine fristlose Kündigung gemäß § 543 Abs. 2 "
+            "Nr. 3 BGB bleibt ausdrücklich vorbehalten.",
+            None,
+        ),
+        (
+            "Hiermit kündigen wir das Mietverhältnis zum 31.10.2026. Ein Recht zur fristlosen Kündigung nach § 543 "
+            "BGB behalten wir uns vor.",
+            "2026-10-31",
+        ),
+        (
+            "Hiermit kündigen wir das Mietverhältnis. Eine Kündigung nach § 543 BGB behalten wir uns vor.",
+            None,
+        ),
+        (
+            "Wir behalten uns eine Kündigung nach § 569 Abs. 3 BGB vor; heute kündigen wir zum 31.10.2026.",
+            None,
+        ),
+        (
+            "Hiermit kündigen wir das Mietverhältnis zum 31.10.2026. Von einer fristlosen Kündigung sehen wir ab.",
+            None,
+        ),
+        (
+            "Hiermit kündigen wir das Mietverhältnis zum 31.10.2026. Auf eine fristlose Kündigung verzichten wir.",
+            None,
+        ),
+        ("Wir kündigen das Mietverhältnis. Von einer fristlosen Kündigung sehen wir vorerst ab.", None),
+        ("Wir verzichten auf eine fristlose Kündigung und kündigen zum 31.10.2026.", "2026-10-31"),
+        ("Wir wären zur fristlosen Kündigung berechtigt; wir kündigen zum 31.10.2026.", "2026-10-31"),
+        ("Das Recht, fristlos zu kündigen, bleibt vorbehalten. Wir kündigen zum 31.10.2026.", "2026-10-31"),
+    ],
+)
+def test_a_notice_that_reserves_or_refuses_one_without_notice_period_is_an_ordinary_one(
+    quote: str, end: str | None
+) -> None:
+    """Review round 4 of phase 2: a § 543/§ 569 BGB citation inside a reservation, and a refusal ("sehen wir
+    ab", "verzichten wir"), made an ordinary notice "certainly fristlos" — no objection to-do, the letter
+    refused. The reservation now governs a citation too (ADR 0010 §4)."""
+    notice = _notice(quote, end=end)
+    assert routing.notice_without_period(notice) is None
+    assert not routing.objection_excluded(notice)
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "Hiermit kündigen wir das Mietverhältnis gemäß § 543 Abs. 2 Nr. 3 BGB.",
+        "Wir kündigen das Mietverhältnis nach § 569 Abs. 3 BGB wegen Zahlungsverzugs.",
+    ],
+)
+def test_a_statute_alone_makes_a_notice_only_probably_one_without_notice_period(quote: str) -> None:
+    """Review round 4 of phase 2: a citation is named in reservations, threats and refusals as often as in the
+    notice itself, so alone it keeps the objection to-do and letter (the card says it may be one)."""
+    notice = _notice(quote)
+    assert routing.notice_without_period(notice) == "probable"
+    assert not routing.objection_excluded(notice) and not routing.alternative_notice(notice)
+    later = _notice(f"{quote} Hilfsweise zum 31.01.2027.")
+    assert routing.alternative_notice(later)
+    assert routing.alternative_notice(_notice("Wir kündigen gemäß § 543 BGB, spätestens zum 31.01.2027."))
 
 
 def test_without_the_letters_date_any_later_end_gives_notice_in_the_alternative() -> None:
@@ -3735,12 +3996,28 @@ def test_the_kschg_period_counts_a_regional_holiday_only_where_the_action_may_be
         private_sender=True,
         letter_kind="dismissal",
     )
-    for home in (None, "BE"):
-        elsewhere = compute_due(spec, replace(ctx, recipient_region=home))
-        assert elsewhere.due_date == "2027-11-01" and elsewhere.confidence != "high"
-        assert any("1 Nov 2027 is a public holiday in some Länder" in w for w in elsewhere.warnings)
+    unknown = compute_due(spec, replace(ctx, recipient_region=None))
+    assert unknown.due_date == "2027-11-01" and unknown.confidence != "high"
+    assert any("1 Nov 2027 is a public holiday in some Länder" in w for w in unknown.warnings)
+    assert unknown.holiday_calendar == "Germany (nationwide holidays only)"
+    # review round 4 of phase 2: two Länder given count the holidays both have — not "region unknown"
+    elsewhere = compute_due(spec, replace(ctx, recipient_region="BE"))
+    assert elsewhere.due_date == "2027-11-01" and elsewhere.confidence != "high"
+    assert not any("Holiday region unknown" in w for w in elsewhere.warnings)
+    assert any(
+        w.startswith(
+            "Mon 1 Nov 2027 is a public holiday in Bayern but not in Berlin. Only a holiday both Länder"
+        )
+        for w in elsewhere.warnings
+    )
+    assert elsewhere.holiday_calendar == "Berlin and Bayern (only holidays both have)"
     same_land = compute_due(spec, replace(ctx, recipient_region="BY"))
     assert same_land.due_date == "2027-11-02"
+    # All Saints' Day in both Länder: the action can't be filed that day at either court
+    both = compute_due(spec, replace(ctx, region="NW", recipient_region="RP"))
+    assert both.due_date == "2027-11-02"
+    assert both.holiday_calendar == "Nordrhein-Westfalen and Rheinland-Pfalz (only holidays both have)"
+    assert not any("public holiday in" in w for w in both.warnings)
 
 
 def test_a_statement_dated_at_the_end_of_the_calendar_claims_nothing() -> None:

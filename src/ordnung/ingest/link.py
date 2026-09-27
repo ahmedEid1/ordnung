@@ -21,6 +21,7 @@ the pipeline's single ledger transaction.
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
@@ -523,9 +524,12 @@ def reminder_covers(reminder: Document, other: Document) -> bool:
     return not (other.doc_date and reminder.doc_date and other.doc_date > reminder.doc_date)
 
 
-def link_dunning(store: Store, case: Case, extraction: DocumentExtraction, doc_id: str) -> list[str]:
+def link_dunning(
+    store: Store, case: Case, extraction: DocumentExtraction, doc_id: str, *, kind: str | None = None
+) -> list[str]:
     """Warn on a payment reminder about an invoice that is already filed (its payment is never closed;
-    views and triggers leave it to the reminder while the reminder is live, see :func:`reminder_covers`)."""
+    views and triggers leave it to the reminder while the reminder is live, see :func:`reminder_covers`),
+    worded by the kind the letter is filed as (``kind``, default: the reading's, :func:`reminder_warning`)."""
     numbers = invoice_numbers(extraction.references)
     if extraction.kind != "dunning" or not numbers:
         return []
@@ -535,11 +539,41 @@ def link_dunning(store: Store, case: Case, extraction: DocumentExtraction, doc_i
             normalize_identifier(r.value) in numbers for r in invoice.references
         ):
             continue
-        warnings.append(
-            f"This is a payment reminder about “{invoice.title or invoice.filename}”, which is still open. "
-            "Pay the amount asked here once — not both."
-        )
-    return warnings
+        warnings.append(reminder_warning(invoice.title or invoice.filename, kind or extraction.kind))
+    return [warning for warning in warnings if warning]
+
+
+_REMINDER_WARNINGS: dict[str, str] = {
+    "dunning": "This is a payment reminder about “{title}”, which is still open. Pay the amount asked here once — "
+    "not both.",
+    "court_payment_order": "This court order is about “{title}”, which is still open. If you pay, pay the amount "
+    "this order asks once — not the invoice as well.",
+    "enforcement_order": "This court order is about “{title}”, which is still open. If you pay, pay the amount "
+    "this order asks once — not the invoice as well.",
+}
+"""The "pay once" warning of a letter about an open invoice, by the kind it is filed as (none for other kinds)."""
+_WARNED_TITLE = re.compile(
+    r"^This (?:is a payment reminder|court order is) about “(?P<title>.*)”, which is still open\. "
+)
+
+
+def reminder_warning(title: str, kind: str | None) -> str:
+    """The "pay once" warning of a letter about the open invoice ``title``, worded for its kind (empty for a
+    kind it doesn't apply to: a reminder re-filed as, say, a landlord's notice)."""
+    return _REMINDER_WARNINGS.get(kind or "", "").format(title=title)
+
+
+def rewarn_for_kind(warnings: Sequence[str], kind: str | None) -> list[str]:
+    """A letter's warnings after it was filed as ``kind``: its "pay once" warning worded for that kind, or left
+    out (review round 4 of phase 2: a reminder re-filed as a court order still said "This is a payment
+    reminder")."""
+    kept: list[str] = []
+    for warning in warnings:
+        found = _WARNED_TITLE.match(warning)
+        reworded = reminder_warning(found.group("title"), kind) if found else warning
+        if reworded:
+            kept.append(reworded)
+    return kept
 
 
 # --------------------------------------------------------------------------------------------------
@@ -581,5 +615,5 @@ def link_document(
             store, document=document, extraction=extraction, party=result.party
         )
         result.warnings.extend(warnings)
-    result.warnings.extend(link_dunning(store, result.case, extraction, document.id))
+    result.warnings.extend(link_dunning(store, result.case, extraction, document.id, kind=document.kind))
     return result

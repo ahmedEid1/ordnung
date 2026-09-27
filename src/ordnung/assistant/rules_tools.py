@@ -432,7 +432,13 @@ class RulesTools:
         arrival, arrival_from = (
             (None, None)
             if unreadable or late
-            else arrival_day(checked, receipt, letter_day=letter_day, received=received, stated=stated)
+            else arrival_day(
+                arrival_counted(checked, receipt),
+                receipt,
+                letter_day=letter_day,
+                received=received,
+                stated=stated,
+            )
         )
         other = compute_due(parsed, replace(context, today=other_day)) if other_day is not None else None
         return {
@@ -799,6 +805,22 @@ def arrival_day(
     return None, None
 
 
+#: The steps of the letter rules that count from the letter's arrival whatever the spec's anchor
+#: (:func:`ordnung.rules.letters._arrival`): a dismissal's registration, a rent increase's consent and new rent,
+#: and a landlord's notice counted from its earliest end.
+_ARRIVAL_STEPS = ("sgb3_38", "bgb_558b", "bgb_573c_landlord")
+
+
+def arrival_counted(spec: DateSpec, receipt: ComputationReceipt) -> DateSpec:
+    """``spec`` as the engine counted it for the arrival day ``assumed`` reports: a letter rule that counts
+    from the letter's arrival (:data:`_ARRIVAL_STEPS`) does so whatever the anchor — a § 38 SGB III date
+    anchored on the job's end, a § 558b BGB date on the letter's date (review round 4 of phase 2: the arrival
+    they counted from was reported as "not used")."""
+    if not any(step.rule_id in _ARRIVAL_STEPS for step in receipt.steps) or spec.anchor == "receipt":
+        return spec
+    return spec.model_copy(update={"type": "relative", "anchor": "receipt", "anchor_date": None})
+
+
 def court_order_kind(
     spec: DateSpec, sender_name: str | None, sender_kind: str | None, remedy_type: str | None
 ) -> str | None:
@@ -1002,7 +1024,8 @@ def _holidays_from(payer_pays: bool, rule_ids: Sequence[str] = ()) -> str:
     if COURT_ACTION_RULE in rule_ids:
         return (
             "region and recipient_region: the action may be filed at the labour court of the employer's seat "
-            "or of the place of work (§ 48 Abs. 1a ArbGG), so only a holiday both Länder have counts"
+            "or of the place of work (§ 48 Abs. 1a ArbGG), so only a holiday both Länder have counts (with "
+            "either unknown, nationwide holidays only)"
         )
     return "region: the Land where the deadline is met (the sender's seat)"
 
@@ -1106,7 +1129,21 @@ def deadline_hints(
         )
     if _warned(receipt, REGION_UNKNOWN, start=True):
         way = "earlier" if _warned(receipt, REGION_EARLIER) else "later"
-        if spec.nature == "payment" and scope is None:  # the engine's place_region: the payer's Land
+        if COURT_ACTION_RULE in receipt.rule_ids:  # the engine's place_region: both Länder (review round 4)
+            missing = [
+                f"{name} — {what}"
+                for name, value, what in (
+                    ("region", region, "the Land of the employer's seat"),
+                    ("recipient_region", recipient_region, "the Land where the person lives or works"),
+                )
+                if value is None
+            ]
+            hints.append(
+                f"Pass {' and '.join(missing)}: the action may be filed at the labour court of either "
+                "(§ 48 Abs. 1a ArbGG), so only a holiday both Länder have counts. A regional holiday may make "
+                f"this date {way}."
+            )
+        elif spec.nature == "payment" and scope is None:  # the engine's place_region: the payer's Land
             if recipient_region is None:
                 hints.append(
                     "Pass recipient_region — the Land where the payer lives: a payment to a company or "

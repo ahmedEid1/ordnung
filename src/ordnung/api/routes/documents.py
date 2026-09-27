@@ -38,7 +38,7 @@ from ordnung.ingest.intake import (
     safe_filename,
     sniff_mime,
 )
-from ordnung.ingest.link import DUNNING_ITEM_NOTE
+from ordnung.ingest.link import DUNNING_ITEM_NOTE, rewarn_for_kind
 from ordnung.ingest.pipeline import add_file, ledger_lock, reprocess
 from ordnung.ingest.plan import KIND_CHOSEN, is_statement, kind_chosen
 from ordnung.llm.replay import ReplayBackend
@@ -58,8 +58,13 @@ from ordnung.models import (
 )
 from ordnung.rules.advice import letter_advice, settles
 from ordnung.rules.deadlines import parse_date
-from ordnung.rules.routing import alternative_notice, announced_end, is_labour_court, notice_without_period
-from ordnung.rules.tenancy import notice_objection_deadline
+from ordnung.rules.routing import (
+    alternative_notice,
+    announced_end,
+    is_labour_court,
+    notice_without_period,
+    short_notice,
+)
 from ordnung.secretary.triggers import Ledger
 
 router = APIRouter(tags=["documents"])
@@ -226,6 +231,10 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
     party = store.get_party(document.party_id) if document.party_id else None
     sender = party or (extraction.sender if extraction else None)
     items = store.list_items(doc_id=document.id)
+    region = store.get_profile().known_region
+    short = short_notice(
+        end, letter_date=letter_date, arrived=parse_date(document.received_date), region=region
+    )
     card = partial(
         letter_advice,
         kind,
@@ -233,7 +242,7 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
         arrived=arrived,
         arrival_confirmed=document.received_date is not None,
         letter_date=letter_date,
-        region=store.get_profile().known_region,
+        region=region,
         old_amount=change.old_amount if change is not None else None,
         new_amount=change.new_amount if change is not None else None,
         # the title may name the billing year ("Operating-cost statement 2025")
@@ -246,9 +255,8 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
             item.computation is not None and "bgb_574b" in item.computation.rule_ids for item in items
         ),
         end_unknown=notice is not None and end is None,
-        objection_passed=end is not None
-        and letter_date is not None
-        and notice_objection_deadline(end) < letter_date,
+        objection_passed=short == "passed",
+        short_period=short == "short",
         dealt_with=DEALT_WITH_TAG in document.tags,
     )
     advice = card()
@@ -430,6 +438,10 @@ def _patch(
         kind_changed = "kind" in changes and (before.kind != document.kind or not kind_chosen(store, before))
         dates_changed = bool({"received_date", "doc_date"} & changes.keys()) or confirmed is True
         if kind_changed:
+            # a warning said of the old kind ("This is a payment reminder about …") is said of the new one
+            warnings = rewarn_for_kind(document.warnings, document.kind)
+            if warnings != document.warnings:
+                document = store.update_document(doc_id, warnings=warnings)
             # a kind the person chose is kept when the letter is read again (ingest.plan.corrections)
             store.log_activity(
                 KIND_CHOSEN,

@@ -771,6 +771,80 @@ def test_holidays_from_follows_the_rule_applied() -> None:
     assert dismissal["assumed"]["holidays_from"].startswith("region and recipient_region: the action may be")
 
 
+def test_a_court_action_counts_the_holidays_both_lander_have() -> None:
+    """Review round 4 of phase 2: with region NW and recipient_region RP the tool said "nationwide holidays
+    only" and "Holiday region unknown", and gave Mon 1 Nov 2027 — All Saints' Day in both Länder, so the
+    policy it states gives Tue 2 Nov. With one Land missing it asks for it."""
+    spec = {
+        **RECEIPT,
+        "amount": 3,
+        "unit": "weeks",
+        "legal_basis": "§ 4 KSchG",
+        "text": "Klage binnen drei Wochen",
+    }
+    tools = at("2027-10-20")
+    both = tools.compute_deadline(
+        spec, sender_kind="employer", region="NW", recipient_region="RP", received_date="2027-10-11"
+    )
+    assert both["due_date"] == "2027-11-02"
+    assert (
+        both["assumed"]["holiday_calendar"]
+        == "Nordrhein-Westfalen and Rheinland-Pfalz (only holidays both have)"
+    )
+    assert not any("Holiday region unknown" in w for w in both["warnings"]) and not both["hints"]
+    corpus = at("2027-05-10").compute_deadline(
+        spec, sender_kind="employer", region="BY", recipient_region="BE", received_date="2027-05-06"
+    )
+    assert corpus["due_date"] == "2027-05-27"
+    assert any("public holiday in Bayern but not in Berlin" in w for w in corpus["warnings"])
+    assert not any("Holiday region unknown" in w for w in corpus["warnings"])
+    one = at("2027-05-10").compute_deadline(
+        spec, sender_kind="employer", region="BY", received_date="2027-05-06"
+    )
+    assert one["due_date"] == "2027-05-27" and any("Holiday region unknown" in w for w in one["warnings"])
+    assert _hint(one, "Pass recipient_region — the Land where the person lives or works: the action may be")
+    none = at("2027-05-10").compute_deadline(spec, sender_kind="employer", received_date="2027-05-06")
+    assert _hint(none, "Pass region — the Land of the employer's seat and recipient_region")
+
+
+def test_the_arrival_a_letter_rule_counted_from_is_reported_as_used() -> None:
+    """Review round 4 of phase 2: § 38 SGB III (anchored on the job's end) and § 558b BGB (on the letter's date)
+    count from the arrival, but ``assumed`` said the arrival day given was not used."""
+    tools = at("2026-09-27")
+    registration = tools.compute_deadline(
+        {
+            "type": "relative",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-10-31",
+            "amount": -3,
+            "unit": "months",
+            "nature": "declaration",
+            "legal_basis": "§ 38 SGB III",
+            "text": "arbeitsuchend melden",
+        },
+        received_date="2026-09-25",
+    )
+    assert registration["due_date"] == "2026-09-28"
+    assert registration["assumed"]["received_date"] == "2026-09-25"
+    assert registration["assumed"]["received_date_not_used"] is None
+    consent_spec = {
+        "type": "relative",
+        "anchor": "document_date",
+        "amount": 2,
+        "unit": "months",
+        "nature": "declaration",
+        "legal_basis": "§ 558b BGB",
+        "text": "Zustimmung",
+    }
+    consent = tools.compute_deadline(consent_spec, document_date="2026-09-24", received_date="2026-09-26")
+    assert consent["assumed"]["received_date"] == "2026-09-26"
+    assert consent["assumed"]["received_date_from"] == "received_date"
+    assert consent["assumed"]["received_date_not_used"] is None
+    unknown = tools.compute_deadline(consent_spec, document_date="2026-09-24")
+    assert unknown["assumed"]["received_date"] == "2026-09-24"
+    assert unknown["assumed"]["received_date_from"].startswith("document_date: assumed")
+
+
 def test_a_stated_posting_day_without_the_letters_date_is_not_trusted_blindly() -> None:
     """Reviewer repro (benchmark letter test-tax_assessment-D1): the engine counts from the letter's date
     when a stated posting day is later. Leaving the letter's date out must not lift that check silently:

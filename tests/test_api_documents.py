@@ -188,6 +188,34 @@ async def test_patch_document_fields(data_dir: Path) -> None:
         assert (await api.client.patch("/api/documents/doc_nothing", json={"title": "x"})).status_code == 404
 
 
+async def test_a_reminders_pay_once_warning_follows_the_kind_it_is_filed_as(data_dir: Path) -> None:
+    """Review round 4 of phase 2: a reminder re-filed as a court order still said "This is a payment reminder
+    about …" in its Please-check card: the warning is said of the kind the letter is filed as, or dropped."""
+    from ordnung.ingest.link import reminder_warning
+
+    async with api_for(data_dir) as api:
+        doc_id = await _read_letter(api, INVOICE_LETTER.pdf())
+        other = "Keep the envelope."
+        api.ctx.store.update_document(
+            doc_id,
+            kind="dunning",
+            warnings=[reminder_warning("TechMarkt invoice 2026-118", "dunning"), other],
+        )
+        filed = await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "court_payment_order"})
+        warnings = filed.json()["warnings"]
+        assert warnings == [
+            "This court order is about “TechMarkt invoice 2026-118”, which is still open. If you pay, pay the amount "
+            "this order asks once — not the invoice as well.",
+            other,
+        ]
+        back = await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "dunning"})
+        assert back.json()["warnings"][0].startswith(
+            "This is a payment reminder about “TechMarkt invoice 2026-118”"
+        )
+        gone = await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "landlord_notice"})
+        assert gone.json()["warnings"] == [other]
+
+
 async def test_confirmed_arrival_date_recomputes_the_to_dos(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         doc_id = await _read_letter(api, FINE_LETTER.pdf())

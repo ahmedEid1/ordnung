@@ -411,6 +411,68 @@ def _notice(quote: str, end: str) -> DocumentExtraction:
     return extraction([], change={"type": "termination_by_provider", "effective_date": end, "quote": quote})
 
 
+def test_a_dismissal_without_notice_period_ends_the_job_on_arrival() -> None:
+    """Review round 4 of phase 2: "außerordentlich fristlos, hilfsweise fristgerecht zum 31.12.2026" counted the
+    § 38 SGB III registration from the end given in the alternative (Wed 30 Sep, high) — the job ends when a
+    notice without notice period arrives, so the three days count from then (Mon 28 Sep)."""
+    from ordnung.ingest.plan import law_deadlines
+    from ordnung.rules import compute_due
+
+    quote = "Hiermit kündigen wir das Arbeitsverhältnis außerordentlich fristlos, hilfsweise fristgerecht zum 31.12.2026."
+    reading = extraction(
+        [],
+        document_date="2026-09-24",
+        sender={"name": "Muster GmbH", "kind": "employer"},
+        change={"type": "termination_by_provider", "effective_date": "2026-12-31", "quote": quote},
+    ).model_copy(update={"kind": "employment"})
+    document = Document(
+        id="doc_x", sha256="a" * 64, filename="x.pdf", mime="application/pdf", file_path="x",
+        received_date="2026-09-25", doc_date="2026-09-24", created_at="2026-09-25T00:00:00",
+        updated_at="2026-09-25T00:00:00",
+    )  # fmt: skip
+    ctx = rule_context(None, document, reading, date(2026, 9, 26), pages=[(1, quote, [], "text")])
+    assert ctx.letter_kind == "dismissal" and ctx.ends_on_arrival
+    dates = {
+        entry.rule_id: compute_due(entry.spec, ctx).due_date
+        for entry in law_deadlines("dismissal", reading, ctx)
+    }
+    assert dates == {"kschg_4": "2026-10-16", "sgb3_38": "2026-09-28"}
+    ordinary = reading.model_copy(
+        update={
+            "change": reading.change.model_copy(update={"quote": "Wir kündigen fristgerecht zum 31.12.2026."})
+        }
+    )
+    assert not rule_context(None, document, ordinary, date(2026, 9, 26)).ends_on_arrival
+    # only a dismissal: a landlord's notice without notice period keeps its end (the objection counts from it)
+    notice = reading.model_copy(update={"kind": "rent_lease", "sender": None})
+    assert not rule_context(None, document, notice, date(2026, 9, 26)).ends_on_arrival
+
+
+def test_a_notice_too_short_for_its_period_counts_its_objection_from_the_earliest_end() -> None:
+    """Review round 4 of phase 2: a notice dated 25 Aug "zum 31.10.2026" that arrived on 28 Aug can end the
+    tenancy on 30 Nov at the earliest (§ 573c Abs. 1 BGB): the law's objection counts back from that end."""
+    from ordnung.ingest.plan import law_deadlines
+
+    quote = "Hiermit kündigen wir das Mietverhältnis zum 31.10.2026."
+    reading = extraction(
+        [],
+        document_date="2026-08-25",
+        change={"type": "termination_by_provider", "effective_date": "2026-10-31", "quote": quote},
+    ).model_copy(update={"kind": "rent_lease"})
+    ctx = RuleContext(
+        today=date(2026, 9, 2),
+        document_date=date(2026, 8, 25),
+        received_date=date(2026, 8, 28),
+        received_confirmed=True,
+        end_date=date(2026, 10, 31),
+    )
+    [objection] = law_deadlines("landlord_notice", reading, ctx)
+    assert objection.spec.legal_basis == "§ 574b Abs. 2, § 573c Abs. 1 BGB"
+    early = RuleContext(today=date(2026, 8, 5), document_date=date(2026, 8, 3), end_date=date(2026, 10, 31))
+    [stated] = law_deadlines("landlord_notice", reading, early)
+    assert stated.spec.anchor_date == "2026-10-31"
+
+
 def test_the_end_a_termination_announces_is_grounded_like_an_items_date() -> None:
     quote = "hiermit kündigen wir das Mietverhältnis fristgerecht zum 31.03.2027."
     page = (1, f"Hausverwaltung\nMietende: 31.03.2027\n{quote}", [], "text")

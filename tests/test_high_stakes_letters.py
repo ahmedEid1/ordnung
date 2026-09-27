@@ -641,6 +641,20 @@ SHORT_NOTICE = _notice(
     "hiermit kündigen wir das Mietverhältnis fristgerecht zum 31.10.2026.",
     end="2026-10-31",
 )
+#: Review round 4 of phase 2: an ordinary notice dated 25 Aug "zum 31.10.2026" — more than two months away,
+#: but earlier than a notice arriving after the third working day of August can end the tenancy (30 Nov).
+SHORT_PERIOD_NOTICE = Letter(
+    marker="Kuendigung zu kurz",
+    pages=(("Hausverwaltung Muster GmbH", "SPECIMEN", "Kuendigung zu kurz", "zum 31.10.2026"),),
+    payload={
+        **_notice(
+            "x", "hiermit kündigen wir das Mietverhältnis fristgerecht zum 31.10.2026.", end="2026-10-31"
+        ).payload,
+        "document_date": "2026-08-25",
+    },
+)
+
+
 OBJECTION_BY = "Ein Widerspruch muss uns bis spätestens 31.01.2027 in Textform zugehen."
 #: Final review 1: a notice whose end the reading missed, but whose own objection date it read.
 OBJECTION_DATE_ONLY = Letter(
@@ -803,6 +817,7 @@ LETTERS = (
     RENT_INCREASE,
     RENT_INCREASE_CURRENT,
     SHORT_NOTICE,
+    SHORT_PERIOD_NOTICE,
     OBJECTION_DATE_ONLY,
     COURT_REQUEST,
     LATE_STATEMENT,
@@ -1484,6 +1499,28 @@ async def test_a_notice_whose_objection_date_had_passed_is_urgent_and_says_why(d
         await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-10-06"})
         later = api.ctx.store.get_item(objection["id"])
         assert later is not None and later.due_date == "2026-11-30"
+
+
+async def test_a_notice_too_short_for_its_period_keeps_the_objection_that_is_still_open(
+    data_dir: Path,
+) -> None:
+    """Review round 4 of phase 2: only the stated end's objection (Mon 31 Aug, passed) was filed and the card
+    said it had passed, though the objection from the end such a notice usually has (30 Nov) is open until
+    30 Sep. The to-do counts back from that end, and the card says why, urgently."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, SHORT_PERIOD_NOTICE)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "landlord_notice"
+        [objection] = detail["items"]
+        assert objection["origin"] == "rule" and objection["due_date"] == "2026-09-30"
+        assert "bgb_573c_landlord" in objection["computation"]["rule_ids"]
+        advice = detail["advice"]
+        assert advice["urgent"]
+        assert advice["steps"][0].startswith("Your tenancy would end earlier than a landlord's notice")
+        # it arrived on 28 Aug: the same earliest end
+        await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-08-28"})
+        after = api.ctx.store.get_item(objection["id"])
+        assert after is not None and after.due_date == "2026-09-30"
 
 
 async def test_a_notice_without_period_given_hilfsweise_without_an_end_gets_an_objection_date(

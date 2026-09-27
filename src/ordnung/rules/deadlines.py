@@ -97,6 +97,8 @@ _PRIVATE_STEP = "Not an authority's letter, so no delivery days"
 REGION_UNKNOWN: Final = "Holiday region unknown"
 REGION_EARLIER: Final = "where the deadline would be earlier"
 HOME_HOLIDAY: Final = "is a public holiday where you live"
+#: A joint calendar's rule (:func:`check_one_land_holidays`).
+ONE_LAND_HOLIDAY: Final = "Only a holiday both Länder have counts"
 TAX_OFFICE_HOLIDAY: Final = "is a public holiday where the tax office is"
 #: Words for the app's person (who answers the app); the rules tools put them in their own voice.
 TOLD_ARRIVAL: Final = "You told us it arrived on"
@@ -211,6 +213,9 @@ class RuleContext:
     termination's own sentence (``quote``, also for an end the caller knows), only elsewhere in the letter
     (``letter``: one soft failure) or nowhere in it (``none``: the model's reading alone, like an assumed
     anchor — ``low``); the letter rules that count from the end apply it (:mod:`ordnung.rules.letters`).
+    ``ends_on_arrival``: the termination is one without notice period (a dismissal *fristlos*,
+    :func:`ordnung.rules.routing.notice_without_period`), so the job ends when it arrives; an end the reading
+    gives is that of a notice given in the alternative, which § 38 Abs. 1 SGB III doesn't count from.
     """
 
     today: date
@@ -230,6 +235,7 @@ class RuleContext:
     labour_court: bool = False
     social_court: bool = False
     end_date_grounding: Literal["quote", "letter", "none"] = "quote"
+    ends_on_arrival: bool = False
 
 
 @dataclass
@@ -441,8 +447,7 @@ def check_partial_holidays(
 def _partial_holiday(trace: Trace, day: date, name: str, region: str | None, earlier: str | None) -> None:
     """One partial-holiday warning: ``earlier`` names the date that is a working day earlier there,
     ``None`` says the due date moves a working day later there."""
-    code = calendar_de.normalize_region(region) or ""
-    place = calendar_de.PARTIAL_HOLIDAY_PLACES[code][name]
+    place = calendar_de.partial_holiday_place(region, name)
     start = f"{fmt_date(day)} is {name}, a public holiday only in {place}, which is not counted here. Where it holds, "
     if earlier is None:
         trace.warnings.append(
@@ -462,20 +467,37 @@ def place_region(spec: DateSpec, ctx: RuleContext) -> str | None:
     the payer's holidays (``ctx.recipient_region``; unknown → nationwide only, the earlier date). A
     Kündigungsschutzklage may be filed at the labour court of the employer's seat or of the place of work
     (§ 48 Abs. 1a ArbGG), which may be in another Land: a regional holiday counts only where it holds at
-    the employer's seat and where the person lives (the place of work's stand-in), else nationwide
-    holidays only — the earlier date, with the warning that a Land's holiday may make it later.
+    the employer's seat and where the person lives (the place of work's stand-in) — the joint calendar of
+    both Länder (:func:`~ordnung.rules.calendar_de.joint_region`; review round 4 of phase 2: two different
+    Länder gave nationwide holidays and "Holiday region unknown") —, and with either unknown nationwide
+    holidays only: the earlier date, with the warning that a Land's holiday may make it later.
     """
     if spec.nature == "payment" and ctx.delivery_scope is None:
         return calendar_de.normalize_region(ctx.recipient_region)
     region = calendar_de.normalize_region(ctx.region)
     statute = _statute(spec, ctx.letter_kind, labour_court=ctx.labour_court)
-    if (
-        statute is not None
-        and statute[0] == "kschg_4"
-        and region != calendar_de.normalize_region(ctx.recipient_region)
-    ):
-        return None
+    if statute is not None and statute[0] == "kschg_4":
+        return calendar_de.joint_region(region, ctx.recipient_region)
     return region
+
+
+def check_one_land_holidays(trace: Trace, region: str | None, days: Iterable[date]) -> None:
+    """Warn (once) when one of ``days`` is a holiday in only one Land of a joint calendar
+    (:func:`~ordnung.rules.calendar_de.joint_region`): it doesn't count, and the date shown is the earlier
+    one."""
+    lands = calendar_de.joint_lands(region)
+    if len(lands) != 2:
+        return
+    for d in days:
+        held = [land for land in lands if calendar_de.is_holiday(d, land)]
+        if len(held) == 1:
+            other = next(land for land in lands if land not in held)
+            trace.warnings.append(
+                f"{fmt_date(d)} is a public holiday in {calendar_de.REGION_NAMES[held[0]]} but not in "
+                f"{calendar_de.REGION_NAMES[other]}. {ONE_LAND_HOLIDAY}: the court action can be filed in "
+                "either Land (§ 48 Abs. 1a ArbGG), so the date shown is the earlier one."
+            )
+            return
 
 
 def _receipt(
@@ -1291,6 +1313,8 @@ def _compute_relative(
         trace.extend(steps)
         if place is None:
             check_regional_holidays(trace, [due])
+        else:
+            check_one_land_holidays(trace, place, [due])
     elif spec.nature == "notice" or shift:
         # § 193 BGB only extends periods that run forward: "one month before …" must never end later.
         safe = _safe_date(trace, raw_end, place, backward=spec.nature != "notice")

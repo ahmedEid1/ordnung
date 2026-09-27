@@ -16,6 +16,11 @@ A holiday that holds in only part of a Land (Mariä Himmelfahrt in Bavarian comm
 Catholic than Protestant residents, Augsburg's Friedensfest, Fronleichnam in parts of Saxony and
 Thuringia) is not counted either: :func:`partial_holidays` lists them, and the deadline rules warn
 where one could move a date shown.
+
+A deadline that may be met in either of two Länder (a Kündigungsschutzklage at the labour court of the
+employer's seat or of the place of work, § 48 Abs. 1a ArbGG) uses a *joint* calendar (:func:`joint_region`,
+``"BY+NW"``): a day is a holiday in it only when it is one in both Länder — the person can always meet the
+deadline in the other one on a holiday only one of them has.
 """
 
 from __future__ import annotations
@@ -78,10 +83,44 @@ def normalize_region(region: str | None) -> str | None:
     return _ALIASES.get(raw.casefold())
 
 
+JOINT = "+"
+"""What joins the two Länder of a joint calendar (:func:`joint_region`)."""
+
+
+def joint_region(first: str | None, second: str | None) -> str | None:
+    """The calendar of the holidays two Länder share (``"BY+NW"``, in a stable order): a day is a holiday in
+    it only when it is one in both. The Land itself when both are the same; ``None`` when either is unknown
+    (nationwide holidays only, the earlier date). Only the calendar functions of this module read it —
+    :func:`normalize_region` never accepts one (a person's or a sender's Land is always a single one)."""
+    a, b = normalize_region(first), normalize_region(second)
+    if a is None or b is None:
+        return None
+    return a if a == b else JOINT.join(sorted((a, b)))
+
+
+def joint_lands(region: str | None) -> tuple[str, ...]:
+    """The Länder of a calendar: both of a joint one, the Land of a single one, none for nationwide."""
+    code = _calendar_code(region)
+    return tuple(code.split(JOINT)) if code else ()
+
+
+def _calendar_code(region: str | None) -> str | None:
+    """A Land code, a joint calendar's code (:func:`joint_region`) or ``None``."""
+    code = normalize_region(region)
+    if code is not None or not region or JOINT not in region:
+        return code
+    parts = region.strip().upper().split(JOINT)
+    if len(parts) != 2 or any(part not in REGION_NAMES for part in parts) or parts[0] == parts[1]:
+        return None
+    return JOINT.join(sorted(parts))
+
+
 def holiday_calendar_label(region: str | None) -> str:
     """Human-readable name of the holiday calendar used for ``region`` (shown on receipts)."""
-    code = normalize_region(region)
-    return REGION_NAMES[code] if code else NATIONWIDE_LABEL
+    lands = joint_lands(region)
+    if len(lands) == 2:
+        return f"{REGION_NAMES[lands[0]]} and {REGION_NAMES[lands[1]]} (only holidays both have)"
+    return REGION_NAMES[lands[0]] if lands else NATIONWIDE_LABEL
 
 
 #: Holidays that hold in only part of a Land, by Land and German name, with where they hold. The
@@ -103,14 +142,19 @@ _MORE_PARTIAL_HOLIDAYS: dict[str, tuple[tuple[int, int, str], ...]] = {
 
 @lru_cache(maxsize=512)
 def _holidays_for(code: str | None, year: int) -> dict[date, str]:
+    if code is not None and JOINT in code:
+        first, second = code.split(JOINT)
+        other = _holidays_for(second, year)
+        return {day: name for day, name in _holidays_for(first, year).items() if day in other}
     # German names whatever the system locale (the library would translate them from LANG/LANGUAGE)
     calendar = holidays.Germany(subdiv=code, years=year, language="de")
     return dict(calendar.items())
 
 
 def holiday_name(d: date, region: str | None = None) -> str | None:
-    """Name of the public holiday on ``d`` in ``region`` (nationwide only if unknown), else ``None``."""
-    return _holidays_for(normalize_region(region), d.year).get(d)
+    """Name of the public holiday on ``d`` in ``region`` (nationwide only if unknown; in a joint calendar, one
+    both Länder have), else ``None``."""
+    return _holidays_for(_calendar_code(region), d.year).get(d)
 
 
 def is_holiday(d: date, region: str | None = None) -> bool:
@@ -131,19 +175,45 @@ def partial_holidays(
     """Holidays of only part of ``region`` from ``start`` to ``end`` that fall on a counted day.
 
     Those are the :data:`PARTIAL_HOLIDAY_PLACES`, which the calendar does not count; a counted day is a
-    business day, or a *Werktag* with ``werktage=True``. Empty for a Land without such holidays.
+    business day, or a *Werktag* with ``werktage=True``. Empty for a Land without such holidays. In a joint
+    calendar (:func:`joint_region`), one Land's partial holiday that is a holiday (in all or part of it) in
+    the other Land too.
     """
-    code = normalize_region(region)
-    if code not in PARTIAL_HOLIDAY_PLACES or end < start:
+    code = _calendar_code(region)
+    lands = joint_lands(code)
+    if not any(land in PARTIAL_HOLIDAY_PLACES for land in lands) or end < start:
         return []
     counts = is_werktag if werktage else is_business_day
-    found = [
+    found = {
         (day, name)
         for year in range(start.year, end.year + 1)
-        for day, name in _partial_holidays_for(code, year).items()
+        for day, name in _joint_partial_holidays(lands, year).items()
         if start <= day <= end and counts(day, code)
-    ]
+    }
     return sorted(found)
+
+
+def _joint_partial_holidays(lands: tuple[str, ...], year: int) -> dict[date, str]:
+    """The partial holidays of a single Land, or those of either of two Länder that the other has too."""
+    if len(lands) == 1:
+        return _partial_holidays_for(lands[0], year) if lands[0] in PARTIAL_HOLIDAY_PLACES else {}
+    found: dict[date, str] = {}
+    for land, other in (lands, lands[::-1]):
+        if land not in PARTIAL_HOLIDAY_PLACES:
+            continue
+        also = {**_holidays_for(other, year), **_joint_partial_holidays((other,), year)}
+        found.update({day: name for day, name in _partial_holidays_for(land, year).items() if day in also})
+    return found
+
+
+def partial_holiday_place(region: str | None, name: str) -> str:
+    """Where a partial holiday of ``region`` (:func:`partial_holidays`) holds: its places in each Land."""
+    places = [
+        PARTIAL_HOLIDAY_PLACES[land][name]
+        for land in joint_lands(region)
+        if name in PARTIAL_HOLIDAY_PLACES.get(land, {})
+    ]
+    return " and ".join(places)
 
 
 def regional_holiday_lands(d: date) -> list[str]:

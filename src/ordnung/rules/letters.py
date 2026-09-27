@@ -7,7 +7,9 @@ receipts as :mod:`ordnung.rules.deadlines` (steps with citations, warnings, conf
 Rule           Counts from                         Last day                                      Weekend or holiday
 =============  ==================================  ============================================  ===========================
 ``sgb3_38``    the day the person learned the end  3 months before the end, or 3 days after      kept (registering online
-               (the dismissal's arrival)           learning it when less time is left            works any day)
+               (the dismissal's arrival; a         learning it when less time is left            works any day)
+               notice without notice period
+               ends the job then)
 ``bgb_558b``   the day the request arrived         end of the 2nd calendar month after           next working day (§ 193 BGB)
                (the new rent: its first payment)   (the new rent: start of the 3rd month, or     (a payment: none)
                                                    the later start the letter names)
@@ -41,6 +43,7 @@ from ordnung.models import ComputationReceipt, DateSpec
 from ordnung.rules import calendar_de
 from ordnung.rules.consumer import WITHDRAWAL_DAYS, withdrawal_end
 from ordnung.rules.deadlines import (
+    _BGB_COUNTING,
     RuleContext,
     Trace,
     _no_date,
@@ -120,12 +123,29 @@ def _later_letter_date(trace: Trace, written: date, legal: date) -> None:
 def _registration(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -> ComputationReceipt:
     end = parse_date(spec.anchor_date) if spec.anchor == "explicit_date" else None
     end = end or ctx.end_date
+    # a dismissal without notice period ends the job when it arrives: an end the letter gives belongs to the
+    # notice given in the alternative (review round 4 of phase 2: counted from it, the date was days late)
+    alternative_end, end = (end, None) if ctx.ends_on_arrival else (None, end)
     learned = _arrival(spec, ctx, trace)
     if learned is None:
         return _receipt(trace, ctx, due=None, summary="No date could be computed: the start date is missing.")
     due, basis = registration_deadline(learned, end)
     trace.step(f"You learned when the job ends on {fmt_date(learned)}", learned, "sgb3_38")
-    if basis == "before_end" and end is not None:
+    if ctx.ends_on_arrival:
+        trace.step(
+            f"A dismissal without notice period (fristlos) ends the job when it arrives, so less than three "
+            f"months are left: register within three days, by {fmt_date(due)}",
+            due,
+            "sgb3_38",
+        )
+        why = f"three days after the dismissal without notice period arrived ({fmt_date(learned)})"
+        if alternative_end is not None:
+            trace.warnings.append(
+                f"The letter also names {fmt_date(alternative_end)}: the end of a notice with a notice period "
+                "given in the alternative (hilfsweise). Register within the three days anyway — also if you "
+                "challenge the dismissal (§ 38 Abs. 1 S. 3 SGB III)."
+            )
+    elif basis == "before_end" and end is not None:
         trace.step(
             f"The job ends on {fmt_date(end)}; three months before that is {fmt_date(due)}", due, "sgb3_38"
         )
@@ -162,7 +182,7 @@ def _registration(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -
     if not calendar_de.is_business_day(due, None):
         trace.warnings.append(
             f"{fmt_date(due)} is not a working day. The deadline may run to the next working day "
-            "(§ 26 Abs. 3 SGB X), but registering online or by phone works on any day — do it in time."
+            "(§ 26 Abs. 3 SGB X), but registering online works on any day — do it in time."
         )
     trace.step("Register online, by phone or in person — it counts the day you do it", due, "sgb3_38")
     return _receipt(trace, ctx, due=due, summary=f"Register as job-seeking by {fmt_date(due)}: {why}.")
@@ -355,6 +375,7 @@ def _stated_period(spec: DateSpec, start: date, legal: date, region: str | None,
 
 def _withdrawal(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -> ComputationReceipt:
     region = calendar_de.normalize_region(ctx.recipient_region)
+    trace.cite.update(_BGB_COUNTING)  # a consumer's period counts under the BGB alone (review round 4)
     written = _written_date(spec)
     anchor = _resolve_anchor(spec, ctx, trace) if spec.type == "relative" else None
     stated: date | None = None
