@@ -18,7 +18,7 @@ from mcp.client import Client
 from mcp.client.stdio import StdioServerParameters
 from mcp.server.mcpserver.exceptions import ToolError
 
-from helpers_secretary import TODAY, add_item, seed_ledger
+from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
 from ordnung.assistant import mcp_server
 from ordnung.assistant.ask import known_laws
 from ordnung.assistant.channels import (
@@ -49,6 +49,7 @@ from ordnung.assistant.support import TurnEvidence, check_answer
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.models import Evidence, ExtractedChange, Identifier
+from ordnung.views import my_numbers
 
 
 def _evidence(doc_id: str, quote: str, grounding: str) -> list[Evidence]:
@@ -950,6 +951,43 @@ def test_get_my_numbers_keeps_values_in_the_letter_text(
     assert record["note"].startswith("Each number's label and value are in the letter text")
 
 
+def test_get_my_numbers_never_names_a_private_letters_to_do(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """A letter marked private gives Ask nothing — not even its to-do as the next step of a case a
+    shareable letter of the same thread opens."""
+    _numbers_ledger(store, ids)
+    case = store.add_case(title="Verfahren").id
+    court = store.add_party(name="Amtsgericht", kind="authority").id
+    summons = add_doc(store, "summons", kind="authority_letter", title="Ladung", party_id=court)
+    store.update_document(
+        summons, case_id=case, references=[Identifier(label="Aktenzeichen", value="12 C 345/26")]
+    )
+    report = add_doc(store, "report", kind="authority_letter", title="Medical report", party_id=court)
+    store.update_document(report, case_id=case, ai_private=True)
+    secret = add_item(
+        store,
+        kind="deadline",
+        title="Submit psychiatric evaluation of Sam",
+        due_date="2026-10-02",
+        doc_id=report,
+        case_id=case,
+        party_id=court,
+    )
+    rendered = render_result(tools.get_my_numbers())
+    assert "psychiatric" not in rendered and secret not in rendered
+    # the page itself (not Ask) still shows the case with its next step
+    (shown,) = [c for c in my_numbers(store, TODAY).open_cases if c.case_id == case]
+    assert shown.next_item is not None and shown.next_item.id == secret
+    # a shareable to-do of the thread is the case's next step for Ask
+    visible = add_item(
+        store, kind="task", title="Answer the court", due_date="2026-10-05", doc_id=summons, case_id=case
+    )
+    record = tools.get_my_numbers().record
+    (found,) = [c for c in record["open_cases"] if c["next_item"]["id"] in (secret, visible)]
+    assert found["next_item"]["id"] == visible and found["open_items"] == 1
+
+
 def test_asks_check_keeps_a_number_and_supports_the_expiry(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
@@ -1094,7 +1132,7 @@ def test_get_my_numbers_gives_no_transfer_day_for_a_fee_paid_at_the_appointment(
         amount=100.0,
         doc_id=doc,
     )
-    add_item(
+    appointment = add_item(
         store, kind="appointment", title="Appointment", due_date="2026-10-02", due_time="10:30", doc_id=doc
     )
     cases = [c for c in tools.get_my_numbers().record["open_cases"] if c["doc_id"] == doc]
@@ -1102,3 +1140,8 @@ def test_get_my_numbers_gives_no_transfer_day_for_a_fee_paid_at_the_appointment(
     assert case["next_item"]["kind"] == "appointment"  # the appointment first on its day
     rows = tools.list_items(kind="payment").record["items"]
     assert {row["id"]: row["send_by"] for row in rows}[fee] is None
+    # the fee as the next step: paid at the appointment, on its day — the record says so, with no transfer day
+    store.update_item(appointment, status="done")
+    (case,) = [c for c in tools.get_my_numbers().record["open_cases"] if c["doc_id"] == doc]
+    assert case["next_item"]["id"] == fee
+    assert (case["next_item"]["send_by"], case["next_item"]["at_appointment"]) == (None, True)

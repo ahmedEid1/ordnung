@@ -631,7 +631,9 @@ def test_identity_documents_carry_their_number_and_expiry(store: Store, ledger: 
     permit = docs["residence_permit"]
     assert permit.number is None and permit.valid_until == "2026-11-30" and permit.status == "renew_soon"
     assert permit.note == RESIDENCE_EXTENSION_NOTE
-    assert "§ 81 Abs. 4 S. 1 AufenthG" in permit.note and "Fiktionsbescheinigung" in permit.note
+    # S. 1 keeps the permit in force; S. 2 excludes a Schengen visa
+    assert "§ 81 Abs. 4 S. 1–2 AufenthG; not for a Schengen visa" in permit.note
+    assert "Fiktionsbescheinigung" in permit.note
 
 
 def test_an_expired_permit_is_never_told_to_apply_before_it_expires(
@@ -766,10 +768,30 @@ def test_a_fee_paid_at_the_appointment_is_no_transfer(store: Store, ledger: dict
     ).id
     (case,) = [c for c in _numbers(store).open_cases if c.title == "Residence permit extension"]
     assert case.next_item is not None and case.next_item.id == ledger["appointment"]
-    store.update_item(ledger["appointment"], kind="task")
+    store.update_item(ledger["appointment"], status="done")
+    (case,) = [c for c in _numbers(store).open_cases if c.title == "Residence permit extension"]
+    assert case.next_item is not None
+    assert (case.next_item.id, case.next_item.send_by, case.next_item.at_appointment) == (fee, None, True)
+    store.update_item(ledger["appointment"], kind="task", status="open")
     (case,) = [c for c in _numbers(store).open_cases if c.title == "Residence permit extension"]
     # without an appointment that day the fee is a transfer: its send-by day counts
-    assert case.next_item is not None and (case.next_item.id, case.next_item.send_by) == (fee, "2026-10-13")
+    assert case.next_item is not None
+    assert (case.next_item.id, case.next_item.send_by, case.next_item.at_appointment) == (
+        fee,
+        "2026-10-13",
+        False,
+    )
+
+
+def test_a_snoozed_to_do_keeps_its_case_open(store: Store, ledger: dict[str, str]) -> None:
+    """Putting the fine off does not close it: its Aktenzeichen and Kassenzeichen stay on the page."""
+    store.update_item(ledger["fine_payment"], status="snoozed", snoozed_until="2026-10-20")
+    page = _numbers(store)
+    (fine,) = [c for c in page.open_cases if c.title == "fine"]
+    assert fine.next_item is not None and fine.next_item.id == ledger["fine_payment"]
+    assert fine.key in {c.key for sheet in page.organisations for c in sheet.open_cases}
+    store.update_item(ledger["fine_payment"], status="done")
+    assert "fine" not in {c.title for c in _numbers(store).open_cases}
 
 
 def test_an_unconfirmed_next_step_says_so(store: Store, ledger: dict[str, str]) -> None:

@@ -12,9 +12,14 @@ prompt, the moment to compare with when letters arrived and to-dos were done.
 ("transfer by"), a letter's the day to post it ("send by"), an appointment's its day ("on"), an expiry's
 the day it expires; anything else its due date. Once a send-by day has passed but the due date has not,
 the day is *today* ("act today"), with the due date beside it: the money or letter can still arrive by
-another way. A row is *overdue* only when its due date has passed, counted from that date. A fee paid in
-person at an appointment (:func:`~ordnung.secretary.triggers.paid_at_appointment`) is paid on the
-appointment's day — never a transfer.
+another way. A row is *overdue* only when its due date has passed, counted from that date — for a letter
+you wrote, the day it must arrive by (``must_arrive_by``), else its send-by day. A fee paid in person at
+an appointment (:func:`~ordnung.secretary.triggers.paid_at_appointment`) is paid on the appointment's
+day — never a transfer. Money coming in is *expected* on its day, never paid.
+
+**Snoozed to-dos.** Snoozing puts off Today's reminder, not the date: a to-do snoozed until a later day
+(:func:`pending_items`) is still listed where its date puts it (*Act now*, *Pay this week*, *Decide*),
+counts as overdue once its due date has passed and keeps its letter open.
 
 **The steps** — a short written policy (ADR 0007); every list is capped at :data:`MAX_ROWS` rows and says
 how many it left out:
@@ -28,13 +33,17 @@ how many it left out:
    (:func:`~ordnung.secretary.triggers.unconfirmed_reason`: not found in the letter, read by AI from a
    photo, or not matching its sentence — never once the person confirmed it) of open to-dos still
    relevant (undated or not past), and letters marked *Please check* with no such to-do.
-3. *Pay this week* — the agenda's payments that are overdue or due within 7 days: transfers first (with
-   the total per currency), then fees paid at an appointment (not in the total), then direct debits the
-   sender collects (nothing to do but keep the money in the account); the summary counts the money
-   summary's further payments of the next 30 days. A scam letter's demand is never listed (the agenda
-   leaves it out), nor an invoice a payment reminder took over.
-4. *Post and keep proof* — letters drafted but not sent (with their send-by day), then letters marked sent
-   since the last session with what proves sending by that channel.
+3. *Pay this week* — the agenda's payments that are overdue or due within 7 days (and snoozed ones the
+   agenda leaves out, by the same rule): transfers first (with the total per currency), then fees paid
+   at an appointment (not in the total), then direct debits the sender collects (nothing to do but keep
+   the money in the account); the summary counts the money summary's further payments of the next 30
+   days. A scam letter's demand is never listed (the agenda leaves it out), nor an invoice a payment
+   reminder took over.
+4. *Post and keep proof* — letters drafted but not sent (with their send-by day, and the day they must
+   arrive by beside it), then letters marked sent since the last session with what to keep by that
+   channel: what proves *sending* is not proof that it *arrived*, which the sender must show (§ 130 BGB) —
+   for an Einwurf-Einschreiben the delivery record (Auslieferungsbeleg), not the posting receipt or the
+   online tracking (BAG, 30.01.2025 – 2 AZR 68/24).
 5. *Waiting for* — replies to letters you sent: the open follow-up to-dos Ordnung adds when a letter is
    marked sent, the earliest first. (Hook: a dedicated "waiting for" list replaces this source when one
    exists.)
@@ -47,11 +56,12 @@ how many it left out:
    or snoozed (archive the paper; tax-relevant ones stay with the tax papers). Each letter is listed in
    the week it qualifies, not every week.
 
-**The ending.** When deadlines, payments or tasks are overdue, the session ends saying how many
-(:attr:`~ordnung.models.WeeklySession.overdue`) — never "All clear". Otherwise it ends *All clear until …*
-the earliest day to act from today on (today when a send-by day was missed) of an open or snoozed
+**The ending.** When deadlines, payments or tasks are overdue (snoozed or not), the session ends saying
+how many (:attr:`~ordnung.models.WeeklySession.overdue`) — never "All clear". Otherwise it ends *All clear
+until …* the earliest day to act from today on (today when a send-by day was missed) of an open or snoozed
 deadline, payment, task or appointment worth acting on (no direct debit, no money coming in) and of the
-agenda's contract decisions.
+agenda's contract decisions — or, when that day is today, with how many of them are to act on today
+(:attr:`~ordnung.models.WeeklySession.due_today`).
 
 **The prompt.** Today suggests the session once — when none was done and no prompt dismissed in the last
 7 days, or on a Sunday 4 days after either — and only when a step has something to show. Doing the
@@ -84,6 +94,7 @@ from ordnung.secretary.triggers import (
     Ledger,
     action_day,
     day_label,
+    is_active,
     is_overdue,
     paid_at_appointment,
     parse_day,
@@ -105,10 +116,20 @@ _OVERDUE_KINDS = frozenset({"deadline", "payment", "task"})
 
 #: What proves a letter was sent, by the channel the person marked (``Draft.sent_channel``).
 PROOF_BY_CHANNEL = {
-    "registered_letter": "Keep the posting receipt (Einlieferungsbeleg) with a copy of the letter.",
+    "registered_letter": (
+        "Keep the posting receipt (Einlieferungsbeleg) with a copy of the letter: it proves posting, not "
+        "arrival. Ask Deutsche Post for the delivery record (Auslieferungsbeleg) now — it is kept only for "
+        "a limited time, and online tracking alone is no proof (BAG 2 AZR 68/24)."
+    ),
     "letter": "An ordinary letter can't be proven: keep a copy, and note the day and post office.",
-    "email": "Keep the sent e-mail, and the reply if one comes.",
-    "fax": "Keep the fax transmission report (Sendebericht) with a copy of the letter.",
+    "email": (
+        "Keep the sent e-mail: it proves you sent it, not that it arrived — keep the reply or a "
+        "confirmation of receipt too."
+    ),
+    "fax": (
+        "Keep the fax transmission report (Sendebericht) with a copy of the letter: it shows you sent it, "
+        "not for certain that it arrived."
+    ),
     "in_person": "Keep your copy with the receipt stamp (Eingangsstempel).",
     "online_button": "Save the confirmation page or e-mail.",
     "portal": "Save the confirmation page or e-mail.",
@@ -228,7 +249,7 @@ class When:
 
 def _plain_role(item: Item) -> WeekDateRole:
     if item.kind == "payment":
-        return "pay_by"
+        return "expected" if item.direction == "in" else "pay_by"
     if item.kind == "task":
         return "by"
     if item.kind in ("reminder", "milestone"):
@@ -242,6 +263,8 @@ def when(item: Item, today: date, *, in_person: bool = False) -> When:
     payment = item.kind == "payment" and item.direction != "in"
     if item.kind == "appointment":
         return When(due, "on")
+    if item.kind == "payment" and not payment:  # money coming in: expected on its day, never paid
+        return When(due, "expected")
     if item.kind == "expiry":
         return When(due, "expires")
     if payment and is_direct_debit(item):
@@ -255,6 +278,15 @@ def when(item: Item, today: date, *, in_person: bool = False) -> When:
     if send is not None and (due is None or send <= due):
         return When(send, "transfer_by" if payment else "send_by", due if due != send else None)
     return When(due, _plain_role(item))
+
+
+def is_past_due(item: Item, today: date) -> bool:
+    """:func:`~ordnung.secretary.triggers.is_overdue`, also for a to-do snoozed until a later day: snoozing
+    puts off the reminder, not the due date. Money coming in is never overdue: it is not the person's to
+    pay."""
+    if item.kind == "payment" and item.direction == "in":
+        return False
+    return is_overdue(item.model_copy(update={"status": "open"}) if item.status == "snoozed" else item, today)
 
 
 def _act_on(item: Item, today: date, *, in_person: bool = False) -> date | None:
@@ -286,7 +318,7 @@ def _item_entry(ledger: Ledger, item: Item, **fields: object) -> WeekEntry:
         "party_name": ledger.party_name(party),
         "doc_id": item.doc_id,
         "status": item.status,
-        "overdue": is_overdue(item, ledger.today),
+        "overdue": is_past_due(item, ledger.today),
         "item": item,
     }
     data.update(fields)
@@ -366,9 +398,9 @@ def _count(count: int, one: str, many: str | None = None) -> str:
     return f"{count} {one if count == 1 else (many or one + 's')}"
 
 
-def _pending_items(ledger: Ledger) -> list[Item]:
+def pending_items(ledger: Ledger) -> list[Item]:
     """Open or snoozed (however long) to-dos worth acting on: no letter with scam signs, no invoice a
-    payment reminder took over. A snoozed to-do is still the person's."""
+    payment reminder took over. A snoozed to-do is still the person's (module policy, "Snoozed to-dos")."""
     return [
         item
         for item in ledger.items
@@ -416,11 +448,11 @@ def _act_now(ledger: Ledger) -> tuple[WeekStep | None, set[str]]:
     also those left out of its rows."""
     today = ledger.today
     overdue, due_today = [], []
-    for item in ledger.actionable_items():
+    for item in pending_items(ledger):
         if item.kind not in _NOW_KINDS or item.origin == "draft":
             continue
         due = parse_day(item.due_date)
-        if is_overdue(item, today):
+        if is_past_due(item, today):
             overdue.append(item)
         elif due is not None and due >= today and _act_on(item, today) == today:
             due_today.append(item)
@@ -442,7 +474,7 @@ def _act_now(ledger: Ledger) -> tuple[WeekStep | None, set[str]]:
 
 
 def _new_letters(ledger: Ledger, window: _Window, *, first: bool) -> WeekStep:
-    pending = _pending_items(ledger)
+    pending = pending_items(ledger)
     fresh = [doc for doc in ledger.documents.values() if window.after(doc.created_at)]
 
     def open_count(doc: Document) -> int:
@@ -503,16 +535,44 @@ def _to_check(ledger: Ledger) -> WeekStep:
     return _step("check", "Please check", rows, summary)
 
 
+def _snoozed_payments(ledger: Ledger) -> list[Item]:
+    """Payments snoozed until a later day (the agenda leaves them out) that its rule would list: overdue,
+    or with a day to act within 7 days."""
+    today = ledger.today
+    found = []
+    for item in pending_items(ledger):
+        due, act = parse_day(item.due_date), _act_on(item, today)
+        if (
+            item.kind != "payment"
+            or item.direction == "in"
+            or is_active(item, today)  # awake: the agenda has it
+            or due is None
+            or act is None
+        ):
+            continue
+        if is_past_due(item, today) or (due >= today and (act - today).days <= WEEK):
+            found.append(item)
+    return found
+
+
+def _pay_order(item: Item, today: date) -> tuple[int, date]:
+    """The agenda's order: overdue first (by due date), then by the day to act."""
+    if is_past_due(item, today):
+        return 0, parse_day(item.due_date) or today
+    return 1, _act_on(item, today) or today
+
+
 def _pay(ledger: Ledger, agenda: Agenda, money: MoneySummary) -> WeekStep:
     by_id = {item.id: item for item in ledger.items}
-    entries: list[AgendaEntry] = [
-        entry
+    listed = [
+        by_id[entry.id]
         for entry in (*agenda.overdue, *agenda.today, *agenda.next_7_days)
         if entry.kind == "payment" and entry.id in by_id
     ]
+    listed += [item for item in _snoozed_payments(ledger) if item.id not in {i.id for i in listed}]
+    listed.sort(key=lambda item: _pay_order(item, ledger.today))  # stable: the agenda's order kept
     transfers, in_person, debits = [], [], []
-    for entry in entries:
-        item = by_id[entry.id]
+    for item in listed:
         row = _item_entry(ledger, item)
         if row.date_role == "collected":
             debits.append(row.model_copy(update={"note": "Collected by direct debit: keep it covered."}))
@@ -558,23 +618,52 @@ def _pay(ledger: Ledger, agenda: Agenda, money: MoneySummary) -> WeekStep:
     )
 
 
+def _unsent_entry(ledger: Ledger, draft: Draft) -> WeekEntry:
+    """A letter to send: its send-by day, the day it must arrive by beside it; once the send-by day has
+    passed but not the day to arrive by, act today — overdue only when that day has passed too."""
+    today = ledger.today
+    guidance = draft.send_guidance
+    send = parse_day(guidance.send_by) if guidance else None
+    arrive = parse_day(guidance.must_arrive_by) if guidance else None
+    due = arrive or send
+    note = "Not sent yet — send it, then mark it as sent."
+    if due is not None and due < today:
+        return _draft_entry(
+            ledger,
+            draft,
+            date=due.isoformat(),
+            date_role="due" if arrive else "send_by",
+            note=note,
+            tone="danger",
+            overdue=True,
+        )
+    if send is not None and send < today:
+        return _draft_entry(
+            ledger,
+            draft,
+            date=today.isoformat(),
+            date_role="act_today",
+            due_date=due.isoformat() if due else None,
+            note=f"{MISSED_POST_NOTE} Then mark it as sent.",
+            tone="warn",
+        )
+    shown = send or arrive
+    return _draft_entry(
+        ledger,
+        draft,
+        date=shown.isoformat() if shown else None,
+        date_role=("send_by" if send else "due") if shown else None,
+        due_date=arrive.isoformat() if arrive and send and arrive != send else None,
+        note=note,
+        tone="warn",
+    )
+
+
 def _post(ledger: Ledger, drafts: Iterable[Draft], window: _Window) -> WeekStep:
     unsent, sent = [], []
     for draft in drafts:
         if draft.status in ("draft", "final"):
-            guidance = draft.send_guidance
-            send_by = guidance.send_by if guidance else None
-            unsent.append(
-                _draft_entry(
-                    ledger,
-                    draft,
-                    date=send_by,
-                    date_role="send_by" if send_by else None,
-                    note="Not sent yet — send it, then mark it as sent.",
-                    tone="warn",
-                    overdue=bool(send_by and send_by < ledger.today.isoformat()),
-                )
-            )
+            unsent.append(_unsent_entry(ledger, draft))
         elif draft.status == "sent" and window.on_or_after(draft.sent_at):
             proof = PROOF_BY_CHANNEL.get(draft.sent_channel or "", DEFAULT_PROOF)
             # HOOK(proof): once a letter can carry its proof of sending, list the ones still without it here
@@ -623,7 +712,7 @@ def _decide(ledger: Ledger, agenda: Agenda, acting_now: set[str]) -> WeekStep:
     today = ledger.today
     rows: list[WeekEntry] = [_contract_entry(ledger, entry) for entry in agenda.decisions]
     decided = {entry.id for entry in agenda.decisions}
-    for item in ledger.actionable_items():
+    for item in pending_items(ledger):
         act, due = _act_on(item, today), parse_day(item.due_date)
         nature = item.date_spec.nature if item.date_spec else "other"
         if (
@@ -715,41 +804,46 @@ def _worth_acting(item: Item) -> bool:
 
 
 def overdue_count(ledger: Ledger) -> int:
-    """Deadlines, payments and tasks past their due date (not replies awaited, direct debits or money
-    coming in): while any is, the session never ends "All clear"."""
+    """Deadlines, payments and tasks past their due date, snoozed or not (not replies awaited, direct
+    debits or money coming in): while any is, the session never ends "All clear"."""
     return sum(
         1
-        for item in ledger.actionable_items()
+        for item in pending_items(ledger)
         if item.kind in _OVERDUE_KINDS
         and item.origin != "draft"
         and _worth_acting(item)
-        and is_overdue(item, ledger.today)
+        and is_past_due(item, ledger.today)
     )
 
 
-def next_deadline(ledger: Ledger, agenda: Agenda) -> WeekEntry | None:
-    """The earliest day to act from today on (module policy, "The ending"): open or snoozed to-dos not
-    yet overdue, and the agenda's contract decisions."""
+def deadlines(ledger: Ledger, agenda: Agenda) -> list[WeekEntry]:
+    """Every day to act from today on (module policy, "The ending"), the earliest first: open or snoozed
+    to-dos not yet overdue, and the agenda's contract decisions. Each row's ``date`` is its day to act."""
     today = ledger.today
-    chosen: tuple[date, str, Item | AgendaEntry] | None = None
-    for item in _pending_items(ledger):
+    found: list[tuple[date, str, Item | AgendaEntry]] = []
+    for item in pending_items(ledger):
         due = parse_day(item.due_date)
         if not _worth_acting(item) or (due is not None and due < today):
             continue
         act = _act_on(item, today, in_person=paid_at_appointment(item, ledger.items))
-        if act is not None and (chosen is None or (act, item.id) < chosen[:2]):
-            chosen = (act, item.id, item)
+        if act is not None:
+            found.append((act, item.id, item))
     for decision in agenda.decisions:
         send = parse_day(decision.date)
-        day = max(send, today) if send is not None else None
-        if day is not None and (chosen is None or (day, decision.id) < chosen[:2]):
-            chosen = (day, decision.id, decision)
-    if chosen is None:
-        return None
-    found = chosen[2]
-    if isinstance(found, AgendaEntry):
-        return _contract_entry(ledger, found, note=None, tone="neutral")
-    return _item_entry(ledger, found)
+        if send is not None:
+            found.append((max(send, today), decision.id, decision))
+    return [
+        _contract_entry(ledger, record, note=None, tone="neutral")
+        if isinstance(record, AgendaEntry)
+        else _item_entry(ledger, record)
+        for _, _, record in sorted(found, key=lambda chosen: chosen[:2])
+    ]
+
+
+def next_deadline(ledger: Ledger, agenda: Agenda) -> WeekEntry | None:
+    """The earliest of :func:`deadlines` (``None``: nothing to act on from today on)."""
+    found = deadlines(ledger, agenda)
+    return found[0] if found else None
 
 
 def build_weekly_session(
@@ -773,6 +867,7 @@ def build_weekly_session(
     ]
     has_something = any(step.entries for step in steps)
     upcoming = next_prompt_day(state, today)
+    ahead = deadlines(ledger, agenda)
     return WeeklySession(
         today=today.isoformat(),
         since=window.since_day.isoformat(),
@@ -782,5 +877,6 @@ def build_weekly_session(
         minutes=MINUTES,
         steps=steps,
         overdue=overdue_count(ledger),
-        next_deadline=next_deadline(ledger, agenda),
+        next_deadline=ahead[0] if ahead else None,
+        due_today=sum(1 for row in ahead if row.date == today.isoformat()),
     )

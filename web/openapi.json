@@ -3532,6 +3532,12 @@
             "title": "Send By",
             "description": "None for a fee paid at an appointment"
           },
+          "at_appointment": {
+            "type": "boolean",
+            "title": "At Appointment",
+            "description": "A fee paid in person at the appointment: on its day, never a transfer",
+            "default": false
+          },
           "needs_check": {
             "type": "boolean",
             "title": "Needs Check",
@@ -3546,6 +3552,7 @@
           "kind",
           "due_date",
           "send_by",
+          "at_appointment",
           "needs_check"
         ],
         "title": "CaseItemRef",
@@ -10525,6 +10532,7 @@
                   "act_today",
                   "at_appointment",
                   "collected",
+                  "expected",
                   "decide_by",
                   "sent",
                   "reply_by",
@@ -10815,6 +10823,12 @@
               }
             ],
             "description": "The earliest day to act from today on: “All clear until …”"
+          },
+          "due_today": {
+            "type": "integer",
+            "title": "Due Today",
+            "description": "How many days to act from today on are today (the ending counts them)",
+            "default": 0
           }
         },
         "type": "object",
@@ -10827,7 +10841,8 @@
           "minutes",
           "steps",
           "overdue",
-          "next_deadline"
+          "next_deadline",
+          "due_today"
         ],
         "title": "WeeklySession",
         "description": "The guided weekly review: seven steps (and *Act now* first when something is overdue or due\ntoday), how it ends and whether Today should suggest it."

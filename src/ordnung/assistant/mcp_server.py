@@ -667,6 +667,7 @@ class _NumberRows:
                 "kind": nxt.kind,
                 "due_date": nxt.due_date,
                 "send_by": nxt.send_by,
+                "at_appointment": nxt.at_appointment or None,
                 "needs_check": nxt.needs_check or None,
             }
             if nxt

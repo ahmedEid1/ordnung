@@ -61,12 +61,13 @@ a residence permit's note says what § 81 Abs. 4 AufenthG means before it expire
 organisation gets a *call sheet* — contact details, every number of yours its letters show, its open
 cases, its own numbers apart, its last letter — when it has a number of yours that is not an identity
 document's, or an open case. A *case reference* is listed while its thread (else its letter) has an open
-one-off to-do — the thread's own or one of its letters' (a to-do added to a letter of the thread keeps
-it open): a recurring payment keeps a contract going, not a case, so an old order number drops out. Its
-next step is the earliest (on the same day a deadline or appointment before its fee or paperwork); a fee
-paid at the appointment (:func:`~ordnung.secretary.triggers.paid_at_appointment`) counts on its day,
-never on a transfer day. Within an organisation the same number (compared without spaces and marks) is
-one entry; the latest letter's label wins.
+or snoozed one-off to-do (putting it off does not close the case) — the thread's own or one of its
+letters' (a to-do added to a letter of the thread keeps it open): a recurring payment keeps a contract
+going, not a case, so an old order number drops out. Its next step is the earliest (on the same day a
+deadline or appointment before its fee or paperwork); a fee paid at the appointment
+(:func:`~ordnung.secretary.triggers.paid_at_appointment`) counts on its day, never on a transfer day
+(``at_appointment``). Within an organisation the same number (compared without spaces and marks) is one
+entry; the latest letter's label wins.
 
 **Check digits** (:func:`check_number`), where a public algorithm exists: the Steuer-ID (§ 139b AO; the
 BZSt's specification: eleven digits, not starting with 0, in the first ten one digit twice — or three
@@ -178,7 +179,7 @@ TAX_OFFICE_DOC_KINDS = frozenset({"tax_assessment", "tax_letter"})
 AUTHORITY_PARTY_KINDS = frozenset({"authority", "immigration_office", "tax_office"})
 RESIDENCE_EXTENSION_NOTE = (
     "Apply before it expires: your permit then counts as still valid until the office decides "
-    "(§ 81 Abs. 4 S. 1 AufenthG; not for a Schengen visa) — ask for a Fiktionsbescheinigung."
+    "(§ 81 Abs. 4 S. 1–2 AufenthG; not for a Schengen visa) — ask for a Fiktionsbescheinigung."
 )
 RESIDENCE_EXPIRED_NOTE = (
     "If you applied before it expired, it counts as valid until the office decides (§ 81 Abs. 4 S. 1 "
@@ -711,8 +712,9 @@ class Sighting:
 class NumbersInput:
     """A snapshot of the ledger, read by the caller (:func:`ordnung.views.my_numbers`).
 
-    ``documents`` are live letters; ``open_items`` the to-dos worth acting on (active, no scam signs,
-    not taken over by a reminder); ``expiry_classes`` says for each expiry to-do whether it is a
+    ``documents`` are live letters; ``items`` their to-dos (and those of no letter); ``open_items`` the
+    to-dos worth acting on — open or snoozed (putting a to-do off keeps its case open), no scam signs,
+    not taken over by a reminder; ``expiry_classes`` says for each expiry to-do whether it is a
     ``permit``, an ``identity`` document or ``other`` (:func:`ordnung.secretary.triggers.expiry_class`).
     """
 
@@ -839,6 +841,7 @@ def _next_item(data: NumbersInput, item: Item) -> CaseItemRef:
         kind=item.kind,
         due_date=item.due_date,
         send_by=None if in_person else item.send_by,
+        at_appointment=in_person,
         needs_check=unconfirmed_reason(item) is not None,
     )
 

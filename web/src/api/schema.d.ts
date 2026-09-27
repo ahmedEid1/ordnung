@@ -1307,6 +1307,12 @@ export interface components {
              */
             send_by: string | null;
             /**
+             * At Appointment
+             * @description A fee paid in person at the appointment: on its day, never a transfer
+             * @default false
+             */
+            at_appointment: boolean;
+            /**
              * Needs Check
              * @description Its date or amount is not confirmed against the letter (compare it)
              * @default false
@@ -3621,7 +3627,7 @@ export interface components {
             /** Date */
             date: string | null;
             /** Date Role */
-            date_role: ("added" | "due" | "by" | "on" | "expires" | "send_by" | "transfer_by" | "pay_by" | "act_today" | "at_appointment" | "collected" | "decide_by" | "sent" | "reply_by" | "done") | null;
+            date_role: ("added" | "due" | "by" | "on" | "expires" | "send_by" | "transfer_by" | "pay_by" | "act_today" | "at_appointment" | "collected" | "expected" | "decide_by" | "sent" | "reply_by" | "done") | null;
             /**
              * Due Date
              * @description The due date, when the row's date is an earlier day to act (send by, act today)
@@ -3730,6 +3736,12 @@ export interface components {
             overdue: number;
             /** @description The earliest day to act from today on: “All clear until …” */
             next_deadline: components["schemas"]["WeekEntry"] | null;
+            /**
+             * Due Today
+             * @description How many days to act from today on are today (the ending counts them)
+             * @default 0
+             */
+            due_today: number;
         };
         /**
          * BriefUpdatedEvent

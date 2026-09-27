@@ -1296,6 +1296,9 @@ class CaseItemRef(_Model):
     kind: ItemKind
     due_date: str | None = None
     send_by: str | None = Field(default=None, description="None for a fee paid at an appointment")
+    at_appointment: bool = Field(
+        default=False, description="A fee paid in person at the appointment: on its day, never a transfer"
+    )
     needs_check: bool = Field(
         default=False, description="Its date or amount is not confirmed against the letter (compare it)"
     )
@@ -1361,6 +1364,7 @@ WeekDateRole = Literal[
     "act_today",
     "at_appointment",
     "collected",
+    "expected",
     "decide_by",
     "sent",
     "reply_by",
@@ -1423,6 +1427,9 @@ class WeeklySession(_Model):
     )
     next_deadline: WeekEntry | None = Field(
         default=None, description="The earliest day to act from today on: “All clear until …”"
+    )
+    due_today: int = Field(
+        default=0, description="How many days to act from today on are today (the ending counts them)"
     )
 
 

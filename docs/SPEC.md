@@ -352,17 +352,22 @@ non-user-modified extracted rows in one transaction. "Keep private (no AI)" skip
   a deadline, task or appointment is overdue or to act on today, a missed send-by day included) · new
   since the last session (the first time: in the last 7 days) · please check (values not confirmed
   against the letter; "Looks right" takes a value off) · pay this week (transfers with their total, fees
-  paid at an appointment, direct debits to cover) · post and keep proof · waiting for (follow-ups of sent
+  paid at an appointment, direct debits to cover) · post and keep proof (a letter's send-by day with the
+  day it must arrive by; what proves *sending* by each channel is not proof of *arrival* — for an
+  Einwurf-Einschreiben request the delivery record, BAG 2 AZR 68/24) · waiting for (follow-ups of sent
   letters; the hook for a dedicated list) · decide in the next 30 days (contract decisions,
-  objection/declaration/notice deadlines) · file or archive (a snoozed to-do keeps its letter open). Every
-  row's day reads as Today words it (transfer by, send by, on, expires); once a send-by day has passed but
-  the due date has not, the row says *act today* with the due date beside it, and a row is overdue only
-  after its due date. It ends "N overdue" while anything is overdue, else "All clear until <next day to
-  act>" (today after a missed send-by day; contract decisions and snoozed to-dos count). Only the
-  moments of the last session and of a dismissed prompt are stored (`meta`: `weekly_session_at`,
-  `weekly_prompt_dismissed_at`, each `day|timestamp`). Today suggests it once — 7 days after the last
-  session or "Not now", on a Sunday 4 days after — and only when a step has something to show; the
-  session says the day it will next (`next_prompt`). Nothing is paid, sent or closed.
+  objection/declaration/notice deadlines) · file or archive. A snoozed to-do is put off, not away: it is
+  listed where its date puts it, is overdue once its due date passes and keeps its letter open. Every
+  row's day reads as Today words it (transfer by, send by, on, expires; money coming in is *expected*,
+  never overdue); once a send-by day has passed but the due date (for a letter: the day it must arrive
+  by) has not, the row says *act today* with the due date beside it, and a row is overdue only after its
+  due date. It ends "N overdue" while anything is overdue, else "All clear until <next day to act>" — or
+  "N things to do today" (`due_today`) when that day is today (after a missed send-by day too; contract
+  decisions and snoozed to-dos count). Only the moments of the last session and of a dismissed prompt
+  are stored (`meta`: `weekly_session_at`, `weekly_prompt_dismissed_at`, each `day|timestamp`). Today
+  suggests it once — 7 days after the last session or "Not now", on a Sunday 4 days after — and only when
+  a step has something to show; the session says the day it will next (`next_prompt`). Nothing is paid,
+  sent or closed.
 - **My numbers** (`numbers.py`, pure, policy in its docstring; `views.my_numbers`) — every number the
   letters show (references, the sender's identifiers in the stored reading, a payment IBAN — always where
   to pay the sender, checked like any IBAN; never a trashed or scam letter's), sorted by whose it is:
@@ -373,8 +378,8 @@ non-user-modified extracted rows in one transaction. "Keep private (no AI)" skip
   permit's note says what § 81 Abs. 4 AufenthG means before and after it expires), yours with one
   organisation (customer, contract, policy, member, employee, account — also an IBAN labelled as yours —,
   mandate, meter), a case reference (Aktenzeichen, Kassenzeichen, invoice/order/tracking numbers — listed
-  while its thread has an open one-off to-do; a fee paid at the appointment is no transfer) or the
-  organisation's own (USt-IdNr., register, Gläubiger-ID, BIC, IBAN; a retailer's Steuernummer). A label
+  while its thread has an open or snoozed one-off to-do; a fee paid at the appointment is no transfer) or
+  the organisation's own (USt-IdNr., register, Gläubiger-ID, BIC, IBAN; a retailer's Steuernummer). A label
   that names a matter ("Kundennummer", "Bestellnummer") wins over a value's look. Check digits where a
   public algorithm exists: Steuer-ID (§ 139b AO, the BZSt's specification: ISO/IEC 7064 MOD 11,10 and
   the digit-repetition rule), Rentenversicherungsnummer (§ 147 SGB VI, § 2 Abs. 6 VKVV),
@@ -414,14 +419,14 @@ HTML and without remote images.
   shows it (a number is what the model read, never verified against the page) and puts what code decided
   in the record: each number's kind, group and check-digit result (with its code-written note and law),
   the letter and party ids to cite, an identity document's expiry as its to-do (`id`, `due_date`,
-  `needs_check` when not confirmed against the letter) and an open case's next to-do (no `send_by` for a
-  fee paid at the appointment). It takes `section` (about_you, organisations, open_cases) and
-  `organisation` (an id or name: that call sheet and its open cases only, never the person's own
-  numbers), and bounds itself — at most 20 call sheets (latest letter first), 20 open cases, 20 numbers
-  of a kind per sheet and no further sheet past 150 numbers — saying what it left out (`left_out`), so
-  every `ref` it gives resolves. Letters marked private give nothing. Numbers are no date, time or
-  amount, so the claim check leaves them as the model wrote them (a known limit: a misquoted identifier
-  is not caught).
+  `needs_check` when not confirmed against the letter) and an open case's next to-do (no `send_by` and
+  `at_appointment` for a fee paid at the appointment). It takes `section` (about_you, organisations,
+  open_cases) and `organisation` (an id or name: that call sheet and its open cases only, never the
+  person's own numbers), and bounds itself — at most 20 call sheets (latest letter first), 20 open
+  cases, 20 numbers of a kind per sheet and no further sheet past 150 numbers — saying what it left out
+  (`left_out`), so every `ref` it gives resolves. Letters marked private give nothing — not their
+  numbers, nor their to-dos as a case's next step. Numbers are no date, time or amount, so the claim
+  check leaves them as the model wrote them (a known limit: a misquoted identifier is not caught).
 - **What the record says.** `money_summary` lists open payments with no stored due date and, apart, the
   demands of letters with scam signs (`do_not_pay`: not to be paid until the person has checked with
   the sender — a real sender whose bank details changed shows the same signs), with `today` and each
@@ -683,14 +688,17 @@ Pages:
    while hidden (forms get the Steuer-ID, social insurance number and IBAN without spaces) and is
    announced; the check-digit badge explains itself in a tooltip; each number links to the letter it
    came from (on a call sheet or case card when that is not the card's last letter); a date or next
-   step not confirmed against the letter says to compare it.
+   step not confirmed against the letter says to compare it. An open case's next step reads its day as
+   the weekly session does: *on* for an appointment and a fee paid at it, else *by* the day to act,
+   *act today* with the due date once its send-by day has passed, overdue counted from its due date.
    **This week** (`/week`, from Today) — the weekly session as a stepper (step list beside the step on
    wide pages, dots on phones — ticks only on the steps looked at; `?step=`), rows linking to where the
    person acts, Pay (the Pay panel; not for a fee paid at an appointment) and "Looks right" (confirm; the
-   focus goes on to the next row) in place, "Finish" → "All clear until …" or "N things are overdue"
-   (with the day Today suggests the next session). With nothing in any step it says so ("Nothing to
-   review yet" with Add letters). Today shows one gentle prompt (Start · Not now) when the session is
-   due, else a quiet "Weekly review" link at its foot.
+   focus goes on to the next row, also after "Mark as paid") in place, "Finish" → "All clear until …",
+   "N things to do today" or "N things are overdue" with a link to each step that holds them (and the
+   day Today suggests the next session). With nothing in any step it says so ("Nothing to review yet"
+   with Add letters). Today shows one gentle prompt (Start · Not now) when the session is due, else a
+   quiet "Weekly review" link at its foot; on `/week` the navigation marks Today as the current section.
 9. **Settings** — profile & address, region (affects holidays), language, reminders, models,
    privacy statement + "Privacy & AI usage" (activity, tokens, API-equivalent cost, cache hits),
    Claude status (doctor), "How dates are computed" (rules catalog), data location, disclaimer.
