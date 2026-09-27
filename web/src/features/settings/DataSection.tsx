@@ -16,6 +16,7 @@ import { useClipboard } from "@/features/today/clipboard";
 import { useTodayISO } from "@/lib/today";
 import { exportFileName } from "./logic";
 import { SectionHeading, SettingsCard } from "./SettingsCard";
+import { TourCard } from "./TourCard";
 
 async function buildExport() {
   const [profile, settings, documents, items, contracts, parties, drafts, suggestions] = await Promise.all([
@@ -196,6 +197,9 @@ export function DataSection({ health }: { health: Health }) {
         >
           <p className="text-sm leading-5 text-muted">Your original PDFs and photos stay in the folder above.</p>
         </SettingsCard>
+
+        {/* the demo only: the guided tour again */}
+        <TourCard />
 
         {staticDemo || health.demo ? (
           // nothing of the visitor's to delete: a calm way to start over, not a danger zone

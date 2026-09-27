@@ -115,7 +115,7 @@ export function ClaudeSection({ health }: { health: Health }) {
       <SectionHeading
         id="set-claude"
         title="Claude connection"
-        description="Ordnung reads letters with the Claude app on this computer, signed in with your own Claude account. No API key, no extra account."
+        description="Ordnung reads letters with Claude Code, the Claude program on this computer, signed in with your own Claude account. No API key, no extra account."
       />
       <div className="space-y-5">
         {replay && state === "ready" ? (

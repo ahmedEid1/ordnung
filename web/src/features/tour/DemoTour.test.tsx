@@ -4,6 +4,7 @@ import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { DemoBadge } from "@/components/shell/DemoBadge";
 import AskPage from "@/pages/AskPage";
 import InboxPage from "@/pages/InboxPage";
+import SettingsPage from "@/pages/SettingsPage";
 import { Toaster, TOAST_LIFT_VAR, __clearToasts, toast } from "@/components/ui/Toast";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
@@ -391,6 +392,27 @@ describe("restarting the tour", () => {
     const card = await tourRegion();
     expect(within(card).getByRole("heading", { name: "You have new mail" })).toBeInTheDocument();
     await waitFor(() => expect(srv.db.state.tour).toEqual({ active: true, step: 0, completed: false }));
+  });
+
+  it("Settings › Data restarts it too, and says where it is", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.tour = { active: false, step: 3, completed: true };
+    viewport(1440, 900);
+    renderWithProviders(
+      <>
+        <SettingsPage />
+        <DemoTour />
+      </>,
+      { route: "/settings?section=data" },
+    );
+    const card = (await screen.findByRole("heading", { level: 3, name: "Guided tour" })).closest("section") as HTMLElement;
+    expect(within(card).getByTestId("tour-status")).toHaveTextContent("Hidden right now — restarting opens it at step 1.");
+    fireEvent.click(within(card).getByRole("button", { name: "Restart the demo tour" }));
+    const tour = await tourRegion();
+    const title = within(tour).getByRole("heading", { name: "You have new mail" });
+    await waitFor(() => expect(title).toHaveFocus());
+    await waitFor(() => expect(srv.db.state.tour).toEqual({ active: true, step: 0, completed: false }));
+    expect(within(card).getByTestId("tour-status")).toHaveTextContent("Open now at step 1 of 4: You have new mail.");
   });
 
   it("a minimised tour opens again when restarted", async () => {

@@ -1153,6 +1153,7 @@ export async function demoCatalog({ api, server }) {
   tourState("step-3", 2, "/ask", "Tour step 3 “Ask anything” (spotlight on the suggested questions).");
   tourState("step-4", 3, "/timeline", "Tour step 4 “Your year ahead” (spotlight on the lanes).");
   tourState("minimised", 1, "/", "The minimised tour pill.", null, { storage: { "ordnung.tour.minimised": "true" } });
+  tourState("settings-card", 1, "/settings?section=data", "Settings → Data while the tour is showing: the Guided tour card says where it is (“Restart the demo tour”).");
   const openBar = async (c) => {
     const bar = c.page.getByRole("button", { name: /^Demo tour · \d of \d: .* — show the whole step$/ });
     if (await c.exists(bar)) await c.click(bar);

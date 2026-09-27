@@ -139,7 +139,10 @@ describe("Data → delete everything", () => {
       { route: "/settings?section=data", client },
     );
 
-    await user.click(await screen.findByRole("button", { name: "Delete everything…" }));
+    const deleteAll = await screen.findByRole("button", { name: "Delete everything…" });
+    // a person's own Ordnung has no guided tour to restart
+    expect(screen.queryByRole("region", { name: "Guided tour" })).not.toBeInTheDocument();
+    await user.click(deleteAll);
     const dialog = await screen.findByRole("dialog", { name: "Delete everything?" });
     const confirm = within(dialog).getByRole("button", { name: "Delete everything" });
     expect(confirm).toBeDisabled();
@@ -170,6 +173,9 @@ describe("Data → delete everything", () => {
     expect(within(reset).getByRole("button", { name: /Copy command to reset the demo/ })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Delete everything" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Delete everything…" })).not.toBeInTheDocument();
+    // …and the guided tour again (UI audit round 1: R1-tour-5, the Settings entry)
+    const tour = await screen.findByRole("region", { name: "Guided tour" });
+    expect(within(tour).getByRole("button", { name: "Restart the demo tour" })).toBeInTheDocument();
   });
 
   it("the online demo starts over by reloading", async () => {
