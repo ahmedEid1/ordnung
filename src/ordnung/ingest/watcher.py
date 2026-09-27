@@ -14,24 +14,33 @@ The policy, which decides every case:
   notification (``watchfiles``) and every :data:`RESCAN_S` seconds, which also catches folders whose
   notifications get lost (network and cloud drives).
 * **Once** — a file is remembered by its folder, name, size and modification time (a hash kept in the
-  database, the newest :data:`MAX_SEEN`): the same file is never picked up twice, even after a
+  database while the file is in the folder): the same file is never picked up twice, even after a
   restart or after its letter was deleted; a changed file counts as new. Files already in the folder
   when watching starts are picked up once as well (a scan may have arrived while Ordnung was closed).
-  A file whose content Ordnung already has adds nothing — document ids come from the content — and a
-  letter in the trash stays there.
+  A file is remembered once its pickup is over — added, known or refused — never when Ordnung stops
+  in the middle of it: it is picked up again next time. A file whose content Ordnung already has adds
+  nothing — document ids come from the content — and a letter in the trash stays there.
+* **How many** — a folder with more than :data:`MAX_FILES` files Ordnung could read is not watched
+  (it is an archive, not an inbox; the reason is shown): choose a folder just for letters.
 * **Intake** — every file goes through the normal intake with all its limits
   (:func:`~ordnung.ingest.pipeline.add_file_result`), ``source="folder"``; at most 50 MB of a file is
-  read, so a larger one is refused without being loaded whole.
+  read, so a larger one is refused without being loaded whole. A name that is not valid UTF-8 (a
+  Windows archive, a network drive) is shown as Windows-1252; the file itself is opened by its real
+  name. A PDF Ordnung itself made (a letter drafted for the person, downloaded into the folder) is
+  never added as a letter received (:func:`remember_own_file`).
 * **Consent** — unless ``settings.inbox_auto_read`` is on, a file is *held*: stored and read on this
   computer only, never sent to Claude until the person answers (:mod:`ordnung.ingest.held`). With it
-  on, the file is read at once. Where letters can't be read at all (the zero-token demo), files are
-  always held.
+  on, files that **arrive** after the folder was chosen are read at once; the files that were already
+  in it when it was first watched always wait (choosing ``~/Downloads`` must not send every file in it
+  to Claude). Where letters can't be read at all (the zero-token demo), files are always held. A copy
+  of a waiting file never answers for it.
 * **Read-only** — the folder is only listed and read (``O_NOFOLLOW``): nothing in it is ever written,
   moved or deleted.
-* **Errors never stop the server** — a refused file is written to the activity log with the reason;
-  a folder that is missing or can't be read is reported (:attr:`FolderWatcher.problem`, once in the
-  activity log) and checked again every :data:`RETRY_S` seconds; when change notifications fail,
-  watching falls back to polling.
+* **Errors never stop the server** — a refused file (a limit, a file Ordnung isn't allowed to read)
+  is written to the activity log with the reason and not tried again until it changes; a folder that
+  is missing, can't be read or holds too many files is reported (:attr:`FolderWatcher.problem`, once
+  in the activity log) and checked again every :data:`RETRY_S` seconds; when change notifications
+  fail, watching falls back to polling; one file's error never ends the watching.
 
 Changing the folder in Settings restarts the watcher (:meth:`FolderWatcher.reconfigure`).
 """
@@ -72,7 +81,10 @@ RETRY_S = 30.0
 TICK_MS = 500
 STOP_GRACE_S = 5.0
 SEEN_META_KEY = "inbox_seen"
-MAX_SEEN = 5000
+BASELINE_META_KEY = "inbox_baseline"
+OWN_FILES_META_KEY = "own_pdfs"
+MAX_FILES = 5000
+MAX_OWN_FILES = 200
 RECENT = 6
 #: Activity kinds of files the folder brought in (``document.added`` with ``data.source == "folder"``).
 _OUTCOMES: dict[str, FolderOutcome] = {
@@ -86,7 +98,13 @@ MISSING = "Ordnung can't find this folder. Check the path, or create the folder 
 NOT_A_FOLDER = "This path is a file, not a folder. Choose the folder your scanner saves into."
 NOT_ALLOWED = "Ordnung isn't allowed to read this folder. Check its permissions."
 WATCH_FAILED = "Ordnung couldn't watch this folder. It tries again every 30 seconds."
+TOO_MANY = (
+    f"This folder holds more than {MAX_FILES:,} files Ordnung could read — it looks like an archive, not "
+    "an inbox. Choose a folder just for your letters."
+)
 UNEXPECTED = "Something went wrong while adding it."
+NOT_READABLE = "Ordnung isn't allowed to read this file. Check its permissions."
+OWN_LETTER = "This is a letter Ordnung drafted for you — it isn't added as a letter you received."
 
 Signature = tuple[int, int]
 """A file's size and modification time (ns): unchanged for :data:`SETTLE_S`, it counts as complete."""
@@ -151,6 +169,17 @@ def file_key(folder: Path, name: str, signature: Signature) -> str:
     return hashlib.sha256(raw).hexdigest()[:24]
 
 
+def display_name(name: str) -> str:
+    """The name a file is added and shown under. A name that is not valid UTF-8 comes back from the
+    operating system with escaped bytes; those are read as Windows-1252 (what Windows archives and
+    network drives mostly use), and anything still unreadable becomes “�”."""
+    raw = name.encode("utf-8", "surrogateescape")
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("cp1252", errors="replace")
+
+
 # --------------------------------------------------------------------------------------------------
 # The folder (read-only)
 # --------------------------------------------------------------------------------------------------
@@ -190,12 +219,15 @@ def list_folder(folder: Path) -> dict[str, Signature]:
 
 def read_file(path: Path, expected: Signature) -> bytes | None:
     """The file's bytes (at most one byte past the intake limit) if it is still the regular file that
-    settled — never through a symbolic link; ``None`` if it changed, moved or can't be opened."""
+    settled — never through a symbolic link; ``None`` if it changed, moved or became a link. Raises
+    :class:`PermissionError` when Ordnung isn't allowed to read it (that won't change by waiting)."""
     flags = (
         os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0)
     )
     try:
         fd = os.open(path, flags)
+    except PermissionError:
+        raise
     except OSError:
         return None
     with os.fdopen(fd, "rb") as handle:
@@ -203,6 +235,33 @@ def read_file(path: Path, expected: Signature) -> bytes | None:
         if not stat.S_ISREG(info.st_mode) or (info.st_size, info.st_mtime_ns) != expected:
             return None
         return handle.read(MAX_BYTES + 1)
+
+
+# --------------------------------------------------------------------------------------------------
+# Ordnung's own files
+# --------------------------------------------------------------------------------------------------
+
+
+def _own_files(store: Store) -> list[str]:
+    try:
+        stored = json.loads(store.get_meta(OWN_FILES_META_KEY) or "[]")
+    except ValueError:
+        return []
+    return [digest for digest in stored if isinstance(digest, str)] if isinstance(stored, list) else []
+
+
+def remember_own_file(store: Store, data: bytes) -> None:
+    """Remember a file Ordnung made for the person (a drafted letter's PDF, by its SHA-256; the newest
+    :data:`MAX_OWN_FILES`), so the watched folder never takes it for a letter received — its address
+    and IBAN come from the profile, which is never sent to Claude."""
+    digest = hashlib.sha256(data).hexdigest()
+    known = [entry for entry in _own_files(store) if entry != digest]
+    store.set_meta(OWN_FILES_META_KEY, json.dumps([*known, digest][-MAX_OWN_FILES:]))
+
+
+def is_own_file(store: Store, data: bytes) -> bool:
+    """Whether ``data`` is a file Ordnung made (:func:`remember_own_file`)."""
+    return hashlib.sha256(data).hexdigest() in _own_files(store)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -268,6 +327,7 @@ class FolderWatcher:
         self._stop: asyncio.Event | None = None
         self._seen: list[str] = []
         self._seen_set: set[str] = set()
+        self._baseline: set[str] = set()
 
     # ------------------------------------------------------------------------------ lifecycle
 
@@ -357,6 +417,11 @@ class FolderWatcher:
                 continue
             try:
                 await self._watch(folder, stop, polling)
+            except _TooManyFiles:
+                self._set_state("problem", TOO_MANY)
+                if await self._pause(self.retry_s, stop):
+                    return
+                continue
             except Exception:
                 if stop.is_set():
                     return
@@ -372,10 +437,11 @@ class FolderWatcher:
         """List the folder on changes, every tick while files settle and every ``rescan_s``; pick up
         what settled. Returns when stopped; raises when the folder can't be listed or watched."""
         self._load_seen()
+        first_watch = self._load_baseline(folder)
         tracker = SettleTracker(self.settle_s)
-        self._set_state("watching")
         last_listing = -self.rescan_s
         list_now = True  # once at the start: the files that came while Ordnung was closed
+        watching = False
         async for changes in awatch(
             folder,
             watch_filter=None,
@@ -390,14 +456,20 @@ class FolderWatcher:
             now = time.monotonic()
             if changes or list_now or tracker.settling or now - last_listing >= self.rescan_s:
                 listing = await asyncio.to_thread(list_folder, folder)
+                if len(listing) > MAX_FILES:
+                    raise _TooManyFiles
+                keys = {name: file_key(folder, name, sig) for name, sig in listing.items()}
+                if first_watch:  # the files already there when the folder was chosen always wait
+                    first_watch = False
+                    self._baseline = set(keys.values()) - self._seen_set
+                    self._save_baseline(folder)
+                self._forget_absent(set(keys.values()))
                 last_listing, list_now = now, False
+                if not watching:
+                    watching = True
+                    self._set_state("watching")
                 tracker.observe(
-                    {
-                        name: sig
-                        for name, sig in listing.items()
-                        if file_key(folder, name, sig) not in self._seen_set
-                    },
-                    now,
+                    {name: sig for name, sig in listing.items() if keys[name] not in self._seen_set}, now
                 )
             for name, signature in tracker.ready(now):
                 tracker.done(name)
@@ -408,13 +480,35 @@ class FolderWatcher:
     # ------------------------------------------------------------------------------ one file
 
     async def _pick_up(self, folder: Path, name: str, signature: Signature) -> None:
-        """Add one settled file (never raises: a refused file is logged, an unexpected error too)."""
-        data = await asyncio.to_thread(read_file, folder / name, signature)
+        """Add one settled file. Never raises — a refused file is logged, an unexpected error too —
+        except when cancelled: then the file is not remembered and is picked up again next time."""
+        key = file_key(folder, name, signature)
+        shown = display_name(name)
+        try:
+            data = await asyncio.to_thread(read_file, folder / name, signature)
+        except PermissionError:
+            self._refused(shown, NOT_READABLE)
+            self._remember(key)
+            return
+        except Exception:
+            log.exception("reading %s from the watched folder failed", shown)
+            return  # the next listing sees it again
         if data is None:
             return  # it changed or went away; the next listing sees it again
-        self._remember(file_key(folder, name, signature))
+        try:
+            await self._add(data, shown, hold=key in self._baseline)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("adding %s from the watched folder failed", shown)
+        self._remember(key)
+
+    async def _add(self, data: bytes, name: str, *, hold: bool) -> None:
         store = self.ctx.store
-        hold = not (self.can_read and self.ctx.settings.inbox_auto_read)
+        if await asyncio.to_thread(is_own_file, store, data):
+            self._refused(name, OWN_LETTER)
+            return
+        hold = hold or not (self.can_read and self.ctx.settings.inbox_auto_read)
         try:
             added = await add_file_result(
                 self.ctx, data, name, hold=hold, source=SOURCE, restore_trashed=False
@@ -422,6 +516,8 @@ class FolderWatcher:
         except IntakeError as exc:
             self._refused(name, str(exc))
             return
+        except asyncio.CancelledError:
+            raise
         except Exception:
             log.exception("adding %s from the watched folder failed", name)
             self._refused(name, UNEXPECTED)
@@ -439,11 +535,14 @@ class FolderWatcher:
         )
 
     def _refused(self, name: str, reason: str) -> None:
-        self.ctx.store.log_activity(
-            "folder.refused",
-            f"Couldn't add “{name}” from your watched folder: {reason}",
-            data={"source": SOURCE, "filename": name, "detail": reason},
-        )
+        try:
+            self.ctx.store.log_activity(
+                "folder.refused",
+                f"Couldn't add “{name}” from your watched folder: {reason}",
+                data={"source": SOURCE, "filename": name, "detail": reason},
+            )
+        except Exception:  # the log must never end the watching
+            log.exception("logging a refused file from the watched folder failed")
         self.ctx.bus.publish("folder.updated", state=self.state)
 
     # ------------------------------------------------------------------------------ remembered files
@@ -453,15 +552,55 @@ class FolderWatcher:
             stored = json.loads(self.ctx.store.get_meta(SEEN_META_KEY) or "[]")
         except ValueError:
             stored = []
-        self._seen = [key for key in stored if isinstance(key, str)][-MAX_SEEN:]
+        self._seen = [key for key in stored if isinstance(key, str)] if isinstance(stored, list) else []
         self._seen_set = set(self._seen)
 
     def _remember(self, key: str) -> None:
-        if key in self._seen_set:
+        """The file's pickup is over: never again (and, if it was there when the folder was chosen,
+        no longer one of those)."""
+        try:
+            if key in self._baseline:
+                self._baseline.discard(key)
+                self._save_baseline(self.folder)
+            if key not in self._seen_set:
+                self._seen.append(key)
+                self._seen_set.add(key)
+                self.ctx.store.set_meta(SEEN_META_KEY, json.dumps(self._seen))
+        except Exception:  # the database is gone (Delete everything) or locked: seen again later
+            log.exception("remembering a file of the watched folder failed")
+
+    def _forget_absent(self, present: set[str]) -> None:
+        """Forget files no longer in the folder, so what is remembered stays as small as the folder
+        (a file that comes back is picked up again — and adds nothing if Ordnung has it). An empty
+        listing forgets nothing: a network or cloud drive may briefly show none."""
+        if not present:
             return
-        self._seen.append(key)
-        self._seen_set.add(key)
-        if len(self._seen) > MAX_SEEN:
-            dropped, self._seen = self._seen[:-MAX_SEEN], self._seen[-MAX_SEEN:]
-            self._seen_set.difference_update(dropped)
-        self.ctx.store.set_meta(SEEN_META_KEY, json.dumps(self._seen))
+        kept = [key for key in self._seen if key in present]
+        if len(kept) != len(self._seen):
+            self._seen, self._seen_set = kept, set(kept)
+            self.ctx.store.set_meta(SEEN_META_KEY, json.dumps(self._seen))
+        if not self._baseline <= present:
+            self._baseline &= present
+            self._save_baseline(self.folder)
+
+    def _load_baseline(self, folder: Path) -> bool:
+        """Load the files still to be picked up that were in ``folder`` when it was first watched;
+        ``True`` when this folder was not watched before (its first listing is that set)."""
+        try:
+            stored = json.loads(self.ctx.store.get_meta(BASELINE_META_KEY) or "{}")
+        except ValueError:
+            stored = {}
+        if not isinstance(stored, dict) or stored.get("folder") != str(folder):
+            self._baseline = set()
+            return True
+        keys = stored.get("keys")
+        self._baseline = {key for key in keys if isinstance(key, str)} if isinstance(keys, list) else set()
+        return False
+
+    def _save_baseline(self, folder: Path | None) -> None:
+        payload = {"folder": str(folder or ""), "keys": sorted(self._baseline)}
+        self.ctx.store.set_meta(BASELINE_META_KEY, json.dumps(payload))
+
+
+class _TooManyFiles(Exception):
+    """The folder holds more than :data:`MAX_FILES` candidate files."""

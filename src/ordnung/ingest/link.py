@@ -6,8 +6,11 @@
   and (unless the payment looks suspicious) the payee IBAN are merged into the party.
 * **Case (thread)** — by reference: Aktenzeichen, Rechnungsnummer, Kundennummer, Vertragsnummer,
   Steuernummer, Beitragsnummer (a dunning letter prefers the Rechnungsnummer); else a new case. An
-  e-mail and the attachments it brought share one thread (:func:`email_family_case`): whichever of
-  them is linked first threads by its own references, the others join it.
+  e-mail and the attachments it brought share one thread where their references allow it
+  (:func:`email_family_case`): each letter threads by its **own** references first — so a payment
+  reminder attached to an e-mail still joins its invoice's thread — and joins its family's thread only
+  instead of opening a new one. An e-mail read before its attachment that is still alone in its thread
+  follows the attachment into the thread the attachment's references found (:func:`follow_attachment`).
 * **Contracts** — an extracted contract is upserted; a change (price increase …) or a cancellation
   confirmation is linked to the party's contract and recorded, never applied (§ 21 "no silent
   closing"): the triggers engine turns it into an Idea and only the person's click changes it.
@@ -42,6 +45,7 @@ from ordnung.models import (
     Evidence,
     ExtractedParty,
     Identifier,
+    Item,
     Party,
     PaymentDetails,
 )
@@ -304,14 +308,19 @@ def check_payment(
 # --------------------------------------------------------------------------------------------------
 
 
-def thread_case(store: Store, party: Party | None, extraction: DocumentExtraction) -> Case:
-    """The thread a document belongs to: found by reference, else created (deterministic id)."""
+def thread_case(
+    store: Store, party: Party | None, extraction: DocumentExtraction, *, family: Case | None = None
+) -> Case:
+    """The thread a document belongs to: found by reference, else ``family`` (the thread of the
+    e-mail it came with, or of that e-mail's attachments), else created (deterministic id)."""
     references = case_references(extraction.references, prefer_invoice=extraction.kind == "dunning")
     for reference in references:
         case = store.find_case_by_reference(reference.value)
         same_party = party is None or case is None or case.party_id in (None, party.id)
         if case is not None and (same_party or reference_kind(reference.label) in CROSS_PARTY_KINDS):
             return case
+    if family is not None:
+        return family
     title = extraction.case_title.strip() or extraction.title
     key = normalize_identifier(references[0].value) if references else normalise_name(title)
     case_id = content_id("cas", party.id if party else "", key)
@@ -328,12 +337,12 @@ def thread_case(store: Store, party: Party | None, extraction: DocumentExtractio
 
 
 def email_family_case(store: Store, document: Document) -> Case | None:
-    """The thread an e-mail and the attachments it brought share, once one of them is linked.
+    """The thread of the e-mail family ``document`` belongs to, once another member is linked — the
+    thread :func:`thread_case` falls back to when the letter's own references find none.
 
-    An attachment (``source="email:<id>"``) joins its e-mail's thread, else that of a sibling
-    attachment linked before it; an e-mail joins the thread of its first attachment linked before it.
-    Letters in the trash don't count. ``None`` while none of them is linked (this one then threads by
-    its own references, :func:`thread_case`).
+    For an attachment (``source="email:<id>"``): its e-mail's thread, else that of a sibling
+    attachment linked before it; for an e-mail: the thread of its first attachment linked before it.
+    Letters in the trash don't count. ``None`` while none of them is linked.
     """
     parent_id = attached_to(document)
     if parent_id is not None:
@@ -352,6 +361,29 @@ def email_family_case(store: Store, document: Document) -> Case | None:
         if case is not None:
             return case
     return None
+
+
+def follow_attachment(store: Store, document: Document, case: Case) -> Document | None:
+    """An attachment was threaded into ``case``: its e-mail follows it there when the e-mail is alone
+    in a thread of its own (it was read first and its references found nothing better). Its to-dos
+    move with it. An e-mail whose thread holds another letter, a contract or a draft stays where it
+    is. Returns the e-mail if it moved."""
+    parent_id = attached_to(document)
+    parent = store.get_document(parent_id) if parent_id else None
+    if parent is None or parent.deleted_at is not None or parent.case_id in (None, case.id):
+        return None
+    old = parent.case_id
+    others = [doc for doc in store.list_documents(case_id=old, include_deleted=True) if doc.id != parent.id]
+    if (
+        others
+        or any(contract.case_id == old for contract in store.list_contracts())
+        or store.list_drafts(case_id=old)
+    ):
+        return None
+    for item in store.list_items(doc_id=parent.id):
+        if item.case_id == old:
+            store.update_item(item.id, case_id=case.id)
+    return store.update_document(parent.id, case_id=case.id)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -553,6 +585,45 @@ def reminder_covers(reminder: Document, other: Document) -> bool:
     return not (other.doc_date and reminder.doc_date and other.doc_date > reminder.doc_date)
 
 
+ATTACHMENT_ITEM_NOTE = (
+    "The bill attached to this e-mail asks for the same payment — pay it once, as the bill says."
+)
+
+
+def _same_amount(a: float | None, b: float | None) -> bool:
+    return a is not None and b is not None and abs(a - b) < 0.005
+
+
+def attachment_repeats(
+    email: Document, item: Item, attachment: Document, attachment_items: Iterable[Item]
+) -> bool:
+    """Whether the e-mail's payment to-do ``item`` repeats a payment of ``attachment``, a letter that
+    came attached to that e-mail (a bill whose e-mail says "49,99 EUR, fällig am 15.09."): the
+    attachment asks for a payment, and either both letters name the same invoice number
+    (Rechnungsnummer), or one of the attachment's payments has the same amount, currency, direction
+    and due date. The attachment is the bill, so the e-mail's to-do is the one set aside.
+
+    Pure: callers decide which attachments count (live ones without scam signs), so deleting the
+    attachment brings the e-mail's to-do back.
+    """
+    if item.kind != "payment" or item.doc_id != email.id or attached_to(attachment) != email.id:
+        return False
+    payments = [
+        other for other in attachment_items if other.kind == "payment" and other.doc_id == attachment.id
+    ]
+    if not payments:
+        return False
+    if invoice_numbers(email.references) & invoice_numbers(attachment.references):
+        return True
+    return any(
+        _same_amount(other.amount, item.amount)
+        and (other.currency or "EUR") == (item.currency or "EUR")
+        and other.direction == item.direction
+        and other.due_date == item.due_date
+        for other in payments
+    )
+
+
 def link_dunning(store: Store, case: Case, extraction: DocumentExtraction, doc_id: str) -> list[str]:
     """Warn on a payment reminder about an invoice that is already filed (its payment is never closed;
     views and triggers leave it to the reminder while the reminder is live, see :func:`reminder_covers`)."""
@@ -595,7 +666,8 @@ def link_document(
     result.party, result.scam = check_payment(store, party, extraction.payment, doc_id=document.id)
     if result.scam is not None:
         result.warnings.append(result.scam.message)
-    result.case = email_family_case(store, document) or thread_case(store, result.party, extraction)
+    result.case = thread_case(store, result.party, extraction, family=email_family_case(store, document))
+    follow_attachment(store, document, result.case)
     result.contract = upsert_contract(
         store,
         document=document,

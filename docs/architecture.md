@@ -112,14 +112,23 @@ flowchart LR
   I --> Q["worker: text layer only<br/>no model call"] --> H["held<br/>Inbox: From your folder"]
   H -->|"Read these N"| R["queued → read like an upload"]
   H -->|"Keep private"| P["private, processed"]
+  P -->|"Undo"| H
 ```
 
 The watcher runs in the server's lifespan while a folder is set, restarts when the setting changes
 and pauses for *Delete everything* (`ingest/watcher.py`; policy in its docstring). It remembers each
-file by a hash of folder, name, size and modification time, so nothing is picked up twice — not after
-a restart, not after its letter was deleted. With `inbox_auto_read` new files skip the waiting.
+file by a hash of folder, name, size and modification time while the file is there — once its pickup
+is over, never halfway — so nothing is picked up twice: not after a restart, not after its letter was
+deleted. With `inbox_auto_read` files that arrive later skip the waiting; the files that were in the
+folder when it was chosen always wait, and a copy of a waiting file never answers for it (only an
+upload or the CLI does, `answer_held`). A held letter stays held whatever happens to its local job.
 Refused files and folder problems go to the activity log; `GET /api/folder` reports the state, how
-many letters wait and the last files it brought in.
+many letters wait and the last files it brought in; Today and the Inbox's count say how many wait.
+
+An e-mail's attachments thread by their own references first (a payment reminder joins its
+invoice's thread) and only fall back to the e-mail's thread; a bill that repeats its e-mail's payment
+takes it over on read (`Ledger.is_covered_by_attachment`), like a payment reminder takes over its
+invoice's.
 
 ## Asking a question
 

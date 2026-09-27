@@ -14,6 +14,7 @@ from ordnung.api.routes.common import IsoDate, ledger_changed, replay_only, requ
 from ordnung.db.store import Store
 from ordnung.drafts import pdf
 from ordnung.drafts.compose import MAX_INSTRUCTIONS, compose, mark_sent, refresh_checks, retranslate
+from ordnung.ingest.watcher import remember_own_file
 from ordnung.models import Draft, DraftKind, LetterDetails
 
 router = APIRouter(tags=["drafts"])
@@ -144,7 +145,9 @@ async def delete_draft(draft_id: str, ctx: CtxDep) -> Response:
 
 
 def _pdf(store: Store, draft_id: str) -> bytes:
-    return pdf.render(require(store.get_draft(draft_id), NOT_FOUND), store.get_profile())
+    body = pdf.render(require(store.get_draft(draft_id), NOT_FOUND), store.get_profile())
+    remember_own_file(store, body)  # saved into the watched folder, it is not a letter received
+    return body
 
 
 @router.get("/drafts/{draft_id}/pdf", response_class=Response)

@@ -344,13 +344,23 @@ each attached PDF or photo (JPEG, PNG, WEBP, HEIC/HEIF — decided by its bytes,
 type or name) becomes a document of its own right after it: through the normal intake with every
 limit, `source="email:<the e-mail's id>"`, the e-mail's arrival date and its privacy choice (private,
 or held). At most 10 attachments per e-mail are read, the first in the message; pictures inside the
-e-mail (shown by a `cid:` link, or not marked as an attachment and under 64 KB) are skipped; a zip,
-Word file, calendar invite, text file or forwarded e-mail is listed and not read. What became of each
-(`added`, `known`, `inline`, `not_read`, `refused` with the intake's reason, `over_limit`) is written
-to the activity log on the e-mail and shown on it; an attachment shows the e-mail it came with. An
-e-mail and its attachments share one thread: whichever is linked first threads by its own
-references, the others join it (`link.email_family_case`). Adding a trashed e-mail again restores its
-attachments too.
+e-mail are skipped (under 64 KB and shown by a `cid:` link or not marked as an attachment; or shown by
+a `cid:` link with a shorter side under 800 px, a banner) — a photo of a letter pasted into the text is
+read; a zip, Word file, calendar invite, text file or forwarded e-mail is listed and not read. What
+became of each (`added`, `known`, `inline`, `not_read`, `refused` with the intake's reason,
+`over_limit`; with the linked letter's status now) is written to the activity log on the e-mail and
+shown on it, with the number of parts past the 50 listed; an attachment shows the e-mail it came
+with. Each letter threads by its **own** references first — a payment reminder attached to an e-mail
+joins its invoice's thread, so "pay once, not twice" still holds — and joins its e-mail family's thread
+only instead of opening a new one (`link.thread_case(family=…)`); an e-mail read first and still alone
+in its thread follows its attachment's thread (`link.follow_attachment`). An e-mail whose body repeats
+its attached bill's payment (the same invoice number, or the same amount, currency, direction and due
+date) keeps its to-do, but the bill's takes it over on read (`link.attachment_repeats`,
+`Ledger.is_covered_by_attachment`: left out of Today, the totals and the Ideas, noted on the e-mail,
+set aside as `attached` on the party) — deleting the bill brings it back. An e-mail nested too deeply
+for the parser is refused with a reason. An e-mail title is its subject and sender while it is private
+or held (no model). Adding a trashed e-mail again restores its attachments too; adding an e-mail again
+whose adding was stopped before its attachments adds them.
 
 ### 8.1 The watched folder — `ingest/watcher.py`
 
@@ -364,21 +374,32 @@ attachments too.
 - A file counts once its size and modification time have not changed for 2 s and it is not empty.
   The folder is listed on every `watchfiles` notification and every 60 s (lost notifications on
   network and cloud drives); when notifications fail, it polls.
-- Once per file: a hash of folder, name, size and modification time is kept (meta `inbox_seen`, the
-  newest 5,000), so a file is never picked up twice — not after a restart, and not after its letter
-  was deleted. Files already there when watching starts are picked up once. Content Ordnung already
-  has adds nothing, and a letter in the trash stays there.
+- Once per file: a hash of folder, name, size and modification time is kept while the file is in
+  the folder (meta `inbox_seen`), so a file is never picked up twice — not after a restart, and not
+  after its letter was deleted. A file is remembered once its pickup is over (added, known or
+  refused), never when Ordnung stops in the middle of it. Files already there when watching starts
+  are picked up once. Content Ordnung already has adds nothing, and a letter in the trash stays there.
+  A folder with more than 5,000 candidate files is not watched (`problem`).
 - Every file goes through `add_file` with all limits (at most 50 MB + 1 byte is read),
-  `source="folder"`. By default it is **held**: private and `held`, stored and read on this computer
-  only, never sent to Claude until the person answers — *Read these N* (`release`: no longer private,
-  queued for reading) or *Keep private* (`keep_private`: as "Keep private — no AI"), for an e-mail
-  with its held attachments (`ingest/held.py`). With `inbox_auto_read` new files are read at once;
-  in the replay-only demo they are always held. Adding a held file again by hand answers for it.
+  `source="folder"`; a name that is not UTF-8 is shown as Windows-1252. By default it is **held**:
+  private and `held`, stored and read on this computer only, never sent to Claude until the person
+  answers — *Read these N* (`release`: no longer private, queued for reading) or *Keep private*
+  (`keep_private`: as "Keep private — no AI"; undone by `back_to_waiting`), for an e-mail with its held
+  attachments (`ingest/held.py`). With `inbox_auto_read` files that **arrive** later are read at
+  once; the files in the folder's first listing (meta `inbox_baseline`, per folder) always wait, and in
+  the replay-only demo every file waits. Only adding a held file again **by hand** (`answer_held`: the
+  upload route, the CLI) answers for it — a copy in the folder never does. A held letter keeps waiting
+  whatever happens to its local reading (stopped: stored next time; failed: `error`, still `held`).
+  A PDF Ordnung itself rendered (a draft, remembered by SHA-256 when served) is refused, never added.
 - Read-only: the folder is only listed and read (`O_NOFOLLOW`); nothing there is written, moved or
-  deleted. A refused file is logged with the reason (`folder.refused`), a known one as
-  `folder.known`; a missing or unreadable folder is reported (`FolderStatus.problem`, once in the
-  activity log) and checked again every 30 s. *Delete everything* pauses the watcher and clears the
-  setting. Choosing Ordnung's own `<data>/inbox` creates it (`0700`).
+  deleted. A refused file (a limit, not allowed to read it) is logged with the reason
+  (`folder.refused`) and not retried until it changes, a known one as `folder.known`; a missing or
+  unreadable folder is reported (`FolderStatus.problem`, once in the activity log) and checked again
+  every 30 s; one file's error never ends the watching. *Delete everything* pauses the watcher and
+  clears the setting. Choosing Ordnung's own `<data>/inbox` creates it (`0700`).
+- Today counts the waiting letters (`Dashboard.waiting`) and shows a card for them instead of "nothing
+  needs you"; they are left out of the recent letters and the life areas, and the Inbox's nav count
+  includes them.
 
 ## 9. Secretary — `secretary/` + `tick.py`
 
@@ -623,11 +644,13 @@ replay-only demo), `calendar.ics`, `calendar/exported` (POST), `activity`, `usag
 `events` (SSE), `data` (DELETE `{"confirm": "DELETE"}`: "Delete everything" — empties the database
 in place and removes Ordnung's files, keeping the lock and `server.json`; 409 in the demo),
 `demo/tour` (GET tour state), `demo/mail` (GET tray, POST `{id}` → ingest a tray letter),
-`folder` (GET: the watched folder, its state or problem, `auto_read`, how many letters wait, the
-suggested `<data>/inbox`, the last files it brought in), `documents/held/read` and
-`documents/held/keep-private` (POST `{doc_ids}`: the person's answer for the waiting letters they
-saw, a held e-mail's held attachments included; ids that no longer wait come back as `skipped`;
-*read* is `409` in the replay-only demo). `settings` takes `inbox_auto_read`; a waiting letter can't
+`folder` (GET: the watched folder, its state or problem, `auto_read`, `can_read`, how many letters
+wait, the suggested `<data>/inbox`, the last files it brought in), `documents/held/read` and
+`documents/held/keep-private` (POST `{doc_ids}`, at most 500: the person's answer for the waiting
+letters they saw, a held e-mail's held attachments included; ids that no longer wait come back as
+`skipped`; *read* is `409` in the replay-only demo; the web app sends more ids in several requests),
+`documents/held/wait` (POST `{doc_ids}`: undo *Keep private* — letters kept private from waiting,
+never read since, wait again). `settings` takes `inbox_auto_read`; a waiting letter can't
 be reprocessed or made non-private by `PATCH` (`409`) — only an answer changes it.
 Contracts carry `cancellable` + `cancel_hint`, worked out on read (not for the broadcasting fee,
 obligations towards authorities or a job — a job gets "Draft resignation").
@@ -690,8 +713,9 @@ Pages:
 8. **Settings** — profile & address, region (affects holidays), language, reminders, models,
    privacy statement + "Privacy & AI usage" (activity, tokens, API-equivalent cost, cache hits),
    Claude status (doctor), "How dates are computed" (rules catalog), data location, disclaimer,
-   **Watched folder** (the path with the server's validation message, "Use Ordnung's inbox folder",
-   the auto-read switch with the cloud-folder caveat, the folder's state and the last files).
+   **Watched folder** (the path with the server's validation message, "Use Ordnung's inbox folder"
+   with its path to copy, the auto-read switch — later arrivals only — with the cloud-folder caveat,
+   the folder's state, whether new files wait or are read, and the last files).
 9. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
    name/address (skippable) → Claude check (copyable fixes; "Continue without AI") → drop zone +
    "Explore the demo instead".

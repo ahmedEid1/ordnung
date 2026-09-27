@@ -970,6 +970,9 @@ class Dashboard(_Model):
     areas: list[AreaStatus] = Field(default_factory=list)
     suggestions: list[Suggestion] = Field(default_factory=list)
     recent_documents: list[Document] = Field(default_factory=list)
+    #: Letters waiting for the person's "Read these" (``held``, from the watched folder): not read, so
+    #: in no other part of the page — Today says they wait instead of "nothing needs you".
+    waiting: int = 0
     stats: DashboardStats = Field(default_factory=DashboardStats)
 
 
@@ -1053,6 +1056,8 @@ class EmailAttachment(_Model):
     outcome: AttachmentOutcome
     detail: str = ""
     doc_id: str | None = None
+    #: That letter's status now (``held`` while it waits for the person); ``None`` without ``doc_id``.
+    status: DocumentStatus | None = None
 
 
 class DocumentDetail(_Model):
@@ -1068,6 +1073,8 @@ class DocumentDetail(_Model):
     drafts: list[Draft] = Field(default_factory=list)
     #: An e-mail's attachments and what became of each (empty for other letters).
     attachments: list[EmailAttachment] = Field(default_factory=list)
+    #: More parts of that e-mail, past the most that are listed.
+    attachments_more: int = 0
     #: The e-mail this letter came attached to (``None``: it did not, or that e-mail is gone).
     email: Document | None = None
 
@@ -1076,12 +1083,13 @@ class ItemAside(_Model):
     """An open to-do that is not one to act on (worked out on read, never stored).
 
     ``replaced``: a payment reminder (``replaced_by``, a document id) took over the invoice payment —
-    pay once, not twice. ``history``: its date had long passed when the letter was read (an archive
-    letter). ``suspicious``: the letter shows signs of a scam.
+    pay once, not twice. ``attached``: an e-mail's payment that the bill attached to it
+    (``replaced_by``) asks for too. ``history``: its date had long passed when the letter was read (an
+    archive letter). ``suspicious``: the letter shows signs of a scam.
     """
 
     item_id: str
-    reason: Literal["replaced", "history", "suspicious"]
+    reason: Literal["replaced", "attached", "history", "suspicious"]
     replaced_by: str | None = None
 
 
@@ -1253,6 +1261,8 @@ class FolderStatus(_Model):
     #: Why the folder is not watched right now (missing, not readable …), for the person.
     problem: str | None = None
     auto_read: bool = False
+    #: Whether letters can be read here at all (not in the demo that only replays): else files always wait.
+    can_read: bool = True
     #: Letters waiting for the person's "Read these" (``held``), from the folder or attached to its e-mails.
     waiting: int = 0
     #: Ordnung's own inbox folder in the data directory, offered as a ready-made choice.

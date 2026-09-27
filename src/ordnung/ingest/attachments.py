@@ -11,20 +11,23 @@ e-mail's attachments are read like letters dropped in. The policy, which decides
   upload (:func:`~ordnung.ingest.intake.sniff_mime`), never by the declared type or the file name.
   Everything else — a zip, a Word file, a calendar invite, a text file, a forwarded e-mail — is
   listed and not read.
-* **Pictures inside the e-mail are skipped** — an image the HTML body shows through a ``cid:`` link,
-  or an image not marked as an attachment that is smaller than :data:`INLINE_IMAGE_MAX_BYTES`, is part
-  of the e-mail's design (a logo, a tracking pixel). PDFs are never skipped this way.
+* **Pictures inside the e-mail are skipped** — an image smaller than :data:`INLINE_IMAGE_MAX_BYTES`
+  that the HTML body shows through a ``cid:`` link or that is not marked as an attachment is part of
+  the e-mail's design (a logo, a tracking pixel); so is a larger one the HTML body shows whose shorter
+  side is under :data:`PHOTO_MIN_SIDE_PX` pixels (a banner). A photo pasted into the text — Apple Mail
+  shows attached photos through ``cid:`` links too — is big and is read. PDFs are never skipped.
 * **At most** :data:`MAX_ATTACHMENTS` attachments of one e-mail are read, the first ones in the
   message; later ones are listed. At most :data:`MAX_LISTED` parts are listed at all.
 * Each attachment that is read goes through the normal intake with every limit (size, pages, pixels,
   PDF stream expansion) as its own document with ``source="email:<the e-mail's id>"``; it inherits
   the e-mail's privacy choice ("Keep private", or waiting for the person) and its arrival date, and
-  joins the e-mail's thread (:func:`ordnung.ingest.link.email_family_case`). The e-mail itself is
-  bounded by the intake's size limit before it is parsed, and parsing is linear in its size.
-
-Not decided here (documented limitations): an e-mail whose body repeats what its attached bill says
-("39,99 EUR due on 15 Oct") gives both letters a to-do; a photo the sender pasted into the text (shown
-through ``cid:``) is listed as a picture inside the e-mail, not read — it can be added by hand.
+  joins the e-mail's thread unless its own references find a better one
+  (:func:`ordnung.ingest.link.thread_case`). The e-mail itself is bounded by the intake's size limit
+  before it is parsed, and parsing is linear in its size; one nested too deeply to parse is refused
+  (:data:`TOO_DEEP`).
+* An e-mail whose body repeats what its attached bill says ("49,99 EUR, fällig am 15.09.") gets its
+  to-do like any letter; the bill's own to-do takes it over on read
+  (:func:`ordnung.ingest.link.attachment_repeats`), so the payment is counted once.
 """
 
 from __future__ import annotations
@@ -40,12 +43,14 @@ from typing import Literal, cast
 from urllib.parse import unquote
 
 from ordnung.db.store import Store
-from ordnung.ingest.intake import IMAGE_TYPES, IntakeError, safe_filename, sniff_mime
+from ordnung.ingest.intake import IMAGE_TYPES, TOO_DEEP, IntakeError, image_size, safe_filename, sniff_mime
 from ordnung.models import AttachmentOutcome, Document, EmailAttachment
 
 MAX_ATTACHMENTS = 10
 MAX_LISTED = 50
 INLINE_IMAGE_MAX_BYTES = 64 * 1024
+#: A picture the e-mail's text shows is a photo of a page (read) only from this shorter side on.
+PHOTO_MIN_SIDE_PX = 800
 MAX_NAME_CHARS = 200
 EMAIL_SOURCE_PREFIX = "email:"
 EMAIL_MIME = "message/rfc822"
@@ -100,8 +105,14 @@ class EmailParts:
 
 
 def email_attachments(data: bytes) -> EmailParts:
-    """Split an e-mail's bytes into its attachments and decide what becomes of each (see the module)."""
-    message = cast(EmailMessage, email.message_from_bytes(data, policy=email.policy.default))
+    """Split an e-mail's bytes into its attachments and decide what becomes of each (see the module).
+
+    Raises :class:`~ordnung.ingest.intake.IntakeError` for an e-mail nested too deeply to parse.
+    """
+    try:
+        message = cast(EmailMessage, email.message_from_bytes(data, policy=email.policy.default))
+    except RecursionError:  # the standard library's parser recurses once per nesting level
+        raise IntakeError(TOO_DEEP) from None
     leaves = list(_leaves(message))
     cids = _cid_links(part for part in leaves if _is_body_text(part) and part.get_content_subtype() == "html")
     listed: list[Attachment] = []
@@ -203,11 +214,16 @@ def _readable_type(data: bytes, filename: str) -> str | None:
 
 
 def _inside_the_email(part: Message, data: bytes, cids: frozenset[str]) -> bool:
-    """A picture that is part of the e-mail's design: linked from its HTML, or small and not attached."""
+    """A picture that is part of the e-mail's design: small and linked from its HTML or not attached
+    (a logo, a tracking pixel), or linked from its HTML and too narrow to be a page (a banner)."""
     content_id = part.get("Content-ID")
-    if content_id and _cid_key(str(content_id)) in cids:
-        return True
-    return part.get_content_disposition() != "attachment" and len(data) < INLINE_IMAGE_MAX_BYTES
+    linked = bool(content_id) and _cid_key(str(content_id)) in cids
+    if len(data) < INLINE_IMAGE_MAX_BYTES:
+        return linked or part.get_content_disposition() != "attachment"
+    if not linked:
+        return False
+    size = image_size(data)  # unreadable: intake decides (and says why)
+    return size is not None and min(size) < PHOTO_MIN_SIDE_PX
 
 
 def _display_name(filename: str, mime: str | None, declared: str, number: int) -> str:
@@ -250,7 +266,8 @@ def is_email(document: Document) -> bool:
 def attachment_listing(store: Store, document: Document) -> list[EmailAttachment]:
     """What became of an e-mail's attachments, as recorded when it was added.
 
-    A letter an attachment became is linked only while it exists and is not in the trash.
+    A letter an attachment became is linked (with its status now) only while it exists and is not in
+    the trash.
     """
     if not is_email(document):
         return []
@@ -263,9 +280,22 @@ def attachment_listing(store: Store, document: Document) -> list[EmailAttachment
         except ValueError:
             continue
         linked = store.get_document(attachment.doc_id) if attachment.doc_id else None
-        live = linked is not None and linked.deleted_at is None
-        listing.append(attachment.model_copy(update={"doc_id": attachment.doc_id if live else None}))
+        live = linked if linked is not None and linked.deleted_at is None else None
+        listing.append(
+            attachment.model_copy(
+                update={"doc_id": live.id if live else None, "status": live.status if live else None}
+            )
+        )
     return listing
+
+
+def parts_not_listed(store: Store, document: Document) -> int:
+    """How many more parts an e-mail had past the most that are listed (:data:`MAX_LISTED`)."""
+    if not is_email(document):
+        return 0
+    entry = store.last_activity("document", document.id, [ATTACHMENTS_ACTIVITY])
+    more = entry.data.get("more", 0) if entry is not None else 0
+    return more if isinstance(more, int) and more > 0 else 0
 
 
 def email_of(store: Store, document: Document) -> Document | None:

@@ -94,9 +94,12 @@ async def eventually(check: Callable[[], Any], within: float = 15.0) -> Any:
 
 @asynccontextmanager
 async def watching(ctx: AppContext, **options: Any) -> AsyncIterator[FolderWatcher]:
+    """A running watcher, once it listed the folder (files written after that *arrive*)."""
     folder_watcher = FolderWatcher(ctx, **{**FAST, **options})
     await folder_watcher.start()
     try:
+        if ctx.settings.inbox_dir:
+            await eventually(lambda: folder_watcher.state != "off")
         yield folder_watcher
     finally:
         await folder_watcher.stop()
@@ -493,3 +496,195 @@ async def test_stopping_is_quick_and_can_be_repeated(ctx: AppContext) -> None:
     await folder_watcher.stop()
     assert time.monotonic() - started < 2.0
     assert (folder_watcher.state, folder_watcher.running) == ("off", False)
+
+
+# --------------------------------------------------------------------------------------------------
+# Review round 1: consent for files already there, copies, stops, odd names, access, size
+# --------------------------------------------------------------------------------------------------
+
+
+async def test_with_auto_read_the_files_already_there_still_wait(ctx: AppContext, inbox: Path) -> None:
+    """Choosing ~/Downloads with auto-read on must not send every file in it to Claude: only files
+    that arrive later are read at once — also after a restart."""
+    (inbox / "old-tax.pdf").write_bytes(TAX_LETTER.pdf())
+    (inbox / "old-bill.pdf").write_bytes(pdf("old bill"))
+    use_folder(ctx, inbox, inbox_auto_read=True)  # the folder and the switch saved together
+    async with watching(ctx):
+        (inbox / "new.pdf").write_bytes(INVOICE_LETTER.pdf())
+        old_tax = await eventually(picked(ctx, "old-tax.pdf"))
+        old_bill = await eventually(picked(ctx, "old-bill.pdf"))
+        new = await eventually(picked(ctx, "new.pdf"))
+    assert [(doc.status, doc.ai_private) for doc in (old_tax, old_bill)] == [("held", True)] * 2
+    assert (new.status, new.ai_private) == ("queued", False)
+    (inbox / "while-closed.pdf").write_bytes(pdf("while closed"))  # arrives while Ordnung is closed
+    async with watching(ctx):
+        later = await eventually(picked(ctx, "while-closed.pdf"))
+    assert later.status == "queued"  # the folder was watched before: it arrived
+    await ctx.worker.run_until_idle()
+    assert {doc.id for doc in held.waiting(ctx.store)} == {old_tax.id, old_bill.id}
+
+
+async def test_the_files_already_there_wait_even_if_ordnung_stopped_before_them(
+    ctx: AppContext, inbox: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for number in range(3):
+        (inbox / f"old-{number}.pdf").write_bytes(pdf(f"old {number}"))
+    use_folder(ctx, inbox, inbox_auto_read=True)
+    real = watcher.add_file_result
+    added = 0
+
+    async def one_then_stop(*args: Any, **kwargs: Any) -> Any:
+        nonlocal added
+        added += 1
+        if added > 1:
+            await asyncio.sleep(30)  # Ordnung quits in the middle of the second file
+        return await real(*args, **kwargs)
+
+    monkeypatch.setattr(watcher, "add_file_result", one_then_stop)
+    monkeypatch.setattr(watcher, "STOP_GRACE_S", 0.2)
+    async with watching(ctx):
+        await eventually(lambda: added == 2)
+    monkeypatch.setattr(watcher, "add_file_result", real)
+    async with watching(ctx):
+        await eventually(lambda: len(ctx.store.list_documents()) == 3)
+    assert {doc.status for doc in ctx.store.list_documents()} == {"held"}
+
+
+async def test_a_copy_of_a_waiting_file_keeps_it_waiting_with_auto_read(ctx: AppContext, inbox: Path) -> None:
+    async with watching(ctx):
+        (inbox / "scan.pdf").write_bytes(TAX_LETTER.pdf())
+        waiting = await eventually(picked(ctx, "scan.pdf"))
+    use_folder(ctx, inbox, inbox_auto_read=True)
+    async with watching(ctx):
+        (inbox / "scan (1).pdf").write_bytes(TAX_LETTER.pdf())  # the browser saves it again
+        await eventually(lambda: logged(ctx, "folder.known"))
+    await ctx.worker.run_until_idle()
+    still = ctx.store.get_document(waiting.id)
+    assert still is not None and still.status == "held" and backend(ctx).calls == []
+    assert logged(ctx, "document.released") == []
+
+
+async def test_a_file_stopped_in_the_middle_is_picked_up_next_time(
+    ctx: AppContext, inbox: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = watcher.add_file_result
+    started = asyncio.Event()
+
+    async def slow(*args: Any, **kwargs: Any) -> Any:
+        started.set()
+        await asyncio.sleep(30)  # a big scan being rendered
+        return await real(*args, **kwargs)
+
+    monkeypatch.setattr(watcher, "add_file_result", slow)
+    monkeypatch.setattr(watcher, "STOP_GRACE_S", 0.2)
+    async with watching(ctx):
+        (inbox / "big-scan.pdf").write_bytes(TAX_LETTER.pdf())
+        await asyncio.wait_for(started.wait(), 10)
+    assert ctx.store.list_documents() == []  # stopped: nothing added, nothing remembered
+    monkeypatch.setattr(watcher, "add_file_result", real)
+    async with watching(ctx):
+        document = await eventually(picked(ctx, "big-scan.pdf"))
+    assert document.status == "held"
+
+
+def test_names_that_are_not_utf8_are_shown_as_windows_1252() -> None:
+    raw = os.fsdecode(b"Bescheid_M\xfcller.pdf")  # as os.scandir gives it on Linux
+    assert watcher.display_name(raw) == "Bescheid_Müller.pdf"
+    assert watcher.display_name("Kündigung.pdf") == "Kündigung.pdf"
+    assert watcher.display_name(os.fsdecode(b"x\x81y.pdf")) == "x�y.pdf"
+
+
+async def test_a_file_with_a_name_that_is_not_utf8_is_added(ctx: AppContext, inbox: Path) -> None:
+    async with watching(ctx) as folder_watcher:
+        (inbox / os.fsdecode(b"Bescheid_M\xfcller.pdf")).write_bytes(TAX_LETTER.pdf())  # Latin-1 bytes
+        document = await eventually(picked(ctx, "Bescheid_Müller.pdf"))
+        (inbox / "after.pdf").write_bytes(INVOICE_LETTER.pdf())
+        await eventually(picked(ctx, "after.pdf"))  # the watching went on
+        assert folder_watcher.state == "watching"
+    assert document.status == "held"
+    assert (
+        logged(ctx, "document.added")[-1]
+        == "Added “Bescheid_Müller.pdf” from your watched folder · waiting for you"
+    )
+
+
+def test_reading_a_file_ordnung_may_not_read_says_so(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    locked = tmp_path / "locked.pdf"
+    locked.write_bytes(b"%PDF-1.4")
+
+    def denied(*_args: Any, **_kwargs: Any) -> int:
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(watcher.os, "open", denied)
+    with pytest.raises(PermissionError):
+        read_file(locked, (8, locked.stat().st_mtime_ns))
+
+
+async def test_a_file_ordnung_may_not_read_is_reported_once(
+    ctx: AppContext, inbox: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = watcher.read_file
+    tries = 0
+
+    def guarded(path: Path, expected: Any) -> bytes | None:
+        nonlocal tries
+        if path.name == "locked.pdf":
+            tries += 1
+            raise PermissionError(13, "Permission denied")
+        return real(path, expected)
+
+    monkeypatch.setattr(watcher, "read_file", guarded)
+    async with watching(ctx):
+        (inbox / "locked.pdf").write_bytes(pdf("locked"))
+        await eventually(lambda: logged(ctx, "folder.refused"))
+        await asyncio.sleep(1.0)  # several rescans
+    assert tries == 1
+    assert logged(ctx, "folder.refused") == [
+        f"Couldn't add “locked.pdf” from your watched folder: {watcher.NOT_READABLE}"
+    ]
+
+
+async def test_what_is_remembered_follows_the_folder(ctx: AppContext, inbox: Path) -> None:
+    """Files that left the folder are forgotten (it stays as small as the folder); one that comes
+    back is picked up again and adds nothing."""
+    async with watching(ctx):
+        (inbox / "a.pdf").write_bytes(pdf("a"))
+        (inbox / "b.pdf").write_bytes(pdf("b"))
+        await eventually(lambda: len(ctx.store.list_documents()) == 2)
+        info = (inbox / "a.pdf").stat()
+        key = file_key(inbox, "a.pdf", (info.st_size, info.st_mtime_ns))
+        moved = (inbox / "a.pdf").read_bytes()
+        (inbox / "a.pdf").unlink()
+        await eventually(lambda: key not in (ctx.store.get_meta(SEEN_META_KEY) or ""))
+        (inbox / "a.pdf").write_bytes(moved)
+        await eventually(lambda: logged(ctx, "folder.known"))
+        await asyncio.sleep(1.0)  # several rescans: known once
+    assert logged(ctx, "folder.known") == ["“a.pdf” in your watched folder is already in Ordnung"]
+    assert len(ctx.store.list_documents()) == 2
+
+
+async def test_a_folder_with_too_many_files_is_not_watched(
+    ctx: AppContext, inbox: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(watcher, "MAX_FILES", 3)
+    for number in range(4):
+        (inbox / f"{number}.pdf").write_bytes(pdf(str(number)))
+    async with watching(ctx) as folder_watcher:
+        await eventually(lambda: folder_watcher.state == "problem")
+        assert folder_watcher.problem == watcher.TOO_MANY
+        (inbox / "0.pdf").unlink()
+        await eventually(lambda: folder_watcher.state == "watching")
+        await eventually(lambda: len(ctx.store.list_documents()) == 3)
+
+
+async def test_a_letter_ordnung_drafted_is_not_added_as_one_received(ctx: AppContext, inbox: Path) -> None:
+    drafted = pdf("Kündigung · Sam Rivera · DE89 3704 0044 0532 0130 00")
+    watcher.remember_own_file(ctx.store, drafted)
+    assert watcher.is_own_file(ctx.store, drafted) and not watcher.is_own_file(ctx.store, pdf("other"))
+    use_folder(ctx, inbox, inbox_auto_read=True)
+    async with watching(ctx):
+        (inbox / "kuendigung.pdf").write_bytes(drafted)
+        await eventually(lambda: logged(ctx, "folder.refused"))
+    assert ctx.store.list_documents() == [] and backend(ctx).calls == []
+    (pickup,) = recent_pickups(ctx.store)
+    assert (pickup.outcome, pickup.detail) == ("refused", watcher.OWN_LETTER)

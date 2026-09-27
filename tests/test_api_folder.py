@@ -16,6 +16,7 @@ import pytest
 from fixtures_llm import INVOICE_LETTER, TAX_LETTER
 from ordnung import clock
 from ordnung.api.deps import ApiState
+from ordnung.ingest.intake import TOO_DEEP
 from ordnung.ingest.pipeline import add_file
 from ordnung.llm.replay import ReplayBackend
 from test_api_support import TODAY, Api, api_for, lifespan
@@ -52,6 +53,7 @@ async def test_the_folder_status_without_a_folder(data_dir: Path) -> None:
         "state": "off",
         "problem": None,
         "auto_read": False,
+        "can_read": True,
         "waiting": 0,
         "suggested": str((data_dir / "inbox").resolve()),
         "recent": [],
@@ -123,6 +125,7 @@ async def test_the_demo_that_only_replays_can_not_read_waiting_letters(
         api.ctx.llm.backend = ReplayBackend(tmp_path / "fixtures")
         state: ApiState = api.app.state.ordnung
         assert not state.reads_letters
+        assert (await api.client.get("/api/folder")).json()["can_read"] is False  # files always wait
         response = await api.client.post("/api/documents/held/read", json={"doc_ids": [doc_id]})
         assert response.status_code == 409 and "recorded answers" in response.json()["detail"]
         kept = await api.client.post("/api/documents/held/keep-private", json={"doc_ids": [doc_id]})
@@ -191,3 +194,40 @@ async def test_delete_everything_stops_watching(data_dir: Path, tmp_path: Path) 
         (scans / "after.pdf").write_bytes(INVOICE_LETTER.pdf())
         await asyncio.sleep(0.5)
         assert (await api.client.get("/api/documents")).json() == []
+
+
+async def test_keep_private_can_be_undone(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        doc_id = await waiting_letter(api, INVOICE_LETTER.pdf(), "rechnung.pdf")
+        await api.client.post("/api/documents/held/keep-private", json={"doc_ids": [doc_id]})
+        undone = await api.client.post("/api/documents/held/wait", json={"doc_ids": [doc_id]})
+        assert undone.status_code == 200
+        assert [(doc["id"], doc["status"]) for doc in undone.json()["documents"]] == [(doc_id, "held")]
+        assert (await api.client.get("/api/folder")).json()["waiting"] == 1
+        again = (await api.client.post("/api/documents/held/wait", json={"doc_ids": [doc_id]})).json()
+        assert again == {"documents": [], "jobs": [], "skipped": [doc_id]}  # it waits already
+
+
+async def test_today_says_letters_wait_and_files_them_nowhere_else(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        await api.upload(("rechnung.pdf", INVOICE_LETTER.pdf()))
+        await api.read_all()
+        doc_id = await waiting_letter(api, TAX_LETTER.pdf(), "bescheid.pdf")
+        today = (await api.client.get("/api/dashboard")).json()
+        assert today["waiting"] == 1
+        assert doc_id not in [doc["id"] for doc in today["recent_documents"]]
+        assert "other" not in [area["area"] for area in today["areas"]]  # not filed as "Other"
+        await api.client.post("/api/documents/held/keep-private", json={"doc_ids": [doc_id]})
+        assert (await api.client.get("/api/dashboard")).json()["waiting"] == 0
+
+
+async def test_an_email_nested_too_deeply_is_refused_with_a_reason(data_dir: Path) -> None:
+    deep = b"From: a@example.org\r\nSubject: tief\r\nMIME-Version: 1.0\r\n" + b"".join(
+        b'Content-Type: multipart/mixed; boundary="b%d"\r\n\r\n--b%d\r\n' % (n, n) for n in range(1000)
+    )
+    async with api_for(data_dir) as api:
+        response = await api.client.post(
+            "/api/documents", files=[("files", ("tief.eml", deep))], data={"combine": "false"}
+        )
+        assert response.status_code == 422
+        assert response.json()["errors"] == [{"filename": "tief.eml", "detail": TOO_DEEP}]

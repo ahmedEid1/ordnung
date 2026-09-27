@@ -1074,9 +1074,51 @@
         "tags": [
           "folder"
         ],
-        "summary": "Keep Held Private",
+        "summary": "Keep Held Private Route",
         "description": "“Keep private”: the waiting letters stay on this computer and are never sent to Claude.",
-        "operationId": "keep_held_private_api_documents_held_keep_private_post",
+        "operationId": "keep_held_private_route_api_documents_held_keep_private_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeldResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/held/wait": {
+      "post": {
+        "tags": [
+          "folder"
+        ],
+        "summary": "Wait Again",
+        "description": "Undo “Keep private”: letters kept private from waiting (never read by Claude) wait again.",
+        "operationId": "wait_again_api_documents_held_wait_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -4431,6 +4473,11 @@
             "type": "array",
             "title": "Recent Documents"
           },
+          "waiting": {
+            "type": "integer",
+            "title": "Waiting",
+            "default": 0
+          },
           "stats": {
             "$ref": "#/components/schemas/DashboardStats"
           }
@@ -4447,6 +4494,7 @@
           "areas",
           "suggestions",
           "recent_documents",
+          "waiting",
           "stats"
         ],
         "title": "Dashboard"
@@ -5259,6 +5307,11 @@
             "type": "array",
             "title": "Attachments"
           },
+          "attachments_more": {
+            "type": "integer",
+            "title": "Attachments More",
+            "default": 0
+          },
           "email": {
             "anyOf": [
               {
@@ -5283,6 +5336,7 @@
           "suggestions",
           "drafts",
           "attachments",
+          "attachments_more",
           "email"
         ],
         "title": "DocumentDetail"
@@ -5950,6 +6004,25 @@
               }
             ],
             "title": "Doc Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "queued",
+                  "processing",
+                  "processed",
+                  "needs_review",
+                  "failed",
+                  "held"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
           }
         },
         "type": "object",
@@ -5957,7 +6030,8 @@
           "filename",
           "outcome",
           "detail",
-          "doc_id"
+          "doc_id",
+          "status"
         ],
         "title": "EmailAttachment",
         "description": "One attachment of an e-mail and what Ordnung did with it (:mod:`ordnung.ingest.attachments`).\n\n``added``: it became a letter of its own (``doc_id``); ``known``: the same file was already in\nOrdnung (``doc_id``); ``inline``: a picture shown inside the e-mail (a logo), skipped; ``not_read``: a\ntype Ordnung does not read from e-mails (a zip, a Word file …), listed only; ``refused``: intake\nrefused it (``detail`` says why); ``over_limit``: past the most attachments read from one e-mail.\n``doc_id`` is only set while that letter exists and is not in the trash."
@@ -6131,6 +6205,11 @@
             "title": "Auto Read",
             "default": false
           },
+          "can_read": {
+            "type": "boolean",
+            "title": "Can Read",
+            "default": true
+          },
           "waiting": {
             "type": "integer",
             "title": "Waiting",
@@ -6155,6 +6234,7 @@
           "state",
           "problem",
           "auto_read",
+          "can_read",
           "waiting",
           "suggested",
           "recent"
@@ -6744,6 +6824,7 @@
             "type": "string",
             "enum": [
               "replaced",
+              "attached",
               "history",
               "suspicious"
             ],
@@ -6768,7 +6849,7 @@
           "replaced_by"
         ],
         "title": "ItemAside",
-        "description": "An open to-do that is not one to act on (worked out on read, never stored).\n\n``replaced``: a payment reminder (``replaced_by``, a document id) took over the invoice payment —\npay once, not twice. ``history``: its date had long passed when the letter was read (an archive\nletter). ``suspicious``: the letter shows signs of a scam."
+        "description": "An open to-do that is not one to act on (worked out on read, never stored).\n\n``replaced``: a payment reminder (``replaced_by``, a document id) took over the invoice payment —\npay once, not twice. ``attached``: an e-mail's payment that the bill attached to it\n(``replaced_by``) asks for too. ``history``: its date had long passed when the letter was read (an\narchive letter). ``suspicious``: the letter shows signs of a scam."
       },
       "ItemCreate": {
         "properties": {

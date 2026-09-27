@@ -27,7 +27,7 @@ from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledg
 from ordnung.api.routes.dates import recompute_document_items
 from ordnung.app_context import AppContext
 from ordnung.db.store import Store
-from ordnung.ingest.attachments import attachment_listing, email_of
+from ordnung.ingest.attachments import attachment_listing, email_of, parts_not_listed
 from ordnung.ingest.held import is_held
 from ordnung.ingest.intake import (
     IMAGE_TYPES,
@@ -40,7 +40,7 @@ from ordnung.ingest.intake import (
     safe_filename,
     sniff_mime,
 )
-from ordnung.ingest.link import DUNNING_ITEM_NOTE
+from ordnung.ingest.link import ATTACHMENT_ITEM_NOTE, DUNNING_ITEM_NOTE
 from ordnung.ingest.pipeline import add_file, ledger_lock, reprocess
 from ordnung.ingest.plan import KIND_CHOSEN, is_statement
 from ordnung.llm.replay import ReplayBackend
@@ -182,17 +182,21 @@ def _ideas_about(store: Store, doc_id: str, items: Sequence[Item]) -> list[Sugge
 
 
 def _with_reminder_notes(store: Store, items: list[Item], today: date) -> list[Item]:
-    """Payments a live payment reminder took over carry the "pay once, not twice" note (worked out on
-    read, like everywhere else; a note of the person's own is kept)."""
+    """Payments a live payment reminder took over carry the "pay once, not twice" note, and an
+    e-mail's payment its attached bill repeats says so (worked out on read, like everywhere else; a
+    note of the person's own is kept)."""
     if not any(item.kind == "payment" and not item.description for item in items):
         return items
     ledger = Ledger(store, today)
-    return [
-        item.model_copy(update={"description": DUNNING_ITEM_NOTE})
-        if not item.description and ledger.is_superseded_by_reminder(item)
-        else item
-        for item in items
-    ]
+
+    def note(item: Item) -> str | None:
+        if item.description:
+            return None
+        if ledger.is_superseded_by_reminder(item):
+            return DUNNING_ITEM_NOTE
+        return ATTACHMENT_ITEM_NOTE if ledger.is_covered_by_attachment(item) else None
+
+    return [item.model_copy(update={"description": text}) if (text := note(item)) else item for item in items]
 
 
 #: The tag a letter carries once the person said they dealt with a card no to-do can settle
@@ -280,6 +284,7 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         suggestions=_ideas_about(store, doc_id, items),
         drafts=store.list_drafts(doc_id=doc_id),
         attachments=attachment_listing(store, document),
+        attachments_more=parts_not_listed(store, document),
         email=email_of(store, document),
     )
 
@@ -328,7 +333,7 @@ async def _add_group(
     try:
         body, name = await asyncio.to_thread(_normalised, data, filename, rest)
         existing = store.get_document_by_sha(hashlib.sha256(body).hexdigest())
-        document = await add_file(ctx, body, name, private=private)
+        document = await add_file(ctx, body, name, private=private, answer_held=True)
     except IntakeError as exc:
         result.errors.append(UploadError(filename=safe_filename(filename), detail=str(exc)))
         return

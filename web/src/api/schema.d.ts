@@ -379,10 +379,30 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Keep Held Private
+         * Keep Held Private Route
          * @description “Keep private”: the waiting letters stay on this computer and are never sent to Claude.
          */
-        post: operations["keep_held_private_api_documents_held_keep_private_post"];
+        post: operations["keep_held_private_route_api_documents_held_keep_private_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/held/wait": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Wait Again
+         * @description Undo “Keep private”: letters kept private from waiting (never read by Claude) wait again.
+         */
+        post: operations["wait_again_api_documents_held_wait_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1494,6 +1514,11 @@ export interface components {
             suggestions: components["schemas"]["Suggestion"][];
             /** Recent Documents */
             recent_documents: components["schemas"]["Document"][];
+            /**
+             * Waiting
+             * @default 0
+             */
+            waiting: number;
             stats: components["schemas"]["DashboardStats"];
         };
         /** DashboardStats */
@@ -1751,6 +1776,11 @@ export interface components {
             drafts: components["schemas"]["Draft"][];
             /** Attachments */
             attachments: components["schemas"]["EmailAttachment"][];
+            /**
+             * Attachments More
+             * @default 0
+             */
+            attachments_more: number;
             email: components["schemas"]["Document"] | null;
         };
         /**
@@ -1957,6 +1987,8 @@ export interface components {
             detail: string;
             /** Doc Id */
             doc_id: string | null;
+            /** Status */
+            status: ("queued" | "processing" | "processed" | "needs_review" | "failed" | "held") | null;
         };
         /**
          * Evidence
@@ -2040,6 +2072,11 @@ export interface components {
              * @default false
              */
             auto_read: boolean;
+            /**
+             * Can Read
+             * @default true
+             */
+            can_read: boolean;
             /**
              * Waiting
              * @default 0
@@ -2232,8 +2269,9 @@ export interface components {
          * @description An open to-do that is not one to act on (worked out on read, never stored).
          *
          *     ``replaced``: a payment reminder (``replaced_by``, a document id) took over the invoice payment —
-         *     pay once, not twice. ``history``: its date had long passed when the letter was read (an archive
-         *     letter). ``suspicious``: the letter shows signs of a scam.
+         *     pay once, not twice. ``attached``: an e-mail's payment that the bill attached to it
+         *     (``replaced_by``) asks for too. ``history``: its date had long passed when the letter was read (an
+         *     archive letter). ``suspicious``: the letter shows signs of a scam.
          */
         ItemAside: {
             /** Item Id */
@@ -2242,7 +2280,7 @@ export interface components {
              * Reason
              * @enum {string}
              */
-            reason: "replaced" | "history" | "suspicious";
+            reason: "replaced" | "attached" | "history" | "suspicious";
             /** Replaced By */
             replaced_by: string | null;
         };
@@ -4419,7 +4457,40 @@ export interface operations {
             };
         };
     };
-    keep_held_private_api_documents_held_keep_private_post: {
+    keep_held_private_route_api_documents_held_keep_private_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeldRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeldResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wait_again_api_documents_held_wait_post: {
         parameters: {
             query?: never;
             header?: never;

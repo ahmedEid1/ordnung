@@ -1,15 +1,19 @@
 """The watched folder and the letters waiting for the person (SPEC § 8, § 14.8).
 
 * ``GET /api/folder`` — the folder, whether it is watched (or why not), whether new files are read
-  at once, how many letters wait, and the last files it brought in.
+  at once (and whether they can be read here at all), how many letters wait, and the last files it
+  brought in.
 * ``POST /api/documents/held/read`` — "Read these": the given held letters (and a held e-mail's held
   attachments) may be sent to Claude and are queued for reading. Ids that no longer wait are
   reported as ``skipped``. The zero-token demo can't read new letters (``409``).
 * ``POST /api/documents/held/keep-private`` — "Keep private": they stay on this computer, as if
   added with "Keep private — no AI".
+* ``POST /api/documents/held/wait`` — undo "Keep private": letters kept private by that answer (and
+  never read by Claude since) wait again.
 
 The ids are always the ones the person saw: a file that arrived after the list was shown is not
-answered for them (:mod:`ordnung.ingest.held`).
+answered for them (:mod:`ordnung.ingest.held`). At most :data:`MAX_HELD_IDS` per request; the web app
+sends more in several.
 """
 
 from __future__ import annotations
@@ -20,7 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from ordnung.api.deps import ApiState, StateDep, StoreDep
 from ordnung.api.routes.documents import DEMO_UPLOAD_MESSAGE
 from ordnung.ingest import held
-from ordnung.ingest.pipeline import release_held
+from ordnung.ingest.pipeline import keep_held_private, release_held
 from ordnung.ingest.watcher import recent_pickups
 from ordnung.models import Document, FolderStatus, Job
 
@@ -57,6 +61,7 @@ def folder_status(state: StateDep, store: StoreDep) -> FolderStatus:
         state=watcher.state,
         problem=watcher.problem,
         auto_read=settings.inbox_auto_read,
+        can_read=state.reads_letters,
         waiting=len(held.waiting(store)),
         suggested=str(state.ctx.paths.inbox.resolve()),
         recent=recent_pickups(store),
@@ -80,8 +85,16 @@ async def read_held(body: HeldRequest, state: StateDep) -> HeldResult:
 
 
 @router.post("/documents/held/keep-private", response_model=HeldResult)
-async def keep_held_private(body: HeldRequest, state: StateDep) -> HeldResult:
+async def keep_held_private_route(body: HeldRequest, state: StateDep) -> HeldResult:
     """“Keep private”: the waiting letters stay on this computer and are never sent to Claude."""
-    result = held.keep_private(state.ctx.store, body.doc_ids)
+    result = keep_held_private(state.ctx, body.doc_ids)
+    _announce(state, result.documents)
+    return HeldResult(documents=result.documents, jobs=result.jobs, skipped=result.skipped)
+
+
+@router.post("/documents/held/wait", response_model=HeldResult)
+async def wait_again(body: HeldRequest, state: StateDep) -> HeldResult:
+    """Undo “Keep private”: letters kept private from waiting (never read by Claude) wait again."""
+    result = held.back_to_waiting(state.ctx.store, body.doc_ids)
     _announce(state, result.documents)
     return HeldResult(documents=result.documents, skipped=result.skipped)

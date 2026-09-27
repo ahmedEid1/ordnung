@@ -601,7 +601,15 @@ def _add_in_process(paths: Paths, files: Sequence[Path], *, combine: bool, priva
             (name, data), *rest = group
             combine_with = [body for _, body in rest] or None
             added.append(
-                await add_file(ctx, data, name, combine_with=combine_with, private=private, source="cli")
+                await add_file(
+                    ctx,
+                    data,
+                    name,
+                    combine_with=combine_with,
+                    private=private,
+                    answer_held=True,
+                    source="cli",
+                )
             )
         await _read_with_progress(ctx, added)
         return [_row(ctx, document.id) for document in added], local_today(ctx.store)

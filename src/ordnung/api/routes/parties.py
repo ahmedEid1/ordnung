@@ -27,6 +27,9 @@ def _aside(ledger: Ledger, item: Item) -> ItemAside | None:
     if ledger.is_superseded_by_reminder(item):
         reminder = ledger.covering_reminders()[item.doc_id or ""]
         return ItemAside(item_id=item.id, reason="replaced", replaced_by=reminder.id)
+    if ledger.is_covered_by_attachment(item):
+        bill = ledger.covering_attachments()[item.id]
+        return ItemAside(item_id=item.id, reason="attached", replaced_by=bill.id)
     if item.recurrence is None and was_history_when_filed(item):
         return ItemAside(item_id=item.id, reason="history")
     return None
