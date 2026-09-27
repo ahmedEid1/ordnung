@@ -1,6 +1,6 @@
-import { useRef, useState, type FormEvent } from "react";
+import { Fragment, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
-import { Check, Copy, Download, FolderOpen, Trash2 } from "lucide-react";
+import { Check, Copy, Download, FolderOpen, RotateCcw, Trash2 } from "lucide-react";
 import { api } from "@/api/endpoints";
 import { ApiError } from "@/api/client";
 import { useDeleteEverything } from "@/api/hooks";
@@ -31,6 +31,21 @@ async function buildExport() {
   return { exported_at: new Date().toISOString(), app: "Ordnung", profile, settings, documents, items, contracts, parties, drafts, ideas: suggestions };
 }
 
+/** A folder path with a line-break opportunity (`<wbr>`) after each "/" or "\", so it wraps between names. */
+export function BreakablePath({ path }: { path: string }) {
+  const parts = path.split(/(?<=[/\\])/);
+  return (
+    <>
+      {parts.map((part, i) => (
+        <Fragment key={i}>
+          {part}
+          {i < parts.length - 1 ? <wbr /> : null}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
 /** The word to type in the "Delete everything" dialog. */
 const DELETE_WORD = "DELETE";
 
@@ -40,7 +55,8 @@ function DeleteEverythingDialog({ open, onClose, onExport, exporting }: { open: 
   const remove = useDeleteEverything();
   const [typed, setTyped] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const confirmed = typed.trim() === DELETE_WORD;
+  // the word in any case: "delete" typed on a keyboard means the same (the API gets "DELETE")
+  const confirmed = typed.trim().toUpperCase() === DELETE_WORD;
 
   const close = () => {
     if (remove.isPending) return;
@@ -155,14 +171,17 @@ export function DataSection({ health }: { health: Health }) {
       <SectionHeading id="set-data" title="Data" description="Everything Ordnung knows is in one folder on this computer. You can copy it, back it up or delete it." />
       <div className="space-y-5">
         <SettingsCard title="Where your data lives" id="set-data-where" description="The database, your original files and page images.">
-          <div className="flex items-center gap-2 rounded-xl border border-line bg-surface-2/50 py-1.5 pl-3 pr-1.5">
-            <FolderOpen className="size-4 shrink-0 text-muted" aria-hidden />
-            <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-[13px] text-ink scrollbar-thin">{health.data_dir}</code>
+          <div className="flex items-start gap-2 rounded-xl border border-line bg-surface-2/50 py-1.5 pl-3 pr-1.5">
+            <FolderOpen className="mt-2 size-4 shrink-0 text-muted" aria-hidden />
+            {/* the whole path, wrapping after a "/" (inside a name only when one is longer than the line) */}
+            <code className="min-w-0 flex-1 py-1.5 font-mono text-[13px] leading-5 text-ink wrap-anywhere">
+              <BreakablePath path={health.data_dir} />
+            </code>
             <Button size="sm" variant="ghost" icon={copied === health.data_dir ? Check : Copy} onClick={() => void copy(health.data_dir)}>
-              {copied === health.data_dir ? "Copied" : "Copy"}
+              {copied === health.data_dir ? "Copied" : "Copy"} <span className="sr-only">the folder path</span>
             </Button>
           </div>
-          <p className="mt-3 text-[12.5px] leading-5 text-muted">To back up, copy this folder while Ordnung isn't running — for example to an external drive.</p>
+          <p className="mt-3 text-sm leading-5 text-muted">To back up, copy this folder while Ordnung isn't running — for example to an external drive.</p>
         </SettingsCard>
 
         <SettingsCard
@@ -175,32 +194,48 @@ export function DataSection({ health }: { health: Health }) {
             </Button>
           }
         >
-          <p className="text-[12.5px] leading-5 text-muted">Your original PDFs and photos stay in the folder above.</p>
+          <p className="text-sm leading-5 text-muted">Your original PDFs and photos stay in the folder above.</p>
         </SettingsCard>
 
-        <section aria-labelledby="set-data-delete" className="rounded-[var(--radius-card)] border border-danger/25 bg-danger-soft/30 p-5 sm:p-6">
-          <h3 id="set-data-delete" className="flex items-center gap-2 text-[15px] font-semibold text-danger-ink">
-            <Trash2 className="size-4" aria-hidden /> Delete everything
-          </h3>
-          <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-ink/85">
-            Deletes every letter and its original file, all dates, contracts, drafts and chats, and your settings — Ordnung starts over empty. There is no
-            account and no copy anywhere else. Letters Claude already read were processed through your Claude account under Anthropic's terms.
-          </p>
-          {staticDemo ? (
-            <p className="mt-4 text-[13px] text-muted">This online demo keeps nothing: reload the page to start over with Sam's letters.</p>
-          ) : health.demo ? (
-            <div className="mt-4">
-              <p className="mb-2 text-[13px] font-medium text-ink">This is the demo, so there is nothing of yours to delete. Start over with Sam's original letters:</p>
-              <CopyCommand command={`${DEMO_CMD} --reset`} label="reset the demo" />
+        {staticDemo || health.demo ? (
+          // nothing of the visitor's to delete: a calm way to start over, not a danger zone
+          <SettingsCard
+            title="Start over"
+            id="set-data-reset"
+            description={
+              staticDemo
+                ? "This online demo keeps nothing you do in it. Reload the page to start over with Sam's letters."
+                : "This is the demo, so there is nothing of yours to delete. To start over with Sam's original letters, run this in a terminal:"
+            }
+            footer={
+              staticDemo ? (
+                <Button icon={RotateCcw} onClick={() => window.location.reload()}>
+                  Start over
+                </Button>
+              ) : undefined
+            }
+          >
+            {staticDemo ? null : <CopyCommand command={`${DEMO_CMD} --reset`} label="reset the demo" />}
+          </SettingsCard>
+        ) : (
+          <section aria-labelledby="set-data-delete" className="overflow-hidden rounded-[var(--radius-card)] border border-danger/25 bg-danger-soft/30">
+            <div className="p-5 sm:p-6">
+              <h3 id="set-data-delete" className="flex items-center gap-2 text-[15px] font-semibold text-danger-ink">
+                <Trash2 className="size-4 shrink-0" aria-hidden /> Delete everything
+              </h3>
+              <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-ink/85">
+                Deletes every letter and its original file, all dates, contracts, drafts and chats, and your settings — Ordnung starts over empty. There is
+                no account and no copy anywhere else. Letters Claude already read were processed through your Claude account under Anthropic's terms.
+              </p>
             </div>
-          ) : (
-            <div className="mt-4">
+            {/* the action where the other cards on this page have theirs: in the footer, on the right */}
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-danger/20 bg-danger-soft/40 px-5 py-3 sm:px-6">
               <Button variant="danger" icon={Trash2} onClick={() => setDeleteOpen(true)}>
                 Delete everything…
               </Button>
             </div>
-          )}
-        </section>
+          </section>
+        )}
         <DeleteEverythingDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} onExport={() => void exportJson()} exporting={busy} />
       </div>
     </section>

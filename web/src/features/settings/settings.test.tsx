@@ -108,14 +108,22 @@ describe("Settings page", () => {
 
   it("privacy & AI usage: the statement, what was sent per call, and the activity log", async () => {
     useMockApi();
+    const user = userEvent.setup();
     const { container } = renderWithProviders(<SettingsPage />, { route: "/settings?section=privacy" });
     expect(await screen.findByRole("heading", { level: 2, name: "Privacy & AI usage" })).toBeInTheDocument();
     expect(screen.getByText(/Ordnung has no server, no telemetry and never sees your credentials/)).toBeInTheDocument();
     expect(await screen.findByText("$2.91")).toBeInTheDocument();
     const calls = screen.getByRole("region", { name: "What was sent, call by call" });
-    expect(within(calls).getAllByText("Understanding letters").length).toBeGreaterThan(3);
-    expect(within(calls).getByText("1 page of 1 letter · 2.1 KB")).toBeInTheDocument();
-    expect(within(calls).getByText("Cache")).toBeInTheDocument();
+    // wide panes: a table (narrow ones get the same calls as a stacked list — both are in the DOM)
+    const table = within(calls).getByRole("table");
+    expect(within(table).getAllByText("Understanding letters").length).toBeGreaterThan(3);
+    expect(within(table).getByText("1 page of 1 letter · 2.1 KB")).toBeInTheDocument();
+    // the first 8 of the latest calls, the rest on request
+    expect(within(table).getAllByRole("row")).toHaveLength(1 + 8);
+    await user.click(within(calls).getByRole("button", { name: "Show all 10 calls" }));
+    expect(within(table).getAllByRole("row")).toHaveLength(1 + 10);
+    expect(within(table).getByText("Cache")).toBeInTheDocument();
+    expect(within(calls).getAllByRole("list")[0]).toHaveTextContent("1 page of 1 letter · 2.1 KB");
     // screen-reader table behind the chart
     expect(screen.getByRole("table", { name: "API-equivalent cost by purpose" })).toBeInTheDocument();
     expect(await screen.findByText("Weekly review: 2 new Ideas")).toBeInTheDocument();

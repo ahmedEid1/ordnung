@@ -144,8 +144,11 @@ describe("Data → delete everything", () => {
     const confirm = within(dialog).getByRole("button", { name: "Delete everything" });
     expect(confirm).toBeDisabled();
     const input = within(dialog).getByLabelText("Type DELETE to confirm");
-    await user.type(input, "delete");
+    await user.type(input, "delet");
     expect(confirm).toBeDisabled();
+    // the word in any case (a keyboard types "delete"); the API still gets "DELETE"
+    await user.type(input, "e");
+    expect(confirm).toBeEnabled();
     await user.clear(input);
     await user.type(input, "DELETE");
     expect(confirm).toBeEnabled();
@@ -159,10 +162,40 @@ describe("Data → delete everything", () => {
     expect(srv.db.state.profile.onboarded).toBe(false);
   });
 
-  it("the demo offers a reset instead", async () => {
+  it("the demo offers a calm “Start over” instead of a danger zone", async () => {
     useMockApi();
     renderWithProviders(<SettingsPage />, { route: "/settings?section=data" });
-    expect(await screen.findByText(/This is the demo, so there is nothing of yours to delete/)).toBeInTheDocument();
+    const reset = await screen.findByRole("region", { name: "Start over" });
+    expect(reset).toHaveTextContent(/This is the demo, so there is nothing of yours to delete/);
+    expect(within(reset).getByRole("button", { name: /Copy command to reset the demo/ })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Delete everything" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Delete everything…" })).not.toBeInTheDocument();
+  });
+
+  it("the online demo starts over by reloading", async () => {
+    vi.stubEnv("VITE_STATIC_DEMO", "1");
+    useMockApi({ staticDemo: true });
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=data" });
+    const reset = await screen.findByRole("region", { name: "Start over" });
+    expect(reset).toHaveTextContent("This online demo keeps nothing you do in it.");
+    expect(within(reset).getByRole("button", { name: "Start over" })).toBeInTheDocument();
+    expect(within(reset).queryByRole("button", { name: /Copy command/ })).not.toBeInTheDocument();
+    vi.unstubAllEnvs();
+  });
+
+  it("shows the whole data folder path, wrapping after each “/”", async () => {
+    const { srv } = useMockApi();
+    const path = "/Users/samantha-rivera-musterfrau/Library/Application Support/Ordnung/data";
+    srv.db.state.health.data_dir = path;
+    const client = makeTestQueryClient();
+    client.setQueryData(qk.health, { ...TEST_HEALTH, data_dir: path });
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=data", client });
+    const where = await screen.findByRole("region", { name: "Where your data lives" });
+    const code = within(where).getByText((_, el) => el?.tagName === "CODE");
+    expect(code.textContent).toBe(path);
+    expect(code.querySelectorAll("wbr")).toHaveLength(path.split("/").length - 1);
+    // no sideways scrolling box that cuts the path off
+    expect(code.className).not.toMatch(/overflow-x-auto|whitespace-nowrap/);
+    expect(within(where).getByRole("button", { name: "Copy the folder path" })).toBeInTheDocument();
   });
 });
