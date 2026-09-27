@@ -27,6 +27,8 @@ from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledg
 from ordnung.api.routes.dates import recompute_document_items
 from ordnung.app_context import AppContext
 from ordnung.db.store import Store
+from ordnung.ingest.attachments import attachment_listing, email_of
+from ordnung.ingest.held import is_held
 from ordnung.ingest.intake import (
     IMAGE_TYPES,
     MAX_BYTES,
@@ -254,7 +256,8 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
 
 def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
     """The document viewer's data: the letter, its pages, to-dos, contracts, sender, thread, related
-    letters, Ideas, drafts and, for a high-stakes letter, its "get advice" card."""
+    letters, Ideas, drafts, for a high-stakes letter its "get advice" card, and for an e-mail what
+    became of its attachments (for an attachment: the e-mail it came with)."""
     document = require(store.get_document(doc_id), NOT_FOUND)
     items = _with_reminder_notes(store, store.list_items(doc_id=doc_id), today)
     linked = {item.contract_id for item in items if item.contract_id}
@@ -276,6 +279,8 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         related=_related(store, document),
         suggestions=_ideas_about(store, doc_id, items),
         drafts=store.list_drafts(doc_id=doc_id),
+        attachments=attachment_listing(store, document),
+        email=email_of(store, document),
     )
 
 
@@ -327,7 +332,11 @@ async def _add_group(
     except IntakeError as exc:
         result.errors.append(UploadError(filename=safe_filename(filename), detail=str(exc)))
         return
-    if existing is not None and existing.status != "failed":
+    # a letter that failed, or one waiting for the person that this upload lets Claude read, is read now
+    read_again = existing is not None and (
+        existing.status == "failed" or (existing.status == "held" and not private)
+    )
+    if existing is not None and not read_again:
         result.duplicates.append(document.id)
         return
     result.documents.append(document)
@@ -403,8 +412,16 @@ def _check_links(store: Store, changes: dict[str, object]) -> None:
         require(store.get_case(case_id), "Unknown thread.")
 
 
+HELD_MESSAGE = (
+    "This letter is waiting for you: choose “Read” or “Keep private” for it first (Inbox → From your folder)."
+)
+
+
 def _apply_patch(store: Store, doc_id: str, changes: dict[str, object]) -> Document:
     document = require(store.get_document(doc_id), NOT_FOUND)
+    if "ai_private" in changes and is_held(document):
+        # a waiting letter is private until the person answers (ingest.held): only an answer changes that
+        raise HTTPException(status.HTTP_409_CONFLICT, HELD_MESSAGE)
     _check_links(store, changes)
     if changes.get("tags", ...) is None:
         changes["tags"] = []
@@ -469,6 +486,8 @@ async def reprocess_document(doc_id: str, ctx: CtxDep) -> Job:
     document = require(ctx.store.get_document(doc_id), NOT_FOUND)
     if document.deleted_at is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "This letter is in the trash.")
+    if is_held(document):
+        raise HTTPException(status.HTTP_409_CONFLICT, HELD_MESSAGE)
     return await asyncio.to_thread(reprocess, ctx, doc_id)
 
 

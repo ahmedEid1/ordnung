@@ -838,11 +838,13 @@ class Store:
         *,
         ai_private: bool | None = None,
         include_deleted: bool = False,
+        source: str | None = None,
     ) -> list[Document]:
         """Documents, newest first by ``COALESCE(doc_date, created_at)``.
 
         ``q`` filters by the same full-text/substring matching as :meth:`search`. Trashed documents
-        are left out unless ``include_deleted``.
+        are left out unless ``include_deleted``. ``source`` keeps the documents of one source
+        (``upload``, ``folder``, ``email:<id>`` …).
         """
         where = _Where()
         where.within("kind", kind)
@@ -850,6 +852,7 @@ class Store:
         where.equals("case_id", case_id)
         where.within("status", status)
         where.equals("direction", direction)
+        where.equals("source", source)
         if ai_private is not None:
             where.add("ai_private = ?", int(ai_private))
         if not include_deleted:
@@ -1651,9 +1654,18 @@ class Store:
             data=payload,
         )
 
-    def list_activity(self, limit: int = 50) -> list[Activity]:
-        """The newest activity entries first."""
-        return self._many(_ACTIVITY, "ORDER BY id DESC LIMIT ?", (limit,))
+    def list_activity(
+        self, limit: int = 50, *, kinds: Sequence[str] | None = None, data: Mapping[str, str] | None = None
+    ) -> list[Activity]:
+        """The newest activity entries first; ``kinds`` keeps those kinds, ``data`` the entries whose
+        data has these values (``{"source": "folder"}``; keys are plain names)."""
+        where = _Where()
+        where.within("kind", None if kinds is None else list(kinds))
+        for key, value in (data or {}).items():
+            if not key.isidentifier():
+                raise ValueError(f"not a data key: {key!r}")
+            where.add(f"json_extract(data, '$.{key}') = ?", value)
+        return self._many(_ACTIVITY, f"{where.sql()} ORDER BY id DESC LIMIT ?", [*where.params, limit])
 
     def last_activity(self, ref_type: str, ref_id: str, kinds: Sequence[str]) -> Activity | None:
         """The newest activity entry of one of ``kinds`` about a row (``None``: there is none)."""

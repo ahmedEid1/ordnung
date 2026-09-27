@@ -4,7 +4,8 @@
 holiday region, country or postal buffer recomputes the dates of every letter's to-dos (contracts
 are recomputed on read anyway). Settings guard the watched inbox folder (never the home folder, a
 file-system root or Ordnung's own data) and keep the server-controlled ``demo`` and
-``simulated_today`` read-only.
+``simulated_today`` read-only. A new inbox folder restarts the folder watcher; choosing Ordnung's own
+inbox folder (``<data>/inbox``) creates it.
 """
 
 from __future__ import annotations
@@ -18,11 +19,11 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from ordnung.api.deps import CtxDep, StoreDep, TodayDep
+from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep
 from ordnung.api.routes.common import ledger_changed
 from ordnung.api.routes.dates import recompute_all_items
 from ordnung.app_context import AppContext
-from ordnung.config import Paths
+from ordnung.config import Paths, private_dir
 from ordnung.ingest.pipeline import ledger_lock
 from ordnung.models import AppSettings, Profile
 from ordnung.rules import normalize_region
@@ -96,6 +97,9 @@ class SettingsPatch(BaseModel):
     models: dict[str, str] | None = None
     concurrency: int | None = Field(default=None, ge=1, le=8)
     inbox_dir: str | None = None
+    inbox_auto_read: bool | None = Field(
+        default=None, description="read new files from the watched folder at once (else they wait for you)"
+    )
     ocr: bool | None = None
     llm_brief: bool | None = None
     llm_review: bool | None = None
@@ -197,7 +201,10 @@ def _checked_inbox(value: str | None, paths: Paths) -> str | None:
     problem = inbox_dir_problem(value, paths)
     if problem:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, problem)
-    return str(Path(value).expanduser().resolve())
+    folder = Path(value).expanduser().resolve()
+    if folder == paths.inbox.resolve():
+        private_dir(folder)  # Ordnung's own inbox folder: ready to save scans into
+    return str(folder)
 
 
 def _merge_settings(ctx: AppContext, patch: SettingsPatch) -> AppSettings:
@@ -226,6 +233,9 @@ def read_settings(store: StoreDep) -> AppSettings:
 
 
 @router.put("/settings", response_model=AppSettings)
-async def update_settings(patch: SettingsPatch, ctx: CtxDep) -> AppSettings:
-    """Change settings (``demo`` and ``simulated_today`` can't be changed here)."""
-    return await asyncio.to_thread(_merge_settings, ctx, patch)
+async def update_settings(patch: SettingsPatch, state: StateDep) -> AppSettings:
+    """Change settings (``demo`` and ``simulated_today`` can't be changed here); a new inbox folder
+    restarts the folder watcher."""
+    settings = await asyncio.to_thread(_merge_settings, state.ctx, patch)
+    await state.folder.reconfigure()
+    return settings

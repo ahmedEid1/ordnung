@@ -5,7 +5,9 @@
   deterministic id ``content_id("pty", normalised name)``. New identifiers, aliases, contact details
   and (unless the payment looks suspicious) the payee IBAN are merged into the party.
 * **Case (thread)** — by reference: Aktenzeichen, Rechnungsnummer, Kundennummer, Vertragsnummer,
-  Steuernummer, Beitragsnummer (a dunning letter prefers the Rechnungsnummer); else a new case.
+  Steuernummer, Beitragsnummer (a dunning letter prefers the Rechnungsnummer); else a new case. An
+  e-mail and the attachments it brought share one thread (:func:`email_family_case`): whichever of
+  them is linked first threads by its own references, the others join it.
 * **Contracts** — an extracted contract is upserted; a change (price increase …) or a cancellation
   confirmation is linked to the party's contract and recorded, never applied (§ 21 "no silent
   closing"): the triggers engine turns it into an Idea and only the person's click changes it.
@@ -30,6 +32,7 @@ from rapidfuzz import fuzz, utils
 
 from ordnung.db.store import Store, normalize_identifier
 from ordnung.ids import content_id
+from ordnung.ingest.attachments import attached_to, email_source, is_email
 from ordnung.models import (
     PAYMENT_DEMAND_KINDS,
     Case,
@@ -324,6 +327,33 @@ def thread_case(store: Store, party: Party | None, extraction: DocumentExtractio
     )
 
 
+def email_family_case(store: Store, document: Document) -> Case | None:
+    """The thread an e-mail and the attachments it brought share, once one of them is linked.
+
+    An attachment (``source="email:<id>"``) joins its e-mail's thread, else that of a sibling
+    attachment linked before it; an e-mail joins the thread of its first attachment linked before it.
+    Letters in the trash don't count. ``None`` while none of them is linked (this one then threads by
+    its own references, :func:`thread_case`).
+    """
+    parent_id = attached_to(document)
+    if parent_id is not None:
+        parent = store.get_document(parent_id)
+        family = [parent] if parent is not None else []
+        siblings = store.list_documents(source=email_source(parent_id))
+    elif is_email(document):
+        family, siblings = [], store.list_documents(source=email_source(document.id))
+    else:
+        return None
+    family += sorted(siblings, key=lambda doc: (doc.created_at, doc.id))
+    for member in family:
+        if member.id == document.id or member.deleted_at is not None or member.case_id is None:
+            continue
+        case = store.get_case(member.case_id)
+        if case is not None:
+            return case
+    return None
+
+
 # --------------------------------------------------------------------------------------------------
 # Contracts
 # --------------------------------------------------------------------------------------------------
@@ -565,7 +595,7 @@ def link_document(
     result.party, result.scam = check_payment(store, party, extraction.payment, doc_id=document.id)
     if result.scam is not None:
         result.warnings.append(result.scam.message)
-    result.case = thread_case(store, result.party, extraction)
+    result.case = email_family_case(store, document) or thread_case(store, result.party, extraction)
     result.contract = upsert_contract(
         store,
         document=document,

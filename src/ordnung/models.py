@@ -65,7 +65,9 @@ PAYMENT_DEMAND_KINDS: tuple[str, ...] = ("dunning", "court_payment_order", "enfo
 LetterKind = Literal[DocumentKind, HighStakesKind]
 LETTER_KINDS: tuple[str, ...] = (*DOCUMENT_KINDS, *HIGH_STAKES_KINDS)
 
-DocumentStatus = Literal["queued", "processing", "processed", "needs_review", "failed"]
+#: ``held``: stored and read on this computer only, waiting for the person to say it may be sent to
+#: Claude (a file from the watched folder, or an attachment of one — :mod:`ordnung.ingest.held`).
+DocumentStatus = Literal["queued", "processing", "processed", "needs_review", "failed", "held"]
 Direction = Literal["incoming", "outgoing", "note"]
 PartyKind = Literal[
     "authority",
@@ -729,6 +731,9 @@ class AppSettings(_Model):
     models: ModelSettings = Field(default_factory=ModelSettings)
     concurrency: int = 2
     inbox_dir: str | None = None
+    #: Files from the watched folder are read by Claude at once; off (the default), they wait for the
+    #: person's "Read these" (:mod:`ordnung.ingest.watcher`).
+    inbox_auto_read: bool = False
     ocr: bool = True
     llm_brief: bool = True
     llm_review: bool = True
@@ -1031,6 +1036,25 @@ class LetterAdvice(_Model):
     closable: bool = False
 
 
+AttachmentOutcome = Literal["added", "known", "inline", "not_read", "refused", "over_limit"]
+
+
+class EmailAttachment(_Model):
+    """One attachment of an e-mail and what Ordnung did with it (:mod:`ordnung.ingest.attachments`).
+
+    ``added``: it became a letter of its own (``doc_id``); ``known``: the same file was already in
+    Ordnung (``doc_id``); ``inline``: a picture shown inside the e-mail (a logo), skipped; ``not_read``: a
+    type Ordnung does not read from e-mails (a zip, a Word file …), listed only; ``refused``: intake
+    refused it (``detail`` says why); ``over_limit``: past the most attachments read from one e-mail.
+    ``doc_id`` is only set while that letter exists and is not in the trash.
+    """
+
+    filename: str
+    outcome: AttachmentOutcome
+    detail: str = ""
+    doc_id: str | None = None
+
+
 class DocumentDetail(_Model):
     document: Document
     advice: LetterAdvice | None = None
@@ -1042,6 +1066,10 @@ class DocumentDetail(_Model):
     related: list[Document] = Field(default_factory=list)
     suggestions: list[Suggestion] = Field(default_factory=list)
     drafts: list[Draft] = Field(default_factory=list)
+    #: An e-mail's attachments and what became of each (empty for other letters).
+    attachments: list[EmailAttachment] = Field(default_factory=list)
+    #: The e-mail this letter came attached to (``None``: it did not, or that e-mail is gone).
+    email: Document | None = None
 
 
 class ItemAside(_Model):
@@ -1197,6 +1225,41 @@ class MailTrayItem(_Model):
     doc_id: str | None = None
 
 
+FolderState = Literal["off", "watching", "problem"]
+FolderOutcome = Literal["added", "known", "refused"]
+
+
+class FolderPickup(_Model):
+    """A file the watched folder brought in (from the activity log, newest first).
+
+    ``added``: it became a letter (``doc_id``, its ``status`` now); ``known``: the same file was already
+    in Ordnung; ``refused``: intake refused it (``detail`` says why). ``doc_id`` and ``status`` are
+    ``None`` once that letter is gone.
+    """
+
+    at: str
+    filename: str
+    outcome: FolderOutcome
+    detail: str = ""
+    doc_id: str | None = None
+    status: DocumentStatus | None = None
+
+
+class FolderStatus(_Model):
+    """``GET /api/folder``: the watched folder, whether it is watched, and what it brought in."""
+
+    folder: str | None = None
+    state: FolderState = "off"
+    #: Why the folder is not watched right now (missing, not readable …), for the person.
+    problem: str | None = None
+    auto_read: bool = False
+    #: Letters waiting for the person's "Read these" (``held``), from the folder or attached to its e-mails.
+    waiting: int = 0
+    #: Ordnung's own inbox folder in the data directory, offered as a ready-made choice.
+    suggested: str = ""
+    recent: list[FolderPickup] = Field(default_factory=list)
+
+
 LaneBar.model_rebuild()
 
 
@@ -1316,6 +1379,14 @@ class DraftSentEvent(_Event):
     item_id: str
 
 
+class FolderUpdatedEvent(_Event):
+    """``folder.updated``: the watched folder started, stopped, hit a problem or brought in a file."""
+
+    state: FolderState
+    doc_id: str | None = None
+    held: bool | None = None
+
+
 class DemoMailEvent(_Event):
     """``demo.mail``: a letter of the demo's New-mail tray was opened."""
 
@@ -1348,6 +1419,7 @@ class ServerEvents(BaseModel):
     draft_created: DraftCreatedEvent = Field(alias="draft.created")
     draft_sent: DraftSentEvent = Field(alias="draft.sent")
     demo_mail: DemoMailEvent = Field(alias="demo.mail")
+    folder_updated: FolderUpdatedEvent = Field(alias="folder.updated")
 
 
 SERVER_EVENTS: dict[str, type[BaseModel]] = {

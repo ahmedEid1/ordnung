@@ -62,8 +62,9 @@ SPECIMEN.
 export, model/cost trade-off eval, Ask agent eval, "please check" received-date question, ⌘K search,
 per-document pipeline trace view.
 
-**Cut (v1.1+):** bank CSV/money subsystem, calendar month page, MCP write tools, watched inbox
-folder, OCR, LLM party tie-break, extra letter kinds, most CLI commands.
+**Cut (v1.1+):** bank CSV/money subsystem, calendar month page, MCP write tools, OCR, LLM party
+tie-break, extra letter kinds, most CLI commands. (The watched inbox folder, cut here, came in phase 2:
+§ 8.1.)
 
 ## 3. Architecture
 
@@ -128,6 +129,12 @@ Key additions in v2 (to implement in models.py):
 - `DraftKind` = `"cancellation" | "objection" | "general_reply"`; `Draft.body_translation: str`,
   `Draft.send_guidance: SendGuidance | None`.
 - `Document.ai_processed_at`, `Document.ai_private: bool` ("Keep private — no AI").
+- `DocumentStatus` gains `"held"` (phase 2): a file from the watched folder, or an attachment of one,
+  stored and read on this computer only until the person answers (§ 8.1); a held letter is always
+  `ai_private` too. `Document.source`: `upload`, `folder`, `email:<the e-mail's id>`, `capture` …
+- `AppSettings.inbox_auto_read: bool = False`; `DocumentDetail.attachments: list[EmailAttachment]`
+  (an e-mail's attachments and what became of each) and `DocumentDetail.email` (the e-mail a letter
+  came attached to); `FolderStatus`, `FolderPickup` (`GET /api/folder`).
 - `Page.text_source: Literal["text","transcript","none"]`.
 - `LLMRequest.attachments: list[Attachment(path, media_type)]` replaces `files`;
   `purpose: LLMPurpose` Literal.
@@ -329,7 +336,49 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
 
 Rate limits pause the worker globally (`paused_until`, SSE `llm.paused` banner); jobs stay queued.
 On startup `running` jobs return to `queued`. Reprocess = `force` (skip cache read) and replaces
-non-user-modified extracted rows in one transaction. "Keep private (no AI)" skips stages 3–4.
+non-user-modified extracted rows in one transaction. "Keep private (no AI)" skips stages 3–4, and so
+does a *held* letter (§ 8.1), which ends `held` and publishes no stage events until the person answers.
+
+**E-mail attachments** (`ingest/attachments.py`, policy in its docstring). When an `.eml` is added,
+each attached PDF or photo (JPEG, PNG, WEBP, HEIC/HEIF — decided by its bytes, never by the declared
+type or name) becomes a document of its own right after it: through the normal intake with every
+limit, `source="email:<the e-mail's id>"`, the e-mail's arrival date and its privacy choice (private,
+or held). At most 10 attachments per e-mail are read, the first in the message; pictures inside the
+e-mail (shown by a `cid:` link, or not marked as an attachment and under 64 KB) are skipped; a zip,
+Word file, calendar invite, text file or forwarded e-mail is listed and not read. What became of each
+(`added`, `known`, `inline`, `not_read`, `refused` with the intake's reason, `over_limit`) is written
+to the activity log on the e-mail and shown on it; an attachment shows the e-mail it came with. An
+e-mail and its attachments share one thread: whichever is linked first threads by its own
+references, the others join it (`link.email_family_case`). Adding a trashed e-mail again restores its
+attachments too.
+
+### 8.1 The watched folder — `ingest/watcher.py`
+
+`FolderWatcher` runs in the server's lifespan next to the worker and the daily tick while
+`settings.inbox_dir` is set, and restarts when the setting changes (policy in its docstring):
+
+- Files directly in the folder with a type Ordnung reads (`.pdf .jpg .jpeg .png .webp .heic .heif
+  .txt .eml`, any case); sub-folders are not entered and symbolic links never followed; partial and
+  temporary files (`.part`, `.partial`, `.crdownload`, `.download`, `.tmp`, `.temp`, `~$…`, dotfiles,
+  `…~`) are ignored.
+- A file counts once its size and modification time have not changed for 2 s and it is not empty.
+  The folder is listed on every `watchfiles` notification and every 60 s (lost notifications on
+  network and cloud drives); when notifications fail, it polls.
+- Once per file: a hash of folder, name, size and modification time is kept (meta `inbox_seen`, the
+  newest 5,000), so a file is never picked up twice — not after a restart, and not after its letter
+  was deleted. Files already there when watching starts are picked up once. Content Ordnung already
+  has adds nothing, and a letter in the trash stays there.
+- Every file goes through `add_file` with all limits (at most 50 MB + 1 byte is read),
+  `source="folder"`. By default it is **held**: private and `held`, stored and read on this computer
+  only, never sent to Claude until the person answers — *Read these N* (`release`: no longer private,
+  queued for reading) or *Keep private* (`keep_private`: as "Keep private — no AI"), for an e-mail
+  with its held attachments (`ingest/held.py`). With `inbox_auto_read` new files are read at once;
+  in the replay-only demo they are always held. Adding a held file again by hand answers for it.
+- Read-only: the folder is only listed and read (`O_NOFOLLOW`); nothing there is written, moved or
+  deleted. A refused file is logged with the reason (`folder.refused`), a known one as
+  `folder.known`; a missing or unreadable folder is reported (`FolderStatus.problem`, once in the
+  activity log) and checked again every 30 s. *Delete everything* pauses the watcher and clears the
+  setting. Choosing Ordnung's own `<data>/inbox` creates it (`0700`).
 
 ## 9. Secretary — `secretary/` + `tick.py`
 
@@ -573,13 +622,20 @@ Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT
 replay-only demo), `calendar.ics`, `calendar/exported` (POST), `activity`, `usage`, `rules`, `jobs`,
 `events` (SSE), `data` (DELETE `{"confirm": "DELETE"}`: "Delete everything" — empties the database
 in place and removes Ordnung's files, keeping the lock and `server.json`; 409 in the demo),
-`demo/tour` (GET tour state), `demo/mail` (GET tray, POST `{id}` → ingest a tray letter).
+`demo/tour` (GET tour state), `demo/mail` (GET tray, POST `{id}` → ingest a tray letter),
+`folder` (GET: the watched folder, its state or problem, `auto_read`, how many letters wait, the
+suggested `<data>/inbox`, the last files it brought in), `documents/held/read` and
+`documents/held/keep-private` (POST `{doc_ids}`: the person's answer for the waiting letters they
+saw, a held e-mail's held attachments included; ids that no longer wait come back as `skipped`;
+*read* is `409` in the replay-only demo). `settings` takes `inbox_auto_read`; a waiting letter can't
+be reprocessed or made non-private by `PATCH` (`409`) — only an answer changes it.
 Contracts carry `cancellable` + `cancel_hint`, worked out on read (not for the broadcasting fee,
 obligations towards authorities or a job — a job gets "Draft resignation").
 
 View models (in models.py): `Dashboard`, `TimelineEntry`, `Lane{id,label,area,bars[]}`,
 `LaneBar{id,label,start,end,kind,marker_dates[],ref}`, `DocumentDetail`, `PartyDetail`,
-`CaseDetail`, `UsageStats`, `Health`, `RuleInfo`, `TourState`, `MailTrayItem`.
+`CaseDetail`, `UsageStats`, `Health`, `RuleInfo`, `TourState`, `MailTrayItem`, `EmailAttachment`,
+`FolderStatus`, `FolderPickup`. Live event `folder.updated` {state, doc_id?, held?}.
 
 Contract details: list endpoints answer plain JSON arrays. `health` carries `rules_last_checked`
 (the catalog's `LAST_CHECKED`, shown as "Based on the law as of …"); `health?probe=1` ("Run check")
@@ -614,11 +670,15 @@ Pages:
    "All clear until Friday" empty state; "calendar outdated" card; undo toasts.
 2. **Inbox** — letters list (thumbnail, sender, kind, date, status badge), filters (All · Please
    check · Private), New-mail tray in demo, batch-import recap screen ("I read 12 letters: 5
-   deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam").
+   deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam"). Above the list,
+   **"From your folder — waiting for you"**: the held letters (an e-mail's attachments under it), with
+   *Read these N* and *Keep private*; held letters are in no other group or filter.
 3. **Document viewer** — verdict card first; page images with highlight overlays (click fact → scroll
    + pulse); "Explained simply"; key facts; to-dos with "Why this date?" popover; warnings (scam
    banner); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
-   … · text of 2 pages" badge; 390 px layout stacks the image below the card.
+   … · text of 2 pages" badge; 390 px layout stacks the image below the card. An e-mail lists its
+   attachments and what became of each (linked when added); an attachment says which e-mail it came
+   with; a held letter says it waits, with *Read it with Claude* and *Keep private*.
 4. **Timeline** — year-ahead **life lanes** (Residence, Contracts, Tax, Study, Money, Health…) with a
    today line; below, month-grouped list (past/future), filters.
 5. **Contracts** — lanes chart (bars, hatched notice windows, send-by marker, today line), cards,
@@ -629,7 +689,9 @@ Pages:
    citation chips → viewer, suggested questions (recorded in demo).
 8. **Settings** — profile & address, region (affects holidays), language, reminders, models,
    privacy statement + "Privacy & AI usage" (activity, tokens, API-equivalent cost, cache hits),
-   Claude status (doctor), "How dates are computed" (rules catalog), data location, disclaimer.
+   Claude status (doctor), "How dates are computed" (rules catalog), data location, disclaimer,
+   **Watched folder** (the path with the server's validation message, "Use Ordnung's inbox folder",
+   the auto-read switch with the cloud-folder caveat, the folder's state and the last files).
 9. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
    name/address (skippable) → Claude check (copyable fixes; "Continue without AI") → drop zone +
    "Explore the demo instead".
@@ -714,7 +776,7 @@ examples, evals), disclaimer. `docs/`: architecture, deadline-rules (with citati
 (data-flow table), evals, decisions/ADRs, limitations.
 
 ## 20. Changes from v1 (review outcomes)
-Cut money/bank CSV, calendar page, MCP writes, inbox watcher, OCR, party tie-break, 4 letter kinds,
+Cut money/bank CSV, calendar page, MCP writes, inbox watcher (built in phase 2), OCR, party tie-break, 4 letter kinds,
 7 CLI commands. Added: stdin content-block invocation, transcribe-then-extract, grounding levels +
 exact digit checks, deterministic IDs + strict replay, durable job queue + rate-limit pause,
 idempotent reprocess, localhost token/CSP/Fetch-Metadata defences, daily tick, onboarding, action-
@@ -729,7 +791,7 @@ Store.open(paths) -> Store · close() · tx() (context manager; BEGIN IMMEDIATE;
 get_meta(key) · set_meta(key, value) · get_profile() · save_profile(p) · get_settings() · save_settings(s)
 # documents & pages
 add_document(*, id, sha256, filename, mime, pages, file_path, source, direction, received_date, status, ai_private) -> Document
-get_document(id) · get_document_by_sha(sha) · update_document(id, **fields) · list_documents(q, kind, party_id, case_id, status, direction, limit, offset)
+get_document(id) · get_document_by_sha(sha) · update_document(id, **fields) · list_documents(q, kind, party_id, case_id, status, direction, limit, offset, *, ai_private, include_deleted, source)
 delete_document(id) (full purge incl. derived files, original, cache rows by doc_sha)
 set_pages(doc_id, pages) · list_pages(doc_id) · get_page(doc_id, n) · set_page_text(doc_id, n, text, text_source)
 get_document_text(doc_id) (page-delimited) · get_extraction(doc_id) · reindex_document(doc_id)
@@ -749,7 +811,7 @@ add_draft · get_draft · update_draft · list_drafts · delete_draft · add_not
 # jobs (queue of record)
 enqueue_job(kind, doc_id, force=False) · claim_next_job(kinds) · update_job(id, **f) · get_job · list_jobs(active_only) · requeue_running_jobs()
 # activity / accounting / cache
-log_activity(kind, message, ref_type, ref_id, data) · list_activity(limit)
+log_activity(kind, message, ref_type, ref_id, data) · list_activity(limit, *, kinds, data) · last_activity(ref_type, ref_id, kinds)
 log_llm_call(purpose, model, backend, usage, ok, error, cache_hit) · usage_stats(recent)
 cache_get(key) · cache_put(key, purpose, model, response, doc_sha=None) · purge_cache_for(doc_sha)
 counts()

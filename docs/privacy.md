@@ -10,6 +10,7 @@ goes where.
 | Data | Where it lives | Leaves your computer? |
 |---|---|---|
 | Original files (PDFs, photos) | `<data dir>/files/` | Never by Ordnung itself |
+| Your watched folder (optional) | wherever you chose | Ordnung only lists and reads it; a new file there is copied in and **waits for you** before anything of it goes to Claude ([below](#the-watched-folder)) |
 | Page images, thumbnails | `<data dir>/derived/` | Only as part of a *Read* call (see below) |
 | Your ledger (letters, to-dos, contracts, ideas, drafts) | `<data dir>/ordnung.db` (SQLite) | Excerpts, when you use *Ask*, *Ideas review* or *Letters* |
 | Profile (name, address, region, the IBAN you may add for refunds) | `ordnung.db` | Name, language and region in prompts; the address and IBAN you enter here are never put into a prompt (a letter you add is read as printed, with the address in its window; letters Ordnung drafts that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation) |
@@ -47,6 +48,12 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
 - **Keep private (no AI)** — every upload asks first: switch it on and the document is never sent to
   Claude. It is stored, searchable by its text layer, and you can add dates by hand. A letter you
   delete while it still waits to be read is never sent either.
+- **The watched folder waits for you** — files your scanner or browser saves into the watched folder
+  are stored and read on this computer only, and wait in the Inbox ("From your folder — waiting for
+  you") until you choose *Read these* or *Keep private* ([details](#the-watched-folder)).
+- **E-mail attachments follow the e-mail** — each PDF or photo attached to an e-mail you add becomes
+  a letter of its own with the e-mail's choice: attachments of a private e-mail stay private, those of
+  a waiting e-mail wait with it.
 - **Delete means delete** — deleting a letter removes it for good: the original, page images,
   everything read from it, its to-dos and Ideas, its search-index entries, its entries in the
   activity log, quotes from it in contracts you keep, and the cached model responses of every call
@@ -57,6 +64,36 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
 - **Models** — choose which Claude model handles each purpose.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself.
+
+## The watched folder
+
+In *Settings → Watched folder* you can point Ordnung at a folder your scanner, phone app or browser
+saves into. It is off until you choose one.
+
+- **Nothing is sent until you say so.** A new file is copied into Ordnung's data folder like an
+  upload and read on this computer only (its text layer, for search and the page images) — then it
+  waits. *Read these* sends it to Claude like any letter you add; *Keep private* keeps it as if you had
+  added it with "Keep private — no AI". Waiting letters are private in every other way too: *Ask*, the
+  weekly review, the daily note and drafting never see them.
+- **"Read new files with Claude straight away"** skips the waiting for new files: each one is sent
+  to Claude as soon as it appears. Files already waiting still wait for your answer.
+- **A cloud-synced folder is already shared with its cloud provider.** If the folder is inside
+  Dropbox, iCloud Drive, OneDrive or Google Drive, that provider has copies of every file in it,
+  whatever Ordnung does. Choose a folder on this computer only (for example Ordnung's own inbox
+  folder, offered in Settings) if that matters to you.
+- **Read-only.** Ordnung only lists and reads the folder: it never writes, moves, renames or deletes
+  anything there, never follows a symbolic link, never enters a sub-folder, and ignores partial and
+  temporary files.
+- **What Ordnung remembers.** To pick up each file once, it keeps a hash of the folder, the file's
+  name, size and date — not the name itself. The activity log lists the files the folder brought in;
+  deleting a letter removes those entries with it, while the name of a file the folder refused (too
+  large, damaged) stays in the log until *Delete everything*.
+- ***Delete everything*** stops watching and clears the setting. Files in a folder you chose are never
+  touched; Ordnung's own inbox folder lives inside its data folder and is deleted with it.
+
+E-mails in the folder wait with their attachments, and *Read these* for an e-mail reads what it
+brought as well. Pictures inside an e-mail (logos, tracking pixels) are never read, and nothing in an
+e-mail is ever fetched from the internet.
 
 ## Hardening built into every model call
 

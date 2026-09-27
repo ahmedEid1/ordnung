@@ -9,6 +9,11 @@ compute → link → plan → done.
   plan share **one** ``store.tx()`` under the process-wide :func:`ledger_lock`; their stage events
   are published once that transaction has committed.
 * Private documents ("Keep private — no AI") stop after the text layer: no model call ever sees them.
+  So do *held* ones (``hold=True``: files from the watched folder, :mod:`ordnung.ingest.held`), which
+  end ``held`` instead of ``processed`` and publish no stage events (nothing is being read) until the
+  person says they may be read.
+* An e-mail's attachments (PDFs and photos) are added as documents of their own right after it, with
+  its privacy choice (:mod:`ordnung.ingest.attachments`); what became of each is logged on the e-mail.
 * Letters moved to the trash while they waited in the queue (or while being read) are never sent to
   the model: the job fails with :data:`TRASHED_ERROR`; uploading the file again restores and reads it.
 * "Today" is the person's (profile time zone or the pinned demo date, :func:`ordnung.tick.local_today`),
@@ -33,6 +38,16 @@ from ordnung import clock
 from ordnung.clock import now_iso
 from ordnung.db.store import NotFoundError, Store
 from ordnung.ids import doc_id_for_sha
+from ordnung.ingest import held as consent
+from ordnung.ingest.attachments import (
+    ATTACHMENTS_ACTIVITY,
+    EMAIL_MIME,
+    OUTCOME_DETAIL,
+    Attachment,
+    email_attachments,
+    email_parent,
+    email_source,
+)
 from ordnung.ingest.extract import ExtractionError, ExtractionInput, extract_document, prompt_pages
 from ordnung.ingest.intake import (
     TEXT_TYPES,
@@ -64,7 +79,7 @@ from ordnung.ingest.plan import (
 from ordnung.ingest.text import PageText, detect_injection_phrases, extract_pdf_pages, text_file_pages
 from ordnung.ingest.transcribe import transcribe_pages
 from ordnung.llm.base import ClaudeRateLimited, LLMError
-from ordnung.models import Document, DocumentExtraction, Job, Page
+from ordnung.models import Document, DocumentExtraction, EmailAttachment, Job, Page
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
 
 if TYPE_CHECKING:
@@ -136,6 +151,8 @@ class StageReporter:
         self.job_id = job_id
         self.on_stage = on_stage
         self.current: str = "intake"
+        #: A held letter is only stored, not read: its stages are not announced (a failure still is).
+        self.quiet = False
 
     async def stage(self, name: Stage, *, status: Literal["running", "done"] = "running") -> None:
         """Enter stage ``name``."""
@@ -143,14 +160,15 @@ class StageReporter:
         progress = STAGE_PROGRESS[name]
         if self.job_id is not None:
             self.ctx.store.update_job(self.job_id, stage=name, progress=progress, status=status)
-        self.ctx.bus.publish(
-            "job.progress",
-            job_id=self.job_id,
-            doc_id=self.doc_id,
-            stage=name,
-            progress=progress,
-            status=status,
-        )
+        if not self.quiet:
+            self.ctx.bus.publish(
+                "job.progress",
+                job_id=self.job_id,
+                doc_id=self.doc_id,
+                stage=name,
+                progress=progress,
+                status=status,
+            )
         if self.on_stage is not None:
             result = self.on_stage(name, progress)
             if inspect.isawaitable(result):
@@ -229,12 +247,21 @@ def _iso(value: str | date | None) -> str | None:
         raise IntakeError(f"“{value}” is not a date — please use the form 2026-09-25.") from exc
 
 
-def _announce(ctx: AppContext, job: Job) -> None:
-    """Tell listeners and the worker that a job is waiting."""
-    ctx.bus.publish(
-        "job.progress", job_id=job.id, doc_id=job.doc_id, stage="intake", progress=0.0, status="queued"
-    )
+def announce_job(ctx: AppContext, job: Job, *, quiet: bool = False) -> None:
+    """Tell listeners (unless ``quiet``: a held letter is only stored) and the worker that a job waits."""
+    if not quiet:
+        ctx.bus.publish(
+            "job.progress", job_id=job.id, doc_id=job.doc_id, stage="intake", progress=0.0, status="queued"
+        )
     ctx.worker.notify()
+
+
+@dataclass(frozen=True)
+class Added:
+    """What :func:`add_file_result` did: the document, and whether this call created it."""
+
+    document: Document
+    new: bool
 
 
 async def add_file(
@@ -244,23 +271,57 @@ async def add_file(
     *,
     combine_with: Sequence[bytes] | None = None,
     private: bool = False,
+    hold: bool = False,
     received_date: str | date | None = None,
     source: str = "upload",
+    restore_trashed: bool = True,
 ) -> Document:
     """Store an upload and queue it for reading; returns the (new or already known) document.
 
     ``combine_with`` holds more photos of the same letter (one multi-page PDF is made). The same
     bytes always give the same document id, so uploading a file again returns the existing
-    document (restored from the trash if needed). ``received_date`` is the day the person says
-    the letter arrived. Raises :class:`~ordnung.ingest.intake.IntakeError` for rejected files.
+    document (restored from the trash if needed, unless ``restore_trashed`` is off). ``hold`` keeps
+    it private and ``held`` until the person says it may be read (:mod:`ordnung.ingest.held`); adding
+    a held file again without ``hold`` answers that question (``private``: keep it private, else read
+    it). ``received_date`` is the day the person says the letter arrived. An e-mail's attachments are
+    added right after it (:mod:`ordnung.ingest.attachments`). Raises
+    :class:`~ordnung.ingest.intake.IntakeError` for rejected files.
     """
+    added = await add_file_result(
+        ctx,
+        data,
+        filename,
+        combine_with=combine_with,
+        private=private,
+        hold=hold,
+        received_date=received_date,
+        source=source,
+        restore_trashed=restore_trashed,
+    )
+    return added.document
+
+
+async def add_file_result(
+    ctx: AppContext,
+    data: bytes,
+    filename: str,
+    *,
+    combine_with: Sequence[bytes] | None = None,
+    private: bool = False,
+    hold: bool = False,
+    received_date: str | date | None = None,
+    source: str = "upload",
+    restore_trashed: bool = True,
+) -> Added:
+    """:func:`add_file`, telling a new document from one Ordnung already had."""
     store = ctx.store
     received = _iso(received_date)
     upload = await asyncio.to_thread(_prepare_upload, data, filename, combine_with)
     stored = await asyncio.to_thread(store_original, store.paths.files, upload.data, upload.filename)
     existing = store.get_document_by_sha(stored.sha256)
     if existing is not None:
-        return _known_upload(ctx, existing)
+        known = _known_upload(ctx, existing, private=private, hold=hold, restore_trashed=restore_trashed)
+        return Added(known, new=False)
     doc_id = doc_id_for_sha(stored.sha256)
     rendered = await asyncio.to_thread(render_pages, stored.path, stored.mime, store.paths.derived, doc_id)
     try:
@@ -274,7 +335,8 @@ async def add_file(
                 pages=len(rendered),
                 source=source,
                 received_date=received,
-                ai_private=private,
+                status="held" if hold else "queued",
+                ai_private=private or hold,
             )
             store.set_pages(doc_id, _page_rows(store, rendered))
             job = store.enqueue_job("ingest", doc_id)
@@ -282,28 +344,154 @@ async def add_file(
         concurrent = store.get_document_by_sha(stored.sha256)
         if concurrent is None:
             raise
-        return concurrent
-    store.log_activity("document.added", f"Added “{upload.filename}”", ref_type="document", ref_id=doc_id)
-    _announce(ctx, job)
-    return document
+        return Added(concurrent, new=False)
+    store.log_activity(
+        "document.added",
+        _added_message(store, upload.filename, source, hold),
+        ref_type="document",
+        ref_id=doc_id,
+        data={"source": source, "held": hold, "filename": upload.filename},
+    )
+    announce_job(ctx, job, quiet=hold)
+    if stored.mime == EMAIL_MIME:
+        await _add_attachments(
+            ctx, document, upload.data, private=private, hold=hold, received=received, restore=restore_trashed
+        )
+    return Added(document, new=True)
 
 
-def _known_upload(ctx: AppContext, document: Document) -> Document:
-    """A re-upload: restore it from the trash, and retry it if reading it failed before."""
+def _added_message(store: Store, filename: str, source: str, hold: bool) -> str:
+    """The activity line of a new document: where it came from, and whether it waits for the person."""
+    parent_id = email_parent(source)
+    parent = store.get_document(parent_id) if parent_id else None
+    if source == "folder":
+        origin = " from your watched folder"
+    elif parent is not None:
+        origin = f" from the e-mail “{parent.title or parent.filename}”"
+    else:
+        origin = ""
+    return f"Added “{filename}”{origin}" + (" · waiting for you" if hold else "")
+
+
+def _known_upload(
+    ctx: AppContext, document: Document, *, private: bool, hold: bool, restore_trashed: bool
+) -> Document:
+    """A re-upload: restore it from the trash (an e-mail with its attachments) unless that is not
+    wanted, retry it if reading it failed before, and — added again by hand — answer a held letter's
+    question (:mod:`ordnung.ingest.held`)."""
+    store = ctx.store
     if document.deleted_at:
-        document = ctx.store.restore_document(document.id)
+        if not restore_trashed:
+            return document
+        document = store.restore_document(document.id)
+        for attachment in store.list_documents(source=email_source(document.id), include_deleted=True):
+            if attachment.deleted_at:
+                store.restore_document(attachment.id)
     if document.status == "failed":
-        document = ctx.store.update_document(document.id, status="queued", error=None)
-        _announce(ctx, ctx.store.enqueue_job("ingest", document.id))
+        document = store.update_document(document.id, status="queued", error=None)
+        announce_job(ctx, store.enqueue_job("ingest", document.id))
+    elif consent.is_held(document) and not hold:
+        answer = consent.keep_private if private else consent.release
+        for job in answer(store, [document.id]).jobs:
+            announce_job(ctx, job)
+        document = store.get_document(document.id) or document
     return document
+
+
+async def _add_attachments(
+    ctx: AppContext,
+    email_doc: Document,
+    data: bytes,
+    *,
+    private: bool,
+    hold: bool,
+    received: str | None,
+    restore: bool,
+) -> None:
+    """Add an e-mail's attachments as documents of their own and record what became of each."""
+    parts = await asyncio.to_thread(email_attachments, data)
+    if not parts.attachments:
+        return
+    rows = [
+        await _add_attachment(
+            ctx, email_doc, attachment, private=private, hold=hold, received=received, restore=restore
+        )
+        for attachment in parts.attachments
+    ]
+    ctx.store.log_activity(
+        ATTACHMENTS_ACTIVITY,
+        _attachments_message(email_doc.filename, rows, parts.more),
+        ref_type="document",
+        ref_id=email_doc.id,
+        data={"attachments": [row.model_dump() for row in rows], "more": parts.more},
+    )
+
+
+async def _add_attachment(
+    ctx: AppContext,
+    email_doc: Document,
+    attachment: Attachment,
+    *,
+    private: bool,
+    hold: bool,
+    received: str | None,
+    restore: bool,
+) -> EmailAttachment:
+    if attachment.decision != "read":
+        return EmailAttachment(
+            filename=attachment.filename,
+            outcome=attachment.decision,
+            detail=OUTCOME_DETAIL[attachment.decision],
+        )
+    try:
+        added = await add_file_result(
+            ctx,
+            attachment.data,
+            attachment.filename,
+            private=private,
+            hold=hold,
+            received_date=received,
+            source=email_source(email_doc.id),
+            restore_trashed=restore,
+        )
+    except IntakeError as exc:
+        return EmailAttachment(filename=attachment.filename, outcome="refused", detail=str(exc))
+    outcome: Literal["added", "known"] = "added" if added.new else "known"
+    return EmailAttachment(
+        filename=attachment.filename,
+        outcome=outcome,
+        detail=OUTCOME_DETAIL[outcome],
+        doc_id=added.document.id,
+    )
+
+
+def _attachments_message(filename: str, rows: Sequence[EmailAttachment], more: int) -> str:
+    """The activity line, e.g. “Attachments of x.eml: 1 added as its own letter, 2 not read”."""
+    added = sum(row.outcome == "added" for row in rows)
+    known = sum(row.outcome == "known" for row in rows)
+    other = len(rows) - added - known + more
+    parts = [
+        f"{added} added as {'its own letter' if added == 1 else 'letters of their own'}" if added else "",
+        f"{known} already in Ordnung" if known else "",
+        f"{other} not read" if other else "",
+    ]
+    return f"Attachments of “{filename}”: " + ", ".join(part for part in parts if part)
 
 
 def reprocess(ctx: AppContext, doc_id: str) -> Job:
     """Queue a document to be read again, bypassing the model cache (items the person edited stay)."""
     ctx.store.update_document(doc_id, status="queued", error=None)
     job = ctx.store.enqueue_job("reprocess", doc_id, force=True)
-    _announce(ctx, job)
+    announce_job(ctx, job)
     return job
+
+
+def release_held(ctx: AppContext, doc_ids: Sequence[str]) -> consent.ConsentResult:
+    """“Read these”: the held letters (and a held e-mail's held attachments) are queued for reading."""
+    result = consent.release(ctx.store, doc_ids)
+    for job in result.jobs:
+        announce_job(ctx, job)
+    return result
 
 
 async def _ensure_pages(store: Store, document: Document) -> list[Page]:
@@ -521,23 +709,35 @@ def _extraction_input(ctx: AppContext, document: Document, pages: Sequence[Page]
 async def _finish_private(
     ctx: AppContext, document: Document, layer: TextLayer, progress: StageReporter
 ) -> Document:
-    """Private documents: keep the text layer for search; no model ever sees them."""
+    """Private and held documents: keep the text layer for search; no model ever sees them.
+
+    The letter is read again first, so an answer the person gave while this ran stands: one they let
+    Claude read is left to its reading job, one they kept private ends private.
+    """
     await progress.stage("plan")
-    title = document.title or document.filename
-    updated = ctx.store.update_document(
+    store = ctx.store
+    current = store.get_document(document.id) or document
+    if not current.ai_private:
+        await progress.done()
+        return current
+    held = current.status == "held"
+    title = current.title or current.filename
+    updated = store.update_document(
         document.id,
         title=title,
-        status="processed",
+        status="held" if held else "processed",
         error=None,
         text_mode="text",
         hidden_text=layer.hidden,
         warnings=layer.warnings,
-        text=ctx.store.get_document_text(document.id),
+        text=store.get_document_text(document.id),
         processed_at=now_iso(),
     )
-    ctx.store.log_activity(
-        "document.private",
-        f"Stored “{title}” privately · not sent to AI",
+    store.log_activity(
+        "document.held" if held else "document.private",
+        f"Stored “{title}” on this computer · waiting for you"
+        if held
+        else f"Stored “{title}” privately · not sent to AI",
         ref_type="document",
         ref_id=document.id,
     )
@@ -632,7 +832,9 @@ async def ingest_document(
         if document is None:
             raise NotFoundError(f"documents: no row with id {doc_id!r}")
         _refuse_trashed(store, doc_id)
-        store.update_document(doc_id, status="processing", error=None)
+        progress.quiet = consent.is_held(document)
+        if not progress.quiet:  # a held letter is only stored: it keeps waiting meanwhile
+            store.update_document(doc_id, status="processing", error=None)
         document = await _run_stages(ctx, document, progress, force=force)
     except (ClaudeRateLimited, asyncio.CancelledError):
         _set_status_quietly(store, doc_id, "queued")

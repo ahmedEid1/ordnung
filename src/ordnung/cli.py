@@ -54,7 +54,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
-FINAL_STATUSES = frozenset({"processed", "needs_review", "failed"})
+FINAL_STATUSES = frozenset({"processed", "needs_review", "failed", "held"})
 POLL_S = 0.5
 HEALTH_TIMEOUT_S = 2.0
 BROWSER_WAIT_S = 15.0
@@ -322,6 +322,8 @@ def next_date(items: Sequence[Item], today: date) -> str:
 def _status_text(document: Document) -> str:
     if document.status == "failed":
         return f"[red]Failed[/] — {escape(document.error or '')}"
+    if document.status == "held":
+        return "Waiting for you — not sent to AI yet"
     if document.ai_private:
         return "Private — not sent to AI"
     if document.status == "needs_review":
