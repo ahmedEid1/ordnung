@@ -101,6 +101,14 @@ async def test_a_photo_letter_is_compared_with_the_paper_before_it_gets_a_code(d
             and twice.json()["detail"] == "There is nothing to compare for this payment."
         )
 
+        # deleting the letter deletes what the person compared (docs/privacy.md)
+        deleted = await api.client.delete(
+            f"/api/documents/{detail['document']['id']}", params={"purge": "true"}
+        )
+        assert deleted.status_code == 200, deleted.text
+        kinds = [entry["kind"] for entry in (await api.client.get("/api/activity")).json()]
+        assert "payment.checked" not in kinds
+
 
 async def test_a_reminder_takes_the_code_over_from_its_invoice(data_dir: Path) -> None:
     async with api_for(data_dir) as api:

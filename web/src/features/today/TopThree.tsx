@@ -252,6 +252,7 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
         panel's bottom padding (a sticky box stops at the padding edge, so it is pulled down by it)
       */}
       <div
+        data-sticky-footer=""
         className={cn(
           "sticky -bottom-4 -mb-4 mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line bg-surface py-3",
           "in-sheet:bottom-[calc(-1.25rem-env(safe-area-inset-bottom))] in-sheet:mb-[calc(-1.25rem-env(safe-area-inset-bottom))] in-sheet:pb-[calc(0.75rem+env(safe-area-inset-bottom))]",

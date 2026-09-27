@@ -100,6 +100,20 @@ export async function demoCatalog({ api, server }) {
     },
   });
   add({
+    id: "today-pay-girocode",
+    group: "today",
+    route: "/",
+    how: "open /, click the first Top-3 “Pay” button, then “Show code”",
+    description: "Today's Pay panel with its GiroCode (EPC-QR) unfolded: dark on white with its quiet zone in both themes.",
+    run: async (c) => {
+      await c.goto("/");
+      await c.click(main(c.page).getByRole("button", { name: /^Pay: / }));
+      const show = c.page.getByRole("button", { name: "Show code" });
+      if (await c.exists(show)) await c.click(show);
+      else c.note("no “Show code”: this payment has no GiroCode");
+    },
+  });
+  add({
     id: "today-why-this-date",
     group: "today",
     route: "/",
@@ -287,6 +301,15 @@ export async function demoCatalog({ api, server }) {
   docState(payDoc, "evidence", "click the first “show … on the page” evidence button", "The evidence highlight and quote on the page image.", (c) => c.click(c.page.getByRole("button", { name: /show “.*” on the page/ })));
   docState(payDoc, "evidence-tooltip", "hover the first evidence chip", "Tooltip of an evidence chip.", (c) => c.hover(c.page.getByRole("button", { name: /show “.*” on the page/ })));
   docState(payDoc, "delete-dialog", "click “Delete”", "The delete-letter confirmation.", (c) => c.click(main(c.page).getByRole("button", { name: /^Delete$/ })));
+  const statementDoc = docs.find((d) => /nebenkosten/i.test(d.filename ?? ""));
+  const photoFineDoc = docs.find((d) => d.text_mode === "vision" && d.payment?.iban);
+  const openPay = async (c) => {
+    const pay = c.page.getByRole("article").first().getByRole("button", { name: /^Pay\b/ });
+    if (await c.exists(pay)) await c.click(pay);
+    else c.note("no “Pay” button on the verdict card");
+  };
+  docState(statementDoc, "girocode", "click the verdict card's “Pay …” button", "The Pay popover with the letter's GiroCode (EPC-QR) and how to use it.", openPay);
+  docState(photoFineDoc, "girocode-check", "click the verdict card's “Pay …” button", "The Pay popover of a letter read from a photo: compare the details with the paper letter first (“These match the letter”).", openPay);
   docState(multiDoc, "zoom-150", "switch the page viewer zoom to 150 %", "Page viewer at 150 % (horizontal scrolling inside the viewer).", (c) => c.click(c.page.getByRole("radiogroup", { name: "Zoom" }).getByRole("radio", { name: /150/ })));
   docState(multiDoc, "page-2", "click the page-2 thumbnail", "Page viewer scrolled to page 2.", (c) => c.click(c.page.getByRole("button", { name: /^Go to page 2/ })));
   docState(photoDoc, "zoom-150", "switch the page viewer zoom to 150 %", "Phone photo at 150 %.", (c) => c.click(c.page.getByRole("radiogroup", { name: "Zoom" }).getByRole("radio", { name: /150/ })));
@@ -991,6 +1014,27 @@ export async function demoCatalog({ api, server }) {
       how: "open the objected letter after its objection was drafted",
       description: "Letter viewer listing “Your letters about this”.",
       run: (c) => c.goto(`/documents/${objectionDoc.id}`),
+    });
+  }
+
+  if (photoFineDoc) {
+    mutations.push({
+      id: `${docSlug(photoFineDoc)}--girocode-confirmed`,
+      group: "document",
+      route: `/documents/${photoFineDoc.id}`,
+      how: `open /documents/${photoFineDoc.id}, “Pay …”, “These match the letter” (recorded on the mutations copy; later captures find it done)`,
+      description: "The photographed letter's GiroCode after the person compared the details with the paper letter.",
+      run: async (c) => {
+        await c.goto(`/documents/${photoFineDoc.id}`);
+        await c.click(c.page.getByRole("article").first().getByRole("button", { name: /^Pay\b/ }));
+        const match = c.page.getByRole("button", { name: "These match the letter" });
+        const show = c.page.getByRole("button", { name: "Show code" });
+        if (await c.exists(match)) await c.click(match, { settleAfter: false });
+        // later captures: already compared — on a phone the code waits behind "Show code"
+        else if (await c.exists(show)) await c.click(show);
+        await c.page.getByRole("img", { name: /^GiroCode: transfer/ }).waitFor({ timeout: 30_000 });
+        await settle(c.page);
+      },
     });
   }
 

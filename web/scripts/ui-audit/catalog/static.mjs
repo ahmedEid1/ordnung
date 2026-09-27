@@ -46,6 +46,22 @@ export async function staticCatalog({ webDir }) {
       await settle(c.page);
     });
   }
+  // GiroCode (EPC-QR): a code, a photo that waits for the paper letter, the code after the check, Today's folded code
+  const pay = async (c) => c.click(inMain(c.page).getByRole("article").first().getByRole("button", { name: /^Pay\b/ }));
+  if (pick("doc_nebenkosten")) add("girocode-statement", "/documents/doc_nebenkosten", "Static demo: the utility statement's Pay panel with its GiroCode.", pay);
+  if (pick("doc_parking")) {
+    add("girocode-photo-check", "/documents/doc_parking", "Static demo: the photographed parking fine asks to compare with the paper letter first.", pay);
+    add("girocode-photo-confirmed", "/documents/doc_parking", "Static demo: the parking fine's GiroCode after “These match the letter”.", async (c) => {
+      await pay(c);
+      await c.click(c.page.getByRole("button", { name: "These match the letter" }), { settleAfter: false });
+      await c.page.getByRole("img", { name: /^GiroCode: transfer/ }).waitFor({ timeout: 30_000 });
+      await settle(c.page);
+    });
+  }
+  add("girocode-today", "/", "Static demo: Today's Pay panel with the GiroCode unfolded.", async (c) => {
+    await c.click(inMain(c.page).getByRole("button", { name: /^Pay: / }).first());
+    await c.click(c.page.getByRole("button", { name: "Show code" }));
+  });
   if (pick("doc_tax")) add("doc-link-before-opening", "/documents/doc_tax", "Static demo: a link to a New-mail letter that hasn't been opened yet.");
   for (const id of draftIds.slice(0, 2)) add(id.replace(/_/g, "-"), `/letters/${id}`, `Static demo: draft ${id}.`);
   add("ask-answer", "/ask", "Static demo: a suggested question answered from the mock data.", async (c) => {

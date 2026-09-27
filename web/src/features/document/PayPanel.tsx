@@ -9,6 +9,8 @@ import { formatIban, formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
 import { GiroCodeSection } from "@/features/girocode/GiroCode";
+import { useIsTabletUp } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 import { copyText } from "./actions";
 
 function Row({ label, value, copy, mono }: { label: string; value: string; copy?: string; mono?: boolean }) {
@@ -49,6 +51,8 @@ export function PayPanel({
 }) {
   const p = doc.payment;
   const amount = item.amount != null ? formatMoney(item.amount, { currency: item.currency }) : null;
+  // a phone can't scan its own screen: there the code waits behind "Show code"
+  const phone = !useIsTabletUp();
   return (
     <div>
       <div className="flex items-center gap-2.5">
@@ -81,12 +85,19 @@ export function PayPanel({
         </p>
       ) : null}
 
-      <GiroCodeSection code={code} docId={doc.id} className="mt-3" />
+      <GiroCodeSection code={code} docId={doc.id} collapsible={phone} className="mt-3" />
 
       <p className="mt-3 text-[12.5px] leading-5 text-muted">
         Ordnung never pays for you — use your banking app. Compare the IBAN with an earlier letter from this sender.
       </p>
-      <div className="mt-3 flex justify-end gap-2">
+      {/* stays in view at the bottom of the panel however tall the code makes it (as on Today) */}
+      <div
+        data-sticky-footer=""
+        className={cn(
+          "sticky -bottom-4 -mb-4 mt-3 flex justify-end gap-2 border-t border-line bg-surface py-3",
+          "in-sheet:bottom-[calc(-1.25rem-env(safe-area-inset-bottom))] in-sheet:mb-[calc(-1.25rem-env(safe-area-inset-bottom))] in-sheet:pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
+        )}
+      >
         {close ? (
           <Button size="sm" variant="ghost" onClick={close} className="in-sheet:hidden">
             Close

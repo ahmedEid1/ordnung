@@ -511,7 +511,9 @@ function layoutProbeInPage(opts) {
 /**
  * e. "covered": interactive elements whose centre is under another element.
  *
- * - An overlay (dialog, menu, popover, drawer) is open: its own controls are checked where they are.
+ * - An overlay (dialog, menu, popover, drawer) is open: its own controls are checked where they are;
+ *   one under the overlay's own sticky bar (a pay panel's footer) counts only when scrolling it into
+ *   view (which keeps the scroll container's scroll-padding clear, as focus does) doesn't free it.
  * - Otherwise page content is checked at the top and at the very bottom of the page, and counts
  *   as covered when the cover is in the page flow (a real overlap), or is fixed/sticky chrome that
  *   can't be scrolled away there: a top bar at the top of the page, a bottom bar at the bottom.
@@ -620,8 +622,23 @@ async function coveredProbeInPage() {
 
   // 1. where the page is now: overlay controls, and fixed controls outside overlays
   const now = overlays.length ? els.filter(inOverlay) : els.filter((el) => layerOf(el) && getComputedStyle(layerOf(el)).position === "fixed");
+  const ownStickyBar = (el, hit) => {
+    const layer = layerOf(hit);
+    return layer && getComputedStyle(layer).position === "sticky" && overlays.some((o) => o.contains(layer) && o.contains(el));
+  };
   for (const el of now) {
-    const hit = hitOf(el);
+    let hit = hitOf(el);
+    if (hit && ownStickyBar(el, hit)) {
+      const scrolled = [];
+      for (let a = el.parentElement; a && a !== document.body && a !== root; a = a.parentElement) if (a.scrollHeight > a.clientHeight) scrolled.push([a, a.scrollTop]);
+      el.scrollIntoView({ block: "nearest" });
+      await frame();
+      hit = hitOf(el);
+      for (const [a, top] of scrolled) a.scrollTop = top;
+      await frame();
+      if (hit) report(el, hit, "open overlay (can't be scrolled clear of its sticky bar)");
+      continue;
+    }
     if (hit) report(el, hit, overlays.length ? "open overlay" : "fixed control");
   }
   if (overlays.length) return out;

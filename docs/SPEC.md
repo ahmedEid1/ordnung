@@ -564,7 +564,9 @@ Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT
 (GET detail / PATCH / DELETE), `documents/{id}/file`, `documents/{id}/pages/{n}.jpg`,
 `documents/{id}/thumbnail.jpg`, `documents/{id}/reprocess` (POST), `items` (GET/POST),
 `items/{id}` (PATCH/DELETE; PATCH with `due_date` sets `due_date_source=manual`, `user_modified`),
-`items/{id}/confirm` (POST: grounding=user), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
+`items/{id}/confirm` (POST: grounding=user), `items/{id}/girocode/confirm` (POST: the transfer details
+the person compared with the paper letter; 409 when they changed or the code is refused for another
+reason), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
 (PATCH), `parties`, `parties/{id}`, `cases/{id}`, `timeline?from&to`, `lanes?from&to`, `dashboard`,
 `suggestions` (GET), `suggestions/{id}` (PATCH status/snooze), `suggestions/review` (POST),
 `brief` (GET cached, POST regenerate), `ask` (POST → SSE), `chat/{thread_id}`, `drafts`
@@ -574,6 +576,8 @@ replay-only demo), `calendar.ics`, `calendar/exported` (POST), `activity`, `usag
 `events` (SSE), `data` (DELETE `{"confirm": "DELETE"}`: "Delete everything" — empties the database
 in place and removes Ordnung's files, keeping the lock and `server.json`; 409 in the demo),
 `demo/tour` (GET tour state), `demo/mail` (GET tray, POST `{id}` → ingest a tray letter).
+A letter's detail carries `girocodes`: per payment to-do a GiroCode (`ready`, with the EPC payload)
+or why there is none (`blocked`, a reason code and plain words), worked out on read (§ 21).
 Contracts carry `cancellable` + `cancel_hint`, worked out on read (not for the broadcasting fee,
 obligations towards authorities or a job — a job gets "Draft resignation").
 
@@ -617,7 +621,8 @@ Pages:
    deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam").
 3. **Document viewer** — verdict card first; page images with highlight overlays (click fact → scroll
    + pulse); "Explained simply"; key facts; to-dos with "Why this date?" popover; warnings (scam
-   banner); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
+   banner; a scam letter's bank details say why there is no GiroCode); the Pay panel with the payment's
+   GiroCode (folded behind "Show code" on phones, and in Today's Pay panel); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
    … · text of 2 pages" badge; 390 px layout stacks the image below the card.
 4. **Timeline** — year-ahead **life lanes** (Residence, Contracts, Tax, Study, Money, Health…) with a
    today line; below, month-grouped list (past/future), filters.
@@ -877,6 +882,28 @@ install` prints the entry first and writes only with `--write`.
 **Scam checks (code, not model).** IBAN checksum validation; payee IBAN/name compared with those
 previously seen for the same party; mismatch → scam Idea quoting both. Copy: "No warning does not
 mean it is safe."
+
+**GiroCode (EPC-QR).** A payment's Pay panel shows a QR code any German banking app scans to pre-fill
+the transfer (EPC069-12 v3.1, version 002, UTF-8, error correction M, at most 331 bytes; builder
+`ordnung/girocode.py`, which reproduces the standard's two worked examples byte for byte). The person
+still confirms the transfer in their bank app with their TAN — Ordnung never pays (ADR 0006). The code
+is drawn in the browser (`uqr`), black on white with a four-module quiet zone in both themes. Whether a
+payment gets one is a written policy (`secretary/girocode_gate.py`, ADR 0007, [ADR 0012](decisions/0012-girocode-only-for-grounded-transfers.md)), checked in
+order: a transfer the person makes (not money in, not a direct debit — also when the quoted sentence
+says "Lastschrift" though the to-do reads like a transfer); still to pay (open, snoozed or missed; the
+letter not in the trash); no scam signs on the letter (an attacker's valid IBAN on a letter in a known
+sender's name is exactly this); not an invoice a reminder took over, and the letter's only open transfer
+(its one reference may not fit several); euro, an amount, a well-formed IBAN, a payee name, and the
+standard's limits (a BIC is needed outside the EEA and Ordnung reads none; an RF reference must pass
+ISO 11649); every value grounded — the amount stated by a verified sentence of the text layer, the
+IBAN printed in the text layer or known for the sender from another of its letters, the reference
+printed in the text layer. A value read from a photo, or not found, asks the person to compare the
+details with the paper letter ("These match the letter"); the confirmation (an activity entry) records
+the exact payee, IBAN, reference and amount and holds only while all four stay the same. It never
+overrides a scam sign and never makes an IBAN "known" for the scam checks. Every "no code" says why in
+plain words ("No code: this IBAN is not the one Beitragsservice Musterstadt used before …"); the
+copy-by-hand fields stay. The static demo's codes are generated by the same code
+(`scripts/gen_mock_girocodes.py`) and point to the sample life's fictional accounts.
 
 **Review scope.** The LLM review may only produce `saving`, `hygiene`, `followup`, `opportunity`
 Ideas; legal rights and dates come only from deterministic triggers. `work_days_limit` trigger is

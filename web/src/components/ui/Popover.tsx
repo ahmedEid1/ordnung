@@ -243,7 +243,8 @@ export function Popover({
                 data-popover-body=""
                 role={role === "dialog" ? undefined : role}
                 aria-label={role === "dialog" ? undefined : label}
-                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-1 scrollbar-thin"
+                // content with a sticky footer (a pay panel's actions): focus scrolls clear of it (WCAG 2.4.11)
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-1 scrollbar-thin has-[[data-sticky-footer]]:scroll-pb-24"
               >
                 {body}
               </div>
@@ -269,7 +270,7 @@ export function Popover({
                 transformOrigin: `${pos?.side === "top" ? "bottom" : "top"} ${pos?.placement.endsWith("end") ? "right" : "left"}`,
               }}
               className={cn(
-                "z-[60] w-80 max-w-[calc(100vw-16px)] overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface p-4 text-base text-ink shadow-[var(--shadow-pop)] outline-none scrollbar-thin scroll-shadow",
+                "z-[60] w-80 max-w-[calc(100vw-16px)] overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface p-4 text-base text-ink shadow-[var(--shadow-pop)] outline-none scrollbar-thin scroll-shadow has-[[data-sticky-footer]]:scroll-pb-20",
                 className,
               )}
             >

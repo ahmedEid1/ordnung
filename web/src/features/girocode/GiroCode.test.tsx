@@ -7,14 +7,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { DocumentDetail, GiroCode } from "@/api/types";
+import { useDocument } from "@/api/hooks";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
-import { renderWithProviders } from "@/test/render";
+import { renderWithProviders, TEST_HEALTH } from "@/test/render";
+import { qk } from "@/api/hooks";
+import { createQueryClient } from "@/app/queryClient";
 import { useMockApi } from "@/test/mockFetch";
 import { createMockServer } from "@/mocks/server";
 import { GIROCODES } from "@/mocks/data/girocodes";
 import { DocumentView } from "@/features/document/DocumentView";
 import { TodayView } from "@/features/today/TodayView";
-import { GIROCODE_HINT, GiroCodeSection, giroCodeLabel } from "./GiroCode";
+import { GIROCODE_CHECKED, GIROCODE_HINT, GiroCodeSection, giroCodeLabel } from "./GiroCode";
 import { qrMatrix, qrPath } from "./qr";
 
 const NK = "BCD\n002\n1\nSCT\n\nWohnbau Musterstadt eG\nDE05123456000004455660\nEUR184.3\n\n\nMV-2025-0412 NK 2025";
@@ -69,6 +72,14 @@ describe("a ready code", () => {
     expect(screen.getByRole("img", { name: /^GiroCode: transfer €184\.30/ })).toBeInTheDocument();
   });
 
+  it("shows the code when the panel stops folding it (unlocked a render after the answer arrived)", () => {
+    const { rerender } = renderWithProviders(<GiroCodeSection code={ready} docId="doc_nebenkosten" collapsible />);
+    expect(screen.queryByRole("img", { name: /^GiroCode:/ })).toBeNull();
+    rerender(<GiroCodeSection code={ready} docId="doc_nebenkosten" collapsible={false} />);
+    expect(screen.getByRole("img", { name: /^GiroCode: transfer €184\.30/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /code$/ })).toBeNull();
+  });
+
   it("labels a code without an amount or reference plainly", () => {
     expect(giroCodeLabel("BCD\n002\n1\nSCT\n\nStadtkasse\nDE05123456000004455660")).toBe("GiroCode: transfer to Stadtkasse");
   });
@@ -95,22 +106,51 @@ describe("no code", () => {
   });
 });
 
+/** The parking fine's code as the letter's detail has it (refetched after the check), folded as on Today. */
+function LiveParkingCode() {
+  const detail = useDocument("doc_parking");
+  return <GiroCodeSection code={detail.data?.girocodes.find((g) => g.item_id === "itm_parking")} docId="doc_parking" collapsible />;
+}
+
 describe("details read from a photo", () => {
-  it("asks to compare them with the paper letter, then shows the code", async () => {
+  it("asks to compare them with the paper letter, then shows the code unfolded, says so and moves focus to it", async () => {
     const { calls } = useMockApi();
     const user = userEvent.setup();
-    renderSection(GIROCODES.itm_parking);
-    const section = screen.getByRole("region", { name: "GiroCode (EPC-QR)" });
+    renderWithProviders(<LiveParkingCode />);
+    const section = await screen.findByRole("region", { name: "GiroCode (EPC-QR)" });
     expect(section).toHaveTextContent("the amount, the IBAN and the reference were read by AI from a photo");
     expect(within(section).queryByRole("img")).toBeNull();
     await user.click(within(section).getByRole("button", { name: "These match the letter" }));
-    const call = calls.find((c) => c.method === "POST");
-    expect(call).toEqual({
+    expect(calls.find((c) => c.method === "POST")).toEqual({
       method: "POST",
       path: "/items/itm_parking/girocode/confirm",
       body: { payee: "Stadtkasse Musterstadt", iban: "DE51123456000000100017", reference: "OA-VW-2026-55012", amount: 30 },
     });
-    expect(await screen.findByText("GiroCode ready")).toBeInTheDocument();
+    // unlocked: shown right away (not folded), with the person's check, announced, focus on its heading
+    expect(await screen.findByRole("img", { name: "GiroCode: transfer €30.00 to Stadtkasse Musterstadt, reference OA-VW-2026-55012" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show code" })).toBeNull();
+    expect(screen.getByText(GIROCODE_CHECKED)).toBeInTheDocument();
+    expect(screen.getByText(`GiroCode ready. ${GIROCODE_CHECKED}`)).toHaveAttribute("aria-live", "polite");
+    await waitFor(() => expect(screen.getByRole("heading", { name: "GiroCode (EPC-QR)" })).toHaveFocus());
+  });
+
+  it("shows the server's refusal when the details changed meanwhile", async () => {
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    // the app's client: a failed change says what failed and why (a toast)
+    const client = createQueryClient();
+    client.setQueryData(qk.health, TEST_HEALTH);
+    renderWithProviders(
+      <>
+        <GiroCodeSection code={{ ...(GIROCODES.itm_parking as Extract<GiroCode, { status: "blocked" }>), values: { payee: "Stadtkasse Musterstadt", iban: "DE51123456000000100017", reference: "OA-VW-2026-55012", amount: 35 } }} docId="doc_parking" />
+        <Toaster />
+      </>,
+      { client },
+    );
+    await user.click(screen.getByRole("button", { name: "These match the letter" }));
+    expect(await screen.findByText("Couldn't confirm the payment details")).toBeInTheDocument();
+    expect(screen.getByText("The payment details changed since you looked at them. Please compare them again.")).toBeInTheDocument();
+    expect(srv.db.state.activity.some((a) => a.kind === "payment.checked")).toBe(false);
   });
 });
 
@@ -131,26 +171,21 @@ describe("on a letter", () => {
     renderWithProviders(<DocumentView detail={await detail("doc_nebenkosten")} />);
     await user.click(screen.getByRole("button", { name: /^Pay €184\.30/ }));
     const panel = await screen.findByRole("dialog", { name: "Pay" });
+    // jsdom is phone-sized: a phone can't scan its own screen, so the code waits behind "Show code"
+    await user.click(within(panel).getByRole("button", { name: "Show code" }));
     expect(within(panel).getByRole("img", { name: /^GiroCode: transfer €184\.30 to Wohnbau Musterstadt eG, reference MV-2025-0412 NK 2025$/ })).toBeInTheDocument();
   });
 
-  it("the photographed parking fine asks for the paper letter first, and then shows the code", async () => {
+  it("the photographed parking fine asks for the paper letter first", async () => {
     useMockApi();
     const user = userEvent.setup();
-    const { client } = renderWithProviders(
-      <>
-        <DocumentView detail={await detail("doc_parking")} />
-        <Toaster />
-      </>,
-    );
-    client.setQueryData(["documents", "detail", "doc_parking"], await detail("doc_parking"));
+    renderWithProviders(<DocumentView detail={await detail("doc_parking")} />);
     await user.click(screen.getByRole("button", { name: /^Pay €30\.00/ }));
     const panel = await screen.findByRole("dialog", { name: "Pay" });
-    await user.click(within(panel).getByRole("button", { name: "These match the letter" }));
-    expect(await screen.findByText("GiroCode ready")).toBeInTheDocument();
-    await waitFor(() =>
-      expect((client.getQueryData(["documents", "detail", "doc_parking"]) as DocumentDetail).girocodes.find((g) => g.item_id === "itm_parking")).toMatchObject({ status: "ready", checked: true }),
-    );
+    const section = within(panel).getByRole("region", { name: "GiroCode (EPC-QR)" });
+    expect(within(section).getByRole("button", { name: "These match the letter" })).toBeInTheDocument();
+    // "I've paid it" stays in view below the taller panel
+    expect(within(panel).getByRole("button", { name: "I've paid it" }).parentElement!.className).toMatch(/\bsticky\b/);
   });
 
   it("the scam letter's bank details say why there is no code", async () => {
