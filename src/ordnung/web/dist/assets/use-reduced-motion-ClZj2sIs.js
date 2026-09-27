@@ -1,1 +1,0 @@
-import{c as e,d as t}from"./index-DstzBAve.js";import{M as n,N as r,P as i}from"./format-zot5XNhQ.js";var a=t(e(),1);function o(){!r.current&&n();let[e]=(0,a.useState)(i.current);return e}export{o as t};
