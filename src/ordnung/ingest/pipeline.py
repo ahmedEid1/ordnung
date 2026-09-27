@@ -64,7 +64,7 @@ from ordnung.ingest.plan import (
 from ordnung.ingest.text import PageText, detect_injection_phrases, extract_pdf_pages, text_file_pages
 from ordnung.ingest.transcribe import transcribe_pages
 from ordnung.llm.base import ClaudeRateLimited, LLMError
-from ordnung.models import Document, DocumentExtraction, Job, Page
+from ordnung.models import Direction, Document, DocumentExtraction, Job, Page
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
 
 if TYPE_CHECKING:
@@ -246,13 +246,15 @@ async def add_file(
     private: bool = False,
     received_date: str | date | None = None,
     source: str = "upload",
+    direction: Direction = "incoming",
 ) -> Document:
     """Store an upload and queue it for reading; returns the (new or already known) document.
 
     ``combine_with`` holds more photos of the same letter (one multi-page PDF is made). The same
     bytes always give the same document id, so uploading a file again returns the existing
     document (restored from the trash if needed). ``received_date`` is the day the person says
-    the letter arrived. Raises :class:`~ordnung.ingest.intake.IntakeError` for rejected files.
+    the letter arrived; ``direction`` is ``outgoing`` for what the person sent (proof of a letter).
+    Raises :class:`~ordnung.ingest.intake.IntakeError` for rejected files.
     """
     store = ctx.store
     received = _iso(received_date)
@@ -273,6 +275,7 @@ async def add_file(
                 file_path=_relative(store, stored.path),
                 pages=len(rendered),
                 source=source,
+                direction=direction,
                 received_date=received,
                 ai_private=private,
             )

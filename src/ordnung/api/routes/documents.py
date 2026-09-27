@@ -27,6 +27,7 @@ from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledg
 from ordnung.api.routes.dates import recompute_document_items
 from ordnung.app_context import AppContext
 from ordnung.db.store import Store
+from ordnung.drafts.proof import is_proof_file
 from ordnung.ingest.intake import (
     IMAGE_TYPES,
     MAX_BYTES,
@@ -140,18 +141,21 @@ def list_documents(
     limit: Annotated[int | None, Query(ge=1, le=1000)] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[Document]:
-    """Letters, newest first (trash excluded); ``q`` searches their text."""
-    return store.list_documents(
+    """Letters, newest first (trash excluded); ``q`` searches their text. A letter's proof files
+    (``source="proof"``) are listed with their letter, never here."""
+    documents = store.list_documents(
         q=q,
         kind=kind,
         party_id=party_id,
         case_id=case_id,
         status=status_,
         direction=direction,
-        limit=limit,
-        offset=offset,
+        limit=None,
+        offset=0,
         ai_private=private,
     )
+    letters = [document for document in documents if not is_proof_file(document)]
+    return letters[offset : offset + limit] if limit is not None else letters[offset:]
 
 
 def _page_infos(store: Store, doc_id: str) -> list[PageInfo]:

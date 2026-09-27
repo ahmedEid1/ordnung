@@ -24,11 +24,14 @@ from typing import Any
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
+from ordnung.drafts.proof import channel_label, followup_item_id, is_proof_file
+from ordnung.drafts.tracking import tracking_info
 from ordnung.ids import content_id
 from ordnung.ingest.link import reminder_covers
 from ordnung.models import (
     PAYMENT_DEMAND_KINDS,
     Area,
+    CallNote,
     Contract,
     ContractComputation,
     Document,
@@ -39,6 +42,7 @@ from ordnung.models import (
     Party,
     Priority,
     Profile,
+    Proof,
     Suggestion,
     SuggestionAction,
     SuggestionKind,
@@ -367,7 +371,10 @@ class Ledger:
         self.store = store
         self.today = today
         self.profile = store.get_profile()
-        self.documents: dict[str, Document] = {doc.id: doc for doc in store.list_documents()}
+        # proof files belong to their letter (``drafts.proof``): they are no letters of the ledger
+        self.documents: dict[str, Document] = {
+            doc.id: doc for doc in store.list_documents() if not is_proof_file(doc)
+        }
         self.items: list[Item] = store.list_items()
         self.contracts: list[Contract] = store.list_contracts()
         self.parties: dict[str, Party] = {party.id: party for party in store.list_parties()}
@@ -376,6 +383,9 @@ class Ledger:
         self._sent_drafts: list[Draft] | None = None
         self._scam_reasons: dict[str, list[str]] = {}
         self._covered: dict[str, Document] | None = None
+        self._proofs: dict[str, list[Proof]] | None = None
+        self._replies: dict[str, Document | None] = {}
+        self._call_notes: list[CallNote] | None = None
 
     def party_name(self, party_id: str | None) -> str | None:
         """Display name of a party (``None`` if unknown)."""
@@ -451,6 +461,73 @@ class Ledger:
         if self._sent_drafts is None:
             self._sent_drafts = self.store.list_drafts(status="sent")
         return self._sent_drafts
+
+    def proofs_of(self, draft_id: str) -> list[Proof]:
+        """The proofs recorded for a sent letter (cached; proofs whose file is in the trash are left out)."""
+        if self._proofs is None:
+            self._proofs = {}
+            for proof in self.store.list_proofs():
+                self._proofs.setdefault(proof.draft_id, []).append(proof)
+        return self._proofs.get(draft_id, [])
+
+    def call_notes(self) -> list[CallNote]:
+        """Every call note, newest call first (cached)."""
+        if self._call_notes is None:
+            self._call_notes = self.store.list_call_notes()
+        return self._call_notes
+
+    def followup_item(self, draft: Draft) -> Item | None:
+        """The follow-up to-do created when the letter was marked as sent (``None`` once deleted)."""
+        wanted = followup_item_id(draft.id)
+        return next((item for item in self.items if item.id == wanted), None)
+
+    def letter_after(
+        self, case_id: str | None, since: date, *, exclude: str | None = None, contract_id: str | None = None
+    ) -> Document | None:
+        """The earliest live incoming letter without scam signs, other than ``exclude``, dated (else
+        received, else added) on or after ``since``, that is in thread ``case_id`` — or, when
+        ``contract_id`` is given, confirms the cancellation of that contract."""
+        found: list[tuple[str, str, Document]] = []
+        for doc in self.documents.values():
+            day = doc.doc_date or doc.received_date or doc.created_at[:10]
+            if doc.id == exclude or doc.direction != "incoming" or (parse_day(day) or date.min) < since:
+                continue
+            threaded = case_id is not None and doc.case_id == case_id
+            if not (threaded or (contract_id is not None and self._confirms(doc, contract_id))):
+                continue
+            if not self.scam_reasons(doc):
+                found.append((day, doc.created_at, doc))
+        return min(found, key=lambda entry: (entry[0], entry[1], entry[2].id))[2] if found else None
+
+    def _confirms(self, doc: Document, contract_id: str) -> bool:
+        extraction = self.extraction(doc.id)
+        change = extraction.change if extraction else None
+        confirms = doc.kind == "cancellation_confirmation" or (
+            change is not None and change.type == "cancellation_confirmation"
+        )
+        contract = self.linked_contract(doc) if confirms else None
+        return contract is not None and contract.id == contract_id
+
+    def reply_to(self, draft: Draft) -> Document | None:
+        """The letter that answered a sent letter (cached), or ``None``.
+
+        Written policy: the earliest live incoming letter without scam signs, other than the letter it
+        answered, dated (else received, else added) on or after the day it was sent, that is in the same
+        thread (:mod:`ordnung.ingest.link` threads letters by reference), or — for a cancellation of a
+        contract — confirms the cancellation of that contract. Nothing is closed because of it (ADR 0006):
+        the waiting entry and the follow-up Idea say which letter it was, and the person checks it.
+        Limit: any later letter of the thread counts (a new tax assessment under the same tax number
+        "answers" an objection); naming the letter is what lets the person notice.
+        """
+        if draft.id not in self._replies:
+            sent = parse_day(draft.sent_at) if draft.status == "sent" else None
+            contract = draft.contract_id if draft.kind == "cancellation" else None
+            self._replies[draft.id] = (
+                self.letter_after(draft.case_id, sent, exclude=draft.doc_id, contract_id=contract)
+                if sent is not None
+                else None
+            )
+        return self._replies[draft.id]
 
     def is_dunning_item(self, item: Item) -> bool:
         """Items of a payment reminder are reported by ``dunning_escalation`` only."""
@@ -993,15 +1070,74 @@ def _matching_draft(ledger: Ledger, item: Item) -> Draft | None:
     return None
 
 
+def _followup_draft(ledger: Ledger, item: Item) -> Draft | None:
+    """The sent letter whose follow-up to-do ``item`` is (its id is derived from the letter's)."""
+    return next((draft for draft in ledger.sent_drafts() if followup_item_id(draft.id) == item.id), None)
+
+
+def _proof_sentences(ledger: Ledger, draft: Draft) -> list[str]:
+    """What the letter's proof adds to a reminder: the delivery day and the tracking number."""
+    today = ledger.today
+    said: list[str] = []
+    delivered = sorted(
+        day
+        for proof in ledger.proofs_of(draft.id)
+        if proof.kind in ("delivery_record", "return_receipt") and (day := parse_day(proof.on_date))
+    )
+    if delivered:
+        said.append(
+            f"Your proof shows it was delivered on {day_label(delivered[0], today)} — say so when you remind them."
+        )
+    tracking = tracking_info(draft.tracking_number)
+    if tracking is not None:
+        said.append(f"Quote the tracking number {tracking.display} if you call.")
+    return said
+
+
+def _answered_idea(ledger: Ledger, item: Item, draft: Draft, reply: Document, due: date) -> Suggestion:
+    today = ledger.today
+    who = ledger.party_name(reply.party_id) or ledger.party_name(item.party_id) or "They"
+    reply_day = parse_day(reply.doc_date or reply.received_date or reply.created_at)
+    when = f" of {day_label(reply_day, today)}" if reply_day else ""
+    sent_day = parse_day(draft.sent_at)
+    sent = f", sent {day_label(sent_day, today)}" if sent_day else ""
+    body = _sentences(
+        f"Their letter “{reply.title or reply.filename}”{when} came after yours (“{draft.subject}”{sent}).",
+        "Check that it answers your letter, then mark the follow-up done.",
+    )
+    return make_idea(
+        "followup_due",
+        item.id,
+        (item.due_date, "answered", reply.id),
+        IdeaText(f"{who} answered — close the follow-up?", body, f"Follow-up date {day_label(due, today)}."),
+        kind="followup",
+        priority="normal",
+        refs=[_ref("item", item.id), _ref("draft", draft.id), _ref("document", reply.id)],
+        action=_open("draft", draft.id, "Open the letter"),
+        due_date=due,
+    )
+
+
 def followup_due(ledger: Ledger) -> list[Suggestion]:
-    """A sent letter's follow-up item (created when a draft is marked as sent) has become due."""
+    """A sent letter's follow-up item (created when a draft is marked as sent) has become due.
+
+    With the letter's proof state: when a letter linked to it arrived (:meth:`Ledger.reply_to`) the Idea
+    asks the person to check that answer and close the follow-up (it closes nothing itself); otherwise a
+    recorded delivery day and tracking number are named for the reminder. A letter without proof keeps
+    the plain reminder.
+    """
     ideas: list[Suggestion] = []
     today = ledger.today
     for item in ledger.active_items():
         due = parse_day(item.due_date)
         if item.origin != "draft" or due is None or due > today:
             continue
-        draft = _matching_draft(ledger, item)
+        exact = _followup_draft(ledger, item)
+        reply = ledger.reply_to(exact) if exact is not None else None
+        if exact is not None and reply is not None:
+            ideas.append(_answered_idea(ledger, item, exact, reply, due))
+            continue
+        draft = exact or _matching_draft(ledger, item)
         refs = [_ref("item", item.id)]
         sent = None
         if draft is not None:
@@ -1020,6 +1156,7 @@ def followup_due(ledger: Ledger) -> list[Suggestion]:
         body = _sentences(
             sent,
             "If you haven't had an answer, send a short reminder or call them — and keep a note of it.",
+            *(_proof_sentences(ledger, exact) if exact is not None else ()),
         )
         ideas.append(
             make_idea(
@@ -1032,6 +1169,70 @@ def followup_due(ledger: Ledger) -> list[Suggestion]:
                 refs=refs,
                 action=action,
                 due_date=due,
+            )
+        )
+    return ideas
+
+
+#: Days after sending before a registered cancellation or objection without proof becomes an Idea.
+PROOF_GRACE_DAYS = 2
+#: Letters whose proof of arrival decides a deadline (``proof_missing`` watches these).
+PROOF_WATCHED_KINDS = frozenset({"cancellation", "objection"})
+
+
+def proof_missing(ledger: Ledger) -> list[Suggestion]:
+    """A cancellation or objection sent by Einschreiben has no tracking number and no proof two days on.
+
+    Not raised when a letter linked to it already arrived (an answer shows it was received) or when the
+    person closed its follow-up. Once a tracking number or a proof is added the Idea expires.
+    """
+    ideas: list[Suggestion] = []
+    today = ledger.today
+    for draft in ledger.sent_drafts():
+        sent = parse_day(draft.sent_at)
+        if (
+            draft.kind not in PROOF_WATCHED_KINDS
+            or draft.sent_channel != "registered_letter"
+            or sent is None
+            or (today - sent).days < PROOF_GRACE_DAYS
+            or draft.tracking_number
+            or ledger.proofs_of(draft.id)
+            or ledger.reply_to(draft) is not None
+        ):
+            continue
+        followup = ledger.followup_item(draft)
+        if followup is not None and followup.status in ("done", "dismissed"):
+            continue
+        who = ledger.party_name(draft.party_id) or "the recipient"
+        what = "cancellation" if draft.kind == "cancellation" else "objection"
+        body = _sentences(
+            f"You sent “{draft.subject}” on {day_label(sent, today)} by Einschreiben, but Ordnung has no "
+            "tracking number or receipt for it.",
+            "Add the tracking number and a photo of the posting receipt (Einlieferungsbeleg), and ask "
+            "Deutsche Post for the delivery record (Auslieferungsbeleg): if they ever say it didn't arrive, "
+            "that is what shows it did.",
+        )
+        refs = [_ref("draft", draft.id)]
+        if draft.contract_id:
+            refs.append(_ref("contract", draft.contract_id))
+        if draft.doc_id and ledger.document(draft.doc_id):
+            refs.append(_ref("document", draft.doc_id))
+        ideas.append(
+            make_idea(
+                "proof_missing",
+                draft.id,
+                (draft.sent_at,),
+                IdeaText(
+                    f"Keep the proof of your {what} to {who}",
+                    body,
+                    "The posting receipt with the online tracking status alone was not accepted as proof "
+                    "that a letter arrived (BAG 2 AZR 68/24).",
+                ),
+                kind="followup",
+                priority="normal",
+                refs=refs,
+                action=_open("draft", draft.id, "Add proof"),
+                due_date=None,
             )
         )
     return ideas
@@ -1370,8 +1571,35 @@ def calendar_outdated(ledger: Ledger) -> list[Suggestion]:
     ]
 
 
+def _sent_cancellation(ledger: Ledger, contract_id: str) -> Draft | None:
+    """The person's latest cancellation of this contract that was marked as sent."""
+    return next(
+        (
+            draft
+            for draft in ledger.sent_drafts()
+            if draft.kind == "cancellation" and draft.contract_id == contract_id
+        ),
+        None,
+    )
+
+
+def _cancellation_sent_line(ledger: Ledger, draft: Draft) -> str:
+    sent = parse_day(draft.sent_at)
+    when = f" on {day_label(sent, ledger.today)}" if sent else ""
+    tracking = tracking_info(draft.tracking_number)
+    how = f" (tracking number {tracking.display})" if tracking else ""
+    return (
+        f"It answers your cancellation sent{when} by {channel_label(draft.sent_channel)}{how}: keep the two "
+        "together as your proof."
+    )
+
+
 def confirm_cancellation(ledger: Ledger) -> list[Suggestion]:
-    """A cancellation confirmation arrived for a contract that is still marked active."""
+    """A cancellation confirmation arrived for a contract that is still marked active.
+
+    When the person's own cancellation of that contract was marked as sent, the Idea names it (how and
+    when it went, its tracking number) and links it, so the confirmation is kept with the proof.
+    """
     ideas: list[Suggestion] = []
     today = ledger.today
     by_id = {contract.id: contract for contract in ledger.contracts}
@@ -1379,11 +1607,16 @@ def confirm_cancellation(ledger: Ledger) -> list[Suggestion]:
         contract = by_id[contract_id]
         when = f" effective {day_label(effective, today)}" if effective else ""
         who = ledger.party_name(doc.party_id) or ledger.party_name(contract.party_id) or "The provider"
+        mine = _sent_cancellation(ledger, contract.id)
         body = _sentences(
             f"{who} confirmed that your contract ends{' on ' + day_label(effective, today) if effective else ''}.",
+            _cancellation_sent_line(ledger, mine) if mine is not None else None,
             "Check that this matches what you asked for, then confirm it so Ordnung stops tracking its "
             "deadlines and costs.",
         )
+        refs = [_ref("document", doc.id), _ref("contract", contract.id)]
+        if mine is not None:
+            refs.append(_ref("draft", mine.id))
         ideas.append(
             make_idea(
                 "confirm_cancellation",
@@ -1392,7 +1625,7 @@ def confirm_cancellation(ledger: Ledger) -> list[Suggestion]:
                 IdeaText(f"Confirm cancellation of {contract.name}{when}?", body),
                 kind="followup",
                 priority="normal",
-                refs=[_ref("document", doc.id), _ref("contract", contract.id)],
+                refs=refs,
                 action=SuggestionAction(
                     type="mark_done",
                     target_type="contract",
@@ -1456,6 +1689,7 @@ TRIGGERS: dict[str, Trigger] = {
     "expiry_soon": expiry_soon,
     "passport_before_permit": passport_before_permit,
     "followup_due": followup_due,
+    "proof_missing": proof_missing,
     "please_check": please_check,
     "dunning_escalation": dunning_escalation,
     "scam_warning": scam_warning,

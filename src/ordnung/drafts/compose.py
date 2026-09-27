@@ -31,6 +31,7 @@ from ordnung.clock import now_iso
 from ordnung.db.store import NotFoundError, Store
 from ordnung.drafts import templates
 from ordnung.drafts.checks import CheckContext, run_checks
+from ordnung.drafts.proof import followup_item_id
 from ordnung.drafts.template_letters import (
     ADDRESS_FRAMES,
     TEMPLATES,
@@ -39,7 +40,8 @@ from ordnung.drafts.template_letters import (
     template_letter,
 )
 from ordnung.drafts.templates import STATUTORY_REMEDIES, LetterLanguage, LetterParts, RemedyKind
-from ordnung.ids import content_id, new_id
+from ordnung.drafts.tracking import TrackingError, parse_tracking_number
+from ordnung.ids import new_id
 from ordnung.llm.base import ClaudeBadOutput, LLMError, LLMRequest, LLMResponse, ReplayMiss
 from ordnung.llm.prompts import render
 from ordnung.llm.schemas import draft_schema, draft_translation_schema
@@ -1420,7 +1422,7 @@ def _followup_fields(draft: Draft, sources: Sources, sent_on: date, channel: str
 
 
 def _save_followup(store: Store, draft: Draft, fields: dict[str, object]) -> Item:
-    item_id = content_id("itm", "followup", draft.id)
+    item_id = followup_item_id(draft.id)
     existing = store.get_item(item_id)
     if existing is None:
         return store.add_item(id=item_id, **fields)
@@ -1429,11 +1431,20 @@ def _save_followup(store: Store, draft: Draft, fields: dict[str, object]) -> Ite
     return store.update_item(item_id, **fields)
 
 
-def mark_sent(ctx: AppContext, draft_id: str, channel: str, sent_on: date | str) -> tuple[Draft, Item]:
+def mark_sent(
+    ctx: AppContext,
+    draft_id: str,
+    channel: str,
+    sent_on: date | str,
+    *,
+    tracking_number: str | None = None,
+) -> tuple[Draft, Item]:
     """Record that a letter was sent (how and when) and create its follow-up to-do 21 days later.
 
     The checks are re-run with the channel, so a rent or employment notice sent by e-mail is flagged.
-    Marking the same letter again updates its follow-up instead of adding another one.
+    Marking the same letter again updates its follow-up instead of adding another one. A registered
+    letter may bring its tracking number (checked by :func:`ordnung.drafts.tracking.parse_tracking_number`;
+    a refused one raises :class:`DraftError` before anything is saved).
     """
     store = ctx.store
     draft = store.get_draft(draft_id)
@@ -1446,12 +1457,19 @@ def mark_sent(ctx: AppContext, draft_id: str, channel: str, sent_on: date | str)
         raise DraftError(f"“{sent_on}” is not a date.")
     if day > local_today(store):  # the person's today, as in the app (not the computer's date)
         raise DraftError("The sending date can't be in the future.")
+    tracking = None
+    if tracking_number and tracking_number.strip():
+        try:
+            tracking = parse_tracking_number(tracking_number).number
+        except TrackingError as exc:
+            raise DraftError(str(exc)) from exc
     sources = sources_for_draft(store, draft)
     sent = draft.model_copy(update={"status": "sent", "sent_at": day.isoformat(), "sent_channel": channel})
     checks = run_checks(sent, check_context(store, sources, sent, channel=channel))
+    extra = {"tracking_number": tracking} if tracking else {}
     with store.tx():
         updated = store.update_draft(
-            draft_id, status="sent", sent_at=day.isoformat(), sent_channel=channel, checks=checks
+            draft_id, status="sent", sent_at=day.isoformat(), sent_channel=channel, checks=checks, **extra
         )
         item = _save_followup(store, updated, _followup_fields(updated, sources, day, channel))
         store.log_activity(

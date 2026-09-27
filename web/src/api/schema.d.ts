@@ -205,7 +205,8 @@ export interface paths {
         };
         /**
          * List Documents
-         * @description Letters, newest first (trash excluded); ``q`` searches their text.
+         * @description Letters, newest first (trash excluded); ``q`` searches their text. A letter's proof files
+         *     (``source="proof"``) are listed with their letter, never here.
          */
         get: operations["list_documents_api_documents_get"];
         put?: never;
@@ -751,7 +752,7 @@ export interface paths {
         post?: never;
         /**
          * Delete Draft
-         * @description Delete a letter.
+         * @description Delete a letter, with its proofs and their files.
          */
         delete: operations["delete_draft_api_drafts__draft_id__delete"];
         options?: never;
@@ -821,6 +822,180 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/drafts/{draft_id}/proof": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Proof
+         * @description A letter's proof: tracking number, proofs with what each shows, timeline, what's missing and
+         *     what the letter waits for.
+         */
+        get: operations["get_proof_api_drafts__draft_id__proof_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/drafts/{draft_id}/tracking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Tracking
+         * @description Save the tracking number of a sent letter (checked: a mistyped check digit is refused).
+         */
+        put: operations["set_tracking_api_drafts__draft_id__tracking_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/drafts/{draft_id}/proofs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Proof
+         * @description Attach a proof file to a sent letter. The file is kept private: it is never sent to AI.
+         */
+        post: operations["add_proof_api_drafts__draft_id__proofs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/drafts/{draft_id}/proofs/{proof_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Proof
+         * @description Remove a proof; its file is deleted for good unless another proof uses it.
+         */
+        delete: operations["remove_proof_api_drafts__draft_id__proofs__proof_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Proof
+         * @description Correct what a proof is, the day it shows or its note.
+         */
+        patch: operations["update_proof_api_drafts__draft_id__proofs__proof_id__patch"];
+        trace?: never;
+    };
+    "/api/drafts/{draft_id}/proof.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Nachweis Pdf
+         * @description The Nachweis: a summary with the timeline, the letter as sent and every proof file, as one PDF.
+         */
+        get: operations["nachweis_pdf_api_drafts__draft_id__proof_pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/waiting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Waiting
+         * @description Replies, money and callbacks you are waiting for: overdue first, then by expected day, then the
+         *     ones a letter may have answered.
+         */
+        get: operations["list_waiting_api_waiting_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Calls
+         * @description Call notes, newest call first (of one person or organisation, or one thread).
+         */
+        get: operations["list_calls_api_calls_get"];
+        put?: never;
+        /**
+         * Create Call
+         * @description Note a phone call. Nothing is sent anywhere; no AI reads it.
+         */
+        post: operations["create_call_api_calls_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calls/{call_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Call
+         * @description Delete a call note.
+         */
+        delete: operations["delete_call_api_calls__call_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Call
+         * @description Say the promise made on the call was kept (or take that back).
+         */
+        patch: operations["update_call_api_calls__call_id__patch"];
         trace?: never;
     };
     "/api/calendar.ics": {
@@ -1060,6 +1235,27 @@ export interface components {
             /** Thread Id */
             thread_id?: string | null;
         };
+        /** Body_add_proof_api_drafts__draft_id__proofs_post */
+        Body_add_proof_api_drafts__draft_id__proofs_post: {
+            /**
+             * File
+             * @description The proof: a photo or PDF of a receipt, a fax report, an e-mail …
+             */
+            file: string;
+            /**
+             * Kind
+             * @description What the proof is
+             * @enum {string}
+             */
+            kind: "posting_receipt" | "delivery_record" | "return_receipt" | "fax_report" | "sent_email" | "cancel_confirmation" | "other";
+            /**
+             * On Date
+             * @description The day it shows (posted, delivered …)
+             */
+            on_date?: string | null;
+            /** Note */
+            note?: string | null;
+        };
         /** Body_upload_documents_api_documents_post */
         Body_upload_documents_api_documents_post: {
             /**
@@ -1122,6 +1318,68 @@ export interface components {
         CalendarExportResult: {
             /** Last Calendar Export At */
             last_calendar_export_at: string;
+        };
+        /**
+         * CallNote
+         * @description A phone call the person noted (Gesprächsnotiz): when, with whom, what was said and what was
+         *     promised. A promise with a date is waited for (``secretary.waiting``).
+         */
+        CallNote: {
+            /** Id */
+            id: string;
+            /** Party Id */
+            party_id: string | null;
+            /** Case Id */
+            case_id: string | null;
+            /** Called On */
+            called_on: string;
+            /** Contact */
+            contact: string | null;
+            /** Summary */
+            summary: string;
+            /** Promise */
+            promise: string | null;
+            /** Promise Due */
+            promise_due: string | null;
+            /** Promise Amount */
+            promise_amount: number | null;
+            /** Promise Kept On */
+            promise_kept_on: string | null;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+        };
+        /**
+         * CallNoteCreate
+         * @description A phone call to note: when, with whom, what was said and what they promised (a promise with a
+         *     day is waited for).
+         */
+        CallNoteCreate: {
+            /** Party Id */
+            party_id?: string | null;
+            /** Case Id */
+            case_id?: string | null;
+            /** Called On */
+            called_on: string;
+            /** Contact */
+            contact?: string | null;
+            /** Summary */
+            summary: string;
+            /** Promise */
+            promise?: string | null;
+            /** Promise Due */
+            promise_due?: string | null;
+            /** Promise Amount */
+            promise_amount?: number | null;
+        };
+        /**
+         * CallNotePatch
+         * @description Whether the call's promise was kept.
+         */
+        CallNotePatch: {
+            /** Kept */
+            kept: boolean;
         };
         /** Case */
         Case: {
@@ -1784,6 +2042,8 @@ export interface components {
             status: "draft" | "final" | "sent";
             /** Sent At */
             sent_at: string | null;
+            /** Tracking Number */
+            tracking_number: string | null;
             /** Created At */
             created_at: string;
             /** Updated At */
@@ -2493,6 +2753,11 @@ export interface components {
             channel: string;
             /** Date */
             date: string;
+            /**
+             * Tracking Number
+             * @description the Einschreiben's number (its check digit is checked)
+             */
+            tracking_number?: string | null;
         };
         /** ModelSettings */
         ModelSettings: {
@@ -2751,6 +3016,103 @@ export interface components {
              * @description your account, for refunds (empty: none)
              */
             iban?: string | null;
+        };
+        /**
+         * Proof
+         * @description One piece of proof that a letter was sent or arrived. ``doc_id`` is its file: a private outgoing
+         *     document (``source="proof"``) that is never sent to a model. ``on_date`` is the day it shows (the
+         *     day posted, delivered, faxed or confirmed).
+         */
+        Proof: {
+            /** Id */
+            id: string;
+            /** Draft Id */
+            draft_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "posting_receipt" | "delivery_record" | "return_receipt" | "fax_report" | "sent_email" | "cancel_confirmation" | "other";
+            /** Doc Id */
+            doc_id: string | null;
+            /** On Date */
+            on_date: string | null;
+            /** Note */
+            note: string | null;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+        };
+        /**
+         * ProofEntry
+         * @description A proof with its file and, in code-written words, what it shows and what it does not.
+         */
+        ProofEntry: {
+            proof: components["schemas"]["Proof"];
+            document: components["schemas"]["Document"] | null;
+            /** Label */
+            label: string;
+            /** Shows */
+            shows: string;
+            /** Does Not Show */
+            does_not_show: string;
+        };
+        /**
+         * ProofEvent
+         * @description One line of a sent letter's timeline (the "Nachweis").
+         */
+        ProofEvent: {
+            /** Date */
+            date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "created" | "sent" | "tracking" | "proof" | "delivered" | "answered";
+            /** Label */
+            label: string;
+            /** Detail */
+            detail: string | null;
+            ref: components["schemas"]["RefLink"] | null;
+        };
+        /**
+         * ProofOverview
+         * @description ``GET /api/drafts/{id}/proof``: a letter's tracking number, proofs, timeline, what is missing and
+         *     what it waits for.
+         */
+        ProofOverview: {
+            /** Draft Id */
+            draft_id: string;
+            /** Sent */
+            sent: boolean;
+            /** Channel */
+            channel: string | null;
+            tracking: components["schemas"]["TrackingInfo"] | null;
+            /** Proofs */
+            proofs: components["schemas"]["ProofEntry"][];
+            /** Timeline */
+            timeline: components["schemas"]["ProofEvent"][];
+            /** Missing */
+            missing: string[];
+            waiting: components["schemas"]["WaitingEntry"] | null;
+            /**
+             * Caveat
+             * @default
+             */
+            caveat: string;
+        };
+        /**
+         * ProofPatch
+         * @description Corrections to a proof: what it is, the day it shows (``null`` removes it) and a note.
+         */
+        ProofPatch: {
+            /** Kind */
+            kind?: ("posting_receipt" | "delivery_record" | "return_receipt" | "fax_report" | "sent_email" | "cancel_confirmation" | "other") | null;
+            /** On Date */
+            on_date?: string | null;
+            /** Note */
+            note?: string | null;
         };
         /**
          * PublicHealth
@@ -3219,6 +3581,33 @@ export interface components {
             completed: boolean;
         };
         /**
+         * TrackingInfo
+         * @description A letter's tracking number as Ordnung read it (``drafts.proof.parse_tracking_number``).
+         */
+        TrackingInfo: {
+            /** Number */
+            number: string;
+            /** Display */
+            display: string;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "s10" | "domestic";
+            /** Checked */
+            checked: boolean;
+            /** Note */
+            note: string | null;
+        };
+        /**
+         * TrackingUpdate
+         * @description A sent letter's tracking number (``null`` or empty removes it).
+         */
+        TrackingUpdate: {
+            /** Tracking Number */
+            tracking_number?: string | null;
+        };
+        /**
          * UploadError
          * @description A file that was not accepted, with the reason written for the person.
          */
@@ -3291,6 +3680,56 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * WaitingEntry
+         * @description Something the person is owed — a reply, money or a callback (``secretary.waiting``), worked out on
+         *     read. ``answered``: a letter linked to it arrived (``answered_by``); nothing is closed for the person,
+         *     closing the follow-up to-do (``followup_item_id``) or marking the money received is their click.
+         */
+        WaitingEntry: {
+            /** Id */
+            id: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "letter" | "money" | "call";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "waiting" | "overdue" | "answered" | "closed";
+            /** Title */
+            title: string;
+            /** About */
+            about: string;
+            /** Note */
+            note: string;
+            /** Since */
+            since: string | null;
+            /** Expected By */
+            expected_by: string | null;
+            /** Party Id */
+            party_id: string | null;
+            /** Party Name */
+            party_name: string | null;
+            /** Amount */
+            amount: number | null;
+            /** Currency */
+            currency: string | null;
+            /**
+             * Area
+             * @default other
+             * @enum {string}
+             */
+            area: "home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other";
+            ref: components["schemas"]["RefLink"];
+            answered_by: components["schemas"]["RefLink"] | null;
+            /** Answered On */
+            answered_on: string | null;
+            /** Followup Item Id */
+            followup_item_id: string | null;
         };
         /**
          * BriefUpdatedEvent
@@ -5054,6 +5493,353 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Draft"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_proof_api_drafts__draft_id__proof_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_tracking_api_drafts__draft_id__tracking_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrackingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_proof_api_drafts__draft_id__proofs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_add_proof_api_drafts__draft_id__proofs_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_proof_api_drafts__draft_id__proofs__proof_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+                proof_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_proof_api_drafts__draft_id__proofs__proof_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+                proof_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProofPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    nachweis_pdf_api_drafts__draft_id__proof_pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_waiting_api_waiting_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WaitingEntry"][];
+                };
+            };
+        };
+    };
+    list_calls_api_calls_get: {
+        parameters: {
+            query?: {
+                party_id?: string | null;
+                case_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallNote"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_call_api_calls_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CallNoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallNote"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_call_api_calls__call_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                call_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_call_api_calls__call_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                call_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CallNotePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallNote"];
                 };
             };
             /** @description Validation Error */

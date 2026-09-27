@@ -47,6 +47,7 @@ from ordnung.llm.base import Usage
 from ordnung.models import (
     Activity,
     AppSettings,
+    CallNote,
     Case,
     ChatMessage,
     Contract,
@@ -63,6 +64,7 @@ from ordnung.models import (
     Page,
     Party,
     Profile,
+    Proof,
     PurposeUsage,
     SearchHit,
     Suggestion,
@@ -219,6 +221,8 @@ _ITEMS = _Table("items", Item, "itm")
 _SUGGESTIONS = _Table("suggestions", Suggestion, "sug")
 _DRAFTS = _Table("drafts", Draft, "drf")
 _NOTES = _Table("notes", Note, "nte")
+_PROOFS = _Table("proofs", Proof, "prf")
+_CALL_NOTES = _Table("call_notes", CallNote, "cal")
 _CHAT = _Table("chat_messages", ChatMessage, "msg")
 _JOBS = _Table("jobs", Job, "job")
 _ACTIVITY = _Table("activity", Activity)
@@ -1493,6 +1497,60 @@ class Store:
         if item_id is not None:
             where.add("EXISTS (SELECT 1 FROM json_each(notes.item_ids) WHERE value = ?)", item_id)
         return self._many(_NOTES, f"{where.sql()} ORDER BY created_at DESC, rowid DESC", where.params)
+
+    # ---------------------------------------------------------------------------------------------
+    # proofs of sent letters / call notes
+    # ---------------------------------------------------------------------------------------------
+
+    def add_proof(self, **fields: Any) -> Proof:
+        """Insert a proof of a sent letter (``draft_id``, ``kind``, optional ``doc_id``/``on_date``/``note``)."""
+        return self._insert(_PROOFS, fields)
+
+    def get_proof(self, id: str) -> Proof | None:
+        """A proof by id."""
+        return self._one(_PROOFS, "id = ?", (id,))
+
+    def update_proof(self, id: str, **fields: Any) -> Proof:
+        """Update a proof's kind, day or note."""
+        return self._update(_PROOFS, id, fields)
+
+    def delete_proof(self, id: str) -> bool:
+        """Delete a proof row (its file stays; the caller decides about it)."""
+        return self._delete(_PROOFS, id)
+
+    def list_proofs(self, draft_id: str | None = None, *, doc_id: str | None = None) -> list[Proof]:
+        """Proofs, oldest first (optionally of one letter, or using one file). A proof whose file is in
+        the trash is left out until the file is restored."""
+        where = _Where()
+        where.equals("draft_id", draft_id)
+        where.equals("doc_id", doc_id)
+        where.add("(doc_id IS NULL OR doc_id NOT IN (SELECT id FROM documents WHERE deleted_at IS NOT NULL))")
+        return self._many(_PROOFS, f"{where.sql()} ORDER BY created_at, rowid", where.params)
+
+    def add_call_note(self, **fields: Any) -> CallNote:
+        """Insert a call note (``called_on`` and ``summary`` required)."""
+        return self._insert(_CALL_NOTES, fields)
+
+    def get_call_note(self, id: str) -> CallNote | None:
+        """A call note by id."""
+        return self._one(_CALL_NOTES, "id = ?", (id,))
+
+    def update_call_note(self, id: str, **fields: Any) -> CallNote:
+        """Update a call note (e.g. ``promise_kept_on``)."""
+        return self._update(_CALL_NOTES, id, fields)
+
+    def delete_call_note(self, id: str) -> bool:
+        """Delete a call note; ``False`` if it did not exist."""
+        return self._delete(_CALL_NOTES, id)
+
+    def list_call_notes(self, *, party_id: str | None = None, case_id: str | None = None) -> list[CallNote]:
+        """Call notes, newest call first (optionally of one party or thread)."""
+        where = _Where()
+        where.equals("party_id", party_id)
+        where.equals("case_id", case_id)
+        return self._many(
+            _CALL_NOTES, f"{where.sql()} ORDER BY called_on DESC, created_at DESC, rowid DESC", where.params
+        )
 
     def add_chat_message(
         self,

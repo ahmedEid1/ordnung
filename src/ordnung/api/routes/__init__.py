@@ -20,8 +20,10 @@ from ordnung.api.routes import (
     parties,
     privacy,
     profile,
+    proofs,
     suggestions,
     system,
+    waiting,
 )
 
 ROUTERS: tuple[APIRouter, ...] = (
@@ -39,6 +41,8 @@ ROUTERS: tuple[APIRouter, ...] = (
     brief.router,
     ask.router,
     drafts.router,
+    proofs.router,
+    waiting.router,
     calendar.router,
     events.router,
     demo.router,

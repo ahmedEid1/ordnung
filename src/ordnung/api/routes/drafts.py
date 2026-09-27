@@ -1,9 +1,11 @@
 """Letters (drafts): compose, read, edit (checks re-run), translate again after edits, delete, the DIN
-5008 PDF and "I sent it" (which creates a follow-up to-do 21 days later)."""
+5008 PDF and "I sent it" (which creates a follow-up to-do 21 days later, and may bring the tracking
+number). A sent letter's proof has its own routes (:mod:`ordnung.api.routes.proofs`)."""
 
 from __future__ import annotations
 
 import asyncio
+from functools import partial
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Response, status
@@ -12,8 +14,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from ordnung.api.deps import CtxDep, StoreDep
 from ordnung.api.routes.common import IsoDate, ledger_changed, replay_only, require
 from ordnung.db.store import Store
-from ordnung.drafts import pdf
+from ordnung.drafts import pdf, sent
 from ordnung.drafts.compose import MAX_INSTRUCTIONS, compose, mark_sent, refresh_checks, retranslate
+from ordnung.drafts.tracking import MAX_INPUT
 from ordnung.models import Draft, DraftKind, LetterDetails
 
 router = APIRouter(tags=["drafts"])
@@ -73,6 +76,11 @@ class MarkSentRequest(BaseModel):
 
     channel: str = Field(min_length=1)
     date: IsoDate
+    tracking_number: str | None = Field(
+        default=None,
+        max_length=MAX_INPUT,
+        description="the Einschreiben's number (its check digit is checked)",
+    )
 
 
 @router.get("/drafts", response_model=list[Draft])
@@ -137,9 +145,9 @@ async def translate_draft(draft_id: str, ctx: CtxDep) -> Draft:
 
 @router.delete("/drafts/{draft_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_draft(draft_id: str, ctx: CtxDep) -> Response:
-    """Delete a letter."""
+    """Delete a letter, with its proofs and their files."""
     require(ctx.store.get_draft(draft_id), NOT_FOUND)
-    await asyncio.to_thread(ctx.store.delete_draft, draft_id)
+    await asyncio.to_thread(sent.delete_letter, ctx.store, draft_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -161,6 +169,8 @@ async def draft_pdf(draft_id: str, store: StoreDep) -> Response:
 @router.post("/drafts/{draft_id}/sent", response_model=Draft)
 async def draft_sent(draft_id: str, body: MarkSentRequest, ctx: CtxDep) -> Draft:
     """Record that the letter was sent (channel and day) and add a follow-up to-do."""
-    draft, item = await asyncio.to_thread(mark_sent, ctx, draft_id, body.channel, body.date)
+    draft, item = await asyncio.to_thread(
+        partial(mark_sent, tracking_number=body.tracking_number), ctx, draft_id, body.channel, body.date
+    )
     await ledger_changed(ctx, item_id=item.id)
     return draft

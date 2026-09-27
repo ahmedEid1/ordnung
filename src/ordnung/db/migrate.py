@@ -4,6 +4,12 @@ Each migration runs in its own ``BEGIN IMMEDIATE`` transaction together with the
 bump, so a failing script leaves the database exactly at the previous version. The version is
 re-read inside the transaction, which makes concurrent openers (two processes starting at once)
 safe: the second one sees the new version and skips the script.
+
+Numbering policy: numbers are handed out to pieces of work before they are merged, so a number may
+be unused (0003 without 0002). Numbers must start at 0001 and increase; gaps are allowed, duplicates
+are not. A database stores only the highest version it ran, so a migration whose number is below a
+database's version is never applied to it: a gap may only be filled before any database migrates past
+it (ship every number up to the latest together, and rebuild the demo snapshot when one is added).
 """
 
 from __future__ import annotations
@@ -31,8 +37,8 @@ class Migration:
 def discover(directory: Path = MIGRATIONS_DIR) -> list[Migration]:
     """Return the migrations in ``directory`` sorted by version.
 
-    Raises ``ValueError`` for ``.sql`` files that do not follow ``NNNN_name.sql`` or when the
-    numbering does not run 1, 2, 3, … without gaps or duplicates.
+    Raises ``ValueError`` for ``.sql`` files that do not follow ``NNNN_name.sql``, when the first
+    number is not 1 or when two files share a number (gaps are allowed, see the module docstring).
     """
     found: list[Migration] = []
     for path in sorted(directory.glob("*.sql")):
@@ -41,10 +47,10 @@ def discover(directory: Path = MIGRATIONS_DIR) -> list[Migration]:
             raise ValueError(f"migration file name must look like 0001_name.sql: {path.name}")
         found.append(Migration(int(match.group(1)), match.group(2), path))
     found.sort(key=lambda m: m.version)
-    expected = list(range(1, len(found) + 1))
-    if [m.version for m in found] != expected:
+    versions = [m.version for m in found]
+    if versions and (versions[0] != 1 or len(set(versions)) != len(versions)):
         names = ", ".join(m.path.name for m in found)
-        raise ValueError(f"migrations must be numbered 0001, 0002, … without gaps: {names}")
+        raise ValueError(f"migrations must start at 0001 and never share a number: {names}")
     return found
 
 

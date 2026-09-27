@@ -28,6 +28,7 @@ from ordnung.models import (
     Suggestion,
     TimelineEntry,
     TimelineMarker,
+    WaitingEntry,
 )
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.triggers import (
@@ -42,6 +43,7 @@ from ordnung.secretary.triggers import (
     priority_rank,
     was_history_when_filed,
 )
+from ordnung.secretary.waiting import waiting_for
 from ordnung.tick import local_today, simulated_day
 
 ATTENTION_DAYS = 7
@@ -864,3 +866,14 @@ def lanes(store: Store, start: date, end: date, *, today: date | None = None) ->
     for contract in ledger.active_contracts():
         _contract_bars(ledger, contract, collected)
     return collected.build()
+
+
+# --------------------------------------------------------------------------------------------------
+# waiting for
+# --------------------------------------------------------------------------------------------------
+
+
+def waiting(store: Store, today: date) -> list[WaitingEntry]:
+    """What the person is waiting for — replies to letters they sent, money a letter promised, callbacks
+    promised on the phone (the policy is :mod:`ordnung.secretary.waiting`)."""
+    return waiting_for(Ledger(store, today))

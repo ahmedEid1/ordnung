@@ -15,6 +15,7 @@ from pydantic import ValidationError
 
 from ordnung.config import Paths
 from ordnung.db import store as store_module
+from ordnung.db.migrate import latest_version
 from ordnung.db.store import NotFoundError, Store, normalize_identifier, search_tokens
 from ordnung.ids import PREFIXES, content_id, doc_id_for_sha, new_id, prefix_of
 from ordnung.llm.base import LLMRequest, Usage
@@ -191,7 +192,7 @@ def test_open_creates_layout_migrates_and_sets_pragmas(tmp_path: Path) -> None:
     paths = Paths(tmp_path / "fresh")
     with Store.open(paths) as opened:
         assert paths.db.exists() and paths.derived.is_dir() and paths.files.is_dir()
-        assert opened.schema_version == 1
+        assert opened.schema_version == latest_version()
         conn = opened._conn()
         assert conn.isolation_level is None
         assert conn.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
@@ -289,7 +290,7 @@ def test_uncommitted_writes_are_invisible_to_other_threads(store: Store) -> None
 def test_read_only_store_reads_but_never_writes(store: Store, paths: Paths) -> None:
     document = add_text_doc(store, "Einkommensteuerbescheid 2025")
     with Store.open(paths, read_only=True) as reader:
-        assert reader.read_only and reader.schema_version == 1
+        assert reader.read_only and reader.schema_version == latest_version()
         assert [h.doc_id for h in reader.search("steuerbescheid")] == [document.id]
         assert [d.id for d in reader.list_documents()] == [document.id]
         assert reader.get_profile() == Profile()
