@@ -77,6 +77,21 @@ PRIVATE_SENDER_DATED_WARNING: Final = (
     "is only for authorities' letters, and this sender is not an authority. The period runs from the "
     "date the letter gives, not from the day it arrived."
 )
+#: A private-law period (:data:`_PRIVATE_LAW_STATUTES`) runs from arrival whoever sent the letter — a public
+#: employer's dismissal too: it is no administrative act (review round 3 of phase 2: the step and warning said
+#: "this sender is not an authority" of a city's Personalamt).
+DECLARATION_ARRIVAL_WARNING: Final = (
+    "No delivery days were added: a dismissal takes effect when it arrives, whoever sends it — a public "
+    "employer's too, since it is no administrative act (§ 130 Abs. 1 BGB, § 4 S. 1 KSchG). The period runs "
+    "from the day the letter arrived."
+)
+DECLARATION_DATED_WARNING: Final = (
+    "No delivery days were added: a dismissal takes effect when it arrives, whoever sends it — a public "
+    "employer's too, since it is no administrative act (§ 130 Abs. 1 BGB). The period runs from the date the "
+    "letter gives, not from the day it arrived."
+)
+_DECLARATION_STEP = "A dismissal takes effect when it arrives, whoever sends it (§ 130 Abs. 1 BGB)"
+_PRIVATE_STEP = "Not an authority's letter, so no delivery days"
 #: The words that mark a warning's situation, shared with the rules tools, whose hints name the argument
 #: that would settle it (``ordnung.assistant.rules_tools.deadline_hints``): reword them here, not there.
 REGION_UNKNOWN: Final = "Holiday region unknown"
@@ -1135,9 +1150,17 @@ def _compute_relative(
         if arrived is not None
         else None
     )
-    if no_delivery and late is None:
-        trace.warnings.append(PRIVATE_SENDER_WARNING if from_receipt else PRIVATE_SENDER_DATED_WARNING)
     statute, statutory_periods = _statute(spec, ctx.letter_kind, labour_court=ctx.labour_court) or (None, ())
+    declaration = statute in _PRIVATE_LAW_STATUTES  # runs from arrival whoever sent it
+    if no_delivery and late is None:
+        trace.warnings.append(
+            (DECLARATION_ARRIVAL_WARNING if from_receipt else DECLARATION_DATED_WARNING)
+            if declaration
+            else PRIVATE_SENDER_WARNING
+            if from_receipt
+            else PRIVATE_SENDER_DATED_WARNING
+        )
+    no_delivery_step = _DECLARATION_STEP if declaration else _PRIVATE_STEP
     if statute == "kschg_4":
         trace.cite.update(_BGB_COUNTING)
     elif statute in _CIVIL_COURT or ctx.court:
@@ -1162,9 +1185,7 @@ def _compute_relative(
     if anchor is None:
         if from_receipt:  # the rule that makes the app ask for the arrival day, even without a date
             trace.step(
-                "Not an authority's letter, so no delivery days: the period runs from the day it arrived",
-                None,
-                "private_sender_arrival",
+                f"{no_delivery_step}: the period runs from the day it arrived", None, "private_sender_arrival"
             )
         return _receipt(
             trace,
@@ -1183,7 +1204,7 @@ def _compute_relative(
         anchor = _Anchor(late.deemed, "deemed")
     elif no_delivery:
         trace.step(
-            f"Not an authority's letter, so no delivery days: the period runs from {anchor.phrase}",
+            f"{no_delivery_step}: the period runs from {anchor.phrase}",
             anchor.day,
             "private_sender_arrival" if from_receipt else "private_sender_no_delivery",
         )

@@ -20,6 +20,8 @@ import pytest
 from ordnung.models import DateSpec
 from ordnung.rules.deadlines import (
     ASSUMED_RECEIPT_WARNING,
+    DECLARATION_ARRIVAL_WARNING,
+    DECLARATION_DATED_WARNING,
     NEEDS_ARRIVAL_WARNING,
     PRIVATE_SENDER_DATED_WARNING,
     PRIVATE_SENDER_WARNING,
@@ -1135,6 +1137,18 @@ def test_the_private_sender_rule_and_the_court_rules_meet() -> None:
     assert dismissal.due_date == "2026-09-22" and {"kschg_4", "private_sender_arrival"} <= set(
         dismissal.rule_ids
     )
+    # review round 3 of phase 2: from a public employer too, and never "not an authority's letter"
+    city = ctx(today="2026-09-26", document_date="2026-09-01", sender_kind="authority")
+    public = compute_due(kschg, city)
+    assert public.due_date == "2026-09-22" and DECLARATION_ARRIVAL_WARNING in public.warnings
+    assert public.steps[0].label.startswith("A dismissal takes effect when it arrives, whoever sends it")
+    assert not any(
+        "not an authority" in text for text in (*public.warnings, *(s.label for s in public.steps))
+    )
+    dated = compute_due(kschg.model_copy(update={"anchor": "document_date"}), city)
+    assert DECLARATION_DATED_WARNING in dated.warnings
+    missing = compute_due(kschg, ctx(today="2026-09-26", sender_kind="authority"))
+    assert missing.due_date is None and missing.steps[0].label.startswith("A dismissal takes effect")
 
 
 @pytest.mark.parametrize(

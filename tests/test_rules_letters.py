@@ -781,6 +781,51 @@ def test_a_consent_request_that_mentions_a_modernisation_is_one(quote: str, titl
 @pytest.mark.parametrize(
     ("quote", "title"),
     [
+        (  # the standard sentence of § 558 Abs. 1 S. 3 BGB
+            "Gemäß § 558 BGB bitten wir um Zustimmung zur Erhöhung der Nettokaltmiete auf 780,00 € (Erhöhungen "
+            "nach §§ 559 bis 560 BGB bleiben unberücksichtigt).",
+            "Rent increase request",
+        ),
+        (
+            "Wir bitten um Zustimmung zur Mieterhöhung auf 780 € (§ 558 BGB). Die neue Gesamtmiete inkl. "
+            "Vorauszahlungen steigt auf 950 €.",
+            "Rent increase request",
+        ),
+        (
+            "Wir bitten um Ihre Zustimmung zur Erhöhung auf die ortsübliche Vergleichsmiete, die Vorauszahlungen "
+            "werden angepasst.",
+            "Rent increase",
+        ),
+        (REQUEST, "Rent increase and adjustment of operating cost prepayments"),
+        (
+            "Gemäß § 558 BGB bitten wir um Ihre Zustimmung; zugleich passen wir die Vorauszahlungen nach § 560 BGB "
+            "an.",
+            "Rent increase",
+        ),
+    ],
+)
+def test_a_consent_request_that_mentions_prepayments_or_559_560_is_one(quote: str, title: str) -> None:
+    """Review round 3 of phase 2: a § 558 request whose own quote or title also named the prepayments or
+    §§ 559–560 wasn't filed as a rent increase — no consent to-do (§ 558b Abs. 2 BGB), no note that paying the
+    new rent can count as consent, and its start not held to the third month (§ 558b Abs. 1 BGB)."""
+    assert routing.classify_letter(_increase(quote, title=title)) == "rent_increase"
+
+
+@pytest.mark.parametrize(
+    ("quote", "title"),
+    [
+        ("Die Betriebskostenvorauszahlung wird ab 01.01.2027 auf 250,00 EUR erhöht.", "Rent increase"),
+        ("Die Miete steigt nach § 560 BGB (Mietspiegel beachtet).", "Rent increase"),
+        ("Die Miete steigt ab 01.01.2027 (Mietspiegel 2025).", "Adjustment of your prepayments"),
+    ],
+)
+def test_prepayments_or_559_560_without_a_consent_request_are_none(quote: str, title: str) -> None:
+    assert routing.classify_letter(_increase(quote, title=title)) is None
+
+
+@pytest.mark.parametrize(
+    ("quote", "title"),
+    [
         ("Mieterhöhung nach Modernisierung: Die Miete steigt ab 01.01.2027 um 80,00 EUR.", "Rent increase"),
         ("Modernisierungsmieterhöhung zum 01.01.2027", "Rent increase"),
         ("Die Miete steigt ab 01.01.2027 um 80,00 EUR.", "Rent increase after modernisation"),
@@ -1216,6 +1261,44 @@ def test_derived_deadlines_per_kind() -> None:
         for derived in routing.derived_deadlines(kind, end=D("2026-12-31")):
             catalog.get_rule(derived.rule_id)
             assert derived.title and derived.action and derived.consequence
+
+
+@pytest.mark.parametrize(
+    ("date_spec", "dated"),
+    [
+        (DateSpec(type="fixed", date="2026-11-30", nature="objection"), True),
+        (
+            DateSpec(
+                type="relative",
+                anchor="explicit_date",
+                anchor_date="2027-01-31",
+                amount=-2,
+                unit="months",
+                nature="objection",
+            ),
+            True,
+        ),
+        # the statutory hint of a notice with no end: a period from an end it doesn't give (review round 3)
+        (
+            DateSpec(
+                type="relative",
+                anchor="explicit_date",
+                amount=-2,
+                unit="months",
+                nature="objection",
+                text="spätestens zwei Monate vor der Beendigung des Mietverhältnisses",
+            ),
+            False,
+        ),
+        (DateSpec(type="fixed", date=None, nature="objection"), False),
+        (DateSpec(type="none", nature="objection"), False),
+        (DateSpec(type="fixed", date="2026-11-30", nature="payment"), False),
+    ],
+)
+def test_only_an_objection_date_that_can_be_computed_is_the_letters_own(
+    date_spec: DateSpec, dated: bool
+) -> None:
+    assert routing.objection_dated(date_spec) is dated
 
 
 # ------------------------------------------------------------------------------------ court deadlines
@@ -2170,6 +2253,60 @@ def test_a_notice_hilfsweise_with_notice_period_keeps_its_objection_to_do() -> N
         kind="rent_lease", summary="Einer stillschweigenden Verlängerung widersprechen wir vorsorglich."
     )
     assert not routing.alternative_notice(tacit)
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "Wir kündigen das Mietverhältnis fristlos, zugleich vorsorglich zum 31.01.2027.",
+        "Wir kündigen fristlos wegen Zahlungsverzugs, andernfalls zum 31.01.2027.",
+        "Wir kündigen fristlos wegen Zahlungsverzugs, anderenfalls zum 31. Januar 2027.",
+        "Wir kündigen fristlos. Ersatzweise kündigen wir zum 31.01.2027.",
+        "Wir kündigen fristlos. Ersatzweise kündigen wir zum nächstmöglichen Termin.",
+        "Wir kündigen fristlos, spätestens zum nächstmöglichen Zeitpunkt.",
+        "Wir kündigen fristlos. Sollte die fristlose Kündigung unwirksam sein, kündigen wir zum nächstzulässigen "
+        "Termin.",
+        "Wir kündigen fristlos, für den Fall der Unwirksamkeit zum nächstmöglichen Termin.",
+        "Wir kündigen fristlos, für den Fall, dass die fristlose Kündigung unwirksam ist, zum 31.1.27.",
+        "We terminate without notice, at the latest at the next possible date.",
+    ],
+)
+@pytest.mark.parametrize("end", [None, "2026-09-30"])
+def test_a_notice_without_notice_period_that_names_a_later_end_gives_one_in_the_alternative(
+    quote: str, end: str | None
+) -> None:
+    """Review round 3 of phase 2: an ordinary notice given in the alternative without "hilfsweise" or
+    "ordentlich" was read as none — no objection to-do, the letter refused and the card saying the objection
+    doesn't apply. It is excluded only if the grounds for the notice without notice period existed (§ 574
+    Abs. 1 S. 2 BGB; BGH VIII ZR 323/18): when unsure, it is an ordinary notice."""
+    notice = _notice(quote, end=end)
+    assert routing.notice_without_period(notice) == "certain"
+    assert routing.alternative_notice(notice) and not routing.objection_excluded(notice)
+    [objection] = routing.derived_deadlines("landlord_notice", end=D(end) if end else None, alternative=True)
+    assert objection.rule_id == "bgb_574b"
+
+
+@pytest.mark.parametrize(
+    ("quote", "letter_date"),
+    [
+        ("Wir kündigen fristlos wegen Zahlungsverzugs.", "2026-09-20"),
+        # an end less than two months away is the notice's own (or the day to move out)
+        ("Wir kündigen fristlos zum 30.09.2026.", "2026-09-20"),
+        ("Wir kündigen fristlos. Räumen Sie die Wohnung bis zum 31.10.2026.", "2026-09-20"),
+        ("Wir kündigen fristlos zum 31.02.2027.", "2026-09-20"),  # no calendar date
+        # a later end or the next permissible date said of no notice without notice period
+        ("Wir kündigen zum 31.01.2027 wegen Eigenbedarfs.", "2026-09-20"),
+    ],
+)
+def test_an_end_of_the_notice_itself_gives_no_notice_in_the_alternative(quote: str, letter_date: str) -> None:
+    notice = _notice(quote, document_date=letter_date)
+    assert not routing.alternative_notice(notice)
+
+
+def test_without_the_letters_date_any_later_end_gives_notice_in_the_alternative() -> None:
+    """The safe side: without the letter's date, an end it names can't be told from the notice's own."""
+    notice = _notice("Wir kündigen fristlos zum 30.09.2026.", document_date=None)
+    assert routing.alternative_notice(notice)
 
 
 def test_only_the_notices_own_words_give_notice_in_the_alternative() -> None:

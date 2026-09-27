@@ -82,6 +82,7 @@ from ordnung.rules.routing import (
     is_social_court,
     letter_kind,
     names_statement,
+    objection_dated,
     objection_excluded,
 )
 from ordnung.secretary.scam import iban_from_page, iban_valid, normalize_iban
@@ -880,7 +881,8 @@ def law_deadlines(
     """The deadlines the law adds to a letter of ``kind`` (:func:`ordnung.rules.routing.derived_deadlines`)
     with the facts its reading gives: the end a termination announces, the letter's date, whether the
     hardship objection is out of the question (:func:`~ordnung.rules.routing.objection_excluded`), whether
-    the notice is given in the alternative and whether the letter gives an objection date of its own."""
+    the notice is given in the alternative and whether the letter gives an objection date of its own that
+    can be computed without the end (:func:`~ordnung.rules.routing.objection_dated`)."""
     return derived_deadlines(
         kind,
         end=ctx.end_date,
@@ -888,8 +890,7 @@ def law_deadlines(
         labour_court=ctx.labour_court,
         extraordinary=extraction is not None and objection_excluded(extraction, ctx.document_date),
         alternative=extraction is not None and alternative_notice(extraction),
-        dated=extraction is not None
-        and any(item.date.nature == "objection" and item.date.type != "none" for item in extraction.items),
+        dated=extraction is not None and any(objection_dated(item.date) for item in extraction.items),
     )
 
 

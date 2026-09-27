@@ -180,19 +180,34 @@ _WIDERSPRUCH = re.compile(r"widerspr|\b69[24]\b[^§]{0,20}\bZPO\b", re.I)
 _EINSPRUCH = re.compile(r"einspruch|\b(?:339|700)\b[^§]{0,20}\bZPO\b", re.I)
 #: A § 558 request asks for consent — in the letter's own (German) wording.
 _CONSENT = re.compile(r"zustimm|vergleichsmiete|mietspiegel|\b558[ab]?\b[^§]{0,20}\bBGB\b", re.I)
-#: An increase of another kind, in the increase's own quote: graduated or index rent, operating-cost
-#: prepayments, or the statute of one of these or of a modernisation increase (§§ 557a, 557b, 559, 560 BGB) —
-#: none needs consent.
-_OTHER_INCREASE = re.compile(
-    r"staffelmiete|indexmiete|preisindex|\b55(?:7a|7b|9[a-e]?|60)\b[^§]{0,20}\bBGB\b|"
+#: An increase of another kind, in the increase's own quote: graduated or index rent (§§ 557a, 557b BGB) —
+#: which needs no consent, whatever else the quote says …
+_OTHER_INCREASE = re.compile(r"staffelmiete|indexmiete|preisindex|\b557[ab]\b[^§]{0,20}\bBGB\b", re.I)
+#: … or operating-cost prepayments or the statute of a modernisation or cost increase (§§ 559, 560 BGB), which
+#: a § 558 request names too — its first sentence quotes § 558 Abs. 1 S. 3 ("Erhöhungen nach den §§ 559 bis 560
+#: bleiben unberücksichtigt"), a letter may adjust the prepayments at the same time, and the new total rent
+#: includes them — so these veto only when the quote doesn't ask for consent itself (:data:`_ASKS_CONSENT`;
+#: review round 3 of phase 2).
+_COST_INCREASE = re.compile(
+    r"\b(?:559[a-e]?|560)\b[^§]{0,20}\bBGB\b|"
     r"(?:anpassung|erhöhung)\s+(?:der|ihrer)\s+\S*vorauszahlung|"
     r"vorauszahlung\w*\s+(?:(?:wird|werden)\s+(?:\S+\s+){0,3}(?:angepasst|erhöht)|erhöh|steig)",
     re.I,
 )
-#: The same as the reading's (English) title may call it.
+#: The increase's own quote asking for consent: "um (Ihre) Zustimmung", "zuzustimmen", a Zustimmungserklärung,
+#: or § 558 BGB named — not "Vergleichsmiete" or "Mietspiegel" alone, which a § 559 letter may mention too.
+_ASKS_CONSENT = re.compile(
+    r"\bum\s+(?:ihre\s+)?zustimmung|zuzustimmen|zustimmungserklärung|\b558[ab]?\b[^§]{0,20}\bBGB\b", re.I
+)
+#: The same as the reading's (English) title may call it: another kind of increase …
 _OTHER_INCREASE_TITLE = re.compile(
     r"index[- ](?:rent|linked)|indexed rent|price index|graduated|stepped rent|staggered rent|staffel|"
-    r"\b55(?:7a|7b|9|60)\b|(?:prepayment|advance payment)s?\s+(?:adjust|increas|rise)|"
+    r"\b55(?:7a|7b|9|60)\b",
+    re.I,
+)
+#: … or an adjustment of the prepayments next to it, which vetoes only when the quote doesn't ask for consent.
+_PREPAYMENT_TITLE = re.compile(
+    r"(?:prepayment|advance payment)s?\s+(?:adjust|increas|rise)|"
     r"(?:adjust|increas)\w*\s+(?:of\s+)?(?:the\s+|your\s+)?(?:operating[- ]costs?\s+)?(?:prepayment|advance payment)",
     re.I,
 )
@@ -290,7 +305,24 @@ _ALTERNATIVE_NOTICE = re.compile(
     rf"\bals\s+{_ORDINARILY}\w*\s+kündigung\s+(?:\S+\s+){{0,2}}?(?:gelten|werten|verstehen|behandeln)|"
     rf"(?:umgedeutet|umdeutung)\s+(?:\S+\s+){{0,3}}?{_ORDINARILY}|"
     rf"{_ORDINARILY}\w*\s+kündigung\s+(?:\S+\s+){{0,2}}?(?:umgedeutet|umzudeuten|umdeuten)|"
+    r"\bersatzweise|\bander(?:e)?nfalls\b|\bfür\s+den\s+fall\W+(?:\S+\s+){0,5}?(?:der\s+)?(?:unwirksam|nicht\s+wirksam|ungültig)|"
+    r"\bsollte\s+(?:\S+\s+){0,6}?(?:unwirksam|nicht\s+wirksam|ungültig)|"
     r"alternatively|in the alternative",
+    re.I,
+)
+#: … and, said of a notice certainly without notice period, a later end it also names: the next permissible
+#: date ("fristlos, spätestens zum nächstmöglichen Zeitpunkt") or a day at least two months after the letter's
+#: date ("fristlos, zugleich vorsorglich zum 31.01.2027") — a notice without notice period ends the tenancy at
+#: once, so a later end can only be that of a notice with one (review round 3 of phase 2: "when unsure, it is
+#: an ordinary notice").
+_NEXT_END_WORDS = re.compile(r"nächst(?:möglich|zulässig)|next\s+(?:possible|permissible)", re.I)
+_GERMAN_MONTHS = (
+    "januar", "februar", "märz", "april", "mai", "juni", "juli", "august", "september", "oktober", "november",
+    "dezember",
+)  # fmt: skip
+_END_DAY = re.compile(
+    r"\b(?:zum|per|auf\s+den|bis\s+zum)\s+(?:\w+,?\s+(?:den\s+)?)?(?P<d>\d{1,2})\.\s?"
+    rf"(?:(?P<m>\d{{1,2}})\.\s?|(?P<name>{'|'.join(_GERMAN_MONTHS)})\s+)(?P<y>\d{{4}}|\d{{2}})(?!\d)",
     re.I,
 )
 
@@ -482,16 +514,21 @@ def _terminated(extraction: DocumentExtraction) -> HighStakesKind | None:
 
 def _consent_request(extraction: DocumentExtraction) -> bool:
     """Whether a rent increase asks for consent (policy 1): its quoted wording asks for it, its own quote
-    and its title name no other kind of increase — a modernisation only when the increase's own quote
-    doesn't ask for consent itself (a § 558 request names a modernised bathroom as a feature) — and nothing
-    it quotes says no consent is needed."""
+    and its title name no other kind of increase — graduated or index rent, or a § 559 or § 560 increase in
+    the title; operating-cost prepayments or §§ 559–560 in its own quote, a prepayment adjustment in the
+    title or a modernisation only when the increase's own quote doesn't ask for consent itself (a § 558
+    request names a modernised bathroom as a feature, quotes § 558 Abs. 1 S. 3 BGB on §§ 559–560 and may
+    adjust the prepayments at the same time) — and nothing it quotes says no consent is needed."""
     quoted = _quoted_text(extraction)
     own = extraction.change.quote if extraction.change is not None else ""
     modernisation = bool(_MODERNISATION.search(f"{own}\n{extraction.title}")) and not _CONSENT.search(own)
+    asks = bool(_ASKS_CONSENT.search(own))
+    costs = bool(_COST_INCREASE.search(own) or _PREPAYMENT_TITLE.search(extraction.title))
     return (
         bool(_CONSENT.search(quoted))
         and not _OTHER_INCREASE.search(own)
         and not _OTHER_INCREASE_TITLE.search(extraction.title)
+        and not (costs and not asks)
         and not modernisation
         and not _NO_CONSENT_NEEDED.search(quoted)
     )
@@ -603,7 +640,9 @@ def notice_without_period(
         return None
     end = announced_end(extraction)
     written = letter_date or _parse_day(extraction.document_date)
-    if end is None or alternative_notice(extraction):
+    # a later end the reading gives may be the notice's own (an ordinary notice); one given by a word such
+    # as "hilfsweise" is the notice's in the alternative
+    if end is None or _ALTERNATIVE_NOTICE.search(text):
         return strength
     return strength if written is not None and notice_objection_deadline(end) < written else None
 
@@ -624,13 +663,41 @@ def objection_excluded(extraction: DocumentExtraction, letter_date: date | None 
 
 def alternative_notice(extraction: DocumentExtraction) -> bool:
     """Whether a notice without notice period also gives notice with one in the alternative
-    (*hilfsweise fristgemäß*): its objection to-do and letter are kept — the hardship objection is excluded
-    against it too if the grounds for the notice without notice period existed (§ 574 Abs. 1 S. 2 BGB; BGH
-    VIII ZR 323/18), but they may not have, and the card says so. Like
-    :func:`extraordinary_notice`, only the termination's own quote and the reading's title count — never
-    the model's summary ("alternatively you may pay the arrears")."""
+    (*hilfsweise fristgemäß*, *ersatzweise*, *andernfalls*, "sollte die fristlose Kündigung unwirksam sein"):
+    its objection to-do and letter are kept — the hardship objection is excluded against it too if the
+    grounds for the notice without notice period existed (§ 574 Abs. 1 S. 2 BGB; BGH VIII ZR 323/18), but
+    they may not have, and the card says so. A notice certainly without notice period that also names a later
+    end (:data:`_NEXT_END_WORDS`, a day at least two months after the letter's date: :func:`_later_end`) gives
+    one too, whatever connects them. Like :func:`extraordinary_notice`, only the termination's own quote and
+    the reading's title count — never the model's summary ("alternatively you may pay the arrears")."""
     own = extraction.change.quote if extraction.change is not None else ""
-    return bool(_ALTERNATIVE_NOTICE.search(f"{extraction.title}\n{own}"))
+    text = f"{extraction.title}\n{own}"
+    if _ALTERNATIVE_NOTICE.search(text):
+        return True
+    if not any(_asserted(text, match) for match in _EXTRAORDINARY.finditer(text)):
+        return False
+    return bool(_NEXT_END_WORDS.search(text)) or _later_end(text, _parse_day(extraction.document_date))
+
+
+def _later_end(text: str, letter_date: date | None) -> bool:
+    """Whether ``text`` names an end (``zum 31.01.2027``, ``zum 31. Januar 2027``) the hardship objection
+    could still be raised against: two months before it is not before the letter's date (unknown: any end
+    counts — the safe side)."""
+    for match in _END_DAY.finditer(text):
+        year = int(match.group("y"))
+        year += 2000 if year < 100 else 0
+        month = (
+            int(match.group("m"))
+            if match.group("m")
+            else _GERMAN_MONTHS.index(match.group("name").lower()) + 1
+        )
+        try:
+            end = date(year, month, int(match.group("d")))
+        except ValueError:
+            continue
+        if letter_date is None or notice_objection_deadline(end) >= letter_date:
+            return True
+    return False
 
 
 def letter_kind(extraction: DocumentExtraction) -> LetterKind:
@@ -864,7 +931,8 @@ _NEXT_END_OBJECTION = replace(
     _NOTICE_OBJECTION,
     action=(
         "The notice's own end is too early for its notice period, or it gives none: it usually ends your tenancy "
-        f"at the next date the law allows, and this date counts back from the earliest one. {_NOTICE_OBJECTION.action}"
+        "at the next date the law allows, so the objection deadline counts back two months from the earliest "
+        f"possible end. {_NOTICE_OBJECTION.action}"
     ),
     spec=_relative(
         -2,
@@ -893,6 +961,19 @@ def computed_under(spec: DateSpec, rule_ids: Sequence[str], rule_id: str) -> boo
     )
 
 
+def objection_dated(spec: DateSpec) -> bool:
+    """Whether a letter's own objection date can be computed without the end of the tenancy
+    (``dated`` of :func:`derived_deadlines`): a date written in it, or a period counted back from a date it
+    names. The statutory hint every notice carries — "Widerspruch spätestens zwei Monate vor der Beendigung
+    des Mietverhältnisses", read as a period from an end it doesn't give — names none, so a notice "zum
+    nächstmöglichen Termin" keeps the law's objection to-do (review round 3 of phase 2)."""
+    if spec.nature != "objection":
+        return False
+    if spec.type == "fixed":
+        return _parse_day(spec.date) is not None
+    return spec.type == "relative" and _parse_day(spec.anchor_date) is not None
+
+
 def derived_deadlines(
     letter: str | None,
     *,
@@ -915,8 +996,8 @@ def derived_deadlines(
     counts back from the earliest end a notice with a notice period can have (§ 573c Abs. 1 BGB) — such a
     notice usually ends the tenancy at the next permissible date, and a later real end only makes the
     objection's deadline later (the earliest plausible date; review round 2 of phase 2) — unless an ordinary
-    notice without an end gives an objection date of its own (``dated``): that date counts from the end the
-    landlord knows.
+    notice without an end gives an objection date of its own that can be computed (``dated``,
+    :func:`objection_dated`): that date counts from the end the landlord knows.
     """
     if letter == "court_payment_order":
         return [_LABOUR_COURT_ORDER if labour_court else _COURT_ORDER]

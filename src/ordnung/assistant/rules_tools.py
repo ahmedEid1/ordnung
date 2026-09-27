@@ -51,10 +51,12 @@ Policies:
   given but not used. A letter dated after today gets a warning and one level less confidence too
   (usually a misread year).
 * **"Today" is the server's.** A model's own idea of the date may be stale, and a wrong today makes
-  a live deadline look missed. So a result is always for the server's today, whether the deadline
-  has passed and the send-by date included; a caller's ``today`` more than a day off only adds
-  ``for_today_given`` (that day's view) and a warning. A server started with ``today`` pinned
-  (:func:`rules_server_config`, the benchmark) does not use a caller's ``today`` at all.
+  a live deadline look missed — or, a day behind, an expired one look live ("send it today"). So a
+  result is always for the server's today, whether the deadline has passed and the send-by date
+  included; a caller's ``today`` that differs only adds ``for_today_given`` (that day's view) and a
+  warning — one a day ahead (a time zone east of Germany) still lets a letter have arrived on it. A
+  server started with ``today`` pinned (:func:`rules_server_config`, the benchmark) does not use a
+  caller's ``today`` at all.
 * **Partial holidays.** The calendar counts only holidays of a whole Land
   (:data:`PARTIAL_HOLIDAYS`). Where one of the others holds, a date counted back over it comes out
   a working day late; the engine warns about it (``check_partial_holidays`` in
@@ -71,9 +73,9 @@ Policies:
   one (:func:`disclaimer`) for dates, the calendar's for holidays, the IBAN check's for an IBAN.
 
 "Today" is the server's pinned day (``RulesTools(today=…)``, ``ORDNUNG_TODAY``), else the date in
-Germany (:data:`HOME_ZONE`) — never the machine's own time zone; a caller's ``today`` a day before it
-replaces it unless the server pins it (see above) — never a later one, which would make a deadline that
-runs to midnight German time look missed.
+Germany (:data:`HOME_ZONE`) — never the machine's own time zone, and never a caller's ``today`` (see
+above): a German deadline runs to midnight German time (review round 3 of phase 2: a caller's day
+before the server's replaced it).
 
 The tools' descriptions, :data:`SPEC_HELP`, :data:`INSTRUCTIONS` and the input schemas (generated
 from ``DateSpec``, ``PartyKind`` and ``RemedyType`` in :mod:`ordnung.models`) are what a model reads,
@@ -96,7 +98,7 @@ import json
 import os
 import re
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Annotated, Any, Literal, get_args
@@ -229,7 +231,8 @@ LAND_DAYS_RULE = "vwvfg_land_days"
 HOME_ZONE = "Europe/Berlin"
 #: Set to "1" (with ``ORDNUNG_TODAY``) to make the rules-only server ignore a caller's ``today``.
 PIN_TODAY_ENV = "ORDNUNG_PIN_TODAY"
-#: A caller's today this many days from the server's is not flagged (a time zone apart).
+#: A caller's today this many days after the server's may be the day a letter arrived (a time zone east of
+#: Germany): an arrival day up to it is not refused. The result is still for the server's day.
 TODAY_TOLERANCE_DAYS = 1
 #: An arrival day this many days after the letter's date is unusual for post (checked, see module docstring).
 LATE_ARRIVAL_DAYS = 14
@@ -253,6 +256,11 @@ _DELIVERY_LAW = {
 DEEMED_DELIVERY_STEP = "posting_day"
 #: A court's letter (``ordnung.rules.routing.is_court``) has no deemed delivery, whatever its sender kind.
 COURT_DELIVERY_LAW = "a court's letter: formal service (§ 180 ZPO), no deemed delivery"
+#: … named only when the engine counted from formal service (a court's fixed date names none).
+FORMAL_SERVICE_RULE = "zpo_180"
+#: The rules whose holidays are not the sender's Land's (:func:`_holidays_from`).
+WITHDRAWAL_RULE = "bgb_355"
+COURT_ACTION_RULE = "kschg_4"
 _WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 
@@ -343,14 +351,16 @@ class RulesTools:
         parsed = parse_spec(spec)
         _check_choice("sender_kind", sender_kind, get_args(PartyKind))
         _check_choice("remedy_type", remedy_type, get_args(RemedyType))
-        server_day = self.current_day()
+        day = self.current_day()  # the result is always for the server's day in Germany (:meth:`_other_day`)
         given_today = _optional_day("today", today)
-        day, other_day = self._days(given_today, server_day)
+        other_day = self._other_day(given_today, day)
         # a letter may have arrived on a caller's today a time zone ahead, though the result is for the
-        # earlier day (:meth:`_days`)
+        # server's day
         latest = (
             max(day, given_today)
-            if given_today is not None and other_day is None and not self._pin_today
+            if given_today is not None
+            and not self._pin_today
+            and abs((given_today - day).days) <= TODAY_TOLERANCE_DAYS
             else day
         )
         letter_day = _optional_day("document_date", document_date)
@@ -417,7 +427,7 @@ class RulesTools:
         found += [(w, True) for w in _future_letter_warning(counted, letter_day, day)]
         found += [(w, True) for w in unchecked_day_warning(counted, letter_day)]
         found += [(w, False) for w in formal]
-        found += [(w, False) for w in _today_warning(given_today, server_day, pinned=self._pin_today)]
+        found += [(w, False) for w in _today_warning(given_today, day, pinned=self._pin_today)]
         receipt = with_warnings(receipt, found)
         arrival, arrival_from = (
             (None, None)
@@ -438,7 +448,6 @@ class RulesTools:
             "assumed": {
                 "today": day.isoformat(),
                 "today_given": given_today.isoformat() if given_today not in (None, day) else None,
-                "server_today": server_day.isoformat() if server_day != day else None,
                 "letter_date": letter_day.isoformat() if letter_day else None,
                 "received_date": arrival.isoformat() if arrival else None,
                 "received_date_from": arrival_from,
@@ -446,12 +455,14 @@ class RulesTools:
                 if received is not None and received != arrival
                 else None,
                 "delivery_law": COURT_DELIVERY_LAW
-                if court
+                if court and FORMAL_SERVICE_RULE in receipt.rule_ids
                 else _DELIVERY_LAW.get(scope or "")
                 if DEEMED_DELIVERY_STEP in receipt.rule_ids
                 else None,
                 "holiday_calendar": receipt.holiday_calendar,
-                "holidays_from": None if counted.type == "none" else _holidays_from(payer_pays),
+                "holidays_from": None
+                if counted.type == "none"
+                else _holidays_from(payer_pays, receipt.rule_ids),
             },
             "hints": deadline_hints(
                 checked,
@@ -472,20 +483,18 @@ class RulesTools:
             "disclaimer": disclaimer(),
         }
 
-    def _days(self, given: date | None, server_day: date) -> tuple[date, date | None]:
-        """The day a result is for, and a caller's other day to report on as well (module docstring).
+    def _other_day(self, given: date | None, server_day: date) -> date | None:
+        """A caller's today to report on as well (``for_today_given``), or ``None``.
 
-        A caller's today within :data:`TODAY_TOLERANCE_DAYS` of the server's (a time zone apart) is used
-        only when it is not after the server's: a deadline runs to midnight German time, so a caller's
-        later day would make a live deadline look missed (review round 2 of phase 2) — the earlier of the
-        two only ever keeps it live. One further off only gets ``for_today_given``, and on a pinned server
-        it is not used.
+        The result is always for the server's day (review round 3 of phase 2): a deadline runs to midnight
+        German time, so a caller's later day would make a live deadline look missed, and an earlier one — a
+        stale conversation date, or a machine on UTC shortly after German midnight — would make a deadline
+        that ended yesterday read "send it today". Any other day only gets ``for_today_given`` and a warning,
+        and on a pinned server it is not used.
         """
-        if given is None or self._pin_today:
-            return server_day, None
-        if abs((given - server_day).days) <= TODAY_TOLERANCE_DAYS:
-            return min(given, server_day), None
-        return server_day, given
+        if given is None or self._pin_today or given == server_day:
+            return None
+        return given
 
     def german_holidays(self, year: int, region: str | None = None) -> dict[str, Any]:
         """The public holidays of ``year``: nationwide ones, plus the Land's own for ``region``."""
@@ -967,22 +976,33 @@ def _today_warning(given: date | None, server_day: date, *, pinned: bool) -> lis
             f"{fmt_date(server_day)}, the day it is set to."
         ]
     gap = abs((given - server_day).days)
-    if gap <= TODAY_TOLERANCE_DAYS:
-        return []
+    days = "day" if gap == 1 else "days"
     return [
-        f"The today given ({fmt_date(given)}) is {gap} days {'after' if given > server_day else 'before'} "
+        f"The today given ({fmt_date(given)}) is {gap} {days} {'after' if given > server_day else 'before'} "
         f"this server's today ({fmt_date(server_day)}). The result is for the server's today — whether the "
         "deadline has passed and the send-by date included; for_today_given shows them for the day given. "
         "Leave today out unless you mean another day."
     ]
 
 
-def _holidays_from(payer_pays: bool) -> str:
-    """Which argument's Land the holidays come from, and why (for ``assumed``)."""
+def _holidays_from(payer_pays: bool, rule_ids: Sequence[str] = ()) -> str:
+    """Which argument's Land the holidays come from, and why (for ``assumed``): the rule the engine applied
+    decides, as in :func:`ordnung.rules.deadlines.place_region` and :mod:`ordnung.rules.letters` (review round
+    3 of phase 2: a withdrawal's and a Kündigungsschutzklage's named the sender's Land)."""
     if payer_pays:
         return (
             "recipient_region: a payment to a company or person is made where the payer lives "
             "(§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply"
+        )
+    if WITHDRAWAL_RULE in rule_ids:
+        return (
+            "recipient_region: a withdrawal is declared where the consumer lives (§ 193 BGB), so that Land's "
+            "holidays apply"
+        )
+    if COURT_ACTION_RULE in rule_ids:
+        return (
+            "region and recipient_region: the action may be filed at the labour court of the employer's seat "
+            "or of the place of work (§ 48 Abs. 1a ArbGG), so only a holiday both Länder have counts"
         )
     return "region: the Land where the deadline is met (the sender's seat)"
 

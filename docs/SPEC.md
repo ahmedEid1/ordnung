@@ -238,7 +238,9 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   "with statutory notice" in the title) said of the notice itself — not denied ("without statutory notice")
   and not after *hilfsweise* (the alternative notice's period) — and the tenancy ends
   within two months; then there is no hardship objection to-do, and the card and the composer offer no
-  objection letter (unless its own words give notice in the alternative — then the card and the letter's
+  objection letter (unless its own words give notice in the alternative — *hilfsweise*, *ersatzweise*,
+  *andernfalls*, "sollte die fristlose Kündigung unwirksam sein", or a later end it names: the next permissible
+  date or a day at least two months after the letter's date — then the card and the letter's
   note say the objection is excluded against that one too when the grounds for the notice without notice
   period existed, BGH VIII ZR 323/18, so object anyway only if they didn't). Without a to-do computed under
   § 574b (no notice period) the landlord's card is urgent and the verdict says "get advice
@@ -519,8 +521,11 @@ the day a letter usually counts as delivered; an unknown one, `other` included, 
 plausible deemed delivery). A court is a court by its name, as in the app (`routing.is_court`, whatever
 `sender_kind` the model passed — a court is no `PartyKind`): its periods run from formal service, never
 from a delivery fiction, are never `high`, a labour court's order gives one week, and a court order is
-recognised from the remedy and the period's own words by the app's policy; `assumed.delivery_law` then
-names formal service (§ 180 ZPO) and the hint asks for the envelope's date. The spec help says how to pass a
+recognised from the remedy and the period's own words by the app's policy; `assumed.delivery_law` names
+formal service (§ 180 ZPO) when the period ran from it (not for a court's fixed date) and the hint asks for
+the envelope's date; `assumed.holidays_from` names the Land the rule applied uses (a payment's and a
+withdrawal's: the payer's or consumer's, `recipient_region`; a Kündigungsschutzklage's: only a holiday both
+Länder have). The spec help says how to pass a
 formally served letter (yellow envelope: `anchor: receipt`, the envelope's date), and a result that
 applied deemed delivery to a posted letter says it would not apply then (a warning) and what to pass
 if it was (a hint). A stated posting or delivery day (`spec.anchor_date`) can only be checked against
@@ -540,10 +545,10 @@ invisible characters ignored; country from the full SWIFT registry — any other
 an IBAN — registered length, mod-97, bank code where the format shows it; pure code in
 `money/iban.py`). Unknown tool arguments are refused and argument errors are plain words. "Today" is
 the server's (`ORDNUNG_TODAY`, else the date in Germany): a result — whether a deadline has passed,
-its send-by date — is always for it; a caller's `today` a day before it is used (a time zone
-apart), never one a day after it (a deadline runs to midnight German time, so a later day would make a
-live deadline look missed; an arrival on it is still accepted), one further off only adds `for_today_given` (that day's send-by date and whether it had
-passed) and a warning, and a server started pinned (`ORDNUNG_PIN_TODAY=1`, as the benchmark starts
+its send-by date — is always for it; a caller's `today` that differs never replaces it (a deadline
+runs to midnight German time: a later day would make a live deadline look missed, an earlier one an expired
+deadline read "send it today"; an arrival on a day ahead is still accepted) and only adds `for_today_given`
+(that day's send-by date and whether it had passed) and a warning, and a server started pinned (`ORDNUNG_PIN_TODAY=1`, as the benchmark starts
 it) does not use it at all. Every result carries "Information, not legal advice". The full server
 serves them next to the ledger tools (counting from the ledger's day), and its instructions and
 `compute_deadline`'s description say that a letter in the ledger keeps its stored date (quoted from

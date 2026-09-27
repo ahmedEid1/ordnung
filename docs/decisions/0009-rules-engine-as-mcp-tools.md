@@ -26,9 +26,11 @@ Claude reads through it also reaches every other MCP server loaded there, throug
   plainly when the ledger server is still in the file, and `--remove-ledger` takes it out.
 - A model, not a person, now passes the facts, so the tools check what they are given: an arrival
   day (or a delivery day the letter states) after today is refused, an implausible one lowers
-  confidence, and a result is always for the server's today — a caller's `today` far from it only
-  adds that day's view (the benchmark's server ignores it), and one a day ahead (a time zone east of
-  Germany) never replaces it, so a stale date never makes a live deadline look missed.
+  confidence, and a result is always for the server's today — a caller's `today` that differs only
+  adds that day's view and a warning (the benchmark's server ignores it): a day ahead (a time zone east of
+  Germany) never makes a live deadline look missed, and a day behind (a stale conversation date, a UTC
+  machine shortly after German midnight) never makes an expired one read "send it today" (review round 3
+  of phase 2: one a day behind replaced the server's day).
 - The tools add no law of their own: whether a sender has deemed delivery at all (a company's letter
   counts from its arrival, but for a kind a public body may be filed as, or a period whose own words
   name an administrative act, never later than from the day a letter usually counts as delivered; an

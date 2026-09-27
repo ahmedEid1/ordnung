@@ -43,6 +43,7 @@ from ordnung.models import DateSpec
 from ordnung.money.iban import INVALID_IBAN_ADVICE
 from ordnung.rules import LAST_CHECKED, calendar_de
 from ordnung.rules.deadlines import (
+    DECLARATION_ARRIVAL_WARNING,
     HOME_HOLIDAY,
     PRIVATE_SENDER_DATED_WARNING,
     PRIVATE_SENDER_WARNING,
@@ -660,7 +661,7 @@ def test_a_private_law_klage_or_widerspruch_keeps_a_private_sender_private() -> 
     dismissal = tools.compute_deadline(spec, **args)
     assert dismissal["due_date"] == "2026-09-22"  # not 25 Sep (the letter + 3 days + 3 weeks)
     assert (
-        PRIVATE_SENDER_WARNING in dismissal["warnings"]
+        DECLARATION_ARRIVAL_WARNING in dismissal["warnings"]
         and FORMAL_SERVICE_WARNING not in dismissal["warnings"]
     )
     assert dismissal["steps"][0]["rule_id"] == "private_sender_arrival"
@@ -702,6 +703,10 @@ def test_the_delivery_law_is_named_only_when_deemed_delivery_was_applied() -> No
         )
         assert "posting_day" not in {step["rule_id"] for step in dismissal["steps"]}
         assert dismissal["assumed"]["delivery_law"] is None
+        # review round 3 of phase 2: a public employer is an authority — a dismissal is no administrative act
+        assert DECLARATION_ARRIVAL_WARNING in dismissal["warnings"]
+        assert not any("not an authority" in warning for warning in dismissal["warnings"])
+        assert dismissal["steps"][0]["label"].startswith("A dismissal takes effect when it arrives, whoever")
     # an authority's Bescheid still names the law its deemed delivery follows
     notice = tools.compute_deadline(
         {**POSTED, "amount": 1, "unit": "months", "text": "Widerspruch innerhalb eines Monats"},
@@ -709,6 +714,61 @@ def test_the_delivery_law_is_named_only_when_deemed_delivery_was_applied() -> No
         sender_kind="authority",
     )
     assert notice["assumed"]["delivery_law"] == "general administrative law (§ 41 VwVfG)"
+
+
+def test_a_courts_fixed_date_names_no_delivery_law() -> None:
+    """Review round 3 of phase 2: every court letter named formal service (§ 180 ZPO) as its delivery law,
+    also a fixed date or a period from a date the letter names, where no delivery rule was applied."""
+    tools = at("2026-09-28")
+    court = {"sender_kind": "authority", "sender_name": "Amtsgericht Köln", "document_date": "2026-09-15"}
+    fixed = tools.compute_deadline({"type": "fixed", "date": "2026-10-20", "nature": "objection"}, **court)
+    assert "zpo_180" not in {rule["id"] for rule in fixed["rules"]}
+    assert fixed["assumed"]["delivery_law"] is None
+    named = tools.compute_deadline(
+        {**RECEIPT, "anchor": "explicit_date", "anchor_date": "2026-09-20", "delivery_rule": "none"}, **court
+    )
+    assert "zpo_180" not in {rule["id"] for rule in named["rules"]}
+    assert named["assumed"]["delivery_law"] is None
+
+
+def test_holidays_from_follows_the_rule_applied() -> None:
+    """Review round 3 of phase 2: a withdrawal is shifted by the consumer's Land (§ 193 BGB) and a
+    Kündigungsschutzklage keeps only a holiday both Länder have, but ``holidays_from`` named the sender's."""
+    tools = at("2026-12-28")
+    withdrawal = tools.compute_deadline(
+        {
+            "type": "relative",
+            "anchor": "receipt",
+            "amount": 14,
+            "unit": "days",
+            "nature": "declaration",
+            "legal_basis": "§ 355 BGB",
+            "text": "Widerrufsfrist 14 Tage ab Erhalt der Ware",
+        },
+        sender_kind="retailer",
+        region="NW",
+        recipient_region="BY",
+        received_date="2026-12-23",
+    )
+    assert withdrawal["due_date"] == "2027-01-07" and withdrawal["assumed"]["holiday_calendar"] == "Bayern"
+    assert withdrawal["assumed"]["holidays_from"].startswith(
+        "recipient_region: a withdrawal is declared where"
+    )
+    dismissal = tools.compute_deadline(
+        {
+            **RECEIPT,
+            "amount": 3,
+            "unit": "weeks",
+            "legal_basis": "§ 4 KSchG",
+            "text": "Klage binnen drei Wochen",
+        },
+        sender_kind="employer",
+        region="NW",
+        recipient_region="BY",
+        received_date="2026-12-16",
+    )
+    assert "kschg_4" in {rule["id"] for rule in dismissal["rules"]}
+    assert dismissal["assumed"]["holidays_from"].startswith("region and recipient_region: the action may be")
 
 
 def test_a_stated_posting_day_without_the_letters_date_is_not_trusted_blindly() -> None:
@@ -1023,13 +1083,23 @@ def test_a_callers_today_far_from_the_servers_is_flagged(tools: RulesTools) -> N
         "passed": True,
     }
     assert (stale["assumed"]["today"], stale["assumed"]["today_given"]) == ("2026-09-20", "2026-11-02")
-    assert stale["assumed"]["server_today"] is None
     earlier = tools.compute_deadline(spec, today="2026-09-01")["for_today_given"]
     assert earlier == {"today": "2026-09-01", "due_date": None, "send_by": "2026-10-09", "passed": False}
     a_zone_apart = tools.compute_deadline(spec, today="2026-09-19")
-    assert a_zone_apart["for_today_given"] is None
-    assert a_zone_apart["warnings"] == [] and a_zone_apart["assumed"]["server_today"] == "2026-09-20"
-    assert "server_today" not in compact(tools.compute_deadline(spec, today="2026-09-20"))["assumed"]
+    assert a_zone_apart["assumed"]["today"] == "2026-09-20"
+    assert a_zone_apart["for_today_given"] == {
+        "today": "2026-09-19",
+        "due_date": None,
+        "send_by": "2026-10-09",
+        "passed": False,
+    }
+    assert a_zone_apart["warnings"] == [
+        "The today given (Sat 19 Sep 2026) is 1 day before this server's today (Sun 20 Sep 2026). The result is "
+        "for the server's today — whether the deadline has passed and the send-by date included; for_today_given "
+        "shows them for the day given. Leave today out unless you mean another day."
+    ]
+    same = compact(tools.compute_deadline(spec, today="2026-09-20"))
+    assert "today_given" not in same["assumed"] and "for_today_given" not in same
 
 
 def test_a_callers_today_a_day_ahead_never_makes_a_live_deadline_look_missed() -> None:
@@ -1040,11 +1110,43 @@ def test_a_callers_today_a_day_ahead_never_makes_a_live_deadline_look_missed() -
     ahead = server.compute_deadline(spec, today="2026-09-29")
     same = server.compute_deadline(spec)
     assert not any("has already passed" in warning for warning in ahead["warnings"])
-    assert ahead["send_by"] == same["send_by"] and ahead["for_today_given"] is None
+    assert ahead["send_by"] == same["send_by"] and ahead["due_date"] == same["due_date"]
+    # the caller's day only gets its own view, next to a warning that the result is for the server's day
+    assert ahead["for_today_given"]["today"] == "2026-09-29"
+    assert any("1 day after this server's today" in warning for warning in ahead["warnings"])
     assert (ahead["assumed"]["today"], ahead["assumed"]["today_given"]) == ("2026-09-28", "2026-09-29")
-    # a day behind (a time zone west of Germany) keeps the caller's day: the deadline only looks later
-    behind = server.compute_deadline(spec, today="2026-09-27")
-    assert behind["assumed"]["today"] == "2026-09-27" and behind["assumed"]["server_today"] == "2026-09-28"
+    # an arrival day on the caller's day a time zone ahead is still accepted
+    received = {"type": "relative", "anchor": "receipt", "amount": 2, "unit": "weeks", "nature": "objection"}
+    assert server.compute_deadline(received, received_date="2026-09-29", today="2026-09-29")["due_date"]
+
+
+def test_a_callers_today_a_day_behind_never_makes_an_expired_deadline_look_live() -> None:
+    """Review round 3 of phase 2: a caller's today one day before the server's German day (a stale
+    conversation date, a UTC machine shortly after German midnight) replaced it, so a deadline that ended
+    yesterday read "send it today" with no warning that it had passed."""
+    server = at("2026-09-27")
+    spec = {"type": "fixed", "date": "2026-09-26", "nature": "objection"}
+    behind = server.compute_deadline(spec, today="2026-09-26", sender_kind="company")
+    alone = server.compute_deadline(spec, sender_kind="company")
+    assert any("has already passed" in warning for warning in behind["warnings"])
+    assert behind["send_by"] == alone["send_by"] and behind["due_date"] == alone["due_date"]
+    assert not any("send it today" in warning for warning in behind["warnings"])
+    assert behind["assumed"]["today"] == "2026-09-27" and behind["assumed"]["today_given"] == "2026-09-26"
+    assert behind["for_today_given"]["passed"] is False  # only the caller's day's view says otherwise
+    assert any("1 day before this server's today" in warning for warning in behind["warnings"])
+    tax = {
+        "type": "relative",
+        "anchor": "deemed_delivery",
+        "amount": 1,
+        "unit": "months",
+        "nature": "objection",
+        "delivery_rule": "de_admin_post",
+        "legal_basis": "§ 355 AO",
+    }
+    objection = server.compute_deadline(
+        tax, document_date="2026-08-22", sender_kind="tax_office", region="NW", today="2026-09-26"
+    )
+    assert objection["send_by"] is None or objection["send_by"] >= "2026-09-27"
 
 
 def test_a_pinned_server_does_not_use_a_callers_today() -> None:
@@ -1083,8 +1185,9 @@ def test_today_defaults_to_the_servers_day_and_can_be_given(tools: RulesTools) -
     other_day = tools.compute_deadline(spec, today="2026-10-01")
     assert other_day["due_date"] == "2026-09-30"
     assert other_day["for_today_given"]["due_date"] == "2026-10-12"  # the 11th is a Sunday
-    assert tools.compute_deadline(spec, today="2026-09-19")["due_date"] == "2026-09-29"  # a time zone behind
-    # a time zone ahead: never the later day (review round 2 of phase 2)
+    # a time zone behind or ahead: always the server's day (review rounds 2 and 3 of phase 2)
+    behind = tools.compute_deadline(spec, today="2026-09-19")
+    assert behind["due_date"] == "2026-09-30" and behind["for_today_given"]["due_date"] == "2026-09-29"
     assert tools.compute_deadline(spec, today="2026-09-21")["due_date"] == "2026-09-30"
 
 
@@ -1712,8 +1815,8 @@ def test_a_court_order_never_gets_an_administrative_delivery_fiction(tools: Rule
 
 
 def test_a_pinned_server_ignores_a_callers_today_one_day_off() -> None:
-    """The benchmark's server keeps its letter's day even for a today a time zone apart (which an
-    unpinned server would use), and gives no view for it."""
+    """The benchmark's server keeps its letter's day even for a today a time zone apart, and gives no view
+    for it (an unpinned server gives that day's view too)."""
     pinned = RulesTools(today=lambda: date(2026, 4, 14), pin_today=True)
     spec = {"type": "relative", "anchor": "today", "amount": 10, "unit": "days", "nature": "payment"}
     for given in ("2026-04-13", "2026-04-15"):
@@ -1723,4 +1826,5 @@ def test_a_pinned_server_ignores_a_callers_today_one_day_off() -> None:
     unpinned = RulesTools(today=lambda: date(2026, 4, 14)).compute_deadline(
         spec, document_date="2026-04-14", today="2026-04-13"
     )
-    assert unpinned["assumed"]["today"] == "2026-04-13"
+    assert unpinned["assumed"]["today"] == "2026-04-14"
+    assert unpinned["for_today_given"]["today"] == "2026-04-13"

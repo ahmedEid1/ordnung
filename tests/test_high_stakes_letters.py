@@ -355,6 +355,39 @@ NEXT_POSSIBLE = _notice(
     "Hiermit kündigen wir das Mietverhältnis wegen Eigenbedarfs fristgerecht zum nächstmöglichen Termin.",
     end=None,
 )
+#: Review round 3 of phase 2: the same notice with the hint the law makes every notice carry (§ 568 Abs. 2
+#: BGB), read as a period counted back from an end the notice doesn't give.
+NEXT_POSSIBLE_HINT = Letter(
+    marker="Kuendigung Eigenbedarf naechstmoeglich Hinweis",
+    pages=(
+        (
+            *NEXT_POSSIBLE.pages[0][:2],
+            "Kuendigung Eigenbedarf naechstmoeglich Hinweis",
+            NEXT_POSSIBLE.pages[0][3],
+            "Der Widerspruch muss uns spätestens zwei Monate vor der Beendigung des Mietverhältnisses zugehen.",
+        ),
+    ),
+    payload={
+        **NEXT_POSSIBLE.payload,
+        "items": [
+            {
+                "kind": "deadline",
+                "title": "Object to the notice",
+                "date": {
+                    "type": "relative",
+                    "anchor": "explicit_date",
+                    "amount": -2,
+                    "unit": "months",
+                    "nature": "objection",
+                    "legal_basis": "§ 574b Abs. 2 BGB",
+                    "text": "spätestens zwei Monate vor der Beendigung des Mietverhältnisses",
+                },
+                "quote": "Der Widerspruch muss uns spätestens zwei Monate vor der Beendigung des "
+                "Mietverhältnisses zugehen.",
+            }
+        ],
+    },
+)
 ONLY_EXTRAORDINARY = _notice(
     "Ausserordentliche Kuendigung",
     "Hiermit kündigen wir das Mietverhältnis außerordentlich.",
@@ -788,6 +821,7 @@ LETTERS = (
     HILFSWEISE_NO_END,
     HILFSWEISE,
     FRISTLOS,
+    NEXT_POSSIBLE_HINT,  # before the notice whose marker starts its own
     NEXT_POSSIBLE,
     ONLY_EXTRAORDINARY,
 )
@@ -1132,6 +1166,28 @@ async def test_a_notice_without_an_end_or_only_extraordinary_keeps_its_objection
             assert advice["facts"] == [] and not advice["urgent"]
         drafted = await api.client.post("/api/drafts", json={"kind": "objection", "doc_id": doc_id})
         assert drafted.status_code != 422, drafted.text
+
+
+async def test_the_statutory_objection_hint_without_an_end_keeps_the_laws_objection(data_dir: Path) -> None:
+    """Review round 3 of phase 2: the hint every notice carries ("spätestens zwei Monate vor der Beendigung"),
+    read as a period from an end the notice doesn't give, counted as the letter's own objection date and
+    removed the law's — a notice "zum nächstmöglichen Termin" was left with no dated objection to-do at all."""
+    from ordnung.ingest.plan import law_deadlines
+    from ordnung.rules import RuleContext
+
+    reading = DocumentExtraction.model_validate(NEXT_POSSIBLE_HINT.payload)
+    [derived] = law_deadlines("landlord_notice", reading, RuleContext(today=date(2026, 9, 28)))
+    assert derived.rule_id == "bgb_574b" and "nächstmöglichen" in derived.spec.text
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, NEXT_POSSIBLE_HINT)
+        by_origin = _by_origin(api, doc_id)
+        [own] = by_origin["extracted"]
+        assert own.due_date is None  # it needs the end of the tenancy
+        [rule] = by_origin["rule"]
+        assert rule.due_date == "2026-10-31" and rule.computation is not None
+        assert "bgb_573c_landlord" in rule.computation.rule_ids
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["advice"]["draft"] == "objection"
 
 
 async def test_a_statement_filed_by_the_person_as_its_stored_kind_loses_its_card(data_dir: Path) -> None:
