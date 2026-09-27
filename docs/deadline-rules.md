@@ -344,7 +344,7 @@ written policy per ADR 0007, and ADR 0008 for why code assigns these kinds) and 
 
 | Kind | Recognised when the reading … | Its dates follow | Deadlines the law adds (filed as to-dos) | Card |
 |---|---|---|---|---|
-| `court_payment_order` (*Mahnbescheid*) | comes from a court (the sender's name is a kind of court — *Amtsgericht*, also *des Amtsgerichts*, *Zentrales Mahngericht* — or abbreviates one before a place of a word or two, *AG Hagen*, from a sender read as an authority (or of no particular kind); never any word ending in "gericht", a company whose name starts like one — *LG Electronics Deutschland GmbH*, *OLG Immobilien* —, a bailiff — *Gerichtsvollzieher bei dem Amtsgericht …* — or a court cashier), asks the person to answer it as the respondent, and names the order (see below) | `zpo_692` (at a labour court `arbgg_46a`) | pay or object within two weeks (one week at a labour court) | get advice now |
+| `court_payment_order` (*Mahnbescheid*) | comes from a court (the sender's name is a kind of court — *Amtsgericht*, also *des Amtsgerichts*, *Zentrales Mahngericht* — or abbreviates one before a place of a word or two, *AG Hagen*, from a sender read as an authority (or of no particular kind) — a recipient typed into a template letter, whose kind is unknown, only by the court's full name; never any word ending in "gericht", a company whose name starts like one — *LG Electronics Deutschland GmbH*, *OLG Immobilien* —, a bailiff — *Gerichtsvollzieher bei dem Amtsgericht …* — or a court cashier), asks the person to answer it as the respondent, and names the order (see below) | `zpo_692` (at a labour court `arbgg_46a`) | pay or object within two weeks (one week at a labour court) | get advice now |
 | `enforcement_order` (*Vollstreckungsbescheid*) | comes from a court, names a Vollstreckungsbescheid, asks the person to answer it, and is one (see below) | `zpo_339` (at a labour court `arbgg_59`) | object within two weeks (one week at a labour court) | get advice now |
 | `dismissal` | reports a termination by the other side about a job — what it ends is decided by the contract it names (an employment contract; any other category but "other", like a job ticket, is neither), then the letter's kind, and only then the sender's (an employer) | `kschg_4`, `sgb3_38` | court action within three weeks; register as job-seeking | get advice now |
 | `landlord_notice` | reports a termination by the other side about a tenancy, in the same order (a rent contract, a tenancy letter, a landlord): an employer ending the lease of a company flat gives a landlord's notice, not a dismissal | `bgb_574b` | the objection, when the end of the tenancy is stated, the objection date hadn't passed when the notice was written, and the notice has a notice period (or gives one in the alternative) | tenants' association |
@@ -390,7 +390,11 @@ never get an authority's 4-day delivery fiction (they run from the letter's date
 start, or the delivery day the person entered) and are never `high`: each carries a note that a court's
 periods usually run from the date on the yellow envelope, and every period that doesn't count from a day
 the letter names cites § 180 ZPO (`zpo_180`), so the letter's page asks "When was it delivered?" with no
-date filled in — never "When did it arrive?" with today.
+date filled in — never "When did it arrive?" with today. A court's own period that the letter counts
+from its own date ("binnen zwei Wochen ab dem Datum dieses Schreibens", "ab heute") is the exception: a
+court may set another start than delivery (§ 221 ZPO), so it counts from the letter's date, the envelope
+date entered never moves it later, and it doesn't cite § 180 ZPO. A statute's period (a Mahnbescheid's,
+an enforcement order's) always runs from delivery, whatever anchor it was read with.
 
 **Labour courts** (`arbgg_46a`, `arbgg_59`; § 46a Abs. 1, 3, § 59 ArbGG). A labour court's (*Arbeitsgericht*)
 Mahnbescheid gives **one week**, not two (§ 46a Abs. 3 ArbGG), and the objection to its enforcement order
@@ -489,8 +493,10 @@ so the to-do and the card say so instead of dropping the registration.
 the second calendar month after the month the request arrived (arrived 15 January → until 31 March); only
 with consent is the higher rent owed, from the start of the third month. So a payment to-do the model
 reads from the request (the new total, often recurring) says in its receipt that the higher rent is only
-owed once the tenant agrees and that paying it can count as agreeing (citing `bgb_558b`), and the verdict
-doesn't lead with "Pay" for it. Consent is a declaration within a period, so a last day on a weekend or
+owed once the tenant agrees, that paying it can count as agreeing, and to decide first if they haven't
+agreed yet (citing `bgb_558b`; the receipt keeps it, so it says what holds either way), and the verdict
+doesn't lead with "Pay" for it ("Decide before you pay") — until the person closed the consent decision's
+to-do, after which the new rent is an ordinary payment. Consent is a declaration within a period, so a last day on a weekend or
 holiday moves to the next working day (§ 193 BGB). A date the landlord names is shown next to the
 law's: an earlier one can't shorten the period, a later one is noted and the law's (earlier) date is
 kept. The card checks the **rent cap** (`bgb_558_3`, § 558 Abs. 3 BGB) from
@@ -522,8 +528,10 @@ quote or the title** says so (*fristlos*, *außerordentlich*, "ohne Einhaltung e
 Kündigung* the landlord only reserves — and the wording is not negated ("keine fristlose Kündigung"),
 only reserved (a reservation of the notice itself: "eine fristlose Kündigung behalten wir uns vor", "…
 vor, fristlos zu kündigen" — not "wir kündigen fristlos und behalten uns weitere Ansprüche vor") or given
-"mit der gesetzlichen Frist" (a special termination — § 573d,
-§ 575a BGB, § 57a ZVG, § 111 InsO, § 564 BGB — which the objection applies to, § 575a Abs. 2 BGB), and
+"mit der gesetzlichen Frist" or "mit gesetzlicher (Kündigungs-)Frist" (as § 573d BGB is headed; in the
+title also "with statutory notice", "statutory period") — a special termination (§ 573d, § 575a BGB, § 57a
+ZVG, § 111 InsO, § 564 BGB) which the objection applies to (§ 574 Abs. 1 BGB, § 575a Abs. 2 BGB), even
+without an end date ("zum nächstmöglichen Zeitpunkt") — and
 the tenancy ends within two months of the letter (or no end is stated). When unsure it is an ordinary
 notice: the to-do stays, and the card says the objection doesn't apply to a notice without notice period. A notice without
 notice period that also gives notice with one in the alternative (*hilfsweise fristgemäß*, in its own
@@ -532,11 +540,18 @@ that notice. Whether a to-do carries the notice is read from the to-dos themselv
 § 574b BGB — the law's, or the letter's own objection date, even when the reading missed the end. When
 none does — a notice without notice period, one whose end wasn't read, or an ordinary notice ending less
 than two months after its date (the objection date had passed when it was written: no to-do is filed, and
-the card says so, that such a short notice may have the wrong notice period, § 573c Abs. 1 BGB, and that the
-objection may still be raised at the first hearing, § 574b Abs. 2 S. 2 BGB) — its card is urgent and comes
-first, and the verdict says "get advice now", never "nothing to do". Once the person has closed every to-do
-of a high-stakes letter (done or dismissed: objected, went to court, registered), its card is no longer
-urgent and the verdict says the letter is filed, without an objection to draft. **Only
+the card says so, that such a short notice may have the wrong notice period — a landlord's is usually about
+three months, § 573c Abs. 1 BGB — and that the objection may still be raised at the first hearing, § 574b
+Abs. 2 S. 2 BGB) — its card is urgent and comes first, and the verdict says "get advice now", never
+"nothing to do". Once the person has closed every to-do that carries a high-stakes letter's legal deadline
+(done or dismissed: objected, went to court, registered) — the law's to-dos and those whose receipt cites
+a rule of the letter's card, never another to-do of the letter — its card is no longer urgent and says so
+(`advice.handled`), stops asking for the delivery day, and the verdict says the letter is filed, without an
+objection to draft. A landlord's notice that no to-do carries (above) is never filed: paying the arrears
+a notice without notice period demands doesn't deal with it. Paying them in time undoes only the notice
+without notice period, not if that already happened within two years (§ 569 Abs. 3 Nr. 2 S. 2 BGB), and
+never a notice with a notice period given as well (BGH, 19.09.2018, VIII ZR 231/17 and VIII ZR 261/17) —
+the card, the ordinary card's step and the composer's refusal say so. **Only
 for a home**: a garage, parking space or business premises let on its own follows § 578 BGB, without the
 hardship objection; the to-do, the card and the catalog say so, as Ordnung can't tell them from the
 letter. **Not for every tenancy** (`bgb_549`, § 549
@@ -571,10 +586,16 @@ and the tenant may inspect the receipts. The card's check is written so that it 
   other range or a billing year alone it is at most "probably too late — check the billing period".
 * "On time" is only said without "probably" when the weekend/holiday shift (whose use here is disputed)
   and an unknown Land didn't decide it.
-* **The arrival** is the day the person entered, else the letter's own date — unless the text dates the
-  statement before the letter's date ("aus unserer Betriebskostenabrechnung 2023 vom 15.11.2024"): then the
-  letter is a later one about it (a reminder, a reply to objections), and the statement's own date counts,
-  never confirmed. A reminder (read as `dunning`) is never recognised as a statement at all.
+* **The arrival** is the day the person entered, else the letter's own date — unless the text dates *the
+  statement whose billing period it names* before the letter's date ("aus unserer Betriebskostenabrechnung
+  2023 vom 15.11.2024"): then the letter is a later one about it (a reminder, a reply to objections), and the
+  statement's own date counts, never confirmed. That date must be after the billing period ended, and the
+  words before it must name that period's year — or no year, in a letter that prints no billing period of
+  its own ("Abrechnungszeitraum: …"): a letter that does is the statement itself, and an earlier date in it
+  belongs to an enclosure ("Anlage: Heizkostenabrechnung der Techem vom 20.03.2025") or another year's
+  statement ("das Guthaben aus der Abrechnung 2023 vom 10.11.2024"), which never replace its arrival.
+  Missed: an enclosure dated with the statement's own year ("Heizkostenabrechnung 2024 der Techem vom …").
+  A reminder (read as `dunning`) is never recognised as a statement at all.
 * When the card says "too late" or "probably too late", the letter's back-payment to-dos carry the same
   warning in their receipt ("may not be owed … check before you pay", citing `bgb_556_3`), the card is
   urgent and comes first, and the verdict no longer leads with "Pay". Only money the person pays once:

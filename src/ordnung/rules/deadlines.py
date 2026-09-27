@@ -58,6 +58,9 @@ _SEND_BY_NATURES = ("objection", "payment", "declaration", "notice")
 _CIVIL_COURT = ("zpo_692", "zpo_339", "arbgg_46a", "arbgg_59")
 #: Statutes whose period runs from formal service (yellow envelope), not from a delivery fiction.
 _FORMAL_SERVICE = ("owig_67", "stpo_410", *_CIVIL_COURT)
+#: Anchors that name the letter's own date ("ab dem Datum dieses Schreibens", "ab heute"): a court's own
+#: period counted from one doesn't run from delivery (§ 221 ZPO lets the court set another start).
+_OWN_DATE_ANCHORS = ("document_date", "today")
 #: A labour court's orders have one week, not two (§ 46a Abs. 3, § 59 S. 1 ArbGG).
 _LABOUR_COURT_RULES = {"zpo_692": "arbgg_46a", "zpo_339": "arbgg_59"}
 _CHANNEL_BY_RULE: dict[str, DeliveryChannel] = {
@@ -123,8 +126,9 @@ class RuleContext:
     ``letter_kind`` is the letter's kind (``Document.kind``), which routes the dates of high-stakes
     letters (:mod:`ordnung.rules.routing`); ``end_date`` is the end of the job or tenancy a termination
     announces. ``court``: the sender is a court (:func:`ordnung.rules.routing.is_court`) — its periods
-    run from formal service, never from a delivery fiction, and none of its dates is ``high``, whatever
-    kind the letter was filed as. ``labour_court``: a labour court, whose orders give one week, not two
+    run from formal service, never from a delivery fiction (unless the letter counts its own period from
+    its own date, which a court may set, § 221 ZPO), and none of its dates is ``high``, whatever kind the
+    letter was filed as. ``labour_court``: a labour court, whose orders give one week, not two
     (§ 46a Abs. 3, § 59 ArbGG). ``end_date_grounding``: where ``end_date`` is written — in the
     termination's own sentence (``quote``, also for an end the caller knows), only elsewhere in the letter
     (``letter``: one soft failure) or nowhere in it (``none``: the model's reading alone, like an assumed
@@ -782,7 +786,11 @@ def _compute_relative(
     # date the letter's own date is the earliest plausible start (legal research
     # owig_einspruch_bussgeldbescheid_2_wochen); with it, that date, whatever anchor the letter was read with.
     formal = statute in _FORMAL_SERVICE or ctx.court
-    anchor = _served(spec, ctx, trace) if formal else _resolve_anchor(spec, ctx, trace)
+    # ... except a court's own period that the letter counts from its own date ("binnen zwei Wochen ab dem
+    # Datum dieses Schreibens"): a court may set another start than delivery (§ 221 ZPO), so the envelope
+    # date entered never moves it later. A statute's period (a Mahnbescheid's) always runs from delivery.
+    served = statute in _FORMAL_SERVICE or (ctx.court and spec.anchor not in _OWN_DATE_ANCHORS)
+    anchor = _served(spec, ctx, trace) if served else _resolve_anchor(spec, ctx, trace)
     if anchor is None:
         return _receipt(
             trace,
@@ -849,8 +857,8 @@ def _compute_relative(
         )
     if statute in _FORMAL_SERVICE:
         _formal_service_note(trace, spec, anchor, statute)
-    if ctx.court and spec.anchor != "explicit_date":
-        # any court's periods run from delivery (the envelope date, § 180 ZPO): cited, so the person is
+    if ctx.court and served and spec.anchor != "explicit_date":
+        # a court's periods run from delivery (the envelope date, § 180 ZPO): cited, so the person is
         # asked "when was it delivered?", never "when did it arrive?" with today filled in
         trace.use("zpo_180")
     if statute == "klage_1_month":

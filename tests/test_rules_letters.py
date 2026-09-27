@@ -16,6 +16,7 @@ from typing import Any
 import pytest
 
 from ordnung.models import (
+    ComputationReceipt,
     DateSpec,
     DocumentExtraction,
     ExtractedChange,
@@ -23,6 +24,7 @@ from ordnung.models import (
     ExtractedFact,
     ExtractedItem,
     ExtractedParty,
+    Item,
     Remedy,
 )
 from ordnung.rules import catalog, routing, send_guidance
@@ -31,6 +33,7 @@ from ordnung.rules.advice import (
     billing_period,
     billing_period_text,
     letter_advice,
+    settles,
     statement_arrival,
     statement_date,
     statement_late,
@@ -424,7 +427,9 @@ def test_a_genuine_enforcement_order_is_never_vetoed_by_what_else_it_says(
     ],
 )
 def test_courts_are_recognised_by_their_kind_in_any_case_or_abbreviated(name: str) -> None:
-    assert routing.is_court(name) and not routing.is_labour_court(name)
+    assert routing.is_court(name, "authority") and not routing.is_labour_court(name, "authority")
+    # a name of unknown kind (a recipient typed in) is a court by its full name only
+    assert routing.is_court(name) is (" AG " not in f" {name} ")
 
 
 @pytest.mark.parametrize(
@@ -493,7 +498,7 @@ def test_a_labour_court_is_a_court_whose_orders_give_one_week() -> None:
     assert routing.is_labour_court("Arbeitsgericht Berlin") and routing.is_court("Arbeitsgericht Berlin")
     assert routing.is_labour_court("Landesarbeitsgericht Hamm")
     for name in ("Geschäftsstelle des Arbeitsgerichts Berlin", "ArbG Berlin", "LAG Hamm"):
-        assert routing.is_court(name) and routing.is_labour_court(name)
+        assert routing.is_court(name, "authority") and routing.is_labour_court(name, "authority")
     assert not routing.is_labour_court("Amtsgericht Hagen – Zentrales Mahngericht")
     assert not routing.is_labour_court("Gerichtsvollzieher beim Arbeitsgericht Berlin")
     order = reading(title="Mahnbescheid", sender=LABOUR_COURT, remedy=WIDERSPRUCH)
@@ -802,6 +807,40 @@ def test_a_notice_is_only_without_notice_period_when_its_own_wording_says_so(
         )
         or routing.announced_end(extraction) is None
     )
+
+
+@pytest.mark.parametrize(
+    ("quote", "title"),
+    [
+        # § 573d BGB is headed "Außerordentliche Kündigung mit gesetzlicher Frist": heirs and a buyer at a
+        # forced sale write it so, often without an end ("zum nächstmöglichen Zeitpunkt")
+        (
+            "Wir kündigen das Mietverhältnis außerordentlich mit gesetzlicher Kündigungsfrist zum nächstmöglichen "
+            "Zeitpunkt.",
+            "Kündigung des Mietverhältnisses",
+        ),
+        ("Als Erben kündigen wir das Mietverhältnis außerordentlich mit gesetzlicher Frist.", "Kündigung"),
+        ("Wir kündigen außerordentlich unter Wahrung der gesetzlichen Frist.", "Kündigung"),
+        # … and the model's English title of one
+        (
+            "Als Erbin kündige ich das Mietverhältnis außerordentlich zum nächstmöglichen Termin.",
+            "Extraordinary termination of your tenancy with statutory notice (heirs)",
+        ),
+        (
+            "Als Erbin kündige ich das Mietverhältnis außerordentlich zum nächstmöglichen Termin.",
+            "Extraordinary notice of termination (heir, statutory period)",
+        ),
+    ],
+)
+def test_a_special_termination_with_the_statutory_period_keeps_the_hardship_objection(
+    quote: str, title: str
+) -> None:
+    """Final review 2: "außerordentlich mit gesetzlicher Frist" (§ 573d BGB) is no notice without notice
+    period, even with no end stated — the hardship objection applies to it (§ 574 Abs. 1 BGB), so the card
+    and the composer (both :func:`~ordnung.rules.routing.extraordinary_notice`) offer it."""
+    assert not routing.extraordinary_notice(_notice(quote, end=None, title=title))
+    # the same letter said fristlos is one
+    assert routing.extraordinary_notice(_notice("Wir kündigen das Mietverhältnis fristlos.", end=None))
 
 
 def test_the_letter_date_given_wins_over_the_readings() -> None:
@@ -1797,6 +1836,34 @@ def test_a_notice_without_notice_period_says_so_and_offers_no_useless_objection(
     assert not any(step.startswith("A notice without notice period") for step in card.steps)  # not twice
 
 
+def test_paying_the_arrears_is_never_said_to_undo_more_than_the_law_does() -> None:
+    """Final review 2: paying rent arrears in time undoes only the notice without notice period, and not
+    when that already happened within two years (§ 569 Abs. 3 Nr. 2 S. 2 BGB) — never a notice with a
+    notice period given as well (BGH VIII ZR 231/17): the card's fact, the ordinary card's step and the
+    composer's refusal all say so."""
+    from ordnung.drafts.compose import NO_HARDSHIP_OBJECTION
+
+    alternative = letter_advice("landlord_notice", today=TODAY, extraordinary=True, alternative=True)
+    fristlos = letter_advice("landlord_notice", today=TODAY, extraordinary=True)
+    ordinary = letter_advice("landlord_notice", today=TODAY)
+    assert alternative is not None and fristlos is not None and ordinary is not None
+    [step] = [step for step in ordinary.steps if step.startswith("A notice without notice period")]
+    for text in (alternative.facts[0].text, fristlos.facts[0].text, step, NO_HARDSHIP_OBJECTION):
+        assert "can undo the notice without notice period" in text
+        assert "not if that already happened within the last two years" in text
+        assert "but not a notice with a notice period given as well" in text
+        assert "still undo it" not in text
+
+
+def test_a_short_notice_names_the_usual_period_not_a_minimum() -> None:
+    """Final review 2: § 573c BGB sets about three months (and less for a furnished room, Abs. 3), no fixed
+    minimum."""
+    card = letter_advice("landlord_notice", today=TODAY, objection_todo=False, objection_passed=True)
+    assert card is not None
+    assert "usually about three months, § 573c Abs. 1 BGB" in card.steps[0]
+    assert "at least three months" not in card.steps[0]
+
+
 def test_a_notice_hilfsweise_with_notice_period_keeps_its_objection_to_do() -> None:
     fristlos = _notice("Wir kündigen fristlos wegen Zahlungsverzugs.")
     both = _notice(
@@ -2325,6 +2392,74 @@ def test_a_later_letter_counts_from_the_statements_own_date() -> None:
     assert not any(step.startswith("Don't pay") for step in card.steps)
 
 
+#: A late 2024 statement (due by 31 Dec 2025, arrived 17 Jan 2026) that encloses the metering company's
+#: heating statement, dated earlier.
+ENCLOSING_STATEMENT = (
+    "Betriebskostenabrechnung 2024\nAbrechnungszeitraum: 01.01.2024 - 31.12.2024\n"
+    "Anlage: Heizkostenabrechnung der Techem vom 20.03.2025\nNachzahlung: 412,00 EUR"
+)
+#: … and one that names the previous year's statement.
+NAMING_LAST_YEARS = (
+    "Betriebskostenabrechnung 2024\nAbrechnungszeitraum: 01.01.2024 - 31.12.2024\n"
+    "Das Guthaben aus der Abrechnung 2023 vom 10.11.2024 wurde bereits erstattet."
+)
+
+
+@pytest.mark.parametrize("text", [ENCLOSING_STATEMENT, NAMING_LAST_YEARS], ids=["enclosure", "last-year"])
+def test_a_date_the_statement_names_for_something_else_never_replaces_its_arrival(text: str) -> None:
+    """Final review 2: a statement that prints its own billing period is the statement itself: an earlier
+    "Abrechnung … vom" in it (an enclosure, the previous year's statement) is not its date, so the arrival
+    the person entered counts — and the late statement stays late, on the card and on its back-payment."""
+    letter, arrived = D("2026-01-15"), D("2026-01-17")
+    assert statement_arrival(text, arrived, True, letter) == (arrived, True)
+    assert statement_arrival(text, None, False, letter) == (None, False)
+    card = letter_advice(
+        "operating_costs",
+        today=D("2026-01-20"),
+        arrived=arrived,
+        arrival_confirmed=True,
+        letter_date=letter,
+        text=text,
+    )
+    assert card is not None and card.urgent
+    assert card.facts[0].title == "This statement came too late"
+    # the back-payment's warning is worked out the same way (:func:`ordnung.ingest.plan.late_statement_warning`)
+    assert statement_late(text, *statement_arrival(text, arrived, True, letter), None)
+
+
+@pytest.mark.parametrize(
+    ("text", "counts"),
+    [
+        # a reply that names the statement with its billing year counts from the statement's date, even when
+        # it repeats the statement's period
+        (
+            "Ihr Widerspruch gegen unsere Betriebskostenabrechnung 2023 vom 15.11.2024 ist unbegründet.\n"
+            "Abrechnungszeitraum: 01.01.2023 - 31.12.2023",
+            True,
+        ),
+        # … or without a year, when it prints no period of its own (the title names the year)
+        ("Operating-cost statement 2023\nIhr Widerspruch gegen unsere Abrechnung vom 15.11.2024 …", True),
+        # another year's statement, even without a period of its own
+        ("Betriebskostenabrechnung 2024\nDie Abrechnung 2023 vom 15.01.2025 wurde korrigiert.", False),
+        # dated before the billing period ended: the previous statement
+        ("Betriebskostenabrechnung 2024\nDas Guthaben aus der letzten Abrechnung vom 10.11.2024 …", False),
+        # no billing period at all: nothing to check it against
+        ("Ihr Widerspruch gegen unsere Abrechnung vom 15.11.2024 ist unbegründet.", False),
+    ],
+)
+def test_which_statement_date_a_later_letter_counts_from(text: str, counts: bool) -> None:
+    letter, arrived = D("2026-09-20"), D("2026-09-22")
+    dated = statement_date(text)
+    assert dated is not None
+    expected = (dated, False) if counts else (arrived, True)
+    assert statement_arrival(text, arrived, True, letter) == expected
+
+
+def test_two_dates_on_one_day_are_sorted_by_date_alone() -> None:
+    text = "Operating-cost statement 2023\nAbrechnung 2023 vom 15.11.2024 und Abrechnung vom 15.11.2024"
+    assert statement_arrival(text, D("2026-09-22"), True, D("2026-09-20")) == (D("2024-11-15"), False)
+
+
 def test_a_rent_increase_card_says_which_month_ends_the_decision() -> None:
     card = letter_advice("rent_increase", today=TODAY)
     assert card is not None
@@ -2367,7 +2502,19 @@ def test_a_company_whose_name_starts_like_a_court_abbreviation_is_no_court(
     ],
 )
 def test_a_courts_abbreviation_before_its_place_is_a_court(name: str) -> None:
-    assert routing.is_court(name, "authority") and routing.is_court(name) and routing.is_court(name, "other")
+    assert routing.is_court(name, "authority") and routing.is_court(name, "other")
+    # final review 2: a name of unknown kind (a recipient typed in) needs the court's full name
+    assert not routing.is_court(name)
+
+
+@pytest.mark.parametrize("name", ["LG Electronics", "OLG Immobilien", "AG Hausverwaltung Müller", "AG Hagen"])
+def test_a_typed_recipient_is_a_court_only_by_its_full_name(name: str) -> None:
+    """Final review 2: a recipient typed into a template letter has no kind; an abbreviation without a legal
+    form ("LG Electronics") doesn't make it a court, a court's full name does."""
+    assert not routing.is_court(name, None) and not routing.is_labour_court(name, None)
+    assert routing.is_court("Amtsgericht Hagen", None) and routing.is_labour_court(
+        "Arbeitsgericht Berlin", None
+    )
     assert not routing.is_court(name, "retailer") and not routing.is_court(name, "company")
     assert routing.is_court("Amtsgericht Hagen", "other")  # a court's full name counts from any sender kind
 
@@ -2518,7 +2665,7 @@ def test_a_landlords_card_says_why_no_to_do_carries_the_objection(
         ("enforcement_order", {"labour_court": True}),
         ("enforcement_order", {}),
         ("dismissal", {}),
-        ("landlord_notice", {"extraordinary": True}),
+        ("dismissal", {"arrival_confirmed": True}),
         (
             "operating_costs",
             {"arrived": D("2026-09-10"), "text": "Abrechnungszeitraum: 01.01.2024 - 31.12.2024"},
@@ -2529,12 +2676,62 @@ def test_a_card_is_no_longer_urgent_once_the_person_closed_every_to_do(
     kind: str, facts: dict[str, Any]
 ) -> None:
     """Final review 1: after the person objected (or went to court) and marked the to-dos done, the card
-    stays as information and the verdict settles."""
+    stays as information and the verdict settles. Final review 2: it says so (``handled``) and no longer
+    asks for the delivery day."""
     card = letter_advice(kind, today=TODAY, **facts)
     handled = letter_advice(kind, today=TODAY, handled=True, **facts)
     assert card is not None and handled is not None
-    assert card.urgent and not handled.urgent
-    assert handled.model_copy(update={"urgent": True}) == card
+    assert card.urgent and not handled.urgent and handled.handled and not card.handled
+    asks = kind != "operating_costs"  # the court orders and the dismissal ask for the delivery day first
+    assert handled.steps == (card.steps[1:] if asks else card.steps)
+    assert handled.model_copy(update={"urgent": True, "handled": False, "steps": card.steps}) == card
+
+
+@pytest.mark.parametrize(
+    "facts",
+    [
+        {"extraordinary": True},
+        {"extraordinary": True, "alternative": True},
+        {"objection_todo": False, "end_unknown": True},
+        {"objection_todo": False, "objection_passed": True},
+        {"objection_todo": False},
+    ],
+)
+def test_a_landlords_notice_no_to_do_carries_is_never_handled(facts: dict[str, Any]) -> None:
+    """Final review 2: paying the arrears a notice without notice period demands, or closing a handover
+    appointment, doesn't deal with a notice no objection to-do carries: its card stays urgent."""
+    card = letter_advice("landlord_notice", today=TODAY, handled=True, **facts)
+    assert card is not None and card.urgent and not card.handled
+    ordinary = letter_advice("landlord_notice", today=TODAY, handled=True)
+    assert ordinary is not None and ordinary.handled and not ordinary.urgent
+
+
+def _todo(status: str, *rule_ids: str, origin: str = "extracted") -> Item:
+    receipt = ComputationReceipt(due_date=None, rule_ids=list(rule_ids)) if rule_ids else None
+    return Item(
+        id=f"{status}-{origin}-{'-'.join(rule_ids)}",
+        kind="deadline",
+        title="To do",
+        status=status,  # type: ignore[arg-type]
+        origin=origin,  # type: ignore[arg-type]
+        computation=receipt,
+        created_at="2026-09-20T10:00:00",
+        updated_at="2026-09-20T10:00:00",
+    )
+
+
+def test_only_the_to_dos_that_carry_the_letters_deadline_settle_it() -> None:
+    """Final review 2: a letter is handled once every to-do the law added or that cites a rule of its card
+    is closed — never by closing another to-do of the letter (the arrears, a handover appointment)."""
+    card = letter_advice("court_payment_order", today=TODAY)
+    assert card is not None
+    assert not settles(card, [])
+    assert not settles(card, [_todo("done")])  # a to-do without a receipt: another one
+    assert not settles(card, [_todo("done", "bgb_286")])  # a receipt citing another rule
+    assert settles(card, [_todo("done", "zpo_692", origin="rule"), _todo("open", "bgb_286")])
+    assert settles(card, [_todo("dismissed", origin="rule")])
+    assert not settles(card, [_todo("done", "zpo_692", origin="rule"), _todo("snoozed", "zpo_180")])
+    assert not settles(card, [_todo("missed", "zpo_692")])
 
 
 def test_every_court_letters_period_runs_from_delivery() -> None:
@@ -2549,3 +2746,27 @@ def test_every_court_letters_period_runs_from_delivery() -> None:
     fixed = compute_due(DateSpec(type="fixed", date="2026-10-20", nature="objection"), court)
     assert "zpo_180" not in explicit.rule_ids and "zpo_180" not in fixed.rule_ids
     assert "zpo_180" not in compute_due(spec(), ctx(document_date="2026-09-21")).rule_ids
+
+
+@pytest.mark.parametrize("own_date", ["document_date", "today"])
+def test_a_court_period_counted_from_the_letters_own_date_ignores_the_envelope_date(own_date: str) -> None:
+    """Final review 2: a court may count its own period from its letter's date (§ 221 ZPO: "ab dem Datum
+    dieses Schreibens"); the envelope date the person enters never moves it later, and the page doesn't ask
+    for it (no § 180 ZPO)."""
+    date_spec = spec(
+        anchor=own_date, nature="declaration", text="binnen zwei Wochen ab dem Datum dieses Schreibens"
+    )
+    court = ctx(document_date="2026-09-01", court=True)
+    entered = replace(court, received_date=D("2026-09-04"), received_confirmed=True)
+    for context in (court, entered):
+        receipt = compute_due(date_spec, context)
+        assert receipt.due_date == "2026-09-15" and receipt.confidence != "high"
+        assert "zpo_180" not in receipt.rule_ids
+    # a court order's statutory period still runs from delivery, whatever anchor it was read with
+    order = spec(anchor=own_date, text="binnen zwei Wochen")
+    as_order = replace(entered, letter_kind="court_payment_order")
+    served = compute_due(order, as_order)
+    assert served.due_date == "2026-09-18" and "zpo_180" in served.rule_ids
+    # … and so does a court's own period that names no start (§ 221 ZPO: delivery)
+    no_start = compute_due(spec(anchor=None, nature="declaration", text="binnen zwei Wochen"), entered)
+    assert no_start.due_date == "2026-09-18" and "zpo_180" in no_start.rule_ids

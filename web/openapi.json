@@ -7245,6 +7245,11 @@
               }
             ],
             "title": "Draft"
+          },
+          "handled": {
+            "type": "boolean",
+            "title": "Handled",
+            "default": false
           }
         },
         "type": "object",
@@ -7257,7 +7262,8 @@
           "facts",
           "help",
           "rule_ids",
-          "draft"
+          "draft",
+          "handled"
         ],
         "title": "LetterAdvice",
         "description": "The \"get advice\" card of a high-stakes letter, worked out on read (:mod:`ordnung.rules.advice`).\n\n``urgent`` letters (court orders, a dismissal) always carry it; the others show it as information."

@@ -1019,6 +1019,9 @@ class LetterAdvice(_Model):
     #: The letter the card offers to draft; ``None`` when none fits (no hardship objection to a notice
     #: without notice period; court orders get theirs from the verdict's main button).
     draft: DraftKind | None = None
+    #: The person has dealt with the letter (:func:`ordnung.rules.advice.settles`): every to-do that carries
+    #: its legal deadline is closed. The card is then no longer urgent, and the verdict says it is filed.
+    handled: bool = False
 
 
 class DocumentDetail(_Model):

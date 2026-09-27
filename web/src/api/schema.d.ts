@@ -2336,6 +2336,11 @@ export interface components {
             rule_ids: string[];
             /** Draft */
             draft: ("cancellation" | "objection" | "general_reply" | "withdrawal" | "extension_request" | "payment_plan" | "defect_notice" | "data_access" | "receipts_inspection" | "deposit_return" | "address_change") | null;
+            /**
+             * Handled
+             * @default false
+             */
+            handled: boolean;
         };
         /**
          * LetterDetails

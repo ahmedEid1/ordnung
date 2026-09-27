@@ -65,7 +65,7 @@ from ordnung.models import (
     TemplateDraftKind,
 )
 from ordnung.rules import LAST_CHECKED, RuleContext, compute_due, send_guidance
-from ordnung.rules.advice import billing_period_text
+from ordnung.rules.advice import ARREARS_CURE, billing_period_text
 from ordnung.rules.consumer import long_withdrawal_end
 from ordnung.rules.explain import fmt_date
 from ordnung.rules.routing import alternative_notice, extraordinary_notice, is_court, is_labour_court
@@ -385,9 +385,8 @@ def _person_name(kind: str, party: Party | None) -> str | None:
 #: Why there is no hardship objection against a notice without notice period (the card says the same).
 NO_HARDSHIP_OBJECTION = (
     "This reads as a notice without notice period (fristlos). The hardship objection (§ 574 BGB) doesn't apply "
-    "to it (§ 574 Abs. 1 S. 2 BGB), so Ordnung doesn't draft one. If it is for rent arrears, paying all of "
-    "them — at the latest two months after an eviction suit is served — can still undo it (§ 569 Abs. 3 Nr. 2 "
-    "BGB). Get advice at once, for example from a tenants' association."
+    "to it (§ 574 Abs. 1 S. 2 BGB), so Ordnung doesn't draft one. If it is for rent arrears (§ 569 Abs. 3 Nr. 2 "
+    f"BGB), {ARREARS_CURE}. Get advice at once, for example from a tenants' association."
 )
 
 
@@ -708,6 +707,7 @@ def plan_letter(
     reference_language: LetterLanguage = "de" if translation == "de" else "en"
     reference = frame(reference_language) if translation else None
     party = sources.party
+    # a recipient typed in has no kind: only a court's full name makes it one ("LG Electronics" is none)
     recipient = party.name if party else (facts.recipient or "").strip().split("\n")[0]
     guidance = send_guidance(
         kind,

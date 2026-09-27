@@ -14,6 +14,7 @@ import asyncio
 import hashlib
 from collections.abc import Sequence
 from datetime import date
+from functools import partial
 from pathlib import Path
 from typing import Annotated
 
@@ -55,7 +56,7 @@ from ordnung.models import (
     PageInfo,
     Suggestion,
 )
-from ordnung.rules.advice import letter_advice
+from ordnung.rules.advice import letter_advice, settles
 from ordnung.rules.deadlines import parse_date
 from ordnung.rules.routing import alternative_notice, announced_end, extraordinary_notice, is_labour_court
 from ordnung.rules.tenancy import notice_objection_deadline
@@ -192,18 +193,14 @@ def _with_reminder_notes(store: Store, items: list[Item], today: date) -> list[I
     ]
 
 
-#: A to-do still to act on (missed and snoozed ones are not closed).
-_OPEN_ITEM = ("open", "missed", "snoozed")
-
-
 def letter_card(store: Store, document: Document, today: date) -> LetterAdvice | None:
     """The "get advice" card of a high-stakes letter, worked out on read from its kind, its dates,
     the amounts read from it, its text and its to-dos (:func:`ordnung.rules.advice.letter_advice`).
 
     Whether a to-do carries a landlord's notice is read from the to-dos themselves: one computed under
     § 574b BGB (the law's to-do or the letter's own objection date), whatever the reading's end date.
-    A letter is ``handled`` once the person closed every to-do it has (done or dismissed): its card is
-    then no longer urgent."""
+    A letter is ``handled`` once the person closed every to-do that carries its legal deadline
+    (:func:`ordnung.rules.advice.settles`): its card is then no longer urgent."""
     extraction = store.get_extraction(document.id)
     kind: str | None = document.kind
     if kind not in HIGH_STAKES_KINDS:
@@ -219,7 +216,8 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
     party = store.get_party(document.party_id) if document.party_id else None
     sender = party or (extraction.sender if extraction else None)
     items = store.list_items(doc_id=document.id)
-    return letter_advice(
+    card = partial(
+        letter_advice,
         kind,
         today=today,
         arrived=arrived,
@@ -240,8 +238,10 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
         objection_passed=end is not None
         and letter_date is not None
         and notice_objection_deadline(end) < letter_date,
-        handled=bool(items) and not any(item.status in _OPEN_ITEM for item in items),
     )
+    advice = card()
+    # which to-dos carry the letter's deadline follows from the card's rules
+    return card(handled=True) if advice is not None and settles(advice, items) else advice
 
 
 def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:

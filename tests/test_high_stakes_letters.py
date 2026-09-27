@@ -321,6 +321,23 @@ FRISTLOS = _notice(
     "hiermit kündigen wir das Mietverhältnis fristlos wegen Zahlungsverzugs.",
     end=None,
 )
+ARREARS_QUOTE = "Den Mietrückstand von 1.920,00 EUR zahlen Sie bitte bis zum 10.10.2026."
+#: A notice without notice period that also asks for the arrears — paying them doesn't deal with the notice.
+FRISTLOS_ARREARS = _notice(
+    "Fristlose Kuendigung Rueckstand",
+    f"hiermit kündigen wir das Mietverhältnis fristlos wegen Zahlungsverzugs. {ARREARS_QUOTE}",
+    end=None,
+)
+FRISTLOS_ARREARS.payload["items"] = [
+    {
+        "kind": "payment",
+        "title": "Pay the rent arrears",
+        "amount": 1920.0,
+        "direction": "out",
+        "date": {"type": "fixed", "date": "2026-10-10", "nature": "payment", "text": "bis zum 10.10.2026"},
+        "quote": ARREARS_QUOTE,
+    }
+]
 HILFSWEISE = _notice(
     "Kündigung fristlos, hilfsweise fristgerecht",
     "hiermit kündigen wir das Mietverhältnis fristlos, hilfsweise fristgerecht zum 31.03.2027.",
@@ -581,6 +598,7 @@ COURT_REQUEST = Letter(
 
 #: Routed by the first marker found: the letters that quote another's marker come first.
 LETTERS = (
+    FRISTLOS_ARREARS,
     REMINDER,
     LATE_MIXED,
     RENT_INCREASE,
@@ -990,6 +1008,9 @@ def test_only_a_statement_the_card_calls_late_warns_its_payments() -> None:
     )
     assert late_statement_warning(True, None, text, entered) == LATE_STATEMENT_WARNING
     assert late_statement_warning(True, None, text, replace(entered, received_confirmed=False)) is None
+    # final review 2: an earlier date the statement gives an enclosure doesn't replace the arrival entered
+    enclosing = f"{text}\nAnlage: Heizkostenabrechnung der Techem vom 20.03.2026"
+    assert late_statement_warning(True, None, enclosing, entered) == LATE_STATEMENT_WARNING
     assert is_statement("operating_costs", None) and not is_statement("dismissal", _reading(STATEMENT))
     assert is_statement("utility_bill", _reading(STATEMENT)) and not is_statement("utility_bill", None)
 
@@ -1151,9 +1172,48 @@ async def test_a_card_settles_once_the_person_closed_every_to_do(data_dir: Path,
         for item in items:
             response = await api.client.patch(f"/api/items/{item.id}", json={"status": "done"})
             assert response.status_code == 200
-        assert not (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]["urgent"]
+        settled = (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]
+        assert not settled["urgent"] and settled["handled"]
+        # final review 2: it doesn't ask for the delivery day any more
+        assert not any(
+            step.startswith(("Find the delivery date", "Enter the day")) for step in settled["steps"]
+        )
         await api.client.patch(f"/api/items/{items[0].id}", json={"status": "open"})
+        reopened = (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]
+        assert reopened["urgent"] and not reopened["handled"]
+
+
+async def test_paying_the_arrears_doesnt_settle_a_notice_without_notice_period(data_dir: Path) -> None:
+    """Final review 2: the arrears a notice without notice period demands are no to-do that carries the
+    notice: paying them (§ 569 Abs. 3 Nr. 2 BGB can undo it, but not always) never files the letter away —
+    its card stays urgent and the verdict keeps saying "get advice now"."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, FRISTLOS_ARREARS)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "landlord_notice" and detail["advice"]["urgent"]
+        [arrears] = detail["items"]
+        assert arrears["kind"] == "payment" and arrears["origin"] == "extracted"
+        response = await api.client.patch(f"/api/items/{arrears['id']}", json={"status": "done"})
+        assert response.status_code == 200
+        advice = (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]
+        assert advice["urgent"] and not advice["handled"]
+        assert advice["facts"][0]["title"].startswith("This reads as a notice without notice period")
+
+
+async def test_another_to_do_of_a_dismissal_doesnt_settle_it(data_dir: Path) -> None:
+    """Final review 2: only the to-dos that carry the letter's legal deadline settle it: closing another one
+    (returning the keys) doesn't, closing those does even while the other stays open."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, DISMISSAL)
+        other = api.ctx.store.add_item(
+            kind="task", title="Return the keys", doc_id=doc_id, origin="manual", status="done"
+        )
         assert (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]["urgent"]
+        api.ctx.store.update_item(other.id, status="open")
+        for item in _by_origin(api, doc_id)["rule"]:
+            await api.client.patch(f"/api/items/{item.id}", json={"status": "done"})
+        advice = (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]
+        assert advice["handled"] and not advice["urgent"]
 
 
 async def test_any_court_letter_asks_for_the_delivery_date(data_dir: Path) -> None:

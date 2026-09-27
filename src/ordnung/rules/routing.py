@@ -58,8 +58,9 @@ Nebenkostenabrechnung in its title, or with a tenancy or a billing period; the m
 reminder (``dunning``), which quotes an old statement without being it; and the sender is not a utility
 or a public body, which may ask for a statement without sending one). A later letter about a statement
 that isn't a reminder (a reply to objections) may still be recognised: its card and its payments count
-from the statement's own date when the letter gives one ("Abrechnung … vom 15.11.2024",
-:func:`~ordnung.rules.advice.statement_arrival`), never from the later letter's date. The person may
+from the statement's own date when the letter gives one ("Abrechnung 2023 vom 15.11.2024" — the statement
+whose billing period it names, :func:`~ordnung.rules.advice.statement_arrival`), never from the later
+letter's date. The person may
 still file a letter as ``operating_costs``.
 
 "The reading names" means its title, summary, quotes, date wordings and legal bases, never the
@@ -87,8 +88,9 @@ under it — not a date that merely mentions it, like a severance payment "if yo
 order's payment date, which would turn "pay or object" into "pay"). A landlord's notice
 without notice period (:func:`extraordinary_notice`: its own quote or the title says *fristlos*, not
 negated ("nicht nur fristlos" is no negation), not only reserved — the reservation must govern the
-notice, "eine fristlose Kündigung behalten wir uns vor" — and not "mit der gesetzlichen Frist", and the
-tenancy ends within two months) gets no
+notice, "eine fristlose Kündigung behalten wir uns vor" — and not "mit (der) gesetzlichen Frist" or "mit
+gesetzlicher Kündigungsfrist" (§ 573d BGB; "with statutory notice"), and the tenancy ends within two
+months) gets no
 objection to-do: the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB) — unless its own
 quote or the title also gives notice with a notice period in the alternative (*hilfsweise fristgemäß*),
 which it applies to. Any *hilfsweise* in them counts, even one that only reserves the ordinary notice:
@@ -132,9 +134,10 @@ _LEGAL_FORM = re.compile(
 #: Words inside a place's name ("Frankfurt am Main", "Neustadt a. d. Weinstraße", "Berlin II").
 _PLACE_JOINER = re.compile(r"am|an|der|im|in|bei|ob|vor|a\.|d\.|i\.|[IVX]+", re.I)
 #: Sender kinds a court's abbreviation is read for: a court is a public authority in the model's reading
-#: (or of no particular kind); ``None`` when the kind is unknown (a recipient typed in: a court's sending
-#: rules are the safe side). Never a retailer, a landlord, a company …
-_COURT_KINDS = (None, "authority", "other")
+#: (or of no particular kind). Never a retailer, a landlord, a company … — nor a name of unknown kind (a
+#: recipient typed in: "LG Electronics", "AG Hausverwaltung Müller" are no courts; only a court's full
+#: name makes one).
+_COURT_KINDS = ("authority", "other")
 _LABOUR_COURT = re.compile(r"(?i:arbeitsgericht)|\b(?:ArbG|LAG)\s")
 #: Senders that name a court without being one: a bailiff ("Gerichtsvollzieher bei dem Amtsgericht …",
 #: "Obergerichtsvollzieherin …, Amtsgericht Köln") or a court cashier.
@@ -209,12 +212,14 @@ _RESERVED_AFTER = re.compile(
     re.I,
 )
 _SENTENCE_END = re.compile(r"[!?;\n]|\.(?=\s+[A-ZÄÖÜ]|\s*$)")
-#: A special termination with the statutory notice period: the hardship objection applies to it
-#: (§ 575a Abs. 2 BGB for § 573d; the buyer at a forced sale, § 57a ZVG; the insolvency administrator,
-#: § 111 InsO; heirs, § 564 BGB; the end of a usufruct, § 1056 BGB).
+#: A special termination with the statutory notice period ("mit der gesetzlichen Frist", "mit gesetzlicher
+#: Kündigungsfrist" as § 573d BGB is headed, "with statutory notice"): the hardship objection applies to it
+#: (§ 574 Abs. 1 BGB excludes only a notice without notice period; § 575a Abs. 2 BGB for a fixed term; the
+#: buyer at a forced sale, § 57a ZVG; the insolvency administrator, § 111 InsO; heirs, § 564 BGB; the end
+#: of a usufruct, § 1056 BGB).
 _STATUTORY_PERIOD = re.compile(
-    r"(?:mit|unter\s+einhaltung)\s+(?:der\s+|einer\s+)?gesetzlichen\s+(?:kündigungs)?frist|"
-    r"statutory notice period|\b57(?:3d|5a)\b[^§]{0,20}\bBGB\b|\b57a\b[^§]{0,20}\bZVG\b|"
+    r"(?:mit|unter\s+(?:einhaltung|wahrung))\s+(?:der\s+|einer\s+)?gesetzliche[nr]?\s+(?:kündigungs)?frist|"
+    r"statutory\s+(?:notice(?:\s+period)?|period)|\b57(?:3d|5a)\b[^§]{0,20}\bBGB\b|\b57a\b[^§]{0,20}\bZVG\b|"
     r"\b111\b[^§]{0,20}\bInsO\b|\b564\b[^§]{0,20}\bBGB\b|\b1056\b[^§]{0,20}\bBGB\b",
     re.I,
 )
@@ -339,9 +344,9 @@ def _names_a_place(rest: str) -> bool:
 def is_court(name: str, kind: str | None = None) -> bool:
     """Whether a sender's name is a court's (policy 1): it names a kind of court (*Amtsgericht*, also *des
     Amtsgerichts*; *Zentrales Mahngericht*), or abbreviates one before its place (*AG Hagen*, *ArbG
-    Berlin*) when the sender's ``kind`` is an authority, ``other`` or unknown — a retailer "LG
-    Electronics", a landlord "OLG Immobilien" is no court — and is no bailiff or court cashier. Not
-    recognised: a court named only in English."""
+    Berlin*) when the sender's ``kind`` is an authority or ``other`` — a retailer "LG Electronics", a
+    landlord "OLG Immobilien", or a name of unknown kind (``None``: a recipient typed in) is no court — and
+    is no bailiff or court cashier. Not recognised: a court named only in English."""
     if _NOT_A_COURT.search(name):
         return False
     if _COURT_SENDER.search(name):
@@ -435,7 +440,8 @@ def extraordinary_notice(extraction: DocumentExtraction, letter_date: date | Non
     Only the termination's own quote and the reading's title count — never the model's summary or
     other quotes, which may mention a *fristlose Kündigung* the landlord only reserves. The wording must
     say it (*fristlos*, *außerordentlich*, "ohne Einhaltung einer Kündigungsfrist", § 543 or § 569 BGB),
-    not deny or reserve it, and not give the statutory period (*mit der gesetzlichen Frist*: a special
+    not deny or reserve it, and not give the statutory period (*mit der gesetzlichen Frist*, *mit
+    gesetzlicher Kündigungsfrist*, "with statutory notice": a special
     termination the objection applies to). And the tenancy must end soon: no end stated, or one less
     than two months after the letter's date (``letter_date``, else the reading's) — unless it is the end
     of a notice given in the alternative (*hilfsweise*). When unsure, it is an ordinary notice: its

@@ -221,23 +221,30 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   4-day fiction — and is never `high`; a labour court's orders give one week (§ 46a Abs. 3, § 59 ArbGG;
   `RuleContext.labour_court`), in their dates, to-dos, card and sending advice. A landlord's notice is
   one without notice period only when its own quote or the title says so, not negated, not only
-  reserved (a reservation of the notice itself) or "mit der gesetzlichen Frist", and the tenancy ends
+  reserved (a reservation of the notice itself) or "mit (der) gesetzlichen / gesetzlicher Frist" (§ 573d BGB;
+  "with statutory notice" in the title), and the tenancy ends
   within two months; then there is no hardship objection to-do, and the card and the composer offer no
   objection letter (unless its own words give notice in the alternative). Without a to-do computed under
   § 574b (no notice period, no end read, or an ordinary notice whose objection date had passed when it was
   written — the card then says so) the landlord's card is urgent and the verdict says "get advice
-  now"; once the person has closed every to-do of a high-stakes letter its card is no longer urgent and
-  the verdict says it is filed. The objection is for a home only (not a garage or business premises, § 578
+  now"; once the person has closed every to-do that carries a high-stakes letter's legal deadline (the
+  law's, or one citing a rule of its card — never the arrears a notice demands or a handover appointment)
+  its card is no longer urgent (`advice.handled`, which the verdict uses), stops asking for the delivery
+  day, and the verdict says it is filed; a landlord's notice no objection to-do carries never is. The objection is for a home only (not a garage or business premises, § 578
   BGB). A rent increase is a
   consent request unless its own quote or title names another kind of increase or a quote says consent
   isn't needed; its payment to-dos say the higher rent is only owed once the person agrees (§ 558b Abs. 1
-  BGB). What a termination ends is decided by its contract, then the letter's kind, then the sender's (an
+  BGB), and the verdict holds back "Pay" until the person closed the consent decision. What a termination ends is decided by its contract, then the letter's kind, then the sender's (an
   employer's company flat is a landlord's notice); a court's abbreviation ("AG Hagen") counts only before a
-  place and from a sender read as an authority (not a retailer, landlord or company), and every court
-  letter's periods cite § 180 ZPO. Rule to-dos are filed on read and when the person chooses the kind; a
+  place and from a sender read as an authority (not a retailer, landlord or company, nor a recipient typed
+  in without its kind — only a court's full name makes that one a court), and every court letter's periods
+  cite § 180 ZPO — except a court's own period the letter counts from its own date (§ 221 ZPO), which the
+  envelope date never moves. Rule to-dos are filed on read and when the person chooses the kind; a
   changed region, postal buffer or arrival day only recomputes those left, so a deleted one stays
   deleted. An operating-cost statement is recognised on read only, never from a reminder about one, and
-  counts from the statement's own date when a later letter dates it ("Abrechnung … vom 15.11.2024"); its card
+  counts from the statement's own date when a later letter dates it ("Abrechnung 2023 vom 15.11.2024": after
+  the billing period, of that period's year — never an enclosure's or another year's statement's date in a
+  statement that prints its own billing period); its card
   checks the 12-month limit of § 556 Abs. 3 BGB from the latest billing period the letter names (in
   figures, words, ISO dates or months, or a billing year) and calls a statement late only when it
   certainly is: only a range the letter calls its billing period decides (any other range or a billing

@@ -898,3 +898,26 @@ async def test_a_withdrawal_to_a_company_named_like_a_court_may_go_by_email(
     assert draft.send_guidance is not None
     [email] = [channel for channel in draft.send_guidance.channels if channel.channel == "email"]
     assert email.allowed is not court
+
+
+@pytest.mark.parametrize(
+    ("recipient", "court"),
+    [
+        ("LG Electronics\nPostfach 1\n65760 Eschborn", False),
+        ("OLG Immobilien\nHauptstr. 1\n10115 Berlin", False),
+        ("AG Hausverwaltung Müller\nHauptstr. 2\n10115 Berlin", False),
+        ("Amtsgericht Hagen\nHeinitzstraße 42\n58097 Hagen", True),
+    ],
+)
+async def test_a_typed_recipient_is_a_court_only_by_its_full_name(
+    ctx: AppContext, recipient: str, court: bool
+) -> None:
+    """Final review 2: a recipient typed in has no kind, so a court's abbreviation ("LG", "OLG", "AG") in a
+    company's name doesn't give it a court's sending advice: e-mail stays valid, no Aktenzeichen is asked."""
+    details = LetterDetails(recipient=recipient, subject_matter="Fernseher", received_on="2026-09-24")
+    draft = await compose(ctx, "withdrawal", details=details)
+    assert draft.send_guidance is not None
+    [email] = [channel for channel in draft.send_guidance.channels if channel.channel == "email"]
+    assert email.allowed is not court
+    texts = " ".join(f"{channel.label} {channel.note}" for channel in draft.send_guidance.channels)
+    assert ("Rechtsantragstelle" in texts) is court

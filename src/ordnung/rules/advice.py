@@ -31,20 +31,24 @@ Computed facts, each with the policy that keeps it honest:
   Zeitraum vom …") can decide; from any other range or a billing year it is at most "probably late —
   check the billing period", and "on time" is only certain when neither the weekend/holiday shift of the
   deadline nor an unknown Land decided it. Without a period, nothing is claimed. The statement arrived on
-  the day the person entered, else on its own date — and when the text dates the statement before the
-  letter's own date ("aus unserer Betriebskostenabrechnung 2023 vom 15.11.2024"), the letter is a later
-  one about it (a reminder, a reply to objections), so that earlier date counts, never confirmed
-  (:func:`statement_arrival`).
+  the day the person entered, else on its own date — and when the text dates the statement whose billing
+  period it names before the letter's own date ("aus unserer Betriebskostenabrechnung 2023 vom
+  15.11.2024": after the period ended, with its year, or with no year in a letter that prints no billing
+  period of its own), the letter is a later one about it (a reminder, a reply to objections), so that
+  earlier date counts, never confirmed (:func:`statement_arrival`). A letter that prints its own billing
+  period is the statement: an earlier date in it for an enclosure (the metering company's heating
+  statement) or another year's statement never replaces its arrival.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from itertools import pairwise
 
-from ordnung.models import AdviceFact, HelpLink, LetterAdvice
+from ordnung.models import AdviceFact, HelpLink, Item, LetterAdvice
 from ordnung.rules import catalog
 from ordnung.rules.consumer import latest_barred_year
 from ordnung.rules.explain import fmt_date
@@ -293,10 +297,11 @@ def billing_period(text: str, *, before: date | None = None) -> BillingPeriod | 
     return None if latest.comparison else latest.period
 
 
-def statement_date(text: str) -> date | None:
-    """The earliest full date ``text`` gives an operating-cost statement ("… Betriebskostenabrechnung 2023
-    vom 15.11.2024"), or ``None`` — never the start of a billing period ("Abrechnung vom 01.01.2024 bis …")."""
-    found: list[date] = []
+def _dated_statements(text: str) -> list[tuple[date, int | None]]:
+    """Every full date ``text`` gives a statement ("… Betriebskostenabrechnung 2023 vom 15.11.2024"), with
+    the billing year the words before it name (``2023``; ``None`` for "Ihre Abrechnung vom …") — never the
+    start of a billing period ("Abrechnung vom 01.01.2024 bis …")."""
+    found: list[tuple[date, int | None]] = []
     for label in _STATEMENT_OF.finditer(text):
         token = _DATE_TOKEN.match(text, label.end())
         if token is None:
@@ -306,23 +311,46 @@ def statement_date(text: str) -> date | None:
         if day is None or year is None or (separator and _DATE_TOKEN.match(text, separator.end())):
             continue
         try:
-            found.append(date(year, month, day))
+            dated = date(year, month, day)
         except ValueError:
             continue
-    return min(found, default=None)
+        named = _YEAR_RE.search(label.group())
+        billing_year = None if named is None else _year(named[2]) if named[2] else int(named[1])
+        found.append((dated, billing_year))
+    return found
+
+
+def statement_date(text: str) -> date | None:
+    """The earliest full date ``text`` gives an operating-cost statement ("… Betriebskostenabrechnung 2023
+    vom 15.11.2024"), or ``None`` — never the start of a billing period ("Abrechnung vom 01.01.2024 bis …")."""
+    return min((dated for dated, _ in _dated_statements(text)), default=None)
 
 
 def statement_arrival(
     text: str, arrived: date | None, confirmed: bool, letter_date: date | None
 ) -> tuple[date | None, bool]:
     """``(arrival, confirmed)`` of the statement a letter is or is about (policy above): the day the letter
-    arrived (``arrived``, ``confirmed`` when the person entered it) — unless its text dates the statement
-    before the letter's own date (``letter_date``). Then the letter is a later one about the statement (a
-    reminder, a reply to objections), and the statement's date is the earliest it can have arrived; the
-    day this letter arrived says nothing about it."""
-    dated = statement_date(text)
-    if dated is not None and letter_date is not None and dated < letter_date:
-        return dated, False
+    arrived (``arrived``, ``confirmed`` when the person entered it) — unless its text dates *the statement
+    whose billing period it names* before the letter's own date (``letter_date``). Then the letter is a
+    later one about that statement (a reminder, a reply to objections), and the statement's date is the
+    earliest it can have arrived; the day this letter arrived says nothing about it.
+
+    A date is the statement's only when it is after that billing period ended (a statement is written
+    after its period; an earlier one is a previous year's) and the words before it name that period's year
+    ("Betriebskostenabrechnung 2023 vom …") — or name no year while the letter prints no billing period of
+    its own ("Abrechnungszeitraum: …"): a letter that does is the statement itself, and a date in it
+    belongs to something it encloses (the metering company's "Heizkostenabrechnung der Techem vom …").
+    Another year's statement ("das Guthaben aus der Abrechnung 2023 vom …") never counts. Missed: an
+    enclosure dated with the statement's own year ("Heizkostenabrechnung 2024 der Techem vom …")."""
+    if letter_date is None:
+        return arrived, confirmed
+    prints_own_period = any(found.period.labelled for found in _ranges(text, None))
+    for dated, billing_year in sorted(_dated_statements(text), key=lambda found: found[0]):
+        period = billing_period(text, before=dated)
+        if dated >= letter_date or period is None or period.end >= dated:
+            continue
+        if (billing_year == period.end.year) if billing_year is not None else not prints_own_period:
+            return dated, False
     return arrived, confirmed
 
 
@@ -394,10 +422,11 @@ LATE_STATEMENT_WARNING = (
 
 
 #: What a rent increase's payment to-dos say (the model often reads the new total as a payment): the higher
-#: rent is only owed once the person agrees, and paying it can count as agreeing (§ 558b Abs. 1 BGB).
+#: rent is only owed once the person agrees, and paying it can count as agreeing (§ 558b Abs. 1 BGB). The
+#: receipt keeps it after the person decided, so it says what holds either way.
 RENT_INCREASE_PAYMENT_WARNING = (
     "The higher rent is only owed once you agree to the increase (§ 558b Abs. 1 BGB), and paying it can count "
-    "as agreeing. Decide first — until then your current rent stays due."
+    "as agreeing. If you haven't agreed yet, decide first — until then your current rent stays due."
 )
 
 
@@ -491,12 +520,16 @@ def _statement(text: str, arrived: date | None, confirmed: bool, region: str | N
 # -------------------------------------------------------------------------------------------- cards
 
 
-def _labour_court_order(kind: str, today: date, delivered: str | None, *, urgent: bool) -> LetterAdvice:
+def _labour_court_order(kind: str, today: date, delivered: str | None, *, handled: bool) -> LetterAdvice:
     """The card of a labour court's order: like a civil court's, but with one week (§ 46a Abs. 3, § 59
     ArbGG) and the labour court's own office — its orders can't be answered at online-mahnantrag.de."""
     step = (
-        delivered
-        or "Find the delivery date on the yellow envelope and enter it as the day the letter arrived."
+        []
+        if handled
+        else [
+            delivered
+            or "Find the delivery date on the yellow envelope and enter it as the day the letter arrived."
+        ]
     )
     if kind == "court_payment_order":
         return LetterAdvice(
@@ -507,9 +540,10 @@ def _labour_court_order(kind: str, today: date, delivered: str | None, *, urgent
                 "reclaiming pay. The court has not checked whether that is true. At a labour court you have only "
                 "one week from delivery to pay or object (Widerspruch)."
             ),
-            urgent=urgent,
+            urgent=not handled,
+            handled=handled,
             steps=[
-                step,
+                *step,
                 "If you don't owe the money, or not all of it, object on the enclosed form and send it to the "
                 "labour court at once, or have it taken down at the court's office. You don't have to give reasons.",
                 "If you do owe it, pay the claimant — not the court — including the costs listed.",
@@ -526,9 +560,10 @@ def _labour_court_order(kind: str, today: date, delivered: str | None, *, urgent
             "This order can be enforced right away, like a judgment. At a labour court you have one week from "
             "delivery to object (Einspruch), and this period can't be extended."
         ),
-        urgent=urgent,
+        urgent=not handled,
+        handled=handled,
         steps=[
-            step,
+            *step,
             "To object, write to the labour court that issued the order — not by e-mail — or make it for the "
             "record at the court's office.",
             "An objection doesn't stop enforcement by itself; ask for advice about suspending it.",
@@ -540,6 +575,14 @@ def _labour_court_order(kind: str, today: date, delivered: str | None, *, urgent
     )
 
 
+#: What paying rent arrears in time undoes (§ 569 Abs. 3 Nr. 2 BGB): only the notice without notice period,
+#: and not when that already happened within two years (S. 2) — never a notice with a period given as well
+#: (BGH, 19.09.2018, VIII ZR 231/17 and VIII ZR 261/17).
+ARREARS_CURE = (
+    "paying all of them — at the latest two months after an eviction suit is served — can undo the notice "
+    "without notice period (not if that already happened within the last two years), but not a notice with a "
+    "notice period given as well"
+)
 #: § 549 Abs. 2 BGB: no hardship objection (§§ 574–575) and no consent procedure (§§ 557–561) for these.
 _SHORT_LET = "a short let or a furnished room in the flat your landlord lives in (§ 549 Abs. 2 BGB)"
 #: §§ 574–574b BGB are rules for a home (Wohnraum); other premises follow § 578 BGB, without them.
@@ -552,13 +595,12 @@ def _notice_without_period(alternative: bool) -> AdviceFact:
         text = (
             "The hardship objection doesn't apply to a notice without notice period, only to the notice the "
             "landlord gives with a notice period in the alternative (hilfsweise) — object to that one in time. "
-            "If it is for rent arrears, paying all of them in time can still undo it. Get advice at once."
+            f"If it is for rent arrears, {ARREARS_CURE}. Get advice at once."
         )
     else:
         text = (
             "The hardship objection doesn't apply to it, so Ordnung doesn't draft one. If it is for rent "
-            "arrears, paying all of them — at the latest two months after an eviction suit is served — can "
-            "still undo it. Get advice at once."
+            f"arrears, {ARREARS_CURE}. Get advice at once."
         )
     return AdviceFact(
         title="This reads as a notice without notice period (fristlos)",
@@ -574,8 +616,8 @@ def _no_objection_todo(end_unknown: bool, passed: bool) -> str:
         return (
             "Your tenancy would end less than two months after this letter was written, so the day an objection "
             "had to reach the landlord (two months before the end) had already passed: there is no to-do for it. "
-            "A notice this short may have the wrong notice period (a landlord's is at least three months, § 573c "
-            "Abs. 1 BGB). If the landlord didn't tell you in time about your right to object, you can still object "
+            "A notice this short may have the wrong notice period (a landlord's is usually about three months, "
+            "§ 573c Abs. 1 BGB). If the landlord didn't tell you in time about your right to object, you can still object "
             "at the first hearing of an eviction suit (§ 574b Abs. 2 S. 2 BGB). Get advice now."
         )
     if end_unknown:
@@ -587,6 +629,32 @@ def _no_objection_todo(end_unknown: bool, passed: bool) -> str:
         "There is no to-do for the objection. It must reach the landlord at the latest two months before the "
         "tenancy ends (§ 574b Abs. 2 BGB) — check the end date in the notice."
     )
+
+
+def _unless(handled: bool, step: str) -> list[str]:
+    """A step that asks for the delivery day, left out once the letter is handled."""
+    return [] if handled else [step]
+
+
+#: A to-do still to act on (missed and snoozed ones are not closed).
+_OPEN = ("open", "missed", "snoozed")
+
+
+def settles(card: LetterAdvice, items: Sequence[Item]) -> bool:
+    """Whether the person has dealt with a high-stakes letter, for its card's ``handled``: every to-do that
+    carries its legal deadline is closed (done or dismissed), and there is one. Those are the to-dos the
+    law added (``origin`` "rule") and the ones whose receipt cites a rule of the card (the letter's own
+    objection date, a court order's periods, a late statement's back-payment) — never another to-do of the
+    letter: paying the arrears a notice without notice period demands, a handover appointment, returning a
+    laptop after a dismissal. :func:`letter_advice` adds that a landlord's notice without such a to-do is
+    never handled."""
+    rules = set(card.rule_ids)
+    carrying = [
+        item
+        for item in items
+        if item.origin == "rule" or (item.computation is not None and rules & set(item.computation.rule_ids))
+    ]
+    return bool(carrying) and not any(item.status in _OPEN for item in carrying)
 
 
 def letter_advice(
@@ -621,11 +689,16 @@ def letter_advice(
     the letter's own objection date. Without one the card is urgent (shown first) and says why:
     ``end_unknown`` (the notice's end wasn't read), ``objection_passed`` (the end is less than two months
     after the letter, so the objection date had passed when it was written), or else no reason Ordnung
-    knows. A notice without notice period is always urgent. ``handled``: the person has closed every to-do
-    of the letter (done or dismissed), so the card is no longer urgent — it stays as information, and the
-    verdict says the letter is filed instead of "get advice now".
+    knows. ``handled``: the person has closed every to-do that carries the letter's legal deadline
+    (:func:`settles`), so the card is no longer urgent and says so (``LetterAdvice.handled``) — it stays as
+    information without asking for the delivery day, and the verdict says the letter is filed instead of
+    "get advice now". A landlord's notice that no to-do carries the objection for (``objection_todo``
+    false) or that reads as one without notice period is never handled: paying the arrears or a handover
+    appointment doesn't deal with it — a notice without notice period is always urgent.
     ``labour_court``: a court order from a labour court, which gives one week (§ 46a Abs. 3, § 59 ArbGG).
     """
+    if kind == "landlord_notice" and (extraordinary or not objection_todo):
+        handled = False
     delivered = (
         "The period counts from the delivery date you entered, or from an earlier start the letter names "
         "(see “Why this date?”) — check it matches the yellow envelope."
@@ -633,7 +706,7 @@ def letter_advice(
         else None
     )
     if kind in ("court_payment_order", "enforcement_order") and labour_court:
-        return _labour_court_order(kind, today, delivered, urgent=not handled)
+        return _labour_court_order(kind, today, delivered, handled=handled)
     if kind == "court_payment_order":
         return LetterAdvice(
             kind=kind,
@@ -644,9 +717,13 @@ def letter_advice(
                 "otherwise the claimant can get an enforcement order and have the money collected."
             ),
             urgent=not handled,
+            handled=handled,
             steps=[
-                delivered
-                or "Find the delivery date on the yellow envelope and enter it as the day the letter arrived.",
+                *_unless(
+                    handled,
+                    delivered
+                    or "Find the delivery date on the yellow envelope and enter it as the day the letter arrived.",
+                ),
                 "If you don't owe the money, or not all of it, object on the enclosed form (or online) and send "
                 "it to the court. You don't have to give reasons.",
                 "If you do owe it, pay the claimant — not the court — including the costs listed.",
@@ -665,9 +742,13 @@ def letter_advice(
                 "to object (Einspruch), and this period can't be extended."
             ),
             urgent=not handled,
+            handled=handled,
             steps=[
-                delivered
-                or "Find the delivery date on the yellow envelope (or the bailiff's papers) and enter it.",
+                *_unless(
+                    handled,
+                    delivered
+                    or "Find the delivery date on the yellow envelope (or the bailiff's papers) and enter it.",
+                ),
                 "To object, write to the court that issued the order — not by e-mail — or go to its "
                 "Rechtsantragstelle. Another Amtsgericht can take it down too, but it only counts once their "
                 "record reaches the issuing court, so go early.",
@@ -688,10 +769,14 @@ def letter_advice(
                 "counts as valid, even if it wasn't."
             ),
             urgent=not handled,
+            handled=handled,
             steps=[
-                "The three weeks count from the day you received it, which you entered — check it's right."
-                if arrival_confirmed
-                else "Enter the day you received the dismissal — the three weeks count from then.",
+                *_unless(
+                    handled,
+                    "The three weeks count from the day you received it, which you entered — check it's right."
+                    if arrival_confirmed
+                    else "Enter the day you received the dismissal — the three weeks count from then.",
+                ),
                 "Get advice today: your union, an employment lawyer or the labour court's Rechtsantragstelle.",
                 "Register as job-seeking at the Agentur für Arbeit in time (see the to-do).",
                 "That doesn't replace registering as unemployed (arbeitslos melden): do that too, online or in "
@@ -717,7 +802,7 @@ def letter_advice(
         if not extraordinary:
             steps.append(
                 "A notice without notice period (fristlos) can't be met with this objection. If it is for rent "
-                "arrears, paying all of them in time can still undo it (§ 569 Abs. 3 Nr. 2 BGB) — get advice at once."
+                f"arrears (§ 569 Abs. 3 Nr. 2 BGB), {ARREARS_CURE}. Get advice at once."
             )
         if not objection_todo and not extraordinary:
             steps.insert(0, _no_objection_todo(end_unknown, objection_passed))
@@ -730,6 +815,7 @@ def letter_advice(
                 "at the latest two months before the tenancy ends."
             ),
             urgent=(extraordinary or not objection_todo) and not handled,
+            handled=handled,
             steps=steps,
             facts=[_notice_without_period(alternative)] if extraordinary else [],
             help=[TENANTS, LEGAL_AID],
@@ -753,6 +839,7 @@ def letter_advice(
             ],
             facts=[_rent_cap(old_amount, new_amount)],
             help=[TENANTS],
+            handled=handled,
             rule_ids=["bgb_558b", "bgb_558_3", "bgb_549"],
         )
     if kind == "operating_costs":
@@ -768,6 +855,7 @@ def letter_advice(
                 "months of receiving it."
             ),
             urgent=late and not handled,
+            handled=handled,
             steps=[
                 *(
                     ["Don't pay a back-payment before you have checked whether this statement came too late."]
