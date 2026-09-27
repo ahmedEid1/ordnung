@@ -114,3 +114,24 @@ for (const width of [320, 390, 1280, 1920]) {
     expect(await outOfBounds(page)).toEqual([]);
   });
 }
+
+test("“Read again and compare” never drops keyboard focus to the start of the page", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openTrace(page, /Payment Reminder|Mahnung/);
+  const id = await documentId(page, /Payment Reminder|Mahnung/);
+  const readAgain = page.getByRole("button", { name: "Read again and compare" });
+  const reprocess = `**/api/documents/${id}/reprocess`;
+  // the demo is shared by the other tests, so the letter isn't really read again: the server answers here.
+  // Refused: the button was busy (Chromium moves focus off a disabled button) — focus comes back to it
+  await page.route(reprocess, (route) => route.fulfill({ status: 409, json: { detail: "This letter is being read right now." } }));
+  await readAgain.focus();
+  await page.keyboard.press("Enter");
+  await expect(readAgain).toBeFocused();
+  // accepted: while the letter is read, focus waits on the reading's heading
+  await page.unroute(reprocess);
+  const now = new Date().toISOString();
+  const job = { id: "job_e2e_focus", kind: "reprocess", status: "queued", stage: null, progress: 0, doc_id: id, attempts: 0, force: true, not_before: null, waiting_reason: null, error: null, created_at: now, updated_at: now };
+  await page.route(reprocess, (route) => route.fulfill({ status: 202, json: job }));
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { level: 2, name: /^Read on/ })).toBeFocused();
+});

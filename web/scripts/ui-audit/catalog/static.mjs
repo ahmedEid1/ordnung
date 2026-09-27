@@ -65,7 +65,13 @@ export async function staticCatalog({ webDir }) {
       await c.visible(inMain(c.page).getByRole("heading", { name: /decided differently/ }));
     });
   }
-  if (pick("doc_passport")) add("doc-passport--trace", "/documents/doc_passport?view=trace", "Static demo: How this was read for a phone photo (the page transcribed by Claude).");
+  if (pick("doc_passport")) {
+    add("doc-passport--trace", "/documents/doc_passport?view=trace", "Static demo: How this was read for a phone photo (the page transcribed by Claude).");
+    add("doc-passport--trace-quote", "/documents/doc_passport?view=trace", "Static demo: a photo's quote opened — its numbers found only in Claude's transcript.", async (c) => {
+      await c.click(steps(c).getByRole("button", { name: /^Quotes checked on the page/ }));
+      await c.click(inMain(c.page).getByRole("list", { name: /^Steps of “Quotes checked on the page”/ }).getByRole("button").first());
+    });
+  }
   if (pick("doc_nebenkosten")) {
     add("doc-nebenkosten--trace-open", "/documents/doc_nebenkosten?view=trace", "Static demo: a text PDF's steps with the quotes, the dates and the links opened.", async (c) => {
       for (const name of [/^Quotes checked on the page/, /^Dates computed/, /^Thread, contract & payment/]) await c.click(steps(c).getByRole("button", { name }).first());
@@ -182,6 +188,12 @@ export async function staticCatalog({ webDir }) {
     addHs("mail-dismissal--advice-card", "/inbox", "Dismissal: scrolled to the “get advice” card.", async (c) => {
       await readTray(c, dismissal);
       await c.scrollTo(inMain(c.page).locator("section[aria-labelledby^=advice-]"));
+    });
+    addHs("mail-dismissal--trace-law", "/inbox", "Dismissal: How this was read → To-dos filed → a deadline the law adds, opened (its law's citation).", async (c) => {
+      await readTray(c, dismissal);
+      await c.click(inMain(c.page).getByRole("tab", { name: "How this was read" }));
+      await c.click(inMain(c.page).getByRole("list", { name: "Steps of this reading" }).getByRole("button", { name: /^To-dos filed/ }));
+      await c.click(inMain(c.page).getByRole("list", { name: /^Steps of “To-dos filed”/ }).getByRole("button", { name: /Deadline the law adds/ }).first());
     });
   }
   for (const [kind, label] of [

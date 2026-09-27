@@ -7,6 +7,7 @@
 import type { Area, ComputationReceipt, DateSpec, ItemOrigin } from "@/api/types";
 import { ADVICE_LINKS, type AdviceLink } from "@/components/ui/Disclaimer";
 import { Receipt, ReceiptPopover, useReceiptSteps, type ReceiptDate } from "@/components/ui/Receipt";
+import { dueDateLabel, sendByLabel } from "./dateLabels";
 
 /** Independent advice links for high-stakes areas (tax, residence, rent, fines). */
 export function adviceFor(area: Area | null | undefined): AdviceLink[] | undefined {
@@ -36,13 +37,15 @@ export interface ReceiptViewProps {
    * words — never shown as what the letter says.
    */
   origin?: ItemOrigin | null;
+  /** The to-do is money you transfer (`isTransfer`): its send-by date is "Transfer by". */
+  transfer?: boolean;
 }
 
-export function ReceiptView({ receipt, spec, area, defaultShowRules = false, origin }: ReceiptViewProps) {
+export function ReceiptView({ receipt, spec, area, defaultShowRules = false, origin, transfer }: ReceiptViewProps) {
   const steps = useReceiptSteps(receipt.steps);
   const dates: ReceiptDate[] = [];
-  if (receipt.send_by) dates.push({ label: "Send by", date: receipt.send_by });
-  if (receipt.due_date) dates.push({ label: "Must arrive by", date: receipt.due_date });
+  if (receipt.send_by) dates.push({ label: sendByLabel(spec?.nature, transfer), date: receipt.send_by });
+  if (receipt.due_date) dates.push({ label: dueDateLabel(spec?.nature, Boolean(receipt.send_by)), date: receipt.due_date });
   if (receipt.safe_date && receipt.safe_date !== receipt.due_date) dates.push({ label: "Safe date (a working day)", date: receipt.safe_date });
   return (
     <Receipt
@@ -69,6 +72,7 @@ export function WhyThisDate({
   spec,
   area,
   origin,
+  transfer,
   context,
   title,
   className,
@@ -78,6 +82,8 @@ export function WhyThisDate({
   area?: Area | null;
   /** Where the to-do came from (see {@link ReceiptViewProps.origin}). */
   origin?: ItemOrigin | null;
+  /** The to-do is money you transfer (see {@link ReceiptViewProps.transfer}). */
+  transfer?: boolean;
   /** What the date belongs to (the to-do's title), for screen readers. */
   context?: string;
   /** The trigger's words (default "Why this date?"). */
@@ -86,7 +92,7 @@ export function WhyThisDate({
 }) {
   return (
     <ReceiptPopover
-      content={<ReceiptView receipt={receipt} spec={spec} area={area} origin={origin} />}
+      content={<ReceiptView receipt={receipt} spec={spec} area={area} origin={origin} transfer={transfer} />}
       context={context}
       title={title}
       className={className}

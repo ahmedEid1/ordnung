@@ -686,10 +686,14 @@ Pages:
    this was read** (`?view=trace`), shows the reading as a waterfall: summary (time, calls to
    Claude, tokens, API-equivalent cost, how it ended), then every step with its duration, opened to
    its facts (a model call's prompt and version, tokens and outcome, a repair linked to the call it
-   retried; each quote's grounding and digit check; each date's DateSpec → date with the same "Why
-   this date?" receipt; how the sender, thread and contract were linked; what happened to each
-   to-do); a reading picker and "Compare with reading N" when it was read again; the
-   `ordnung trace … --otel` command. Phones and tablets leave the page images out on this tab.
+   retried; each quote's grounding and digit check — a photo's numbers are matched only against
+   Claude's transcript, and it says so; each date's DateSpec → date, named by the deadline's nature
+   as on Today ("On" for an appointment, "Pay by"/"Transfer by" for a payment), with the same "Why
+   this date?" receipt, which lists the rules that made the date (a deadline the law adds names its
+   law); how the sender, thread and contract were linked; what happened to each to-do); a reading
+   picker and "Compare with reading N" when it was read again, and "Read again and compare" (not
+   in the online demo, which can't read a letter again); the `ordnung trace … --otel` command.
+   Phones and tablets leave the page images out on this tab.
 4. **Timeline** — year-ahead **life lanes** (Residence, Contracts, Tax, Study, Money, Health…) with a
    today line; below, month-grouped list (past/future), filters.
 5. **Contracts** — lanes chart (bars, hatched notice windows, send-by marker, today line), cards,

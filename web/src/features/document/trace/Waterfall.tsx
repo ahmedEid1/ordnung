@@ -12,6 +12,7 @@ import type { Item, RuleInfo, SpanKind, TraceSpan } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { TONES } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
+import { isTransfer } from "@/lib/payments";
 import { cn } from "@/lib/utils";
 import { useTodayISO } from "@/lib/today";
 import { WhyThisDate } from "../WhyThisDate";
@@ -60,6 +61,12 @@ function Bar({ span, total }: { span: TraceSpan; total: number }) {
   );
 }
 
+/** Whether a date step's to-do is money you transfer (unknown once the to-do is gone). */
+function transferOf(span: TraceSpan, ctx: WaterfallContext): boolean | undefined {
+  const item = span.kind === "rules" && span.ref?.type === "item" ? ctx.items.get(span.ref.id) : undefined;
+  return item ? isTransfer(item) : undefined;
+}
+
 /** What a step shows when opened: its facts, the call a repair retried, a date's receipt. */
 interface StepDetails {
   rows: { label: string; value: string }[];
@@ -70,10 +77,12 @@ interface StepDetails {
 
 function stepDetails(span: TraceSpan, ctx: WaterfallContext): StepDetails {
   const a = span.attributes;
-  const rows = spanDetails(span, ctx.partyName, ctx.today);
-  const ruleIds = Array.isArray(a.rule_ids) ? (a.rule_ids as string[]) : [];
-  const citations = [...new Set(ruleIds.map((id) => ctx.rules.get(id)?.citation || ctx.rules.get(id)?.title).filter(Boolean))];
-  if (citations.length) rows.push({ label: "Rules applied", value: citations.join(" · ") });
+  const rows = spanDetails(span, ctx.partyName, ctx.today, transferOf(span, ctx));
+  // a deadline the law adds names its law; a date's rules are in its receipt ("Why this date?"), whose
+  // steps say which rules made the date — the step's rule ids also list rules only checked (a weekend
+  // rule for authorities, consulted for a date it doesn't move), so they are never shown as applied
+  const law = typeof a.rule_id === "string" ? ctx.rules.get(a.rule_id) : undefined;
+  if (law) rows.unshift({ label: "The law", value: law.citation || law.title });
   const item = span.kind === "rules" && span.ref?.type === "item" ? ctx.items.get(span.ref.id) : undefined;
   return {
     rows,
@@ -135,7 +144,7 @@ function DateReceipt({ span, item, today }: { span: TraceSpan; item: Item; today
   const receipt = item.computation!;
   const due = typeof span.attributes.due_date === "string" ? span.attributes.due_date : null;
   const sendBy = typeof span.attributes.send_by === "string" ? span.attributes.send_by : null;
-  const receiptProps = { receipt, spec: item.date_spec, area: item.area, origin: item.origin, context: item.title };
+  const receiptProps = { receipt, spec: item.date_spec, area: item.area, origin: item.origin, transfer: isTransfer(item), context: item.title };
   if (receipt.due_date === due && (receipt.send_by ?? null) === sendBy) {
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted">
@@ -176,7 +185,7 @@ function StepRow({
   const count = steps.length;
   const opens = count > 0 || hasDetails(details);
   const open = opens && ctx.open.has(span.id);
-  const copy = spanCopy(span, ctx.today);
+  const copy = spanCopy(span, ctx.today, transferOf(span, ctx));
   const Icon = KIND_ICON[span.kind];
   // the demo replays Claude's answers with their recorded times; steps of code are not timed there
   const unmeasured = ctx.recorded && span.kind !== "model" && span.duration_ms === 0;

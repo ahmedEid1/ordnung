@@ -11,8 +11,9 @@
  *
  * Readings: a letter that was read has one (when it was read). The parking fine has two: on arrival the
  * extraction's first answer did not validate and a repair call fixed it; read again after a prompt
- * update it did not need one — so "Compare" has something to show. "Read again" in the session adds
- * one; every reading is built from the letter as it is now.
+ * update it did not need one — so "Compare" has something to show. "Read again" adds one in the mock
+ * mode of a local build (`?mock=1`); the online demo can't read a letter again, so it never offers
+ * to. Every reading is built from the letter as it is now.
  */
 import type {
   Case,

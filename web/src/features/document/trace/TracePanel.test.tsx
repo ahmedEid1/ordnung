@@ -197,6 +197,27 @@ describe("How this was read", () => {
     renderWithProviders(<TracePanel detail={await detailOf(srv, "doc_nebenkosten")} />);
     expect(await screen.findByText(/exports a reading for an OpenTelemetry viewer/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Copy command/ })).toBeNull();
+    // the option never breaks after its dashes on a phone ("--" / "otel")
+    expect(screen.getByText("--otel")).toHaveClass("whitespace-nowrap");
+  });
+
+  it("the online demo can't read a letter again, so it never offers to", async () => {
+    mode.staticDemo = true;
+    const { srv } = useMockApi({ staticDemo: true });
+    const detail = await detailOf(srv, "doc_parking");
+    const first = renderWithProviders(<TracePanel detail={detail} />);
+    expect(await screen.findByRole("button", { name: "Compare with reading 1" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Read again and compare" })).toBeNull();
+    expect(screen.queryByText(/replays Claude's recorded answers/)).toBeNull();
+    expect(screen.getByText("In your own Ordnung, “Read again and compare” asks Claude again and shows what changed.")).toBeInTheDocument();
+    first.unmount();
+
+    const empty: DocumentTrace = { doc_id: "doc_parking", run: null, runs: [], spans: [] };
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify(empty), { status: 200, headers: { "Content-Type": "application/json" } }));
+    renderWithProviders(<TracePanel detail={detail} />);
+    expect(await screen.findByRole("heading", { name: "No reading kept for this letter" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Read it again" })).toBeNull();
+    expect(screen.queryByText(/replays Claude's recorded answers/)).toBeNull();
   });
 });
 
@@ -251,13 +272,19 @@ describe("How this was read — what it links to and offers", () => {
     const { srv, calls } = useMockApi();
     const detail = await detailOf(srv, "doc_nebenkosten");
     const first = renderWithProviders(<TracePanel detail={detail} />);
-    await userEvent.click(await screen.findByRole("button", { name: "Read again and compare" }));
+    const readAgain = await screen.findByRole("button", { name: "Read again and compare" });
+    readAgain.focus();
+    await userEvent.keyboard("{Enter}");
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/documents/doc_nebenkosten/reprocess")).toBe(true));
+    // the button is busy, then gone: focus waits on the reading's heading, never on the page's body
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: /^Read on/ })).toHaveFocus());
     // the new reading, when it is there (the server says so), opens compared with the one before
     await waitFor(async () => expect((await detailOf(srv, "doc_nebenkosten")).document.status).not.toBe("processing"));
     handleServerEvent(first.client, { type: "document.processed", data: { doc_id: "doc_nebenkosten", status: "processed" } });
     expect(await screen.findByRole("region", { name: "What reading 2 decided differently from reading 1" }, { timeout: 4000 })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: /^Reading 2 · read again on/ })).toBeInTheDocument();
+    // and moves on to what changed
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "What reading 2 decided differently from reading 1" })).toHaveFocus());
     first.unmount();
 
     renderWithProviders(<TracePanel detail={{ ...detail, document: { ...detail.document, status: "processing" } }} />);
@@ -297,6 +324,33 @@ describe("How this was read — what it links to and offers", () => {
     await userEvent.click(reading1);
     const back = await screen.findByRole("button", { name: "Show the newest reading" });
     await waitFor(() => expect(back).toHaveFocus());
+    // the way back goes away when pressed: focus goes to the newest reading, not the page's body
+    await userEvent.keyboard("{Enter}");
+    const newest = await screen.findByRole("heading", { level: 2, name: /^Reading 2 · read again on/ });
+    await waitFor(() => expect(newest).toHaveFocus());
+  });
+
+  it("never lists the rules a date step only checked as applied", async () => {
+    const { srv } = useMockApi();
+    renderWithProviders(<TracePanel detail={await detailOf(srv, "doc_parking")} />);
+    await userEvent.click(await within(await screen.findByRole("list", { name: "Steps of this reading" })).findByRole("button", { name: /^Dates computed/ }));
+    const dates = screen.getByRole("list", { name: /^Steps of “Dates computed”/ });
+    await userEvent.click(within(dates).getByRole("button", { name: /^Pay the parking fine/ }));
+    expect(within(dates).getByRole("button", { name: /Why this date\?/ })).toBeInTheDocument();
+    expect(screen.queryByText("Rules applied")).toBeNull();
+    expect(screen.queryByText(/§ 187 Abs\. 1 BGB/)).toBeNull();
+  });
+
+  it("names the law of a deadline the law adds", async () => {
+    // the dismissal is in the New-mail tray: open it
+    const { srv } = useMockApi({ full: true });
+    renderWithProviders(<TracePanel detail={await detailOf(srv, "doc_dismissal")} />);
+    await userEvent.click(await within(await screen.findByRole("list", { name: "Steps of this reading" })).findByRole("button", { name: /^To-dos filed/ }));
+    const filed = screen.getByRole("list", { name: /^Steps of “To-dos filed”/ });
+    const law = within(filed).getAllByRole("button").find((b) => /Deadline the law adds/.test(b.textContent ?? ""))!;
+    await userEvent.click(law);
+    expect(within(filed).getByText("The law")).toBeInTheDocument();
+    expect(within(filed).getByText(/^§ 4 S\. 1 KSchG; § 7 KSchG$|^§ 38 Abs\. 1 SGB III/)).toBeInTheDocument();
   });
 });
 

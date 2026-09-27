@@ -8,6 +8,7 @@ import type { DateSpec, SpanKind, TraceChange, TraceRun, TraceSpan } from "@/api
 import type { Tone } from "@/lib/copy";
 import { formatCompact, formatDate, formatFileSize, formatUsd } from "@/lib/format";
 import { plural } from "@/lib/utils";
+import { dueDateLabel, sendByLabel } from "../dateLabels";
 
 type Attrs = Record<string, unknown>;
 
@@ -172,6 +173,26 @@ const QUOTE_TARGET: Record<string, string> = {
   remedy: "How to object",
 };
 
+/** Where a quote's numbers were found: a photo's are only in Claude's transcript, not on the paper. */
+function digitsText(a: Attrs): string {
+  if (a.digits_matched === false) return "not all in the closest passage";
+  if (a.digits_matched !== true) return "no close passage";
+  switch (str(a, "grounding")) {
+    case "verified":
+      return "all in the letter's text";
+    case "model_read":
+      return "all in Claude's transcript — compare with the paper letter";
+    default:
+      return "all in the passage found";
+  }
+}
+
+/** The nature of a date step's deadline (its DateSpec's). */
+const natureOf = (a: Attrs): string | null => {
+  const spec = a.spec;
+  return spec && typeof spec === "object" && typeof (spec as Attrs).nature === "string" ? ((spec as Attrs).nature as string) : null;
+};
+
 function groundingText(a: Attrs): string {
   const page = num(a, "page");
   switch (str(a, "grounding")) {
@@ -189,7 +210,7 @@ function groundingText(a: Attrs): string {
 }
 
 /** The title, a short summary and a flag for one step (see {@link SpanCopy}). */
-export function spanCopy(span: TraceSpan, today?: string): SpanCopy {
+export function spanCopy(span: TraceSpan, today?: string, transfer?: boolean): SpanCopy {
   const a = span.attributes;
   const named = span.label ? span.label : span.name;
   switch (span.kind) {
@@ -281,7 +302,7 @@ export function spanCopy(span: TraceSpan, today?: string): SpanCopy {
       const low = str(a, "confidence") === "low";
       return {
         title: named,
-        summary: due ? `→ ${day(due, today)}${sendBy ? ` · send by ${day(sendBy, today)}` : ""}` : "No date could be computed",
+        summary: due ? `→ ${day(due, today)}${sendBy ? ` · ${sendByLabel(natureOf(a), transfer).toLowerCase()} ${day(sendBy, today)}` : ""}` : "No date could be computed",
         flag: low ? { text: "Please check", tone: "warn" } : undefined,
       };
     }
@@ -378,7 +399,13 @@ export interface DetailRow {
 }
 
 /** The facts of one step as label/value rows (the view adds "Why this date?" and links). */
-export function spanDetails(span: TraceSpan, partyName: (id: string) => string | null = () => null, today?: string): DetailRow[] {
+export function spanDetails(
+  span: TraceSpan,
+  partyName: (id: string) => string | null = () => null,
+  today?: string,
+  /** A date step's to-do is money you transfer (`isTransfer`; unknown: a payment is). */
+  transfer?: boolean,
+): DetailRow[] {
   const a = span.attributes;
   const rows: DetailRow[] = [];
   const add = (label: string, value: string | null | undefined) => {
@@ -436,9 +463,7 @@ export function spanDetails(span: TraceSpan, partyName: (id: string) => string |
         const groups = num(a, "digit_groups") ?? 0;
         add(
           "Numbers",
-          groups
-            ? `${plural(groups, "number")} checked digit by digit — ${a.digits_matched === false ? "not all on the page" : a.digits_matched ? "all on the page" : "no close passage"}`
-            : "No numbers in the quote",
+          groups ? `${plural(groups, "number")} checked digit by digit — ${digitsText(a)}` : "No numbers in the quote",
         );
       }
       {
@@ -454,8 +479,8 @@ export function spanDetails(span: TraceSpan, partyName: (id: string) => string |
       }
       if (a.spec === undefined) break;
       add("What the letter says", specText(a.spec as Partial<DateSpec>));
-      add("Must arrive by", str(a, "due_date") ? day(str(a, "due_date"), today) : "—");
-      add("Send by", str(a, "send_by") ? day(str(a, "send_by"), today) : null);
+      add(dueDateLabel(natureOf(a), str(a, "send_by") !== null), str(a, "due_date") ? day(str(a, "due_date"), today) : "—");
+      add(sendByLabel(natureOf(a), transfer), str(a, "send_by") ? day(str(a, "send_by"), today) : null);
       add("How sure", str(a, "confidence") ? ({ high: "High", medium: "Medium", low: "Low — please check" }[str(a, "confidence")!] ?? null) : null);
       add("Holidays", str(a, "holiday_calendar"));
       break;
@@ -556,13 +581,13 @@ const FIELD: Record<string, string> = {
   hidden_text: "hidden text",
   grounding: "where it was found",
   page: "page",
-  digits_matched: "numbers on the page",
+  digits_matched: "numbers in the passage found",
   consistent: "consistent",
   reasons: "what to check",
   due_date: "date",
   send_by: "send-by date",
   confidence: "how sure",
-  rule_ids: "rules",
+  rule_ids: "rules checked",
   filed: "filed",
   party_id: "sender",
   case_id: "thread",

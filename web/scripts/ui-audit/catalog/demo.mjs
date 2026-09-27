@@ -319,6 +319,16 @@ export async function demoCatalog({ api, server }) {
     await traceTab(c);
     await c.visible(main(c.page).getByRole("heading", { name: "No reading kept for this letter" }));
   });
+  // a phone photo's quote (its numbers matched only against Claude's transcript) and its date (named by
+  // the deadline's nature: "On" for an appointment)
+  const apptDoc = byTitle(/Zahnarzt|Dentist|Terminkarte/i) ?? photoDoc;
+  docState(apptDoc, "trace-photo-steps", "“How this was read” → a quote and a date opened", "A photo's quote (numbers found in Claude's transcript) and its date step, named by what kind of date it is.", async (c) => {
+    await traceTab(c);
+    await openStep(c, /^Quotes checked on the page/);
+    await c.click(main(c.page).getByRole("list", { name: /^Steps of “Quotes checked on the page”/ }).getByRole("button").first());
+    await openStep(c, /^Dates computed/);
+    await c.click(main(c.page).getByRole("list", { name: /^Steps of “Dates computed”/ }).getByRole("button").first());
+  });
   docState(payDoc, "trace-why-this-date", "“How this was read” → Dates computed → a date → “Why this date?”", "The rules engine's receipt opened from a date's step.", async (c) => {
     await traceTab(c);
     await openStep(c, /^Dates computed/);

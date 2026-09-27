@@ -8,7 +8,7 @@
  * Only steps, numbers and ids are kept (`src/ordnung/trace`) — the names shown are the records' names
  * now; the letter's text never is.
  */
-import { useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { format as formatClock } from "date-fns";
 import { GitCompareArrows, History, RotateCw } from "lucide-react";
 import { ApiError } from "@/api/client";
@@ -44,22 +44,31 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 const busyReading = (doc: Document) => doc.status === "queued" || doc.status === "processing";
 
 /** "Read again", for a letter Claude may read: asks Claude again (a real call; the demo replays its
- * recorded answers) and reports the job. `cost` says which. */
+ * recorded answers) and reports the job. `cost` says which. The online demo can't read a letter
+ * again (it has no Claude), so it never offers to. */
 function useReadAgain(doc: Document) {
   const reprocess = useReprocessDocument();
   const health = useHealth();
-  const allowed = !doc.ai_private && !busyReading(doc);
+  const allowed = !doc.ai_private && !busyReading(doc) && !isStaticDemo();
   const cost = health.data?.demo
     ? "In the demo, reading it again replays Claude's recorded answers."
     : "Reading it again asks Claude again, with your Claude account.";
-  const start = (onStarted?: () => void) =>
+  const start = (onStarted?: () => void, onFailed?: () => void) =>
     reprocess.mutate(doc.id, {
       onSuccess: (job) => {
         seedJob({ job_id: job.id, doc_id: doc.id, stage: "intake", progress: 0, status: "running" });
         onStarted?.();
       },
+      onError: () => onFailed?.(),
     });
   return { allowed, start, pending: reprocess.isPending, cost };
+}
+
+/** Keyboard focus was dropped (a pressed button went away) — or is still on one of `ours` (the
+ * button pressed, busy; a heading we put it on), so moving it takes nothing from the reader. */
+function focusIsFree(...ours: (Element | null | undefined)[]): boolean {
+  const active = document.activeElement;
+  return !active || active === document.body || ours.some((element) => element != null && element === active);
 }
 
 /** When, how long, what it cost; the reading picker, "Compare" and "Read again and compare". */
@@ -71,6 +80,7 @@ function RunSummary({
   onPick,
   onCompare,
   onReadAgain,
+  titleRef,
 }: {
   doc: Document;
   trace: DocumentTrace;
@@ -78,20 +88,31 @@ function RunSummary({
   comparing: boolean;
   onPick: (traceId: string) => void;
   onCompare: () => void;
-  onReadAgain: () => void;
+  /** Reading again has started (`pressed`: the button, busy until it goes away). */
+  onReadAgain: (pressed: HTMLButtonElement | null) => void;
+  /** The summary's heading (focus goes there when what the reader pressed goes away). */
+  titleRef: RefObject<HTMLHeadingElement | null>;
 }) {
   const several = trace.runs.length > 1;
+  const readAgainButton = useRef<HTMLButtonElement>(null);
+  /** Reading again failed: back to the button once it is no longer busy (a disabled one can't take focus). */
+  const refocus = useRef(false);
   const result = runResult(run);
   const before = compareBase(trace.runs, run);
   const recorded = run.timing === "recorded";
   const readAgain = useReadAgain(doc);
+  useEffect(() => {
+    if (readAgain.pending || !refocus.current) return;
+    refocus.current = false;
+    if (focusIsFree(readAgainButton.current)) readAgainButton.current?.focus();
+  }, [readAgain.pending]);
   const tokensIn = run.input_tokens + run.cache_read_tokens + run.cache_creation_tokens;
   const callsSub = [run.repairs ? plural(run.repairs, "repair") : null, run.cache_hits ? `${run.cache_hits} from the cache` : null].filter(Boolean).join(" · ");
   return (
     <section aria-labelledby="trace-run-title" className="@container card p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
-          <h2 id="trace-run-title" className="card-title">
+          <h2 id="trace-run-title" ref={titleRef} tabIndex={-1} className="card-title outline-none">
             {runTitle(run, several)}
           </h2>
           <p className="mt-0.5 text-[13px] leading-5 text-muted">
@@ -141,7 +162,20 @@ function RunSummary({
             </Button>
           ) : null}
           {readAgain.allowed ? (
-            <Button size="sm" variant="ghost" icon={RotateCw} loading={readAgain.pending} onClick={() => readAgain.start(onReadAgain)}>
+            <Button
+              ref={readAgainButton}
+              size="sm"
+              variant="ghost"
+              icon={RotateCw}
+              loading={readAgain.pending}
+              // busy, the button is disabled and loses focus: back to it when reading again fails
+              onClick={() =>
+                readAgain.start(
+                  () => onReadAgain(readAgainButton.current),
+                  () => (refocus.current = true),
+                )
+              }
+            >
               Read again and compare
             </Button>
           ) : null}
@@ -157,16 +191,29 @@ function RunSummary({
         </p>
       ) : readAgain.allowed ? (
         <p className="mt-3 text-[12.5px] leading-5 text-muted">{readAgain.cost}</p>
+      ) : isStaticDemo() && !doc.ai_private ? (
+        <p className="mt-3 text-[12.5px] leading-5 text-muted">In your own Ordnung, “Read again and compare” asks Claude again and shows what changed.</p>
       ) : null}
     </section>
   );
 }
 
-function Comparison({ docId, base, head }: { docId: string; base: TraceRun; head: TraceRun }) {
+function Comparison({
+  docId,
+  base,
+  head,
+  titleRef,
+}: {
+  docId: string;
+  base: TraceRun;
+  head: TraceRun;
+  /** The heading (focus goes there when a reading asked for arrives compared). */
+  titleRef: RefObject<HTMLHeadingElement | null>;
+}) {
   const q = useTraceComparison(docId, base.trace_id, head.trace_id);
   return (
     <section id="trace-compare" aria-labelledby="trace-compare-title" className="card p-4 sm:p-5" aria-busy={q.isPending}>
-      <h2 id="trace-compare-title" className="card-title">
+      <h2 id="trace-compare-title" ref={titleRef} tabIndex={-1} className="card-title outline-none">
         What reading {head.reading} decided differently from reading {base.reading}
       </h2>
       {q.isPending ? (
@@ -276,6 +323,17 @@ function NoReading({ doc }: { doc: Document }) {
       />
     );
   }
+  if (!readAgain.allowed) {
+    // the online demo: it can't read a letter again
+    return (
+      <EmptyState
+        illustration="search"
+        headingLevel={2}
+        title="No reading kept for this letter"
+        description="Ordnung keeps how a letter was read from the next time it reads it. In your own Ordnung, “Read it again” fills this in."
+      />
+    );
+  }
   return (
     <EmptyState
       illustration="search"
@@ -299,7 +357,11 @@ function ExportReading({ doc, trace, run }: { doc: Document; trace: DocumentTrac
   if (isStaticDemo()) {
     return (
       <p className="text-[13px] leading-5 text-muted">
-        In your own Ordnung, <code className="font-mono text-[12.5px] text-ink">ordnung trace &lt;letter&gt; --otel</code> exports a reading for an OpenTelemetry viewer.
+        In your own Ordnung,{" "}
+        <code className="font-mono text-[12.5px] text-ink">
+          ordnung trace &lt;letter&gt; <span className="whitespace-nowrap">--otel</span>
+        </code>{" "}
+        exports a reading for an OpenTelemetry viewer.
       </p>
     );
   }
@@ -324,6 +386,13 @@ function TraceBody({ detail }: { detail: DocumentDetail }) {
   const newestReading = q.data?.runs[0]?.reading ?? 0;
   const gone = q.error instanceof ApiError && q.error.status === 404 && picked !== null;
   const showNewest = useRef<HTMLButtonElement>(null);
+  const runTitle = useRef<HTMLHeadingElement>(null);
+  const compareTitle = useRef<HTMLHeadingElement>(null);
+  /** Where focus goes once it is shown, after the button pressed went away: the comparison a "Read
+   * again and compare" waits for, or the newest reading ("Show the newest reading"). */
+  const focusNext = useRef<"compare" | "run" | null>(null);
+  /** The heading focus was put on while waiting (moving on from it is not taking focus away). */
+  const placed = useRef<Element | null>(null);
 
   // the reading asked for has arrived: show it, compared with the one before (state set while
   // rendering, as React does for state that follows data)
@@ -336,6 +405,15 @@ function TraceBody({ detail }: { detail: DocumentDetail }) {
   useEffect(() => {
     if (gone) showNewest.current?.focus();
   }, [gone]);
+  // after every render: the view focus waits for is there — move focus to its heading, unless the
+  // reader has moved on meanwhile
+  useEffect(() => {
+    const target = focusNext.current === "compare" ? compareTitle.current : focusNext.current === "run" ? runTitle.current : null;
+    if (!target) return;
+    focusNext.current = null;
+    if (focusIsFree(placed.current)) target.focus();
+    placed.current = null;
+  });
 
   if (q.isPending) return <TraceSkeleton />;
   if (q.isError) {
@@ -346,7 +424,15 @@ function TraceBody({ detail }: { detail: DocumentDetail }) {
         title="That reading isn't kept any more"
         description="Ordnung keeps the last five readings of a letter."
         action={
-          <Button ref={showNewest} variant="primary" icon={History} onClick={() => setPicked(null)}>
+          <Button
+            ref={showNewest}
+            variant="primary"
+            icon={History}
+            onClick={() => {
+              focusNext.current = "run";
+              setPicked(null);
+            }}
+          >
             Show the newest reading
           </Button>
         }
@@ -376,12 +462,19 @@ function TraceBody({ detail }: { detail: DocumentDetail }) {
           setComparing(false);
         }}
         onCompare={() => setComparing((c) => !c)}
-        onReadAgain={() => {
+        onReadAgain={(pressed) => {
           setComparing(false);
           setAwaiting(newestReading);
+          // the button is going away while the letter is read: wait on the summary's heading
+          focusNext.current = "compare";
+          if (focusIsFree(pressed) && runTitle.current) {
+            runTitle.current.focus();
+            placed.current = runTitle.current;
+          }
         }}
+        titleRef={runTitle}
       />
-      {comparing && before ? <Comparison docId={doc.id} base={before} head={run} /> : null}
+      {comparing && before ? <Comparison docId={doc.id} base={before} head={run} titleRef={compareTitle} /> : null}
       {run.error ? (
         <p role="note" className="rounded-xl border border-warn/30 bg-warn-soft px-4 py-3 text-[13.5px] leading-5 text-warn-ink">
           {run.error}

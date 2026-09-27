@@ -148,6 +148,34 @@ describe("trace copy", () => {
     expect(shellPath("/tmp/it's $HOME")).toBe(`'/tmp/it'\\''s $HOME'`);
   });
 
+  it("says where a quote's numbers were found: a photo's only in Claude's transcript, never “on the page”", () => {
+    const numbers = (a: Record<string, unknown>) =>
+      spanDetails(span({ kind: "verify", attributes: { target: "item", digit_groups: 2, ...a } })).find((r) => r.label === "Numbers")?.value;
+    expect(numbers({ grounding: "verified", page: 1, digits_matched: true })).toBe("2 numbers checked digit by digit — all in the letter's text");
+    expect(numbers({ grounding: "model_read", page: 1, digits_matched: true })).toBe(
+      "2 numbers checked digit by digit — all in Claude's transcript — compare with the paper letter",
+    );
+    expect(numbers({ grounding: "unverified", digits_matched: false })).toBe("2 numbers checked digit by digit — not all in the closest passage");
+    expect(numbers({ grounding: "unverified", digits_matched: null })).toBe("2 numbers checked digit by digit — no close passage");
+    expect(changeText(change({ field: "digits_matched", before: false, after: true })).detail).toBe("Numbers in the passage found: no → yes");
+  });
+
+  it("names a computed date by its deadline's nature, as the Today page does", () => {
+    const date = (nature: string, extra: Record<string, unknown> = {}) =>
+      span({ kind: "rules", name: "Date", label: "X", attributes: { spec: { type: "fixed", date: "2026-10-08", nature }, due_date: "2026-10-08", ...extra } });
+    const labels = (nature: string, extra?: Record<string, unknown>) => spanDetails(date(nature, extra)).map((r) => r.label);
+    expect(spanDetails(date("appointment"))).toContainEqual({ label: "On", value: "Thu 8 Oct 2026" });
+    expect(labels("other")).toContain("Date");
+    expect(labels("payment")).toContain("Pay by");
+    expect(labels("payment", { send_by: "2026-10-05" })).toEqual(expect.arrayContaining(["Transfer by", "Must arrive by"]));
+    expect(labels("objection", { send_by: "2026-10-05" })).toEqual(expect.arrayContaining(["Send by", "Must arrive by"]));
+    for (const nature of ["appointment", "other", "payment"]) expect(labels(nature)).not.toContain("Must arrive by");
+    expect(spanCopy(date("payment", { send_by: "2026-10-05" })).summary).toBe("→ Thu 8 Oct 2026 · transfer by Mon 5 Oct 2026");
+    // a refund coming in: nobody transfers it
+    expect(spanDetails(date("payment", { send_by: "2026-10-05" }), undefined, undefined, false).map((r) => r.label)).toContain("Send by");
+    expect(spanCopy(date("objection", { send_by: "2026-10-05" })).summary).toBe("→ Thu 8 Oct 2026 · send by Mon 5 Oct 2026");
+  });
+
   it("names a newer model of the same family by its full id", () => {
     const same = changeText(change({ kind: "model", name: "Extract", field: "served_model", before: "claude-sonnet-4-5", after: "claude-sonnet-4-6" }));
     expect(same.detail).toBe("Model: claude-sonnet-4-5 → claude-sonnet-4-6");

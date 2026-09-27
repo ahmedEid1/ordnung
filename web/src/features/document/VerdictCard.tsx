@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import type { DocumentDetail, Item, Suggestion } from "@/api/types";
 import { useUpdateSuggestion } from "@/api/hooks";
-import { isDirectDebit } from "@/lib/payments";
+import { isDirectDebit, isTransfer } from "@/lib/payments";
 import { toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import { formatDate, formatMoney, formatTime, looksGerman, urgencyOf, type Urgency } from "@/lib/format";
@@ -394,7 +394,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
             ) : null}
             {open.computation ? (
               <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <WhyThisDate receipt={open.computation} spec={open.date_spec} area={open.area} origin={open.origin} />
+                <WhyThisDate receipt={open.computation} spec={open.date_spec} area={open.area} origin={open.origin} transfer={isTransfer(open)} />
                 {open.computation.confidence !== "high" ? (
                   <span className="text-[12px] text-muted">
                     {open.computation.confidence === "medium" ? "Worth a second look" : "Please check this date"}
