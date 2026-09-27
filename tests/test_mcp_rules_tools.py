@@ -685,6 +685,32 @@ def test_a_private_law_klage_or_widerspruch_keeps_a_private_sender_private() -> 
     assert any(step["rule_id"] == "posting_day" for step in official["steps"])
 
 
+def test_the_delivery_law_is_named_only_when_deemed_delivery_was_applied() -> None:
+    """Review round 2 of phase 2: a § 4 KSchG period from a city as employer counts from arrival
+    (kschg_4, no posting day), but the result named "general administrative law (§ 41 VwVfG)"."""
+    tools = at("2026-09-26")
+    spec = {
+        **POSTED,
+        "amount": 3,
+        "unit": "weeks",
+        "legal_basis": "§ 4 KSchG",
+        "text": "Eine Klage muss innerhalb von drei Wochen nach Zugang der Kündigung erhoben werden.",
+    }
+    for kind in ("authority", "university"):
+        dismissal = tools.compute_deadline(
+            spec, document_date="2026-09-01", sender_kind=kind, sender_name="Stadt Musterstadt"
+        )
+        assert "posting_day" not in {step["rule_id"] for step in dismissal["steps"]}
+        assert dismissal["assumed"]["delivery_law"] is None
+    # an authority's Bescheid still names the law its deemed delivery follows
+    notice = tools.compute_deadline(
+        {**POSTED, "amount": 1, "unit": "months", "text": "Widerspruch innerhalb eines Monats"},
+        document_date="2026-09-01",
+        sender_kind="authority",
+    )
+    assert notice["assumed"]["delivery_law"] == "general administrative law (§ 41 VwVfG)"
+
+
 def test_a_stated_posting_day_without_the_letters_date_is_not_trusted_blindly() -> None:
     """Reviewer repro (benchmark letter test-tax_assessment-D1): the engine counts from the letter's date
     when a stated posting day is later. Leaving the letter's date out must not lift that check silently:
@@ -1000,10 +1026,25 @@ def test_a_callers_today_far_from_the_servers_is_flagged(tools: RulesTools) -> N
     assert stale["assumed"]["server_today"] is None
     earlier = tools.compute_deadline(spec, today="2026-09-01")["for_today_given"]
     assert earlier == {"today": "2026-09-01", "due_date": None, "send_by": "2026-10-09", "passed": False}
-    a_zone_apart = tools.compute_deadline(spec, today="2026-09-21")
+    a_zone_apart = tools.compute_deadline(spec, today="2026-09-19")
     assert a_zone_apart["for_today_given"] is None
     assert a_zone_apart["warnings"] == [] and a_zone_apart["assumed"]["server_today"] == "2026-09-20"
     assert "server_today" not in compact(tools.compute_deadline(spec, today="2026-09-20"))["assumed"]
+
+
+def test_a_callers_today_a_day_ahead_never_makes_a_live_deadline_look_missed() -> None:
+    """Review round 2 of phase 2: a caller's today one day after the server's German day was used, so a
+    deadline that runs to midnight German time read as "has already passed"."""
+    server = at("2026-09-28")
+    spec = {"type": "fixed", "date": "2026-09-28", "nature": "objection"}
+    ahead = server.compute_deadline(spec, today="2026-09-29")
+    same = server.compute_deadline(spec)
+    assert not any("has already passed" in warning for warning in ahead["warnings"])
+    assert ahead["send_by"] == same["send_by"] and ahead["for_today_given"] is None
+    assert (ahead["assumed"]["today"], ahead["assumed"]["today_given"]) == ("2026-09-28", "2026-09-29")
+    # a day behind (a time zone west of Germany) keeps the caller's day: the deadline only looks later
+    behind = server.compute_deadline(spec, today="2026-09-27")
+    assert behind["assumed"]["today"] == "2026-09-27" and behind["assumed"]["server_today"] == "2026-09-28"
 
 
 def test_a_pinned_server_does_not_use_a_callers_today() -> None:
@@ -1042,7 +1083,9 @@ def test_today_defaults_to_the_servers_day_and_can_be_given(tools: RulesTools) -
     other_day = tools.compute_deadline(spec, today="2026-10-01")
     assert other_day["due_date"] == "2026-09-30"
     assert other_day["for_today_given"]["due_date"] == "2026-10-12"  # the 11th is a Sunday
-    assert tools.compute_deadline(spec, today="2026-09-21")["due_date"] == "2026-10-01"  # a time zone ahead
+    assert tools.compute_deadline(spec, today="2026-09-19")["due_date"] == "2026-09-29"  # a time zone behind
+    # a time zone ahead: never the later day (review round 2 of phase 2)
+    assert tools.compute_deadline(spec, today="2026-09-21")["due_date"] == "2026-09-30"
 
 
 @pytest.mark.parametrize(
@@ -1545,6 +1588,10 @@ COURT_NAMES = (
     "Arbeitsgericht Berlin",
     "ArbG Berlin",
     "Sozialgericht Berlin",
+    # a court whose place contains "kasse" (review round 2: the cashier exclusion matched "Kassel")
+    "Amtsgericht Kassel",
+    "Arbeitsgericht Kassel",
+    "SG Kassel",
 )
 COURT_SPECS: tuple[dict[str, Any], ...] = (
     {
@@ -1674,6 +1721,6 @@ def test_a_pinned_server_ignores_a_callers_today_one_day_off() -> None:
         assert result["assumed"]["today"] == "2026-04-14" and result["for_today_given"] is None
         assert result["assumed"]["today_given"] == given
     unpinned = RulesTools(today=lambda: date(2026, 4, 14)).compute_deadline(
-        spec, document_date="2026-04-14", today="2026-04-15"
+        spec, document_date="2026-04-14", today="2026-04-13"
     )
-    assert unpinned["assumed"]["today"] == "2026-04-15"
+    assert unpinned["assumed"]["today"] == "2026-04-13"

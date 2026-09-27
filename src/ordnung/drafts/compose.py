@@ -69,11 +69,11 @@ from ordnung.rules.advice import ARREARS_CURE, HARDSHIP_EXCLUDED, billing_period
 from ordnung.rules.consumer import long_withdrawal_end
 from ordnung.rules.explain import fmt_date
 from ordnung.rules.routing import (
-    alternative_notice,
     extraordinary_notice,
     is_court,
     is_labour_court,
     may_be_court,
+    objection_excluded,
 )
 from ordnung.secretary.review import language_name, split_sentences, stable_hash, untrusted_json
 from ordnung.secretary.scam import ibans_in_text, normalize_iban
@@ -402,9 +402,9 @@ def objection_remedy(sources: Sources) -> RemedyKind:
 
     Court orders and a landlord's notice have the remedy the law gives them (a Widerspruch against a
     court payment order, an Einspruch against an enforcement order, the tenant's Widerspruch), whatever
-    their instructions were read as — except a landlord's notice without notice period that gives none
-    in the alternative (:func:`~ordnung.rules.routing.extraordinary_notice`): the hardship objection
-    doesn't apply to it, and the letter's card offers none either.
+    their instructions were read as — except a landlord's notice certainly without notice period that
+    gives none in the alternative (:func:`~ordnung.rules.routing.objection_excluded`): the hardship
+    objection doesn't apply to it, and the letter's card offers none either.
     """
     if sources.document is None:
         raise DraftError("Choose the decision (the letter) you want to object to.")
@@ -412,8 +412,7 @@ def objection_remedy(sources: Sources) -> RemedyKind:
     if (
         sources.document.kind == "landlord_notice"
         and reading is not None
-        and extraordinary_notice(reading, sources.doc_date)
-        and not alternative_notice(reading)
+        and objection_excluded(reading, sources.doc_date)
     ):
         raise DraftError(NO_HARDSHIP_OBJECTION)
     statutory = STATUTORY_REMEDIES.get(sources.document.kind or "")
@@ -1124,7 +1123,8 @@ def _kind_notes(plan: Plan, sources: Sources) -> list[str]:
             and reading is not None
             and extraordinary_notice(reading, sources.doc_date)
         ):
-            # only drafted for the notice given in the alternative (:func:`objection_remedy`)
+            # only drafted for the notice given in the alternative, or one only probably without notice
+            # period (:func:`objection_remedy`)
             notes.append(HARDSHIP_EXCLUDED)
         return notes
     notes = list(_TEMPLATE_NOTES.get(plan.kind, ()))

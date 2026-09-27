@@ -153,6 +153,9 @@ _COURT_COUNTING = {
 _LABOUR_COURT_COUNTING = {
     rule: f"§ 46 Abs. 2 ArbGG; {citation}" for rule, citation in _COURT_COUNTING.items()
 }
+#: A social court counts under its own act (§ 64 Abs. 1–3 SGG), not § 222 ZPO — the same dates, the right
+#: citation (review round 2 of phase 2).
+_SOCIAL_COURT_COUNTING = {"bgb_187_1": "§ 64 Abs. 1 SGG", "bgb_188": "§ 64 Abs. 2 SGG"}
 _BGB_COUNTING = {"bgb_187_1": "§ 187 Abs. 1 BGB", "bgb_188": "§ 188 Abs. 1, 2 BGB"}
 _SHIFT_RULE_BY_SCOPE: dict[DeliveryScope, str] = {
     "ao": "ao_108_3",
@@ -188,7 +191,8 @@ class RuleContext:
     run from formal service, never from a delivery fiction (unless the letter counts its own period from
     its own date, which a court may set, § 221 ZPO), and none of its dates is ``high``, whatever kind the
     letter was filed as. ``labour_court``: a labour court, whose orders give one week, not two
-    (§ 46a Abs. 3, § 59 ArbGG). ``end_date_grounding``: where ``end_date`` is written — in the
+    (§ 46a Abs. 3, § 59 ArbGG); ``social_court``: a social court, whose periods count under § 64 SGG.
+    ``end_date_grounding``: where ``end_date`` is written — in the
     termination's own sentence (``quote``, also for an end the caller knows), only elsewhere in the letter
     (``letter``: one soft failure) or nowhere in it (``none``: the model's reading alone, like an assumed
     anchor — ``low``); the letter rules that count from the end apply it (:mod:`ordnung.rules.letters`).
@@ -209,6 +213,7 @@ class RuleContext:
     end_date: date | None = None
     court: bool = False
     labour_court: bool = False
+    social_court: bool = False
     end_date_grounding: Literal["quote", "letter", "none"] = "quote"
 
 
@@ -575,6 +580,8 @@ def _end_clause(
 def _shift_rule_id(ctx: RuleContext, statute: str | None) -> str:
     if statute in ("owig_67", "stpo_410"):
         return "stpo_43"
+    if ctx.court and statute is None and ctx.social_court:
+        return "sgg_64"
     if statute in _CIVIL_COURT or (ctx.court and statute is None):
         return "zpo_222"
     if statute == "kschg_4":
@@ -1135,7 +1142,10 @@ def _compute_relative(
         trace.cite.update(_BGB_COUNTING)
     elif statute in _CIVIL_COURT or ctx.court:
         labour = ctx.labour_court or statute in ("arbgg_46a", "arbgg_59")
-        trace.cite.update(_LABOUR_COURT_COUNTING if labour else _COURT_COUNTING)
+        social = ctx.social_court and statute is None
+        trace.cite.update(
+            _LABOUR_COURT_COUNTING if labour else _SOCIAL_COURT_COUNTING if social else _COURT_COUNTING
+        )
     # Fines, penal orders and a court's letters run from formal service (yellow envelope, § 4 VwZG,
     # § 180 ZPO), never from the 4th-day fiction of ordinary authority letters: without the envelope
     # date the letter's own date is the earliest plausible start (legal research

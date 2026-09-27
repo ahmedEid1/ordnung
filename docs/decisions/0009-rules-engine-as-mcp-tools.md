@@ -27,8 +27,8 @@ Claude reads through it also reaches every other MCP server loaded there, throug
 - A model, not a person, now passes the facts, so the tools check what they are given: an arrival
   day (or a delivery day the letter states) after today is refused, an implausible one lowers
   confidence, and a result is always for the server's today — a caller's `today` far from it only
-  adds that day's view (the benchmark's server ignores it), so a stale date never makes a live
-  deadline look missed.
+  adds that day's view (the benchmark's server ignores it), and one a day ahead (a time zone east of
+  Germany) never replaces it, so a stale date never makes a live deadline look missed.
 - The tools add no law of their own: whether a sender has deemed delivery at all (a company's letter
   counts from its arrival, but for a kind a public body may be filed as, or a period whose own words
   name an administrative act, never later than from the day a letter usually counts as delivered; an

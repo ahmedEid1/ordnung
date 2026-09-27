@@ -348,6 +348,18 @@ HILFSWEISE_NEXT = _notice(
     "hiermit kündigen wir das Mietverhältnis fristlos, hilfsweise fristgerecht zum nächstmöglichen Termin.",
     end="2026-09-30",
 )
+#: Review round 2 of phase 2: an ordinary notice to the next possible date writes no end, and one only
+#: called "außerordentlich" may have the statutory period (§ 573d BGB) — both keep the objection.
+NEXT_POSSIBLE = _notice(
+    "Kuendigung Eigenbedarf naechstmoeglich",
+    "Hiermit kündigen wir das Mietverhältnis wegen Eigenbedarfs fristgerecht zum nächstmöglichen Termin.",
+    end=None,
+)
+ONLY_EXTRAORDINARY = _notice(
+    "Ausserordentliche Kuendigung",
+    "Hiermit kündigen wir das Mietverhältnis außerordentlich.",
+    end=None,
+)
 HILFSWEISE_NO_END = _notice(
     "Kuendigung nach 543 und 573",
     "hiermit kündigen wir das Mietverhältnis nach § 543 BGB, hilfsweise ordentlich nach § 573 BGB.",
@@ -732,6 +744,8 @@ LETTERS = (
     HILFSWEISE_NO_END,
     HILFSWEISE,
     FRISTLOS,
+    NEXT_POSSIBLE,
+    ONLY_EXTRAORDINARY,
 )
 
 
@@ -1048,6 +1062,32 @@ async def test_a_notice_without_notice_period_gets_no_hardship_objection(
                 "doesn't apply" in refused.json()["detail"]
                 and "§ 569 Abs. 3 Nr. 2" in refused.json()["detail"]
             )
+
+
+@pytest.mark.parametrize(
+    "letter", [NEXT_POSSIBLE, ONLY_EXTRAORDINARY], ids=["next-possible", "außerordentlich"]
+)
+async def test_a_notice_without_an_end_or_only_extraordinary_keeps_its_objection(
+    data_dir: Path, letter: Letter
+) -> None:
+    """Review round 2 of phase 2: a notice "zum nächstmöglichen Termin" got no objection to-do (its card asked
+    for an end the notice doesn't write), and "außerordentlich" alone lost the to-do and the letter. The
+    objection counts back from the earliest end (arrived 24 Sep 2026: 31 Dec 2026, objection by 31 Oct)."""
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, letter)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "landlord_notice"
+        [rule] = [item for item in detail["items"] if item["origin"] == "rule"]
+        assert rule["due_date"] == "2026-10-31" and "bgb_573c_landlord" in rule["computation"]["rule_ids"]
+        advice = detail["advice"]
+        assert advice["draft"] == "objection"
+        assert not any("there is no to-do" in step for step in advice["steps"])
+        if letter is ONLY_EXTRAORDINARY:
+            assert advice["facts"][0]["title"] == "This may be a notice without notice period"
+        else:
+            assert advice["facts"] == [] and not advice["urgent"]
+        drafted = await api.client.post("/api/drafts", json={"kind": "objection", "doc_id": doc_id})
+        assert drafted.status_code != 422, drafted.text
 
 
 async def test_a_payment_order_read_as_pay_still_gets_pay_or_object(data_dir: Path) -> None:

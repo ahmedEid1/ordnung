@@ -230,18 +230,21 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   `RuleContext.labour_court`), in their dates, to-dos, card and sending advice. A served letter's one date
   is "delivered" in its summary, warnings and card (the date on the yellow envelope), and its receipt cites
   the court's counting rules (§ 222 Abs. 1 ZPO with §§ 187, 188 BGB; at a labour court through § 46 Abs. 2
-  ArbGG), not the AO's or the VwVfG's. A landlord's notice is
-  one without notice period only when its own quote or the title says so, not negated, not only
-  reserved (a reservation of the notice itself) or "mit (der) gesetzlichen / gesetzlicher Frist" (§ 573d BGB;
+  ArbGG; at a social court § 64 SGG), not the AO's or the VwVfG's. A landlord's notice is
+  one without notice period only when its own quote or the title says so (*fristlos*, § 543/§ 569 BGB; only
+  "außerordentlich" said of the notice is *probably* one, § 573d BGB: its to-do and letter are kept and the
+  card says it may be one), not negated (before it or at the end of its clause), not called *ordentlich*,
+  not only reserved (a reservation of the notice itself) or "mit (der) gesetzlichen / gesetzlicher Frist" (§ 573d BGB;
   "with statutory notice" in the title) said of the notice itself — not denied ("without statutory notice")
   and not after *hilfsweise* (the alternative notice's period) — and the tenancy ends
   within two months; then there is no hardship objection to-do, and the card and the composer offer no
   objection letter (unless its own words give notice in the alternative — then the card and the letter's
   note say the objection is excluded against that one too when the grounds for the notice without notice
   period existed, BGH VIII ZR 323/18, so object anyway only if they didn't). Without a to-do computed under
-  § 574b (no notice period, or no end read) the landlord's card is urgent and the verdict says "get advice
+  § 574b (no notice period) the landlord's card is urgent and the verdict says "get advice
   now". An ordinary notice whose objection date had passed when it was written (an end too early for the
-  notice period) usually ends the tenancy at the next permissible date (§ 573c Abs. 1 BGB), so the
+  notice period), or whose end wasn't read ("zum nächstmöglichen Termin"), usually ends the tenancy at the
+  next permissible date (§ 573c Abs. 1 BGB), so the
   objection may still be open: a `low` to-do counts back two months from the earliest such end after the
   notice arrived (`bgb_573c_landlord`), and the urgent card says both readings — if the end is right, the
   landlord can't have told the tenant in time, so § 574b Abs. 2 S. 2 BGB applies; a notice without notice
@@ -278,9 +281,11 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   certainly is: only a range the letter calls its billing period decides (any other range or a billing
   year: at most "probably"), and when the latest range found is the previous year's comparison nothing
   is claimed. A named billing year gives way only to a range that says which months it covers (one the
-  letter calls its billing period, or a split year's own months) — never to a cost item's service period
-  or the tenant's own time in the flat ("Nutzungszeitraum", "Mietdauer … (Auszug)"), which is never the
-  billing period: a tenant who moved out mid-year gets the landlord's period (§ 556 Abs. 3 S. 2 BGB). A
+  letter calls its billing period with an "Abrechnungs…" word, or a split year's own months) — never to a
+  cost item's service period (a bare "Zeitraum" is no label) or the tenant's own time in the flat
+  ("Nutzungszeitraum", "Mietdauer … (Auszug)", "Mietende"), which is never the billing period, even when
+  labelled so (at most "probably"): a tenant who moved out mid-year gets the landlord's period (§ 556 Abs. 3
+  S. 2 BGB). A
   date near the end of the calendar (a mistyped year 9999) claims nothing, never an error. When it calls a statement (probably) late, the letter's one-off back-payments (never a
   credit or the new monthly prepayment) carry a "may not be owed — check before you pay" warning, the card
   is urgent and the verdict doesn't lead with Pay; nothing is dismissed. The rent cap is compared exactly, in cents. The person can correct a letter's kind on its
@@ -413,7 +418,7 @@ HTML and without remote images.
   written agreement (§ 623 BGB) or notice for cause (§ 626 BGB) end it early without one; everyone whose
   job ends must register as job-seeking 3 months before the end (§ 38 Abs. 1 SGB III, not in a company
   apprenticeship) — the record puts it as advice for whoever may claim unemployment benefit, since a late
-  registration blocks the benefit for a week (§ 159 Abs. 1 S. 2 Nr. 7 and Abs. 6 SGB III). A flat let's
+  registration blocks the benefit for a week (§ 159 Abs. 1 S. 2 Nr. 9 and Abs. 6 SGB III). A flat let's
   record says notice may still be needed (§ 575 Abs. 1 BGB, with the § 549 Abs. 2 and 3 BGB exceptions
   as examples) and that courts often read the agreed end date as a waiver of ordinary notice until then
   (BGH VIII ZR 388/12), so leaving earlier may not be possible; `explain_date` notes that the catalog's
@@ -526,8 +531,9 @@ invisible characters ignored; country from the full SWIFT registry — any other
 an IBAN — registered length, mod-97, bank code where the format shows it; pure code in
 `money/iban.py`). Unknown tool arguments are refused and argument errors are plain words. "Today" is
 the server's (`ORDNUNG_TODAY`, else the date in Germany): a result — whether a deadline has passed,
-its send-by date — is always for it; a caller's `today` within a day of it is used (a time zone
-apart), one further off only adds `for_today_given` (that day's send-by date and whether it had
+its send-by date — is always for it; a caller's `today` a day before it is used (a time zone
+apart), never one a day after it (a deadline runs to midnight German time, so a later day would make a
+live deadline look missed; an arrival on it is still accepted), one further off only adds `for_today_given` (that day's send-by date and whether it had
 passed) and a warning, and a server started pinned (`ORDNUNG_PIN_TODAY=1`, as the benchmark starts
 it) does not use it at all. Every result carries "Information, not legal advice". The full server
 serves them next to the ledger tools (counting from the ledger's day), and its instructions and

@@ -58,7 +58,7 @@ from ordnung.models import (
 )
 from ordnung.rules.advice import letter_advice, settles
 from ordnung.rules.deadlines import parse_date
-from ordnung.rules.routing import alternative_notice, announced_end, extraordinary_notice, is_labour_court
+from ordnung.rules.routing import alternative_notice, announced_end, is_labour_court, notice_without_period
 from ordnung.rules.tenancy import notice_objection_deadline
 from ordnung.secretary.triggers import Ledger
 
@@ -220,6 +220,7 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
     arrived = parse_date(document.received_date) or letter_date
     notice = extraction if kind == "landlord_notice" else None
     end = announced_end(notice) if notice is not None else None
+    without_period = notice_without_period(notice, letter_date) if notice is not None else None
     party = store.get_party(document.party_id) if document.party_id else None
     sender = party or (extraction.sender if extraction else None)
     items = store.list_items(doc_id=document.id)
@@ -235,8 +236,9 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
         new_amount=change.new_amount if change is not None else None,
         # the title may name the billing year ("Operating-cost statement 2025")
         text=f"{document.title or ''}\n{store.get_document_text(document.id)}",
-        extraordinary=notice is not None and extraordinary_notice(notice, letter_date),
+        extraordinary=without_period is not None,
         alternative=notice is not None and alternative_notice(notice),
+        probable=without_period == "probable",
         labour_court=sender is not None and is_labour_court(sender.name, sender.kind),
         objection_todo=any(
             item.computation is not None and "bgb_574b" in item.computation.rule_ids for item in items

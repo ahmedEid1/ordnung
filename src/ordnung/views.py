@@ -702,7 +702,7 @@ TzBfG); ending it *earlier* by ordinary notice needs an agreed notice clause (§
 written termination agreement (§ 623 BGB) or notice for cause (§ 626 BGB) end it early without one —, and
 everyone whose job ends must register as job-seeking 3 months before the end (§ 38 Abs. 1 SGB III; not in
 a company apprenticeship); for whoever then claims unemployment benefit, a late registration costs a
-one-week block (§ 159 Abs. 1 S. 2 Nr. 7 and Abs. 6 SGB III), so the text the person reads puts it as
+one-week block (§ 159 Abs. 1 S. 2 Nr. 9 and Abs. 6 SGB III), so the text the person reads puts it as
 advice for that case. A flat let's fixed term usually needs a written legal reason, or the lease counts
 as open-ended and leaving needs notice (§ 575 Abs. 1 S. 2 BGB) — though courts often read the agreed end
 date as a mutual waiver of ordinary notice until then (BGH, 10 Jul 2013, VIII ZR 388/12), so leaving

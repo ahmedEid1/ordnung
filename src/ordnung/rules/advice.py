@@ -26,13 +26,16 @@ Computed facts, each with the policy that keeps it honest:
   wins, because a later end only makes the deadline later; a billing year gives way only to a range that
   says which months it covers — one the letter calls its billing period, or a split year's own months
   ("2023/2024": 01.07.2023 – 30.06.2024) — never to another range that ends earlier in it (a cost item's
-  service period: the later end is the landlord's reading). The tenant's own time in the flat
-  ("Nutzungszeitraum", "Mietdauer … (Auszug)") is never the billing period: a tenant who moved out mid-year
-  gets the landlord's period all the same (§ 556 Abs. 3 S. 2 BGB). A range written next to "Vorjahr" or
+  service period: the later end is the landlord's reading). A bare "Zeitraum" is a cost item's service
+  period ("Gebäudeversicherung, Zeitraum: 01.04.2024 – 31.03.2025"), not a label — only right after the
+  statement's own name, and then it never makes a named billing year end earlier. The tenant's own time in
+  the flat ("Nutzungszeitraum", "Mietdauer … (Auszug)", "Mietende" on the next line) is never the billing
+  period, even when the letter labels it so (then it decides at most "probably"): a tenant who moved out
+  mid-year gets the landlord's period all the same (§ 556 Abs. 3 S. 2 BGB). A range written next to "Vorjahr" or
   "Vergleich" is the previous year's comparison (§ 6a HeizkostenV): when it is the latest, this
   statement's own period was missed, and nothing is claimed. A statement is called late only when it
-  certainly is: only a range the letter calls its billing period ("Abrechnungszeitraum", "für den
-  Zeitraum vom …") can decide; from any other range or a billing year it is at most "probably late —
+  certainly is: only a range the letter calls its billing period ("Abrechnungszeitraum", "Abrechnung für
+  den Zeitraum vom …") can decide; from any other range or a billing year it is at most "probably late —
   check the billing period", and "on time" is only certain when neither the weekend/holiday shift of the
   deadline nor an unknown Land decided it. Without a period, nothing is claimed. The statement arrived on
   the day the person entered, else on its own date — and when the text dates the statement whose billing
@@ -170,12 +173,24 @@ _DATE_TOKEN = re.compile(
     re.I,
 )
 _RANGE_SEPARATOR = re.compile(r"\s*(?:-|–|—|bis(?:\s+(?:zum|einschließlich|einschl\.))?)\s*", re.I)
-#: What names a range as the billing period, right before it: "Abrechnungszeitraum:", "für den Zeitraum
-#: vom", "Abrechnungsjahr 2023/2024 (", "Betriebskostenabrechnung vom" (the comparison below excludes
-#: "Vorjahresabrechnung" and the like).
+#: What names a range as the billing period, right before it: "Abrechnungszeitraum:", "Abrechnung für den
+#: Zeitraum vom", "Abrechnungsjahr 2023/2024 (", "Betriebskostenabrechnung vom", "billing period" (the
+#: comparison below excludes "Vorjahresabrechnung" and the like). A bare "Zeitraum" is no label: a cost item's
+#: service period is written that way ("Gebäudeversicherung, Zeitraum: 01.04.2024 – 31.03.2025"), review
+#: round 2 — only :data:`_STATEMENT_PERIOD` makes one.
+_LABEL_END = rf"(?:[^\S\n]+{_YEAR4}(?:\s*/\s*(?:19|20)?\d{{2}})?)?[^\S\n]*[:(]?\s*(?:(?:vom|von|from)\s+)?$"
 _PERIOD_LABEL = re.compile(
-    r"(?:abrechnungs(?:zeitraum|periode|jahr)|\bzeitraum|billing period|abrechnung(?:\s+für\s+die\s+zeit)?)"
-    rf"(?:[^\S\n]+{_YEAR4}(?:\s*/\s*(?:19|20)?\d{{2}})?)?[^\S\n]*[:(]?\s*(?:(?:vom|von|from)\s+)?$",
+    r"(?:abrechnungs(?:zeitraum|periode|jahr)|billing period"
+    r"|abrechnung(?:\s+für\s+(?:die\s+zeit|den\s+zeitraum))?)" + _LABEL_END,
+    re.I,
+)
+#: A bare "Zeitraum" right after the statement's own name — on its line or the line above, with nothing but
+#: marks or its year between ("Betriebskostenabrechnung (Zeitraum …", "Heizkostenabrechnung 2025\nZeitraum:
+#: …"): a label too, but only for a range that doesn't end before the billing year the letter names
+#: (:func:`_gives_way`) — never a cost item's line between them.
+_STATEMENT_PERIOD = re.compile(
+    rf"(?:abrechnung|statement)(?:[^\S\n]+{_YEAR4}(?:\s*/\s*(?:19|20)?\d{{2}})?)?[^\w\n]*\n?[^\w\n]*"
+    r"\bzeitraum" + _LABEL_END,
     re.I,
 )
 #: A previous year's figures, which a statement must show next to its own (§ 6a HeizkostenV).
@@ -208,6 +223,7 @@ class _Candidate:
     comparison: bool  # written next to "Vorjahr", "Vergleich": the previous year's figures
     start: date | None = None  # a range's first day
     split_from: int | None = None  # a split billing year's first year ("2023/2024" → 2023)
+    named: bool = False  # labelled by an "Abrechnungs…" word (:data:`_PERIOD_LABEL`), not a bare "Zeitraum"
 
 
 #: What names a range as the tenant's own time in the flat, not the billing period: a tenant who moved out
@@ -252,8 +268,29 @@ def _before_range(text: str, start: int) -> str:
     return text[max(line, start - 60) : start]
 
 
+def _label_context(text: str, start: int) -> str:
+    """The text before a range from the start of the line above it, at most 120 characters (where
+    :data:`_STATEMENT_PERIOD` looks for the statement's name)."""
+    line = text.rfind("\n", 0, start) + 1
+    above = text.rfind("\n", 0, max(line - 1, 0)) + 1
+    return text[max(above, start - 120) : start]
+
+
+def _near_tenant(text: str, context: str, second_end: int) -> bool:
+    """Whether a range stands next to the tenant's own time in the flat (:data:`_TENANT_PERIOD`): before
+    it, after it on its line or on the next line ("Mietende: 30.04.2025" below it)."""
+    line_end = text.find("\n", second_end)
+    after = text[second_end : line_end if line_end >= 0 else len(text)][:30]
+    next_end = text.find("\n", line_end + 1) if line_end >= 0 else -1
+    below = text[line_end + 1 : next_end if next_end >= 0 else len(text)][:40] if line_end >= 0 else ""
+    return any(_TENANT_PERIOD.search(part) for part in (context, after, below))
+
+
 def _ranges(text: str, before: date | None) -> list[_Candidate]:
-    """Every date range in ``text`` that ended by ``before``."""
+    """Every date range in ``text`` that ended by ``before``. A range next to the tenant's own time in the
+    flat is left out, or — when the letter calls it its billing period — kept but never called its billing
+    period for certain: a tenant who moved out is billed for the landlord's period all the same (§ 556
+    Abs. 3 S. 2 BGB), so a statement is at most "probably late" from it (review round 2)."""
     found: list[_Candidate] = []
     for first, second in pairwise(_DATE_TOKEN.finditer(text)):
         if not _RANGE_SEPARATOR.fullmatch(text, first.end(), second.start()):
@@ -272,13 +309,14 @@ def _ranges(text: str, before: date | None) -> list[_Candidate]:
         if start >= end or (before is not None and end > before):
             continue
         context = _before_range(text, first.start())
-        labelled = bool(_PERIOD_LABEL.search(context))
-        line_end = text.find("\n", second.end())
-        after = text[second.end() : line_end if line_end >= 0 else len(text)][:30]
-        if not labelled and (_TENANT_PERIOD.search(context) or _TENANT_PERIOD.search(after)):
-            continue  # the tenant's time in the flat, never the billing period
+        named = bool(_PERIOD_LABEL.search(context))
+        labelled = named or bool(_STATEMENT_PERIOD.search(_label_context(text, first.start())))
+        if _near_tenant(text, context, second.end()):
+            if not labelled:
+                continue  # the tenant's time in the flat, never the billing period
+            labelled = named = False
         period = BillingPeriod(end, True, f"{start:%d.%m.%Y} – {end:%d.%m.%Y}", labelled=labelled)
-        found.append(_Candidate(period, bool(_COMPARISON.search(context[-45:])), start=start))
+        found.append(_Candidate(period, bool(_COMPARISON.search(context[-45:])), start=start, named=named))
     return found
 
 
@@ -300,15 +338,16 @@ def _years(text: str) -> list[_Candidate]:
 
 def _gives_way(year: _Candidate, ranges: Sequence[_Candidate]) -> bool:
     """Whether a billing year gives way to a range that says which months it covers (policy above): one
-    the letter calls its billing period that ends in the year or later, or a split year's own range (starts
-    in its first year, ends in its last). Any other range — a cost item's service period — never makes the
-    year end earlier: the later end is the landlord's reading (:mod:`ordnung.rules.tenancy`)."""
+    the letter calls its billing period with an "Abrechnungs…" word that ends in the year or later (a bare
+    "Zeitraum" after the statement's name only when it doesn't end before the year does), or a split year's
+    own range (starts in its first year, ends in its last). Any other range — a cost item's service period —
+    never makes the year end earlier: the later end is the landlord's reading (:mod:`ordnung.rules.tenancy`)."""
     end = year.period.end
     for candidate in ranges:
         if candidate.comparison:
             continue
         period, start = candidate.period, candidate.start
-        if period.labelled and period.end.year >= end.year:
+        if period.labelled and period.end.year >= end.year and (candidate.named or period.end >= end):
             return True
         split = year.split_from
         if split is not None and start is not None and start.year == split and period.end.year == end.year:
@@ -708,12 +747,29 @@ ALTERNATIVE_END = (
 )
 
 
-def _notice_without_period(alternative: bool, next_end: bool = False) -> AdviceFact:
+#: A notice only called extraordinary (review round 2 of phase 2): it may be one with the statutory period.
+PROBABLY_WITHOUT_PERIOD = (
+    "The landlord calls it an extraordinary notice (außerordentlich) but doesn't say it is without notice period "
+    "(fristlos). An extraordinary notice can also have the statutory period (§ 573d BGB) — then you can object "
+    "as with any notice, and the objection to-do counts back from the earliest end such a notice can have "
+    "(§ 573c Abs. 1 BGB)."
+)
+
+
+def _notice_without_period(alternative: bool, next_end: bool = False, probable: bool = False) -> AdviceFact:
     """What a landlord's notice without notice period means for the hardship objection: none against it,
-    and against a notice given in the alternative only if the grounds for it didn't exist
-    (:data:`HARDSHIP_EXCLUDED`) — the objection letter is still offered for that one, the safe side. When the
-    notice in the alternative names no end of its own (``next_end``), the card says which end the objection
-    counts from (:data:`ALTERNATIVE_END`)."""
+    and against a notice given in the alternative — or one only probably without notice period
+    (``probable``: "außerordentlich", :data:`PROBABLY_WITHOUT_PERIOD`) — only if the grounds for it didn't
+    exist (:data:`HARDSHIP_EXCLUDED`): the objection letter is still offered for those, the safe side. When
+    the notice in the alternative names no end of its own (``next_end``), the card says which end the
+    objection counts from (:data:`ALTERNATIVE_END`)."""
+    if probable and not alternative:
+        return AdviceFact(
+            title="This may be a notice without notice period",
+            text=f"{PROBABLY_WITHOUT_PERIOD} {HARDSHIP_EXCLUDED} If it is for rent arrears, {ARREARS_CURE}.",
+            tone="warn",
+            citation="§ 574 Abs. 1 S. 2 BGB; § 573d BGB; § 569 Abs. 3 Nr. 2 BGB",
+        )
     if alternative:
         text = (
             "The landlord also gives notice with a notice period in the alternative (hilfsweise). "
@@ -817,6 +873,7 @@ def letter_advice(
     text: str = "",
     extraordinary: bool = False,
     alternative: bool = False,
+    probable: bool = False,
     labour_court: bool = False,
     objection_todo: bool = True,
     end_unknown: bool = False,
@@ -832,7 +889,8 @@ def letter_advice(
     person's Land;
     ``old_amount``/``new_amount`` the rent before and after an increase as read; ``text`` the letter's
     text (for the billing period). ``extraordinary``: a landlord's notice reads as one without notice
-    period, ``alternative`` with one in the alternative too — only then is a hardship objection offered.
+    period, ``alternative`` with one in the alternative too, ``probable`` only probably one ("außerordentlich",
+    :func:`~ordnung.rules.routing.notice_without_period`) — only for those two is a hardship objection offered.
     ``objection_todo``: a to-do carries the objection to a landlord's notice (§ 574b BGB) — the law's, or
     the letter's own objection date. Without one the card is urgent (shown first) and says why:
     ``end_unknown`` (the notice's end wasn't read), ``objection_passed`` (the end is less than two months
@@ -972,12 +1030,12 @@ def letter_advice(
             handled=handled,
             closable=closable,
             steps=steps,
-            facts=[_notice_without_period(alternative, end_unknown or objection_passed)]
+            facts=[_notice_without_period(alternative, end_unknown or objection_passed, probable)]
             if extraordinary
             else [],
             help=[TENANTS, LEGAL_AID],
             rule_ids=["bgb_574b", "bgb_549"],
-            draft="objection" if alternative or not extraordinary else None,
+            draft="objection" if alternative or probable or not extraordinary else None,
         )
     if kind == "rent_increase":
         return LetterAdvice(

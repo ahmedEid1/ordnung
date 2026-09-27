@@ -46,11 +46,13 @@ written policies below, and cases they do not decide are documented limitations,
                            ("Zustimmung", "Vergleichsmiete", "Mietspiegel", § 558 BGB) — never from the
                            model's own prose — unless the increase's own quote or the reading's title
                            names another kind of increase, which needs no consent (graduated or index
-                           rent, modernisation, operating-cost prepayments; §§ 557a, 557b, 559, 560 BGB),
-                           or a quote says consent isn't needed ("Zustimmung nicht erforderlich"). What
-                           happens *without* consent ("Sollten Sie Ihre Zustimmung nicht erteilen …"), a
-                           key fact about the prepayment or a Mietspiegel feature ("Bad modernisiert")
-                           never vetoes: every § 558 request has them
+                           rent, operating-cost prepayments, §§ 557a, 557b, 559, 560 BGB; a modernisation
+                           only when the increase's own quote doesn't ask for consent itself), or a quote
+                           says consent isn't needed ("Zustimmung nicht erforderlich"). What happens
+                           *without* consent ("Sollten Sie Ihre Zustimmung nicht erteilen …"), a key fact
+                           about the prepayment or a Mietspiegel feature ("Bad modernisiert", "nach der
+                           Modernisierung des Bades … zuzustimmen") never vetoes: every § 558 request has
+                           them
 =========================  ============================================================================
 
 These are the letters whose *dates* depend on their kind, so the kind is filed with the letter. An
@@ -90,21 +92,29 @@ brings the deadlines the law sets, which the pipeline files as to-dos unless an 
 declaration date was computed under that rule (:func:`computed_under`: routed to it, or a period counted
 under it — not a date that merely mentions it, like a severance payment "if you don't sue", nor a court
 order's payment date, which would turn "pay or object" into "pay"). A landlord's notice
-without notice period (:func:`extraordinary_notice`: its own quote or the title says *fristlos*, not
-negated ("nicht nur fristlos" is no negation), not only reserved — the reservation must govern the
-notice, "eine fristlose Kündigung behalten wir uns vor" — and not "mit (der) gesetzlichen Frist" or "mit
-gesetzlicher Kündigungsfrist" (§ 573d BGB; "with statutory notice") said of the notice itself: not
-denied ("without statutory notice"), not after *hilfsweise* (the notice given in the alternative's
-period); and the tenancy ends within two months) gets no
-objection to-do: the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB) — unless its own
-quote or the title also gives notice with a notice period in the alternative (*hilfsweise fristgemäß*).
+certainly without notice period (:func:`notice_without_period`: its own quote or the title says
+*fristlos*, "ohne Einhaltung einer Kündigungsfrist", § 543 or § 569 BGB, not negated before it or at the
+end of its clause ("nicht nur fristlos" is no negation; "eine fristlose Kündigung ist damit nicht
+verbunden" is one), not only reserved — the reservation must govern the notice, "eine fristlose Kündigung
+behalten wir uns vor" — the notice itself not called *ordentlich*/*fristgerecht*, and not "mit (der)
+gesetzlichen Frist" or "mit gesetzlicher Kündigungsfrist" (§ 573d BGB; "with statutory notice") said of the
+notice itself: not denied ("without statutory notice"), not after *hilfsweise* (the notice given in the
+alternative's period); and the tenancy ends within two months) gets no objection to-do: the hardship
+objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB) — unless its own quote or the title also gives
+notice with a notice period in the alternative (*hilfsweise fristgemäß*, "zugleich ordentlich", "gilt sie
+als ordentliche Kündigung"). A notice only called *außerordentlich* ("außerordentliche Kündigung", never an
+adverb of something else: "wegen Ihres außerordentlich störenden Verhaltens") is only probably one — a
+special termination with the statutory period is called that too (§ 573d BGB) — so its to-do and letter
+are kept and its card says it may be one.
 The objection is excluded against that one too when the grounds for the notice without notice period
 existed, even once the arrears are paid (BGH, 01.07.2020, VIII ZR 323/18), but they may not have: its
 to-do and letter are kept (the card says when it is excluded). Any *hilfsweise* in them counts, even one
 that only reserves the ordinary notice: offering an objection that may not be needed is the safe side of
 missing one (ADR 0010). An ordinary
-notice whose objection date had passed when it was written (it ends less than two months later) gets
-no to-do either; its card says so (§ 574b Abs. 2 S. 2 BGB, § 573c BGB). The objection is for a home only
+notice whose objection date had passed when it was written (it ends less than two months later), or whose
+end wasn't read ("zum nächstmöglichen Termin"), gets the objection counted back from the earliest end a
+notice with a notice period can have (§ 573c Abs. 1 BGB), with less confidence; the card of a short notice
+says why (§ 574b Abs. 2 S. 2 BGB). The objection is for a home only
 (§§ 549, 574 BGB): its to-do and card say it
 isn't for a garage, parking space or business premises let on their own (§ 578 BGB) — code doesn't try
 to tell those apart.
@@ -116,6 +126,7 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from datetime import date
+from typing import Literal
 
 from ordnung.models import DateNature, DateSpec, DocumentExtraction, HighStakesKind, LetterKind, Priority
 from ordnung.rules.explain import fmt_date
@@ -152,9 +163,12 @@ _PLACE_JOINER = re.compile(r"am|an|der|im|in|bei|ob|vor|a\.|d\.|i\.|[IVX]+", re.
 #: name makes one).
 _COURT_KINDS = ("authority", "other")
 _LABOUR_COURT = re.compile(r"(?i:arbeitsgericht)|\b(?:ArbG|LAG)\s|\bBAG\b")
+_SOCIAL_COURT = re.compile(r"(?i:sozialgericht)|\b(?:SG|LSG)\s|\bBSG\b")
 #: Senders that name a court without being one: a bailiff ("Gerichtsvollzieher bei dem Amtsgericht …",
-#: "Obergerichtsvollzieherin …, Amtsgericht Köln") or a court cashier.
-_NOT_A_COURT = re.compile(r"vollzieh|kasse|zahlstelle", re.I)
+#: "Obergerichtsvollzieherin …, Amtsgericht Köln") or a court cashier ("Gerichtskasse", "Landesjustizkasse",
+#: "Kasse des Amtsgerichts") — a word ending in "kasse", never a place such as Kassel (review round 2: every
+#: court in Kassel was an ordinary authority, its dates late).
+_NOT_A_COURT = re.compile(r"vollzieh|kasse(?:n(?:stelle)?)?\b|zahlstelle", re.I)
 _COURT_ORDER_NAME = re.compile(r"mahnbescheid|vollstreckungsbescheid", re.I)
 #: What a court order's title calls it: German, or the English a reading may use instead.
 _ORDER_TITLE = re.compile(
@@ -166,10 +180,11 @@ _WIDERSPRUCH = re.compile(r"widerspr|\b69[24]\b[^§]{0,20}\bZPO\b", re.I)
 _EINSPRUCH = re.compile(r"einspruch|\b(?:339|700)\b[^§]{0,20}\bZPO\b", re.I)
 #: A § 558 request asks for consent — in the letter's own (German) wording.
 _CONSENT = re.compile(r"zustimm|vergleichsmiete|mietspiegel|\b558[ab]?\b[^§]{0,20}\bBGB\b", re.I)
-#: An increase of another kind, in the increase's own quote: graduated or index rent, modernisation,
-#: operating-cost prepayments (§§ 557a, 557b, 559, 560 BGB) — none needs consent.
+#: An increase of another kind, in the increase's own quote: graduated or index rent, operating-cost
+#: prepayments, or the statute of one of these or of a modernisation increase (§§ 557a, 557b, 559, 560 BGB) —
+#: none needs consent.
 _OTHER_INCREASE = re.compile(
-    r"staffelmiete|indexmiete|preisindex|modernisierung|\b55(?:7a|7b|9[a-e]?|60)\b[^§]{0,20}\bBGB\b|"
+    r"staffelmiete|indexmiete|preisindex|\b55(?:7a|7b|9[a-e]?|60)\b[^§]{0,20}\bBGB\b|"
     r"(?:anpassung|erhöhung)\s+(?:der|ihrer)\s+\S*vorauszahlung|"
     r"vorauszahlung\w*\s+(?:(?:wird|werden)\s+(?:\S+\s+){0,3}(?:angepasst|erhöht)|erhöh|steig)",
     re.I,
@@ -177,10 +192,14 @@ _OTHER_INCREASE = re.compile(
 #: The same as the reading's (English) title may call it.
 _OTHER_INCREASE_TITLE = re.compile(
     r"index[- ](?:rent|linked)|indexed rent|price index|graduated|stepped rent|staggered rent|staffel|"
-    r"moderni[sz]ation|\b55(?:7a|7b|9|60)\b|(?:prepayment|advance payment)s?\s+(?:adjust|increas|rise)|"
+    r"\b55(?:7a|7b|9|60)\b|(?:prepayment|advance payment)s?\s+(?:adjust|increas|rise)|"
     r"(?:adjust|increas)\w*\s+(?:of\s+)?(?:the\s+|your\s+)?(?:operating[- ]costs?\s+)?(?:prepayment|advance payment)",
     re.I,
 )
+#: A modernisation, in the increase's own quote or the title: a § 559 increase ("Mieterhöhung nach
+#: Modernisierung") — or a modernised bathroom a § 558 request names as a feature of the flat, so it vetoes
+#: only when the increase's own quote doesn't ask for consent (review round 2 of phase 2).
+_MODERNISATION = re.compile(r"modernisierung|moderni[sz]ation", re.I)
 #: "No consent needed", in the letter's own words anywhere — never "if you don't consent" (every § 558
 #: request says what happens then).
 _NO_CONSENT_NEEDED = re.compile(
@@ -205,10 +224,30 @@ _NOT_A_LANDLORD = (
     "health_insurer",
     "public_broadcaster",
 )
-#: A notice without notice period, in the termination's own quote or the reading's title.
+#: A notice without notice period, in the termination's own quote or the reading's title: *fristlos*, "ohne
+#: Einhaltung einer Kündigungsfrist", "without notice", § 543 or § 569 BGB.
 _EXTRAORDINARY = re.compile(
-    r"fristlos|außerordentlich|ausserordentlich|ohne\s+einhaltung\s+(?:einer|der)\s+(?:kündigungs)?frist|"
-    r"without notice|extraordinar|\b543\b[^§]{0,20}\bBGB\b|\b569\b[^§]{0,20}\bBGB\b",
+    r"fristlos|ohne\s+einhaltung\s+(?:einer|der)\s+(?:kündigungs)?frist|"
+    r"without notice|\b543\b[^§]{0,20}\bBGB\b|\b569\b[^§]{0,20}\bBGB\b",
+    re.I,
+)
+#: … or only probably one: "außerordentlich" (extraordinary) said of the notice itself ("außerordentliche
+#: Kündigung", "außerordentlich (und fristlos) kündigen", "kündigen … außerordentlich") — never the adverb of
+#: something else ("wegen Ihres außerordentlich störenden Verhaltens", review round 2 of phase 2). An
+#: extraordinary notice may also have the statutory period (§ 573d BGB), which the objection applies to.
+_WORDS_BETWEEN = r"(?:[^\s.,;:!?]+\s+){0,6}?"
+_PREPOSITION = r"(?:und|oder|sowie|bzw\.?|gemäß|gem\.|nach|wegen|aufgrund|aus|mit|zum|zur|per|mangels)\b"
+_EXTRAORDINARY_ONLY = re.compile(
+    r"au(?:ß|ss)erordentlich\w*(?:\s*,?\s*(?:und\s+|sowie\s+)?fristlos\w*)?\s+(?:kündig|gekündigt|zu\s+kündigen)"
+    rf"|kündig\w*\s+{_WORDS_BETWEEN}au(?:ß|ss)erordentlich\b(?!\s+(?!{_PREPOSITION})[a-zäöüß])"
+    r"|extraordinar\w*\s+(?:\w+\s+){0,2}?(?:termination|notice|cancell?ation)"
+    rf"|terminat\w*\s+{_WORDS_BETWEEN}extraordinarily\b",
+    re.I,
+)
+#: … unless the notice itself is ordinary (*ordentlich*, *fristgerecht*, *fristgemäß* — not inside
+#: "außerordentlich"), said before any notice given in the alternative.
+_ORDINARY = re.compile(
+    r"(?<![^\W\d_])(?:ordentlich\w*|fristgerecht\w*|fristgemä(?:ß|ss)\w*)|\bordinary\s+(?:notice|termination)",
     re.I,
 )
 #: … unless it is negated ("nicht fristlos", "keine fristlose Kündigung") in its sentence, or only
@@ -241,10 +280,17 @@ _STATUTORY_PERIOD = re.compile(
 #: statutory notice", "nicht mit der gesetzlichen Frist") — "ohne" and "without" deny it too.
 _STATUTORY_DENIED = re.compile(r"\b(?:nicht|kein\w*|ohne|not|no|without)\b[^.!?;\n]{0,30}$", re.I)
 
-#: A notice without notice period that also gives notice with one "in the alternative".
+#: A notice without notice period that also gives notice with one "in the alternative": *hilfsweise*,
+#: "vorsorglich (auch) ordentlich", "zugleich ordentlich", or what it becomes if it fails ("gilt sie als
+#: ordentliche Kündigung", "in eine ordentliche Kündigung umgedeutet" — review round 2 of phase 2).
+_ORDINARILY = r"(?:ordentlich|fristgerecht|fristgemä(?:ß|ss))"
 _ALTERNATIVE_NOTICE = re.compile(
-    r"hilfsweise|vorsorglich\s+(?:\S+\s+){0,4}?(?:ordentlich|fristgerecht|fristgemäß)|alternatively|"
-    r"in the alternative",
+    rf"hilfsweise|(?:vorsorglich|zugleich|gleichzeitig|jedenfalls)\s+(?:\S+\s+){{0,4}}?{_ORDINARILY}|"
+    rf"\bgilt\s+(?:\S+\s+){{0,4}}?als\s+(?:\S+\s+)?{_ORDINARILY}|"
+    rf"\bals\s+{_ORDINARILY}\w*\s+kündigung\s+(?:\S+\s+){{0,2}}?(?:gelten|werten|verstehen|behandeln)|"
+    rf"(?:umgedeutet|umdeutung)\s+(?:\S+\s+){{0,3}}?{_ORDINARILY}|"
+    rf"{_ORDINARILY}\w*\s+kündigung\s+(?:\S+\s+){{0,2}}?(?:umgedeutet|umzudeuten|umdeuten)|"
+    r"alternatively|in the alternative",
     re.I,
 )
 
@@ -402,6 +448,12 @@ def is_labour_court(name: str, kind: str | None = None) -> bool:
     return is_court(name, kind) and bool(_LABOUR_COURT.search(name))
 
 
+def is_social_court(name: str, kind: str | None = None) -> bool:
+    """Whether a court is a social court (Sozialgericht, Landes-, Bundessozialgericht): its periods count
+    under § 64 SGG, not § 222 ZPO."""
+    return is_court(name, kind) and bool(_SOCIAL_COURT.search(name))
+
+
 def classify_letter(extraction: DocumentExtraction) -> HighStakesKind | None:
     """The high-stakes kind of a letter from the model's reading, or ``None`` (policy 1 above)."""
     sender = extraction.sender
@@ -430,13 +482,17 @@ def _terminated(extraction: DocumentExtraction) -> HighStakesKind | None:
 
 def _consent_request(extraction: DocumentExtraction) -> bool:
     """Whether a rent increase asks for consent (policy 1): its quoted wording asks for it, its own quote
-    and its title name no other kind of increase, and nothing it quotes says no consent is needed."""
+    and its title name no other kind of increase — a modernisation only when the increase's own quote
+    doesn't ask for consent itself (a § 558 request names a modernised bathroom as a feature) — and nothing
+    it quotes says no consent is needed."""
     quoted = _quoted_text(extraction)
     own = extraction.change.quote if extraction.change is not None else ""
+    modernisation = bool(_MODERNISATION.search(f"{own}\n{extraction.title}")) and not _CONSENT.search(own)
     return (
         bool(_CONSENT.search(quoted))
         and not _OTHER_INCREASE.search(own)
         and not _OTHER_INCREASE_TITLE.search(extraction.title)
+        and not modernisation
         and not _NO_CONSENT_NEEDED.search(quoted)
     )
 
@@ -461,14 +517,20 @@ def names_statement(extraction: DocumentExtraction) -> bool:
     )
 
 
+#: A negation that ends the clause after a wording: "Eine außerordentliche Kündigung sprechen wir nicht
+#: aus", "eine fristlose Kündigung ist damit nicht verbunden" — not "wegen nicht gezahlter Miete".
+_NEGATED_AFTER = re.compile(r"\b(?:nicht|nie|niemals|keinesfalls|not|never)(?:\s+[^\s,]+)?\s*$", re.I)
+
+
 def _asserted(text: str, match: re.Match[str]) -> bool:
-    """Whether a wording in ``text`` is said in its sentence: not negated, and not a notice only reserved
-    (:data:`_NOTICE` governed by a reservation before it or right after it)."""
+    """Whether a wording in ``text`` is said in its sentence: not negated (before it, or at the end of its
+    clause), and not a notice only reserved (:data:`_NOTICE` governed by a reservation before it or right
+    after it)."""
     starts = [end.end() for end in _SENTENCE_END.finditer(text, 0, match.start())]
     after = _SENTENCE_END.search(text, match.end())
     before = text[starts[-1] if starts else 0 : match.start()]
     rest = text[match.end() : after.start() if after else len(text)]
-    if _NEGATED.search(before):
+    if _NEGATED.search(before) or _NEGATED_AFTER.search(rest.split(",", 1)[0]):
         return False
     notice = _NOTICE.match(rest)
     return notice is None or not (_RESERVING.search(before) or _RESERVED_AFTER.match(rest, notice.end()))
@@ -489,33 +551,75 @@ def _gives_statutory_period(text: str) -> bool:
     return False
 
 
-def extraordinary_notice(extraction: DocumentExtraction, letter_date: date | None = None) -> bool:
+def _gives_ordinary(text: str) -> bool:
+    """Whether ``text`` (the title, or the termination's own quote) calls the notice itself ordinary
+    (:data:`_ORDINARY`): said, not negated or only reserved, and before any notice given in the alternative
+    ("fristlos, hilfsweise ordentlich" is still a notice without notice period)."""
+    alternative = _ALTERNATIVE_NOTICE.search(text)
+    for match in _ORDINARY.finditer(text):
+        if alternative is not None and alternative.start() <= match.start():
+            return False
+        if _asserted(text, match):
+            return True
+    return False
+
+
+NoticeWithoutPeriod = Literal["certain", "probable"]
+
+
+def notice_without_period(
+    extraction: DocumentExtraction, letter_date: date | None = None
+) -> NoticeWithoutPeriod | None:
     """Whether a termination is one without notice period (*fristlos*), the only one the hardship
-    objection doesn't apply to (§ 574 Abs. 1 S. 2 BGB).
+    objection doesn't apply to (§ 574 Abs. 1 S. 2 BGB): ``"certain"``, ``"probable"`` or ``None``.
 
     Only the termination's own quote and the reading's title count — never the model's summary or
     other quotes, which may mention a *fristlose Kündigung* the landlord only reserves. The wording must
-    say it (*fristlos*, *außerordentlich*, "ohne Einhaltung einer Kündigungsfrist", § 543 or § 569 BGB),
-    not deny or reserve it, and not give the notice itself the statutory period (*mit der gesetzlichen
-    Frist*, *mit gesetzlicher Kündigungsfrist*, "with statutory notice": a special termination the
-    objection applies to) — a statutory period that is denied ("without statutory notice") or belongs to
-    the notice given in the alternative ("fristlos, hilfsweise ordentlich unter Einhaltung der gesetzlichen
-    Kündigungsfrist") doesn't count (:func:`_gives_statutory_period`). And the tenancy must end soon: no
-    end stated, or one less than two months after the letter's date (``letter_date``, else the reading's)
-    — unless it is the end of a notice given in the alternative (*hilfsweise*). When unsure, it is an ordinary notice: its
-    objection to-do is kept, and the card says it doesn't apply to a notice without notice period.
+    say it — *fristlos*, "ohne Einhaltung einer Kündigungsfrist", "without notice", § 543 or § 569 BGB
+    (``"certain"``), or only "außerordentlich"/"extraordinary" said of the notice itself ("außerordentliche
+    Kündigung", "kündigen … außerordentlich" — never an adverb of something else, "wegen Ihres
+    außerordentlich störenden Verhaltens"), which may also be a special termination with the statutory
+    period (§ 573d BGB; ``"probable"``) — and not deny it (before it, or at the end of its clause: "eine
+    fristlose Kündigung ist damit nicht verbunden") or only reserve it. The notice itself must not be called
+    ordinary (*ordentlich*, *fristgerecht*, *fristgemäß* before any notice given in the alternative), nor be
+    given the statutory period (*mit der gesetzlichen Frist*, *mit gesetzlicher Kündigungsfrist*, "with
+    statutory notice": a special termination the objection applies to) — a statutory period that is denied
+    ("without statutory notice") or belongs to the notice given in the alternative ("fristlos, hilfsweise
+    ordentlich unter Einhaltung der gesetzlichen Kündigungsfrist") doesn't count (:func:`_gives_statutory_period`).
+    And the tenancy must end soon: no end stated, or one less than two months after the letter's date
+    (``letter_date``, else the reading's) — unless it is the end of a notice given in the alternative
+    (*hilfsweise*). When unsure, it is an ordinary notice: its objection to-do is kept, and the card says it
+    doesn't apply to a notice without notice period.
     """
     own = extraction.change.quote if extraction.change is not None else ""
     text = f"{extraction.title}\n{own}"
-    if _gives_statutory_period(extraction.title) or _gives_statutory_period(own):
-        return False
-    if not any(_asserted(text, match) for match in _EXTRAORDINARY.finditer(text)):
-        return False
+    if any(_gives_statutory_period(part) or _gives_ordinary(part) for part in (extraction.title, own)):
+        return None
+    if any(_asserted(text, match) for match in _EXTRAORDINARY.finditer(text)):
+        strength: NoticeWithoutPeriod = "certain"
+    elif any(_asserted(text, match) for match in _EXTRAORDINARY_ONLY.finditer(text)):
+        strength = "probable"
+    else:
+        return None
     end = announced_end(extraction)
     written = letter_date or _parse_day(extraction.document_date)
     if end is None or alternative_notice(extraction):
-        return True
-    return written is not None and notice_objection_deadline(end) < written
+        return strength
+    return strength if written is not None and notice_objection_deadline(end) < written else None
+
+
+def extraordinary_notice(extraction: DocumentExtraction, letter_date: date | None = None) -> bool:
+    """Whether a termination reads as one without notice period, certainly or probably
+    (:func:`notice_without_period`): its card says what that means for the hardship objection."""
+    return notice_without_period(extraction, letter_date) is not None
+
+
+def objection_excluded(extraction: DocumentExtraction, letter_date: date | None = None) -> bool:
+    """Whether the hardship objection is out of the question for a termination: it is certainly one
+    without notice period (:func:`notice_without_period`) and gives no notice with one in the alternative
+    (:func:`alternative_notice`). Then no objection to-do is filed and none is drafted; for a notice only
+    probably without notice period ("außerordentlich") both are kept, the safe side (ADR 0010)."""
+    return notice_without_period(extraction, letter_date) == "certain" and not alternative_notice(extraction)
 
 
 def alternative_notice(extraction: DocumentExtraction) -> bool:
@@ -752,9 +856,10 @@ _NOTICE_OBJECTION = DerivedDeadline(
 )
 
 
-#: A notice whose own end is too early for an objection (a notice too short for its period), or given in the
-#: alternative with no end of its own: it usually ends the tenancy at the next permissible date (§ 573c Abs. 1
-#: BGB), so the objection counts back from the earliest one (:mod:`ordnung.rules.letters`), with less confidence.
+#: A notice whose own end is too early for an objection (a notice too short for its period), or that has no
+#: end read (given in the alternative, "zum nächstmöglichen Termin"): it usually ends the tenancy at the next
+#: permissible date (§ 573c Abs. 1 BGB), so the objection counts back from the earliest one
+#: (:mod:`ordnung.rules.letters`), with less confidence.
 _NEXT_END_OBJECTION = replace(
     _NOTICE_OBJECTION,
     action=(
@@ -796,18 +901,22 @@ def derived_deadlines(
     extraordinary: bool = False,
     labour_court: bool = False,
     alternative: bool = False,
+    dated: bool = False,
 ) -> list[DerivedDeadline]:
     """The deadlines the law adds to a kind of letter; ``end`` is the end its termination announces.
     A court order from a labour court (``labour_court``) gives one week (§ 46a Abs. 3, § 59 ArbGG).
 
     The objection to a landlord's notice counts back from the end of the tenancy — not for a notice
-    without notice period (``extraordinary``: one not also given with a notice period in the alternative):
-    the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB), and its card points to advice
-    instead. When the end is too early for the objection (less than two months after the letter's date
-    ``letter_date``: a notice too short for its period) or the notice is given in the ``alternative`` without
-    an end of its own (none read, or the immediate one), the objection counts back from the earliest end a
-    notice with a notice period can have (§ 573c Abs. 1 BGB) — such a notice usually ends the tenancy at
-    the next permissible date. An ordinary notice whose end wasn't read gets none: its card asks for it.
+    certainly without notice period that gives none in the alternative (``extraordinary``,
+    :func:`objection_excluded`): the hardship objection doesn't apply to it (§ 574 Abs. 1 S. 2 BGB), and its
+    card points to advice instead. When the end is too early for the objection (less than two months after
+    the letter's date ``letter_date``: a notice too short for its period) or none was read (a notice "zum
+    nächstmöglichen Termin", one given in the ``alternative``, or an end the reading missed), the objection
+    counts back from the earliest end a notice with a notice period can have (§ 573c Abs. 1 BGB) — such a
+    notice usually ends the tenancy at the next permissible date, and a later real end only makes the
+    objection's deadline later (the earliest plausible date; review round 2 of phase 2) — unless an ordinary
+    notice without an end gives an objection date of its own (``dated``): that date counts from the end the
+    landlord knows.
     """
     if letter == "court_payment_order":
         return [_LABOUR_COURT_ORDER if labour_court else _COURT_ORDER]
@@ -817,7 +926,9 @@ def derived_deadlines(
         return [_COURT_ACTION, _REGISTER]
     if letter == "rent_increase":
         return [_CONSENT_DECISION]
-    if letter == "landlord_notice" and not extraordinary and (end is not None or alternative):
+    if letter == "landlord_notice" and not extraordinary:
+        if end is None and dated and not alternative:
+            return []
         if end is None or (letter_date is not None and notice_objection_deadline(end) < letter_date):
             return [_NEXT_END_OBJECTION]
         spec = _NOTICE_OBJECTION.spec.model_copy(

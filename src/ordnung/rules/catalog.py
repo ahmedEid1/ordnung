@@ -513,6 +513,15 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
+        "sgg_64",
+        "Social court deadlines: counting and weekend shift",
+        "§ 64 Abs. 1–3 SGG",
+        "A social court's periods start the day after delivery and end like §§ 187, 188 BGB; one that ends on "
+        "a Saturday, Sunday or public holiday ends on the next working day.",
+        f"{_GII}/sgg/__64.html",
+        None,
+    ),
+    (
         "zpo_692",
         "Court payment order (Mahnbescheid): two weeks to pay or object",
         "§ 692 Abs. 1 Nr. 3 ZPO; § 694 ZPO; § 699 Abs. 1 ZPO",

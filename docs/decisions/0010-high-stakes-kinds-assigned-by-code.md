@@ -33,7 +33,9 @@ means reading some German wording in code — the kind of clause parsing ADR 000
    statement's billing period.
 4. **Errors go to the safe side.** Where the wording parser is unsure, it keeps the to-do and offers the
    letter: a *fristlos* wording that is negated, reserved or far from its end counts as an ordinary notice
-   (the objection to-do is kept), and any *hilfsweise* in the notice's own words counts as a notice in
+   (the objection to-do is kept), "außerordentlich" alone only as *probably* one (§ 573d BGB: the to-do
+   and letter are kept), a notice with no end read counts back from the earliest permissible end, and
+   any *hilfsweise* in the notice's own words counts as a notice in
    the alternative, even one that only reserves it (an objection is offered that may not be needed — and
    kept though the objection is excluded against it too when the grounds for the notice without notice
    period existed, BGH VIII ZR 323/18, which the card says); a statutory period ("mit gesetzlicher Frist",

@@ -357,7 +357,7 @@ written policy per ADR 0007, and ADR 0010 for why code assigns these kinds) and 
 | `enforcement_order` (*Vollstreckungsbescheid*) | comes from a court, names a Vollstreckungsbescheid, asks the person to answer it, and is one (see below) | `zpo_339` (at a labour court `arbgg_59`) | object within two weeks (one week at a labour court) | get advice now |
 | `dismissal` | reports a termination by the other side about a job — what it ends is decided by the contract it names (an employment contract; any other category but "other", like a job ticket, is neither), then the letter's kind, and only then the sender's (an employer) | `kschg_4`, `sgb3_38` | court action within three weeks; register as job-seeking | get advice now |
 | `landlord_notice` | reports a termination by the other side about a tenancy, in the same order (a rent contract, a tenancy letter, a landlord): an employer ending the lease of a company flat gives a landlord's notice, not a dismissal | `bgb_574b` | the objection, when the notice has a notice period (or gives one in the alternative): two months before its stated end — or before the earliest end the law allows (`bgb_573c_landlord`) when the stated end is too early for it or a notice in the alternative names none | tenants' association |
-| `rent_increase` | reports a rent increase whose quoted German wording asks for consent (Zustimmung, Vergleichsmiete, Mietspiegel, § 558 BGB), unless the increase's own quote or the title names another kind of increase (graduated, index, modernisation, prepayments; §§ 557a, 557b, 559, 560 BGB) or a quote says consent isn't needed — what happens *without* consent ("Sollten Sie Ihre Zustimmung nicht erteilen …"), the prepayment in the new total and a Mietspiegel feature ("Bad modernisiert") never veto it | `bgb_558b` | decide on the consent | rent cap check |
+| `rent_increase` | reports a rent increase whose quoted German wording asks for consent (Zustimmung, Vergleichsmiete, Mietspiegel, § 558 BGB), unless the increase's own quote or the title names another kind of increase (graduated, index, prepayments, §§ 557a, 557b, 559, 560 BGB; a modernisation only when the increase's own quote doesn't ask for consent) or a quote says consent isn't needed — what happens *without* consent ("Sollten Sie Ihre Zustimmung nicht erteilen …"), the prepayment in the new total and a Mietspiegel feature ("Bad modernisiert", "nach der Modernisierung des Bades … zuzustimmen") never veto it | `bgb_558b` | decide on the consent | rent cap check |
 | `operating_costs` | names an operating-cost statement in its title, or with a tenancy or a billing period, isn't a reminder (a reminder about an old statement's back-payment quotes the statement without being it) and isn't from a utility or a public body — recognised on read only, because its dates don't depend on it | ordinary 12-month period | — | late-statement check |
 
 **Which court order a court's letter is.** A court writes many letters that name an order: to the
@@ -402,7 +402,9 @@ the letter names cites § 180 ZPO (`zpo_180`), so the letter's page asks "When w
 date filled in — never "When did it arrive?" with today; its receipt counts from "the day it was
 delivered", and its warnings ask for the date the postman wrote on the yellow envelope. A court's periods
 are counted by §§ 187, 188 BGB through § 222 Abs. 1 ZPO — at a labour court through § 46 Abs. 2 ArbGG —
-and their receipts cite them so, never the AO's, the VwVfG's or the SGG's counting rules. The rules tools the
+and their receipts cite them so, never the AO's or the VwVfG's counting rules; a social court (Sozialgericht,
+LSG, BSG) counts under its own act, § 64 Abs. 1–3 SGG (`sgg_64`) — the same dates. A court in a place whose
+name holds "kasse" (Kassel) is a court; only a cashier ("Gerichtskasse", "Landesjustizkasse") is not. The rules tools the
 assistant can call (`compute_deadline`, ADR 0009) treat a sender they name as a court the same way: the
 court order's kind from the remedy, the same start, the same question. A court's own period that the letter counts
 from its own date ("binnen zwei Wochen ab dem Datum dieses Schreibens", "ab heute") is the exception: a
@@ -561,9 +563,15 @@ Ordnung still keeps the to-do and the letter for a notice given in the alternati
 have existed — the safe side), and the card, the ordinary card's step and the objection letter's note say
 when it is excluded: "Object in time anyway if you think those grounds didn't exist, and get advice at
 once." A notice counts as one only when **its own
-quote or the title** says so (*fristlos*, *außerordentlich*, "ohne Einhaltung einer Kündigungsfrist",
-§ 543 or § 569 BGB) — never the model's summary or another quote, which may mention a *fristlose
-Kündigung* the landlord only reserves — and the wording is not negated ("keine fristlose Kündigung"),
+quote or the title** says so (*fristlos*, "ohne Einhaltung einer Kündigungsfrist", § 543 or § 569 BGB) —
+never the model's summary or another quote, which may mention a *fristlose Kündigung* the landlord only
+reserves. A notice only called *außerordentlich* ("außerordentliche Kündigung", "kündigen … außerordentlich";
+never the adverb of something else, "wegen Ihres außerordentlich störenden Verhaltens") is only *probably*
+one: a special termination with the statutory period is called extraordinary too (§ 573d BGB), so its
+objection to-do and letter are kept and its card says "This may be a notice without notice period". The
+notice itself must not be called ordinary (*ordentlich*, *fristgerecht*, *fristgemäß* before any notice given
+in the alternative), and the wording must not be negated — before it ("keine fristlose Kündigung") or at the
+end of its clause ("eine fristlose Kündigung ist damit nicht verbunden", "… sprechen wir nicht aus") —,
 only reserved (a reservation of the notice itself: "eine fristlose Kündigung behalten wir uns vor", "…
 vor, fristlos zu kündigen" — not "wir kündigen fristlos und behalten uns weitere Ansprüche vor") or given
 "mit der gesetzlichen Frist" or "mit gesetzlicher (Kündigungs-)Frist" (as § 573d BGB is headed; in the
@@ -571,7 +579,8 @@ title also "with statutory notice", "statutory period") — a special terminatio
 ZVG, § 111 InsO, § 564 BGB) which the objection applies to (§ 574 Abs. 1 BGB, § 575a Abs. 2 BGB), even
 without an end date ("zum nächstmöglichen Zeitpunkt"). The statutory period counts only when it is said of
 the notice itself: not denied in its sentence ("Termination without statutory notice"), and not after
-*hilfsweise* (or *vorsorglich … ordentlich*, "alternatively") — the usual arrears notice "fristlos wegen
+*hilfsweise* (or *vorsorglich/zugleich … ordentlich*, "gilt sie als ordentliche Kündigung", "in eine
+ordentliche Kündigung umgedeutet", "alternatively") — the usual arrears notice "fristlos wegen
 Zahlungsverzugs, hilfsweise ordentlich unter Einhaltung der gesetzlichen Kündigungsfrist" stays a notice
 without notice period — and
 the tenancy ends within two months of the letter (or no end is stated). When unsure it is an ordinary
@@ -595,7 +604,9 @@ before the letter was written, so the objection can still be raised at the first
 (§ 574b Abs. 2 S. 2 BGB); if the notice is too short, the objection is due two months before the next
 permissible end and may still be open. A notice given in the alternative (*hilfsweise fristgemäß*) that names
 no end of its own (none read, or the immediate one) gets the same to-do, and its card says which end it
-counts from — never the immediate one.
+counts from — never the immediate one. So does **any other notice whose end wasn't read** ("fristgerecht zum
+nächstmöglichen Termin", or an end the reading missed): the real end can only be later than the earliest
+one, which only makes the objection's date later.
 
 | Notice arrived | Earliest end | Objection by | Source |
 |---|---|---|---|
@@ -643,8 +654,12 @@ and the tenant may inspect the receipts. The card's check is written so that it 
   a billing year gives way only to a range that says which months it covers — one the letter calls its
   billing period that ends in the year or later, or a split year's own months ("2023/2024": 01.07.2023 –
   30.06.2024) — never to another range that ends earlier in it (a cost item's service period: the later end
-  is the landlord's reading). The tenant's own time in the flat ("Nutzungszeitraum", "Mietdauer … (Auszug)")
-  is never the billing period: a tenant who moved out mid-year gets the landlord's period all the same. A date
+  is the landlord's reading). A bare "Zeitraum" is a cost item's service period ("Gebäudeversicherung,
+  Zeitraum: 01.04.2024 – 31.03.2025"), never the billing period's label — only right after the statement's
+  own name ("Heizkostenabrechnung\nZeitraum: …"), and even then it never makes a named billing year end
+  earlier. The tenant's own time in the flat ("Nutzungszeitraum", "Mietdauer … (Auszug)", "Mietende" on the
+  next line) is never the billing period, even when the letter labels it so: a tenant who moved out mid-year
+  gets the landlord's period all the same, so such a range decides at most "probably". A date
   near the ends of the calendar (a misread year such as 9999) claims nothing. The previous year's comparison (next to "Vorjahr", "Vergleich"; a heating statement must show
   it, § 6a Abs. 3 S. 1 Nr. 5 HeizkostenV) never decides: when it is the latest range found, the
   statement's own period was missed and nothing is claimed.
@@ -652,7 +667,7 @@ and the tenant may inspect the receipts. The card's check is written so that it 
   holidays in the landlord's favour (with *any* Land's holiday when the tenant's is unknown).
 * A statement is called late only when it certainly arrived after the deadline — its own date after the
   deadline, or a confirmed arrival day after it — **and** the range is one the letter calls its billing
-  period ("Abrechnungszeitraum", "für den Zeitraum vom …", "Abrechnungsjahr 2023/2024 (…)"). From any
+  period ("Abrechnungszeitraum", "Abrechnung für den Zeitraum vom …", "Abrechnungsjahr 2023/2024 (…)"). From any
   other range or a billing year alone it is at most "probably too late — check the billing period".
 * "On time" is only said without "probably" when the weekend/holiday shift (whose use here is disputed)
   and an unknown Land didn't decide it.
@@ -927,6 +942,7 @@ action, contracts, sending and form, price increases).
 | `bgb_130`, `bgb_312k`, `bgb_309_13`, `ao_357` | Arrival, cancellation button, text form, tax objection form | § 130, § 312k, § 309 Nr. 13 BGB; § 357 AO | `bgb_312k` 2022-07-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__312k.html) |
 | `bgb_675s` | Bank transfer time | § 675s Abs. 1 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__675s.html) |
 | `zpo_180`, `zpo_222` | Court letters count from delivery; court deadline shift | § 180 ZPO; § 222 ZPO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/zpo/__222.html) |
+| `sgg_64` | A social court's periods: counting and shift | § 64 Abs. 1–3 SGG | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/sgg/__64.html) |
 | `zpo_129a` | Objections for the record at any Amtsgericht; effect only on arrival at the issuing court | § 129a Abs. 1, 3 ZPO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/zpo/__129a.html) |
 | `zpo_692`, `zpo_339` | Court payment order; enforcement order (section 7) | § 692 Abs. 1 Nr. 3, § 694 ZPO; § 700 Abs. 1, § 339 Abs. 1 ZPO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/zpo/__692.html) |
 | `bgb_195` | Old claims may be time-barred | §§ 195, 199 Abs. 1, 214 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__199.html) |

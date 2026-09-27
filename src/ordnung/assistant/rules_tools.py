@@ -71,8 +71,9 @@ Policies:
   one (:func:`disclaimer`) for dates, the calendar's for holidays, the IBAN check's for an IBAN.
 
 "Today" is the server's pinned day (``RulesTools(today=…)``, ``ORDNUNG_TODAY``), else the date in
-Germany (:data:`HOME_ZONE`) — never the machine's own time zone; a caller's ``today`` replaces it
-unless the server pins it (see above).
+Germany (:data:`HOME_ZONE`) — never the machine's own time zone; a caller's ``today`` a day before it
+replaces it unless the server pins it (see above) — never a later one, which would make a deadline that
+runs to midnight German time look missed.
 
 The tools' descriptions, :data:`SPEC_HELP`, :data:`INSTRUCTIONS` and the input schemas (generated
 from ``DateSpec``, ``PartyKind`` and ``RemedyType`` in :mod:`ordnung.models`) are what a model reads,
@@ -246,6 +247,10 @@ _DELIVERY_LAW = {
     "vwvfg": "general administrative law (§ 41 VwVfG)",
     "sgbx": "social law (§ 37 SGB X)",
 }
+#: The step every deemed delivery counts from (:func:`ordnung.rules.deadlines._apply_delivery`):
+#: ``delivery_law`` names the law only when one was applied — a period from arrival (a dismissal's three
+#: weeks from an authority as employer) applied none (review round 2 of phase 2).
+DEEMED_DELIVERY_STEP = "posting_day"
 #: A court's letter (``ordnung.rules.routing.is_court``) has no deemed delivery, whatever its sender kind.
 COURT_DELIVERY_LAW = "a court's letter: formal service (§ 180 ZPO), no deemed delivery"
 _WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
@@ -333,7 +338,7 @@ class RulesTools:
         """The date a ``DateSpec`` describes, computed by the rules engine, with its receipt."""
         from ordnung.rules import RuleContext, compute_due, is_private_sender, scope_for_party_kind
         from ordnung.rules.deadlines import from_arrival, period_problem
-        from ordnung.rules.routing import is_court, is_labour_court
+        from ordnung.rules.routing import is_court, is_labour_court, is_social_court
 
         parsed = parse_spec(spec)
         _check_choice("sender_kind", sender_kind, get_args(PartyKind))
@@ -341,11 +346,18 @@ class RulesTools:
         server_day = self.current_day()
         given_today = _optional_day("today", today)
         day, other_day = self._days(given_today, server_day)
+        # a letter may have arrived on a caller's today a time zone ahead, though the result is for the
+        # earlier day (:meth:`_days`)
+        latest = (
+            max(day, given_today)
+            if given_today is not None and other_day is None and not self._pin_today
+            else day
+        )
         letter_day = _optional_day("document_date", document_date)
         received = _optional_day("received_date", received_date)
-        if received is not None and received > day:
+        if received is not None and received > latest:
             raise RulesToolError(
-                f"received_date ({received.isoformat()}) is after today ({day.isoformat()}): pass the day "
+                f"received_date ({received.isoformat()}) is after today ({latest.isoformat()}): pass the day "
                 "the letter actually arrived, or leave it out"
             )
         notice = f"{parsed.legal_basis or ''} {parsed.text}"  # the spec's words stand in for the notice
@@ -370,15 +382,16 @@ class RulesTools:
             letter_kind=court_order_kind(parsed, sender_name, sender_kind, remedy_type) if court else None,
             court=court,
             labour_court=is_labour_court(sender_name or "", sender_kind),
+            social_court=is_social_court(sender_name or "", sender_kind),
         )
         # A period that can't be read is not computed at all: nothing runs from an arrival day.
         unreadable = parsed.type == "relative" and period_problem(parsed) is not None
         # The period the engine counts: a private sender's letter runs from its arrival, not deemed delivery.
         counted = parsed if unreadable else from_arrival(parsed, context)
         stated = stated_receipt(counted, letter_day)
-        if stated is not None and stated > day:
+        if stated is not None and stated > latest:
             raise RulesToolError(
-                f"spec.anchor_date ({stated.isoformat()}) is after today ({day.isoformat()}): with anchor "
+                f"spec.anchor_date ({stated.isoformat()}) is after today ({latest.isoformat()}): with anchor "
                 "receipt it is the day the letter was delivered — pass the delivery day the letter states, "
                 "or leave it out"
             )
@@ -432,7 +445,11 @@ class RulesTools:
                 "received_date_not_used": received.isoformat()
                 if received is not None and received != arrival
                 else None,
-                "delivery_law": COURT_DELIVERY_LAW if court else _DELIVERY_LAW.get(scope or ""),
+                "delivery_law": COURT_DELIVERY_LAW
+                if court
+                else _DELIVERY_LAW.get(scope or "")
+                if DEEMED_DELIVERY_STEP in receipt.rule_ids
+                else None,
                 "holiday_calendar": receipt.holiday_calendar,
                 "holidays_from": None if counted.type == "none" else _holidays_from(payer_pays),
             },
@@ -458,13 +475,16 @@ class RulesTools:
     def _days(self, given: date | None, server_day: date) -> tuple[date, date | None]:
         """The day a result is for, and a caller's other day to report on as well (module docstring).
 
-        A caller's today within :data:`TODAY_TOLERANCE_DAYS` of the server's is used (a time zone
-        apart); one further off only gets ``for_today_given``, and on a pinned server it is not used.
+        A caller's today within :data:`TODAY_TOLERANCE_DAYS` of the server's (a time zone apart) is used
+        only when it is not after the server's: a deadline runs to midnight German time, so a caller's
+        later day would make a live deadline look missed (review round 2 of phase 2) — the earlier of the
+        two only ever keeps it live. One further off only gets ``for_today_given``, and on a pinned server
+        it is not used.
         """
         if given is None or self._pin_today:
             return server_day, None
         if abs((given - server_day).days) <= TODAY_TOLERANCE_DAYS:
-            return given, None
+            return min(given, server_day), None
         return server_day, given
 
     def german_holidays(self, year: int, region: str | None = None) -> dict[str, Any]:

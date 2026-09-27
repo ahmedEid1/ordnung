@@ -168,6 +168,41 @@ def test_bailiffs_and_court_cashiers_are_not_courts(name: str) -> None:
     assert routing.classify_letter(extraction) is None
 
 
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Amtsgericht Kassel",
+        "Landgericht Kassel",
+        "Arbeitsgericht Kassel",
+        "ArbG Kassel",
+        "Sozialgericht Kassel",
+        "SG Kassel",
+        "Bundessozialgericht, Kassel",
+        "Hessischer Verwaltungsgerichtshof Kassel",
+        "Amtsgericht Kassel – Mahnabteilung, Kasseler Straße 1",
+    ],
+)
+def test_a_court_in_kassel_is_a_court(name: str) -> None:
+    """Review round 2 of phase 2: the court-cashier exclusion matched the place name "Kassel", so every
+    court there was an ordinary authority (a labour court's one-week Notfrist came out one week late)."""
+    assert routing.is_court(name, "authority")
+    assert routing.may_be_court(name)
+    extraction = reading(
+        title="Vollstreckungsbescheid",
+        sender=ExtractedParty(name=name, kind="authority"),
+        remedy=EINSPRUCH,
+    )
+    assert routing.classify_letter(extraction) == "enforcement_order"
+
+
+@pytest.mark.parametrize(
+    "name", ["Landesjustizkasse Bamberg", "Kasse des Amtsgerichts Kassel", "Justizkassen Hessen"]
+)
+def test_a_court_cashier_in_any_place_is_no_court(name: str) -> None:
+    assert not routing.is_court(name, "authority")
+    assert not routing.may_be_court(name)
+
+
 def test_a_court_letter_about_something_else_keeps_its_kind() -> None:
     assert routing.classify_letter(reading(title="Ladung zum Termin", sender=COURT)) is None
     # a Widerspruch that isn't about an order (e.g. against an Arrest, § 924 ZPO) names no order
@@ -722,6 +757,44 @@ def test_other_increases_are_still_not_consent_requests(quote: str, extra: dict[
     assert routing.classify_letter(_increase(quote, **extra)) is None
 
 
+@pytest.mark.parametrize(
+    ("quote", "title"),
+    [
+        (
+            "Nach der Modernisierung des Bades bitten wir Sie, der Erhöhung der Miete auf die ortsübliche "
+            "Vergleichsmiete von 800,00 € zuzustimmen.",
+            "Rent increase request",
+        ),
+        (
+            "Wir bitten um Ihre Zustimmung zur Mieterhöhung auf 800,00 € gemäß § 558 BGB.",
+            "Rent increase to local comparative rent after modernisation of the bathroom",
+        ),
+    ],
+)
+def test_a_consent_request_that_mentions_a_modernisation_is_one(quote: str, title: str) -> None:
+    """Review round 2 of phase 2: a § 558 request that names a modernised bathroom (a Mietspiegel feature)
+    wasn't filed as a rent increase — no consent to-do, and "Pay" offered on the new rent, which can count as
+    consent (§ 558b Abs. 1 BGB)."""
+    assert routing.classify_letter(_increase(quote, title=title)) == "rent_increase"
+
+
+@pytest.mark.parametrize(
+    ("quote", "title"),
+    [
+        ("Mieterhöhung nach Modernisierung: Die Miete steigt ab 01.01.2027 um 80,00 EUR.", "Rent increase"),
+        ("Modernisierungsmieterhöhung zum 01.01.2027", "Rent increase"),
+        ("Die Miete steigt ab 01.01.2027 um 80,00 EUR.", "Rent increase after modernisation"),
+        (REQUEST, "Rent increase after modernisation (§ 559 BGB)"),
+        ("Die Miete steigt nach § 559 BGB; bitte stimmen Sie der Vergleichsmiete zu.", "Rent increase"),
+    ],
+)
+def test_a_modernisation_increase_without_its_own_consent_request_is_none(quote: str, title: str) -> None:
+    """A modernisation increase needs no consent (§ 559 BGB) — even when another quote mentions the rent
+    index; only the increase's own request for consent makes a modernisation a § 558 feature."""
+    elsewhere = [ExtractedFact(label="Mietspiegel", value="Mietspiegel 2025", quote="laut Mietspiegel 2025")]
+    assert routing.classify_letter(_increase(quote, title=title, key_facts=elsewhere)) is None
+
+
 def test_a_price_increase_without_a_consent_request_keeps_its_kind() -> None:
     assert routing.classify_letter(_increase("Die Miete steigt ab 1. Januar.")) is None
 
@@ -1119,14 +1192,18 @@ def test_derived_deadlines_per_kind() -> None:
     assert "one week" in labour_order.consequence and "one week" in labour_enforcement.consequence
     assert [d.rule_id for d in routing.derived_deadlines("dismissal", end=None)] == ["kschg_4", "sgb3_38"]
     assert [d.rule_id for d in routing.derived_deadlines("rent_increase", end=None)] == ["bgb_558b"]
-    assert routing.derived_deadlines("landlord_notice", end=None) == []  # counts back from the end
     # no hardship objection to a notice without notice period (§ 574 Abs. 1 S. 2 BGB)
     assert routing.derived_deadlines("landlord_notice", end=D("2027-10-31"), extraordinary=True) == []
-    # review round 1: a notice too short for its period, or given in the alternative without an end of its
-    # own, counts back from the next permissible end (§ 573c Abs. 1 BGB)
+    assert routing.derived_deadlines("landlord_notice", end=None, extraordinary=True) == []
+    # review round 1: a notice too short for its period, or with no end read (given in the alternative, "zum
+    # nächstmöglichen Termin" — review round 2 of phase 2), counts back from the next permissible end
+    # (§ 573c Abs. 1 BGB)
     [short] = routing.derived_deadlines("landlord_notice", end=D("2026-10-31"), letter_date=D("2026-09-20"))
-    [alternative] = routing.derived_deadlines("landlord_notice", end=None, alternative=True)
-    for next_end in (short, alternative):
+    [no_end] = routing.derived_deadlines("landlord_notice", end=None)
+    [alternative] = routing.derived_deadlines("landlord_notice", end=None, alternative=True, dated=True)
+    # … unless the letter gives its own objection date, which counts from the end the landlord knows
+    assert routing.derived_deadlines("landlord_notice", end=None, dated=True) == []
+    for next_end in (short, no_end, alternative):
         assert next_end.rule_id == "bgb_574b" and next_end.spec.anchor == "receipt"
         assert "nächstmöglichen" in next_end.spec.text and "§ 573c" in (next_end.spec.legal_basis or "")
     [kept] = routing.derived_deadlines("landlord_notice", end=D("2026-12-31"), letter_date=D("2026-09-20"))
@@ -2135,6 +2212,128 @@ def test_a_reserved_notice_without_notice_period_is_not_one(quote: str) -> None:
     assert not routing.extraordinary_notice(_notice(quote))
 
 
+@pytest.mark.parametrize(
+    ("quote", "end", "written"),
+    [
+        # "außerordentlich" as an intensifier of something else, and the notice itself called ordinary
+        (
+            "Aufgrund Ihres außerordentlich störenden Verhaltens kündigen wir das Mietverhältnis ordentlich zum "
+            "30.11.2026.",
+            "2026-11-30",
+            "2026-10-05",
+        ),
+        (
+            "Aufgrund der außerordentlich hohen Sanierungskosten kündigen wir das Mietverhältnis zum 31.10.2026.",
+            "2026-10-31",
+            "2026-09-20",
+        ),
+        (
+            "Aufgrund Ihres außerordentlich störenden Verhaltens kündigen wir das Mietverhältnis.",
+            None,
+            "2026-09-20",
+        ),
+        # a negation after the wording, at the end of its clause
+        (
+            "Wir kündigen das Mietverhältnis zum 31.10.2026; eine fristlose Kündigung ist damit nicht verbunden.",
+            "2026-10-31",
+            "2026-09-20",
+        ),
+        (
+            "Eine außerordentliche Kündigung sprechen wir nicht aus. Wir kündigen zum 31.10.2026.",
+            "2026-10-31",
+            "2026-09-20",
+        ),
+    ],
+)
+def test_an_intensifier_or_a_denied_notice_without_period_keeps_the_objection(
+    quote: str, end: str | None, written: str
+) -> None:
+    """Review round 2 of phase 2: "außerordentlich" anywhere made an ordinary notice one without notice period
+    — no objection to-do, and the objection letter refused (§ 574 BGB applies to it). The objection counts
+    back from the next permissible end: the end is too short (or not given) for a landlord's period (§ 573c
+    Abs. 1 BGB: 31 Dec 2026 → objection by Sat 31 Oct 2026)."""
+    extraction = _notice(quote, end=end, title="Ordinary notice of termination", document_date=written)
+    assert routing.notice_without_period(extraction) is None
+    assert not routing.extraordinary_notice(extraction) and not routing.objection_excluded(extraction)
+    [objection] = routing.derived_deadlines(
+        "landlord_notice", end=routing.announced_end(extraction), letter_date=D(written)
+    )
+    assert objection.rule_id == "bgb_574b" and "nächstmöglichen" in objection.spec.text
+    receipt = compute_due(
+        objection.spec, ctx(document_date=written, letter_kind="landlord_notice", today=D("2026-10-06"))
+    )
+    assert receipt.due_date == "2026-10-31"
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "Hiermit kündigen wir das Mietverhältnis außerordentlich.",
+        "Wir kündigen das Mietverhältnis außerordentlich zum 31.10.2026.",
+        "Außerordentliche Kündigung des Mietverhältnisses",
+    ],
+)
+def test_a_notice_only_called_extraordinary_is_probably_one_and_keeps_the_objection(quote: str) -> None:
+    """Review round 2 of phase 2: "außerordentlich" alone may be a special termination with the statutory
+    period (§ 573d BGB), so the objection to-do and letter are kept, and the card says it may be fristlos."""
+    end = "2026-10-31" if "31.10" in quote else None
+    extraction = _notice(quote, end=end)
+    assert routing.notice_without_period(extraction) == "probable"
+    assert routing.extraordinary_notice(extraction) and not routing.objection_excluded(extraction)
+    [objection] = routing.derived_deadlines(
+        "landlord_notice",
+        end=routing.announced_end(extraction),
+        letter_date=D("2026-09-20"),
+        extraordinary=routing.objection_excluded(extraction),
+    )
+    assert "nächstmöglichen" in objection.spec.text
+    card = letter_advice("landlord_notice", today=TODAY, extraordinary=True, probable=True)
+    assert card is not None and card.urgent and card.draft == "objection"
+    assert card.facts[0].title == "This may be a notice without notice period"
+    assert "§ 573d BGB" in card.facts[0].text
+    # the same notice said fristlos is certainly one: no to-do, no letter
+    fristlos = _notice("Hiermit kündigen wir das Mietverhältnis außerordentlich und fristlos.")
+    assert routing.notice_without_period(fristlos) == "certain" and routing.objection_excluded(fristlos)
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "Hiermit kündigen wir das Mietverhältnis wegen Eigenbedarfs fristgerecht zum nächstmöglichen Termin.",
+        "Wir kündigen das Mietverhältnis ordentlich zum nächstmöglichen Zeitpunkt.",
+    ],
+)
+def test_a_notice_to_the_next_possible_date_gets_an_objection_to_do(quote: str) -> None:
+    """Review round 2 of phase 2: a notice that writes no end got no objection deadline, and its card asked
+    for an end the notice doesn't write. The objection counts back from the earliest end (§ 573c Abs. 1 BGB)."""
+    extraction = _notice(quote, end=None)
+    assert not routing.extraordinary_notice(extraction)
+    [objection] = routing.derived_deadlines("landlord_notice", end=None, letter_date=D("2026-09-20"))
+    assert "nächstmöglichen" in objection.spec.text
+    receipt = compute_due(objection.spec, ctx(document_date="2026-09-20", letter_kind="landlord_notice"))
+    # arrived 20 Sep (after the third working day): the earliest end is 31 Dec 2026, objection by 31 Oct
+    assert receipt.due_date == "2026-10-31" and NEXT_END_WARNING in receipt.warnings
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "Wir kündigen das Mietverhältnis fristlos gemäß § 543 BGB. Sollte die fristlose Kündigung unwirksam sein, "
+        "gilt sie als ordentliche Kündigung mit gesetzlicher Frist.",
+        "Wir kündigen fristlos und zugleich ordentlich zum nächstmöglichen Termin.",
+        "Wir kündigen fristlos; im Fall der Unwirksamkeit ist sie in eine ordentliche Kündigung umgedeutet.",
+    ],
+)
+def test_a_notice_in_the_alternative_without_hilfsweise_is_one(quote: str) -> None:
+    """Review round 2 of phase 2: an ordinary notice given in the alternative without the word "hilfsweise"
+    read as an ordinary notice with no end, and got no objection deadline."""
+    extraction = _notice(quote, end=None)
+    assert routing.notice_without_period(extraction) == "certain"
+    assert routing.alternative_notice(extraction) and not routing.objection_excluded(extraction)
+    [objection] = routing.derived_deadlines("landlord_notice", end=None, letter_date=D("2026-09-20"))
+    assert "nächstmöglichen" in objection.spec.text
+
+
 def test_the_objection_is_only_for_a_home() -> None:
     """§§ 574–574b BGB are rules for Wohnraum: a garage, parking space or business premises let on its own
     (§ 578 BGB) has no hardship objection — said on the to-do, the card and in the catalog."""
@@ -2270,10 +2469,11 @@ def test_billing_period() -> None:
         ),
         # a split year alone ends at the latest on 31 December of its second year
         ("Abrechnungsjahr 2023/24", BillingPeriod(D("2024-12-31"), False, "2023/24")),
-        # two-digit years; a range that ends after the statement arrived is a new prepayment period
+        # two-digit years; a range that ends after the statement arrived is a new prepayment period (a
+        # bare "Zeitraum" is no label: review round 2 of phase 2)
         (
             "Zeitraum 01.01.24-31.12.24; neue Vorauszahlung 01.01.2026 - 31.12.2026",
-            BillingPeriod(D("2024-12-31"), True, "01.01.2024 – 31.12.2024", True),
+            BillingPeriod(D("2024-12-31"), True, "01.01.2024 – 31.12.2024", False),
         ),
         # the period in words, as an ISO range, in months, below its label
         (
@@ -2286,6 +2486,10 @@ def test_billing_period() -> None:
         ),
         (
             "Zeitraum: Juli bis Juni 2025",
+            BillingPeriod(D("2025-06-30"), True, "01.07.2024 – 30.06.2025", False),
+        ),
+        (
+            "Heizkostenabrechnung\nZeitraum: Juli bis Juni 2025",
             BillingPeriod(D("2025-06-30"), True, "01.07.2024 – 30.06.2025", True),
         ),
         (
@@ -2344,10 +2548,51 @@ def test_a_split_billing_year_gives_way_to_its_own_months_only() -> None:
 def test_a_tenants_own_period_alone_is_no_billing_period() -> None:
     assert billing_period("Ihr Nutzungszeitraum: 01.01.2024 - 30.06.2024", before=D("2025-11-15")) is None
     assert billing_period("Mietdauer 01.01.2024 bis 30.06.2024 (Auszug)", before=D("2025-11-15")) is None
-    # … but a range the letter calls its billing period stays one, whatever else the line says
+    # … and a range the letter calls its billing period next to a move-out is kept, but never for certain
+    # (review round 2 of phase 2): a departing tenant's deadline runs from the landlord's annual period
     assert billing_period(
         "Abrechnungszeitraum 01.01.2024 - 31.12.2024 (Auszug 30.06.2024)", before=D("2025-11-15")
-    ) == BillingPeriod(D("2024-12-31"), True, "01.01.2024 – 31.12.2024", True)
+    ) == BillingPeriod(D("2024-12-31"), True, "01.01.2024 – 31.12.2024", False)
+
+
+#: Review round 2 of phase 2: a cost item's own "Zeitraum", or the tenant's period labelled as the billing
+#: period, made an on-time statement "certainly too late" (§ 556 Abs. 3 S. 2 BGB counts from the end of the
+#: landlord's billing period — here 31 Dec 2025, so the statement is due by 31 Dec 2026).
+COST_ITEM_AND_MOVE_OUT_PERIODS = [
+    "Betriebskostenabrechnung 2025\nGebäudeversicherung\nZeitraum: 01.04.2024 – 31.03.2025\nNachzahlung: 180,00 €",
+    "Betriebskostenabrechnung 2025 – Gebäudeversicherung (Zeitraum 01.04.2024 - 31.03.2025), Nachzahlung: 180,00 €",
+    "Abrechnungsjahr 2025\nWartung Rauchwarnmelder, Zeitraum 01.07.2024 – 30.06.2025\nNachzahlung 20,00 €",
+    "Betriebskostenabrechnung 2025\nAbrechnungszeitraum: 01.01.2025 – 30.04.2025 (Auszug)\nNachzahlung 20,00 €",
+    "Betriebskostenabrechnung 2025\nAbrechnungszeitraum: 01.01.2025 – 30.04.2025\nMietende: 30.04.2025\nNachzahlung 20,00 €",
+    # a bare "Zeitraum" after the statement's name, ending before the year it names, is no reason either
+    "Betriebskostenabrechnung 2025\nZeitraum: 01.04.2024 – 31.03.2025\nNachzahlung: 180,00 €",
+]
+
+
+@pytest.mark.parametrize("text", COST_ITEM_AND_MOVE_OUT_PERIODS)
+def test_a_cost_items_or_the_tenants_period_never_makes_a_statement_late(text: str) -> None:
+    arrived = D("2026-07-15")
+    assert billing_period(text, before=arrived) == BillingPeriod(D("2025-12-31"), False, "2025")
+    assert not statement_late(text, arrived, True, "NW")
+    card = letter_advice(
+        "operating_costs",
+        today=D("2026-07-20"),
+        arrived=arrived,
+        arrival_confirmed=True,
+        region="NW",
+        text=text,
+    )
+    assert card is not None and not card.urgent
+    assert card.facts[0].title == "Probably on time"
+
+
+def test_a_labelled_move_out_period_alone_is_at_most_probably_late() -> None:
+    text = "Abrechnungszeitraum: 01.01.2025 – 30.04.2025 (Auszug)\nNachzahlung 20,00 €"
+    card = letter_advice(
+        "operating_costs", today=D("2026-06-20"), arrived=D("2026-06-15"), arrival_confirmed=True, text=text
+    )
+    assert card is not None
+    assert card.facts[0].title == "Probably too late — check the billing period"
 
 
 @pytest.mark.parametrize(
@@ -3430,6 +3675,26 @@ def test_a_short_notices_objection_counts_back_from_the_next_permissible_end() -
     # an objection date the letter gives from its own end is not one of these
     own = spec(type="fixed", date="2026-08-31", nature="objection", text="bis zum 31.08.2026")
     assert "bgb_573c_landlord" not in compute_due(own, context).rule_ids
+
+
+@pytest.mark.parametrize("name", ["Sozialgericht Berlin", "SG Kassel", "Landessozialgericht NRW", "BSG"])
+def test_a_social_courts_period_cites_the_sgg(name: str) -> None:
+    """Review round 2 of phase 2: a social court counts under § 64 Abs. 1–3 SGG, not § 222 ZPO (the dates
+    are the same; "Why this date?" cited the wrong act)."""
+    assert routing.is_social_court(name, "authority")
+    counted = spec(amount=1, unit="months", text="Berufung binnen eines Monats nach Zustellung (§ 151 SGG)")
+    receipt = compute_due(
+        counted,
+        ctx(document_date="2026-09-18", court=True, social_court=routing.is_social_court(name, "authority")),
+    )
+    citations = {step.rule_id: step.citation for step in receipt.steps}
+    assert citations["bgb_187_1"] == "§ 64 Abs. 1 SGG" and citations["bgb_188"] == "§ 64 Abs. 2 SGG"
+    assert "sgg_64" in receipt.rule_ids and "zpo_222" not in receipt.rule_ids
+    # Sun 18 Oct 2026 moves to Monday under § 64 Abs. 3 SGG
+    assert receipt.due_date == "2026-10-19"
+    assert catalog.citation("sgg_64") == "§ 64 Abs. 1–3 SGG"
+    for other in ("Amtsgericht Berlin", "Arbeitsgericht Kassel", "SG Musterverein e. V."):
+        assert not routing.is_social_court(other, "authority")
 
 
 def test_a_court_deadlines_receipt_cites_the_court_counting_rules() -> None:

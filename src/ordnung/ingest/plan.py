@@ -77,11 +77,12 @@ from ordnung.rules.routing import (
     announced_end,
     computed_under,
     derived_deadlines,
-    extraordinary_notice,
     is_court,
     is_labour_court,
+    is_social_court,
     letter_kind,
     names_statement,
+    objection_excluded,
 )
 from ordnung.secretary.scam import iban_from_page, iban_valid, normalize_iban
 
@@ -353,6 +354,7 @@ def rule_context(
         end_date_grounding=end_date_grounding(extraction, pages),
         court=is_court(name, kind),
         labour_court=is_labour_court(name, kind),
+        social_court=is_social_court(name, kind),
     )
 
 
@@ -778,17 +780,18 @@ def law_deadlines(
     kind: str | None, extraction: DocumentExtraction | None, ctx: RuleContext
 ) -> list[DerivedDeadline]:
     """The deadlines the law adds to a letter of ``kind`` (:func:`ordnung.rules.routing.derived_deadlines`)
-    with the facts its reading gives: the end a termination announces, the letter's date and whether
-    the notice has no notice period (and gives none in the alternative)."""
+    with the facts its reading gives: the end a termination announces, the letter's date, whether the
+    hardship objection is out of the question (:func:`~ordnung.rules.routing.objection_excluded`), whether
+    the notice is given in the alternative and whether the letter gives an objection date of its own."""
     return derived_deadlines(
         kind,
         end=ctx.end_date,
         letter_date=ctx.document_date,
         labour_court=ctx.labour_court,
-        extraordinary=extraction is not None
-        and extraordinary_notice(extraction, ctx.document_date)
-        and not alternative_notice(extraction),
+        extraordinary=extraction is not None and objection_excluded(extraction, ctx.document_date),
         alternative=extraction is not None and alternative_notice(extraction),
+        dated=extraction is not None
+        and any(item.date.nature == "objection" and item.date.type != "none" for item in extraction.items),
     )
 
 
