@@ -2,27 +2,36 @@
  * The GiroCode (EPC-QR) of a payment: a QR code any German banking app scans to pre-fill the
  * transfer, which the person then confirms there with their TAN — Ordnung never pays. The server
  * decides whether there is a code (`girocodes` of the letter's detail); this shows the code, or
- * why there is none, or — for details read from a photo — asks to compare them with the paper
- * letter first ("These match the letter", or "They don't match": then type them from the paper,
- * or have the letter read again). A refused comparison says why in the block itself.
+ * why there is none, or — for details read from a photo, or not found in the letter's text — asks
+ * to compare them with the letter first ("These match the letter", or "They don't match": then type
+ * them from the letter, or have the letter read again). A refused comparison, or a failed reading,
+ * says why in the block itself — a toast would wait behind a phone's sheet or cover the panel's
+ * footer. A code without a reference says so (the letter may name one the reading missed), and on a
+ * phone or tablet, which can't scan its own screen, the block says what to do instead.
  *
  * The code stays dark on white with its quiet zone in both themes and in forced-colours mode:
  * scanners need that contrast, whatever the page around it looks like. Each module is a whole
  * number of pixels, at least three, so a phone camera sees even squares.
  */
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
-import { Check, ChevronDown, CircleCheck, Info, QrCode as QrIcon, RotateCw, ScanLine, ShieldAlert } from "lucide-react";
-import type { GiroCode as GiroCodeData, GiroCodeBlocked } from "@/api/types";
-import { useConfirmGiroCode, useReprocessDocument } from "@/api/hooks";
+import { Check, ChevronDown, CircleCheck, Info, QrCode as QrIcon, RotateCw, ScanLine, ShieldAlert, Smartphone } from "lucide-react";
+import type { Document, GiroCode as GiroCodeData, GiroCodeBlocked } from "@/api/types";
+import { useConfirmGiroCode, useReadLetterAgain } from "@/api/hooks";
 import { seedJob } from "@/api/sse";
 import { Button } from "@/components/ui/Button";
 import { formatMoney } from "@/lib/format";
+import { useIsTabletUp, useMediaQuery } from "@/lib/hooks";
 import { cn, prefersReducedMotion } from "@/lib/utils";
+import { isStaticDemo } from "@/mocks/mode";
 import { qrMatrix, qrPath, readPayload } from "./qr";
 
 export const GIROCODE_TITLE = "GiroCode (EPC-QR)";
 export const GIROCODE_HINT = "Scan with your banking app; you confirm the transfer there.";
-export const GIROCODE_CHECKED = "You compared these details with the paper letter.";
+export const GIROCODE_CHECKED = "You compared these details with the letter.";
+/** Below the heading on a phone or tablet: the code is for another device's banking app. */
+export const GIROCODE_ON_PHONE = "A phone or tablet can't scan its own screen: open this letter on a computer and scan the code there, or copy the details above.";
+/** A code whose letter gave no reference: the reading may have missed it, and a payment without one gets misallocated. */
+export const GIROCODE_NO_REFERENCE = "This code carries no reference. If the letter names one (a Kassenzeichen, an invoice number), add it in your banking app.";
 
 /**
  * Reasons the pay panels already explain in their own words: no bank details, nothing to pay, an
@@ -38,6 +47,12 @@ export function ibanFailsCheck(ibanValid: boolean | null | undefined, code: Giro
 /** A module's side in CSS pixels: whole, at least 3, about 152 px for the whole code. */
 export function modulePixels(modules: number): number {
   return Math.max(3, Math.floor(152 / modules));
+}
+
+/** "They don't match" may offer to read the letter again: not a private letter, not one being read,
+ * and not in the online demo (it reads no letters; the button would only fail). */
+export function canReadLetterAgain(letter: Pick<Document, "ai_private" | "status"> | undefined): boolean {
+  return Boolean(letter && !letter.ai_private && letter.status !== "processing" && letter.status !== "queued" && !isStaticDemo());
 }
 
 /** Whether a pay panel shows anything for this code. */
@@ -89,12 +104,13 @@ export interface GiroCodeSectionProps {
   docId: string;
   /** The code starts folded behind "Show code" (Today's pay panel; any pay panel on a phone). */
   collapsible?: boolean;
-  /** "They don't match" may offer to read the letter again (it isn't private or being read). */
+  /** "They don't match" may offer to read the letter again (it isn't private or being read, and this
+   * isn't the online demo, which reads no letters). */
   canReadAgain?: boolean;
   className?: string;
 }
 
-/** A pay panel's GiroCode block: the code, the comparison with the paper letter, or why there is none. */
+/** A pay panel's GiroCode block: the code, the comparison with the letter, or why there is none. */
 export function GiroCodeSection({ code, docId, collapsible = false, canReadAgain = false, className }: GiroCodeSectionProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
@@ -122,10 +138,9 @@ export function GiroCodeSection({ code, docId, collapsible = false, canReadAgain
       confirm.mutate(
         { itemId: code.item_id, docId, values: code.values },
         {
-          // the button is gone: the code's heading takes focus in its place (`Ready`)
+          // the button is gone: the code's heading takes focus in its place (`Ready`); refused, the
+          // reason shows under the button, which gets focus back (`CompareFirst`)
           onSuccess: (next) => setConfirmed(next.status === "ready"),
-          // refused: the reason shows under the button, which gets focus back (it was disabled meanwhile)
-          onError: () => requestAnimationFrame(() => confirmRef.current?.focus()),
         },
       );
     };
@@ -187,6 +202,11 @@ function Ready({
   // derived, not stored: a panel that stops folding (the code was just unlocked) shows the code
   const open = !collapsible || unfolded;
   const codeRef = useRef<HTMLDivElement>(null);
+  const noReference = !readPayload(payload).reference;
+  // a phone (or a tablet) can't scan its own screen, upright or turned sideways
+  const tabletUp = useIsTabletUp();
+  const touch = useMediaQuery("(hover: none) and (pointer: coarse)");
+  const onPhone = !tabletUp || touch;
   // a code the person just unfolded (or unlocked) scrolls into the panel's view; an unlocked one
   // takes focus on its heading first — without scrolling, which would cancel the smooth scroll
   useEffect(() => {
@@ -218,6 +238,19 @@ function Ready({
           </Button>
         ) : null}
       </div>
+      {/* the whole width, not squeezed next to "Show code" */}
+      {onPhone ? (
+        <p data-girocode-phone="" className="mt-2 flex gap-1.5 text-xs leading-5 text-muted">
+          <Smartphone className="mt-[3px] size-3.5 shrink-0" aria-hidden />
+          {GIROCODE_ON_PHONE}
+        </p>
+      ) : null}
+      {noReference ? (
+        <p data-girocode-no-reference="" className="mt-2 flex gap-1.5 text-xs leading-5 text-warn-ink">
+          <Info className="mt-[3px] size-3.5 shrink-0" aria-hidden />
+          {GIROCODE_NO_REFERENCE}
+        </p>
+      ) : null}
       <div id={`${id}-code`} ref={codeRef} hidden={!open} className="mt-3 scroll-my-24">
         <div className="mx-auto w-fit max-w-full rounded-md bg-white p-1 shadow-[0_0_0_1px_rgb(0_0_0/0.08)] dark:shadow-none">
           <QrCode payload={payload} label={giroCodeLabel(payload)} />
@@ -234,7 +267,13 @@ function Ready({
 }
 
 export const GIROCODE_MISMATCH =
-  "Then don't use this code or the copy buttons for this letter: type the payee, IBAN, reference and amount from the paper letter into your banking app yourself.";
+  "Then don't use this code or the copy buttons for this letter: type the payee, IBAN, reference and amount into your banking app yourself, as the letter shows them.";
+export const GIROCODE_READING_AGAIN = "Reading it again — the details here update when it's done.";
+
+/** Bring a message that opened below a button clear of the panel's sticky footer. */
+function scrollClear(element: HTMLElement | null) {
+  element?.scrollIntoView?.({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+}
 
 function CompareFirst({
   code,
@@ -260,15 +299,37 @@ function CompareFirst({
   const id = useId();
   const [mismatch, setMismatch] = useState(false);
   const noteRef = useRef<HTMLDivElement>(null);
-  // the answer to "They don't match" opens below the button: bring it clear of the panel's footer
+  const refusedRef = useRef<HTMLParagraphElement>(null);
+  const readAgainRef = useRef<HTMLButtonElement>(null);
+  const readFailedRef = useRef<HTMLParagraphElement>(null);
+  // the answer to "They don't match", a refused comparison and a failed reading open below their
+  // button: each is brought clear of the panel's footer (a short Today popover hides it otherwise).
+  // A button that asked was disabled meanwhile, which drops focus to the page: once the answer is
+  // shown — the button enabled again in the same render — it gets focus back, without a scroll that
+  // would cancel the smooth one.
   useEffect(() => {
-    if (mismatch) noteRef.current?.scrollIntoView?.({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    if (mismatch) scrollClear(noteRef.current);
   }, [mismatch]);
-  const reprocess = useReprocessDocument();
-  const readAgain = () =>
+  useEffect(() => {
+    if (!error) return;
+    confirmRef.current?.focus({ preventScroll: true });
+    scrollClear(refusedRef.current);
+  }, [error, confirmRef]);
+  const reprocess = useReadLetterAgain();
+  const answered = reprocess.isSuccess || reprocess.isError;
+  useEffect(() => {
+    if (!answered) return;
+    readAgainRef.current?.focus({ preventScroll: true });
+    if (reprocess.error) scrollClear(readFailedRef.current);
+  }, [answered, reprocess.error]);
+  const readAgain = () => {
+    if (reprocess.isPending || reprocess.isSuccess) return;
     reprocess.mutate(docId, {
       onSuccess: (job) => seedJob({ job_id: job.id, doc_id: docId, stage: "intake", progress: 0, status: "running" }),
     });
+  };
+  // once asked, the button and its answer stay while the letter is read (the panel stops offering it)
+  const showReadAgain = canReadAgain || !reprocess.isIdle;
   return (
     <section aria-labelledby={`${id}-h`} data-girocode="check" className={cn("rounded-lg border border-warn/25 bg-warn-soft p-3", className)}>
       <Heading id={`${id}-h`} headingRef={headingRef} icon={ScanLine} tone="text-warn-ink" />
@@ -282,21 +343,36 @@ function CompareFirst({
         </Button>
       </div>
       {error ? (
-        <p role="alert" className="mt-2 text-sm leading-relaxed text-danger-ink wrap-break-word">
+        <p ref={refusedRef} role="alert" className="mt-2 scroll-my-24 text-sm leading-relaxed text-danger-ink wrap-break-word">
           Not confirmed: {error.message}
         </p>
       ) : null}
       <div id={`${id}-mismatch`} ref={noteRef} hidden={!mismatch} className="mt-2.5 scroll-my-24 border-t border-warn/25 pt-2.5">
         <p className="text-sm leading-relaxed text-ink/85">{GIROCODE_MISMATCH}</p>
-        {canReadAgain ? (
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <Button variant="secondary" size="sm" icon={RotateCw} loading={reprocess.isPending} disabled={reprocess.isSuccess} onClick={readAgain}>
-              Read the letter again
-            </Button>
-            <span role="status" className="text-xs leading-5 text-muted">
-              {reprocess.isSuccess ? "Reading it again — the details here update when it's done." : ""}
-            </span>
-          </div>
+        {showReadAgain ? (
+          <>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <Button
+                ref={readAgainRef}
+                variant="secondary"
+                size="sm"
+                icon={RotateCw}
+                loading={reprocess.isPending}
+                aria-disabled={reprocess.isSuccess || undefined}
+                onClick={readAgain}
+              >
+                Read the letter again
+              </Button>
+              <span role="status" className="text-xs leading-5 text-muted">
+                {reprocess.isSuccess ? GIROCODE_READING_AGAIN : ""}
+              </span>
+            </div>
+            {reprocess.error ? (
+              <p ref={readFailedRef} role="alert" className="mt-2 scroll-my-24 text-sm leading-relaxed text-danger-ink wrap-break-word">
+                Couldn't read the letter again: {reprocess.error.message}
+              </p>
+            ) : null}
+          </>
         ) : null}
       </div>
     </section>

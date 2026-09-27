@@ -124,7 +124,7 @@ export async function demoCatalog({ api, server }) {
     group: "today",
     route: "/",
     how: "open /, click the Top-3 “Pay: …Verwarnungsgeld…” button",
-    description: "Today's Pay panel of a letter read from a photo: compare the details with the paper letter first.",
+    description: "Today's Pay panel of a letter read from a photo: compare the details with the paper letter first (a phone says to scan on a computer or copy the details).",
     run: payFine,
   });
   add({
@@ -132,12 +132,90 @@ export async function demoCatalog({ api, server }) {
     group: "today",
     route: "/",
     how: "open /, click the Top-3 “Pay: …Verwarnungsgeld…” button, then “They don't match”",
-    description: "Today's Pay panel after “They don't match”: type the details from the paper letter, or read the letter again.",
+    description: "Today's Pay panel after “They don't match”: type the details as the letter shows them, or read the letter again.",
     run: async (c) => {
       await payFine(c);
       const mismatch = c.page.getByRole("button", { name: "They don't match" });
       if (await c.exists(mismatch)) await c.click(mismatch);
       else c.note("no “They don't match”: already compared");
+    },
+  });
+  // refusals in the panel (the server's answer forced): the reason shows in the panel, clear of its
+  // sticky footer — no toast, which would wait behind a phone's sheet or cover a popover's footer
+  const refuseConfirm = (c) =>
+    fakeApi(c.page, "POST", /^\/api\/items\/[^/]+\/girocode\/confirm$/, async () => ({
+      status: 409,
+      json: { detail: "The payment details changed since you looked at them. Please compare them again." },
+    }));
+  const failReadAgain = (c) =>
+    fakeApi(c.page, "POST", /^\/api\/documents\/[^/]+\/reprocess$/, async () => ({ status: 429, json: { detail: "Claude needs a short break. Try again at 15:30." } }));
+  const refusedMatch = async (c) => {
+    const match = c.page.getByRole("button", { name: "These match the letter" });
+    if (!(await c.exists(match))) return c.note("no “These match the letter”: already compared");
+    await c.click(match, { settleAfter: false });
+    await c.page.getByRole("alert").filter({ hasText: /^Not confirmed/ }).waitFor({ timeout: 15_000 });
+    await settle(c.page);
+  };
+  const failedReadAgain = async (c) => {
+    const mismatch = c.page.getByRole("button", { name: "They don't match" });
+    if (!(await c.exists(mismatch))) return c.note("no “They don't match”: already compared");
+    await c.click(mismatch);
+    const again = c.page.getByRole("button", { name: "Read the letter again" });
+    if (!(await c.exists(again))) return c.note("no “Read the letter again” (a private letter, or one being read)");
+    await c.click(again, { settleAfter: false });
+    await c.page.getByRole("alert").filter({ hasText: /^Couldn't read the letter again/ }).waitFor({ timeout: 15_000 });
+    await settle(c.page);
+  };
+  add({
+    id: "today-pay-girocode-refused",
+    group: "today",
+    route: "/",
+    how: "open /, click the Top-3 “Pay: …Verwarnungsgeld…” button, then “These match the letter” (the server's refusal forced: 409)",
+    description: "Today's Pay panel after a refused “These match the letter”: the reason under the buttons, scrolled clear of the sticky footer, focus back on the button.",
+    run: async (c) => {
+      await refuseConfirm(c);
+      await payFine(c);
+      await refusedMatch(c);
+    },
+  });
+  add({
+    id: "today-pay-girocode-read-again-failed",
+    group: "today",
+    route: "/",
+    how: "open /, click the Top-3 “Pay: …Verwarnungsgeld…” button, “They don't match”, then “Read the letter again” (a 429 forced)",
+    description: "Today's Pay panel after “Read the letter again” failed: why, under the button, clear of the sticky footer, focus kept on the button.",
+    run: async (c) => {
+      await failReadAgain(c);
+      await payFine(c);
+      await failedReadAgain(c);
+    },
+  });
+  // a code that carries no reference (the letter's reference taken out of the answer): it says so
+  const withoutReference = (c) =>
+    fakeApi(
+      c.page,
+      "GET",
+      /^\/api\/documents\/[^/]+$/,
+      async (_req, detail) => {
+        if (detail?.document?.payment) detail.document.payment.reference = null;
+        for (const code of detail?.girocodes ?? []) if (code.status === "ready") code.payload = code.payload.split("\n").slice(0, 8).join("\n");
+        return { json: detail };
+      },
+      { passthrough: true },
+    );
+  add({
+    id: "today-pay-girocode-no-reference",
+    group: "today",
+    route: "/",
+    how: "open /, click the first Top-3 “Pay” button, then “Show code” (the letter's reference taken out of the answer)",
+    description: "Today's Pay panel with a GiroCode that carries no reference: the line saying to add the letter's reference, if it names one, in the banking app.",
+    run: async (c) => {
+      await withoutReference(c);
+      await c.goto("/");
+      await c.click(main(c.page).getByRole("button", { name: /^Pay: / }));
+      const show = c.page.getByRole("button", { name: "Show code" });
+      if (await c.exists(show)) await c.click(show);
+      else c.note("no “Show code”: this payment has no GiroCode");
     },
   });
   add({
@@ -348,6 +426,32 @@ export async function demoCatalog({ api, server }) {
   const leaseDoc = docs.find((d) => /mietvertrag|lease/i.test(`${d.filename} ${d.title}`));
   docState(replacedInvoiceDoc, "girocode-replaced", "click the verdict card's “Pay …” button", "The Pay popover of an invoice a payment reminder took over: why there is no code.", openPay);
   docState(leaseDoc, "girocode-lease", "click the verdict card's “Pay …” button", "The Pay popover of the lease's deposit: its sentence doesn't state the amount, so compare with the paper letter first (the monthly rent next to it gets no code: several payments).", openPay);
+  docState(photoFineDoc, "girocode-refused", "click the verdict card's “Pay …” button, then “These match the letter” (the server's refusal forced: 409)", "The Pay popover after a refused “These match the letter”: the reason in the block, clear of the footer.", async (c) => {
+    await refuseConfirm(c);
+    await openPay(c);
+    await refusedMatch(c);
+  });
+  docState(photoFineDoc, "girocode-read-again-failed", "click the verdict card's “Pay …” button, “They don't match”, then “Read the letter again” (a 429 forced)", "The Pay popover after “Read the letter again” failed: why, in the block.", async (c) => {
+    await failReadAgain(c);
+    await openPay(c);
+    await failedReadAgain(c);
+  });
+  if (statementDoc) {
+    add({
+      id: `${docSlug(statementDoc)}--girocode-no-reference`,
+      group: "document",
+      route: `/documents/${statementDoc.id}`,
+      how: `open /documents/${statementDoc.id} (the letter's reference taken out of the answer), click the verdict card's “Pay …” button, “Show code” on phones`,
+      description: "The Pay popover with a GiroCode that carries no reference: the line saying to add the letter's reference in the banking app.",
+      run: async (c) => {
+        await withoutReference(c);
+        await c.goto(`/documents/${statementDoc.id}`);
+        await openPay(c);
+        const show = c.page.getByRole("button", { name: "Show code" });
+        if (await c.exists(show)) await c.click(show);
+      },
+    });
+  }
   docState(multiDoc, "zoom-150", "switch the page viewer zoom to 150 %", "Page viewer at 150 % (horizontal scrolling inside the viewer).", (c) => c.click(c.page.getByRole("radiogroup", { name: "Zoom" }).getByRole("radio", { name: /150/ })));
   docState(multiDoc, "page-2", "click the page-2 thumbnail", "Page viewer scrolled to page 2.", (c) => c.click(c.page.getByRole("button", { name: /^Go to page 2/ })));
   docState(photoDoc, "zoom-150", "switch the page viewer zoom to 150 %", "Phone photo at 150 %.", (c) => c.click(c.page.getByRole("radiogroup", { name: "Zoom" }).getByRole("radio", { name: /150/ })));

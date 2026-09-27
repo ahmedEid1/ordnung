@@ -282,6 +282,17 @@ export function useReprocessDocument() {
   });
 }
 
+/** {@link useReprocessDocument} from inside a panel, which shows the error itself (a toast would wait
+ * behind a phone's sheet, or cover the panel's footer). */
+export function useReadLetterAgain() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.reprocessDocument(id),
+    meta: { silent: true },
+    onSuccess: () => invalidateLedger(qc),
+  });
+}
+
 export function useUploadDocuments() {
   const qc = useQueryClient();
   return useMutation({
@@ -326,7 +337,7 @@ export function useConfirmItem() {
 }
 
 /**
- * "These match the letter": the person compared a payment's transfer details with the paper letter,
+ * "These match the letter": the person compared a payment's transfer details with the letter,
  * which unlocks its GiroCode. The letter's detail is updated in place with the answer (and refetched).
  * A refusal (the details changed meanwhile …) shows in the GiroCode block itself — a toast would wait
  * behind a phone's sheet — and the detail is refetched, so the block shows the details as they are now.

@@ -40,7 +40,7 @@ import { receiptForContract, receiptForItem } from "./receipt";
 import { ReadMore } from "./ReadMore";
 import { WhyThisDate } from "./WhyThisDate";
 import { LetterText } from "@/components/ui/LetterText";
-import { GiroCodeSection, ibanFailsCheck } from "@/features/girocode/GiroCode";
+import { GiroCodeSection, canReadLetterAgain, ibanFailsCheck } from "@/features/girocode/GiroCode";
 import { paymentReference } from "@/lib/payments";
 
 const VERB: Record<ActionVerb, { label: string; icon: LucideIcon }> = {
@@ -252,7 +252,7 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
           code={code}
           docId={action.docId}
           collapsible
-          canReadAgain={Boolean(letter && !letter.ai_private && letter.status !== "processing" && letter.status !== "queued")}
+          canReadAgain={canReadLetterAgain(letter)}
           className="mt-3"
         />
       ) : null}

@@ -131,7 +131,7 @@ export const api = {
   deleteItem: (id: string) => call("delete", "/api/items/{item_id}", { params: { item_id: id } }),
   /** "Yes, that's right" — sets grounding to `user`. */
   confirmItem: (id: string) => call("post", "/api/items/{item_id}/confirm", { params: { item_id: id } }),
-  /** "These match the letter": the person compared a payment's transfer details with the paper letter. */
+  /** "These match the letter": the person compared a payment's transfer details with the letter. */
   confirmGiroCode: (id: string, values: TransferValues) =>
     call("post", "/api/items/{item_id}/girocode/confirm", { params: { item_id: id }, body: values }),
   itemIcsUrl: (id: string) => assetUrl(apiRoute("/api/items/{item_id}.ics", { item_id: id })),

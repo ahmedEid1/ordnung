@@ -1,10 +1,12 @@
 /**
  * The GiroCode block of the pay panels: the code (drawn from the server's payload), folded on
- * Today, the comparison with the paper letter for details read from a photo, why there is no
- * code — and the same on the static demo's letters (utility statement, parking fine, scam).
+ * Today, the comparison with the letter for details read from a photo, why there is no code, what a
+ * phone does instead of scanning itself, a code without a reference — and the same on the static
+ * demo's letters (utility statement, parking fine, scam).
  */
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { DocumentDetail, GiroCode } from "@/api/types";
 import { useDocument } from "@/api/hooks";
@@ -18,7 +20,18 @@ import { GIROCODES } from "@/mocks/data/girocodes";
 import { DocumentView } from "@/features/document/DocumentView";
 import { TodayView } from "@/features/today/TodayView";
 import { PayPanel } from "@/features/document/PayPanel";
-import { GIROCODE_CHECKED, GIROCODE_HINT, GIROCODE_MISMATCH, GiroCodeSection, giroCodeLabel, modulePixels } from "./GiroCode";
+import {
+  GIROCODE_CHECKED,
+  GIROCODE_HINT,
+  GIROCODE_MISMATCH,
+  GIROCODE_NO_REFERENCE,
+  GIROCODE_ON_PHONE,
+  GIROCODE_READING_AGAIN,
+  GiroCodeSection,
+  canReadLetterAgain,
+  giroCodeLabel,
+  modulePixels,
+} from "./GiroCode";
 import { qrMatrix, qrPath } from "./qr";
 
 const NK = "BCD\n002\n1\nSCT\n\nWohnbau Musterstadt eG\nDE05123456000004455660\nEUR184.3\n\n\nMV-2025-0412 NK 2025";
@@ -57,9 +70,37 @@ describe("a ready code", () => {
     expect(within(section).queryByText(/You compared these details/)).toBeNull();
   });
 
-  it("says when the person compared the details with the paper letter", () => {
+  it("says when the person compared the details with the letter", () => {
     renderSection({ ...ready, checked: true });
-    expect(screen.getByText("You compared these details with the paper letter.")).toBeInTheDocument();
+    expect(screen.getByText("You compared these details with the letter.")).toBeInTheDocument();
+  });
+
+  it("says when it carries no reference, which the letter may name after all", () => {
+    const { unmount } = renderSection(ready);
+    expect(screen.queryByText(GIROCODE_NO_REFERENCE)).toBeNull();
+    unmount();
+    // folded on Today too: the line is for copying by hand as well
+    renderSection({ ...ready, payload: "BCD\n002\n1\nSCT\n\nMuster Telecom GmbH\nDE05123456000004455660\nEUR49.99" }, true);
+    const section = screen.getByRole("region", { name: "GiroCode (EPC-QR)" });
+    expect(within(section).getByText(GIROCODE_NO_REFERENCE)).toBeInTheDocument();
+    expect(screen.getByText(GIROCODE_NO_REFERENCE).className).toContain("text-warn-ink");
+  });
+
+  it("tells a phone, which can't scan its own screen, what to do instead", () => {
+    // jsdom has no media queries: phone-sized
+    const { unmount } = renderSection(ready, true);
+    expect(within(screen.getByRole("region", { name: "GiroCode (EPC-QR)" })).getByText(GIROCODE_ON_PHONE)).toBeInTheDocument();
+    unmount();
+    const media = (matches: (q: string) => boolean) => (query: string) => ({ matches: matches(query), media: query, addEventListener() {}, removeEventListener() {} });
+    // a computer (Today folds the code there too): no such line
+    vi.stubGlobal("matchMedia", media((q) => q.includes("min-width: 768px")));
+    const { unmount: unmountDesktop } = renderSection(ready, true);
+    expect(screen.queryByText(GIROCODE_ON_PHONE)).toBeNull();
+    unmountDesktop();
+    // a tablet: wide, but it can't scan itself either
+    vi.stubGlobal("matchMedia", media((q) => q.includes("min-width: 768px") || q.includes("pointer: coarse")));
+    renderSection(ready, true);
+    expect(screen.getByText(GIROCODE_ON_PHONE)).toBeInTheDocument();
   });
 
   it("starts folded on Today and opens with “Show code”", async () => {
@@ -211,18 +252,23 @@ describe("details read from a photo", () => {
     const button = await screen.findByRole("button", { name: "These match the letter" });
     // the amount changes elsewhere (another tab) after the details were shown
     srv.db.state.items.find((i) => i.id === "itm_parking")!.amount = 35;
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
     await user.click(button);
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Not confirmed: The payment details changed since you looked at them. Please compare them again.");
     expect(screen.queryByText("Couldn't confirm the payment details")).toBeNull();
     await waitFor(() => expect(screen.getByRole("button", { name: "These match the letter" })).toHaveFocus());
+    // below the buttons: brought clear of the panel's sticky footer (a short Today popover hides it)
+    await waitFor(() => expect(scroll.mock.contexts).toContain(alert));
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
     // refetched: comparing again compares the new amount
     await user.click(screen.getByRole("button", { name: "These match the letter" }));
     expect(await screen.findByRole("img", { name: /^GiroCode: transfer €35\.00 to Stadtkasse Musterstadt/ })).toBeInTheDocument();
     expect(srv.db.state.activity.filter((a) => a.kind === "payment.checked")).toHaveLength(1);
   });
 
-  it("“They don't match” says to type the details from the paper, and can read the letter again", async () => {
+  it("“They don't match” says to type the details from the letter, and can read the letter again", async () => {
     const { calls } = useMockApi();
     const user = userEvent.setup();
     const scroll = vi.fn();
@@ -239,8 +285,87 @@ describe("details read from a photo", () => {
     delete (Element.prototype as Partial<Element>).scrollIntoView;
     await user.click(screen.getByRole("button", { name: "Read the letter again" }));
     expect(calls.some((c) => c.method === "POST" && c.path === "/documents/doc_parking/reprocess")).toBe(true);
-    expect(await screen.findByText("Reading it again — the details here update when it's done.")).toBeInTheDocument();
+    expect(await screen.findByText(GIROCODE_READING_AGAIN)).toBeInTheDocument();
     expect(calls.some((c) => c.path.endsWith("/girocode/confirm"))).toBe(false);
+  });
+
+  it("“Read the letter again” keeps focus on its button, which stays while the letter is read", async () => {
+    const { calls } = useMockApi();
+    const user = userEvent.setup();
+    function Panel() {
+      const [canReadAgain, setCanReadAgain] = useState(true);
+      return (
+        <>
+          <button type="button" onClick={() => setCanReadAgain(false)}>
+            The letter is being read
+          </button>
+          <GiroCodeSection code={GIROCODES.itm_parking} docId="doc_parking" canReadAgain={canReadAgain} />
+        </>
+      );
+    }
+    renderWithProviders(<Panel />);
+    await user.click(screen.getByRole("button", { name: "They don't match" }));
+    const button = screen.getByRole("button", { name: "Read the letter again" });
+    await user.click(button);
+    expect(await screen.findByText(GIROCODE_READING_AGAIN)).toBeInTheDocument();
+    // not disabled (a disabled button drops focus to the page): marked, and a second press asks nothing
+    await waitFor(() => expect(button).toHaveFocus());
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).not.toBeDisabled();
+    await user.keyboard("{Enter}");
+    expect(calls.filter((c) => c.path === "/documents/doc_parking/reprocess")).toHaveLength(1);
+    // the letter is being read now, so the panel stops offering it: the answer stays
+    // (a click event without moving focus, as the server's answer would)
+    fireEvent.click(screen.getByRole("button", { name: "The letter is being read" }));
+    expect(screen.getByText(GIROCODE_READING_AGAIN)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Read the letter again" })).toHaveFocus();
+  });
+
+  it("says in the block why the letter couldn't be read again — no toast behind the sheet — and keeps focus", async () => {
+    // the online demo reads no letters: its answer stands in for any refusal (Claude paused, a break …)
+    useMockApi({ staticDemo: true });
+    const user = userEvent.setup();
+    const client = createQueryClient();
+    client.setQueryData(qk.health, TEST_HEALTH);
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    try {
+      renderWithProviders(
+        <>
+          <GiroCodeSection code={GIROCODES.itm_parking} docId="doc_parking" canReadAgain />
+          <Toaster />
+        </>,
+        { client },
+      );
+      await user.click(screen.getByRole("button", { name: "They don't match" }));
+      const button = screen.getByRole("button", { name: "Read the letter again" });
+      await user.click(button);
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent(/^Couldn't read the letter again: Install Ordnung to try this/);
+      expect(screen.queryByText("Not available in the online demo")).toBeNull();
+      await waitFor(() => expect(button).toHaveFocus());
+      expect(button).not.toHaveAttribute("aria-disabled");
+      // below the button: brought clear of the panel's footer
+      expect(scroll.mock.contexts).toContain(alert);
+    } finally {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    }
+  });
+
+  it("offers reading again only where it can work", () => {
+    const letter = { ai_private: false, status: "processed" as const };
+    expect(canReadLetterAgain(letter)).toBe(true);
+    expect(canReadLetterAgain({ ...letter, ai_private: true })).toBe(false);
+    expect(canReadLetterAgain({ ...letter, status: "processing" })).toBe(false);
+    expect(canReadLetterAgain({ ...letter, status: "queued" })).toBe(false);
+    expect(canReadLetterAgain(undefined)).toBe(false);
+    // the online demo reads no letters: the button would only fail
+    vi.stubEnv("VITE_STATIC_DEMO", "1");
+    try {
+      expect(canReadLetterAgain(letter)).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("offers no reading again for a private letter", async () => {

@@ -8,7 +8,7 @@ import type { Document, GiroCode, Item } from "@/api/types";
 import { formatIban, formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
-import { GiroCodeSection, ibanFailsCheck } from "@/features/girocode/GiroCode";
+import { GiroCodeSection, canReadLetterAgain, ibanFailsCheck } from "@/features/girocode/GiroCode";
 import { useIsTabletUp, useMediaQuery } from "@/lib/hooks";
 import { paymentReference } from "@/lib/payments";
 import { cn } from "@/lib/utils";
@@ -89,7 +89,7 @@ export function PayPanel({
         </p>
       ) : null}
 
-      <GiroCodeSection code={code} docId={doc.id} collapsible={narrow || touch} canReadAgain={!doc.ai_private && doc.status !== "processing" && doc.status !== "queued"} className="mt-3" />
+      <GiroCodeSection code={code} docId={doc.id} collapsible={narrow || touch} canReadAgain={canReadLetterAgain(doc)} className="mt-3" />
 
       <p className="mt-3 text-[12.5px] leading-5 text-muted">
         Ordnung never pays for you — use your banking app. Compare the IBAN with an earlier letter from this sender.

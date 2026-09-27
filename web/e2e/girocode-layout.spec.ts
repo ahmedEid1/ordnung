@@ -2,9 +2,10 @@
  * The GiroCode (EPC-QR) in the Pay panels on the real demo, where jsdom can't look: the code is a
  * square of black modules on white with its quiet zone in both themes, big enough to scan and
  * wholly on screen from 320 px up, the panel's actions stay in view, phones fold it behind
- * "Show code", a photographed letter asks to compare with the paper first — and once compared,
- * the code and its confirmation line scroll clear of the panel's sticky footer, on the letter
- * and on Today, even where they don't fit.
+ * "Show code" and say what to do instead, a photographed letter asks to compare with the paper
+ * first — and once compared, the code and its confirmation line scroll clear of the panel's sticky
+ * footer, on the letter and on Today, even where they don't fit. A refused comparison and a failed
+ * "Read the letter again" say why in the panel, clear of its footer, with focus kept.
  */
 import type { Locator, Page } from "@playwright/test";
 import { apiGet, apiPatch, documentId, expect, expectAccessible, open, setTour, settle, test } from "./helpers";
@@ -100,6 +101,8 @@ test.describe("phone 390×844", () => {
     const show = sheet.getByRole("button", { name: "Show code" });
     await expect(show).toHaveAttribute("aria-expanded", "false");
     await expect(sheet.getByRole("img", { name: /^GiroCode:/ })).toHaveCount(0);
+    // and says what to do instead of scanning this screen
+    await expect(sheet.getByText(/^A phone or tablet can't scan its own screen: open this letter on a computer/)).toBeVisible();
     await show.click();
     await expect(sheet.getByRole("img", { name: /^GiroCode:/ })).toBeVisible();
     await expect(sheet.getByRole("button", { name: "Hide code" })).toHaveAttribute("aria-expanded", "true");
@@ -152,7 +155,7 @@ async function rearmedFine(page: Page, amount: number): Promise<{ docId: string;
 
 /** The confirmation line and the code end above the panel's sticky footer (once scrolling stopped). */
 async function clearOfFooter(panel: Locator): Promise<void> {
-  const line = panel.getByText("You compared these details with the paper letter.", { exact: true });
+  const line = panel.getByText("You compared these details with the letter.", { exact: true });
   await expect(line).toBeVisible();
   const code = panel.getByRole("img", { name: /^GiroCode: transfer/ });
   const footer = panel.locator("[data-sticky-footer]");
@@ -196,5 +199,66 @@ test.describe("confirming where the code doesn't fit", () => {
       await panel.getByRole("button", { name: "These match the letter" }).click();
       await clearOfFooter(panel);
     });
+  });
+});
+
+// ------------------------------------------------------------------------------------------------
+// A refused comparison, a failed reading: the reason shows in the panel, clear of its footer
+// ------------------------------------------------------------------------------------------------
+
+/** The element ends above the panel's sticky footer and is the top-most thing where it is. */
+async function clearAndOnTop(panel: Locator, l: Locator): Promise<void> {
+  await expect(l).toBeVisible();
+  const footer = panel.locator("[data-sticky-footer]");
+  await expect
+    .poll(async () => (await footer.boundingBox())!.y - ((await l.boundingBox())!.y + (await l.boundingBox())!.height), { message: "it ends above the sticky footer" })
+    .toBeGreaterThanOrEqual(0);
+  expect(await reachable(l), "nothing covers it").toBe(true);
+}
+
+/** Today's Pay panel of the photographed fine (a popover from 768 px, a sheet below). */
+async function todayFinePanel(page: Page): Promise<Locator> {
+  await open(page, "/", /Sam/);
+  await page.getByRole("region", { name: "Top 3 this week" }).getByRole("button", { name: /^Pay: .*(Verwarnungsgeld|traffic fine|parking)/i }).first().click();
+  return page.getByRole("dialog");
+}
+
+test.describe("refusals in the panel", () => {
+  for (const [width, height] of [
+    [1280, 800],
+    [320, 640],
+    [390, 844],
+  ] as const) {
+    test(`${width}×${height}: a refused “These match the letter” says why above Today's footer`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.route("**/api/items/*/girocode/confirm", (route) =>
+        route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ detail: "The payment details changed since you looked at them. Please compare them again." }) }),
+      );
+      const panel = await todayFinePanel(page);
+      const button = panel.getByRole("button", { name: "These match the letter" });
+      await button.click();
+      const alert = panel.getByRole("alert").filter({ hasText: "Not confirmed: The payment details changed" });
+      await clearAndOnTop(panel, alert);
+      await expect(button).toBeFocused();
+    });
+  }
+
+  test("390×844: a failed “Read the letter again” says why in the sheet, and keeps focus", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    let asked = 0;
+    await page.route("**/api/documents/*/reprocess", (route) => {
+      asked += 1;
+      return route.fulfill({ status: 429, contentType: "application/json", body: JSON.stringify({ detail: "Claude needs a short break. Try again at 15:30." }) });
+    });
+    const panel = await todayFinePanel(page);
+    await panel.getByRole("button", { name: "They don't match" }).click();
+    const button = panel.getByRole("button", { name: "Read the letter again" });
+    await button.click();
+    const alert = panel.getByRole("alert").filter({ hasText: "Couldn't read the letter again: Claude needs a short break." });
+    await clearAndOnTop(panel, alert);
+    await expect(button).toBeFocused();
+    // no toast behind the sheet
+    await expect(page.getByText("Claude needs a short break", { exact: true })).toHaveCount(0);
+    expect(asked).toBe(1);
   });
 });
