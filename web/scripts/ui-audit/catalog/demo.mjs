@@ -580,10 +580,164 @@ export async function demoCatalog({ api, server }) {
     },
   });
 
+  // Ask: what the answer check shows (ADR 0008) — the answer stream is answered in the page, so any
+  // state can be shown without a recording: a note under the answer, values left out, a check that
+  // failed, the "writing" line, and a stream that ends without its checked answer
+  {
+    const noteDoc = replyDoc;
+    const noteItems = noteDoc ? await api.get(`/api/items?doc_id=${noteDoc.id}`).catch(() => []) : [];
+    const noteItem = noteItems.find((i) => i.due_date) ?? noteItems[0];
+    const trace = [
+      { type: "tool_use", name: "list_items", input: { from: "2026-09-28", to: "2026-10-31", status: "open" }, text: "Listed your open to-dos & dates from 2026-09-28 to 2026-10-31" },
+      { type: "tool_result", name: "list_items", text: `${noteItems.length || 12} to-dos, the earliest due 2026-10-01` },
+      noteDoc ? { type: "tool_use", name: "get_document", input: { doc_id: noteDoc.id }, text: `Opened “${noteDoc.title}”` } : null,
+      noteDoc ? { type: "tool_result", name: "get_document", text: "Ordnung's record and the letter's text (2 pages)" } : null,
+      { type: "tool_use", name: "explain_date", input: { item_or_contract_id: noteItem?.id ?? "itm_x" }, text: `Checked how “${noteItem?.title ?? "a date"}” was worked out` },
+      { type: "tool_result", name: "explain_date", text: "Due 2026-10-15 — § 556 Abs. 3 BGB" },
+      { type: "text" },
+    ].filter(Boolean);
+    const cite = noteDoc ? `[doc:${noteDoc.id}]` : "";
+    const citeItem = noteItem ? `[item:${noteItem.id}]` : "";
+    const citations = [noteDoc ? { type: "document", id: noteDoc.id, label: noteDoc.title } : null, noteItem ? { type: "item", id: noteItem.id, label: noteItem.title } : null].filter(Boolean);
+    const done = (text, note, label) => ({ type: "done", text, note, note_label: label, citations, message_id: "msg_ui_audit", thread_id: "thr_ui_audit" });
+    /** Answer `POST /api/ask` in the page with `events`; `open` keeps the stream open after them. */
+    const answerAsk = (c, events, { open = false } = {}) =>
+      c.page.addInitScript(
+        ({ events, open }) => {
+          const real = window.fetch.bind(window);
+          window.fetch = (input, init) => {
+            const url = typeof input === "string" ? input : input.url;
+            if (!/\/api\/ask(\?|$)/.test(new URL(url, location.href).pathname) || (init?.method ?? "GET").toUpperCase() !== "POST") return real(input, init);
+            const enc = new TextEncoder();
+            const body = new ReadableStream({
+              start(ctrl) {
+                for (const e of events) ctrl.enqueue(enc.encode(`data: ${JSON.stringify(e)}\n\n`));
+                if (!open) ctrl.close();
+              },
+            });
+            return Promise.resolve(new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } }));
+          };
+        },
+        { events, open },
+      );
+    const askState = (id, question, events, description, { open = false, expand = true } = {}) =>
+      add({
+        id: `ask-${id}`,
+        group: "ask",
+        route: "/ask",
+        how: `open /ask with POST /api/ask answered in the page, send “${question}”${expand ? ", expand the trace" : ""}`,
+        description,
+        run: async (c) => {
+          await answerAsk(c, events, { open });
+          await c.goto("/ask");
+          await c.type(main(c.page).getByRole("textbox"), question, { settleAfter: false });
+          await c.page.keyboard.press("Enter");
+          if (open) await c.page.getByText(/Writing the answer/).first().waitFor({ timeout: 10_000 }).catch(() => c.note("no “writing” line"));
+          else await c.page.getByRole("main").getByRole("status").filter({ hasText: /Answer ready|could not be completed|Couldn't|Stopped|interrupted/ }).waitFor({ timeout: 15_000 }).catch(() => c.note("no final status"));
+          const t = main(c.page).getByRole("button", { name: /^Looked at \d+ things?/ });
+          if (expand && (await c.exists(t))) await c.click(t.last());
+          await settle(c.page, { idle: !open });
+        },
+      });
+    askState(
+      "check-note",
+      "Was muss ich im Oktober für die Nebenkosten bezahlen, und bis wann?",
+      [
+        ...trace,
+        done(
+          `The operating-cost statement asks for a back-payment of [amount only in the letter] ${cite}. The to-do “${noteItem?.title ?? "Pay"}” is due 2026-10-15 ${citeItem}. Your landlord also wrote that the new prepayment starts [date left out].\n\nYou can ask to see the receipts before you pay.`,
+          "1 date, time or amount is marked “left out”: it isn't among the dates and amounts Ordnung saved for the linked letter, to-do or contract. 1 date, time or amount is marked “only in the letter”: a letter's text has it, but it isn't among the dates and amounts Ordnung saved for the linked letter, to-do or contract — open the letter to read it.",
+          "Checked by Ordnung:",
+        ),
+      ],
+      "Checked answer with left-out and only-in-the-letter values, the check's note and the tool trace expanded.",
+    );
+    askState(
+      "check-note-de",
+      "Bis wann muss ich die Nebenkosten zahlen?",
+      [
+        ...trace,
+        done(
+          `Die Nachzahlung aus der Betriebskostenabrechnung ist bis 2026-10-15 fällig ${citeItem}. Der Vermieter nennt außerdem „[Betrag nur im Brief]“ als neue Vorauszahlung ${cite}.`,
+          "1 Angabe ist als „nur im Brief“ markiert: Sie steht im Text eines Briefs, gehört aber nicht zu den Daten und Beträgen, die Ordnung zum verknüpften Brief, zur Aufgabe oder zum Vertrag gespeichert hat – öffnen Sie den Brief, um sie zu lesen. 1 Quelle ergänzt: Ein Satz nannte ein Datum, eine Uhrzeit oder einen Betrag ohne Quelle.",
+          "Von Ordnung geprüft:",
+        ),
+      ],
+      "A German checked answer with the German note label.",
+    );
+    askState(
+      "checked-no-note",
+      "When is the operating-cost payment due?",
+      [...trace, done(`The back-payment is due 2026-10-15 ${citeItem}.`, null, "Checked by Ordnung:")],
+      "A checked answer the check did not change (“Dates and amounts checked against your records.”).",
+    );
+    askState(
+      "check-failed",
+      "When is the operating-cost payment due?",
+      [...trace, { type: "error", error: "Ordnung couldn't check this answer against your records, so it isn't shown. Please ask again." }],
+      "The answer check failed (fails closed): the error callout with Try again.",
+    );
+    askState("writing", "When is the operating-cost payment due?", trace, "The model is writing: the trace and the “Writing the answer — it appears once Ordnung has checked it” line.", { open: true, expand: false });
+    askState(
+      "stream-cut",
+      "When is the operating-cost payment due?",
+      trace,
+      "The stream ends after “writing” without a checked answer (a dropped connection or a server restart).",
+    );
+  }
+
+  // the kind picker ("What kind of letter is this?") on a real letter, not saved
+  if (replyDoc) {
+    docState(replyDoc, "kind-picker", "click “Change” next to the letter's kind", "The kind picker: “What kind of letter is this?” with the high-stakes kinds first.", (c) =>
+      c.click(main(c.page).getByRole("button", { name: "Change what kind of letter this is" })),
+    );
+  }
+
+  // the template letters on the real server (the profile has no IBAN: the deposit letter says where to add it)
+  const landlord = parties.find((p) => p.kind === "landlord");
+  composer("templates-deposit", `kind=deposit_return${landlord ? `&to=${landlord.id}` : ""}`, "Composer: “Get your deposit back” for the landlord, no IBAN in the profile.");
+  composer("templates-withdrawal", "kind=withdrawal", "Composer: “Withdraw from a purchase” with the letter list and facts.");
+  if (payDoc) composer("templates-payment-plan", `kind=payment_plan&doc=${payDoc.id}`, "Composer: “Pay in instalments” for the payment reminder (amount default hint).");
+  if (objectionDoc) {
+    composer("objection-suspend", `kind=objection&doc=${objectionDoc.id}`, "Composer: objection to an authority's decision with “Also ask to suspend enforcement” ticked.", async (c) => {
+      const box = c.page.getByRole("dialog").getByRole("checkbox", { name: /suspend enforcement/ });
+      if (await c.exists(box)) await c.click(box);
+      else c.note("no suspend checkbox");
+    });
+  }
+
   // ---------------------------------------------------------------------------------------------
   // Settings
   // ---------------------------------------------------------------------------------------------
   for (const s of commonSettingsSections("settings")) add(s);
+  add({
+    id: "settings-profile-iban-invalid",
+    group: "settings",
+    route: "/settings?section=profile",
+    how: "open /settings?section=profile, type an IBAN with a wrong check digit, leave the field",
+    description: "Profile: the refund IBAN with its validation error.",
+    run: async (c) => {
+      await c.goto("/settings?section=profile");
+      const box = await c.type(main(c.page).getByRole("textbox", { name: /IBAN for refunds/ }), "DE89 3704 0044 0532 0130 01");
+      await box.press("Tab");
+      await settle(c.page);
+      await c.centre(box);
+    },
+  });
+  add({
+    id: "settings-profile-iban-valid",
+    group: "settings",
+    route: "/settings?section=profile",
+    how: "open /settings?section=profile, type a valid IBAN without spaces, leave the field (unsaved)",
+    description: "Profile: a valid refund IBAN shown in blocks of four, the save bar.",
+    run: async (c) => {
+      await c.goto("/settings?section=profile");
+      const box = await c.type(main(c.page).getByRole("textbox", { name: /IBAN for refunds/ }), "DE89370400440532013000");
+      await box.press("Tab");
+      await settle(c.page);
+      await c.centre(box);
+    },
+  });
   add({
     id: "settings-profile-unsaved",
     group: "settings",
@@ -1027,6 +1181,60 @@ export async function demoCatalog({ api, server }) {
   mailStates.push({ id: "inbox-after-mail", group: "inbox", route: "/inbox", how: "open /inbox after all New-mail letters were read", description: "Inbox without the tray, the new letters on top.", run: (c) => c.goto("/inbox") });
   mailStates.push({ id: "today-after-mail", group: "today", route: "/", how: "open / after all New-mail letters were read", description: "Today after the new letters (new Ideas, scam warning idea).", run: (c) => c.goto("/") });
 
+  // ---------------------------------------------------------------------------------------------
+  // Phase 5: high-stakes letters (ADR 0010) on a third demo folder — real letters re-filed with the
+  // kind picker's PATCH, so the server works out their law-set dates and "get advice" cards
+  // ---------------------------------------------------------------------------------------------
+  const HS_KINDS = [
+    [/^03_mietvertrag/, "landlord_notice"],
+    [/^13_nebenkostenabrechnung/, "operating_costs"],
+    [/^15_mahnung_techmarkt/, "court_payment_order"],
+    [/^07_arbeitsvertrag/, "dismissal"],
+    [/^20_stadtbibliothek/, "enforcement_order"],
+    [/^19_bank_preisaenderung/, "rent_increase"],
+  ];
+  const hsDocs = {};
+  const hsStates = [];
+  for (const [re, kind] of HS_KINDS) {
+    const d = docs.find((x) => re.test(x.filename ?? ""));
+    if (!d) continue;
+    const at = (suffix, how, description, run) =>
+      hsStates.push({
+        id: `hs-${kind.replace(/_/g, "-")}${suffix ? `--${suffix}` : ""}`,
+        group: "high-stakes",
+        route: "/documents/…",
+        how: `“${d.filename}” re-filed as ${kind} (PATCH kind), open it${how ? `, ${how}` : ""}`,
+        description,
+        run: async (c) => {
+          const id = hsDocs[kind];
+          if (!id) throw new Error(`${kind} was not set up`);
+          await c.goto(`/documents/${id}`);
+          if (run) await run(c, id);
+        },
+      });
+    at("", "", `“${d.filename}” as ${kind}: verdict, advice card, arrival question.`);
+    at("why-this-date", "“Why this date?” → “Show the rules”", `${kind}: the date receipt with the law's steps.`, async (c) => {
+      const b = c.page.getByRole("article").first().getByRole("button", { name: /Why this date\?/ });
+      if (!(await c.exists(b))) c.notApplicable("no “Why this date?” on the verdict");
+      await c.click(b);
+      if (await c.exists(c.page.getByRole("button", { name: "Show the rules" }))) await c.click(c.page.getByRole("button", { name: "Show the rules" }));
+    });
+    if (kind === "landlord_notice" || kind === "court_payment_order" || kind === "enforcement_order") {
+      at("objection", "open the composer's objection for it", `${kind}: the composer's objection with the statutory note.`, async (c, id) => {
+        await c.goto(`/letters?kind=objection&doc=${id}`);
+        await c.visible(c.page.getByRole("dialog", { name: "New letter" }));
+        await settle(c.page);
+      });
+    }
+    if (kind === "court_payment_order" || kind === "dismissal") {
+      at("extension-refused", "open “Ask for more time” for it", `${kind}: “Ask for more time” refused (a deadline set by law).`, async (c, id) => {
+        await c.goto(`/letters?kind=extension_request&doc=${id}`);
+        await c.visible(c.page.getByRole("dialog", { name: "New letter" }));
+        await settle(c.page);
+      });
+    }
+  }
+
   return {
     phases: [
       { name: "main", parallel: true, states: S },
@@ -1061,6 +1269,23 @@ export async function demoCatalog({ api, server }) {
         },
       },
       { name: "mail", parallel: false, states: mailStates },
+      {
+        name: "high-stakes",
+        parallel: true,
+        states: hsStates,
+        before: async ({ restart }) => {
+          await restart("high-stakes");
+          await setTour(api, null);
+          const docs3 = await api.get("/api/documents");
+          for (const [re, kind] of HS_KINDS) {
+            const d = docs3.find((x) => re.test(x.filename ?? ""));
+            if (d) {
+              await api.patch(`/api/documents/${d.id}`, { kind });
+              hsDocs[kind] = d.id;
+            }
+          }
+        },
+      },
     ],
   };
 }

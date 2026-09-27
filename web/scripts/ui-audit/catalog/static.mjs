@@ -66,5 +66,153 @@ export async function staticCatalog({ webDir }) {
     await c.wait(600);
     await settle(c.page, { idle: false });
   });
-  return { phases: [{ name: "static", parallel: true, states: S.map((s) => ({ ...s, pinToasts: s.id.endsWith("unavailable") })) }] };
+  // ---------------------------------------------------------------------------------------------
+  // High-stakes letters (ADR 0010): the court order and the dismissal from the tray, other kinds
+  // set with the kind picker, the arrival/delivery question, and the letters the composer offers
+  // ---------------------------------------------------------------------------------------------
+  const senders = new Map(trayDocs.map(([, id, sender]) => [id, sender]));
+  const court = senders.get("mail_court");
+  const dismissal = senders.get("mail_dismissal");
+  /** Read a tray letter (the mock database lives in the page, so every capture reads it again). */
+  const readTray = async (c, sender) => {
+    await c.goto("/inbox");
+    const env = c.page.getByRole("region", { name: /^New mail/ }).getByRole("listitem").filter({ hasText: sender }).first();
+    await c.click(env.getByRole("button", { name: "Let Ordnung read it" }), { settleAfter: false });
+    await c.page.waitForURL(/\/documents\//, { timeout: 60_000 });
+    await settle(c.page);
+  };
+  /** Navigate inside the page (a hash change keeps the in-page mock database). */
+  const hashTo = async (c, path) => {
+    await c.page.evaluate((p) => (window.location.hash = `#${p}`), path);
+    await c.wait(300);
+    await settle(c.page);
+  };
+  const verdict = (c) => c.page.getByRole("article").first();
+  const openKindPicker = (c) => c.click(inMain(c.page).getByRole("button", { name: "Change what kind of letter this is" }));
+  const fileAs = async (c, kind) => {
+    await openKindPicker(c);
+    const form = c.page.getByRole("dialog", { name: "What kind of letter is this?" });
+    await c.select(form.getByRole("combobox", { name: "Kind of letter" }), kind);
+    await c.click(form.getByRole("button", { name: "Save", exact: true }), { settleAfter: false });
+    await c.wait(500);
+    await settle(c.page);
+  };
+  const hs = [];
+  const addHs = (id, path, description, run, extra = {}) =>
+    hs.push({ id: `static-${id}`, group: "high-stakes", route: `#${path}`, how: `open /#${path}, then as described`, description, run, ...extra });
+
+  if (court) {
+    addHs("mail-court--kind-picker", "/inbox", "Court payment order: the kind picker (“Change”) open.", async (c) => {
+      await readTray(c, court);
+      await openKindPicker(c);
+    });
+    addHs("mail-court--why-this-date", "/inbox", "Court payment order: “Why this date?” with the rules (delivery date unknown).", async (c) => {
+      await readTray(c, court);
+      await c.click(verdict(c).getByRole("button", { name: /Why this date\?/ }));
+      if (await c.exists(c.page.getByRole("button", { name: "Show the rules" }))) await c.click(c.page.getByRole("button", { name: "Show the rules" }));
+    });
+    addHs("mail-court--delivery-saved", "/inbox", "Court payment order: the envelope date entered and saved (toast).", async (c) => {
+      await readTray(c, court);
+      await c.type(c.page.locator("#arrival-date"), "2026-09-25");
+      await c.click(c.page.locator("#arrival-question").getByRole("button", { name: "Save" }), { settleAfter: false });
+      await c.wait(600);
+      await settle(c.page);
+    }, { pinToasts: true });
+    const docIdOf = (c) => new URL(c.page.url()).hash.match(/documents\/([^?]+)/)?.[1];
+    addHs("mail-court--objection", "/inbox", "Composer: objection to the court payment order (the statutory note on partial objections).", async (c) => {
+      await readTray(c, court);
+      await hashTo(c, `/letters?kind=objection&doc=${docIdOf(c)}`);
+      await c.visible(c.page.getByRole("dialog", { name: "New letter" }));
+    });
+    addHs("mail-court--objection-draft", "/inbox", "Court payment order → verdict “Draft objection” → the drafted letter (how to send it to a court).", async (c) => {
+      await readTray(c, court);
+      await c.click(verdict(c).getByRole("button", { name: /Draft objection/ }), { settleAfter: false });
+      await c.page.waitForURL(/\/letters\/drf_/, { timeout: 30_000 });
+      await settle(c.page);
+    }, { pinToasts: true });
+    addHs("mail-court--extension-refused", "/inbox", "Composer: “Ask for more time” against the court order (refusal callout).", async (c) => {
+      await readTray(c, court);
+      await hashTo(c, `/letters?kind=extension_request&doc=${docIdOf(c)}`);
+      await c.visible(c.page.getByRole("dialog", { name: "New letter" }));
+    });
+    addHs("mail-court--as-enforcement-order", "/inbox", "The court letter re-filed as an enforcement order with the kind picker.", async (c) => {
+      await readTray(c, court);
+      await fileAs(c, "enforcement_order");
+    }, { pinToasts: true });
+    addHs("mail-court--enforcement-suspend", "/inbox", "Composer: objection to the letter re-filed as an enforcement order, “suspend enforcement” ticked.", async (c) => {
+      await readTray(c, court);
+      await fileAs(c, "enforcement_order");
+      await hashTo(c, `/letters?kind=objection&doc=${docIdOf(c)}`);
+      const dialog = await c.visible(c.page.getByRole("dialog", { name: "New letter" }));
+      const box = dialog.getByRole("checkbox", { name: /suspend enforcement/ });
+      if (await c.exists(box)) await c.click(box);
+      else c.note("no suspend checkbox");
+    });
+  }
+  if (dismissal) {
+    addHs("mail-dismissal--why-this-date", "/inbox", "Dismissal: “Why this date?” for the three weeks (§ 4 KSchG).", async (c) => {
+      await readTray(c, dismissal);
+      await c.click(verdict(c).getByRole("button", { name: /Why this date\?/ }));
+      if (await c.exists(c.page.getByRole("button", { name: "Show the rules" }))) await c.click(c.page.getByRole("button", { name: "Show the rules" }));
+    });
+    addHs("mail-dismissal--advice-card", "/inbox", "Dismissal: scrolled to the “get advice” card.", async (c) => {
+      await readTray(c, dismissal);
+      await c.scrollTo(inMain(c.page).locator("section[aria-labelledby^=advice-]"));
+    });
+  }
+  for (const [kind, label] of [
+    ["landlord_notice", "a landlord's notice"],
+    ["rent_increase", "a rent increase"],
+  ]) {
+    if (!pick("doc_lease")) break;
+    addHs(`doc-lease--as-${kind.replace(/_/g, "-")}`, "/documents/doc_lease", `The lease re-filed as ${label} (advice card, verdict).`, async (c) => {
+      await c.goto("/documents/doc_lease");
+      await fileAs(c, kind);
+    });
+  }
+  if (pick("doc_nebenkosten")) {
+    addHs("doc-nebenkosten--as-operating-costs", "/documents/doc_nebenkosten", "The utility statement re-filed as an operating-cost statement.", async (c) => {
+      await c.goto("/documents/doc_nebenkosten");
+      await fileAs(c, "operating_costs");
+    });
+  }
+  // the template letters
+  addHs("composer-chooser", "/letters?new=1", "Composer step 1: the three letters and the eight template letters.", async (c) => {
+    await c.goto("/letters?new=1");
+    await c.visible(c.page.getByRole("dialog", { name: "New letter" }));
+  });
+  const tmpl = (kind, query, description, then) =>
+    addHs(`composer-${kind.replace(/_/g, "-")}`, `/letters?kind=${kind}${query}`, description, async (c) => {
+      await c.goto(`/letters?kind=${kind}${query}`);
+      const d = await c.visible(c.page.getByRole("dialog", { name: "New letter" }));
+      if (then) await then(c, d);
+      await settle(c.page);
+    });
+  tmpl("withdrawal", "", "Template: withdraw from a purchase (letter list, facts, checkbox).");
+  tmpl("extension_request", pick("doc_tm_dunning") ? "&doc=doc_tm_dunning" : "", "Template: ask for more time, answering the dunning letter.");
+  tmpl("payment_plan", pick("doc_tm_dunning") ? "&doc=doc_tm_dunning" : "", "Template: instalments for the dunning letter (amount hint).", async (c, d) => {
+    const box = d.getByRole("textbox", { name: /Monthly instalment/ });
+    if (await c.exists(box)) await c.type(box, "1.500");
+  });
+  tmpl("defect_notice", "", "Template: report a defect (landlord picker, long textarea).");
+  tmpl("data_access", "", "Template: ask for your data, SCHUFA's address filled in.", async (c, d) => {
+    const b = d.getByRole("button", { name: "Use SCHUFA's address" });
+    if (await c.exists(b)) await c.click(b);
+  });
+  tmpl("receipts_inspection", pick("doc_nebenkosten") ? "&doc=doc_nebenkosten" : "", "Template: see the receipts behind the statement.");
+  tmpl("deposit_return", "", "Template: get the deposit back (IBAN from the profile).", async (c, d) => {
+    const sel = d.getByRole("combobox", { name: /Recipient/ });
+    if (await c.exists(sel)) {
+      const v = await sel.locator("option").nth(1).getAttribute("value");
+      if (v) await c.select(sel, v);
+    }
+  });
+  tmpl("address_change", "", "Template: share a new address (from the profile).");
+
+  return {
+    phases: [
+      { name: "static", parallel: true, states: S.map((s) => ({ ...s, pinToasts: s.id.endsWith("unavailable") })) },
+      { name: "high-stakes", parallel: true, states: hs },
+    ],
+  };
 }
