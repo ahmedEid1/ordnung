@@ -10,9 +10,17 @@
 const COMPOUND_HEADS =
   /(Betriebskosten|Heizkosten|Nebenkosten|Vollstreckungs|Kündigungs|Kappungs|Mieterhöhungs|Einspruchs|Widerspruchs|Beitrags|Einkommensteuer|Miet|Mahn)(?=\p{Ll}{4,})/gu;
 
+/**
+ * A compound's joint after a linking "s" ("Immatrikulations|bescheinigung", "Verwaltungs|gericht"): the last one
+ * in a long word, followed by a part of five letters or more.
+ */
+const LINKING_JOINT = /(\p{L}{3,}(?:ions|ungs|heits|keits|schafts|täts))(?=\p{Ll}{5,})/gu;
+
 /** ``term`` with a soft hyphen after each compound head, when it is long enough to need one. */
 export function softHyphens(term: string): string {
-  return term.length < 16 ? term : term.replace(COMPOUND_HEADS, "$1­");
+  if (term.length < 16) return term;
+  // a known head first; a long word without one breaks at its last linking joint
+  return term.replace(COMPOUND_HEADS, "$1\u00ad").replace(/[^\s\u00ad]{16,}/g, (word) => word.replace(LINKING_JOINT, "$1\u00ad"));
 }
 
 /** What makes a bracketed term German: an umlaut or ß, or a German word ending (not an English title's "(2025)"). */

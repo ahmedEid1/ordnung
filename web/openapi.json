@@ -5173,6 +5173,13 @@
             },
             "type": "array",
             "title": "Drafts"
+          },
+          "set_aside": {
+            "items": {
+              "$ref": "#/components/schemas/ItemAside"
+            },
+            "type": "array",
+            "title": "Set Aside"
           }
         },
         "type": "object",
@@ -5186,7 +5193,8 @@
           "case",
           "related",
           "suggestions",
-          "drafts"
+          "drafts",
+          "set_aside"
         ],
         "title": "DocumentDetail"
       },

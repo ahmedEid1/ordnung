@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Box, DocumentDetail, Evidence } from "@/api/types";
-import { boxToStyle, boxesByPage, centerScrollOffset, collectAnchors, highlightGroups, normalizeBox, unionBox } from "./evidence";
+import { boxToStyle, boxesByPage, centerScrollOffset, collectAnchors, highlightGroups, hitBoxStyle, hitBoxes, labelPlacement, normalizeBox, unionBox } from "./evidence";
 import { makeDetail, makeDoc, makeItem } from "./fixtures";
 
 const box = (page: number, x0: number, y0: number, x1: number, y1: number): Box => ({ page, x0, y0, x1, y1 });
@@ -99,5 +99,48 @@ describe("anchors & highlight groups", () => {
     const spans = groups.filter((g) => g.anchors.some((a) => a.id === "item:itm_c:0"));
     expect(spans.map((g) => g.page)).toEqual([1, 2]);
     expect(new Set(spans.map((g) => g.key)).size).toBe(2);
+  });
+});
+
+describe("UI audit round 1: highlight targets and labels", () => {
+  // a payslip: "Hourly wage" on one line, the two-line "Monthly salary payment" quote around it
+  const detail = (): DocumentDetail =>
+    makeDetail({
+      document: makeDoc({
+        key_facts: [{ label: "Hourly wage", value: "€15.00", evidence: ev("Stundenlohn 15,00 €", [box(1, 0.1, 0.5, 0.4, 0.51)]) }] as DocumentDetail["document"]["key_facts"],
+      }),
+      items: [
+        makeItem({
+          id: "itm_salary",
+          title: "Monthly salary payment",
+          evidence: [ev("Auszahlung … monatlich", [box(1, 0.1, 0.49, 0.9, 0.5), box(1, 0.1, 0.51, 0.7, 0.52)])],
+        }),
+      ],
+    });
+
+  it("gives every line its own target, kept clear of the neighbouring highlight's lines", () => {
+    const groups = highlightGroups(collectAnchors(detail()));
+    const salary = groups.find((g) => g.anchors[0]!.label === "Monthly salary payment")!;
+    const wage = groups.find((g) => g.anchors[0]!.label === "Hourly wage")!;
+    const hits = hitBoxes(salary, groups);
+    expect(hits).toHaveLength(2); // one per line, not the union rectangle over "Hourly wage"
+    expect(hits[0]!.below).toBeCloseTo(0.5); // half-way to the wage line below
+    expect(hits[1]!.above).toBeCloseTo(0.51);
+    const [wageHit] = hitBoxes(wage, groups);
+    expect(wageHit!.above).toBeCloseTo(0.5);
+    expect(wageHit!.below).toBeCloseTo(0.51);
+    // a finger-sized pad, clamped at the half-way lines
+    expect(hitBoxStyle(wageHit!)).toMatchObject({ top: "max(50%, calc(50% - 8px))", height: "calc(min(51%, calc(51% + 8px)) - max(50%, calc(50% - 8px)))" });
+    expect(hitBoxStyle({ box: box(1, 0.1, 0.2, 0.3, 0.21), above: null, below: null })).toMatchObject({ top: "calc(20% - 8px)", height: "calc(calc(21% + 8px) - calc(20% - 8px))" });
+  });
+
+  it("puts a label right-aligned in the right half, and under the box when a highlight sits just above", () => {
+    const groups = highlightGroups(collectAnchors(detail()));
+    const wage = groups.find((g) => g.anchors[0]!.label === "Hourly wage")!;
+    expect(labelPlacement(wage, groups)).toEqual({ align: "left", side: "below" });
+    const right = { ...wage, key: "r", bounds: box(1, 0.6, 0.3, 0.95, 0.31), boxes: [box(1, 0.6, 0.3, 0.95, 0.31)] };
+    expect(labelPlacement(right, [right])).toEqual({ align: "right", side: "above" });
+    const top = { ...right, bounds: box(1, 0.1, 0.02, 0.3, 0.03) };
+    expect(labelPlacement(top, [top]).side).toBe("below");
   });
 });

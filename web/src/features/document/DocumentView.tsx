@@ -8,6 +8,7 @@
  */
 import { useCallback, useEffect, useMemo } from "react";
 import { useLocation } from "react-router";
+import { useMediaQuery } from "@/lib/hooks";
 import { useReducedMotion } from "motion/react";
 import type { DocumentDetail } from "@/api/types";
 import { SkeletonCard, SkeletonText } from "@/components/ui/Skeleton";
@@ -28,7 +29,10 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const doc = detail.document;
   const reduced = useReducedMotion();
   const anchors = useMemo(() => collectAnchors(detail), [detail]);
-  const primary = useMemo(() => selectPrimaryItem(detail.items), [detail.items]);
+  // never a to-do the server set aside (an invoice its reminder replaced, a date long past when it was read)
+  const primary = useMemo(() => selectPrimaryItem(detail.items, detail.set_aside), [detail.items, detail.set_aside]);
+  // from xl the pages sit in a sticky column beside the panel; below, in the page's own column
+  const column = useMediaQuery("(min-width: 1280px)");
   // the decision the verdict card leads with isn't repeated under "Ideas"
   const lead = useMemo(() => {
     const decision = decisionSuggestion(detail);
@@ -72,7 +76,10 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
             pages={detail.pages}
             pageCount={doc.pages}
             photo={doc.text_mode === "vision"}
-            className="max-h-[78vh] xl:h-[calc(100dvh-88px)] xl:max-h-none"
+            // below xl one page at a time and no scroll box of its own (a swipe scrolled only the box); the
+            // sticky column is as tall as the screen at most — shorter when the pages are (a passport photo)
+            paged={!column}
+            className="xl:max-h-[calc(100dvh-88px)]"
           />
         </div>
 

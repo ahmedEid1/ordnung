@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep
-from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledger_changed, require
+from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledger_changed, require, set_aside
 from ordnung.api.routes.dates import recompute_document_items
 from ordnung.app_context import AppContext
 from ordnung.db.store import Store
@@ -266,7 +266,8 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
 
 def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
     """The document viewer's data: the letter, its pages, to-dos, contracts, sender, thread, related
-    letters, Ideas, drafts and, for a high-stakes letter, its "get advice" card."""
+    letters, Ideas, drafts, the to-dos that are not one to act on (``set_aside``, as on Today) and, for
+    a high-stakes letter, its "get advice" card."""
     document = require(store.get_document(doc_id), NOT_FOUND)
     items = _with_reminder_notes(store, store.list_items(doc_id=doc_id), today)
     linked = {item.contract_id for item in items if item.contract_id}
@@ -288,6 +289,7 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         related=_related(store, document),
         suggestions=_ideas_about(store, doc_id, items),
         drafts=store.list_drafts(doc_id=doc_id),
+        set_aside=set_aside(store, items, today),
     )
 
 

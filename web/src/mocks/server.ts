@@ -251,6 +251,7 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
     related: related.sort((a, b) => ((a.doc_date ?? "") < (b.doc_date ?? "") ? 1 : -1)),
     suggestions,
     drafts: db.state.drafts.filter((x) => x.doc_id === id),
+    set_aside: setAside(db, items),
   };
 }
 

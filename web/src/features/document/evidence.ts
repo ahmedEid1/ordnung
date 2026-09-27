@@ -187,6 +187,64 @@ export function highlightGroups(anchors: EvidenceAnchor[]): HighlightGroup[] {
   return groups.sort((a, b) => a.page - b.page || a.bounds.y0 - b.bounds.y0);
 }
 
+/**
+ * One line of a highlight as a pointer target: the line's box, grown up and down to a finger-sized
+ * target but never past half-way to another highlight's line above or below (`above` / `below`, page
+ * fractions; null when nothing is there). Hovering "Hourly wage" never lights up the payment two lines
+ * down, as the union rectangles of multi-line quotes did.
+ */
+export interface HitBox {
+  box: Box;
+  above: number | null;
+  below: number | null;
+}
+
+const overlapsX = (a: Box, b: Box) => a.x0 < b.x1 && a.x1 > b.x0;
+const EPS = 0.0005;
+
+/** The pointer targets of `group`: one per line box, kept clear of the other groups' lines on its page. */
+export function hitBoxes(group: HighlightGroup, groups: readonly HighlightGroup[]): HitBox[] {
+  const others = groups.filter((g) => g.page === group.page && g.key !== group.key).flatMap((g) => g.boxes);
+  return group.boxes.map((box) => {
+    let above: number | null = null;
+    let below: number | null = null;
+    for (const o of others) {
+      if (!overlapsX(o, box)) continue;
+      if (o.y1 <= box.y0 + EPS) above = Math.max(above ?? 0, (o.y1 + box.y0) / 2);
+      else if (o.y0 >= box.y1 - EPS) below = Math.min(below ?? 1, (box.y1 + o.y0) / 2);
+    }
+    return { box, above, below };
+  });
+}
+
+/**
+ * CSS for a hit box: the line padded by `padPx` above and below (a ~24 px target on a ~9 px line) —
+ * clamped at the half-way lines to the neighbours — and a little wider than the glyphs.
+ */
+export function hitBoxStyle(hit: HitBox, padPx = 8): BoxStyle {
+  const { left, width } = boxToStyle(hit.box, 0.006, 0);
+  const b = normalizeBox(hit.box);
+  const pct = (n: number) => `${round4(n * 100)}%`;
+  const top = hit.above !== null ? `max(${pct(hit.above)}, calc(${pct(b.y0)} - ${padPx}px))` : `calc(${pct(b.y0)} - ${padPx}px)`;
+  const bottom = hit.below !== null ? `min(${pct(hit.below)}, calc(${pct(b.y1)} + ${padPx}px))` : `calc(${pct(b.y1)} + ${padPx}px)`;
+  return { left, width, top, height: `calc(${bottom} - ${top})` };
+}
+
+/**
+ * Where a highlight's floating label goes: right-aligned to the box when the box starts in the right half
+ * of the page (it was cut at the page's edge), and under the box when it would sit on another
+ * highlight's line or run off the top of the page.
+ */
+export function labelPlacement(group: HighlightGroup, groups: readonly HighlightGroup[]): { align: "left" | "right"; side: "above" | "below" } {
+  const b = group.bounds;
+  const align = b.x0 > 0.5 ? "right" : "left";
+  const LABEL_H = 0.025; // about the label's height, as a fraction of an A4 page
+  const crowded = groups.some(
+    (g) => g.page === group.page && g.key !== group.key && g.boxes.some((o) => overlapsX(o, b) && o.y1 <= b.y0 + EPS && o.y1 > b.y0 - LABEL_H),
+  );
+  return { align, side: b.y0 < 0.05 || crowded ? "below" : "above" };
+}
+
 /** Pages that carry at least one highlight (for the thumbnail strip dots). */
 export function pagesWithHighlights(groups: HighlightGroup[]): Set<number> {
   return new Set(groups.map((g) => g.page));

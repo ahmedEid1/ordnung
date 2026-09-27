@@ -1033,19 +1033,6 @@ class LetterAdvice(_Model):
     closable: bool = False
 
 
-class DocumentDetail(_Model):
-    document: Document
-    advice: LetterAdvice | None = None
-    pages: list[PageInfo] = Field(default_factory=list)
-    items: list[Item] = Field(default_factory=list)
-    contracts: list[Contract] = Field(default_factory=list)
-    party: Party | None = None
-    case: Case | None = None
-    related: list[Document] = Field(default_factory=list)
-    suggestions: list[Suggestion] = Field(default_factory=list)
-    drafts: list[Draft] = Field(default_factory=list)
-
-
 class ItemAside(_Model):
     """An open to-do that is not one to act on (worked out on read, never stored).
 
@@ -1057,6 +1044,22 @@ class ItemAside(_Model):
     item_id: str
     reason: Literal["replaced", "history", "suspicious"]
     replaced_by: str | None = None
+
+
+class DocumentDetail(_Model):
+    document: Document
+    advice: LetterAdvice | None = None
+    pages: list[PageInfo] = Field(default_factory=list)
+    items: list[Item] = Field(default_factory=list)
+    contracts: list[Contract] = Field(default_factory=list)
+    party: Party | None = None
+    case: Case | None = None
+    related: list[Document] = Field(default_factory=list)
+    suggestions: list[Suggestion] = Field(default_factory=list)
+    drafts: list[Draft] = Field(default_factory=list)
+    #: The letter's open to-dos that are not one to act on (the same rules as Today and the party
+    #: drawer): the verdict never leads with them ("362 days overdue", an invoice its reminder replaced).
+    set_aside: list[ItemAside] = Field(default_factory=list)
 
 
 class PartyDetail(_Model):

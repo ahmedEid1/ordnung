@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
+import type { Draft, Item } from "@/api/types";
 import {
   arrivalSavedNote,
+  asideItems,
   chooseMainAction,
+  consequenceWords,
+  existingDraft,
+  hasLongWord,
+  plainLead,
+  usesLaw,
+  verdictWords,
   decisionSuggestion,
   incomingMoney,
   isOptionalObjection,
@@ -21,6 +29,7 @@ import {
 } from "./verdict";
 import { makeDetail, makeDoc, makeItem, makeReceipt, makeSuggestion } from "./fixtures";
 import { splitGlossary } from "./glossary-text";
+import { isGermanText } from "./fact-text";
 
 describe("selectPrimaryItem — which to-do the verdict card is about", () => {
   it("returns null when nothing is open", () => {
@@ -303,15 +312,125 @@ describe("glossary terms in explanations", () => {
   });
 });
 
-describe("dayCountdown", () => {
-  it("is precise in days for legal deadlines", async () => {
-    const { dayCountdown } = await import("./verdict");
-    expect(dayCountdown("2026-10-21", "2026-09-28")).toBe("in 23 days");
-    expect(dayCountdown("2026-09-29", "2026-09-28")).toBe("tomorrow");
-    expect(dayCountdown("2026-09-28", "2026-09-28")).toBe("today");
-    expect(dayCountdown("2026-09-26", "2026-09-28")).toBe("2 days overdue");
-    expect(dayCountdown("2026-09-26", "2026-09-28", "event")).toBe("2 days ago");
-    expect(dayCountdown("2027-06-01", "2026-09-28")).toBe("in 8 months");
+describe("UI audit round 1: which to-do the verdict leads with", () => {
+  it("never leads with a to-do the server set aside (history, replaced by a reminder)", () => {
+    const deposit = makeItem({ id: "deposit", kind: "payment", amount: 1560, due_date: "2025-10-01" });
+    const rent = makeItem({ id: "rent", kind: "payment", amount: 640, recurrence: { interval: 1, unit: "months" } });
+    expect(selectPrimaryItem([deposit, rent])?.id).toBe("deposit");
+    expect(selectPrimaryItem([deposit, rent], [{ item_id: "deposit" }])?.id).toBe("rent");
+    expect(selectPrimaryItem([deposit], [{ item_id: "deposit" }])).toBeNull();
+  });
+
+  it("an invoice its payment reminder replaced opens the reminder — never Pay twice", () => {
+    const invoice = makeItem({ id: "inv", kind: "payment", amount: 89.99, direction: "out", due_date: "2026-09-03" });
+    const detail = makeDetail({ items: [invoice], set_aside: [{ item_id: "inv", reason: "replaced", replaced_by: "doc_reminder" }] });
+    const primary = selectPrimaryItem(detail.items, detail.set_aside);
+    expect(primary).toBeNull();
+    expect(chooseMainAction(detail, primary)).toEqual({ type: "reminder", docId: "doc_reminder" });
+    expect(asideItems(detail).map((a) => [a.item.id, a.aside.reason])).toEqual([["inv", "replaced"]]);
+    // a scam letter's demand is its verdict's "Don't pay", not a quiet row
+    expect(asideItems(makeDetail({ items: [invoice], set_aside: [{ item_id: "inv", reason: "suspicious", replaced_by: null }] }))).toEqual([]);
+  });
+
+  it("an archived letter whose only to-do is history offers no objection to draft", () => {
+    const remedy = { type: "einspruch" as const, addressee: "Finanzamt", period_text: null, form_text: null, quote: null };
+    const old = makeItem({ id: "old", due_date: "2024-05-02" });
+    const detail = makeDetail({ document: makeDoc({ remedy }), items: [old], set_aside: [{ item_id: "old", reason: "history", replaced_by: null }] });
+    expect(chooseMainAction(detail, selectPrimaryItem(detail.items, detail.set_aside)).type).toBe("none");
+  });
+
+  it("of two dated to-dos of one priority, a deadline or payment leads over an appointment", () => {
+    const meeting = makeItem({ id: "meeting", kind: "appointment", title: "Autumn Meeting in Berlin", due_date: "2026-11-07" });
+    const report = makeItem({ id: "report", kind: "deadline", title: "Submit first progress report", due_date: "2026-12-15", send_by: "2026-12-09" });
+    expect(selectPrimaryItem([meeting, report])?.id).toBe("report");
+    // a more important appointment still leads (the Ausländerbehörde)
+    expect(selectPrimaryItem([{ ...meeting, priority: "high" }, report])?.id).toBe("meeting");
+    // and a dated appointment still beats an undated task
+    expect(selectPrimaryItem([meeting, makeItem({ id: "task", kind: "task" })])?.id).toBe("meeting");
+  });
+});
+
+describe("UI audit round 1: the verdict leads in English", () => {
+  const german = makeItem({
+    kind: "payment",
+    title: "Semesterbeitrag Sommersemester 2027 zahlen",
+    action: "Semesterbeitrag von 312,40 € rechtzeitig überweisen",
+    amount: 312.4,
+    currency: "EUR",
+    direction: "out",
+  });
+
+  it("an English action leads as it is, its title below", () => {
+    const w = verdictWords(makeItem({ title: "Pay outstanding invoice plus reminder fee", action: "Transfer 94.99 EUR by the deadline." }));
+    expect(w).toEqual({ lead: "Transfer 94.99 EUR by the deadline.", body: null, sub: "Pay outstanding invoice plus reminder fee", quote: null });
+  });
+
+  it("a German action follows an English lead as the letter's words", () => {
+    const w = verdictWords(german, "Hochschule Musterstadt");
+    expect(w.lead).toBe("Pay €312.40 to Hochschule Musterstadt");
+    expect(w.quote).toBe("Semesterbeitrag von 312,40 € rechtzeitig überweisen");
+    const withTitle = verdictWords({ ...german, title: "Pay the semester fee" });
+    expect(withTitle.lead).toBe("Pay the semester fee");
+    expect(withTitle.quote).toBe(german.action);
+  });
+
+  it("builds an English lead for every kind when nothing English was read", () => {
+    const debit = makeItem({ kind: "payment", title: "Monatliche Abbuchung Deutschlandticket", action: "Ausreichende Kontodeckung für die monatliche SEPA-Lastschrift sicherstellen.", amount: 63, currency: "EUR", direction: "out", recurrence: { interval: 1, unit: "months" } });
+    expect(verdictWords(debit).lead).toBe("Keep €63.00 a month in your account for the direct debit");
+    expect(plainLead(makeItem({ kind: "appointment" }))).toBe("Go to the appointment");
+    expect(plainLead(makeItem({ kind: "payment", direction: "in", amount: 312.45, currency: "EUR" }))).toBe("€312.45 comes to you");
+    expect(verdictWords(makeItem({ kind: "appointment", title: "Autumn Meeting in Berlin" })).lead).toBe("Go to: Autumn Meeting in Berlin");
+  });
+
+  it("never leaves a German verdict field without an English companion", () => {
+    const fields = [
+      verdictWords(german),
+      verdictWords({ ...german, action: null }),
+      verdictWords({ ...german, kind: "deadline", date_spec: { type: "fixed", nature: "declaration" } as Item["date_spec"] }),
+      verdictWords({ ...german, action: "Bitte überweisen Sie den Betrag bis zum 15.01.2027 auf das unten genannte Konto der Hochschule." }),
+    ];
+    for (const w of fields) {
+      expect(isGermanText(w.lead), w.lead).toBe(false);
+      if (w.body) expect(isGermanText(w.body), w.body).toBe(false);
+    }
+  });
+
+  it("a German consequence says in English what the letter warns of", () => {
+    const c = consequenceWords("Bei späterem Zahlungseingang wird eine Säumnisgebühr von 15,00 € erhoben. Ohne fristgerechte Rückmeldung droht die Exmatrikulation (§ 51 Abs. 2 HG NRW).");
+    expect(c.lead).toBe("The letter warns of a late fee and losing your place at the university.");
+    expect(c.quote).toMatch(/^Bei späterem/);
+    expect(consequenceWords("Geht der Betrag nicht fristgerecht ein, müssen wir die Forderung an unseren Inkassodienstleister übergeben; dadurch entstehen Ihnen weitere Kosten.").lead).toBe(
+      "The letter warns of debt collection and extra costs.",
+    );
+    expect(consequenceWords("Andernfalls wird der Vorgang außergerichtlich weiterbearbeitet und die Sache geht an die Stelle.").lead).toBe("The letter names what happens then:");
+    const english = "The contribution notice becomes final if no objection is filed in time.";
+    expect(consequenceWords(english)).toEqual({ lead: english, quote: null });
+  });
+
+  it("gives very long title words the smaller headline", () => {
+    expect(hasLongWord("Certificate of Enrolment (Immatrikulationsbescheinigung) for Winter Semester 2026/27")).toBe(true);
+    expect(hasLongWord("1st Payment Reminder (Mahnung) – Invoice TM-2026-0048213")).toBe(false);
+  });
+});
+
+describe("UI audit round 1: verdict details", () => {
+  it("shows the legal disclaimer only when a law worked the date out", () => {
+    const receipt = (rule_ids: string[]) => makeReceipt({ rule_ids });
+    expect(usesLaw(makeItem({ kind: "expiry", title: "Passport expires", computation: receipt(["date_as_written"]) }))).toBe(false);
+    expect(usesLaw(makeItem({ kind: "appointment", computation: receipt(["date_as_written", "authority_deadline"]) }))).toBe(false);
+    expect(usesLaw(makeItem({ computation: receipt(["posting_day", "bgb_187_1", "postal_buffer"]) }))).toBe(true);
+    expect(usesLaw(makeItem({ kind: "payment", title: "Pay the invoice", computation: receipt(["date_as_written", "bgb_675s"]) }))).toBe(true);
+    // a direct debit has nothing to transfer: the bank's execution time is no law for it
+    expect(usesLaw(makeItem({ kind: "payment", title: "Monthly fee", action: "Keep funds for the SEPA direct debit.", computation: receipt(["date_as_written", "bgb_675s"]) }))).toBe(false);
+    expect(usesLaw(makeItem({ computation: null }))).toBe(false);
+  });
+
+  it("finds the letter the person already started (the newest of that kind)", () => {
+    const older = { id: "d1", kind: "objection", status: "draft", updated_at: "2026-09-20T10:00:00Z" } as Draft;
+    const newer = { id: "d2", kind: "objection", status: "sent", updated_at: "2026-09-25T10:00:00Z" } as Draft;
+    const other = { id: "d3", kind: "cancellation", status: "draft", updated_at: "2026-09-26T10:00:00Z" } as Draft;
+    expect(existingDraft([older, newer, other], "objection")?.id).toBe("d2");
+    expect(existingDraft([other], "objection")).toBeNull();
   });
 });
 
