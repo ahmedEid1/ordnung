@@ -329,8 +329,8 @@ export function contractLanes(contracts: Contract[], range: { from: string; to: 
         bars.push(bar("after", "Cancellable any time", next, beyond, { open_end: true }));
       }
     } else if (termsUnclear(c)) {
-      // no notice period in the letter: don't draw it as cancellable any time
-      bars.push(bar("open", "Terms unclear", start, beyond));
+      // no notice period in the letter: don't draw it as cancellable any time (nor invent an end)
+      bars.push(bar("open", "Terms unclear", start, beyond, { open_end: true }));
     } else {
       const anyTime = c.notice_basis === "any_time" || comp?.regime === "bgb309_new" || comp?.regime === "stromgvv20";
       bars.push(bar("open", anyTime ? "Cancellable any time" : "Open-ended", start, beyond, { open_end: true }));

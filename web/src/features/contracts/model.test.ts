@@ -226,7 +226,7 @@ describe("contracts-only lanes", () => {
     });
     expect(termsUnclear(giro)).toBe(true);
     const [l] = contractLanes([giro], range, TODAY);
-    expect(l!.bars.map((b) => [b.label, b.status])).toEqual([["Terms unclear", "ok"]]);
+    expect(l!.bars.map((b) => [b.label, b.status, b.open_end])).toEqual([["Terms unclear", "ok", true]]);
     expect(contractLaneNote(giro, TODAY)).toEqual({ text: "Check the letter", tone: "warn" });
     // sure enough of the terms, or a date worked out: not unclear
     expect(termsUnclear({ ...giro, computed: { ...giro.computed!, confidence: "medium" } })).toBe(false);

@@ -219,6 +219,13 @@ describe("LanesChart", () => {
     expect(screen.getByRole("listitem", { name: "Lease" })).toHaveTextContent("Nothing coming up");
   });
 
+  it("truncates a page's own second line under a lane's name, like the default one", () => {
+    const long = "Stadtwerke Musterstadt Versorgungsgesellschaft mbH & Co. KG";
+    renderChart({ describeLane: (lane) => (lane.id === "money" ? { sublabel: <span className="text-muted">{long}</span> } : undefined) });
+    const line = within(screen.getByRole("listitem", { name: "Money" })).getByText(long);
+    expect(line.parentElement).toHaveClass("truncate");
+  });
+
   it("takes the heading level and loading message of the page it sits on", () => {
     const { unmount } = renderChart({ loading: true, loadingLabel: "Loading your contracts…" });
     expect(screen.getByRole("status")).toHaveTextContent("Loading your contracts…");

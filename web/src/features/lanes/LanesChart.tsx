@@ -485,7 +485,13 @@ export function LanesChart({
                     const icon = desc?.icon ?? defaultIcon(lane);
                     // room for the second line: the label column (or the pinned label on phones) minus its icon and padding
                     const room = compact ? Math.max(160, width - 12) - 58 : labelW - 66;
-                    const sub = desc?.sublabel ?? <NextLine lane={lane} today={today} to={to} room={room} />;
+                    // a caller's own second line truncates like the default one (never a third line)
+                    const sub =
+                      desc?.sublabel != null ? (
+                        <span className="min-w-0 truncate">{desc.sublabel}</span>
+                      ) : (
+                        <NextLine lane={lane} today={today} to={to} room={room} />
+                      );
                     const offset = compact ? COMPACT_HEADER : 0;
                     const height = ly.height + offset;
                     const railY = (ly.trackY[0] ?? 0) + offset;
