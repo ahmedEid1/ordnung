@@ -65,6 +65,7 @@ import {
   CalendarSyncRefusal,
   mockCalendarPreview,
   mockCalendarSyncStatus,
+  mockForgetCalendar,
   mockConnectCalendar,
   mockDisconnectCalendar,
   mockDiscoverCalendars,
@@ -793,9 +794,11 @@ const routes: [string, string, Handler][] = [
       if (opts.staticDemo) throw new HttpError(409, "This online demo keeps nothing — reload the page to start over with Sam's letters.");
       if (db.state.health.demo) throw new HttpError(409, DEMO_DELETE_MESSAGE);
       const st = db.state;
+      // a connected calendar loses Ordnung's events (and the app password) first, as the API does
+      const calendarEventsRemoved = mockForgetCalendar(db);
       Object.assign(st, { parties: [], cases: [], documents: [], items: [], contracts: [], suggestions: [], drafts: [], activity: [], chat: [], tray: [], uploads: {} });
       st.profile = { ...st.profile, name: "", address: "", email: "", phone: "", onboarded: false };
-      return { removed: ["derived", "drafts", "files", "ordnung.db"], kept: [] } satisfies DataDeleted;
+      return { removed: ["derived", "drafts", "files", "ordnung.db"], kept: [], calendar_events_removed: calendarEventsRemoved } satisfies DataDeleted;
     },
   ],
 

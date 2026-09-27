@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { BellRing, CalendarPlus, HardDrive, RefreshCw } from "lucide-react";
+import { BellRing, CalendarCheck, CalendarPlus, HardDrive, RefreshCw } from "lucide-react";
 import { api } from "@/api/endpoints";
-import { useMarkCalendarExported, useProfile } from "@/api/hooks";
+import { useCalendarSync, useMarkCalendarExported, useProfile } from "@/api/hooks";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { toast } from "@/components/ui/Toast";
 import { CALENDAR_GUIDES, downloadCalendarFile, reminderSentence, type CalendarApp } from "@/features/timeline/calendar";
 import { CalendarGuideSteps } from "@/features/timeline/CalendarExport";
+import { hostOf } from "./calendarSync";
 import { CalendarSyncCard } from "./CalendarSyncCard";
 import { SectionHeading, SettingsCard } from "./SettingsCard";
 
@@ -38,11 +39,17 @@ export function calendarFileSummary(dates: number | null): string {
   return `${dates} open ${dates === 1 ? "date" : "dates"} in one file for your calendar, send-by days included.`;
 }
 
-/** "Calendar": download all dates as .ics and how to import it (Google, Apple, Outlook). */
+/**
+ * "Calendar": download all dates as .ics and how to import it (Google, Apple, Outlook) — the file and
+ * its guide side by side — then calendar sync. While a calendar is connected the file card says the
+ * dates already go there: importing the file into it too would add every date twice.
+ */
 export function CalendarSection() {
   const exported = useMarkCalendarExported();
   const profile = useProfile();
   const file = useCalendarFileDates();
+  const sync = useCalendarSync();
+  const syncedTo = sync.data?.connected ? (sync.data.calendar_name ?? hostOf(sync.data.url)) : null;
   const openDates = file.data ?? null;
   const nothing = openDates === 0;
   const alarms = reminderSentence(profile.data?.reminder_days?.deadline);
@@ -67,7 +74,7 @@ export function CalendarSection() {
               <p className="text-[15px] font-semibold text-ink">Add my dates to my calendar</p>
               <p className="mt-0.5 text-[13px] leading-5 text-muted">{calendarFileSummary(openDates)}</p>
             </div>
-            <Button variant={nothing ? "secondary" : "primary"} icon={CalendarPlus} onClick={download} loading={exported.isPending} disabled={nothing}>
+            <Button variant={nothing || syncedTo ? "secondary" : "primary"} icon={CalendarPlus} onClick={download} loading={exported.isPending} disabled={nothing}>
               Download .ics
             </Button>
           </div>
@@ -85,18 +92,28 @@ export function CalendarSection() {
             <li className="flex gap-2">
               <HardDrive className="mt-0.5 size-3.5 shrink-0" aria-hidden /> The file is made on this computer — nothing is uploaded.
             </li>
-            <li className="flex gap-2">
-              <RefreshCw className="mt-0.5 size-3.5 shrink-0" aria-hidden /> It's a snapshot: Ordnung tells you when new letters bring new dates.
-            </li>
+            {syncedTo ? (
+              <li className="flex gap-2 sm:col-span-2">
+                <CalendarCheck className="mt-0.5 size-3.5 shrink-0 text-ok" aria-hidden />
+                <span className="min-w-0 [overflow-wrap:anywhere]">
+                  Your dates already go to “{syncedTo}” by calendar sync (below) and stay current there. Use the file only for another calendar — imported into
+                  that one too, every date would be there twice.
+                </span>
+              </li>
+            ) : (
+              <li className="flex gap-2">
+                <RefreshCw className="mt-0.5 size-3.5 shrink-0" aria-hidden /> It's a snapshot: Ordnung tells you when new letters bring new dates.
+              </li>
+            )}
           </ul>
         </SettingsCard>
-
-        <CalendarSyncCard />
 
         <SettingsCard title="How to import it" id="set-cal-guide">
           <SegmentedControl label="Your calendar app" value={app} onChange={setApp} options={CALENDAR_GUIDES.map((g) => ({ value: g.app, label: g.label }))} />
           <CalendarGuideSteps guide={guide} headingLevel={4} className="mt-4" />
         </SettingsCard>
+
+        <CalendarSyncCard />
       </div>
     </section>
   );

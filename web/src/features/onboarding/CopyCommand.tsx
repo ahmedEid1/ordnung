@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useClipboard } from "@/features/today/clipboard";
@@ -6,9 +6,10 @@ import { useClipboard } from "@/features/today/clipboard";
 /**
  * A terminal command with a copy button ("Copied" is announced to screen readers). A long command
  * wraps instead of scrolling out of sight: at spaces, after a "/" of a package name, and only as
- * a last resort inside a word — the whole command is always visible (and copied exactly).
+ * a last resort inside a word — the whole command is always visible (and copied exactly). `display`
+ * shows the command with its own line-break opportunities (the button still copies `command`).
  */
-export function CopyCommand({ command, label, className }: { command: string; label?: string; className?: string }) {
+export function CopyCommand({ command, label, className, display }: { command: string; label?: string; className?: string; display?: ReactNode }) {
   const { copy, copied } = useClipboard();
   const done = copied === command;
   const parts = command.split(/(?<=\/)/);
@@ -18,12 +19,13 @@ export function CopyCommand({ command, label, className }: { command: string; la
         $
       </span>
       <code className="min-w-0 flex-1 whitespace-pre-wrap py-1.5 font-mono text-[13px] leading-5 [overflow-wrap:anywhere]">
-        {parts.map((p, i) => (
-          <Fragment key={i}>
-            {i > 0 ? <wbr /> : null}
-            {p}
-          </Fragment>
-        ))}
+        {display ??
+          parts.map((p, i) => (
+            <Fragment key={i}>
+              {i > 0 ? <wbr /> : null}
+              {p}
+            </Fragment>
+          ))}
       </code>
       <button
         type="button"

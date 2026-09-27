@@ -321,7 +321,7 @@
           "data"
         ],
         "summary": "Delete Everything",
-        "description": "Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty.\n\n``body`` must be ``{\"confirm\": \"DELETE\"}`` (422 otherwise).",
+        "description": "Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty\n(Ordnung's events leave a connected calendar first).\n\n``body`` must be ``{\"confirm\": \"DELETE\"}`` (422 otherwise).",
         "operationId": "delete_everything_api_data_delete",
         "requestBody": {
           "content": {
@@ -345,7 +345,7 @@
             }
           },
           "409": {
-            "description": "The demo can't be deleted (``ordnung demo --reset`` starts it over)."
+            "description": "The demo can't be deleted (``ordnung demo --reset`` starts it over), or the connected calendar's events couldn't be removed (nothing was deleted)."
           },
           "422": {
             "description": "Validation Error",
@@ -3371,8 +3371,16 @@
             "description": "The entry starts this data folder"
           },
           "command": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Command",
+            "description": "The command that starts this data folder at login (null: the demo, which doesn't)",
             "default": "ordnung autostart enable"
           }
         },
@@ -3392,7 +3400,7 @@
           "letters": {
             "type": "integer",
             "title": "Letters",
-            "description": "Letters (not counting the trash)"
+            "description": "Letters, the trash included (as the backup holds them)"
           },
           "files": {
             "type": "integer",
@@ -3853,7 +3861,8 @@
                   "tls",
                   "conflict",
                   "server",
-                  "unavailable"
+                  "unavailable",
+                  "not_connected"
                 ]
               },
               {
@@ -5268,12 +5277,25 @@
             "type": "array",
             "title": "Kept",
             "description": "Entries Ordnung did not create, left untouched"
+          },
+          "calendar_events_removed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Events Removed",
+            "description": "Ordnung's events removed from the connected calendar first (null: none was connected)"
           }
         },
         "type": "object",
         "required": [
           "removed",
-          "kept"
+          "kept",
+          "calendar_events_removed"
         ],
         "title": "DataDeleted",
         "description": "What \"Delete everything\" removed."
@@ -5559,7 +5581,37 @@
               }
             ],
             "title": "Last Shown On",
-            "description": "The last day the morning notification was tried"
+            "description": "The last day the morning notification was shown (or done with)"
+          },
+          "last_failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Failure",
+            "description": "Why the system couldn't show the last notification (null: it could)"
+          },
+          "last_failure_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Failure On",
+            "description": "The day of that failure"
+          },
+          "demo": {
+            "type": "boolean",
+            "title": "Demo",
+            "description": "The demo: it never notifies on its own",
+            "default": false
           },
           "autostart": {
             "$ref": "#/components/schemas/AutostartInfo"
@@ -5572,6 +5624,9 @@
           "missing",
           "preview",
           "last_shown_on",
+          "last_failure",
+          "last_failure_on",
+          "demo",
           "autostart"
         ],
         "title": "DesktopReminders",

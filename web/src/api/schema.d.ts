@@ -146,7 +146,8 @@ export interface paths {
         post?: never;
         /**
          * Delete Everything
-         * @description Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty.
+         * @description Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty
+         *     (Ordnung's events leave a connected calendar first).
          *
          *     ``body`` must be ``{"confirm": "DELETE"}`` (422 otherwise).
          */
@@ -1264,9 +1265,10 @@ export interface components {
             points_here: boolean;
             /**
              * Command
+             * @description The command that starts this data folder at login (null: the demo, which doesn't)
              * @default ordnung autostart enable
              */
-            command: string;
+            command: string | null;
         };
         /**
          * BackupInfo
@@ -1275,7 +1277,7 @@ export interface components {
         BackupInfo: {
             /**
              * Letters
-             * @description Letters (not counting the trash)
+             * @description Letters, the trash included (as the backup holds them)
              */
             letters: number;
             /**
@@ -1505,7 +1507,7 @@ export interface components {
             /** Error */
             error: string | null;
             /** Error Kind */
-            error_kind: ("address" | "auth" | "forbidden" | "not_found" | "not_calendar" | "network" | "tls" | "conflict" | "server" | "unavailable") | null;
+            error_kind: ("address" | "auth" | "forbidden" | "not_found" | "not_calendar" | "network" | "tls" | "conflict" | "server" | "unavailable" | "not_connected") | null;
         };
         /**
          * CalendarSyncStatus
@@ -1919,6 +1921,11 @@ export interface components {
              * @description Entries Ordnung did not create, left untouched
              */
             kept: string[];
+            /**
+             * Calendar Events Removed
+             * @description Ordnung's events removed from the connected calendar first (null: none was connected)
+             */
+            calendar_events_removed: number | null;
         };
         /**
          * DateSpec
@@ -2023,9 +2030,25 @@ export interface components {
             preview: components["schemas"]["DesktopPreview"];
             /**
              * Last Shown On
-             * @description The last day the morning notification was tried
+             * @description The last day the morning notification was shown (or done with)
              */
             last_shown_on: string | null;
+            /**
+             * Last Failure
+             * @description Why the system couldn't show the last notification (null: it could)
+             */
+            last_failure: string | null;
+            /**
+             * Last Failure On
+             * @description The day of that failure
+             */
+            last_failure_on: string | null;
+            /**
+             * Demo
+             * @description The demo: it never notifies on its own
+             * @default false
+             */
+            demo: boolean;
             autostart: components["schemas"]["AutostartInfo"];
         };
         /**
@@ -4324,7 +4347,7 @@ export interface operations {
                     "application/json": components["schemas"]["DataDeleted"];
                 };
             };
-            /** @description The demo can't be deleted (``ordnung demo --reset`` starts it over). */
+            /** @description The demo can't be deleted (``ordnung demo --reset`` starts it over), or the connected calendar's events couldn't be removed (nothing was deleted). */
             409: {
                 headers: {
                     [name: string]: unknown;

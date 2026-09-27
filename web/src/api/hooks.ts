@@ -681,8 +681,8 @@ export function useDownloadBackup() {
 const CALENDAR_SYNC_KEY = ["calendar", "sync"] as const;
 
 /** Calendar sync: whether it can be used here, the connected calendar and the last sync. */
-export function useCalendarSync() {
-  return useQuery({ queryKey: CALENDAR_SYNC_KEY, queryFn: api.calendarSync, staleTime: 30_000 });
+export function useCalendarSync(enabled = true) {
+  return useQuery({ queryKey: CALENDAR_SYNC_KEY, queryFn: api.calendarSync, staleTime: 30_000, enabled });
 }
 
 /** Exactly what each event would contain in `mode` (nothing is sent). */
@@ -695,7 +695,11 @@ export function useDiscoverCalendars() {
   return useMutation({ mutationFn: (body: CalendarSyncFind) => api.discoverCalendars(body), meta: { silent: true } });
 }
 
-/** Connect or change the mode; errors are shown next to the field they concern (`ApiError.code`). */
+/**
+ * Connect or change the mode; errors are shown next to the field they concern (`ApiError.code`).
+ * A connected calendar gets the dates by itself: the "import the calendar file" Idea goes (the
+ * ledger's queries, Ideas included, are fetched again).
+ */
 export function useConnectCalendarSync() {
   const qc = useQueryClient();
   return useMutation({
@@ -704,6 +708,7 @@ export function useConnectCalendarSync() {
     onSuccess: (status) => {
       qc.setQueryData(CALENDAR_SYNC_KEY, status);
       void qc.invalidateQueries({ queryKey: qk.activity });
+      void invalidateLedger(qc);
     },
   });
 }
@@ -730,6 +735,7 @@ export function useDisconnectCalendarSync() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: CALENDAR_SYNC_KEY });
       void qc.invalidateQueries({ queryKey: qk.activity });
+      void invalidateLedger(qc); // the calendar file is the way to a calendar again (its Idea may come back)
     },
   });
 }

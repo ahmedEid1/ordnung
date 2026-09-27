@@ -3,13 +3,15 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import SettingsPage from "@/pages/SettingsPage";
-import { renderWithProviders } from "@/test/render";
+import { qk } from "@/api/hooks";
+import { makeTestQueryClient, renderWithProviders, TEST_HEALTH } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import type { DesktopReminders } from "@/api/types";
 import { mockNotification } from "@/mocks/data/reminders";
 import { createMockServer } from "@/mocks/server";
-import { backupSummary, failureSentence, passphraseProblem, restoreCommand, suggestPassphrase } from "./backup";
-import { autostartLabel, previewFor, testMode, testOutcome, timeError } from "./desktop";
+import { NB_HYPHEN } from "@/lib/glue";
+import { backupSummary, failureSentence, passphraseProblem, restoreCommand, restoreCommandPieces, suggestPassphrase } from "./backup";
+import { autostartLabel, failureLine, previewFor, savedNote, testMode, testOutcome, timeError } from "./desktop";
 
 class RO {
   observe() {}
@@ -58,6 +60,25 @@ describe("desktop notification helpers", () => {
     expect(testOutcome(false, null).description).toMatch(/calendar alarms still work/);
   });
 
+  it("words the save note for each place it runs", () => {
+    expect(savedNote("discreet", "07:30", null)).toBe("Once a day at 07:30, while Ordnung runs.");
+    expect(savedNote("off", "07:30", null)).toBe("No desktop notification from now on.");
+    // the demos never notify on their own: the note doesn't promise it
+    // after the save bar's own "Saved." (never "Saved. Saved.")
+    expect(savedNote("full", "07:30", "demo")).toBe("The demo doesn't notify on its own — the preview shows what it would say.");
+    expect(savedNote("discreet", "07:30", "static")).toMatch(/online demo can't show notifications/);
+  });
+
+  it("says why the last notification wasn't shown, while that is the latest news", () => {
+    const failed = { last_failure: "notify-send failed (exit code 1).", last_failure_on: "2026-09-28", last_shown_on: null };
+    expect(failureLine(failed)).toBe("The last notification (Mon 28 Sep) couldn't be shown: notify-send failed (exit code 1).");
+    // given up on after its tries: the day is used up, the failure is still the news
+    expect(failureLine({ ...failed, last_shown_on: "2026-09-28" })).not.toBeNull();
+    expect(failureLine({ ...failed, last_shown_on: "2026-09-29" })).toBeNull();
+    expect(failureLine({ ...failed, last_failure: null })).toBeNull();
+    expect(failureLine(undefined)).toBeNull();
+  });
+
   it("names the start-at-login state", () => {
     const info = { enabled: true, points_here: true, kind: "LaunchAgent", path: "/p", command: "ordnung autostart enable" };
     expect(autostartLabel(undefined)).toEqual({ text: "Off", tone: "neutral" });
@@ -97,6 +118,14 @@ describe("backup helpers", () => {
     expect(restoreCommand("ordnung-backup-2026-09-28.ordnung-backup")).toBe("ordnung restore ordnung-backup-2026-09-28.ordnung-backup");
   });
 
+  it("shows the restore command in pieces that never split the date", () => {
+    const nb = (s: string) => s.replaceAll("-", NB_HYPHEN);
+    expect(restoreCommandPieces("ordnung-backup-2026-09-28.ordnung-backup")).toEqual(["ordnung restore ", "ordnung-backup-", nb("2026-09-28"), ".ordnung-backup"]);
+    expect(restoreCommandPieces("mine.ordnung-backup")).toEqual(["ordnung restore ", "mine", ".ordnung-backup"]);
+    // shown glued, copied plain: the pieces are the command
+    expect(restoreCommandPieces("ordnung-backup-2026-09-28.ordnung-backup").join("").replaceAll(NB_HYPHEN, "-")).toBe(restoreCommand("ordnung-backup-2026-09-28.ordnung-backup"));
+  });
+
   it("turns a failure into a sentence the dialog can continue", () => {
     expect(failureSentence(new Error("Something went wrong"))).toBe("Something went wrong.");
     expect(failureSentence(new Error("There is no Ordnung database in /x."))).toBe("There is no Ordnung database in /x.");
@@ -111,7 +140,7 @@ describe("the demo's notification preview", () => {
     const discreet = mockNotification(db, "discreet");
     const full = mockNotification(db, "full");
     expect(discreet?.title).toBe("Ordnung");
-    expect(discreet?.body).toMatch(/^(\d+ overdue · )?\d+ (things? )?due this week$|^\d+ things? overdue$/);
+    expect(discreet?.body).toMatch(/^(\d+ due today · )?(\d+ overdue · )?\d+ (things? )?(due|more) this week$|^\d+ things? (overdue|due today)$|^\d+ due today · \d+ overdue$/);
     expect(full?.title).toBe(`Ordnung · ${discreet?.body}`);
     expect(full?.body.split(" · ").length).toBeLessThanOrEqual(4);
     // ticking everything off leaves nothing to say
@@ -147,7 +176,7 @@ describe("desktop notification card", () => {
     const card = await openDesktopCard();
     expect(within(card).getByRole("switch", { name: /Notify me each morning/ })).toHaveAttribute("aria-checked", "false");
     expect(within(card).queryByRole("radiogroup")).not.toBeInTheDocument();
-    expect(within(card).queryByLabelText("Show it from")).not.toBeInTheDocument();
+    expect(within(card).queryByLabelText("Show it at")).not.toBeInTheDocument();
     expect(within(card).queryByRole("button", { name: "Show a test notification" })).not.toBeInTheDocument();
 
     const modes = await switchOn(user, card);
@@ -156,13 +185,13 @@ describe("desktop notification card", () => {
     const preview = await within(card).findByRole("figure");
     await waitFor(() => expect(preview).toHaveTextContent(/Ordnung.*due this week/));
     expect(preview).not.toHaveTextContent("€");
-    expect(within(card).getByLabelText("Show it from")).toHaveValue("08:00");
+    expect(within(card).getByLabelText("Show it at")).toHaveValue("08:00");
 
     await user.click(within(modes).getByRole("radio", { name: "With details" }));
     await waitFor(() => expect(within(card).getByRole("figure")).toHaveTextContent(/Ordnung · .*due this week/));
     expect(within(card).getByText(/Anyone who can see your screen can read it/)).toBeInTheDocument();
 
-    const time = within(card).getByLabelText("Show it from");
+    const time = within(card).getByLabelText("Show it at");
     await user.clear(time);
     await user.type(time, "07:30");
     await user.click(within(card).getByRole("button", { name: "Save changes" }));
@@ -182,7 +211,7 @@ describe("desktop notification card", () => {
     const user = userEvent.setup();
     const card = await openDesktopCard();
     await switchOn(user, card);
-    await user.clear(within(card).getByLabelText("Show it from"));
+    await user.clear(within(card).getByLabelText("Show it at"));
     await user.click(within(card).getByRole("button", { name: "Save changes" }));
     expect(within(card).getByText("Choose a time, like 08:00")).toBeInTheDocument();
     expect(calls.some((c) => c.method === "PUT")).toBe(false);
@@ -199,25 +228,70 @@ describe("desktop notification card", () => {
     expect(within(card).getByText("Shown with notify-send")).toBeInTheDocument();
   });
 
-  it("explains how to start Ordnung at login", async () => {
-    useMockApi();
-    const card = await openDesktopCard();
-    expect(within(card).getByRole("heading", { name: "Start Ordnung when you log in" })).toBeInTheDocument();
-    expect(await within(card).findByText("Off")).toBeInTheDocument();
-    expect(within(card).getByRole("button", { name: "Copy command to start Ordnung when you log in: ordnung autostart enable" })).toBeInTheDocument();
-  });
-
-  const useAutostartApi = (pointsHere: boolean) => {
-    const { srv } = useMockApi();
+  /** Your own Ordnung (not the demo): the status as the API gives it there, changed by `patch`. */
+  const useDesktopApi = (patch: (status: DesktopReminders) => Partial<DesktopReminders>) => {
+    const mocked = useMockApi();
+    const { srv } = mocked;
     const handle = srv.handle.bind(srv);
-    const autostart = { enabled: true, kind: "systemd user service", path: "/home/sam/.config/systemd/user/ordnung.service", points_here: pointsHere, command: "ordnung autostart enable" };
     srv.handle = async (method, path, query, body, signal) => {
       const res = await handle(method, path, query, body, signal);
       if (method !== "GET" || path !== "/reminders/desktop") return res;
       const json = (await res.json()) as DesktopReminders;
-      return new Response(JSON.stringify({ ...json, autostart }), { status: 200, headers: { "Content-Type": "application/json" } });
+      const own = { ...json, demo: false, autostart: { ...json.autostart, command: "ordnung autostart enable --data-dir /home/sam/Ordnung" } };
+      return new Response(JSON.stringify({ ...own, ...patch(own) }), { status: 200, headers: { "Content-Type": "application/json" } });
     };
+    return mocked;
   };
+
+  it("explains how to start this data folder at login", async () => {
+    useDesktopApi(() => ({}));
+    const card = await openDesktopCard();
+    expect(within(card).getByRole("heading", { name: "Start Ordnung when you log in" })).toBeInTheDocument();
+    expect(await within(card).findByText("Off")).toBeInTheDocument();
+    // the command sets up *this* folder (the API adds --data-dir when it isn't the default one)
+    expect(
+      await within(card).findByRole("button", { name: "Copy command to start Ordnung when you log in: ordnung autostart enable --data-dir /home/sam/Ordnung" }),
+    ).toBeInTheDocument();
+  });
+
+  it("in the demo it offers no start-at-login command, and says it doesn't notify on its own", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    const card = await openDesktopCard();
+    expect(await within(card).findByText(/The demo doesn't start at login/)).toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: /Copy command to start Ordnung/ })).not.toBeInTheDocument();
+    await switchOn(user, card);
+    expect(within(card).getByRole("note")).toHaveTextContent("The demo doesn't notify on its own");
+    await user.click(within(card).getByRole("button", { name: "Save changes" }));
+    expect(await within(card).findByText("Saved.")).toBeInTheDocument();
+    expect(within(card).getByText(/^The demo doesn't notify on its own — the preview shows what it would say\.$/)).toBeInTheDocument();
+  });
+
+  it("says why the last notification couldn't be shown", async () => {
+    useDesktopApi(() => ({ last_failure: "notify-send failed (exit code 1).", last_failure_on: "2026-09-28" }));
+    const user = userEvent.setup();
+    const card = await openDesktopCard();
+    await switchOn(user, card);
+    expect(await within(card).findByText("The last notification (Mon 28 Sep) couldn't be shown: notify-send failed (exit code 1).")).toBeInTheDocument();
+  });
+
+  it("shows the shared load error when today's notification can't be loaded", async () => {
+    const { srv } = useMockApi();
+    const handle = srv.handle.bind(srv);
+    srv.handle = async (method, path, query, body, signal) =>
+      method === "GET" && path === "/reminders/desktop"
+        ? new Response(JSON.stringify({ detail: "boom" }), { status: 400, headers: { "Content-Type": "application/json" } })
+        : handle(method, path, query, body, signal);
+    const user = userEvent.setup();
+    const card = await openDesktopCard();
+    await switchOn(user, card);
+    const alert = await within(card).findByRole("alert", {}, { timeout: 5000 });
+    expect(within(alert).getByRole("heading", { level: 4, name: "Couldn't load today's notification" })).toBeInTheDocument();
+    expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  const useAutostartApi = (pointsHere: boolean) =>
+    useDesktopApi((own) => ({ autostart: { ...own.autostart, enabled: true, kind: "systemd user service", path: "/home/sam/.config/systemd/user/ordnung.service", points_here: pointsHere } }));
 
   it("says where start at login is set up (no command to run then)", async () => {
     useAutostartApi(true);
@@ -297,6 +371,12 @@ describe("encrypted backup card", () => {
     expect(within(dialog).getByLabelText("Repeat the passphrase")).toHaveValue(suggested);
     expect(first).toHaveAccessibleDescription(/Save this passphrase in your password manager/);
 
+    // shown as text, a password manager won't offer to save it: it can be copied instead
+    // (user-event puts a clipboard of its own on navigator)
+    await user.click(within(dialog).getByRole("button", { name: "Copy passphrase" }));
+    expect(await navigator.clipboard.readText()).toBe(suggested);
+    expect(await within(dialog).findByRole("button", { name: "Copied" })).toBeInTheDocument();
+
     await user.click(within(dialog).getByRole("button", { name: "Download backup" }));
     await waitFor(() => expect(within(card).getByRole("status")).toHaveTextContent(/^Downloaded ordnung-backup-\d{4}-\d{2}-\d{2}\.ordnung-backup \([\d.]+ KB\)\. Keep the passphrase safe/));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), { timeout: 3000 });
@@ -332,11 +412,102 @@ describe("encrypted backup card", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("in the online demo it explains that there is nothing to back up", async () => {
+  it("in the online demo it explains that there is nothing to back up — and counts nothing", async () => {
     vi.stubEnv("VITE_STATIC_DEMO", "1");
     useMockApi({ staticDemo: true });
     const card = await openBackupCard();
     expect(within(card).getByRole("note")).toHaveTextContent("Not available in the online demo");
     expect(within(card).getByRole("button", { name: "Download encrypted backup…" })).toBeDisabled();
+    // no "Now: 22 letters" next to "it keeps nothing", no command for a file that can't be downloaded
+    await new Promise((r) => setTimeout(r, 50));
+    expect(card).not.toHaveTextContent(/Now:/);
+    expect(within(card).queryByRole("button", { name: /Copy command to restore/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps focus in the dialog while it encrypts", async () => {
+    const { srv } = useMockApi();
+    const handle = srv.handle.bind(srv);
+    srv.handle = async (method, path, query, body, signal) =>
+      method === "POST" && path === "/backup" ? new Promise<Response>(() => {}) : handle(method, path, query, body, signal);
+    const user = userEvent.setup();
+    const card = await openBackupCard();
+    await user.click(within(card).getByRole("button", { name: "Download encrypted backup…" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Suggest a strong one" }));
+    await user.click(within(dialog).getByRole("button", { name: "Download backup" }));
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Stop" })).toHaveFocus());
+    // the fields stay focusable (read-only, not disabled) while the backup is made
+    expect(within(dialog).getByLabelText("Passphrase")).toHaveAttribute("readonly");
+    expect(within(dialog).getByLabelText("Passphrase")).not.toBeDisabled();
+  });
+
+  it("says so when what the backup would hold can't be loaded", async () => {
+    const { srv } = useMockApi();
+    const handle = srv.handle.bind(srv);
+    srv.handle = async (method, path, query, body, signal) =>
+      method === "GET" && path === "/backup"
+        ? new Response(JSON.stringify({ detail: "boom" }), { status: 400, headers: { "Content-Type": "application/json" } })
+        : handle(method, path, query, body, signal);
+    const card = await openBackupCard();
+    const alert = await within(card).findByRole("alert", {}, { timeout: 5000 });
+    expect(within(alert).getByRole("heading", { level: 4, name: "Couldn't load what the backup would hold" })).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Download encrypted backup…" })).toBeEnabled();
+  });
+});
+
+// ------------------------------------------------------------------------------------------------
+// Settings → Data → Delete everything (with a backup and a connected calendar)
+// ------------------------------------------------------------------------------------------------
+
+describe("delete everything", () => {
+  /** Your own Ordnung (the demo can't be deleted), connected to a calendar when asked. */
+  const useOwnApi = () => {
+    const mocked = useMockApi();
+    mocked.srv.db.state.health.demo = false;
+    return mocked;
+  };
+  const connectCalendar = (srv: ReturnType<typeof useMockApi>["srv"]) =>
+    srv.handle(
+      "PUT",
+      "/calendar/sync",
+      new URLSearchParams(),
+      { url: "https://cloud.example.org/remote.php/dav/calendars/sam/ordnung/", username: "sam", password: "abcd-efgh-ijkl-mnop", mode: "discreet" },
+      null,
+    );
+
+  const openDeleteDialog = async (user: ReturnType<typeof userEvent.setup>) => {
+    const client = makeTestQueryClient();
+    client.setQueryData(qk.health, { ...TEST_HEALTH, demo: false });
+    renderWithProviders(
+      <>
+        <SettingsPage />
+        <Toaster />
+      </>,
+      { route: "/settings?section=data", client },
+    );
+    await user.click(await screen.findByRole("button", { name: "Delete everything…" }));
+    return screen.findByRole("dialog", { name: "Delete everything?" });
+  };
+
+  it("offers an encrypted backup first, opening its dialog in place of this one", async () => {
+    useOwnApi();
+    const user = userEvent.setup();
+    const dialog = await openDeleteDialog(user);
+    expect(dialog).toHaveTextContent("Backups you made before stay where you saved them.");
+    await user.click(within(dialog).getByRole("button", { name: "Download an encrypted backup first" }));
+    expect(await screen.findByRole("dialog", { name: "Download an encrypted backup" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Delete everything?" })).not.toBeInTheDocument());
+  });
+
+  it("says a connected calendar loses Ordnung's events first, and reports it", async () => {
+    const { calls, srv } = useOwnApi();
+    await connectCalendar(srv);
+    const user = userEvent.setup();
+    const dialog = await openDeleteDialog(user);
+    expect(await within(dialog).findByText(/Your calendar “Ordnung” is connected: Ordnung's \d+ events there are removed first/)).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/to confirm/), "DELETE");
+    await user.click(within(dialog).getByRole("button", { name: "Delete everything" }));
+    expect(await screen.findByText(/Ordnung's \d+ events were removed from your calendar, and its app password from this computer\./)).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "DELETE" && c.path === "/data")).toBe(true);
   });
 });

@@ -1,6 +1,7 @@
 /** Settings → Data → the encrypted backup: pure helpers (the policy lives in `src/ordnung/backup`). */
 import type { BackupInfo } from "@/api/types";
 import { formatFileSize } from "@/lib/format";
+import { NB_HYPHEN } from "@/lib/glue";
 
 /** The API's minimum (`BackupInfo.min_passphrase`), used before the info has loaded. */
 export const MIN_PASSPHRASE = 12;
@@ -55,6 +56,16 @@ export function failureSentence(error: unknown): string {
 /** The command that restores the downloaded file (from the folder it was saved in). */
 export function restoreCommand(fileName: string): string {
   return `ordnung restore ${fileName}`;
+}
+
+/**
+ * The restore command as shown, in pieces a line may break between: the command, then the file
+ * name at its "-" and "." (`ordnung-backup-` · `2026-09-28` · `.ordnung-backup`), with the hyphens
+ * inside a date non-breaking — a date split over two lines is easy to misread when typed by hand.
+ */
+export function restoreCommandPieces(fileName: string): string[] {
+  const pieces = fileName.split(/(?<=[a-z]-)(?=\d{4}-\d{2}-\d{2})|(?=\.)/i).map((p) => p.replace(/(\d)-(?=\d)/g, `$1${NB_HYPHEN}`));
+  return ["ordnung restore ", ...pieces];
 }
 
 /** Save a Blob under `name` through the browser's download (the object URL is released after). */

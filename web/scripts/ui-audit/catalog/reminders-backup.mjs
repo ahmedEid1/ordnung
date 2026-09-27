@@ -6,9 +6,10 @@
  * Data → "Encrypted backup" (the passphrase dialog, its errors, a suggested passphrase, the
  * download). What depends on this computer (the notification tool, an autostart entry, the
  * password store, a calendar server) is answered by the audit, so every capture looks the same
- * wherever it runs.
+ * wherever it runs. Loading, error and busy states are captured too (an error waits for its text:
+ * a 5xx answer is retried twice first).
  */
-import { failApi, fakeApi, pinToasts, settle } from "../browser.mjs";
+import { failApi, fakeApi, holdApi, pinToasts, settle } from "../browser.mjs";
 import { inMain } from "../steps.mjs";
 
 const REMINDERS = "/settings?section=reminders";
@@ -27,21 +28,24 @@ function desktopStatus(overrides = {}) {
     tool: "notify-send",
     missing: null,
     preview: {
-      discreet: { title: "Ordnung", body: "1 overdue · 4 due this week" },
+      discreet: { title: "Ordnung", body: "1 due today · 1 overdue · 3 more this week" },
       full: {
-        title: "Ordnung · 1 overdue · 4 due this week",
+        title: "Ordnung · 1 due today · 1 overdue · 3 more this week",
         body:
-          "Return overdue library items — overdue · Pay outstanding invoice plus reminder fee €94.99 by tomorrow · " +
+          "Object to contribution notice (Widerspruch) today · Return overdue library items — overdue · " +
           "Monatliche Abbuchung Deutschlandticket €63 by Wed · and 2 more",
       },
     },
     last_shown_on: null,
+    last_failure: null,
+    last_failure_on: null,
+    demo: false,
     autostart: {
       enabled: false,
       kind: "systemd user service",
       path: "/home/sam/.config/systemd/user/ordnung.service",
       points_here: false,
-      command: "ordnung autostart enable",
+      command: "ordnung autostart enable --data-dir /home/samantha-rivera-musterfrau/Dokumente/Ordnung-Unterlagen",
     },
     ...overrides,
   };
@@ -280,7 +284,7 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
     run: async (c) => {
       await fakeApi(c.page, "POST", /^\/api\/calendar\/sync\/discover$/, async () => ({
         status: 502,
-        json: { detail: "Couldn't reach caldav.icloud.com. Ordnung tries again later.", code: "network" },
+        json: { detail: "Couldn't reach caldav.icloud.com.", code: "network" },
       }));
       const box = await openSync(c);
       await fillAccount(c, box);
@@ -309,8 +313,9 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
         c,
         syncStatus({
           available: false,
-          unavailable: "Calendar sync keeps your app password in this computer's password store, and Ordnung needs an extra package for that.",
-          install_command: "pip install 'ordnung[caldav]'",
+          unavailable:
+            "Calendar sync keeps your app password in this computer's password store, and this installation of Ordnung is missing the package for that.",
+          install_command: "pipx inject ordnung keyring",
         }),
       );
       await c.centre(box);
@@ -442,9 +447,375 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
       const dialog = await openBackupDialog(c);
       await c.click(dialog.getByRole("button", { name: "Suggest a strong one" }));
       await c.click(dialog.getByRole("button", { name: "Download backup" }));
-      const status = backupCard(c).getByRole("status");
-      await status.getByText(/^Downloaded/).waitFor({ timeout: 10_000 }).catch(() => c.note("no download confirmation"));
-      await c.centre(status);
+      const confirmation = backupCard(c).getByText(/^Downloaded/);
+      await confirmation.waitFor({ timeout: 10_000 }).catch(() => c.note("no download confirmation"));
+      await c.centre(confirmation);
+    },
+  });
+
+  // ---- loading, error and busy states, and what the round-1 review asked to see ----
+  add({
+    id: "reminders-desktop-loading",
+    route: REMINDERS,
+    how: "switch the morning notification on while GET /api/reminders/desktop is held by the audit",
+    description: "The preview while today's notification loads (skeleton).",
+    run: async (c) => {
+      await holdApi(c.page, { only: ["/api/reminders/desktop"], except: [] });
+      await c.goto(REMINDERS, { idle: false });
+      const box = await c.visible(desktopCard(c));
+      await box.getByRole("switch", { name: SWITCH }).click();
+      await settle(c.page, { idle: false });
+      await c.centre(box.getByText("Today it would say"));
+    },
+  });
+  add({
+    id: "reminders-desktop-error",
+    route: REMINDERS,
+    how: "switch the morning notification on (GET /api/reminders/desktop answered 500 by the audit)",
+    description: "Today's notification couldn't be loaded: the shared load error in the preview's place.",
+    run: async (c) => {
+      await failApi(c.page, { status: 500, only: ["/api/reminders/desktop"], except: [] });
+      await c.goto(REMINDERS);
+      const box = await c.visible(desktopCard(c));
+      await c.click(box.getByRole("switch", { name: SWITCH }));
+      const error = box.getByText("Couldn't load today's notification");
+      await error.waitFor({ timeout: 20_000 }).catch(() => c.note("no load error"));
+      await c.centre(error);
+    },
+  });
+  add({
+    id: "reminders-desktop-last-failure",
+    route: REMINDERS,
+    how: "switch it on; the last notification couldn't be shown (answered by the audit)",
+    description: "Why the last notification wasn't shown, under the test button.",
+    run: (c) =>
+      openDesktop(
+        c,
+        desktopStatus({ last_failure: "notify-send failed (exit code 1): GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown", last_failure_on: "2026-09-28" }),
+        "Discreet",
+      ),
+  });
+  add({
+    id: "reminders-desktop-demo",
+    route: REMINDERS,
+    how: "open Settings → Reminders in the demo, switch it on (the demo's own answer)",
+    description: "The demo: it doesn't notify on its own (the test or the preview shows what it would say) and offers no start-at-login command.",
+    run: async (c) => {
+      await c.goto(REMINDERS);
+      const box = await c.visible(desktopCard(c));
+      await c.click(box.getByRole("switch", { name: SWITCH }));
+      await c.page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await settle(c.page);
+    },
+  });
+  add({
+    id: "reminders-desktop-demo-saved",
+    route: REMINDERS,
+    how: "in the demo, switch it on and Save (PUT /api/settings answered by the audit)",
+    description: "The save note in the demo: saved, but the demo doesn't notify on its own.",
+    run: async (c) => {
+      const current = await c.api.get("/api/settings");
+      await fakeApi(c.page, "PUT", /^\/api\/settings$/, async (req) => ({ json: { ...current, ...(req.postDataJSON() ?? {}) } }));
+      await c.goto(REMINDERS);
+      const box = await c.visible(desktopCard(c));
+      await c.click(box.getByRole("switch", { name: SWITCH }));
+      await c.click(box.getByRole("button", { name: /^Save/ }));
+      await box.getByText(/doesn't notify on its own — the preview/).waitFor({ timeout: 5_000 }).catch(() => c.note("no save note"));
+      await c.page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await settle(c.page);
+    },
+  });
+  add({
+    id: "calendar-sync-loading",
+    route: CALENDAR,
+    how: "open Settings → Calendar while GET /api/calendar/sync is held by the audit",
+    description: "Calendar sync while its status loads (skeleton).",
+    run: async (c) => {
+      await holdApi(c.page, { only: ["/api/calendar/sync"], except: [] });
+      await c.goto(CALENDAR, { idle: false });
+      await c.centre(await c.visible(syncCard(c)));
+    },
+  });
+  add({
+    id: "calendar-sync-error",
+    route: CALENDAR,
+    how: "open Settings → Calendar (GET /api/calendar/sync answered 500 by the audit)",
+    description: "Calendar sync couldn't be loaded: the shared load error.",
+    run: async (c) => {
+      await failApi(c.page, { status: 500, only: ["/api/calendar/sync"], except: [] });
+      await c.goto(CALENDAR);
+      const error = syncCard(c).getByText("Couldn't load calendar sync");
+      await error.waitFor({ timeout: 20_000 }).catch(() => c.note("no load error"));
+      await c.centre(await c.visible(syncCard(c)));
+    },
+  });
+  add({
+    id: "calendar-sync-preview-error",
+    route: CALENDAR,
+    how: "calendar sync available (GET /api/calendar/sync/preview answered 500 by the audit)",
+    description: "The preview couldn't be loaded: the shared load error under “What your calendar gets”.",
+    run: async (c) => {
+      await failApi(c.page, { status: 500, only: ["/api/calendar/sync/preview"], except: [] });
+      const box = await openSync(c);
+      const error = box.getByText("Couldn't load the preview");
+      await error.waitFor({ timeout: 20_000 }).catch(() => c.note("no load error"));
+      await c.centre(error);
+    },
+  });
+  add({
+    id: "calendar-sync-discovering",
+    route: CALENDAR,
+    how: "“Find my calendars” while POST /api/calendar/sync/discover is held by the audit",
+    description: "Finding calendars: the fields read-only (focus kept), the button busy.",
+    run: async (c) => {
+      await holdApi(c.page, { only: ["/api/calendar/sync/discover"], except: [] });
+      const box = await openSync(c);
+      await fillAccount(c, box);
+      await box.getByRole("button", { name: "Find my calendars" }).click();
+      await settle(c.page, { idle: false });
+      await c.centre(box.getByRole("button", { name: "Find my calendars" }));
+    },
+  });
+  add({
+    id: "calendar-sync-one-found",
+    route: CALENDAR,
+    how: "“Find my calendars” (one calendar, not named Ordnung, answered by the audit)",
+    description: "One calendar found: the footer names it, focus on its choice, the tip about a calendar of its own.",
+    run: async (c) => {
+      await fakeApi(c.page, "POST", /^\/api\/calendar\/sync\/discover$/, async () => ({ json: { calendars: [{ url: ICLOUD, name: "Privat — Familie und Arzttermine" }] } }));
+      const box = await openSync(c);
+      await fillAccount(c, box);
+      await c.click(box.getByRole("button", { name: "Find my calendars" }));
+      await c.centre(box.getByRole("button", { name: "Connect and sync" }));
+    },
+  });
+  add({
+    id: "calendar-sync-connected-toast",
+    route: CALENDAR,
+    how: "“Find my calendars”, then “Connect and sync” (answered by the audit)",
+    description: "Just connected: the toast, and focus on the “Connected to …” line.",
+    pinToasts: true,
+    run: async (c) => {
+      let connected = false;
+      const done = () => connectedStatus({ calendar_name: "Ordnung", last_sync: { at: new Date().toISOString(), sent: 23, removed: 0, unchanged: 0, failed: 0, error: null, error_kind: null } });
+      await fakeApi(c.page, "POST", /^\/api\/calendar\/sync\/discover$/, async () => ({ json: { calendars: [{ url: ICLOUD, name: "Ordnung" }] } }));
+      await fakeApi(c.page, "PUT", /^\/api\/calendar\/sync$/, async () => {
+        connected = true;
+        return { json: done() };
+      });
+      await fakeApi(c.page, "GET", /^\/api\/calendar\/sync$/, async () => ({ json: connected ? done() : syncStatus() }));
+      await c.goto(CALENDAR);
+      const box = await c.visible(syncCard(c));
+      await fillAccount(c, box);
+      await c.click(box.getByRole("button", { name: "Find my calendars" }));
+      await c.click(box.getByRole("button", { name: "Connect and sync" }));
+      await syncCard(c).getByText("Connected to Ordnung").waitFor({ timeout: 10_000 }).catch(() => c.note("not connected"));
+      await pinToasts(c.page);
+    },
+  });
+  add({
+    id: "calendar-sync-no-password",
+    route: CALENDAR,
+    how: "open Settings → Calendar, connected, the app password not on this computer (answered by the audit)",
+    description: "Connected but the password isn't saved here: its field; “Sync now” off.",
+    run: async (c) => {
+      const box = await openSync(c, connectedStatus({ password_saved: false }));
+      await c.centre(box.getByLabel("App password"));
+    },
+  });
+  add({
+    id: "calendar-sync-last-error",
+    route: CALENDAR,
+    how: "open Settings → Calendar, connected, the last sync couldn't reach the server (answered by the audit)",
+    description: "The last sync's error (the tick tries again), not paused.",
+    run: async (c) => {
+      const box = await openSync(
+        c,
+        connectedStatus({
+          last_sync: { at: new Date(Date.now() - 2 * 3600_000).toISOString(), sent: 3, removed: 0, unchanged: 18, failed: 2, error: "Couldn't reach p142-caldav.icloud.com. Ordnung tries again later.", error_kind: "network" },
+        }),
+      );
+      await c.centre(box.getByRole("button", { name: "Sync now" }));
+    },
+  });
+  add({
+    id: "calendar-sync-now-toast",
+    route: CALENDAR,
+    how: "connected, “Sync now” (answered by the audit)",
+    description: "The toast after “Sync now”.",
+    pinToasts: true,
+    run: async (c) => {
+      await fakeApi(c.page, "POST", /^\/api\/calendar\/sync\/run$/, async () => ({
+        json: connectedStatus({ last_sync: { at: new Date().toISOString(), sent: 0, removed: 0, unchanged: 23, failed: 0, error: null, error_kind: null } }),
+      }));
+      const box = await openSync(c, connectedStatus());
+      await c.click(box.getByRole("button", { name: "Sync now" }));
+      await pinToasts(c.page);
+    },
+  });
+  add({
+    id: "calendar-sync-disconnect-error",
+    route: CALENDAR,
+    how: "connected, “Disconnect…”, Disconnect (POST /api/calendar/sync/disconnect answered 502 by the audit)",
+    description: "The disconnect dialog's error: the events couldn't be removed (no promise to retry).",
+    run: async (c) => {
+      await fakeApi(c.page, "POST", /^\/api\/calendar\/sync\/disconnect$/, async () => ({
+        status: 502,
+        json: { detail: "Couldn't reach p142-caldav.icloud.com.", code: "network" },
+      }));
+      const box = await openSync(c, connectedStatus());
+      await c.click(box.getByRole("button", { name: "Disconnect…" }));
+      const dialog = await c.visible(c.page.getByRole("dialog"));
+      await c.click(dialog.getByRole("button", { name: "Disconnect" }));
+      await dialog.getByText("The events couldn't be removed").waitFor({ timeout: 10_000 }).catch(() => c.note("no error"));
+    },
+  });
+  add({
+    id: "calendar-sync-unavailable",
+    route: CALENDAR,
+    how: "open Settings → Calendar on a computer without a password store (answered by the audit)",
+    description: "No usable password store (and nothing to install): why calendar sync can't be used.",
+    run: async (c) => {
+      const box = await openSync(
+        c,
+        syncStatus({ available: false, unavailable: "This computer has no password store Ordnung can use (on Linux: GNOME Keyring or KWallet, unlocked), so it can't keep the app password safely." }),
+      );
+      await c.centre(box);
+    },
+  });
+  add({
+    id: "calendar-file-synced",
+    route: CALENDAR,
+    how: "open Settings → Calendar, connected (answered by the audit)",
+    description: "The calendar file's card says the dates already go to the connected calendar.",
+    run: async (c) => {
+      await openSync(c, connectedStatus());
+      await c.page.evaluate(() => window.scrollTo(0, 0));
+      await c.centre(inMain(c.page).getByText(/Your dates already go to/));
+    },
+  });
+  add({
+    id: "calendar-sync-show-fewer",
+    route: CALENDAR,
+    how: "calendar sync available, “Show all … events”, then “Show fewer”",
+    description: "After collapsing the preview: its toggle (focused) back in view, clear of the top bar.",
+    run: async (c) => {
+      const box = await openSync(c);
+      await c.click(box.getByRole("button", { name: /^Show all \d+ events/ }));
+      await c.click(box.getByRole("button", { name: "Show fewer" }));
+      await settle(c.page);
+    },
+  });
+  add({
+    id: "data-backup-loading",
+    route: DATA,
+    how: "open Settings → Data while GET /api/backup is held by the audit",
+    description: "The backup card while what it would hold loads.",
+    run: async (c) => {
+      await holdApi(c.page, { only: ["/api/backup"], except: [] });
+      await c.goto(DATA, { idle: false });
+      await c.centre(await c.visible(backupCard(c)));
+    },
+  });
+  add({
+    id: "data-backup-info-error",
+    route: DATA,
+    how: "open Settings → Data (GET /api/backup answered 500 by the audit)",
+    description: "What the backup would hold couldn't be loaded: the shared load error (the download still offered).",
+    run: async (c) => {
+      await failApi(c.page, { status: 500, only: ["/api/backup"], method: "GET", except: [] });
+      await c.goto(DATA);
+      const error = backupCard(c).getByText("Couldn't load what the backup would hold");
+      await error.waitFor({ timeout: 20_000 }).catch(() => c.note("no load error"));
+      await c.centre(await c.visible(backupCard(c)));
+    },
+  });
+  add({
+    id: "data-backup-busy",
+    route: DATA,
+    how: "backup dialog, a suggested passphrase, Download (POST /api/backup held by the audit)",
+    description: "The backup dialog while it encrypts: “Stop” has the focus, the fields read-only.",
+    run: async (c) => {
+      await c.page.route(
+        (url) => new URL(url.href).pathname === "/api/backup",
+        async (route) => {
+          if (route.request().method() !== "POST") return route.fallback();
+          await new Promise(() => {});
+        },
+      );
+      const dialog = await openBackupDialog(c);
+      await c.click(dialog.getByRole("button", { name: "Suggest a strong one" }));
+      await dialog.getByRole("button", { name: "Download backup" }).click();
+      await settle(c.page, { idle: false });
+    },
+  });
+  add({
+    id: "data-backup-dialog-copied",
+    route: DATA,
+    how: "backup dialog, “Suggest a strong one”, “Copy passphrase”",
+    description: "A suggested passphrase copied (a password manager won't offer to save a shown one).",
+    run: async (c) => {
+      const dialog = await openBackupDialog(c);
+      await c.click(dialog.getByRole("button", { name: "Suggest a strong one" }));
+      await c.click(dialog.getByRole("button", { name: "Copy passphrase" }));
+    },
+  });
+  add({
+    id: "data-backup-dialog-long",
+    route: DATA,
+    how: "backup dialog, a long passphrase typed twice, shown",
+    description: "A long shown passphrase wraps in its field's width.",
+    run: async (c) => {
+      const dialog = await openBackupDialog(c);
+      const long = "Donaudampfschifffahrtsgesellschaftskapitänsmützenabzeichen-und-Straßenbahnhaltestelle-2026";
+      await c.type(dialog.getByLabel("Passphrase", { exact: true }), long);
+      await c.type(dialog.getByLabel("Repeat the passphrase"), long);
+      await c.click(dialog.getByRole("button", { name: "Show passphrase" }));
+    },
+  });
+  return S;
+}
+
+/**
+ * The fresh target (your own Ordnung, not the demo): "Delete everything" with a calendar connected
+ * and the backup it offers first.
+ */
+export function freshRemindersBackupStates({ group = "settings", prefix = "fresh-settings" } = {}) {
+  const S = [];
+  const add = (s) => S.push({ group, ...s, id: `${prefix}-${s.id}` });
+  const openDelete = async (c) => {
+    await c.goto(DATA);
+    await c.click(inMain(c.page).getByRole("button", { name: "Delete everything…" }));
+    return c.visible(c.page.getByRole("dialog", { name: "Delete everything?" }));
+  };
+  add({
+    id: "data-delete-calendar",
+    route: DATA,
+    how: "open Settings → Data, “Delete everything…”, with a calendar connected (GET /api/calendar/sync answered by the audit)",
+    description: "The delete dialog: an encrypted backup first, and the connected calendar's events removed first.",
+    run: async (c) => {
+      await fakeApi(c.page, "GET", /^\/api\/calendar\/sync$/, async () => ({ json: connectedStatus() }));
+      await openDelete(c);
+    },
+  });
+  add({
+    id: "data-delete-calendar-refused",
+    route: DATA,
+    how: "“Delete everything…” with a calendar connected, DELETE typed (DELETE /api/data answered 409 by the audit)",
+    description: "The calendar's events couldn't be removed, so nothing was deleted: what to do instead.",
+    run: async (c) => {
+      await fakeApi(c.page, "GET", /^\/api\/calendar\/sync$/, async () => ({ json: connectedStatus() }));
+      await fakeApi(c.page, "DELETE", /^\/api\/data$/, async () => ({
+        status: 409,
+        json: {
+          detail:
+            "Ordnung's events in your calendar “Ordnung — Fristen und Termine” couldn't be removed, so nothing was deleted: Couldn't reach p142-caldav.icloud.com. Try again — or disconnect the calendar in Settings → Calendar first (you can leave its events there), then delete everything.",
+        },
+      }));
+      const dialog = await openDelete(c);
+      await c.type(dialog.getByLabel(/to confirm/), "DELETE");
+      await c.click(dialog.getByRole("button", { name: "Delete everything" }));
+      await dialog.getByText(/nothing was deleted/).waitFor({ timeout: 10_000 }).catch(() => c.note("no refusal"));
     },
   });
   return S;

@@ -1,7 +1,8 @@
 /**
  * Mock calendar sync (CalDAV). The preview is worked out from the mock's open dated to-dos the way
  * `src/ordnung/calendar/caldav.py` words it (discreet: "Ordnung: deadline" and a pointer, nothing
- * else; full: the calendar file's title and description), with the alarms from Sam's reminder days.
+ * else — "Ordnung: money in" for money coming in, and "— check the date" on a date that couldn't be
+ * confirmed; full: the calendar file's title and description), with the alarms from Sam's reminder days.
  * `?mock=1` pretends a calendar answers (an https address, a user name and an app password are
  * enough; the password "wrong" is refused like a server would); the static demo can't reach any
  * calendar and says so.
@@ -24,6 +25,10 @@ export const DISCREET_DESCRIPTION = "Open Ordnung on your computer to see what t
 
 const KIND_SYMBOLS: Record<string, string> = { deadline: "⚑", payment: "€", appointment: "◷", task: "☐", expiry: "⌛", reminder: "•", milestone: "★" };
 const DISCREET_TITLES: Record<string, string> = { payment: "Ordnung: payment", appointment: "Ordnung: appointment" };
+const DISCREET_INCOMING = "Ordnung: money in";
+const DISCREET_CHECK_TITLE = " — check the date";
+const DISCREET_CHECK = "This date couldn't be confirmed in the letter: check it in Ordnung before you rely on it.";
+const CHECK_PREFIX = "⚠ check: ";
 const ALARM_HOUR = "09:00";
 
 interface MockConnection {
@@ -82,6 +87,17 @@ function description(db: MockDb, i: Item): string {
   return lines.filter(Boolean).join("\n");
 }
 
+/** A date read from a letter that the person hasn't confirmed and Ordnung couldn't verify (`ics.needs_check`). */
+function needsCheck(i: Item): boolean {
+  if (i.origin !== "extracted" || i.grounding === "user") return false;
+  return i.grounding === "unverified" || (i.evidence ?? []).some((e) => !e.value_consistent) || i.computation?.confidence === "low";
+}
+
+function discreetTitle(i: Item): string {
+  const title = i.kind === "payment" && i.direction === "in" ? DISCREET_INCOMING : (DISCREET_TITLES[i.kind] ?? "Ordnung: deadline");
+  return needsCheck(i) ? `${title}${DISCREET_CHECK_TITLE}` : title;
+}
+
 /** Every event calendar sync would send in `mode` (open dated to-dos, by date). */
 export function mockCalendarPreview(db: MockDb, mode: CalendarSyncMode): CalendarEventPreview[] {
   const days = db.state.profile.reminder_days ?? {};
@@ -97,10 +113,10 @@ export function mockCalendarPreview(db: MockDb, mode: CalendarSyncMode): Calenda
       const discreet = mode === "discreet";
       return {
         uid: `${i.id}@ordnung.local`,
-        summary: discreet ? (DISCREET_TITLES[i.kind] ?? "Ordnung: deadline") : `${KIND_SYMBOLS[i.kind] ?? "•"} ${i.title}`,
+        summary: discreet ? discreetTitle(i) : `${needsCheck(i) ? CHECK_PREFIX : ""}${KIND_SYMBOLS[i.kind] ?? "•"} ${i.title}`,
         start: time ? `${day}T${time}:00${berlinOffset(day)}` : day,
         all_day: !time,
-        description: discreet ? DISCREET_DESCRIPTION : description(db, i),
+        description: discreet ? (needsCheck(i) ? `${DISCREET_DESCRIPTION} ${DISCREET_CHECK}` : DISCREET_DESCRIPTION) : description(db, i),
         location: discreet ? null : (i.location ?? null),
         alarms,
       } satisfies CalendarEventPreview;
@@ -188,6 +204,8 @@ export function mockConnectCalendar(db: MockDb, body: CalendarSyncConnect, stati
   c.last = send(db, c);
   connections.set(db, c);
   if (!existing) db.log("calendar.connected", `Connected the calendar at ${new URL(url).hostname} for calendar sync (${c.mode})`);
+  // the calendar gets the dates by itself: no "import the calendar file" Idea (the triggers expire it)
+  for (const idea of db.state.suggestions) if (idea.rule_id === "calendar_outdated" && idea.status === "new") idea.status = "expired";
   return mockCalendarSyncStatus(db, false);
 }
 
@@ -197,6 +215,11 @@ export function mockRunCalendarSync(db: MockDb, staticDemo: boolean): CalendarSy
   if (!c) throw new CalendarSyncRefusal(409, "No calendar is connected.", "not_connected");
   c.last = send(db, c);
   return mockCalendarSyncStatus(db, false);
+}
+
+/** "Delete everything": Ordnung's events leave the connected calendar first (`null`: none was connected). */
+export function mockForgetCalendar(db: MockDb): number | null {
+  return connections.has(db) ? mockDisconnectCalendar(db, true).removed : null;
 }
 
 export function mockDisconnectCalendar(db: MockDb, removeEvents: boolean): { removed: number } {

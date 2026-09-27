@@ -4,6 +4,7 @@
  * every page empty. Nothing here sends anything to Claude: no letters, no questions, no "Run check".
  */
 import { fakeApi, settle } from "../browser.mjs";
+import { freshRemindersBackupStates } from "./reminders-backup.mjs";
 import { commonSettingsSections } from "./shared.mjs";
 
 const G = "onboarding-and-empty";
@@ -120,6 +121,8 @@ export async function freshCatalog({ api }) {
   e("empty-not-found", "/documents/doc_does_not_exist", "A letter link that doesn't exist (deleted letter).");
   e("empty-letter-not-found", "/letters/drf_does_not_exist", "A draft link that doesn't exist.");
   for (const s of commonSettingsSections(G, "empty-settings")) empty.push(s);
+  // "Delete everything" exists only here (the demo can't be deleted); nothing is deleted (answered by the audit or cancelled)
+  for (const s of freshRemindersBackupStates({ group: G, prefix: "empty-settings" })) empty.push(s);
   for (const variant of Object.keys(CLAUDE)) {
     empty.push({
       id: `empty-settings-claude-${variant}`,

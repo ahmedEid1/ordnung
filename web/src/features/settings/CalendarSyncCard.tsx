@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { CalendarCheck, CalendarSearch, ChevronDown, ChevronUp, Link2Off, RefreshCw, RotateCw, Unplug } from "lucide-react";
+import { CalendarCheck, CalendarSearch, ChevronDown, ChevronUp, Link2Off, OctagonAlert, RefreshCw, Unplug } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useCalendarSync, useCalendarSyncPreview, useConnectCalendarSync, useDisconnectCalendarSync, useDiscoverCalendars, useRunCalendarSync } from "@/api/hooks";
 import type { CalendarChoice, CalendarSyncMode, CalendarSyncStatus } from "@/api/types";
@@ -8,26 +8,50 @@ import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { Dialog } from "@/components/ui/Dialog";
 import { Checkbox, Field, Input } from "@/components/ui/Field";
+import { LoadError } from "@/components/ui/LoadError";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
+import { focusWhenReady } from "@/features/today/focus";
 import { useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { BreakablePath } from "./DataSection";
-import { eventWhen, fieldFor, hostOf, lastSyncLine, modeLabel, preferredCalendar, PROVIDER_HINTS, SYNC_MODE_HINTS, SYNC_MODES, syncFormProblem, type SyncField } from "./calendarSync";
+import {
+  eventWhen,
+  fieldFor,
+  foundLine,
+  hostOf,
+  isPastEvent,
+  lastSyncLine,
+  modeLabel,
+  preferredCalendar,
+  previewOrder,
+  PROVIDER_HINTS,
+  SYNC_MODE_HINTS,
+  SYNC_MODES,
+  syncFormProblem,
+  type SyncField,
+} from "./calendarSync";
 import { SaveBar, SettingsCard } from "./SettingsCard";
 
 const TITLE = "Sync with your own calendar";
 const DESCRIPTION =
   "Optional: Ordnung puts your dates into a calendar you already use — Nextcloud, iCloud, mailbox.org or another CalDAV calendar — and keeps them current while it runs. Your calendar provider then stores what the events say.";
 const PREVIEW_COUNT = 4;
+/** The card's heading (both states), the connected line and the form's own error: where focus goes. */
+const HEADING_ID = "set-cal-sync";
+const CONNECTED_ID = "cal-sync-connected";
+const FORM_ERROR_ID = "cal-sync-form-error";
 
 type Errors = Partial<Record<SyncField, string>>;
 
-/** Focus the field a problem belongs to (the form's own error has no field: focus stays). */
+/**
+ * Focus what a problem belongs to: its field, or — for the form's own error, which sits next to the
+ * button in the footer — that error, so it is on screen and read out wherever the form was sent from.
+ */
 function focusField(field: SyncField) {
-  if (field !== "form") document.getElementById(`cal-sync-${field}`)?.focus();
+  document.getElementById(field === "form" ? FORM_ERROR_ID : `cal-sync-${field}`)?.focus();
 }
 
 function errorsFrom(err: unknown): Errors {
@@ -40,9 +64,17 @@ function EventPreview({ mode, onModeChange, headingId }: { mode: CalendarSyncMod
   const preview = useCalendarSyncPreview(mode);
   const today = useTodayISO();
   const [all, setAll] = useState(false);
-  const events = preview.data?.events ?? [];
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  // what is still to come first: a preview that opens on last year's dates looks broken
+  const { events, past } = previewOrder(preview.data?.events ?? [], today);
   const shown = all ? events : events.slice(0, PREVIEW_COUNT);
   const listId = useId();
+  const toggle = () => {
+    const collapsing = all;
+    setAll(!all);
+    // the list shrinks by thousands of pixels: the toggle, which keeps focus, comes back into view
+    if (collapsing) requestAnimationFrame(() => toggleRef.current?.scrollIntoView?.({ block: "nearest" }));
+  };
   return (
     <div>
       <h4 id={headingId} className="mb-2 text-sm font-medium text-ink">
@@ -56,12 +88,17 @@ function EventPreview({ mode, onModeChange, headingId }: { mode: CalendarSyncMod
           <Skeleton className="h-16 w-full" />
         </div>
       ) : preview.isError ? (
-        <p role="alert" className="mt-3 text-[13px] leading-5 text-danger-ink">
-          Couldn't load the preview.{" "}
-          <Button size="sm" variant="ghost" icon={RotateCw} onClick={() => void preview.refetch()} loading={preview.isFetching}>
-            Try again
-          </Button>
-        </p>
+        <LoadError
+          what="the preview"
+          description="Nothing was sent — Ordnung didn't answer. Is it still running?"
+          error={preview.error}
+          onRetry={() => void preview.refetch()}
+          retrying={preview.isFetching}
+          headingLevel={4}
+          variant="plain"
+          size="sm"
+          className="mt-3"
+        />
       ) : events.length === 0 ? (
         <p className="mt-3 rounded-2xl border border-dashed border-line-strong px-3.5 py-3 text-[13px] leading-5 text-muted">
           No open dates yet — once letters bring dates, they go to your calendar.
@@ -69,19 +106,33 @@ function EventPreview({ mode, onModeChange, headingId }: { mode: CalendarSyncMod
       ) : (
         <>
           <ul id={listId} aria-label={`Events, ${modeLabel(mode).toLowerCase()}`} className="mt-3 divide-y divide-line rounded-2xl border border-line bg-surface">
-            {shown.map((e) => (
-              <li key={e.uid} className="min-w-0 px-3.5 py-3">
-                <p className="text-[12.5px] font-medium leading-5 text-muted tabular-nums">{eventWhen(e, today)}</p>
-                <p className="text-[14px] font-semibold leading-5 text-ink [overflow-wrap:anywhere]">{e.summary}</p>
-                <p className="mt-0.5 whitespace-pre-line text-[13px] leading-5 text-ink/80 [overflow-wrap:anywhere]">{e.description}</p>
-                {e.location ? <p className="mt-0.5 text-[13px] leading-5 text-ink/80 [overflow-wrap:anywhere]">Where: {e.location}</p> : null}
-                {e.alarms.length ? <p className="mt-1 text-[12.5px] leading-5 text-muted">Alarms: {e.alarms.join(" · ")}</p> : null}
-              </li>
-            ))}
+            {shown.map((e) => {
+              const overdue = isPastEvent(e, today);
+              return (
+                <li key={e.uid} className="min-w-0 px-3.5 py-3">
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] font-medium leading-5 text-muted tabular-nums">
+                    {eventWhen(e, today)}
+                    {overdue ? (
+                      <Badge tone="warn" size="sm">
+                        Overdue
+                      </Badge>
+                    ) : null}
+                  </p>
+                  <p className="text-[14px] font-semibold leading-5 text-ink [overflow-wrap:anywhere]">{e.summary}</p>
+                  <p className="mt-0.5 whitespace-pre-line text-[13px] leading-5 text-ink/80 [overflow-wrap:anywhere]">{e.description}</p>
+                  {e.location ? <p className="mt-0.5 text-[13px] leading-5 text-ink/80 [overflow-wrap:anywhere]">Where: {e.location}</p> : null}
+                  {overdue ? (
+                    <p className="mt-1 text-[12.5px] leading-5 text-muted">The date has passed: it shows in the calendar without an alarm to come.</p>
+                  ) : e.alarms.length ? (
+                    <p className="mt-1 text-[12.5px] leading-5 text-muted">Alarms: {e.alarms.join(" · ")}</p>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
           {events.length > PREVIEW_COUNT ? (
-            <Button size="sm" variant="ghost" icon={all ? ChevronUp : ChevronDown} className="mt-1.5" aria-expanded={all} aria-controls={listId} onClick={() => setAll((v) => !v)}>
-              {all ? "Show fewer" : `Show all ${events.length} events`}
+            <Button ref={toggleRef} size="sm" variant="ghost" icon={all ? ChevronUp : ChevronDown} className="mt-1.5" aria-expanded={all} aria-controls={listId} onClick={toggle}>
+              {all ? "Show fewer" : past ? `Show all ${events.length} events (${past} overdue)` : `Show all ${events.length} events`}
             </Button>
           ) : null}
         </>
@@ -215,7 +266,9 @@ function Connect({ status }: { status: CalendarSyncStatus }) {
           onSuccess: ({ calendars: list }) => {
             setCalendars(list);
             setChosen(preferredCalendar(list));
-            setFound(list.length === 1 ? "Found 1 calendar." : `Found ${list.length} calendars — choose one.`);
+            setFound(foundLine(list));
+            // on to the choice (it scrolls into view): the next step is there, not at the button
+            focusWhenReady(() => document.querySelector<HTMLElement>('input[name="calendar-sync-calendar"]:checked'), 5000, { always: true });
           },
           onError: (err) => {
             const next = errorsFrom(err);
@@ -232,6 +285,8 @@ function Connect({ status }: { status: CalendarSyncStatus }) {
         onSuccess: (s) => {
           const r = s.last_sync;
           const where = s.calendar_name ?? hostOf(s.url);
+          // the card is now the connected one: its "Connected to …" line takes the focus the button had
+          focusWhenReady(() => document.getElementById(CONNECTED_ID));
           if (r?.error) toast.warn(`Connected to ${where}, but not everything was sent`, { description: r.error });
           else toast.success(`Connected to ${where}`, { description: `${r?.sent ?? 0} ${r?.sent === 1 ? "event" : "events"} sent. Ordnung keeps them current while it runs.` });
         },
@@ -247,13 +302,24 @@ function Connect({ status }: { status: CalendarSyncStatus }) {
   return (
     <SettingsCard
       title={TITLE}
-      id="set-cal-sync"
+      id={HEADING_ID}
       description={DESCRIPTION}
       footer={
         status.available ? (
           <>
-            {found && calendars ? (
-              <p role="status" className="mr-auto min-w-0 text-sm leading-5 text-muted">
+            {/* the form's own error sits next to the button that was pressed (the fields are far above) */}
+            {errors.form ? (
+              <p
+                id={FORM_ERROR_ID}
+                role="alert"
+                tabIndex={-1}
+                className="mr-auto flex min-w-0 basis-full items-start gap-1.5 rounded-sm text-sm leading-5 text-danger-ink sm:basis-0 sm:flex-1"
+              >
+                <OctagonAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <span className="min-w-0 [overflow-wrap:anywhere]">{errors.form}</span>
+              </p>
+            ) : found && calendars ? (
+              <p role="status" className="mr-auto min-w-0 text-sm leading-5 text-muted [overflow-wrap:anywhere]">
                 {found}
               </p>
             ) : (
@@ -272,23 +338,19 @@ function Connect({ status }: { status: CalendarSyncStatus }) {
       {status.available ? (
         <form id="calendar-sync-form" onSubmit={submit} noValidate className="space-y-4">
           <Field id="cal-sync-url" label="Calendar or server address" hint="A calendar's CalDAV address, or just your provider's (Ordnung finds your calendars)." error={errors.url}>
-            <Input type="url" inputMode="url" value={url} onChange={(e) => edit(setUrl)(e.target.value)} placeholder="https://cloud.example.org" autoComplete="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} disabled={busy} />
+            {/* read-only (not disabled) while asking: a field that holds focus keeps it */}
+            <Input type="url" inputMode="url" value={url} onChange={(e) => edit(setUrl)(e.target.value)} placeholder="https://cloud.example.org" autoComplete="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} readOnly={busy} />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field id="cal-sync-username" label="User name" error={errors.username}>
-              <Input value={username} onChange={(e) => edit(setUsername)(e.target.value)} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} disabled={busy} />
+              <Input value={username} onChange={(e) => edit(setUsername)(e.target.value)} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} readOnly={busy} />
             </Field>
             <Field id="cal-sync-password" label="App password" hint="Kept in this computer's password store — never in Ordnung's files." error={errors.password}>
-              <Input type="password" value={password} onChange={(e) => edit(setPassword)(e.target.value)} autoComplete="new-password" disabled={busy} />
+              <Input type="password" value={password} onChange={(e) => edit(setPassword)(e.target.value)} autoComplete="new-password" readOnly={busy} />
             </Field>
           </div>
           <ProviderHints />
           {calendars ? <CalendarChoices calendars={calendars} chosen={chosen} onChoose={setChosen} /> : null}
-          {errors.form ? (
-            <Callout tone="danger" title="Couldn't reach your calendar" alert>
-              {errors.form}
-            </Callout>
-          ) : null}
         </form>
       ) : null}
       <div className={cn(status.available && "mt-6 border-t border-line pt-5")}>
@@ -326,7 +388,7 @@ function PasswordAgain({ status, reason }: { status: CalendarSyncStatus; reason:
     <Callout tone="warn" title={reason} className="mt-4">
       <form onSubmit={submit} noValidate className="mt-2 flex flex-wrap items-end gap-2">
         <Field id="cal-sync-again" label="App password" error={error ?? undefined} className="min-w-0 flex-1 basis-56">
-          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" disabled={connect.isPending} />
+          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" readOnly={connect.isPending} />
         </Field>
         <Button type="submit" variant="primary" icon={RefreshCw} loading={connect.isPending}>
           Save and sync
@@ -352,11 +414,16 @@ function DisconnectDialog({ open, onClose, status }: { open: boolean; onClose: (
     disconnect.mutate(remove, {
       onSuccess: ({ removed }) => {
         close();
+        // the card becomes the form to connect: its heading takes the focus of the gone "Disconnect…"
+        focusWhenReady(() => (document.getElementById("calendar-sync-form") ? document.getElementById(HEADING_ID) : null));
         toast.success(`Disconnected ${where}`, {
           description: remove ? `${removed} ${removed === 1 ? "event was" : "events were"} removed from the calendar. The app password was forgotten.` : "Ordnung's events stay in the calendar. The app password was forgotten.",
         });
       },
-      onError: (err) => setError(err instanceof ApiError ? err.message : "Ordnung didn't answer. Is it still running?"),
+      onError: (err) => {
+        setError(err instanceof ApiError ? err.message : "Ordnung didn't answer. Is it still running?");
+        focusWhenReady(() => document.getElementById("cal-sync-disconnect-error"));
+      },
     });
   return (
     <Dialog
@@ -387,9 +454,11 @@ function DisconnectDialog({ open, onClose, status }: { open: boolean; onClose: (
         description="Only the events Ordnung put there — nothing else in the calendar is touched."
       />
       {error ? (
-        <Callout tone="danger" title="The events couldn't be removed" alert className="mt-4">
-          {error} {remove ? "Untick the box to disconnect and leave them there." : null}
-        </Callout>
+        <div id="cal-sync-disconnect-error" tabIndex={-1} className="mt-4 rounded-xl">
+          <Callout tone="danger" title={remove ? "The events couldn't be removed" : "Couldn't disconnect"} alert>
+            {error} {remove ? "Untick the box to disconnect and leave them there." : null}
+          </Callout>
+        </div>
       ) : null}
     </Dialog>
   );
@@ -427,7 +496,7 @@ function Connected({ status }: { status: CalendarSyncStatus }) {
   return (
     <SettingsCard
       title={TITLE}
-      id="set-cal-sync"
+      id={HEADING_ID}
       description={DESCRIPTION}
       footer={<SaveBar dirty={mode !== status.mode} saving={update.isPending} onSave={saveMode} onDiscard={() => setMode(status.mode)} />}
     >
@@ -436,7 +505,7 @@ function Connected({ status }: { status: CalendarSyncStatus }) {
           <CalendarCheck className="size-5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] font-semibold text-ink">
+          <p id={CONNECTED_ID} tabIndex={-1} className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-sm text-[15px] font-semibold text-ink">
             <span className="min-w-0 [overflow-wrap:anywhere]">Connected to {where}</span>
             <Badge tone={status.mode === "discreet" ? "ok" : "neutral"} dot>
               {modeLabel(status.mode)}
@@ -454,7 +523,8 @@ function Connected({ status }: { status: CalendarSyncStatus }) {
         <PasswordAgain status={status} reason={!status.password_saved ? "The app password isn't saved on this computer" : "Paused: the server refused the app password"} />
       ) : null}
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button size="sm" variant="secondary" icon={RefreshCw} onClick={syncNow} loading={run.isPending} disabled={!status.password_saved}>
+        {/* paused: the refused password would be tried again — "Save and sync" above is the way on */}
+        <Button size="sm" variant="secondary" icon={RefreshCw} onClick={syncNow} loading={run.isPending} disabled={needsPassword}>
           Sync now
         </Button>
         <Button size="sm" variant="ghost" icon={Link2Off} onClick={() => setDisconnecting(true)}>
@@ -474,7 +544,7 @@ export function CalendarSyncCard() {
   const status = useCalendarSync();
   if (status.isPending)
     return (
-      <SettingsCard title={TITLE} id="set-cal-sync" description={DESCRIPTION}>
+      <SettingsCard title={TITLE} id={HEADING_ID} description={DESCRIPTION}>
         <div aria-busy="true" className="space-y-3">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-2/3" />
@@ -483,13 +553,17 @@ export function CalendarSyncCard() {
     );
   if (status.isError)
     return (
-      <SettingsCard title={TITLE} id="set-cal-sync" description={DESCRIPTION}>
-        <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] leading-5 text-danger-ink">
-          Couldn't load calendar sync — is Ordnung still running?
-          <Button size="sm" variant="ghost" icon={RotateCw} onClick={() => void status.refetch()} loading={status.isFetching}>
-            Try again
-          </Button>
-        </div>
+      <SettingsCard title={TITLE} id={HEADING_ID} description={DESCRIPTION}>
+        <LoadError
+          what="calendar sync"
+          description="Nothing was sent or changed — Ordnung didn't answer. Is it still running?"
+          error={status.error}
+          onRetry={() => void status.refetch()}
+          retrying={status.isFetching}
+          headingLevel={4}
+          variant="plain"
+          size="sm"
+        />
       </SettingsCard>
     );
   // a fresh editor after connecting or disconnecting (its fields belong to one state)

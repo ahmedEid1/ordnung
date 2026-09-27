@@ -68,7 +68,7 @@ for (const [width, height] of [
     await expect(card.getByRole("radio", { name: "Discreet" })).toBeChecked();
     await card.getByRole("radio", { name: "With details" }).click();
     await settle(page);
-    await expect(card.getByLabel("Show it from")).toHaveValue("08:00");
+    await expect(card.getByLabel("Show it at")).toHaveValue("08:00");
     const preview = card.getByRole("figure");
     await expect(preview).toContainText("Today it would say");
     await inside(preview, card);
@@ -90,6 +90,22 @@ for (const [width, height] of [
     const card = page.getByRole("region", { name: "Encrypted backup" });
     await expect(card).toContainText(/Now: \d+ letters · \d+ files · about/);
     await inside(card.getByText(/^ordnung restore /), card);
+    // the date in the file name is never split over two lines (it is copied by hand sometimes)
+    const dateLines = await card.getByText(/^ordnung restore /).evaluate((code) => {
+      const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        if (!/\d{4}\u2011\d{2}\u2011\d{2}/.test(n.textContent ?? "")) continue;
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
+      }
+      return -1;
+    });
+    expect(dateLines).toBe(1);
+    // the footer's button lines up with the card's text (at 320 px its label is wider than the row)
+    const button = (await card.getByRole("button", { name: "Download encrypted backup…" }).boundingBox())!;
+    const heading = (await card.getByRole("heading", { name: "Encrypted backup" }).boundingBox())!;
+    expect(button.x).toBeGreaterThanOrEqual(heading.x - 0.5);
     await noSidewaysScroll(page);
     await card.getByRole("button", { name: "Download encrypted backup…" }).click();
     const dialog = page.getByRole("dialog", { name: "Download an encrypted backup" });
@@ -103,6 +119,68 @@ for (const [width, height] of [
     await noSidewaysScroll(page);
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toBeHidden();
+  });
+}
+
+/** Calendar sync available (the demo itself refuses to connect): the form, as on your own Ordnung. */
+const AVAILABLE = {
+  available: true,
+  unavailable: null,
+  install_command: null,
+  connected: false,
+  url: null,
+  username: null,
+  calendar_name: null,
+  mode: "discreet",
+  password_saved: false,
+  paused: false,
+  events: 32,
+  synced: 0,
+  last_sync: null,
+};
+
+for (const [width, height] of [
+  [320, 640],
+  [390, 844],
+]) {
+  test(`calendar sync at ${width}×${height}: what "Find my calendars" says is on screen, and "Show fewer" keeps its button in view`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.route(
+      (url) => url.pathname === "/api/calendar/sync",
+      (route) => (route.request().method() === "GET" ? route.fulfill({ json: AVAILABLE }) : route.fallback()),
+    );
+    await page.route(
+      (url) => url.pathname === "/api/calendar/sync/discover",
+      (route) => route.fulfill({ status: 502, json: { detail: "Couldn't reach caldav.icloud.com.", code: "network" } }),
+    );
+    await open(page, "/settings?section=calendar", "Settings");
+    const card = page.getByRole("region", { name: "Sync with your own calendar" });
+    await card.getByLabel("Calendar or server address").fill("https://caldav.icloud.com");
+    await card.getByLabel("User name").fill("samantha.rivera-musterfrau@icloud.com");
+    await card.getByLabel("App password").fill("abcd-efgh-ijkl-mnop");
+    // sent with Enter from the password field, far above the footer on a phone
+    await card.getByLabel("App password").press("Enter");
+    const error = card.getByRole("alert").filter({ hasText: "Couldn't reach caldav.icloud.com." });
+    await expect(error).toBeFocused();
+    await expect(error).toBeInViewport();
+    await expect(card.getByRole("button", { name: "Find my calendars" })).toBeInViewport();
+    await inside(error, card);
+    await noSidewaysScroll(page);
+
+    // the preview opens on what is still to come, and collapsing it keeps the toggle on screen
+    const toggle = card.getByRole("button", { name: /^Show all \d+ events/ });
+    await toggle.click();
+    await card.getByRole("button", { name: "Show fewer" }).scrollIntoViewIfNeeded();
+    await card.getByRole("button", { name: "Show fewer" }).click();
+    const back = card.getByRole("button", { name: /^Show all \d+ events/ });
+    await expect(back).toBeFocused();
+    await expect(back).toBeInViewport({ ratio: 1 });
+    const covered = await back.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !(top && (el === top || el.contains(top)));
+    });
+    expect(covered, "the focused toggle is under the top bar").toBe(false);
   });
 }
 

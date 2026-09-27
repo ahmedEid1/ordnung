@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BellRing, CircleCheck, MonitorSmartphone, Power, RotateCw, TriangleAlert } from "lucide-react";
+import { BellRing, CircleCheck, MonitorSmartphone, Power, TriangleAlert } from "lucide-react";
 import { useDesktopReminders, useSettings, useTestDesktopNotification, useUpdateSettings } from "@/api/hooks";
 import type { AppSettings, DesktopReminders, NotificationText } from "@/api/types";
 import { LogoMark } from "@/components/shell/Logo";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { Field, Input, Switch } from "@/components/ui/Field";
+import { LoadError } from "@/components/ui/LoadError";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
@@ -14,7 +15,7 @@ import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { cn } from "@/lib/utils";
 import { isStaticDemo } from "@/mocks/mode";
 import { BreakablePath } from "./DataSection";
-import { autostartLabel, DESKTOP_MODES, MODE_HINTS, previewFor, testMode, testOutcome, timeError, type DesktopSetting } from "./desktop";
+import { autostartLabel, DESKTOP_MODES, failureLine, MODE_HINTS, previewFor, savedNote, testMode, testOutcome, timeError, type DesktopSetting } from "./desktop";
 import { SaveBar, SettingsCard } from "./SettingsCard";
 
 const TOOL_NAMES: Record<string, string> = { "notify-send": "notify-send", osascript: "macOS notifications", powershell: "Windows notifications" };
@@ -79,6 +80,12 @@ function StartAtLogin({ status }: { status: DesktopReminders | undefined }) {
             — <code className={code}>ordnung autostart disable</code> undoes it.
           </span>
         </p>
+      ) : info && info.command === null ? (
+        // the demo: its folder is started with `ordnung demo`, never at login
+        <p className="mt-1 text-[13px] leading-relaxed text-muted">
+          The demo doesn't start at login. With your own letters, <code className={code}>ordnung autostart enable</code> starts Ordnung in the background
+          each time you log in, so the notification comes with the browser closed.
+        </p>
       ) : (
         <>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">
@@ -103,6 +110,8 @@ function Editor({ settings }: { settings: AppSettings }) {
   const update = useUpdateSettings();
   const test = useTestDesktopNotification();
   const staticDemo = isStaticDemo();
+  // `ordnung demo` never notifies on its own (the static demo can't at all)
+  const demo = Boolean(status.data?.demo);
   const saved = { mode: settings.desktop_notifications, time: settings.desktop_notify_time };
   const [mode, setMode] = useState<DesktopSetting>(saved.mode);
   const [time, setTime] = useState(saved.time);
@@ -115,7 +124,7 @@ function Editor({ settings }: { settings: AppSettings }) {
       setMode(s.desktop_notifications);
       setTime(s.desktop_notify_time);
       setShowError(false);
-      return s.desktop_notifications === "off" ? "No desktop notification from now on." : `Once a day from ${s.desktop_notify_time}, while Ordnung runs.`;
+      return savedNote(s.desktop_notifications, s.desktop_notify_time, staticDemo ? "static" : demo ? "demo" : null);
     });
 
   const sendTest = () =>
@@ -128,6 +137,7 @@ function Editor({ settings }: { settings: AppSettings }) {
 
   const data = status.data;
   const tool = data?.tool ? (TOOL_NAMES[data.tool] ?? data.tool) : null;
+  const failure = staticDemo || mode === "off" ? null : failureLine(data);
 
   return (
     <SettingsCard
@@ -168,17 +178,21 @@ function Editor({ settings }: { settings: AppSettings }) {
           <SegmentedControl label="What the desktop notification shows" value={mode} onChange={setMode} options={DESKTOP_MODES} fill="phone" />
           <p className="mt-2 text-sm leading-5 text-muted">{MODE_HINTS[mode]}</p>
           <div className="mt-5 grid gap-5 sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
-            <Field id="desktop-time" label="Show it from" hint="Within 15 minutes of this time — or when Ordnung starts, if later." error={showError ? error : undefined}>
+            <Field id="desktop-time" label="Show it at" hint="At this time — or a minute after Ordnung starts, if it wasn't running then." error={showError ? error : undefined}>
               <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} step={60} required className="tabular-nums" />
             </Field>
             {status.isError ? (
-              <div role="alert" className="min-w-0">
-                <p className="text-sm font-medium text-ink">Today it would say</p>
-                <p className="mt-1.5 text-[13px] leading-5 text-danger-ink">Couldn't load the preview — is Ordnung still running?</p>
-                <Button size="sm" variant="ghost" icon={RotateCw} className="mt-1" onClick={() => void status.refetch()} loading={status.isFetching}>
-                  Try again
-                </Button>
-              </div>
+              <LoadError
+                what="today's notification"
+                description="Your setting is safe — Ordnung didn't answer. Is it still running?"
+                error={status.error}
+                onRetry={() => void status.refetch()}
+                retrying={status.isFetching}
+                headingLevel={4}
+                variant="plain"
+                size="sm"
+                className="min-w-0"
+              />
             ) : (
               <NotificationPreview text={previewFor(data, mode)} loading={status.isPending} />
             )}
@@ -204,8 +218,21 @@ function Editor({ settings }: { settings: AppSettings }) {
               <MonitorSmartphone className="size-3.5 shrink-0" aria-hidden /> Shown with {tool}
             </span>
           ) : null}
+          {failure ? (
+            <p className="flex basis-full gap-1.5 text-[13px] leading-5 text-warn-ink">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span className="min-w-0 [overflow-wrap:anywhere]">{failure}</span>
+            </p>
+          ) : null}
         </div>
       )}
+
+      {demo && !staticDemo && mode !== "off" ? (
+        <p className="mt-3 rounded-lg bg-surface-2/70 px-3 py-2 text-[12.5px] leading-5 text-muted" role="note">
+          The demo doesn't notify on its own —{" "}
+          {data?.missing ? "the preview shows what it would say." : "“Show a test notification” shows what it would say."}
+        </p>
+      ) : null}
 
       <StartAtLogin status={data} />
     </SettingsCard>

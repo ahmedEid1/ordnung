@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { Check, Copy, Download, FolderOpen, RotateCcw, Trash2 } from "lucide-react";
 import { api } from "@/api/endpoints";
 import { ApiError } from "@/api/client";
-import { useDeleteEverything } from "@/api/hooks";
+import { useCalendarSync, useDeleteEverything } from "@/api/hooks";
 import type { Health } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -15,6 +15,7 @@ import { DEMO_CMD } from "@/features/onboarding/options";
 import { useClipboard } from "@/features/today/clipboard";
 import { useTodayISO } from "@/lib/today";
 import { BackupCard } from "./BackupCard";
+import { hostOf } from "./calendarSync";
 import { exportFileName } from "./logic";
 import { SectionHeading, SettingsCard } from "./SettingsCard";
 
@@ -50,10 +51,28 @@ export function BreakablePath({ path }: { path: string }) {
 /** The word to type in the "Delete everything" dialog. */
 const DELETE_WORD = "DELETE";
 
-/** "Delete everything": a typed confirmation, then the API wipes the data folder and the app starts over. */
-function DeleteEverythingDialog({ open, onClose, onExport, exporting }: { open: boolean; onClose: () => void; onExport: () => void; exporting: boolean }) {
+/**
+ * "Delete everything": a typed confirmation, then the API wipes the data folder and the app starts
+ * over. A connected calendar (calendar sync) loses Ordnung's events and its app password first — the
+ * dialog says so, and the API refuses (nothing deleted) when that can't be done.
+ */
+function DeleteEverythingDialog({
+  open,
+  onClose,
+  onExport,
+  onBackup,
+  exporting,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onExport: () => void;
+  onBackup: () => void;
+  exporting: boolean;
+}) {
   const navigate = useNavigate();
   const remove = useDeleteEverything();
+  const sync = useCalendarSync(open); // asked only when the dialog opens
+  const calendar = sync.data?.connected ? (sync.data.calendar_name ?? hostOf(sync.data.url)) : null;
   const [typed, setTyped] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   // the word in any case: "delete" typed on a keyboard means the same (the API gets "DELETE")
@@ -74,10 +93,14 @@ function DeleteEverythingDialog({ open, onClose, onExport, exporting }: { open: 
         setTyped("");
         onClose();
         const kept = result?.kept ?? [];
+        const events = result?.calendar_events_removed;
+        const fromCalendar =
+          events == null ? "" : ` Ordnung's ${events === 1 ? "event was" : `${events} events were`} removed from your calendar, and its app password from this computer.`;
         toast.success("Everything was deleted", {
-          description: kept.length
-            ? `Ordnung started over. It left ${kept.length === 1 ? "one file" : `${kept.length} files`} it didn't create: ${kept.join(", ")}.`
-            : "Ordnung started over with an empty folder.",
+          description:
+            (kept.length
+              ? `Ordnung started over. It left ${kept.length === 1 ? "one file" : `${kept.length} files`} it didn't create: ${kept.join(", ")}.`
+              : "Ordnung started over with an empty folder.") + fromCalendar,
           duration: 8000,
         });
         navigate("/welcome", { replace: true });
@@ -110,11 +133,21 @@ function DeleteEverythingDialog({ open, onClose, onExport, exporting }: { open: 
       <form onSubmit={submit} className="space-y-4">
         <p className="text-[13.5px] leading-relaxed text-ink/85">
           Want to keep a copy?{" "}
+          <Button variant="link" size="sm" onClick={onBackup} className="align-baseline">
+            Download an encrypted backup first
+          </Button>{" "}
+          — everything, restorable — or{" "}
           <Button variant="link" size="sm" onClick={onExport} loading={exporting} className="align-baseline">
-            Download your records first
+            your records as JSON
           </Button>
-          .
+          . Backups you made before stay where you saved them.
         </p>
+        {calendar ? (
+          <p className="text-[13.5px] leading-relaxed text-ink/85 [overflow-wrap:anywhere]">
+            Your calendar “{calendar}” is connected: Ordnung's {sync.data?.synced === 1 ? "event" : `${sync.data?.synced ?? 0} events`} there are removed
+            first, and its app password from this computer's password store. If that can't be done, nothing is deleted.
+          </p>
+        ) : null}
         <Field
           label={
             <>
@@ -145,6 +178,7 @@ export function DataSection({ health }: { health: Health }) {
   const { copy, copied } = useClipboard();
   const [busy, setBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
   const staticDemo = isStaticDemo();
 
   const exportJson = async () => {
@@ -185,7 +219,7 @@ export function DataSection({ health }: { health: Health }) {
           <p className="mt-3 text-sm leading-5 text-muted">To take everything to another drive or computer, download an encrypted backup below.</p>
         </SettingsCard>
 
-        <BackupCard />
+        <BackupCard open={backupOpen} onOpenChange={setBackupOpen} />
 
         <SettingsCard
           title="Download a copy of your records"
@@ -227,8 +261,9 @@ export function DataSection({ health }: { health: Health }) {
                 <Trash2 className="size-4 shrink-0" aria-hidden /> Delete everything
               </h3>
               <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-ink/85">
-                Deletes every letter and its original file, all dates, contracts, drafts and chats, and your settings — Ordnung starts over empty. There is
-                no account and no copy anywhere else. Letters Claude already read were processed through your Claude account under Anthropic's terms.
+                Deletes every letter and its original file, all dates, contracts, drafts and chats, and your settings — Ordnung starts over empty. Ordnung
+                has no account and keeps no copy anywhere else; a calendar connected for calendar sync loses Ordnung's events first. Backups you made stay
+                where you saved them. Letters Claude already read were processed through your Claude account under Anthropic's terms.
               </p>
             </div>
             {/* the action where the other cards on this page have theirs: in the footer, on the right */}
@@ -239,7 +274,17 @@ export function DataSection({ health }: { health: Health }) {
             </div>
           </section>
         )}
-        <DeleteEverythingDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} onExport={() => void exportJson()} exporting={busy} />
+        <DeleteEverythingDialog
+          open={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          onExport={() => void exportJson()}
+          // one dialog at a time: the backup's opens in place of this one
+          onBackup={() => {
+            setDeleteOpen(false);
+            setBackupOpen(true);
+          }}
+          exporting={busy}
+        />
       </div>
     </section>
   );

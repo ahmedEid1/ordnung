@@ -79,6 +79,28 @@ export function hostOf(url: string | null | undefined): string {
   }
 }
 
+/** "Found 1 calendar: Privat." / "Found 3 calendars — choose one." (the footer says what was found). */
+export function foundLine(calendars: CalendarChoice[]): string {
+  if (calendars.length !== 1) return `Found ${calendars.length} calendars — choose one.`;
+  const name = calendars[0]!.name?.trim();
+  return name ? `Found 1 calendar: ${name}.` : "Found 1 calendar (it has no name).";
+}
+
+/** An event whose day is before `today` (an overdue date: its alarms have rung already). */
+export function isPastEvent(event: Pick<CalendarEventPreview, "start">, today: string): boolean {
+  return event.start.slice(0, 10) < today;
+}
+
+/**
+ * The preview's order: what is still to come first (by date, as the API sends it), then the dates
+ * that have passed — so the first events shown are ones whose alarms will ring.
+ */
+export function previewOrder<T extends Pick<CalendarEventPreview, "start">>(events: T[], today: string): { events: T[]; past: number } {
+  const upcoming = events.filter((e) => !isPastEvent(e, today));
+  const past = events.filter((e) => isPastEvent(e, today));
+  return { events: [...upcoming, ...past], past: past.length };
+}
+
 /** When an event is: "Tue 29 Sep" (all day) or "Wed 14 Oct, 10:00" (its own wall-clock time). */
 export function eventWhen(event: Pick<CalendarEventPreview, "start" | "all_day">, today?: string): string {
   const day = formatDate(event.start.slice(0, 10), { today });

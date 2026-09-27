@@ -1,5 +1,6 @@
 /** Settings → Reminders → the morning desktop notification: pure helpers (see `notify/desktop.py`). */
 import type { AppSettings, DesktopMode, DesktopReminders, NotificationText } from "@/api/types";
+import { formatDate } from "@/lib/format";
 
 export type DesktopSetting = AppSettings["desktop_notifications"];
 
@@ -11,7 +12,7 @@ export const DESKTOP_MODES: { value: DesktopMode; label: string; shortLabel?: st
 
 /** What each choice means, in one line under the choice. */
 export const MODE_HINTS: Record<DesktopMode, string> = {
-  discreet: "Only a count, like “2 things due this week” — no names or amounts, so nothing private shows on a lock screen.",
+  discreet: "Only counts, like “1 due today · 2 more this week” — no names or amounts, so nothing private shows on a lock screen.",
   full: "What is due, with amounts and the day to act. Anyone who can see your screen can read it.",
 };
 
@@ -38,6 +39,24 @@ export function previewFor(status: DesktopReminders | undefined, setting: Deskto
 export function testOutcome(shown: boolean, detail: string | null | undefined): { tone: "success" | "warn"; title: string; description: string } {
   if (shown) return { tone: "success", title: "Test notification sent", description: "Look at the corner of your screen. The morning one still comes as planned." };
   return { tone: "warn", title: "No notification appeared", description: detail || "This computer couldn't show it. Your calendar alarms still work." };
+}
+
+/** What the save bar says after its "Saved." (the demos can't notify on their own). */
+export function savedNote(setting: DesktopSetting, time: string, demo: "static" | "demo" | null): string {
+  if (setting === "off") return "No desktop notification from now on.";
+  if (demo === "static") return "For this visit only — the online demo can't show notifications on your computer.";
+  if (demo === "demo") return "The demo doesn't notify on its own — the preview shows what it would say.";
+  return `Once a day at ${time}, while Ordnung runs.`;
+}
+
+/**
+ * The last notification the system couldn't show, in words — only while it is the latest news (a
+ * notification shown since clears it; one given up on after its tries is shown until another day's).
+ */
+export function failureLine(status: Pick<DesktopReminders, "last_failure" | "last_failure_on" | "last_shown_on"> | undefined): string | null {
+  if (!status?.last_failure || !status.last_failure_on) return null;
+  if (status.last_shown_on && status.last_shown_on > status.last_failure_on) return null;
+  return `The last notification (${formatDate(status.last_failure_on)}) couldn't be shown: ${status.last_failure}`;
 }
 
 /** Start at login, in words for the badge. */
