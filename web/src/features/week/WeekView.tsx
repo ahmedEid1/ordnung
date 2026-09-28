@@ -25,6 +25,7 @@ import { useFormatDate } from "@/lib/today";
 import { cn, prefersReducedMotion } from "@/lib/utils";
 import { STEP_META, entryHref, stepCount, type StepId } from "./steps";
 import { WeekEntryRow } from "./WeekEntryRow";
+import { useStickyError } from "@/lib/hooks";
 
 /** The header's line: how long, not how many steps — "Act now" comes and goes (the card says "Step 1 of 8"). */
 export const describeSession = (minutes = 10) => `About ${minutes} minutes, one short step at a time through your paperwork. Nothing is paid, sent or closed for you.`;
@@ -124,9 +125,9 @@ function StepPanel({ step, index, total }: { step: WeekStep; index: number; tota
           {last ? "Nothing here this week — you're done: press Finish." : "Nothing here this week — on to the next step."}
         </div>
       )}
-      {step.more ? (
+      {step.more || (meta.more.always && step.entries.length) ? (
         <p className="mt-3 text-[13.5px] text-muted">
-          And {step.more} more.{" "}
+          {step.more ? <>And {step.more} more. </> : null}
           <Link to={meta.more.to} className="rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
             {meta.more.label}
           </Link>
@@ -143,13 +144,10 @@ export function nextPromptText(week: Pick<WeeklySession, "next_prompt">, formatD
 
 /** Rows that are things to do today (not overdue; not an event, a letter added or something done). */
 const TODAY_ROLES = new Set<NonNullable<WeekEntry["date_role"]>>(["due", "by", "on", "send_by", "transfer_by", "pay_by", "act_today", "at_appointment", "decide_by", "reply_by"]);
-/** What the session's counts cover (`week.overdue_count`, `week.deadlines`): to-dos — not a reply awaited
- * when overdue — and contract decisions; not a letter to send (its deadline is the to-do), nor Please
- * check, which lists a to-do again beside its own step. */
-const COUNTED_OVERDUE = new Set<string>(["deadline", "payment", "task"]);
-
-export const isCountedOverdue = (entry: WeekEntry, step: WeekStep): boolean =>
-  entry.overdue && entry.ref.type === "item" && COUNTED_OVERDUE.has(entry.kind) && step.id !== "waiting" && step.id !== "check";
+/** What the session's overdue count covers: the rows the server marks `overdue` (`week.py`, "The ending") —
+ * to-dos past their due date, letters to send past the day to arrive by, and Waiting for entries past their
+ * day — never Compare with the letter, which lists a to-do again beside its own step. */
+export const isCountedOverdue = (entry: WeekEntry, step: WeekStep): boolean => entry.overdue && step.id !== "check";
 
 export const isCountedToday = (entry: WeekEntry, step: WeekStep, today: string): boolean =>
   !entry.overdue &&
@@ -219,7 +217,8 @@ function AllClear({ week, onShow }: { week: WeeklySession; onShow: (step: StepId
           <TriangleAlert className="size-7" />
         </span>
       ) : (
-        <EmptyArt kind="clear" className="mb-3" />
+        // the tick is for "All clear": a day with something to do shows its calendar
+        <EmptyArt kind={today ? "calendar" : "clear"} className="mb-3" />
       )}
       <h2 id="week-done-title" ref={heading} tabIndex={-1} className="display text-[26px] font-semibold leading-tight text-ink outline-none">
         {title}
@@ -324,10 +323,8 @@ export function WeekView() {
   const [visited, setVisited] = useState<Set<StepId>>(() => new Set());
   const [finished, setFinished] = useState(false);
 
-  const [lastError, setLastError] = useState<unknown>(null);
-  if (q.error && q.error !== lastError) setLastError(q.error);
-  else if (q.data && lastError !== null) setLastError(null);
-  const failed = !q.data && (q.isError || lastError !== null);
+  const lastError = useStickyError(q.error, Boolean(q.data));
+  const failed = !q.data && (q.isError || Boolean(lastError));
 
   const week = q.data;
   const steps = week?.steps ?? [];
@@ -412,7 +409,7 @@ export function WeekView() {
       {header}
       <div className="@container">
         <div className="mb-5 @[52rem]:hidden">
-          {/* ticks only on the steps looked at (as the step list beside it); the card says "Step n of m" */}
+          {/* ticks only on the steps looked at (as the step list beside it), and any step a tap away; the card says "Step n of m" */}
           <Stepper
             steps={steps.map((s) => ({ id: s.id, label: s.title, short: STEP_META[s.id].short }))}
             current={index}
@@ -421,6 +418,7 @@ export function WeekView() {
             fallback="none"
             size="sm"
             label="Steps of the session"
+            onPick={go}
           />
         </div>
         <div className={LAYOUT}>
@@ -436,7 +434,7 @@ export function WeekView() {
                   Finish — all done
                 </Button>
               ) : (
-                // the accessible name starts with the visible words ("Next: Check — Please check"), WCAG 2.5.3
+                // the accessible name starts with the visible words ("Next: Compare — Compare with the letter"), WCAG 2.5.3
                 <Button variant="primary" onClick={() => go(index + 1)} className="min-w-0 max-w-full">
                   <span className="truncate">
                     Next: {nextStep ? STEP_META[nextStep.id].short : ""}

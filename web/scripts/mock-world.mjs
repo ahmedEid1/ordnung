@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Print the static demo's world as JSON — the in-memory mock database (`src/mocks/db.ts`) as it starts:
- * profile, today, parties, threads, letters, to-dos, contracts and drafts.
+ * profile, today, parties, threads, letters, to-dos, contracts, drafts, their proofs and call notes.
  *
  * `scripts/gen_mock_numbers.py` feeds it to Ordnung's own Python code, so the static demo's My numbers
  * and weekly session are what the real app computes for the same letters (with the same ids).
@@ -28,5 +28,7 @@ process.stdout.write(
     items: s.items,
     contracts: s.contracts,
     drafts: s.drafts,
+    proofs: s.proofs,
+    calls: s.calls,
   }),
 );

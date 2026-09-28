@@ -13,6 +13,7 @@ import pytest
 from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
 from ordnung import clock
 from ordnung.db.store import Store
+from ordnung.drafts.proof import MISSING_TRACKING
 from ordnung.models import DateSpec, Evidence, WeeklySession, WeekStep
 from ordnung.secretary.week import (
     AT_APPOINTMENT_NOTE,
@@ -21,8 +22,8 @@ from ordnung.secretary.week import (
     MISSED_POST_NOTE,
     MISSED_TRANSFER_NOTE,
     OVERDUE_NOTE,
-    PROOF_BY_CHANNEL,
     SESSION_KEY,
+    UNCONFIRMED_AMOUNT_NOTE,
     Moment,
     SessionState,
     is_past_due,
@@ -150,10 +151,10 @@ def test_no_prompt_when_there_is_nothing_to_review(store: Store) -> None:
     assert week.steps[0].title == "New in the last 7 days"
     assert [step.summary for step in week.steps] == [
         "No new letters since Mon 21 Sep",
-        "Nothing to check",
+        "Nothing to compare",
         "Nothing to pay this week",
         "Nothing to post",
-        "Not waiting for any reply",
+        "Not waiting for anything",
         "No decisions due in the next 30 days",
         "Nothing to file this week",
     ]
@@ -206,19 +207,29 @@ def test_the_steps_over_the_seeded_ledger(store: Store, ids: dict[str, str]) -> 
 
     check = _step(week, "check")
     assert _refs(check) == [ids["parking_payment"]]
-    assert check.entries[0].note == "Not found in the letter — compare it with the letter."
+    assert check.entries[0].note == "Its date wasn't found in the letter — compare it with the letter."
 
     pay = _step(week, "pay")
     # no scam demand, no invoice payment the reminder took over, no money coming in
     assert _refs(pay) == [ids["parking_payment"], ids["dunning_payment"], ids["semester_fee"]]
     assert pay.total == 440.49 and pay.total_other_currencies == {}
-    assert pay.entries[0].note == "The amount wasn't confirmed against the letter — check it before paying."
+    assert pay.entries[0].note == UNCONFIRMED_AMOUNT_NOTE
     assert pay.entries[1].item is not None and pay.entries[1].item.id == ids["dunning_payment"]
     assert pay.summary == "3 transfers to make · 1 more payment in the next 30 days"
 
+    # the Waiting for page's entries: the tax refund the assessment promised (the enrolment question's
+    # follow-up was closed — it has none of its own in the seed)
     waiting = _step(week, "waiting")
-    assert _refs(waiting) == [ids["followup"]]
-    assert waiting.entries[0].note == "No reply yet? Call them or send a short reminder."
+    assert _refs(waiting) == [ids["tax_refund"]]
+    (refund,) = waiting.entries
+    assert (refund.date, refund.date_role, refund.overdue, refund.amount) == (
+        "2026-10-05",
+        "expected",
+        False,
+        412.0,
+    )
+    assert refund.note is not None and refund.note.startswith("Promised in “Income tax assessment 2025”")
+    assert waiting.summary == "Waiting for 1 thing"
 
     decide = _step(week, "decide")
     assert _refs(decide) == [ids["phone"], ids["tax_objection"]]
@@ -394,7 +405,10 @@ def test_overdue_to_dos_are_listed_and_the_session_never_ends_all_clear(store: S
     now = _step(week, "now")
     assert _refs(now) == [task, deadline] and now.summary == "2 overdue"
     assert all(row.overdue and row.tone == "danger" for row in now.entries)
-    assert week.overdue == 2  # money coming in is never overdue
+    # money coming in is no to-do to act on, but a refund 8 days late is overdue in Waiting for (ask them)
+    assert week.overdue == 3
+    (late,) = _step(week, "waiting").entries
+    assert late.overdue and late.tone == "danger" and late.date_role == "expected"
     assert week.next_deadline is not None and week.next_deadline.date == "2026-10-20"
     assert week.due is True and "now" in {step.id for step in week.steps}
 
@@ -572,11 +586,17 @@ def test_money_coming_in_is_expected_not_paid(store: Store) -> None:
     (row,) = _step(week, "check").entries
     assert (row.ref.id, row.date_role, row.date, row.overdue) == (refund, "expected", "2026-10-05", False)
     assert _step(week, "pay").entries == [] and week.next_deadline is None
-    # once its day has passed it is late, not overdue: it is not the person's to pay
+    # once its day has passed it is not overdue to pay — it is not the person's to pay — but late in
+    # Waiting for, as on the Waiting for page: the session says so until it is marked received
     later = date(2026, 10, 9)
     clock.set_today(later)
     item = store.get_item(refund)
     assert item is not None and not is_past_due(item, later)
+    week = weekly_session(store, later)
+    assert week.overdue == 1 and _step(week, "pay").entries == []
+    (row,) = _step(week, "waiting").entries
+    assert (row.ref.id, row.overdue, row.tone) == (refund, True, "danger")
+    store.update_item(refund, status="done")
     assert weekly_session(store, later).overdue == 0
 
 
@@ -592,6 +612,9 @@ def test_payments_count_overdue_from_their_due_date_and_a_missed_transfer_day_is
         send_by="2026-09-25",
         amount=20.0,
         doc_id=doc,
+        evidence=[
+            Evidence(doc_id=doc, quote="Bitte zahlen Sie 20,00 € bis zum 29.09.2026.", grounding="verified")
+        ],
     )
     late = add_item(
         store,
@@ -601,6 +624,9 @@ def test_payments_count_overdue_from_their_due_date_and_a_missed_transfer_day_is
         send_by="2026-09-24",
         amount=30.0,
         doc_id=doc,
+        evidence=[
+            Evidence(doc_id=doc, quote="Bitte zahlen Sie 30,00 € bis zum 26.09.2026.", grounding="verified")
+        ],
     )
     week = weekly_session(store, TODAY)
     rows = {row.ref.id: row for row in _step(week, "pay").entries}
@@ -679,7 +705,8 @@ async def test_looks_right_takes_a_mismatched_value_off_please_check(data_dir: P
         check = _step(weekly_session(store, TODAY), "check")
         assert _refs(check) == [objection]
         assert (
-            check.entries[0].note == "Doesn't match its sentence in the letter — compare it with the letter."
+            check.entries[0].note
+            == "Its date doesn't match its sentence in the letter — compare it with the letter."
         )
         confirmed = await api.client.post(f"/api/items/{objection}/confirm")
         assert confirmed.status_code == 200
@@ -761,7 +788,7 @@ def test_a_letter_waiting_or_kept_private_unread_is_never_filed(store: Store, id
     new = _step(weekly_session(store, TODAY), "new")
     assert _refs(new) == [private, held, filed]  # the two that need the person first
     notes = {entry.ref.id: (entry.note, entry.tone) for entry in new.entries}
-    assert notes[held] == ("Waiting for you — read it with Claude or keep it private.", "warn")
+    assert notes[held] == ("Not read yet — read it with Claude or keep it private.", "warn")
     assert notes[private] == ("Kept private — not read, so look through it yourself.", "neutral")
     assert notes[filed] == ("Nothing to do — filed.", "ok")
 
@@ -799,22 +826,15 @@ def test_letters_to_post_and_proof_to_keep(store: Store, ids: dict[str, str]) ->
     ).id
     post = _step(weekly_session(store, TODAY), "post")
     # drafts to send first (the earliest send-by day first), then what was sent since the last session
+    # (neither has a follow-up still open: they are listed for this week only)
     assert _refs(post) == [late, unsent, unknown, registered]  # the enrolment letter was sent on 5 Sep
     rows = {entry.ref.id: entry for entry in post.entries}
     # no day to arrive by: the send-by day is the deadline, and it has passed
     assert rows[late].overdue and rows[late].date_role == "send_by" and rows[late].tone == "danger"
-    assert rows[registered].note == PROOF_BY_CHANNEL["registered_letter"]
+    # what the letter's channel still lacks (drafts.proof.missing), not a note for every channel
+    assert rows[registered].note == MISSING_TRACKING
     assert rows[unknown].note == "Keep a copy and note how and when you sent it."
-    assert post.summary == "2 letters to send · 2 sent — keep the proof"
-
-
-def test_proof_of_sending_is_not_proof_of_arrival() -> None:
-    """The posting receipt of an Einwurf-Einschreiben proves posting; arrival needs the delivery record
-    (BAG, 30.01.2025 – 2 AZR 68/24). A fax report or a sent e-mail shows sending, not arrival."""
-    registered = PROOF_BY_CHANNEL["registered_letter"]
-    assert "Auslieferungsbeleg" in registered and "not arrival" in registered and "2 AZR 68/24" in registered
-    assert "not that it arrived" in PROOF_BY_CHANNEL["email"]
-    assert "not for certain that it arrived" in PROOF_BY_CHANNEL["fax"]
+    assert post.summary == "2 letters to send · 2 sent"
 
 
 def test_a_letter_past_its_send_by_day_can_still_arrive_in_time(store: Store) -> None:
@@ -901,3 +921,177 @@ async def test_week_endpoints(data_dir: Path) -> None:
         # writes need the client header like every other change
         refused = await api.client.post("/api/week/done", headers={"X-Ordnung-Client": ""})
         assert refused.status_code in (400, 403)
+
+
+# --------------------------------------------------------------------------------------------------
+# an e-mail that repeats its attached bill: one bill, counted once
+# --------------------------------------------------------------------------------------------------
+
+
+def test_an_emailed_bill_is_counted_once_due_today_overdue_and_after_it_is_paid(store: Store) -> None:
+    """The one inbox's most common bill: an e-mail repeating the payment of the bill attached to it. The
+    bill is the one to pay (``Ledger.is_set_aside``): the session counts one payment due today, one
+    overdue, and — once the bill is paid — ends "All clear" instead of "1 overdue" for ever."""
+    from helpers_secretary import add_emailed_bill
+
+    bill = add_emailed_bill(store, due="2026-10-15")
+    _all_created(store, "2026-10-12T09:00:00Z")
+    today = date(2026, 10, 15)
+    week = weekly_session(store, today)
+    assert week.due_today == 1 and week.overdue == 0
+    assert _refs(_step(week, "pay")) == [bill["bill_payment"]]
+    new = {entry.ref.id: entry.note for entry in _step(week, "new").entries}
+    assert new[bill["bill"]] == "1 open to-do"
+    assert new[bill["email"]] != "1 open to-do"
+
+    week = weekly_session(store, date(2026, 10, 25))
+    assert week.overdue == 1 and week.due_today == 0
+    assert _refs(_step(week, "pay")) == [bill["bill_payment"]]
+
+    store.update_item(bill["bill_payment"], status="done", completed_at="2026-10-20T09:00:00Z")
+    week = weekly_session(store, date(2026, 10, 25))
+    assert week.overdue == 0 and week.next_deadline is None
+    assert not _step(week, "pay").entries
+    assert all(step.id != "now" for step in week.steps)
+
+
+# --------------------------------------------------------------------------------------------------
+# a missed send-by day never suggests a way the letter's form rules out
+# --------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("category", "subject"),
+    [("rent", "Kündigung Mietvertrag Wohnung"), ("employment", "Kündigung Arbeitsvertrag")],
+)
+def test_a_signed_notice_past_its_send_by_day_is_never_sent_by_fax(
+    store: Store, category: str, subject: str
+) -> None:
+    """A tenant's or employee's notice needs a handwritten signature (§§ 568, 623, 126 BGB): by fax or
+    e-mail it is void. Once its day to post has passed, the session names only what the letter's own
+    advice allows that reaches them the same day — handing it over in person."""
+    from ordnung.rules.send import send_guidance
+
+    guidance = send_guidance(
+        "cancellation",
+        contract_category=category,
+        due=date(2026, 10, 5),
+        today=date(2026, 9, 28),  # type: ignore[arg-type]
+    )
+    assert ("fax", False) in [(c.channel, c.allowed) for c in guidance.channels]
+    draft = store.add_draft(
+        kind="cancellation", subject=subject, status="final", send_guidance=guidance.model_dump()
+    ).id
+    today = date(2026, 10, 1)
+    clock.set_today(today)
+    (row,) = _step(weekly_session(store, today), "post").entries
+    assert (row.ref.id, row.date_role, row.due_date) == (draft, "act_today", "2026-10-05")
+    note = (row.note or "").lower()
+    assert "in person" in note and "fax" not in note and "e-mail" not in note and "online" not in note
+    assert "mark it as sent" in note
+
+
+def test_a_text_form_letter_past_its_send_by_day_names_its_same_day_ways(store: Store) -> None:
+    from ordnung.rules.send import send_guidance
+
+    guidance = send_guidance("cancellation", contract_category="mobile", due=date(2026, 10, 5), today=TODAY)
+    store.add_draft(
+        kind="cancellation", subject="Kündigung", status="final", send_guidance=guidance.model_dump()
+    )
+    today = date(2026, 10, 1)
+    clock.set_today(today)
+    (row,) = _step(weekly_session(store, today), "post").entries
+    assert row.date_role == "act_today"
+    assert "Fax" in (row.note or "") and "Cancel button" in (row.note or "")
+
+
+def test_a_rent_contracts_missed_decision_names_no_way_its_form_rules_out(store: Store) -> None:
+    """A contract decision whose day to post has passed: the note follows the cancellation's own advice for
+    the contract's category — a lease is cancelled only by a signed letter, handed over in person now."""
+    from ordnung.secretary.brief import AgendaEntry
+    from ordnung.secretary.triggers import Ledger
+    from ordnung.secretary.week import _contract_entry
+
+    landlord = store.add_party(name="Wohnbau Musterstadt", kind="landlord").id
+    lease = store.add_contract(
+        name="Mietvertrag Wohnung", category="rent", party_id=landlord, start_date="2024-03-01"
+    ).id
+    entry = AgendaEntry.model_validate(
+        {
+            "id": lease,
+            "ref": {"type": "contract", "id": lease},
+            "kind": "contract",
+            "title": "Mietvertrag Wohnung",
+            "date": "2026-09-25",
+        }
+    )
+    row = _contract_entry(Ledger(store, TODAY), entry)
+    note = (row.note or "").lower()
+    assert row.date_role == "act_today" and "in person" in note and "fax" not in note and "e-mail" not in note
+
+
+def test_a_letter_to_send_past_its_day_to_arrive_is_counted_overdue(store: Store) -> None:
+    """A notice drafted but never sent, whose day to arrive by has passed: the session ends "1 overdue",
+    never "All clear" — unless a to-do of the letter it answers carries that day (counted once, there)."""
+    from ordnung.rules.send import send_guidance
+
+    guidance = send_guidance("cancellation", contract_category="rent", due=date(2026, 10, 5), today=TODAY)
+    draft = store.add_draft(
+        kind="cancellation",
+        subject="Kündigung Mietvertrag Wohnung",
+        status="final",
+        send_guidance=guidance.model_dump(),
+    ).id
+    later = date(2026, 10, 7)
+    clock.set_today(later)
+    week = weekly_session(store, later)
+    (row,) = _step(week, "post").entries
+    assert (row.ref.id, row.overdue, row.tone) == (draft, True, "danger")
+    assert week.overdue == 1
+
+    _, doc = _authority(store)
+    carried = store.add_draft(
+        kind="objection",
+        subject="Widerspruch",
+        status="final",
+        doc_id=doc,
+        send_guidance={"send_by": "2026-09-30", "must_arrive_by": "2026-10-02", "channels": []},
+    ).id
+    add_item(store, kind="deadline", title="Widerspruch einlegen", due_date="2026-10-02", doc_id=doc)
+    week = weekly_session(store, later)
+    rows = {entry.ref.id: entry for entry in _step(week, "post").entries}
+    assert rows[carried].tone == "danger" and not rows[carried].overdue  # the to-do is the one counted
+    assert week.overdue == 2
+
+
+def test_the_date_looking_right_never_vouches_for_the_amount_in_pay_this_week(store: Store) -> None:
+    """ "The date looks right" on a photo letter's payment confirms its date (``grounding="user"``); the Pay
+    step keeps asking to compare the amount until the Pay panel's check does — the GiroCode's own rule, so
+    the two never disagree (ADR 0012, point 3)."""
+    from ordnung.api.routes.items import _confirm
+    from ordnung.secretary.girocode_gate import CHECKED
+
+    _, doc = _authority(store)
+    fine = add_item(
+        store,
+        kind="payment",
+        title="Pay Verwarnungsgeld",
+        due_date="2026-10-02",
+        amount=35.0,
+        doc_id=doc,
+        grounding="model_read",
+        evidence=[Evidence(doc_id=doc, quote="Verwarnungsgeld 35,00 EUR", grounding="model_read")],
+    )
+    week = weekly_session(store, TODAY)
+    (row,) = _step(week, "check").entries
+    assert row.note == "Its date was read by AI from a photo — compare it with the paper letter."
+    _confirm(store, fine)
+    week = weekly_session(store, TODAY)
+    assert _step(week, "check").entries == []
+    (pay,) = _step(week, "pay").entries
+    assert pay.note == UNCONFIRMED_AMOUNT_NOTE
+    store.log_activity(
+        CHECKED, "compared", ref_type="item", ref_id=fine, data={"amount": 35.0, "doc_id": doc}
+    )
+    (pay,) = _step(weekly_session(store, TODAY), "pay").entries
+    assert pay.note is None

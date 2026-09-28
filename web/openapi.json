@@ -15106,7 +15106,7 @@
           "kind": {
             "type": "string",
             "title": "Kind",
-            "description": "The item's, letter's or draft's kind, or “contract”"
+            "description": "The item's, letter's or draft's kind, or “contract” (or “call”, a promise)"
           },
           "date": {
             "anyOf": [
@@ -15139,6 +15139,7 @@
                   "decide_by",
                   "sent",
                   "reply_by",
+                  "promised_by",
                   "done"
                 ]
               },
@@ -15252,6 +15253,7 @@
           "overdue": {
             "type": "boolean",
             "title": "Overdue",
+            "description": "Counted in the session's overdue (never on Compare with the letter)",
             "default": false
           },
           "item": {

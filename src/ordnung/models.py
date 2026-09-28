@@ -1874,6 +1874,7 @@ WeekDateRole = Literal[
     "decide_by",
     "sent",
     "reply_by",
+    "promised_by",
     "done",
 ]
 
@@ -1884,7 +1885,9 @@ class WeekEntry(_Model):
     key: str
     ref: RefLink
     title: str
-    kind: str = Field(description="The item's, letter's or draft's kind, or “contract”")
+    kind: str = Field(
+        description="The item's, letter's or draft's kind, or “contract” (or “call”, a promise)"
+    )
     date: str | None = None
     date_role: WeekDateRole | None = None
     due_date: str | None = Field(
@@ -1899,7 +1902,9 @@ class WeekEntry(_Model):
     status: str | None = None
     note: str | None = Field(default=None, description="One line written by code")
     tone: Literal["neutral", "warn", "danger", "ok"] = "neutral"
-    overdue: bool = False
+    overdue: bool = Field(
+        default=False, description="Counted in the session's overdue (never on Compare with the letter)"
+    )
     item: Item | None = Field(default=None, description="The to-do itself (Pay and Confirm need it)")
 
 

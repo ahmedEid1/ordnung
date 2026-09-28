@@ -31,10 +31,13 @@ how many it left out:
    (Please check, open or snoozed to-dos, scam signs, not read yet — being read, waiting for the person's
    answer from the watched folder, or kept private and never read, which is never "nothing to do"), then
    newest first.
-2. *Please check* — values Ordnung could not confirm against the letter
+2. *Compare with the letter* — to-dos whose date Ordnung could not confirm against the letter
    (:func:`~ordnung.secretary.triggers.unconfirmed_reason`: not found in the letter, read by AI from a
-   photo, or not matching its sentence — never once the person confirmed it) of open to-dos still
-   relevant (undated or not past), and letters marked *Please check* with no such to-do.
+   photo, or not matching its sentence — never once the person confirmed it), still relevant (undated or
+   not past), and letters marked *Please check* with no such to-do. The person's "The date looks right"
+   vouches for the date only: a payment's amount is compared in its Pay panel (ADR 0012, point 3), and
+   *Pay this week* warns about an amount by the GiroCode policy's own check
+   (:func:`~ordnung.secretary.girocode_gate.amount_confirmed`).
 3. *Pay this week* — the agenda's payments that are overdue or due within 7 days (and snoozed ones the
    agenda leaves out, by the same rule): transfers first (with the total per currency), then fees paid
    at an appointment (not in the total), then direct debits the sender collects (nothing to do but keep
@@ -42,14 +45,17 @@ how many it left out:
    days. A scam letter's demand is never listed (the agenda leaves it out), nor an invoice a payment
    reminder took over.
 4. *Post and keep proof* — letters drafted but not sent (with their send-by day, and the day they must
-   arrive by beside it), then letters marked sent since the last session with what to keep by that
-   channel: what proves *sending* is not proof that it *arrived*, which the sender must show (§ 130 BGB) —
-   for an Einwurf-Einschreiben the delivery record (Auslieferungsbeleg), not the posting receipt or the
-   online tracking (BAG, 30.01.2025 – 2 AZR 68/24).
-5. *Waiting for* — replies to letters you sent: the open follow-up to-dos Ordnung adds when a letter is
-   marked sent, the earliest first. The full list — money a letter promised and phone promises too — is
-   the *Waiting for* page (:mod:`ordnung.secretary.waiting`), which the step links to. (Hook: that list
-   can become this step's source once the static demo's generator files proofs and call notes.)
+   arrive by beside it; once the send-by day has passed, the ways the letter's own send advice allows
+   that reach them the same day — never a fax or e-mail for a letter that must be signed by hand, §§ 568,
+   623 BGB), then sent letters still waiting for their answer that lack the proof their channel needs
+   (:func:`~ordnung.drafts.proof.missing` — whenever they were sent), then the others sent since the last
+   session, saying so when a proof shows they were delivered. What proves *sending* is not proof that it
+   *arrived*: arrival (Zugang, § 130 BGB) is for the sender to prove — for an Einwurf-Einschreiben with
+   the delivery record (Auslieferungsbeleg); the posting receipt with the online tracking status alone was
+   not accepted as prima facie proof (BAG, 30.01.2025 – 2 AZR 68/24).
+5. *Waiting for* — the *Waiting for* page's open entries (:func:`~ordnung.secretary.waiting.waiting_for`):
+   replies to letters you sent, money a letter promised and promises made on the phone, overdue first; a
+   letter the person said was answered is no longer waited for.
 6. *Decide in the next 30 days* — the agenda's contract decisions (a cancellation that must be sent within
    30 days, or the contract renews) and deadlines for an objection, a declaration or a notice due from
    today on whose day to act is within 30 days — not those of a contract already listed (its row is the
@@ -59,12 +65,14 @@ how many it left out:
    or snoozed (archive the paper; tax-relevant ones stay with the tax papers). Each letter is listed in
    the week it qualifies, not every week.
 
-**The ending.** When deadlines, payments or tasks are overdue (snoozed or not), the session ends saying
-how many (:attr:`~ordnung.models.WeeklySession.overdue`) — never "All clear". Otherwise it ends *All clear
-until …* the earliest day to act from today on (today when a send-by day was missed) of an open or snoozed
-deadline, payment, task or appointment worth acting on (no direct debit, no money coming in) and of the
-agenda's contract decisions — or, when that day is today, with how many of them are to act on today
-(:attr:`~ordnung.models.WeeklySession.due_today`).
+**The ending.** When something is overdue — a deadline, payment or task past its due date (snoozed or
+not), a letter to send past the day it had to arrive by (unless a to-do of its letter carries that day and
+is counted), or an entry of *Waiting for* past its day — the session ends saying how many
+(:attr:`~ordnung.models.WeeklySession.overdue`; the rows counted carry ``overdue``) — never "All clear".
+Otherwise it ends *All clear until …* the earliest day to act from today on (today when a send-by day was
+missed) of an open or snoozed deadline, payment, task or appointment worth acting on (no direct debit, no
+money coming in) and of the agenda's contract decisions — or, when that day is today, with how many of
+them are to act on today (:attr:`~ordnung.models.WeeklySession.due_today`).
 
 **The prompt.** Today suggests the session once — when none was done and no prompt dismissed in the last
 7 days, or on a Sunday 4 days after either — and only when a step has something to show. Doing the
@@ -80,19 +88,25 @@ from datetime import date, datetime, timedelta
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
+from ordnung.drafts.proof import RecordedProof, missing
 from ordnung.models import (
+    Contract,
     Document,
     Draft,
     Item,
     MoneySummary,
     RefLink,
+    SendGuidance,
+    WaitingEntry,
     WeekDateRole,
     WeekEntry,
     WeeklySession,
     WeekStep,
 )
 from ordnung.payments import is_direct_debit
+from ordnung.rules.send import same_day_channels, send_guidance
 from ordnung.secretary.brief import Agenda, AgendaEntry
+from ordnung.secretary.girocode_gate import amount_confirmed
 from ordnung.secretary.triggers import (
     Ledger,
     action_day,
@@ -104,6 +118,7 @@ from ordnung.secretary.triggers import (
     parse_timestamp,
     unconfirmed_reason,
 )
+from ordnung.secretary.waiting import delivered_on, waiting_for
 
 SESSION_KEY = "weekly_session_at"
 DISMISSED_KEY = "weekly_prompt_dismissed_at"
@@ -117,39 +132,30 @@ _ACT_KINDS = frozenset({"deadline", "payment", "task", "appointment"})
 _NOW_KINDS = frozenset({"deadline", "task", "appointment"})
 _OVERDUE_KINDS = frozenset({"deadline", "payment", "task"})
 
-#: What proves a letter was sent, by the channel the person marked (``Draft.sent_channel``).
-PROOF_BY_CHANNEL = {
-    "registered_letter": (
-        "Keep the posting receipt (Einlieferungsbeleg) with a copy of the letter: it proves posting, not "
-        "arrival. Ask Deutsche Post for the delivery record (Auslieferungsbeleg) now — it is kept only for "
-        "a limited time, and online tracking alone is no proof (BAG 2 AZR 68/24)."
-    ),
-    "letter": "An ordinary letter can't be proven: keep a copy, and note the day and post office.",
-    "email": (
-        "Keep the sent e-mail: it proves you sent it, not that it arrived — keep the reply or a "
-        "confirmation of receipt too."
-    ),
-    "fax": (
-        "Keep the fax transmission report (Sendebericht) with a copy of the letter: it shows you sent it, "
-        "not for certain that it arrived."
-    ),
-    "in_person": "Keep your copy with the receipt stamp (Eingangsstempel).",
-    "online_button": "Save the confirmation page or e-mail.",
-    "portal": "Save the confirmation page or e-mail.",
-}
+#: A sent letter this week whose channel asks for no particular proof (nothing is missing, none kept).
 DEFAULT_PROOF = "Keep a copy and note how and when you sent it."
 _CHECK_NOTES = {
-    "unverified": "Not found in the letter — compare it with the letter.",
-    "model_read": "Read by AI from a photo — compare it with the paper letter.",
-    "mismatch": "Doesn't match its sentence in the letter — compare it with the letter.",
+    "unverified": "Its date wasn't found in the letter — compare it with the letter.",
+    "model_read": "Its date was read by AI from a photo — compare it with the paper letter.",
+    "mismatch": "Its date doesn't match its sentence in the letter — compare it with the letter.",
 }
+UNCONFIRMED_AMOUNT_NOTE = (
+    "The amount wasn't confirmed against the letter — compare it in the Pay panel before paying."
+)
 MISSED_TRANSFER_NOTE = (
     "The day to transfer it has passed: pay today by instant transfer (Echtzeitüberweisung) so it can "
     "still arrive by the due date."
 )
+#: A missed send-by day without the letter's own send advice: no way to send it is named, since the
+#: letter's form may rule out all but a signed letter (a notice on a flat or a job, §§ 568, 623 BGB).
 MISSED_POST_NOTE = (
-    "The last safe day to post it has passed, but the due date is still ahead: hand it in today, or send "
-    "it a way that arrives in time (fax, or an online form the sender accepts)."
+    "The last safe day to post it has passed, but the due date is still ahead: take it there yourself "
+    "today, or use another way that reaches them in time — only one its form allows (a notice that must "
+    "be signed by hand can't go by fax or e-mail)."
+)
+_MISSED_POST_WAYS = (
+    "The last safe day to post it has passed, but the due date is still ahead: use a way that reaches "
+    "them today — {ways}."
 )
 OVERDUE_NOTE = "Its date has passed: do it now, or contact the sender if you can't."
 AT_APPOINTMENT_NOTE = "Paid at the appointment itself, not by transfer: bring a card or cash."
@@ -321,7 +327,7 @@ def _item_entry(ledger: Ledger, item: Item, **fields: object) -> WeekEntry:
         "party_name": ledger.party_name(party),
         "doc_id": item.doc_id,
         "status": item.status,
-        "overdue": is_past_due(item, ledger.today),
+        "overdue": counts_overdue(item, ledger.today),
         "item": item,
     }
     data.update(fields)
@@ -377,7 +383,9 @@ def _contract_entry(ledger: Ledger, entry: AgendaEntry, **fields: object) -> Wee
         "due_date": cancel_by.isoformat() if missed and cancel_by else None,
         "party_name": entry.party,
         "doc_id": entry.doc_id,
-        "note": MISSED_POST_NOTE if missed else "Renews unless you send a cancellation by then.",
+        "note": missed_post_note(_cancellation_guidance(ledger, contract))
+        if missed
+        else "Renews unless you send a cancellation by then.",
         "tone": "warn" if missed else "neutral",
     }
     data.update(fields)
@@ -402,14 +410,12 @@ def _count(count: int, one: str, many: str | None = None) -> str:
 
 
 def pending_items(ledger: Ledger) -> list[Item]:
-    """Open or snoozed (however long) to-dos worth acting on: no letter with scam signs, no invoice a
-    payment reminder took over. A snoozed to-do is still the person's (module policy, "Snoozed to-dos")."""
+    """Open or snoozed (however long) to-dos worth acting on — none set aside
+    (:meth:`~ordnung.secretary.triggers.Ledger.is_set_aside`: a letter with scam signs, an invoice a
+    payment reminder took over, an e-mail's payment its attached bill repeats). A snoozed to-do is still
+    the person's (module policy, "Snoozed to-dos")."""
     return [
-        item
-        for item in ledger.items
-        if item.status in ("open", "snoozed")
-        and not ledger.is_suspicious_item(item)
-        and not ledger.is_superseded_by_reminder(item)
+        item for item in ledger.items if item.status in ("open", "snoozed") and not ledger.is_set_aside(item)
     ]
 
 
@@ -417,6 +423,29 @@ def _missed_note(item: Item, shown: When) -> str | None:
     if not shown.missed:
         return None
     return MISSED_TRANSFER_NOTE if item.kind == "payment" else MISSED_POST_NOTE
+
+
+def missed_post_note(guidance: SendGuidance | None) -> str:
+    """What to say once a letter's last safe day to post has passed but not the day it must arrive by:
+    the ways its send advice allows that reach them today (:func:`~ordnung.rules.send.same_day_channels`
+    — in person only, for a letter that must be signed by hand), or, without advice, none named."""
+    if guidance is None or not guidance.channels:
+        return MISSED_POST_NOTE
+    ways = "; ".join(channel.label for channel in same_day_channels(guidance)) or "take it there yourself"
+    return _MISSED_POST_WAYS.format(ways=ways)
+
+
+def _cancellation_guidance(ledger: Ledger, contract: Contract | None) -> SendGuidance | None:
+    """The send advice for cancelling ``contract`` (its form and channels, by its category)."""
+    if contract is None:
+        return None
+    party = ledger.parties.get(contract.party_id) if contract.party_id else None
+    return send_guidance(
+        "cancellation",
+        contract_category=contract.category,
+        party_kind=party.kind if party else None,
+        today=ledger.today,
+    )
 
 
 @dataclass(frozen=True)
@@ -502,7 +531,7 @@ def _new_letters(ledger: Ledger, window: _Window, *, first: bool) -> WeekStep:
             return _doc_entry(ledger, doc, note="Couldn't be read — open it to try again.", tone="warn")
         if doc.status == "held":
             return _doc_entry(
-                ledger, doc, note="Waiting for you — read it with Claude or keep it private.", tone="warn"
+                ledger, doc, note="Not read yet — read it with Claude or keep it private.", tone="warn"
             )
         if count:
             return _doc_entry(ledger, doc, note=_count(count, "open to-do"))
@@ -551,8 +580,8 @@ def _to_check(ledger: Ledger) -> WeekStep:
                     date_role=None,
                 )
             )
-    summary = f"{_count(len(rows), 'thing')} to compare with the letter" if rows else "Nothing to check"
-    return _step("check", "Please check", rows, summary)
+    summary = f"{_count(len(rows), 'thing')} to compare with the letter" if rows else "Nothing to compare"
+    return _step("check", "Compare with the letter", rows, summary)
 
 
 def _snoozed_payments(ledger: Ledger) -> list[Item]:
@@ -601,12 +630,9 @@ def _pay(ledger: Ledger, agenda: Agenda, money: MoneySummary) -> WeekStep:
             in_person.append(row.model_copy(update={"note": AT_APPOINTMENT_NOTE}))
             continue
         note = _missed_note(item, when(item, ledger.today))
-        if item.amount is not None and item.grounding not in ("verified", "user"):
-            note = " ".join(
-                part
-                for part in (note, "The amount wasn't confirmed against the letter — check it before paying.")
-                if part
-            )
+        # the GiroCode policy's check (a letter's amount), never the to-do's grounding (about its date)
+        if item.amount is not None and item.doc_id is not None and not amount_confirmed(ledger.store, item):
+            note = " ".join(part for part in (note, UNCONFIRMED_AMOUNT_NOTE) if part)
         tone = "danger" if row.overdue else "warn" if note else "neutral"
         transfers.append(row.model_copy(update={"note": note, "tone": tone}))
     totals: dict[str, float] = {}
@@ -640,7 +666,8 @@ def _pay(ledger: Ledger, agenda: Agenda, money: MoneySummary) -> WeekStep:
 
 def _unsent_entry(ledger: Ledger, draft: Draft) -> WeekEntry:
     """A letter to send: its send-by day, the day it must arrive by beside it; once the send-by day has
-    passed but not the day to arrive by, act today — overdue only when that day has passed too."""
+    passed but not the day to arrive by, act today — overdue only when that day has passed too, and
+    counted as overdue unless a to-do of the letter it answers carries that same day (it is counted)."""
     today = ledger.today
     guidance = draft.send_guidance
     send = parse_day(guidance.send_by) if guidance else None
@@ -648,6 +675,9 @@ def _unsent_entry(ledger: Ledger, draft: Draft) -> WeekEntry:
     due = arrive or send
     note = "Not sent yet — send it, then mark it as sent."
     if due is not None and due < today:
+        carried = draft.doc_id is not None and any(
+            item.doc_id == draft.doc_id and item.due_date == due.isoformat() for item in pending_items(ledger)
+        )
         return _draft_entry(
             ledger,
             draft,
@@ -655,7 +685,7 @@ def _unsent_entry(ledger: Ledger, draft: Draft) -> WeekEntry:
             date_role="due" if arrive else "send_by",
             note=note,
             tone="danger",
-            overdue=True,
+            overdue=not carried,
         )
     if send is not None and send < today:
         return _draft_entry(
@@ -664,7 +694,7 @@ def _unsent_entry(ledger: Ledger, draft: Draft) -> WeekEntry:
             date=today.isoformat(),
             date_role="act_today",
             due_date=due.isoformat() if due else None,
-            note=f"{MISSED_POST_NOTE} Then mark it as sent.",
+            note=f"{missed_post_note(guidance)} Then mark it as sent.",
             tone="warn",
         )
     shown = send or arrive
@@ -679,52 +709,103 @@ def _unsent_entry(ledger: Ledger, draft: Draft) -> WeekEntry:
     )
 
 
+def _sent_entry(ledger: Ledger, draft: Draft, window: _Window) -> WeekEntry | None:
+    """A sent letter in *Post and keep proof* (module policy, step 4), or ``None``: one still waiting for
+    its answer that lacks the proof its channel needs (:func:`~ordnung.drafts.proof.missing`, whenever it
+    was sent), else one sent since the last session, saying it was delivered when a proof shows it."""
+    today = ledger.today
+    proofs = [
+        RecordedProof(kind=proof.kind, on_date=proof.on_date, created_day="", note=proof.note, document=None)
+        for proof in ledger.proofs_of(draft.id)
+    ]
+    lacking = missing(draft, proofs, answer=ledger.answer_of(draft), today=today)
+    followup = ledger.followup_item(draft)
+    settled = draft.answered_on is not None or followup is None or followup.status in ("done", "dismissed")
+    sent = draft.sent_at[:10] if draft.sent_at else None
+    if lacking and not settled:
+        more = len(lacking) - 1
+        note = lacking[0] + (f" (And {_count(more, 'thing')} more on the letter's page.)" if more else "")
+        return _draft_entry(ledger, draft, date=sent, date_role="sent", note=note, tone="warn")
+    if not window.on_or_after(draft.sent_at):
+        return None
+    delivered = delivered_on(ledger, draft)
+    if delivered is not None:
+        note = f"Delivered on {day_label(delivered, today)}, as your proof shows — keep it with a copy of the letter."
+    elif lacking:
+        note = lacking[0]
+    elif proofs:
+        note = "Its proof is kept in Ordnung — keep a copy of the letter as sent with it."
+    else:
+        note = DEFAULT_PROOF
+    return _draft_entry(
+        ledger,
+        draft,
+        date=sent,
+        date_role="sent",
+        note=note,
+        tone="ok" if delivered or (proofs and not lacking) else "neutral",
+    )
+
+
 def _post(ledger: Ledger, drafts: Iterable[Draft], window: _Window) -> WeekStep:
-    unsent, sent = [], []
+    unsent: list[WeekEntry] = []
+    sent: list[WeekEntry] = []
     for draft in drafts:
         if draft.status in ("draft", "final"):
             unsent.append(_unsent_entry(ledger, draft))
-        elif draft.status == "sent" and window.on_or_after(draft.sent_at):
-            proof = PROOF_BY_CHANNEL.get(draft.sent_channel or "", DEFAULT_PROOF)
-            # HOOK(proof): once a letter can carry its proof of sending, list the ones still without it here
-            sent.append(
-                _draft_entry(
-                    ledger,
-                    draft,
-                    date=draft.sent_at[:10] if draft.sent_at else None,
-                    date_role="sent",
-                    note=proof,
-                )
-            )
+        elif draft.status == "sent" and (row := _sent_entry(ledger, draft, window)) is not None:
+            sent.append(row)
     unsent.sort(key=lambda row: (row.date or "9999-12-31", row.key))
     sent.sort(key=lambda row: (row.date or "", row.key), reverse=True)
+    sent.sort(key=lambda row: row.tone != "warn")  # stable: proof still to add first, newest first
     parts = [_count(len(unsent), "letter") + " to send"] if unsent else []
+    lacking = sum(1 for row in sent if row.tone == "warn")
     if sent:
-        parts.append(f"{len(sent)} sent — keep the proof")
+        whose = "its" if lacking == 1 else "their"
+        parts.append(f"{len(sent)} sent" + (f" — {lacking} without all {whose} proof" if lacking else ""))
     return _step("post", "Post and keep proof", [*unsent, *sent], " · ".join(parts) or "Nothing to post")
 
 
-def _waiting(ledger: Ledger) -> WeekStep:
-    # HOOK(waiting-for): a dedicated "waiting for" list, when it exists, is the source of this step.
-    rows = []
-    for item in sorted(ledger.active_items(), key=lambda i: (i.due_date or "9999-12-31", i.id)):
-        if item.origin != "draft":
-            continue
-        due = parse_day(item.due_date)
-        late = due is not None and due <= ledger.today
-        note = "No reply yet? Call them or send a short reminder." if late else item.description
-        rows.append(
-            _item_entry(
-                ledger,
-                item,
-                date=item.due_date,
-                date_role="reply_by",
-                due_date=None,
-                note=note,
-                tone="warn" if late else "neutral",
-            )
-        )
-    summary = f"Waiting for {_count(len(rows), 'reply', 'replies')}" if rows else "Not waiting for any reply"
+#: The day a waited-for thing is expected by, by where it comes from (:mod:`ordnung.secretary.waiting`).
+_WAITING_ROLE: dict[str, WeekDateRole] = {"letter": "reply_by", "money": "expected", "call": "promised_by"}
+_WAITING_TONE = {"overdue": "danger", "answered": "warn"}
+
+
+def _waiting_entry(ledger: Ledger, entry: WaitingEntry) -> WeekEntry:
+    """A row of *Waiting for*: the *Waiting for* page's entry, in its words."""
+    about = {"letter": f"Your letter “{entry.about}”: ", "call": f"{entry.about}: "}.get(entry.source, "")
+    item = next((i for i in ledger.items if i.id == entry.ref.id), None) if entry.ref.type == "item" else None
+    return WeekEntry.model_validate(
+        {
+            "key": f"waiting:{entry.id}",
+            "ref": entry.ref,
+            "title": entry.title,
+            "kind": {"letter": "draft", "money": "payment", "call": "call"}[entry.source],
+            "date": entry.expected_by,
+            "date_role": _WAITING_ROLE[entry.source] if entry.expected_by else None,
+            "amount": entry.amount,
+            "currency": entry.currency,
+            "party_id": entry.party_id,
+            "party_name": entry.party_name,
+            "doc_id": entry.doc_id,
+            "status": entry.status,
+            "note": about + entry.note,
+            "tone": _WAITING_TONE.get(entry.status, "neutral"),
+            "overdue": entry.status == "overdue",
+            "item": item,
+        }
+    )
+
+
+def _waiting(ledger: Ledger, entries: Sequence[WaitingEntry]) -> WeekStep:
+    """*Waiting for*: the *Waiting for* page's open entries (:func:`~ordnung.secretary.waiting.waiting_for`)
+    — replies to letters you sent, money a letter promised, promises made on the phone — overdue first."""
+    rows = [_waiting_entry(ledger, entry) for entry in entries]
+    late = sum(1 for entry in entries if entry.status == "overdue")
+    if not rows:
+        summary = "Not waiting for anything"
+    else:
+        summary = f"Waiting for {_count(len(rows), 'thing')}" + (f" · {late} overdue" if late else "")
     return _step("waiting", "Waiting for", rows, summary)
 
 
@@ -767,7 +848,7 @@ def _decide(ledger: Ledger, agenda: Agenda, acting_now: set[str]) -> WeekStep:
 def _file(ledger: Ledger, window: _Window) -> WeekStep:
     done = [item for item in ledger.items if item.status == "done" and window.after(item.completed_at)]
     # a snoozed to-do still keeps its letter open: the person put it off, not away
-    open_docs = {item.doc_id for item in ledger.items if item.status in ("open", "snoozed") and item.doc_id}
+    open_docs = {item.doc_id for item in pending_items(ledger) if item.doc_id}
     done_docs = {item.doc_id for item in done if item.doc_id}
     rows = [
         _item_entry(
@@ -823,17 +904,20 @@ def _worth_acting(item: Item) -> bool:
     )
 
 
-def overdue_count(ledger: Ledger) -> int:
-    """Deadlines, payments and tasks past their due date, snoozed or not (not replies awaited, direct
-    debits or money coming in): while any is, the session never ends "All clear"."""
-    return sum(
-        1
-        for item in pending_items(ledger)
-        if item.kind in _OVERDUE_KINDS
+def counts_overdue(item: Item, today: date) -> bool:
+    """A deadline, payment or task past its due date, snoozed or not — not a letter's follow-up (the
+    *Waiting for* entry counts it), a direct debit or money coming in."""
+    return (
+        item.kind in _OVERDUE_KINDS
         and item.origin != "draft"
         and _worth_acting(item)
-        and is_past_due(item, ledger.today)
+        and is_past_due(item, today)
     )
+
+
+def overdue_count(ledger: Ledger) -> int:
+    """The to-dos :func:`counts_overdue` holds for (not those set aside)."""
+    return sum(1 for item in pending_items(ledger) if counts_overdue(item, ledger.today))
 
 
 def deadlines(ledger: Ledger, agenda: Agenda) -> list[WeekEntry]:
@@ -875,16 +959,24 @@ def build_weekly_session(
     since_day = last.day if last is not None else today - timedelta(days=WEEK)
     window = _Window(today=today, since_day=min(since_day, today), since_stamp=last.at if last else None)
     now, acting_now = _act_now(ledger)
+    waiting = waiting_for(ledger)
+    post = _post(ledger, drafts, window)
     steps = [
         *([now] if now is not None else []),
         _new_letters(ledger, window, first=last is None),
         _to_check(ledger),
         _pay(ledger, agenda, money),
-        _post(ledger, drafts, window),
-        _waiting(ledger),
+        post,
+        _waiting(ledger, waiting),
         _decide(ledger, agenda, acting_now),
         _file(ledger, window),
     ]
+    unsent_overdue = sum(
+        1 for draft in drafts if draft.status in ("draft", "final") and _unsent_entry(ledger, draft).overdue
+    )
+    overdue = (
+        overdue_count(ledger) + unsent_overdue + sum(1 for entry in waiting if entry.status == "overdue")
+    )
     has_something = any(step.entries for step in steps)
     upcoming = next_prompt_day(state, today)
     ahead = deadlines(ledger, agenda)
@@ -896,7 +988,7 @@ def build_weekly_session(
         next_prompt=upcoming.isoformat() if upcoming else None,
         minutes=MINUTES,
         steps=steps,
-        overdue=overdue_count(ledger),
+        overdue=overdue,
         next_deadline=ahead[0] if ahead else None,
         due_today=sum(1 for row in ahead if row.date == today.isoformat()),
     )

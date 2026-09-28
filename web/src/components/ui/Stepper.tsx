@@ -33,6 +33,11 @@ export interface StepperProps {
    * jump around in): only these get a tick. Default: every step before the current one.
    */
   doneIds?: ReadonlySet<string>;
+  /**
+   * Steps the person can jump to (a review taken in any order): each dot and its label become a button
+   * that calls this with the step's index; the current one carries `aria-current="step"`.
+   */
+  onPick?: (index: number) => void;
   className?: string;
 }
 
@@ -112,7 +117,7 @@ function useFittingLabels(steps: readonly StepperStep[], wanted: boolean) {
  * labels are used, and when even those don't fit, one line under the track names the current step
  * (or nothing, with `fallback="none"`). Respects reduced motion via the global MotionConfig.
  */
-export function Stepper({ steps, current, status = "active", size = "md", labels = "all", fallback = "current", live, label, doneIds, className }: StepperProps) {
+export function Stepper({ steps, current, status = "active", size = "md", labels = "all", fallback = "current", live, label, doneIds, onPick, className }: StepperProps) {
   const n = steps.length;
   const done = current >= n;
   const dot = size === "sm" ? 16 : 20;
@@ -146,13 +151,9 @@ export function Stepper({ steps, current, status = "active", size = "md", labels
         <ol ref={ref} aria-label={label ?? "Progress"} className="relative grid w-full text-xs font-medium" style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}>
           {steps.map((s, i) => {
             const state = stateOf(i);
-            return (
-              <li
-                key={s.id}
-                className="flex min-w-0 flex-col items-center"
-                aria-current={state === "current" ? "step" : undefined}
-                aria-label={`${s.label}: ${state === "done" ? "done" : state === "current" ? "in progress" : state === "error" ? "failed" : "not started"}`}
-              >
+            const stateWords = state === "done" ? "done" : state === "current" ? "in progress" : state === "error" ? "failed" : "not started";
+            const content = (
+              <>
                 <span
                   className={cn(
                     "relative grid shrink-0 place-items-center rounded-full transition-colors duration-300",
@@ -185,6 +186,32 @@ export function Stepper({ steps, current, status = "active", size = "md", labels
                     {mode === "short" ? (s.short ?? s.label) : s.label}
                   </span>
                 ) : null}
+              </>
+            );
+            if (onPick) {
+              return (
+                <li key={s.id} className="flex min-w-0 justify-center">
+                  <button
+                    type="button"
+                    onClick={() => onPick(i)}
+                    aria-current={state === "current" ? "step" : undefined}
+                    aria-label={`${s.label}${state === "done" ? " (looked at)" : ""}`}
+                    // a whole column is the target (at least 24 × 24 px, WCAG 2.5.8), the dot inside it
+                    className="flex min-h-6 w-full min-w-6 flex-col items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    {content}
+                  </button>
+                </li>
+              );
+            }
+            return (
+              <li
+                key={s.id}
+                className="flex min-w-0 flex-col items-center"
+                aria-current={state === "current" ? "step" : undefined}
+                aria-label={`${s.label}: ${stateWords}`}
+              >
+                {content}
               </li>
             );
           })}

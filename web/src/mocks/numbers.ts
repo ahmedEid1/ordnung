@@ -64,8 +64,8 @@ export function unconfirmed(item: Pick<Item, "grounding" | "evidence">): boolean
 }
 
 /**
- * Whether a row still stands in the demo: its letter kept, its to-do still open (in Please check: still
- * unconfirmed — "Looks right" takes it off), its draft there.
+ * Whether a row still stands in the demo: its letter kept, its to-do still open (in Compare with the letter:
+ * still unconfirmed — "The date looks right" takes it off), its draft there, what it waits for not settled.
  */
 function stillThere(db: MockDb, entry: WeekEntry, step?: WeekStep["id"]): boolean {
   if (entry.doc_id && !db.document(entry.doc_id)) return false;
@@ -81,7 +81,11 @@ function stillThere(db: MockDb, entry: WeekEntry, step?: WeekStep["id"]): boolea
     case "contract":
       return db.state.contracts.some((c) => c.id === entry.ref.id && c.status === "active");
     case "draft":
+      // Waiting for: a sent letter no longer waited for once the visitor says it was answered
+      if (step === "waiting") return db.state.drafts.some((d) => d.id === entry.ref.id && d.status === "sent" && !d.answered_on);
       return db.state.drafts.some((d) => d.id === entry.ref.id && (entry.date_role === "sent" || d.status !== "sent"));
+    case "call":
+      return db.state.calls.some((c) => c.id === entry.ref.id && !c.promise_kept_on);
     default:
       return true;
   }

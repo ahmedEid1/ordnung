@@ -46,6 +46,7 @@ const COUNTDOWN_PREFIX: Partial<Record<Role, string>> = {
   expected: "Expected",
   decide_by: "Decide by",
   reply_by: "Reply expected by",
+  promised_by: "Promised by",
   expires: "Expires",
   at_appointment: "Pay at the appointment",
 };
@@ -74,7 +75,9 @@ function kindSource(entry: WeekEntry): KindSource {
   if (entry.ref.type === "document") return { docKind: entry.kind as DocumentKind };
   if (entry.ref.type === "contract") return { kind: "contract" };
   if (entry.ref.type === "draft") return { kind: "draft" };
-  return { kind: entry.kind as ItemKind };
+  // a promise made on the phone: something to follow up, like a task
+  if (entry.ref.type === "call") return { kind: "task" };
+  return { kind: entry.kind as ItemKind, direction: entry.item?.direction ?? null };
 }
 
 /** "· due Wed 14 Oct": the due date beside an earlier day to act; the dot stays on the line before. */
@@ -93,8 +96,17 @@ function WhenLine({ entry }: { entry: WeekEntry }) {
   const time = role === "on" ? (entry.item?.due_time ?? null) : null;
   let when = null;
   if (role === "act_today") {
+    // no countdown to the due date: "in 16 days" would argue with "Act today"
     when = entry.due_date ? (
-      <Countdown date={entry.due_date} prefix="Act today — due" className="text-[13px]" />
+      <span className="text-[13px]">
+        <span className="font-medium text-danger-ink">Act today</span>{" "}
+        <span className="text-muted">
+          — due{" "}
+          <time dateTime={entry.due_date} className="whitespace-nowrap">
+            {formatDate(entry.due_date)}
+          </time>
+        </span>
+      </span>
     ) : (
       <span className="font-medium text-danger-ink">Act today</span>
     );
@@ -167,18 +179,19 @@ function ConfirmButton({ entry, step }: { entry: WeekEntry; step: StepId }) {
       variant="secondary"
       icon={Check}
       loading={confirm.isPending}
-      // the accessible name starts with the visible words, WCAG 2.5.3
-      aria-label={`Looks right: ${entry.title}`}
+      // the accessible name starts with the visible words, WCAG 2.5.3; it vouches for the date only — a
+      // payment's amount is compared in its Pay panel (ADR 0012, point 3)
+      aria-label={`The date looks right: ${entry.title}`}
       onClick={() =>
         confirm.mutate(entry.ref.id, {
           onSuccess: () => {
-            toast({ tone: "success", title: "Confirmed", description: `${entry.title} — marked as checked by you.` });
+            toast({ tone: "success", title: "Date confirmed", description: `${entry.title} — its date is marked as checked by you.` });
             focusAfterRow(step, entry.key);
           },
         })
       }
     >
-      Looks right
+      The date looks right
     </Button>
   );
 }
@@ -204,7 +217,8 @@ export function WeekEntryRow({ entry, step }: { entry: WeekEntry; step: StepId }
           {entry.note ? <p className={cn("mt-0.5 text-[13px] leading-5", NOTE_TONE[entry.tone])}>{glueText(entry.note)}</p> : null}
         </div>
         {entry.amount !== null || action ? (
-          <div className="flex shrink-0 items-center gap-3">
+          // on a phone the button goes under the amount rather than past the card
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2">
             {entry.amount !== null ? (
               <Money
                 amount={entry.amount}

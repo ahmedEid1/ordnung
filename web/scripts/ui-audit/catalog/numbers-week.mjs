@@ -290,7 +290,7 @@ async function payFirstThenFinish(c) {
   }
   await c.click(main.getByRole("button", { name: /^Finish/ }));
   // the mock answers after a short delay: capture the ending, not the pending button
-  await main.getByRole("heading", { level: 2, name: /^(All clear|One thing|\d+ things)/ }).waitFor({ timeout: 15_000 });
+  await main.getByRole("heading", { level: 2, name: /^(All clear|One thing|\d+ things?)/ }).waitFor({ timeout: 15_000 });
 }
 
 /** The static demo (hash routes; a fourth element: what to do there). */
@@ -300,6 +300,6 @@ export function numbersAndWeekStaticPaths() {
     ["numbers-organisations", "/numbers?tab=organisations", "Static demo: My numbers → Organisations."],
     ["week", "/week", "Static demo: the weekly session."],
     ["week-pay", "/week?step=pay", "Static demo: the weekly session, “Pay this week”."],
-    ["week-paid-finish", "/week?step=pay", "Static demo: the first transfer marked paid, then Finish — the ending moves on to the next day to act.", payFirstThenFinish],
+    ["week-paid-finish", "/week?step=pay", "Static demo: the first transfer marked paid, then Finish — the ending names the overdue promise first, then the next day to act.", payFirstThenFinish],
   ];
 }

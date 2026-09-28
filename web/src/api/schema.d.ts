@@ -5403,13 +5403,13 @@ export interface components {
             title: string;
             /**
              * Kind
-             * @description The item's, letter's or draft's kind, or “contract”
+             * @description The item's, letter's or draft's kind, or “contract” (or “call”, a promise)
              */
             kind: string;
             /** Date */
             date: string | null;
             /** Date Role */
-            date_role: ("added" | "due" | "by" | "on" | "expires" | "send_by" | "transfer_by" | "pay_by" | "act_today" | "at_appointment" | "collected" | "expected" | "decide_by" | "sent" | "reply_by" | "done") | null;
+            date_role: ("added" | "due" | "by" | "on" | "expires" | "send_by" | "transfer_by" | "pay_by" | "act_today" | "at_appointment" | "collected" | "expected" | "decide_by" | "sent" | "reply_by" | "promised_by" | "done") | null;
             /**
              * Due Date
              * @description The due date, when the row's date is an earlier day to act (send by, act today)
@@ -5440,6 +5440,7 @@ export interface components {
             tone: "neutral" | "warn" | "danger" | "ok";
             /**
              * Overdue
+             * @description Counted in the session's overdue (never on Compare with the letter)
              * @default false
              */
             overdue: boolean;

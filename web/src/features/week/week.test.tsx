@@ -73,9 +73,12 @@ describe("steps", () => {
     expect(entryHref({ ref: { type: "item", id: "itm_a" }, doc_id: null })).toBe("/timeline");
     expect(entryHref({ ref: { type: "contract", id: "ctr_a" }, doc_id: null })).toBe("/contracts?contract=ctr_a");
     expect(entryHref({ ref: { type: "draft", id: "drf_a" }, doc_id: null })).toBe("/letters/drf_a");
+    // a promise made on the phone is on the Waiting for page
+    expect(entryHref({ ref: { type: "call", id: "cal_a" }, doc_id: null })).toBe("/letters/waiting");
     expect(stepCount({ entries: [], more: 3 })).toBe(3);
-    // the FitWell cancellation was sent: it is listed to keep its proof, not counted as one to post
-    expect(sessionHighlights(MOCK_WEEK)).toEqual(["8 new letters", "2 to check", "4 to pay", "1 to post", "2 decisions"]);
+    // the FitWell cancellation was sent: it is listed to keep its proof, not counted as one to post; its
+    // promised written confirmation is overdue (Waiting for); "to compare" with the letter, not "to check"
+    expect(sessionHighlights(MOCK_WEEK)).toEqual(["1 overdue", "8 new letters", "2 to compare", "4 to pay", "1 to post", "2 decisions"]);
     // overdue first; a fee paid at an appointment is no transfer
     const pay = MOCK_WEEK.steps.find((s) => s.id === "pay")!;
     const week = {
@@ -83,7 +86,7 @@ describe("steps", () => {
       overdue: 2,
       steps: MOCK_WEEK.steps.map((s) => (s.id === "pay" ? { ...pay, entries: [...pay.entries, row({ key: "fee", title: "Fee", date_role: "at_appointment" })] } : s)),
     };
-    expect(sessionHighlights(week).slice(0, 4)).toEqual(["2 overdue", "8 new letters", "2 to check", "4 to pay"]);
+    expect(sessionHighlights(week).slice(0, 4)).toEqual(["2 overdue", "8 new letters", "2 to compare", "4 to pay"]);
   });
 
   it("the next prompt comes a week on, or on the first Sunday 4 days on", () => {
@@ -100,10 +103,10 @@ describe("the session page", () => {
     expect(screen.getByText("Step 1 of 7")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
     // the accessible name starts with the visible words (WCAG 2.5.3)
-    const next = screen.getByRole("button", { name: "Next: Check — Please check" });
-    expect(next).toHaveTextContent(/^Next: Check/);
+    const next = screen.getByRole("button", { name: "Next: Compare — Compare with the letter" });
+    expect(next).toHaveTextContent(/^Next: Compare/);
     await user.click(next);
-    const heading = await screen.findByRole("heading", { level: 2, name: "Please check" });
+    const heading = await screen.findByRole("heading", { level: 2, name: "Compare with the letter" });
     expect(router.state.location.search).toBe("?step=check");
     await waitFor(() => expect(heading).toHaveFocus());
     expect(screen.getByText("Step 2 of 7")).toBeInTheDocument();
@@ -123,14 +126,15 @@ describe("the session page", () => {
   it("confirms a value read from a photo: the row leaves, the focus goes on to the next one", async () => {
     const { calls } = useMockApi();
     const { user } = await renderWeek("/week?step=check");
-    // the accessible name starts with the visible words (WCAG 2.5.3: "click Looks right" finds it)
-    // the parking fine's amount and date were read from a photo, and the passport's expiry too
-    const confirm = screen.getByRole("button", { name: "Looks right: Pay the parking fine" });
-    expect(confirm).toHaveTextContent("Looks right");
+    // the accessible name starts with the visible words (WCAG 2.5.3: "click The date looks right" finds it)
+    // the parking fine's date was read from a photo, and the passport's expiry too; the button says it
+    // vouches for the date (the amount is compared in the Pay panel)
+    const confirm = screen.getByRole("button", { name: "The date looks right: Pay the parking fine" });
+    expect(confirm).toHaveTextContent("The date looks right");
     await user.click(confirm);
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && /\/items\/.+\/confirm$/.test(c.path))).toBe(true));
-    expect(await screen.findByText("Confirmed")).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByRole("button", { name: "Looks right: Pay the parking fine" })).toBeNull());
+    expect(await screen.findByText("Date confirmed")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "The date looks right: Pay the parking fine" })).toBeNull());
     await waitFor(() => expect(screen.getByRole("link", { name: "Passport expires" })).toHaveFocus());
   });
 
@@ -179,7 +183,10 @@ describe("the session page", () => {
     };
     vi.spyOn(api, "week").mockResolvedValue(withStep(MOCK_WEEK, step));
     await renderWeek("/week");
-    expect(screen.getByText("Act today — due")).toBeInTheDocument();
+    // the day to act is today: no countdown to the due date beside it ("in 2 days")
+    const act = screen.getByText("Act today").parentElement!;
+    expect(act).toHaveTextContent(/^Act today — due Wed 30 Sep$/);
+    expect(act.querySelector("time")).toHaveAttribute("dateTime", "2026-09-30");
     expect(screen.getByText("Send by")).toBeInTheDocument();
     expect(screen.getByText("due Wed 14 Oct")).toBeInTheDocument();
     expect(screen.getByText("Expires")).toBeInTheDocument();
@@ -197,24 +204,31 @@ describe("the session page", () => {
     expect(screen.getByRole("button", { name: "Pay: Pay TechMarkt reminder" })).toBeInTheDocument();
   });
 
-  it("ticks only the steps looked at on the phone stepper", async () => {
+  it("ticks only the steps looked at on the phone stepper, and jumps to any step from it", async () => {
     useMockApi();
-    const { user } = await renderWeek("/week?step=pay");
+    const { user, router } = await renderWeek("/week?step=pay");
     const stepper = screen.getByRole("list", { name: "Steps of the session" });
-    expect(within(stepper).getByRole("listitem", { name: "New in the last 7 days: not started" })).toBeInTheDocument();
-    expect(within(stepper).getByRole("listitem", { name: "Pay this week: in progress" })).toBeInTheDocument();
+    expect(within(stepper).getByRole("button", { name: "New in the last 7 days" })).not.toHaveAttribute("aria-current");
+    expect(within(stepper).getByRole("button", { name: "Pay this week" })).toHaveAttribute("aria-current", "step");
     await user.click(screen.getByRole("button", { name: /^Next: Post/ }));
     await screen.findByRole("heading", { level: 2, name: "Post and keep proof" });
-    expect(within(stepper).getByRole("listitem", { name: "Pay this week: done" })).toBeInTheDocument();
-    expect(within(stepper).getByRole("listitem", { name: "Please check: not started" })).toBeInTheDocument();
+    expect(within(stepper).getByRole("button", { name: "Pay this week (looked at)" })).toBeInTheDocument();
+    expect(within(stepper).getByRole("button", { name: "Compare with the letter" })).toBeInTheDocument();
+    // someone who came for "3 to pay" on a phone doesn't page through New and Compare first
+    await user.click(within(stepper).getByRole("button", { name: "Decide in the next 30 days" }));
+    expect(await screen.findByRole("heading", { level: 2, name: "Decide in the next 30 days" })).toBeInTheDocument();
+    expect(router.state.location.search).toBe("?step=decide");
   });
 
   it("finishes with “All clear until …” and remembers the session", async () => {
-    const { calls } = useMockApi();
+    const { calls, srv } = useMockApi();
+    // the demo's phone promise is overdue: kept, nothing is (see "the static demo's session follows the visitor")
+    srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today;
     const { user } = await renderWeek("/week?step=file");
     expect(screen.getByText("Nothing here this week — you're done: press Finish.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^Finish/ }));
     expect(await screen.findByRole("heading", { name: /^All clear until Tue 29 Sep$/ })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /^All clear until/ }).querySelector('[data-badge="clear"]')).not.toBeNull();
     expect(calls.some((c) => c.method === "POST" && c.path === "/week/done")).toBe(true);
     expect(screen.getByRole("link", { name: "Back to Today" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("heading", { name: /^All clear until/ })).toHaveFocus();
@@ -231,7 +245,7 @@ describe("the session page", () => {
     const pay = MOCK_WEEK.steps.find((s) => s.id === "pay")!;
     const check = MOCK_WEEK.steps.find((s) => s.id === "check")!;
     const post = MOCK_WEEK.steps.find((s) => s.id === "post")!;
-    // Please check lists the fee again, and a letter's send-by day is its deadline's: neither is counted twice
+    // Compare with the letter lists the fee again, and a letter's send-by day is its deadline's: neither is counted twice
     const letter = row({ key: "letter", ref: { type: "draft", id: "drf_x" }, title: "Your objection", kind: "objection", date: today, date_role: "send_by" });
     const base = withStep(MOCK_WEEK, now);
     const moved = (s: WeekStep) => (s.id === "pay" ? { ...pay, entries: [fee] } : s.id === "check" ? { ...check, entries: [fee] } : s.id === "post" ? { ...post, entries: [letter] } : s);
@@ -241,6 +255,10 @@ describe("the session page", () => {
     const { user } = await renderWeek("/week?step=file", 8);
     await user.click(screen.getByRole("button", { name: /^Finish/ }));
     expect(await screen.findByRole("heading", { name: "3 things to do today" })).toHaveFocus();
+    // not the "All clear" tick: there is something to do today
+    const card = screen.getByRole("region", { name: "3 things to do today" });
+    expect(card.querySelector('[data-badge="calendar"]')).not.toBeNull();
+    expect(card.querySelector('[data-badge="clear"]')).toBeNull();
     expect(screen.queryByText(/One thing/)).toBeNull();
     expect(screen.getByRole("link", { name: "Hand in the form" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Act now (2)" })).toBeInTheDocument();
@@ -270,18 +288,22 @@ describe("the session page", () => {
     const now: WeekStep = { id: "now", title: "Act now", summary: "1 overdue", entries: [late], more: 0, total: null, total_other_currencies: {} };
     const pay = MOCK_WEEK.steps.find((s) => s.id === "pay")!;
     const waiting = MOCK_WEEK.steps.find((s) => s.id === "waiting")!;
-    // a reply awaited past its day is not counted overdue (the backend's count leaves it out): no link to it
-    const reply = row({ key: "reply", title: "Check for a reply from Muster BKK", kind: "task", date: "2026-09-24", date_role: "reply_by", overdue: true, tone: "warn" });
+    const check = MOCK_WEEK.steps.find((s) => s.id === "check")!;
+    // a reply awaited past its day is counted (the server marks the rows it counts), a to-do listed again
+    // on Compare with the letter never
+    const reply = row({ key: "reply", ref: { type: "draft", id: "drf_x" }, title: "An answer to your letter", kind: "draft", date: "2026-09-24", date_role: "reply_by", overdue: true, tone: "danger" });
     const base = withStep(MOCK_WEEK, now);
-    const moved = (s: WeekStep) => (s.id === "pay" ? { ...pay, entries: [unpaid, ...pay.entries] } : s.id === "waiting" ? { ...waiting, entries: [reply] } : s);
-    const week = { ...base, steps: base.steps.map(moved), overdue: 2 };
+    const moved = (s: WeekStep) =>
+      s.id === "pay" ? { ...pay, entries: [unpaid, ...pay.entries] } : s.id === "waiting" ? { ...waiting, entries: [reply] } : s.id === "check" ? { ...check, entries: [unpaid] } : s;
+    const week = { ...base, steps: base.steps.map(moved), overdue: 3 };
     vi.spyOn(api, "week").mockResolvedValue(week);
     vi.spyOn(api, "weekDone").mockResolvedValue({ ...week, last_session: MOCK_WEEK.today });
     const { user } = await renderWeek("/week?step=file", 8);
     await user.click(screen.getByRole("button", { name: /^Finish/ }));
-    expect(await screen.findByRole("heading", { name: "2 things are overdue" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "3 things are overdue" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Act now (1)" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Waiting for/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Waiting for (1)" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Compare with the letter/ })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Pay this week (1)" }));
     expect(await screen.findByRole("heading", { level: 2, name: "Pay this week" })).toBeInTheDocument();
   });
@@ -298,7 +320,8 @@ describe("the session page", () => {
     useMockApi();
     const late = row({ key: "late", title: "Send documents to the Jobcenter", kind: "task", date: "2026-09-25", date_role: "by", overdue: true, tone: "danger" });
     const now: WeekStep = { id: "now", title: "Act now", summary: "1 overdue", entries: [late], more: 0, total: null, total_other_currencies: {} };
-    const week = { ...withStep(MOCK_WEEK, now), overdue: 1 };
+    const quiet = { ...MOCK_WEEK, steps: MOCK_WEEK.steps.map((s) => ({ ...s, entries: s.entries.map((e) => ({ ...e, overdue: false })) })) };
+    const week = { ...withStep(quiet, now), overdue: 1 };
     vi.spyOn(api, "week").mockResolvedValue(week);
     vi.spyOn(api, "weekDone").mockResolvedValue({ ...week, last_session: MOCK_WEEK.today, due: false, next_prompt: "2026-10-04" });
     const { user } = await renderWeek("/week?step=file", 8);
@@ -355,7 +378,7 @@ describe("Today's prompt", () => {
       </>,
     );
     const prompt = await screen.findByRole("region", { name: "Time for your weekly review" });
-    expect(within(prompt).getByText(/About 10 minutes: 8 new letters · 2 to check · 4 to pay/)).toBeInTheDocument();
+    expect(within(prompt).getByText(/About 10 minutes: 1 overdue · 8 new letters · 2 to compare · 4 to pay/)).toBeInTheDocument();
     expect(within(prompt).getByRole("link", { name: "Start" })).toHaveAttribute("href", "/week");
     expect(screen.queryByRole("link", { name: /Weekly review/ })).toBeNull();
 
@@ -399,8 +422,22 @@ describe("the static demo's session follows the visitor", () => {
     expect(after.due_today).toBe(MOCK_WEEK_DEADLINES.slice(1).filter((e) => e.date === MOCK_WEEK.today).length);
   });
 
+  it("ends saying the phone promise is overdue until it is kept", async () => {
+    const { srv } = useMockApi();
+    const { user } = await renderWeek("/week?step=file");
+    await user.click(screen.getByRole("button", { name: /^Finish/ }));
+    expect(await screen.findByRole("heading", { name: "1 thing is overdue" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "See it" }));
+    const step = (await screen.findByRole("heading", { level: 2, name: "Waiting for" })).closest("section")!;
+    expect(within(step).getByRole("link", { name: "Written confirmation of the cancellation" })).toHaveAttribute("href", "/letters/waiting");
+    expect(within(step).getByRole("link", { name: "See everything you're waiting for" })).toHaveAttribute("href", "/letters/waiting");
+    srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today;
+    expect(mockWeek(srv.db).overdue).toBe(0);
+  });
+
   it("finishes “All clear until” the next transfer after paying the first", async () => {
     const { srv } = useMockApi();
+    srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today; // the phone promise was kept
     const first = mockWeek(srv.db).next_deadline!;
     srv.db.state.items.find((i) => i.id === first.ref.id)!.status = "done";
     const { user } = await renderWeek("/week?step=file");
@@ -409,7 +446,7 @@ describe("the static demo's session follows the visitor", () => {
     expect(screen.queryByText("Nothing is due from today on.")).toBeNull();
   });
 
-  it("“Looks right” takes a value off Please check", async () => {
+  it("“The date looks right” takes a value off Compare with the letter", async () => {
     const { srv } = useMockApi();
     const check = mockWeek(srv.db).steps.find((s) => s.id === "check")!;
     const passport = check.entries.find((e) => e.title === "Passport expires")!;

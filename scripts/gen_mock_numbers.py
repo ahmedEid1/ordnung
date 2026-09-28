@@ -26,7 +26,8 @@ from typing import Any
 from ordnung import clock
 from ordnung.config import Paths
 from ordnung.db.store import Store
-from ordnung.models import Case, Contract, Document, Draft, Item, Party
+from ordnung.drafts.proof import followup_item_id
+from ordnung.models import CallNote, Case, Contract, Document, Draft, Item, Party, Proof
 from ordnung.secretary.brief import build_agenda
 from ordnung.secretary.triggers import Ledger
 from ordnung.secretary.week import deadlines
@@ -61,6 +62,33 @@ def _sha(document: Document) -> str:
     return hashlib.sha256(document.id.encode()).hexdigest()
 
 
+def followup_ids(world: dict[str, Any]) -> dict[str, str]:
+    """The mock world's follow-up to-do of each sent letter (``followupIdFor`` in
+    ``web/src/mocks/data/proof.ts``) → the id Ordnung gives it (:func:`ordnung.drafts.proof.followup_item_id`):
+    filed under Ordnung's id, so the Waiting for step finds it, and written back with the mock's."""
+    items = {raw["id"] for raw in world["items"]}
+    found: dict[str, str] = {}
+    for raw in world["drafts"]:
+        draft_id = raw["id"]
+        mock = (
+            "itm_followup_wohnbau"
+            if draft_id == "drf_wohnbau"
+            else f"itm_followup_{draft_id.removeprefix('drf_')}"
+        )
+        if raw.get("status") == "sent" and mock in items:
+            found[mock] = followup_item_id(draft_id)
+    return found
+
+
+def _renamed(value: Any, names: dict[str, str]) -> Any:
+    """``value`` (JSON) with every string that is a key of ``names`` replaced by its value."""
+    if isinstance(value, dict):
+        return {key: _renamed(inner, names) for key, inner in value.items()}
+    if isinstance(value, list):
+        return [_renamed(inner, names) for inner in value]
+    return names.get(value, value) if isinstance(value, str) else value
+
+
 def file_world(store: Store, world: dict[str, Any]) -> date:
     """File the mock world in ``store``; returns its today."""
     store.save_profile(world["profile"])
@@ -87,13 +115,21 @@ def file_world(store: Store, world: dict[str, Any]) -> date:
         "doc_id": {d["id"] for d in world["documents"]},
         "contract_id": {c["id"] for c in world["contracts"]},
     }
+    followups = followup_ids(world)
     for raw in world["items"]:
         item = Item.model_validate(raw).model_dump()
+        item["id"] = followups.get(item["id"], item["id"])
         # a link to a record the mock world leaves out (a New-mail letter's party) is dropped
         store.add_item(**{k: (v if k not in known or v in known[k] else None) for k, v in item.items()})
     for raw in world["drafts"]:
         draft = Draft.model_validate(raw).model_dump()
         store.add_draft(**{k: (v if k not in known or v in known[k] else None) for k, v in draft.items()})
+    # the Post and Waiting for steps read a letter's proofs and the promises noted on the phone
+    for raw in world.get("proofs", []):
+        store.add_proof(**Proof.model_validate(raw).model_dump())
+    for raw in world.get("calls", []):
+        call = CallNote.model_validate(raw).model_dump()
+        store.add_call_note(**{k: (v if k not in known or v in known[k] else None) for k, v in call.items()})
     return date.fromisoformat(world["today"])
 
 
@@ -114,6 +150,9 @@ def main() -> None:
         finally:
             clock.set_today(None)
             store.close()
+    back = {ours: mock for mock, ours in followup_ids(world).items()}
+    back |= {f"item:{ours}": f"item:{mock}" for ours, mock in list(back.items())}
+    numbers, week, ahead = _renamed(numbers, back), _renamed(week, back), _renamed(ahead, back)
 
     def dump(value: object) -> str:
         return json.dumps(value, ensure_ascii=False, indent=2)

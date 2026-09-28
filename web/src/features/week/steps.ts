@@ -12,17 +12,17 @@ export type StepId = WeekStep["id"];
 export interface StepMeta {
   short: string;
   icon: LucideIcon;
-  /** Where the rows left out of a long step are listed in full. */
-  more: { to: string; label: string };
+  /** Where the rows left out of a long step are listed in full (`always`: linked whenever it has rows). */
+  more: { to: string; label: string; always?: boolean };
 }
 
 export const STEP_META: Record<StepId, StepMeta> = {
   now: { short: "Now", icon: Siren, more: { to: "/timeline", label: "See everything on the timeline" } },
   new: { short: "New", icon: Inbox, more: { to: "/inbox", label: "See all in the Inbox" } },
-  check: { short: "Check", icon: FileSearch, more: { to: "/inbox?filter=check", label: "See all letters to check" } },
+  check: { short: "Compare", icon: FileSearch, more: { to: "/timeline", label: "See every to-do on the timeline" } },
   pay: { short: "Pay", icon: Landmark, more: { to: "/timeline", label: "See every payment on the timeline" } },
   post: { short: "Post", icon: Send, more: { to: "/letters", label: "See all your letters" } },
-  waiting: { short: "Waiting", icon: Hourglass, more: { to: "/letters/waiting", label: "See everything you're waiting for" } },
+  waiting: { short: "Waiting", icon: Hourglass, more: { to: "/letters/waiting", label: "See everything you're waiting for", always: true } },
   decide: { short: "Decide", icon: CalendarRange, more: { to: "/contracts", label: "See your contracts" } },
   file: { short: "File", icon: Archive, more: { to: "/inbox", label: "See all in the Inbox" } },
 };
@@ -36,6 +36,9 @@ export function entryHref(entry: Pick<WeekEntry, "ref" | "doc_id">): string {
       return contractHref(entry.ref.id);
     case "draft":
       return `/letters/${encodeURIComponent(entry.ref.id)}`;
+    case "call":
+      // a promise made on the phone lives on the Waiting for page
+      return "/letters/waiting";
     default:
       return entry.doc_id ? `/documents/${encodeURIComponent(entry.doc_id)}` : "/timeline";
   }
@@ -46,7 +49,7 @@ export function stepCount(step: Pick<WeekStep, "entries" | "more">): number {
   return step.entries.length + step.more;
 }
 
-/** "2 overdue · 22 new letters · 1 to check · 3 to pay · 2 decisions" — what Today's prompt says is waiting. */
+/** "2 overdue · 22 new letters · 1 to compare · 3 to pay · 2 decisions" — what Today's prompt says is waiting. */
 export function sessionHighlights(week: Pick<WeeklySession, "steps" | "overdue">): string[] {
   const count = (id: StepId) => {
     const step = week.steps.find((s) => s.id === id);
@@ -59,7 +62,8 @@ export function sessionHighlights(week: Pick<WeeklySession, "steps" | "overdue">
   const parts: string[] = [];
   if (week.overdue) parts.push(`${week.overdue} overdue`);
   if (count("new")) parts.push(plural(count("new"), "new letter"));
-  if (count("check")) parts.push(`${count("check")} to check`);
+  // "to compare" (with the letter): Today's "Please check" card counts letters, this step to-dos too
+  if (count("check")) parts.push(`${count("check")} to compare`);
   if (transfers) parts.push(`${transfers} to pay`);
   if (toPost) parts.push(`${toPost} to post`);
   if (count("decide")) parts.push(plural(count("decide"), "decision"));
