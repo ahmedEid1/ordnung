@@ -139,13 +139,13 @@ describe("Inbox", () => {
     expect(await screen.findByRole("heading", { name: "No private letters" })).toBeInTheDocument();
     expect(screen.getByText(/“Keep private — no AI”.*Claude never reads them/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add letters" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Drop letters|PDFs or phone photos/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Drop letters|phone photos/ })).toBeNull();
   });
 
   it("doesn't ask a touch screen to drop letters", async () => {
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(pointer: coarse)", media: query, addEventListener() {}, removeEventListener() {} }));
     renderInbox();
-    expect(await screen.findByRole("button", { name: /^Add letters — PDFs or phone photos/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^Add letters — PDFs, phone photos or saved e\u2011mails/ })).toBeInTheDocument();
     expect(screen.queryByText(/Drop letters anywhere/)).toBeNull();
   });
 

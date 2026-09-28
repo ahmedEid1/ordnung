@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { FileUp, Lock } from "lucide-react";
 import { getOverlayRoot } from "@/components/ui/internal";
 import { isStaticDemo } from "@/mocks/mode";
-import { useAddLetters } from "./AddLetters";
+import { ACCEPTED_SHORT, useAddLetters } from "./AddLetters";
 
 const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
 
@@ -88,7 +88,7 @@ export function DropZone() {
             <p className="mt-2 max-w-sm text-base leading-relaxed text-muted">
               {isStaticDemo()
                 ? "This online demo has Sam Rivera's sample letters only — drop to see how to add your own."
-                : "PDFs or phone photos. Ordnung reads them with your own Claude and files every date and amount."}
+                : `${ACCEPTED_SHORT}. Ordnung reads them with your own Claude and files every date and amount.`}
             </p>
             <p className="mt-4 inline-flex items-center gap-1.5 text-xs text-muted">
               <Lock className="size-3.5" aria-hidden /> Your files stay on this computer.

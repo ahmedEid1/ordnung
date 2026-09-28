@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type DragEvent, type Ref } from "react";
 import { Link, useNavigate } from "react-router";
 import { ArrowRight, FileUp, FlaskConical, Inbox, Lock } from "lucide-react";
 import { useHealth } from "@/api/hooks";
-import { useAddLetters } from "@/components/shell/AddLetters";
+import { ACCEPTED_SHORT, useAddLetters } from "@/components/shell/AddLetters";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { isStaticDemo } from "@/mocks/mode";
 import { cn } from "@/lib/utils";
@@ -86,7 +86,7 @@ export function StepDone({ firstName, skippedAi, headingRef }: { firstName: stri
         description={
           skippedAi
             ? "Add your first letters — they are stored and searchable now, and read as soon as Claude is connected."
-            : "Add your first letters — PDFs or phone photos. Ordnung reads them and files every date and amount."
+            : `Add your first letters — ${ACCEPTED_SHORT}. Ordnung reads them and files every date and amount.`
         }
       >
         {heading}

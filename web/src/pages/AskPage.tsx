@@ -5,7 +5,7 @@ import { Lock, MessagesSquare, Plus, RotateCw, SquarePen } from "lucide-react";
 import { useDocuments, useHealth } from "@/api/hooks";
 import { isStaticDemo } from "@/mocks/mode";
 import { Page } from "@/components/shell/Page";
-import { useOptionalAddLetters } from "@/components/shell/AddLetters";
+import { ACCEPTED_ONE, useOptionalAddLetters } from "@/components/shell/AddLetters";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -210,7 +210,7 @@ export default function AskPage() {
                 size="sm"
                 illustration="inbox"
                 title="Add a few letters first"
-                description="Ask answers from your own letters. Add a PDF or a phone photo of one — Ordnung reads it and files every date and amount."
+                description={`Ask answers from your own letters. Add ${ACCEPTED_ONE} of one — Ordnung reads it and files every date and amount.`}
                 action={
                   adder ? (
                     <Button variant="primary" icon={Plus} onClick={adder.openPicker}>

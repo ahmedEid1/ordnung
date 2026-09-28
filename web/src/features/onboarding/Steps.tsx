@@ -1,6 +1,7 @@
 import { useId, useState, type ReactNode, type Ref } from "react";
 import { BellRing, Check, CircleAlert, CircleCheck, FileSearch, Info, Lock, PenLine, RotateCw, Scale, Terminal, type LucideIcon } from "lucide-react";
 import type { ClaudeStatus } from "@/api/types";
+import { ACCEPTED_SHORT } from "@/components/shell/AddLetters";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea } from "@/components/ui/Field";
 import { Glossary } from "@/components/ui/Glossary";
@@ -31,7 +32,7 @@ export function StepHeading({ children, eyebrow, headingRef, description }: { ch
 // ------------------------------------------------------------------------------------------------
 
 const PROMISES: { icon: LucideIcon; title: string; text: ReactNode }[] = [
-  { icon: FileSearch, title: "Reads your letters", text: "PDFs and phone photos in German — explained simply in your language." },
+  { icon: FileSearch, title: "Reads your letters", text: `${ACCEPTED_SHORT} in German — explained simply in your language.` },
   { icon: Scale, title: "Computes every deadline", text: "With tested legal rules, not guesses — and shows you why." },
   { icon: BellRing, title: "Reminds, suggests, drafts", text: "It never sends, cancels or pays anything on its own." },
 ];

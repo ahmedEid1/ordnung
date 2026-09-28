@@ -12,7 +12,7 @@ import { Kbd } from "@/components/ui/Kbd";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { useAddLetters } from "./AddLetters";
+import { ACCEPTED_ONE, useAddLetters } from "./AddLetters";
 
 /** The search starts at this many characters. */
 const MIN_CHARS = 2;
@@ -309,8 +309,8 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
           </Button>
         }
       >
-        <span className="font-medium text-ink">You haven't added any letters yet.</span> Add a PDF or a phone photo, and search finds it by sender,
-        subject, amount or reference number.
+        <span className="font-medium text-ink">You haven't added any letters yet.</span> Add {ACCEPTED_ONE}, and search finds it by
+        sender, subject, amount or reference number.
       </PanelMessage>
     );
   } else if (noMatches) {

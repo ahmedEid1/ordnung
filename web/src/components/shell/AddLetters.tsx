@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { ChevronLeft, ChevronRight, FileImage, FileStack, FileText, Files, Inbox, Lock, Upload, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileImage, FileStack, FileText, Files, Inbox, Lock, Mail, Upload, X, type LucideIcon } from "lucide-react";
 import { useUploadDocuments } from "@/api/hooks";
 import { seedJob } from "@/api/sse";
 import { isStaticDemo } from "@/mocks/mode";
@@ -17,12 +17,25 @@ import { cn, plural } from "@/lib/utils";
  */
 export const ACCEPT =
   "application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,message/rfc822,text/plain,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.eml,.txt";
-/** The accepted types in words (the "skipped" message names them). */
-export const ACCEPTED_TYPES = "PDFs, photos (JPG, PNG, WEBP, HEIC), saved e-mails (.eml) and text files";
+/** The accepted types in words (the "skipped" message names them). "e‑mail" has a non-breaking hyphen (U+2011). */
+export const ACCEPTED_TYPES = "PDFs, photos (JPG, PNG, WEBP, HEIC), saved e‑mails (.eml) and text files";
+/** What can be added, said short (drop zone, empty states, onboarding): "PDFs, phone photos or saved e‑mails". */
+export const ACCEPTED_SHORT = "PDFs, phone photos or saved e‑mails";
+/** One of them: "a PDF, a phone photo or a saved e‑mail". */
+export const ACCEPTED_ONE = "a PDF, a phone photo or a saved e‑mail";
 
 const isImage = (f: File) => f.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name);
-const isText = (f: File) => f.type === "message/rfc822" || f.type === "text/plain" || /\.(eml|txt)$/i.test(f.name);
+const isEmail = (f: File) => f.type === "message/rfc822" || /\.eml$/i.test(f.name);
+const isText = (f: File) => isEmail(f) || f.type === "text/plain" || /\.(eml|txt)$/i.test(f.name);
 const isAccepted = (f: File) => isImage(f) || isText(f) || f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+
+/** What a file to add is, as its row in the dialog says it: "Photo", "E‑mail", "Text file" or "PDF". */
+export function fileKind(f: File): { label: string; icon: LucideIcon } {
+  if (isImage(f)) return { label: "Photo", icon: FileImage };
+  if (isEmail(f)) return { label: "E‑mail", icon: Mail }; // U+2011: never split at its hyphen
+  if (f.type === "text/plain" || /\.txt$/i.test(f.name)) return { label: "Text file", icon: FileText };
+  return { label: "PDF", icon: FileText };
+}
 
 /** How many files (or photo pages) a dialog lists before "Show all". */
 const SHOWN = 8;
@@ -265,8 +278,7 @@ function FileList({ files, onRemove }: { files: PendingFile[]; onRemove: (id: st
     <>
       <ul ref={(el) => void (listRef.current = el)} aria-label="Files to add" className="divide-y divide-line overflow-hidden rounded-xl border border-line">
         {shown.map(({ id, file }, i) => {
-          const photo = isImage(file);
-          const Icon = photo ? FileImage : FileText;
+          const { label: kind, icon: Icon } = fileKind(file);
           return (
             <li key={id} className="flex items-center gap-3 py-2 pl-3 pr-1.5">
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-muted">
@@ -275,7 +287,7 @@ function FileList({ files, onRemove }: { files: PendingFile[]; onRemove: (id: st
               <span className="min-w-0 flex-1">
                 <FileName name={file.name} className="text-base font-medium text-ink" />
                 <span className="block text-xs text-muted">
-                  {photo ? "Photo" : "PDF"} · {formatFileSize(file.size)}
+                  {kind} · {formatFileSize(file.size)}
                 </span>
               </span>
               {files.length > 1 ? (

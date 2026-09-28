@@ -8,7 +8,7 @@ import { useDebounced, useMediaQuery, useStickyError } from "@/lib/hooks";
 import { useTodayISO } from "@/lib/today";
 import { documentKindLabel } from "@/lib/copy";
 import { Page, PageHeader } from "@/components/shell/Page";
-import { useAddLetters } from "@/components/shell/AddLetters";
+import { ACCEPTED_ONE, ACCEPTED_SHORT, useAddLetters } from "@/components/shell/AddLetters";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadError } from "@/components/ui/LoadError";
@@ -215,7 +215,7 @@ export default function InboxPage() {
         <EmptyState
           illustration="inbox"
           title="No letters yet"
-          description="Add a PDF, a phone photo or a saved e-mail of a letter. Ordnung reads it with your own Claude, explains it and files every date and amount."
+          description={`Add ${ACCEPTED_ONE} of a letter. Ordnung reads it with your own Claude, explains it and files every date and amount.`}
           action={
             <Button variant="primary" icon={Plus} onClick={openPicker}>
               Add letters
@@ -300,11 +300,11 @@ export default function InboxPage() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-base font-medium text-ink">
-                      {touch ? "Add letters — PDFs or phone photos" : "Drop letters anywhere on this page, or choose files"}
+                      {touch ? `Add letters — ${ACCEPTED_SHORT}` : "Drop letters anywhere on this page, or choose files"}
                     </span>
                     <span className="mt-0.5 flex items-start gap-1.5 text-sm leading-5 text-muted">
                       <Lock className="mt-1 size-3 shrink-0" aria-hidden />
-                      {touch ? "Your files stay on this device." : "PDFs and phone photos. Your files stay on this computer."}
+                      {touch ? "Your files stay on this device." : `${ACCEPTED_SHORT}. Your files stay on this computer.`}
                     </span>
                   </span>
                 </button>

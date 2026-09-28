@@ -10,7 +10,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "@/test/render";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
-import { AddLettersProvider, FileName, useAddLetters } from "./AddLetters";
+import { ACCEPTED_SHORT, AddLettersProvider, FileName, fileKind, useAddLetters } from "./AddLetters";
 import { DropZone } from "./DropZone";
 
 let fetchSpy: ReturnType<typeof vi.fn>;
@@ -161,7 +161,8 @@ describe("files Ordnung can't read", () => {
     const toast = warning.closest("li")!;
     expect(toast).toHaveTextContent("notizen.docx isn't a file Ordnung reads");
     expect(toast).toHaveTextContent("JPG, PNG, WEBP, HEIC");
-    expect(toast).toHaveTextContent("saved e-mails (.eml)");
+    // "e‑mail" with a non-breaking hyphen (U+2011): it never splits over two lines
+    expect(toast).toHaveTextContent("saved e\u2011mails (.eml)");
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
@@ -172,7 +173,28 @@ describe("files Ordnung can't read", () => {
     ]);
     await user.click(screen.getByRole("button", { name: "Add them" }));
     expect(screen.queryByText(/skipped/)).toBeNull();
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    // each row says honestly what the file is (not "PDF" for everything that isn't a photo)
+    const rows = within(within(dialog).getByRole("list", { name: "Files to add" })).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("E\u2011mail ·");
+    expect(rows[1]).toHaveTextContent("Text file ·");
+  });
+});
+
+describe("fileKind", () => {
+  const file = (name: string, type: string) => new File(["x"], name, { type });
+  it("names a photo, a saved e-mail, a text file and a PDF — by type or by extension", () => {
+    expect(fileKind(file("seite-1.jpg", "image/jpeg")).label).toBe("Photo");
+    expect(fileKind(file("scan.HEIC", "")).label).toBe("Photo");
+    expect(fileKind(file("Rechnung.eml", "message/rfc822")).label).toBe("E\u2011mail");
+    expect(fileKind(file("Rechnung.eml", "")).label).toBe("E\u2011mail");
+    expect(fileKind(file("notiz.txt", "text/plain")).label).toBe("Text file");
+    expect(fileKind(file("notiz.TXT", "")).label).toBe("Text file");
+    expect(fileKind(file("Bescheid.pdf", "application/pdf")).label).toBe("PDF");
+  });
+
+  it("the short wording names saved e-mails, unbroken", () => {
+    expect(ACCEPTED_SHORT).toBe("PDFs, phone photos or saved e\u2011mails");
   });
 });
 
