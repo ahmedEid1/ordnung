@@ -398,6 +398,16 @@ DEMO_UPLOAD_MESSAGE = (
     "The demo uses recorded answers for Sam's sample letters, so it can't read new ones. "
     "Run “ordnung serve” (with Claude Code signed in) to use Ordnung with your own letters."
 )
+DEMO_REPLAY_CODE = "demo_replay"
+"""``code`` of that refusal: the app says it as a limit of the demo (an info note), not as a failure."""
+
+
+def demo_replay_refusal() -> JSONResponse:
+    """409 for what the replay-only demo can't do (read a letter it has no recording for)."""
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={"detail": DEMO_UPLOAD_MESSAGE, "code": DEMO_REPLAY_CODE},
+    )
 
 
 def _replay_only(ctx: AppContext) -> bool:
@@ -422,7 +432,7 @@ async def upload_documents(
     if not uploads:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "No files were uploaded.")
     if state.demo and not private and _replay_only(ctx):
-        raise HTTPException(status.HTTP_409_CONFLICT, DEMO_UPLOAD_MESSAGE)
+        return demo_replay_refusal()
     if len(uploads) > MAX_UPLOAD_FILES:
         raise HTTPException(
             status.HTTP_413_CONTENT_TOO_LARGE, f"Please add at most {MAX_UPLOAD_FILES} files at once."

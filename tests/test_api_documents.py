@@ -342,7 +342,7 @@ async def test_demo_refuses_uploads_that_would_need_claude(tmp_path) -> None:  #
         headers = {"X-Ordnung-Client": "web"}
         refused = await client.post("/api/documents", files=files, headers=headers)
         assert refused.status_code == 409
-        assert "ordnung serve" in refused.json()["detail"]
+        assert "ordnung serve" in refused.json()["detail"] and refused.json()["code"] == "demo_replay"
         private = await client.post("/api/documents", files=files, data={"private": "true"}, headers=headers)
         assert private.status_code == 201
     ctx.close()

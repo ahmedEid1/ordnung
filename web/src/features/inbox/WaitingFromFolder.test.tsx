@@ -90,11 +90,13 @@ describe("the letters waiting from the folder", () => {
     expect(await screen.findByText("They're back with the letters not read yet")).toBeInTheDocument();
   });
 
-  it("the online demo can't read new letters: they keep waiting (the app's error toast explains)", async () => {
+  it("the online demo can't read new letters: it says so beforehand, and they keep waiting", async () => {
     const { calls, srv } = useMockApi({ staticDemo: true });
     const user = userEvent.setup();
     renderInbox();
     const g = await group();
+    expect(await within(g).findByText(/This demo can't read new letters/)).toBeInTheDocument();
+    expect(within(g).queryByText(/Claude reads them like letters you add/)).toBeNull();
     const read = within(g).getByRole("button", { name: "Read these 3 with Claude" });
     await user.click(read);
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/documents/held/read")).toBe(true));

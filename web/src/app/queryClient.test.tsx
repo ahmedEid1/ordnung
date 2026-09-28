@@ -144,6 +144,16 @@ describe("a failed change", () => {
     expect(screen.getByText("Claude needs a short break")).toBeInTheDocument();
   });
 
+  it("says `ordnung demo`'s limit calmly: it replays recorded answers and can't read a new letter", async () => {
+    const why = "The demo uses recorded answers for Sam's sample letters, so it can't read new ones.";
+    await run({ mutationFn: () => Promise.reject(new ApiError(409, why, why, "demo_replay")), meta: { errorTitle: "Couldn't start reading them" } });
+    const title = screen.getByText("Not available in the demo");
+    expect(screen.queryByText("Couldn't start reading them")).toBeNull();
+    // an info note, not an error (the polite list — errors go to the assertive one), nothing to try again
+    expect(title.closest("ol")).toHaveAttribute("aria-live", "polite");
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
   it("every mutation hook names what failed (or handles its errors itself)", () => {
     const blocks = hooksSource.split("useMutation(").slice(1).map((b) => b.split(/\nexport function /)[0]!);
     expect(blocks.length).toBeGreaterThan(20);

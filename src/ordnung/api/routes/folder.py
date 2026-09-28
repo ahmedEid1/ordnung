@@ -5,7 +5,7 @@
   brought in.
 * ``POST /api/documents/held/read`` — "Read these": the given held letters (and a held e-mail's held
   attachments) may be sent to Claude and are queued for reading. Ids that no longer wait are
-  reported as ``skipped``. The zero-token demo can't read new letters (``409``).
+  reported as ``skipped``. The zero-token demo can't read new letters (``409``, ``code: demo_replay``).
 * ``POST /api/documents/held/keep-private`` — "Keep private": they stay on this computer, as if
   added with "Keep private — no AI".
 * ``POST /api/documents/held/wait`` — undo "Keep private": letters kept private by that answer (and
@@ -21,11 +21,12 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Sequence
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from ordnung.api.deps import ApiState, StateDep, StoreDep
-from ordnung.api.routes.documents import DEMO_UPLOAD_MESSAGE
+from ordnung.api.routes.documents import demo_replay_refusal
 from ordnung.db.store import Store
 from ordnung.ingest import held
 from ordnung.ingest.pipeline import announce_job
@@ -90,10 +91,10 @@ def _announce(state: ApiState, documents: list[Document]) -> None:
 
 
 @router.post("/documents/held/read", response_model=HeldResult)
-async def read_held(body: HeldRequest, state: StateDep) -> HeldResult:
+async def read_held(body: HeldRequest, state: StateDep) -> HeldResult | JSONResponse:
     """“Read these”: the waiting letters may be sent to Claude; they are queued for reading."""
     if not state.reads_letters:
-        raise HTTPException(status.HTTP_409_CONFLICT, DEMO_UPLOAD_MESSAGE)
+        return demo_replay_refusal()
     result = await _answer(state, held.release, body.doc_ids)
     _announce(state, result.documents)
     return HeldResult(documents=result.documents, jobs=result.jobs, skipped=result.skipped)

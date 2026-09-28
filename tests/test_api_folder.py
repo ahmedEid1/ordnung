@@ -156,6 +156,7 @@ async def test_the_demo_that_only_replays_can_not_read_waiting_letters(
         assert (await api.client.get("/api/folder")).json()["can_read"] is False  # files always wait
         response = await api.client.post("/api/documents/held/read", json={"doc_ids": [doc_id]})
         assert response.status_code == 409 and "recorded answers" in response.json()["detail"]
+        assert response.json()["code"] == "demo_replay"  # the app says it as the demo's limit, not a failure
         kept = await api.client.post("/api/documents/held/keep-private", json={"doc_ids": [doc_id]})
         assert kept.status_code == 200
 

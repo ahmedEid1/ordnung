@@ -27,6 +27,15 @@ export class ApiError extends Error {
   get isStaticDemo(): boolean {
     return this.code === "static_demo";
   }
+
+  /**
+   * True for something a demo can't do: the hosted demo's refusal, or `ordnung demo` (recorded
+   * answers only) asked to read a letter it has no recording for (`demo_replay`). Said as a limit of
+   * the demo, not as a failure.
+   */
+  get isDemoLimit(): boolean {
+    return this.code === "static_demo" || this.code === "demo_replay";
+  }
 }
 
 export type QueryValue = string | number | boolean | null | undefined;

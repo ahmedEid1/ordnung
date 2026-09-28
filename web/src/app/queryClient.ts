@@ -16,6 +16,7 @@ declare module "@tanstack/react-query" {
 function describe(err: unknown): { title: string; description?: string } {
   if (err instanceof ApiError) {
     if (err.isStaticDemo) return { title: "Not available in the online demo", description: err.message };
+    if (err.isDemoLimit) return { title: "Not available in the demo", description: err.message };
     if (err.status === 0) return { title: "Can't reach Ordnung", description: err.message };
     if (err.status === 429) return { title: "Claude needs a short break", description: err.message };
     return { title: "That didn't work", description: err.message };
@@ -24,7 +25,7 @@ function describe(err: unknown): { title: string; description?: string } {
 }
 
 /** Worth trying the same thing again: Ordnung didn't answer or failed itself (not a refusal). */
-const retryable = (err: unknown) => err instanceof ApiError && !err.isStaticDemo && (err.status === 0 || err.status >= 500);
+const retryable = (err: unknown) => err instanceof ApiError && !err.isDemoLimit && (err.status === 0 || err.status >= 500);
 
 /** Id of the one "Can't reach Ordnung" toast. */
 export const OFFLINE_TOAST_ID = "offline";
@@ -73,7 +74,8 @@ export function createQueryClient(): QueryClient {
       onError: (err, variables, _ctx, mutation) => {
         if (mutation.meta?.silent) return;
         const { title, description } = describe(err);
-        const demo = err instanceof ApiError && err.isStaticDemo;
+        // a demo's limit (the hosted demo, or `ordnung demo` asked to read a new letter): a calm note
+        const demo = err instanceof ApiError && err.isDemoLimit;
         // what failed ("Couldn't save your profile"), unless the reason is the better title
         const specific = demo || (err instanceof ApiError && err.status === 429) ? title : (mutation.meta?.errorTitle ?? title);
         toast({

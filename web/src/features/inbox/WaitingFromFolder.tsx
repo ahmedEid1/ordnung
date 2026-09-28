@@ -12,7 +12,7 @@
 import { Link } from "react-router";
 import { FolderInput, Lock, Sparkles } from "lucide-react";
 import type { Document } from "@/api/types";
-import { useKeepHeldPrivate, useReadHeld, useWaitAgain } from "@/api/hooks";
+import { useFolder, useKeepHeldPrivate, useReadHeld, useWaitAgain } from "@/api/hooks";
 import { formatDateTime } from "@/lib/format";
 import { protectRefs } from "@/lib/glue";
 import { useTodayISO } from "@/lib/today";
@@ -28,6 +28,8 @@ export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Documen
   const read = useReadHeld();
   const keep = useKeepHeldPrivate();
   const wait = useWaitAgain();
+  // the demo that only replays its recordings can't read new letters: say so before "Read these" is tried
+  const canRead = useFolder().data?.can_read ?? true;
   if (!rows.length) return null;
   const ids = rows.map((r) => r.doc.id);
   const n = ids.length;
@@ -95,7 +97,11 @@ export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Documen
         </ul>
         <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-3 border-t border-line bg-surface-2/40 px-4 py-3 sm:px-5">
           <p className="mr-auto min-w-0 basis-full text-sm leading-5 text-muted sm:basis-auto sm:flex-1">
-            {n === 1 ? "Claude reads it like a letter you add." : "Claude reads them like letters you add."}{" "}
+            {!canRead
+              ? "This demo can't read new letters — it only replays the answers recorded for Sam's letters."
+              : n === 1
+                ? "Claude reads it like a letter you add."
+                : "Claude reads them like letters you add."}{" "}
             <Link to="/settings?section=folder" className="font-medium text-accent underline-offset-2 hover:underline">
               Watched folder settings
             </Link>
