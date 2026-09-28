@@ -1,7 +1,7 @@
 /**
  * Layout guards on real pages (what jsdom can't see): nothing makes a page scroll sideways at
  * 320 CSS px (WCAG 1.4.10), keyboard focus never ends up hidden under the sticky top bar, the
- * phone tab bar or Ask's question box (WCAG 2.4.11), Ask's live steps grow above that box, the focus ring is the accent colour from the first frame, tabs
+ * phone tab bar, a toast or Ask's question box (WCAG 2.4.11), Ask's live steps grow above that box, the focus ring is the accent colour from the first frame, tabs
  * that don't fit scroll with a fade and keep the selected tab in view, and popovers sit whole and
  * clear of the top bar (sheets on phones).
  */
@@ -184,6 +184,53 @@ test.describe("phone: focus stays clear of the demo tour", () => {
     expect(await obscuredFocus(page, 30, "Tab")).toEqual([]);
   });
 });
+
+/**
+ * Put a toast up that stays (an error waits for the person), then go to `path` in the app — the toast stays
+ * with it, as an Undo toast does for 15 s after "Mark as paid" or "Save notice period".
+ */
+async function withToastOn(page: Page, path: string, h1: string | RegExp): Promise<void> {
+  await open(page, "/dev/ui", "Design system");
+  await page.getByRole("button", { name: "Error toast" }).click();
+  const toast = page.getByRole("region", { name: /^Notifications/ }).getByRole("listitem");
+  await expect(toast).toHaveCount(1);
+  await page.evaluate((to) => {
+    window.history.pushState({}, "", to);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }, path);
+  await expect(page.getByRole("main").getByRole("heading", { level: 1 }).first()).toHaveText(h1);
+  await page.waitForLoadState("networkidle");
+  await settle(page);
+  await expect(toast).toHaveCount(1);
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    window.scrollTo(0, 0);
+  });
+}
+
+// UI audit round 2 (R2-ui-foundations-1): while a toast (or an upload card) was up, Tab moved focus to
+// controls hidden behind it — the page's scroll-padding left the toast column out; it mirrors
+// `.room-for-overlays` now (phones: the taller of the tour bar and the toasts; from md: the toast column)
+for (const [width, height, phone] of [
+  [320, 640, true],
+  [390, 844, true],
+  [768, 1024, false],
+  [1280, 800, false],
+] as const) {
+  test.describe(`${width} px: focus stays clear of a toast`, () => {
+    test.use({ viewport: { width, height }, isMobile: phone, hasTouch: phone });
+
+    for (const [path, h1] of [
+      ["/", /Sam/],
+      ["/contracts", "Contracts"],
+    ] as const) {
+      test(`Tab through ${path} with a toast up`, async ({ page }) => {
+        await withToastOn(page, path, h1);
+        expect(await obscuredFocus(page, 45, "Tab")).toEqual([]);
+      });
+    }
+  });
+}
 
 /** Ask a question on /ask (the demo replays its recorded answers) and wait for the checked answer. */
 async function ask(page: Page, question: string): Promise<void> {

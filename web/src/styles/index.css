@@ -29,7 +29,11 @@
    * Type scale (use these instead of text-[Npx]). Text that carries information is at least
    * --text-xs (12 px); --text-2xs is only for counters inside a larger, labelled target.
    * UI sizes keep the body rhythm (line-height 1.5); titles are tighter. --text-h1 is the page
-   * title (30 px on phones, growing to 38 px from tablets up).
+   * title (30 px on phones, growing to 38 px from tablets up). --text-detail is the title of one
+   * thing's page — a letter (its verdict and "How it was read" tabs alike), a held letter, a draft,
+   * a proof file: 26 px on phones, growing to 30 px by `sm` (640 px). --text-detail-long is the same
+   * title one step smaller on phones (23 px, also 30 px by `sm`), for a title with a very long word
+   * ("Betriebskostenabrechnung") that would otherwise break mid-word at 320 px.
    */
   --text-2xs: 0.6875rem; /* 11 px */
   --text-2xs--line-height: 1.5;
@@ -47,6 +51,10 @@
   --text-title--line-height: 1.25;
   --text-h1: clamp(1.875rem, 1.25rem + 2.5vw, 2.375rem); /* 30 → 38 px */
   --text-h1--line-height: 1.1;
+  --text-detail: clamp(1.625rem, 1.235rem + 1.6vw, 1.875rem); /* 26 px up to 390 → 30 px from 640 */
+  --text-detail--line-height: 1.15;
+  --text-detail-long: clamp(1.4375rem, 0.755rem + 2.8vw, 1.875rem); /* 23 px up to 390 → 30 px from 640 */
+  --text-detail-long--line-height: 1.15;
 
   --color-canvas: #f7f5f0;
   --color-surface: #ffffff;
@@ -199,16 +207,28 @@
     color-scheme: light;
     /*
      * Whatever gets focus or is scrolled to (Tab, anchor jumps, scrollIntoView) stops clear of the
-     * sticky top bar (h-14) and, on phones, of the fixed tab bar (h-16 + home indicator) and the
-     * demo tour bar — WCAG 2.4.11. The tour sets --ordnung-tour-bar / --ordnung-tour-clearance; the Ask
-     * page sets --ask-composer-h, the height of its sticky question box.
+     * sticky top bar (h-14) and of what floats over the bottom edge — WCAG 2.4.11. Mirrors
+     * `.room-for-overlays` (so the last buttons can scroll that far), plus the Ask page's sticky
+     * question box (--ask-composer-h). Phones: the fixed tab bar (h-16 + home indicator), then the
+     * demo tour bar (--ordnung-tour-bar) or the toast column above it (lifted by --ordnung-toast-lift,
+     * --ordnung-toast-space tall while a toast or an upload card is up), whichever is taller. From md:
+     * the floating tour card (--ordnung-tour-clearance) or the toast column (1.25rem up, lifted).
      */
     scroll-padding-top: 4.5rem;
     scroll-padding-bottom: calc(
-      5rem + env(safe-area-inset-bottom, 0px) + var(--ordnung-tour-bar, 0px) + var(--ask-composer-h, 0px)
+      5rem + env(safe-area-inset-bottom, 0px) +
+        max(var(--ordnung-tour-bar, 0px), calc(var(--ordnung-toast-lift, 0px) + var(--ordnung-toast-space, 0px))) +
+        var(--ask-composer-h, 0px)
     );
     @variant md {
-      scroll-padding-bottom: calc(1.5rem + var(--ordnung-tour-clearance, 0px) + var(--ask-composer-h, 0px));
+      scroll-padding-bottom: calc(
+        max(
+            1.5rem,
+            var(--ordnung-tour-clearance, 0px),
+            calc(1.25rem + var(--ordnung-toast-lift, 0px) + var(--ordnung-toast-space, 0px))
+          ) +
+          var(--ask-composer-h, 0px)
+      );
     }
   }
   html.dark {
@@ -296,7 +316,7 @@
    * buttons can always be scrolled clear of it. Phones: the tab bar (h-16 + home indicator), then
    * the demo tour bar or the toast above it, whichever is taller. From md: the floating demo tour
    * card (--ordnung-tour-clearance) or the toast column (1.25rem up, lifted above the tour card,
-   * --ordnung-toast-space tall). Mirrors `scroll-padding-bottom` on <html>.
+   * --ordnung-toast-space tall). `scroll-padding-bottom` on <html> mirrors it (keep the two in step).
    */
   .room-for-overlays {
     padding-bottom: calc(

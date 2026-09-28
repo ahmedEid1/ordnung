@@ -2,11 +2,11 @@ import { clsx, type ClassValue } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
 
 /**
- * tailwind-merge that knows the app's type scale (index.css): `text-title` and `text-h1` are font
- * sizes, not colours — without this, `cn("text-h1", "text-ink")` would drop the size.
- * (`text-2xs` and `text-md` are recognised as t-shirt sizes already.)
+ * tailwind-merge that knows the app's type scale (index.css): `text-title`, `text-h1`, `text-detail`
+ * and `text-detail-long` are font sizes, not colours — without this, `cn("text-h1", "text-ink")`
+ * would drop the size. (`text-2xs` and `text-md` are recognised as t-shirt sizes already.)
  */
-const twMerge = extendTailwindMerge({ extend: { theme: { text: ["title", "h1"], font: ["ident"] } } });
+const twMerge = extendTailwindMerge({ extend: { theme: { text: ["title", "h1", "detail", "detail-long"], font: ["ident"] } } });
 
 /** Merge class names; later Tailwind utilities win over earlier conflicting ones. */
 export function cn(...inputs: ClassValue[]): string {

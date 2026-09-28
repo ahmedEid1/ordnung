@@ -56,15 +56,25 @@ describe("scroll padding (focus and jumps stay clear of the fixed bars — WCAG 
     expect(html).toMatch(/scroll-padding-top:\s*4\.5rem;/);
   });
 
-  it("keeps targets above the phone tab bar, the home indicator, the tour bar and the Ask question box", () => {
+  it("keeps targets above the phone tab bar, the home indicator, the taller of the tour bar and the toasts, and the Ask question box", () => {
     expect(html).toMatch(
-      /scroll-padding-bottom:\s*calc\(\s*5rem \+ env\(safe-area-inset-bottom, 0px\) \+ var\(--ordnung-tour-bar, 0px\) \+ var\(--ask-composer-h, 0px\)\s*\);/,
+      /scroll-padding-bottom:\s*calc\(\s*5rem \+ env\(safe-area-inset-bottom, 0px\) \+\s*max\(var\(--ordnung-tour-bar, 0px\), calc\(var\(--ordnung-toast-lift, 0px\) \+ var\(--ordnung-toast-space, 0px\)\)\) \+\s*var\(--ask-composer-h, 0px\)\s*\);/,
     );
   });
 
-  it("from tablets up (no tab bar) only leaves room for the tour card and the Ask question box", () => {
+  it("from tablets up (no tab bar) leaves room for the tour card or the (lifted) toast column, and the Ask question box", () => {
     expect(html).toMatch(
-      /@variant md\s*{\s*scroll-padding-bottom:\s*calc\(1\.5rem \+ var\(--ordnung-tour-clearance, 0px\) \+ var\(--ask-composer-h, 0px\)\);/,
+      /@variant md\s*{\s*scroll-padding-bottom:\s*calc\(\s*max\(\s*1\.5rem,\s*var\(--ordnung-tour-clearance, 0px\),\s*calc\(1\.25rem \+ var\(--ordnung-toast-lift, 0px\) \+ var\(--ordnung-toast-space, 0px\)\)\s*\) \+\s*var\(--ask-composer-h, 0px\)\s*\);/,
+    );
+  });
+
+  it("mirrors the room under <main>: focus never stops under a toast the page can't scroll clear of (and vice versa)", () => {
+    // the same overlays, in the same order, on phones and from md — only the Ask box is extra
+    const room = block(".room-for-overlays {");
+    const overlays = (body: string) => [...body.matchAll(/var\((--[\w-]+)/g)].map((m) => m[1]).filter((v) => v !== "--ask-composer-h");
+    expect(overlays(html)).toEqual(overlays(room));
+    expect(overlays(html)).toEqual(
+      expect.arrayContaining(["--ordnung-toast-lift", "--ordnung-toast-space", "--ordnung-tour-bar", "--ordnung-tour-clearance"]),
     );
   });
 });
@@ -125,6 +135,32 @@ describe("type scale", () => {
     expect(light["text-h1--line-height"]).toBe("1.1");
   });
 
+  it("has one detail-page title size: 26 px on phones (23 px with a very long word), 30 px from sm", () => {
+    // clamp(min, a rem + b vw, max) at a viewport `w` px wide
+    const at = (token: string, w: number) => {
+      const m = /^clamp\(([\d.]+)rem, ([\d.]+)rem \+ ([\d.]+)vw, ([\d.]+)rem\)$/.exec(light[token]!);
+      expect(m, `${token} is a clamp`).not.toBeNull();
+      const [min, a, b, max] = m!.slice(1).map(Number) as [number, number, number, number];
+      return Math.round(Math.min(max * 16, Math.max(min * 16, a * 16 + (b * w) / 100)) * 10) / 10;
+    };
+    for (const [token, phone] of [
+      ["text-detail", 26],
+      ["text-detail-long", 23],
+    ] as const) {
+      expect(at(token, 320), `${token} at 320`).toBe(phone);
+      expect(at(token, 390), `${token} at 390`).toBe(phone);
+      expect(at(token, 640), `${token} at 640 (sm)`).toBe(30);
+      expect(at(token, 1920), `${token} at 1920`).toBe(30);
+      expect(light[`${token}--line-height`]).toBe("1.15");
+    }
+    // between a section title and a section page's title, at every width
+    for (const w of [320, 390, 640, 768, 1280, 1920]) {
+      expect(at("text-detail", w), `detail ≤ h1 at ${w}`).toBeLessThanOrEqual(at("text-h1", w));
+      expect(at("text-detail-long", w), `long ≤ detail at ${w}`).toBeLessThanOrEqual(at("text-detail", w));
+      expect(at("text-detail-long", w), `long > title at ${w}`).toBeGreaterThan(px(light["text-title"]!));
+    }
+  });
+
   it("has shared eyebrow and card-title classes built from the scale", () => {
     const components = block("@layer components");
     expect(components).toMatch(/\.eyebrow\s*{\s*@apply text-xs font-semibold uppercase tracking-\[0\.07em\] text-muted;/);
@@ -134,6 +170,10 @@ describe("type scale", () => {
   it("is known to cn(): sizes don't swallow colours and vice versa", () => {
     expect(cn("text-h1", "text-ink")).toBe("text-h1 text-ink");
     expect(cn("text-title", "text-muted")).toBe("text-title text-muted");
+    expect(cn("text-detail", "text-ink")).toBe("text-detail text-ink");
+    expect(cn("text-detail-long", "text-ink")).toBe("text-detail-long text-ink");
+    expect(cn("text-detail", "text-detail-long")).toBe("text-detail-long");
+    expect(cn("text-[26px]", "text-detail")).toBe("text-detail");
     expect(cn("text-2xs text-md", "text-accent")).toBe("text-md text-accent");
     expect(cn("text-sm", "text-base")).toBe("text-base");
     expect(cn("font-sans", "font-ident", "font-semibold")).toBe("font-ident font-semibold");
