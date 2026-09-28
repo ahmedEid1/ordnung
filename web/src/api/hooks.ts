@@ -19,10 +19,14 @@ import {
 import { api, type ProofUpload, type UploadOptions } from "./endpoints";
 import { ApiError } from "./client";
 import type {
+  CalendarSyncConnect,
+  CalendarSyncFind,
+  CalendarSyncMode,
   CallListParams,
   CallNoteCreate,
   ContractListParams,
   ContractPatch,
+  DesktopMode,
   DocumentDetail,
   DocumentListParams,
   DocumentPatch,
@@ -916,6 +920,91 @@ export function useDeleteCall() {
 export function useMarkCalendarExported() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: () => api.calendarExported(), meta: { errorTitle: "Couldn't note the calendar download" }, onSuccess: () => invalidateLedger(qc) });
+}
+
+/** The morning desktop notification: its tool, today's text in each mode, and start at login. */
+export function useDesktopReminders() {
+  return useQuery({ queryKey: ["reminders", "desktop"] as const, queryFn: api.desktopReminders, staleTime: 30_000 });
+}
+
+/** "Send a test notification" (the answer says whether the system showed it, and why not). */
+export function useTestDesktopNotification() {
+  return useMutation({ mutationFn: (mode: DesktopMode) => api.testDesktopNotification(mode), meta: { errorTitle: "Couldn't send a test notification" } });
+}
+
+/** What an encrypted backup made now would hold (letters, files, size). */
+export function useBackupInfo() {
+  return useQuery({ queryKey: ["backup", "info"] as const, queryFn: api.backupInfo, staleTime: 30_000 });
+}
+
+/** The encrypted backup as a Blob; its errors are shown in the backup dialog, next to the passphrase. */
+export function useDownloadBackup() {
+  return useMutation({
+    mutationFn: ({ passphrase, signal }: { passphrase: string; signal?: AbortSignal }) => api.downloadBackup(passphrase, signal),
+    meta: { silent: true },
+  });
+}
+
+const CALENDAR_SYNC_KEY = ["calendar", "sync"] as const;
+
+/** Calendar sync: whether it can be used here, the connected calendar and the last sync. */
+export function useCalendarSync(enabled = true) {
+  return useQuery({ queryKey: CALENDAR_SYNC_KEY, queryFn: api.calendarSync, staleTime: 30_000, enabled });
+}
+
+/** Exactly what each event would contain in `mode` (nothing is sent). */
+export function useCalendarSyncPreview(mode: CalendarSyncMode, enabled = true) {
+  return useQuery({ queryKey: [...CALENDAR_SYNC_KEY, "preview", mode] as const, queryFn: () => api.calendarSyncPreview(mode), staleTime: 30_000, enabled });
+}
+
+/** Find the calendars of an account; errors are shown next to the field they concern (`ApiError.code`). */
+export function useDiscoverCalendars() {
+  return useMutation({ mutationFn: (body: CalendarSyncFind) => api.discoverCalendars(body), meta: { silent: true } });
+}
+
+/**
+ * Connect or change the mode; errors are shown next to the field they concern (`ApiError.code`).
+ * A connected calendar gets the dates by itself: the "import the calendar file" Idea goes (the
+ * ledger's queries, Ideas included, are fetched again).
+ */
+export function useConnectCalendarSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CalendarSyncConnect) => api.connectCalendarSync(body),
+    meta: { silent: true },
+    onSuccess: (status) => {
+      qc.setQueryData(CALENDAR_SYNC_KEY, status);
+      void qc.invalidateQueries({ queryKey: qk.activity });
+      void invalidateLedger(qc);
+    },
+  });
+}
+
+/** "Sync now" (the answer's `last_sync` says what happened, errors included). */
+export function useRunCalendarSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.runCalendarSync(),
+    meta: { errorTitle: "Couldn't sync the calendar" },
+    onSuccess: (status) => {
+      qc.setQueryData(CALENDAR_SYNC_KEY, status);
+      void qc.invalidateQueries({ queryKey: qk.activity });
+    },
+  });
+}
+
+/** Forget the calendar (and its app password), removing Ordnung's events first if asked. */
+export function useDisconnectCalendarSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (removeEvents: boolean) => api.disconnectCalendarSync(removeEvents),
+    meta: { silent: true },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: CALENDAR_SYNC_KEY });
+      void qc.invalidateQueries({ queryKey: qk.activity });
+      void invalidateLedger(qc); // the calendar file is the way to a calendar again (its Idea may come back)
+    },
+  });
 }
 
 export function useActivity(limit = 100) {

@@ -13,6 +13,7 @@
  */
 import { fakeApi, failApi, holdApi, pinToasts, settle } from "../browser.mjs";
 import { inMain } from "../steps.mjs";
+import { remindersBackupStates } from "./reminders-backup.mjs";
 import { commonSettingsSections, loadingAndErrorStates, SETTINGS_SECTIONS } from "./shared.mjs";
 import { numbersAndWeekDemoStates, numbersAndWeekMutationStates } from "./numbers-week.mjs";
 import { folderPhase } from "./folder.mjs";
@@ -1065,6 +1066,7 @@ export async function demoCatalog({ api, server }) {
       await c.click(btn);
     },
   });
+  for (const s of remindersBackupStates()) add(s);
 
   // ---------------------------------------------------------------------------------------------
   // Shell & overlays

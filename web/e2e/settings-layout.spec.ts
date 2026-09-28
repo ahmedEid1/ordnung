@@ -51,7 +51,9 @@ for (const [width, height] of [
     // discarded: the bar goes back to the end of its card
     await main.getByRole("button", { name: "Discard" }).click();
     await expect(main.locator("[data-pinned]")).toHaveCount(0);
-    await expect(main.getByText("All changes saved")).toBeAttached();
+    // (the desktop-notification card below has a save bar of its own)
+    const card = main.locator("section.card").filter({ has: page.getByRole("list", { name: "Reminders for deadlines" }) });
+    await expect(card.getByText("All changes saved")).toBeAttached();
   });
 }
 

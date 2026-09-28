@@ -218,10 +218,16 @@ describe("the Claude check", () => {
   it("shows a long install command whole, wrapping after the package scope (R1-onboarding-3)", () => {
     render(<CopyCommand command={CLAUDE_INSTALL_CMD} label="install Claude Code" />);
     const code = screen.getByText(CLAUDE_INSTALL_CMD);
-    expect(code).toHaveClass("whitespace-pre-wrap");
+    expect(code).toHaveClass("whitespace-normal", "[overflow-wrap:anywhere]");
     expect(code).not.toHaveClass("overflow-x-auto");
     expect(code.innerHTML).toBe("npm install -g @anthropic-ai/<wbr>claude-code");
     expect(screen.getByRole("button", { name: `Copy command to install Claude Code: ${CLAUDE_INSTALL_CMD}` })).toBeInTheDocument();
+  });
+
+  it("never breaks a path right after its root slash (no lone “/” at a line's end)", () => {
+    const command = "ordnung autostart enable --data-dir /home/sam/Ordnung";
+    render(<CopyCommand command={command} label="start Ordnung when you log in" />);
+    expect(screen.getByText(command).innerHTML).toBe("ordnung autostart enable --data-dir /home/<wbr>sam/<wbr>Ordnung");
   });
 });
 

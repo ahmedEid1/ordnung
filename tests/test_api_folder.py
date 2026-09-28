@@ -230,7 +230,7 @@ async def test_when_delete_everything_fails_the_folder_is_watched_again(
     scans = tmp_path / "Scans"
     scans.mkdir()
 
-    def locked(ctx: Any) -> None:
+    def locked(ctx: Any, *args: Any) -> None:
         raise OSError("a file is locked")
 
     async with api_for(data_dir) as api, lifespan(api.app):
@@ -239,6 +239,27 @@ async def test_when_delete_everything_fails_the_folder_is_watched_again(
         monkeypatch.setattr(data_routes, "wipe_data_dir", locked)
         with pytest.raises(OSError, match="locked"):
             await api.client.request("DELETE", "/api/data", json={"confirm": "DELETE"})
+        status = await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
+        assert status["folder"] == str(scans.resolve())
+
+
+async def test_when_the_calendar_keeps_everything_the_folder_is_watched_again(
+    data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Integration of the watched folder with calendar sync: "Delete everything" answers 409 and deletes
+    nothing when a connected calendar's events can't be removed first — the folder is watched again."""
+    scans = tmp_path / "Scans"
+    scans.mkdir()
+
+    def calendar_unreachable(ctx: Any, *args: Any) -> None:
+        raise data_routes.CalendarNotCleared("The calendar couldn't be reached, so nothing was deleted.")
+
+    async with api_for(data_dir) as api, lifespan(api.app):
+        await api.client.put("/api/settings", json={"inbox_dir": str(scans)})
+        await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
+        monkeypatch.setattr(data_routes, "wipe_data_dir", calendar_unreachable)
+        refused = await api.client.request("DELETE", "/api/data", json={"confirm": "DELETE"})
+        assert refused.status_code == 409 and "nothing was deleted" in refused.json()["detail"]
         status = await eventually_json(api, "/api/folder", lambda body: body["state"] == "watching")
         assert status["folder"] == str(scans.resolve())
 

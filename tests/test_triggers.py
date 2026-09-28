@@ -10,7 +10,7 @@ import pytest
 from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
 from ordnung.db.store import Store
 from ordnung.ids import content_id
-from ordnung.models import ExtractedChange, Suggestion
+from ordnung.models import CalendarSyncState, ExtractedChange, Suggestion
 from ordnung.secretary.triggers import (
     TRIGGERS,
     english,
@@ -505,6 +505,19 @@ def test_calendar_outdated_without_any_export(store: Store, ids: dict[str, str])
     store.set_meta("last_calendar_export_at", None)
     found = ideas(store, "calendar_outdated")
     assert len(found) == 1 and found[0].title.startswith("Add your ")
+
+
+@pytest.mark.parametrize("paused", [False, True])
+def test_calendar_outdated_is_quiet_while_calendar_sync_is_connected(
+    store: Store, ids: dict[str, str], paused: bool
+) -> None:
+    """The connected calendar gets the dates by itself; importing the file too would clash with them
+    (the same UIDs) — paused or not, the Today card's only step is that import."""
+    store.set_meta("last_calendar_export_at", None)
+    assert ideas(store, "calendar_outdated")
+    state = CalendarSyncState(url="https://cal.example.org/dav/sam/ordnung/", username="sam", paused=paused)
+    store.set_meta("calendar_sync", state.model_dump_json())
+    assert ideas(store, "calendar_outdated") == []
 
 
 # --------------------------------------------------------------------------------------------------

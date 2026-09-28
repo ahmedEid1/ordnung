@@ -157,6 +157,7 @@ def _explain(exc: Exception) -> tuple[str, str | None]:
 
     import httpx
 
+    from ordnung.backup import BackupError
     from ordnung.demo import DemoError
     from ordnung.ingest.extract import ExtractionError
     from ordnung.ingest.intake import IntakeError
@@ -167,7 +168,7 @@ def _explain(exc: Exception) -> tuple[str, str | None]:
         return str(exc), "If Ordnung's web app is running for this folder, use it — or stop it first."
     if isinstance(exc, LLMError):
         return str(exc), "Run `ordnung doctor` to check Claude."
-    if isinstance(exc, DemoError | IntakeError | ExtractionError | ApiError):
+    if isinstance(exc, DemoError | IntakeError | ExtractionError | ApiError | BackupError):
         return str(exc), None
     if isinstance(exc, httpx.HTTPError):
         return f"Couldn't talk to the running Ordnung server: {exc}", "Restart it with `ordnung serve`."
@@ -191,8 +192,11 @@ def _friendly() -> Iterator[None]:
     except Exception as exc:
         if os.environ.get("ORDNUNG_DEBUG"):
             raise
+        from ordnung.backup import BackupError
+
         message, hint = _explain(exc)
-        raise _fail(message, hint) from None
+        # a backup's messages name files and folders: no line break may split a path
+        raise _fail(message, hint, soft_wrap=isinstance(exc, BackupError)) from None
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1270,6 +1274,372 @@ def mcp_install(
         console.print(f"  {escape(where)}", soft_wrap=True)
     if result.status != "unchanged" or result.removed is not None:
         console.print(f"  {install.NEXT_STEP[plan.client]}")
+
+
+# --------------------------------------------------------------------------------------------------
+# autostart
+# --------------------------------------------------------------------------------------------------
+
+autostart_app = typer.Typer(
+    name="autostart",
+    help="Start Ordnung when you log in, so reminders reach you while the browser is closed.",
+    no_args_is_help=True,
+    add_completion=False,
+    rich_markup_mode="rich",
+)
+app.add_typer(autostart_app)
+
+
+@autostart_app.command("enable")
+def autostart_enable(
+    ctx: typer.Context,
+    data_dir: DataDirOption = None,
+    port: Annotated[int, typer.Option(help="Port Ordnung listens on.")] = DEFAULT_PORT,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Only print what would be written, and where.")
+    ] = False,
+) -> None:
+    """Start Ordnung (without opening the browser) every time you log in."""
+    from ordnung import autostart
+    from ordnung.demo.loader import is_demo_dir
+
+    with _friendly():
+        folder = _folder(ctx, data_dir)
+        if is_demo_dir(folder):
+            raise _fail(
+                "The demo doesn't start at login.", hint="Start it with `ordnung demo` when you want it."
+            )
+        try:
+            entry = autostart.plan(folder, port=port)
+        except autostart.AutostartError as exc:
+            raise _fail(str(exc), soft_wrap=True) from None
+        console.print(
+            f"Ordnung for [bold]{escape(str(folder))}[/] starts at login as a {entry.kind}, from this file:",
+            soft_wrap=True,
+        )
+        console.print(f"  [bold]{escape(str(entry.path))}[/]", soft_wrap=True)
+        console.print(escape(entry.content.replace("\r\n", "\n")).rstrip("\n"), style="dim", soft_wrap=True)
+        if entry.link is not None:
+            console.print(
+                f"  and the link {escape(str(entry.link))} (what `systemctl --user enable` makes)",
+                soft_wrap=True,
+            )
+        if dry_run:
+            console.print("Nothing was written (--dry-run).")
+            return
+        status = autostart.enable(entry)
+    done = {
+        "added": "Written.",
+        "updated": "Updated the earlier entry.",
+        "unchanged": "Already set up like this.",
+    }
+    console.print(f"[green]✓[/] {done[status]} Ordnung starts at your next login.")
+    console.print(f"  Start it now: {escape(entry.start_now)}", soft_wrap=True)
+    console.print("  Open the app any time with: ordnung serve (it finds the running Ordnung)")
+    console.print("  Undo with: ordnung autostart disable")
+    if _desktop_notifications(folder) == "off":
+        console.print(
+            "[yellow]![/] The morning desktop notification is off: switch it on in Settings → Reminders "
+            "(ordnung serve opens it), or Ordnung runs at login without telling you anything.",
+            soft_wrap=True,
+        )
+
+
+def _desktop_notifications(folder: Path) -> str:
+    """The folder's saved ``desktop_notifications`` setting, read without creating or changing
+    anything (``"off"``, the default, when there is no database yet or it can't be read)."""
+    import sqlite3
+
+    from ordnung.models import AppSettings
+
+    db = folder / Paths(folder).db.name
+    if not db.is_file():
+        return "off"
+    try:
+        conn = sqlite3.connect(f"{db.resolve().as_uri()}?mode=ro", uri=True)
+        try:
+            row = conn.execute("SELECT value FROM meta WHERE key = 'settings'").fetchone()
+        finally:
+            conn.close()
+        return AppSettings.model_validate_json(row[0]).desktop_notifications if row else "off"
+    except (sqlite3.Error, ValueError):
+        return "off"
+
+
+@autostart_app.command("disable")
+def autostart_disable() -> None:
+    """Stop starting Ordnung at login (removes only the entry `enable` wrote)."""
+    from ordnung import autostart
+
+    with _friendly():
+        entry = autostart.location()
+        removed = autostart.disable(entry)
+    if not removed:
+        console.print(
+            f"Ordnung doesn't start at login: there is no {escape(str(entry.path))}.", soft_wrap=True
+        )
+        return
+    for path in removed:
+        console.print(f"[green]✓[/] Removed {escape(str(path))}", soft_wrap=True)
+    console.print("  Ordnung won't start at your next login.")
+    console.print(f"  If it is running now, stop it with: {escape(entry.stop_now)}", soft_wrap=True)
+
+
+@autostart_app.command("status")
+def autostart_status(ctx: typer.Context, data_dir: DataDirOption = None) -> None:
+    """Whether Ordnung starts at login, for which data folder, and whether it is running now."""
+    from ordnung import autostart
+
+    with _friendly():
+        folder = _folder(ctx, data_dir)
+        state = autostart.state(folder)
+        running = reachable_server(folder) is not None
+    if not state.enabled:
+        console.print("Starts at login: [bold]no[/] — turn it on with: ordnung autostart enable")
+    else:
+        console.print(f"Starts at login: [bold]yes[/] ({state.kind})")
+        console.print(f"  {escape(str(state.path))}", soft_wrap=True)
+        if state.data_dir is not None:
+            console.print(f"  Data folder: {escape(str(state.data_dir))}", soft_wrap=True)
+        if not state.current:
+            console.print(
+                "[yellow]![/] The entry doesn't start this Ordnung for this folder (Ordnung or the folder "
+                "moved). Run `ordnung autostart enable` again to update it.",
+                soft_wrap=True,
+            )
+    console.print(f"Running now: [bold]{'yes' if running else 'no'}[/]")
+
+
+# --------------------------------------------------------------------------------------------------
+# backup and restore
+# --------------------------------------------------------------------------------------------------
+
+PASSPHRASE_ENV = "ORDNUNG_BACKUP_PASSPHRASE"
+PASSPHRASE_WARNING = (
+    "Choose a passphrase and keep it somewhere safe (a password manager): Ordnung never stores it, and "
+    "without it nobody can open this backup — not even you."
+)
+
+
+def human_size(size: int) -> str:
+    """``812 bytes`` / ``48.3 KB`` / ``10.6 MB`` / ``1.2 GB`` (powers of 1000, like file managers)."""
+    if size < 1000:
+        return f"{size} bytes"
+    value = float(size)
+    for unit in ("KB", "MB", "GB", "TB"):
+        value /= 1000
+        if value < 1000 or unit == "TB":
+            break
+    return f"{value:.1f} {unit}"
+
+
+PASSPHRASE_TRIES = 3
+
+
+def _passphrase(*, new: bool) -> str:
+    """The backup passphrase: ``ORDNUNG_BACKUP_PASSPHRASE`` (scripts) or a hidden prompt — twice for
+    a new backup, which must meet :func:`ordnung.backup.passphrase_problem`'s policy."""
+    from ordnung.backup import passphrase_problem
+
+    def problem(value: str) -> str | None:
+        if not value:
+            return "The passphrase is empty."
+        return passphrase_problem(value) if new else None
+
+    given = os.environ.get(PASSPHRASE_ENV)
+    if given is not None:
+        wrong = problem(given)
+        if wrong:
+            raise _fail(f"{PASSPHRASE_ENV}: {wrong}")
+        return given
+    for _ in range(PASSPHRASE_TRIES):
+        value = str(typer.prompt("Passphrase for the backup" if new else "Passphrase", hide_input=True))
+        wrong = problem(value)
+        if wrong:
+            err_console.print(f"[red]✗[/] {escape(wrong)}")
+            continue
+        if new and str(typer.prompt("Repeat it", hide_input=True)) != value:
+            err_console.print("[red]✗[/] The two passphrases differ. Try again.")
+            continue
+        return value
+    raise _fail("No passphrase was given.")
+
+
+@contextlib.contextmanager
+def _read_lock(folder: Path) -> Iterator[bool]:
+    """Hold the data folder's lock while backing it up if nothing else does (then the copy is exact);
+    when Ordnung is running, read alongside it (the database snapshot is still consistent)."""
+    from ordnung.locking import DataDirLock, DataDirLocked
+
+    lock = DataDirLock(folder, purpose="ordnung backup")
+    try:
+        lock.acquire()
+    except DataDirLocked:
+        yield False
+        return
+    try:
+        yield True
+    finally:
+        lock.release()
+
+
+def _contents_line(contents: Any) -> str:
+    letters = contents.letters
+    return (
+        f"{letters} letter{'s' if letters != 1 else ''}, {contents.files} file{'s' if contents.files != 1 else ''} "
+        f"and the database · {human_size(contents.total_bytes)}"
+    )
+
+
+@app.command()
+def backup(
+    ctx: typer.Context,
+    to: Annotated[
+        str | None,
+        typer.Option(
+            "--to",
+            help="Folder to save the backup in, or a new file name ending in .ordnung-backup "
+            "(default: the current folder).",
+            show_default=False,
+        ),
+    ] = None,
+    data_dir: DataDirOption = None,
+) -> None:
+    """Save everything — database, letters, page images, letter PDFs — as one encrypted file."""
+    from ordnung import backup as backups
+    from ordnung import clock
+
+    with _friendly():
+        folder = _folder(ctx, data_dir)
+        if not Paths(folder).db.is_file():
+            raise _fail(
+                f"There is no Ordnung database in {folder}.",
+                hint="Name your data folder with --data-dir.",
+                soft_wrap=True,
+            )
+        target = backups.destination(folder, to, clock.today())
+        console.print(
+            f"Backing up [bold]{escape(str(folder))}[/] to [bold]{escape(str(target))}[/]", soft_wrap=True
+        )
+        left_out = backups.links_left_out(folder)
+        if left_out:
+            shown = ", ".join(left_out[:5]) + (f" and {len(left_out) - 5} more" if len(left_out) > 5 else "")
+            one = len(left_out) == 1
+            console.print(
+                f"[yellow]![/] Not in the backup: {escape(shown)} — {'a link' if one else 'links'} to somewhere "
+                f"else, and a backup never follows links. Back {'that' if one else 'those'} up separately, or "
+                f"move {'it' if one else 'them'} into the data folder.",
+                soft_wrap=True,
+            )
+        console.print(PASSPHRASE_WARNING)
+        passphrase = _passphrase(new=True)
+        with _read_lock(folder) as exact:
+            if not exact:
+                console.print("[dim]Ordnung is running: the backup is taken alongside it.[/]")
+            contents = backups.write_backup_file(folder, target, passphrase)
+    console.print(
+        f"[green]✓[/] Saved an encrypted backup: {escape(_contents_line(contents))}", soft_wrap=True
+    )
+    console.print(f"  {escape(str(target))}", soft_wrap=True)
+    console.print("  Keep the passphrase somewhere safe (a password manager): you need it to restore.")
+    console.print(f"  Restore it with: ordnung restore {escape(shell_quoted(str(target)))}", soft_wrap=True)
+
+
+def shell_quoted(value: str) -> str:
+    """``value`` quoted for this platform's shell, for a command the person copies."""
+    from ordnung.assistant.mcp_install import shell_join
+
+    return shell_join([value])
+
+
+@app.command()
+def restore(
+    ctx: typer.Context,
+    backup_file: Annotated[
+        Path, typer.Argument(metavar="BACKUP", help="The backup file (.ordnung-backup).", show_default=False)
+    ],
+    data_dir: DataDirOption = None,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            help="If the data folder holds data, move it aside (nothing is deleted) and restore in its place.",
+        ),
+    ] = False,
+    check: Annotated[
+        bool,
+        typer.Option(
+            "--check", help="Only check the backup: decrypt and verify everything, restore nothing."
+        ),
+    ] = False,
+) -> None:
+    """Restore an encrypted backup (never over existing data without --force)."""
+    from ordnung import backup as backups
+    from ordnung.assistant.mcp_install import shell_join
+    from ordnung.backup.restore import TargetInUse, check_target
+
+    with _friendly():
+        source = backup_file.expanduser()
+        if not source.is_file():
+            raise _fail(f"There is no file {source}.", soft_wrap=True)
+        with source.open("rb") as handle:
+            backups.read_header(handle)  # not a backup, or a newer format: say so before asking anything
+        folder = _folder(ctx, data_dir)
+        if check:
+            passphrase = _passphrase(new=False)
+            contents = backups.check_backup(source, passphrase)
+            console.print(
+                f"[green]✓[/] The backup is complete and opens with this passphrase: {escape(_contents_line(contents))}"
+            )
+            console.print(
+                f"  Made on {escape(contents.manifest.created_at)} with Ordnung {escape(contents.manifest.app_version)}."
+            )
+            return
+        try:
+            found = check_target(folder, force=force)  # refuse early, before the passphrase
+            console.print(f"Restoring into [bold]{escape(str(folder))}[/]", soft_wrap=True)
+            if found:
+                console.print(
+                    "[yellow]![/] It holds data: it will be moved aside first (nothing is deleted)."
+                )
+            passphrase = _passphrase(new=False)
+            result = backups.restore_backup(source, passphrase, folder, force=force)
+        except TargetInUse as exc:
+            raise _fail(str(exc), _stop_hint(folder), soft_wrap=True) from None
+    console.print(f"[green]✓[/] Restored {escape(_contents_line(result.contents))}", soft_wrap=True)
+    console.print(f"  into {escape(str(result.target))}", soft_wrap=True)
+    if result.moved_aside is not None:
+        console.print(
+            f"  The data that was there is now in {escape(str(result.moved_aside))} — delete it once you are sure.",
+            soft_wrap=True,
+        )
+    if result.calendar is not None:
+        console.print(
+            f"[yellow]![/] Calendar sync with “{escape(result.calendar)}” waits in this copy: enter the app "
+            "password in Settings → Calendar to sync it again. If the Ordnung this backup came from still "
+            "syncs to that calendar, disconnect it there first and leave its events in the calendar — two "
+            "Ordnungs would change each other's events.",
+            soft_wrap=True,
+        )
+    serve_command = "ordnung serve"
+    if result.target.resolve() != default_data_dir():
+        serve_command = shell_join(["ordnung", "serve", "--data-dir", str(result.target)])
+    console.print(f"  Start Ordnung with: {escape(serve_command)}", soft_wrap=True)
+
+
+def _stop_hint(folder: Path) -> str | None:
+    """How to stop the Ordnung that holds ``folder`` when it is the one started at login for it."""
+    from ordnung import autostart
+
+    try:
+        entry = autostart.state(folder)
+        started = (
+            entry.enabled and entry.data_dir is not None and entry.data_dir.resolve() == folder.resolve()
+        )
+        stop = autostart.location().stop_now if started else None
+    except (autostart.AutostartError, OSError):
+        stop = None
+    return f"Ordnung starts at login for this folder. To stop it: {stop}" if stop else None
 
 
 @app.command()

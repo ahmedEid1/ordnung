@@ -147,7 +147,8 @@ export interface paths {
         post?: never;
         /**
          * Delete Everything
-         * @description Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty.
+         * @description Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty
+         *     (Ordnung's events leave a connected calendar first).
          *
          *     ``body`` must be ``{"confirm": "DELETE"}`` (422 otherwise).
          */
@@ -1268,6 +1269,175 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/calendar/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Calendar Sync Status
+         * @description Whether calendar sync can be used here, the connected calendar and the last sync.
+         */
+        get: operations["calendar_sync_status_api_calendar_sync_get"];
+        /**
+         * Calendar Sync Connect
+         * @description Connect a calendar (checked with its server first) and send the events; or change the mode.
+         */
+        put: operations["calendar_sync_connect_api_calendar_sync_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/sync/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Calendar Sync Preview
+         * @description Every event exactly as calendar sync would send it in ``mode`` (nothing is sent).
+         */
+        get: operations["calendar_sync_preview_api_calendar_sync_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/sync/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calendar Sync Discover
+         * @description The calendars that take events at or under ``url`` (the account's calendar home, found the
+         *     way calendar apps find it). Nothing is stored or written.
+         */
+        post: operations["calendar_sync_discover_api_calendar_sync_discover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/sync/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calendar Sync Run
+         * @description Send what changed now (the report is in ``last_sync``; a paused sync resumes).
+         */
+        post: operations["calendar_sync_run_api_calendar_sync_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/sync/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calendar Sync Disconnect
+         * @description Forget the calendar and its app password — first removing Ordnung's events if asked (only those).
+         */
+        post: operations["calendar_sync_disconnect_api_calendar_sync_disconnect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reminders/desktop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Desktop Reminders
+         * @description The desktop notification's tool, today's text in each mode, and the start-at-login entry.
+         */
+        get: operations["desktop_reminders_api_reminders_desktop_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reminders/desktop/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Desktop Test
+         * @description Show today's notification now (a sample when nothing is due); the morning one still comes.
+         */
+        post: operations["desktop_test_api_reminders_desktop_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Backup Info
+         * @description What an encrypted backup would hold now, and how long its passphrase must be.
+         */
+        get: operations["backup_info_api_backup_get"];
+        put?: never;
+        /**
+         * Create Backup
+         * @description An encrypted backup of everything (database, letters, page images, letter PDFs) as a download.
+         */
+        post: operations["create_backup_api_backup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events": {
         parameters: {
             query?: never;
@@ -1436,6 +1606,17 @@ export interface components {
              */
             llm_review: boolean;
             /**
+             * Desktop Notifications
+             * @default off
+             * @enum {string}
+             */
+            desktop_notifications: "off" | "discreet" | "full";
+            /**
+             * Desktop Notify Time
+             * @default 08:00
+             */
+            desktop_notify_time: string;
+            /**
              * Demo
              * @default false
              */
@@ -1477,6 +1658,84 @@ export interface components {
             question: string;
             /** Thread Id */
             thread_id?: string | null;
+        };
+        /**
+         * AutostartInfo
+         * @description Whether ``ordnung autostart`` starts Ordnung at login, and for which data folder.
+         */
+        AutostartInfo: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Kind
+             * @description systemd user service, LaunchAgent or Startup folder
+             */
+            kind: string;
+            /**
+             * Path
+             * @description The entry's file
+             */
+            path: string;
+            /**
+             * Points Here
+             * @description The entry starts this data folder
+             */
+            points_here: boolean;
+            /**
+             * Command
+             * @description The command that starts this data folder at login (null: the demo, which doesn't)
+             * @default ordnung autostart enable
+             */
+            command: string | null;
+        };
+        /**
+         * BackupInfo
+         * @description What a backup made now would hold.
+         */
+        BackupInfo: {
+            /**
+             * Letters
+             * @description Letters, the trash included (as the backup holds them)
+             */
+            letters: number;
+            /**
+             * Files
+             * @description Originals, page images and letter PDFs
+             */
+            files: number;
+            /**
+             * Bytes
+             * @description Their size plus the database's, before encryption
+             */
+            bytes: number;
+            /**
+             * File Name
+             * @description The name the download gets
+             */
+            file_name: string;
+            /**
+             * Left Out
+             * @description Symbolic links under the backed-up folders (or a folder that is one), which a backup leaves out: it never follows links
+             */
+            left_out: string[];
+            /**
+             * Min Passphrase
+             * @default 12
+             */
+            min_passphrase: number;
+            /**
+             * Format Version
+             * @default 1
+             */
+            format_version: number;
+        };
+        /**
+         * BackupRequest
+         * @description The passphrase that protects the backup (checked against the policy by the route).
+         */
+        BackupRequest: {
+            /** Passphrase */
+            passphrase: string;
         };
         /** Body_add_proof_api_drafts__draft_id__proofs_post */
         Body_add_proof_api_drafts__draft_id__proofs_post: {
@@ -1555,12 +1814,216 @@ export interface components {
             generated_at: string | null;
         };
         /**
+         * CalendarChoice
+         * @description A calendar that takes events.
+         */
+        CalendarChoice: {
+            /** Url */
+            url: string;
+            /** Name */
+            name?: string | null;
+        };
+        /**
+         * CalendarEventPreview
+         * @description One event exactly as calendar sync would send it.
+         */
+        CalendarEventPreview: {
+            /** Uid */
+            uid: string;
+            /** Summary */
+            summary: string;
+            /** Start */
+            start: string;
+            /** All Day */
+            all_day: boolean;
+            /** Description */
+            description: string;
+            /** Location */
+            location: string | null;
+            /** Alarms */
+            alarms: string[];
+            /**
+             * Alarms Passed
+             * @default 0
+             */
+            alarms_passed: number;
+        };
+        /**
          * CalendarExportResult
          * @description When the person last exported their dates.
          */
         CalendarExportResult: {
             /** Last Calendar Export At */
             last_calendar_export_at: string;
+        };
+        /**
+         * CalendarSyncConnect
+         * @description The calendar to connect; ``password: null`` keeps the saved app password (to change the mode).
+         */
+        CalendarSyncConnect: {
+            /** Url */
+            url: string;
+            /** Username */
+            username: string;
+            /** Password */
+            password?: string | null;
+            /**
+             * Mode
+             * @default discreet
+             * @enum {string}
+             */
+            mode?: "discreet" | "full";
+        };
+        /**
+         * CalendarSyncDisconnect
+         * @description Whether to remove Ordnung's events from the calendar before forgetting it.
+         */
+        CalendarSyncDisconnect: {
+            /**
+             * Remove Events
+             * @default true
+             */
+            remove_events?: boolean;
+        };
+        /**
+         * CalendarSyncDisconnected
+         * @description How many of Ordnung's events were removed from the calendar.
+         */
+        CalendarSyncDisconnected: {
+            /** Removed */
+            removed: number;
+        };
+        /**
+         * CalendarSyncFind
+         * @description Where to look for calendars, and the account to look with (nothing is stored).
+         */
+        CalendarSyncFind: {
+            /** Url */
+            url: string;
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
+        /**
+         * CalendarSyncFound
+         * @description The calendars Ordnung could write into (the address itself first, when it is one).
+         */
+        CalendarSyncFound: {
+            /** Calendars */
+            calendars: components["schemas"]["CalendarChoice"][];
+        };
+        /**
+         * CalendarSyncPreview
+         * @description Exactly what each event would contain in ``mode``.
+         */
+        CalendarSyncPreview: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "discreet" | "full";
+            /** Events */
+            events: components["schemas"]["CalendarEventPreview"][];
+        };
+        /**
+         * CalendarSyncReport
+         * @description What one calendar sync did (:mod:`ordnung.calendar.caldav`).
+         */
+        CalendarSyncReport: {
+            /** At */
+            at: string;
+            /**
+             * Sent
+             * @default 0
+             */
+            sent: number;
+            /**
+             * Removed
+             * @default 0
+             */
+            removed: number;
+            /**
+             * Unchanged
+             * @default 0
+             */
+            unchanged: number;
+            /**
+             * Failed
+             * @default 0
+             */
+            failed: number;
+            /**
+             * Missing
+             * @default 0
+             */
+            missing: number;
+            /** Error */
+            error: string | null;
+            /** Error Kind */
+            error_kind: ("address" | "auth" | "forbidden" | "not_found" | "not_calendar" | "network" | "tls" | "conflict" | "server" | "unavailable" | "not_connected") | null;
+        };
+        /**
+         * CalendarSyncStatus
+         * @description What Settings shows about calendar sync.
+         */
+        CalendarSyncStatus: {
+            /**
+             * Available
+             * @description Calendar sync can be used on this computer
+             */
+            available: boolean;
+            /**
+             * Unavailable
+             * @description Why not, in words
+             */
+            unavailable: string | null;
+            /**
+             * Install Command
+             * @description The command that makes it available
+             */
+            install_command: string | null;
+            /** Connected */
+            connected: boolean;
+            /** Url */
+            url: string | null;
+            /** Username */
+            username: string | null;
+            /**
+             * Calendar Name
+             * @description The calendar's name on the server
+             */
+            calendar_name: string | null;
+            /**
+             * Mode
+             * @default discreet
+             * @enum {string}
+             */
+            mode: "discreet" | "full";
+            /**
+             * Password Saved
+             * @description The app password was in this computer's keyring when Ordnung last needed it
+             * @default false
+             */
+            password_saved: boolean;
+            /**
+             * Paused
+             * @description Automatic syncing waits after a refused password
+             * @default false
+             */
+            paused: boolean;
+            /**
+             * Events
+             * @description How many events the calendar gets now
+             */
+            events: number;
+            /**
+             * Synced
+             * @description How many of Ordnung's events are in the calendar
+             * @default 0
+             */
+            synced: number;
+            last_sync: components["schemas"]["CalendarSyncReport"] | null;
         };
         /**
          * CallNote
@@ -2053,6 +2516,11 @@ export interface components {
              * @description Entries Ordnung did not create, left untouched
              */
             kept: string[];
+            /**
+             * Calendar Events Removed
+             * @description Ordnung's events removed from the connected calendar first (null: none was connected)
+             */
+            calendar_events_removed: number | null;
         };
         /**
          * DateSpec
@@ -2125,6 +2593,83 @@ export interface components {
             purged: boolean;
             /** Removed Open Items */
             removed_open_items: number;
+        };
+        /**
+         * DesktopPreview
+         * @description Today's notification in each mode (``null``: nothing is due, so none would be shown).
+         */
+        DesktopPreview: {
+            discreet: components["schemas"]["NotificationText"] | null;
+            full: components["schemas"]["NotificationText"] | null;
+        };
+        /**
+         * DesktopReminders
+         * @description What Settings shows about the morning desktop notification.
+         */
+        DesktopReminders: {
+            /**
+             * System
+             * @enum {string}
+             */
+            system: "linux" | "macos" | "windows";
+            /**
+             * Tool
+             * @description notify-send, osascript or powershell (null: none found)
+             */
+            tool: string | null;
+            /**
+             * Missing
+             * @description Why no notification can be shown, if so
+             */
+            missing: string | null;
+            preview: components["schemas"]["DesktopPreview"];
+            /**
+             * Last Shown On
+             * @description The last day the morning notification was shown (or done with)
+             */
+            last_shown_on: string | null;
+            /**
+             * Last Failure
+             * @description Why the system couldn't show the last notification (null: it could)
+             */
+            last_failure: string | null;
+            /**
+             * Last Failure On
+             * @description The day of that failure
+             */
+            last_failure_on: string | null;
+            /**
+             * Demo
+             * @description The demo: it never notifies on its own
+             * @default false
+             */
+            demo: boolean;
+            autostart: components["schemas"]["AutostartInfo"];
+        };
+        /**
+         * DesktopTestRequest
+         * @description Which mode to show the test notification in.
+         */
+        DesktopTestRequest: {
+            /**
+             * Mode
+             * @default discreet
+             * @enum {string}
+             */
+            mode?: "discreet" | "full";
+        };
+        /**
+         * DesktopTestResult
+         * @description Whether the test notification was shown, and what it said.
+         */
+        DesktopTestResult: {
+            /** Shown */
+            shown: boolean;
+            /** Tool */
+            tool: string | null;
+            notification: components["schemas"]["NotificationText"];
+            /** Detail */
+            detail: string | null;
         };
         /**
          * DoctorCheck
@@ -3492,6 +4037,16 @@ export interface components {
             open_cases: components["schemas"]["OpenCase"][];
         };
         /**
+         * NotificationText
+         * @description What a desktop notification says.
+         */
+        NotificationText: {
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+        };
+        /**
          * OnboardingRequest
          * @description The first-run wizard's answers.
          */
@@ -4037,6 +4592,13 @@ export interface components {
             llm_brief?: boolean | null;
             /** Llm Review */
             llm_review?: boolean | null;
+            /** Desktop Notifications */
+            desktop_notifications?: ("off" | "discreet" | "full") | null;
+            /**
+             * Desktop Notify Time
+             * @description Local time of day, HH:MM (24 h)
+             */
+            desktop_notify_time?: string | null;
             /** Demo */
             demo?: boolean | null;
             /** Simulated Today */
@@ -5148,7 +5710,7 @@ export interface operations {
                     "application/json": components["schemas"]["DataDeleted"];
                 };
             };
-            /** @description The demo can't be deleted (``ordnung demo --reset`` starts it over). */
+            /** @description The demo can't be deleted (``ordnung demo --reset`` starts it over), or the connected calendar's events couldn't be removed (nothing was deleted). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7151,6 +7713,337 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CalendarExportResult"];
                 };
+            };
+        };
+    };
+    calendar_sync_status_api_calendar_sync_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncStatus"];
+                };
+            };
+        };
+    };
+    calendar_sync_connect_api_calendar_sync_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarSyncConnect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncStatus"];
+                };
+            };
+            /** @description Not connected, connected elsewhere, the demo, or no password store on this computer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address, user name or app password can't be used (``code`` says which) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The calendar server couldn't be reached or answered with an error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    calendar_sync_preview_api_calendar_sync_preview_get: {
+        parameters: {
+            query?: {
+                mode?: "discreet" | "full";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    calendar_sync_discover_api_calendar_sync_discover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarSyncFind"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncFound"];
+                };
+            };
+            /** @description Not connected, connected elsewhere, the demo, or no password store on this computer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address, user name or app password can't be used (``code`` says which) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The calendar server couldn't be reached or answered with an error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    calendar_sync_run_api_calendar_sync_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncStatus"];
+                };
+            };
+            /** @description Not connected, connected elsewhere, the demo, or no password store on this computer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address, user name or app password can't be used (``code`` says which) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The calendar server couldn't be reached or answered with an error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    calendar_sync_disconnect_api_calendar_sync_disconnect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarSyncDisconnect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncDisconnected"];
+                };
+            };
+            /** @description Not connected, connected elsewhere, the demo, or no password store on this computer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address, user name or app password can't be used (``code`` says which) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The calendar server couldn't be reached or answered with an error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    desktop_reminders_api_reminders_desktop_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopReminders"];
+                };
+            };
+        };
+    };
+    desktop_test_api_reminders_desktop_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesktopTestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopTestResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    backup_info_api_backup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupInfo"];
+                };
+            };
+        };
+    };
+    create_backup_api_backup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupRequest"];
+            };
+        };
+        responses: {
+            /** @description The encrypted backup file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description The passphrase is too short or too long (the rule, never the value) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

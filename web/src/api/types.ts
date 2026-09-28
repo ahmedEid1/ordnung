@@ -577,6 +577,31 @@ export type ReviewStarted = Schemas["ReviewStarted"];
 export type DataDeleted = Schemas["DataDeleted"];
 /** `POST /api/documents/held/read` · `…/keep-private`: the letters answered for, jobs queued, ids no longer waiting. */
 export type HeldResult = Schemas["HeldResult"];
+/** `GET /api/reminders/desktop`: the notification tool, today's text in each mode, start at login. */
+export type DesktopReminders = Schemas["DesktopReminders"];
+export type NotificationText = Schemas["NotificationText"];
+/** Whether `ordnung autostart` starts Ordnung at login, and for which data folder. */
+export type AutostartInfo = Schemas["AutostartInfo"];
+/** `POST /api/reminders/desktop/test`. */
+export type DesktopTestResult = Schemas["DesktopTestResult"];
+/** The two modes a desktop notification can be shown in (the setting also has `off`). */
+export type DesktopMode = NonNullable<Schemas["DesktopTestRequest"]["mode"]>;
+/** `GET /api/backup`: what an encrypted backup made now would hold. */
+export type BackupInfo = Schemas["BackupInfo"];
+/** `GET /api/calendar/sync`: calendar sync (CalDAV) — available here, the connected calendar, the last sync. */
+export type CalendarSyncStatus = Schemas["CalendarSyncStatus"];
+export type CalendarSyncReport = Schemas["CalendarSyncReport"];
+/** One event exactly as calendar sync would send it. */
+export type CalendarEventPreview = Schemas["CalendarEventPreview"];
+export type CalendarSyncPreview = Schemas["CalendarSyncPreview"];
+/** What the calendar gets: dates and alarms only (`discreet`), or the calendar file's events (`full`). */
+export type CalendarSyncMode = CalendarSyncStatus["mode"];
+/** `PUT /api/calendar/sync` (`password: null` keeps the saved app password). */
+export type CalendarSyncConnect = Schemas["CalendarSyncConnect"];
+/** `POST /api/calendar/sync/discover`: where to look for calendars, with which account. */
+export type CalendarSyncFind = Schemas["CalendarSyncFind"];
+/** A calendar that takes events, as discovery found it. */
+export type CalendarChoice = Schemas["CalendarChoice"];
 
 // ------------------------------------------------------------------------------------------------
 // Requests

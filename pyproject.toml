@@ -45,6 +45,10 @@ dependencies = [
   "python-multipart>=0.0.31",
   "httpx>=0.27",
   "mcp>=2.0",
+  # encrypted backups (AES-256-GCM, scrypt, HKDF); already needed by pdfminer.six
+  "cryptography>=44.0.1",
+  # calendar sync keeps the app password in the OS password store, never in the database
+  "keyring>=25",
 ]
 
 [project.optional-dependencies]

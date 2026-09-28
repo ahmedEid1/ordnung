@@ -5,6 +5,8 @@
  */
 import { addDays, addMonths, endOfMonth, format, parseISO } from "date-fns";
 import type {
+  CalendarSyncConnect,
+  CalendarSyncFind,
   AppSettings,
   Brief,
   CaseDetail,
@@ -13,6 +15,8 @@ import type {
   Contract,
   DataDeleted,
   DeleteResult,
+  DesktopMode,
+  DesktopTestResult,
   Document,
   DocumentDetail,
   Draft,
@@ -57,7 +61,26 @@ import { SAM, sha } from "./data/constants";
 import { mockNumbers, mockWeek, mockWeekDismiss, mockWeekDone } from "./numbers";
 import { TRAY_DOCUMENTS } from "./data/documents";
 import { EMAIL_ATTACHMENTS, SUGGESTED_INBOX } from "./data/folder";
+import {
+  BACKUP_STATIC_MESSAGE,
+  DESKTOP_STATIC_MESSAGE,
+  SAMPLE_NOTIFICATION,
+  mockBackupFile,
+  mockBackupInfo,
+  mockDesktopReminders,
+  mockNotification,
+} from "./data/reminders";
 import { TRAY_ITEMS } from "./data/items";
+import {
+  CalendarSyncRefusal,
+  mockCalendarPreview,
+  mockCalendarSyncStatus,
+  mockForgetCalendar,
+  mockConnectCalendar,
+  mockDisconnectCalendar,
+  mockDiscoverCalendars,
+  mockRunCalendarSync,
+} from "./data/calendarSync";
 import { PARTIES } from "./data/parties";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
 import { isOpenItem } from "@/features/document/verdict";
@@ -113,6 +136,16 @@ class HttpError extends Error {
     super(message);
     this.status = status;
     this.code = code;
+  }
+}
+
+/** A calendar-sync refusal as the API answers it (`code` names the field). */
+function calendarRefusals<T>(work: () => T): T {
+  try {
+    return work();
+  } catch (err) {
+    if (err instanceof CalendarSyncRefusal) throw new HttpError(err.status, err.message, err.code);
+    throw err;
   }
 }
 
@@ -967,9 +1000,11 @@ const routes: [string, string, Handler][] = [
       if (opts.staticDemo) throw new HttpError(409, "This online demo keeps nothing — reload the page to start over with Sam's letters.");
       if (db.state.health.demo) throw new HttpError(409, DEMO_DELETE_MESSAGE);
       const st = db.state;
+      // a connected calendar loses Ordnung's events (and the app password) first, as the API does
+      const calendarEventsRemoved = mockForgetCalendar(db);
       Object.assign(st, { parties: [], cases: [], documents: [], items: [], contracts: [], suggestions: [], drafts: [], activity: [], chat: [], tray: [], uploads: {}, proofs: [], calls: [] });
       st.profile = { ...st.profile, name: "", address: "", email: "", phone: "", onboarded: false };
-      return { removed: ["derived", "drafts", "files", "ordnung.db"], kept: [] } satisfies DataDeleted;
+      return { removed: ["derived", "drafts", "files", "ordnung.db"], kept: [], calendar_events_removed: calendarEventsRemoved } satisfies DataDeleted;
     },
   ],
 
@@ -1501,6 +1536,48 @@ const routes: [string, string, Handler][] = [
       if (s) s.status = "done";
       db.log("calendar.exported", "Exported your dates to your calendar");
       return { last_calendar_export_at: db.state.lastCalendarExport };
+    },
+  ],
+  // calendar sync (CalDAV): `?mock=1` pretends a calendar answers; the static demo can't reach one
+  ["GET", "/calendar/sync", ({ db, opts }) => mockCalendarSyncStatus(db, opts.staticDemo)],
+  [
+    "GET",
+    "/calendar/sync/preview",
+    ({ db, query }) => {
+      const mode = query.get("mode") ?? "discreet";
+      if (mode !== "discreet" && mode !== "full") throw new HttpError(422, "Choose discreet or full.");
+      return { mode, events: mockCalendarPreview(db, mode) };
+    },
+  ],
+  ["POST", "/calendar/sync/discover", ({ body, opts }) => calendarRefusals(() => mockDiscoverCalendars(body as CalendarSyncFind, opts.staticDemo))],
+  ["PUT", "/calendar/sync", ({ db, body, opts }) => calendarRefusals(() => mockConnectCalendar(db, body as CalendarSyncConnect, opts.staticDemo))],
+  ["POST", "/calendar/sync/run", ({ db, opts }) => calendarRefusals(() => mockRunCalendarSync(db, opts.staticDemo))],
+  [
+    "POST",
+    "/calendar/sync/disconnect",
+    ({ db, body }) => mockDisconnectCalendar(db, (body as { remove_events?: boolean } | null)?.remove_events ?? true),
+  ],
+  // reminders outside the browser & the encrypted backup (a browser tab can do neither for real)
+  ["GET", "/reminders/desktop", ({ db }) => mockDesktopReminders(db)],
+  [
+    "POST",
+    "/reminders/desktop/test",
+    ({ db, body, opts }) => {
+      if (opts.staticDemo) throw new HttpError(403, DESKTOP_STATIC_MESSAGE, "static_demo");
+      const mode = (body as { mode?: DesktopMode } | null)?.mode ?? "discreet";
+      if (mode !== "discreet" && mode !== "full") throw new HttpError(422, "Choose discreet or full.");
+      return { shown: true, tool: "notify-send", notification: mockNotification(db, mode) ?? SAMPLE_NOTIFICATION, detail: null } satisfies DesktopTestResult;
+    },
+  ],
+  ["GET", "/backup", ({ db }) => mockBackupInfo(db)],
+  [
+    "POST",
+    "/backup",
+    ({ body, opts }) => {
+      if (opts.staticDemo) throw new HttpError(403, BACKUP_STATIC_MESSAGE, "static_demo");
+      const passphrase = (body as { passphrase?: unknown } | null)?.passphrase;
+      if (typeof passphrase !== "string" || passphrase.length < 12) throw new HttpError(422, "Use a passphrase of at least 12 characters — a short sentence works well.");
+      return new Response(mockBackupFile(), { status: 200, headers: { "Content-Type": "application/octet-stream" } });
     },
   ],
   ["GET", "/activity", ({ db, query }) => db.state.activity.slice(0, Number(query.get("limit") ?? 100))],

@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { settle } from "../browser.mjs";
 import { inMain } from "../steps.mjs";
 import { numbersAndWeekStaticPaths } from "./numbers-week.mjs";
+import { staticRemindersBackupStates } from "./reminders-backup.mjs";
 
 const G = "static-demo";
 
@@ -34,6 +35,7 @@ export async function staticCatalog({ webDir }) {
   add("settings-privacy", "/settings?section=privacy", "Static demo: Settings → Privacy & AI usage.");
   add("settings-data", "/settings?section=data", "Static demo: Settings → Data (the guided tour's card: “Restart the demo tour”).");
   for (const [id, path, description, run] of numbersAndWeekStaticPaths()) add(id, path, description, run);
+  staticRemindersBackupStates(add);
   add("not-found", "/no-such-page", "Static demo: unknown route.");
   add("welcome", "/welcome", "Static demo: the onboarding wizard.");
   for (const id of ["doc_lease", "doc_nebenkosten", "doc_passport", "doc_tm_dunning"].filter(pick)) {

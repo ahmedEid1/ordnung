@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useClipboard } from "@/features/today/clipboard";
@@ -6,24 +6,28 @@ import { useClipboard } from "@/features/today/clipboard";
 /**
  * A terminal command with a copy button ("Copied" is announced to screen readers). A long command
  * wraps instead of scrolling out of sight: at spaces, after a "/" of a package name, and only as
- * a last resort inside a word — the whole command is always visible (and copied exactly).
+ * a last resort inside a word — the whole command is always visible (and copied exactly). `display`
+ * shows the command with its own line-break opportunities (the button still copies `command`).
  */
-export function CopyCommand({ command, label, className }: { command: string; label?: string; className?: string }) {
+export function CopyCommand({ command, label, className, display }: { command: string; label?: string; className?: string; display?: ReactNode }) {
   const { copy, copied } = useClipboard();
   const done = copied === command;
-  const parts = command.split(/(?<=\/)/);
+  // a break may follow a "/" inside a path, never the root "/" right after a space (a lone "/" at a line's end)
+  const parts = command.split(/(?<=\S\/)/);
   return (
     <div className={cn("flex items-start gap-2 rounded-xl border border-line bg-[#1d1b16] py-1.5 pl-3.5 pr-1.5 text-[#f2efe7] dark:bg-canvas", className)}>
       <span aria-hidden className="select-none py-1.5 font-mono text-[13px] leading-5 text-[#9a937f]">
         $
       </span>
-      <code className="min-w-0 flex-1 whitespace-pre-wrap py-1.5 font-mono text-[13px] leading-5 [overflow-wrap:anywhere]">
-        {parts.map((p, i) => (
-          <Fragment key={i}>
-            {i > 0 ? <wbr /> : null}
-            {p}
-          </Fragment>
-        ))}
+      {/* white-space normal: a space where a line breaks goes away instead of hanging past the box */}
+      <code className="min-w-0 flex-1 whitespace-normal py-1.5 font-mono text-[13px] leading-5 [overflow-wrap:anywhere]">
+        {display ??
+          parts.map((p, i) => (
+            <Fragment key={i}>
+              {i > 0 ? <wbr /> : null}
+              {p}
+            </Fragment>
+          ))}
       </code>
       <button
         type="button"

@@ -77,6 +77,8 @@ ordnung serve                   # the web app on http://127.0.0.1:8765
 ordnung add ~/Downloads/*.pdf   # or drag files into the app
 ordnung brief                   # today's note in the terminal
 ordnung ask "When can I cancel my phone contract?"
+ordnung autostart enable        # start at login; then switch on the morning notification in Settings → Reminders
+ordnung backup --to /media/usb  # everything in one encrypted file; `ordnung restore FILE` brings it back
 ```
 
 ## Use Ordnung's deadline engine from Claude Desktop

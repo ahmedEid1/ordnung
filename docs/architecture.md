@@ -68,8 +68,10 @@ flowchart LR
 | Watched folder → Ordnung | Only files directly in the folder with a type Ordnung reads; symbolic links never followed (`O_NOFOLLOW`), sub-folders not entered, partial and temporary files ignored; at most 50 MB + 1 byte read, then the upload checks below. The folder is never written to. A new file is **held** — private and read on this computer only, never sent to a model — until the person answers in the Inbox (`ingest/held.py`), unless they turned on reading new files at once |
 | E-mail → attachments | Each attached PDF or photo (decided by its bytes) passes the upload checks below as a document of its own, at most 10 per e-mail, with the e-mail's privacy choice; pictures inside the e-mail are skipped, other types listed, a forwarded e-mail never opened (`ingest/attachments.py`) |
 | Upload → machine | Checked before anything decodes it: PDF stream expansion, image pixels and text pages are capped; the data folder is private to the account (`0700`, files `0600`) |
-| Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs (one bounded exception: downloading a drafted letter's PDF records its SHA-256 among the last 200, so the watched folder never takes the download for a letter received — the fingerprint must be of the exact bytes handed out, which depend on the profile at download time) |
-| Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence` |
+| Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs (one bounded exception: downloading a drafted letter's PDF — or a sent letter's Nachweis — records its SHA-256 among the last 200, so the watched folder never takes the download for a letter received — the fingerprint must be of the exact bytes handed out, which depend on the profile at download time) |
+| Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence`. The desktop notification's texts (letters' titles in *full* mode) reach `notify-send` / `osascript` / PowerShell as separate arguments of a fixed script or in environment variables — never a shell line; markup is escaped, control and bidi characters removed. The start-at-login entry is a file Ordnung writes (quoted per format, a line break refused) and discards the server's standard output, so the session token never reaches a journal |
+| Ordnung → your calendar provider (opt-in) | Nothing is sent until a calendar is connected; `https://` (or `http://` to this computer's loopback address), TLS verified, no redirects followed to another host; discreet by default (dates, times and alarms — no titles, names or amounts); only resources Ordnung created are replaced or deleted; the app password lives in the OS keyring (a backend that doesn't keep passwords safely — `null`, `keyrings.alt`, priority below 1 — is refused), never in `ordnung.db`, a log or an answer, and the keyring is read only to connect, send a change, check once a day that Ordnung's events are still there, or disconnect (never to show Settings); the keyring account is bound to the data folder's connection, so a restored copy of the data never reads or deletes the original's password and starts with syncing paused; "Delete everything" removes Ordnung's events and the password first; a server's XML is size-capped and read without a DTD |
+| Backup file → data folder | Authenticated encryption end to end (header MAC, AES-256-GCM chunks bound to the header, their order and the last one), a newer format refused before any key is derived, scrypt costs capped when read (at most 256 MiB of memory, p ≤ 2); the archive extracted under a name policy (regular files in three folders only) into a staging folder, read to its authenticated end and checked against its manifest before it replaces anything; a folder with data is moved aside, never deleted ([ADR 0013](decisions/0013-backups-and-reminders-outside-the-browser.md)) |
 
 ## Reading a letter
 
@@ -259,6 +261,49 @@ the party view) and `web/src/lib/payments.ts` mirrors for the to-do's words. The
 quiet zone of four modules), dark on white in both themes. The static demo's codes are generated from
 the same gate and builder (`scripts/gen_mock_girocodes.py`; a test keeps them current).
 
+## While the browser is closed: reminders and backups
+
+A secretary that only speaks while its tab is open doesn't do the job, and for a local-first app
+the backup is the person's only copy. Both work without the browser and without a model.
+
+```mermaid
+flowchart LR
+  subgraph login["At login"]
+    AS["systemd user unit · LaunchAgent · Startup .cmd<br/>(written by ordnung autostart enable)"]
+  end
+  AS -->|"python -m ordnung serve --no-browser"| SRV["ordnung serve"]
+  SRV --> TICK["Daily tick<br/>(every 15 min)"]
+  TICK -->|"build_agenda (code, no model)"| NOTE["notify/desktop.py<br/>discreet: a count · full: 3 things"]
+  NOTE -->|"argv / env, never a shell"| OS["notify-send · osascript · PowerShell toast"]
+  TICK -->|"only what changed (opt-in)"| CAL["calendar/caldav.py<br/>the .ics events, discreet by default"]
+  CAL -->|"https PUT/DELETE, password from the OS keyring"| DAV["your CalDAV calendar"]
+  DB[("ordnung.db + files/ derived/ drafts/")] --> BK["backup/ — snapshot in memory → tar →<br/>AES-256-GCM chunks (key: scrypt)"]
+  BK --> FILE["one .ordnung-backup file"]
+  FILE -->|"ordnung restore: verify all, then swap"| DB2[("a data folder")]
+```
+
+- **The notification** is the agenda's words, not a model's: `notify/desktop.py` counts what ends
+  today, what is overdue and what is due within 7 days and, in *full* mode, lists the first three —
+  today's first. The tick wakes up for it at the chosen time (or a minute after start-up, when the
+  desktop may still be starting), retries one the system couldn't show at its next checks (three a
+  day at most) and keeps the last failure for Settings; a missing tool shows nothing. The web app's
+  preview and test use the same functions (`GET /api/reminders/desktop`, `POST …/test`).
+- **Start at login** (`autostart.py`) writes one entry and runs nothing; `status` reads it back
+  (which folder it starts, whether it is current) for the CLI and for Settings.
+- **Calendar sync** (`calendar/caldav.py`, opt-in) puts the calendar file's events into the
+  person's own CalDAV calendar — discreet by default — and keeps them current from the same tick:
+  it remembers a digest per event it sent, so an unchanged ledger sends nothing (and reads no
+  password) and a finished to-do's event is removed; once a day it asks which of its own events
+  are still there and puts back missing ones. The password is in the OS keyring
+  (`calendar/secrets.py`), under an account bound to this data folder's connection: a restored
+  backup starts detached (`backup/restore.py` → `caldav.detached`). While a calendar is connected the "import the calendar file" Idea stays
+  quiet, and "Delete everything" (`api/routes/data.py`) clears the calendar and the keyring first,
+  holding calendar sync's lock so no running sync writes its record back.
+- **The backup** (`backup/`) is a pull-based stream (`BackupStream`, one step per file): the CLI
+  writes it to a file atomically, the API sends it as the HTTP response while it is made. Restore is
+  all or nothing (`backup/restore.py`). The format and its policies are in
+  [ADR 0013](decisions/0013-backups-and-reminders-outside-the-browser.md).
+
 ## Data model (simplified)
 
 ```mermaid
@@ -358,3 +403,6 @@ transcribed page), never the document's status; removing a proof deletes its fil
 | Model quality | The benchmark in [evals](evals.md), recomputed deterministically in CI from recorded outputs |
 | MCP tools and install | In-memory MCP client and a real stdio handshake (`python -m ordnung mcp --rules-only`); config merge, backup and refusal in temporary home folders |
 | Ask | Unit tests of the two channels and the claim policy (incl. injected dates and ids), and the Ask benchmark in [evals-ask](evals-ask.md), replayed in CI with gates |
+| Backup and restore | Byte-for-byte round trips with equal row counts (a seeded ledger and the whole demo life), every byte flipped, chunks cut, swapped, appended or taken from another backup, hostile header parameters, a Hypothesis round-trip-and-flip property, hostile archives inside validly encrypted files (`..`, absolute names, links, duplicates, extras, a damaged or newer database), and the restore policy (free folder, `--force` moves aside, a held lock, a failed swap); a write only in the WAL; every file written through a binary descriptor, and a restored file whose size on disk differs refused; links named, not silently skipped |
+| Reminders outside the browser | Notification text in both modes from seeded agendas (discreet never names a title, party or amount), argv/env per system with hostile titles, the once-a-day policy and the tick; autostart entries per system written into temporary home folders, quoting of awkward paths, status and removal |
+| Calendar sync | A small fake CalDAV server (in-process and on a loopback socket) that checks the password, one event per resource and UID conflicts: discreet events never carry a title, name or amount; only changed events are sent, only Ordnung's own removed; discovery (well-known, principal, calendar home, another https host); every refusal (password, not a calendar, tasks only, redirects, DTDs, oversized answers, TLS, the network); the pause after a refused password; the password never in the data folder; the keyring adapter with an in-memory backend; events deleted from the calendar put back by the daily check; a backup restored next to the original, or on a new computer after the old one was wiped; addresses in a server's answer that can't be read |

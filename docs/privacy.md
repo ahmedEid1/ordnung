@@ -17,6 +17,9 @@ goes where.
 | Model responses | `ordnung.db` (`llm_cache`) | — (they came from Anthropic) |
 | Usage log (tokens, cost, which document) | `ordnung.db` (`llm_calls`) — **no prompt or response bodies** | Never |
 | Fonts, UI, rules engine | bundled in the package | Never (no CDN, no web fonts) |
+| Encrypted backups (`ordnung backup`, Settings → Data) | wherever you save the file | Only where you put it — encrypted, so without your passphrase nobody can read it |
+| The morning desktop notification | your system's notification area | Never — Ordnung writes it on this computer from your dates |
+| Calendar sync (only if you connect a calendar) | the calendar you connect (Nextcloud, iCloud, mailbox.org, …); the app password in your system's password store | To that calendar's provider: dates, times and alarms (discreet, the default) — or the events' titles, what to do, amounts and who it is with (with details) |
 
 `<data dir>` defaults to your platform's user data folder (e.g. `~/.local/share/ordnung`,
 `~/Library/Application Support/ordnung`, `%LOCALAPPDATA%\ordnung`) and can be changed with
@@ -86,7 +89,11 @@ The weekly session (*This week*) stores only the moments you finished it or said
   that carried it (a secretary's note or review built from several letters included). The usage log
   keeps only anonymous numbers, and deleted database rows are overwritten rather than left behind.
   Contracts and letters you drafted stay, without the link to it; your *Ask* conversations stay as
-  they are. *Settings → Delete everything* wipes the whole database.
+  they are. *Settings → Delete everything* wipes the whole database — and, when a calendar is
+  connected for calendar sync, first removes Ordnung's events from it and the app password from your
+  system's password store (if that can't be done, nothing is deleted and Ordnung says what to do).
+  Encrypted backups you made earlier are files of your own: they still hold what was in Ordnung
+  when you made them, deleted letters included, until you delete them.
 - **Proof of sending stays private** — a receipt, delivery record, fax report or saved e-mail you
   add to a sent letter is stored like any upload with *Keep private (no AI)* on: it is never sent to
   Claude, not even when you ask about the letter, and it isn't listed among your letters. One
@@ -105,7 +112,8 @@ The weekly session (*This week*) stores only the moments you finished it or said
 - **Models** — choose which Claude model handles each purpose.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself. A GiroCode only pre-fills your banking app; you check and confirm the transfer
-  there.
+  there. (The one thing that keeps itself current is calendar sync, and only after you
+  connect a calendar: it updates Ordnung's own events there — see below.)
 
 ## GiroCode (payment QR codes)
 
@@ -138,8 +146,8 @@ into — best a folder just for letters. It is off until you choose one.
   never answers for it. Only you do, by choosing *Read* or *Keep private*, or by adding the same file by
   hand.
 - **Ordnung's own drafts are not letters you received.** A letter Ordnung drafted for you (with your
-  address and IBAN from the profile) that you download into the watched folder is recognised and not
-  added — so it is never sent to Claude that way.
+  address and IBAN from the profile), or a sent letter's *Nachweis*, that you download into the watched
+  folder is recognised and not added — so it is never sent to Claude that way.
 - **A cloud-synced folder is already shared with its cloud provider.** If the folder is inside
   Dropbox, iCloud Drive, OneDrive or Google Drive, that provider has copies of every file in it,
   whatever Ordnung does. Choose a folder on this computer only (for example Ordnung's own inbox
@@ -149,7 +157,7 @@ into — best a folder just for letters. It is off until you choose one.
   temporary files.
 - **What Ordnung remembers.** To pick up each file once, it keeps a hash of the folder, the file's
   name, size and date — not the name itself — while the file is in the folder, and the fingerprints
-  (SHA-256) of the drafts it made for you. The activity log lists the files the folder brought in;
+  (SHA-256) of the drafts and *Nachweis* PDFs it made for you. The activity log lists the files the folder brought in;
   deleting a letter removes those entries with it, while the name of a file the folder refused (too
   large, damaged, not readable) stays in the log until *Delete everything*. A folder with more than
   5,000 files Ordnung could read is not watched.
@@ -161,6 +169,83 @@ E-mails in the folder wait with their attachments, and *Read these* for an e-mai
 brought as well. Pictures inside an e-mail (logos, tracking pixels, banners) are never read — a photo
 of a letter pasted into an e-mail is read like an attached one — and nothing in an e-mail is ever
 fetched from the internet.
+
+## Reminders while Ordnung is closed
+
+- **The morning desktop notification** (Settings → Reminders; off until you switch it on) is written
+  by Ordnung's own code from the day's agenda — no model call, nothing sent anywhere — and shown by
+  your system's notification tool (`notify-send`, macOS notifications, Windows toasts). A
+  notification can be seen on a lock screen, a shared screen or in the system's notification
+  history, so the app switches it on as **Discreet**: "Ordnung — 1 due today · 2 more this week",
+  never a title, a name, an organisation or an amount. **With details** shows the first three things with
+  their amounts and days; choose it only on a screen nobody else sees. Letters with scam signs are
+  never in it. The activity log notes that it was sent to the system, with the count only. (That
+  is all Ordnung can know: the system may still keep it back — on macOS until notifications are
+  allowed for Script Editor, and under Focus or Do not disturb; Settings says where to look.)
+- **Start at login** (`ordnung autostart enable`) writes one file that starts `ordnung serve` when you
+  log in (a systemd user service, a LaunchAgent or a Startup-folder entry), and prints it before
+  anything else. The server's sign-in link carries the session token, so the service throws away
+  what `serve` prints: the token never lands in the system journal or a log file.
+  `ordnung autostart disable` removes the file.
+
+## Calendar sync (optional)
+
+Settings → Calendar → *Sync with your own calendar* puts your dates into a calendar you already use,
+so your phone reminds you. It is off until you connect a calendar, and it **sends event text to a
+third party** — your calendar provider — so:
+
+- **Discreet by default.** The events keep their date, time and alarms, and are titled "Ordnung:
+  deadline" (or "… payment", "… appointment", "… money in") with a note to look in Ordnung — no
+  letter's title, no name or organisation, no amount, no place. A date Ordnung couldn't confirm in
+  the letter says "— check the date" (that reveals nothing private). *With details* sends what Ordnung's calendar file
+  holds (the title, what to do, the amount, who it is with, why that date); choose it only if you
+  are comfortable with your provider storing it. Settings shows every event exactly as it would be
+  sent, in either mode, before you connect.
+- **Your app password stays in your system's password store** (Keychain, Credential Locker, GNOME
+  Keyring / KWallet), never in Ordnung's database, a log or a backup. A "password store" that
+  doesn't keep it safely — Python keyring's `null` backend, or the plain-text and home-made files of
+  `keyrings.alt` — is refused, not used. Ordnung reads the password only to connect, to send a change,
+  to check once a day that its events are still in the calendar, and to disconnect — opening
+  Settings never reads it, so it doesn't ask a locked keyring to unlock. Use an app password
+  from your provider, not your main password. Ordnung talks to the calendar only over `https://`
+  (or plain `http://` to a server on this computer) and checks its certificate.
+- **Only Ordnung's own events.** Ordnung adds, updates and removes the events it created, and never
+  reads or changes anything else in that calendar — a calendar of its own, named "Ordnung", keeps
+  things tidy. Once a day (and on *Sync now*) it asks the server which of *its own* events are still
+  there, by name, and puts back any that went missing. Disconnecting forgets the password and can
+  remove Ordnung's events first; "Delete everything" always removes them (and forgets the password)
+  before it deletes anything.
+- **When.** When you connect, when you press *Sync now*, and every 15 minutes while `ordnung serve`
+  runs — only what changed is sent. The activity log notes each sync that sent or removed events.
+- **A restored backup doesn't take over the calendar.** The backup holds the calendar's address and
+  mode, never the password. A restored copy starts with calendar sync waiting: it sends, changes and
+  removes nothing, and never touches the password the original Ordnung keeps on the same computer,
+  until you enter the app password in it. If the Ordnung the backup came from still syncs to that
+  calendar, disconnect it there first — two copies would change each other's events.
+
+## Encrypted backups
+
+`ordnung backup` (and Settings → Data → *Download encrypted backup*) makes one file with everything
+Ordnung keeps: the database (letters' text and what was read from them, to-dos, contracts, drafts,
+your *Ask* conversations, the usage log and cached model answers), your original files, the page
+images and the letter PDFs. Not in it: the watched folder (those files are your own; what Ordnung
+took from them is), the lock and the running server's session file.
+
+- **Encrypted before it is written.** AES-256-GCM in authenticated chunks, the key derived from your
+  passphrase with scrypt (N = 2¹⁷, r = 8); the file starts with a versioned header and nothing else
+  in plain text. A backup file someone hands you can't make restoring use more than 256 MiB of
+  memory for the key. The database snapshot is made in memory, so no unencrypted copy is written to disk.
+- **Your passphrase stays yours.** At least 12 characters; Ordnung never stores or logs it and
+  can't recover it — without it the backup can't be opened, by anyone. In the browser the
+  passphrase goes only to the Ordnung on this computer (in the request body, never in a web address).
+- **Restoring checks everything.** `ordnung restore` refuses a wrong passphrase, a file that was
+  changed, cut short or reordered, a newer format, and anything in the archive Ordnung never writes;
+  every file must match the backup's own list of hashes and row counts. It never replaces a data
+  folder that holds data unless you add `--force`, and then moves the old folder aside instead of
+  deleting it. `ordnung restore FILE --check` verifies a backup without restoring anything.
+- **Links are never followed — and never silently.** A folder inside the data folder that is a link
+  to somewhere else (originals moved to a bigger drive) is not in the backup; `ordnung backup` and
+  Settings name it before the backup is made, so you can back it up separately.
 
 ## Hardening built into every model call
 

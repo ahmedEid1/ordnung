@@ -21,8 +21,8 @@ export interface LoadErrorProps {
   onRetry?: () => void;
   /** A retry is running: the button spins, the message stays put. */
   retrying?: boolean;
-  /** Heading level: 2 under the page's h1 (default), 1 when it replaces the page, 3 inside a section. */
-  headingLevel?: 1 | 2 | 3;
+  /** Heading level: 2 under the page's h1 (default), 1 when it replaces the page, 3 inside a section, 4 inside a card. */
+  headingLevel?: 1 | 2 | 3 | 4;
   /** `error` (default) is a solid card; `plain` goes inside a card that already has an edge. */
   variant?: "error" | "plain";
   size?: "sm" | "md";

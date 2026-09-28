@@ -18,8 +18,10 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator
 
+from fake_caldav import MemorySecrets
 from fixtures_llm import GYM_CONTRACT_LETTER, TAX_LETTER
 from ordnung import clock
+from ordnung.api.routes import calendar_sync
 from test_api_support import TODAY, Api, api_for, sse_messages
 
 NOT_CALLED = {"/api/events": "an endless event stream (tested in test_api_ledger)"}
@@ -195,6 +197,13 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         assert usage["by_purpose"], "the fake reading is accounted per purpose"
         await _get(api, contract, "/api/rules")
         await _get(api, contract, "/api/jobs", active_only="false")
+        await _get(api, contract, "/api/reminders/desktop")
+        await _get(api, contract, "/api/backup")
+        api.app.dependency_overrides[calendar_sync.get_secrets] = lambda: (
+            MemorySecrets()
+        )  # not the real keyring
+        await _get(api, contract, "/api/calendar/sync")
+        await _get(api, contract, "/api/calendar/sync/preview", mode="full")
         await _get(api, contract, "/api/demo/tour")
         await _get(api, contract, "/api/demo/mail")
         await _get(api, contract, "/api/demo/questions")

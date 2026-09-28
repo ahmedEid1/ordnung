@@ -7,6 +7,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fakeApi, settle } from "../browser.mjs";
 import { freshPdf } from "./folder.mjs";
+import { freshRemindersBackupStates } from "./reminders-backup.mjs";
 import { commonSettingsSections } from "./shared.mjs";
 import { numbersAndWeekEmptyStates } from "./numbers-week.mjs";
 
@@ -126,6 +127,8 @@ export async function freshCatalog({ api, server }) {
   e("empty-letter-not-found", "/letters/drf_does_not_exist", "A draft link that doesn't exist.");
   for (const s of numbersAndWeekEmptyStates(G)) empty.push(s);
   for (const s of commonSettingsSections(G, "empty-settings")) empty.push(s);
+  // "Delete everything" exists only here (the demo can't be deleted); nothing is deleted (answered by the audit or cancelled)
+  for (const s of freshRemindersBackupStates({ group: G, prefix: "empty-settings" })) empty.push(s);
   for (const variant of Object.keys(CLAUDE)) {
     empty.push({
       id: `empty-settings-claude-${variant}`,

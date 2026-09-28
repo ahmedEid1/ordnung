@@ -27,7 +27,7 @@ from ordnung.app_context import AppContext
 from ordnung.config import Paths, private_dir
 from ordnung.ingest.pipeline import ledger_lock
 from ordnung.ingest.watcher import folder_chosen
-from ordnung.models import AppSettings, Profile
+from ordnung.models import AppSettings, DesktopNotifyMode, Profile
 from ordnung.rules import normalize_region
 from ordnung.secretary.scam import iban_valid, normalize_iban
 
@@ -134,6 +134,10 @@ class SettingsPatch(BaseModel):
     ocr: bool | None = None
     llm_brief: bool | None = None
     llm_review: bool | None = None
+    desktop_notifications: DesktopNotifyMode | None = None
+    desktop_notify_time: str | None = Field(
+        default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$", description="Local time of day, HH:MM (24 h)"
+    )
     demo: bool | None = None
     simulated_today: str | None = None
 

@@ -6,8 +6,10 @@ from fastapi import APIRouter
 
 from ordnung.api.routes import (
     ask,
+    backup,
     brief,
     calendar,
+    calendar_sync,
     cases,
     contracts,
     data,
@@ -24,6 +26,7 @@ from ordnung.api.routes import (
     privacy,
     profile,
     proofs,
+    reminders,
     suggestions,
     system,
     waiting,
@@ -52,6 +55,9 @@ ROUTERS: tuple[APIRouter, ...] = (
     proofs.router,
     waiting.router,
     calendar.router,
+    calendar_sync.router,
+    reminders.router,
+    backup.router,
     events.router,
     demo.router,
 )

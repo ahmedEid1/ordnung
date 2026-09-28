@@ -15,11 +15,15 @@ import type {
   ApiQuery,
   ApiResponse,
   AskRequest,
+  CalendarSyncConnect,
+  CalendarSyncFind,
+  CalendarSyncMode,
   CallListParams,
   CallNoteCreate,
   CallNotePatch,
   ContractListParams,
   ContractPatch,
+  DesktopMode,
   DocumentListParams,
   DocumentPatch,
   DraftCreate,
@@ -264,6 +268,31 @@ export const api = {
   // -- calendar ----------------------------------------------------------------------------------
   calendarIcsUrl: () => assetUrl(apiRoute("/api/calendar.ics")),
   calendarExported: () => call("post", "/api/calendar/exported"),
+
+  // -- reminders outside the browser & backup ----------------------------------------------------
+  desktopReminders: () => call("get", "/api/reminders/desktop"),
+  /** Show today's notification now (a sample when nothing is due); the morning one still comes. */
+  testDesktopNotification: (mode: DesktopMode) => call("post", "/api/reminders/desktop/test", { body: { mode } }),
+  backupInfo: () => call("get", "/api/backup"),
+  /**
+   * The encrypted backup file. The passphrase goes to this computer's Ordnung only, in the request
+   * body; the file comes back as it is made (a Blob once complete).
+   */
+  downloadBackup: async (passphrase: string, signal?: AbortSignal): Promise<Blob> => {
+    const body: ApiBody<"/api/backup", "post"> = { passphrase };
+    const res = await requestRaw(apiRoute("/api/backup"), { method: "POST", body, signal });
+    return res.blob();
+  },
+
+  // -- calendar sync (CalDAV) --------------------------------------------------------------------
+  calendarSync: () => call("get", "/api/calendar/sync"),
+  calendarSyncPreview: (mode: CalendarSyncMode) => call("get", "/api/calendar/sync/preview", { query: { mode } }),
+  /** The calendars that take events at or under an address (nothing is stored). */
+  discoverCalendars: (body: CalendarSyncFind) => call("post", "/api/calendar/sync/discover", { body }),
+  /** Connect (or change the mode of) the calendar; the app password goes to this computer's keyring only. */
+  connectCalendarSync: (body: CalendarSyncConnect) => call("put", "/api/calendar/sync", { body }),
+  runCalendarSync: () => call("post", "/api/calendar/sync/run"),
+  disconnectCalendarSync: (removeEvents: boolean) => call("post", "/api/calendar/sync/disconnect", { body: { remove_events: removeEvents } }),
 
   // -- privacy & AI usage ------------------------------------------------------------------------
   activity: (limit = 100) => call("get", "/api/activity", { query: { limit } }),
