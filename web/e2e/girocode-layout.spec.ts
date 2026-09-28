@@ -72,7 +72,7 @@ for (const scheme of ["light", "dark"] as const) {
         expect(colours).toMatchObject({ background: "rgb(255, 255, 255)", light: "#ffffff", dark: "#000000", quiet: true });
         expect(colours.modules).toBeGreaterThanOrEqual(21 + 8);
         // the actions stay in view below the code, and nothing scrolls sideways
-        expect(await reachable(panel.getByRole("button", { name: "I've paid it" }))).toBe(true);
+        expect(await reachable(panel.getByRole("button", { name: "Mark as paid" }))).toBe(true);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
       });
     }

@@ -237,12 +237,20 @@ function UploadGroup({ jobs }: { jobs: JobProgress[] }) {
 // Documents whose progress is already shown in place (e.g. the Inbox's New-mail tray) — no toast.
 let hiddenDocs = new Set<string>();
 const hiddenListeners = new Set<() => void>();
+/** How many places show a document's progress: the letter's progress card and a Pay panel's GiroCode block can both. */
+const hiders = new Map<string, number>();
 
-/** Hide (or show again) the progress toast of a document while a page shows it in place. */
+/**
+ * Hide (or show again) the progress toast of a document while a page shows it in place. Each hide is
+ * paired with a show: the toast comes back once no place shows the progress any more.
+ */
 export function setUploadToastHidden(docId: string, hidden: boolean): void {
-  if (hiddenDocs.has(docId) === hidden) return;
+  const count = Math.max(0, (hiders.get(docId) ?? 0) + (hidden ? 1 : -1));
+  if (count) hiders.set(docId, count);
+  else hiders.delete(docId);
+  if (hiddenDocs.has(docId) === count > 0) return;
   hiddenDocs = new Set(hiddenDocs);
-  if (hidden) hiddenDocs.add(docId);
+  if (count) hiddenDocs.add(docId);
   else hiddenDocs.delete(docId);
   hiddenListeners.forEach((l) => l());
 }

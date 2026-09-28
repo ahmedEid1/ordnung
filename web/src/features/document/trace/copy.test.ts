@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TraceChange, TraceRun, TraceSpan } from "@/api/types";
 import { assertNoRawEnums } from "@/lib/copy";
-import { changeText, compareBase, exportCommand, formatMs, runResult, shellPath, spanCopy, spanDetails, specText } from "./copy";
+import { changeText, compareBase, exportCommand, formatMs, runResult, runTitle, shellPath, spanCopy, spanDetails, specText } from "./copy";
 
 const span = (s: Partial<TraceSpan>): TraceSpan => ({
   id: "spn_1",
@@ -120,6 +120,17 @@ describe("trace copy", () => {
     const plan = changeText(change({ kind: "plan", name: "To-do", label: "Pay", field: "action", before: "created", after: "kept_edited" }));
     expect(plan.detail).toBe("What happened: new to-do → kept as you edited it");
     for (const text of [party, plan]) assertNoRawEnums(`${text.what} ${text.detail}`);
+  });
+
+  it("titles a reading by what happened: read, read again — or only stored (R2-document-pay-reading-6)", () => {
+    const run = { reading: 1, trigger: "read", result: "processed", started_at: "2026-09-28T08:48:00Z" } as TraceRun;
+    expect(runTitle(run, false)).toBe("Read on 28 Sep 2026");
+    expect(runTitle({ ...run, reading: 2, trigger: "read_again" }, true)).toBe("Reading 2 · read again on 28 Sep 2026");
+    // a letter from the watched folder waits unread: never "Read on …" next to "Stored — not read yet"
+    const held = { ...run, result: "held" } as TraceRun;
+    expect(runTitle(held, false)).toBe("Stored on 28 Sep 2026");
+    expect(runTitle(held, true)).toBe("Reading 1 · stored on 28 Sep 2026");
+    expect(runResult({ ...held, status: "ok", ended: "done", error: null })).toEqual({ text: "Stored — not read yet", tone: "neutral" });
   });
 
   it("names how a reading ended", () => {

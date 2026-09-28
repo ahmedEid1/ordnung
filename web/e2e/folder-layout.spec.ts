@@ -148,7 +148,7 @@ for (const width of [320, 1280]) {
       // the page image spans both rows: the first is only as tall as the card, so no empty band under it
       // measured to the letter's footer (its rule), not the words in its chip: the chip's own padding and
       // border (UI audit round 1) are not a band under the card
-      const next = page.getByRole("main").locator("footer").filter({ hasText: /Not read yet — not sent to AI/ }).first();
+      const next = page.getByRole("main").locator("footer").filter({ hasText: /Not read yet — not sent to Claude/ }).first();
       const [cardBox, nextBox] = [await card.boundingBox(), await next.boundingBox()];
       expect(cardBox && nextBox && nextBox.y - (cardBox.y + cardBox.height), "the gap under the waiting card").toBeLessThan(48);
     }

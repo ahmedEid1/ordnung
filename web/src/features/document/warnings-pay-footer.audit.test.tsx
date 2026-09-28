@@ -160,7 +160,7 @@ describe("the Pay panel (R1-document-c-5)", () => {
     for (const name of ["Copy IBAN", "Copy reference", "Copy amount"]) expect(screen.getByRole("button", { name })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Copy iban/ })).toBeNull();
     // the buttons stay in view at the bottom of a scrolled panel
-    expect(screen.getByRole("button", { name: "I've paid it" }).parentElement).toHaveClass("sticky", "bg-surface");
+    expect(screen.getByRole("button", { name: "Mark as paid" }).parentElement).toHaveClass("sticky", "bg-surface");
   });
 
   it("counts to the due date once the transfer day has passed", () => {

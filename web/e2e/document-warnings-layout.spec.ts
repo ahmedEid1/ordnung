@@ -34,8 +34,8 @@ test.describe("phone 320 px", () => {
     expect(groups.length).toBe(6);
     expect(groups.every((n) => n === 1)).toBe(true);
     await expect(sheet.getByRole("button", { name: "Copy IBAN" })).toBeVisible();
-    // the sheet scrolls; "I've paid it" is on screen without scrolling it
-    await expect(sheet.getByRole("button", { name: "I've paid it" })).toBeInViewport();
+    // the sheet scrolls; "Mark as paid" is on screen without scrolling it
+    await expect(sheet.getByRole("button", { name: "Mark as paid" })).toBeInViewport();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 

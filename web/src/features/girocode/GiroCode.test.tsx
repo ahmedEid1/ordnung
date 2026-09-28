@@ -33,6 +33,7 @@ import {
   giroCodeLabel,
   modulePixels,
 } from "./GiroCode";
+import { plainText } from "@/lib/glue";
 import { qrMatrix, qrPath } from "./qr";
 
 const NK = "BCD\n002\n1\nSCT\n\nWohnbau Musterstadt eG\nDE05123456000004455660\nEUR184.3\n\n\nMV-2025-0412 NK 2025";
@@ -420,7 +421,10 @@ describe("the pay panel", () => {
     const item = d.items.find((i) => i.kind === "payment")!;
     const doc = { ...d.document, payment: { ...d.document.payment!, payee: "Zahlungsabwicklungsgesellschaftfürrundfunkbeitragsangelegenheiten", reference: "VWG-2026-0000000000000000000000000000055012" } };
     renderWithProviders(<PayPanel item={item} doc={doc} onPaid={() => {}} />);
-    for (const text of [doc.payment.payee, doc.payment.reference]) expect(screen.getByText(text).className).toContain("wrap-anywhere");
+    // (a reference is shown with non-breaking hyphens: it breaks anywhere only where it can't fit whole)
+    for (const text of [doc.payment.payee, doc.payment.reference]) {
+      expect(screen.getByText((_, el) => el?.tagName === "DD" && plainText(el.textContent ?? "") === text).className).toContain("wrap-anywhere");
+    }
   });
 });
 
@@ -454,8 +458,8 @@ describe("on a letter", () => {
     const panel = await screen.findByRole("dialog", { name: "Pay" });
     const section = within(panel).getByRole("region", { name: "GiroCode (EPC-QR)" });
     expect(within(section).getByRole("button", { name: "These match the letter" })).toBeInTheDocument();
-    // "I've paid it" stays in view below the taller panel
-    expect(within(panel).getByRole("button", { name: "I've paid it" }).parentElement!.className).toMatch(/\bsticky\b/);
+    // "Mark as paid" stays in view below the taller panel
+    expect(within(panel).getByRole("button", { name: "Mark as paid" }).parentElement!.className).toMatch(/\bsticky\b/);
   });
 
   it("the scam letter's bank details say why there is no code", async () => {

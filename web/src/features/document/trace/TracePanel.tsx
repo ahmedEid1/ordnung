@@ -18,14 +18,16 @@ import type { Document, DocumentDetail, DocumentTrace, TraceComparison, TraceRun
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { KindBadge } from "@/components/ui/KindBadge";
 import { LoadError } from "@/components/ui/LoadError";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { LoadingLabel, SkeletonCard } from "@/components/ui/Skeleton";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { formatCompact, formatUsd } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
-import { plural } from "@/lib/utils";
+import { cn, plural } from "@/lib/utils";
 import { isStaticDemo } from "@/mocks/mode";
+import { LetterTitle, NotReadYet, detailTitleSize } from "../HeldCard";
 import { changeText, compareBase, exportCommand, formatMs, runResult, runTitle } from "./copy";
 import { Waterfall } from "./Waterfall";
 
@@ -283,18 +285,32 @@ function TraceSkeleton() {
   );
 }
 
-/** The tab's heading: the letter's title (the letter tab's heading is its verdict card's). */
-function TraceHeader({ title }: { title: string }) {
+/**
+ * The tab's heading: the letter's title, as the letter tab's verdict card (or waiting card) shows it — the
+ * same size, in a card of the same padding under a row as tall as its badges, so switching tabs doesn't move
+ * it (UI audit round 2: 25 px left, 65 px up and smaller).
+ */
+function TraceHeader({ detail }: { detail: DocumentDetail }) {
+  const doc = detail.document;
+  const title = doc.title ?? doc.filename;
   return (
-    <header>
+    <header className="card px-5 pb-5 pt-5 sm:px-6 sm:pt-6">
+      {doc.status === "held" ? (
+        <NotReadYet />
+      ) : (
+        <div className="flex min-h-7 flex-wrap items-center gap-1.5">
+          <KindBadge docKind={detail.advice?.kind === "operating_costs" ? "operating_costs" : doc.kind} />
+          {doc.ai_private ? <Badge tone="neutral">Private — not read by Claude</Badge> : null}
+        </div>
+      )}
       <h1
         id="trace-title"
         tabIndex={-1}
-        className="display text-[24px] font-semibold leading-[1.15] text-ink outline-none [overflow-wrap:anywhere] hyphens-auto sm:text-[26px]"
+        className={cn("display mt-3 scroll-mt-24 font-semibold text-ink outline-none wrap-break-word hyphens-manual", detailTitleSize(title))}
       >
-        {title}
+        <LetterTitle title={doc.title} filename={doc.filename} />
       </h1>
-      <p className="mt-1.5 text-[14px] leading-5 text-muted">How Ordnung read it: what Claude was asked, what code checked, and what was filed.</p>
+      <p className="mt-2.5 text-base leading-5 text-muted">How Ordnung read it: what Claude was asked, what code checked, and what was filed.</p>
     </header>
   );
 }
@@ -302,7 +318,7 @@ function TraceHeader({ title }: { title: string }) {
 export function TracePanel({ detail }: { detail: DocumentDetail }) {
   return (
     <div className="space-y-4">
-      <TraceHeader title={detail.document.title ?? detail.document.filename} />
+      <TraceHeader detail={detail} />
       <TraceBody detail={detail} />
     </div>
   );

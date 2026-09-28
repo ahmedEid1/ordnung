@@ -528,10 +528,14 @@ export function spanDetails(
 // A reading, and what changed between two
 // ------------------------------------------------------------------------------------------------
 
-/** "Read on 28 Sep 2026" / "Read again on …" (+ the reading's number when there are several). */
+/**
+ * "Read on 28 Sep 2026" / "Read again on …" (+ the reading's number when there are several). A letter the
+ * watched folder brought in is only stored until the person answers: "Stored on …" — never "Read" next to
+ * "Stored — not read yet" (UI audit round 2).
+ */
 export function runTitle(run: TraceRun, several: boolean): string {
   const when = formatDate(run.started_at, { style: "medium" });
-  const verb = run.trigger === "read_again" ? "Read again" : "Read";
+  const verb = run.result === "held" ? "Stored" : run.trigger === "read_again" ? "Read again" : "Read";
   return several ? `Reading ${run.reading} · ${verb.toLowerCase()} on ${when}` : `${verb} on ${when}`;
 }
 
