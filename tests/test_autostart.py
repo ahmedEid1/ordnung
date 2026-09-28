@@ -3,6 +3,7 @@ awkward paths, rewriting and removing only Ordnung's own entry, the status, and 
 
 from __future__ import annotations
 
+import os
 import plistlib
 import sys
 from pathlib import Path
@@ -218,6 +219,29 @@ def test_windows_reads_a_user_folder_with_umlauts_as_written(tmp_path: Path) -> 
     assert state(folder, platform="win32", env={"APPDATA": str(tmp_path)}, home=tmp_path, python=py).current
 
 
+def test_the_entry_is_written_through_a_binary_descriptor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """On Windows ``os.open`` without ``O_BINARY`` opens in text mode: the .cmd's ``\r\n`` would be
+    written as ``\r\r\n`` and ``enable`` would never find the entry unchanged."""
+    binary = 0x40000000  # stands in for Windows' O_BINARY (removed again before the real open)
+    monkeypatch.setattr(os, "O_BINARY", binary, raising=False)
+    real_open, flags_seen = os.open, []
+
+    def recording_open(path: Any, flags: int, mode: int = 0o777, **kwargs: Any) -> int:
+        flags_seen.append(flags)
+        return real_open(path, flags & ~binary, mode, **kwargs)
+
+    monkeypatch.setattr(os, "open", recording_open)
+    entry = plan(
+        Path("C:\\d"), platform="win32", env={"APPDATA": str(tmp_path)}, home=tmp_path, python="py.exe"
+    )
+    assert enable(entry) == "added"
+    assert flags_seen and all(flags & binary for flags in flags_seen)
+    assert entry.path.read_bytes() == entry.content.encode("utf-8")
+    assert enable(entry) == "unchanged"
+
+
 def test_windows_doubles_percent_signs_and_refuses_quotes() -> None:
     assert cmd_quote("C:\\100%\\x") == '"C:\\100%%\\x"'
     with pytest.raises(AutostartError):
@@ -350,6 +374,26 @@ def test_the_commands_print_what_they_write(fake_home: Path, tmp_path: Path) -> 
     assert not unit.exists()
     assert "there is no" in invoke("autostart", "disable").output
     assert "Starts at login: no" in invoke("autostart", "status", "--data-dir", str(folder)).output
+
+
+def test_enable_says_when_the_morning_notification_is_still_off(fake_home: Path, tmp_path: Path) -> None:
+    """Start at login alone tells the person nothing: the notification is off until switched on."""
+    from ordnung.config import Paths
+    from ordnung.db.store import Store
+
+    fresh = invoke("autostart", "enable", "--data-dir", str(tmp_path / "fresh"))
+    assert fresh.exit_code == 0 and "morning desktop notification is off" in fresh.output
+    assert "Settings → Reminders" in fresh.output
+    assert not (tmp_path / "fresh").exists()  # reading the setting created nothing
+
+    folder = tmp_path / "data"
+    store = Store.open(Paths(folder).ensure())
+    try:
+        store.save_settings(store.get_settings().model_copy(update={"desktop_notifications": "discreet"}))
+    finally:
+        store.close()
+    on = invoke("autostart", "enable", "--data-dir", str(folder))
+    assert on.exit_code == 0 and "notification is off" not in on.output
 
 
 def test_the_demo_does_not_start_at_login(

@@ -29,7 +29,7 @@ import os
 from datetime import date
 from pathlib import Path
 
-from ordnung.backup.archive import BackupContents, check_backup, estimate, write_backup
+from ordnung.backup.archive import BackupContents, check_backup, estimate, links_left_out, write_backup
 from ordnung.backup.container import (
     DEFAULT_KDF,
     BackupError,
@@ -60,6 +60,7 @@ __all__ = [
     "backup_file_name",
     "check_backup",
     "estimate",
+    "links_left_out",
     "passphrase_problem",
     "read_header",
     "restore_backup",
@@ -125,7 +126,9 @@ def write_backup_file(
     if problem:
         raise BackupError(problem)
     partial = target.with_name(f".{target.name}.{os.getpid()}.part")
-    fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_EXCL, PRIVATE_FILE_MODE)
+    # O_BINARY: without it Windows opens the file in text mode and writes every \n as \r\n
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+    fd = os.open(partial, flags, PRIVATE_FILE_MODE)
     try:
         with os.fdopen(fd, "wb") as out:
             contents = write_backup(data_dir, out, passphrase, kdf=kdf)

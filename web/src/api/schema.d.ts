@@ -1296,6 +1296,11 @@ export interface components {
              */
             file_name: string;
             /**
+             * Left Out
+             * @description Symbolic links under the backed-up folders (or a folder that is one), which a backup leaves out: it never follows links
+             */
+            left_out: string[];
+            /**
              * Min Passphrase
              * @default 12
              */
@@ -1398,6 +1403,11 @@ export interface components {
             location: string | null;
             /** Alarms */
             alarms: string[];
+            /**
+             * Alarms Passed
+             * @default 0
+             */
+            alarms_passed: number;
         };
         /**
          * CalendarExportResult
@@ -1504,6 +1514,11 @@ export interface components {
              * @default 0
              */
             failed: number;
+            /**
+             * Missing
+             * @default 0
+             */
+            missing: number;
             /** Error */
             error: string | null;
             /** Error Kind */
@@ -1548,7 +1563,7 @@ export interface components {
             mode: "discreet" | "full";
             /**
              * Password Saved
-             * @description The app password is in this computer's keyring
+             * @description The app password was in this computer's keyring when Ordnung last needed it
              * @default false
              */
             password_saved: boolean;

@@ -5,8 +5,10 @@ Written policy (ADR 0007):
 * **The OS keyring only.** The app password for the person's calendar (CalDAV) is kept with the
   :mod:`keyring` package — macOS Keychain, Windows Credential Locker, the Secret Service (GNOME
   Keyring, KWallet) on Linux — under the service :data:`SERVICE` and the account
-  ``<user name> @ <calendar address>``. It is never written to ``ordnung.db``, a log, a backup or
-  an API answer.
+  ``<user name> @ <calendar address> #<connection>``, where the connection is the data folder's own
+  (:attr:`~ordnung.models.CalendarSyncState.connection`): a copy of the data restored from a backup
+  gets a new one, so it never reads, replaces or deletes the password of the Ordnung it came from.
+  It is never written to ``ordnung.db``, a log, a backup or an API answer.
 * **A real password store, or none.** ``keyring`` is one of Ordnung's dependencies. A backend that
   doesn't keep passwords safely is refused, not used: the ``null`` and ``fail`` backends (a
   ``PYTHON_KEYRING_BACKEND`` set to silence pip, or a headless Linux without a Secret Service),
@@ -16,7 +18,9 @@ Written policy (ADR 0007):
   command that adds it to *this* installation (pipx, uv tool, or this Python's pip).
 * **Asking is not reading.** :func:`KeyringSecrets.problem` only looks at which backend ``keyring``
   chose; it never reads a secret, so opening Settings doesn't make a locked keyring ask to be
-  unlocked. Passwords are read only to connect, to send a change and to disconnect.
+  unlocked (whether the password is saved is what Ordnung found when it last needed it).
+  Passwords are read only to connect, to send a change, to check once a day that Ordnung's events
+  are still in the calendar, and to disconnect.
 """
 
 from __future__ import annotations
@@ -63,9 +67,9 @@ class SecretStore(Protocol):
         """Forget the password of ``account`` (no error when there is none)."""
 
 
-def account_name(username: str, url: str) -> str:
-    """The keyring account of a calendar connection: ``<user name> @ <calendar address>``."""
-    return f"{username} @ {url}"
+def account_name(username: str, url: str, connection: str = "") -> str:
+    """The keyring account of a calendar connection: ``<user name> @ <calendar address> #<connection>``."""
+    return f"{username} @ {url}" + (f" #{connection}" if connection else "")
 
 
 def install_command(prefix: str | None = None, executable: str | None = None) -> str:

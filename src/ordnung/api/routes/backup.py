@@ -1,6 +1,7 @@
 """Settings → Data → "Download encrypted backup" (:mod:`ordnung.backup`).
 
-``GET /api/backup`` says what a backup would hold now (letters, files, size) and the passphrase rule.
+``GET /api/backup`` says what a backup would hold now (letters, files, size), what it would leave
+out (symbolic links, never followed) and the passphrase rule.
 ``POST /api/backup`` with ``{"passphrase": …}`` answers with the encrypted backup file itself, sent
 while it is made (:class:`~ordnung.backup.archive.BackupStream`, one step per file): nothing is kept
 on disk, the database snapshot is consistent even while Ordnung keeps working, and a browser that
@@ -42,6 +43,11 @@ class BackupInfo(BaseModel):
     files: int = Field(description="Originals, page images and letter PDFs")
     bytes: int = Field(description="Their size plus the database's, before encryption")
     file_name: str = Field(description="The name the download gets")
+    left_out: list[str] = Field(
+        default_factory=list,
+        description="Symbolic links under the backed-up folders (or a folder that is one), which a "
+        "backup leaves out: it never follows links",
+    )
     min_passphrase: int = backups.MIN_PASSPHRASE_CHARS
     format_version: int = FORMAT_VERSION
 
@@ -63,6 +69,7 @@ def _info(ctx: AppContext) -> BackupInfo:
         files=files,
         bytes=size,
         file_name=backups.backup_file_name(clock.today()),
+        left_out=backups.links_left_out(ctx.paths.data_dir),
     )
 
 

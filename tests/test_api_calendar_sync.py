@@ -203,13 +203,45 @@ async def test_without_a_password_store_it_says_what_to_install(data_dir: Path) 
         assert refused.status_code == 409 and refused.json()["code"] == "unavailable"
 
 
+class CountingSecrets(MemorySecrets):
+    """Counts how often a password is read (a locked keyring asks to be unlocked each time)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.reads = 0
+
+    def get(self, account: str) -> str | None:
+        self.reads += 1
+        return super().get(account)
+
+
 async def test_a_password_not_on_this_computer_is_shown(data_dir: Path) -> None:
-    server, secrets = FakeCalDav(), MemorySecrets()
+    server, secrets = FakeCalDav(), CountingSecrets()
     async with calendar_api(data_dir, server, secrets) as api:
         await api.client.put("/api/calendar/sync", json=CONNECT)
-        secrets.saved.pop(account_name(USERNAME, URL))
-        body = (await api.client.get("/api/calendar/sync")).json()
-        assert body["connected"] and not body["password_saved"]
+        state = caldav.load_state(api.ctx.store)
+        assert state is not None
+        secrets.saved.pop(account_name(USERNAME, URL, state.connection))
+        synced = (await api.client.post("/api/calendar/sync/run")).json()
+        assert synced["connected"] and not synced["password_saved"] and synced["paused"]
+        assert "isn't saved on this computer" in synced["last_sync"]["error"]
+        assert (await api.client.get("/api/calendar/sync")).json() == synced
+        # entering it again brings it back
+        again = (await api.client.put("/api/calendar/sync", json=CONNECT)).json()
+        assert again["password_saved"] and not again["paused"]
+
+
+async def test_opening_settings_never_reads_the_keyring(data_dir: Path) -> None:
+    """A locked keyring would ask to be unlocked each time Settings → Calendar or the "Delete
+    everything" dialog asks for the status."""
+    server, secrets = FakeCalDav(), CountingSecrets()
+    async with calendar_api(data_dir, server, secrets) as api:
+        await api.client.put("/api/calendar/sync", json=CONNECT)
+        before = secrets.reads
+        for _ in range(3):
+            body = (await api.client.get("/api/calendar/sync")).json()
+            assert body["connected"] and body["password_saved"]
+        assert secrets.reads == before
 
 
 async def test_the_demo_never_connects(data_dir: Path) -> None:

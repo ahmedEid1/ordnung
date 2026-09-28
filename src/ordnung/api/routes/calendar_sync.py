@@ -12,9 +12,9 @@ the OS keyring and the events are sent. ``POST /api/calendar/sync/run`` sends wh
 Ordnung's events from it first.
 
 The app password travels only over the loopback connection, in the request body, and is never
-stored in the database, logged or returned. The status reads the keyring only while a calendar is
-connected (whether its password is saved here); otherwise it only asks which password store there
-is, without reading from it. A refusal answers ``{"detail": …, "code": <kind>}`` (``address``,
+stored in the database, logged or returned. The status never reads the keyring: it asks which
+password store there is, and whether the password is saved is what the last connect or sync found
+(so opening Settings doesn't ask a locked keyring to unlock). A refusal answers ``{"detail": …, "code": <kind>}`` (``address``,
 ``auth``, ``not_calendar``, … — :data:`~ordnung.models.CalendarSyncErrorKind`) so the web app can
 show it next to the right field.
 """
@@ -31,7 +31,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from ordnung.api.deps import ApiState, CtxDep, StateDep
 from ordnung.app_context import AppContext
 from ordnung.calendar import caldav
-from ordnung.calendar.secrets import KeyringSecrets, SecretStore, account_name
+from ordnung.calendar.secrets import KeyringSecrets, SecretStore
 from ordnung.ingest.pipeline import run_triggers
 from ordnung.models import (
     CalendarEventPreview,
@@ -92,7 +92,10 @@ class CalendarSyncStatus(BaseModel):
     username: str | None = None
     calendar_name: str | None = Field(default=None, description="The calendar's name on the server")
     mode: CalendarSyncMode = "discreet"
-    password_saved: bool = Field(default=False, description="The app password is in this computer's keyring")
+    password_saved: bool = Field(
+        default=False,
+        description="The app password was in this computer's keyring when Ordnung last needed it",
+    )
     paused: bool = Field(default=False, description="Automatic syncing waits after a refused password")
     events: int = Field(description="How many events the calendar gets now")
     synced: int = Field(default=0, description="How many of Ordnung's events are in the calendar")
@@ -172,9 +175,7 @@ def _status(ctx: AppContext, secrets: SecretStore, demo: bool) -> CalendarSyncSt
     unavailable = DEMO_MESSAGE if demo else (str(problem) if problem is not None else None)
     connection = caldav.load_state(store)
     mode = connection.mode if connection is not None else "discreet"
-    saved = False
-    if connection is not None and problem is None and not demo:
-        saved = secrets.get(account_name(connection.username, connection.url)) is not None
+    saved = connection is not None and connection.password_saved and problem is None and not demo
     return CalendarSyncStatus(
         available=unavailable is None,
         unavailable=unavailable,

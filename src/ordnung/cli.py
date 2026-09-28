@@ -1327,6 +1327,33 @@ def autostart_enable(
     console.print(f"  Start it now: {escape(entry.start_now)}", soft_wrap=True)
     console.print("  Open the app any time with: ordnung serve (it finds the running Ordnung)")
     console.print("  Undo with: ordnung autostart disable")
+    if _desktop_notifications(folder) == "off":
+        console.print(
+            "[yellow]![/] The morning desktop notification is off: switch it on in Settings → Reminders "
+            "(ordnung serve opens it), or Ordnung runs at login without telling you anything.",
+            soft_wrap=True,
+        )
+
+
+def _desktop_notifications(folder: Path) -> str:
+    """The folder's saved ``desktop_notifications`` setting, read without creating or changing
+    anything (``"off"``, the default, when there is no database yet or it can't be read)."""
+    import sqlite3
+
+    from ordnung.models import AppSettings
+
+    db = folder / Paths(folder).db.name
+    if not db.is_file():
+        return "off"
+    try:
+        conn = sqlite3.connect(f"{db.resolve().as_uri()}?mode=ro", uri=True)
+        try:
+            row = conn.execute("SELECT value FROM meta WHERE key = 'settings'").fetchone()
+        finally:
+            conn.close()
+        return AppSettings.model_validate_json(row[0]).desktop_notifications if row else "off"
+    except (sqlite3.Error, ValueError):
+        return "off"
 
 
 @autostart_app.command("disable")
@@ -1484,6 +1511,16 @@ def backup(
         console.print(
             f"Backing up [bold]{escape(str(folder))}[/] to [bold]{escape(str(target))}[/]", soft_wrap=True
         )
+        left_out = backups.links_left_out(folder)
+        if left_out:
+            shown = ", ".join(left_out[:5]) + (f" and {len(left_out) - 5} more" if len(left_out) > 5 else "")
+            one = len(left_out) == 1
+            console.print(
+                f"[yellow]![/] Not in the backup: {escape(shown)} — {'a link' if one else 'links'} to somewhere "
+                f"else, and a backup never follows links. Back {'that' if one else 'those'} up separately, or "
+                f"move {'it' if one else 'them'} into the data folder.",
+                soft_wrap=True,
+            )
         console.print(PASSPHRASE_WARNING)
         passphrase = _passphrase(new=True)
         with _read_lock(folder) as exact:
@@ -1528,7 +1565,8 @@ def restore(
 ) -> None:
     """Restore an encrypted backup (never over existing data without --force)."""
     from ordnung import backup as backups
-    from ordnung.backup.restore import check_target
+    from ordnung.assistant.mcp_install import shell_join
+    from ordnung.backup.restore import TargetInUse, check_target
 
     with _friendly():
         source = backup_file.expanduser()
@@ -1547,12 +1585,17 @@ def restore(
                 f"  Made on {escape(contents.manifest.created_at)} with Ordnung {escape(contents.manifest.app_version)}."
             )
             return
-        found = check_target(folder, force=force)  # refuse early, before the passphrase
-        console.print(f"Restoring into [bold]{escape(str(folder))}[/]", soft_wrap=True)
-        if found:
-            console.print("[yellow]![/] It holds data: it will be moved aside first (nothing is deleted).")
-        passphrase = _passphrase(new=False)
-        result = backups.restore_backup(source, passphrase, folder, force=force)
+        try:
+            found = check_target(folder, force=force)  # refuse early, before the passphrase
+            console.print(f"Restoring into [bold]{escape(str(folder))}[/]", soft_wrap=True)
+            if found:
+                console.print(
+                    "[yellow]![/] It holds data: it will be moved aside first (nothing is deleted)."
+                )
+            passphrase = _passphrase(new=False)
+            result = backups.restore_backup(source, passphrase, folder, force=force)
+        except TargetInUse as exc:
+            raise _fail(str(exc), _stop_hint(folder), soft_wrap=True) from None
     console.print(f"[green]✓[/] Restored {escape(_contents_line(result.contents))}", soft_wrap=True)
     console.print(f"  into {escape(str(result.target))}", soft_wrap=True)
     if result.moved_aside is not None:
@@ -1560,7 +1603,33 @@ def restore(
             f"  The data that was there is now in {escape(str(result.moved_aside))} — delete it once you are sure.",
             soft_wrap=True,
         )
-    console.print("  Start Ordnung with: ordnung serve")
+    if result.calendar is not None:
+        console.print(
+            f"[yellow]![/] Calendar sync with “{escape(result.calendar)}” waits in this copy: enter the app "
+            "password in Settings → Calendar to sync it again. If the Ordnung this backup came from still "
+            "syncs to that calendar, disconnect it there first and leave its events in the calendar — two "
+            "Ordnungs would change each other's events.",
+            soft_wrap=True,
+        )
+    serve_command = "ordnung serve"
+    if result.target.resolve() != default_data_dir():
+        serve_command = shell_join(["ordnung", "serve", "--data-dir", str(result.target)])
+    console.print(f"  Start Ordnung with: {escape(serve_command)}", soft_wrap=True)
+
+
+def _stop_hint(folder: Path) -> str | None:
+    """How to stop the Ordnung that holds ``folder`` when it is the one started at login for it."""
+    from ordnung import autostart
+
+    try:
+        entry = autostart.state(folder)
+        started = (
+            entry.enabled and entry.data_dir is not None and entry.data_dir.resolve() == folder.resolve()
+        )
+        stop = autostart.location().stop_now if started else None
+    except (autostart.AutostartError, OSError):
+        stop = None
+    return f"Ordnung starts at login for this folder. To stop it: {stop}" if stop else None
 
 
 @app.command()

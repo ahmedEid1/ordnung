@@ -31,6 +31,9 @@ Written policy (ADR 0007):
   PowerShell's toast API (a fixed script, the texts in environment variables). A missing tool, an
   error or no answer within :data:`SEND_TIMEOUT_S` seconds shows nothing and breaks nothing — the
   result says why, and the person's other reminders (the calendar file's alarms) are unaffected.
+  A tool that took the notification is all Ordnung can know: the system may still keep it back
+  (macOS without notification permission for Script Editor, Focus, Do not disturb), so Ordnung
+  says it *sent* it, and Settings says where to look when nothing appeared.
 """
 
 from __future__ import annotations
@@ -461,7 +464,8 @@ def morning_notification(
     store.set_meta(LAST_SHOWN_KEY, today.isoformat())  # shown, nothing to say, no tool, or given up
     if result is not None and result.sent:
         store.set_meta(FAILED_KEY, None)
-        store.log_activity("notify.desktop", f"Showed the morning notification ({outcome.count})")
+        # the tool took it; whether the system shows it is its call (permissions, Focus, Do not disturb)
+        store.log_activity("notify.desktop", f"Sent the morning notification to the system ({outcome.count})")
     elif result is not None:
         _record_failure(store, today, tries, result.detail)
         log.info("desktop notification not shown: %s", result.detail)

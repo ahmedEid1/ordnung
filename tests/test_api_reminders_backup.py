@@ -223,6 +223,10 @@ async def test_backup_info(data_dir: Path) -> None:
         assert info["files"] == 1 and info["bytes"] > 400
         assert info["file_name"] == "ordnung-backup-2026-09-28.ordnung-backup"
         assert info["min_passphrase"] == 12 and info["format_version"] == 1
+        assert info["left_out"] == []
+        # a link is never followed — and Settings says what that leaves out
+        (api.ctx.paths.drafts / "elsewhere").symlink_to(data_dir.parent)
+        assert (await api.client.get("/api/backup")).json()["left_out"] == ["drafts/elsewhere"]
 
 
 async def test_the_backup_download_restores(data_dir: Path, tmp_path: Path) -> None:

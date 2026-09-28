@@ -9,7 +9,9 @@ Written policy (ADR 0007):
   ``manifest.json``: the format, the app and schema versions, the row count of every table and the
   size and SHA-256 of every file and of the database. Nothing else: not the lock, ``server.json``
   or the watched folder (its files are the person's own copies; what Ordnung took from it is in
-  ``files/``). Symbolic links are never followed.
+  ``files/``). Symbolic links are never followed — and never silently: a link under the three
+  folders, or one of the folders itself being a link (moved to a bigger drive), is named by
+  :func:`links_left_out`, which ``ordnung backup`` and Settings → Data show before the backup is made.
 * **Making a backup writes no plaintext.** The database snapshot is made in memory; the archive is
   encrypted as it is written. Each file is read whole (at most one file in memory at a time), so a
   file changed while it is read is in the backup either before or after the change, never torn. A
@@ -191,6 +193,25 @@ def iter_data_files(data_dir: Path) -> Iterator[tuple[str, Path]]:
         yield from sorted(found)
 
 
+def links_left_out(data_dir: Path) -> list[str]:
+    """The symbolic links a backup of ``data_dir`` leaves out (module policy), by name: one of the
+    backed-up folders itself (``files``), or a link inside one (``files/ab``)."""
+    found: list[str] = []
+    for folder in FOLDERS:
+        root = data_dir / folder
+        if root.is_symlink():
+            found.append(folder)
+            continue
+        if not root.is_dir():
+            continue
+        for current, dirs, names in os.walk(root, followlinks=False):
+            for name in (*dirs, *names):
+                path = Path(current) / name
+                if path.is_symlink():
+                    found.append(path.relative_to(data_dir).as_posix())
+    return sorted(found)
+
+
 def _tar_info(name: str, size: int, mtime: float) -> tarfile.TarInfo:
     info = tarfile.TarInfo(name)
     info.size = size
@@ -345,15 +366,19 @@ def _private_dirs(root: Path, relative: PurePosixPath) -> Path:
     return current
 
 
+def _create_private(target: Path) -> BinaryIO:
+    """A new file only its owner can read, opened for bytes (``O_BINARY``: without it Windows opens
+    the descriptor in text mode and writes every ``\\n`` as ``\\r\\n``)."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+    return os.fdopen(os.open(target, flags, PRIVATE_FILE_MODE), "wb")
+
+
 def _copy_member(
     stream: IO[bytes], target: Path | None, mtime: float, keep: bool = False
 ) -> tuple[ManifestFile, bytes]:
     """Hash ``stream`` and write it to ``target`` (``None``: only hash it). ``keep`` returns its bytes too."""
     digest, size, kept = hashlib.sha256(), 0, bytearray()
-    handle = None
-    if target is not None:
-        fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, PRIVATE_FILE_MODE)
-        handle = os.fdopen(fd, "wb")
+    handle = _create_private(target) if target is not None else None
     try:
         while block := stream.read(1024 * 1024):
             if handle is not None:
@@ -362,6 +387,14 @@ def _copy_member(
                 kept += block
             digest.update(block)
             size += len(block)
+        if handle is not None and target is not None:
+            handle.flush()
+            # what reached the disk, not only what was decrypted, must be the backup's file
+            if os.fstat(handle.fileno()).st_size != size:
+                raise BackupError(
+                    f"Restoring wrote a different file than the backup holds ({target.name}), so nothing "
+                    "was restored. Please report this."
+                )
     finally:
         if handle is not None:
             handle.close()

@@ -10,6 +10,7 @@ import json
 import os
 import shutil
 import sqlite3
+import sys
 import tarfile
 from collections.abc import Iterator
 from datetime import date, datetime
@@ -56,7 +57,8 @@ def fast_keys(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture
 def life(tmp_path: Path) -> Path:
-    """A data folder with a seeded ledger, originals, page images, a letter PDF and uncheckpointed WAL."""
+    """A data folder with a seeded ledger, originals, page images and a letter PDF (closed: its WAL is
+    checkpointed — :func:`test_a_write_only_in_the_wal_is_in_the_backup` covers a running server)."""
     folder = tmp_path / "life"
     paths = Paths(folder).ensure()
     store = Store.open(paths)
@@ -70,7 +72,6 @@ def life(tmp_path: Path) -> Path:
         (paths.derived / "doc_1" / "page-1.jpg").write_bytes(os.urandom(3_000))
         (paths.derived / "doc_1" / "thumb.jpg").write_bytes(b"")
         (paths.drafts / "drf_1.pdf").write_bytes(b"%PDF-1.4 letter")
-        # a row that is only in the WAL (no checkpoint): the snapshot must still carry it
         store.set_meta("written_last", "yes")
     finally:
         store.close()
@@ -124,6 +125,78 @@ def test_round_trip_is_byte_for_byte_with_the_same_rows(life: Path, tmp_path: Pa
         store.close()
 
 
+def test_a_write_only_in_the_wal_is_in_the_backup(life: Path, tmp_path: Path) -> None:
+    """A running server's last writes are in ``ordnung.db-wal``, not yet in ``ordnung.db``."""
+    writer = sqlite3.connect(life / DB_NAME)
+    try:
+        assert writer.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+        writer.execute("PRAGMA wal_autocheckpoint=0")  # nothing reaches ordnung.db while it is open
+        writer.execute("INSERT INTO meta (key, value) VALUES ('only_in_the_wal', 'yes')")
+        writer.commit()
+        wal = life / f"{DB_NAME}-wal"
+        assert wal.is_file() and wal.stat().st_size > 0
+        # the database file alone doesn't have the row yet
+        alone = tmp_path / "alone" / DB_NAME
+        alone.parent.mkdir()
+        shutil.copyfile(life / DB_NAME, alone)
+        check = sqlite3.connect(alone)
+        try:
+            assert check.execute("SELECT value FROM meta WHERE key = 'only_in_the_wal'").fetchone() is None
+        finally:
+            check.close()
+        backup = make_backup(life, tmp_path / "b.ordnung-backup")
+        assert wal.stat().st_size > 0  # still not checkpointed while the backup was taken
+    finally:
+        writer.close()
+    restored = restore_backup(backup, PASS, tmp_path / "restored").target
+    store = Store.open(Paths(restored))
+    try:
+        assert store.get_meta("only_in_the_wal") == "yes"
+    finally:
+        store.close()
+
+
+def test_every_file_is_written_through_a_binary_descriptor(
+    life: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """On Windows ``os.open`` without ``O_BINARY`` opens in text mode: every ``\n`` would become
+    ``\r\n`` — a backup that can never be restored and restored files that are corrupt."""
+    binary = 0x40000000  # stands in for Windows' O_BINARY (removed again before the real open)
+    monkeypatch.setattr(os, "O_BINARY", binary, raising=False)
+    real_open, opened = os.open, []
+
+    def recording_open(path: Any, flags: int, mode: int = 0o777, **kwargs: Any) -> int:
+        if flags & (os.O_WRONLY | os.O_RDWR) and flags & os.O_CREAT:
+            opened.append((Path(path).name, bool(flags & binary)))
+        return real_open(path, flags & ~binary, mode, **kwargs)
+
+    monkeypatch.setattr(os, "open", recording_open)
+    backup = make_backup(life, tmp_path / "b.ordnung-backup")
+    restore_backup(backup, PASS, tmp_path / "restored")
+    names = {name for name, _ in opened}
+    assert any(name.endswith(".part") for name in names)  # the backup file
+    assert {DB_NAME, "abcdef.pdf", "page-1.jpg", "drf_1.pdf"} <= names  # the restored files
+    assert all(is_binary for _, is_binary in opened), opened
+
+
+def test_a_file_the_disk_got_differently_fails_the_restore(
+    life: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Defence in depth: what reached the disk is checked, not only what was decrypted."""
+
+    class TextMode(io.FileIO):  # what a text-mode descriptor on Windows does to the bytes
+        def write(self, data: Any) -> int:
+            super().write(bytes(data).replace(b"\n", b"\r\n"))
+            return len(data)
+
+    backup = make_backup(life, tmp_path / "b.ordnung-backup")
+    monkeypatch.setattr(archive, "_create_private", lambda target: TextMode(target, "xb"))
+    with pytest.raises(backups.BackupError, match="wrote a different file"):
+        restore_backup(backup, PASS, tmp_path / "restored")
+    assert not (tmp_path / "restored").exists()
+    assert not list(tmp_path.glob(".restored.restoring-*"))
+
+
 def test_the_demo_life_round_trips(tmp_path: Path) -> None:
     demo = tmp_path / "demo"
     shutil.copytree(PACKAGE_DIR / "demo" / "demo_db", demo)
@@ -165,6 +238,21 @@ def test_symlinks_are_never_followed(life: Path, tmp_path: Path) -> None:
     names = {entry.path for entry in contents.manifest.files}
     assert "files/link.pdf" not in names
     assert not any(name.startswith("derived/linked-folder") for name in names)
+    assert backups.links_left_out(life) == ["derived/linked-folder", "files/link.pdf"]
+
+
+def test_a_backed_up_folder_that_is_a_link_is_named_not_skipped_silently(
+    life: Path, tmp_path: Path, pinned_today: None
+) -> None:
+    """Originals moved to a bigger drive (``files`` a link to it) aren't in the backup: it says so."""
+    bigger = tmp_path / "bigger-drive" / "files"
+    shutil.move(life / "files", bigger)
+    (life / "files").symlink_to(bigger, target_is_directory=True)
+    assert backups.links_left_out(life) == ["files"]
+    result = invoke("backup", "--data-dir", str(life), "--to", str(tmp_path))
+    assert result.exit_code == 0, result.output
+    assert "Not in the backup: files — a link to somewhere else" in result.output
+    assert result.output.index("Not in the backup") < result.output.index("Saved an encrypted backup")
 
 
 def test_runtime_files_and_the_watched_folder_stay_out(life: Path, tmp_path: Path) -> None:
@@ -618,6 +706,88 @@ def test_backup_and_restore_commands(life: Path, tmp_path: Path, pinned_today: N
     assert restored.exit_code == 0, restored.output
     assert f"Restored {letters} letters" in restored.output
     assert file_digests(tmp_path / "back") == file_digests(life)
+    # not the default folder: the command to start it names the folder, or it would open another one
+    assert f"Start Ordnung with: ordnung serve --data-dir {tmp_path / 'back'}" in restored.output
+    assert "Calendar sync" not in restored.output  # none was connected
+    assert "Not in the backup" not in result.output  # nothing was left out
+
+
+def test_a_restored_calendar_connection_starts_detached(life: Path, tmp_path: Path) -> None:
+    """The Ordnung the backup came from may still sync that calendar: the copy mustn't act as it."""
+    from ordnung.calendar import caldav
+    from ordnung.models import CalendarSyncReport, CalendarSyncState
+
+    url = "https://cal.example.org/dav/calendars/sam/ordnung/"
+    connected = CalendarSyncState(
+        url=url,
+        username="sam@example.org",
+        mode="full",
+        calendar_name="Ordnung",
+        connection="a" * 16,
+        events={"ordnung-itm_1.ics": "0" * 64},
+        last=CalendarSyncReport(at="2026-09-28T07:00:00Z", sent=1),
+        checked_on="2026-09-28",
+    )
+    store = Store.open(Paths(life))
+    try:
+        caldav.save_state(store, connected)
+    finally:
+        store.close()
+    backup = make_backup(life, tmp_path / "b.ordnung-backup")
+    result = invoke("restore", str(backup), "--data-dir", str(tmp_path / "copy"))
+    assert result.exit_code == 0, result.output
+    assert "Calendar sync with “Ordnung” waits in this copy" in result.output
+    assert "disconnect it there first" in result.output
+    copy = Store.open(Paths(tmp_path / "copy"))
+    original = Store.open(Paths(life))
+    try:
+        state = caldav.load_state(copy)
+        assert state is not None
+        assert (state.url, state.username, state.mode, state.calendar_name) == (
+            url,
+            "sam@example.org",
+            "full",
+            "Ordnung",
+        )
+        assert state.connection not in ("", "a" * 16) and state.events == {} and state.last is None
+        assert state.paused and not state.password_saved and state.checked_on is None
+        assert caldav.load_state(original) == connected  # the original is untouched
+    finally:
+        copy.close()
+        original.close()
+
+
+def test_restore_into_the_default_folder_says_plain_ordnung_serve(
+    life: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    backup = make_backup(life, tmp_path / "b.ordnung-backup")
+    monkeypatch.setenv("ORDNUNG_HOME", str(tmp_path / "home-data"))
+    result = invoke("restore", str(backup))
+    assert result.exit_code == 0, result.output
+    assert result.output.rstrip().endswith("Start Ordnung with: ordnung serve")
+
+
+def test_restore_under_an_ordnung_started_at_login_names_how_to_stop_it(
+    life: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from ordnung import autostart
+
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    autostart.enable(autostart.plan(life.resolve()))
+    backup = make_backup(life, tmp_path / "b.ordnung-backup")
+    with DataDirLock(life, purpose="ordnung serve"):
+        result = invoke("restore", str(backup), "--data-dir", str(life), "--force")
+        elsewhere = invoke("restore", str(backup), "--data-dir", str(tmp_path / "other"))
+    assert result.exit_code == 1 and "Stop it first" in result.output
+    assert (
+        "starts at login for this folder. To stop it: systemctl --user stop ordnung.service" in result.output
+    )
+    assert elsewhere.exit_code == 0, elsewhere.output  # another folder isn't in use
 
 
 def test_backup_prompts_twice_for_a_new_passphrase(life: Path, tmp_path: Path, pinned_today: None) -> None:

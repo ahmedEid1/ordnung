@@ -16,6 +16,12 @@ Written policy (ADR 0007):
   only then is the old folder moved aside and the staging folder renamed into place (one rename on
   the same file system). Any failure removes the staging folder and leaves the target as it was; a
   failed final rename moves the old folder back.
+* **A restored copy doesn't act as the original.** The Ordnung the backup came from may still be
+  running, with the same calendar connected. So a restored calendar-sync connection starts detached
+  (:func:`ordnung.calendar.caldav.detached`, changed in the staged database once it is proven): the
+  calendar's address and mode stay, but it has no password on this computer, no claim on the events
+  the original sent, and syncs nothing until the person enters the app password in Settings →
+  Calendar. Nothing else in the database is changed.
 """
 
 from __future__ import annotations
@@ -23,14 +29,17 @@ from __future__ import annotations
 import os
 import secrets
 import shutil
+import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from ordnung.backup.archive import BackupContents, extract_backup
+from ordnung.backup.archive import DB_NAME, BackupContents, extract_backup
 from ordnung.backup.container import BackupError
+from ordnung.calendar import caldav
 from ordnung.locking import LOCK_NAME, DataDirLock, DataDirLocked
+from ordnung.models import CalendarSyncState
 
 #: Ordnung's own folders that may exist (empty) in a data folder that still counts as free.
 EMPTY_OK = frozenset({"files", "derived", "drafts", "inbox"})
@@ -53,6 +62,8 @@ class RestoreResult:
     target: Path
     contents: BackupContents
     moved_aside: Path | None = None
+    #: the calendar whose sync connection was restored detached (its host or name), if there was one
+    calendar: str | None = None
 
 
 def _is_empty_dir(path: Path) -> bool:
@@ -120,6 +131,30 @@ def _remove_free(target: Path) -> None:
     target.rmdir()
 
 
+def detach_calendar_sync(db_path: Path) -> str | None:
+    """Detach the restored calendar-sync connection in ``db_path`` (module policy); returns the
+    calendar's name or host, ``None`` when none was connected."""
+    conn = sqlite3.connect(db_path)
+    try:
+        row = conn.execute("SELECT value FROM meta WHERE key = ?", (caldav.STATE_KEY,)).fetchone()
+        if row is None:
+            return None
+        try:
+            state = CalendarSyncState.model_validate_json(row[0])
+        except ValueError:  # unreadable: Ordnung treats it as not connected (and so does this)
+            conn.execute("DELETE FROM meta WHERE key = ?", (caldav.STATE_KEY,))
+            conn.commit()
+            return None
+        conn.execute(
+            "UPDATE meta SET value = ? WHERE key = ?",
+            (caldav.detached(state).model_dump_json(), caldav.STATE_KEY),
+        )
+        conn.commit()
+        return state.calendar_name or caldav.host_of(state.url)
+    finally:
+        conn.close()
+
+
 def _staging_dir(target: Path) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     staging = target.with_name(f".{target.name}.restoring-{secrets.token_hex(4)}")
@@ -142,6 +177,7 @@ def restore_backup(
     try:
         with backup.open("rb") as src:
             contents = extract_backup(src, passphrase, staging)
+        calendar = detach_calendar_sync(staging / DB_NAME)
         for folder in ("files", "derived", "drafts"):
             (staging / folder).mkdir(mode=PRIVATE_DIR_MODE, exist_ok=True)
         # the folder may have filled or a server started while the backup was decrypted
@@ -162,4 +198,4 @@ def restore_backup(
         raise
     if os.name == "posix":
         target.chmod(PRIVATE_DIR_MODE)
-    return RestoreResult(target=target, contents=contents, moved_aside=moved)
+    return RestoreResult(target=target, contents=contents, moved_aside=moved, calendar=calendar)

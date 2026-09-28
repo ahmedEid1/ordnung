@@ -3417,6 +3417,14 @@
             "title": "File Name",
             "description": "The name the download gets"
           },
+          "left_out": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Left Out",
+            "description": "Symbolic links under the backed-up folders (or a folder that is one), which a backup leaves out: it never follows links"
+          },
           "min_passphrase": {
             "type": "integer",
             "title": "Min Passphrase",
@@ -3434,6 +3442,7 @@
           "files",
           "bytes",
           "file_name",
+          "left_out",
           "min_passphrase",
           "format_version"
         ],
@@ -3642,6 +3651,11 @@
             },
             "type": "array",
             "title": "Alarms"
+          },
+          "alarms_passed": {
+            "type": "integer",
+            "title": "Alarms Passed",
+            "default": 0
           }
         },
         "type": "object",
@@ -3652,7 +3666,8 @@
           "all_day",
           "description",
           "location",
-          "alarms"
+          "alarms",
+          "alarms_passed"
         ],
         "title": "CalendarEventPreview",
         "description": "One event exactly as calendar sync would send it."
@@ -3836,6 +3851,11 @@
             "title": "Failed",
             "default": 0
           },
+          "missing": {
+            "type": "integer",
+            "title": "Missing",
+            "default": 0
+          },
           "error": {
             "anyOf": [
               {
@@ -3879,6 +3899,7 @@
           "removed",
           "unchanged",
           "failed",
+          "missing",
           "error",
           "error_kind"
         ],
@@ -3966,7 +3987,7 @@
           "password_saved": {
             "type": "boolean",
             "title": "Password Saved",
-            "description": "The app password is in this computer's keyring",
+            "description": "The app password was in this computer's keyring when Ordnung last needed it",
             "default": false
           },
           "paused": {

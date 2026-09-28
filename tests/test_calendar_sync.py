@@ -33,6 +33,9 @@ from fake_caldav import (
     USERNAME,
     FakeCalDav,
     MemorySecrets,
+    calendar_props,
+    multistatus,
+    response,
     serve_on_loopback,
 )
 from helpers_secretary import TODAY, seed_ledger
@@ -125,6 +128,8 @@ def test_calendar_addresses_are_normalised(raw: str, expected: str) -> None:
         ("https://cloud.example.org/da v/", "https://"),
         ("https://cloud.example.org/d\nav/", "https://"),
         ("https://" + "a" * 3000 + ".org/", "https://"),
+        ("https://[cloud.example.org/dav/", "can't be read"),
+        ("https://cloud.example.org:dav/", "can't be read"),
     ],
 )
 def test_unusable_addresses_are_refused_with_a_reason(raw: str, why: str) -> None:
@@ -232,6 +237,9 @@ def test_the_preview_says_what_each_event_holds_and_when_its_alarms_ring(
     parking = previews[ids["parking_payment"]]
     assert parking.all_day and parking.start == "2026-09-29"
     assert parking.alarms == ["7 days before at 09:00", "2 days before at 09:00"]
+    # due tomorrow: both alarms fell before today (22 and 27 Sep) — the event has them, they won't ring
+    assert parking.alarms_passed == 2
+    assert appointment.alarms and appointment.alarms_passed == 0
     assert "Amount: €25" in parking.description
     assert caldav.preview(store, "discreet")[0].description == caldav.DISCREET_DESCRIPTION
 
@@ -262,9 +270,11 @@ def test_connecting_checks_the_calendar_saves_the_password_in_the_keyring_and_se
     assert server.methods()[0] == "PROPFIND" and server.methods().count("PUT") == len(events)
     assert set(server.events()) == {event.href for event in events}
     assert server.uids() == {event.uid for event in events}
-    assert secrets.saved == {account_name(USERNAME, URL): PASSWORD}
     state = caldav.load_state(store)
     assert state is not None and state.calendar_name == "Ordnung" and state.mode == "discreet"
+    # the password belongs to this data folder's connection
+    assert len(state.connection) == 16 and state.password_saved
+    assert secrets.saved == {account_name(USERNAME, URL, state.connection): PASSWORD}
     assert state.events == {event.href: event.digest for event in events}
     kinds = [entry.kind for entry in store.list_activity(20)]
     assert "calendar.connected" in kinds and "calendar.synced" in kinds
@@ -280,14 +290,14 @@ def test_syncing_again_sends_only_what_changed_and_removes_what_left(
 ) -> None:
     connect(store, secrets, server)
     server.requests.clear()
-    again = caldav.sync(store, secrets, transport=server.transport())
+    again = caldav.sync(store, secrets, transport=server.transport(), automatic=True)
     assert again is not None and (again.sent, again.removed) == (0, 0) and again.unchanged > 5
-    assert server.requests == []  # nothing changed: no request at all
+    assert server.requests == []  # nothing changed (and checked today): no request at all
 
     store.update_item(ids["parking_payment"], title="Pay the parking fine (Parkverstoß)")
     store.update_item(ids["followup"], status="done")
     count = len(server.resources)
-    report = caldav.sync(store, secrets, transport=server.transport())
+    report = caldav.sync(store, secrets, transport=server.transport(), automatic=True)
     # the renamed to-do is sent again (its last-modified stamp changed) without the new title; the
     # finished one leaves the calendar
     assert report is not None and (report.sent, report.removed) == (1, 1)
@@ -346,7 +356,7 @@ def test_one_refused_event_doesnt_stop_the_others_and_is_tried_again(
     assert "calendar of its own" in (report.error or "")
     del server.refuse[refused]
     server.requests.clear()
-    again = caldav.sync(store, secrets, transport=server.transport())
+    again = caldav.sync(store, secrets, transport=server.transport(), automatic=True)
     assert again is not None and again.sent == 1 and again.error is None
     assert server.requests == [("PUT", refused)]
 
@@ -443,6 +453,13 @@ def test_connecting_to_something_unusable_stores_nothing(
         ((207, {}, b"<d:multistatus xmlns:d='DAV:'><d:response>"), "server", "couldn't be read"),
         ((207, {}, b"x" * (caldav.MAX_RESPONSE_BYTES + 10)), "server", "too large"),
         ((207, {}, b"<d:multistatus xmlns:d='DAV:'/>"), "not_calendar", "not a calendar"),
+        # an address in the answer that can't be read names nothing (never an unhandled error)
+        (
+            (207, {}, multistatus(response("http://[oops/", calendar_props()))),
+            "not_calendar",
+            "not a calendar",
+        ),
+        ((301, {"Location": "http://[oops/"}, b""), "address", "another address"),
     ],
 )
 def test_odd_answers_read_as_reasons(
@@ -729,6 +746,24 @@ def test_a_well_known_redirect_to_another_host_is_named_not_followed(server: Fak
     assert refused.value.kind == "address" and "https://caldav.elsewhere.example/dav/" in str(refused.value)
 
 
+@pytest.mark.parametrize("href", ["http://[oops/", "https://cal.example.org:x/dav/"])
+def test_unreadable_addresses_in_the_servers_answers_are_skipped_while_finding(
+    server: FakeCalDav, href: str
+) -> None:
+    """A server's answer is untrusted input: an address in it that can't be read is not followed."""
+    broken = multistatus(
+        response(href, calendar_props()),
+        response(
+            PRINCIPAL_PATH, f"<d:current-user-principal><d:href>{href}</d:href></d:current-user-principal>"
+        ),
+    )
+    server.answers["/"] = (207, {"Content-Type": "application/xml"}, broken)
+    # skipped, the search goes on at the server's /.well-known/caldav
+    assert found(server, BASE + "/") == [ORDNUNG, PERSONAL]
+    assert [r.url for r in caldav.read_resources(broken, BASE + "/")] == [BASE + PRINCIPAL_PATH]
+    assert caldav.read_resources(broken, BASE + "/")[0].principal is None
+
+
 def test_finding_needs_a_password_and_a_usable_address(server: FakeCalDav) -> None:
     for url, password in ((URL, ""), ("http://cal.example.org/", PASSWORD)):
         with pytest.raises(CalDavError):
@@ -748,6 +783,162 @@ def test_a_real_socket_round_trip(store: Store, ids: dict[str, str], secrets: Me
 def test_an_unreadable_record_counts_as_not_connected(store: Store) -> None:
     store.set_meta(caldav.STATE_KEY, "{not json")
     assert caldav.load_state(store) is None
+
+
+# --------------------------------------------------------------------------------------------------
+# events that went missing, and copies of the data
+# --------------------------------------------------------------------------------------------------
+
+
+def test_sync_now_sends_back_events_that_went_missing_from_the_calendar(
+    store: Store, ids: dict[str, str], server: FakeCalDav, secrets: MemorySecrets
+) -> None:
+    connect(store, secrets, server)
+    total = len(server.resources)
+    for path in sorted(server.resources)[:3]:  # deleted in the calendar app, or by another Ordnung
+        del server.resources[path]
+    server.requests.clear()
+    quiet = caldav.sync(store, secrets, transport=server.transport(), automatic=True)
+    assert quiet is not None and quiet.sent == 0 and server.requests == []  # checked today already
+    report = caldav.sync(store, secrets, transport=server.transport())  # "Sync now" checks
+    assert report is not None and (report.sent, report.missing, report.error) == (3, 3, None)
+    assert server.methods() == ["REPORT", "PUT", "PUT", "PUT"] and len(server.resources) == total
+    assert "3 were missing from the calendar" in store.list_activity(5)[0].message
+    # the check asks only about Ordnung's own resources
+    server.requests.clear()
+    assert caldav.sync(store, secrets, transport=server.transport()).missing == 0  # type: ignore[union-attr]
+    assert server.methods() == ["REPORT"]
+
+
+def test_the_automatic_check_runs_once_a_day(store: Store, ids: dict[str, str], server: FakeCalDav) -> None:
+    secrets = CountingSecrets()
+    connect(store, secrets, server)
+    total, reads = len(server.resources), secrets.reads
+    server.resources.clear()
+    clock.set_today(TODAY + timedelta(days=1))
+    server.requests.clear()
+    report = caldav.sync(store, secrets, transport=server.transport(), automatic=True)
+    assert report is not None and report.missing == total and len(server.resources) == total
+    assert server.methods()[0] == "REPORT" and secrets.reads == reads + 1
+    state = caldav.load_state(store)
+    assert state is not None and state.checked_on == (TODAY + timedelta(days=1)).isoformat()
+    server.requests.clear()
+    for _ in range(3):  # the rest of the day: nothing changed, nothing asked, the keyring stays shut
+        assert caldav.sync(store, secrets, transport=server.transport(), automatic=True) is not None
+    assert server.requests == [] and secrets.reads == reads + 1
+
+
+def test_a_server_that_cant_say_which_are_there_is_simply_not_asked(
+    store: Store, ids: dict[str, str], secrets: MemorySecrets
+) -> None:
+    server = FakeCalDav(multiget=False)
+    connect(store, secrets, server)
+    store.update_item(ids["followup"], status="done")
+    report = caldav.sync(store, secrets, transport=server.transport())
+    assert report is not None and report.error is None and report.removed == 1 and report.missing == 0
+    assert caldav.present_names(b"<d:multistatus xmlns:d='DAV:'/>", URL) == set()
+
+
+def test_a_refused_password_during_the_check_pauses_like_any_other(
+    store: Store, ids: dict[str, str], server: FakeCalDav, secrets: MemorySecrets
+) -> None:
+    connect(store, secrets, server)
+    server.password = "rotated"
+    report = caldav.sync(store, secrets, transport=server.transport())
+    assert report is not None and report.error_kind == "auth"
+    state = caldav.load_state(store)
+    assert state is not None and state.paused and len(state.events) == len(server.resources)
+
+
+def test_entering_the_password_again_sends_every_event(
+    store: Store, ids: dict[str, str], server: FakeCalDav, secrets: MemorySecrets
+) -> None:
+    connect(store, secrets, server)
+    total = len(server.resources)
+    server.resources.clear()
+    report = connect(store, secrets, server)  # the person types the app password again
+    assert report.sent == total and len(server.resources) == total
+    kept = connect(store, secrets, server, password=None)  # the mode saved again: nothing new to send
+    assert kept.sent == 0
+
+
+def test_a_restored_copy_on_this_computer_leaves_the_originals_calendar_and_password_alone(
+    store: Store, ids: dict[str, str], server: FakeCalDav, secrets: MemorySecrets, tmp_path: Path
+) -> None:
+    """``ordnung restore --data-dir`` next to the running Ordnung: one keyring, one calendar."""
+    from ordnung import backup as backups
+    from ordnung.backup.container import KdfParams
+    from ordnung.config import Paths
+
+    connect(store, secrets, server)
+    total, live_account = len(server.resources), next(iter(secrets.saved))
+    out = tmp_path / "b.ordnung-backup"
+    backups.write_backup_file(store.db_path.parent, out, "a long enough passphrase", kdf=KdfParams(log2_n=10))
+    copy_dir = backups.restore_backup(out, "a long enough passphrase", tmp_path / "copy").target
+    copy = Store.open(Paths(copy_dir))
+    try:
+        state = caldav.load_state(copy)
+        original = caldav.load_state(store)
+        assert state is not None and original is not None
+        assert (state.url, state.username, state.mode, state.calendar_name) == (
+            URL,
+            USERNAME,
+            "discreet",
+            "Ordnung",
+        )
+        assert state.connection != original.connection and state.events == {}
+        assert state.paused and not state.password_saved and state.last is None
+        # trying the copy out changes nothing in the calendar
+        copy.update_item(
+            next(i.id for i in copy.list_items() if i.due_date and i.status == "open"), status="done"
+        )
+        server.requests.clear()
+        assert caldav.sync(copy, secrets, transport=server.transport(), automatic=True) is None
+        by_hand = caldav.sync(copy, secrets, transport=server.transport())
+        assert by_hand is not None and "isn't saved on this computer" in (by_hand.error or "")
+        assert server.requests == []  # its password isn't the original's: nothing reached the server
+        # its disconnect ("Delete everything" does the same) removes none of the original's events
+        assert caldav.disconnect(copy, secrets, remove_events=True, transport=server.transport()) == 0
+        assert len(server.resources) == total and live_account in secrets.saved
+    finally:
+        copy.close()
+    # the original syncs on as before
+    store.update_item(ids["followup"], status="done")
+    report = caldav.sync(store, secrets, transport=server.transport())
+    assert report is not None and report.error is None and report.removed == 1
+
+
+def test_moving_to_a_new_computer_then_wiping_the_old_one_keeps_the_calendar_filled(
+    store: Store, ids: dict[str, str], server: FakeCalDav, tmp_path: Path
+) -> None:
+    """The old Ordnung removes its events when it is wiped; the new one notices and sends them back."""
+    from ordnung import backup as backups
+    from ordnung.backup.container import KdfParams
+    from ordnung.config import Paths
+
+    old_keyring, new_keyring = MemorySecrets(), MemorySecrets()
+    connect(store, old_keyring, server)
+    total = len(server.resources)
+    out = tmp_path / "move.ordnung-backup"
+    backups.write_backup_file(store.db_path.parent, out, "a long enough passphrase", kdf=KdfParams(log2_n=10))
+    new_dir = backups.restore_backup(out, "a long enough passphrase", tmp_path / "new").target
+    new = Store.open(Paths(new_dir))
+    try:
+        again = connect(new, new_keyring, server)  # Settings asks for the app password: all sent again
+        assert again.sent == total and again.error is None
+        # the old computer is handed on: "Delete everything" takes Ordnung's events out first
+        assert (
+            caldav.disconnect(store, old_keyring, remove_events=True, transport=server.transport()) == total
+        )
+        assert server.resources == {}
+        # the new one's first check of the next day (or "Sync now") puts them back
+        clock.set_today(TODAY + timedelta(days=1))
+        report = caldav.sync(new, new_keyring, transport=server.transport(), automatic=True)
+        assert report is not None and report.missing == total and len(server.resources) == total
+        state = caldav.load_state(new)
+        assert state is not None and set(state.events) == {p.rsplit("/", 1)[1] for p in server.resources}
+    finally:
+        new.close()
 
 
 # --------------------------------------------------------------------------------------------------

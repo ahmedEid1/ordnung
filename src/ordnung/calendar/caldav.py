@@ -26,13 +26,27 @@ Written policy (ADR 0007):
   is removed. Only resources Ordnung itself put there are ever replaced or removed; nothing else in
   the calendar is read. An event edited in the calendar app is overwritten by the next change made
   in Ordnung — Ordnung's dates are changed in Ordnung.
+* **Still there?** A digest says what Ordnung sent, not what the calendar still holds (the event may
+  have been deleted in the calendar app, or by another copy of Ordnung). So once a day, and on every
+  "Sync now", Ordnung asks the server which of *its own* resources are still there
+  (``calendar-multiget`` of exactly those names, RFC 4791 §7.9 — nothing else is asked about) and
+  sends the missing ones again; a server that can't answer that is simply not asked. Entering the
+  app password (connecting again) sends every event again.
+* **A copy of the data is not the same connection.** The connection belongs to its data folder
+  (:attr:`~ordnung.models.CalendarSyncState.connection` names its password in the keyring). A backup
+  restored elsewhere — another folder, another computer — or over the folder it came from keeps
+  the calendar's address and mode but starts detached (:func:`detached`): no password, no claim on
+  the events the original sent, automatic syncing waiting until the person enters the app
+  password. It never reads, replaces or deletes the original's password, and its "Delete
+  everything" or disconnect never removes the original's events.
 * **When.** On connecting, on "Sync now", and at every check of the daily tick while ``ordnung
   serve`` runs (every 15 minutes) — sending only what changed, so an unchanged ledger sends nothing
-  and doesn't even read the app password from the keyring (a locked keyring would ask to be
-  unlocked). After the server refused the user name or password, automatic syncing pauses (repeated
-  failed logins can lock an account) until the person syncs by hand or connects again. A sync that
-  couldn't reach the server, or that the server failed, says it is tried again later — the answers
-  to finding, connecting and disconnecting don't, as nothing retries those.
+  and doesn't read the app password from the keyring (a locked keyring would ask to be unlocked)
+  except for the daily check. After the server refused the user name or password, or the password
+  wasn't in the keyring, automatic syncing pauses (repeated failed logins can lock an account) until
+  the person syncs by hand or connects again. A sync that couldn't reach the server, or that the
+  server failed, says it is tried again later — the answers to finding, connecting and
+  disconnecting don't, as nothing retries those.
 * **How.** ``httpx`` with TLS verification (``SSL_CERT_FILE`` is honoured for a private CA), Basic
   authentication, no redirects followed for the calendar itself (a moved calendar is reported with
   its new address) and a :data:`TIMEOUT_S` second timeout. Finding calendars follows redirects on
@@ -48,6 +62,7 @@ import hashlib
 import ipaddress
 import logging
 import re
+import secrets as tokens
 import ssl
 import threading
 import xml.etree.ElementTree as ET
@@ -55,14 +70,15 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from typing import Any
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import SplitResult, unquote, urljoin, urlsplit, urlunsplit
+from xml.sax.saxutils import escape
 
 import httpx
 from icalendar import Alarm, Calendar, Event
 from icalendar.cal import Component
 from pydantic import ValidationError
 
-from ordnung import __version__
+from ordnung import __version__, clock
 from ordnung.calendar import ics
 from ordnung.calendar.secrets import SecretStore, SecretsUnavailable, account_name
 from ordnung.clock import real_now_iso
@@ -117,6 +133,8 @@ HOME_BODY = (
 )
 MAX_REDIRECTS = 3
 MAX_CALENDARS = 50
+#: resources asked about per ``calendar-multiget`` (keeps each answer well under the size limit)
+MULTIGET_BATCH = 200
 #: refusals that end a search for calendars (anything else — a redirect too — : look further)
 _STOP_DISCOVERY: frozenset[CalendarSyncErrorKind] = frozenset({"auth", "forbidden", "network", "tls"})
 CONFLICT_MESSAGE = (
@@ -185,12 +203,35 @@ def _is_loopback(host: str) -> bool:
         return False
 
 
+def _split(url: str) -> SplitResult | None:
+    """``url`` split into its parts, ``None`` when it can't be read (a broken ``[`` host, a port that
+    isn't a number) — ``urlsplit`` raises ``ValueError`` for those, and an address can come from a
+    server's answer."""
+    try:
+        parts = urlsplit(url)
+        parts.port  # noqa: B018 — reading it is the check
+    except ValueError:
+        return None
+    return parts
+
+
+def _join(base: str, href: str) -> str | None:
+    """``href`` (from a server's answer) resolved against ``base``; ``None`` when it can't be read."""
+    try:
+        url = urljoin(base, href)
+    except ValueError:
+        return None
+    return url if _split(url) is not None else None
+
+
 def check_url(raw: str) -> str:
     """The calendar's address as Ordnung uses it (a collection: ending in ``/``), or :class:`CalDavError`."""
     url = raw.strip()
     if not url or len(url) > MAX_URL_CHARS or _CONTROL.search(url) or " " in url:
         raise CalDavError("address", "Enter the calendar's address, starting with https://.")
-    parts = urlsplit(url)
+    parts = _split(url)
+    if parts is None:
+        raise CalDavError("address", "This address can't be read. Check it, starting with https://.")
     host = parts.hostname or ""
     if parts.scheme not in ("https", "http") or not host:
         raise CalDavError("address", "Enter the calendar's address, starting with https://.")
@@ -231,6 +272,25 @@ def load_state(store: Store) -> CalendarSyncState | None:
 
 def save_state(store: Store, state: CalendarSyncState | None) -> None:
     store.set_meta(STATE_KEY, state.model_dump_json() if state is not None else None)
+
+
+def new_connection() -> str:
+    """A data folder's own connection id (it names the password in the keyring)."""
+    return tokens.token_hex(8)
+
+
+def detached(state: CalendarSyncState) -> CalendarSyncState:
+    """The connection as a restored copy of the data starts (module policy): the same calendar and
+    mode, a connection of its own, no password, no claim on the original's events, waiting."""
+    return CalendarSyncState(
+        url=state.url,
+        username=state.username,
+        mode=state.mode,
+        calendar_name=state.calendar_name,
+        connection=new_connection(),
+        paused=True,
+        password_saved=False,
+    )
 
 
 def host_of(url: str) -> str:
@@ -319,14 +379,15 @@ def _alarm_label(start: date | datetime, trigger: timedelta) -> str:
     return f"{-days} day{'s' if days != -1 else ''} after at {clock}"
 
 
-def _preview(event: Event) -> CalendarEventPreview:
+def _preview(event: Event, today: date) -> CalendarEventPreview:
     start = event.decoded("dtstart")
     all_day = not isinstance(start, datetime)
-    alarms = [
-        _alarm_label(start, trigger)
+    begin = start if isinstance(start, datetime) else datetime.combine(start, time())
+    triggers = sorted(
+        trigger
         for alarm in event.walk("VALARM")
         if isinstance(trigger := alarm.decoded("trigger"), timedelta)
-    ]
+    )
     location = event.get("location")
     return CalendarEventPreview(
         uid=str(event.get("uid")),
@@ -335,7 +396,8 @@ def _preview(event: Event) -> CalendarEventPreview:
         all_day=all_day,
         description=str(event.get("description", "")),
         location=str(location) if location else None,
-        alarms=alarms,
+        alarms=[_alarm_label(start, trigger) for trigger in triggers],
+        alarms_passed=sum(1 for trigger in triggers if (begin + trigger).date() < today),
     )
 
 
@@ -346,6 +408,7 @@ def build_events(store: Store, mode: CalendarSyncMode) -> list[SyncEvent]:
     incoming = {ics.item_uid(item.id) for item in store.list_items(kind="payment") if item.direction == "in"}
     events: list[SyncEvent] = []
     seen: set[str] = set()
+    today = clock.today()
     for original in parsed.events:
         if mode == "discreet":
             event = discreet_event(original, incoming=str(original.get("uid")) in incoming)
@@ -363,7 +426,7 @@ def build_events(store: Store, mode: CalendarSyncMode) -> list[SyncEvent]:
                 uid=uid,
                 body=body,
                 digest=hashlib.sha256(body).hexdigest(),
-                preview=_preview(event),
+                preview=_preview(event, today),
             )
         )
     return events
@@ -381,11 +444,9 @@ def preview(store: Store, mode: CalendarSyncMode) -> list[CalendarEventPreview]:
 
 def _moved(url: str, response: httpx.Response) -> CalDavError:
     location = response.headers.get("location")
-    if location:
-        target = urljoin(url, location)
-        parts = urlsplit(target)
-        if parts.scheme == "https" or (parts.scheme == "http" and _is_loopback(parts.hostname or "")):
-            return CalDavError("address", f"The calendar has moved to {target} — use that address.")
+    target = _join(url, location) if location else None
+    if target is not None and _allowed(target):
+        return CalDavError("address", f"The calendar has moved to {target} — use that address.")
     return CalDavError("address", "The server sent Ordnung to another address. Check the calendar's address.")
 
 
@@ -478,8 +539,12 @@ class CalDavClient:
             )
             location = response.headers.get("location")
             if follow and response.is_redirect and location:
-                target = urljoin(url, location)
-                if urlsplit(target).netloc.lower() != urlsplit(url).netloc.lower() or not _allowed(target):
+                target = _join(url, location)
+                if (
+                    target is None
+                    or urlsplit(target).netloc.lower() != urlsplit(url).netloc.lower()
+                    or not _allowed(target)
+                ):
                     raise _moved(url, response)
                 url = target
                 continue
@@ -565,6 +630,38 @@ class CalDavClient:
             "calendar app (or copy a calendar's CalDAV address) and try again.",
         )
 
+    def present(self, hrefs: list[str]) -> set[str] | None:
+        """Which of Ordnung's resources ``hrefs`` the calendar still holds (module policy: a
+        ``calendar-multiget`` of exactly these). ``None`` when the server can't say; a refused
+        password or the network failing raise as for any request."""
+        found: set[str] = set()
+        for start in range(0, len(hrefs), MULTIGET_BATCH):
+            paths = [urlsplit(urljoin(self.url, href)).path for href in hrefs[start : start + MULTIGET_BATCH]]
+            body = (
+                '<?xml version="1.0" encoding="utf-8"?>\n'
+                '<c:calendar-multiget xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">'
+                "<d:prop><d:getetag/></d:prop>"
+                + "".join(f"<d:href>{escape(path)}</d:href>" for path in paths)
+                + "</c:calendar-multiget>"
+            ).encode("utf-8")
+            try:
+                response, answer = self._send(
+                    "REPORT",
+                    self.url,
+                    content=body,
+                    headers={"Depth": "1", "Content-Type": "application/xml; charset=utf-8"},
+                )
+                if response.status_code == 401:
+                    raise http_error(self.url, response, "read the calendar")
+                if response.status_code != 207:
+                    return None
+                found |= present_names(answer, self.url)
+            except CalDavError as exc:
+                if exc.kind == "server":  # an answer too large or unreadable: it can't say
+                    return None
+                raise
+        return found
+
     def put(self, href: str, body: bytes) -> None:
         url = urljoin(self.url, href)
         response, answer = self._send(
@@ -593,17 +690,17 @@ def _xml(body: bytes) -> ET.Element:
 
 
 def _allowed(url: str) -> bool:
-    parts = urlsplit(url)
+    parts = _split(url)
+    if parts is None:
+        return False
     return parts.scheme == "https" or (parts.scheme == "http" and _is_loopback(parts.hostname or ""))
 
 
 def _href(base: str, element: ET.Element | None) -> str | None:
     """The absolute https (or loopback) URL in ``element``'s ``<d:href>`` (``None``: none usable)."""
     text = (element.findtext(f"{{{DAV}}}href") or "").strip() if element is not None else ""
-    if not text:
-        return None
-    url = urljoin(base, text)
-    return url if _allowed(url) else None
+    url = _join(base, text) if text else None
+    return url if url is not None and _allowed(url) else None
 
 
 def read_resources(body: bytes, base: str) -> list[_Resource]:
@@ -612,6 +709,9 @@ def read_resources(body: bytes, base: str) -> list[_Resource]:
     resources = []
     for response in root.iter(f"{{{DAV}}}response"):
         href = (response.findtext(f"{{{DAV}}}href") or "").strip()
+        url = _join(base, href) if href else base
+        if url is None:  # an address that can't be read names nothing Ordnung could use
+            continue
         props: dict[str, Any] = {}
         for propstat in response.iter(f"{{{DAV}}}propstat"):
             status = propstat.findtext(f"{{{DAV}}}status") or ""
@@ -634,8 +734,20 @@ def read_resources(body: bytes, base: str) -> list[_Resource]:
             home = _href(base, prop.find(f"{{{CALDAV}}}calendar-home-set"))
             if home:
                 props["home"] = home
-        resources.append(_Resource(url=urljoin(base, href) if href else base, **props))
+        resources.append(_Resource(url=url, **props))
     return resources
+
+
+def present_names(body: bytes, base: str) -> set[str]:
+    """The resource names (``ordnung-….ics``) a ``calendar-multiget`` answer says are there."""
+    names = set()
+    for response in _xml(body).iter(f"{{{DAV}}}response"):
+        url = _join(base, (response.findtext(f"{{{DAV}}}href") or "").strip())
+        statuses = [response.findtext(f"{{{DAV}}}status") or ""]
+        statuses += [stat.findtext(f"{{{DAV}}}status") or "" for stat in response.iter(f"{{{DAV}}}propstat")]
+        if url is not None and any(" 200 " in f"{status} " for status in statuses):
+            names.add(unquote(urlsplit(url).path.rsplit("/", 1)[-1]))
+    return names
 
 
 def check_calendar(resource: _Resource) -> str | None:
@@ -667,11 +779,17 @@ def _report(**counts: Any) -> CalendarSyncReport:
     return CalendarSyncReport(at=real_now_iso(), **counts)
 
 
+def _account(state: CalendarSyncState) -> str:
+    return account_name(state.username, state.url, state.connection)
+
+
 def _password(secrets: SecretStore, state: CalendarSyncState) -> str:
+    """The app password from the keyring; records in ``state`` whether it was there."""
     try:
-        password = secrets.get(account_name(state.username, state.url))
+        password = secrets.get(_account(state))
     except SecretsUnavailable as exc:
         raise CalDavError("unavailable", str(exc)) from None
+    state.password_saved = password is not None
     if password is None:
         raise CalDavError(
             "auth", "The app password isn't saved on this computer — enter it again in Settings → Calendar."
@@ -684,18 +802,36 @@ def _push(
     events: list[SyncEvent],
     password: Callable[[], str],
     transport: httpx.BaseTransport | None,
+    *,
+    check: bool = False,
 ) -> CalendarSyncReport:
     """Send what changed and remove what left (module policy); updates ``state.events`` as it goes.
-    ``password`` is asked for only when something is to be sent or removed."""
+    ``check``: first ask which of the events sent before are still in the calendar, and send the
+    missing ones again. ``password`` is asked for only when there is something to do."""
     wanted = {event.href for event in events}
-    changed = [event for event in events if state.events.get(event.href) != event.digest]
-    gone = sorted(href for href in state.events if href not in wanted)
-    unchanged = len(events) - len(changed)
-    if not changed and not gone:
-        return _report(unchanged=unchanged)
-    sent = removed = failed = 0
+    check = check and bool(state.events)
+
+    def pending() -> tuple[list[SyncEvent], list[str]]:
+        changed = [event for event in events if state.events.get(event.href) != event.digest]
+        return changed, sorted(href for href in state.events if href not in wanted)
+
+    changed, gone = pending()
+    if not changed and not gone and not check:
+        return _report(unchanged=len(events))
+    sent = removed = failed = missing = 0
     error: CalDavError | None = None
     with CalDavClient(state.url, state.username, password(), transport=transport) as client:
+        if check:
+            state.checked_on = clock.today().isoformat()  # once a day, however the check goes
+            there = client.present(sorted(state.events))
+            lost = [href for href in state.events if there is not None and href not in there]
+            for href in lost:  # sent again below (or, if it left the export, its removal is confirmed)
+                state.events[href] = ""
+            missing = sum(1 for href in lost if href in wanted)
+            if missing:
+                log.info("calendar sync: %d of Ordnung's events were missing from the calendar", missing)
+            changed, gone = pending()
+        unchanged = len(events) - len(changed)
         for event in changed:
             try:
                 client.put(event.href, event.body)
@@ -728,6 +864,7 @@ def _push(
         removed=removed,
         unchanged=unchanged,
         failed=failed,
+        missing=missing,
         error=str(error) if error else None,
         error_kind=error.kind if error else None,
     )
@@ -740,9 +877,11 @@ def _finish(store: Store, state: CalendarSyncState, report: CalendarSyncReport) 
     state.paused = report.error_kind == "auth"
     save_state(store, state)
     if report.sent or report.removed:
+        again = f" ({report.missing} were missing from the calendar)" if report.missing else ""
         store.log_activity(
             "calendar.synced",
-            f"Calendar sync ({state.mode}) to {host_of(state.url)}: {report.sent} sent, {report.removed} removed",
+            f"Calendar sync ({state.mode}) to {host_of(state.url)}: {report.sent} sent{again}, "
+            f"{report.removed} removed",
         )
     if report.error:
         log.info("calendar sync: %s", report.error)
@@ -750,10 +889,17 @@ def _finish(store: Store, state: CalendarSyncState, report: CalendarSyncReport) 
 
 
 def _run(
-    store: Store, state: CalendarSyncState, secrets: SecretStore, transport: httpx.BaseTransport | None
+    store: Store,
+    state: CalendarSyncState,
+    secrets: SecretStore,
+    transport: httpx.BaseTransport | None,
+    *,
+    check: bool,
 ) -> CalendarSyncReport:
     try:
-        report = _push(state, build_events(store, state.mode), lambda: _password(secrets, state), transport)
+        report = _push(
+            state, build_events(store, state.mode), lambda: _password(secrets, state), transport, check=check
+        )
     except CalDavError as exc:
         report = _report(error=str(exc), error_kind=exc.kind)
     return _finish(store, state, report)
@@ -766,17 +912,19 @@ def sync(
     transport: httpx.BaseTransport | None = None,
     automatic: bool = False,
 ) -> CalendarSyncReport | None:
-    """Send what changed to the connected calendar (module policy).
+    """Send what changed to the connected calendar (module policy); a manual sync, and the first
+    automatic one of a day, first checks that the events sent before are still there.
 
     ``None`` when no calendar is connected, in the demo, or — for an ``automatic`` run — while
-    syncing is paused after a refused password. Never raises for the server's or the network's
-    problems: the report says what happened.
+    syncing is paused after a refused or missing password. Never raises for the server's or the
+    network's problems: the report says what happened.
     """
     with _LOCK:
         state = load_state(store)
         if state is None or store.get_settings().demo or (automatic and state.paused):
             return None
-        return _run(store, state, secrets, transport)
+        check = not automatic or state.checked_on != clock.today().isoformat()
+        return _run(store, state, secrets, transport, check=check)
 
 
 def scheduled_sync(store: Store) -> CalendarSyncReport | None:
@@ -817,8 +965,9 @@ def connect(
 ) -> CalendarSyncReport:
     """Connect (or update) the calendar and send the events (module policy).
 
-    ``password=None`` keeps the saved one (to change the mode, or to retry). Raises
-    :class:`CalDavError` when the calendar can't be used; nothing is stored then.
+    ``password=None`` keeps the saved one (to change the mode, or to retry); a password entered
+    sends every event again. Raises :class:`CalDavError` when the calendar can't be used; nothing
+    is stored then.
     """
     url, username = check_url(url), check_username(username)
     if password is not None and (not password or len(password) > MAX_PASSWORD_CHARS):
@@ -833,24 +982,31 @@ def connect(
                 "conflict",
                 f"Ordnung is connected to {host_of(state.url)} already. Disconnect that calendar first.",
             )
-        fresh = CalendarSyncState(url=url, username=username, mode=mode)
-        use = password if password is not None else _password(secrets, fresh)
+        target = state or CalendarSyncState(
+            url=url, username=username, mode=mode, connection=new_connection()
+        )
+        use = password if password is not None else _password(secrets, target)
         with CalDavClient(url, username, use, transport=transport) as client:
             name = client.probe()
         try:
             if password is not None:
-                secrets.set(account_name(username, url), password)
+                secrets.set(_account(target), password)
         except SecretsUnavailable as exc:
             raise CalDavError("unavailable", str(exc)) from None
         if state is None:
             store.log_activity(
                 "calendar.connected", f"Connected the calendar at {host_of(url)} for calendar sync ({mode})"
             )
-            state = fresh
-        state.mode, state.calendar_name, state.paused = mode, name, False
+        state = target
+        state.mode, state.calendar_name, state.paused, state.password_saved = mode, name, False, True
+        check = state.checked_on != clock.today().isoformat()
+        if password is not None:
+            # whatever became of the events meanwhile (module policy): all of them go again
+            state.events = dict.fromkeys(state.events, "")
+            state.checked_on, check = clock.today().isoformat(), False
         save_state(store, state)
         try:
-            report = _push(state, build_events(store, state.mode), lambda: use, transport)
+            report = _push(state, build_events(store, state.mode), lambda: use, transport, check=check)
         except CalDavError as exc:
             report = _report(error=str(exc), error_kind=exc.kind)
         return _finish(store, state, report)
@@ -880,7 +1036,7 @@ def disconnect(
                     removed += 1
                     save_state(store, state)
         with contextlib.suppress(SecretsUnavailable):  # then nothing could have been stored there
-            secrets.delete(account_name(state.username, state.url))
+            secrets.delete(_account(state))
         save_state(store, None)
         note = f", removed {removed} events" if remove_events else ", its events were left in the calendar"
         store.log_activity(

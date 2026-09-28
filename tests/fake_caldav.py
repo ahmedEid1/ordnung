@@ -2,8 +2,9 @@
 
 It answers what calendar sync asks — ``PROPFIND`` for discovery (``/.well-known/caldav`` → the
 principal → the calendar home, depth 1 listing its calendars) and for the calendar itself (depth
-0), ``PUT`` and ``DELETE`` of ``.ics`` resources in the calendar Ordnung writes into, and ``GET`` for
-the tests — and checks what a real server checks: the password, that a resource holds exactly one
+0), ``PUT`` and ``DELETE`` of ``.ics`` resources in the calendar Ordnung writes into, a
+``calendar-multiget`` ``REPORT`` of named resources (200 with an ETag, or 404, per name; switched off
+with :attr:`FakeCalDav.multiget`), and ``GET`` for the tests — and checks what a real server checks: the password, that a resource holds exactly one
 event and no ``METHOD`` (RFC 4791 §4.1), and that no two resources share a UID
 (``no-uid-conflict`` — answered as Nextcloud does with :attr:`FakeCalDav.uid_clash`). Tests switch on
 failures (a refused event, the server down, a redirect, odd answers, a web root that redirects to a
@@ -14,6 +15,8 @@ serves the same object over a real socket.
 from __future__ import annotations
 
 import base64
+import hashlib
+import re
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -96,6 +99,8 @@ class FakeCalDav:
     uid_clash: tuple[int, bytes] = (409, b"no-uid-conflict")
     #: raise this from the transport (the network failing)
     raises: Exception | None = None
+    #: the server answers a ``calendar-multiget`` (else 501, as a server without it might)
+    multiget: bool = True
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     # -- what the tests read ----------------------------------------------------------------------
@@ -129,6 +134,8 @@ class FakeCalDav:
                 return 401, {"WWW-Authenticate": 'Basic realm="fake"'}, b"Unauthorized"
             if method == "PROPFIND":
                 return self._propfind(path, headers.get("depth", ""), body)
+            if method == "REPORT":
+                return self._multiget(path, body)
             if not path.startswith(self.path) or not path.endswith(".ics") or "/" in path[len(self.path) :]:
                 return 403, {}, b"not in the calendar"
             if path in self.refuse and method in ("PUT", "DELETE"):
@@ -206,6 +213,23 @@ class FakeCalDav:
         ]
         return 207, XML, multistatus(here, *inside)
 
+    def _multiget(self, path: str, body: bytes) -> tuple[int, dict[str, str], bytes]:
+        if not self.multiget:
+            return 501, {}, b"not implemented"
+        if path != self.path or b"calendar-multiget" not in body:
+            return 403, {}, b"no such report here"
+        answers = []
+        for href in re.findall(rb"<d:href>([^<]*)</d:href>", body):
+            name = href.decode()
+            if name in self.resources:
+                etag = hashlib.sha256(self.resources[name]).hexdigest()[:16]
+                answers.append(response(name, f'<d:getetag>"{etag}"</d:getetag>'))
+            else:
+                answers.append(
+                    f"<d:response><d:href>{name}</d:href><d:status>HTTP/1.1 404 Not Found</d:status></d:response>"
+                )
+        return 207, XML, multistatus(*answers)
+
     def _httpx(self, request: httpx.Request) -> httpx.Response:
         if self.raises is not None:
             raise self.raises
@@ -234,7 +258,7 @@ def _handler(fake: FakeCalDav) -> type[BaseHTTPRequestHandler]:
             self.end_headers()
             self.wfile.write(answer)
 
-        do_GET = do_PUT = do_DELETE = do_PROPFIND = _serve
+        do_GET = do_PUT = do_DELETE = do_PROPFIND = do_REPORT = _serve
 
         def log_message(self, *_args: object) -> None:
             pass

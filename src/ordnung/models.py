@@ -767,6 +767,8 @@ class CalendarSyncReport(_Model):
     removed: int = 0
     unchanged: int = 0
     failed: int = 0
+    #: events Ordnung had sent that were no longer in the calendar (sent again, counted in ``sent``)
+    missing: int = 0
     error: str | None = None
     error_kind: CalendarSyncErrorKind | None = None
 
@@ -779,11 +781,18 @@ class CalendarSyncState(_Model):
     username: str
     mode: CalendarSyncMode = "discreet"
     calendar_name: str | None = None
+    #: this data folder's connection: names its password in the keyring (a restored copy gets a new
+    #: one, so it never reads or deletes the password of the Ordnung it came from)
+    connection: str = ""
     #: resource name (``ordnung-<id>.ics``) → SHA-256 of the event as last sent
     events: dict[str, str] = Field(default_factory=dict)
     last: CalendarSyncReport | None = None
     #: automatic syncing waits after the server refused the password (until a manual sync or reconnect)
     paused: bool = False
+    #: the app password was in the keyring when Ordnung last needed it (Settings never reads it)
+    password_saved: bool = True
+    #: the day Ordnung last checked that the events it sent are still in the calendar (ISO date)
+    checked_on: str | None = None
 
 
 class CalendarEventPreview(_Model):
@@ -796,8 +805,10 @@ class CalendarEventPreview(_Model):
     all_day: bool
     description: str
     location: str | None = None
-    #: when each alarm rings, in words ("3 days before at 09:00")
+    #: when each alarm rings, in words ("3 days before at 09:00"), earliest first
     alarms: list[str] = Field(default_factory=list)
+    #: how many of those (the first ones) fell before today: they won't ring any more
+    alarms_passed: int = 0
 
 
 # --------------------------------------------------------------------------------------------------

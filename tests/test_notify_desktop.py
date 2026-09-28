@@ -437,6 +437,8 @@ def test_once_a_day_at_or_after_the_chosen_time(store: Store) -> None:
     assert logged and "1 due today · 1 overdue · 2 more this week" in logged[0].message  # Tuesday's
     assert "1 overdue · 3 due this week" in logged[1].message
     assert "library" not in logged[0].message.lower()
+    # the tool took it; whether the system showed it is the system's call (macOS permissions, Focus)
+    assert logged[0].message.startswith("Sent the morning notification to the system")
 
 
 def test_full_mode_sends_the_details(store: Store) -> None:

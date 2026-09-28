@@ -303,10 +303,11 @@ def location(
 def _write_atomically(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     partial = path.with_name(f".{path.name}.{os.getpid()}.part")
-    fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, ENTRY_MODE)
+    # bytes through a binary descriptor: in text mode Windows would turn the .cmd's \r\n into \r\r\n
+    fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0), ENTRY_MODE)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
-            handle.write(content)
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(content.encode("utf-8"))
         partial.replace(path)
     finally:
         with contextlib.suppress(FileNotFoundError):
