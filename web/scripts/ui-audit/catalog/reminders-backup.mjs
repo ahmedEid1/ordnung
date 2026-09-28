@@ -489,7 +489,7 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
       const dialog = await openBackupDialog(c);
       await c.click(dialog.getByRole("button", { name: "Suggest a strong one" }));
       await c.click(dialog.getByRole("button", { name: "Download backup" }));
-      const confirmation = backupCard(c).getByText(/^Downloaded/);
+      const confirmation = backupCard(c).getByText(/^Downloaded/).first();
       await confirmation.waitFor({ timeout: 10_000 }).catch(() => c.note("no download confirmation"));
       await c.centre(confirmation);
     },
@@ -562,7 +562,7 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
       const box = await c.visible(desktopCard(c));
       await c.click(box.getByRole("switch", { name: SWITCH }));
       await c.click(box.getByRole("button", { name: /^Save/ }));
-      await box.getByText(/doesn't notify on its own — the preview/).waitFor({ timeout: 5_000 }).catch(() => c.note("no save note"));
+      await box.getByText(/doesn't notify on its own — the preview/).first().waitFor({ timeout: 5_000 }).catch(() => c.note("no save note"));
       await c.page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
       await settle(c.page);
     },

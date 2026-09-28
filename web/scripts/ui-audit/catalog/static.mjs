@@ -268,9 +268,9 @@ export async function staticCatalog({ webDir }) {
       await readTray(c, dismissal);
       await c.scrollTo(inMain(c.page).locator("section[aria-labelledby^=advice-]"));
     });
-    addHs("mail-dismissal--trace-law", "/inbox", "Dismissal: How this was read → To-dos filed → a deadline the law adds, opened (its law's citation).", async (c) => {
+    addHs("mail-dismissal--trace-law", "/inbox", "Dismissal: How it was read → To-dos filed → a deadline the law adds, opened (its law's citation).", async (c) => {
       await readTray(c, dismissal);
-      await c.click(inMain(c.page).getByRole("tab", { name: "How this was read" }));
+      await c.click(inMain(c.page).getByRole("tab", { name: "How it was read" }));
       await c.click(inMain(c.page).getByRole("list", { name: "Steps of this reading" }).getByRole("button", { name: /^To-dos filed/ }));
       await c.click(inMain(c.page).getByRole("list", { name: /^Steps of “To-dos filed”/ }).getByRole("button", { name: /Deadline the law adds/ }).first());
     });

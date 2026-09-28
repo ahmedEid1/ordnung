@@ -459,7 +459,14 @@ export async function demoCatalog({ api, server }) {
     });
   }
   docState(multiDoc, "zoom-150", "switch the page viewer zoom to 150 %", "Page viewer at 150 % (horizontal scrolling inside the viewer).", (c) => c.click(c.page.getByRole("radiogroup", { name: "Zoom" }).getByRole("radio", { name: /150/ })));
-  docState(multiDoc, "page-2", "click the page-2 thumbnail", "Page viewer scrolled to page 2.", (c) => c.click(c.page.getByRole("button", { name: /^Go to page 2/ })));
+  // (a viewer narrower than 340 px has no thumbnails: its “Turn pages” bar's Next there)
+  docState(multiDoc, "page-2", "click the page-2 thumbnail (where there is none: “Next” under the page)", "Page viewer showing page 2.", async (c) => {
+    const thumb = c.page.getByRole("button", { name: /^Go to page 2/ });
+    if (await c.exists(thumb)) return c.click(thumb);
+    const pager = main(c.page).getByRole("navigation", { name: "Turn pages" });
+    await c.click(pager.getByRole("button", { name: "Next" }));
+    await c.scrollTo(main(c.page).getByRole("region", { name: "Letter pages" }));
+  });
   docState(photoDoc, "zoom-150", "switch the page viewer zoom to 150 %", "Phone photo at 150 %.", (c) => c.click(c.page.getByRole("radiogroup", { name: "Zoom" }).getByRole("radio", { name: /150/ })));
   docState(reviewDoc, "change-date", "click “Change date” in the Please-check warning", "Please-check warning with the date editor open.", (c) => c.click(main(c.page).getByRole("button", { name: "Change date" })));
   docState(glossaryDoc, "glossary-tooltip", "hover the first German term with a dotted underline", "Glossary tooltip (German term explained).", (c) => c.hover(main(c.page).locator("span.cursor-help")));
@@ -1956,13 +1963,21 @@ export async function demoCatalog({ api, server }) {
       id: "hs-landlord-notice--dealt-with",
       group: "high-stakes",
       route: "/documents/…",
-      how: "the lease re-filed as landlord_notice, its tags cleared, open it, click “I've dealt with this”",
+      how: "the lease re-filed as landlord_notice, its tags cleared, its card answered as one no to-do can close (the demo's lease has a notice period, so its objection to-do would close it), open it, click “I've dealt with this”",
       description: "landlord_notice: marked as dealt with (the handled card, “Not dealt with yet”, the toast).",
       pinToasts: true,
       run: async (c) => {
         const id = hsDocs.landlord_notice;
         if (!id) throw new Error("landlord_notice was not set up");
         await c.api.patch(`/api/documents/${id}`, { tags: [] });
+        // a landlord's notice without notice period: only the person can say it is dealt with (`advice.closable`)
+        await fakeApi(
+          c.page,
+          "GET",
+          new RegExp(`^/api/documents/${id}$`),
+          (_r, o) => ({ json: o.advice ? { ...o, advice: { ...o.advice, closable: true, handled: (o.document.tags ?? []).includes("dealt-with") } } : o }),
+          { passthrough: true },
+        );
         await c.goto(`/documents/${id}`);
         const b = main(c.page).getByRole("button", { name: "I've dealt with this" });
         if (!(await c.exists(b))) c.notApplicable("the card can't be closed by the person (its objection to-do closes it: hs-landlord-notice--handled)");
