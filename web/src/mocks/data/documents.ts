@@ -46,7 +46,7 @@ export const DOCUMENTS: Document[] = [
       fact("Deposit", "€1,440.00", ev("doc_lease", Q.lease.deposit)),
     ],
     references: [{ label: "Mieternummer", value: "12-0412-07" }],
-    payment: { iban: "DE44500105175407324931", payee: "Wohnbau Musterstadt eG", iban_valid: true, reference: "12-0412-07" },
+    payment: { iban: "DE05123456000004455660", payee: "Wohnbau Musterstadt eG", iban_valid: true, reference: "12-0412-07" },
     urgency: "low",
   }),
   doc({
@@ -71,7 +71,7 @@ export const DOCUMENTS: Document[] = [
       fact("Receipts", "You can inspect them by appointment", ev("doc_nebenkosten", Q.nk.receipts)),
     ],
     references: [{ label: "Mieternummer", value: "12-0412-07" }],
-    payment: { iban: "DE44500105175407324931", payee: "Wohnbau Musterstadt eG", iban_valid: true, reference: "BK 2025 Whg 12" },
+    payment: { iban: "DE05123456000004455660", payee: "Wohnbau Musterstadt eG", iban_valid: true, reference: "MV-2025-0412 NK 2025" },
   }),
   doc({
     id: "doc_phone",
@@ -210,9 +210,9 @@ export const DOCUMENTS: Document[] = [
     summary: "Rundfunkbeitrag for Oct–Dec 2026: €55.08, due 15 Nov.",
     explanation:
       "Every household in Germany pays the broadcasting fee (Rundfunkbeitrag), €18.36 a month, billed every three months. This is a normal bill from the real collection office.",
-    key_facts: [fact("Amount", "€55.08 for Oct–Dec", ev("doc_rundfunk", Q.rundfunk.due)), fact("Bank account", "DE02 4401 0046 0123 4567 89", ev("doc_rundfunk", Q.rundfunk.iban))],
+    key_facts: [fact("Amount", "€55.08 for Oct–Dec", ev("doc_rundfunk", Q.rundfunk.due)), fact("Bank account", "DE57 1234 8900 0055 0818 36", ev("doc_rundfunk", Q.rundfunk.iban))],
     references: [{ label: "Beitragsnummer", value: "457 812 309" }],
-    payment: { iban: "DE02440100460123456789", payee: "Beitragsservice Musterstadt", iban_valid: true, reference: "457 812 309" },
+    payment: { iban: "DE57123489000055081836", payee: "Beitragsservice Musterstadt", iban_valid: true, reference: "457 812 309" },
   }),
   doc({
     id: "doc_abh",
@@ -277,7 +277,7 @@ export const DOCUMENTS: Document[] = [
       fact("Pay by", "15 Jan 2027", ev("doc_uni", Q.uni.due)),
     ],
     references: [{ label: "Matrikelnummer", value: "2231847" }],
-    payment: { iban: "DE93250500000004455667", payee: "Hochschule Musterstadt", iban_valid: true, reference: "2231847 SoSe27" },
+    payment: { iban: "DE10123456000007700220", payee: "Hochschule Musterstadt", iban_valid: true, reference: "2231847 SoSe27" },
   }),
   doc({
     id: "doc_job",
@@ -327,7 +327,7 @@ export const DOCUMENTS: Document[] = [
     explanation: "A normal invoice from an online shop. It has since been followed by a payment reminder.",
     key_facts: [fact("Amount", "€89.99", ev("doc_tm_invoice", Q.tmInvoice.total)), fact("Due", "3 Sep 2026", ev("doc_tm_invoice", Q.tmInvoice.due))],
     references: [{ label: "Rechnungsnummer", value: "RE-2026-084213" }],
-    payment: { iban: "DE72860555920090123456", payee: "TechMarkt Online GmbH", iban_valid: true, reference: "RE-2026-084213" },
+    payment: { iban: "DE70123478000048213000", payee: "TechMarkt Online GmbH", iban_valid: true, reference: "RE-2026-084213" },
   }),
   doc({
     id: "doc_tm_dunning",
@@ -349,7 +349,7 @@ export const DOCUMENTS: Document[] = [
       fact("If ignored", "debt collection agency", ev("doc_tm_dunning", Q.tmDunning.threat)),
     ],
     references: [{ label: "Rechnungsnummer", value: "RE-2026-084213" }],
-    payment: { iban: "DE72860555920090123456", payee: "TechMarkt Online GmbH", iban_valid: true, reference: "RE-2026-084213" },
+    payment: { iban: "DE70123478000048213000", payee: "TechMarkt Online GmbH", iban_valid: true, reference: "RE-2026-084213" },
   }),
   doc({
     id: "doc_dentist",
@@ -395,7 +395,8 @@ export const DOCUMENTS: Document[] = [
   }),
   doc({
     id: "doc_parking",
-    filename: "Verwarnung_Ordnungsamt.pdf",
+    filename: "IMG_20260924_2014.jpg",
+    text_mode: "vision",
     title: "Parking fine (Verwarnungsgeld)",
     kind: "fine",
     area: "mobility",
@@ -409,9 +410,12 @@ export const DOCUMENTS: Document[] = [
     summary: "€30 for parking in a no-stopping zone on 17 Sep. Pay within one week of receiving the letter.",
     explanation:
       "This is a small fine for parking the car-sharing car in a restricted zone. The week to pay starts when the letter reached you — tell us when that was. If you don't pay in time, it becomes a formal fine procedure with extra fees.",
-    key_facts: [fact("Amount", "€30.00", ev("doc_parking", Q.parking.amount)), fact("Pay within", "1 week of receipt", ev("doc_parking", Q.parking.pay))],
+    key_facts: [
+      fact("Amount", "€30.00", ev("doc_parking", Q.parking.amount, "model_read")),
+      fact("Pay within", "1 week of receipt", ev("doc_parking", Q.parking.pay, "model_read")),
+    ],
     references: [{ label: "Aktenzeichen", value: "OA-VW-2026-55012" }],
-    payment: { iban: "DE47700202700015893521", payee: "Stadtkasse Musterstadt", iban_valid: true, reference: "OA-VW-2026-55012" },
+    payment: { iban: "DE51123456000000100017", payee: "Stadtkasse Musterstadt", iban_valid: true, reference: "OA-VW-2026-55012" },
     warnings: ["We don't know when this letter arrived. Until you tell us, dates count from the letter date (22 Sep) — the earliest possible."],
   }),
   doc({
@@ -565,7 +569,7 @@ export const TRAY_DOCUMENTS: Record<string, Document> = {
     hidden_text: true,
     summary: "Demands €210 within 3 days to a Lithuanian account. This does not match your real broadcasting-fee account — likely a scam.",
     explanation:
-      "The real Beitragsservice used a German bank account (DE02 4401 …) and your account is not in arrears — your next payment of €55.08 is due 15 Nov. This letter uses a different, foreign account, threatens immediate enforcement and hides invisible text. Do not pay. If unsure, call the Beitragsservice using the number on an older letter.",
+      "The real Beitragsservice used a German bank account (DE57 1234 …) and your account is not in arrears — your next payment of €55.08 is due 15 Nov. This letter uses a different, foreign account, threatens immediate enforcement and hides invisible text. Do not pay. If unsure, call the Beitragsservice using the number on an older letter.",
     key_facts: [
       fact("Demanded", "€210.00 within 3 days", ev("doc_scam", Q.scam.amount)),
       fact("Bank account", "LT71 7300 0101 2345 6789 (Lithuania)", ev("doc_scam", Q.scam.iban)),
@@ -573,7 +577,7 @@ export const TRAY_DOCUMENTS: Record<string, Document> = {
     references: [{ label: "Vorgang", value: "BS-2026-99812" }],
     payment: { iban: "LT717300010123456789", payee: "BS Inkasso Service", iban_valid: true, reference: "BS-2026-99812" },
     warnings: [
-      "The bank account (IBAN) differs from the one Beitragsservice Musterstadt used before (DE02 4401 0046 0123 4567 89).",
+      "The bank account (IBAN) differs from the one Beitragsservice Musterstadt used before (DE57 1234 8900 0055 0818 36).",
       "This letter contains invisible text. It was not shown to the AI.",
       "Pressure tactics: payment within 3 days, threat of seizure.",
       "No warning does not mean it is safe.",

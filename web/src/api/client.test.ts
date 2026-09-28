@@ -129,4 +129,13 @@ describe("server events", () => {
     handleServerEvent(qc, { type: "profile.updated", data: {} });
     expect(spy).toHaveBeenCalledWith({ queryKey: qk.profile });
   });
+
+  it("refreshes the letters when a to-do changed elsewhere (their GiroCodes follow its amount)", () => {
+    __resetEventsForTests();
+    const qc = new QueryClient();
+    const spy = vi.spyOn(qc, "invalidateQueries");
+    handleServerEvent(qc, { type: "item.updated", data: { item_id: "itm_x" } });
+    expect(spy).toHaveBeenCalledWith({ queryKey: qk.items.all });
+    expect(spy).toHaveBeenCalledWith({ queryKey: qk.documents.all });
+  });
 });

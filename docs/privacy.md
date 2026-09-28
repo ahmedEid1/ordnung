@@ -56,7 +56,20 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   they are. *Settings → Delete everything* wipes the whole database.
 - **Models** — choose which Claude model handles each purpose.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
-  them yourself.
+  them yourself. A GiroCode only pre-fills your banking app; you check and confirm the transfer
+  there.
+
+## GiroCode (payment QR codes)
+
+The QR code in a Pay panel is made on your computer: the Ordnung server writes its text (payee,
+IBAN, amount, reference — the details the panel shows anyway) and the web app draws the code with a
+library bundled into the app. No online QR service is ever asked, nothing about the code is sent to
+Claude or anywhere else, and the code is not stored — it is worked out again each time you open a
+letter. When you confirm "These match the letter", the details you compared are written to the
+activity log in your database (they are what the letter says), so the code stays unlocked until the
+letter is read differently; deleting the letter deletes that entry too (also when you deleted the
+to-do first). Scanning the code hands its
+text to your banking app on your phone, like typing it would.
 
 ## Hardening built into every model call
 

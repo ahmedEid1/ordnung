@@ -40,6 +40,8 @@ import { receiptForContract, receiptForItem } from "./receipt";
 import { ReadMore } from "./ReadMore";
 import { WhyThisDate } from "./WhyThisDate";
 import { LetterText } from "@/components/ui/LetterText";
+import { GiroCodeSection, canReadLetterAgain, ibanFailsCheck } from "@/features/girocode/GiroCode";
+import { paymentReference } from "@/lib/payments";
 
 const VERB: Record<ActionVerb, { label: string; icon: LucideIcon }> = {
   pay: { label: "Pay", icon: Wallet },
@@ -174,7 +176,10 @@ function CopyRow({ label, value, display, copyId, ident }: { label: string; valu
   );
 }
 
-/** "Pay": the transfer details from the letter (copyable) and "Mark as paid" (with undo). */
+/**
+ * "Pay": the transfer details from the letter (copyable), the GiroCode folded behind "Show code"
+ * (or why there is none) and "Mark as paid" (with undo).
+ */
 function PayPanel({ action, close }: { action: TodayAction; close: () => void }) {
   const doc = useDocument(action.docId ?? undefined);
   const update = useUpdateItem();
@@ -182,6 +187,8 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
   const focus = useContext(TopFocusContext);
   const pay = doc.data?.document.payment;
   const item = action.item;
+  const code = item ? doc.data?.girocodes.find((g) => g.item_id === item.id) : undefined;
+  const letter = doc.data?.document;
 
   const markPaid = () => {
     if (!item) return;
@@ -224,13 +231,13 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
           {action.amount ? (
             <CopyRow label="Amount" value={amountForTransfer(action.amount)} display={formatMoney(action.amount, { currency: action.currency })} copyId="amount" />
           ) : null}
-          {pay.reference ? <CopyRow label="Reference" value={pay.reference} copyId="reference" ident /> : null}
+          {pay.reference ? <CopyRow label="Reference" value={paymentReference(pay.reference)} copyId="reference" ident /> : null}
         </dl>
       ) : (
         <p className="mt-3 text-sm leading-relaxed text-muted">{item?.action ?? "The payment details are in the letter."}</p>
       )}
 
-      {pay?.iban_valid === false ? (
+      {ibanFailsCheck(pay?.iban_valid, code) ? (
         <p className="mt-3 flex gap-2 rounded-lg bg-danger-soft px-3 py-2.5 text-sm leading-5 text-danger-ink">
           <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           This IBAN fails its checksum. Don't pay until you've confirmed the account with the sender.
@@ -242,11 +249,22 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
         </p>
       ) : null}
 
+      {action.docId ? (
+        <GiroCodeSection
+          code={code}
+          docId={action.docId}
+          collapsible
+          canReadAgain={canReadLetterAgain(letter)}
+          className="mt-3"
+        />
+      ) : null}
+
       {/*
         stays in view at the bottom of the panel, however far its details scroll: it covers the
         panel's bottom padding (a sticky box stops at the padding edge, so it is pulled down by it)
       */}
       <div
+        data-sticky-footer=""
         className={cn(
           "sticky -bottom-4 -mb-4 mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line bg-surface py-3",
           "in-sheet:bottom-[calc(-1.25rem-env(safe-area-inset-bottom))] in-sheet:mb-[calc(-1.25rem-env(safe-area-inset-bottom))] in-sheet:pb-[calc(0.75rem+env(safe-area-inset-bottom))]",

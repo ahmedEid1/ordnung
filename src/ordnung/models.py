@@ -1033,6 +1033,65 @@ class LetterAdvice(_Model):
     closable: bool = False
 
 
+# --------------------------------------------------------------------------------------------------
+# GiroCode (worked out on read by ordnung.secretary.girocode_gate, never stored)
+# --------------------------------------------------------------------------------------------------
+
+#: Why a payment has no GiroCode. ``check_letter`` is the one the person can resolve in the app, by
+#: comparing the details with the paper letter; the others are resolved on the letter, or not at all.
+GiroCodeBlock = Literal[
+    "incoming",
+    "direct_debit",
+    "settled",
+    "replaced",
+    "several",
+    "scam",
+    "currency",
+    "no_amount",
+    "no_iban",
+    "invalid_iban",
+    "no_payee",
+    "invalid",
+    "check_letter",
+]
+#: A transfer detail whose grounding the gate checks (the payee's name is checked by the payer's bank).
+TransferField = Literal["amount", "iban", "reference"]
+
+
+class TransferValues(_Model):
+    """The transfer details a GiroCode carries — what the person compares with the paper letter."""
+
+    payee: str | None = None
+    iban: str | None = None
+    reference: str | None = None
+    amount: float | None = None
+
+
+class GiroCodeReady(_Model):
+    """A GiroCode for one payment: ``payload`` is the EPC069-12 text to show as a QR code at error
+    correction level M. ``checked``: the person compared these details with the paper letter."""
+
+    status: Literal["ready"] = "ready"
+    item_id: str
+    payload: str
+    checked: bool = False
+
+
+class GiroCodeBlocked(_Model):
+    """Why a payment has no GiroCode, in plain words (``message``). For ``check_letter``, ``to_check``
+    names the details to compare with the paper letter and ``values`` are the ones to confirm."""
+
+    status: Literal["blocked"] = "blocked"
+    item_id: str
+    reason: GiroCodeBlock
+    message: str
+    to_check: list[TransferField] = Field(default_factory=list)
+    values: TransferValues | None = None
+
+
+GiroCode = Annotated[GiroCodeReady | GiroCodeBlocked, Field(discriminator="status")]
+
+
 class ItemAside(_Model):
     """An open to-do that is not one to act on (worked out on read, never stored).
 
@@ -1060,6 +1119,8 @@ class DocumentDetail(_Model):
     #: The letter's open to-dos that are not one to act on (the same rules as Today and the party
     #: drawer): the verdict never leads with them ("362 days overdue", an invoice its reminder replaced).
     set_aside: list[ItemAside] = Field(default_factory=list)
+    #: one per payment to-do of the letter (:mod:`ordnung.secretary.girocode_gate`)
+    girocodes: list[GiroCode] = Field(default_factory=list)
 
 
 class PartyDetail(_Model):

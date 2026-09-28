@@ -787,7 +787,15 @@ function Actions({
         );
       case "pay":
         return (
-          <Popover label="Pay" title={main.item.title} placement="top-start" className="w-[22rem] p-4" content={(close) => <PayPanel item={main.item} doc={doc} onPaid={() => actions.markDone(main.item)} close={close} />}>
+          <Popover label="Pay" title={main.item.title} placement="top-start" className="w-[22rem] p-4" content={(close) => (
+              <PayPanel
+                item={main.item}
+                doc={doc}
+                code={detail.girocodes.find((g) => g.item_id === main.item.id)}
+                onPaid={() => actions.markDone(main.item)}
+                close={close}
+              />
+            )}>
             <Button variant="primary" icon={Landmark}>
               Pay {main.item.amount != null ? formatMoney(main.item.amount, { currency: main.item.currency }) : ""}
             </Button>

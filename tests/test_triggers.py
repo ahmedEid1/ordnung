@@ -120,6 +120,34 @@ def test_deadline_soon_leaves_out_direct_debits(store: Store, ids: dict[str, str
     assert any(("item", debit) in refs_of(idea) for idea in ideas(store, "deadline_soon"))
 
 
+@pytest.mark.parametrize(
+    ("title", "action"),
+    [
+        ("Rundfunkbeitrag nachzahlen – konnte nicht eingezogen werden", "Pay 49.99 € by 01.10.2026"),
+        ("Pay Rundfunkbeitrag (amount could not be debited)", "Pay 49.99 € by 01.10.2026"),
+        ("Mitgliedsbeitrag nach Rücklastschrift", None),
+        ("Die erste Miete von 640 € zahlen, sobald Sie eingezogen sind", None),
+    ],
+)
+def test_a_returned_debit_or_a_first_rent_keeps_its_reminders(
+    store: Store, ids: dict[str, str], title: str, action: str | None
+) -> None:
+    """Its words name a debit that failed, or moving in: the person pays it, so it is reminded of
+    before its day and when it is overdue — not left out as money the sender collects."""
+    payment = add_item(
+        store,
+        kind="payment",
+        title=title,
+        action=action,
+        due_date="2026-10-01",
+        amount=49.99,
+        currency="EUR",
+        direction="out",
+    )
+    assert any(("item", payment) in refs_of(idea) for idea in ideas(store, "deadline_soon"))
+    assert any(("item", payment) in refs_of(idea) for idea in ideas(store, "overdue", date(2026, 10, 5)))
+
+
 def test_deadline_soon_offers_an_objection_draft_when_the_window_opens(
     store: Store, ids: dict[str, str]
 ) -> None:

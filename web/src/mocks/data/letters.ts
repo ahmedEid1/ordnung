@@ -54,7 +54,7 @@ export const Q = {
   },
   rundfunk: {
     due: "Für den Zeitraum 01.10.2026 bis 31.12.2026 wird ein Betrag von 55,08 EUR am 15.11.2026 fällig.",
-    iban: "IBAN: DE02 4401 0046 0123 4567 89",
+    iban: "IBAN: DE57 1234 8900 0055 0818 36",
   },
   abh: {
     valid: "Ihre Aufenthaltserlaubnis nach § 16b AufenthG ist gültig bis zum 30.11.2026.",
@@ -181,7 +181,7 @@ export const LETTERS: Record<string, LetterSpec> = {
         ],
       },
     ],
-    footer: ["Wohnbau Musterstadt eG · Genossenschaftsregister GnR 118 · IBAN DE44 5001 0517 5407 3249 31"],
+    footer: ["Wohnbau Musterstadt eG · Genossenschaftsregister GnR 118 · IBAN DE05 1234 5600 0004 4556 60"],
   },
 
   doc_nebenkosten: {
@@ -207,7 +207,7 @@ export const LETTERS: Record<string, LetterSpec> = {
             ],
             boldLast: true,
           },
-          `${Q.nk.pay} auf unser Konto.`,
+          `${Q.nk.pay} auf unser Konto. Verwendungszweck: MV-2025-0412 NK 2025`,
           Q.nk.receipts,
           "Die Aufstellung der einzelnen Kostenarten finden Sie auf Seite 2.",
           "Mit freundlichen Grüßen",
@@ -235,7 +235,7 @@ export const LETTERS: Record<string, LetterSpec> = {
         ],
       },
     ],
-    footer: ["Wohnbau Musterstadt eG · IBAN DE44 5001 0517 5407 3249 31 · BIC MUSTDEXX"],
+    footer: ["Wohnbau Musterstadt eG · IBAN DE05 1234 5600 0004 4556 60 · BIC MUSTDEXX"],
   },
 
   doc_phone: {
@@ -448,7 +448,7 @@ export const LETTERS: Record<string, LetterSpec> = {
           `${Q.uni.amount} (${Q.uni.ticket}, Studierendenwerk 96,00 EUR, Studierendenschaft 40,00 EUR).`,
           Q.uni.due,
           `Erfolgt die Zahlung nicht fristgerecht, ${Q.uni.late}; ohne Rückmeldung droht die Exmatrikulation.`,
-          { text: "Empfänger: Hochschule Musterstadt · IBAN DE93 2505 0000 0004 4556 67 · Verwendungszweck: 2231847 SoSe27", size: 19 },
+          { text: "Empfänger: Hochschule Musterstadt · IBAN DE10 1234 5600 0007 7002 20 · Verwendungszweck: 2231847 SoSe27", size: 19 },
         ],
       },
     ],
@@ -529,7 +529,7 @@ export const LETTERS: Record<string, LetterSpec> = {
         ],
       },
     ],
-    footer: ["TechMarkt Online GmbH · IBAN DE72 8605 5592 0090 1234 56"],
+    footer: ["TechMarkt Online GmbH · IBAN DE70 1234 7800 0048 2130 00"],
   },
 
   doc_tm_dunning: {
@@ -561,7 +561,7 @@ export const LETTERS: Record<string, LetterSpec> = {
         ],
       },
     ],
-    footer: ["TechMarkt Online GmbH · IBAN DE72 8605 5592 0090 1234 56"],
+    footer: ["TechMarkt Online GmbH · IBAN DE70 1234 7800 0048 2130 00"],
   },
 
   doc_dentist: {
@@ -626,6 +626,7 @@ export const LETTERS: Record<string, LetterSpec> = {
 
   doc_parking: {
     brand: { name: "Stadt Musterstadt", color: "#7a1f2b", tagline: "Ordnungsamt · Verkehrsüberwachung", mark: "eagle", serif: true },
+    photo: true,
     senderLine: "Stadt Musterstadt · Ordnungsamt · Rathausplatz 1 · 12345 Musterstadt",
     recipient: RECIPIENT,
     info: [
@@ -640,7 +641,7 @@ export const LETTERS: Record<string, LetterSpec> = {
           { text: Q.parking.amount, bold: true },
           Q.parking.pay,
           "Wenn Sie nicht fristgerecht zahlen, wird ein Bußgeldverfahren eingeleitet. Dabei entstehen zusätzliche Gebühren und Auslagen.",
-          { text: "Empfänger: Stadtkasse Musterstadt · IBAN DE47 7002 0270 0015 8935 21", size: 19 },
+          { text: "Empfänger: Stadtkasse Musterstadt · IBAN DE51 1234 5600 0000 1000 17", size: 19 },
         ],
       },
     ],

@@ -403,4 +403,22 @@ describe("money to pay", () => {
     expect(actions[1]!.dateRole).toBe("collected");
     expect(actions[0]!.dateRole).toBe("pay_by");
   });
+
+  it("files a debit that failed under Pay, by its transfer date — the person pays it now", () => {
+    const returned = actionFromItem(
+      item({
+        id: "returned",
+        kind: "payment",
+        title: "Rundfunkbeitrag nachzahlen – konnte nicht eingezogen werden",
+        action: "Pay 49.99 € by 01.10.2026",
+        due_date: "2026-10-01",
+        send_by: "2026-09-29",
+        amount: 49.99,
+        direction: "out",
+      }),
+      { today: "2026-09-28" },
+    )!;
+    expect(returned.dateRole).toBe("transfer_by");
+    expect(returned.actionDate).toBe("2026-09-29");
+  });
 });

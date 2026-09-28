@@ -1,6 +1,7 @@
 /**
  * Key facts (label, value, where it was found — click to see it on the page), reference numbers
- * and bank details, with copy buttons. For a suspected scam the bank account is flagged.
+ * and bank details, with copy buttons. For a suspected scam the bank account is flagged, and says
+ * why there is no GiroCode to scan.
  *
  * All three share one grid (UI audit round 1: references and IBANs were cut to "RE-2…" and "DE51 /
  * 1234 / …" on phones): below `sm` the label sits above its value, from `sm` in a 10rem column,
@@ -10,8 +11,8 @@
  * brackets ("Valid from (Gültig ab)"), values in the app's format (`fact-text.ts`).
  */
 import type { ReactNode } from "react";
-import { Copy, Hash, Landmark, ShieldAlert, Sparkle } from "lucide-react";
-import type { Document, DocumentKind, Grounding } from "@/api/types";
+import { Copy, Hash, Landmark, QrCode, ShieldAlert, Sparkle } from "lucide-react";
+import type { Document, DocumentKind, GiroCode, Grounding } from "@/api/types";
 import { cn } from "@/lib/utils";
 import { GROUNDING_COPY, TONES, copyFor } from "@/lib/copy";
 import { formatIban } from "@/lib/format";
@@ -109,8 +110,10 @@ const SHARED_NOTE: Record<Grounding, string> = {
   user: "You confirmed every fact below.",
 };
 
-export function KeyFacts({ doc, scam }: { doc: Document; scam: boolean }) {
+export function KeyFacts({ doc, scam, girocodes = [] }: { doc: Document; scam: boolean; girocodes?: GiroCode[] }) {
   const { hover, selected, hovered } = useEvidence();
+  // a scam letter has no Pay button: its bank details say why there is no code to scan
+  const scamCode = scam ? girocodes.find((g) => g.status === "blocked" && g.reason === "scam") : undefined;
   const facts = doc.key_facts;
   const p = doc.payment;
   const hasPayment = Boolean(p && (p.iban || p.payee));
@@ -230,6 +233,15 @@ export function KeyFacts({ doc, scam }: { doc: Document; scam: boolean }) {
                 </Row>
               ) : null}
             </dl>
+            {scamCode?.status === "blocked" ? (
+              <p className="mt-2 flex items-start gap-1.5 px-4 text-[12.5px] leading-5 text-danger-ink sm:px-5">
+                <QrCode className="mt-[3px] size-3.5 shrink-0" aria-hidden />
+                <span className="min-w-0 wrap-break-word">
+                  <span className="font-semibold">GiroCode (EPC-QR): </span>
+                  {scamCode.message}
+                </span>
+              </p>
+            ) : null}
             {p.iban_valid === false ? (
               <p className={cn("mt-2 px-4 text-[12.5px] font-medium sm:px-5", scam ? "text-danger-ink" : "text-warn-ink")}>
                 This IBAN doesn't pass the bank check — most likely a misprint. Compare it with the paper letter before you pay.

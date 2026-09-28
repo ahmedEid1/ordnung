@@ -636,7 +636,9 @@ Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT
 (GET detail / PATCH / DELETE), `documents/{id}/file`, `documents/{id}/pages/{n}.jpg`,
 `documents/{id}/thumbnail.jpg`, `documents/{id}/reprocess` (POST), `items` (GET/POST),
 `items/{id}` (PATCH/DELETE; PATCH with `due_date` sets `due_date_source=manual`, `user_modified`),
-`items/{id}/confirm` (POST: grounding=user), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
+`items/{id}/confirm` (POST: grounding=user), `items/{id}/girocode/confirm` (POST: the transfer details
+the person compared with the paper letter; 409 when they changed or the code is refused for another
+reason), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
 (PATCH), `parties`, `parties/{id}`, `cases/{id}`, `timeline?from&to`, `lanes?from&to`, `dashboard`,
 `suggestions` (GET), `suggestions/{id}` (PATCH status/snooze), `suggestions/review` (POST),
 `brief` (GET cached, POST regenerate), `ask` (POST → SSE), `chat/{thread_id}`, `drafts`
@@ -647,6 +649,8 @@ replay-only demo), `calendar.ics`, `calendar/exported` (POST), `activity`, `usag
 `events` (SSE), `data` (DELETE `{"confirm": "DELETE"}`: "Delete everything" — empties the database
 in place and removes Ordnung's files, keeping the lock and `server.json`; 409 in the demo),
 `demo/tour` (GET tour state), `demo/mail` (GET tray, POST `{id}` → ingest a tray letter).
+A letter's detail carries `girocodes`: per payment to-do a GiroCode (`ready`, with the EPC payload)
+or why there is none (`blocked`, a reason code and plain words), worked out on read (§ 21).
 Contracts carry `cancellable` + `cancel_hint`, worked out on read (not for the broadcasting fee,
 obligations towards authorities or a job — a job gets "Draft resignation").
 
@@ -693,7 +697,8 @@ Pages:
    deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam").
 3. **Document viewer** — verdict card first; page images with highlight overlays (click fact → scroll
    + pulse); "Explained simply"; key facts; to-dos with "Why this date?" popover; warnings (scam
-   banner); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
+   banner; a scam letter's bank details say why there is no GiroCode); the Pay panel with the payment's
+   GiroCode (folded behind "Show code" on phones, and in Today's Pay panel); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
    … · text of 2 pages" badge; 390 px layout stacks the image below the card.
 4. **Timeline** — year-ahead **life lanes** (Residence permit, Contracts, Tax, Study, Home, Money,
    Health, Getting around…) with a today line — each dated to-do in its life area's lane, payments of
@@ -965,6 +970,47 @@ install` prints the entry first and writes only with `--write`.
 **Scam checks (code, not model).** IBAN checksum validation; payee IBAN/name compared with those
 previously seen for the same party; mismatch → scam Idea quoting both. Copy: "No warning does not
 mean it is safe."
+
+**GiroCode (EPC-QR).** A payment's Pay panel shows a QR code any German banking app scans to pre-fill
+the transfer (EPC069-12 v3.1, version 002, UTF-8, error correction M, at most 331 bytes; builder
+`ordnung/girocode.py`, which reproduces the standard's two worked examples byte for byte). The person
+still confirms the transfer in their bank app with their TAN — Ordnung never pays (ADR 0006). The code
+is drawn in the browser (`uqr`), black on white with a four-module quiet zone in both themes. Whether a
+payment gets one is a written policy (`secretary/girocode_gate.py`, ADR 0007, [ADR 0012](decisions/0012-girocode-only-for-grounded-transfers.md)), checked in
+order: a transfer the person makes (not money in, not a direct debit — also when the quoted sentence
+names one, "Lastschrift", "von Ihrem Konto eingezogen", "buchen … ab", though the to-do reads like a
+transfer; `ordnung/payments.py`). A debit that failed ("Rücklastschrift", "konnte nicht eingezogen
+werden", "mangels Deckung nicht ausgeführt") is none, in the letter's sentence and in the to-do's own
+words alike — so across the app such a to-do keeps its "Pay" and its reminders; nor is a sentence one
+of whose clauses asks for a transfer ("Sofern Sie nicht am Lastschriftverfahren teilnehmen, überweisen
+Sie …": a negation waves off only a transfer in its own clause); "einziehen" counts only in a clause
+that names the account or the money, since it is also moving in ("sobald Sie eingezogen sind"). Still
+to pay (open, snoozed or missed; the letter not in the trash); no scam signs on the letter (an
+attacker's valid IBAN on a letter in a known sender's name is exactly this), and its IBAN on no other
+letter with scam signs (in the trash too — one deleted for good no longer counts: Ordnung keeps nothing
+of it, not even its IBAN, so a later letter asking for that account is judged on its own); not
+an invoice a reminder took over, and not one of several payments (its one reference may not fit
+several: a one-off payment must be the letter's only open one-off transfer — the new monthly advance a
+utility statement sets doesn't compete with its back-payment — and a recurring one the letter's only
+transfer); euro, an amount, a well-formed IBAN, a payee name, and the standard's limits (a BIC is
+needed outside the EEA and Ordnung reads none; an RF reference must pass ISO 11649); every value
+grounded — the amount stated by a verified sentence of the text layer, the IBAN printed in the text
+layer or known for the sender from another of its letters (not in the trash, without scam signs), the
+reference printed whole in the text layer (not cut short at a dash or before another digit group).
+The reference is used without a leading label ("Kassenzeichen 5126 …" → "5126 …"), in the code and in
+the Pay panels' rows alike; a code without a reference says so (add the letter's reference, if it names
+one, in the banking app — the reading may have missed it). A value read from a photo, or not found — an
+amount the person typed included; moving the date or "Correct" never vouches for an amount — asks the
+person to compare the details with the letter (the paper letter, for a photo; "These match the letter",
+or "They don't match": type the details as the letter shows them, or have the letter read again — not
+offered in the online demo, which reads no letters); the confirmation (an activity entry that names the letter)
+records the exact payee, IBAN, reference and amount and holds only while all four stay the same. It
+never overrides a scam sign and never makes an IBAN "known" for the scam checks. Every "no code" says
+why in plain words ("No code: this IBAN is not the one Beitragsservice Musterstadt used before …"),
+refused comparisons and a failed reading in the block itself (scrolled clear of the panel's footer,
+focus kept on the button); the copy-by-hand fields stay. On a phone or tablet, which can't scan its own
+screen, the block says to open the letter on a computer or copy the details. The static demo's codes are generated by the same code
+(`scripts/gen_mock_girocodes.py`) and point to the sample life's fictional accounts.
 
 **Review scope.** The LLM review may only produce `saving`, `hygiene`, `followup`, `opportunity`
 Ideas; legal rights and dates come only from deterministic triggers. `work_days_limit` trigger is

@@ -31,6 +31,7 @@ import type {
   Suggestion,
   SuggestionRef,
   TemplateDraftKind,
+  TransferValues,
   UploadResult,
 } from "@/api/types";
 import { HIGH_STAKES_KINDS, type HighStakesKind } from "@/api/types";
@@ -58,6 +59,7 @@ import { doc as makeDoc, item as makeItem } from "./data/helpers";
 import { isOpenItem } from "@/features/document/verdict";
 import { documentKindLabel } from "@/lib/copy";
 import { DEMO_NOTE } from "./mode";
+import { confirmMockGiroCode, mockGiroCode } from "./girocode";
 
 const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
@@ -252,6 +254,7 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
     suggestions,
     drafts: db.state.drafts.filter((x) => x.doc_id === id),
     set_aside: setAside(db, items),
+    girocodes: items.filter((i) => i.kind === "payment").map((i) => mockGiroCode(db, i)),
   };
 }
 
@@ -268,6 +271,8 @@ function setAside(db: MockDb, items: Item[]): ItemAside[] {
   return items.flatMap((i): ItemAside[] => {
     if (i.status !== "open") return [];
     const doc = i.doc_id ? byId.get(i.doc_id) : undefined;
+    // like the server's scam signs (the demo's scam letter is the one hiding text)
+    if (doc?.hidden_text) return [{ item_id: i.id, reason: "suspicious", replaced_by: null }];
     if (i.kind === "payment" && !i.recurrence && doc) {
       const covering = reminders.find(
         (r) => r.id !== doc.id && r.case_id === doc.case_id && (doc.kind === "dunning" ? (doc.doc_date ?? "") < (r.doc_date ?? "") : !(doc.doc_date && r.doc_date && doc.doc_date > r.doc_date)),
@@ -1096,6 +1101,17 @@ const routes: [string, string, Handler][] = [
         if (!stillOpen && d.id !== "doc_parking") d.status = "processed";
       }
       return it;
+    },
+  ],
+
+  [
+    "POST",
+    "/items/:id/girocode/confirm",
+    ({ db, params, body }) => {
+      const result = confirmMockGiroCode(db, params.id!, (body ?? {}) as TransferValues);
+      if ("status" in result) throw new HttpError(result.status, result.message);
+      emit("document.updated", { doc_id: result.docId });
+      return result.code;
     },
   ],
 

@@ -137,6 +137,8 @@ export function handleServerEvent(qc: QueryClient, ev: ServerEvent): void {
     case "item.updated":
       void qc.invalidateQueries({ queryKey: qk.items.all });
       void qc.invalidateQueries({ queryKey: qk.dashboard });
+      // a letter's detail carries its to-dos and their GiroCodes (an amount changed elsewhere)
+      void qc.invalidateQueries({ queryKey: qk.documents.all });
       void qc.invalidateQueries({ queryKey: ["timeline"] });
       void qc.invalidateQueries({ queryKey: ["lanes"] });
       break;

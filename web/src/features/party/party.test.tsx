@@ -66,7 +66,7 @@ describe("People & organisations drawer", () => {
     // identifiers & IBANs with copy buttons
     await user.click(within(drawer).getByRole("button", { name: "Copy Mieternummer" }));
     expect(writeText).toHaveBeenCalledWith("12-0412-07");
-    expect(within(drawer).getByText("DE44 5001 0517 5407 3249 31")).toBeInTheDocument();
+    expect(within(drawer).getByText("DE05 1234 5600 0004 4556 60")).toBeInTheDocument();
     // sections
     for (const name of ["Contact", /To-dos & dates/, /Contracts/, /Letters/, /Threads/]) {
       expect(within(drawer).getByRole("region", { name })).toBeInTheDocument();

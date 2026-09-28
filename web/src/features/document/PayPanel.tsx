@@ -1,17 +1,20 @@
 /**
  * "Pay" — Ordnung never pays for you. It lays out exactly what to type into your banking app
- * (payee, IBAN, reference, amount) with copy buttons, and lets you mark the payment as done.
+ * (payee, IBAN, reference, amount) with copy buttons, the GiroCode to scan when the server offers
+ * one (or why there is none), and lets you mark the payment as done.
  */
 import type { ReactNode } from "react";
 import { Check, Copy, Landmark, ShieldAlert } from "lucide-react";
-import type { Document, Item } from "@/api/types";
+import type { Document, GiroCode, Item } from "@/api/types";
 import { daysUntil, formatIban, formatMoney } from "@/lib/format";
-import { isTransfer } from "@/lib/payments";
+import { useIsTabletUp, useMediaQuery } from "@/lib/hooks";
+import { isTransfer, paymentReference } from "@/lib/payments";
 import { useToday } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
+import { GiroCodeSection, canReadLetterAgain, ibanFailsCheck } from "@/features/girocode/GiroCode";
 import { copyText } from "./actions";
 
 /** An IBAN in groups of four that never split: the line breaks only between groups (UI audit round 1: "…2130 0" / "0"). */
@@ -39,6 +42,7 @@ function Row({ label, children, copy, what, className }: { label: string; childr
     <div className="flex items-center gap-3 py-2">
       <div className="min-w-0 flex-1">
         <div className="eyebrow">{label}</div>
+        {/* every character of a name or reference matters: long ones wrap, never overflow */}
         <div className={cn("mt-0.5 text-[14px] font-medium text-ink", className)}>{children}</div>
       </div>
       {copy ? (
@@ -56,14 +60,31 @@ function Row({ label, children, copy, what, className }: { label: string; childr
   );
 }
 
-export function PayPanel({ item, doc, onPaid, close }: { item: Item; doc: Document; onPaid: () => void; close?: () => void }) {
+export function PayPanel({
+  item,
+  doc,
+  code,
+  onPaid,
+  close,
+}: {
+  item: Item;
+  doc: Document;
+  /** The payment's GiroCode, or why there is none (`DocumentDetail.girocodes`). */
+  code?: GiroCode;
+  onPaid: () => void;
+  close?: () => void;
+}) {
   const today = useToday();
   const p = doc.payment;
+  const reference = p?.reference ? paymentReference(p.reference) : null;
   const amount = item.amount != null ? formatMoney(item.amount, { currency: item.currency }) : null;
   const due = item.due_date;
   // a transfer has to go out a day or so before it must arrive: that day leads while it is ahead, as in the verdict
   const transferBy =
     isTransfer(item) && item.send_by && item.send_by !== due && daysUntil(item.send_by, today) >= 0 ? item.send_by : null;
+  // a phone can't scan its own screen — upright or turned sideways: there the code waits behind "Show code"
+  const narrow = !useIsTabletUp();
+  const touch = useMediaQuery("(hover: none) and (pointer: coarse)");
   return (
     <div>
       <div className="flex items-start gap-2.5">
@@ -100,9 +121,9 @@ export function PayPanel({ item, doc, onPaid, close }: { item: Item; doc: Docume
               <IbanGroups iban={p.iban} />
             </Row>
           ) : null}
-          {p.reference ? (
-            <Row label="Reference" what="reference" copy={p.reference} className="font-ident wrap-anywhere">
-              {p.reference}
+          {reference ? (
+            <Row label="Reference" what="reference" copy={reference} className="font-ident wrap-anywhere">
+              {reference}
             </Row>
           ) : null}
           {amount ? (
@@ -117,23 +138,27 @@ export function PayPanel({ item, doc, onPaid, close }: { item: Item; doc: Docume
         </p>
       )}
 
-      {p?.iban_valid === false ? (
+      {ibanFailsCheck(p?.iban_valid, code) ? (
         <p className="mt-3 flex gap-2 rounded-lg bg-danger-soft px-3 py-2.5 text-[13px] leading-5 text-danger-ink">
           <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           This IBAN fails its checksum. Don't pay until you've confirmed the account with the sender.
         </p>
       ) : null}
 
+      <GiroCodeSection code={code} docId={doc.id} collapsible={narrow || touch} canReadAgain={canReadLetterAgain(doc)} className="mt-3" />
+
       <p className="mt-3 text-[12.5px] leading-5 text-muted">
         Ordnung never pays for you — use your banking app. Compare the IBAN with an earlier letter from this sender.
       </p>
       {/*
-        stays in view at the bottom of the panel, however far its details scroll (as in Today's Pay panel): it
-        covers the panel's bottom padding (a sticky box stops at the padding edge, so it is pulled down by it)
+        stays in view at the bottom of the panel, however far its details scroll or however tall the code makes it
+        (as in Today's Pay panel): it covers the panel's bottom padding (a sticky box stops at the padding edge, so it
+        is pulled down by it) — but not on a screen too short to spare it (a phone turned sideways)
       */}
       <div
+        data-sticky-footer=""
         className={cn(
-          "sticky -bottom-4 z-10 -mb-4 mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-line bg-surface py-3",
+          "sticky -bottom-4 z-10 -mb-4 mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-line bg-surface py-3 [@media(max-height:500px)]:static",
           "in-sheet:bottom-[calc(-1.25rem-env(safe-area-inset-bottom))] in-sheet:mb-[calc(-1.25rem-env(safe-area-inset-bottom))] in-sheet:pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
         )}
       >

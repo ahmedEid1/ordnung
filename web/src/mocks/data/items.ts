@@ -19,7 +19,7 @@ export const ITEMS: Item[] = [
     party_id: "pty_ordnungsamt",
     case_id: "cas_parking",
     doc_id: "doc_parking",
-    evidence: [ev("doc_parking", Q.parking.pay)],
+    evidence: [ev("doc_parking", Q.parking.pay, "model_read")],
     date_spec: spec({ type: "relative", anchor: "receipt", amount: 1, unit: "weeks", nature: "payment", text: Q.parking.pay }),
     computation: receipt({
       due_date: "2026-09-29",
@@ -591,5 +591,23 @@ export const TRAY_ITEMS: Record<string, Item[]> = {
       created_at: ts("2026-09-28", "09:04"),
     }),
   ],
-  doc_scam: [],
+  // what the letter demands, as the model reads it: never suggested (no date to act on, like the
+  // server leaves a letter with scam signs out of Today) and never given a GiroCode
+  doc_scam: [
+    item({
+      id: "itm_scam_demand",
+      kind: "payment",
+      title: "Demanded “arrears” of €210 — check before paying (likely a scam)",
+      action: "The letter demands a transfer to the account it names within 3 days.",
+      consequence: "The letter threatens enforcement — the real Beitragsservice never did.",
+      amount: 210,
+      priority: "critical",
+      area: "home",
+      party_id: "pty_beitrag",
+      case_id: "cas_rundfunk",
+      doc_id: "doc_scam",
+      evidence: [ev("doc_scam", Q.scam.amount)],
+      created_at: ts("2026-09-28", "09:06"),
+    }),
+  ],
 };

@@ -21,6 +21,7 @@ import { ApiError } from "./client";
 import type {
   ContractListParams,
   ContractPatch,
+  DocumentDetail,
   DocumentListParams,
   DocumentPatch,
   DraftCreate,
@@ -37,6 +38,7 @@ import type {
   SuggestionPatch,
   SuggestionRef,
   TourPatch,
+  TransferValues,
 } from "./types";
 
 // ------------------------------------------------------------------------------------------------
@@ -280,6 +282,17 @@ export function useReprocessDocument() {
   });
 }
 
+/** {@link useReprocessDocument} from inside a panel, which shows the error itself (a toast would wait
+ * behind a phone's sheet, or cover the panel's footer). */
+export function useReadLetterAgain() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.reprocessDocument(id),
+    meta: { silent: true },
+    onSuccess: () => invalidateLedger(qc),
+  });
+}
+
 export function useUploadDocuments() {
   const qc = useQueryClient();
   return useMutation({
@@ -321,6 +334,27 @@ export function useDeleteItem() {
 export function useConfirmItem() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (id: string) => api.confirmItem(id), meta: { errorTitle: "Couldn't confirm the date" }, onSuccess: () => invalidateLedger(qc) });
+}
+
+/**
+ * "These match the letter": the person compared a payment's transfer details with the letter,
+ * which unlocks its GiroCode. The letter's detail is updated in place with the answer (and refetched).
+ * A refusal (the details changed meanwhile …) shows in the GiroCode block itself — a toast would wait
+ * behind a phone's sheet — and the detail is refetched, so the block shows the details as they are now.
+ */
+export function useConfirmGiroCode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, values }: { itemId: string; docId: string; values: TransferValues }) => api.confirmGiroCode(itemId, values),
+    meta: { silent: true },
+    onError: (_err, { docId }) => qc.invalidateQueries({ queryKey: qk.documents.detail(docId) }),
+    onSuccess: (code, { docId }) => {
+      qc.setQueryData<DocumentDetail>(qk.documents.detail(docId), (detail) =>
+        detail ? { ...detail, girocodes: detail.girocodes.map((g) => (g.item_id === code.item_id ? code : g)) } : detail,
+      );
+      return qc.invalidateQueries({ queryKey: qk.documents.detail(docId) });
+    },
+  });
 }
 
 // ------------------------------------------------------------------------------------------------
