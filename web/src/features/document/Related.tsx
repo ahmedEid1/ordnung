@@ -10,7 +10,7 @@ import { useUpdateSuggestion } from "@/api/hooks";
 import { cn } from "@/lib/utils";
 import { CONTRACT_CATEGORY_COPY, DRAFT_KIND_COPY, SUGGESTION_KIND_COPY, TONES, copyFor, documentKindLabel } from "@/lib/copy";
 import { addDays } from "date-fns";
-import { formatDate, toISODate } from "@/lib/format";
+import { formatDate, glueText, toISODate } from "@/lib/format";
 import { useToday } from "@/lib/today";
 import { buttonVariants } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
@@ -22,6 +22,8 @@ import { toast } from "@/components/ui/Toast";
 import { PanelSection } from "./PanelSection";
 import { RefText } from "@/features/ask/RefText";
 import { contractHref } from "@/features/contracts/links";
+import { isRollingContract } from "@/features/contracts/model";
+import { protectRefs } from "@/lib/glue";
 import { focusAfterLeaving, focusWhenReady } from "@/features/today/focus";
 import { ideaActionLabel, ideaHref } from "@/features/today/helpers";
 import { ideasForLetter, onThisLetter } from "./letter-ideas";
@@ -40,7 +42,7 @@ export function ThreadSection({ detail }: { detail: DocumentDetail }) {
       <div className="card overflow-hidden">
         {thread ? (
           <div className="border-b border-line px-4 py-3 sm:px-5">
-            <p className="text-[14.5px] font-semibold text-ink [overflow-wrap:anywhere]">{thread.title}</p>
+            <p className="text-[14.5px] font-semibold text-ink [overflow-wrap:anywhere]">{protectRefs(thread.title)}</p>
             {thread.summary ? <p className="mt-0.5 text-[13px] leading-5 text-muted">{thread.summary}</p> : null}
           </div>
         ) : null}
@@ -62,13 +64,13 @@ export function ThreadSection({ detail }: { detail: DocumentDetail }) {
                       // the badge sits beside the title, never inside its clamp, so a long title never hides it
                       <p className="flex min-w-0 items-start gap-2 text-[13.5px] font-semibold leading-5 text-ink">
                         <span className={cn("min-w-0", TWO_LINES)} title={title}>
-                          {title}
+                          {protectRefs(title)}
                         </span>
                         <span className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[11.5px] font-semibold leading-4 text-accent">This letter</span>
                       </p>
                     ) : (
                       <Link to={`/documents/${d.id}`} title={title} className={cn("text-[13.5px] font-medium leading-5 text-ink hover:text-accent hover:underline", TWO_LINES)}>
-                        {title}
+                        {protectRefs(title)}
                       </Link>
                     )}
                     <p className="mt-0.5 text-[12px] text-muted">
@@ -93,6 +95,10 @@ export function ContractsSection({ contracts }: { contracts: Contract[] }) {
         {contracts.map((c) => {
           const cat = copyFor(CONTRACT_CATEGORY_COPY, c.category);
           const comp = c.computed;
+          // a contract you can cancel any month (rent, statutory health insurance) has no decision to count down
+          // to, as in the party drawer and on Contracts (UI audit round 2: "decide by … today" in red on a lease)
+          const rolling = isRollingContract(c);
+          const decideBy = c.status === "active" && !rolling ? comp?.send_by : null;
           return (
             <div key={c.id} className="card flex items-start gap-3 px-4 py-3.5 sm:px-5">
               <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg", TONES[cat.tone].soft, TONES[cat.tone].icon)}>
@@ -102,16 +108,28 @@ export function ContractsSection({ contracts }: { contracts: Contract[] }) {
                 {/* the name takes the room it needs; the amount goes below it when both don't fit
                     (UI audit round 1: "€156.55/month" pushed the page wider at 320 px, the name squeezed to 4 lines) */}
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                  {/* a flat number ("Wohnung 05-2-03") never breaks at its hyphens */}
                   <p lang="de" className="min-w-0 flex-[1_1_12rem] text-[14.5px] font-semibold leading-snug text-ink [overflow-wrap:anywhere] hyphens-auto">
-                    {c.name}
+                    {protectRefs(c.name)}
                   </p>
                   {c.cost_amount != null ? <Money amount={c.cost_amount} currency={c.cost_currency} interval={c.cost_interval} className="shrink-0 text-[13.5px]" /> : null}
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12.5px] text-muted">
                   <KindBadge category={c.category} />
-                  {comp?.send_by ? <Countdown date={comp.send_by} prefix="decide by" className="text-[12.5px]" /> : comp?.current_term_end ? <span>runs until <DateText date={comp.current_term_end} style="medium" /></span> : null}
+                  {c.status !== "active" ? (
+                    <StatusPill of="contract" status={c.status} />
+                  ) : decideBy ? (
+                    <Countdown date={decideBy} prefix="Decide by" className="text-[12.5px]" />
+                  ) : rolling ? (
+                    <span>Cancel any time</span>
+                  ) : comp?.current_term_end ? (
+                    <span>
+                      Runs until <DateText date={comp.current_term_end} style="medium" />
+                    </span>
+                  ) : null}
                 </div>
-                {comp?.summary ? <p className="mt-1.5 text-[13px] leading-5 text-muted">{comp.summary}</p> : null}
+                {/* its dates stay whole ("Wed 30 Sep 2026" never breaks after "Wed") */}
+                {comp?.summary ? <p className="mt-1.5 text-[13px] leading-5 text-muted">{glueText(comp.summary)}</p> : null}
                 <Link to={contractHref(c.id)} className="mt-2 inline-flex min-h-6 items-center gap-1 text-[13px] font-semibold text-accent hover:underline">
                   Open in Contracts <ArrowRight className="size-3.5" aria-hidden />
                   <span className="sr-only"> — {c.name}</span>

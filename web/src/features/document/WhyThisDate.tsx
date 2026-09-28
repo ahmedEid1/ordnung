@@ -62,7 +62,9 @@ export type ReceiptItem = Pick<Item, "kind" | "direction" | "title" | "action" |
  * a bank transfer is made by its send-by day ("Transfer by", UI audit round 1: not "Send by" / "Post it
  * by" beside the verdict's "Transfer it by"), anything else is sent by it, and next to a send-by day the
  * due date is the day it must arrive. `transfer` says whether the to-do is a transfer (default: from
- * `item`, else from the spec's nature).
+ * `item`, else from the spec's nature). A send-by day that is the due date itself (the usual posting time
+ * has passed: "send it today") is no second tile — the verdict's date box leaves it out too (UI audit
+ * round 2: "Send by Mon 28 Sep" beside "Must arrive by Mon 28 Sep").
  */
 export function receiptDates(
   receipt: ComputationReceipt,
@@ -72,7 +74,7 @@ export function receiptDates(
 ): ReceiptDate[] {
   const dates: ReceiptDate[] = [];
   const isTransferred = transfer ?? (item ? isTransfer(item) : undefined);
-  if (receipt.send_by) dates.push({ label: sendByLabel(spec?.nature, isTransferred), date: receipt.send_by });
+  if (receipt.send_by && receipt.send_by !== receipt.due_date) dates.push({ label: sendByLabel(spec?.nature, isTransferred), date: receipt.send_by });
   if (receipt.due_date) dates.push({ label: dueDateLabel(spec?.nature, Boolean(receipt.send_by)), date: receipt.due_date });
   if (receipt.safe_date && receipt.safe_date !== receipt.due_date) dates.push({ label: "Safe date (a working day)", date: receipt.safe_date });
   return dates;

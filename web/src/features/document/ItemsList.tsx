@@ -1,7 +1,12 @@
-/** "To-dos & dates" from this letter: kind, date + countdown, amount, grounding, "Why this date?". */
-import { CalendarPlus, Check, Ellipsis, ListTodo, Pencil, Repeat, RotateCcw, Scale, ShieldAlert, X } from "lucide-react";
+/**
+ * "To-dos & dates" from this letter: kind, date + countdown, amount, grounding, "Why this date?". A to-do the
+ * server set aside (`DocumentDetail.set_aside`: an invoice its payment reminder replaced, a date already past
+ * when the letter was added) is said for what it is, quietly after the others — no countdown, not counted.
+ */
+import { Link } from "react-router";
+import { ArrowRight, CalendarPlus, Check, Ellipsis, History, ListTodo, Pencil, Repeat, RotateCcw, Scale, ShieldAlert, X } from "lucide-react";
 import { useState, type KeyboardEvent } from "react";
-import type { Item, Recurrence } from "@/api/types";
+import type { Document, Item, ItemAside, Recurrence } from "@/api/types";
 import { cn } from "@/lib/utils";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
@@ -18,10 +23,16 @@ import { PanelSection } from "./PanelSection";
 import { WhyThisDate } from "./WhyThisDate";
 import { icsFileName, icsHref, useItemActions } from "./actions";
 import { englishInline, isGermanText } from "./fact-text";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, glueText } from "@/lib/format";
 import { plainText } from "@/lib/glue";
+import { useToday } from "@/lib/today";
+import { asideNote } from "@/features/party/model";
 import { itemDateRole, undatedNote } from "./item-meta";
 import { isOpenItem, sortItems } from "./verdict";
+
+/** The letters a set-aside note names (the payment reminder that replaced this letter's payment). */
+type NoteDocs = readonly Pick<Document, "id" | "doc_date" | "received_date">[];
+const NONE: readonly never[] = [];
 
 export function recurrenceLabel(r: Recurrence | null | undefined): string | null {
   if (!r) return null;
@@ -43,25 +54,85 @@ function download(href: string, name: string) {
  * its place, struck through, instead of jumping to the end — so the next row doesn't slide under the
  * pointer (UI audit round 1: a double click ticked off two). New to-dos go after the others.
  */
-function useSteadyOrder(items: Item[], docId: string): Item[] {
-  const sorted = sortItems(items);
+function useSteadyOrder(items: Item[], docId: string, aside: ReadonlyMap<string, ItemAside>): Item[] {
+  // the to-dos set aside after the ones to act on, before the closed ones
+  const byImportance = sortItems(items);
+  const setAside = (i: Item) => isOpenItem(i) && aside.has(i.id);
+  const sorted = [
+    ...byImportance.filter((i) => isOpenItem(i) && !setAside(i)),
+    ...byImportance.filter(setAside),
+    ...byImportance.filter((i) => !isOpenItem(i)),
+  ];
   const [first, setFirst] = useState(() => ({ docId, ids: sorted.map((i) => i.id) }));
   if (first.docId !== docId) setFirst({ docId, ids: sorted.map((i) => i.id) });
   const place = new Map(first.ids.map((id, i) => [id, i]));
   return [...sorted].sort((a, b) => (place.get(a.id) ?? Infinity) - (place.get(b.id) ?? Infinity));
 }
 
-export function ItemsList({ items, docId, pages, scam }: { items: Item[]; docId: string; pages?: number | null; scam?: boolean }) {
-  const list = useSteadyOrder(items, docId);
+export function ItemsList({
+  items,
+  docId,
+  pages,
+  scam,
+  setAside = NONE,
+  documents = NONE,
+}: {
+  items: Item[];
+  docId: string;
+  pages?: number | null;
+  scam?: boolean;
+  /** The open to-dos that are not one to act on, with why (`DocumentDetail.set_aside`). */
+  setAside?: readonly ItemAside[];
+  /** The letter's related letters, for a set-aside note's "the payment reminder of Thu 10 Sep". */
+  documents?: NoteDocs;
+}) {
+  const aside = new Map(setAside.map((a) => [a.item_id, a]));
+  const list = useSteadyOrder(items, docId, aside);
   if (!list.length) return null;
-  const open = list.filter(isOpenItem).length;
+  // what is left to act on: never a to-do set aside (UI audit round 2: "· 1" over an invoice its reminder replaced)
+  const open = list.filter((i) => isOpenItem(i) && !aside.has(i.id)).length;
   return (
     // a scam letter's demands are no to-dos of yours: no count
     <PanelSection id="todos" title="To-dos & dates" icon={ListTodo} count={scam ? undefined : open} countLabel={`${open} open`}>
       <ul className="card divide-y divide-line overflow-hidden">
-        {list.map((it) => (scam && isOpenItem(it) ? <ScamRow key={it.id} item={it} docId={docId} pages={pages} /> : <ItemRow key={it.id} item={it} docId={docId} pages={pages} />))}
+        {list.map((it) =>
+          scam && isOpenItem(it) ? (
+            <ScamRow key={it.id} item={it} docId={docId} pages={pages} />
+          ) : (
+            <ItemRow key={it.id} item={it} docId={docId} pages={pages} aside={isOpenItem(it) ? aside.get(it.id) : undefined} documents={documents} />
+          ),
+        )}
       </ul>
     </PanelSection>
+  );
+}
+
+/**
+ * Why a to-do is not one to act on, in the verdict's words: "Replaced by the payment reminder of Thu 10 Sep —
+ * pay that one, not both." with a link to it, or "Already past when the letter was added — still open?".
+ */
+function AsideNote({ aside, documents }: { aside: ItemAside; documents: NoteDocs }) {
+  const today = useToday();
+  const note = aside.reason === "history" ? "Already past when the letter was added — still open?" : asideNote(aside, documents, today);
+  const Icon = aside.reason === "suspicious" ? ShieldAlert : History;
+  const to = aside.reason === "replaced" || aside.reason === "attached" ? aside.replaced_by : null;
+  return (
+    <p className="mt-1.5 flex items-start gap-1.5 text-[13px] leading-5 text-muted">
+      <Icon className="mt-[3px] size-3.5 shrink-0" aria-hidden />
+      <span className="min-w-0 wrap-break-word">
+        {/* "Thu 10 Sep" stays on one line */}
+        {glueText(note)}
+        {to ? (
+          <>
+            {" "}
+            <Link to={`/documents/${to}`} className="inline-flex min-h-6 items-center gap-1 align-middle font-medium text-accent underline-offset-2 hover:underline">
+              {aside.reason === "replaced" ? "Open the reminder" : "Open the bill"}
+              <ArrowRight className="size-3.5" aria-hidden />
+            </Link>
+          </>
+        ) : null}
+      </span>
+    </p>
   );
 }
 
@@ -120,7 +191,20 @@ function ScamRow({ item, docId, pages }: { item: Item; docId: string; pages?: nu
   );
 }
 
-function ItemRow({ item, docId, pages }: { item: Item; docId: string; pages?: number | null }) {
+function ItemRow({
+  item,
+  docId,
+  pages,
+  aside,
+  documents = NONE,
+}: {
+  item: Item;
+  docId: string;
+  pages?: number | null;
+  /** Set aside by the server (an open to-do only): no countdown, a note on why. */
+  aside?: ItemAside;
+  documents?: NoteDocs;
+}) {
   const { markDone, reopen, dismiss, changeDate, pending } = useItemActions();
   const { hover } = useEvidence();
   const [editing, setEditing] = useState(false);
@@ -182,6 +266,13 @@ function ItemRow({ item, docId, pages }: { item: Item; docId: string; pages?: nu
           <KindBadge kind={item.kind} direction={item.direction} />
           {!open ? (
             <StatusPill of="item" status={item.status} />
+          ) : aside ? (
+            // nothing to count down to: the date it had, quietly (UI audit round 2: "362 days overdue" in red)
+            item.due_date ? (
+              <span className="text-muted">
+                was due <DateText date={item.due_date} style="day" className="font-medium text-ink/80" />
+              </span>
+            ) : null
           ) : role === "debit" ? (
             // the bank collects it: nothing to send, never louder than amber (as on Today)
             <Countdown date={item.due_date!} prefix="collected" cap="warn" className="text-[12.5px]" />
@@ -192,7 +283,7 @@ function ItemRow({ item, docId, pages }: { item: Item; docId: string; pages?: nu
           ) : (
             <Countdown date={item.due_date!} showDate time={item.due_time} mode={role === "event" ? "event" : "due"} className="text-[12.5px]" />
           )}
-          {open && role === "transfer" && item.send_by && item.send_by !== item.due_date ? (
+          {aside ? null : open && role === "transfer" && item.send_by && item.send_by !== item.due_date ? (
             <span className="text-muted">
               transfer by <DateText date={item.send_by} style="day" className="font-medium text-ink/80" />
             </span>
@@ -209,6 +300,7 @@ function ItemRow({ item, docId, pages }: { item: Item; docId: string; pages?: nu
           ) : null}
         </div>
         {item.description ? <p className="mt-1.5 text-[13px] leading-5 text-muted">{item.description}</p> : null}
+        {aside ? <AsideNote aside={aside} documents={documents} /> : null}
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
           {ev ? <EvidenceChip grounding={item.grounding === "user" ? "user" : ev.grounding} page={ev.page} pages={pages} anchorId={anchorId} what={item.title} compact /> : null}
           {!ev && item.origin === "rule" ? (

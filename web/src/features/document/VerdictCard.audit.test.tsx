@@ -88,7 +88,7 @@ describe("the headline", () => {
     const h1 = screen.getByRole("heading", { level: 1 });
     expect(h1.textContent).toContain("Immatrikulations\u00adbescheinigung");
     expect(h1.querySelector("[lang=de]")).not.toBeNull();
-    expect(h1).toHaveClass("text-[23px]", "wrap-break-word", "hyphens-manual");
+    expect(h1).toHaveClass("text-detail-long", "wrap-break-word", "hyphens-manual");
     expect(h1.className).not.toContain("overflow-wrap:anywhere");
   });
 
@@ -96,7 +96,7 @@ describe("the headline", () => {
     renderVerdict(makeDetail({ document: makeDoc({ title: "1st Payment Reminder (Mahnung) – Invoice TM-2026-0048213" }) }));
     const h1 = screen.getByRole("heading", { level: 1 });
     expect(h1.textContent).toContain("TM\u20112026\u20110048213");
-    expect(h1).toHaveClass("text-[26px]");
+    expect(h1).toHaveClass("text-detail");
   });
 
   it("says 'arrived the same day' rather than repeating the date, in one date style", () => {

@@ -66,6 +66,11 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
     await expect(verdict.getByRole("button", { name: /^Pay/ })).toHaveCount(0);
     await expect(verdict.getByText(/overdue/)).toHaveCount(0);
     await expect(verdict.getByRole("link", { name: /Open the payment reminder/ })).toBeVisible();
+    // the list below says so too, uncounted (UI audit round 2: "25 days overdue" in red under this verdict)
+    const todos = page.getByRole("region", { name: /To-dos & dates/ });
+    await expect(todos).not.toContainText("overdue");
+    await expect(todos).toContainText("Replaced by the payment reminder of");
+    await expect(todos.getByRole("heading", { level: 2 })).toContainText("0 open");
   });
 
   test("an archived lease's deposit is 'Still open?', not '362 days overdue'", async ({ page }) => {
@@ -73,6 +78,13 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
     const verdict = page.getByRole("article").first();
     await expect(verdict.getByText(/overdue/)).toHaveCount(0);
     await expect(verdict.getByRole("list", { name: "Probably dealt with" })).toContainText("Still open? Security deposit");
+    // … and so does the list below; the lease you can cancel any month has no "decide by … tomorrow" (UI audit round 2)
+    const todos = page.getByRole("region", { name: /To-dos & dates/ });
+    await expect(todos).not.toContainText("overdue");
+    await expect(todos).toContainText("Already past when the letter was added");
+    const contract = page.getByRole("region", { name: "Contract" });
+    await expect(contract).toContainText("Cancel any time");
+    await expect(contract).not.toContainText(/decide by/i);
   });
 
   test("the pages are no scroll box of their own; the pager turns them", async ({ page }) => {
