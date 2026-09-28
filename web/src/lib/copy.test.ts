@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { Clock, Hourglass } from "lucide-react";
+import { HIGH_STAKES_KINDS } from "@/api/types";
 import {
   AREA_COPY,
   CONTRACT_CATEGORY_COPY,
   DOCUMENT_KIND_COPY,
+  DOCUMENT_STATUS_COPY,
+  ITEM_KIND_COPY,
+  MARKER_KIND_COPY,
+  MEANING_ICONS,
+  SUGGESTION_KIND_COPY,
+  WAITING_STATUS_COPY,
   ENUM_COVERAGE,
   GROUNDING_COPY,
   PARTY_KIND_COPY,
@@ -46,6 +54,38 @@ describe("enum copy", () => {
     expect(DOCUMENT_KIND_COPY.dunning.tone).toBe("payment");
     expect(AREA_COPY.health.tone).toBe("appointment");
     expect(PARTY_KIND_COPY.health_insurer.tone).toBe("appointment");
+  });
+
+  it("gives each letter kind with legal deadlines a hint that says what it changes, led by its German name", () => {
+    for (const kind of HIGH_STAKES_KINDS) {
+      const hint = DOCUMENT_KIND_COPY[kind].hint;
+      expect(hint, kind).toBeTruthy();
+      // "Mahnbescheid: …" / "Kündigung by your employer: …" — the lead word is German (KindHint marks it)
+      expect(hint, kind).toMatch(/^[A-ZÄÖÜ]\p{Ll}*(?:ung|bescheid|verlangen|abrechnung)\b/u);
+      // more than the bare term (review round 2: the statement's hint was only "Betriebskostenabrechnung.")
+      expect(hint!.split(/\s+/).length, kind).toBeGreaterThan(6);
+    }
+    // what the rules engine does for it: twelve months to object, a late back-payment usually not owed (§ 556 Abs. 3 BGB)
+    expect(DOCUMENT_KIND_COPY.operating_costs.hint).toMatch(/twelve months .*object/);
+    expect(DOCUMENT_KIND_COPY.operating_costs.hint).toMatch(/back-payment .* usually isn't owed/);
+    // a hardship objection must reach the landlord two months before the end (§ 574b Abs. 2 BGB)
+    expect(DOCUMENT_KIND_COPY.landlord_notice.hint).toMatch(/two months before the tenancy ends/);
+    // until the end of the second calendar month after it arrives (§ 558b Abs. 2 BGB)
+    expect(DOCUMENT_KIND_COPY.rent_increase.hint).toMatch(/end of the second month after it arrives/);
+  });
+
+  it("uses one icon per meaning: the hourglass is the Deadline kind only (R2-ui-foundations-3)", () => {
+    const icons = Object.values(MEANING_ICONS);
+    expect(new Set(icons).size, "one meaning per icon").toBe(icons.length);
+    expect(MEANING_ICONS.deadline).toBe(Hourglass);
+    // Clock already means "Waiting to be read", past, expired and ended
+    expect(icons).not.toContain(Clock);
+    for (const c of [ITEM_KIND_COPY.deadline, MARKER_KIND_COPY.deadline, SUGGESTION_KIND_COPY.deadline]) expect(c.icon).toBe(MEANING_ICONS.deadline);
+    expect(DOCUMENT_STATUS_COPY.held.icon).toBe(MEANING_ICONS.notReadYet);
+    expect(WAITING_STATUS_COPY.waiting.icon).toBe(MEANING_ICONS.waitingFor);
+    // nothing else in any copy map borrows the hourglass
+    for (const { name, map } of ENUM_COVERAGE)
+      for (const [value, c] of Object.entries(map)) if (c.icon === Hourglass) expect(`${name}: ${value}`).toMatch(/: deadline$/);
   });
 
   it("uses the SPEC §21 trust wording", () => {

@@ -14,6 +14,7 @@ import { Field, Select } from "@/components/ui/Field";
 import { Popover } from "@/components/ui/Popover";
 import { toast } from "@/components/ui/Toast";
 import { DOCUMENT_KIND_COPY, documentKindLabel } from "@/lib/copy";
+import { softHyphens } from "@/lib/germanTerms";
 import { isStaticDemo } from "@/mocks/mode";
 
 const HIGH_STAKES = new Set<string>(HIGH_STAKES_KINDS);
@@ -21,6 +22,25 @@ const HIGH_STAKES = new Set<string>(HIGH_STAKES_KINDS);
 const EVERYDAY = DOCUMENT_KINDS.filter((k) => !HIGH_STAKES.has(k) && k !== "other")
   .slice()
   .sort((a, b) => documentKindLabel(a).localeCompare(documentKindLabel(b)));
+
+/**
+ * A kind's hint leads with the German word on the letter itself — "Mahnbescheid: two weeks …",
+ * "Kündigung by your employer: …" — and goes on in English. That word is marked German, so a screen
+ * reader says it in a German voice and it breaks where German breaks it (as `GermanTerms` does
+ * in titles).
+ */
+export function KindHint({ text }: { text: string }) {
+  const found = /^([^\s:]+)(.*)$/su.exec(text);
+  if (!found) return <>{text}</>;
+  return (
+    <>
+      <span lang="de" className="hyphens-manual">
+        {softHyphens(found[1]!)}
+      </span>
+      {found[2]}
+    </>
+  );
+}
 
 function KindForm({ doc, close }: { doc: Pick<Document, "id" | "kind">; close: () => void }) {
   const update = useUpdateDocument();
@@ -55,12 +75,12 @@ function KindForm({ doc, close }: { doc: Pick<Document, "id" | "kind">; close: (
     >
       <div>
         {/* a phone sheet shows the label as its title */}
-        <h2 className="text-[15px] font-semibold text-ink in-sheet:hidden">What kind of letter is this?</h2>
-        <p className="mt-1 text-[13px] leading-5 text-muted in-sheet:mt-0">
+        <h2 className="text-md font-semibold text-ink in-sheet:hidden">What kind of letter is this?</h2>
+        <p className="mt-1 text-sm leading-5 text-muted in-sheet:mt-0">
           The kind decides which deadlines the law adds and which advice you see. Change it if Ordnung got it wrong.
         </p>
       </div>
-      <Field label="Kind of letter" hint={hint}>
+      <Field label="Kind of letter" hint={hint ? <KindHint text={hint} /> : undefined}>
         <Select value={kind} onChange={(e) => setKind(e.target.value as DocumentKind)}>
           <optgroup label="Letters with deadlines set by law">
             {HIGH_STAKES_KINDS.map((k) => (
@@ -79,7 +99,7 @@ function KindForm({ doc, close }: { doc: Pick<Document, "id" | "kind">; close: (
         </Select>
       </Field>
       {staticDemo ? (
-        <p className="text-[12.5px] leading-5 text-muted">
+        <p className="text-sm leading-5 text-muted">
           In this online demo the kind is saved, but the letter's own dates stay as they were and the new kind's deadlines aren't
           added — the installed app works them out again for the new kind.
         </p>
@@ -100,7 +120,7 @@ function KindForm({ doc, close }: { doc: Pick<Document, "id" | "kind">; close: (
 export function KindPicker({ doc }: { doc: Pick<Document, "id" | "kind"> }) {
   return (
     <Popover label="What kind of letter is this?" placement="bottom-start" className="w-[22rem] p-4" content={(close) => <KindForm doc={doc} close={close} />}>
-      <Button size="sm" variant="ghost" icon={Pencil} aria-label="Change what kind of letter this is" className="h-7 px-2 text-[12.5px]">
+      <Button size="sm" variant="ghost" icon={Pencil} aria-label="Change what kind of letter this is" className="h-7 px-2 text-xs">
         Change
       </Button>
     </Popover>

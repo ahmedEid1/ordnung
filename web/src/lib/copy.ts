@@ -43,6 +43,7 @@ import {
   FileX,
   Flag,
   Folder,
+  FolderInput,
   GraduationCap,
   HandCoins,
   Handshake,
@@ -56,6 +57,7 @@ import {
   ListTodo,
   LoaderCircle,
   Mail,
+  MailQuestionMark,
   Milestone,
   TreePalm,
   PiggyBank,
@@ -69,6 +71,7 @@ import {
   ShieldAlert,
   ShieldPlus,
   Signature,
+  Signpost,
   Smartphone,
   Sparkles,
   Stamp,
@@ -221,6 +224,24 @@ export interface EnumCopy {
 
 type CopyMap<K extends string> = Record<K, EnumCopy>;
 
+/**
+ * One icon per meaning, wherever it shows (copy maps, section headers, cards, buttons): an icon
+ * that stands for two things makes both unreadable. The hourglass is the Deadline kind and nothing
+ * else — not what you wait for from others, not letters nobody has read, not a contract's
+ * "Decide by". Never use `Clock` for these either: it is "Waiting to be read", past, expired and
+ * ended.
+ */
+export const MEANING_ICONS = {
+  /** the Deadline kind: a date the law or a letter sets (pink tiles, "deadlines on your timeline") */
+  deadline: Hourglass,
+  /** "Waiting for": a reply, money or a promise you expect from someone else */
+  waitingFor: MailQuestionMark,
+  /** a letter the watched folder or an e-mail brought in that nobody has read yet (as in the Inbox) */
+  notReadYet: FolderInput,
+  /** a contract's "Decide by": the last day to choose whether to cancel or keep it */
+  decideBy: Signpost,
+} as const satisfies Record<string, LucideIcon>;
+
 // ------------------------------------------------------------------------------------------------
 // Documents
 // ------------------------------------------------------------------------------------------------
@@ -256,9 +277,9 @@ export const DOCUMENT_KIND_COPY: CopyMap<DocumentKind> = {
   court_payment_order: { label: "Court payment order", icon: Gavel, tone: "payment", hint: "Mahnbescheid: two weeks to pay or object (one week at a labour court)." },
   enforcement_order: { label: "Enforcement order", icon: Gavel, tone: "payment", hint: "Vollstreckungsbescheid: two weeks to object (one week at a labour court)." },
   dismissal: { label: "Dismissal", icon: UserX, tone: "task", hint: "Kündigung by your employer: three weeks to go to court." },
-  landlord_notice: { label: "Notice from your landlord", icon: KeyRound, tone: "contract", hint: "Kündigung of your flat." },
-  rent_increase: { label: "Rent increase request", icon: TrendingUp, tone: "payment", hint: "Mieterhöhungsverlangen: you decide whether to agree." },
-  operating_costs: { label: "Operating-cost statement", icon: ReceiptEuro, tone: "payment", hint: "Betriebskostenabrechnung." },
+  landlord_notice: { label: "Notice from your landlord", icon: KeyRound, tone: "contract", hint: "Kündigung of your flat: a hardship objection must reach your landlord at least two months before the tenancy ends." },
+  rent_increase: { label: "Rent increase request", icon: TrendingUp, tone: "payment", hint: "Mieterhöhungsverlangen: until the end of the second month after it arrives to decide whether to agree." },
+  operating_costs: { label: "Operating-cost statement", icon: ReceiptEuro, tone: "payment", hint: "Betriebskostenabrechnung: twelve months from its arrival to object; a back-payment billed over a year after the billing period usually isn't owed." },
 };
 
 export const DOCUMENT_STATUS_COPY: CopyMap<DocumentStatus> = {
@@ -267,7 +288,7 @@ export const DOCUMENT_STATUS_COPY: CopyMap<DocumentStatus> = {
   processed: { label: "Filed", icon: CircleCheck, tone: "ok" },
   needs_review: { label: "Please check", icon: TriangleAlert, tone: "warn", hint: "Something in this letter needs a quick look from you." },
   failed: { label: "Couldn't read", icon: CircleX, tone: "danger" },
-  held: { label: "Not read yet", icon: Hourglass, tone: "accent", hint: "From your watched folder: stored on this computer, not sent to Claude until you say so." },
+  held: { label: "Not read yet", icon: MEANING_ICONS.notReadYet, tone: "accent", hint: "From your watched folder: stored on this computer, not sent to Claude until you say so." },
 };
 
 export const DIRECTION_COPY: CopyMap<Direction> = {
@@ -289,7 +310,7 @@ export const GROUNDING_COPY: CopyMap<Grounding> = {
 // ------------------------------------------------------------------------------------------------
 
 export const ITEM_KIND_COPY: CopyMap<ItemKind> = {
-  deadline: { label: "Deadline", icon: Hourglass, tone: "deadline" },
+  deadline: { label: "Deadline", icon: MEANING_ICONS.deadline, tone: "deadline" },
   payment: { label: "Payment", icon: Euro, tone: "payment" },
   appointment: { label: "Appointment", icon: CalendarClock, tone: "appointment" },
   task: { label: "To-do", icon: ListTodo, tone: "task" },
@@ -351,7 +372,7 @@ export const TIMELINE_TYPE_COPY: CopyMap<TimelineType> = {
 };
 
 export const MARKER_KIND_COPY: CopyMap<MarkerKind> = {
-  deadline: { label: "Deadline", icon: Hourglass, tone: "deadline" },
+  deadline: { label: "Deadline", icon: MEANING_ICONS.deadline, tone: "deadline" },
   send_by: { label: "Send by", icon: Send, tone: "deadline" },
   cancel_by: { label: "Cancel by", icon: FileX, tone: "warn" },
   renewal: { label: "Renews", icon: Recycle, tone: "contract" },
@@ -381,7 +402,7 @@ export const LANE_BAR_STATUS_COPY: CopyMap<LaneBarStatus> = {
 // ------------------------------------------------------------------------------------------------
 
 export const SUGGESTION_KIND_COPY: CopyMap<SuggestionKind> = {
-  deadline: { label: "Deadline", icon: Hourglass, tone: "deadline" },
+  deadline: { label: "Deadline", icon: MEANING_ICONS.deadline, tone: "deadline" },
   saving: { label: "Save money", icon: PiggyBank, tone: "ok" },
   risk: { label: "Heads-up", icon: TriangleAlert, tone: "warn" },
   followup: { label: "Follow up", icon: Send, tone: "appointment" },
@@ -512,7 +533,7 @@ export const WAITING_SOURCE_COPY: CopyMap<WaitingSource> = {
 
 /** … and how it stands (nothing is closed for the person: "answered" asks them to check). */
 export const WAITING_STATUS_COPY: CopyMap<WaitingStatus> = {
-  waiting: { label: "Waiting", icon: Hourglass, tone: "neutral" },
+  waiting: { label: "Waiting", icon: MEANING_ICONS.waitingFor, tone: "neutral" },
   overdue: { label: "Overdue", icon: AlarmClock, tone: "danger" },
   answered: { label: "Answered — check it", icon: CircleCheck, tone: "ok" },
   closed: { label: "Closed", icon: CircleCheckBig, tone: "neutral" },

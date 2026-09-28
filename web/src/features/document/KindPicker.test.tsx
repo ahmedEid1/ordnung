@@ -3,6 +3,8 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, makeTestQueryClient } from "@/test/render";
 import { toast } from "@/components/ui/Toast";
+import { HIGH_STAKES_KINDS } from "@/api/types";
+import { DOCUMENT_KIND_COPY } from "@/lib/copy";
 import { KindPicker } from "./KindPicker";
 
 let fetchSpy: ReturnType<typeof vi.fn>;
@@ -45,5 +47,28 @@ describe("KindPicker", () => {
     expect(note).not.toBeNull();
     expect(description).toMatch(/online demo the new kind's dates and deadlines aren't worked out/);
     expect(description).not.toMatch(/were worked out again/);
+  });
+
+  it("says what each letter kind with legal deadlines changes, its German name marked German (R2-ui-foundations-5)", async () => {
+    renderWithProviders(<KindPicker doc={{ id: "doc_1", kind: "operating_costs" }} />, { client: makeTestQueryClient() });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Change what kind of letter this is" }));
+    const select = screen.getByLabelText(/Kind of letter/);
+    const hintOf = () => document.getElementById(select.getAttribute("aria-describedby")!.split(" ")[0]!)!;
+    // more than the bare German word: what the kind changes
+    const soft = /\u00ad/g;
+    expect(hintOf().textContent!.replace(soft, "")).toMatch(/^Betriebskostenabrechnung: twelve months from its arrival to object; .*back-payment/);
+    const term = hintOf().querySelector('[lang="de"]')!;
+    expect(term.textContent!.replace(soft, "")).toBe("Betriebskostenabrechnung");
+    // only the German word: the English rest is read in the page's language
+    expect(term.textContent).not.toMatch(/twelve/);
+    for (const kind of HIGH_STAKES_KINDS) {
+      await user.selectOptions(select, kind);
+      const hint = hintOf();
+      expect(hint.textContent!.replace(soft, "")).toBe(DOCUMENT_KIND_COPY[kind].hint);
+      const german = hint.querySelector('[lang="de"]')!.textContent!.replace(soft, "");
+      expect(DOCUMENT_KIND_COPY[kind].hint!.startsWith(german), kind).toBe(true);
+      expect(german, kind).toMatch(/^[A-ZÄÖÜ]\p{Ll}+$/u);
+    }
   });
 });

@@ -232,7 +232,8 @@ describe("the advice card of a high-stakes letter", () => {
     const select = within(dialog).getByLabelText("Kind of letter");
     expect(within(select).getByRole("group", { name: "Letters with deadlines set by law" })).toBeInTheDocument();
     await user.selectOptions(select, "court_payment_order");
-    expect(within(dialog).getByText(/Mahnbescheid: two weeks to pay or object/)).toBeInTheDocument();
+    // the hint (its German name is marked German, so the text runs across two elements)
+    expect(within(dialog).getByText((_, el) => el?.tagName === "P" && /^Mahnbescheid: two weeks to pay or object/.test(el.textContent ?? ""))).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
     await vi.waitFor(() => expect(patched).toEqual([{ kind: "court_payment_order" }]));
   });
