@@ -52,7 +52,15 @@ refused, and whether there is one is asked without reading a secret (reading can
 a keyring). While a calendar is connected, Ordnung doesn't also suggest importing the calendar file
 (the same UIDs would clash), and "Delete everything" first removes Ordnung's events and the
 password — refusing, with nothing deleted, when it can't: after the wipe nothing would remember
-which events were Ordnung's. Discovery (well-known URI, principal, calendar
+which events were Ordnung's. A digest records what was sent, not what the calendar still holds,
+so once a day (and on "Sync now") Ordnung asks — with a `calendar-multiget` of its own resource
+names only — which are still there, and sends missing ones again: an event deleted in the calendar
+app, or by another copy of Ordnung, comes back instead of staying lost while Settings says
+"synced". A backup carries the connection (address, mode) but it belongs to its data folder: the
+keyring account names the folder's connection id, and a restored copy gets a new one and starts
+paused without a password or any claim on the original's events — so a copy restored next to the
+running Ordnung (or on a new computer while the old one still syncs) can't remove the original's
+events or delete its password. Discovery (well-known URI, principal, calendar
 home) makes "iCloud with an app password" work without hunting for a calendar URL. Chosen over
 publishing a feed URL (a public link to the ledger) and over the `caldav` library (a large
 dependency for four requests). Policy: `ordnung/calendar/caldav.py`.
@@ -85,6 +93,10 @@ data unless asked (`--force`), and then moves it aside; it never runs under a he
 - The browser download holds the whole backup in memory before saving it (a Blob); very large data
   folders are better backed up with `ordnung backup`.
 - Calendar sync overwrites an event of Ordnung's that the person edited in their calendar app at
-  the next change in Ordnung — Ordnung's dates are changed in Ordnung. Servers that only accept
+  the next change in Ordnung, and puts back one they deleted there at the next daily check —
+  Ordnung's dates are changed in Ordnung. Two Ordnungs syncing one calendar (both connected by
+  hand) still change each other's events; the restore says to disconnect the original first.
+  Events the original sent after the backup was made stay in the calendar when it disconnects
+  without removing them. Servers that only accept
   Digest authentication or OAuth (Google Calendar) are not supported; Google users keep the `.ics`
   download.

@@ -75,7 +75,9 @@ pages and bytes were sent, tokens, API-equivalent cost, and whether it came from
   history, so the app switches it on as **Discreet**: "Ordnung — 1 due today · 2 more this week",
   never a title, a name, an organisation or an amount. **With details** shows the first three things with
   their amounts and days; choose it only on a screen nobody else sees. Letters with scam signs are
-  never in it. The activity log notes that it was shown, with the count only.
+  never in it. The activity log notes that it was sent to the system, with the count only. (That
+  is all Ordnung can know: the system may still keep it back — on macOS until notifications are
+  allowed for Script Editor, and under Focus or Do not disturb; Settings says where to look.)
 - **Start at login** (`ordnung autostart enable`) writes one file that starts `ordnung serve` when you
   log in (a systemd user service, a LaunchAgent or a Startup-folder entry), and prints it before
   anything else. The server's sign-in link carries the session token, so the service throws away
@@ -98,16 +100,24 @@ third party** — your calendar provider — so:
 - **Your app password stays in your system's password store** (Keychain, Credential Locker, GNOME
   Keyring / KWallet), never in Ordnung's database, a log or a backup. A "password store" that
   doesn't keep it safely — Python keyring's `null` backend, or the plain-text and home-made files of
-  `keyrings.alt` — is refused, not used. Ordnung reads the password only to connect, to send a change
-  and to disconnect, so opening Settings doesn't ask a locked keyring to unlock. Use an app password
+  `keyrings.alt` — is refused, not used. Ordnung reads the password only to connect, to send a change,
+  to check once a day that its events are still in the calendar, and to disconnect — opening
+  Settings never reads it, so it doesn't ask a locked keyring to unlock. Use an app password
   from your provider, not your main password. Ordnung talks to the calendar only over `https://`
   (or plain `http://` to a server on this computer) and checks its certificate.
 - **Only Ordnung's own events.** Ordnung adds, updates and removes the events it created, and never
   reads or changes anything else in that calendar — a calendar of its own, named "Ordnung", keeps
-  things tidy. Disconnecting forgets the password and can remove Ordnung's events first; "Delete
-  everything" always removes them (and forgets the password) before it deletes anything.
+  things tidy. Once a day (and on *Sync now*) it asks the server which of *its own* events are still
+  there, by name, and puts back any that went missing. Disconnecting forgets the password and can
+  remove Ordnung's events first; "Delete everything" always removes them (and forgets the password)
+  before it deletes anything.
 - **When.** When you connect, when you press *Sync now*, and every 15 minutes while `ordnung serve`
   runs — only what changed is sent. The activity log notes each sync that sent or removed events.
+- **A restored backup doesn't take over the calendar.** The backup holds the calendar's address and
+  mode, never the password. A restored copy starts with calendar sync waiting: it sends, changes and
+  removes nothing, and never touches the password the original Ordnung keeps on the same computer,
+  until you enter the app password in it. If the Ordnung the backup came from still syncs to that
+  calendar, disconnect it there first — two copies would change each other's events.
 
 ## Encrypted backups
 
@@ -129,6 +139,9 @@ took from them is), the lock and the running server's session file.
   every file must match the backup's own list of hashes and row counts. It never replaces a data
   folder that holds data unless you add `--force`, and then moves the old folder aside instead of
   deleting it. `ordnung restore FILE --check` verifies a backup without restoring anything.
+- **Links are never followed — and never silently.** A folder inside the data folder that is a link
+  to somewhere else (originals moved to a bigger drive) is not in the backup; `ordnung backup` and
+  Settings name it before the backup is made, so you can back it up separately.
 
 ## Hardening built into every model call
 

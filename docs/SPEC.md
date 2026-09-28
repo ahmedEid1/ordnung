@@ -573,8 +573,11 @@ their docstrings):
   (3 a day at most) and the last failure is shown in Settings; a missing tool uses the day up;
   never in the demo. Shown with `notify-send`, `osascript` (fixed script, texts as arguments) or a
   Windows PowerShell toast (fixed script, texts in environment variables) — argument lists, never a
-  shell; a missing tool or an error breaks nothing. Settings shows today's text in both modes and
-  can show a test notification (it doesn't use the day up).
+  shell; a missing tool or an error breaks nothing. A tool that took it counts as *sent to the
+  system* (the activity log says so): the system may still keep it back (macOS without permission
+  for Script Editor, Focus, Do not disturb), so the test's toast and the card say where to look
+  per system. Settings shows today's text in both modes and can show a test notification (it
+  doesn't use the day up); the toast only promises the morning one once the switch is saved.
 - **Start at login** — `ordnung autostart enable|disable|status`: one entry per system (systemd user
   unit + `default.target.wants` link, LaunchAgent, Startup-folder `.cmd`) running
   `<python> -m ordnung --data-dir D serve --no-browser`, written by Ordnung itself (no service
@@ -582,7 +585,8 @@ their docstrings):
   discarded, errors go to the journal / `~/Library/Logs/ordnung.log`. The `.cmd` switches cmd.exe
   to UTF-8 (`chcp 65001`) before any non-ASCII byte, so a user folder like `C:\Users\Jürgen` works.
   Settings offers the command for *this* data folder (`--data-dir` when it isn't the default one;
-  none in the demo).
+  none in the demo). `enable` says when the morning notification is still off. All entries (and
+  backups and restored files) are written through binary descriptors (`O_BINARY` on Windows).
 - **Calendar sync (CalDAV, opt-in)** — `calendar/caldav.py` (policy in its docstring, ADR 0013).
   The person connects one calendar in Settings → Calendar: an address (a calendar's, an account's or
   just the provider's — Ordnung finds the calendars that take events: the address itself, the
@@ -600,11 +604,19 @@ their docstrings):
   leave out invoice payments a later payment reminder took over, as the agenda does). While a
   calendar is connected the `calendar_outdated` Idea ("import the calendar file") is not raised:
   the same UIDs imported by hand would clash. Idempotent: resource names from the stable UIDs; meta `calendar_sync`
-  (`CalendarSyncState`: address, user, mode, SHA-256 per sent event, last report, paused) — only
-  changed events are sent, events that left the export are deleted, only Ordnung's own resources
-  are ever touched. Runs on connect, on "Sync now" and at every tick check of `ordnung serve`
-  (nothing changed: nothing sent and the keyring not read); a refused password pauses automatic
-  runs until a manual sync or a new password; a 400/403 that names the UID is a conflict.
+  (`CalendarSyncState`: address, user, mode, the data folder's connection id, SHA-256 per sent
+  event, last report, paused, whether the password was there when last needed, the day of the
+  last check) — only changed events are sent, events that left the export are deleted, only
+  Ordnung's own resources are ever touched. Runs on connect, on "Sync now" and at every tick check
+  of `ordnung serve` (nothing changed: nothing sent and the keyring not read); once a day and on
+  "Sync now" a `calendar-multiget` REPORT of Ordnung's own resource names finds events that went
+  missing (deleted in the calendar app, or by another Ordnung) and sends them again
+  (`CalendarSyncReport.missing`; a server that can't answer is not asked); entering the password
+  sends every event again. A refused or missing password pauses automatic runs until a manual sync
+  or a new password; a 400/403 that names the UID is a conflict. The keyring account is
+  `<user> @ <address> #<connection>`; a restored backup gets a new connection id with the calendar
+  sync waiting (no password, no events claimed, paused) — it never reads or deletes the original's
+  password or events. The status (`GET /api/calendar/sync`) never reads the keyring.
   "Delete everything" first removes Ordnung's events from a connected calendar and its password
   from the keyring (refused, nothing deleted, when that can't be done). httpx, TLS
   verified, Basic auth, no redirects (same-host redirects only while discovering), 20 s timeout,
@@ -732,7 +744,11 @@ doesn't exist is refused) · `restore BACKUP [--force] [--check]` ·
 If a server is running (`server.json` + live pid) `add`/`ask`/`brief` go through its API; otherwise
 they run in-process under an exclusive data-dir lock. `backup` reads the folder directly (holding
 the lock when it is free, else alongside the running server — the database snapshot is consistent
-either way); `restore` refuses a folder whose lock is held.
+either way); `restore` refuses a folder whose lock is held (naming the stop command when Ordnung
+starts at login for it) and ends with the command that starts the restored folder
+(`ordnung serve --data-dir D` unless it is the default one). A link under `files/`, `derived/`
+or `drafts/` (or one of them being a link) is never followed and is named by `backup` and by
+`GET /api/backup` (`left_out`) before the backup is made.
 
 **Backup format** (`backup/`, ADR 0013): one file = header (`ORDNUNG-BACKUP\n`, format version,
 scrypt parameters N = 2¹⁷ r = 8 p = 1 — a reader accepts at most 256 MiB of scrypt memory and p ≤ 2 —
@@ -744,7 +760,9 @@ Passphrase ≥ 12 characters (NFC). Restore: newer format → refused before any
 wrong passphrase → refused at the header MAC; any other change → refused; the archive is extracted
 under a strict name policy into a staging folder next to the target, read to its authenticated
 end, checked against the manifest (`integrity_check`, schema not newer, row counts), then swapped
-in; a folder with data needs `--force` and is moved to `<folder>.before-restore-<time>`.
+in; a folder with data needs `--force` and is moved to `<folder>.before-restore-<time>`. Each
+restored file's size on disk is checked against the archive's. A restored calendar-sync connection
+starts detached (see calendar sync).
 
 ## 16. Demo mode
 `demo_db/` (prebuilt, committed) is copied into the demo data dir and opens instantly; the 3 *New
