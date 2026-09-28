@@ -114,6 +114,11 @@ def test_a_payment_without_a_reference_gets_a_code_without_one() -> None:
             "replaced",
             "No code: the payment reminder “Zahlungserinnerung” took over this payment — pay once",
         ),
+        (
+            {"attached_bill": "Rechnung September"},
+            "replaced",
+            "No code: the bill attached to this e-mail, “Rechnung September”, asks for this payment — pay once",
+        ),
         ({"other_transfers": 1}, "several", "No code: this letter asks for more than one payment"),
         ({"currency": "CHF"}, "currency", "No code: GiroCodes are for euro transfers, and this is in CHF."),
         ({"amount": None}, "no_amount", "No code: the letter doesn't say how much to pay."),
@@ -893,3 +898,44 @@ def test_a_letter_in_the_trash_and_a_check_of_a_blocked_code(store: Store) -> No
     assert item is not None
     with pytest.raises(CheckRefused, match="this letter is in the trash"):
         record_check(store, item, TransferValues(), TODAY)
+
+
+def test_a_returned_debit_fee_warning_never_turns_a_direct_debit_into_a_code(store: Store) -> None:
+    """Stock wording on a direct-debit bill warns what a returned debit costs: no debit failed, the
+    sender collects the money — a code would pay it twice. Neither the to-do's words nor its sentence
+    lose the debit to the warning."""
+    quote = (
+        "Der Rechnungsbetrag von 49,99 EUR wird am 15.10.2026 per SEPA-Lastschrift von Ihrem Konto abgebucht; "
+        "bei einer Rücklastschrift berechnen wir 3,00 EUR."
+    )
+    _, item_id = letter(store, "debit-bill", telecom(store), quote=quote)
+    store.update_item(
+        item_id,
+        title="Rechnung Oktober 49,99 € per Lastschrift",
+        description="Collected by SEPA direct debit on 15 Oct; a returned debit costs €3.",
+    )
+    code = code_for(store, item_id)
+    assert isinstance(code, GiroCodeBlocked) and code.reason == "direct_debit"
+    # the sentence alone blocks too, whatever the to-do says
+    store.update_item(item_id, title="Pay the October bill", description=None)
+    code = code_for(store, item_id)
+    assert isinstance(code, GiroCodeBlocked) and code.reason == "direct_debit"
+
+
+def test_an_emails_payment_its_attached_bill_asks_for_gets_no_code_the_bill_does(store: Store) -> None:
+    """The one inbox's most common bill: the e-mail repeats the payment of the bill attached to it, with
+    the same bank details. Pay once: the bill gets the code, the e-mail's payment says where it is."""
+    party = telecom(store, ibans=[KNOWN_IBAN])
+    mail_id, mail_payment = letter(store, "bill-email", party, title="Ihre Rechnung ist da")
+    bill_id, bill_payment = letter(store, "bill-pdf", party, title="Rechnung September")
+    with store.tx() as conn:
+        conn.execute("UPDATE documents SET mime = 'message/rfc822' WHERE id = ?", (mail_id,))
+        conn.execute("UPDATE documents SET source = ? WHERE id = ?", (f"email:{mail_id}", bill_id))
+    for item_id in (mail_payment, bill_payment):
+        store.update_item(item_id, due_date="2026-10-15")
+    assert code_for(store, bill_payment) == GiroCodeReady(
+        item_id=bill_payment, payload=PAYLOAD.format(iban=KNOWN_IBAN)
+    )
+    code = code_for(store, mail_payment)
+    assert isinstance(code, GiroCodeBlocked) and code.reason == "replaced"
+    assert "“Rechnung September”" in code.message

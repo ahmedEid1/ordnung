@@ -582,14 +582,20 @@ def send_guidance(
 _SAME_DAY: tuple[str, ...] = ("fax", "online_button", "portal", "email", "in_person")
 
 
+def same_day_channels(guidance: SendGuidance) -> list[SendChannel]:
+    """The channels ``guidance`` allows that reach the recipient the day they are used, the fastest
+    first — never one the letter's form rules out (a notice on a flat by fax, § 568 BGB)."""
+    fast = [c for c in guidance.channels if c.allowed and c.channel in _SAME_DAY]
+    return sorted(fast, key=lambda c: _SAME_DAY.index(c.channel))
+
+
 def _too_late_to_post(guidance: SendGuidance, due: date) -> None:
     """The usual time to post has passed (review round 4 of phase 2: the letter page still said "Post a letter
     by" the last day — for a Notfrist, §§ 700 Abs. 1, 339 ZPO, a letter posted then arrives late): say a letter
     posted today may arrive too late, rank the allowed channels that reach the recipient the same day first and
     recommend the first of them."""
     guidance.post_too_late = True
-    fast = [c for c in guidance.channels if c.allowed and c.channel in _SAME_DAY]
-    fast.sort(key=lambda c: _SAME_DAY.index(c.channel))
+    fast = same_day_channels(guidance)
     rest = [c for c in guidance.channels if c not in fast]
     for channel in guidance.channels:
         channel.recommended = False

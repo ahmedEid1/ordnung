@@ -460,3 +460,44 @@ def seed_ledger(store: Store) -> dict[str, str]:
         sent_channel="email",
     ).id
     return ids
+
+
+def add_emailed_bill(
+    store: Store, *, due: str, amount: float = 49.99, party_id: str | None = None, label: str = "phone-bill"
+) -> dict[str, str]:
+    """An e-mail that repeats the payment of the bill attached to it (the one inbox's most common case):
+    the e-mail's payment to-do is set aside for the bill's. Returns the ids by label (``email``,
+    ``bill``, ``email_payment``, ``bill_payment``)."""
+    email = store.add_document(
+        sha256=_sha(f"{label}-email"),
+        filename=f"{label}.eml",
+        mime="message/rfc822",
+        file_path=f"files/{label}.eml",
+        status="processed",
+    )
+    store.update_document(email.id, kind="invoice", title="Your phone bill is here", party_id=party_id)
+    bill = store.add_document(
+        sha256=_sha(f"{label}-pdf"),
+        filename=f"{label}.pdf",
+        mime="application/pdf",
+        file_path=f"files/{label}.pdf",
+        source=f"email:{email.id}",
+        status="processed",
+    )
+    store.update_document(bill.id, kind="invoice", title="Phone bill September", party_id=party_id)
+    common = {
+        "kind": "payment",
+        "title": "Pay the phone bill",
+        "party_id": party_id,
+        "area": "money",
+        "due_date": due,
+        "amount": amount,
+        "currency": "EUR",
+        "direction": "out",
+    }
+    return {
+        "email": email.id,
+        "bill": bill.id,
+        "email_payment": add_item(store, doc_id=email.id, **common),
+        "bill_payment": add_item(store, doc_id=bill.id, **common),
+    }

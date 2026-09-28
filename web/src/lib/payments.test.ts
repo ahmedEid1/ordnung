@@ -46,6 +46,30 @@ describe("isDirectDebit", () => {
     expect(isDirectDebit(item)).toBe(false);
     expect(isTransfer({ ...item, direction: "out" })).toBe(true);
   });
+
+  it.each([
+    ["Pay the returned direct debit plus the €3 fee", null],
+    ["Rücklastschriftgebühr 3,00 € bezahlen", null],
+    ["Rundfunkbeitrag: direct debit failed", "Pay 55.08 € by 15.10.2026"],
+    ["Rücklastschrift Rundfunkbeitrag", "Pay 55.08 € if you haven't yet"],
+  ])("%s / %s says its debit failed as a fact", (title, action) => {
+    expect(isDirectDebit(todo(title, action))).toBe(false);
+  });
+
+  // a warning of what a returned debit costs is stock wording on a direct-debit bill; "returned"
+  // without a debit beside it is anything returned
+  it.each([
+    ["Monthly fee €49.90 collected by direct debit", "Keep the account covered; a returned debit (Rücklastschrift) costs €3."],
+    ["Rechnung Oktober 49,99 € per Lastschrift", "Collected by SEPA direct debit on 15 Oct; a returned debit costs €3."],
+    ["Beitrag per Lastschrift", "Bei Rücklastschrift berechnen wir 3,00 € Gebühr."],
+    ["Beitrag per Lastschrift", "Sollte die Lastschrift nicht eingelöst werden, fallen Gebühren an."],
+    ["Beitrag per Lastschrift", "Im Falle einer Rücklastschrift tragen Sie die Kosten."],
+    ["Beitrag per Lastschrift", "If the debit is returned, the bank charges a fee."],
+    ["Router rental collected by direct debit", "The router must be returned within 14 days."],
+    ["Leihgerät per Lastschrift", "Das Gerät muss zurückgegeben werden."],
+  ])("%s / %s stays a direct debit", (title, description) => {
+    expect(isDirectDebit({ kind: "payment", title, action: null, description })).toBe(true);
+  });
 });
 
 describe("paymentReference", () => {

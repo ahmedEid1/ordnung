@@ -277,3 +277,21 @@ def test_an_invoice_payment_a_payment_reminder_took_over_is_left_out(store: Stor
     assert f"{paid_by_invoice}@ordnung.local" not in uids
     store.trash_document(reminder)  # the reminder goes to the trash: the invoice's payment is back
     assert f"{paid_by_invoice}@ordnung.local" in set(_events(build_ics(store)))
+
+
+def test_an_emailed_bill_is_one_event_and_leaves_with_the_bill_paid(store: Store) -> None:
+    """An e-mail repeating its attached bill's payment: the bill is the one to pay, so the calendar (and
+    calendar sync, which sends these events) carries one "Pay" event — and the e-mail's copy doesn't stay
+    behind, reminding of a bill already paid, once the bill's to-do is done."""
+    from helpers_secretary import add_emailed_bill
+
+    bill = add_emailed_bill(store, due="2026-10-15")
+    uids = set(_events(build_ics(store)))
+    assert f"{bill['bill_payment']}@ordnung.local" in uids
+    assert f"{bill['email_payment']}@ordnung.local" not in uids
+    store.update_item(bill["bill_payment"], status="done")
+    uids = set(_events(build_ics(store)))
+    assert f"{bill['email_payment']}@ordnung.local" not in uids
+    assert f"{bill['bill_payment']}@ordnung.local" not in uids
+    store.trash_document(bill["bill"])  # the bill goes: the e-mail's payment is the one to pay again
+    assert f"{bill['email_payment']}@ordnung.local" in set(_events(build_ics(store)))

@@ -20,7 +20,9 @@ reason the person reads:
    signs (in the trash too): a scam letter teaches its sender's IBANs like any other, so a follow-up
    asking for the same account looks clean on its own.
 4. **It is the payment to make from this letter** — not an invoice payment a payment reminder took
-   over (pay once, from the reminder), and not one of several: a letter's bank details are read once
+   over (pay once, from the reminder), not an e-mail's payment its attached bill asks for too (pay
+   once, from the bill: :meth:`~ordnung.secretary.triggers.Ledger.is_covered_by_attachment`), and not
+   one of several: a letter's bank details are read once
    per letter, and when it asks for several transfers its reference may belong to only one of them.
    A one-off payment must be the letter's only open one-off transfer — a new monthly amount the same
    letter sets (the advance payments a utility statement adjusts, § 560 Abs. 4 BGB) is paid by
@@ -135,6 +137,8 @@ class TransferFacts:
     trashed: bool = False
     #: the title of the payment reminder that took this payment over
     replaced_by: str | None = None
+    #: the title of the bill attached to this e-mail that asks for the same payment
+    attached_bill: str | None = None
     #: the letter's other open payments to make
     other_transfers: int = 0
     scam: ScamSign | None = None
@@ -233,6 +237,13 @@ def _not_this_one(facts: TransferFacts) -> GiroCodeBlocked | None:
             "replaced",
             f"No code: the payment reminder “{facts.replaced_by}” took over this payment — pay once, "
             "with the reminder's details.",
+        )
+    if facts.attached_bill is not None:
+        return _blocked(
+            facts,
+            "replaced",
+            f"No code: the bill attached to this e-mail, “{facts.attached_bill}”, asks for this payment — "
+            "pay once, with the bill's details.",
         )
     if facts.other_transfers:
         return _blocked(
@@ -429,6 +440,17 @@ def amount_grounding(item: Item) -> Grounding:
     )
 
 
+def amount_confirmed(store: Store, item: Item) -> bool:
+    """The amount of a letter's payment is grounded as point 6 wants it: stated by a sentence found in
+    the text layer, or compared by the person with the paper letter (their last check, at this amount).
+    The weekly session's *Pay this week* uses it, so it never calls an amount confirmed that the Pay
+    panel still asks to compare."""
+    if item.amount is None or amount_grounding(item) == "verified":
+        return True
+    checked = last_check(store, item.id)
+    return checked is not None and checked.amount is not None and abs(checked.amount - item.amount) < 0.005
+
+
 def debit_in_letter(item: Item) -> bool:
     """The sentence ``item`` was read from speaks of a direct debit (policy point 1)."""
     return any(debit_in_sentence(evidence.quote) for evidence in item.evidence)
@@ -525,6 +547,7 @@ def transfer_facts(
     reminder = (
         ledger.covering_reminders().get(document.id) if ledger.is_superseded_by_reminder(item) else None
     )
+    bill = ledger.covering_attachments().get(item.id) if ledger.is_covered_by_attachment(item) else None
     others = [other for other in siblings if _competes(ledger, item, other)]
     iban_grounding: Grounding = "unverified"
     if iban is not None:
@@ -541,6 +564,7 @@ def transfer_facts(
         debit_in_letter=debit_in_letter(item),
         trashed=document.deleted_at is not None,
         replaced_by=(reminder.title or reminder.filename) if reminder is not None else None,
+        attached_bill=(bill.title or bill.filename) if bill is not None else None,
         other_transfers=len(others),
         scam=_scam_sign(store, ledger, document, party),
         party=party.name if party else None,

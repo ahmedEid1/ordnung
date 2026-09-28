@@ -81,7 +81,8 @@ def _letter_area(ledger: Ledger, draft: Draft) -> Area:
     return doc.area if doc is not None and doc.area else "other"
 
 
-def _delivered_on(ledger: Ledger, draft: Draft) -> date | None:
+def delivered_on(ledger: Ledger, draft: Draft) -> date | None:
+    """The earliest day a proof of arrival (a delivery record, a return receipt) shows (``None``: none)."""
     days = [
         day
         for proof in ledger.proofs_of(draft.id)
@@ -109,7 +110,7 @@ def _letter_note(ledger: Ledger, draft: Draft, status: WaitingStatus, reply: Doc
     answers = ledger.document(draft.doc_id)
     why = waiting_context(draft.kind, answers.kind if answers is not None else None)
     context = f" {why}" if why else ""
-    delivered = _delivered_on(ledger, draft)
+    delivered = delivered_on(ledger, draft)
     proof = f" Your proof shows it was delivered on {day_label(delivered, today)}." if delivered else ""
     tracking = tracking_info(draft.tracking_number)
     number = f" Tracking number {tracking.display}." if tracking else ""
@@ -169,7 +170,7 @@ def _is_money_owed(ledger: Ledger, item: Item) -> bool:
         and item.direction == "in"
         and item.recurrence is None
         and is_active(item, ledger.today)
-        and not ledger.is_suspicious_item(item)
+        and not ledger.is_set_aside(item)
         and not was_history_when_filed(item)
     )
 

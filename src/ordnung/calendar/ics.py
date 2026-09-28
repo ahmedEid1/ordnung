@@ -285,15 +285,13 @@ def _calendar(profile: Profile) -> Calendar:
 
 
 def _exported_items(ledger: Ledger, include_done: bool) -> list[Item]:
-    """Dated to-dos, without letters with scam signs and without invoice payments a later payment
-    reminder took over (the reminder is the one to act on, as on the agenda)."""
+    """Dated to-dos, none set aside (:meth:`~ordnung.secretary.triggers.Ledger.is_set_aside`: letters
+    with scam signs, invoice payments a later payment reminder took over, an e-mail's payment its
+    attached bill repeats — the other letter is the one to act on, as on the agenda)."""
     return [
         item
         for item in ledger.items
-        if item.due_date
-        and (include_done or item.status in OPEN_STATUSES)
-        and not ledger.is_suspicious_item(item)
-        and not ledger.is_superseded_by_reminder(item)
+        if item.due_date and (include_done or item.status in OPEN_STATUSES) and not ledger.is_set_aside(item)
     ]
 
 

@@ -89,6 +89,51 @@ def test_a_to_do_whose_debit_failed_or_that_moves_in_is_a_payment_to_make(
 
 
 @pytest.mark.parametrize(
+    ("title", "action"),
+    [
+        ("Pay the returned direct debit plus the €3 fee", None),
+        ("Rücklastschriftgebühr 3,00 € bezahlen", None),
+        ("Rundfunkbeitrag: direct debit failed", "Pay 55.08 € by 15.10.2026"),
+        # a warning word in another part doesn't hide the failure its own part states
+        ("Rücklastschrift Rundfunkbeitrag", "Pay 55.08 € if you haven't yet"),
+    ],
+)
+def test_a_failed_debit_stated_as_a_fact_is_still_one(title: str, action: str | None) -> None:
+    assert not is_direct_debit(todo(title, action))
+
+
+def described(title: str, description: str) -> Item:
+    return todo(title).model_copy(update={"description": description})
+
+
+@pytest.mark.parametrize(
+    ("title", "description"),
+    [
+        # a warning of what a returned debit costs is stock wording on a direct-debit bill
+        (
+            "Monthly fee €49.90 collected by direct debit",
+            "Keep the account covered; a returned debit (Rücklastschrift) costs €3.",
+        ),
+        (
+            "Rechnung Oktober 49,99 € per Lastschrift",
+            "Collected by SEPA direct debit on 15 Oct; a returned debit costs €3.",
+        ),
+        ("Beitrag per Lastschrift", "Bei Rücklastschrift berechnen wir 3,00 € Gebühr."),
+        ("Beitrag per Lastschrift", "Sollte die Lastschrift nicht eingelöst werden, fallen Gebühren an."),
+        ("Beitrag per Lastschrift", "Im Falle einer Rücklastschrift tragen Sie die Kosten."),
+        ("Beitrag per Lastschrift", "If the debit is returned, the bank charges a fee."),
+        # "returned" or "zurückgegeben" without a debit beside it is anything returned
+        ("Router rental collected by direct debit", "The router must be returned within 14 days."),
+        ("Leihgerät per Lastschrift", "Das Gerät muss zurückgegeben werden."),
+    ],
+)
+def test_a_warning_of_a_failed_debit_or_something_returned_keeps_the_debit(
+    title: str, description: str
+) -> None:
+    assert is_direct_debit(described(title, description))
+
+
+@pytest.mark.parametrize(
     "sentence",
     [
         "Der Monatsbeitrag von 29,90 € wird zum 1. eines Monats per SEPA-Lastschrift eingezogen.",
@@ -113,6 +158,25 @@ def test_a_to_do_whose_debit_failed_or_that_moves_in_is_a_payment_to_make(
     ],
 )
 def test_a_sentence_naming_a_debit_speaks_of_one(sentence: str) -> None:
+    assert debit_in_sentence(sentence)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        # the stock warning on a direct-debit bill: no failure happened, the money is collected
+        "Der Betrag von 49,90 € wird am 01.10.2026 per SEPA-Lastschrift von Ihrem Konto abgebucht; bei einer "
+        "Rücklastschrift berechnen wir 3,00 € Gebühr.",
+        "Wir buchen 29,90 € am 15.10. per SEPA-Lastschrift ab, sollte die Lastschrift nicht eingelöst werden, "
+        "fallen Gebühren an.",
+        "Der Betrag wird am 15.10. abgebucht. Bei Rücklastschrift berechnen wir 3,00 € Gebühr.",
+        "Der Beitrag wird per Lastschrift eingezogen (für jede Rücklastschrift berechnen wir 3,00 €).",
+        "The amount will be debited on 15 October; a returned debit costs €3.",
+        # a failure in another clause than the debit it names cancels nothing: no code is the safe side
+        "Der Beitrag wird ab sofort wieder abgebucht, die letzte Lastschrift wurde zurückgegeben.",
+    ],
+)
+def test_a_failure_only_warned_of_or_in_another_clause_keeps_the_debit(sentence: str) -> None:
     assert debit_in_sentence(sentence)
 
 

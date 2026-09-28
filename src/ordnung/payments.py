@@ -4,17 +4,26 @@ money that moves without them (a SEPA direct debit the sender collects, money co
 
 Policy (ADR 0007):
 
+* **A debit failed** (:func:`debit_failed`) when one clause says so as a fact: a *Rücklastschrift*;
+  a debit (Lastschrift, Abbuchung, Einzug, debit, payment, Zahlung) returned, booked back, recalled,
+  failed or bounced; "mangels Deckung", "nicht gedeckt", "konnte nicht eingezogen werden", "could
+  not be debited". A clause that only warns of one says no such thing: a condition or what a
+  returned debit costs (:data:`_WARNING`: *bei* opening the clause, *falls*, *sollte*, *wenn*,
+  *sofern*, *im Fall*, *für jede*, *if*, *in case*, *should*, *each*, *every*, *kostet*, *Kosten*,
+  *cost*) — the stock "Bei Rücklastschrift berechnen wir 3,00 € Gebühr" on a direct-debit bill.
+  "Returned" without a debit beside it is anything returned ("the router must be returned").
 * **A to-do is a direct debit** when its own words (title, action, description) name one —
-  :data:`DEBIT_WORDS`, German or English — unless they say the debit failed (:data:`_FAILED_DEBIT`:
-  a *Rücklastschrift*, "konnte nicht eingezogen werden", "could not be debited" — after one, the
+  :data:`DEBIT_WORDS`, German or English — unless one of them says the debit failed (after one, the
   person transfers) or its action asks for a transfer.
 * **A letter's sentence speaks of a direct debit** (:func:`debit_in_sentence`) when it names one —
   the same words, a mandate's reference or the creditor's ID, the split verb "buchen … ab", or
   "einziehen" in a clause that names the account or the money ("von Ihrem Konto eingezogen", "ziehen
-  den Betrag … ein"; moving in names neither: "sobald Sie eingezogen sind") — unless it says the debit
-  failed, or one of its clauses asks for a transfer (a SEPA mandate offered as the alternative:
-  "Sofern Sie nicht am Lastschriftverfahren teilnehmen, überweisen Sie …"). A transfer its own
-  clause waves off ("eine Überweisung ist nicht nötig", "überweisen Sie nicht") asks for none.
+  den Betrag … ein"; moving in names neither: "sobald Sie eingezogen sind") — in a clause that doesn't
+  say it failed, and none of its clauses asks for a transfer (a SEPA mandate offered as the
+  alternative: "Sofern Sie nicht am Lastschriftverfahren teilnehmen, überweisen Sie …"). A failure
+  cancels only the debit of its own clause: "…wird abgebucht; die letzte Lastschrift wurde
+  zurückgegeben" still names a debit, and no GiroCode is the safe side. A transfer its own clause
+  waves off ("eine Überweisung ist nicht nötig", "überweisen Sie nicht") asks for none.
 * **A clause** ends at a comma, a full stop, ``;``, ``:``, ``!`` or ``?`` — not at the marks inside
   a number or a date ("29,90 €", "am 15.10. von Ihrem Konto").
 * **The reference to type** into a transfer (:func:`payment_reference`) is the letter's reference
@@ -27,8 +36,9 @@ ended prints them too).
 
 Limits: wording is matched, not understood — a sentence that names a debit in words these lists
 don't know reads as a transfer; one that names a debit and a transfer in some other way reads as
-a debit (no code; the safe side, SPEC §GiroCode); words of a failed debit count also where they only
-warn of one ("Gebühr bei Rücklastschrift").
+a debit (no code; the safe side, SPEC §GiroCode). A warning worded without these markers ("Rück-
+lastschriften: 3 €") reads as a failure; a real failure told only in a clause with one of them ("die
+Lastschrift wurde zurückgegeben und verursacht Kosten") doesn't.
 """
 
 from __future__ import annotations
@@ -56,13 +66,22 @@ _COLLECT = re.compile(
 )
 _ACCOUNT_OR_MONEY = re.compile(r"konto|account|betrag|beitrag|summe|forderung|gebühr|prämie|entgelt", re.I)
 _TRANSFER_WORDS = re.compile(r"\btransfer|überweis", re.I)
+_DEBIT_NOUN = r"(?:lastschrift|abbuchung|einzug|debit|payment|zahlung)"
+_FAILED_VERB = r"(?:zurückgegeben|zurückgebucht|zurückgerufen|fehlgeschlagen|returned|bounced|failed)"
 #: A debit that failed: the bank returned it, or it couldn't be collected (in one clause).
 _FAILED_DEBIT = re.compile(
-    r"rücklastschrift|zurückgegeben|zurückgebucht|zurückgerufen|mangels\s+deckung|fehlgeschlagen"
-    r"|nicht\s+gedeckt|nicht\b.{0,40}?(?:eingelöst|eingezogen|abgebucht|einziehen|abbuchen|ausgeführt|durchgeführt)"
+    r"rücklastschrift|mangels\s+deckung|nicht\s+gedeckt"
+    r"|nicht\b.{0,40}?(?:eingelöst|eingezogen|abgebucht|einziehen|abbuchen|ausgeführt|durchgeführt)"
     r"|(?:abbuchung|lastschrift|einzug).{0,40}?nicht\s+möglich"
-    r"|returned|could\s+not\s+be\s+(?:collected|debited)",
+    r"|could\s+not\s+be\s+(?:collected|debited)"
+    rf"|{_DEBIT_NOUN}.{{0,60}}?{_FAILED_VERB}|{_FAILED_VERB}.{{0,60}}?{_DEBIT_NOUN}",
     re.I | re.S,
+)
+#: A clause that only warns of a failed debit: a condition, or what one costs (module policy).
+_WARNING = re.compile(
+    r"^\s*bei\b|\b(?:falls|sollten?|wenn|sofern|im\s+falle?|für\s+jede\w*|if|in\s+case|should|each|every)\b"
+    r"|kost(?:et|en)\b|\bcosts?\b",
+    re.I,
 )
 #: Where a clause ends (module policy): not at a comma or full stop inside a number or a date.
 _CLAUSE_END = re.compile(r"[;:!?]|(?<!\d),|,(?!\d)|(?<!\d)\.(?!\d)")
@@ -87,17 +106,22 @@ def _clauses(text: str) -> list[str]:
     return _CLAUSE_END.split(text)
 
 
+def _clause_failed(clause: str) -> bool:
+    return bool(_FAILED_DEBIT.search(clause)) and not _WARNING.search(clause)
+
+
 def debit_failed(text: str) -> bool:
-    """``text`` says a direct debit failed — returned by the bank, or not collected (module policy)."""
-    return any(_FAILED_DEBIT.search(clause) for clause in _clauses(text))
+    """``text`` says a direct debit failed — returned by the bank, or not collected — as a fact, not
+    as a warning (module policy)."""
+    return any(_clause_failed(clause) for clause in _clauses(text))
 
 
 def is_direct_debit(item: Item) -> bool:
     """The sender collects this payment itself (SEPA direct debit): nothing to transfer (policy)."""
-    text = " ".join(part for part in (item.title, item.action, item.description) if part)
+    parts = [part for part in (item.title, item.action, item.description) if part]
     return (
-        bool(DEBIT_WORDS.search(text))
-        and not debit_failed(text)
+        any(DEBIT_WORDS.search(part) for part in parts)
+        and not any(debit_failed(part) for part in parts)
         and not _TRANSFER_WORDS.search(item.action or "")
     )
 
@@ -127,16 +151,31 @@ def pays_on_site(item: Item) -> bool:
 
 
 def debit_in_sentence(sentence: str) -> bool:
-    """``sentence`` (a letter's words) says the sender collects the money by direct debit (policy)."""
-    clauses = _clauses(sentence)
-    names_debit = (
-        DEBIT_WORDS.search(sentence)
-        or _SENTENCE_DEBIT.search(sentence)
-        or any(_COLLECT.search(clause) and _ACCOUNT_OR_MONEY.search(clause) for clause in clauses)
-    )
-    if not names_debit or debit_failed(sentence):
+    """``sentence`` (a letter's words) says the sender collects the money by direct debit (policy): a
+    debit named in a clause that doesn't say it failed, and no transfer asked for."""
+    if any(
+        _TRANSFER_WORDS.search(clause) and not _NO_TRANSFER.search(clause) for clause in _clauses(sentence)
+    ):
         return False
-    return not any(_TRANSFER_WORDS.search(clause) and not _NO_TRANSFER.search(clause) for clause in clauses)
+    starts = [0] + [end.end() for end in _CLAUSE_END.finditer(sentence)]
+    ends = [end.start() for end in _CLAUSE_END.finditer(sentence)] + [len(sentence)]
+    spans = list(zip(starts, ends, strict=True))
+
+    def clause_at(position: int) -> str:
+        start, end = next(span for span in reversed(spans) if span[0] <= position)
+        return sentence[start:end]
+
+    named = [
+        clause_at(match.start())
+        for pattern in (DEBIT_WORDS, _SENTENCE_DEBIT)
+        for match in pattern.finditer(sentence)
+    ]
+    named += [
+        sentence[start:end]
+        for start, end in spans
+        if _COLLECT.search(sentence[start:end]) and _ACCOUNT_OR_MONEY.search(sentence[start:end])
+    ]
+    return any(not _clause_failed(clause) for clause in named)
 
 
 def payment_reference(reference: str) -> str:

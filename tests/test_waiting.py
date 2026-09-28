@@ -619,3 +619,105 @@ async def test_reply_detection_is_cached_per_ledger(ctx: AppContext, gym: Gym) -
     assert Ledger(ctx.store, TODAY).reply_to(letter) is not None
     unsent = await compose(ctx, "cancellation", contract_id=gym.contract)
     assert Ledger(ctx.store, TODAY + timedelta(days=1)).reply_to(unsent) is None
+
+
+async def test_its_answered_closes_a_snoozed_follow_up_and_undo_snoozes_it_again(
+    ctx: AppContext, gym: Gym
+) -> None:
+    """A follow-up snoozed a few days, then "It's answered": nothing may still ask for the reply — Today,
+    the weekly session and the Waiting for page agree — and Undo puts the snooze back as it was."""
+    from ordnung.views import weekly_session
+
+    letter = await helpers_proof.sent_letter(ctx, gym)
+    followup = followup_item_id(letter.id)
+    until = (TODAY + timedelta(days=3)).isoformat()
+    ctx.store.update_item(followup, status="snoozed", snoozed_until=until)
+    sent.mark_answered(ctx.store, letter.id, TODAY)
+    assert ctx.store.get_item(followup).status == "done"  # type: ignore[union-attr]
+    later = date(2026, 10, 22)
+    assert waiting(ctx.store, later) == []
+    week = weekly_session(ctx.store, later)
+    waiting_step = next(step for step in week.steps if step.id == "waiting")
+    assert waiting_step.entries == [] and week.overdue == 0
+    sent.unmark_answered(ctx.store, letter.id)
+    item = ctx.store.get_item(followup)
+    assert item is not None and (item.status, item.snoozed_until) == ("snoozed", until)
+
+
+# --------------------------------------------------------------------------------------------------
+# the weekly session reads the same proof and waiting state
+# --------------------------------------------------------------------------------------------------
+
+
+def _week_step(ctx: AppContext, step_id: str, today: date = TODAY) -> tuple[object, object]:
+    from ordnung.views import weekly_session
+
+    week = weekly_session(ctx.store, today)
+    return week, next(step for step in week.steps if step.id == step_id)
+
+
+async def test_the_weekly_post_step_asks_for_the_proof_still_missing_whenever_it_was_sent(
+    ctx: AppContext, gym: Gym
+) -> None:
+    """A registered letter sent four weeks ago without its proof is listed with what is missing first
+    (``drafts.proof.missing``), not a generic note — and leaves the step once its proof is complete."""
+    from ordnung.drafts.proof import MISSING_POSTING, MISSING_TRACKING
+
+    letter = await helpers_proof.sent_letter(ctx, gym)
+    _, post = _week_step(ctx, "post")
+    (row,) = post.entries  # type: ignore[attr-defined]
+    assert row.ref.id == letter.id and row.date_role == "sent" and row.tone == "warn"
+    assert post.summary == "1 sent — 1 without all its proof"  # type: ignore[attr-defined]
+    assert row.note.startswith(MISSING_TRACKING) and "2 things more" in row.note
+    sent.set_tracking(ctx.store, letter.id, TRACKING)
+    await sent.add_proof(ctx, letter.id, photo("JPEG"), "a.jpg", kind="posting_receipt", today=TODAY)
+    (row,) = _week_step(ctx, "post")[1].entries  # type: ignore[attr-defined]
+    assert "delivery record" in row.note and MISSING_POSTING not in row.note
+    await sent.add_proof(
+        ctx, letter.id, photo("PNG"), "d.png", kind="delivery_record", on_date="2026-09-03", today=TODAY
+    )
+    assert _week_step(ctx, "post")[1].entries == []  # type: ignore[attr-defined]
+
+
+async def test_a_letter_sent_this_week_with_its_delivery_record_says_it_was_delivered(
+    ctx: AppContext, gym: Gym
+) -> None:
+    letter = await helpers_proof.sent_letter(ctx, gym, day=date(2026, 9, 24))
+    sent.set_tracking(ctx.store, letter.id, TRACKING)
+    await sent.add_proof(ctx, letter.id, photo("JPEG"), "a.jpg", kind="posting_receipt", today=TODAY)
+    await sent.add_proof(
+        ctx, letter.id, photo("PNG"), "d.png", kind="delivery_record", on_date="2026-09-25", today=TODAY
+    )
+    (row,) = _week_step(ctx, "post")[1].entries  # type: ignore[attr-defined]
+    assert row.note.startswith("Delivered on Fri 25 Sep") and row.tone == "ok"
+
+
+async def test_the_weekly_waiting_step_is_the_waiting_for_page(ctx: AppContext, gym: Gym) -> None:
+    """The step lists what the Waiting for page lists — an overdue phone promise and money owed too — and
+    its overdue entries keep the session from ending "All clear"."""
+    letter = await helpers_proof.sent_letter(ctx, gym)
+    money_in(ctx, "Kaution zurück", amount=450.0, due_date="2026-09-20", party_id=gym.party)
+    calls.add_call_note(
+        ctx.store,
+        party_id=gym.party,
+        called_on="2026-09-10",
+        summary="Asked about the cancellation",
+        contact="Frau Weber",
+        promise="Schriftliche Kündigungsbestätigung",
+        promise_due="2026-09-20",
+        today=TODAY,
+    )
+    page = waiting(ctx.store, TODAY)
+    week, step = _week_step(ctx, "waiting")
+    rows = step.entries  # type: ignore[attr-defined]
+    assert [row.key for row in rows] == [f"waiting:{entry.id}" for entry in page]
+    assert {row.ref.type for row in rows} == {"draft", "item", "call"}
+    assert all(row.overdue and row.tone == "danger" for row in rows)
+    assert week.overdue == len(page)  # type: ignore[attr-defined]
+    by_type = {row.ref.type: row for row in rows}
+    assert (
+        by_type["call"].date_role == "promised_by"
+        and by_type["call"].title == "Schriftliche Kündigungsbestätigung"
+    )
+    assert by_type["draft"].ref.id == letter.id and by_type["draft"].date_role == "reply_by"
+    assert by_type["item"].amount == 450.0 and by_type["item"].date_role == "expected"

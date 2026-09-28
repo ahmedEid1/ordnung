@@ -457,16 +457,20 @@ class Ledger:
         return [item for item in self.items if is_active(item, self.today)]
 
     def actionable_items(self) -> list[Item]:
-        """Active items that are safe to present as something to do: no letters with scam signs, no
-        invoice payments a later payment reminder took over (the reminder is the one to act on), and no
-        e-mail payments its attached bill repeats (the bill is the one to act on)."""
-        return [
-            item
-            for item in self.active_items()
-            if not self.is_suspicious_item(item)
-            and not self.is_superseded_by_reminder(item)
-            and not self.is_covered_by_attachment(item)
-        ]
+        """Active items that are safe to present as something to do (none :meth:`is_set_aside`)."""
+        return [item for item in self.active_items() if not self.is_set_aside(item)]
+
+    def is_set_aside(self, item: Item) -> bool:
+        """An item that is never presented as something to do, whatever its status — on Today, in the
+        weekly session, the calendar and its sync, the money figures: one of a letter with scam signs,
+        an invoice payment a later payment reminder took over (the reminder is the one to act on), or an
+        e-mail's payment its attached bill repeats (the bill is the one to act on; it stays set aside
+        after the bill is paid, so nothing asks for the money twice)."""
+        return (
+            self.is_suspicious_item(item)
+            or self.is_superseded_by_reminder(item)
+            or self.is_covered_by_attachment(item)
+        )
 
     def covering_reminders(self) -> dict[str, Document]:
         """Letter id → the live payment reminder (Mahnung) that took over its payments (cached).
