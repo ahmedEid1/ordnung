@@ -45,8 +45,8 @@ export function NoticePeriodForm({
   contract: Contract;
   /** Closed: with the saved contract, or null (Cancel, Escape). */
   onClose: (saved: Contract | null) => void;
-  /** The toast's Undo put the old terms back. */
-  onUndone: () => void;
+  /** The toast's Undo put the old terms back (the contract as it is again). */
+  onUndone: (restored: Contract) => void;
 }) {
   const update = useUpdateContract();
   const id = useId();

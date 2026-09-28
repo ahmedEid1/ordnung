@@ -72,8 +72,9 @@ function Entry({ e, today, href, highlighted }: { e: TimelineEntry; today: strin
           {e.party_name ? ` · ${e.party_name}` : null}
           {detail ? <span className="max-sm:hidden"> · {detail}</span> : null}
         </span>
+        {/* phones: up to two lines — a day ("Transfer by Thu 14 Jan 2027") is never cut short */}
         {detail ? (
-          <span title={detail} className="mt-0.5 block truncate text-sm leading-5 text-muted sm:hidden">
+          <span title={detail} className="mt-0.5 line-clamp-2 break-words text-sm leading-5 text-muted sm:hidden">
             {detail}
           </span>
         ) : null}

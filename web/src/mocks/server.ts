@@ -20,6 +20,7 @@ import type {
   Document,
   DocumentDetail,
   Draft,
+  Evidence,
   DraftCreate,
   FolderStatus,
   HeldResult,
@@ -28,6 +29,7 @@ import type {
   ItemAside,
   Job,
   LetterAdvice,
+  ListedItem,
   MailOpenResult,
   PageInfo,
   Profile,
@@ -85,7 +87,7 @@ import { PARTIES } from "./data/parties";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
 import { isOpenItem } from "@/features/document/verdict";
 import { compareBase } from "@/features/document/trace/copy";
-import { documentKindLabel } from "@/lib/copy";
+import { NOTICE_BASIS_COPY, documentKindLabel } from "@/lib/copy";
 import { DEMO_NOTE } from "./mode";
 import { confirmMockGiroCode, mockGiroCode } from "./girocode";
 import { checkTracking } from "@/lib/tracking";
@@ -861,6 +863,20 @@ function workingDays(d: Date, n: number): Date {
  * and "to the end of the term" needs a start date and term the mock's contracts don't have.
  * Contracts under a statutory rule keep their dates (the mock has no rules engine for those).
  */
+/**
+ * The API's `notice_evidence`: the contract's quotes with the notice terms the person entered as one
+ * of their own (grounding `user`) when all three are set — replaced by the next correction, gone again
+ * with an Undo back to none. The letter's quotes stay.
+ */
+function noticeEvidence(c: Contract): Evidence[] {
+  const kept = c.evidence.filter((e) => e.grounding !== "user");
+  const { notice_value: n, notice_unit: unit, notice_basis: basis } = c;
+  if (n == null || !unit || !basis) return kept;
+  const one = unit.replace(/s$/, "");
+  const quote = `${n === 1 ? `one ${one}'s` : `${n} ${unit}'`} notice ${NOTICE_BASIS_COPY[basis].label}`;
+  return [...kept, { doc_id: c.source_doc_id ?? "", page: null, quote, grounding: "user", value_consistent: true, score: 0, boxes: [] }];
+}
+
 function recomputeNotice(db: MockDb, c: Contract) {
   if (!c.computed || c.computed.regime !== "as_written") return;
   const day = (d: Date, year = true) => format(d, year ? "EEE d MMM yyyy" : "EEE d MMM");
@@ -1307,7 +1323,10 @@ const routes: [string, string, Handler][] = [
       if (f("to")) items = items.filter((i) => !i.due_date || i.due_date <= f("to")!);
       if (f("include_undated") !== "true" && (f("from") || f("to"))) items = items.filter((i) => i.due_date);
       items.sort((a, b) => ((a.send_by ?? a.due_date ?? "9999") < (b.send_by ?? b.due_date ?? "9999") ? -1 : 1));
-      return items.slice(0, Number(f("limit") ?? 1000));
+      // like the API: each says whether it is set aside (not one to act on)
+      const listed = items.slice(0, Number(f("limit") ?? 1000));
+      const aside = new Map(setAside(db, listed).map((a) => [a.item_id, a]));
+      return listed.map((i): ListedItem => ({ ...i, aside: aside.get(i.id) ?? null }));
     },
   ],
   [
@@ -1385,8 +1404,12 @@ const routes: [string, string, Handler][] = [
       const c = db.state.contracts.find((x) => x.id === params.id) ?? notFound("Unknown contract.");
       const notice = pick<Contract>(body, ["notice_value", "notice_unit", "notice_basis"]);
       Object.assign(c, pick<Contract>(body, ["name", "category", "status", "cost_amount", "cost_interval", "end_date", "customer_number"]), notice, { updated_at: nowTs() });
-      // like the API: the rules engine works the dates out again from the new terms
-      if (Object.keys(notice).length) recomputeNotice(db, c);
+      // like the API: the rules engine works the dates out again from the new terms, and the terms
+      // the person entered are theirs ("confirmed by the person": the card stops asking to check them)
+      if (Object.keys(notice).length) {
+        recomputeNotice(db, c);
+        c.evidence = noticeEvidence(c);
+      }
       return c;
     },
   ],

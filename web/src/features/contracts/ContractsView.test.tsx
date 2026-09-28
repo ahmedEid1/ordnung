@@ -4,6 +4,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { qk } from "@/api/hooks";
 import type { Contract, Party } from "@/api/types";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
+import { buttonVariants } from "@/components/ui/Button";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { createMockServer } from "@/mocks/server";
@@ -338,14 +339,18 @@ describe("Contracts page — adding a notice period by hand", () => {
     expect(await screen.findByText("Notice period saved")).toBeInTheDocument();
     expect(screen.getByText("To leave on Sat 31 Oct 2026, your notice must arrive by Wed 30 Sep 2026; send it by Mon 28 Sep.")).toBeInTheDocument();
     expect(calls.find((c) => c.method === "PATCH")).toEqual({ method: "PATCH", path: "/contracts/ctr_bank", body: { notice_value: 1, notice_unit: "months", notice_basis: "end_of_month" } });
-    // the card shows the dates the engine worked out, and the focus stays on the card
-    await waitFor(() => expect(within(card("Musterbank Girokonto")).queryByRole("button", { name: /notice period/ })).toBeNull());
+    // the card shows the dates the engine worked out; the period is the person's now (R2-inbox-timeline-contracts-1):
+    // no "Please check" for what they just checked, and a quiet way left to correct it, which keeps the focus
+    const change = await within(card("Musterbank Girokonto")).findByRole("button", { name: /^Change notice period/ });
     const saved = card("Musterbank Girokonto");
-    expect(within(saved).getByText(/As written in the contract: 1 month's notice to the end of a month/)).toBeInTheDocument();
+    expect(within(saved).getByText(/As you entered it: 1 month's notice to the end of a month/)).toBeInTheDocument();
+    expect(within(saved).queryByText("Please check")).toBeNull();
+    expect(bank.evidence.filter((e) => e.grounding === "user").map((e) => e.quote)).toEqual(["one month's notice to the end of a month"]);
+    expect(change.className).toBe(buttonVariants({ variant: "ghost", size: "sm" }));
     // cancellable any month: when notice must arrive, never an urgent "Send by"
     expect(within(saved).getByText("Notice must arrive by")).toBeInTheDocument();
     expect(within(saved).queryByRole("form")).toBeNull();
-    await waitFor(() => expect(saved).toHaveFocus());
+    await waitFor(() => expect(change).toHaveFocus());
 
     // Undo puts the old (missing) terms back, and the button that is back takes the focus
     const undo = screen.getByRole("button", { name: /^Undo/ });
@@ -354,6 +359,33 @@ describe("Contracts page — adding a notice period by hand", () => {
     const again = await within(card("Musterbank Girokonto")).findByRole("button", { name: /^Add notice period/ });
     expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({ notice_value: null, notice_unit: null, notice_basis: null });
     await waitFor(() => expect(again).toHaveFocus());
+    expect(bank.evidence.some((e) => e.grounding === "user")).toBe(false);
+    expect(within(card("Musterbank Girokonto")).getByText("Please check")).toBeInTheDocument();
+  });
+
+  it("terms followed as written: 'Please check' says what to check, the period stays correctable, and once entered it is yours", async () => {
+    const { srv } = useMockApi();
+    const bank = srv.db.state.contracts.find((c) => c.id === "ctr_bank")!;
+    Object.assign(bank, { notice_value: 3, notice_unit: "months", notice_basis: "end_of_month" });
+    bank.computed = { ...bank.computed!, regime: "as_written", confidence: "low", earliest_exit: "2026-12-31", cancel_by: "2026-09-30" };
+    const { unmount } = renderWithProviders(<ContractsView />, { route: "/contracts" });
+    await screen.findByRole("heading", { level: 3, name: "Musterbank Girokonto" });
+    const badge = within(card("Musterbank Girokonto")).getByText("Please check").closest("span.rounded-full")!;
+    const hint = "Ordnung follows the notice period as written — check it against the contract";
+    expect(badge).toHaveAttribute("title", hint);
+    expect(badge).toHaveTextContent(`Please check: ${hint}`);
+    expect(within(card("Musterbank Girokonto")).getByRole("button", { name: /^Change notice period/ })).toBeInTheDocument();
+    expect(within(card("Musterbank Girokonto")).getByText(/As written in the contract: 3 months' notice to the end of a month/)).toBeInTheDocument();
+    unmount();
+
+    // entered by the person (and still there after a reload): theirs, nothing to check
+    bank.evidence = [...bank.evidence, { doc_id: "doc_bank", page: null, quote: "three months' notice to the end of a month", grounding: "user", value_consistent: true, score: 0, boxes: [] }];
+    renderWithProviders(<ContractsView />, { route: "/contracts" });
+    await screen.findByRole("heading", { level: 3, name: "Musterbank Girokonto" });
+    const mine = card("Musterbank Girokonto");
+    expect(within(mine).queryByText("Please check")).toBeNull();
+    expect(within(mine).getByText(/As you entered it: 3 months' notice to the end of a month/)).toBeInTheDocument();
+    expect(within(mine).getByRole("button", { name: /^Change notice period/ })).toBeInTheDocument();
   });
 
   // on the real demo the refreshed contract list came before the call's own answer: the form had

@@ -108,6 +108,33 @@ export function termsUnclear(c: Pick<Contract, "computed" | "status">): boolean 
 }
 
 /**
+ * The notice period is the one the person entered on the card ("Save notice period" records it as a
+ * quote confirmed by them, `grounding: "user"`): nothing is left to check against the letter.
+ */
+export function noticeFromYou(c: Pick<Contract, "evidence">): boolean {
+  return c.evidence.some((e) => e.grounding === "user");
+}
+
+/**
+ * The notice period can be entered or changed on the card: terms we couldn't work out, terms the
+ * rules follow as written (no statutory rule), or terms the person entered (a typo stays correctable).
+ */
+export function noticeEditable(c: Pick<Contract, "computed" | "status" | "evidence">): boolean {
+  return c.status === "active" && (termsUnclear(c) || c.computed?.regime === "as_written" || noticeFromYou(c));
+}
+
+/**
+ * Why a contract's card asks "Please check" (the rules' confidence is low), in words for its tooltip
+ * and a screen reader — or null when it doesn't: the person entered the notice period themselves.
+ */
+export function pleaseCheckHint(c: Pick<Contract, "computed" | "status" | "evidence">): string | null {
+  if (c.computed?.confidence !== "low" || noticeFromYou(c)) return null;
+  if (termsUnclear(c)) return "Ordnung couldn't work out how this contract ends — check the letter for the notice period";
+  if (c.computed.regime === "as_written") return "Ordnung follows the notice period as written — check it against the contract";
+  return "Ordnung isn't sure of these dates — check them against the contract";
+}
+
+/**
  * Active contracts a letter can end whose send-by date is between today and `days` ahead, soonest
  * first — only real decisions ({@link isLockInDecision}); rolling contracts reopen every month.
  */
@@ -228,7 +255,8 @@ export function ruleInWords(c: Contract, today: string): RuleInWords {
       break;
     default: {
       const basis = c.notice_basis ? copyFor(NOTICE_BASIS_COPY, c.notice_basis).label : null;
-      if (notice) text = `As written in the contract: ${notice}${basis ? ` ${basis}` : ""}`;
+      // the person's own entry says so (the card then asks nothing more of it)
+      if (notice) text = `${noticeFromYou(c) ? "As you entered it" : "As written in the contract"}: ${notice}${basis ? ` ${basis}` : ""}`;
       else text = firstSentence(c.computed?.summary)?.replace(/\.$/, "") ?? "As written in the contract — no special legal rule applies";
     }
   }

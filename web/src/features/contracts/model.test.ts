@@ -15,7 +15,10 @@ import {
   isFixedTerm,
   isLockInDecision,
   isRollingContract,
+  noticeEditable,
+  noticeFromYou,
   noticePhrase,
+  pleaseCheckHint,
   ruleInWords,
   sortContracts,
   termsUnclear,
@@ -231,6 +234,29 @@ describe("contracts-only lanes", () => {
     // sure enough of the terms, or a date worked out: not unclear
     expect(termsUnclear({ ...giro, computed: { ...giro.computed!, confidence: "medium" } })).toBe(false);
     expect(termsUnclear({ ...giro, computed: { ...giro.computed!, earliest_exit: "2026-10-31" } })).toBe(false);
+  });
+
+  it("says why it asks 'Please check', keeps the notice period correctable, and asks nothing of the person's own entry", () => {
+    const base = { ...byId("ctr_phone").computed!, ...unset, regime: "as_written" as const, confidence: "low" as const };
+    const giro = contract({ id: "ctr_giro", name: "Girokonto Klassik", category: "bank", computed: base });
+    expect(pleaseCheckHint(giro)).toMatch(/^Ordnung couldn't work out how this contract ends/);
+    const written = { ...giro, notice_value: 3, notice_unit: "months" as const, notice_basis: "end_of_month" as const, computed: { ...base, earliest_exit: "2026-12-31" } };
+    expect(pleaseCheckHint(written)).toBe("Ordnung follows the notice period as written — check it against the contract");
+    expect(noticeEditable(written)).toBe(true);
+    expect(ruleInWords(written, TODAY).text).toBe("As written in the contract: 3 months' notice to the end of a month");
+    // R2-inbox-timeline-contracts-1: saved on the card, the period is the person's
+    const quote = { doc_id: "doc_bank", page: null, quote: "three months' notice to the end of a month", grounding: "user" as const, value_consistent: true, score: 0, boxes: [] };
+    const entered = { ...written, evidence: [quote] };
+    expect(noticeFromYou(entered)).toBe(true);
+    expect(pleaseCheckHint(entered)).toBeNull();
+    expect(noticeEditable(entered)).toBe(true);
+    expect(ruleInWords(entered, TODAY).text).toBe("As you entered it: 3 months' notice to the end of a month");
+    // a statutory rule with sure dates: nothing to enter, nothing to check
+    expect(noticeEditable(byId("ctr_phone"))).toBe(false);
+    expect(pleaseCheckHint(byId("ctr_phone"))).toBeNull();
+    expect(pleaseCheckHint({ ...byId("ctr_phone"), computed: { ...byId("ctr_phone").computed!, confidence: "low" } })).toBe(
+      "Ordnung isn't sure of these dates — check them against the contract",
+    );
   });
 
   it("lays out on the chart: the notice window rides on the term bar", () => {

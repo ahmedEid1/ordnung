@@ -73,6 +73,18 @@ describe("Timeline page", () => {
     assertNoRawEnumsInElement(container);
   });
 
+  it("gives a phone row's detail two lines: its day is never cut short (R2-inbox-timeline-contracts-3)", async () => {
+    const client = await seededClient();
+    const timeline = client.getQueryData<TimelineEntry[]>(qk.timeline(defaultLaneRange(TEST_TODAY).from, defaultLaneRange(TEST_TODAY).to))!;
+    const parking = timeline.find((e) => e.ref.id === "itm_parking")!;
+    parking.subtitle = "Transfer by Thu 14 Jan 2027";
+    renderWithProviders(<TimelineView />, { client, route: "/timeline" });
+    const row = within(screen.getByRole("region", { name: "Every date" })).getByRole("link", { name: /Pay the parking fine/ });
+    const phone = within(row).getByTitle("Transfer by Thu 14 Jan 2027");
+    expect(phone).toHaveClass("line-clamp-2", "break-words", "sm:hidden");
+    expect(phone).not.toHaveClass("truncate");
+  });
+
   it("filters by area from the URL (Today's area tiles link here) — lanes and list", async () => {
     const client = await seededClient();
     renderWithProviders(<TimelineView />, { client, route: "/timeline?area=residence" });

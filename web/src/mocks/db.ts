@@ -111,6 +111,18 @@ export interface MockState {
   readings: Record<string, ReadingSeed[]>;
 }
 
+/**
+ * What a to-do's day asks of the person on the timeline, as the API's `_item_subtitle` words it: money
+ * sent by bank transfer "Transfer by …", a direct debit "Collected by direct debit" (the sender takes
+ * it: nothing to send), anything posted "Send by …"; a fee paid on site has no day to transfer by.
+ */
+function timelineSubtitle(i: Item): string | null {
+  const payment = i.kind === "payment" && i.direction !== "in";
+  if (payment && isDirectDebit(i)) return "Collected by direct debit";
+  if (!i.send_by || paysOnSite(i)) return null;
+  return `${payment ? "Transfer" : "Send"} by ${format(parseISO(i.send_by), "EEE d MMM")}`;
+}
+
 export class MockDb {
   state: MockState;
 
@@ -376,7 +388,7 @@ export class MockDb {
         time: i.due_time,
         type: i.kind,
         title: i.title,
-        subtitle: i.send_by ? `Send by ${format(parseISO(i.send_by), "EEE d MMM")}` : p?.name ?? null,
+        subtitle: timelineSubtitle(i) ?? p?.name ?? null,
         status: i.status === "open" && i.due_date < today ? "missed" : i.status,
         priority: i.priority,
         area: i.area,

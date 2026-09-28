@@ -2,7 +2,7 @@
  * Inbox list logic (pure, unit-tested): filters, month grouping, open to-dos per letter.
  */
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
-import type { Document, DocumentKind, Item } from "@/api/types";
+import type { Document, DocumentKind, Item, ListedItem } from "@/api/types";
 import { documentKindLabel } from "@/lib/copy";
 import { daysUntil } from "@/lib/format";
 
@@ -169,18 +169,25 @@ export function isNextCandidate(i: Item, today?: string): boolean {
   return daysUntil(d, today) >= -HISTORY_DAYS;
 }
 
-/** Open to-dos per letter, with the next one to act on (see {@link isNextCandidate}). */
-export function openItemsByDoc(items: Item[], today?: string): Map<string, OpenSummary> {
+/**
+ * Open to-dos per letter, with the next one to act on (see {@link isNextCandidate}). A to-do the list
+ * sets aside (`aside`: a payment its reminder took over, a date that was history when the letter was
+ * read, a letter with scam signs — as on Today and the letter's page) is no to-do here: not counted,
+ * never the next step ("25 days overdue" for an invoice its reminder replaced).
+ */
+export function openItemsByDoc(items: readonly (Item & Partial<Pick<ListedItem, "aside">>)[], today?: string): Map<string, OpenSummary> {
   const out = new Map<string, OpenSummary>();
   for (const i of items) {
     if (!i.doc_id || (i.status !== "open" && i.status !== "missed")) continue;
     const s = out.get(i.doc_id) ?? { count: 0, next: null };
-    s.count += 1;
+    out.set(i.doc_id, s);
+    // how the letter came (formal service), whatever becomes of its to-dos
     if (i.computation?.rule_ids.includes("zpo_180")) s.served = true;
+    if (i.aside) continue;
+    s.count += 1;
     const d = i.send_by ?? i.due_date;
     const nd = s.next ? (s.next.send_by ?? s.next.due_date) : null;
     if (d && isNextCandidate(i, today) && (!nd || d < nd)) s.next = i;
-    out.set(i.doc_id, s);
   }
   return out;
 }

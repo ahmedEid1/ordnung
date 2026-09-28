@@ -1,12 +1,13 @@
 /** "Decide by" callouts: contracts whose send-by date is within the next 60 days. */
 import { Link } from "react-router";
-import { FilePen, Hourglass } from "lucide-react";
+import { FilePen } from "lucide-react";
 import type { Contract, Party } from "@/api/types";
 import { buttonVariants } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateLeaf, type DateLeafTone } from "@/components/ui/DateLeaf";
 import { Glossary } from "@/components/ui/Glossary";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { MEANING_ICONS } from "@/lib/copy";
 import { formatDate, protectRefs, urgencyOf, urgencyTone, type UrgencyLevel } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ContractWhy } from "./ContractWhy";
@@ -78,7 +79,7 @@ export function DecideBy({ contracts, partyById, today }: { contracts: Contract[
     <section aria-labelledby="decide-by-title" className="mb-8">
       <SectionHeader
         id="decide-by-title"
-        icon={Hourglass}
+        icon={MEANING_ICONS.decideBy}
         title="Decide by"
         count={contracts.length}
         description="The window to cancel closes soon. Keeping a contract is fine too — then there is nothing to do."

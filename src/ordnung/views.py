@@ -35,7 +35,7 @@ from ordnung.models import (
     WeeklySession,
 )
 from ordnung.numbers import NumbersInput, build_my_numbers
-from ordnung.payments import is_collected_or_incoming, pays_on_site
+from ordnung.payments import is_collected_or_incoming, is_direct_debit, pays_on_site
 from ordnung.rules.deadlines import sending_time_passed
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.brief import build_agenda
@@ -473,22 +473,30 @@ def _document_entries(ledger: Ledger) -> list[TimelineEntry]:
     return entries
 
 
+def _item_subtitle(item: Item, today: date) -> str | None:
+    """What an item's day asks of the person, in Today's words: money sent by bank transfer "Transfer
+    by …" (its send-by day), a direct debit "Collected by direct debit" (the sender takes it on the
+    day: nothing to send), anything posted "Send by …" — or "Must arrive by …" once the usual time to
+    post has passed (review round 4). A fee paid by card at the appointment has no day to transfer by
+    (``None``: its own words say how to pay)."""
+    payment = item.kind == "payment" and item.direction != "in"
+    if payment and is_direct_debit(item):
+        return "Collected by direct debit"
+    send_by = None if pays_on_site(item) else parse_day(item.send_by)
+    if send_by is None:
+        return None
+    if sending_time_passed(item.computation):
+        return f"Must arrive by {day_label(parse_day(item.due_date) or today, today)}"
+    return f"{'Transfer' if payment else 'Send'} by {day_label(send_by, today)}"
+
+
 def _item_entries(ledger: Ledger) -> list[TimelineEntry]:
     entries: list[TimelineEntry] = []
     for item in ledger.items:
         if item.due_date is None or item.status == "dismissed":
             continue
         status = "overdue" if is_overdue(item, ledger.today) else item.status
-        # a fee paid by card at the appointment has no day to transfer by: its own words say how to pay
-        send_by = None if pays_on_site(item) else item.send_by
-        subtitle = (
-            # the usual time to post has passed: a letter posted today may arrive too late (review round 4)
-            f"Must arrive by {day_label(parse_day(item.due_date) or ledger.today, ledger.today)}"
-            if send_by and sending_time_passed(item.computation)
-            else f"Send by {day_label(parse_day(send_by) or ledger.today, ledger.today)}"
-            if send_by
-            else None
-        )
+        subtitle = _item_subtitle(item, ledger.today)
         # a scam letter's demand is no bill: no amount (it isn't "to pay") and no "send by"
         suspicious = ledger.is_suspicious_item(item)
         if suspicious:

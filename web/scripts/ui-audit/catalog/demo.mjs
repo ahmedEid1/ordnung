@@ -764,7 +764,7 @@ export async function demoCatalog({ api, server }) {
       group: "contracts",
       route: "/contracts",
       how: "on its own demo folder: open /contracts, “Add notice period”, 3 months to the end of a month, “Save notice period” (the contract's notice put back before each capture)",
-      description: "The notice period saved: the “Notice period saved” toast with the new dates and Undo; the card with its dates, focus on the card.",
+      description: "The notice period saved: the “Notice period saved” toast with the new dates and Undo; the card with its dates, no “Please check”, focus on its “Change notice period”.",
       pinToasts: true,
       run: async (c) => {
         for (const x of noticeSnapshot) {

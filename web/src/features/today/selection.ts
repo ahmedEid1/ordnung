@@ -24,6 +24,7 @@ import type {
 } from "@/api/types";
 import { addToTotals, formatDate, formatMoney, type Totals } from "@/lib/format";
 import { offersEndingLetter } from "@/features/contracts/links";
+import { noticeFromYou } from "@/features/contracts/model";
 import { isDirectDebit } from "@/lib/payments";
 
 // ------------------------------------------------------------------------------------------------
@@ -254,7 +255,8 @@ export function actionFromContract(contract: Contract, ctx: CandidateContext): T
   if (!actionDate) return null;
   const daysLeft = daysBetween(actionDate, ctx.today);
   if (daysLeft < 0) return null; // a passed decision date is not an action any more
-  const needsCheck = c.confidence === "low";
+  // low confidence asks for a check — not once the person entered the notice period (as on its card)
+  const needsCheck = c.confidence === "low" && !noticeFromYou(contract);
   const base = {
     key: `contract:${contract.id}`,
     source: "contract" as const,

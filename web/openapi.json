@@ -1330,7 +1330,7 @@
           "items"
         ],
         "summary": "List Items",
-        "description": "To-dos & dates, soonest first. With a ``from``/``to`` range undated ones are left out unless\n``include_undated``.",
+        "description": "To-dos & dates, soonest first. With a ``from``/``to`` range undated ones are left out unless\n``include_undated``. Each says whether it is set aside (``aside``: not one to act on, as on Today).",
         "operationId": "list_items_api_items_get",
         "parameters": [
           {
@@ -1544,7 +1544,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Item"
+                    "$ref": "#/components/schemas/ListedItem"
                   },
                   "title": "Response List Items Api Items Get"
                 }
@@ -11128,6 +11128,409 @@
         ],
         "title": "LetterRef",
         "description": "A letter a number or case links to."
+      },
+      "ListedItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "deadline",
+              "payment",
+              "appointment",
+              "task",
+              "expiry",
+              "reminder",
+              "milestone"
+            ],
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "consequence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consequence"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Time"
+          },
+          "send_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Send By"
+          },
+          "date_spec": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DateSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "computation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComputationReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "out",
+                  "in"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction"
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Recurrence-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "done",
+              "dismissed",
+              "snoozed",
+              "missed"
+            ],
+            "title": "Status",
+            "default": "open"
+          },
+          "snoozed_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snoozed Until"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "critical"
+            ],
+            "title": "Priority",
+            "default": "normal"
+          },
+          "area": {
+            "type": "string",
+            "enum": [
+              "home",
+              "work",
+              "study",
+              "health",
+              "money",
+              "residence",
+              "tax",
+              "mobility",
+              "insurance",
+              "leisure",
+              "family",
+              "other"
+            ],
+            "title": "Area",
+            "default": "other"
+          },
+          "party_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Party Id"
+          },
+          "case_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "contract_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract Id"
+          },
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "grounding": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "model_read",
+              "unverified",
+              "user"
+            ],
+            "title": "Grounding",
+            "default": "unverified"
+          },
+          "slot_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot Key"
+          },
+          "user_modified": {
+            "type": "boolean",
+            "title": "User Modified",
+            "default": false
+          },
+          "due_date_source": {
+            "type": "string",
+            "enum": [
+              "computed",
+              "fixed",
+              "manual",
+              "none"
+            ],
+            "title": "Due Date Source",
+            "default": "none"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "extracted",
+              "manual",
+              "rule",
+              "capture",
+              "draft"
+            ],
+            "title": "Origin",
+            "default": "extracted"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "filed_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filed On"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "aside": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ItemAside"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "description",
+          "action",
+          "consequence",
+          "due_date",
+          "due_time",
+          "send_by",
+          "date_spec",
+          "computation",
+          "amount",
+          "currency",
+          "direction",
+          "recurrence",
+          "status",
+          "snoozed_until",
+          "priority",
+          "area",
+          "party_id",
+          "case_id",
+          "contract_id",
+          "doc_id",
+          "evidence",
+          "grounding",
+          "slot_key",
+          "user_modified",
+          "due_date_source",
+          "origin",
+          "location",
+          "filed_on",
+          "created_at",
+          "updated_at",
+          "completed_at",
+          "aside"
+        ],
+        "title": "ListedItem",
+        "description": "A to-do as the list (``GET /api/items``) returns it.\n\n``aside`` is worked out on read (never stored): why the to-do is not one to act on — the same\nrules as Today, the letter's verdict and the party drawer (:class:`ItemAside`) — so the Inbox\nneither counts it nor shows it as a letter's next step; ``None`` for one to act on."
       },
       "MailOpenRequest": {
         "properties": {

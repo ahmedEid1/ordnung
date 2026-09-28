@@ -1296,6 +1296,17 @@ class ItemAside(_Model):
     replaced_by: str | None = None
 
 
+class ListedItem(Item):
+    """A to-do as the list (``GET /api/items``) returns it.
+
+    ``aside`` is worked out on read (never stored): why the to-do is not one to act on — the same
+    rules as Today, the letter's verdict and the party drawer (:class:`ItemAside`) — so the Inbox
+    neither counts it nor shows it as a letter's next step; ``None`` for one to act on.
+    """
+
+    aside: ItemAside | None = None
+
+
 class ProofLink(_Model):
     """A sent letter this document is proof of (``drafts.proof``): the letter and what the proof is."""
 

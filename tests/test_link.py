@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from ordnung.api.routes.contracts import notice_evidence
 from ordnung.db.store import Store
 from ordnung.ids import content_id
 from ordnung.ingest.link import (
@@ -23,7 +24,7 @@ from ordnung.ingest.link import (
     thread_case,
     upsert_contract,
 )
-from ordnung.models import Document, DocumentExtraction, ExtractedParty, Identifier
+from ordnung.models import Contract, Document, DocumentExtraction, Evidence, ExtractedParty, Identifier
 from ordnung.rules import RuleContext
 
 
@@ -290,6 +291,52 @@ def test_reprocessing_refreshes_only_fields_the_person_did_not_edit(store: Store
     assert again is not None and again.id == contract.id
     assert again.cost_amount == 34.9
     assert again.notice_value == 2
+
+
+def test_reprocessing_keeps_the_notice_terms_the_person_entered_as_theirs(store: Store) -> None:
+    """UI audit R2-inbox-timeline-contracts-1: "Save notice period" records the terms as the person's (a
+    ``user`` quote) so the card stops asking to check them; reading the letter again keeps that quote while
+    their terms stand — and drops it when the reading rewrites them."""
+    party = store.add_party(name="Musterbank eG", kind="bank")
+    document = add_doc(store)
+    no_terms = {"name": "Girokonto", "category": "bank", "cost_amount": 4.9, "cost_interval": "monthly"}
+    first = extraction(contract=no_terms, references=[ref("Kontonummer", "7004")])
+
+    def read(data: Any, quotes: list[Evidence]) -> Contract:
+        contract = upsert_contract(
+            store,
+            document=document,
+            extraction=data,
+            party=party,
+            case=None,
+            evidence=quotes,
+            rule_ctx=rule_ctx(),
+            postal_buffer_days=4,
+        )
+        assert contract is not None
+        return contract
+
+    letter = Evidence(doc_id=document.id, quote="Kontoführung 4,90 €", grounding="verified")
+    contract = read(first, [letter])
+    store.update_document(document.id, extraction=first)
+    entered = store.update_contract(
+        contract.id, notice_value=3, notice_unit="months", notice_basis="end_of_month"
+    )
+    store.update_contract(contract.id, evidence=notice_evidence(entered))
+
+    again = read(first, [letter])
+    assert [(e.grounding, e.quote) for e in again.evidence] == [
+        ("verified", "Kontoführung 4,90 €"),
+        ("user", "three months' notice to the end of a month"),
+    ]
+    assert again.notice_value == 3
+    # a reading that writes the notice terms itself (the person's are gone): no quote of theirs is left
+    store.update_contract(contract.id, notice_value=None, notice_unit=None, notice_basis=None)
+    stated = extraction(
+        contract=no_terms | {"notice_value": 1, "notice_unit": "months", "notice_basis": "end_of_month"},
+        references=[ref("Kontonummer", "7004")],
+    )
+    assert [e.grounding for e in read(stated, [letter]).evidence] == ["verified"]
 
 
 def test_change_links_to_the_only_active_contract_without_touching_it(store: Store) -> None:

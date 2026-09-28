@@ -14,6 +14,7 @@ import type {
   Lane,
   RuleInfo,
   TimelineEntry,
+  ListedItem,
   WeeklySession,
 } from "@/api/types";
 import { findRawEnums } from "@/lib/copy";
@@ -94,6 +95,26 @@ describe("mock dataset", () => {
     const lease = ranged.find((l) => l.id === "lane_home")!.bars[0]!;
     expect([lease.start, lease.end]).toEqual(["2026-06-01", "2027-09-30"]);
     for (const b of ranged.flatMap((l) => l.bars)) for (const m of b.markers) expect(m.date >= "2026-06-01" && m.date <= "2027-09-30").toBe(true);
+  });
+
+  it("words a timeline to-do's day as the API does: transfer, direct debit or post (R2-inbox-timeline-contracts-3)", async () => {
+    const s = srv();
+    const items = s.db.state.items;
+    Object.assign(items.find((i) => i.id === "itm_parking")!, { send_by: "2026-09-25" });
+    Object.assign(items.find((i) => i.id === "itm_bkk")!, { send_by: "2026-10-13", description: "Collected by direct debit (Lastschrift)." });
+    const tl = await get<TimelineEntry[]>(s, "/timeline", "from=2026-09-01&to=2026-12-31");
+    const subtitle = (id: string) => tl.find((e) => e.ref.id === id)?.subtitle;
+    expect(subtitle("itm_parking")).toBe("Transfer by Fri 25 Sep");
+    expect(subtitle("itm_bkk")).toBe("Collected by direct debit");
+    expect(subtitle("itm_gym_price")).toBe("Send by Tue 6 Oct");
+  });
+
+  it("lists to-dos with why they are set aside, as the API does", async () => {
+    const s = srv();
+    s.db.state.items.find((i) => i.id === "itm_tm_invoice")!.status = "open";
+    const items = await get<ListedItem[]>(s, "/items", "status=open");
+    expect(items.find((i) => i.id === "itm_tm_invoice")?.aside).toEqual({ item_id: "itm_tm_invoice", reason: "replaced", replaced_by: "doc_tm_dunning" });
+    expect(items.find((i) => i.id === "itm_tm_dunning")?.aside).toBeNull();
   });
 
   it("processes a New-mail letter live: stages, then items, ideas and lanes appear", async () => {
