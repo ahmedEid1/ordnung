@@ -1,7 +1,7 @@
 /**
- * Today's one gentle prompt for the weekly session — on Sundays, or when the last one is a week old
- * (the backend decides: `WeeklySession.due`) — with "Start" and "Not now". When no session is due, a
- * quiet link at the foot of Today keeps the session one tap away. No nagging: "Not now" hides it until
+ * Today's one gentle prompt for the weekly review — on Sundays, or when the last one is a week old
+ * (the backend decides: `WeeklySession.due`) — with "Start" and "Not now". When no review is due, a
+ * quiet link at the foot of Today keeps the review one tap away. No nagging: "Not now" hides it until
  * the next one is due.
  */
 import { Link } from "react-router";
@@ -14,7 +14,7 @@ import { focusWhenReady } from "@/features/today/focus";
 import { fadeUp } from "@/features/today/motion";
 import { useFormatDate } from "@/lib/today";
 import { cn } from "@/lib/utils";
-import { sessionHighlights } from "./steps";
+import { WEEKLY_REVIEW, sessionHighlights } from "./steps";
 
 export function WeeklyPrompt() {
   const week = useWeek();
@@ -35,7 +35,7 @@ export function WeeklyPrompt() {
         </span>
         <div className="min-w-0 flex-1 basis-[16rem]">
           <h2 id="weekly-prompt-title" className="text-[15px] font-semibold leading-6 text-ink">
-            Time for your weekly review
+            Time for your {WEEKLY_REVIEW.toLowerCase()}
           </h2>
           <p className="text-[13.5px] leading-5 text-ink/80">
             About {data.minutes} minutes{highlights.length ? `: ${highlights.join(" · ")}` : "."}
@@ -68,7 +68,7 @@ export function WeeklyPrompt() {
   );
 }
 
-/** The session is always one tap away: a quiet line at the foot of Today when no prompt is showing. */
+/** The review is always one tap away: a quiet line at the foot of Today when no prompt is showing. */
 export function WeeklyLink({ className }: { className?: string }) {
   const week = useWeek();
   const formatDate = useFormatDate();
@@ -84,7 +84,8 @@ export function WeeklyLink({ className }: { className?: string }) {
     >
       <CalendarCheck className="size-4 shrink-0" aria-hidden />
       <span>
-        Weekly review{data.last_session ? <span> · last done {formatDate(data.last_session)}</span> : null}
+        {WEEKLY_REVIEW}
+        {data.last_session ? <span> · last done {formatDate(data.last_session)}</span> : null}
       </span>
       <ChevronRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden />
     </Link>

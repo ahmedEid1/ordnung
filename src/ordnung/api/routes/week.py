@@ -1,6 +1,7 @@
-"""The weekly session ("This week"): ``GET`` the seven steps (and whether Today should suggest them);
-``POST /week/done`` remembers that the person went through them, ``POST /week/dismiss`` that they said
-"Not now" to the prompt. Only these two moments are stored (``meta``); nothing is closed or paid."""
+"""The weekly session (the "Weekly review" page): ``GET`` the seven steps (and whether Today should
+suggest them); ``POST /week/done`` remembers that the person went through them, ``POST /week/dismiss``
+that they said "Not now" to the prompt. Only these two moments are stored (``meta``); nothing is closed
+or paid."""
 
 from __future__ import annotations
 

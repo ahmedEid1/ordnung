@@ -516,17 +516,17 @@ export function useNumbers() {
   return useQuery({ queryKey: qk.numbers, queryFn: api.numbers, staleTime: MINUTE });
 }
 
-/** `GET /week` — the weekly session (Today asks it whether to suggest one). */
+/** `GET /week` — the weekly review (Today asks it whether to suggest one). */
 export function useWeek(opts: { enabled?: boolean } = {}) {
   return useQuery({ queryKey: qk.week, queryFn: api.week, staleTime: 30_000, enabled: opts.enabled ?? true });
 }
 
-/** "Done" at the end of the weekly session: remembered, and the answer is the session afterwards. */
+/** "Done" at the end of the weekly review: remembered, and the answer is the review afterwards. */
 export function useWeekDone() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: api.weekDone,
-    meta: { errorTitle: "Couldn't save your weekly session" },
+    meta: { errorTitle: "Couldn't save your weekly review" },
     onSuccess: (week) => {
       qc.setQueryData(qk.week, week);
       void qc.invalidateQueries({ queryKey: qk.activity });
@@ -539,7 +539,7 @@ export function useWeekDismiss() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: api.weekDismiss,
-    meta: { errorTitle: "Couldn't hide the weekly session" },
+    meta: { errorTitle: "Couldn't hide the weekly review" },
     onSuccess: (week) => qc.setQueryData(qk.week, week),
   });
 }

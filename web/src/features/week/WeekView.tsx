@@ -1,9 +1,10 @@
 /**
- * "This week": the guided weekly admin session (`GET /api/week`, `ordnung/secretary/week.py`) — short
- * steps, one at a time (seven, and "Act now" first when something is overdue or due today), then "All
- * clear until …", "N things to do today" or "N things are overdue". Nothing is paid, sent or closed for
- * the person: each row links to where they act (Pay and Confirm right here). "Finish" remembers the session.
- * URL state: `?step=now|new|check|pay|post|waiting|decide|file`.
+ * The weekly review: the guided weekly admin session (`GET /api/week`, `ordnung/secretary/week.py`) —
+ * short steps, one at a time (seven, and "Act now" first when something is overdue or due today), then
+ * "All clear until …" ("for today" when the next day to act is tomorrow), "N things to do today" or "N
+ * things are overdue". Nothing is paid, sent or closed for the person: each row links to where they act
+ * (Pay and Confirm right here). "Finish" remembers the review. One name everywhere — "Weekly review" —
+ * on Today, the page, its ending and its messages. URL state: `?step=now|new|check|pay|post|waiting|decide|file`.
  */
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
@@ -15,15 +16,16 @@ import { PageHeader } from "@/components/shell/Page";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Countdown } from "@/components/ui/Countdown";
+import { Disclaimer } from "@/components/ui/Disclaimer";
 import { EmptyArt, EmptyState } from "@/components/ui/EmptyState";
 import { LoadError } from "@/components/ui/LoadError";
 import { Money } from "@/components/ui/Money";
 import { LoadingLabel, Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { Stepper } from "@/components/ui/Stepper";
-import { formatMoney, glueText } from "@/lib/format";
-import { useFormatDate } from "@/lib/today";
+import { daysUntil, formatMoney, glueText } from "@/lib/format";
+import { useFormatDate, useTodayISO } from "@/lib/today";
 import { cn, prefersReducedMotion } from "@/lib/utils";
-import { STEP_META, entryHref, stepCount, type StepId } from "./steps";
+import { STEP_META, WEEKLY_REVIEW, entryHref, stepCount, type StepId } from "./steps";
 import { WeekEntryRow } from "./WeekEntryRow";
 import { useStickyError } from "@/lib/hooks";
 
@@ -34,7 +36,7 @@ const LAYOUT = "grid grid-cols-1 items-start gap-6 @[52rem]:grid-cols-[15rem_min
 
 function StepList({ steps, current, visited, onPick }: { steps: WeekStep[]; current: number; visited: ReadonlySet<StepId>; onPick: (i: number) => void }) {
   return (
-    <nav aria-label="Steps of the session" className="hidden @[52rem]:block @[52rem]:sticky @[52rem]:top-20">
+    <nav aria-label="Steps of the review" className="hidden @[52rem]:block @[52rem]:sticky @[52rem]:top-20">
       <ol className="flex flex-col gap-1">
         {steps.map((step, i) => {
           const meta = STEP_META[step.id];
@@ -76,24 +78,40 @@ function StepList({ steps, current, visited, onPick }: { steps: WeekStep[]; curr
   );
 }
 
-function StepPanel({ step, index, total }: { step: WeekStep; index: number; total: number }) {
+/**
+ * After Next, Back or a pick, the new step shows from the top of the steps — the phone's stepper and the
+ * card's "Step n of m" clear of the sticky top bar (`scroll-padding-top`) — when that top is hidden under
+ * the bar or the new heading is below the fold; otherwise nothing moves.
+ */
+function revealStep(heading: HTMLElement): void {
+  // the top of the steps (`data-week-steps`): the phone's stepper, else the step list and the card side by side
+  const top = heading.closest<HTMLElement>("[data-week-steps]") ?? heading;
+  const clear = Number.parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+  if (top.getBoundingClientRect().top >= clear - 1 && heading.getBoundingClientRect().bottom <= window.innerHeight) return;
+  top.scrollIntoView?.({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+}
+
+function StepPanel({ step, index, total, focusOnMount = false }: { step: WeekStep; index: number; total: number; focusOnMount?: boolean }) {
   const last = index === total - 1;
   const meta = STEP_META[step.id];
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const first = useRef(true);
-  // moving to another step takes the focus to its heading (not on the first render: the page is new)
+  const first = useRef(!focusOnMount);
+  // moving to another step takes the focus to its heading (not on the first render: the page is new —
+  // unless the person came back from the ending, whose card this one replaces)
   useEffect(() => {
     if (first.current) {
       first.current = false;
       return;
     }
-    headingRef.current?.focus({ preventScroll: true });
-    headingRef.current?.scrollIntoView?.({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    const heading = headingRef.current;
+    if (!heading) return;
+    heading.focus({ preventScroll: true });
+    revealStep(heading);
   }, [step.id]);
   const transfers = step.id === "pay" && step.total !== null;
   return (
-    <Card as="section" padding="lg" aria-labelledby={`week-step-${step.id}`} className="scroll-mt-20">
-      <p className="text-[12.5px] font-semibold uppercase tracking-[0.06em] text-muted">
+    <Card as="section" padding="lg" aria-labelledby={`week-step-${step.id}`}>
+      <p className="eyebrow">
         Step {index + 1} of {total}
       </p>
       <h2 id={`week-step-${step.id}`} ref={headingRef} tabIndex={-1} className="display mt-1 text-[24px] font-semibold leading-tight text-ink outline-none">
@@ -128,7 +146,7 @@ function StepPanel({ step, index, total }: { step: WeekStep; index: number; tota
       {step.more || (meta.more.always && step.entries.length) ? (
         <p className="mt-3 text-[13.5px] text-muted">
           {step.more ? <>And {step.more} more. </> : null}
-          <Link to={meta.more.to} className="rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
+          <Link to={meta.more.to} className="-my-0.5 inline-block rounded py-0.5 font-medium leading-5 text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
             {meta.more.label}
           </Link>
         </p>
@@ -191,6 +209,7 @@ function StepLinks({ found, many, onShow }: { found: { step: WeekStep; count: nu
 
 function AllClear({ week, onShow }: { week: WeeklySession; onShow: (step: StepId) => void }) {
   const formatDate = useFormatDate();
+  const todayISO = useTodayISO();
   const next = week.next_deadline;
   const heading = useRef<HTMLHeadingElement>(null);
   // the card replaces the step the person finished: the focus (and a screen reader) goes to it
@@ -206,7 +225,10 @@ function AllClear({ week, onShow }: { week: WeeklySession; onShow: (step: StepId
         ? "One thing to do today"
         : `${todayCount} things to do today`
       : next?.date
-        ? `All clear until ${formatDate(next.date)}`
+        ? // "until tomorrow" beside a red "tomorrow" is no all-clear: only today is
+          daysUntil(next.date, todayISO) <= 1
+          ? "All clear for today"
+          : `All clear until ${formatDate(next.date)}`
         : "All clear";
   const overdueSteps = overdue ? stepsWith(week, isCountedOverdue) : [];
   const todaySteps = todayCount > 1 ? stepsWith(week, (e, step) => isCountedToday(e, step, week.today)) : [];
@@ -245,7 +267,7 @@ function AllClear({ week, onShow }: { week: WeeklySession; onShow: (step: StepId
       ) : !overdue ? (
         <p className="mt-2 max-w-md text-[14.5px] leading-relaxed text-muted">Nothing is due from today on.</p>
       ) : null}
-      <p className="mt-2 text-[13.5px] text-muted">Session saved — {nextPromptText(week, (d) => formatDate(d))}.</p>
+      <p className="mt-2 text-[13.5px] text-muted">Review saved — {nextPromptText(week, (d) => formatDate(d))}.</p>
       <Link to="/" className={cn(buttonVariants({ variant: "primary" }), "mt-5")}>
         Back to Today
       </Link>
@@ -322,6 +344,8 @@ export function WeekView() {
   const [params, setParams] = useSearchParams();
   const [visited, setVisited] = useState<Set<StepId>>(() => new Set());
   const [finished, setFinished] = useState(false);
+  // back from the ending ("See them"): the step's heading takes the focus the ending's card had
+  const [returned, setReturned] = useState(false);
 
   const lastError = useStickyError(q.error, Boolean(q.data));
   const failed = !q.data && (q.isError || Boolean(lastError));
@@ -353,11 +377,11 @@ export function WeekView() {
   const header = (
     <PageHeader
       eyebrow={week ? formatDate(week.today, { style: "long", withYear: "never" }) : undefined}
-      title="This week"
+      title={WEEKLY_REVIEW}
       description={
         <>
           {describeSession(week?.minutes)}
-          {week?.last_session ? <span className="block text-[13.5px]">Last session: {formatDate(week.last_session)}.</span> : null}
+          {week?.last_session ? <span className="block text-[13.5px]">Last review: {formatDate(week.last_session)}.</span> : null}
         </>
       }
     />
@@ -387,9 +411,11 @@ export function WeekView() {
           week={week}
           onShow={(id) => {
             setFinished(false);
+            setReturned(true);
             go(steps.findIndex((s) => s.id === id));
           }}
         />
+        <Disclaimer variant="block" className="mt-8" />
       </>
     );
   }
@@ -398,6 +424,7 @@ export function WeekView() {
       <>
         {header}
         <NothingToReview week={week} />
+        {week.next_deadline ? <Disclaimer variant="block" className="mt-8" /> : null}
       </>
     );
   }
@@ -407,24 +434,26 @@ export function WeekView() {
   return (
     <>
       {header}
-      <div className="@container">
+      <div className="@container" data-week-steps>
         <div className="mb-5 @[52rem]:hidden">
-          {/* ticks only on the steps looked at (as the step list beside it), and any step a tap away; the card says "Step n of m" */}
+          {/* ticks only on the steps looked at (as the step list beside it), and any step a tap away; the card
+              says "Step n of m". A name under every dot — on a phone over two lines — since the dots are the
+              phone's way between the steps. */}
           <Stepper
             steps={steps.map((s) => ({ id: s.id, label: s.title, short: STEP_META[s.id].short }))}
             current={index}
             doneIds={visited}
             labels="all"
-            fallback="none"
+            fallback="stagger"
             size="sm"
-            label="Steps of the session"
+            label="Steps of the review"
             onPick={go}
           />
         </div>
         <div className={LAYOUT}>
           <StepList steps={steps} current={index} visited={visited} onPick={go} />
           <div className="flex min-w-0 flex-col gap-4">
-            <StepPanel step={step} index={index} total={steps.length} />
+            <StepPanel step={step} index={index} total={steps.length} focusOnMount={returned} />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Button variant="ghost" icon={ArrowLeft} onClick={() => go(index - 1)} disabled={index === 0}>
                 Back
@@ -449,6 +478,8 @@ export function WeekView() {
                 </Button>
               )}
             </div>
+            {/* every day on these steps is computed (a cancellation's, a transfer's, a letter's to post) */}
+            <Disclaimer variant="block" className="mt-4" />
           </div>
         </div>
       </div>

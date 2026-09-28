@@ -1126,10 +1126,13 @@ Pages:
    step not confirmed against the letter says to compare it. An open case's next step reads its day as
    the weekly session does: *on* for an appointment and a fee paid at it, else *by* the day to act,
    *act today* with the due date once its send-by day has passed, overdue counted from its due date.
-   **This week** (`/week`, from Today) — the weekly session as a stepper (step list beside the step on
-   wide pages, dots on phones — ticks only on the steps looked at; `?step=`), rows linking to where the
+   **Weekly review** (`/week`, from Today; one name on Today, the page, its ending and its messages) —
+   the weekly session as a stepper (step list beside the step on wide pages, dots on phones with a name
+   under each, over two lines when they don't fit on one — ticks only on the steps looked at; `?step=`),
+   rows linking to where the
    person acts, Pay (the Pay panel; not for a fee paid at an appointment) and "Looks right" (confirm; the
-   focus goes on to the next row, also after "Mark as paid") in place, "Finish" → "All clear until …",
+   focus goes on to the next row, also after "Mark as paid") in place, "Finish" → "All clear until …"
+   ("All clear for today" when the next day to act is tomorrow),
    "N things to do today" or "N things are overdue" with a link to each step that holds them (and the
    day Today suggests the next session). With nothing in any step it says so ("Nothing to review yet"
    with Add letters). Today shows one gentle prompt (Start · Not now) when the session is due, else a

@@ -76,7 +76,7 @@ A call sheet's phone, e-mail and website come from the organisation's letters wi
 letter with scam signs that imitates a known sender never puts its own phone number or address next to
 your numbers.
 
-The weekly session (*This week*) stores only the moments you finished it or said "Not now".
+The weekly session (*Weekly review*) stores only the moments you finished it or said "Not now".
 
 ## Your controls
 
