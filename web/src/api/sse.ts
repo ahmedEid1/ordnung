@@ -91,8 +91,16 @@ export function dismissJob(docId: string): void {
   });
 }
 
-/** Record progress locally (used right after an upload so the stepper appears instantly). */
+/**
+ * Record progress locally (used right after an upload or a "Read again" so the stepper appears
+ * instantly). A seed never overwrites what the server already reported for the same job: callers
+ * seed in their mutation's `onSuccess`, which runs after the ledger refetch, and by then a short
+ * reading may have sent its final `done` or `failed` event (the card would otherwise stay on
+ * "Opening the file…" for good).
+ */
 export function seedJob(ev: JobProgressEvent): void {
+  const prev = state.jobs[jobKey(ev)];
+  if (prev && ev.job_id != null && prev.job_id === ev.job_id) return;
   applyJobProgress(ev);
 }
 
