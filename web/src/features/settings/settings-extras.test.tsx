@@ -140,6 +140,7 @@ describe("Data → delete everything", () => {
     );
 
     const deleteAll = await screen.findByRole("button", { name: "Delete everything…" });
+    expect(deleteAll.className).toMatch(/(^|\s)w-full(\s|$)/);
     // a person's own Ordnung has no guided tour to restart
     expect(screen.queryByRole("region", { name: "Guided tour" })).not.toBeInTheDocument();
     await user.click(deleteAll);
@@ -176,6 +177,13 @@ describe("Data → delete everything", () => {
     // …and the guided tour again (UI audit round 1: R1-tour-5, the Settings entry)
     const tour = await screen.findByRole("region", { name: "Guided tour" });
     expect(within(tour).getByRole("button", { name: "Restart the demo tour" })).toBeInTheDocument();
+    // one rule for the stacked cards' lone footer action: the whole row on phones, its own width from `sm`
+    // (round 2: only the backup's spanned the footer, the others sat small at the right)
+    for (const name of ["Download encrypted backup…", "Download JSON", "Restart the demo tour"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.className).toMatch(/(^|\s)w-full(\s|$)/);
+      expect(button.className).toMatch(/(^|\s)sm:w-auto(\s|$)/);
+    }
   });
 
   it("the online demo starts over by reloading", async () => {
@@ -184,7 +192,7 @@ describe("Data → delete everything", () => {
     renderWithProviders(<SettingsPage />, { route: "/settings?section=data" });
     const reset = await screen.findByRole("region", { name: "Start over" });
     expect(reset).toHaveTextContent("This online demo keeps nothing you do in it.");
-    expect(within(reset).getByRole("button", { name: "Start over" })).toBeInTheDocument();
+    expect(within(reset).getByRole("button", { name: "Start over" }).className).toMatch(/(^|\s)w-full(\s|$)/);
     expect(within(reset).queryByRole("button", { name: /Copy command/ })).not.toBeInTheDocument();
     vi.unstubAllEnvs();
   });
@@ -199,7 +207,9 @@ describe("Data → delete everything", () => {
     const where = await screen.findByRole("region", { name: "Where your data lives" });
     const code = within(where).getByText((_, el) => el?.tagName === "CODE");
     expect(code.textContent).toBe(path);
-    expect(code.querySelectorAll("wbr")).toHaveLength(path.split("/").length - 1);
+    // after every "/" that ends a name — never after the root "/", which would hang alone at a line's end
+    expect(code.querySelectorAll("wbr")).toHaveLength(path.split("/").length - 2);
+    expect(code.innerHTML).toMatch(/^\/Users\/<wbr>samantha-rivera-musterfrau\/<wbr>/);
     // no sideways scrolling box that cuts the path off
     expect(code.className).not.toMatch(/overflow-x-auto|whitespace-nowrap/);
     expect(within(where).getByRole("button", { name: "Copy the folder path" })).toBeInTheDocument();

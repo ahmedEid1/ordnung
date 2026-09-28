@@ -107,9 +107,49 @@ describe("Settings → Watched folder", () => {
     expect(field).toHaveAccessibleDescription("Please choose a full folder path (for example /home/you/Scans).");
     await waitFor(() => expect(field).toHaveFocus());
     expect(srv.db.state.settings.inbox_dir).toBe("/home/sam/Scans");
+    // the save bar says what to fix at once (round 2: it kept "Unsaved changes" until a second Save)
+    expect(screen.getByText("Fix the highlighted field to save")).toBeInTheDocument();
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
     // typing again clears the reason
     await user.type(field, "/");
     expect(field).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+  });
+
+  it("a failed save that leaves no mistake keeps “Unsaved changes”", async () => {
+    const { srv } = useMockApi();
+    const handle = srv.handle.bind(srv);
+    srv.handle = async (method, path, query, body, signal) =>
+      method === "PUT" && path === "/settings" ? new Response(JSON.stringify({ detail: "Internal error" }), { status: 500 }) : handle(method, path, query, body, signal);
+    const user = userEvent.setup();
+    renderFolder();
+    const field = await screen.findByLabelText("Folder");
+    await user.clear(field);
+    await user.type(field, "/home/sam/Post");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled());
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    expect(screen.queryByText("Fix the highlighted field to save")).toBeNull();
+    expect(field).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("Discard and Save leave focus on the save bar's status, never on the page", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    renderFolder();
+    const field = await screen.findByLabelText("Folder");
+    await user.type(field, "-old");
+    await user.click(screen.getByRole("button", { name: "Discard" }));
+    expect(field).toHaveValue("/home/sam/Scans");
+    const status = screen.getByText("All changes saved").closest("p")!;
+    expect(status).toHaveFocus();
+    expect(status).toHaveAttribute("tabindex", "-1");
+
+    await user.click(screen.getByRole("switch", { name: /Read new files with Claude straight away/ }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    const saved = await screen.findByText(/^New files from the folder/);
+    await waitFor(() => expect(saved.closest("[role=status]")).toHaveFocus());
+    expect(document.activeElement).not.toBe(document.body);
   });
 
   it("offers Ordnung's own inbox folder in one click", async () => {
@@ -148,5 +188,28 @@ describe("Settings → Watched folder", () => {
     renderFolder();
     const status = await screen.findByRole("region", { name: "Status" });
     expect(await within(status).findByText("Nothing picked up yet. Once a folder is watched, the files it brings in are listed here.")).toBeInTheDocument();
+    // the card's own text size, not larger than its description
+    const none = within(status).getByText(/^No folder is watched/);
+    expect(none.className).toMatch(/text-\[13\.5px\]/);
+    expect(none.className).not.toMatch(/\btext-base\b/);
+  });
+
+  it("a watched folder with nothing picked up names every kind of file it takes, e-mails too", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.folderRecent = [];
+    renderFolder();
+    const status = await screen.findByRole("region", { name: "Status" });
+    expect(
+      await within(status).findByText("Nothing picked up yet. Put PDFs, phone photos or saved e\u2011mails into the folder — they show up in your Inbox within a few seconds."),
+    ).toBeInTheDocument();
+  });
+
+  it("the letters waiting in the Inbox carry the Inbox's “not read yet” sign, not the deadline hourglass", async () => {
+    useMockApi();
+    renderFolder();
+    const status = await screen.findByRole("region", { name: "Status" });
+    const waiting = await within(status).findByRole("link", { name: /letters not read yet in the Inbox/ });
+    expect(waiting.querySelector("svg.lucide-folder-input")).not.toBeNull();
+    expect(waiting.querySelector("svg.lucide-hourglass")).toBeNull();
   });
 });

@@ -57,6 +57,53 @@ for (const [width, height] of [
   });
 }
 
+for (const [width, height] of [
+  [390, 844],
+  [1280, 800],
+]) {
+  test(`Profile at ${width}×${height}: Save and Discard by keyboard leave focus in the card, on the bar's status`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await open(page, "/settings?section=profile", "Settings");
+    const main = page.getByRole("main");
+    const phone = main.getByLabel(/^Phone/);
+    const iban = main.getByLabel(/^IBAN for refunds/);
+    const original = await phone.inputValue();
+    const status = main.locator("section.card").filter({ has: page.getByLabel(/^Phone/) }).getByRole("status");
+    const edit = async () => {
+      await phone.focus();
+      await page.keyboard.press("End");
+      await page.keyboard.type("9");
+    };
+
+    // Discard: the buttons go at once — focus stays on what the bar says, visibly and on screen
+    await edit();
+    await main.getByRole("button", { name: "Discard" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(phone).toHaveValue(original);
+    await expect(status).toBeFocused();
+    expect(await status.evaluate((el) => el.matches(":focus-visible"))).toBe(true);
+    await settle(page);
+    expect(await reachable(status)).toBe(true);
+    // Tab goes on from the card (round 2: focus fell to <body>, the next Tab to "Skip to content")
+    await page.keyboard.press("Shift+Tab");
+    await expect(iban).toBeFocused();
+
+    // Save: "Saved. …" holds the focus
+    await edit();
+    await main.getByRole("button", { name: "Save changes" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(status).toContainText("Saved.");
+    await expect(status).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(iban).toBeFocused();
+
+    // back as it was, for the other tests
+    await phone.fill(original);
+    await main.getByRole("button", { name: "Save changes" }).click();
+    await expect(status).toContainText("Saved.");
+  });
+}
+
 test("at 1024 px next to the open app sidebar the sections are pills above the pane; at 1280 a list beside it", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await open(page, "/settings?section=ai", "Settings");

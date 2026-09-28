@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBlocker, useSearchParams } from "react-router";
-import { RotateCw, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { useHealth, useProfile, useSettings } from "@/api/hooks";
 import { Page, PageHeader } from "@/components/shell/Page";
+import { useStickyError } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadError } from "@/components/ui/LoadError";
 import { LoadingLabel, Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { AiSection } from "@/features/settings/AiSection";
 import { CalendarSection } from "@/features/settings/CalendarSection";
@@ -111,8 +112,13 @@ export default function SettingsPage() {
     if (paneRef.current && paneRef.current.getBoundingClientRect().top < 64) paneRef.current.scrollIntoView?.({ block: "start" });
   }, [section]);
 
-  const loading = profile.isPending || settings.isPending || health.isPending;
-  const failed = profile.isError || settings.isError;
+  const loaded = Boolean(profile.data && settings.data && health.data);
+  // a failed load stays on screen, worded the same, while "Try again" runs (the retry of a failed load starts
+  // over as "pending"); a background refresh that fails keeps the loaded forms (the app's toast says so)
+  const loadError = useStickyError(profile.error ?? settings.error ?? health.error, loaded);
+  const failed = !loaded && Boolean(loadError);
+  // what "Try again" asks for again (and spins for): the queries with nothing loaded
+  const unloaded = [profile, settings, health].filter((q) => !q.data);
 
   return (
     <SettingsDirtyProvider value={reportDirty}>
@@ -127,7 +133,18 @@ export default function SettingsPage() {
             </div>
             {/* forms keep a readable width in the shell's wide column; the privacy log's table uses all of it */}
             <div ref={paneRef} className={cn("min-w-0", !WIDE_SECTIONS.has(section) && "max-w-3xl")} key={section}>
-              {loading ? (
+              {failed ? (
+                // the shared error card, as on every other page: a primary "Try again" that spins while it asks
+                // again, and the technical details behind a disclosure
+                <LoadError
+                  what="your settings"
+                  error={loadError}
+                  onRetry={() => {
+                    for (const q of unloaded) void q.refetch();
+                  }}
+                  retrying={unloaded.some((q) => q.isFetching)}
+                />
+              ) : !profile.data || !settings.data || !health.data ? (
                 <div aria-busy="true">
                   <LoadingLabel>Loading your settings…</LoadingLabel>
                   <Skeleton className="h-7 w-56" />
@@ -136,23 +153,6 @@ export default function SettingsPage() {
                     <SkeletonText lines={6} />
                   </div>
                 </div>
-              ) : failed || !profile.data || !settings.data || !health.data ? (
-                <EmptyState
-                  illustration="error"
-                  title="Couldn't load your settings"
-                  description="Is Ordnung still running on this computer?"
-                  action={
-                    <Button
-                      icon={RotateCw}
-                      onClick={() => {
-                        void profile.refetch();
-                        void settings.refetch();
-                      }}
-                    >
-                      Try again
-                    </Button>
-                  }
-                />
               ) : section === "profile" ? (
                 <ProfileSection profile={profile.data} />
               ) : section === "region" ? (

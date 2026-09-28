@@ -12,7 +12,7 @@ import { RULES, USAGE } from "@/mocks/data/system";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import SettingsPage from "@/pages/SettingsPage";
-import { activityHref, groupActivity, groupRules, matchesRule, OTHER_RULES_TOPIC, splitCitation } from "./logic";
+import { activityHref, askChecksMessage, askCheckWhat, groupActivity, groupRules, matchesRule, OTHER_RULES_TOPIC, splitCitation } from "./logic";
 
 class RO {
   observe() {}
@@ -92,6 +92,43 @@ describe("activity logic", () => {
       [2, 1],
       [1, 1],
     ]);
+  });
+
+  it("folds a run of Ask's checks into one row whatever each check did, counting the answers", () => {
+    const S = "Checked an answer in Ask: took out sentences or values with dates, amounts or laws not in the records they cite";
+    const Q = "Checked an answer in Ask: showed values only a letter or the person states as quotes";
+    const C = "Checked an answer in Ask: took out 1 source it hadn't looked up";
+    const rows = groupActivity([
+      activity(9, "ask.sentences_removed", S, "chat", "m3"),
+      activity(8, "ask.letter_quotes", Q, "chat", "m3"),
+      activity(7, "ask.citations_removed", C, "chat", "m3"),
+      activity(6, "ask.sentences_removed", S, "chat", "m2"),
+      activity(5, "ask.letter_quotes", Q, "chat", "m1"),
+      activity(4, "document.processed", "Read “Rent increase”", "document", "d1"),
+      activity(3, "ask.letter_quotes", Q, "chat", "m0"),
+      activity(2, "document.processed", "Read “Rent increase”", "document", "d1"),
+      activity(1, "document.processed", "Read “Rent increase”", "document", "d1"),
+    ]);
+    expect(rows.map((r) => [r.entry.id, r.count])).toEqual([
+      [9, 5],
+      [4, 1],
+      [3, 1],
+      [2, 2],
+    ]);
+    expect(rows[0]!.askChecks).toEqual({
+      answers: 3,
+      done: [
+        { what: "Took out sentences or values with dates, amounts or laws not in the records they cite", answers: 2 },
+        { what: "Showed values only a letter or the person states as quotes", answers: 2 },
+        { what: "Took out 1 source it hadn't looked up", answers: 1 },
+      ],
+    });
+    // a single check keeps its own message
+    expect(rows[2]!.askChecks).toBeUndefined();
+    expect(rows[3]!.askChecks).toBeUndefined();
+    expect(askChecksMessage(1)).toBe("Checked an answer in Ask");
+    expect(askChecksMessage(12)).toBe("Checked 12 answers in Ask");
+    expect(askCheckWhat("Checked an answer in Ask: showed values as quotes")).toBe("Showed values as quotes");
   });
 });
 
@@ -217,24 +254,55 @@ describe("Privacy & AI usage", () => {
     expect(screen.queryByText("No calls yet.")).not.toBeInTheDocument();
   });
 
-  it("activity: a run of the same entry is one row, Ask's checks link to Ask, older entries on request", async () => {
+  it("activity: a run of the same entry is one row with a count, older entries on request", async () => {
     const { srv } = useMockApi();
-    const checked = (id: number) =>
-      activity(id, "ask.sentences_removed", "Checked an answer in Ask: took out sentences with dates, amounts or laws not in your records", "chat", `msg_${id}`);
+    const read = (id: number) => activity(id, "folder.checked", "Checked the watched folder", null, null);
     const before = srv.db.state.activity.length;
-    srv.db.state.activity = [...Array.from({ length: 10 }, (_, i) => checked(300 - i)), ...srv.db.state.activity];
+    srv.db.state.activity = [...Array.from({ length: 10 }, (_, i) => read(300 - i)), ...srv.db.state.activity];
     const user = userEvent.setup();
     renderWithProviders(<SettingsPage />, { route: "/settings?section=privacy" });
     const log = await screen.findByRole("region", { name: "Activity" });
-    const row = await within(log).findByRole("link", { name: /^Checked an answer in Ask.*\(10 times\)/ });
-    expect(row).toHaveAttribute("href", "/ask");
+    expect(await within(log).findByText("(10 times)")).toBeInTheDocument();
+    const rows = () => log.querySelectorAll("ol > li");
 
-    const rows = before + 1;
-    expect(within(log).getAllByRole("listitem")).toHaveLength(Math.min(rows, 10));
-    const older = within(log).getByRole("button", { name: `Show ${rows - 10} older ${rows - 10 === 1 ? "entry" : "entries"}` });
+    const total = before + 1;
+    expect(rows()).toHaveLength(Math.min(total, 10));
+    const older = within(log).getByRole("button", { name: `Show ${total - 10} older ${total - 10 === 1 ? "entry" : "entries"}` });
     await user.click(older);
-    await waitFor(() => expect(within(log).getAllByRole("listitem")).toHaveLength(rows));
+    await waitFor(() => expect(rows()).toHaveLength(total));
     expect(within(log).getByRole("button", { name: "Show fewer" })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("activity: Ask's checks of several answers are one row that links to Ask, what they did behind a disclosure", async () => {
+    const { srv } = useMockApi();
+    // what the Ask trust merge logs: up to three different checks per answer, alternating (round 2: ten rows of them)
+    const SENTENCES = "Checked an answer in Ask: took out sentences or values with dates, amounts or laws not in the records they cite";
+    const QUOTES = "Checked an answer in Ask: showed values only a letter or the person states as quotes";
+    const checks = Array.from({ length: 6 }, (_, i) => [
+      activity(400 - 2 * i, "ask.sentences_removed", SENTENCES, "chat", `msg_${i}`),
+      activity(399 - 2 * i, "ask.letter_quotes", QUOTES, "chat", `msg_${i}`),
+    ]).flat();
+    srv.db.state.activity = [...checks, ...srv.db.state.activity];
+    const user = userEvent.setup();
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=privacy" });
+    const log = await screen.findByRole("region", { name: "Activity" });
+    const row = await within(log).findByRole("link", { name: /^Checked 6 answers in Ask/ });
+    expect(row).toHaveAttribute("href", "/ask");
+    expect(row).not.toHaveTextContent(/times\)/);
+    // the letters read come right after it, no longer pushed out of view
+    const items = [...log.querySelectorAll("ol > li")];
+    expect(items[0]).toContainElement(row);
+    expect(items[1]).not.toHaveTextContent(/Checked/);
+
+    const more = within(items[0] as HTMLElement).getByText("What the checks did");
+    expect(more.closest("details")).not.toHaveAttribute("open");
+    await user.click(more);
+    expect(more.closest("details")).toHaveAttribute("open");
+    const done = within(items[0] as HTMLElement).getByRole("list");
+    expect(within(done).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      "Took out sentences or values with dates, amounts or laws not in the records they cite\u00a0· 6 answers",
+      "Showed values only a letter or the person states as quotes\u00a0· 6 answers",
+    ]);
   });
 
   it("an empty activity log says so the way the other empty cards do", async () => {
