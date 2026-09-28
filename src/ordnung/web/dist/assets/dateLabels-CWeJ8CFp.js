@@ -1,0 +1,1 @@
+var e={appointment:`On`,payment:`Pay by`,objection:`Must arrive by`,declaration:`Must arrive by`,notice:`Must arrive by`,other:`Date`};function t(t,n){return n?`Must arrive by`:t&&e[t]||`Must arrive by`}function n(e,t){return t??e===`payment`?`Transfer by`:`Send by`}export{n,t};
