@@ -15,9 +15,9 @@ import { MOCK_NUMBERS } from "@/mocks/data/numbers";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { hiddenLabel, maskValue, visibleTail } from "./mask";
-import { NumbersView, matchesSheet, sheetMatch } from "./NumbersView";
-import { OpenCaseCard, nextStepWhen } from "./cards";
-import { numberTitle, printedLabel } from "./NumberRow";
+import { CARD_GRID, NumbersView, matchesSheet, sheetMatch } from "./NumbersView";
+import { CallSheetCard, OpenCaseCard, nextStepWhen } from "./cards";
+import { NumberRow, numberTitle, printedLabel } from "./NumberRow";
 
 beforeEach(() => {
   vi.stubGlobal("scrollTo", () => {});
@@ -65,6 +65,22 @@ describe("masking", () => {
     expect(printedLabel({ kind: "tax_id", name: "Tax ID (Steuer-ID)", label: "Steuer-ID" })).toBeNull();
     expect(numberTitle({ kind: "other", name: "Your number", label: "Scholarship ID" })).toBe("Scholarship ID");
   });
+
+  it("wraps a long German label after its slashes and marks it German, never mid-word first", () => {
+    const label = "Rentenversicherungsnummer/Sozialversicherungsnummer/Versicherungsnummer";
+    const base = MOCK_NUMBERS.about_you[0]!;
+    const number = { ...base, key: "num_long", kind: "other" as const, group: "organisation" as const, name: "Your number", label };
+    renderWithProviders(<NumberRow number={number} showLetter={false} />);
+    const title = screen.getByText((_, el) => el?.tagName === "P" && el.textContent === label);
+    expect(title).toHaveAttribute("lang", "de");
+    expect(title).toHaveClass("hyphens-auto");
+    expect(title.querySelectorAll("wbr")).toHaveLength(2); // a break after each "/"
+    // the buttons' names and Copy keep the plain label
+    expect(screen.getByRole("button", { name: `Copy ${label}` })).toBeInTheDocument();
+    // an English label is not marked German
+    renderWithProviders(<NumberRow number={{ ...number, key: "num_en", label: "Scholarship ID" }} showLetter={false} />);
+    expect(screen.getByText("Scholarship ID")).not.toHaveAttribute("lang");
+  });
 });
 
 describe("an open case's next step", () => {
@@ -98,10 +114,15 @@ describe("an open case's next step", () => {
     letter: null,
   });
 
-  it("says “act today” once the day to post has passed, and overdue once the due date has", () => {
+  it("says “Act today” once the day to post has passed, and overdue once the due date has", () => {
     const { unmount } = renderWithProviders(<OpenCaseCard found={found({ due_date: "2026-10-01", send_by: "2026-09-25" })} />);
-    const act = screen.getByText("act today — due").closest("time")!;
-    expect(act).toHaveTextContent("act today — due Thu 1 Oct · in 3 days");
+    // as the weekly session writes it: "Act today" in red, the due date beside it — no countdown to argue with it
+    const act = screen.getByText("Act today");
+    expect(act).toHaveClass("text-danger-ink");
+    const line = act.parentElement!;
+    expect(line).toHaveTextContent("Act today — due Thu 1 Oct");
+    expect(line).not.toHaveTextContent(/in \d+ days?/);
+    expect(line.querySelector("time")).toHaveAttribute("dateTime", "2026-10-01");
     expect(screen.queryByText(/by Fri 25 Sep/)).toBeNull();
     unmount();
     renderWithProviders(<OpenCaseCard found={found({ kind: "payment", due_date: "2026-09-26", send_by: "2026-09-24" })} />);
@@ -196,6 +217,33 @@ describe("the page", () => {
     expect(within(passport).getByText(/Compare this date with the letter/)).toBeInTheDocument();
     // "Valid until" and its date never part at the line's end
     expect(within(passport).getByText("10 Feb 2027")).toHaveClass("whitespace-nowrap");
+    // the cards of a row stretch to its tallest (no ragged gaps; their "From" lines level at the foot)
+    const grid = within(docs).getByRole("list");
+    expect(grid.className).toBe(CARD_GRID);
+    expect(CARD_GRID).not.toMatch(/items-start/);
+    expect(passport).toHaveClass("flex-1", "flex-col");
+  });
+
+  it("keeps a heading outline without gaps on every tab (h1 → h2 → h3)", async () => {
+    useMockApi();
+    const { user } = await renderNumbers();
+    const outline = () => Array.from(document.querySelectorAll("h1, h2, h3, h4, h5, h6")).map((h) => Number(h.tagName[1]));
+    const noJumps = () => {
+      const levels = outline();
+      expect(levels[0]).toBe(1);
+      levels.forEach((level, i) => {
+        if (i) expect(level - levels[i - 1]!).toBeLessThanOrEqual(1);
+      });
+    };
+    noJumps();
+    expect(screen.getByRole("heading", { level: 2, name: /Your numbers/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: /Your documents/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: /Open cases/ }));
+    expect(screen.getByRole("heading", { level: 2, name: "Open cases" })).toBeInTheDocument();
+    noJumps();
+    await user.click(screen.getByRole("tab", { name: /Organisations/ }));
+    expect(screen.getByRole("heading", { level: 2, name: "Organisations" })).toBeInTheDocument();
+    noJumps();
   });
 
   it("lists open cases and a searchable call sheet per organisation", async () => {
@@ -214,6 +262,29 @@ describe("the page", () => {
     await user.clear(screen.getByRole("searchbox", { name: /Find an organisation/ }));
     await user.type(screen.getByRole("searchbox", { name: /Find an organisation/ }), "no such organisation");
     expect(screen.getByRole("heading", { name: "No organisation matches" })).toBeInTheDocument();
+  });
+
+  it("keeps the search's hint short and its name whole", async () => {
+    useMockApi();
+    await renderNumbers("/numbers?tab=organisations");
+    const search = screen.getByRole("searchbox", { name: "Find an organisation or a number" });
+    expect(search).toHaveAttribute("placeholder", "Find an organisation or number…");
+  });
+
+  it("keeps a wrapped website's new-tab icon with its last characters, and sets an open case apart", () => {
+    const sheet = MOCK_NUMBERS.organisations.find((s) => s.open_cases.length)!;
+    renderWithProviders(<CallSheetCard sheet={{ ...sheet, website: "https://www.rundfunkbeitrag-musterstadt.example" }} />);
+    const link = screen.getByRole("link", { name: /rundfunkbeitrag-musterstadt\.example.*opens in a new tab/ });
+    expect(link).toHaveAttribute("href", "https://www.rundfunkbeitrag-musterstadt.example");
+    // text, not a flex row: the icon follows the last line instead of the box's far edge
+    expect(link.className).not.toMatch(/inline-flex|\bflex\b/);
+    const icon = link.querySelector("svg")!;
+    expect(icon.parentElement).toHaveClass("whitespace-nowrap");
+    expect(icon.parentElement).toHaveTextContent(/^mple$/);
+    // the open case sits as far from the contact lines as the number list does
+    const openCase = screen.getAllByText("Open case")[0]!.parentElement!;
+    expect(openCase).toHaveClass("mt-3");
+    expect(screen.getAllByText("Open case")[0]).toHaveClass("eyebrow");
   });
 
   it("opens an organisation's own numbers when only they match the search", async () => {

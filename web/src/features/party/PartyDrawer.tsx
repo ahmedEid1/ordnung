@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { useReducedMotion } from "motion/react";
 import {
@@ -8,7 +8,6 @@ import {
   Check,
   ChevronRight,
   Copy,
-  ExternalLink,
   FolderOpen,
   Globe,
   Landmark,
@@ -22,8 +21,8 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { ApiError } from "@/api/client";
-import { useDrafts, useParty } from "@/api/hooks";
-import type { Contract, Document, Item, ItemAside, Party } from "@/api/types";
+import { useCalls, useDrafts, useNumbers, useParty } from "@/api/hooks";
+import type { CallSheet, Contract, Document, Item, ItemAside, Party } from "@/api/types";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
@@ -35,7 +34,11 @@ import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useClipboard } from "@/features/today/clipboard";
+import { factLabel } from "@/features/document/fact-text";
+import { NumberRow } from "@/features/numbers/NumberRow";
 import { CONTRACT_CATEGORY_COPY, copyFor, DRAFT_KIND_COPY, documentKindLabel, partyKindLabel } from "@/lib/copy";
+import { glueText } from "@/lib/format";
+import { protectRefs } from "@/lib/glue";
 import { isIncomingMoney } from "@/lib/payments";
 import { usePartyDrawer } from "@/lib/party-drawer";
 import { useToday } from "@/lib/today";
@@ -45,6 +48,7 @@ import { isRollingContract } from "@/features/contracts/model";
 import { actionDate, asideNote, countdownMode, dateRole, identifierDisplay, identifierStyle, keepNumbersTogether, looksAbroad, partyTodos, repeatsLabel } from "./model";
 import { byYear, letterTimeline, mailtoUrl, regionName, websiteUrl } from "./timeline";
 import { CallNotes } from "./CallNotes";
+import { WebsiteLink } from "./WebsiteLink";
 
 /** To-dos listed before "Show N more". */
 const FIRST_TODOS = 6;
@@ -52,8 +56,8 @@ const FIRST_TODOS = 6;
 function Section({ title, count, children, id }: { title: string; count?: number; children: ReactNode; id: string }) {
   return (
     <section aria-labelledby={id} className="mt-7 first:mt-0">
-      {/* focus target of the jump links (tabIndex -1: not a Tab stop) */}
-      <h3 id={id} tabIndex={-1} className="mb-2.5 scroll-mt-4 text-[12px] font-semibold uppercase tracking-[0.07em] text-muted outline-none">
+      {/* focus target of the jump links (tabIndex -1: not a Tab stop); the app's in-card label style */}
+      <h3 id={id} tabIndex={-1} className="eyebrow mb-2.5 scroll-mt-4 outline-none">
         {title}
         {count !== undefined ? <span className="ml-1 font-medium text-muted">· {count}</span> : null}
       </h3>
@@ -77,12 +81,32 @@ interface Copier {
  * identifier face (`font-ident`), register entries ("Amtsgericht Musterstadt HRB 4711") in the text
  * face; neither breaks mid-word.
  */
-function IdRow({ label, value, kind, copier }: { label: string; value: string; kind: "iban" | "code" | "text"; copier: Copier }) {
+function IdRow({
+  label,
+  german,
+  value,
+  kind,
+  copier,
+}: {
+  label: string;
+  /** The letter's own (German) label under the English one; `label` itself is German when `german` is `true`. */
+  german?: string | true;
+  value: string;
+  kind: "iban" | "code" | "text";
+  copier: Copier;
+}) {
   const id = `${label}\n${value}`;
   const done = copier.copied === id;
   return (
     <div className="grid grid-cols-1 gap-y-0.5 px-3 py-2 @sm:grid-cols-[7.5rem_minmax(0,1fr)] @sm:items-center @sm:gap-x-3">
-      <dt className="break-words text-[12.5px] leading-4 text-muted">{label}</dt>
+      <dt className="break-words text-[12.5px] leading-4 text-muted">
+        <span lang={german === true ? "de" : undefined}>{label}</span>
+        {typeof german === "string" ? (
+          <span lang="de" className="mt-0.5 block text-[12px] leading-4 text-muted">
+            {german}
+          </span>
+        ) : null}
+      </dt>
       <dd className="flex min-w-0 items-center gap-2">
         <span className={cn("min-w-0 flex-1 break-words text-[13px] leading-5 text-ink", kind !== "text" && "font-ident")}>
           {identifierDisplay(value, kind)}
@@ -102,6 +126,104 @@ function IdRow({ label, value, kind, copier }: { label: string; value: string; k
         </button>
       </dd>
     </div>
+  );
+}
+
+const compact = (value: string) => value.replace(/[\s./-]+/g, "").toUpperCase();
+
+/** Their own numbers, less the bank accounts the drawer lists in a section of their own. */
+function theirOwnNumbers(sheet: CallSheet, party: Party): CallSheet["their_numbers"] {
+  const accounts = new Set(party.ibans.map(compact));
+  return sheet.their_numbers.filter((n) => !(n.kind === "iban" && accounts.has(compact(n.value))));
+}
+
+/**
+ * The party's numbers as My numbers has them (its call sheet from `GET /api/numbers`, the same
+ * catalog — so the two never disagree on which numbers, their names or whose they are): yours with
+ * them by their plain-English name and the letter's own label, hidden until "Show", with Copy; the
+ * references of their open cases; and, folded away, the organisation's own numbers. A party with no
+ * call sheet keeps the numbers read from its letters, titled for what they are.
+ */
+function PartyNumbers({ party, copier }: { party: Party; copier: Copier }) {
+  const numbers = useNumbers();
+  const sheet = numbers.data?.organisations.find((s) => s.party_id === party.id);
+  if (numbers.isPending) {
+    return party.identifiers.length ? (
+      <Section title="Your numbers with them" id="pty-ids">
+        <Skeleton className="h-[74px] w-full rounded-xl" />
+      </Section>
+    ) : null;
+  }
+  if (sheet && (sheet.numbers.length || sheet.open_cases.length)) {
+    const theirs = theirOwnNumbers(sheet, party);
+    return (
+      <Section title="Your numbers with them" id="pty-ids">
+        <div className="rounded-xl border border-line bg-surface px-3">
+          {sheet.numbers.length ? (
+            <ul className="divide-y divide-line">
+              {sheet.numbers.map((n) => (
+                <li key={n.key}>
+                  <NumberRow number={n} showLetter={false} />
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {sheet.open_cases.map((found) => (
+            <div key={found.key} className="border-t border-line pt-2.5 first:border-t-0">
+              <p className="text-[12.5px] leading-5 text-muted [overflow-wrap:anywhere]">
+                Open case: <span className="font-medium text-ink/85">{glueText(found.title)}</span>
+              </p>
+              <ul className="divide-y divide-line">
+                {found.references.map((n) => (
+                  <li key={n.key}>
+                    <NumberRow number={n} showLetter={false} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <p className="mt-1.5 px-1 text-[12px] leading-[18px] text-muted">Quote these when you write or call. Your own are hidden on screen until you choose Show.</p>
+        {theirs.length ? (
+          <details className="group mt-2">
+            <summary className="inline-flex min-h-8 cursor-pointer list-none items-center gap-1 rounded px-1 text-[13px] font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+              <ChevronRight className="size-4 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden />
+              Their own numbers ({theirs.length})
+            </summary>
+            <p className="mb-2 mt-1 px-1 text-[12.5px] leading-5 text-muted">Numbers of {party.name} itself — not yours, but handy to recognise their letters and direct debits.</p>
+            <ul className="divide-y divide-line rounded-xl border border-line bg-surface px-3">
+              {theirs.map((n) => (
+                <li key={n.key}>
+                  <NumberRow number={n} masked={false} showLetter={false} />
+                </li>
+              ))}
+            </ul>
+          </details>
+        ) : null}
+      </Section>
+    );
+  }
+  if (!party.identifiers.length) return null;
+  // not on My numbers (nothing of yours there, no open case): what their letters show, named in English
+  return (
+    <Section title="Numbers on their letters" id="pty-ids">
+      <dl className="@container divide-y divide-line rounded-xl border border-line bg-surface">
+        {party.identifiers.map((id) => {
+          const { en, de } = factLabel(id.label);
+          return (
+            <IdRow
+              key={id.label + id.value}
+              label={en ?? id.label}
+              german={en ? (de && de.toLowerCase() !== en.toLowerCase() ? de : undefined) : de ? true : undefined}
+              value={id.value}
+              kind={identifierStyle(id.value)}
+              copier={copier}
+            />
+          );
+        })}
+      </dl>
+      <p className="mt-1.5 px-1 text-[12px] text-muted">Quote these when you write or call.</p>
+    </Section>
   );
 }
 
@@ -177,7 +299,7 @@ function ItemRow({ item }: { item: Item }) {
       <ItemIcon item={item} className="mt-0.5" />
       <span className="min-w-0">
         <span className="line-clamp-2 break-words text-[13.5px] font-medium leading-snug text-ink" title={item.title}>
-          {item.title}
+          {protectRefs(item.title)}
         </span>
         <ItemMeta item={item} />
       </span>
@@ -203,7 +325,7 @@ function AsideRow({ item, note }: { item: Item; note: string }) {
       <ItemIcon item={item} className="mt-0.5 opacity-70" />
       <span className="min-w-0">
         <span className="line-clamp-2 break-words text-[13.5px] font-medium leading-snug text-ink/80" title={item.title}>
-          {item.title}
+          {protectRefs(item.title)}
         </span>
         <ItemMeta item={item} plainDate />
         <span className="mt-0.5 block text-[12.5px] leading-5 text-muted">{note}</span>
@@ -285,7 +407,7 @@ function ContractRow({ c }: { c: Contract }) {
       <KindIcon category={c.category} size="sm" className="mt-0.5" />
       <span className="min-w-0">
         <span className="line-clamp-2 break-words text-[13.5px] font-medium leading-snug text-ink" title={c.name}>
-          {c.name}
+          {protectRefs(c.name)}
         </span>
         {c.status !== "active" ? (
           <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12.5px] leading-5 text-muted">
@@ -373,14 +495,22 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 // ------------------------------------------------------------------------------------------------
 
 /**
- * People & organisations drawer, opened from any party chip (`?party=pty_x`): identifiers with
- * copy buttons, contact details, the bank accounts they used, open to-dos & dates (older and
- * replaced ones set apart), contracts, a timeline of their letters and yours, and threads.
+ * People & organisations drawer, opened from any party chip (`?party=pty_x`): your numbers with
+ * them (as My numbers has them), the bank accounts they used, contact details, open to-dos & dates
+ * (older and replaced ones set apart), contracts, the calls you noted, a timeline of their letters
+ * and yours, and threads — the parts to act on first.
  */
 export function PartyDrawer() {
   const { partyId, close } = usePartyDrawer();
   const { data, isLoading, isError, error, refetch, isFetching } = useParty(partyId);
+  const calls = useCalls({ party_id: partyId ?? "" }, { enabled: Boolean(partyId) });
   const drafts = useDrafts();
+  // a half-written call note asks before the drawer closes (Escape, the backdrop, ×)
+  const closeGuardRef = useRef<(() => boolean) | null>(null);
+  const requestClose = useCallback(() => {
+    if (closeGuardRef.current?.()) return;
+    close();
+  }, [close]);
   const { copy, copied } = useClipboard();
   const party = data?.party;
 
@@ -398,10 +528,14 @@ export function PartyDrawer() {
   const notFound = error instanceof ApiError && error.status === 404;
   const copiedLabel = copied ? copied.slice(0, copied.indexOf("\n")) : null;
 
+  const callCount = calls.data?.length ?? 0;
+
+  // the drawer's table of contents, in the order of its sections
   const jumps = data
     ? [
         todos.open.length || todos.aside.length ? { id: "pty-items", label: plural(todos.open.length, "to-do", "to-dos") } : null,
         data.contracts.length ? { id: "pty-contracts", label: plural(data.contracts.length, "contract", "contracts") } : null,
+        callCount ? { id: "pty-calls", label: plural(callCount, "call", "calls") } : null,
         letters ? { id: "pty-letters", label: plural(letters, "letter", "letters") } : null,
         data.cases.length ? { id: "pty-threads", label: plural(data.cases.length, "thread", "threads") } : null,
       ].filter((j): j is { id: string; label: string } => j !== null)
@@ -410,7 +544,7 @@ export function PartyDrawer() {
   return (
     <Drawer
       open={Boolean(partyId)}
-      onClose={close}
+      onClose={requestClose}
       size="lg"
       eyebrow="People & organisations"
       title={party?.name ?? "Contact"}
@@ -484,16 +618,7 @@ export function PartyDrawer() {
           <JumpLinks links={jumps} />
           {party.aliases.length ? <p className="-mt-3 mb-6 break-words text-[13px] leading-5 text-muted">Also known as {party.aliases.join(", ")}</p> : null}
 
-          {party.identifiers.length ? (
-            <Section title="Your numbers with them" id="pty-ids">
-              <dl className="@container divide-y divide-line rounded-xl border border-line bg-surface">
-                {party.identifiers.map((id) => (
-                  <IdRow key={id.label + id.value} label={id.label} value={id.value} kind={identifierStyle(id.value)} copier={{ copy, copied }} />
-                ))}
-              </dl>
-              <p className="mt-1.5 px-1 text-[12px] text-muted">Quote these when you write or call.</p>
-            </Section>
-          ) : null}
+          <PartyNumbers party={party} copier={{ copy, copied }} />
 
           {party.ibans.length ? (
             <Section title={party.ibans.length === 1 ? "Bank account they use" : "Bank accounts they used"} id="pty-ibans">
@@ -544,14 +669,11 @@ export function PartyDrawer() {
                     </a>
                   </li>
                 ) : null}
-                {site ? (
-                  <li className="flex items-center gap-2.5">
-                    <Globe className="size-4 shrink-0 text-muted" aria-hidden />
-                    <a href={site} target="_blank" rel="noreferrer noopener" className="inline-flex min-h-6 min-w-0 items-center gap-1 text-accent hover:underline">
-                      <span className="min-w-0 wrap-anywhere">{party.website?.replace(/^https?:\/\//, "")}</span>
-                      <ExternalLink className="size-3 shrink-0" aria-hidden />
-                      <span className="sr-only">(opens in a new tab)</span>
-                    </a>
+                {site && party.website ? (
+                  // a wrapped address keeps its globe beside the first line
+                  <li className="flex items-start gap-2.5">
+                    <Globe className="mt-1 size-4 shrink-0 text-muted" aria-hidden />
+                    <WebsiteLink href={site} website={party.website} className="text-accent hover:underline" />
                   </li>
                 ) : null}
               </ul>
@@ -567,8 +689,6 @@ export function PartyDrawer() {
             </Section>
           ) : null}
 
-          <CallNotes partyId={party.id} cases={data.cases} />
-
           {todos.open.length || todos.aside.length ? <Todos items={data.items} setAside={data.set_aside} documents={data.documents} /> : null}
 
           {data.contracts.length ? (
@@ -582,6 +702,9 @@ export function PartyDrawer() {
               </ul>
             </Section>
           ) : null}
+
+          {/* after what there is to do; keyed by the party, so a note typed for one is never saved for another */}
+          <CallNotes key={party.id} partyId={party.id} cases={data.cases} headingId="pty-calls" closeGuardRef={closeGuardRef} onDiscarded={close} />
 
           {timeline.length ? (
             <Section title="Letters" count={letters} id="pty-letters">
@@ -607,8 +730,9 @@ export function PartyDrawer() {
                             className="group ml-4 flex items-start gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface-2/70 focus-visible:outline-offset-0"
                           >
                             <span className="min-w-0 flex-1">
+                              {/* references never break at their hyphens; the tooltip has the plain title */}
                               <span className="line-clamp-2 break-words text-[13.5px] font-medium leading-snug text-ink group-hover:text-accent" title={e.title}>
-                                {e.title}
+                                {protectRefs(e.title)}
                               </span>
                               <span className="mt-0.5 block break-words text-[12.5px] leading-5 text-muted">
                                 {e.direction === "in" ? "From them" : "From you"}
@@ -636,7 +760,7 @@ export function PartyDrawer() {
                   <li key={c.id} className="flex items-start gap-2.5 rounded-xl border border-line bg-surface px-3 py-2.5 text-[13.5px]">
                     <FolderOpen className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
                     <span className="min-w-0 flex-1">
-                      <span className="block break-words font-medium text-ink">{c.title}</span>
+                      <span className="block break-words font-medium text-ink">{protectRefs(c.title)}</span>
                       {c.summary ? <span className="mt-0.5 block break-words text-[12.5px] leading-5 text-muted">{c.summary}</span> : null}
                       <span className="mt-1 block break-words text-[12px] text-muted">
                         {c.status === "open" ? "Open" : "Closed"}

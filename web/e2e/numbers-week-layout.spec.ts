@@ -106,8 +106,43 @@ test("a long German label wraps inside its card at 320px", async ({ page }) => {
     await route.fulfill({ json: { ...numbers, organisations: [{ ...first, numbers: [{ ...n, kind: "other", name: "Your number", label }, ...more] }, ...rest] } });
   });
   await open(page, "/numbers?tab=organisations", "My numbers");
-  await expect(page.getByRole("main").getByText(label, { exact: true })).toBeVisible();
+  const title = page.getByRole("main").getByText(label, { exact: true });
+  await expect(title).toBeVisible();
   expect(await outOfBounds(page)).toEqual([]);
+  // UI audit R2-party-numbers-8: it broke mid-word ("…/Sozialvers" · "icherungsnummer…"); now after its slashes
+  const lines = await title.evaluate((p) =>
+    Array.from(p.childNodes)
+      .filter((n) => n.nodeType === Node.TEXT_NODE && (n.textContent ?? "").length > 1)
+      .map((n) => {
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        return new Set(Array.from(range.getClientRects()).map((r) => Math.round(r.top))).size;
+      }),
+  );
+  expect(lines, "each word of the label on one line").toEqual([1, 1, 1]);
+});
+
+test("the cards of a row are as tall as each other, their letter lines level", async ({ page }) => {
+  // UI audit R2-party-numbers-7: short cards left gaps, the "Last letter" lines never lined up
+  await page.setViewportSize({ width: 1280, height: 800 });
+  for (const tab of ["organisations", "cases"]) {
+    await open(page, `/numbers?tab=${tab}`, "My numbers");
+    const rows = await page
+      .getByRole("main")
+      .getByRole("list")
+      .first()
+      .evaluate((ul) => {
+        const byRow = new Map<number, number[]>();
+        for (const li of Array.from(ul.children)) {
+          const card = li.firstElementChild!.getBoundingClientRect();
+          const top = Math.round(card.top);
+          byRow.set(top, [...(byRow.get(top) ?? []), Math.round(card.height)]);
+        }
+        return Array.from(byRow.values());
+      });
+    expect(rows.length, tab).toBeGreaterThan(0);
+    for (const heights of rows) expect(new Set(heights).size, `${tab}: ${heights.join(", ")}`).toBe(1);
+  }
 });
 
 for (const width of [390, 1280]) {

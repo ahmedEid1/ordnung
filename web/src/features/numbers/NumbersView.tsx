@@ -29,8 +29,12 @@ const TABS: NumbersTab[] = ["you", "cases", "organisations"];
 const DESCRIPTION =
   "The numbers forms, portals and hotlines ask for — read from your letters and sorted by whose they are. Hidden on screen until you choose Show.";
 
-/** Cards side by side as the column allows, each at least 20rem (never wider than a phone). */
-const CARD_GRID = "grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] items-start gap-4";
+/**
+ * Cards side by side as the column allows, each at least 20rem (never wider than a phone). The cards
+ * of a row are as tall as its tallest (the grid's default stretch): no ragged gaps, and each card's
+ * "From / Latest letter / Last letter" line sits at its foot (`mt-auto`), level with its neighbours'.
+ */
+export const CARD_GRID = "grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-4";
 
 type Sheet = MyNumbers["organisations"][number];
 
@@ -109,7 +113,7 @@ function AboutYou({ data }: { data: MyNumbers }) {
   if (!data.about_you.length && !data.documents.length) {
     return (
       <EmptyState
-        headingLevel={3}
+        headingLevel={2}
         size="sm"
         illustration="letter"
         title="Nothing about you yet"
@@ -121,7 +125,7 @@ function AboutYou({ data }: { data: MyNumbers }) {
     <div className="flex flex-col gap-8">
       {data.about_you.length ? (
         <section aria-labelledby="numbers-you-title">
-          <SectionHeader id="numbers-you-title" level={3} icon={UserRound} title="Your numbers" count={data.about_you.length} />
+          <SectionHeader id="numbers-you-title" icon={UserRound} title="Your numbers" count={data.about_you.length} />
           <Card padding="none" className="px-4 sm:px-5">
             <ul className="divide-y divide-line">
               {data.about_you.map((n) => (
@@ -135,7 +139,7 @@ function AboutYou({ data }: { data: MyNumbers }) {
       ) : null}
       {data.documents.length ? (
         <section aria-labelledby="numbers-docs-title">
-          <SectionHeader id="numbers-docs-title" level={3} icon={IdCard} title="Your documents" count={data.documents.length} />
+          <SectionHeader id="numbers-docs-title" icon={IdCard} title="Your documents" count={data.documents.length} />
           <ul className={CARD_GRID}>
             {data.documents.map((doc) => (
               <li key={doc.key} className="flex min-w-0">
@@ -153,7 +157,7 @@ function OpenCases({ data }: { data: MyNumbers }) {
   if (!data.open_cases.length) {
     return (
       <EmptyState
-        headingLevel={3}
+        headingLevel={2}
         size="sm"
         illustration="clear"
         title="No open cases"
@@ -161,14 +165,20 @@ function OpenCases({ data }: { data: MyNumbers }) {
       />
     );
   }
+  // the tab names the panel on screen; the h2 puts the cards' h3 titles under a heading of their own
   return (
-    <ul className={CARD_GRID} aria-label={plural(data.open_cases.length, "open case")}>
-      {data.open_cases.map((found) => (
-        <li key={found.key} className="flex min-w-0">
-          <OpenCaseCard found={found} />
-        </li>
-      ))}
-    </ul>
+    <section aria-labelledby="numbers-cases-title">
+      <h2 id="numbers-cases-title" className="sr-only">
+        Open cases
+      </h2>
+      <ul className={CARD_GRID} aria-label={plural(data.open_cases.length, "open case")}>
+        {data.open_cases.map((found) => (
+          <li key={found.key} className="flex min-w-0">
+            <OpenCaseCard found={found} />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -181,7 +191,7 @@ function Organisations({ data }: { data: MyNumbers }) {
   if (!data.organisations.length) {
     return (
       <EmptyState
-        headingLevel={3}
+        headingLevel={2}
         size="sm"
         illustration="contract"
         title="No organisations yet"
@@ -190,7 +200,10 @@ function Organisations({ data }: { data: MyNumbers }) {
     );
   }
   return (
-    <div>
+    <section aria-labelledby="numbers-orgs-title">
+      <h2 id="numbers-orgs-title" className="sr-only">
+        Organisations
+      </h2>
       <div className="relative mb-4 max-w-sm">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
         <label htmlFor="numbers-search" className="sr-only">
@@ -201,7 +214,8 @@ function Organisations({ data }: { data: MyNumbers }) {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Find an organisation or a number…"
+          // whole in a 320 px wide field; the label says it in full
+          placeholder="Find an organisation or number…"
           enterKeyHint="search"
           className="pl-9"
         />
@@ -231,7 +245,7 @@ function Organisations({ data }: { data: MyNumbers }) {
           }
         />
       )}
-    </div>
+    </section>
   );
 }
 
