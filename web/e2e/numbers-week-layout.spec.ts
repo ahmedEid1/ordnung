@@ -95,7 +95,7 @@ test("Next takes the focus to the new step's heading, clear of the top bar", asy
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page, "/week", "This week");
   await page.getByRole("button", { name: /^Next: / }).click();
-  const heading = page.getByRole("heading", { level: 2, name: "Please check" });
+  const heading = page.getByRole("heading", { level: 2, name: "Compare with the letter" });
   await expect(heading).toBeFocused();
   const bar = await page.getByRole("banner").boundingBox();
   const h = await heading.boundingBox();
