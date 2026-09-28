@@ -59,7 +59,9 @@ export interface FormatDateOptions {
 /**
  * Format a date for humans.
  * - `short` (default): "Fri 16 Oct" (+ " 2027" when not this year)
- * - `day`: "16 Oct" · `medium`: "16 Oct 2026" · `long`: "Friday, 16 October 2026"
+ * - `day`: "16 Oct" · `medium`: "16 Oct 2026"
+ * - `long`: "Friday, 16 October 2026" — always with the year (screen-reader dates name it), unless
+ *   `withYear: "never"` ("Friday, 16 October", a page's date line as on Today and This week)
  * - `numeric`: "16.10.2026" (as on German letters) · `month`: "October 2026" · `weekday`: "Friday"
  */
 export function formatDate(value: DateInput | null | undefined, opts: FormatDateOptions = {}): string {
@@ -78,7 +80,8 @@ export function formatDate(value: DateInput | null | undefined, opts: FormatDate
     case "medium":
       return fnsFormat(d, "d MMM yyyy");
     case "long":
-      return fnsFormat(d, "EEEE, d MMMM yyyy");
+      // not `showYear`: callers that pass neither `withYear` nor `today` keep the year
+      return fnsFormat(d, withYear === "never" ? "EEEE, d MMMM" : "EEEE, d MMMM yyyy");
     case "numeric":
       return fnsFormat(d, "dd.MM.yyyy");
     case "month":

@@ -46,6 +46,12 @@ describe("dates", () => {
     expect(formatDate("2027-02-10", { today: TODAY })).toBe("Wed 10 Feb 2027");
     expect(formatDate("2026-10-16", { style: "medium" })).toBe("16 Oct 2026");
     expect(formatDate("2026-10-16", { style: "long" })).toBe("Friday, 16 October 2026");
+    // a page's date line (This week, like Today's greeting) leaves the year out when asked …
+    expect(formatDate("2026-09-28", { style: "long", withYear: "never" })).toBe("Monday, 28 September");
+    // … and only then: "auto" (with or without today) and "always" keep it (screen-reader dates)
+    expect(formatDate("2026-09-28", { style: "long", today: TODAY })).toBe("Monday, 28 September 2026");
+    expect(formatDate("2026-09-28", { style: "long", withYear: "auto" })).toBe("Monday, 28 September 2026");
+    expect(formatDate("2026-09-28", { style: "long", withYear: "always" })).toBe("Monday, 28 September 2026");
     expect(formatDate("2026-10-16", { style: "numeric" })).toBe("16.10.2026");
     expect(formatDate("2026-10-16", { style: "month" })).toBe("October 2026");
     expect(formatDate("2026-10-16", { style: "day", withYear: "always" })).toBe("16 Oct 2026");
