@@ -291,7 +291,7 @@ Details in [docs/privacy.md](docs/privacy.md).
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query; API types generated from OpenAPI |
 | Model runtime | The `claude` CLI in headless mode (`-p`, stream-json in and out, JSON schema output), no SDK keys |
 | Agent | Read-only MCP server (official `mcp` SDK) with two channels per result, streamed tool trace, claim-level answer check; the rules engine as ledger-free MCP tools for other Claude clients |
-| Tests | 3,400+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 880+ Vitest tests; 182 Playwright tests over the real demo with axe accessibility checks in light and dark mode |
+| Tests | 5,100+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,300+ Vitest tests; 325 Playwright tests over the real demo with axe accessibility checks in light and dark mode |
 | Quality gates in CI | ruff, mypy (strict on the pure core), ESLint, `tsc`, 100 % branch coverage of the rules engine, `ordnung demo --check`, thresholds of the deadline benchmark and of the Ask benchmark (no unsupported value, no successful injection beyond one documented ledger gap), and a check that the committed web build matches its sources |
 
 ```bash
