@@ -51,7 +51,14 @@ forget: nothing tracks the letter once the chat is closed.
 | **Shows your year** | A timeline and *life lanes* (money, housing, work, study, health, permits) for the next twelve months, including contract notice windows. |
 | **Answers questions** | *Ask* runs an agent over read-only tools that keep Ordnung's records apart from the letters' own words. Every date and amount in an answer must be in a record its sentence cites; a date only an (injected) letter states is never shown as Ordnung's, and a note says what the check left out. |
 | **Writes the reply** | Objections, cancellations and general replies as a bilingual draft, and template letters (withdrawal, more time, instalments, defect notice, GDPR access, receipts, deposit back, new address), rendered as a DIN 5008 PDF, with advice on how to send it so it can be proven. |
-| **Reminds you** | Calendar export (`.ics`) with alarms at the send-by date, and browser notifications. |
+| **One inbox** | A watched folder for your scanner or phone app, and e-mails (`.eml`) whose PDF and photo attachments become letters of their own. New files wait on your computer until you choose *Read these* or *Keep private*. |
+| **Pays by scan** | For a bank transfer, the Pay panel shows a GiroCode (EPC-QR) your banking app scans. Code decides when there is one: never for a direct debit, a scam or a bill a reminder replaced, and a value read from a photo waits until you compare it with the paper letter. |
+| **Keeps your numbers** | *My numbers*: your Steuer-ID, social insurance number, customer and case numbers from your letters, sorted by whose they are, with check digits tested, hidden until you choose *Show*, and a call sheet per organisation. *Ask* can look them up too. |
+| **Runs a weekly session** | *This week* is a ten-minute review: what to act on now, new letters, what to check, pay, post and wait for, what to decide and what to file. It ends with "All clear until …" or what is overdue. |
+| **Proves what you sent** | Tracking numbers (an Einschreiben's check digit is verified; online-stamp and 12-digit numbers are kept with a note), proof files kept private, and a *Nachweis* PDF. *Waiting for* lists replies, money and phone promises, and *Note a call* records what they said. |
+| **Reminds you** | Calendar export (`.ics`) with alarms at the send-by date, and browser notifications. While the browser is closed: a morning desktop notification (discreet by default), start at login, and optional sync with your own CalDAV calendar. |
+| **Backs up** | One encrypted backup file (AES-256-GCM, key from your passphrase), and a restore that checks every byte and never overwrites your data. |
+| **Shows how it read** | *How it was read*: every step of every reading of a letter, what Claude was asked and what code checked and decided, with an OpenTelemetry export (`ordnung trace --otel`). |
 
 Nothing is ever sent, paid or cancelled for you. Ordnung suggests; you decide.
 
@@ -270,7 +277,10 @@ installed and signed in to). Ordnung has no server, no telemetry and never sees 
 
 The web server listens on `127.0.0.1` by default (another `--host` prints a warning and still needs
 the token) and requires a per-session token, a known `Host` header and same-origin requests. Settings
-show what each feature sends and a usage log per document.
+show what each feature sends and a usage log per document. Files from a watched folder are sent to
+Claude only after you say so. Calendar sync, off until you connect a calendar, is the only feature
+that sends anything to another third party (your calendar provider), by default only dates with
+generic titles.
 Details in [docs/privacy.md](docs/privacy.md).
 
 ## Engineering
@@ -300,7 +310,8 @@ make e2e         # Playwright over the demo
   warning, and in doubt Ordnung picks the earliest plausible date.
 - No OCR of its own: photos and scans are transcribed by Claude, so they need a model call.
 - The benchmark letters are synthetic. Real post is messier.
-- A single user on a single computer. There is no sync and no mobile app.
+- A single user on a single computer. There is no sync between computers (calendar sync only sends
+  dates to your own calendar) and no mobile app.
 
 ## How this was built
 
