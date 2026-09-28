@@ -14,13 +14,14 @@ export function useItemActions() {
   const update = useUpdateItem();
   const confirm = useConfirmItem();
 
+  /** Done, with Undo; `title` names what was done ("Marked as paid" after the Pay panel, as on Today). */
   const markDone = useCallback(
-    (item: Item) =>
+    (item: Item, { title = "Marked as done" }: { title?: string } = {}) =>
       update.mutate(
         { id: item.id, patch: { status: "done" } },
         {
           onSuccess: () =>
-            toast.success("Marked as done", {
+            toast.success(title, {
               description: item.title,
               undo: () => update.mutate({ id: item.id, patch: { status: "open" } }),
             }),

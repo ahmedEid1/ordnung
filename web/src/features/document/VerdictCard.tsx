@@ -864,12 +864,12 @@ function Actions({
         );
       case "pay":
         return (
-          <Popover label="Pay" title={main.item.title} placement="top-start" className="w-[22rem] p-4" content={(close) => (
+          <Popover label="Pay" placement="top-start" className="w-[22rem] p-4" content={(close) => (
               <PayPanel
                 item={main.item}
                 doc={doc}
                 code={detail.girocodes.find((g) => g.item_id === main.item.id)}
-                onPaid={() => actions.markDone(main.item)}
+                onPaid={() => actions.markDone(main.item, { title: "Marked as paid" })}
                 close={close}
               />
             )}>

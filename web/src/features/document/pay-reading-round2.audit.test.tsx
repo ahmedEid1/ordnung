@@ -114,6 +114,29 @@ describe("the letter's Pay panel (R2-document-pay-reading-1, -2, -4)", () => {
     expect(document.activeElement?.tagName).toBe("H1");
     await waitFor(() => expect(calls.some((c) => c.method === "PATCH" && c.path.startsWith("/items/") && (c.body as { status?: string }).status === "done")).toBe(true));
   });
+
+  it("is titled “Pay” on a phone and says “Marked as paid” with Undo, as on Today", async () => {
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    const d = await detail(srv, "doc_nebenkosten");
+    renderWithProviders(
+      <>
+        <DocumentView detail={d} />
+        <Toaster />
+      </>,
+      { client: client() },
+    );
+    await user.click(screen.getByRole("button", { name: /^Pay €184\.30/ }));
+    // jsdom has no wide screen: the panel opens as the phone's sheet, under Today's title, not the to-do's
+    const panel = await screen.findByRole("dialog", { name: "Pay" });
+    expect(panel).toHaveAttribute("data-sheet");
+    expect(within(panel).getByRole("heading", { level: 2 })).toHaveTextContent(/^Pay$/);
+    await user.click(within(panel).getByRole("button", { name: "Mark as paid" }));
+    const toast = await screen.findByText("Marked as paid");
+    expect(screen.queryByText("Marked as done")).toBeNull();
+    expect(toast.closest("[data-toast]")).not.toBeNull();
+    expect(within(toast.closest("[data-toast]") as HTMLElement).getByRole("button", { name: "Undo" })).toBeInTheDocument();
+  });
 });
 
 describe("“Read the letter again” in the GiroCode block (R2-document-pay-reading-3)", () => {
