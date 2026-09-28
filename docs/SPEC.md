@@ -815,7 +815,9 @@ documents). A file already in Ordnung (the same bytes) is linked as it is and sa
 private now if no model call ever carried it (`llm_calls`, a cached answer or a transcribed page —
 also a reading that failed, or paused on a rate limit, after the model had it), else named as given
 to AI (`notice`) — "kept private" is never claimed for it, also not when it was marked private
-later; the same file uploaded to the Inbox again says which letter it is proof of. Removing a proof
+later; one still waiting from the watched folder (`held`) gets the answer *Keep private* then, so
+*Read these* never offers a proof to Claude; the same file uploaded to the Inbox again says which
+letter it is proof of. Removing a proof
 (or deleting its letter without keeping the files) deletes the file for good, after a confirmation
 that names it and offers to download it first (ADR 0014). A proof of
 the sending (posting receipt, fax report, sent e-mail, cancel page) whose day differs from the sending

@@ -7,7 +7,9 @@ stores and reads.
   ever sees them. A file already in Ordnung (the same bytes) is linked as it is, and what is said about
   it is true of *that* file (:func:`add_proof`): one no model has had yet is made private now; one a
   model call ever carried — read, or failed or paused after the model had it — is said to have been
-  given to AI, also when it was marked private later: "kept private" is never claimed for it.
+  given to AI, also when it was marked private later: "kept private" is never claimed for it. One that
+  waits for the person's answer from the watched folder (:mod:`ordnung.ingest.held`) gets it now: *Keep
+  private* — a proof is never offered to Claude with "Read these".
 * **Only sent letters take proof**, at most :data:`~ordnung.drafts.proof.MAX_PROOFS` of them, each file
   once per letter; a proof's day can't be in the future, and a delivery can't be before the sending.
 * **An answer is the person's word** (:func:`mark_answered`): the day, and the letter that answered if
@@ -53,7 +55,8 @@ from ordnung.drafts.proof import (
 )
 from ordnung.drafts.templates import format_date
 from ordnung.drafts.tracking import TrackingError, parse_tracking_number, tracking_info
-from ordnung.ingest.pipeline import add_file
+from ordnung.ingest import held as consent
+from ordnung.ingest.pipeline import add_file, keep_held_private
 from ordnung.models import Document, Draft, Profile, Proof, ProofEntry, ProofOverview
 from ordnung.secretary.triggers import Ledger, parse_day
 from ordnung.secretary.waiting import letter_entry
@@ -241,6 +244,9 @@ async def add_proof(
     )
     if any(proof.doc_id == document.id for proof in proofs):
         raise DraftError(ALREADY_PROOF)
+    if consent.is_held(document):  # from the watched folder, still waiting: proof is kept private
+        kept = keep_held_private(ctx, [document.id]).documents  # an e-mail's held attachments with it
+        document = next((doc for doc in kept if doc.id == document.id), document)
     document, notice, said = _keep_private(store, document)
     proof = store.add_proof(
         draft_id=draft.id,

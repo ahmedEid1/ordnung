@@ -20,6 +20,7 @@ from ordnung.drafts import proof, sent
 from ordnung.drafts.compose import DraftError, compose, mark_sent
 from ordnung.drafts.pdf import render as render_letter
 from ordnung.drafts.tracking import tracking_info
+from ordnung.ingest import held
 from ordnung.ingest.intake import IntakeError
 from ordnung.ingest.pipeline import add_file
 from ordnung.llm.fake import FakeBackend
@@ -380,6 +381,28 @@ async def test_a_proof_file_is_private_outgoing_and_never_sent_to_the_model(
     overview = sent.overview(ctx.store, letter.id, TODAY)
     assert [entry.label for entry in overview.proofs] == ["Posting receipt"]
     assert overview.proofs[0].document is not None and overview.proofs[0].document.id == document.id
+
+
+async def test_a_file_waiting_from_the_folder_is_kept_private_when_it_becomes_proof(
+    ctx: AppContext, gym: Gym
+) -> None:
+    """Integration of proof with the one inbox: a posting receipt scanned into the watched folder waits
+    for the person's answer; added as proof, it gets it — *Keep private* — so "Read these" can never
+    send a proof to Claude."""
+    letter = await _sent_letter(ctx, gym)
+    receipt = photo("JPEG", size=(300, 400))
+    waiting = await add_file(ctx, receipt, "scan-beleg.jpg", hold=True)
+    await ctx.worker.run_until_idle()
+    assert held.is_held(ctx.store.get_document(waiting.id))  # type: ignore[arg-type]
+    added = await sent.add_proof(ctx, letter.id, receipt, "beleg.jpg", kind="posting_receipt", today=TODAY)
+    await ctx.worker.run_until_idle()
+    document = ctx.store.get_document(waiting.id)
+    assert added.doc_id == waiting.id and document is not None
+    assert (document.status, document.ai_private, document.ai_processed_at) == ("processed", True, None)
+    assert held.waiting(ctx.store) == [] and added.notice is None  # kept private, never given to AI
+    backend = ctx.llm.backend
+    assert isinstance(backend, FakeBackend)
+    assert [call.purpose for call in backend.calls] == ["draft"]
 
 
 async def test_proof_files_are_no_letters_of_the_ledger(ctx: AppContext, gym: Gym) -> None:

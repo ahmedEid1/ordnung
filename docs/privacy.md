@@ -101,7 +101,8 @@ The weekly session (*This week*) stores only the moments you finished it or said
   Claude, not even when you ask about the letter, and it isn't listed among your letters. One
   exception is said when it happens: a file that was already in Ordnung (the same bytes, e.g. you
   first added it to your Inbox) is linked as it is — made private then if it was never given to AI,
-  and otherwise Ordnung tells you it was given to AI instead of calling it private. "Given to AI"
+  and otherwise Ordnung tells you it was given to AI instead of calling it private (one still waiting
+  from your watched folder is kept private then, so *Read these* never sends it). "Given to AI"
   counts every time a model had it, also when reading it failed or paused afterwards, and also
   when you switched *Keep private* on later. Its kind, day and note are what you chose — Ordnung
   doesn't read them from the file. The *Nachweis* PDF is made on your computer from the letter and
