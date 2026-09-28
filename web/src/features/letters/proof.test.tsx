@@ -324,7 +324,7 @@ describe("Proof of sending", () => {
     const proof = await screen.findByRole("region", { name: "Proof of sending" });
     await user.click(await within(proof).findByRole("button", { name: "Add proof" }));
     const dialog = await screen.findByRole("dialog", { name: "Add proof" });
-    expect(within(dialog).getByText(/never sent to AI/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/never sent to Claude/)).toBeInTheDocument();
     // the next fitting kind is suggested (the receipt is already there)
     expect(within(dialog).getByRole("combobox", { name: "What is it?" })).toHaveValue("delivery_record");
     expect(within(dialog).getByText(/Deutsche Post's record of the day it was delivered/)).toBeInTheDocument(); // the kind's hint
@@ -491,7 +491,7 @@ describe("A proof file", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/letters/drf_gym/proofs/doc_gym_receipt"));
     expect(await screen.findByRole("heading", { level: 1, name: "Posting receipt (Einlieferungsbeleg)" })).toBeInTheDocument();
     expect(screen.getByText(/For your letter/)).toHaveTextContent("Kündigung meiner Mitgliedschaft");
-    expect(screen.getByText(/Kept private — never sent to AI/)).toBeInTheDocument();
+    expect(screen.getByText(/Kept private — never sent to Claude/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Back to the letter/ })).toHaveAttribute("href", "/letters/drf_gym");
     // none of the letter viewer's parts: no kind to change, no "what you need to do"
     expect(screen.queryByText(/What you need to do/)).not.toBeInTheDocument();
@@ -503,7 +503,7 @@ describe("A proof file", () => {
     const user = userEvent.setup();
     const router = renderAt("/letters/drf_gym/proofs/doc_gym_receipt");
     await user.click(await screen.findByRole("button", { name: "Remove this proof" }));
-    const dialog = await screen.findByRole("dialog", { name: "Remove this proof?" });
+    const dialog = await screen.findByRole("dialog", { name: "Remove the posting receipt (Einlieferungsbeleg)?" });
     await user.click(within(dialog).getByRole("button", { name: "Remove" }));
     await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.path === "/drafts/drf_gym/proofs/prf_gym_receipt")).toBe(true));
     await waitFor(() => expect(router.state.location.pathname).toBe("/letters/drf_gym"));

@@ -358,6 +358,16 @@ export function waitingFor(db: MockDb): WaitingEntry[] {
   return entries.sort((a, b) => ORDER[a.status] - ORDER[b.status] || (a.expected_by ?? "9999") .localeCompare(b.expected_by ?? "9999") || a.id.localeCompare(b.id));
 }
 
+/** What an "other" proof with a note shows (the server's `NOTED_SHOWS`): the note, never the request for one. */
+export const NOTED_SHOWS = "What the note says it shows.";
+export const NOTED_DOES_NOT_SHOW = "Anything the note doesn't say.";
+
+/** What a proof shows and doesn't (the server's `what_it_shows`). */
+function whatItShows(p: Proof): { shows: string; does_not_show: string } {
+  if (p.kind === "other" && p.note?.trim()) return { shows: NOTED_SHOWS, does_not_show: NOTED_DOES_NOT_SHOW };
+  return { shows: PROOF_TEXTS[p.kind].shows, does_not_show: PROOF_TEXTS[p.kind].doesNotShow };
+}
+
 /** `GET /api/drafts/{id}/proof`. */
 export function proofOverview(db: MockDb, d: Draft): ProofOverview {
   const proofs = liveProofs(db, d.id);
@@ -366,8 +376,7 @@ export function proofOverview(db: MockDb, d: Draft): ProofOverview {
     proof: p,
     document: p.doc_id ? db.document(p.doc_id) : null,
     label: PROOF_TEXTS[p.kind].label,
-    shows: PROOF_TEXTS[p.kind].shows,
-    does_not_show: PROOF_TEXTS[p.kind].doesNotShow,
+    ...whatItShows(p),
   }));
   return {
     draft_id: d.id,
@@ -513,7 +522,7 @@ export function proofRoutes({ fail, created, empty }: ProofReplies): Route[] {
           }),
         );
         db.state.proofs.push({ id: newId("prf"), draft_id: d.id, kind: kind as ProofKind, doc_id: id, on_date: onDate, note, created_at: now, updated_at: now });
-        db.log("draft.proof", `Added proof to “${d.subject}”: ${PROOF_TEXTS[kind as ProofKind].label} · kept private, not sent to AI`, "draft", d.id);
+        db.log("draft.proof", `Added proof to “${d.subject}”: ${PROOF_TEXTS[kind as ProofKind].label} · kept private, not sent to Claude`, "draft", d.id);
         return created(touched(db, d));
       },
     ],

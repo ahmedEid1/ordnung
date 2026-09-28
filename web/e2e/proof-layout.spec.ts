@@ -121,7 +121,7 @@ for (const width of [320, 390, 768, 1280, 1920]) {
 
     await proof.getByRole("button", { name: "Add proof" }).click();
     const dialog = page.getByRole("dialog", { name: "Add proof" });
-    await expect(dialog.getByText(/never sent to AI/)).toBeVisible();
+    await expect(dialog.getByText(/never sent to Claude/)).toBeVisible();
     await settle(page);
     expect(await faultsIn(dialog), `Add proof at ${width}`).toEqual([]);
     await dialog.getByRole("button", { name: "Cancel" }).click();
@@ -277,4 +277,26 @@ test("“Note a call” on an overdue promise opens the drawer with the form, on
   await form.getByRole("button", { name: "Cancel" }).click();
   await expect(calls.getByRole("button", { name: "Note a call" })).toBeFocused();
   expect(new URL(page.url()).searchParams.get("call")).toBeNull();
+});
+
+test("adding a proof file says so once — never as a letter being read in the upload corner", async ({ page }) => {
+  // UI audit R2-proof-1: the toast came with the corner's “Filed — everything is on your timeline” card
+  await page.setViewportSize({ width: 390, height: 844 });
+  const { draftId } = setup!;
+  await open(page, `/letters/${draftId}`);
+  const proof = page.getByRole("region", { name: "Proof of sending" });
+  await proof.getByRole("button", { name: "Add proof" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add proof" });
+  // new bytes each run: the same file twice on one letter is refused
+  const receipt = Buffer.concat([receiptPdf(), Buffer.from(`% ${Date.now()}\n`, "latin1")]);
+  await dialog.getByLabel("File").setInputFiles({ name: "IMG_Einlieferungsbeleg.pdf", mimeType: "application/pdf", buffer: receipt });
+  await dialog.getByRole("button", { name: "Add proof" }).click();
+  await expect(page.getByText(/kept private, never sent to Claude\./)).toBeVisible();
+  await expect(proof.getByText("IMG_Einlieferungsbeleg.pdf")).toBeVisible();
+  // its private job runs at once: give a card time to show up, then check none did
+  await page.waitForTimeout(1500);
+  const corner = page.getByRole("list", { name: "Letters being read" });
+  await expect(corner).toBeAttached();
+  await expect(corner.getByRole("listitem")).toHaveCount(0);
+  await expect(page.getByText("Filed — everything is on your timeline")).toHaveCount(0);
 });
