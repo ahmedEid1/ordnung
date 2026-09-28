@@ -10,6 +10,7 @@
  *  4. mail       — the New-mail letters read the way the e2e helper `openMail` does it
  *  5. folder     — the watched folder on its own demo data folder (./folder.mjs)
  *  6. high-stakes — letters re-filed as high-stakes kinds on another demo data folder
+ *  7. contracts-edit — a notice period saved for real, on its own demo data folder
  */
 import { fakeApi, failApi, holdApi, pinToasts, settle } from "../browser.mjs";
 import { inMain } from "../steps.mjs";
@@ -506,6 +507,64 @@ export async function demoCatalog({ api, server }) {
     await c.click(steps.getByRole("button").first());
     await c.click(steps.getByRole("button", { name: /Why this date\?/ }));
   });
+  // the trace tab while its reading loads, and when it can't be loaded (the route held or failed before the tab opens)
+  if (payDoc) {
+    const traceRoute = `/api/documents/${payDoc.id}/trace`;
+    add({
+      id: `${docSlug(payDoc)}--trace-loading`,
+      group: "document",
+      route: `/documents/${payDoc.id}`,
+      how: `open /documents/${payDoc.id} with GET ${traceRoute} held (never answered), then the “How it was read” tab`,
+      description: "How this was read while the reading loads: the skeleton under the tab.",
+      idle: false,
+      run: async (c) => {
+        await holdApi(c.page, { only: [traceRoute], except: [] });
+        await c.goto(`/documents/${payDoc.id}`);
+        await c.click(main(c.page).getByRole("tab", { name: "How it was read" }), { settleAfter: false });
+        await c.wait(400);
+        await settle(c.page, { idle: false });
+      },
+    });
+    add({
+      id: `${docSlug(payDoc)}--trace-error`,
+      group: "document",
+      route: `/documents/${payDoc.id}`,
+      how: `open /documents/${payDoc.id} with GET ${traceRoute} answered with HTTP 500, then the “How it was read” tab (wait for the app's retries)`,
+      description: "How this was read when the reading can't be loaded: the error with “Try again”.",
+      run: async (c) => {
+        await failApi(c.page, { status: 500, only: [traceRoute], except: [] });
+        await c.goto(`/documents/${payDoc.id}`);
+        await c.click(main(c.page).getByRole("tab", { name: "How it was read" }), { settleAfter: false });
+        await main(c.page).getByRole("button", { name: /Try again/ }).first().waitFor({ timeout: 15_000 }).catch(() => c.note("no “Try again” after the failed trace"));
+        await settle(c.page);
+      },
+    });
+  }
+  // a letter being read again, and one whose reading failed (the letter's status answered by the audit)
+  const withStatus = (c, doc, patch) =>
+    fakeApi(c.page, "GET", new RegExp(`^/api/documents/${doc.id}$`), (_r, o) => ({ json: { ...o, document: { ...o.document, ...patch } } }), { passthrough: true });
+  for (const [suffix, patch, how, description] of [
+    ["reading-again", { status: "processing" }, "its status answered as “processing”", "The letter while Claude reads it again: “Reading it again”, the steps, dates you changed are kept."],
+    [
+      "read-failed",
+      { status: "failed", error: "Claude couldn't read this photo — it is too blurry. Try a sharper photo in daylight." },
+      "its status answered as “failed” with the reason",
+      "The letter whose reading failed: “Ordnung couldn't read this letter”, the reason, “Try again”.",
+    ],
+  ]) {
+    if (!photoDoc) break;
+    add({
+      id: `${docSlug(photoDoc)}--${suffix}`,
+      group: "document",
+      route: `/documents/${photoDoc.id}`,
+      how: `open /documents/${photoDoc.id} with ${how}`,
+      description,
+      run: async (c) => {
+        await withStatus(c, photoDoc, patch);
+        await c.goto(`/documents/${photoDoc.id}`);
+      },
+    });
+  }
 
   // ---------------------------------------------------------------------------------------------
   // Timeline
@@ -669,6 +728,53 @@ export async function demoCatalog({ api, server }) {
       await c.click(form.getByRole("button", { name: "Save notice period" }));
     },
   });
+  /** Fill the notice-period form: 3 months, to the end of a month. */
+  const fillNotice = async (c, form) => {
+    await c.type(form.getByLabel("Notice period", { exact: true }), "3", { settleAfter: false });
+    await c.select(form.getByLabel("Can be cancelled"), "end_of_month");
+  };
+  add({
+    id: "contracts-notice-save-error",
+    group: "contracts",
+    route: "/contracts",
+    how: "open /contracts, “Add notice period”, 3 months to the end of a month, “Save notice period” (the PATCH answered with HTTP 500: nothing is stored)",
+    description: "The notice period couldn't be saved: the error toast, the form still open to try again.",
+    pinToasts: true,
+    run: async (c) => {
+      await fakeApi(c.page, "PATCH", /^\/api\/contracts\/[^/]+$/, async () => ({ status: 500, json: { detail: "Something went wrong (UI audit)" } }));
+      const form = await noticeForm(c);
+      await fillNotice(c, form);
+      await c.click(form.getByRole("button", { name: "Save notice period" }), { settleAfter: false });
+      await c.page.getByText("Couldn't update the contract").first().waitFor({ timeout: 10_000 }).catch(() => c.note("no error toast"));
+      await pinToasts(c.page);
+      await settle(c.page);
+    },
+  });
+  // saved for real (it changes the contract): its own phase at the end, each capture from the untouched contract
+  const noticeSaved = [
+    {
+      id: "contracts-notice-saved",
+      group: "contracts",
+      route: "/contracts",
+      how: "on its own demo folder: open /contracts, “Add notice period”, 3 months to the end of a month, “Save notice period” (the contract's notice put back before each capture)",
+      description: "The notice period saved: the “Notice period saved” toast with the new dates and Undo; the card with its dates, focus on the card.",
+      pinToasts: true,
+      run: async (c) => {
+        for (const x of noticeSnapshot) {
+          const now = (await c.api.get("/api/contracts")).find((y) => y.id === x.id);
+          if (now && ((now.notice_value ?? null) !== x.notice_value || (now.notice_unit ?? null) !== x.notice_unit || (now.notice_basis ?? null) !== x.notice_basis))
+            await c.api.patch(`/api/contracts/${x.id}`, { notice_value: x.notice_value, notice_unit: x.notice_unit, notice_basis: x.notice_basis });
+        }
+        const form = await noticeForm(c);
+        await fillNotice(c, form);
+        await c.click(form.getByRole("button", { name: "Save notice period" }), { settleAfter: false });
+        await c.page.getByText(/^Notice period saved/).first().waitFor({ timeout: 10_000 }).catch(() => c.note("no “Notice period saved” toast"));
+        await pinToasts(c.page);
+        await settle(c.page);
+      },
+    },
+  ];
+  const noticeSnapshot = [];
 
   // My numbers and the weekly session
   for (const s of numbersAndWeekDemoStates()) add(s);
@@ -1427,6 +1533,28 @@ export async function demoCatalog({ api, server }) {
       },
     });
   }
+  // a proof file's own page when its file is gone (removed) or can't be loaded (the letter's GET answered by the audit)
+  if (draft) {
+    const proofPath = `/letters/${draft.id}/proofs/doc_ui_audit_proof`;
+    for (const [suffix, status, description, wait] of [
+      ["gone", 404, "A proof link whose file was removed: “This proof isn't here (anymore)”, “Back to the letter”.", /isn't here/],
+      ["error", 500, "A proof file that can't be loaded: “Couldn't open this proof”, the reason, “Try again”.", /Couldn't open this proof/],
+    ]) {
+      add({
+        id: `proof-file-page--${suffix}`,
+        group: "proof",
+        route: proofPath,
+        how: `open ${proofPath} with GET /api/documents/doc_ui_audit_proof answered with HTTP ${status}${status >= 500 ? " (wait for the app's retries)" : ""}`,
+        description,
+        run: async (c) => {
+          await fakeApi(c.page, "GET", /^\/api\/documents\/doc_ui_audit_proof$/, async () => ({ status, json: { detail: status === 404 ? "Not found." : "Something went wrong (UI audit)" } }));
+          await c.goto(proofPath, { heading: false });
+          await c.page.getByRole("heading", { level: 1, name: wait }).waitFor({ timeout: 15_000 }).catch(() => c.note("the page didn't say what happened"));
+          await settle(c.page);
+        },
+      });
+    }
+  }
 
   // ---------------------------------------------------------------------------------------------
   // Phase 3: states that change data — on a second demo data folder
@@ -1981,6 +2109,17 @@ export async function demoCatalog({ api, server }) {
         states: hsDealt,
         // run on its own (--only), the high-stakes phase's setup was skipped
         before: async ({ restart }) => (Object.keys(hsDocs).length ? undefined : setUpHighStakes(restart)),
+      },
+      {
+        name: "contracts-edit",
+        parallel: false,
+        states: noticeSaved,
+        before: async ({ restart }) => {
+          await restart("contracts-edit");
+          await setTour(api, null);
+          noticeSnapshot.length = 0;
+          for (const x of await api.get("/api/contracts")) noticeSnapshot.push({ id: x.id, notice_value: x.notice_value ?? null, notice_unit: x.notice_unit ?? null, notice_basis: x.notice_basis ?? null });
+        },
       },
     ],
   };
