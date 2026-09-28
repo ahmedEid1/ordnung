@@ -3,9 +3,12 @@
  * round 1, letters-b): beside "How letters work" (1024–1280 px) the rows kept only their icon and
  * status — the title squeezed out by a fixed status column; phones lost the date and the row's focus
  * ring was clipped to a line; the composer's lists scrolled inside the scrolling dialog, a contract
- * chosen by a link out of view; picking a kind on a small phone changed nothing visible.
+ * chosen by a link out of view; picking a kind on a small phone changed nothing visible. Round 2: on a
+ * 320×640 phone the pinned description and a tall footer left under half the sheet for the choices, and
+ * contracts that can be cancelled any month counted down in red to their "send by".
  */
 import type { Page } from "@playwright/test";
+import { protectRefs } from "@/lib/glue";
 import { apiGet, expect, open, settle, setTour, test } from "./helpers";
 
 interface DraftSummary {
@@ -59,7 +62,7 @@ for (const width of [320, 390]) {
     const row = page.locator("[data-draft-row]").first();
     const meta = row.locator("[data-draft-meta]");
     await expect(meta).toBeVisible();
-    await expect(meta).toContainText(/send by|Started|by /);
+    await expect(meta).toContainText(/Send by|Started|by /);
     // keyboard focus: the outline sits inside the row, so the card (which clips its corners) can't cut it
     await row.focus();
     await page.keyboard.press("Shift+Tab");
@@ -144,9 +147,71 @@ test("composer: an objection that isn't possible names the letter, apart from th
   await page.goto(`/letters?kind=objection&doc=${plain!.id}`);
   const dialog = page.getByRole("dialog", { name: "New letter" });
   const chosen = dialog.locator("[data-chosen-letter]");
-  await expect(chosen).toContainText(plain!.title!);
+  // (a reference in the name is kept whole: its hyphens are non-breaking)
+  await expect(chosen).toContainText(protectRefs(plain!.title!));
   await expect(dialog.getByRole("radiogroup", { name: "Or choose a decision you can object to" })).toBeVisible();
   const write = dialog.getByRole("button", { name: "Write the letter" });
   await expect(write).toBeDisabled();
   await expect(write).toHaveAccessibleDescription(/You can't object to this letter/);
+});
+
+test("composer at 320×640: the choices keep most of the sheet; Cancel and 'Write the letter' side by side, 44 px tall", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await open(page, "/", undefined);
+  const docs = await apiGet<{ id: string; kind: string | null; status: string }[]>(page, "/api/documents");
+  const dunning = docs.find((d) => d.kind === "dunning" && d.status === "processed");
+  expect(dunning, "a payment reminder").toBeTruthy();
+  await page.goto(`/letters?kind=payment_plan&doc=${dunning!.id}`);
+  const dialog = page.getByRole("dialog", { name: "New letter" });
+  await expect(dialog.getByRole("heading", { name: /Step 2:/ })).toBeVisible();
+  await settle(page);
+  const m = await dialog.evaluate((d) => {
+    const body = [...d.children].find((k) => getComputedStyle(k).overflowY === "auto")!;
+    return { sheet: d.getBoundingClientRect().height, body: body.getBoundingClientRect().height };
+  });
+  // before: 302 of 589 px (51 %)
+  expect(m.body / m.sheet).toBeGreaterThanOrEqual(0.6);
+  const cancel = (await dialog.getByRole("button", { name: "Cancel" }).boundingBox())!;
+  const write = (await dialog.getByRole("button", { name: /Write the letter/ }).boundingBox())!;
+  expect(Math.abs(cancel.y - write.y)).toBeLessThan(1);
+  expect(cancel.x + cancel.width).toBeLessThanOrEqual(write.x);
+  for (const b of [cancel, write]) expect(b.height).toBeGreaterThanOrEqual(44);
+  // the reason is said above them, and travels with the disabled button
+  await expect(dialog.getByRole("button", { name: /Write the letter/ })).toHaveAccessibleDescription(/^Still needed: /);
+  // the dialog keeps its description (in the form on a phone, and for screen readers)
+  await expect(dialog).toHaveAccessibleDescription(/fixed templates/);
+  await expect(dialog.locator("[data-composer-about]")).toBeAttached();
+  expect(await noSideScroll(page)).toBe(true);
+});
+
+test("composer: a contract you can cancel any month never counts down; one with a term says 'Send by'", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await open(page, "/", undefined);
+  interface C {
+    id: string;
+    status: string;
+    computed: { cancel_by: string | null; next_renewal: string | null; current_term_end: string | null } | null;
+  }
+  const contracts = await apiGet<C[]>(page, "/api/contracts");
+  // isRollingContract (features/contracts/model.ts): the demo's rent and statutory health insurance
+  const rolling = contracts.filter((c) => c.status === "active" && c.computed?.cancel_by && !c.computed.next_renewal && !c.computed.current_term_end);
+  expect(rolling.length, "a contract you can cancel any month").toBeGreaterThan(0);
+  await page.goto("/letters?kind=cancellation");
+  const dialog = page.getByRole("dialog", { name: "New letter" });
+  const group = dialog.getByRole("radiogroup", { name: /Which contract/ });
+  await expect(group).toBeVisible();
+  const all = dialog.getByRole("button", { name: /^Show all \d+ contracts$/ });
+  if (await all.isVisible()) await all.click();
+  let seen = 0;
+  for (const c of rolling) {
+    const row = group.locator("label", { has: page.locator(`input[value="${c.id}"]`) });
+    if (!(await row.count())) continue; // not a contract a letter can end
+    seen++;
+    await expect(row.locator("time")).toHaveCount(0);
+    await expect(row.getByText("Cancel any month").locator("visible=true")).toHaveCount(1);
+  }
+  expect(seen, "a listed contract you can cancel any month").toBeGreaterThan(0);
+  const dated = group.locator("time[data-urgency]:visible");
+  expect(await dated.count()).toBeGreaterThan(0);
+  for (const t of await dated.all()) await expect(t).toHaveText(/^Send by /);
 });

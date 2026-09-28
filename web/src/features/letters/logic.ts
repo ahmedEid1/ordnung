@@ -27,6 +27,7 @@ import { SEND_CHANNEL_COPY, copyFor } from "@/lib/copy";
 import { ADVICE_LINKS, type AdviceLink } from "@/components/ui/Disclaimer";
 import { toISODate } from "@/lib/format";
 import { offersEndingLetter } from "@/features/contracts/links";
+import { isRollingContract } from "@/features/contracts/model";
 
 // ------------------------------------------------------------------------------------------------
 // Composer pre-fill
@@ -196,11 +197,14 @@ export function objectionDocuments(docs: Document[]): Document[] {
   return usableDocuments(docs).filter((d) => objectionCheck(d).ok);
 }
 
-/** Contracts a cancellation (or, for a job, resignation) letter can end — soonest send-by first. */
+/**
+ * Contracts a cancellation (or, for a job, resignation) letter can end — soonest send-by first. A contract
+ * you can cancel any month has no send-by that runs out (its date only says when it would end): it follows
+ * the dated ones, as on the Contracts page.
+ */
 export function cancellableContracts(contracts: Contract[]): Contract[] {
-  return contracts
-    .filter((c) => offersEndingLetter(c))
-    .sort((a, b) => ((a.computed?.send_by ?? "9999") < (b.computed?.send_by ?? "9999") ? -1 : 1));
+  const key = (c: Contract) => (isRollingContract(c) ? null : c.computed?.send_by) ?? "9999";
+  return contracts.filter((c) => offersEndingLetter(c)).sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
 }
 
 // ------------------------------------------------------------------------------------------------

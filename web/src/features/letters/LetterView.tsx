@@ -15,6 +15,7 @@ import { Disclaimer } from "@/components/ui/Disclaimer";
 import { Kbd } from "@/components/ui/Kbd";
 import { Menu, type MenuItem } from "@/components/ui/Menu";
 import { PartyChip } from "@/components/ui/PartyChip";
+import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { toast } from "@/components/ui/Toast";
 import { DRAFT_KIND_COPY, PROOF_KIND_COPY, SEND_CHANNEL_COPY, copyFor } from "@/lib/copy";
@@ -46,6 +47,7 @@ import { PdfPreview } from "./PdfPreview";
 import { ProofPanel } from "./ProofPanel";
 import { SendGuidancePanel } from "./SendGuidancePanel";
 import { contractHref } from "@/features/contracts/links";
+import { hasLongWord } from "@/features/document/verdict";
 import { focusWhenReady } from "@/features/today/focus";
 
 /** The "Sent by … on …" banner: where focus goes once a letter is marked as sent (its button is gone). */
@@ -431,9 +433,7 @@ export function LetterView({ draft }: { draft: Draft }) {
 
   const preview = (
     <section aria-labelledby="pdf-title" className="min-w-0">
-      <h2 id="pdf-title" className="mb-3 px-1 text-[12.5px] font-semibold uppercase tracking-[0.07em] text-muted">
-        Print preview
-      </h2>
+      <SectionHeader id="pdf-title" title="Print preview" />
       <div className="rounded-[var(--radius-card)] border border-line bg-surface-2/60 px-4 py-6 sm:px-8 sm:py-8">
         <PdfPreview src={previewUrl} pdfHref={pdfUrl} version={draft.updated_at} stale={dirty} />
       </div>
@@ -456,7 +456,8 @@ export function LetterView({ draft }: { draft: Draft }) {
                 Started <DateText date={draft.created_at.slice(0, 10)} style="day" />
               </span>
             </p>
-            <h1 className="display mt-1.5 text-[28px] font-semibold leading-[1.15] text-ink [overflow-wrap:anywhere] sm:text-[34px]">{title}</h1>
+            {/* the detail pages' one title size (--text-detail); a very long word one step smaller on phones */}
+            <h1 className={cn("display mt-1.5 font-semibold text-ink [overflow-wrap:anywhere]", hasLongWord(title) ? "text-detail-long" : "text-detail")}>{title}</h1>
           </div>
         </div>
         <div className="mt-3 flex flex-col gap-3 sm:pl-16 xl:flex-row xl:items-start">

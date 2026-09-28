@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import type { Draft, Party } from "@/api/types";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
+import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { DRAFT_KIND_COPY, TONES, copyFor } from "@/lib/copy";
 import { cn } from "@/lib/utils";
@@ -73,7 +74,7 @@ export function DraftRow({ draft, party }: { draft: Draft; party?: Party | null 
               <DateText date={draft.sent_at.slice(0, 10)} style="day" /> {sentVia(draft.sent_channel)}
             </span>
           ) : sendBy ? (
-            <Countdown date={sendBy} prefix="send by" />
+            <Countdown date={sendBy} prefix="Send by" />
           ) : (
             <span>
               Started <DateText date={draft.created_at.slice(0, 10)} style="day" />
@@ -94,9 +95,8 @@ export function DraftGroup({ title, drafts, parties, id }: { title: string; draf
   return (
     // no margin after the last group: the page's grid gap follows it
     <section aria-labelledby={id} className="mb-8 last:mb-0">
-      <h2 id={id} className="mb-2.5 px-1 text-[12.5px] font-semibold uppercase leading-5 tracking-[0.07em] text-muted">
-        {title} <span className="font-medium text-muted">· {drafts.length}</span>
-      </h2>
+      {/* the app's one section label (13 px), flush with the page title and the cards (UI audit round 2) */}
+      <SectionHeader id={id} title={title} count={drafts.length} className="mb-2.5" />
       <ul className="card @container/drafts divide-y divide-line overflow-hidden">
         {drafts.map((d) => (
           <DraftRow key={d.id} draft={d} party={d.party_id ? parties.get(d.party_id) : null} />

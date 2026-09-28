@@ -19,9 +19,10 @@ import { toast } from "@/components/ui/Toast";
 import { Avatar } from "@/components/ui/Avatar";
 import { CONTRACT_CATEGORY_COPY, copyFor, documentKindLabel, partyKindLabel } from "@/lib/copy";
 import { useTodayISO } from "@/lib/today";
-import { keepCitations } from "@/lib/glue";
+import { keepCitations, protectRefs } from "@/lib/glue";
 import { cn, prefersReducedMotion } from "@/lib/utils";
 import { offersEndingLetter } from "@/features/contracts/links";
+import { isRollingContract } from "@/features/contracts/model";
 import {
   canSuspend,
   cancellableContracts,
@@ -180,8 +181,9 @@ function OptionText({ title, meta, below }: { title: string; meta: ReactNode[]; 
   return (
     <span className="min-w-0 flex-1">
       {/* a phone's narrow row gets a third line ("Gesetzliche Kranken- und Pflegeversicherung bei Muster BKK") */}
+      {/* a reference stays whole ("TM-2026-0048213", never "TM- / 2026-…"); the title keeps it plain */}
       <span title={title} className="line-clamp-3 break-words text-[14px] font-medium leading-snug text-ink sm:line-clamp-2">
-        {title}
+        {protectRefs(title)}
       </span>
       {parts.length ? (
         <span className="mt-0.5 block text-[12.5px] leading-snug text-muted [overflow-wrap:anywhere]">
@@ -203,8 +205,20 @@ function OptionText({ title, meta, below }: { title: string; meta: ReactNode[]; 
   );
 }
 
+/** A contract that can be cancelled any month: no countdown, nothing runs out (as on its card and in People). */
+function AnyMonthPill({ className }: { className?: string }) {
+  return (
+    <span data-any-month className={cn("whitespace-nowrap rounded-full bg-surface-3 px-2 py-[3px] text-xs font-medium leading-4 text-muted", className)}>
+      Cancel any month
+    </span>
+  );
+}
+
 function ContractOption({ c, party }: { c: Contract; party?: Party }) {
-  const sendBy = c.computed?.send_by;
+  // a contract you can cancel any month has no window that closes: its "send by" only says when it
+  // would end, so it never counts down in red (UI audit round 2)
+  const rolling = isRollingContract(c);
+  const sendBy = rolling ? null : c.computed?.send_by;
   return (
     <>
       <KindIcon category={c.category} size="md" />
@@ -212,9 +226,16 @@ function ContractOption({ c, party }: { c: Contract; party?: Party }) {
         title={c.name}
         meta={[party?.name, copyFor(CONTRACT_CATEGORY_COPY, c.category).label]}
         // phones: the send-by date as a line of its own (a pill beside the name from 640 px)
-        below={sendBy ? <Countdown date={sendBy} prefix="send by" className="mt-0.5 block text-[12.5px] leading-snug sm:hidden" /> : null}
+        below={
+          sendBy ? (
+            <Countdown date={sendBy} prefix="Send by" className="mt-0.5 block text-[12.5px] leading-snug sm:hidden" />
+          ) : rolling ? (
+            <span className="mt-0.5 block text-[12.5px] font-medium leading-snug text-muted sm:hidden">Cancel any month</span>
+          ) : null
+        }
       />
-      {sendBy ? <Countdown date={sendBy} prefix="send by" variant="pill" className="hidden sm:inline-flex" /> : null}
+      {sendBy ? <Countdown date={sendBy} prefix="Send by" variant="pill" className="hidden sm:inline-flex" /> : null}
+      {rolling ? <AnyMonthPill className="hidden sm:inline-flex" /> : null}
     </>
   );
 }
@@ -346,6 +367,9 @@ function NothingYet({ title, children, onAdd }: { title: string; children: React
     </Callout>
   );
 }
+
+/** What the composer promises: the dialog's description. */
+const ABOUT = "The legal sentences come from fixed templates; Claude only adds polite wording and the translation.";
 
 type NothingKind = "cancellation" | "objection" | "general_reply" | "template";
 
@@ -974,15 +998,18 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
       onClose={onClose}
       size="lg"
       title="New letter"
-      description="The legal sentences come from fixed templates; Claude only adds polite wording and the translation."
+      // on a phone the pinned header keeps only the title and the sentence scrolls with the form (below), so the
+      // choices keep the sheet (UI audit round 2: 302 of 589 px were left for them at 320×640)
+      description={<span className="max-sm:sr-only">{ABOUT}</span>}
       footer={
         <>
-          {/* why the button is disabled — on phones above the buttons (the footer stacks in reverse) */}
+          {/* why the button is disabled — on phones above the buttons (the footer stacks in reverse), at most two
+              lines there: the whole reason on hover and for screen readers */}
           <p
             id="cmp-why"
             className={cn(
               disabledReason && !ready
-                ? "order-last text-[12.5px] leading-snug text-muted sm:order-first sm:mr-auto sm:max-w-[22rem] sm:self-center [@media(max-height:560px)]:line-clamp-1"
+                ? "order-last text-[12.5px] leading-snug text-muted max-sm:line-clamp-2 sm:order-first sm:mr-auto sm:max-w-[22rem] sm:self-center [@media(max-height:560px)]:line-clamp-1"
                 : "sr-only",
             )}
             title={disabledReason && !ready ? disabledReason : undefined}
@@ -990,22 +1017,33 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
           >
             {disabledReason && !ready ? disabledReason : ""}
           </p>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button
-            variant="primary"
-            icon={Sparkles}
-            onClick={submit}
-            disabled={!ready}
-            loading={create.isPending}
-            // the reason travels with the disabled button, for a screen reader that lands on it
-            aria-describedby={disabledReason && !ready ? "cmp-why" : undefined}
-          >
-            {create.isPending ? "Writing…" : "Write the letter"}
-          </Button>
+          {/* phones: side by side and 44 px tall — Cancel as wide as its word, the letter's button the rest */}
+          <div data-composer-actions className="grid grid-cols-[auto_minmax(0,1fr)] gap-2 sm:contents">
+            <Button onClick={onClose} className="max-sm:h-11">
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              icon={Sparkles}
+              onClick={submit}
+              disabled={!ready}
+              loading={create.isPending}
+              className="max-sm:h-11"
+              // the reason travels with the disabled button, for a screen reader that lands on it
+              aria-describedby={disabledReason && !ready ? "cmp-why" : undefined}
+            >
+              {create.isPending ? "Writing…" : "Write the letter"}
+            </Button>
+          </div>
         </>
       }
     >
       <div className="space-y-7 pb-2">
+        {/* the dialog's description on a phone, where its header shows only the title; screen readers hear it
+            once, as the dialog's description */}
+        <p aria-hidden data-composer-about className="-mt-1.5 mb-5 text-base leading-relaxed text-muted sm:hidden">
+          {ABOUT}
+        </p>
         {/* 1 · what */}
         <section aria-labelledby="cmp-kind">
           <StepLabel n={1} id="cmp-kind">
