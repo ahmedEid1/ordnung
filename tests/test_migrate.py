@@ -213,20 +213,18 @@ def test_a_lower_number_merged_after_a_higher_one_still_runs(
     assert conn.execute("SELECT COUNT(*) FROM log").fetchone() == (2,)
 
 
-def test_0003_runs_on_a_database_that_already_ran_a_later_migration(
+def test_0002_runs_on_a_database_that_already_ran_a_later_migration(
     tmp_path: Path, conn: sqlite3.Connection
 ) -> None:
-    """The shipped 0003 after another branch's 0004: the letters' columns and tables are there."""
+    """The shipped 0002 merged after the shipped 0003 reached a database: both run, in either order."""
     directory = tmp_path / "m"
-    _shipped(directory, "0001_initial.sql")
-    (directory / "0004_traces.sql").write_text(
-        "CREATE TABLE trace_spans (id TEXT PRIMARY KEY);", encoding="utf-8"
-    )
-    assert migrate(conn, directory=directory) == 4
+    _shipped(directory, "0001_initial.sql", TRACE_MIGRATION)
+    assert migrate(conn, directory=directory) == 3
     _shipped(directory, PROOF_MIGRATION)
-    assert migrate(conn, directory=directory) == 4
+    assert migrate(conn, directory=directory) == 3
     assert "tracking_number" in _columns(conn, "drafts")
     assert {"proofs", "call_notes", "trace_spans"} <= _tables(conn)
+    assert applied_versions(conn) == {1, 2, 3}
 
 
 def test_a_database_from_before_the_ledger_ran_0001(tmp_path: Path, conn: sqlite3.Connection) -> None:
@@ -313,7 +311,51 @@ def test_split_statements_of_empty_script() -> None:
     assert split_statements("  -- nothing here\n /* at all */ ") == []
 
 
-# --- 0003: proof of sending and call notes ----------------------------------------------------------
+# --- the shipped migrations: numbered without a gap, and every database migrates -------------------
+
+
+def test_the_shipped_migrations_are_numbered_without_a_gap() -> None:
+    """Numbers may be handed out ahead on branches, but what ships runs 0001, 0002, 0003, … (the
+    runner's policy); the integration of wave 2 of phase 2 made proof 0002 and traces 0003."""
+    found = discover(MIGRATIONS_DIR)
+    assert [m.version for m in found] == list(range(1, len(found) + 1))
+    assert [m.name for m in found[:3]] == ["initial", "proof_and_calls", "traces"]
+
+
+def test_an_existing_database_at_version_1_gets_every_later_migration(conn: sqlite3.Connection) -> None:
+    """A database written by the released Ordnung (0001 only, no ledger) migrates to the latest."""
+    conn.executescript((MIGRATIONS_DIR / "0001_initial.sql").read_text(encoding="utf-8"))
+    conn.execute("PRAGMA user_version = 1")
+    now = "2026-09-01T10:00:00Z"
+    conn.execute(
+        "INSERT INTO drafts (id, kind, status, created_at, updated_at) VALUES ('drf_1', 'cancellation', 'draft', ?, ?)",
+        (now, now),
+    )
+    assert migrate(conn) == latest_version()
+    assert applied_versions(conn) == set(range(1, latest_version() + 1))
+    assert {"proofs", "call_notes", "trace_spans"} <= _tables(conn)
+    assert "request_key" in _columns(conn, "llm_calls") and "tracking_number" in _columns(conn, "drafts")
+    assert conn.execute("SELECT id FROM drafts").fetchall() == [("drf_1",)]
+
+
+def test_a_database_that_ran_a_migration_under_another_number_is_refused(
+    tmp_path: Path, conn: sqlite3.Connection
+) -> None:
+    """A development build ran proof as 0003 before it was renumbered 0002: running 0002 again would
+    fail halfway and 0003 (traces) would be skipped — so it is refused, and nothing changes."""
+    directory = tmp_path / "m"
+    _shipped(directory, "0001_initial.sql")
+    (directory / "0003_proof_and_calls.sql").write_text(
+        (MIGRATIONS_DIR / PROOF_MIGRATION).read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    assert migrate(conn, directory=directory) == 3
+    before = _schema(conn)
+    with pytest.raises(RuntimeError, match="ran migration 0003 as “proof_and_calls”"):
+        migrate(conn)
+    assert _schema(conn) == before
+
+
+# --- 0002: proof of sending and call notes ----------------------------------------------------------
 
 
 def _columns(conn: sqlite3.Connection, table: str) -> set[str]:
@@ -326,11 +368,24 @@ def _shipped(directory: Path, *names: str) -> None:
         (directory / name).write_text((MIGRATIONS_DIR / name).read_text(encoding="utf-8"), encoding="utf-8")
 
 
-PROOF_MIGRATION = "0003_proof_and_calls.sql"
+PROOF_MIGRATION = "0002_proof_and_calls.sql"
+TRACE_MIGRATION = "0003_traces.sql"
 NEW_DRAFT_COLUMNS = ("tracking_number", "sent_profile", "answered_on", "answer_doc_id")
+#: What 0003 (the traces) adds to the usage log.
+NEW_CALL_COLUMNS = (
+    "request_key",
+    "prompt_name",
+    "prompt_version",
+    "served_model",
+    "job_id",
+    "stage",
+    "span_id",
+    "repair_of",
+    "outcome",
+)
 
 
-def test_0003_adds_proofs_call_notes_and_the_tracking_number(conn: sqlite3.Connection) -> None:
+def test_0002_adds_proofs_call_notes_and_the_tracking_number(conn: sqlite3.Connection) -> None:
     migrate(conn)
     assert set(NEW_DRAFT_COLUMNS) <= _columns(conn, "drafts")
     assert {"draft_id", "kind", "doc_id", "on_date", "note"} <= _columns(conn, "proofs")
@@ -342,16 +397,21 @@ def test_0003_adds_proofs_call_notes_and_the_tracking_number(conn: sqlite3.Conne
 @pytest.mark.parametrize(
     "second",
     [
-        None,  # no 0002 at all
+        None,  # nothing between 0001 and it
         "CREATE TABLE inbox_watch (path TEXT);",  # a new table
         "ALTER TABLE documents ADD COLUMN held INTEGER NOT NULL DEFAULT 0;",  # a new column elsewhere
         "ALTER TABLE drafts ADD COLUMN reminder_at TEXT; CREATE INDEX drafts_status ON drafts(status);",
     ],
 )
-def test_0003_applies_after_any_0002(tmp_path: Path, conn: sqlite3.Connection, second: str | None) -> None:
-    """Another branch owns 0002: whatever it adds (or if it isn't there), 0003 applies after it."""
+def test_0002_applies_after_any_other_migration(
+    tmp_path: Path, conn: sqlite3.Connection, second: str | None
+) -> None:
+    """It only adds: numbered after whatever another piece of work adds (or nothing), it still applies."""
     directory = tmp_path / "m"
-    _shipped(directory, "0001_initial.sql", PROOF_MIGRATION)
+    _shipped(directory, "0001_initial.sql")
+    (directory / "0003_proof_and_calls.sql").write_text(
+        (MIGRATIONS_DIR / PROOF_MIGRATION).read_text(encoding="utf-8"), encoding="utf-8"
+    )
     if second is not None:
         (directory / "0002_other.sql").write_text(second, encoding="utf-8")
     assert migrate(conn, directory=directory) == 3
@@ -359,7 +419,7 @@ def test_0003_applies_after_any_0002(tmp_path: Path, conn: sqlite3.Connection, s
     assert {"proofs", "call_notes"} <= _tables(conn)
 
 
-def test_0003_keeps_existing_letters_and_deletes_proofs_with_their_letter(
+def test_0002_keeps_existing_letters_and_deletes_proofs_with_their_letter(
     tmp_path: Path, conn: sqlite3.Connection
 ) -> None:
     directory = tmp_path / "m"
@@ -384,7 +444,7 @@ def test_0003_keeps_existing_letters_and_deletes_proofs_with_their_letter(
     assert conn.execute("SELECT COUNT(*) FROM proofs").fetchone() == (0,)
 
 
-def test_0003_migrates_the_demo_database(tmp_path: Path) -> None:
+def test_0002_and_0003_migrate_the_demo_database(tmp_path: Path) -> None:
     """The shipped demo snapshot (or one built at an older version) opens and migrates with its data."""
     from ordnung.demo.loader import snapshot_dir
 
@@ -396,14 +456,24 @@ def test_0003_migrates_the_demo_database(tmp_path: Path) -> None:
         before = demo.execute("SELECT COUNT(*) FROM documents").fetchone()
         demo.execute("PRAGMA user_version = 1")  # as it was before this migration (and the ledger)
         demo.execute(f"DROP TABLE IF EXISTS {LEDGER}")
-        for column in NEW_DRAFT_COLUMNS:  # a snapshot already built at 0003: undo it
+        for column in NEW_DRAFT_COLUMNS:  # a snapshot already built at 0002: undo it
             if column in _columns(demo, "drafts"):
                 demo.execute(f"ALTER TABLE drafts DROP COLUMN {column}")
         demo.execute("DROP TABLE IF EXISTS proofs")
         demo.execute("DROP TABLE IF EXISTS call_notes")
+        # … and at 0003 (the traces): the spans' table, and the columns it added to the usage log
+        demo.execute("DROP TABLE IF EXISTS trace_spans")
+        demo.execute("DROP INDEX IF EXISTS llm_calls_span")
+        for column in NEW_CALL_COLUMNS:
+            if column in _columns(demo, "llm_calls"):
+                demo.execute(f"ALTER TABLE llm_calls DROP COLUMN {column}")
+        calls = demo.execute("SELECT COUNT(*) FROM llm_calls").fetchone()
         assert migrate(demo) == latest_version()
         assert demo.execute("SELECT COUNT(*) FROM documents").fetchone() == before
+        assert demo.execute("SELECT COUNT(*) FROM llm_calls").fetchone() == calls
         assert set(NEW_DRAFT_COLUMNS) <= _columns(demo, "drafts")
-        assert {"proofs", "call_notes"} <= _tables(demo)
+        assert set(NEW_CALL_COLUMNS) <= _columns(demo, "llm_calls")
+        assert {"proofs", "call_notes", "trace_spans"} <= _tables(demo)
+        assert applied_versions(demo) == set(range(1, latest_version() + 1))
     finally:
         demo.close()

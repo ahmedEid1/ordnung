@@ -1,4 +1,4 @@
--- Migration 0003: proof of sending for letters, and call notes (Gesprächsnotizen).
+-- Migration 0002: proof of sending for letters, and call notes (Gesprächsnotizen).
 --
 -- Only adds: columns on drafts and two new tables, so it applies after (or before) any other
 -- migration that adds its own columns or tables, and on a database without them. Dates: YYYY-MM-DD.

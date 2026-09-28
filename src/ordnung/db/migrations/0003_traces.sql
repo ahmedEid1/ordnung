@@ -1,7 +1,7 @@
--- 0004: how a letter was read — spans of each reading, and what every model call belonged to.
+-- Migration 0003: how a letter was read — spans of each reading, and what every model call belonged to.
 --
--- Written to apply on its own after 0001 or after 0002/0003 of other work: it creates one new table
--- and only adds columns to llm_calls, which no other migration touches.
+-- Written to apply on its own after 0001, before or after 0002: it creates one new table and only adds
+-- columns to llm_calls, which no other migration touches.
 
 -- One row per step of one reading of a letter (ordnung/trace). A reading's root span has
 -- kind 'run' and no parent; its id is the trace_id of every span of that reading. Spans hold

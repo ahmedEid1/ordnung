@@ -1,5 +1,5 @@
 """The trace API (``/api/documents/{id}/trace``, ``…/compare``, ``/api/traces``), the OpenTelemetry
-export and ``ordnung trace``, and migration 0004 on an empty database, an older one with usage rows and
+export and ``ordnung trace``, and migration 0003 on an empty database, an older one with usage rows and
 the prebuilt demo database."""
 
 from __future__ import annotations
@@ -364,7 +364,7 @@ async def test_ordnung_trace_asks_the_running_server(
 
 
 # --------------------------------------------------------------------------------------------------
-# migration 0004
+# migration 0003
 # --------------------------------------------------------------------------------------------------
 
 
@@ -372,10 +372,10 @@ def _columns(conn: sqlite3.Connection, table: str) -> set[str]:
     return {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
 
 
-def test_0004_on_an_empty_database(tmp_path: Path) -> None:
+def test_0003_on_an_empty_database(tmp_path: Path) -> None:
     conn = sqlite3.connect(tmp_path / "empty.db", isolation_level=None)
     try:
-        assert migrate(conn) == latest_version() >= 4
+        assert migrate(conn) == latest_version() >= 3
         assert {"id", "trace_id", "doc_id", "job_id", "parent_id", "key", "kind", "attributes"} <= _columns(
             conn, "trace_spans"
         )
@@ -385,7 +385,7 @@ def test_0004_on_an_empty_database(tmp_path: Path) -> None:
         conn.close()
 
 
-def test_0004_keeps_older_usage_rows_and_marks_failed_calls(tmp_path: Path) -> None:
+def test_0003_keeps_older_usage_rows_and_marks_failed_calls(tmp_path: Path) -> None:
     only_first = tmp_path / "m"
     only_first.mkdir()
     shutil.copy(MIGRATIONS_DIR / "0001_initial.sql", only_first / "0001_initial.sql")

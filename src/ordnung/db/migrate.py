@@ -5,13 +5,20 @@ script leaves the database exactly as it was. Whether a migration ran is re-read
 transaction, which makes concurrent openers (two processes starting at once) safe: the second one sees
 the record and skips the script.
 
-Numbering policy: numbers are handed out to pieces of work before they are merged, so a number may be
-unused for a while (0003 and 0004 without 0002), and a lower number may arrive after a database ran a
-higher one. Numbers must start at 0001 and never repeat; gaps are allowed. So a database keeps a ledger
-of what ran (the table :data:`LEDGER`: version and name) and every migration not in it is applied, in
-number order, whatever the database's highest version — every migration must therefore be written to
-apply after any other (add, never rewrite). ``PRAGMA user_version`` still holds the highest version
-that ran, so an older Ordnung refuses a database a newer one wrote.
+Numbering policy: what ships runs 0001, 0002, 0003, … without a gap (a test checks the shipped
+folder). Numbers are handed out to pieces of work before they are merged, so on a development branch a
+number may be unused for a while, and a lower number may arrive after a database ran a higher one. The
+runner therefore requires only that numbers start at 0001 and never repeat, and a database keeps a
+ledger of what ran (the table :data:`LEDGER`: version and name): every migration not in it is applied,
+in number order, whatever the database's highest version — every migration must be written to apply
+after any other (add, never rewrite). ``PRAGMA user_version`` still holds the highest version that ran,
+so an older Ordnung refuses a database a newer one wrote.
+
+A ledger row names the migration that ran under its number. Integrating work can renumber a migration
+that never shipped (wave 2 of phase 2 made 0003 and 0004 into 0002 and 0003), so a database whose
+ledger records a different migration under one of this code's numbers was written by a development
+build: it is refused with that reason — never migrated on a guess, which would skip one migration and
+run another twice.
 
 A database from before the ledger existed ran exactly 0001 (it was the only migration any release
 shipped; its runner refused gaps), so ``user_version`` 1 is recorded as {1}. One at a higher version
@@ -178,13 +185,30 @@ def _apply(conn: sqlite3.Connection, migration: Migration) -> None:
     _in_transaction(conn, run)
 
 
+def _refuse_renamed(conn: sqlite3.Connection, migrations: list[Migration]) -> None:
+    """Refuse a database whose ledger records a different migration under one of the numbers of
+    ``migrations`` (see the module docstring); a row without a name is not checked."""
+    names = {m.version: m.name for m in migrations}
+    ran = conn.execute(f"SELECT version, name FROM {LEDGER} ORDER BY version").fetchall()
+    for version, name in ran:
+        expected = names.get(int(version))
+        if name and expected is not None and name != expected:
+            raise RuntimeError(
+                f"This database ran migration {int(version):04d} as “{name}”, but this version of Ordnung "
+                f"numbers “{expected}” {int(version):04d}: a development build wrote it before its "
+                "migrations were renumbered. Rebuild it (for the demo: ordnung demo --reset), or restore "
+                "a backup."
+            )
+
+
 def migrate(conn: sqlite3.Connection, *, directory: Path = MIGRATIONS_DIR) -> int:
     """Apply every migration the database has not run (see the module docstring) and return the
     resulting schema version (the highest that ran).
 
     Idempotent: calling it on an up-to-date database changes nothing. ``conn`` must not be inside a
     transaction. Raises ``RuntimeError`` if the database was written by a newer schema (a higher
-    version, or a migration this code doesn't have) or can't say which migrations it ran.
+    version, or a migration this code doesn't have), can't say which migrations it ran, or ran another
+    migration under one of this code's numbers.
     """
     if conn.in_transaction:
         raise RuntimeError("migrate() must not run inside an open transaction")
@@ -203,6 +227,7 @@ def migrate(conn: sqlite3.Connection, *, directory: Path = MIGRATIONS_DIR) -> in
             f"this database ran migration {listed}, which this version of Ordnung doesn't have — "
             "it was written by a newer version"
         )
+    _refuse_renamed(conn, migrations)
     for migration in pending(conn, directory=directory):
         _apply(conn, migration)
     return current_version(conn)

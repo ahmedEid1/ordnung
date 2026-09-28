@@ -147,11 +147,14 @@ SQLite `<data>/ordnung.db`. Every connection: `isolation_level=None` (autocommit
 transactions), `PRAGMA journal_mode=WAL; busy_timeout=5000; synchronous=NORMAL; foreign_keys=ON`.
 `Store.tx()` = `BEGIN IMMEDIATE … COMMIT/ROLLBACK` (re-entrant per thread). Migrations: `PRAGMA
 user_version` + `db/migrations/NNNN_name.sql` applied in order on open (0001 = the v1 schema;
-0003 = proof of sending and call notes; 0004 = reading traces; numbers start at 0001, gaps are allowed and duplicates are not). The runner keeps a ledger of what
-ran (`schema_migrations`: version, name) and applies every migration not in it, in number order —
-also a lower number that arrives after a database ran a higher one; `user_version` holds the highest
-(a newer database is refused). A database from before the ledger at version 1 ran 0001; one past 1
-without a ledger is refused with the reason (see `db/migrate.py`).
+0002 = proof of sending and call notes; 0003 = reading traces). What ships is numbered 0001, 0002, …
+without a gap; on a development branch a number may be handed out ahead, so the runner only requires
+that numbers start at 0001 and never repeat. It keeps a ledger of what ran (`schema_migrations`:
+version, name) and applies every migration not in it, in number order — also a lower number that
+arrives after a database ran a higher one; `user_version` holds the highest (a newer database is
+refused). A database from before the ledger at version 1 ran 0001 (it gets 0002 and 0003); one past 1
+without a ledger, or one whose ledger records a different migration under one of the numbers (a
+development build from before a renumbering), is refused with the reason (see `db/migrate.py`).
 The MCP server opens the DB read-only (`mode=ro` URI + `PRAGMA query_only=ON`).
 
 **Deterministic IDs** (so recorded demo/replay references stay valid):
@@ -789,7 +792,7 @@ Marking sent asks for channel + date and creates a follow-up item 21 days later 
 request, which has one month from receipt).
 
 **Proof of sending** (`drafts/tracking.py`, `drafts/proof.py` = the policy, `drafts/sent.py` = the
-service; migration 0003). A registered letter (only it: marked again with another channel, the number
+service; migration 0002). A registered letter (only it: marked again with another channel, the number
 goes) takes an Einschreiben tracking number, when marking it sent or later: normalised (NFKC, every
 decimal digit of any script as ASCII, spaces, dots, hyphens, slashes dropped; upper case; only ASCII
 stored; shown grouped with no-break spaces so it never breaks inside), UPU S10

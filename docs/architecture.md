@@ -137,7 +137,7 @@ reminder took the bill's own payment over, so the two relations never hide each 
 ## Observability: how a letter was read
 
 Every reading of a letter — on arrival or read again — is kept as a **trace**: a tree of spans
-(`ordnung/trace`, migration 0004) that says what Claude was asked and what code decided. The letter's
+(`ordnung/trace`, migration 0003) that says what Claude was asked and what code decided. The letter's
 page shows it in the **How it was read** tab; `ordnung trace <doc> --otel` exports it for any
 OpenTelemetry viewer.
 
@@ -434,8 +434,11 @@ already in Ordnung was given to a model is `Store.given_to_model` (a logged call
 transcribed page), never the document's status; removing a proof deletes its file for good
 ([ADR 0014](decisions/0014-proof-files-are-deleted-for-good.md)).
 
-**Migrations** (`db/migrate.py`): numbered SQL files, applied once each and recorded in
-`schema_migrations`, so work merged in any order (a 0003 after a 0004) still reaches every database.
+**Migrations** (`db/migrate.py`): numbered SQL files — 0001 the v1 schema, 0002 proof of sending and
+call notes, 0003 reading traces, numbered without a gap when they ship — applied once each and recorded
+in `schema_migrations`, so work merged in any order (a lower number after a higher one) still reaches
+every database. A ledger that records a different migration under one of the numbers (a development
+build from before a renumbering) is refused with the reason, never migrated on a guess.
 
 ## Concurrency model
 
@@ -459,7 +462,7 @@ transcribed page), never the document's status; removing a proof deletes its fil
 | Store | CRUD round-trips, search escaping, idempotent upserts, purge-on-delete, concurrency, migrations |
 | Pipeline & services | `FakeBackend` scripted model outputs end-to-end through the real pipeline |
 | Watched folder & attachments | A real temporary folder with short timings: settling, ignored files, symlinks, once-only pickup across restarts and deletions, held by default, auto-read, restarts, a missing folder, the folder left untouched; crafted e-mails for the attachment policy, and e-mailed bills end to end (one thread, limits, privacy inherited) |
-| Traces | The tracer's keys, ids and layouts; the span tree of a text letter and a photo letter through the pipeline; the repair link and outcomes; that no letter text reaches a span; delete-means-delete; the API, the comparison, `ordnung trace` and the OTLP export; migration 0004 on an empty database and the demo's |
+| Traces | The tracer's keys, ids and layouts; the span tree of a text letter and a photo letter through the pipeline; the repair link and outcomes; that no letter text reaches a span; delete-means-delete; the API, the comparison, `ordnung trace` and the OTLP export; migration 0003 on an empty database and the demo's |
 | CLI subprocess layer | A fake `claude` executable replaying captured CLI outputs (errors, timeouts, huge lines) |
 | Demo | `ordnung demo --check`: rebuild twice with strict replay → zero misses, identical dumps, all references resolve |
 | Web app | Vitest units + Playwright tour over demo mode with axe accessibility checks |
