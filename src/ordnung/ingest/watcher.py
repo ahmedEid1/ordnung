@@ -27,7 +27,7 @@ The policy, which decides every case:
   read, so a larger one is refused without being loaded whole. A name that is not valid UTF-8 (a
   Windows archive, a network drive) is shown as Windows-1252; the file itself is opened by its real
   name. A PDF Ordnung itself made (a letter drafted for the person, downloaded into the folder) is
-  never added as a letter received (:func:`remember_own_file`).
+  never added as a letter received (:mod:`ordnung.ingest.own_files`).
 * **Consent** — unless ``settings.inbox_auto_read`` is on, a file is *held*: stored and read on this
   computer only, never sent to Claude until the person answers (:mod:`ordnung.ingest.held`). With it
   on, files that **arrive** after the folder was chosen are read at once; the files that were already
@@ -65,6 +65,7 @@ from watchfiles import awatch
 
 from ordnung.db.store import Store
 from ordnung.ingest.intake import MAX_BYTES, IntakeError
+from ordnung.ingest.own_files import OWN_LETTER, is_own_file, remember_own_file  # noqa: F401  (re-exported)
 from ordnung.ingest.pipeline import add_file_result
 from ordnung.models import FolderOutcome, FolderPickup, FolderState
 
@@ -83,9 +84,7 @@ TICK_MS = 500
 STOP_GRACE_S = 5.0
 SEEN_META_KEY = "inbox_seen"
 BASELINE_META_KEY = "inbox_baseline"
-OWN_FILES_META_KEY = "own_pdfs"
 MAX_FILES = 5000
-MAX_OWN_FILES = 200
 RECENT = 6
 #: Activity kinds of files the folder brought in (``document.added`` with ``data.source == "folder"``).
 _OUTCOMES: dict[str, FolderOutcome] = {
@@ -105,7 +104,6 @@ TOO_MANY = (
 )
 UNEXPECTED = "Something went wrong while adding it."
 NOT_READABLE = "Ordnung isn't allowed to read this file. Check its permissions."
-OWN_LETTER = "This is a letter Ordnung drafted for you — it isn't added as a letter you received."
 
 Signature = tuple[int, int]
 """A file's size and modification time (ns): unchanged for :data:`SETTLE_S`, it counts as complete."""
@@ -236,33 +234,6 @@ def read_file(path: Path, expected: Signature) -> bytes | None:
         if not stat.S_ISREG(info.st_mode) or (info.st_size, info.st_mtime_ns) != expected:
             return None
         return handle.read(MAX_BYTES + 1)
-
-
-# --------------------------------------------------------------------------------------------------
-# Ordnung's own files
-# --------------------------------------------------------------------------------------------------
-
-
-def _own_files(store: Store) -> list[str]:
-    try:
-        stored = json.loads(store.get_meta(OWN_FILES_META_KEY) or "[]")
-    except ValueError:
-        return []
-    return [digest for digest in stored if isinstance(digest, str)] if isinstance(stored, list) else []
-
-
-def remember_own_file(store: Store, data: bytes) -> None:
-    """Remember a file Ordnung made for the person (a drafted letter's PDF, by its SHA-256; the newest
-    :data:`MAX_OWN_FILES`), so the watched folder never takes it for a letter received — its address
-    and IBAN come from the profile, which is never sent to Claude."""
-    digest = hashlib.sha256(data).hexdigest()
-    known = [entry for entry in _own_files(store) if entry != digest]
-    store.set_meta(OWN_FILES_META_KEY, json.dumps([*known, digest][-MAX_OWN_FILES:]))
-
-
-def is_own_file(store: Store, data: bytes) -> bool:
-    """Whether ``data`` is a file Ordnung made (:func:`remember_own_file`)."""
-    return hashlib.sha256(data).hexdigest() in _own_files(store)
 
 
 # --------------------------------------------------------------------------------------------------

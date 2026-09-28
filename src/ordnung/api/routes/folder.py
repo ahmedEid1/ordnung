@@ -18,13 +18,17 @@ sends more in several.
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Callable, Sequence
+
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from ordnung.api.deps import ApiState, StateDep, StoreDep
 from ordnung.api.routes.documents import DEMO_UPLOAD_MESSAGE
+from ordnung.db.store import Store
 from ordnung.ingest import held
-from ordnung.ingest.pipeline import keep_held_private, release_held
+from ordnung.ingest.pipeline import announce_job
 from ordnung.ingest.watcher import recent_pickups
 from ordnung.models import Document, FolderStatus, Job
 
@@ -68,6 +72,17 @@ def folder_status(state: StateDep, store: StoreDep) -> FolderStatus:
     )
 
 
+async def _answer(
+    state: ApiState, answer: Callable[[Store, Sequence[str]], held.ConsentResult], doc_ids: Sequence[str]
+) -> held.ConsentResult:
+    """Run an answer's transaction off the event loop (up to 500 letters, an e-mail's attachments and
+    activity entries each), then tell the worker about the jobs it queued."""
+    result = await asyncio.to_thread(answer, state.ctx.store, doc_ids)
+    for job in result.jobs:
+        announce_job(state.ctx, job)
+    return result
+
+
 def _announce(state: ApiState, documents: list[Document]) -> None:
     for document in documents:
         state.ctx.bus.publish("document.updated", doc_id=document.id)
@@ -79,7 +94,7 @@ async def read_held(body: HeldRequest, state: StateDep) -> HeldResult:
     """“Read these”: the waiting letters may be sent to Claude; they are queued for reading."""
     if not state.reads_letters:
         raise HTTPException(status.HTTP_409_CONFLICT, DEMO_UPLOAD_MESSAGE)
-    result = release_held(state.ctx, body.doc_ids)
+    result = await _answer(state, held.release, body.doc_ids)
     _announce(state, result.documents)
     return HeldResult(documents=result.documents, jobs=result.jobs, skipped=result.skipped)
 
@@ -87,7 +102,7 @@ async def read_held(body: HeldRequest, state: StateDep) -> HeldResult:
 @router.post("/documents/held/keep-private", response_model=HeldResult)
 async def keep_held_private_route(body: HeldRequest, state: StateDep) -> HeldResult:
     """“Keep private”: the waiting letters stay on this computer and are never sent to Claude."""
-    result = keep_held_private(state.ctx, body.doc_ids)
+    result = await _answer(state, held.keep_private, body.doc_ids)
     _announce(state, result.documents)
     return HeldResult(documents=result.documents, jobs=result.jobs, skipped=result.skipped)
 
@@ -95,6 +110,6 @@ async def keep_held_private_route(body: HeldRequest, state: StateDep) -> HeldRes
 @router.post("/documents/held/wait", response_model=HeldResult)
 async def wait_again(body: HeldRequest, state: StateDep) -> HeldResult:
     """Undo “Keep private”: letters kept private from waiting (never read by Claude) wait again."""
-    result = held.back_to_waiting(state.ctx.store, body.doc_ids)
+    result = await _answer(state, held.back_to_waiting, body.doc_ids)
     _announce(state, result.documents)
     return HeldResult(documents=result.documents, skipped=result.skipped)

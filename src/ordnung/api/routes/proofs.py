@@ -23,7 +23,7 @@ from ordnung.drafts import sent
 from ordnung.drafts.proof import MAX_NOTE
 from ordnung.drafts.tracking import MAX_INPUT
 from ordnung.ingest.intake import MAX_BYTES, IntakeError
-from ordnung.ingest.watcher import remember_own_file
+from ordnung.ingest.own_files import remember_own_file
 from ordnung.models import ProofKind, ProofOverview
 
 router = APIRouter(tags=["drafts"])

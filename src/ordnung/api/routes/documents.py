@@ -458,7 +458,7 @@ def _check_links(store: Store, changes: dict[str, object]) -> None:
 
 
 HELD_MESSAGE = (
-    "This letter is waiting for you: choose “Read” or “Keep private” for it first (Inbox → From your folder)."
+    "This letter isn't read yet: choose “Read” or “Keep private” for it first (Inbox → From your folder)."
 )
 
 

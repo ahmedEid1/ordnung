@@ -327,7 +327,7 @@ def _status_text(document: Document) -> str:
     if document.status == "failed":
         return f"[red]Failed[/] — {escape(document.error or '')}"
     if document.status == "held":
-        return "Waiting for you — not sent to AI yet"
+        return "Not read yet — not sent to AI"
     if document.ai_private:
         return "Private — not sent to AI"
     if document.status == "needs_review":
@@ -939,6 +939,7 @@ def trace(
     output: Annotated[
         Path | None, typer.Option("--output", "-o", help="Write to this file instead of the screen.")
     ] = None,
+    force: Annotated[bool, typer.Option("--force", help="Replace the --output file if it exists.")] = False,
     data_dir: DataDirOption = None,
 ) -> None:
     """How a letter was read: every step, its model calls and what code checked — as JSON.
@@ -971,8 +972,18 @@ def trace(
     if output is None:
         typer.echo(text, nl=False)
         return
+    # the plain JSON names to-dos and organisations: private to this account (0600), never through a
+    # link, and never over an existing file unless asked (as the sign-in page is written)
+    flags = os.O_WRONLY | os.O_CREAT | (os.O_TRUNC if force else os.O_EXCL) | getattr(os, "O_NOFOLLOW", 0)
     with _friendly():
-        output.write_text(text, encoding="utf-8")
+        try:
+            fd = os.open(output, flags, 0o600)
+        except FileExistsError:
+            raise _fail(f"{output} already exists.", "Add --force to replace it.") from None
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        if os.name == "posix":
+            output.chmod(0o600)
     err_console.print(f"Wrote {escape(str(output))}", soft_wrap=True)
 
 
@@ -1708,6 +1719,13 @@ def restore(
             "password in Settings → Calendar to sync it again. If the Ordnung this backup came from still "
             "syncs to that calendar, disconnect it there first and leave its events in the calendar — two "
             "Ordnungs would change each other's events.",
+            soft_wrap=True,
+        )
+    if result.folder is not None:
+        console.print(
+            f"[yellow]![/] The watched folder {escape(result.folder)} starts afresh in this copy: the files in "
+            "it wait for you, and “Read new files with Claude straight away” is off until you turn it on "
+            "again in Settings → Watched folder.",
             soft_wrap=True,
         )
     serve_command = "ordnung serve"

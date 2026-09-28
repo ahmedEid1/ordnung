@@ -10,6 +10,11 @@ stores and reads.
   given to AI, also when it was marked private later: "kept private" is never claimed for it. One that
   waits for the person's answer from the watched folder (:mod:`ordnung.ingest.held`) gets it now: *Keep
   private* — a proof is never offered to Claude with "Read these".
+* **A proof e-mail's attachments are no letters.** A sent e-mail kept as proof is one file: its
+  attachments are never added (also when the same ``.eml`` arrives again, :mod:`ordnung.ingest.pipeline`),
+  and the ones it brought while it waited in the Inbox as a letter — still waiting, never read — are
+  deleted for good when it becomes proof: the proof e-mail holds them itself. Attachments the person
+  already answered for (read, or kept private) stay.
 * **Only sent letters take proof**, at most :data:`~ordnung.drafts.proof.MAX_PROOFS` of them, each file
   once per letter; a proof's day can't be in the future, and a delivery can't be before the sending.
 * **An answer is the person's word** (:func:`mark_answered`): the day, and the letter that answered if
@@ -56,6 +61,7 @@ from ordnung.drafts.proof import (
 from ordnung.drafts.templates import format_date
 from ordnung.drafts.tracking import TrackingError, parse_tracking_number, tracking_info
 from ordnung.ingest import held as consent
+from ordnung.ingest.attachments import email_source, is_email
 from ordnung.ingest.pipeline import add_file, keep_held_private
 from ordnung.models import Document, Draft, Profile, Proof, ProofEntry, ProofOverview
 from ordnung.secretary.triggers import Ledger, parse_day
@@ -244,6 +250,8 @@ async def add_proof(
     )
     if any(proof.doc_id == document.id for proof in proofs):
         raise DraftError(ALREADY_PROOF)
+    if is_email(document):
+        _drop_waiting_attachments(store, document)
     if consent.is_held(document):  # from the watched folder, still waiting: proof is kept private
         kept = keep_held_private(ctx, [document.id]).documents  # an e-mail's held attachments with it
         document = next((doc for doc in kept if doc.id == document.id), document)
@@ -263,6 +271,22 @@ async def add_proof(
         data={"proof_id": proof.id, "doc_id": document.id},
     )
     return AddedProof(proof, notice)
+
+
+def _drop_waiting_attachments(store: Store, email_doc: Document) -> None:
+    """Delete for good the attachments an e-mail brought that still wait for the person (module policy:
+    a proof e-mail's attachments are no letters; the e-mail itself keeps them)."""
+    waiting = store.list_documents(status=consent.HELD, source=email_source(email_doc.id))
+    for attachment in waiting:
+        store.delete_document(attachment.id)
+    if waiting:
+        store.log_activity(
+            "document.deleted",
+            f"Removed {len(waiting)} attachment{'s' if len(waiting) != 1 else ''} of “{email_doc.filename}” "
+            "that waited: it is kept as proof, with its attachments in it",
+            ref_type="document",
+            ref_id=email_doc.id,
+        )
 
 
 def update_proof(
@@ -366,22 +390,32 @@ def mark_answered(store: Store, draft_id: str, today: date, *, doc_id: str | Non
     with store.tx():
         updated = store.update_draft(draft.id, answered_on=today.isoformat(), answer_doc_id=doc_id)
         followup = store.get_item(followup_item_id(draft.id))
-        if followup is not None and followup.status == "open":
+        # a snoozed follow-up is closed too: snoozing put off the reminder, the answer ends the wait
+        closed = followup is not None and followup.status in ("open", "snoozed")
+        if closed:
+            assert followup is not None
             store.update_item(followup.id, status="done")
         store.log_activity(
-            "draft.answered", f"Marked “{draft.subject}” as answered", ref_type="draft", ref_id=draft.id
+            "draft.answered",
+            f"Marked “{draft.subject}” as answered",
+            ref_type="draft",
+            ref_id=draft.id,
+            data={"followup_was": followup.status} if closed and followup is not None else None,
         )
     return updated
 
 
 def unmark_answered(store: Store, draft_id: str) -> Draft:
-    """Take back :func:`mark_answered`: the letter waits again and its follow-up to-do reopens."""
+    """Take back :func:`mark_answered`: the letter waits again and its follow-up to-do is back as it was
+    (open, or snoozed until the day it was snoozed to)."""
     draft = _sent_draft(store, draft_id)
     with store.tx():
+        marked = store.last_activity("draft", draft.id, ["draft.answered"])
+        was = marked.data.get("followup_was") if marked is not None and marked.data else None
         updated = store.update_draft(draft.id, answered_on=None, answer_doc_id=None)
         followup = store.get_item(followup_item_id(draft.id))
         if followup is not None and followup.status == "done":
-            store.update_item(followup.id, status="open")
+            store.update_item(followup.id, status="snoozed" if was == "snoozed" else "open")
         store.log_activity(
             "draft.answered",
             f"“{draft.subject}” is waiting for an answer again",

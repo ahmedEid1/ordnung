@@ -75,7 +75,12 @@ async def test_the_preview_shows_each_event_in_the_chosen_mode(data_dir: Path) -
         discreet = (await api.client.get("/api/calendar/sync/preview")).json()
         full = (await api.client.get("/api/calendar/sync/preview", params={"mode": "full"})).json()
         assert discreet["mode"] == "discreet" and full["mode"] == "full"
-        assert [e["uid"] for e in discreet["events"]] == [e["uid"] for e in full["events"]]
+        assert [e["start"] for e in discreet["events"]] == [e["start"] for e in full["events"]]
+        # a discreet event's UID is a keyed hash: no to-do's or contract's id, no "-cancel-by"
+        assert not {e["uid"] for e in discreet["events"]} & {e["uid"] for e in full["events"]}
+        assert not any(
+            "-by@" in e["uid"] or e["uid"].startswith(("itm_", "ctr_")) for e in discreet["events"]
+        )
         plain = {"Ordnung: deadline", "Ordnung: payment", "Ordnung: appointment", "Ordnung: money in"}
         assert {e["summary"] for e in discreet["events"]} <= plain | {f"{t} — check the date" for t in plain}
         assert "Musterstadt" not in json.dumps(discreet) and "Musterstadt" in json.dumps(full)

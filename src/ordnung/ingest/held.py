@@ -7,7 +7,7 @@ never sent to Claude until the person says so. The policy:
 * A held letter is private (``ai_private``) *and* has the status ``held``. Being private keeps it
   away from every model call — reading, Ask, the weekly review, the daily note, drafting — through
   the same checks as "Keep private — no AI"; the status tells it apart from a letter the person chose
-  to keep private, so the Inbox can ask ("From your folder — waiting for you").
+  to keep private, so the Inbox can ask ("From your folder — not read yet").
 * **Read** (:func:`release`) ends the wait: the letter is no longer private and is queued to be read
   like an upload. **Keep private** (:func:`keep_private`) ends it too: the letter stays private, as if
   it had been added with "Keep private — no AI".
@@ -21,6 +21,10 @@ never sent to Claude until the person says so. The policy:
   way: an upload is "read", a "Keep private" upload is "keep private"
   (:func:`ordnung.ingest.pipeline.add_file`, ``answer_held``). A copy arriving in the watched folder,
   or attached to an e-mail from it, never answers — whatever ``inbox_auto_read`` says.
+* **A proof of a sent letter never waits and is never read** (:func:`is_proof`, SPEC § 11): a file
+  that is a proof — added as one, or a letter already in Ordnung linked as one — is left out of every
+  answer here (it is skipped), so "Undo Keep private" can't make it wait again and "Read these" can't
+  send it to Claude, also not through the e-mail it came attached to.
 * Nothing is ever read because time passed: a held letter waits until the person answers, or is
   deleted. Turning on ``inbox_auto_read`` reads new files only; the ones already waiting still ask,
   and so do the files that were already in a folder when it was chosen (:mod:`ordnung.ingest.watcher`).
@@ -38,7 +42,7 @@ from dataclasses import dataclass, field
 
 from ordnung.db.store import Store
 from ordnung.ingest.attachments import attached_to, email_source, is_email
-from ordnung.models import Document, Job
+from ordnung.models import PROOF_SOURCE, Document, Job
 
 HELD = "held"
 
@@ -57,6 +61,11 @@ def is_held(document: Document) -> bool:
     return document.status == HELD and document.deleted_at is None
 
 
+def is_proof(store: Store, document: Document) -> bool:
+    """Whether ``document`` is a proof of a sent letter: its file, or a letter linked as one (policy)."""
+    return document.source == PROOF_SOURCE or bool(store.list_proofs(doc_id=document.id))
+
+
 def waiting(store: Store) -> list[Document]:
     """Every letter waiting for the person, oldest first, an e-mail's attachments right after it."""
     held = store.list_documents(status=HELD)
@@ -72,19 +81,21 @@ def waiting(store: Store) -> list[Document]:
 
 def answered_together(store: Store, doc_ids: Iterable[str]) -> tuple[list[Document], list[str]]:
     """The held letters among ``doc_ids`` plus the held attachments of held e-mails among them
-    (each once, in the order given, attachments after their e-mail), and the ids that are not held."""
+    (each once, in the order given, attachments after their e-mail), and the ids that are not held —
+    never a proof (policy)."""
     chosen: dict[str, Document] = {}
     skipped: list[str] = []
     for doc_id in dict.fromkeys(doc_ids):
         document = store.get_document(doc_id)
-        if document is None or not is_held(document):
+        if document is None or not is_held(document) or is_proof(store, document):
             skipped.append(doc_id)
             continue
         chosen.setdefault(document.id, document)
         if is_email(document):
             attachments = store.list_documents(status=HELD, source=email_source(document.id))
             for attachment in sorted(attachments, key=lambda doc: (doc.created_at, doc.id)):
-                chosen.setdefault(attachment.id, attachment)
+                if not is_proof(store, attachment):
+                    chosen.setdefault(attachment.id, attachment)
     return list(chosen.values()), skipped
 
 
@@ -151,8 +162,11 @@ _ANSWERS = (KEPT_PRIVATE, "document.released", "document.waiting")
 
 def was_kept_from_waiting(store: Store, document: Document) -> bool:
     """Whether ``document`` is private because the person answered its wait with "Keep private" (and
-    nothing was read by Claude since): it may wait again (:func:`back_to_waiting`)."""
+    nothing was read by Claude since): it may wait again (:func:`back_to_waiting`) — never a proof,
+    which stays private whatever answered its wait (policy)."""
     if document.deleted_at is not None or not document.ai_private or document.ai_processed_at:
+        return False
+    if is_proof(store, document):
         return False
     if document.status not in ("processed", "failed"):
         return False
@@ -183,7 +197,7 @@ def back_to_waiting(store: Store, doc_ids: Iterable[str]) -> ConsentResult:
             result.documents.append(store.update_document(document.id, status=HELD))
             store.log_activity(
                 "document.waiting",
-                f"“{_name(document)}” waits for you again",
+                f"“{_name(document)}” is back with the letters not read yet",
                 ref_type="document",
                 ref_id=document.id,
             )

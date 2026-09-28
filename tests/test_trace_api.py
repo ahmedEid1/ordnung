@@ -302,6 +302,35 @@ async def test_ordnung_trace_prints_json_and_otel_in_process(data_dir: Path, tmp
     assert empty.exit_code == 1 and "There is no Ordnung data" in empty.output
 
 
+async def test_ordnung_trace_writes_its_file_privately_never_through_a_link_or_over_a_file(
+    data_dir: Path, tmp_path: Path
+) -> None:
+    """The plain JSON names to-dos and organisations: its file is the account's own (0600), a symbolic
+    link is never followed, and an existing file is replaced only with --force."""
+    import os
+    import stat
+
+    doc_id = await _read_tax_letter(data_dir)
+    target = tmp_path / "trace.json"
+    written = runner.invoke(app, ["trace", doc_id, "-o", str(target), "--data-dir", str(data_dir)])
+    assert written.exit_code == 0, written.output
+    if os.name == "posix":
+        assert stat.S_IMODE(target.stat().st_mode) == 0o600
+    again = runner.invoke(app, ["trace", doc_id, "-o", str(target), "--data-dir", str(data_dir)])
+    assert again.exit_code == 1 and "already exists" in again.output and "--force" in again.output
+    forced = runner.invoke(app, ["trace", doc_id, "-o", str(target), "--force", "--data-dir", str(data_dir)])
+    assert forced.exit_code == 0, forced.output
+    if os.name == "posix":
+        victim = tmp_path / "victim.txt"
+        victim.write_text("keep me", encoding="utf-8")
+        link = tmp_path / "link.json"
+        link.symlink_to(victim)
+        through = runner.invoke(
+            app, ["trace", doc_id, "-o", str(link), "--force", "--data-dir", str(data_dir)]
+        )
+        assert through.exit_code != 0 and victim.read_text(encoding="utf-8") == "keep me"
+
+
 async def test_ordnung_trace_of_a_letter_with_no_kept_reading_fails(data_dir: Path, tmp_path: Path) -> None:
     doc_id = await _read_tax_letter(data_dir)
     with Store.open(Paths(data_dir)) as store, store.tx() as conn:

@@ -15,8 +15,12 @@ Written policy (ADR 0007):
   *Discreet* (the default) keeps the date, the time and the alarms and replaces everything else: the
   title becomes "Ordnung: deadline" ("… payment", "… appointment", "… money in" for money coming
   in), the description a pointer to Ordnung; no location, no categories — no names, organisations,
-  amounts or letter text reach the calendar provider. A date Ordnung couldn't confirm in the letter
-  says so in either mode ("Ordnung: deadline — check the date"): the doubt travels with the alarm.
+  amounts or letter text reach the calendar provider. Its UID, and so its resource name, is a keyed
+  hash of the calendar file's UID (:func:`discreet_uid`, keyed by a secret of this data folder that a
+  backup carries, :func:`uid_key`): the file's UID says what kind of date it is (``ctr_…-cancel-by``),
+  the hash says nothing, and a copy restored elsewhere still sends each event under its old name.
+  Switching the mode replaces every event (their names change; the old ones are removed). A date
+  Ordnung couldn't confirm in the letter says so in either mode ("Ordnung: deadline — check the date"): the doubt travels with the alarm.
   *With details* sends the events as the calendar file has them. Settings shows every event in the
   chosen mode before anything is sent (:func:`preview`).
 * **Idempotent, and only Ordnung's own events.** An event's resource name comes from its stable UID,
@@ -59,6 +63,7 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import hmac
 import ipaddress
 import logging
 import re
@@ -71,6 +76,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from typing import Any
 from urllib.parse import SplitResult, unquote, urljoin, urlsplit, urlunsplit
+from xml.parsers import expat
 from xml.sax.saxutils import escape
 
 import httpx
@@ -94,6 +100,8 @@ from ordnung.models import (
 log = logging.getLogger(__name__)
 
 STATE_KEY = "calendar_sync"
+#: the data folder's secret key for discreet events' UIDs (:func:`uid_key`)
+UID_KEY_META = "calendar_uid_key"
 TIMEOUT_S = 20.0
 MAX_RESPONSE_BYTES = 1024 * 1024
 MAX_URL_CHARS = 2048
@@ -145,7 +153,6 @@ CONFLICT_MESSAGE = (
 _UID_CLASH = re.compile(rb"\buid\b|no-uid-conflict", re.IGNORECASE)
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 _UNSAFE_NAME = re.compile(r"[^A-Za-z0-9_-]")
-_DTD = re.compile(rb"<!(DOCTYPE|ENTITY)", re.IGNORECASE)
 # re-entrant: "Delete everything" disconnects while it holds it (see :func:`exclusive`)
 _LOCK = threading.RLock()
 
@@ -167,6 +174,8 @@ class SyncEvent:
     body: bytes
     digest: str
     preview: CalendarEventPreview
+    #: the calendar file's UID of the event (``uid`` is its keyed hash in discreet mode)
+    stable_uid: str = ""
 
 
 @dataclass(frozen=True)
@@ -302,6 +311,25 @@ def host_of(url: str) -> str:
 # --------------------------------------------------------------------------------------------------
 
 
+def uid_key(store: Store) -> str:
+    """The data folder's secret key for discreet UIDs (made once, kept in ``meta``; a backup carries
+    it, so a restored copy sends each event under its old name)."""
+    key = store.get_meta(UID_KEY_META)
+    if key:
+        return key
+    with store.tx():
+        key = store.get_meta(UID_KEY_META) or tokens.token_hex(16)
+        store.set_meta(UID_KEY_META, key)
+    return key
+
+
+def discreet_uid(uid: str, key: str) -> str:
+    """A discreet event's UID (module policy): the calendar file's ``uid`` hashed with ``key``
+    (:func:`uid_key`) — stable, and telling the provider nothing of the kind of date."""
+    digest = hmac.new(key.encode("utf-8"), uid.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{digest[:32]}@ordnung.local"
+
+
 def resource_name(uid: str) -> str:
     """``ordnung-<id>.ics`` for ``<id>@ordnung.local`` (other characters replaced, then a short hash)."""
     local = uid.split("@", 1)[0]
@@ -317,9 +345,9 @@ def _kinds(event: Event) -> list[str]:
     return [str(cat) for item in values for cat in getattr(item, "cats", [])]
 
 
-def discreet_event(event: Event, *, incoming: bool = False) -> Event:
+def discreet_event(event: Event, *, incoming: bool = False, uid: str | None = None) -> Event:
     """``event`` without anything but its date, time and alarms (module policy); ``incoming``: money
-    coming in, not a payment to make."""
+    coming in, not a payment to make; ``uid``: the UID it goes by (:func:`discreet_uid`)."""
     kinds = _kinds(event)
     title = (
         DISCREET_INCOMING
@@ -334,6 +362,8 @@ def discreet_event(event: Event, *, incoming: bool = False) -> Event:
     for name in ("uid", "dtstamp", "last-modified", "dtstart", "dtend", "transp"):
         if name in event:
             quiet[name] = event[name]
+    if uid is not None:
+        quiet["uid"] = uid
     quiet.add("summary", title)
     quiet.add("description", description)
     for alarm in event.walk("VALARM"):
@@ -409,9 +439,11 @@ def build_events(store: Store, mode: CalendarSyncMode) -> list[SyncEvent]:
     events: list[SyncEvent] = []
     seen: set[str] = set()
     today = clock.today()
+    key = uid_key(store) if mode == "discreet" else ""
     for original in parsed.events:
+        stable = str(original.get("uid"))
         if mode == "discreet":
-            event = discreet_event(original, incoming=str(original.get("uid")) in incoming)
+            event = discreet_event(original, incoming=stable in incoming, uid=discreet_uid(stable, key))
         else:
             event = original
         uid = str(event.get("uid"))
@@ -427,6 +459,7 @@ def build_events(store: Store, mode: CalendarSyncMode) -> list[SyncEvent]:
                 body=body,
                 digest=hashlib.sha256(body).hexdigest(),
                 preview=_preview(event, today),
+                stable_uid=stable,
             )
         )
     return events
@@ -680,13 +713,26 @@ class CalDavClient:
             raise http_error(self.url, response, "remove events")
 
 
+class _DeclaresDtd(Exception):
+    """An answer that declares a document type or an entity (refused, whatever its encoding)."""
+
+
+def _refuse_dtd(*_: object) -> None:
+    raise _DeclaresDtd
+
+
 def _xml(body: bytes) -> ET.Element:
-    if _DTD.search(body):
-        raise CalDavError("server", "The calendar server's answer couldn't be read.")
+    """The answer's XML — refused if it declares a DTD or an entity. The parser itself says so, after
+    reading the declared encoding (a UTF-16 answer hides ``<!DOCTYPE`` from a byte search)."""
+    unreadable = CalDavError("server", "The calendar server's answer couldn't be read.")
+    check = expat.ParserCreate()
+    check.StartDoctypeDeclHandler = _refuse_dtd
+    check.EntityDeclHandler = _refuse_dtd
     try:
+        check.Parse(body, True)
         return ET.fromstring(body)
-    except ET.ParseError:
-        raise CalDavError("server", "The calendar server's answer couldn't be read.") from None
+    except (_DeclaresDtd, expat.ExpatError, ET.ParseError):
+        raise unreadable from None
 
 
 def _allowed(url: str) -> bool:
@@ -898,7 +944,11 @@ def _run(
 ) -> CalendarSyncReport:
     try:
         report = _push(
-            state, build_events(store, state.mode), lambda: _password(secrets, state), transport, check=check
+            state,
+            build_events(store, state.mode),
+            lambda: _password(secrets, state),
+            transport,
+            check=check,
         )
     except CalDavError as exc:
         report = _report(error=str(exc), error_kind=exc.kind)

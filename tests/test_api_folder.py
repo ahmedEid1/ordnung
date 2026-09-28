@@ -164,7 +164,7 @@ async def test_a_waiting_letter_is_not_read_again_or_made_public_behind_the_pers
     async with api_for(data_dir) as api:
         doc_id = await waiting_letter(api, INVOICE_LETTER.pdf(), "rechnung.pdf")
         response = await api.client.post(f"/api/documents/{doc_id}/reprocess")
-        assert response.status_code == 409 and "waiting for you" in response.json()["detail"]
+        assert response.status_code == 409 and "isn't read yet" in response.json()["detail"]
         response = await api.client.patch(f"/api/documents/{doc_id}", json={"ai_private": False})
         assert response.status_code == 409
         renamed = await api.client.patch(f"/api/documents/{doc_id}", json={"title": "Phone bill"})
@@ -320,3 +320,31 @@ async def test_an_email_nested_too_deeply_is_refused_with_a_reason(data_dir: Pat
         )
         assert response.status_code == 422
         assert response.json()["errors"] == [{"filename": "tief.eml", "detail": TOO_DEEP}]
+
+
+async def test_answers_run_their_transactions_off_the_event_loop(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Up to 500 letters with their e-mails' attachments and activity entries: "Read these", "Keep
+    private" and "Undo" must not hold up every other request and the live updates meanwhile."""
+    import threading
+
+    from ordnung.ingest import held
+
+    loop_thread = threading.get_ident()
+    seen: list[int] = []
+    for name in ("release", "keep_private", "back_to_waiting"):
+        real = getattr(held, name)
+
+        def recording(*args: Any, _real: Any = real, **kwargs: Any) -> Any:
+            seen.append(threading.get_ident())
+            return _real(*args, **kwargs)
+
+        monkeypatch.setattr(held, name, recording)
+    async with api_for(data_dir) as api:
+        doc_id = await waiting_letter(api, INVOICE_LETTER.pdf(), "rechnung.pdf")
+        for path in ("keep-private", "wait", "read"):
+            assert (
+                await api.client.post(f"/api/documents/held/{path}", json={"doc_ids": [doc_id]})
+            ).status_code == 200
+    assert len(seen) == 3 and loop_thread not in seen

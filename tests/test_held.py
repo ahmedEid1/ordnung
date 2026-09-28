@@ -177,8 +177,8 @@ async def test_keep_private_can_be_undone_until_something_else_happened(ctx: App
     assert [doc.status for doc in undone.documents] == ["held", "held"]
     assert {doc.id for doc in held.waiting(ctx.store)} == {first.id, second.id}
     assert [entry.message for entry in ctx.store.list_activity(2, kinds=["document.waiting"])] == [
-        "“rechnung.pdf” waits for you again",
-        "“bescheid.pdf” waits for you again",
+        "“rechnung.pdf” is back with the letters not read yet",
+        "“bescheid.pdf” is back with the letters not read yet",
     ]
     again = held.back_to_waiting(ctx.store, [first.id])  # it waits already
     assert again.documents == [] and again.skipped == [first.id]
@@ -218,3 +218,24 @@ async def test_a_waiting_letter_put_in_the_trash_before_it_was_stored_still_wait
     ctx.store.restore_document(document.id)
     assert [doc.id for doc in held.waiting(ctx.store)] == [document.id]
     assert calls(ctx) == 0
+
+
+async def test_read_these_while_the_letter_is_titled_on_this_computer_stands(
+    ctx: AppContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Race (review of wave 2): "Read these" while the held letter's local reading looks up its title.
+    The reading must not put it back to ``held`` without being private — "Keep private" would then leave
+    it not private while its release job reads it."""
+    document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf", hold=True, source="folder")
+    real = pipeline._local_title
+
+    def released_meanwhile(store: object, current: object) -> str | None:
+        held.release(ctx.store, [document.id])  # the person answers while the title is looked up
+        return real(store, current)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(pipeline, "_local_title", released_meanwhile)
+    (local,) = ctx.store.list_jobs()
+    await ingest_document(ctx, document.id)
+    after = ctx.store.get_document(document.id)
+    assert after is not None and (after.status, after.ai_private) == ("queued", False)
+    assert local.id

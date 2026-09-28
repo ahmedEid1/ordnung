@@ -18,7 +18,7 @@ from ordnung.db.store import Store
 from ordnung.drafts import pdf, sent
 from ordnung.drafts.compose import MAX_INSTRUCTIONS, compose, mark_sent, refresh_checks, retranslate
 from ordnung.drafts.tracking import MAX_INPUT
-from ordnung.ingest.watcher import remember_own_file
+from ordnung.ingest.own_files import remember_own_file
 from ordnung.models import Draft, DraftKind, LetterDetails
 
 router = APIRouter(tags=["drafts"])

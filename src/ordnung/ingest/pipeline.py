@@ -60,6 +60,7 @@ from ordnung.ingest.intake import (
     store_original,
 )
 from ordnung.ingest.link import ensure_party, link_document
+from ordnung.ingest.own_files import OWN_LETTER, is_own_file
 from ordnung.ingest.plan import (
     KIND_CHOSEN,
     ComputedDate,
@@ -413,10 +414,13 @@ async def add_file_result(
 
 def _attachments_unrecorded(store: Store, document: Document) -> bool:
     """An e-mail (not in the trash) with no record of its attachments: adding it was stopped before
-    they were added (an e-mail without attachments has none either; looking again adds nothing)."""
+    they were added (an e-mail without attachments has none either; looking again adds nothing). Never
+    an e-mail kept as proof of a sent letter: it was stored without its attachments on purpose — they
+    are what the person sent, not letters received (``with_attachments``)."""
     return (
         document.mime == EMAIL_MIME
         and document.deleted_at is None
+        and not consent.is_proof(store, document)
         and store.last_activity("document", document.id, [ATTACHMENTS_ACTIVITY]) is None
     )
 
@@ -431,7 +435,7 @@ def _added_message(store: Store, filename: str, source: str, hold: bool) -> str:
         origin = f" from the e-mail “{parent.title or parent.filename}”"
     else:
         origin = ""
-    return f"Added “{filename}”{origin}" + (" · waiting for you" if hold else "")
+    return f"Added “{filename}”{origin}" + (" · not read yet" if hold else "")
 
 
 def _known_upload(
@@ -513,6 +517,10 @@ async def _add_attachment(
             outcome=attachment.decision,
             detail=OUTCOME_DETAIL[attachment.decision],
         )
+    # a letter Ordnung drafted (the profile's address and IBAN), attached to a sent e-mail: never a
+    # letter received, never sent to Claude (:mod:`ordnung.ingest.own_files`)
+    if await asyncio.to_thread(is_own_file, ctx.store, attachment.data):
+        return EmailAttachment(filename=attachment.filename, outcome="refused", detail=OWN_LETTER)
     try:
         added = await add_file_result(
             ctx,
@@ -848,35 +856,42 @@ async def _finish_private(
     await progress.stage("plan")
     store = ctx.store
     current = store.get_document(document.id) or document
-    held = current.status == "held"
-    # how this reading ended: the letter's status (a held one keeps waiting; one let through is read next)
-    ended = ("held" if held else "processed") if current.ai_private else current.status
+    # the title first (it reads the file, outside the transaction): the answer is checked after it
+    title = current.title
+    if current.ai_private and not title:
+        title = await asyncio.to_thread(_local_title, store, current)
+    with store.tx():
+        latest = store.get_document(document.id)
+        if latest is None:  # deleted while it was stored: nothing to write
+            await progress.done()
+            return current
+        held = latest.status == "held"
+        # how this reading ended: the letter's status (a held one keeps waiting; one let through is read next)
+        ended = ("held" if held else "processed") if latest.ai_private else latest.status
+        if latest.ai_private:  # never after "Read these" (not private any more): its reading job reads it
+            name = latest.title or title or latest.filename
+            latest = store.update_document(
+                document.id,
+                title=name,
+                status="held" if held else "processed",
+                error=None,
+                text_mode="text",
+                hidden_text=layer.hidden,
+                warnings=layer.warnings,
+                text=store.get_document_text(document.id),
+                processed_at=now_iso(),
+            )
+            store.log_activity(
+                "document.held" if held else "document.private",
+                f"Stored “{name}” on this computer · not read yet"
+                if held
+                else f"Stored “{name}” privately · not sent to AI",
+                ref_type="document",
+                ref_id=document.id,
+            )
     trace.set(**_outcome(ended, "text", layer.pages, items=0, needs_review=0, warnings=layer.warnings))
-    if not current.ai_private:
-        await progress.done()
-        return current
-    title = current.title or await asyncio.to_thread(_local_title, store, current) or current.filename
-    updated = store.update_document(
-        document.id,
-        title=title,
-        status="held" if held else "processed",
-        error=None,
-        text_mode="text",
-        hidden_text=layer.hidden,
-        warnings=layer.warnings,
-        text=store.get_document_text(document.id),
-        processed_at=now_iso(),
-    )
-    store.log_activity(
-        "document.held" if held else "document.private",
-        f"Stored “{title}” on this computer · waiting for you"
-        if held
-        else f"Stored “{title}” privately · not sent to AI",
-        ref_type="document",
-        ref_id=document.id,
-    )
     await progress.done()
-    return updated
+    return latest
 
 
 def _outcome(

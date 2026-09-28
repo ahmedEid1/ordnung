@@ -812,3 +812,92 @@ async def test_an_email_stopped_before_its_attachments_gets_them_when_added_agai
     (child,) = attachments_of(ctx, parent)
     assert (child.status, child.ai_private) == ("held", True)  # the e-mail's choice, as it waits
     assert await add_file(ctx, data, "rechnung.eml") and len(attachments_of(ctx, parent)) == 1
+
+
+# --------------------------------------------------------------------------------------------------
+# Review of wave 2: Ordnung's own letters and proof e-mails
+# --------------------------------------------------------------------------------------------------
+
+
+async def test_a_letter_ordnung_drafted_attached_to_an_email_is_never_a_letter_received(
+    ctx: AppContext,
+) -> None:
+    """Adversarial: a sent e-mail carrying the letter PDF Ordnung drafted (the profile's address and IBAN)
+    lands in the watched folder. The e-mail is read, but the drafted PDF is recognised by its fingerprint
+    and not added — so neither "Read these" nor auto-read ever sends it to Claude."""
+    from ordnung.ingest.own_files import OWN_LETTER, remember_own_file
+
+    drafted = pdf_with("Kündigung meines Vertrags · Musterweg 5 · IBAN DE89 3704 0044 0532 0130 00")
+    remember_own_file(ctx.store, drafted)
+    message = email(subject=f"Ihre {EMAIL_MARKER} (gesendet)")
+    attach(message, drafted, "application/pdf", "Kuendigung.pdf")
+    parent = await add_file(ctx, message.as_bytes(), "gesendet.eml", source="folder")
+    assert attachments_of(ctx, parent) == []
+    (row,) = attachments_module.attachment_listing(ctx.store, parent)
+    assert (row.filename, row.outcome, row.detail, row.doc_id) == (
+        "Kuendigung.pdf",
+        "refused",
+        OWN_LETTER,
+        None,
+    )
+    await ctx.worker.run_until_idle()
+    assert backend(ctx).calls and all("Musterweg 5" not in call.prompt for call in backend(ctx).calls)
+
+
+@pytest.fixture
+def proof_ctx(tmp_path: Path) -> Iterator[AppContext]:
+    """A context that drafts letters (the sent e-mail's letter) and reads nothing else."""
+    import helpers_proof
+
+    context = build_context(
+        tmp_path / "proof", backend_obj=FakeBackend({"draft": helpers_proof.DRAFT_ANSWER})
+    )
+    yield context
+    context.close()
+
+
+async def _sent_by_email(ctx: AppContext) -> tuple[str, bytes]:
+    import helpers_proof
+
+    gym = helpers_proof.gym(ctx)
+    letter = await helpers_proof.sent_letter(ctx, gym, "email", day=TODAY)
+    message = email(subject="Kündigung meiner Mitgliedschaft")
+    attach(message, pdf_with("Kündigung FitWell"), "application/pdf", "kuendigung.pdf")
+    return letter.id, message.as_bytes()
+
+
+async def test_a_proof_emails_attachments_never_become_letters_when_it_comes_again(
+    proof_ctx: AppContext,
+) -> None:
+    """A sent e-mail kept as proof is stored without its attachments. The same .eml arriving again (the
+    watched folder, an upload) must not add them as letters — they are what the person sent."""
+    from ordnung.drafts import sent
+
+    letter_id, sent_mail = await _sent_by_email(proof_ctx)
+    added = await sent.add_proof(
+        proof_ctx, letter_id, sent_mail, "gesendet.eml", kind="sent_email", today=TODAY
+    )
+    proof_doc = proof_ctx.store.get_document(added.doc_id or "")
+    assert proof_doc is not None and attachments_of(proof_ctx, proof_doc) == []
+    await add_file(proof_ctx, sent_mail, "gesendet.eml", source="folder")
+    await add_file(proof_ctx, sent_mail, "gesendet.eml")
+    assert attachments_of(proof_ctx, proof_doc) == []
+
+
+async def test_a_waiting_emails_attachments_go_when_it_becomes_proof(proof_ctx: AppContext) -> None:
+    """The other order: the sent e-mail waited in the Inbox with its attachments, then became proof.
+    The attachments that still waited (never read, never answered) are deleted — the proof e-mail holds
+    them — so they are never listed as letters kept private the person never chose."""
+    from ordnung.drafts import sent
+
+    letter_id, sent_mail = await _sent_by_email(proof_ctx)
+    waiting = await add_file(proof_ctx, sent_mail, "gesendet.eml", hold=True, source="folder")
+    await proof_ctx.worker.run_until_idle()
+    assert len(attachments_of(proof_ctx, waiting)) == 1
+    added = await sent.add_proof(
+        proof_ctx, letter_id, sent_mail, "gesendet.eml", kind="sent_email", today=TODAY
+    )
+    assert added.doc_id == waiting.id
+    assert attachments_of(proof_ctx, waiting) == [] and held.waiting(proof_ctx.store) == []
+    document = proof_ctx.store.get_document(waiting.id)
+    assert document is not None and (document.status, document.ai_private) == ("processed", True)

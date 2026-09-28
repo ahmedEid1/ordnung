@@ -21,11 +21,20 @@ Written policy (ADR 0007):
   (:func:`ordnung.calendar.caldav.detached`, changed in the staged database once it is proven): the
   calendar's address and mode stay, but it has no password on this computer, no claim on the events
   the original sent, and syncs nothing until the person enters the app password in Settings →
-  Calendar. Nothing else in the database is changed.
+  Calendar.
+* **A restored copy doesn't take over the watched folder's consent** (:func:`detach_watched_folder`).
+  The backup remembers which files of the watched folder were already there when it was chosen and
+  which were picked up — for *that* computer's folder. A folder with the same path on this computer (a
+  new computer, the same ``~/Downloads``) holds other files, which must not count as new arrivals read
+  at once. So the restored copy forgets both (the next watch lists the folder as chosen now: what is in
+  it waits) and starts with "Read new files with Claude straight away" off until the person turns it
+  on again in Settings — also for a backup crafted to turn it on.
+  Nothing else in the database is changed.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import secrets
 import shutil
@@ -38,6 +47,8 @@ from pathlib import Path
 from ordnung.backup.archive import DB_NAME, BackupContents, extract_backup
 from ordnung.backup.container import BackupError
 from ordnung.calendar import caldav
+from ordnung.db.store import SETTINGS_META_KEY
+from ordnung.ingest.watcher import BASELINE_META_KEY, SEEN_META_KEY
 from ordnung.locking import LOCK_NAME, DataDirLock, DataDirLocked
 from ordnung.models import CalendarSyncState
 
@@ -64,6 +75,8 @@ class RestoreResult:
     moved_aside: Path | None = None
     #: the calendar whose sync connection was restored detached (its host or name), if there was one
     calendar: str | None = None
+    #: the watched folder the backup had set, whose files now wait (and auto-read is off), if any
+    folder: str | None = None
 
 
 def _is_empty_dir(path: Path) -> bool:
@@ -155,6 +168,32 @@ def detach_calendar_sync(db_path: Path) -> str | None:
         conn.close()
 
 
+def detach_watched_folder(db_path: Path) -> str | None:
+    """Forget, in ``db_path``, which files of the watched folder were already there and which were
+    picked up, and switch reading new arrivals at once off (module policy); returns the watched folder,
+    ``None`` when none was set."""
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute("DELETE FROM meta WHERE key IN (?, ?)", (BASELINE_META_KEY, SEEN_META_KEY))
+        row = conn.execute("SELECT value FROM meta WHERE key = ?", (SETTINGS_META_KEY,)).fetchone()
+        folder: str | None = None
+        if row is not None:
+            try:
+                settings = json.loads(row[0])
+            except ValueError:  # unreadable: Ordnung reads it as the defaults (no folder, auto-read off)
+                settings = None
+            if isinstance(settings, dict):
+                folder = settings.get("inbox_dir") if isinstance(settings.get("inbox_dir"), str) else None
+                settings["inbox_auto_read"] = False
+                conn.execute(
+                    "UPDATE meta SET value = ? WHERE key = ?", (json.dumps(settings), SETTINGS_META_KEY)
+                )
+        conn.commit()
+        return folder or None
+    finally:
+        conn.close()
+
+
 def _staging_dir(target: Path) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     staging = target.with_name(f".{target.name}.restoring-{secrets.token_hex(4)}")
@@ -178,6 +217,7 @@ def restore_backup(
         with backup.open("rb") as src:
             contents = extract_backup(src, passphrase, staging)
         calendar = detach_calendar_sync(staging / DB_NAME)
+        watched = detach_watched_folder(staging / DB_NAME)
         for folder in ("files", "derived", "drafts"):
             (staging / folder).mkdir(mode=PRIVATE_DIR_MODE, exist_ok=True)
         # the folder may have filled or a server started while the backup was decrypted
@@ -198,4 +238,6 @@ def restore_backup(
         raise
     if os.name == "posix":
         target.chmod(PRIVATE_DIR_MODE)
-    return RestoreResult(target=target, contents=contents, moved_aside=moved, calendar=calendar)
+    return RestoreResult(
+        target=target, contents=contents, moved_aside=moved, calendar=calendar, folder=watched
+    )

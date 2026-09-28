@@ -405,6 +405,64 @@ async def test_a_file_waiting_from_the_folder_is_kept_private_when_it_becomes_pr
     assert [call.purpose for call in backend.calls] == ["draft"]
 
 
+async def test_a_proof_from_the_folder_can_never_wait_again_nor_be_read(ctx: AppContext, gym: Gym) -> None:
+    """Adversarial (review of wave 2): a folder file kept private because it became proof has a
+    ``document.kept_private`` entry like any answered wait — yet "Undo Keep private" must not make it wait
+    again, and "Read these" must never send it to Claude (privacy.md: a proof is never sent to Claude)."""
+    from ordnung.api.routes.documents import document_detail
+    from ordnung.ingest.pipeline import release_held
+
+    letter = await _sent_letter(ctx, gym)
+    receipt = photo("JPEG", size=(300, 400))
+    waiting = await add_file(ctx, receipt, "scan-beleg.jpg", hold=True, source="folder")
+    await ctx.worker.run_until_idle()
+    await sent.add_proof(ctx, letter.id, receipt, "beleg.jpg", kind="posting_receipt", today=TODAY)
+    document = ctx.store.get_document(waiting.id)
+    assert document is not None and not held.was_kept_from_waiting(ctx.store, document)
+    assert document_detail(ctx.store, waiting.id, TODAY).can_wait_again is False
+    undo = held.back_to_waiting(ctx.store, [waiting.id])
+    assert (undo.documents, undo.skipped) == ([], [waiting.id])
+    # even held (an older Ordnung left it so), "Read these" skips it
+    ctx.store.update_document(waiting.id, status="held")
+    read = release_held(ctx, [waiting.id])
+    assert (read.documents, read.jobs, read.skipped) == ([], [], [waiting.id])
+    document = ctx.store.get_document(waiting.id)
+    assert document is not None and document.ai_private
+    await ctx.worker.run_until_idle()
+    backend = ctx.llm.backend
+    assert isinstance(backend, FakeBackend)
+    assert [call.purpose for call in backend.calls] == ["draft"]
+
+
+async def test_a_proof_attached_to_a_kept_private_email_stays_private_when_the_email_waits_again(
+    ctx: AppContext, gym: Gym
+) -> None:
+    """Adversarial: a held e-mail kept private with its attachments; one attachment later becomes proof.
+    "Undo Keep private" on the e-mail brings back the e-mail and its other attachments — not the proof —
+    and "Read these" on the e-mail never releases the proof."""
+    from ordnung.ingest.pipeline import keep_held_private, release_held
+    from test_email_attachments import attach, email
+
+    letter = await _sent_letter(ctx, gym)
+    receipt = photo("JPEG", size=(300, 400))
+    message = email(subject="Scans vom Scanner")
+    attach(message, receipt, "image/jpeg", "beleg.jpg")
+    attach(message, photo("PNG", size=(320, 400)), "image/png", "brief.png")
+    mail = await add_file(ctx, message.as_bytes(), "scans.eml", hold=True, source="folder")
+    await ctx.worker.run_until_idle()
+    kept = keep_held_private(ctx, [mail.id])
+    assert len(kept.documents) == 3  # the e-mail and its two attachments
+    added = await sent.add_proof(ctx, letter.id, receipt, "beleg.jpg", kind="posting_receipt", today=TODAY)
+    proof_doc = added.doc_id
+    assert proof_doc != mail.id and proof_doc in {doc.id for doc in kept.documents}
+    undo = held.back_to_waiting(ctx.store, [mail.id])
+    assert proof_doc not in {doc.id for doc in undo.documents} and len(undo.documents) == 2
+    read = release_held(ctx, [mail.id])
+    assert proof_doc not in {doc.id for doc in read.documents} and len(read.documents) == 2
+    document = ctx.store.get_document(proof_doc)
+    assert document is not None and (document.status, document.ai_private) == ("processed", True)
+
+
 async def test_proof_files_are_no_letters_of_the_ledger(ctx: AppContext, gym: Gym) -> None:
     letter = await _sent_letter(ctx, gym)
     added = await sent.add_proof(

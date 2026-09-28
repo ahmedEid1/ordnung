@@ -83,6 +83,11 @@ def connect(store: Store, secrets: MemorySecrets, server: FakeCalDav, **kwargs: 
     return caldav.connect(store, secrets, transport=server.transport(), **options)
 
 
+def discreet_href(store: Store, stable_uid: str) -> str:
+    """The resource name a discreet event of the calendar file's ``stable_uid`` is sent under."""
+    return caldav.resource_name(caldav.discreet_uid(stable_uid, caldav.uid_key(store)))
+
+
 def private_words(store: Store) -> set[str]:
     """Titles, names, amounts and letter words of the seeded ledger (none may reach a discreet calendar)."""
     words = {item.title for item in store.list_items()} | {party.name for party in store.list_parties()}
@@ -186,14 +191,18 @@ def test_discreet_mode_keeps_dates_times_and_alarms_and_nothing_else(
         event.uid: Calendar.from_ical(event.body).events[0] for event in caldav.build_events(store, "full")
     }
     discreet = caldav.build_events(store, "discreet")
-    assert {event.uid for event in discreet} == set(full)
+    assert {event.stable_uid for event in discreet} == set(full)
     words = private_words(store)
     for event in discreet:
         text = event.body.decode("utf-8")
         leaked = [word for word in words if word in text]
         assert not leaked, f"{event.uid} leaks {leaked}"
+        # the UID and the resource name say nothing of what kind of date it is ("ctr_…-cancel-by")
+        stable = event.stable_uid.split("@")[0]
+        assert stable not in text and stable not in event.href and stable not in event.uid
+        assert event.uid == caldav.discreet_uid(event.stable_uid, caldav.uid_key(store))
         sent = Calendar.from_ical(event.body).events[0]
-        original = full[event.uid]
+        original = full[event.stable_uid]
         assert sent.decoded("dtstart") == original.decoded("dtstart")
         assert sent.get("dtend") == original.get("dtend")
         assert [a.decoded("trigger") for a in sent.walk("VALARM")] == [
@@ -202,7 +211,7 @@ def test_discreet_mode_keeps_dates_times_and_alarms_and_nothing_else(
         assert all(str(a.get("description")) == str(sent.get("summary")) for a in sent.walk("VALARM"))
         assert "location" not in sent and "categories" not in sent
         assert str(sent.get("description")).startswith(caldav.DISCREET_DESCRIPTION)
-    titles = {event.uid.split("@")[0]: event.preview.summary for event in discreet}
+    titles = {event.stable_uid.split("@")[0]: event.preview.summary for event in discreet}
     assert titles[ids["abh_appointment"]] == "Ordnung: appointment"
     assert titles[ids["semester_fee"]] == "Ordnung: payment"
     assert titles[ids["tax_refund"]] == "Ordnung: money in"  # money coming in is not a payment to make
@@ -216,7 +225,7 @@ def test_a_date_ordnung_couldnt_confirm_says_so_in_discreet_mode_too(
     # the parking fine's date was read from the letter and not confirmed: "⚠ check:" in full mode
     full = {e.uid.split("@")[0]: e.preview for e in caldav.build_events(store, "full")}
     assert full[ids["parking_payment"]].summary.startswith(ics.CHECK_PREFIX)
-    discreet = {e.uid.split("@")[0]: e for e in caldav.build_events(store, "discreet")}
+    discreet = {e.stable_uid.split("@")[0]: e for e in caldav.build_events(store, "discreet")}
     parking = discreet[ids["parking_payment"]]
     assert parking.preview.summary == "Ordnung: payment — check the date"
     assert parking.preview.description == f"{caldav.DISCREET_DESCRIPTION} {caldav.DISCREET_CHECK}"
@@ -302,11 +311,13 @@ def test_syncing_again_sends_only_what_changed_and_removes_what_left(
     # finished one leaves the calendar
     assert report is not None and (report.sent, report.removed) == (1, 1)
     assert sorted(server.methods()) == ["DELETE", "PUT"] and len(server.resources) == count - 1
-    assert f"{ids['followup']}@ordnung.local" not in server.uids()
+    assert caldav.discreet_uid(f"{ids['followup']}@ordnung.local", caldav.uid_key(store)) not in server.uids()
     assert all("Parkverstoß".encode() not in body for body in server.resources.values())
 
+    # switching the mode sends every event under its calendar file name and removes the discreet ones
+    discreet_count = len(server.resources)
     full = connect(store, secrets, server, password=None, mode="full")
-    assert full.sent == len(server.resources) and full.removed == 0
+    assert full.sent == len(server.resources) and full.removed == discreet_count
     parking = next(cal for name, cal in server.events().items() if ids["parking_payment"] in name)
     assert "Parkverstoß" in str(parking.events[0].get("summary"))
 
@@ -348,7 +359,7 @@ def test_only_ordnungs_own_events_are_ever_touched(
 def test_one_refused_event_doesnt_stop_the_others_and_is_tried_again(
     store: Store, ids: dict[str, str], server: FakeCalDav, secrets: MemorySecrets
 ) -> None:
-    refused = CALENDAR_PATH + caldav.resource_name(f"{ids['parking_payment']}@ordnung.local")
+    refused = CALENDAR_PATH + discreet_href(store, f"{ids['parking_payment']}@ordnung.local")
     server.refuse[refused] = 409
     report = connect(store, secrets, server)
     total = len(caldav.build_events(store, "discreet"))
@@ -365,7 +376,7 @@ def test_a_refused_update_of_an_event_sent_before_is_still_ordnungs_to_remove(
     store: Store, ids: dict[str, str], server: FakeCalDav, secrets: MemorySecrets
 ) -> None:
     connect(store, secrets, server)
-    href = caldav.resource_name(f"{ids['parking_payment']}@ordnung.local")
+    href = discreet_href(store, f"{ids['parking_payment']}@ordnung.local")
     server.refuse[CALENDAR_PATH + href] = 412
     store.update_item(ids["parking_payment"], title="Pay the parking fine now")
     refused = caldav.sync(store, secrets, transport=server.transport())
@@ -396,17 +407,17 @@ def test_an_event_imported_by_hand_under_another_name_is_a_uid_conflict(
     server = FakeCalDav(uid_clash=clash)
     event = caldav.build_events(store, "full")[0]
     server.resources[CALENDAR_PATH + "imported.ics"] = event.body
-    report = connect(store, secrets, server)
+    report = connect(store, secrets, server, mode="full")
     assert report.failed == 1 and report.error_kind == "conflict"
     assert "calendar of its own" in (report.error or "")
-    assert report.sent == len(caldav.build_events(store, "discreet")) - 1  # the others still went
+    assert report.sent == len(caldav.build_events(store, "full")) - 1  # the others still went
 
 
 def test_a_refused_request_without_a_uid_is_not_a_conflict(
     store: Store, ids: dict[str, str], secrets: MemorySecrets
 ) -> None:
     server = FakeCalDav()
-    refused = CALENDAR_PATH + caldav.resource_name(f"{ids['parking_payment']}@ordnung.local")
+    refused = CALENDAR_PATH + discreet_href(store, f"{ids['parking_payment']}@ordnung.local")
     server.refuse[refused] = 400
     report = connect(store, secrets, server)
     assert report.failed == 1 and report.error_kind == "server" and "HTTP 400" in (report.error or "")
@@ -447,6 +458,17 @@ def test_connecting_to_something_unusable_stores_nothing(
         ((200, {}, b"<html>hi</html>"), "not_calendar", "doesn't speak CalDAV"),
         (
             (207, {}, b'<!DOCTYPE x [<!ENTITY a "aaaa">]><d:multistatus xmlns:d="DAV:">&a;</d:multistatus>'),
+            "server",
+            "couldn't be read",
+        ),
+        # the same in UTF-16: a byte search misses "<!DOCTYPE", the parser does not
+        (
+            (
+                207,
+                {},
+                '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE x [<!ENTITY a "aaaa">]>'
+                '<d:multistatus xmlns:d="DAV:">&a;</d:multistatus>'.encode("utf-16"),
+            ),
             "server",
             "couldn't be read",
         ),
@@ -1172,3 +1194,46 @@ def test_the_triggers_read_the_same_connection_record() -> None:
     from ordnung.secretary.triggers import CALENDAR_SYNC_META_KEY
 
     assert caldav.STATE_KEY == CALENDAR_SYNC_META_KEY
+
+
+def test_an_emailed_bill_reaches_the_synced_calendar_once(store: Store) -> None:
+    """The e-mail repeating its attached bill's payment is set aside: one event with alarms, not two, and
+    none left once the bill is paid (it would remind of a bill already paid)."""
+    from helpers_secretary import add_emailed_bill
+
+    bill = add_emailed_bill(store, due="2026-10-15")
+    for mode in ("full", "discreet"):
+        uids = {event.stable_uid for event in caldav.build_events(store, mode)}
+        assert f"{bill['bill_payment']}@ordnung.local" in uids
+        assert f"{bill['email_payment']}@ordnung.local" not in uids
+    store.update_item(bill["bill_payment"], status="done")
+    assert not {event.stable_uid for event in caldav.build_events(store, "full")} & {
+        f"{bill['bill_payment']}@ordnung.local",
+        f"{bill['email_payment']}@ordnung.local",
+    }
+
+
+def test_a_discreet_events_name_is_the_same_in_a_restored_copy_and_another_folders_differs(
+    store: Store, ids: dict[str, str], tmp_path: Path
+) -> None:
+    """The discreet UIDs are keyed by a secret of the data folder that a backup carries: a copy restored
+    elsewhere sends each event under its old name (it replaces it, never a duplicate), while another
+    data folder's names for the same dates tell the provider nothing it could link."""
+    from ordnung import backup as backups
+    from ordnung.backup.container import KdfParams
+    from ordnung.config import Paths
+
+    before = {event.stable_uid: event.href for event in caldav.build_events(store, "discreet")}
+    out = tmp_path / "copy.ordnung-backup"
+    backups.write_backup_file(store.db_path.parent, out, "a long enough passphrase", kdf=KdfParams(log2_n=10))
+    restored = Store.open(
+        Paths(backups.restore_backup(out, "a long enough passphrase", tmp_path / "r").target)
+    )
+    try:
+        assert {event.stable_uid: event.href for event in caldav.build_events(restored, "discreet")} == before
+    finally:
+        restored.close()
+    stable = f"{ids['parking_payment']}@ordnung.local"
+    assert caldav.discreet_uid(stable, "another folder's key") != caldav.discreet_uid(
+        stable, caldav.uid_key(store)
+    )

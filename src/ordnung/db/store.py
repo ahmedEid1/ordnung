@@ -105,6 +105,8 @@ PRIVATE_FILE_MODE = 0o600
 _CACHE_TAG_SEP = "|"  # llm_cache.doc_sha of a call carrying several documents: "doc_a|doc_b"
 _PROFILE_KEY = "profile"
 _SETTINGS_KEY = "settings"
+#: The ``meta`` row that holds the app settings (JSON of :class:`~ordnung.models.AppSettings`).
+SETTINGS_META_KEY = _SETTINGS_KEY
 
 
 class NotFoundError(LookupError):

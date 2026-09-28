@@ -928,3 +928,56 @@ async def test_get_numbers(data_dir: Path) -> None:
             "0123 7788",
             "Student number (Matrikelnummer)",
         )
+
+
+def test_a_scam_letters_phone_never_shows_on_the_real_organisations_call_sheet(store: Store) -> None:
+    """Adversarial (review of wave 2): a letter imitating a known sender is linked to it and, read before
+    its scam checks, fills the organisation's empty phone and e-mail. The call sheet — next to the
+    person's own customer numbers, also in Ask — never shows them; a clean letter's contact wins."""
+    party = _party(store, "pty_bank", "Musterbank", "bank")
+    clean = _letter(
+        store,
+        "statement",
+        kind="bank_letter",
+        party_id=party,
+        doc_date="2026-08-01",
+        references=_refs(("Kundennummer", "7004 1128")),
+        sender={"name": "Musterbank", "kind": "bank", "website": "musterbank.example"},
+    )
+    scam = _letter(
+        store,
+        "urgent",
+        kind="other",
+        party_id=party,
+        doc_date="2026-09-20",
+        warnings=["The IBAN is not the one Musterbank used before — possible scam."],
+        hidden_text=True,
+        sender={
+            "name": "Musterbank",
+            "kind": "bank",
+            "phone": "+49 30 999 000 111",
+            "email": "sicherheit@musterbank-support.example",
+        },
+    )
+    # what ensure_party did when the scam letter was read: the record's empty fields filled from it
+    store.update_party(party, phone="+49 30 999 000 111", email="sicherheit@musterbank-support.example")
+    (sheet,) = [s for s in _numbers(store).organisations if s.party_id == party]
+    assert (sheet.phone, sheet.email, sheet.website) == (None, None, "musterbank.example")
+    (shared,) = [s for s in _numbers(store, shareable_only=True).organisations if s.party_id == party]
+    assert shared.phone is None and shared.email is None
+    # a clean letter that shows a phone is the one shown, even when the scam letter used it too
+    store.update_document(
+        clean,
+        extraction=DocumentExtraction.model_validate(
+            {
+                "kind": "bank_letter",
+                "title": "s",
+                "summary": "s",
+                "explanation": "s",
+                "sender": {"name": "Musterbank", "kind": "bank", "phone": "+49 30 999 000 111"},
+            }
+        ),
+    )
+    (sheet,) = [s for s in _numbers(store).organisations if s.party_id == party]
+    assert sheet.phone == "+49 30 999 000 111" and sheet.email is None
+    assert scam

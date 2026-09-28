@@ -8,6 +8,7 @@ watcher follows the setting, reports a missing folder, logs refused files and ne
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import os
 import time
@@ -308,9 +309,7 @@ async def test_files_wait_for_the_person_and_are_never_sent(ctx: AppContext, inb
     assert not [data for kind, data in events if kind == "job.progress" and data.get("doc_id") == document.id]
     assert ("document.processed", {"doc_id": document.id, "status": "held"}) in events
     assert ("folder.updated", {"state": "watching", "doc_id": document.id, "held": True}) in events
-    assert logged(ctx, "document.added") == [
-        "Added “bescheid.pdf” from your watched folder · waiting for you"
-    ]
+    assert logged(ctx, "document.added") == ["Added “bescheid.pdf” from your watched folder · not read yet"]
 
     release_held(ctx, [document.id])
     await ctx.worker.run_until_idle()
@@ -604,7 +603,7 @@ async def test_a_file_with_a_name_that_is_not_utf8_is_added(ctx: AppContext, inb
     assert document.status == "held"
     assert (
         logged(ctx, "document.added")[-1]
-        == "Added “Bescheid_Müller.pdf” from your watched folder · waiting for you"
+        == "Added “Bescheid_Müller.pdf” from your watched folder · not read yet"
     )
 
 
@@ -688,3 +687,67 @@ async def test_a_letter_ordnung_drafted_is_not_added_as_one_received(ctx: AppCon
     assert ctx.store.list_documents() == [] and backend(ctx).calls == []
     (pickup,) = recent_pickups(ctx.store)
     assert (pickup.outcome, pickup.detail) == ("refused", watcher.OWN_LETTER)
+
+
+async def test_a_restored_backup_holds_the_files_already_in_its_watched_folder(
+    ctx: AppContext, inbox: Path, tmp_path: Path
+) -> None:
+    """Adversarial (review of wave 2): a backup made while the folder was watched with auto-read on,
+    restored on a computer whose folder of the same path holds other files — those were never "new
+    arrivals" there. The restored copy lists the folder as chosen now (they wait) and starts with
+    auto-read off until the person turns it on again (privacy.md: a busy folder is never sent)."""
+    from ordnung import backup as backups
+    from ordnung.backup.container import KdfParams
+    from ordnung.backup.restore import restore_backup
+
+    use_folder(ctx, inbox, inbox_auto_read=True)
+    async with watching(ctx):
+        (inbox / "arrived.pdf").write_bytes(INVOICE_LETTER.pdf())
+        await eventually(picked(ctx, "arrived.pdf"))
+    assert ctx.store.get_meta(watcher.BASELINE_META_KEY) and ctx.store.get_meta(SEEN_META_KEY)
+    backup_file = tmp_path / "b.ordnung-backup"
+    backups.write_backup_file(
+        ctx.paths.data_dir, backup_file, "a long enough passphrase", kdf=KdfParams(log2_n=10)
+    )
+    (inbox / "private-medical.pdf").write_bytes(TAX_LETTER.pdf())  # already there on the new computer
+    result = restore_backup(backup_file, "a long enough passphrase", tmp_path / "restored")
+    assert result.folder == str(inbox)
+    restored = build_context(result.target, backend_obj=fake_backend(Router()))
+    try:
+        assert restored.settings.inbox_dir == str(inbox) and restored.settings.inbox_auto_read is False
+        async with watching(restored):
+            medical = await eventually(picked(restored, "private-medical.pdf"))
+        assert (medical.status, medical.ai_private) == ("held", True)
+        assert backend(restored).calls == []
+    finally:
+        restored.close()
+
+
+def test_two_pdfs_made_at_once_are_both_remembered(ctx: AppContext, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The draft PDF route and the Nachweis route run in worker threads: two at once (the preview and a
+    download) must not drop a fingerprint — the read and the write are one transaction."""
+    import threading
+
+    from ordnung.ingest import own_files
+
+    real = own_files._own_files
+    both_read = threading.Barrier(2, timeout=2)
+
+    def slow(store: Any) -> list[str]:
+        found = real(store)
+        with contextlib.suppress(threading.BrokenBarrierError):
+            both_read.wait()  # without one transaction, both read the same list before either writes
+        return found
+
+    monkeypatch.setattr(own_files, "_own_files", slow)
+    first, second = pdf("first letter"), pdf("second letter")
+    threads = [
+        threading.Thread(target=own_files.remember_own_file, args=(ctx.store, data))
+        for data in (first, second)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    monkeypatch.setattr(own_files, "_own_files", real)
+    assert own_files.is_own_file(ctx.store, first) and own_files.is_own_file(ctx.store, second)

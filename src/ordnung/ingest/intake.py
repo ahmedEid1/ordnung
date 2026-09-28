@@ -30,6 +30,7 @@ from PIL import Image, ImageDraw, ImageOps, UnidentifiedImageError
 
 from ordnung.ingest.expansion import ExpansionError, check_pdf_expansion
 from ordnung.ingest.text import (
+    PDFIUM_LOCK,
     TEXT_PAGE_SIZE,
     decode_text_bytes,
     layout_text,
@@ -51,7 +52,6 @@ THUMBNAIL_NAME = "thumbnail.jpg"
 MAX_IMAGE_PIXELS = 89_478_485  # Pillow's own limit, enforced here as an error (not a warning)
 PRIVATE_FILE_MODE = 0o600
 
-PDFIUM_LOCK = threading.Lock()
 
 IMAGE_TYPES = frozenset({"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"})
 TEXT_TYPES = frozenset({"text/plain", "message/rfc822"})

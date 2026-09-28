@@ -60,7 +60,10 @@ confirmed against the letter) and the renewal window the Ideas use
 a residence permit's note says what § 81 Abs. 4 AufenthG means before it expires and after). Each
 organisation gets a *call sheet* — contact details, every number of yours its letters show, its open
 cases, its own numbers apart, its last letter — when it has a number of yours that is not an identity
-document's, or an open case. A *case reference* is listed while its thread (else its letter) has an open
+document's, or an open case. Its phone, e-mail and website are each the newest letter's without scam
+signs that shows one (:func:`_contact`), else the organisation's record — unless a letter of it with scam
+signs shows that value: reading a letter fills the record's empty fields before its scam checks run, so a
+letter imitating a known sender could put its own phone number next to your customer numbers. A *case reference* is listed while its thread (else its letter) has an open
 or snoozed one-off to-do (putting it off does not close the case) — the thread's own or one of its
 letters' (a to-do added to a letter of the thread keeps it open): a recurring payment keeps a contract
 going, not a case, so an old order number drops out. Its next step is the earliest (on the same day a
@@ -1026,6 +1029,44 @@ def _identity_document(
     )
 
 
+_CONTACT_FIELDS = ("phone", "email", "website")
+
+
+def _contact_key(name: str, value: str) -> str:
+    """A phone number by its digits, an e-mail address or a website without case and spaces."""
+    return re.sub(r"\D", "", value) if name == "phone" else re.sub(r"\s", "", value).casefold()
+
+
+def _contact(data: NumbersInput, party: Party, letters: Sequence[Document]) -> dict[str, str | None]:
+    """A call sheet's phone, e-mail and website (module policy): each from the newest of ``letters``
+    (the organisation's, without scam signs, newest first) whose sender shows one, else the record's —
+    never a value one of its letters with scam signs shows."""
+    scam_values: dict[str, set[str]] = {name: set() for name in _CONTACT_FIELDS}
+    for doc in data.documents:
+        extraction = data.extractions.get(doc.id)
+        if doc.party_id == party.id and doc.id in data.suspicious and extraction and extraction.sender:
+            for name in _CONTACT_FIELDS:
+                if value := getattr(extraction.sender, name):
+                    scam_values[name].add(_contact_key(name, value))
+    found: dict[str, str | None] = {}
+    for name in _CONTACT_FIELDS:
+        shown = next(
+            (
+                value
+                for doc in letters
+                if (extraction := data.extractions.get(doc.id)) is not None
+                and extraction.sender is not None
+                and (value := getattr(extraction.sender, name))
+            ),
+            None,
+        )
+        record: str | None = getattr(party, name)
+        if shown is None and record and _contact_key(name, record) not in scam_values[name]:
+            shown = record
+        found[name] = shown
+    return found
+
+
 def _call_sheets(
     data: NumbersInput, by_party: Mapping[tuple[str, str], _Entry], open_cases: Sequence[OpenCase]
 ) -> list[CallSheet]:
@@ -1048,9 +1089,7 @@ def _call_sheets(
                     "party_id": party.id,
                     "name": party.name,
                     "kind": party.kind,
-                    "phone": party.phone,
-                    "email": party.email,
-                    "website": party.website,
+                    **_contact(data, party, letters),
                     "numbers": [
                         e.model() for e in sorted(yours, key=lambda e: (order[e.kind], e.sighting.label))
                     ],
