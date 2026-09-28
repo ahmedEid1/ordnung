@@ -33,7 +33,8 @@ export default defineConfig({
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
   },
   // Same browser twice, only to fix the order: the guided tour runs first, on the untouched demo
-  // (before other tests open New-mail letters); then every page, then the layout guards (with the
+  // (before other tests open New-mail letters); then every page, then the layout sweep (every page and key
+  // state at 320–1920 px in light and dark: e2e/layout-sweep.spec.ts), then the layout guards (with the
   // feedback components: toasts, stepper, receipts — and the app shell), and last the high-stakes
   // letters, which re-file demo letters (PATCH kind) and so add the law's to-dos to the shared demo.
   // The GiroCode guards run between the two: they change the parking fine's amount (PATCH) to ask for the
@@ -43,6 +44,14 @@ export default defineConfig({
   projects: [
     { name: "tour", testMatch: /tour\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "pages", testMatch: /pages\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    // it changes nothing and asks Ask a recorded question, on the demo as `pages` left it. It opens its own
+    // contexts, dozens per test: no traces or failure screenshots of them (it attaches the first failing view
+    // of each state itself)
+    {
+      name: "sweep",
+      testMatch: /layout-sweep\.spec\.ts$/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, trace: "off", screenshot: "off" },
+    },
     {
       name: "layout",
       testMatch: /(layout|feedback|shell)\.spec\.ts$/,

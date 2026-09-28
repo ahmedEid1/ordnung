@@ -1,6 +1,7 @@
 /**
  * UI audit probes: layout checks that run inside the page, the keyboard-focus walk, axe-core and
- * the console / network listeners. Plain ESM so a Playwright spec can import them too:
+ * the console / network listeners. Plain ESM so a Playwright spec can import them too (types in
+ * `probes.d.mts`; the e2e layout sweep, `e2e/layout-sweep.spec.ts`, fails on their findings):
  *
  *   import { layoutFindings, focusFindings, axeFindings, watchPage } from "../scripts/ui-audit/probes.mjs";
  *
@@ -70,7 +71,7 @@ function layoutProbeInPage(opts) {
   const pageRect = (r) => ({ x: Math.round(r.left + sx), y: Math.round(r.top + sy), w: Math.round(r.width), h: Math.round(r.height) });
   const clean = (s, n = 90) => (s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
   const textOf = (el, n = 90) => clean(el.innerText || el.textContent || el.getAttribute?.("aria-label") || el.getAttribute?.("title") || el.getAttribute?.("alt") || "", n);
-  const unstableId = (id) => !id || /[:«»]/.test(id) || /^(r|radix-|headlessui-)\d/.test(id);
+  const unstableId = (id) => !id || /[:«»]/.test(id) || /^(r|radix-|headlessui-)\d/.test(id) || /^_r_/.test(id);
 
   function path(el) {
     const parts = [];
@@ -299,6 +300,16 @@ function layoutProbeInPage(opts) {
         if (!f) {
           const titled = a.getAttribute("title") ?? a.closest("[title]")?.getAttribute("title") ?? null;
           const labelled = a.closest("[aria-label]")?.getAttribute("aria-label") ?? null;
+          // a disclosure ("Read more") that shows the rest: a button with aria-expanded controls this box or a close parent
+          let expandable = false;
+          for (let n = a, i = 0; n && n !== document.body && i < 4 && !expandable; n = n.parentElement, i += 1) {
+            if (n.id) expandable = Boolean(document.querySelector(`[aria-expanded][aria-controls~="${CSS.escape(n.id)}"]`));
+          }
+          // where the whole of the cut text can be read: a title or accessible name that holds it, or "Read more"
+          // (compared in full here: long summaries don't fit the report's excerpts)
+          const plain = (t) => (t ?? "").replace(/[\u2010\u2011]/g, "-").replace(/[\u00ad\u200b\u2060]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+          const whole = plain(a.textContent);
+          const fullValueAt = expandable ? "read-more" : titled && plain(titled).includes(whole) ? "title" : labelled && plain(labelled).includes(whole) ? "aria-label" : null;
           f = {
             probe: kind,
             selector: path(a),
@@ -309,6 +320,8 @@ function layoutProbeInPage(opts) {
               fullText: clean(a.textContent, 400),
               title: titled ? clean(titled, 200) : null,
               ariaLabel: labelled ? clean(labelled, 200) : null,
+              expandable,
+              fullValueAt,
               axis: leavesX && leavesY ? "both" : leavesX ? "x" : "y",
               hiddenPx: Math.round(Math.max(leavesX ? overX : 0, leavesY ? overY : 0)),
             },
@@ -437,20 +450,35 @@ function layoutProbeInPage(opts) {
     }
   }
 
-  // f. target size (WCAG 2.5.8), skipping links inside running text
+  // f. target size (WCAG 2.5.8), skipping targets inside running text (its "inline" exception: a link,
+  // a glossary term — an inline box in a sentence, whose line height sets its size)
   const inSentence = (el) => {
     const s = cs(el);
-    if (!s.display.startsWith("inline") || s.display === "inline-flex" || s.display === "inline-grid" || s.display === "inline-block") return false;
-    const block = el.parentElement?.closest("p, li, dd, td, blockquote, span, div");
+    if (!s.display.startsWith("inline")) return false;
+    // an inline box of its own (inline-flex, -grid, -block) is a button-like box — unless it is a link in the
+    // sentence (a citation marker after the words it backs)
+    if (s.display !== "inline" && !el.matches("a[href]")) return false;
+    // the box its line belongs to: the first parent that isn't itself inline
+    let block = el.parentElement;
+    while (block && block !== document.body && (cs(block).display === "inline" || cs(block).display === "contents")) block = block.parentElement;
     if (!block) return false;
     const own = clean(el.textContent);
     const around = clean(block.textContent);
     return around.length > own.length + 3;
   };
-  const boxes = targets.map((el) => [el, rectOf(el)]);
+  // a "stretched" link (its ::after absolutely placed over its whole row: `after:absolute after:inset-0`) is
+  // as big as that row — the box the ::after fills: the nearest positioned element, itself included
+  const stretchedRect = (el) => {
+    const after = getComputedStyle(el, "::after");
+    if (after.content === "none" || after.position !== "absolute") return null;
+    if (![after.top, after.right, after.bottom, after.left].every((v) => v === "0px")) return null;
+    for (let p = el; p && p !== document.body; p = p.parentElement) if (cs(p).position !== "static") return p === el ? null : rectOf(p);
+    return null;
+  };
+  const boxes = targets.map((el) => [el, stretchedRect(el) ?? rectOf(el)]);
   for (const [el, r] of boxes) {
     if (r.width >= 24 && r.height >= 24) continue;
-    if (el.matches("a") && inSentence(el)) continue;
+    if (inSentence(el)) continue;
     // spacing exception: a 24 px circle on its centre doesn't touch another target
     const cx = r.left + r.width / 2;
     const cy = r.top + r.height / 2;
@@ -526,7 +554,12 @@ async function coveredProbeInPage() {
   const root = document.documentElement;
   const vw = root.clientWidth;
   const vh = root.clientHeight;
-  const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  // two frames — or 250 ms, should the page not be drawing frames (a busy or throttled renderer)
+  const frame = () =>
+    new Promise((r) => {
+      requestAnimationFrame(() => requestAnimationFrame(r));
+      setTimeout(r, 250);
+    });
   const clean = (s, n = 80) => (s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
   const INTERACTIVE = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=tab], [role=menuitem], [role=option], [role=switch], [tabindex]:not([tabindex="-1"])';
   const OVERLAY = '[aria-modal="true"], dialog[open], [role=dialog], [role=menu], [role=listbox][id], [data-popover]';
@@ -534,7 +567,7 @@ async function coveredProbeInPage() {
     const r = m.getBoundingClientRect();
     return r.width > 0 && r.height > 0 && getComputedStyle(m).visibility !== "hidden";
   });
-  const unstableId = (id) => !id || /[:«»]/.test(id) || /^(r|radix-|headlessui-)\d/.test(id);
+  const unstableId = (id) => !id || /[:«»]/.test(id) || /^(r|radix-|headlessui-)\d/.test(id) || /^_r_/.test(id);
   function path(el) {
     const parts = [];
     let cur = el;
@@ -579,6 +612,8 @@ async function coveredProbeInPage() {
   };
   const els = Array.from(document.querySelectorAll(INTERACTIVE)).filter((el) => {
     if (el.closest("[inert], [aria-hidden=true]")) return false;
+    // not a pointer target at all (a keyboard-only stand-in: the evidence highlight's button over its hit areas)
+    if (getComputedStyle(el).pointerEvents === "none") return false;
     if (el.checkVisibility && !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return false;
     return !hidden(el);
   });
@@ -612,7 +647,10 @@ async function coveredProbeInPage() {
     return true;
   };
   const hitOf = (el) => {
-    const r = el.getBoundingClientRect();
+    // a link that wraps onto the next line is two boxes (its bounding box spans the text between them):
+    // the centre of its biggest box
+    const boxes = Array.from(el.getClientRects()).filter((b) => b.width > 0 && b.height > 0);
+    const r = boxes.length > 1 ? boxes.reduce((a, b) => (b.width * b.height > a.width * a.height ? b : a)) : el.getBoundingClientRect();
     const cx = r.left + r.width / 2;
     const cy = r.top + r.height / 2;
     if (cx < 0 || cy < 0 || cx >= vw || cy >= vh) return null;
@@ -722,7 +760,7 @@ async function focusCheckInPage() {
   const el = document.activeElement;
   if (!el || el === document.body || el === document.documentElement) return { done: true };
   const clean = (s, n = 80) => (s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
-  const unstableId = (id) => !id || /[:«»]/.test(id) || /^(r|radix-|headlessui-)\d/.test(id);
+  const unstableId = (id) => !id || /[:«»]/.test(id) || /^(r|radix-|headlessui-)\d/.test(id) || /^_r_/.test(id);
   function path(e) {
     const parts = [];
     let cur = e;

@@ -69,7 +69,8 @@ export function ThreadSection({ detail }: { detail: DocumentDetail }) {
                         <span className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[11.5px] font-semibold leading-4 text-accent">This letter</span>
                       </p>
                     ) : (
-                      <Link to={`/documents/${d.id}`} title={title} className={cn("text-[13.5px] font-medium leading-5 text-ink hover:text-accent hover:underline", TWO_LINES)}>
+                      // 2 px more above and below (taken back by the margins): a one-line title is a 24 px target
+                      <Link to={`/documents/${d.id}`} title={title} className={cn("-my-0.5 py-0.5 text-[13.5px] font-medium leading-5 text-ink hover:text-accent hover:underline", TWO_LINES)}>
                         {protectRefs(title)}
                       </Link>
                     )}

@@ -6,7 +6,8 @@
  * The page number is left out for a one-page letter ("· p.1" says nothing there). Where a whole
  * list shares one grounding, the list says it once and each chip is just its icon (`iconOnly`), a
  * 24 px button with the same words in its tooltip and name (UI audit round 1: seven identical
- * "Read by AI from the photo · p.1" pills on a passport).
+ * "Read by AI from the photo · p.1" pills on a passport). As a button the chip is 24 px tall (WCAG 2.5.8;
+ * the layout sweep, e2e/layout-sweep.spec.ts: 22 px on phones).
  */
 import type { Grounding } from "@/api/types";
 import { cn } from "@/lib/utils";
@@ -95,7 +96,7 @@ export function EvidenceChip({
         onClick={() => select(anchorId)}
         onMouseEnter={() => hover(anchorId)}
         onMouseLeave={() => hover(null)}
-        className={cn(cls, "cursor-pointer transition-[filter,box-shadow] hover:brightness-95 hover:shadow-[0_0_0_1px_currentColor] dark:hover:brightness-110")}
+        className={cn(cls, "min-h-6 cursor-pointer transition-[filter,box-shadow] hover:brightness-95 hover:shadow-[0_0_0_1px_currentColor] dark:hover:brightness-110")}
       >
         {inner}
         {what ? <span className="sr-only"> — show “{what}” on the page</span> : null}

@@ -459,7 +459,7 @@ function PleaseCheckItem({ item }: { item: Item }) {
       </p>
       {ev?.quote ? (
         <blockquote lang="de" className="mt-2 text-[13.5px] leading-relaxed text-ink">
-          <button type="button" onClick={() => select(`item:${item.id}:${item.evidence.indexOf(ev)}`)} className="text-left hover:underline">
+          <button type="button" onClick={() => select(`item:${item.id}:${item.evidence.indexOf(ev)}`)} className="min-h-6 text-left hover:underline">
             <span className="marker box-decoration-clone px-0.5">“{ev.quote}”</span>
           </button>
         </blockquote>

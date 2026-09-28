@@ -45,7 +45,8 @@ export function RecentLetters({ docs, partyById }: { docs: Document[]; partyById
             </button>
           </h2>
           {!open ? (
-            <p id={latestId} title={latestTitle} className="mt-0.5 line-clamp-2 break-words text-[13.5px] leading-snug text-ink/85">
+            // the tooltip holds the whole line the clamp may cut (the layout sweep: the title alone left "Latest:" out)
+            <p id={latestId} title={`Latest: ${latestTitle}`} className="mt-0.5 line-clamp-2 break-words text-[13.5px] leading-snug text-ink/85">
               Latest: {latestTitle}
             </p>
           ) : null}

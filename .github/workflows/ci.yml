@@ -99,8 +99,9 @@ jobs:
         run: .venv/bin/pytest -q tests/test_mock_numbers.py
       - name: Build UI
         run: cd web && npm run build
-      - name: Playwright (demo server, tour, pages, axe light + dark, phone)
-        # playwright.config.ts starts `ordnung demo --reset` from .venv and logs in with its token
+      - name: Playwright (demo server, tour, pages, layout sweep 320–1920 px, axe light + dark, phone)
+        # playwright.config.ts starts `ordnung demo --reset` from .venv and logs in with its token; its projects run
+        # in order: tour, pages, sweep (e2e/layout-sweep.spec.ts), layout, girocode, high-stakes
         run: cd web && npm run e2e
       - uses: actions/upload-artifact@v4
         if: failure()
