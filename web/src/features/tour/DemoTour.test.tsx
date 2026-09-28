@@ -353,7 +353,8 @@ describe("keyboard and screen readers", () => {
     await waitFor(() => expect(screen.queryByRole("region", { name: "Demo tour" })).not.toBeInTheDocument());
     expect(document.getElementById("main")).toHaveFocus();
     expect(screen.getByText("Tour hidden")).toBeInTheDocument();
-    expect(screen.getByText(/restart it any time from the Demo badge/)).toBeInTheDocument();
+    // a way back that exists at every width (the Demo badge is hidden below 360 px)
+    expect(screen.getByText("You can restart it any time in Settings → Data.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     const back = await tourRegion();

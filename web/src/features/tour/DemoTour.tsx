@@ -543,7 +543,8 @@ export function DemoTour() {
     focusPage();
     toast({
       title: "Tour hidden",
-      description: "You can restart it any time from the Demo badge.",
+      // Settings exists at every width (the top bar's Demo badge doesn't fit below 360 px)
+      description: "You can restart it any time in Settings → Data.",
       // back where it was
       undo: () => send({ type: "restart", step: at }),
     });
