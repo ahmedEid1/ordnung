@@ -15,7 +15,7 @@ import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { cn } from "@/lib/utils";
 import { isStaticDemo } from "@/mocks/mode";
 import { BreakablePath } from "./DataSection";
-import { autostartLabel, DESKTOP_MODES, failureLine, MODE_HINTS, previewFor, savedNote, testMode, testOutcome, timeError, type DesktopSetting } from "./desktop";
+import { autostartLabel, DESKTOP_MODES, failureLine, MODE_HINTS, NOTHING_APPEARED, previewFor, savedNote, testMode, testOutcome, timeError, type DesktopSetting } from "./desktop";
 import { SaveBar, SettingsCard } from "./SettingsCard";
 
 const TOOL_NAMES: Record<string, string> = { "notify-send": "notify-send", osascript: "macOS notifications", powershell: "Windows notifications" };
@@ -127,11 +127,13 @@ function Editor({ settings }: { settings: AppSettings }) {
       return savedNote(s.desktop_notifications, s.desktop_notify_time, staticDemo ? "static" : demo ? "demo" : null);
     });
 
+  const [tested, setTested] = useState(false);
   const sendTest = () =>
     test.mutate(testMode(mode), {
       onSuccess: (result) => {
-        const outcome = testOutcome(result.shown, result.detail);
+        const outcome = testOutcome(result.shown, result.detail, { system: status.data?.system, saved: saved.mode, dirty, time });
         toast[outcome.tone](outcome.title, { description: outcome.description });
+        setTested(result.shown);
       },
     });
 
@@ -223,6 +225,9 @@ function Editor({ settings }: { settings: AppSettings }) {
               <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span className="min-w-0 [overflow-wrap:anywhere]">{failure}</span>
             </p>
+          ) : tested && data && !demo ? (
+            // the toast goes away; where to look stays while the person looks for it
+            <p className="basis-full text-[12.5px] leading-5 text-muted">{NOTHING_APPEARED[data.system]}</p>
           ) : null}
         </div>
       )}

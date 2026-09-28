@@ -109,7 +109,10 @@ export function mockCalendarPreview(db: MockDb, mode: CalendarSyncMode): Calenda
       const day = i.due_date!;
       const time = i.due_time?.slice(0, 5) ?? null;
       const clock = time ?? ALARM_HOUR;
-      const alarms = [...new Set(days[i.kind] ?? [])].sort((a, b) => b - a).map((d) => alarmLabel(d, clock));
+      const offsets = [...new Set(days[i.kind] ?? [])].sort((a, b) => b - a);
+      const alarms = offsets.map((d) => alarmLabel(d, clock));
+      // alarms that fell before today (earliest first, as the API counts them)
+      const alarms_passed = offsets.filter((d) => new Date(Date.parse(`${day}T00:00:00Z`) - d * 86_400_000).toISOString().slice(0, 10) < db.today).length;
       const discreet = mode === "discreet";
       return {
         uid: `${i.id}@ordnung.local`,
@@ -119,12 +122,13 @@ export function mockCalendarPreview(db: MockDb, mode: CalendarSyncMode): Calenda
         description: discreet ? (needsCheck(i) ? `${DISCREET_DESCRIPTION} ${DISCREET_CHECK}` : DISCREET_DESCRIPTION) : description(db, i),
         location: discreet ? null : (i.location ?? null),
         alarms,
+        alarms_passed,
       } satisfies CalendarEventPreview;
     });
 }
 
 function report(counts: Partial<CalendarSyncReport> = {}): CalendarSyncReport {
-  return { at: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"), sent: 0, removed: 0, unchanged: 0, failed: 0, error: null, error_kind: null, ...counts };
+  return { at: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"), sent: 0, removed: 0, unchanged: 0, failed: 0, missing: 0, error: null, error_kind: null, ...counts };
 }
 
 export function mockCalendarSyncStatus(db: MockDb, staticDemo: boolean): CalendarSyncStatus {

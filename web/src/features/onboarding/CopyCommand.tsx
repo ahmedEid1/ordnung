@@ -12,13 +12,15 @@ import { useClipboard } from "@/features/today/clipboard";
 export function CopyCommand({ command, label, className, display }: { command: string; label?: string; className?: string; display?: ReactNode }) {
   const { copy, copied } = useClipboard();
   const done = copied === command;
-  const parts = command.split(/(?<=\/)/);
+  // a break may follow a "/" inside a path, never the root "/" right after a space (a lone "/" at a line's end)
+  const parts = command.split(/(?<=\S\/)/);
   return (
     <div className={cn("flex items-start gap-2 rounded-xl border border-line bg-[#1d1b16] py-1.5 pl-3.5 pr-1.5 text-[#f2efe7] dark:bg-canvas", className)}>
       <span aria-hidden className="select-none py-1.5 font-mono text-[13px] leading-5 text-[#9a937f]">
         $
       </span>
-      <code className="min-w-0 flex-1 whitespace-pre-wrap py-1.5 font-mono text-[13px] leading-5 [overflow-wrap:anywhere]">
+      {/* white-space normal: a space where a line breaks goes away instead of hanging past the box */}
+      <code className="min-w-0 flex-1 whitespace-normal py-1.5 font-mono text-[13px] leading-5 [overflow-wrap:anywhere]">
         {display ??
           parts.map((p, i) => (
             <Fragment key={i}>

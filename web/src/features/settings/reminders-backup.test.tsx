@@ -10,7 +10,8 @@ import type { DesktopReminders } from "@/api/types";
 import { mockNotification } from "@/mocks/data/reminders";
 import { createMockServer } from "@/mocks/server";
 import { NB_HYPHEN } from "@/lib/glue";
-import { backupSummary, failureSentence, passphraseProblem, restoreCommand, restoreCommandPieces, suggestPassphrase } from "./backup";
+import { backupSummary, failureSentence, leftOutSentence, passphraseProblem, restoreCommand, restoreCommandPieces, suggestPassphrase } from "./backup";
+import { deleteCalendarNote } from "./calendarSync";
 import { autostartLabel, failureLine, previewFor, savedNote, testMode, testOutcome, timeError } from "./desktop";
 
 class RO {
@@ -55,9 +56,18 @@ describe("desktop notification helpers", () => {
   });
 
   it("says what happened after a test", () => {
-    expect(testOutcome(true, null)).toMatchObject({ tone: "success", title: "Test notification sent" });
-    expect(testOutcome(false, "notify-send failed (exit code 1).")).toEqual({ tone: "warn", title: "No notification appeared", description: "notify-send failed (exit code 1)." });
-    expect(testOutcome(false, null).description).toMatch(/calendar alarms still work/);
+    const morning = { system: "macos", saved: "discreet", dirty: false, time: "08:00" } as const;
+    const sent = testOutcome(true, null, morning);
+    // the tool took it: whether macOS shows it is its call, so the toast says where to look
+    expect(sent).toMatchObject({ tone: "success", title: "Test notification sent to your system" });
+    expect(sent.description).toMatch(/^Nothing appeared\? Open System Settings → Notifications and allow notifications for Script Editor/);
+    expect(sent.description).toMatch(/The morning one comes at 08:00\.$/);
+    expect(testOutcome(true, null, { ...morning, system: "windows" }).description).toMatch(/Windows PowerShell, and Do not disturb off/);
+    // switched on but not saved: no morning notification comes until it is
+    expect(testOutcome(true, null, { ...morning, saved: "off", dirty: true, time: "07:30" }).description).toMatch(/Save to get it each morning at 07:30\.$/);
+    expect(testOutcome(true, null, { ...morning, saved: "off" }).description).not.toMatch(/morning one/);
+    expect(testOutcome(false, "notify-send failed (exit code 1).", morning)).toEqual({ tone: "warn", title: "No notification appeared", description: "notify-send failed (exit code 1)." });
+    expect(testOutcome(false, null, morning).description).toMatch(/calendar alarms still work/);
   });
 
   it("words the save note for each place it runs", () => {
@@ -223,9 +233,21 @@ describe("desktop notification card", () => {
     const card = await openDesktopCard();
     await user.click(within(await switchOn(user, card)).getByRole("radio", { name: "With details" }));
     await user.click(await within(card).findByRole("button", { name: "Show a test notification" }));
-    expect(await screen.findByText("Test notification sent")).toBeInTheDocument();
+    expect(await screen.findByText("Test notification sent to your system")).toBeInTheDocument();
+    // switched on but not saved yet: the toast doesn't promise the morning one
+    expect(screen.getByText(/Save to get it each morning at 08:00\./)).toBeInTheDocument();
     expect(calls.find((c) => c.path === "/reminders/desktop/test")?.body).toEqual({ mode: "full" });
     expect(within(card).getByText("Shown with notify-send")).toBeInTheDocument();
+  });
+
+  it("after a test, the card keeps saying where to look if nothing appeared", async () => {
+    useDesktopApi(() => ({ system: "macos" as const, tool: "osascript" }));
+    const user = userEvent.setup();
+    const card = await openDesktopCard();
+    await switchOn(user, card);
+    expect(within(card).queryByText(/Nothing appeared\?/)).not.toBeInTheDocument();
+    await user.click(await within(card).findByRole("button", { name: "Show a test notification" }));
+    expect(await within(card).findByText(/Nothing appeared\? Open System Settings → Notifications/)).toBeInTheDocument();
   });
 
   /** Your own Ordnung (not the demo): the status as the API gives it there, changed by `patch`. */
@@ -412,6 +434,42 @@ describe("encrypted backup card", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
+  it("a failed backup brings its reason into view and focus", async () => {
+    const { srv } = useMockApi();
+    const handle = srv.handle.bind(srv);
+    srv.handle = async (method, path, query, body, signal) =>
+      method === "POST" && path === "/backup"
+        ? new Response(JSON.stringify({ detail: "There is no space left on the drive" }), { status: 500, headers: { "Content-Type": "application/json" } })
+        : handle(method, path, query, body, signal);
+    const user = userEvent.setup();
+    const card = await openBackupCard();
+    await user.click(within(card).getByRole("button", { name: "Download encrypted backup…" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Suggest a strong one" }));
+    await user.click(within(dialog).getByRole("button", { name: "Download backup" }));
+    const reason = await within(dialog).findByRole("alert");
+    expect(reason).toHaveTextContent("There is no space left on the drive. Nothing was saved.");
+    await waitFor(() => expect(document.getElementById("backup-error")).toHaveFocus());
+  });
+
+  it("names what a backup leaves out (links are never followed)", async () => {
+    const { srv } = useMockApi();
+    const handle = srv.handle.bind(srv);
+    srv.handle = async (method, path, query, body, signal) => {
+      const res = await handle(method, path, query, body, signal);
+      if (method !== "GET" || path !== "/backup") return res;
+      const info = (await res.json()) as Record<string, unknown>;
+      return new Response(JSON.stringify({ ...info, left_out: ["files"] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    };
+    const user = userEvent.setup();
+    const card = await openBackupCard();
+    await user.click(within(card).getByRole("button", { name: "Download encrypted backup…" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText(/^files is a link to somewhere outside the data folder, and a backup never follows links\./)).toBeInTheDocument();
+    expect(leftOutSentence(["files/ab", "files/cd"])).toMatch(/^files\/ab and files\/cd are links .* Back those up separately, or move them into the data folder\.$/);
+    expect(leftOutSentence(["a", "b", "c", "d", "e"])).toMatch(/^a, b, c and 2 more are links/);
+  });
+
   it("in the online demo it explains that there is nothing to back up — and counts nothing", async () => {
     vi.stubEnv("VITE_STATIC_DEMO", "1");
     useMockApi({ staticDemo: true });
@@ -494,9 +552,45 @@ describe("delete everything", () => {
     const user = userEvent.setup();
     const dialog = await openDeleteDialog(user);
     expect(dialog).toHaveTextContent("Backups you made before stay where you saved them.");
+    await user.type(within(dialog).getByLabelText(/to confirm/), "DELETE");
     await user.click(within(dialog).getByRole("button", { name: "Download an encrypted backup first" }));
-    expect(await screen.findByRole("dialog", { name: "Download an encrypted backup" })).toBeInTheDocument();
+    const backup = await screen.findByRole("dialog", { name: "Download an encrypted backup" });
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Delete everything?" })).not.toBeInTheDocument());
+    // closed, the backup's dialog hands focus back to "Delete everything…", not to the page
+    await user.click(within(backup).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Delete everything…" })).toHaveFocus());
+    // and "Delete everything" starts over: the typed word doesn't carry over to the next opening
+    await user.click(screen.getByRole("button", { name: "Delete everything…" }));
+    const again = await screen.findByRole("dialog", { name: "Delete everything?" });
+    expect(within(again).getByLabelText(/to confirm/)).toHaveValue("");
+    expect(within(again).getByRole("button", { name: "Delete everything" })).toBeDisabled();
+  });
+
+  it("when the calendar can't be cleared, focus returns to the field that says why", async () => {
+    const { srv } = useOwnApi();
+    await connectCalendar(srv);
+    const handle = srv.handle.bind(srv);
+    const reason = "Ordnung's events in your calendar “Ordnung” couldn't be removed, so nothing was deleted: Couldn't reach cloud.example.org.";
+    srv.handle = async (method, path, query, body, signal) =>
+      method === "DELETE" && path === "/data"
+        ? new Response(JSON.stringify({ detail: reason }), { status: 409, headers: { "Content-Type": "application/json" } })
+        : handle(method, path, query, body, signal);
+    const user = userEvent.setup();
+    const dialog = await openDeleteDialog(user);
+    const field = within(dialog).getByLabelText(/to confirm/);
+    await user.type(field, "DELETE");
+    await user.click(within(dialog).getByRole("button", { name: "Delete everything" }));
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(field).toHaveAccessibleDescription(reason);
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it("words the calendar's part for one event and for none", () => {
+    expect(deleteCalendarNote("Ordnung", 1)).toMatch(/^Your calendar “Ordnung” is connected: Ordnung's event there is removed first/);
+    expect(deleteCalendarNote("Ordnung", 3)).toMatch(/Ordnung's 3 events there are removed first/);
+    expect(deleteCalendarNote("Ordnung", 0)).toBe(
+      "Your calendar “Ordnung” is connected: it holds none of Ordnung's events, and its app password is removed from this computer's password store.",
+    );
   });
 
   it("says a connected calendar loses Ordnung's events first, and reports it", async () => {

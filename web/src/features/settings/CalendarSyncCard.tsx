@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { CalendarCheck, CalendarSearch, ChevronDown, ChevronUp, Link2Off, OctagonAlert, RefreshCw, Unplug } from "lucide-react";
+import { CalendarCheck, CalendarSearch, Check, ChevronDown, ChevronUp, Link2Off, OctagonAlert, RefreshCw, Unplug } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useCalendarSync, useCalendarSyncPreview, useConnectCalendarSync, useDisconnectCalendarSync, useDiscoverCalendars, useRunCalendarSync } from "@/api/hooks";
 import type { CalendarChoice, CalendarSyncMode, CalendarSyncStatus } from "@/api/types";
@@ -22,6 +22,7 @@ import {
   fieldFor,
   foundLine,
   hostOf,
+  alarmsLine,
   isPastEvent,
   lastSyncLine,
   modeLabel,
@@ -124,7 +125,7 @@ function EventPreview({ mode, onModeChange, headingId }: { mode: CalendarSyncMod
                   {overdue ? (
                     <p className="mt-1 text-[12.5px] leading-5 text-muted">The date has passed: it shows in the calendar without an alarm to come.</p>
                   ) : e.alarms.length ? (
-                    <p className="mt-1 text-[12.5px] leading-5 text-muted">Alarms: {e.alarms.join(" · ")}</p>
+                    <p className="mt-1 text-[12.5px] leading-5 text-muted">{alarmsLine(e)}</p>
                   ) : null}
                 </li>
               );
@@ -178,14 +179,17 @@ function CalendarChoices({ calendars, chosen, onChoose }: { calendars: CalendarC
                 selected ? "border-accent/60 bg-accent-soft/50 shadow-[0_0_0_1px_var(--color-accent)]" : "border-line hover:border-line-strong",
               )}
             >
-              <input
-                type="radio"
-                name="calendar-sync-calendar"
-                value={c.url}
-                checked={selected}
-                onChange={() => onChoose(c.url)}
-                className="mt-0.5 size-4 shrink-0 accent-[var(--color-accent)] focus-visible:outline-none"
-              />
+              {/* the row is the target (like the other pickers): the radio itself is for assistive tech */}
+              <input type="radio" name="calendar-sync-calendar" value={c.url} checked={selected} onChange={() => onChoose(c.url)} className="sr-only" />
+              <span
+                className={cn(
+                  "mt-px grid size-5 shrink-0 place-items-center rounded-full border transition-colors",
+                  selected ? "border-accent bg-accent text-on-accent" : "border-line-strong bg-surface",
+                )}
+                aria-hidden
+              >
+                {selected ? <Check className="size-3" strokeWidth={3} /> : null}
+              </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[14px] font-medium text-ink [overflow-wrap:anywhere]">{c.name ?? "A calendar without a name"}</span>
                 <span className="block font-mono text-[12px] leading-5 text-muted [overflow-wrap:anywhere]">

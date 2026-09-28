@@ -47,6 +47,14 @@ export function backupSummary(info: Pick<BackupInfo, "letters" | "files" | "byte
   return [count(info.letters, "letter", "letters"), count(info.files, "file", "files"), `about ${formatFileSize(info.bytes)}`].join(" · ");
 }
 
+/** What a backup leaves out (`BackupInfo.left_out`: links, never followed), in one sentence. */
+export function leftOutSentence(names: string[]): string {
+  const listed = names.length > 3 ? [...names.slice(0, 3), `${names.length - 3} more`] : names;
+  const shown = listed.length > 1 ? `${listed.slice(0, -1).join(", ")} and ${listed.at(-1)}` : (listed[0] ?? "");
+  const [what, it] = names.length === 1 ? ["is a link", "it"] : ["are links", "them"];
+  return `${shown} ${what} to somewhere outside the data folder, and a backup never follows links. Back ${it === "it" ? "that" : "those"} up separately, or move ${it} into the data folder.`;
+}
+
 /** Why the backup couldn't be made, as a sentence the dialog can continue ("… Nothing was saved."). */
 export function failureSentence(error: unknown): string {
   const text = error instanceof Error && error.message.trim() ? error.message.trim() : "Ordnung didn't answer. Is it still running?";

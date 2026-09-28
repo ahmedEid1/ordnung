@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { Check, CircleCheck, Copy, Download, Eye, EyeOff, HardDriveDownload, KeyRound, LockKeyhole, Sparkles } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useBackupInfo, useDownloadBackup } from "@/api/hooks";
@@ -11,10 +11,13 @@ import { LoadError } from "@/components/ui/LoadError";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { useClipboard } from "@/features/today/clipboard";
+import { focusWhenReady } from "@/features/today/focus";
 import { formatFileSize } from "@/lib/format";
 import { isStaticDemo } from "@/mocks/mode";
-import { backupSummary, failureSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, saveBlob, suggestPassphrase, type PassphraseProblem } from "./backup";
+import { backupSummary, failureSentence, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, saveBlob, suggestPassphrase, type PassphraseProblem } from "./backup";
 import { SettingsCard } from "./SettingsCard";
+
+const ERROR_ID = "backup-error";
 
 /** The backup the browser just saved (what the card confirms). */
 interface SavedBackup {
@@ -32,11 +35,13 @@ function BackupDialog({
   onClose,
   onSaved,
   info,
+  returnFocus,
 }: {
   open: boolean;
   onClose: () => void;
   onSaved: (saved: SavedBackup) => void;
   info: BackupInfo | undefined;
+  returnFocus?: RefObject<HTMLElement | null>;
 }) {
   const download = useDownloadBackup();
   const [passphrase, setPassphrase] = useState("");
@@ -103,7 +108,13 @@ function BackupDialog({
         },
         onError: (err) => {
           if (err instanceof DOMException && err.name === "AbortError") return;
-          if (err instanceof ApiError && err.status === 422) setProblem({ field: "passphrase", message: err.message });
+          if (err instanceof ApiError && err.status === 422) {
+            setProblem({ field: "passphrase", message: err.message });
+            focusWhenReady(() => document.getElementById("backup-passphrase"), 5000, { always: true });
+            return;
+          }
+          // below the fields, perhaps under a phone's fold: the reason is brought into view and read
+          focusWhenReady(() => document.getElementById(ERROR_ID), 5000, { always: true });
         },
       },
     );
@@ -120,6 +131,7 @@ function BackupDialog({
       title="Download an encrypted backup"
       description="Choose a passphrase to lock the backup. Ordnung never stores it — without it nobody can open the backup, not even you."
       initialFocus={firstRef}
+      returnFocus={returnFocus}
       dismissible={!busy}
       footer={
         <>
@@ -140,6 +152,11 @@ function BackupDialog({
               {backupSummary(info)} — the database, every letter as you added it, page images and letter PDFs.
             </span>
           </p>
+        ) : null}
+        {info?.left_out.length ? (
+          <Callout tone="warn" title="Not in the backup">
+            <span className="[overflow-wrap:anywhere]">{leftOutSentence(info.left_out)}</span>
+          </Callout>
         ) : null}
         <Field
           id="backup-passphrase"
@@ -198,9 +215,11 @@ function BackupDialog({
           </span>
         </div>
         {failed ? (
-          <Callout tone="danger" title="Couldn't make the backup" alert>
-            {failureSentence(download.error)} Nothing was saved.
-          </Callout>
+          <div id={ERROR_ID} tabIndex={-1} className="rounded-xl">
+            <Callout tone="danger" title="Couldn't make the backup" alert>
+              {failureSentence(download.error)} Nothing was saved.
+            </Callout>
+          </div>
         ) : null}
       </form>
     </Dialog>
@@ -225,7 +244,11 @@ function RestoreCommandText({ fileName }: { fileName: string }) {
  * Settings → Data: "Encrypted backup" — what it holds, the download, and how to restore it. `open`
  * and `onOpenChange` let the page open the dialog (the "Delete everything" dialog offers it).
  */
-export function BackupCard({ open: openProp, onOpenChange }: { open?: boolean; onOpenChange?: (open: boolean) => void } = {}) {
+export function BackupCard({
+  open: openProp,
+  onOpenChange,
+  returnFocus,
+}: { open?: boolean; onOpenChange?: (open: boolean) => void; returnFocus?: RefObject<HTMLElement | null> } = {}) {
   const info = useBackupInfo();
   const [openState, setOpenState] = useState(false);
   const open = openProp ?? openState;
@@ -305,7 +328,7 @@ export function BackupCard({ open: openProp, onOpenChange }: { open?: boolean; o
           </div>
         )}
       </div>
-      <BackupDialog open={open} onClose={() => setOpen(false)} onSaved={setSaved} info={info.data} />
+      <BackupDialog open={open} onClose={() => setOpen(false)} onSaved={setSaved} info={info.data} returnFocus={returnFocus} />
     </SettingsCard>
   );
 }

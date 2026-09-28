@@ -96,7 +96,7 @@ function connectedStatus(overrides = {}) {
     calendar_name: "Ordnung — Fristen und Termine",
     password_saved: true,
     synced: 23,
-    last_sync: { at: new Date(Date.now() - 4 * 60_000).toISOString(), sent: 2, removed: 1, unchanged: 21, failed: 0, error: null, error_kind: null },
+    last_sync: { at: new Date(Date.now() - 4 * 60_000).toISOString(), sent: 2, removed: 1, unchanged: 21, failed: 0, missing: 0, error: null, error_kind: null },
     ...overrides,
   });
 }
@@ -299,7 +299,8 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
     run: async (c) => {
       const box = await openSync(c);
       await c.click(box.getByRole("radio", { name: "With details" }));
-      await c.click(box.getByRole("button", { name: /^Show all \d+ events$/ }));
+      // "Show all 31 events (3 overdue)": the count of overdue ones may follow
+      await c.click(box.getByRole("button", { name: /^Show all \d+ events/ }));
       await c.centre(box.getByRole("list", { name: "Events, with details" }));
     },
   });
@@ -329,6 +330,27 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
     run: async (c) => {
       const box = await openSync(c, connectedStatus());
       await c.centre(box.getByRole("button", { name: "Sync now" }));
+    },
+  });
+  add({
+    id: "calendar-sync-missing-put-back",
+    route: CALENDAR,
+    how: "open Settings → Calendar, connected; the last sync put back events deleted from the calendar (answered by the audit)",
+    description: "The last sync sent back events that had gone missing from the calendar (deleted there, or by another Ordnung).",
+    run: async (c) => {
+      const at = new Date(Date.now() - 60_000).toISOString();
+      const box = await openSync(c, connectedStatus({ last_sync: { at, sent: 12, removed: 0, unchanged: 11, failed: 0, missing: 12, error: null, error_kind: null } }));
+      await c.centre(box.getByRole("button", { name: "Sync now" }));
+    },
+  });
+  add({
+    id: "calendar-sync-restored",
+    route: CALENDAR,
+    how: "open Settings → Calendar in a copy restored from a backup: connected, no password here yet, waiting (answered by the audit)",
+    description: "A restored copy's calendar sync waits for the app password: nothing sent, the field to enter it.",
+    run: async (c) => {
+      const box = await openSync(c, connectedStatus({ password_saved: false, paused: true, synced: 0, last_sync: null }));
+      await c.centre(box.getByLabel("App password"));
     },
   });
   add({
@@ -417,6 +439,26 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
     run: async (c) => {
       const dialog = await openBackupDialog(c);
       await c.click(dialog.getByRole("button", { name: "Suggest a strong one" }));
+    },
+  });
+  add({
+    id: "data-backup-dialog-left-out",
+    route: DATA,
+    how: "open the backup dialog while the originals' folder is a link to another drive (GET /api/backup answered by the audit)",
+    description: "The backup dialog names what it leaves out: links are never followed.",
+    run: async (c) => {
+      await fakeApi(c.page, "GET", /^\/api\/backup$/, async () => ({
+        json: {
+          letters: 22,
+          files: 0,
+          bytes: 2_400_000,
+          file_name: "ordnung-backup-2026-09-28.ordnung-backup",
+          left_out: ["files", "drafts/Briefe-an-die-Krankenversicherung-Widerspruchsverfahren-2026"],
+          min_passphrase: 12,
+          format_version: 1,
+        },
+      }));
+      await openBackupDialog(c);
     },
   });
   add({

@@ -8,7 +8,7 @@ import { useMockApi } from "@/test/mockFetch";
 import { createMockServer } from "@/mocks/server";
 import { mockCalendarPreview } from "@/mocks/data/calendarSync";
 import type { CalendarSyncStatus } from "@/api/types";
-import { eventWhen, fieldFor, foundLine, hostOf, isPastEvent, lastSyncLine, preferredCalendar, previewOrder, syncFormProblem } from "./calendarSync";
+import { alarmsLine, eventWhen, fieldFor, foundLine, hostOf, isPastEvent, lastSyncLine, preferredCalendar, previewOrder, syncFormProblem } from "./calendarSync";
 
 class RO {
   observe() {}
@@ -75,14 +75,25 @@ describe("calendar sync helpers", () => {
     });
   });
 
+  it("lists only the alarms still to come", () => {
+    const alarms = ["7 days before at 09:00", "2 days before at 09:00", "on the day at 09:00"];
+    expect(alarmsLine({ alarms, alarms_passed: 0 })).toBe("Alarms: 7 days before at 09:00 · 2 days before at 09:00 · on the day at 09:00");
+    expect(alarmsLine({ alarms, alarms_passed: 1 })).toBe("Alarms: 2 days before at 09:00 · on the day at 09:00 (an earlier one has passed)");
+    expect(alarmsLine({ alarms, alarms_passed: 2 })).toBe("Alarms: on the day at 09:00 (2 earlier ones have passed)");
+    expect(alarmsLine({ alarms: alarms.slice(0, 2), alarms_passed: 2 })).toBe("Its alarms were before today: none is still to come.");
+  });
+
   it("words the event times and the last sync", () => {
     expect(eventWhen({ start: "2026-09-29", all_day: true }, "2026-09-28")).toBe("Tue 29 Sep");
     expect(eventWhen({ start: "2026-10-14T10:00:00+02:00", all_day: false }, "2026-09-28")).toBe("Wed 14 Oct, 10:00");
     const now = new Date("2026-09-28T10:00:00Z");
-    const base = { at: "2026-09-28T09:58:00Z", sent: 0, removed: 0, unchanged: 12, failed: 0, error: null, error_kind: null };
+    const base = { at: "2026-09-28T09:58:00Z", sent: 0, removed: 0, unchanged: 12, failed: 0, missing: 0, error: null, error_kind: null };
     expect(lastSyncLine(null)).toEqual({ tone: "neutral", text: "Not synced yet." });
     expect(lastSyncLine(base, now).text).toBe("Up to date — checked 2 min ago, nothing had changed.");
     expect(lastSyncLine({ ...base, sent: 1, removed: 2 }, now).text).toBe("Synced 2 min ago: 1 event sent, 2 removed.");
+    // events deleted from the calendar (by its app, or another Ordnung) were put back
+    expect(lastSyncLine({ ...base, sent: 3, missing: 3 }, now).text).toBe("Synced 2 min ago: 3 events sent (they had gone missing from the calendar).");
+    expect(lastSyncLine({ ...base, sent: 4, missing: 1 }, now).text).toBe("Synced 2 min ago: 4 events sent (1 had gone missing from the calendar).");
     const failed = lastSyncLine({ ...base, error: "Couldn't reach cloud.example.org.", error_kind: "network" }, now);
     expect(failed).toEqual({ tone: "warn", text: "Last sync 2 min ago: Couldn't reach cloud.example.org." });
     expect(hostOf(CALENDAR)).toBe("cloud.example.org");

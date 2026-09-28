@@ -133,6 +133,7 @@ export function mockBackupInfo(db: MockDb): BackupInfo {
     files: letters.length + pages + 1,
     bytes: letters.length * 180_000 + pages * 240_000 + 2_100_000,
     file_name: `ordnung-backup-${db.today}.ordnung-backup`,
+    left_out: [],
     min_passphrase: 12,
     format_version: 1,
   };

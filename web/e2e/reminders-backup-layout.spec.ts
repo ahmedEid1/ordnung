@@ -246,6 +246,32 @@ for (const [width, height] of [
   });
 }
 
+test("a backup that fails at 320×640 shows why on screen, not under the sheet's footer", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.route(
+    (url) => new URL(url.href).pathname === "/api/backup",
+    (route) => (route.request().method() === "POST" ? route.fulfill({ status: 507, json: { detail: "There is no space left on the drive" } }) : route.fallback()),
+  );
+  await open(page, "/settings?section=data", "Settings");
+  await page.getByRole("region", { name: "Encrypted backup" }).getByRole("button", { name: "Download encrypted backup…" }).click();
+  const dialog = page.getByRole("dialog", { name: "Download an encrypted backup" });
+  await dialog.getByRole("button", { name: "Suggest a strong one" }).click();
+  await dialog.getByRole("button", { name: "Download backup" }).click();
+  const reason = dialog.getByRole("alert");
+  await expect(reason).toContainText("Nothing was saved.");
+  await expect(page.locator("#backup-error")).toBeFocused();
+  // its title is where a finger could tap it: on top, not under the footer's buttons
+  const title = reason.getByText("Couldn't make the backup");
+  await expect(title).toBeInViewport();
+  const onTop = await title.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + 4, r.top + r.height / 2);
+    return Boolean(hit && (el.contains(hit) || hit.contains(el)));
+  });
+  expect(onTop, "the error's title is covered").toBe(true);
+  await page.unroute((url) => new URL(url.href).pathname === "/api/backup");
+});
+
 test("a backup made in the browser is an encrypted Ordnung backup", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await open(page, "/settings?section=data", "Settings");

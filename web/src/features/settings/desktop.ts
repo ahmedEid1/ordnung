@@ -35,10 +35,29 @@ export function previewFor(status: DesktopReminders | undefined, setting: Deskto
   return status.preview[setting] ?? null;
 }
 
-/** The toast after "Show a test notification". */
-export function testOutcome(shown: boolean, detail: string | null | undefined): { tone: "success" | "warn"; title: string; description: string } {
-  if (shown) return { tone: "success", title: "Test notification sent", description: "Look at the corner of your screen. The morning one still comes as planned." };
-  return { tone: "warn", title: "No notification appeared", description: detail || "This computer couldn't show it. Your calendar alarms still work." };
+/**
+ * Where to look when the system took the notification but nothing appeared: the tool's "done" only
+ * means the system has it — macOS keeps it back without permission, Focus or Do not disturb hide it.
+ */
+export const NOTHING_APPEARED: Record<DesktopReminders["system"], string> = {
+  macos: "Nothing appeared? Open System Settings → Notifications and allow notifications for Script Editor (macOS shows them under that name), and check that Focus is off.",
+  windows: "Nothing appeared? Open Settings → System → Notifications: notifications on, also for Windows PowerShell, and Do not disturb off.",
+  linux: "Nothing appeared? Check that your desktop shows notifications and that Do not disturb is off.",
+};
+
+/**
+ * The toast after "Show a test notification". `morning`: the saved setting (`dirty`: the card's
+ * choice isn't saved yet) — only a saved switch brings the morning one.
+ */
+export function testOutcome(
+  shown: boolean,
+  detail: string | null | undefined,
+  morning: { system: DesktopReminders["system"] | undefined; saved: DesktopSetting; dirty: boolean; time: string },
+): { tone: "success" | "warn"; title: string; description: string } {
+  if (!shown) return { tone: "warn", title: "No notification appeared", description: detail || "This computer couldn't show it. Your calendar alarms still work." };
+  const next = morning.dirty ? `Save to get it each morning at ${morning.time}.` : morning.saved === "off" ? "" : `The morning one comes at ${morning.time}.`;
+  const help = morning.system ? NOTHING_APPEARED[morning.system] : "";
+  return { tone: "success", title: "Test notification sent to your system", description: [help, next].filter(Boolean).join(" ") };
 }
 
 /** What the save bar says after its "Saved." (the demos can't notify on their own). */

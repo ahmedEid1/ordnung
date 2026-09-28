@@ -13,9 +13,10 @@ import { isStaticDemo } from "@/mocks/mode";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { DEMO_CMD } from "@/features/onboarding/options";
 import { useClipboard } from "@/features/today/clipboard";
+import { focusWhenReady } from "@/features/today/focus";
 import { useTodayISO } from "@/lib/today";
 import { BackupCard } from "./BackupCard";
-import { hostOf } from "./calendarSync";
+import { deleteCalendarNote, hostOf } from "./calendarSync";
 import { exportFileName } from "./logic";
 import { SectionHeading, SettingsCard } from "./SettingsCard";
 
@@ -50,6 +51,7 @@ export function BreakablePath({ path }: { path: string }) {
 
 /** The word to type in the "Delete everything" dialog. */
 const DELETE_WORD = "DELETE";
+const CONFIRM_ID = "delete-everything-confirm";
 
 /**
  * "Delete everything": a typed confirmation, then the API wipes the data folder and the app starts
@@ -84,6 +86,12 @@ function DeleteEverythingDialog({
     remove.reset();
     onClose();
   };
+  // the backup's dialog opens in place of this one — which starts empty again next time
+  const backupFirst = () => {
+    if (remove.isPending) return;
+    close();
+    onBackup();
+  };
 
   const submit = (e?: FormEvent) => {
     e?.preventDefault();
@@ -104,6 +112,11 @@ function DeleteEverythingDialog({
           duration: 8000,
         });
         navigate("/welcome", { replace: true });
+      },
+      onError: () => {
+        // the busy button lost focus: back to the field its reason belongs to, the reason in view
+        focusWhenReady(() => inputRef.current, 5000, { always: true });
+        requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(`${CONFIRM_ID}-err`)?.scrollIntoView?.({ block: "nearest" })));
       },
     });
   };
@@ -133,7 +146,7 @@ function DeleteEverythingDialog({
       <form onSubmit={submit} className="space-y-4">
         <p className="text-[13.5px] leading-relaxed text-ink/85">
           Want to keep a copy?{" "}
-          <Button variant="link" size="sm" onClick={onBackup} className="align-baseline">
+          <Button variant="link" size="sm" onClick={backupFirst} className="align-baseline">
             Download an encrypted backup first
           </Button>{" "}
           — everything, restorable — or{" "}
@@ -144,11 +157,11 @@ function DeleteEverythingDialog({
         </p>
         {calendar ? (
           <p className="text-[13.5px] leading-relaxed text-ink/85 [overflow-wrap:anywhere]">
-            Your calendar “{calendar}” is connected: Ordnung's {sync.data?.synced === 1 ? "event" : `${sync.data?.synced ?? 0} events`} there are removed
-            first, and its app password from this computer's password store. If that can't be done, nothing is deleted.
+            {deleteCalendarNote(calendar, sync.data?.synced ?? 0)}
           </p>
         ) : null}
         <Field
+          id={CONFIRM_ID}
           label={
             <>
               Type <span className="font-mono font-semibold tracking-wide text-danger-ink">{DELETE_WORD}</span> to confirm
@@ -179,6 +192,8 @@ export function DataSection({ health }: { health: Health }) {
   const [busy, setBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [backupOpen, setBackupOpen] = useState(false);
+  // the backup's dialog opened from "Delete everything" hands focus back to its button
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const staticDemo = isStaticDemo();
 
   const exportJson = async () => {
@@ -216,10 +231,14 @@ export function DataSection({ health }: { health: Health }) {
               {copied === health.data_dir ? "Copied" : "Copy"} <span className="sr-only">the folder path</span>
             </Button>
           </div>
-          <p className="mt-3 text-sm leading-5 text-muted">To take everything to another drive or computer, download an encrypted backup below.</p>
+          <p className="mt-3 text-sm leading-5 text-muted">
+            {staticDemo
+              ? "In Ordnung on your computer, an encrypted backup takes everything to another drive or computer."
+              : "To take everything to another drive or computer, download an encrypted backup below."}
+          </p>
         </SettingsCard>
 
-        <BackupCard open={backupOpen} onOpenChange={setBackupOpen} />
+        <BackupCard open={backupOpen} onOpenChange={setBackupOpen} returnFocus={deleteButtonRef} />
 
         <SettingsCard
           title="Download a copy of your records"
@@ -268,7 +287,7 @@ export function DataSection({ health }: { health: Health }) {
             </div>
             {/* the action where the other cards on this page have theirs: in the footer, on the right */}
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-danger/20 bg-danger-soft/40 px-5 py-3 sm:px-6">
-              <Button variant="danger" icon={Trash2} onClick={() => setDeleteOpen(true)}>
+              <Button ref={deleteButtonRef} variant="danger" icon={Trash2} onClick={() => setDeleteOpen(true)}>
                 Delete everything…
               </Button>
             </div>
@@ -279,10 +298,7 @@ export function DataSection({ health }: { health: Health }) {
           onClose={() => setDeleteOpen(false)}
           onExport={() => void exportJson()}
           // one dialog at a time: the backup's opens in place of this one
-          onBackup={() => {
-            setDeleteOpen(false);
-            setBackupOpen(true);
-          }}
+          onBackup={() => setBackupOpen(true)}
           exporting={busy}
         />
       </div>

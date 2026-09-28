@@ -101,6 +101,18 @@ export function previewOrder<T extends Pick<CalendarEventPreview, "start">>(even
   return { events: [...upcoming, ...past], past: past.length };
 }
 
+/**
+ * The alarms still to come, in words: the event holds all of them, but one that fell before today
+ * won't ring ("Alarms: on the day at 09:00 (2 earlier ones have passed)").
+ */
+export function alarmsLine(event: Pick<CalendarEventPreview, "alarms" | "alarms_passed">): string {
+  const passed = Math.min(event.alarms_passed, event.alarms.length);
+  const coming = event.alarms.slice(passed);
+  if (!coming.length) return `Its ${passed === 1 ? "alarm was" : "alarms were"} before today: none is still to come.`;
+  if (!passed) return `Alarms: ${coming.join(" · ")}`;
+  return `Alarms: ${coming.join(" · ")} (${passed === 1 ? "an earlier one has" : `${passed} earlier ones have`} passed)`;
+}
+
 /** When an event is: "Tue 29 Sep" (all day) or "Wed 14 Oct, 10:00" (its own wall-clock time). */
 export function eventWhen(event: Pick<CalendarEventPreview, "start" | "all_day">, today?: string): string {
   const day = formatDate(event.start.slice(0, 10), { today });
@@ -118,11 +130,23 @@ export function lastSyncLine(report: CalendarSyncReport | null | undefined, now:
     return { tone: "warn", text: `Last sync ${when}${done}: ${report.error}` };
   }
   if (!report.sent && !report.removed) return { tone: "ok", text: `Up to date — checked ${when}, nothing had changed.` };
-  const parts = [report.sent ? `${count(report.sent, "event")} sent` : null, report.removed ? `${report.removed} removed` : null].filter(Boolean);
+  const missing = !report.missing
+    ? ""
+    : report.missing !== report.sent
+      ? ` (${report.missing} had gone missing from the calendar)`
+      : ` (${report.sent === 1 ? "it" : "they"} had gone missing from the calendar)`;
+  const parts = [report.sent ? `${count(report.sent, "event")} sent${missing}` : null, report.removed ? `${report.removed} removed` : null].filter(Boolean);
   return { tone: "ok", text: `Synced ${when}: ${parts.join(", ")}.` };
 }
 
 /** "Discreet" / "With details" for a badge. */
 export function modeLabel(mode: CalendarSyncMode): string {
   return SYNC_MODES.find((m) => m.value === mode)?.label ?? mode;
+}
+
+/** What "Delete everything" does to a connected calendar (`synced`: how many of Ordnung's events it holds). */
+export function deleteCalendarNote(calendar: string, synced: number): string {
+  if (synced === 0) return `Your calendar “${calendar}” is connected: it holds none of Ordnung's events, and its app password is removed from this computer's password store.`;
+  const events = synced === 1 ? "Ordnung's event there is" : `Ordnung's ${synced} events there are`;
+  return `Your calendar “${calendar}” is connected: ${events} removed first, and its app password from this computer's password store. If that can't be done, nothing is deleted.`;
 }
