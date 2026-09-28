@@ -14,12 +14,11 @@ import { isStaticDemo } from "@/mocks/mode";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { DEMO_CMD } from "@/features/onboarding/options";
 import { useClipboard } from "@/features/today/clipboard";
-import { focusWhenReady } from "@/features/today/focus";
 import { useTodayISO } from "@/lib/today";
 import { BackupCard } from "./BackupCard";
 import { deleteCalendarNote, hostOf } from "./calendarSync";
 import { exportFileName } from "./logic";
-import { SectionHeading, SettingsCard } from "./SettingsCard";
+import { FOOTER_ACTION, SectionHeading, SettingsCard } from "./SettingsCard";
 import { TourCard } from "./TourCard";
 
 async function buildExport() {
@@ -37,9 +36,12 @@ async function buildExport() {
   return { exported_at: new Date().toISOString(), app: "Ordnung", profile, settings, documents, items, contracts, parties, drafts, ideas: suggestions, reading_traces: traces };
 }
 
-/** A folder path with a line-break opportunity (`<wbr>`) after each "/" or "\", so it wraps between names. */
+/**
+ * A folder path with a line-break opportunity (`<wbr>`) after each "/" or "\" that ends a name, so it
+ * wraps between names — never after the root "/" (or a "//"), which would hang alone at a line's end.
+ */
 export function BreakablePath({ path }: { path: string }) {
-  const parts = path.split(/(?<=[/\\])/);
+  const parts = path.split(/(?<=[^/\\\s][/\\])/);
   return (
     <>
       {parts.map((part, i) => (
@@ -56,6 +58,25 @@ export function BreakablePath({ path }: { path: string }) {
 const DELETE_WORD = "DELETE";
 const CONFIRM_ID = "delete-everything-confirm";
 const ERROR_ID = "delete-everything-error";
+
+/**
+ * The refusal of "Delete everything", once it shows: focused, and scrolled to its top. On a short phone
+ * the reason is taller than the room under the dialog's header, and bringing only its end (or the
+ * field below it) into view would cut off "Nothing was deleted".
+ */
+function revealRefusal(ms = 5000) {
+  const until = performance.now() + ms;
+  const tick = () => {
+    const el = document.getElementById(ERROR_ID);
+    if (!el) {
+      if (performance.now() < until) requestAnimationFrame(tick);
+      return;
+    }
+    el.focus({ preventScroll: true });
+    el.scrollIntoView?.({ block: "start" });
+  };
+  requestAnimationFrame(tick);
+}
 
 /**
  * "Delete everything": a typed confirmation, then the API wipes the data folder and the app starts
@@ -117,11 +138,9 @@ function DeleteEverythingDialog({
         });
         navigate("/welcome", { replace: true });
       },
-      onError: () => {
-        // the busy button lost focus: back to the typed word (still right), the reason in view above it
-        focusWhenReady(() => inputRef.current, 5000, { always: true });
-        requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(ERROR_ID)?.scrollIntoView?.({ block: "nearest" })));
-      },
+      // the busy button lost focus: to the reason, as a failed backup does — read out and shown from its
+      // heading; the typed word (still right) is the next Tab
+      onError: () => revealRefusal(),
     });
   };
 
@@ -167,7 +186,7 @@ function DeleteEverythingDialog({
         {/* the server's reason (the calendar couldn't be reached …) is the dialog's, not the typed word's:
             the word is right, so the field never says it is invalid */}
         {error ? (
-          <div id={ERROR_ID} className="scroll-my-4">
+          <div id={ERROR_ID} tabIndex={-1} className="scroll-my-4 rounded-xl">
             <Callout tone="danger" alert title="Nothing was deleted">
               <span className="[overflow-wrap:anywhere]">{error}</span>
             </Callout>
@@ -257,7 +276,7 @@ export function DataSection({ health }: { health: Health }) {
           id="set-data-export"
           description="Letters (details, not the files), to-dos & dates, contracts, people & organisations, your drafts, Ideas and how each letter was read — as a JSON file you can open anywhere."
           footer={
-            <Button icon={Download} onClick={() => void exportJson()} loading={busy}>
+            <Button icon={Download} onClick={() => void exportJson()} loading={busy} className={FOOTER_ACTION}>
               Download JSON
             </Button>
           }
@@ -280,7 +299,7 @@ export function DataSection({ health }: { health: Health }) {
             }
             footer={
               staticDemo ? (
-                <Button icon={RotateCcw} onClick={() => window.location.reload()}>
+                <Button icon={RotateCcw} onClick={() => window.location.reload()} className={FOOTER_ACTION}>
                   Start over
                 </Button>
               ) : undefined
@@ -303,7 +322,7 @@ export function DataSection({ health }: { health: Health }) {
             </div>
             {/* the action where the other cards on this page have theirs: in the footer, on the right */}
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-danger/20 bg-danger-soft/40 px-5 py-3 sm:px-6">
-              <Button ref={deleteButtonRef} variant="danger" icon={Trash2} onClick={() => setDeleteOpen(true)}>
+              <Button ref={deleteButtonRef} variant="danger" icon={Trash2} onClick={() => setDeleteOpen(true)} className={FOOTER_ACTION}>
                 Delete everything…
               </Button>
             </div>

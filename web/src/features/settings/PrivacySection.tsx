@@ -4,6 +4,7 @@ import {
   Activity as ActivityIcon,
   Ban,
   CalendarPlus,
+  ChevronRight,
   FileText,
   HardDrive,
   Lock,
@@ -24,7 +25,18 @@ import { PRIVACY_STATEMENT } from "@/features/onboarding/options";
 import { formatCompact, formatDateTime, formatFileSize, formatPercent, formatUsd } from "@/lib/format";
 import { useMediaQuery } from "@/lib/hooks";
 import { cn, plural } from "@/lib/utils";
-import { activityHref, cacheRate, groupActivity, modelFamily, purposeLabel, purposeRows, sentSummary, type PurposeRow } from "./logic";
+import {
+  activityHref,
+  askChecksMessage,
+  cacheRate,
+  groupActivity,
+  modelFamily,
+  purposeLabel,
+  purposeRows,
+  sentSummary,
+  type AskChecks,
+  type PurposeRow,
+} from "./logic";
 import { SectionHeading, SettingsCard } from "./SettingsCard";
 
 // recharts is only needed here — load it with this section, not with the whole Settings page
@@ -63,6 +75,33 @@ const ACTIVITY_ICONS: [RegExp, LucideIcon][] = [
 
 function activityIcon(kind: string): LucideIcon {
   return ACTIVITY_ICONS.find(([re]) => re.test(kind))?.[1] ?? ActivityIcon;
+}
+
+/**
+ * Under a row that folds Ask's checks ("Checked 12 answers in Ask"): what the checks did, behind a
+ * disclosure lined up with the row's text.
+ */
+function AskChecksDetails({ checks }: { checks: AskChecks }) {
+  return (
+    <details className="group mb-1.5 ml-10">
+      <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-md text-[12.5px] font-medium text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
+        <ChevronRight className="size-3.5 shrink-0 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden />
+        What the checks did
+      </summary>
+      <ul className="mt-1 space-y-1.5 text-[13px] leading-5 text-muted">
+        {checks.done.map((d) => (
+          <li key={d.what} className="flex gap-2">
+            <span aria-hidden className="mt-2 size-1 shrink-0 rounded-full bg-current" />
+            <span className="min-w-0 wrap-anywhere">
+              {d.what}
+              {"\u00a0· "}
+              <span className="whitespace-nowrap tabular-nums">{plural(d.answers, "answer")}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
 }
 
 function Statement() {
@@ -388,7 +427,7 @@ export function PrivacySection() {
           ) : activityRows.length ? (
             <>
               <ol className="space-y-0.5">
-                {shownActivity.map(({ entry: a, count }) => {
+                {shownActivity.map(({ entry: a, count, askChecks }) => {
                   const Icon = activityIcon(a.kind);
                   const href = activityHref(a);
                   const body = (
@@ -398,8 +437,8 @@ export function PrivacySection() {
                       </span>
                       <span className="flex min-w-0 flex-1 flex-col gap-x-4 gap-y-0.5 pt-1 @lg:flex-row @lg:items-baseline">
                         <span className="min-w-0 flex-1 text-base leading-5 text-ink wrap-anywhere">
-                          {a.message}
-                          {count > 1 ? (
+                          {askChecks ? askChecksMessage(askChecks.answers) : a.message}
+                          {count > 1 && !askChecks ? (
                             <>
                               {" "}
                               <span className="ml-0.5 inline-block whitespace-nowrap rounded-full bg-surface-2 px-1.5 text-xs font-medium tabular-nums text-muted">
@@ -424,6 +463,7 @@ export function PrivacySection() {
                       ) : (
                         <div className="-mx-2 flex items-start gap-3 px-2 py-2">{body}</div>
                       )}
+                      {askChecks ? <AskChecksDetails checks={askChecks} /> : null}
                     </li>
                   );
                 })}

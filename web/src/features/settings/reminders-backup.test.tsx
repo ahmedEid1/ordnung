@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
@@ -591,11 +591,27 @@ describe("delete everything", () => {
     const dialog = await openDeleteDialog(user);
     const field = within(dialog).getByLabelText(/to confirm/);
     await user.type(field, "DELETE");
+    const scrolled: [string, ScrollLogicalPosition | undefined][] = [];
+    const original = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
+    Element.prototype.scrollIntoView = function (this: HTMLElement, arg?: boolean | ScrollIntoViewOptions) {
+      scrolled.push([this.id, typeof arg === "object" ? arg.block : undefined]);
+    };
+    onTestFinished(() => {
+      if (original) Object.defineProperty(Element.prototype, "scrollIntoView", original);
+      else delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    });
     await user.click(within(dialog).getByRole("button", { name: "Delete everything" }));
-    await waitFor(() => expect(field).toHaveFocus());
     const alert = await within(dialog).findByRole("alert");
     expect(alert).toHaveTextContent("Nothing was deleted");
     expect(alert).toHaveTextContent(reason);
+    // focus goes to the reason (as a failed backup's does), scrolled to its top: on a 320×640 phone it is
+    // taller than the room under the header, and bringing in the field below cut off its heading (round 2)
+    const reasonBox = alert.closest<HTMLElement>("#delete-everything-error")!;
+    await waitFor(() => expect(reasonBox).toHaveFocus());
+    expect(scrolled.at(-1)).toEqual(["delete-everything-error", "start"]);
+    // the typed word, still right, is the next Tab stop after it (jsdom's Tab doesn't start from a tabindex=-1 box)
+    const stops = [...dialog.querySelectorAll<HTMLElement>("a[href], button:not([disabled]), input")];
+    expect(stops.find((el) => reasonBox.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(field);
     // "DELETE" was typed right: the field is not marked invalid, nor described by the server's reason
     expect(field).not.toHaveAttribute("aria-invalid", "true");
     expect(field).not.toHaveAccessibleDescription(reason);

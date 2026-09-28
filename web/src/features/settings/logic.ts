@@ -161,20 +161,70 @@ export function activityHref(a: Pick<Activity, "ref_type" | "ref_id">): string |
   return null;
 }
 
+/** What Ask's checks did to a run of answers, folded into one row of the activity log. */
+export interface AskChecks {
+  /** How many answers were checked (an answer can log up to three checks). */
+  answers: number;
+  /** Each thing the checks did, in words ("Took out sentences or values …"), and to how many answers; newest first. */
+  done: { what: string; answers: number }[];
+}
+
 /** One row of the activity log: an entry and how many identical ones came right before it. */
 export interface ActivityRow {
   entry: Activity;
-  /** 1, or e.g. 10 for ten "Checked an answer in Ask…" in a row (`entry` is the newest). */
+  /** 1, or e.g. 10 for ten "Read …" in a row (`entry` is the newest). */
   count: number;
+  /** Set when the row folds several checks of Ask's answers ("Checked 12 answers in Ask"). */
+  askChecks?: AskChecks;
 }
 
-/** Runs of the same entry (same kind, message and target) become one row with a count. */
+/** An entry Ask's checks of an answer wrote (it leads to Ask, its `ref_id` is the answer). */
+const isAskCheck = (a: Pick<Activity, "kind" | "ref_type">) => a.ref_type === "chat" && a.kind.startsWith("ask.");
+
+const ASK_CHECK_PREFIX = /^Checked an answer in Ask:\s*/;
+
+/** "Checked an answer in Ask: took out …" → "Took out …" (the row says which answers). */
+export function askCheckWhat(message: string): string {
+  const what = message.replace(ASK_CHECK_PREFIX, "").trim();
+  return what.charAt(0).toUpperCase() + what.slice(1);
+}
+
+/** "Checked 12 answers in Ask" / "Checked an answer in Ask" — the message of a folded row. */
+export function askChecksMessage(answers: number): string {
+  return answers === 1 ? "Checked an answer in Ask" : `Checked ${answers} answers in Ask`;
+}
+
+/**
+ * Runs of the same entry (same kind, message and target) become one row with a count. A run of
+ * Ask's checks becomes one row whatever each check did — they alternate within an answer (up to three
+ * per answer), and would push the letters read and exports out of view.
+ */
 export function groupActivity(list: readonly Activity[]): ActivityRow[] {
   const rows: ActivityRow[] = [];
+  const checks = new Map<ActivityRow, Activity[]>(); // the Ask checks a row folds
   for (const entry of list) {
     const last = rows[rows.length - 1];
-    if (last && last.entry.kind === entry.kind && last.entry.message === entry.message && activityHref(last.entry) === activityHref(entry)) last.count += 1;
-    else rows.push({ entry, count: 1 });
+    const run = last && checks.get(last);
+    if (last && run && isAskCheck(entry)) {
+      run.push(entry);
+      last.count += 1;
+    } else if (last && !run && last.entry.kind === entry.kind && last.entry.message === entry.message && activityHref(last.entry) === activityHref(entry)) {
+      last.count += 1;
+    } else {
+      const row: ActivityRow = { entry, count: 1 };
+      rows.push(row);
+      if (isAskCheck(entry)) checks.set(row, [entry]);
+    }
+  }
+  const answer = (a: Activity) => a.ref_id ?? `#${a.id}`;
+  for (const [row, run] of checks) {
+    if (run.length < 2) continue; // a single check: its own message says it all
+    const done = new Map<string, Set<string>>();
+    for (const e of run) {
+      const what = askCheckWhat(e.message);
+      done.set(what, (done.get(what) ?? new Set()).add(answer(e)));
+    }
+    row.askChecks = { answers: new Set(run.map(answer)).size, done: [...done].map(([what, answers]) => ({ what, answers: answers.size })) };
   }
   return rows;
 }

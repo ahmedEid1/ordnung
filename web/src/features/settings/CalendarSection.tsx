@@ -7,6 +7,7 @@ import { useCalendarSync, useMarkCalendarExported, useProfile } from "@/api/hook
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { toast } from "@/components/ui/Toast";
+import { plural } from "@/lib/utils";
 import { CALENDAR_GUIDES, downloadCalendarFile, reminderSentence, type CalendarApp } from "@/features/timeline/calendar";
 import { CalendarGuideSteps } from "@/features/timeline/CalendarExport";
 import { hostOf } from "./calendarSync";
@@ -14,12 +15,12 @@ import { CalendarSyncCard } from "./CalendarSyncCard";
 import { SectionHeading, SettingsCard } from "./SettingsCard";
 
 /**
- * How many dates the calendar file holds — its events, counted in the file itself (to-dos and
- * contract dates, exactly what a download gets). Under "timeline", so new dates refresh it.
+ * How many events the calendar file holds, counted in the file itself (to-dos, and a contract's
+ * send-by and cancel-by days — exactly what a download gets). Under "timeline", so new dates refresh it.
  */
 export const CALENDAR_FILE_KEY = ["timeline", "calendar-file"] as const;
 
-function useCalendarFileDates() {
+function useCalendarFileEvents() {
   return useQuery({
     queryKey: CALENDAR_FILE_KEY,
     queryFn: async ({ signal }) => {
@@ -32,11 +33,16 @@ function useCalendarFileDates() {
   });
 }
 
-/** What the calendar file will hold: "12 open dates…", or why there's nothing to download yet. */
-export function calendarFileSummary(dates: number | null): string {
-  if (dates === null) return "Every open date and send-by day, in one file for your calendar.";
-  if (dates === 0) return "No dates yet — add letters first, and their dates come here.";
-  return `${dates} open ${dates === 1 ? "date" : "dates"} in one file for your calendar, send-by days included.`;
+/**
+ * What the calendar file will hold: "12 calendar events…", or why there's nothing to download yet.
+ * It counts the file's events, never "dates": a contract's decision is two of them (post by, arrive
+ * by) and open dates already past are in it too, while Today's "Add your 26 dates to your calendar"
+ * counts each coming date to act on once — one file, two different counts of "dates" otherwise.
+ */
+export function calendarFileSummary(events: number | null): string {
+  if (events === null) return "Every open date and send-by day, in one file for your calendar.";
+  if (events === 0) return "No dates yet — add letters first, and their dates come here.";
+  return `${plural(events, "calendar event")} in one file: every open date and send-by day.`;
 }
 
 /**
@@ -47,11 +53,11 @@ export function calendarFileSummary(dates: number | null): string {
 export function CalendarSection() {
   const exported = useMarkCalendarExported();
   const profile = useProfile();
-  const file = useCalendarFileDates();
+  const file = useCalendarFileEvents();
   const sync = useCalendarSync();
   const syncedTo = sync.data?.connected ? (sync.data.calendar_name ?? hostOf(sync.data.url)) : null;
-  const openDates = file.data ?? null;
-  const nothing = openDates === 0;
+  const events = file.data ?? null;
+  const nothing = events === 0;
   const alarms = reminderSentence(profile.data?.reminder_days?.deadline);
   const [app, setApp] = useState<CalendarApp>("google");
   const guide = CALENDAR_GUIDES.find((g) => g.app === app) ?? CALENDAR_GUIDES[0]!;
@@ -71,8 +77,9 @@ export function CalendarSection() {
               <CalendarPlus className="size-6" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[15px] font-semibold text-ink">Add my dates to my calendar</p>
-              <p className="mt-0.5 text-[13px] leading-5 text-muted">{calendarFileSummary(openDates)}</p>
+              {/* in the words of Today's Idea and the Timeline's dialog */}
+              <p className="text-[15px] font-semibold text-ink">Add your dates to your calendar</p>
+              <p className="mt-0.5 text-[13px] leading-5 text-muted">{calendarFileSummary(events)}</p>
             </div>
             <Button variant={nothing || syncedTo ? "secondary" : "primary"} icon={CalendarPlus} onClick={download} loading={exported.isPending} disabled={nothing}>
               Download .ics

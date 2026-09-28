@@ -67,8 +67,11 @@ describe("settings helpers", () => {
     expect(bareVersion("2.1.283 (Claude Code)")).toBe("2.1.283");
     expect(bareVersion(null)).toBeNull();
     expect(calendarFileSummary(0)).toMatch(/^No dates yet — add letters first/);
-    expect(calendarFileSummary(1)).toMatch(/^1 open date in one file/);
-    expect(calendarFileSummary(12)).toBe("12 open dates in one file for your calendar, send-by days included.");
+    // the file's events, never "dates": Today's Idea counts the dates to act on, and a contract's
+    // decision is two events (post by, arrive by) — two counts of "dates" for one file (round 2)
+    expect(calendarFileSummary(1)).toBe("1 calendar event in one file: every open date and send-by day.");
+    expect(calendarFileSummary(12)).toBe("12 calendar events in one file: every open date and send-by day.");
+    for (const n of [1, 12]) expect(calendarFileSummary(n)).not.toMatch(/\bdates? in\b/);
   });
 
   it("the section pills fade out only at an edge with more behind it", () => {
@@ -107,6 +110,86 @@ describe("the save bar", () => {
     expect(pinnedBar()).not.toBeNull();
     await waitFor(() => expect(pinnedBar()).toBeNull(), { timeout: SAVED_PIN_MS + 2000 });
     expect(screen.getByText("Saved.")).toBeInTheDocument();
+  });
+
+  it("keeps keyboard focus in the card after Save and after Discard — on the status, never <body>", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=profile" });
+    const phone = await screen.findByLabelText(/^Phone/);
+    const status = screen.getByText("All changes saved").closest("p")!;
+    // reachable from script only: no extra Tab stop in every card
+    expect(status).toHaveAttribute("tabindex", "-1");
+
+    // Save with the keyboard: Tab from the field to the pinned bar's buttons, Enter
+    await user.type(phone, "1");
+    const bar = pinnedBar()!;
+    within(bar).getByRole("button", { name: "Save changes" }).focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByText("New letters use this name and address.")).toBeInTheDocument();
+    await waitFor(() => expect(status).toHaveFocus());
+    expect(within(bar).queryByRole("button")).toBeNull();
+
+    // Discard: the buttons go at once, focus stays on what the bar now says
+    await user.type(phone, "2");
+    within(pinnedBar()!).getByRole("button", { name: "Discard" }).focus();
+    await user.keyboard("{Enter}");
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
+    expect(status).toHaveFocus();
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it("leaves focus alone when it moved on while the save was running", async () => {
+    const { srv } = useMockApi();
+    const handle = srv.handle.bind(srv);
+    let answer = () => {};
+    const held = new Promise<void>((resolve) => (answer = resolve));
+    srv.handle = async (method, path, query, body, signal) => {
+      if (method === "PUT" && path === "/profile") await held;
+      return handle(method, path, query, body, signal);
+    };
+    const user = userEvent.setup();
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=profile" });
+    const phone = await screen.findByLabelText(/^Phone/);
+    await user.type(phone, "3");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    // the person clicked into another field before the answer came
+    const email = screen.getByLabelText(/^Email/);
+    await user.click(email);
+    act(() => answer());
+    expect(await screen.findByText("New letters use this name and address.")).toBeInTheDocument();
+    expect(email).toHaveFocus();
+  });
+});
+
+describe("a load error", () => {
+  it("is the shared error card: a primary “Try again” that spins while it asks again, and the technical details", async () => {
+    const { srv } = useMockApi();
+    const handle = srv.handle.bind(srv);
+    let failing = true;
+    let answer = () => {};
+    srv.handle = async (method, path, query, body, signal) => {
+      if (method === "GET" && path === "/profile" && failing) return new Response(JSON.stringify({ detail: "database is locked" }), { status: 500 });
+      if (method === "GET" && path === "/profile") await new Promise<void>((resolve) => (answer = resolve));
+      return handle(method, path, query, body, signal);
+    };
+    const user = userEvent.setup();
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=profile" });
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByRole("heading", { level: 2, name: "Couldn't load your settings" })).toBeInTheDocument();
+    expect(alert).toHaveTextContent("Your letters are safe — Ordnung didn't answer. Is it still running?");
+    expect(within(alert).getByText("Technical details")).toBeInTheDocument();
+    expect(alert).toHaveTextContent("HTTP 500 · database is locked");
+    const retry = within(alert).getByRole("button", { name: "Try again" });
+    expect(retry.className).toMatch(/\bbg-accent\b/); // primary, as on every other page
+
+    failing = false;
+    await user.click(retry);
+    // asking again: the card stays (not announced twice) and the button says it is busy
+    await waitFor(() => expect(within(screen.getByRole("alert")).getByRole("button", { name: "Try again" })).toHaveAttribute("aria-busy", "true"));
+    act(() => answer());
+    expect(await screen.findByLabelText("Full name")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
 
@@ -279,8 +362,11 @@ describe("Calendar", () => {
     const ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
     vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) => (String(input).includes("calendar.ics") ? Promise.resolve(new Response(ics)) : apiFetch(input, init)));
     renderWithProviders(<SettingsPage />, { route: "/settings?section=calendar" });
-    expect(await screen.findByText("2 open dates in one file for your calendar, send-by days included.")).toBeInTheDocument();
+    expect(await screen.findByText("2 calendar events in one file: every open date and send-by day.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Download .ics" })).toBeEnabled();
+    // the action in one voice with Today's Idea and the Timeline's dialog
+    expect(screen.getByText("Add your dates to your calendar")).toBeInTheDocument();
+    expect(screen.queryByText(/Add my dates/)).toBeNull();
   });
 });
 

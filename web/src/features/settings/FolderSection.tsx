@@ -17,11 +17,13 @@
 import { useId, useState } from "react";
 import { Link } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, CircleX, CloudAlert, Copy, FileCheck, Files, FolderOpen, Hourglass, type LucideIcon } from "lucide-react";
+import { ArrowRight, CircleX, CloudAlert, Copy, FileCheck, Files, FolderOpen, type LucideIcon } from "lucide-react";
 import { api } from "@/api/endpoints";
 import { ApiError } from "@/api/client";
 import { qk, useFolder } from "@/api/hooks";
 import type { AppSettings, FolderPickup, FolderStatus, SettingsPatch } from "@/api/types";
+import { ACCEPTED_SHORT } from "@/components/shell/AddLetters";
+import { MEANING_ICONS } from "@/lib/copy";
 import { formatDateTime } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { cn, plural } from "@/lib/utils";
@@ -213,6 +215,8 @@ export function newFilesLine(status: Pick<FolderStatus, "auto_read" | "can_read"
   return status.auto_read ? "New files are read with Claude as soon as they arrive." : "New files wait unread before anything is sent to Claude.";
 }
 
+const NotReadYet = MEANING_ICONS.notReadYet;
+
 function FolderState({ status }: { status: FolderStatus }) {
   const stop = useSaveFolder((reason) => toast.error("Couldn't stop watching", { description: reason }));
   const listId = useId();
@@ -257,14 +261,16 @@ function FolderState({ status }: { status: FolderStatus }) {
           </Button>
         </div>
       ) : (
-        <p className="text-base text-muted">No folder is watched. Choose one above — the files already in it are added once and wait unread, then every new one.</p>
+        // the card's own size (like the line under a watched folder), not a size larger than its description
+        <p className="text-[13.5px] leading-5 text-muted">No folder is watched. Choose one above — the files already in it are added once and wait unread, then every new one.</p>
       )}
 
       {status.problem ? <Callout tone="warn">{status.problem}</Callout> : null}
 
       {status.waiting ? (
         <Link to="/inbox" className="flex items-center gap-3 rounded-xl border border-accent/25 bg-accent-soft/60 px-4 py-3 transition-colors hover:bg-accent-soft">
-          <Hourglass className="size-4 shrink-0 text-accent" aria-hidden />
+          {/* the Inbox's own sign for letters not read yet (the hourglass means a deadline) */}
+          <NotReadYet className="size-4 shrink-0 text-accent" aria-hidden />
           <span className="min-w-0 flex-1 text-[14px] font-medium text-ink">{plural(status.waiting, "letter")} not read yet in the Inbox</span>
           <ArrowRight className="size-4 shrink-0 text-accent" aria-hidden />
         </Link>
@@ -283,7 +289,7 @@ function FolderState({ status }: { status: FolderStatus }) {
         ) : (
           <p className="rounded-xl border border-dashed border-line-strong px-4 py-3 text-sm leading-5 text-muted">
             {status.folder
-              ? "Nothing picked up yet. Save a PDF or a phone photo into the folder — it shows up in your Inbox within a few seconds."
+              ? `Nothing picked up yet. Put ${ACCEPTED_SHORT} into the folder — they show up in your Inbox within a few seconds.`
               : "Nothing picked up yet. Once a folder is watched, the files it brings in are listed here."}
           </p>
         )}

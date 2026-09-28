@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { CircleAlert, CircleCheck, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { focusIsLost } from "@/features/today/focus";
 import { cn } from "@/lib/utils";
 import { useReportDirty } from "./dirty";
 
@@ -9,6 +10,12 @@ import { useReportDirty } from "./dirty";
  * column of the two-column Profile form — so every form in Settings lines up the same way.
  */
 export const FIELD_WIDTH = "w-full sm:max-w-sm";
+
+/**
+ * A card footer's lone action ("Download JSON", "Restart the demo tour"): the footer's whole width on
+ * phones, its own width on the right from `sm` — one rule for the cards stacked on a page.
+ */
+export const FOOTER_ACTION = "w-full sm:w-auto";
 
 /** How long a save bar stays pinned in view after saving, so its "Saved" can be read. */
 export const SAVED_PIN_MS = 3000;
@@ -127,6 +134,11 @@ export interface SaveBarProps {
  * Save row for a form card: what's unsaved (or "Saved." with a note, right after saving) +
  * Discard + Save. While there are unsaved edits it stays pinned to the bottom of the screen. It
  * reports unsaved edits — and how to save them — to the Settings page ("Save and go").
+ *
+ * - Save or Discard leave with the edits they settle: keyboard focus then stays in the card, on the
+ *   status ("Saved. …", "All changes saved"), so the next Tab goes on from here — never to <body>.
+ * - A save the server turns down with a mistake in the form (a folder path it refuses) says what to
+ *   fix at once, as a Save pressed with a mistake does.
  */
 export function SaveBar({ dirty, saving = false, onSave, onDiscard, invalid = false, onInvalid, label = "Save changes" }: SaveBarProps) {
   const pin = useContext(PinFooter);
@@ -139,9 +151,20 @@ export function SaveBar({ dirty, saving = false, onSave, onDiscard, invalid = fa
     setWasDirty(dirty);
     if (!dirty) setAttempted(false);
   }
+  // a save was turned down: if the form now has a mistake (the server's reason, set before the save
+  // rejected), the bar says to fix it — a failed save that left no mistake keeps "Unsaved changes"
+  const [rejected, setRejected] = useState(false);
+  if (rejected) {
+    setRejected(false);
+    if (invalid) setAttempted(true);
+  }
+  const statusRef = useRef<HTMLParagraphElement>(null);
+  // Save or Discard was pressed here: once the edits are settled (and both buttons gone), focus the status
+  const fromBar = useRef(false);
 
   const save = async (): Promise<boolean> => {
     if (invalid) {
+      fromBar.current = false; // focus goes to the mistake
       setAttempted(true);
       onInvalid?.();
       return false;
@@ -152,10 +175,27 @@ export function SaveBar({ dirty, saving = false, onSave, onDiscard, invalid = fa
       setJustSaved(true);
       return true;
     } catch {
-      return false; // the error toast explains; the edits stay
+      fromBar.current = false;
+      setRejected(true);
+      return false; // the error toast (or the field) explains; the edits stay
     }
   };
   useReportDirty(dirty, save);
+
+  // the buttons left with the edits: focus was on one of them (or dropped to <body> while it was busy)
+  useLayoutEffect(() => {
+    const status = statusRef.current;
+    if (dirty || !fromBar.current || !status) return;
+    fromBar.current = false;
+    if (!focusIsLost() && !status.parentElement?.contains(document.activeElement)) return; // moved on meanwhile
+    status.focus({ preventScroll: true });
+    // after Discard the bar goes back to the end of its card at once: bring it into view for the keyboard
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (document.activeElement === status && showsFocusRing(status)) status.scrollIntoView?.({ block: "nearest" });
+      }),
+    );
+  }, [dirty]);
 
   // "Saved." stays readable in place a moment before the bar goes back to the end of its card
   useEffect(() => {
@@ -172,10 +212,13 @@ export function SaveBar({ dirty, saving = false, onSave, onDiscard, invalid = fa
   const fix = dirty && invalid && attempted;
   return (
     <>
+      {/* focused from script only (after Save or Discard), with the page's focus outline — never a Tab stop */}
       <p
+        ref={statusRef}
         role="status"
+        tabIndex={-1}
         className={cn(
-          "mr-auto flex min-w-0 items-start gap-1.5 text-sm leading-5",
+          "mr-auto flex min-w-0 items-start gap-1.5 rounded-sm text-sm leading-5",
           fix ? "font-medium text-danger-ink" : dirty ? "text-warn-ink" : saved ? "text-ok-ink" : "text-muted",
         )}
       >
@@ -199,17 +242,43 @@ export function SaveBar({ dirty, saving = false, onSave, onDiscard, invalid = fa
         // Discard and Save wrap together (never Save alone on a line)
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {onDiscard ? (
-            <Button variant="ghost" size="sm" onClick={onDiscard} disabled={saving}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                fromBar.current = true;
+                onDiscard();
+              }}
+              disabled={saving}
+            >
               Discard
             </Button>
           ) : null}
-          <Button variant="primary" size="sm" icon={Save} onClick={() => void save()} loading={saving}>
+          <Button
+            variant="primary"
+            size="sm"
+            icon={Save}
+            onClick={() => {
+              fromBar.current = true;
+              void save();
+            }}
+            loading={saving}
+          >
             {label}
           </Button>
         </div>
       ) : null}
     </>
   );
+}
+
+/** Whether the browser draws a focus ring on `el` now (keyboard use); false where `:focus-visible` is unknown. */
+function showsFocusRing(el: Element): boolean {
+  try {
+    return el.matches(":focus-visible");
+  } catch {
+    return false;
+  }
 }
 
 /**

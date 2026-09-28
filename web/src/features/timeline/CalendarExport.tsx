@@ -84,6 +84,8 @@ export function CalendarExport({ variant = "secondary", size = "md", className }
 
   return (
     <>
+      {/* the button speaks for the person ("my"); what it opens says "your", as Settings and Today do. Ask's
+          prompt names this button (src/ordnung/llm/prompts/ask_system.md), so its label changes only with it */}
       <Button
         variant={variant}
         size={size}

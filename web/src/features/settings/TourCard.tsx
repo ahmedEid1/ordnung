@@ -2,7 +2,7 @@ import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { TOUR_STEPS } from "@/features/tour/steps";
 import { useTourController } from "@/features/tour/useTourController";
-import { SettingsCard } from "./SettingsCard";
+import { FOOTER_ACTION, SettingsCard } from "./SettingsCard";
 
 /**
  * Settings › Data, demo only: the guided tour again, from its first step (like the Demo badge's
@@ -18,7 +18,7 @@ export function TourCard() {
       id="set-data-tour"
       description="Four short steps through Sam's letters: the new mail, Ideas from your secretary, Ask and the year ahead."
       footer={
-        <Button icon={RotateCcw} onClick={() => tour.send({ type: "restart" })}>
+        <Button icon={RotateCcw} onClick={() => tour.send({ type: "restart" })} className={FOOTER_ACTION}>
           Restart the demo tour
         </Button>
       }

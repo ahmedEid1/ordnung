@@ -312,7 +312,7 @@ describe("calendar sync card", () => {
     useMockApi();
     renderWithProviders(<SettingsPage />, { route: "/settings?section=calendar" });
     await screen.findByText("What your calendar gets", {}, { timeout: 3000 });
-    const file = screen.getByText("Add my dates to my calendar");
+    const file = screen.getByText("Add your dates to your calendar");
     const guide = screen.getByRole("region", { name: "How to import it" });
     const sync = screen.getByRole("region", { name: "Sync with your own calendar" });
     expect(file.compareDocumentPosition(guide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

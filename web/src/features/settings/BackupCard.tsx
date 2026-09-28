@@ -15,7 +15,7 @@ import { focusWhenReady } from "@/features/today/focus";
 import { formatFileSize } from "@/lib/format";
 import { isStaticDemo } from "@/mocks/mode";
 import { backupContents, backupSummary, failureSentence, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, saveBlob, suggestPassphrase, type PassphraseProblem } from "./backup";
-import { SettingsCard } from "./SettingsCard";
+import { FOOTER_ACTION, SettingsCard } from "./SettingsCard";
 
 const ERROR_ID = "backup-error";
 
@@ -278,8 +278,9 @@ export function BackupCard({
               </span>
             </p>
           ) : null}
-          {/* the whole row on phones, without its icon: the label alone just fits a 320 px card's footer */}
-          <Button variant="primary" icon={LockKeyhole} onClick={() => setOpen(true)} disabled={staticDemo} className="w-full max-sm:[&>svg]:hidden sm:w-auto">
+          {/* the whole row on phones like every Data card's action, without its icon: the label alone just
+              fits a 320 px card's footer */}
+          <Button variant="primary" icon={LockKeyhole} onClick={() => setOpen(true)} disabled={staticDemo} className={`${FOOTER_ACTION} max-sm:[&>svg]:hidden`}>
             Download encrypted backup…
           </Button>
         </>
