@@ -14,7 +14,7 @@ import { api } from "@/api/endpoints";
 import { qk, useUpdateDocument, useUpdateSuggestion } from "@/api/hooks";
 import { cn } from "@/lib/utils";
 import { GROUNDING_COPY } from "@/lib/copy";
-import { formatDate, toISODate } from "@/lib/format";
+import { formatDate, glueText, toISODate } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { Button } from "@/components/ui/Button";
 import { DateText } from "@/components/ui/DateText";
@@ -521,16 +521,17 @@ function CheckCard({ children }: { children: ReactNode }) {
 function GeneralWarnings({ warnings }: { warnings: string[] }) {
   const lines = warnings.map(withoutPleaseCheck);
   const text = "text-[14px] leading-relaxed text-ink/85 wrap-break-word";
+  // the reading's words as written, with a reference ("TM-2026-0048213") and an amount ("89.99 EUR") kept whole
   return (
     <CheckCard>
       {lines.length === 1 ? (
-        <p className={cn("mt-1", text)}>{lines[0]}</p>
+        <p className={cn("mt-1", text)}>{glueText(lines[0]!)}</p>
       ) : (
         <ul className="mt-1.5 space-y-1.5">
           {lines.map((w) => (
             <li key={w} className={cn("flex gap-2", text)}>
               <span aria-hidden className="mt-[9px] size-1.5 shrink-0 rounded-full bg-warn" />
-              <span className="min-w-0">{w}</span>
+              <span className="min-w-0">{glueText(w)}</span>
             </li>
           ))}
         </ul>

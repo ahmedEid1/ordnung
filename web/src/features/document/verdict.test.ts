@@ -23,6 +23,7 @@ import {
   needsArrivalDate,
   needsCheck,
   openItemCounts,
+  otherLawDeadlines,
   scamSuggestion,
   selectPrimaryItem,
   sortItems,
@@ -467,5 +468,26 @@ describe("the verdict leads with the decision that matters", () => {
     expect(selectPrimaryItem([refund])).toBeNull();
     expect(incomingMoney([refund, objection])?.id).toBe("refund");
     expect(isOptionalObjection(objection)).toBe(true);
+  });
+});
+
+describe("UI audit round 2: a law's other deadlines", () => {
+  const court = makeItem({ id: "court", kind: "deadline", origin: "rule", priority: "critical", title: "Get advice now: court action against the dismissal", due_date: "2026-04-10" });
+  const register = makeItem({ id: "register", kind: "deadline", origin: "rule", priority: "high", title: "Register as job-seeking", due_date: "2026-03-23" });
+  const certificate = makeItem({ id: "cert", kind: "task", title: "Submit enrollment certificate each semester", due_date: "2026-10-15" });
+
+  it("lists the law's other open deadlines, most important first", () => {
+    expect(otherLawDeadlines([certificate, court, register], certificate).map((i) => i.id)).toEqual(["court", "register"]);
+  });
+
+  it("never lists one the server set aside: it is only 'Probably dealt with', never also 'N days overdue'", () => {
+    const setAside = [
+      { item_id: "court", reason: "history" as const, replaced_by: null },
+      { item_id: "register", reason: "history" as const, replaced_by: null },
+    ];
+    expect(otherLawDeadlines([certificate, court, register], certificate, setAside)).toEqual([]);
+    expect(otherLawDeadlines([certificate, court, register], certificate, setAside.slice(1)).map((i) => i.id)).toEqual(["court"]);
+    const detail = makeDetail({ items: [certificate, court, register], set_aside: setAside });
+    expect(asideItems(detail).map((a) => a.item.id)).toEqual(["court", "register"]);
   });
 });

@@ -272,10 +272,33 @@ const MONEY_PER = new RegExp(
 const DATE_RANGE = /^(\d{1,2})\.(\d{1,2})\.(\d{4})?\s*[–-]\s*(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s*\((\d+)\s*(?:Tage|days)\))?$/;
 const MONTH_RANGE = /^(\d{1,2})\.(\d{4})\s*[–-]\s*(\d{1,2})\.(\d{4})$/;
 const DATE_TIME_RANGE = /^(\d{1,2})\.(\d{1,2})\.(\d{4}),?\s*(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})(?:\s*Uhr)?$/;
-const INLINE_GERMAN_DATE = /(?<!\d\.?)(\d{1,2})\.(\d{1,2})\.(\d{4})(?!\.?\d)/g;
+/** A German date in running text — never the second half of a pair of days ("18./20.08.2026"). */
+const INLINE_GERMAN_DATE = /(?<!\d\.?)(?<!\d\.\/)(\d{1,2})\.(\d{1,2})\.(\d{4})(?!\.?\d)/g;
+/** Two days of one month, as a German letter writes them: "ordered and delivered on 18./20.08.2026". */
+const INLINE_GERMAN_DAY_PAIR = /(?<!\d\.?)(\d{1,2})\.\/(\d{1,2})\.(\d{1,2})\.(\d{4})(?!\.?\d)/g;
 
 const iso = (y: string | number, m: string, d: string) => `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
 const valid = (s: string) => tryParseDate(s) !== null;
+
+/**
+ * German dates in English running text the app's way — "due by 09.10.2026" → "due by Fri 9 Oct 2026", a pair
+ * of days "18./20.08.2026" → "18/20 Aug 2026" (UI audit round 2: it read "18./Thu 20 Aug 2026") — or the text
+ * as written when one of them is no real date.
+ */
+function englishDates(text: string): string {
+  const pairs = [...text.matchAll(INLINE_GERMAN_DAY_PAIR)];
+  const singles = [...text.matchAll(INLINE_GERMAN_DATE)];
+  if (!pairs.length && !singles.length) return text;
+  const pairsValid = pairs.every(([, d1, d2, mo, y]) => Number(d1) < Number(d2) && valid(iso(y!, mo!, d1!)) && valid(iso(y!, mo!, d2!)));
+  if (!pairsValid || !singles.every(([, d, mo, y]) => valid(iso(y!, mo!, d!)))) return text;
+  return text
+    .replace(INLINE_GERMAN_DAY_PAIR, (_all, d1: string, d2: string, mo: string, y: string) =>
+      `${Number(d1)}/${formatDate(iso(y, mo, d2), { style: "medium" })}`.replace(/ /g, NBSP),
+    )
+    .replace(INLINE_GERMAN_DATE, (_all, d: string, mo: string, y: string) =>
+      formatDate(iso(y, mo, d), { style: "short", withYear: "always" }).replace(/ /g, NBSP),
+    );
+}
 
 /** "1.320" → "1,320"; "48,6" → "48.6"; as many decimals as written. */
 function englishNumber(num: string): string | null {
@@ -358,12 +381,7 @@ export function factValue(value: string): FactValue {
   const german = isGermanText(text);
   // a German date inside English words reads the app's way ("59.90 € on 01.12.2026") — unless one
   // of them is no real date (then the value stays as written)
-  const dates = [...text.matchAll(INLINE_GERMAN_DATE)].map((d) => iso(d[3]!, d[2]!, d[1]!));
-  if (!german && dates.every(valid)) {
-    text = text.replace(INLINE_GERMAN_DATE, (_all, d: string, mo: string, y: string) =>
-      formatDate(iso(y, mo, d), { style: "short", withYear: "always" }).replace(/ /g, NBSP),
-    );
-  }
+  if (!german) text = englishDates(text);
   return { text, german };
 }
 
@@ -376,12 +394,7 @@ export function factValue(value: string): FactValue {
  * ({@link formatInlineText}) and German dates ("due by 09.10.2026" → "due by Fri 9 Oct 2026").
  */
 export function englishInline(text: string): string {
-  const out = formatInlineText(text);
-  const dates = [...out.matchAll(INLINE_GERMAN_DATE)].map((d) => iso(d[3]!, d[2]!, d[1]!));
-  if (!dates.length || !dates.every(valid)) return out;
-  return out.replace(INLINE_GERMAN_DATE, (_all, d: string, mo: string, y: string) =>
-    formatDate(iso(y, mo, d), { style: "short", withYear: "always" }).replace(/ /g, NBSP),
-  );
+  return englishDates(formatInlineText(text));
 }
 
 export type LangPart = { text: string; german: boolean };

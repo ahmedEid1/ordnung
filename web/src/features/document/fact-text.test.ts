@@ -93,6 +93,18 @@ describe("English running text", () => {
     // a version number is no date
     expect(englishInline("Version 1.30.11.2026")).toBe("Version 1.30.11.2026");
   });
+
+  it("writes a pair of days of one month as one date, never half of it (UI audit round 2: '18./Thu 20 Aug 2026')", () => {
+    const shown = englishInline("A headphone ordered and delivered on 18./20.08.2026, due by 03.09.2026.");
+    expect(shown).toContain("18/20 Aug 2026");
+    expect(plainText(shown)).toBe("A headphone ordered and delivered on 18/20 Aug 2026, due by Thu 3 Sep 2026.");
+    // a pair that is no real pair of dates stays as written — and so does every other date in the text
+    expect(plainText(englishInline("Delivered on 20./18.08.2026, due by 03.09.2026."))).toBe("Delivered on 20./18.08.2026, due by 03.09.2026.");
+    expect(plainText(englishInline("Delivered on 18./31.02.2026."))).toBe("Delivered on 18./31.02.2026.");
+    // a key fact with a pair reads the same way
+    expect(shown.includes("Thu 20")).toBe(false);
+    expect(plainText(factValue("Ordered and delivered on 18./20.08.2026").text)).toBe("Ordered and delivered on 18/20 Aug 2026");
+  });
 });
 
 describe("a reference breaks before its number, never inside it", () => {

@@ -287,9 +287,17 @@ export function mayNotBeOwed(i: Item, advice: DocumentDetail["advice"], items: I
   return notOwedReason(i, advice, items) !== null;
 }
 
-/** The other open deadlines the law sets for this letter (a dismissal's registration), earliest first. */
-export function otherLawDeadlines(items: Item[], primary: Item | null): Item[] {
-  return items.filter((i) => i.origin === "rule" && isOpenItem(i) && i.id !== primary?.id && i.due_date).sort(compareItems);
+/**
+ * The other open deadlines the law sets for this letter (a dismissal's registration), earliest first —
+ * never one the server set aside (`setAside`, as {@link selectPrimaryItem}): a date already past when the
+ * letter was added is listed quietly under "Probably dealt with", not also as "Also: … 189 days overdue"
+ * (UI audit round 2).
+ */
+export function otherLawDeadlines(items: Item[], primary: Item | null, setAside: readonly Pick<ItemAside, "item_id">[] = []): Item[] {
+  const aside = new Set(setAside.map((a) => a.item_id));
+  return items
+    .filter((i) => i.origin === "rule" && isOpenItem(i) && i.id !== primary?.id && i.due_date && !aside.has(i.id))
+    .sort(compareItems);
 }
 
 export type MainAction =

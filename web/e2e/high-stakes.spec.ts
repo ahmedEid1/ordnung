@@ -284,18 +284,23 @@ test.describe.serial("high-stakes letters", () => {
   });
 
   for (const width of WIDTHS) {
-    test(`a dismissal at ${width}px: every law deadline carries its countdown`, async ({ page }) => {
+    // UI audit round 2: the demo's dismissal (a March letter) has law deadlines that were long past when it was
+    // added — they were listed twice, as "Also: … 171 days overdue" in red and as "Still open? … probably dealt
+    // with". Said once now, quietly, each row whole inside the card (the countdown of a current one: unit tests)
+    test(`a dismissal at ${width}px: a law deadline past when it was added is said once, as probably dealt with`, async ({ page }) => {
       await page.setViewportSize({ width, height: width < 768 ? 844 : 800 });
       await open(page, "/");
       const id = await refile(page, /^07_arbeitsvertrag/, "dismissal");
       await open(page, `/documents/${id}`);
       const verdict = page.getByRole("article").first();
-      const rows = verdict.getByRole("list", { name: "Also due by law" }).getByRole("listitem");
-      await expect(rows.first()).toBeVisible();
+      await expect(verdict.getByRole("list", { name: "Also due by law" })).toHaveCount(0);
+      const rows = verdict.getByRole("list", { name: "Probably dealt with" }).getByRole("listitem");
+      await expect(rows.filter({ hasText: /Kündigungsschutzklage/ })).toHaveCount(1);
+      await expect(rows.filter({ hasText: /job-seeking/ })).toHaveCount(1);
+      await expect(verdict.getByText(/overdue/)).toHaveCount(0);
       const vbox = (await verdict.boundingBox())!;
       for (const row of await rows.all()) {
-        const countdown = row.locator("time[data-urgency]");
-        await expect(countdown).toHaveCount(1);
+        await expect(row.getByRole("button", { name: /^Mark .* done$/ })).toBeVisible();
         const r = (await row.boundingBox())!;
         expect(r.x + r.width, "a law deadline row sticks out of the verdict card").toBeLessThanOrEqual(vbox.x + vbox.width + 0.5);
       }

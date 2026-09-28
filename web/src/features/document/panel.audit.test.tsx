@@ -16,6 +16,7 @@ import { ExplainedSimply } from "./Explained";
 import { ideasForLetter, onThisLetter } from "./letter-ideas";
 import { paysOnSite } from "./item-meta";
 import { makeDetail, makeDoc, makeItem, makeSuggestion } from "./fixtures";
+import { plainText } from "@/lib/glue";
 
 function client() {
   const qc = makeTestQueryClient();
@@ -248,6 +249,7 @@ describe("Thread, contract and your letters", () => {
       cost_amount: 156.55,
       cost_currency: "EUR",
       cost_interval: "monthly",
+      status: "active",
       computed: null,
     } as unknown as Contract;
     renderWithProviders(<ContractsSection contracts={[contract]} />, { client: client() });
@@ -262,7 +264,8 @@ describe("Thread, contract and your letters", () => {
     const long = "Nebenkostenabrechnung 2025 für die Wohnung Nr. 05-2-03 mit Nachzahlung und neuer Vorauszahlung ab November";
     const detail: DocumentDetail = makeDetail({ document: makeDoc({ id: "doc_1" }), related: [makeDoc({ id: "doc_2", title: long, doc_date: "2025-01-01" })] });
     renderWithProviders(<ThreadSection detail={detail} />, { client: client() });
-    const link = screen.getByRole("link", { name: long });
+    // on screen the flat number keeps its hyphens unbroken ("05‑2‑03"); the tooltip has the plain words
+    const link = screen.getByRole("link", { name: (name) => plainText(name) === long });
     expect(link).toHaveClass("line-clamp-2");
     expect(link).toHaveAttribute("title", long);
 

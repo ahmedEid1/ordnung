@@ -19,7 +19,7 @@ import { useMediaQuery } from "@/lib/hooks";
 import { useReducedMotion } from "motion/react";
 import { FileText, Route } from "lucide-react";
 import type { DocumentDetail } from "@/api/types";
-import { SkeletonCard, SkeletonText } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonCard, SkeletonText } from "@/components/ui/Skeleton";
 import { TabPanel, Tabs } from "@/components/ui/Tabs";
 import { cn } from "@/lib/utils";
 import { EvidenceProvider } from "./EvidenceContext";
@@ -155,7 +155,7 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
             ) : (
               <>
                 <ExplainedSimply doc={doc} />
-                <ItemsList items={detail.items} docId={doc.id} pages={doc.pages} scam={scam} />
+                <ItemsList items={detail.items} docId={doc.id} pages={doc.pages} scam={scam} setAside={detail.set_aside} documents={detail.related} />
                 <KeyFacts doc={doc} scam={scam} girocodes={detail.girocodes} />
                 <EmailParts detail={detail} />
                 <ThreadSection detail={detail} />
@@ -172,11 +172,22 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   );
 }
 
-/** Loading layout matching the viewer (no layout jump when the data arrives). */
+/**
+ * Loading layout matching the viewer (no layout jump when the data arrives): the view tabs' row first, as
+ * tall as the tabs (UI audit round 2: the verdict moved 56 px down when they came in).
+ */
 export function DocumentSkeleton() {
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1.04fr)_minmax(0,1fr)] xl:gap-8" aria-busy="true">
-      <div className="space-y-4 xl:col-start-2 xl:row-start-1">
+      <div className="min-w-0 space-y-4 xl:col-start-2 xl:row-start-1">
+        <div aria-hidden className="flex h-10 items-center gap-2 shadow-[inset_0_-1px_0_var(--color-line)]">
+          {/* each tab a half of the row on phones (the tabs fill it there), side by side from sm */}
+          {["w-24", "w-32"].map((w) => (
+            <span key={w} className="flex h-full items-center px-2 max-sm:flex-auto max-sm:justify-center">
+              <Skeleton className={cn("h-3.5", w)} />
+            </span>
+          ))}
+        </div>
         <SkeletonCard lines={4} />
         <SkeletonCard lines={2} />
       </div>

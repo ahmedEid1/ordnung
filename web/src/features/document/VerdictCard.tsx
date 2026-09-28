@@ -2,7 +2,7 @@
  * The verdict card — the first thing on a letter: what this is, what you need to do, by when
  * (with "Why this date?"), what happens if you ignore it, and one main button.
  */
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { Link } from "react-router";
 import {
   ArrowRight,
@@ -28,7 +28,7 @@ import { useUpdateSuggestion, useWaitAgain } from "@/api/hooks";
 import { isDirectDebit } from "@/lib/payments";
 import { toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
-import { daysUntil, formatDate, formatInlineText, formatMoney, formatRelativeDays, formatTime, urgencyOf, type Urgency } from "@/lib/format";
+import { daysUntil, formatDate, formatInlineText, formatMoney, formatRelativeDays, formatTime, glueText, urgencyOf, type Urgency } from "@/lib/format";
 import { useToday } from "@/lib/today";
 import { Badge } from "@/components/ui/Badge";
 import { Button, buttonVariants } from "@/components/ui/Button";
@@ -73,7 +73,7 @@ import { GlossaryText } from "./Explained";
 import { englishInline, isGermanText } from "./fact-text";
 import { adviceFor, WhyThisDate } from "./WhyThisDate";
 import { GermanTerms } from "@/lib/germanTerms";
-import { keepCitations, protectRefs } from "@/lib/glue";
+import { keepCitations, NB_HYPHEN, protectRefs } from "@/lib/glue";
 import { DEMO_NOTE } from "@/mocks/mode";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { focusFirstHeading } from "./HeldCard";
@@ -139,6 +139,28 @@ function LetterSays({ text, className }: { text: string; className?: string }) {
         {keepCitations(formatInlineText(text.replace(/^[„“"]|[“”"]$/g, ""), { rewrite: false }))}
       </q>
     </p>
+  );
+}
+
+/**
+ * A letter's file name as its headline (one nobody read has no title): it breaks after an underscore, never
+ * inside a date ("Scan_" / "2026-09-28_0914.pdf", not "Scan_2026-09-" / "28_0914.pdf" at 320 px).
+ */
+function FileName({ name }: { name: string }) {
+  const parts = name.replace(/\d+(?:-\d+)+/g, (d) => d.replace(/-/g, NB_HYPHEN)).split("_");
+  return (
+    <>
+      {parts.map((p, i) => (
+        <Fragment key={i}>
+          {i ? (
+            <>
+              _<wbr />
+            </>
+          ) : null}
+          {p}
+        </Fragment>
+      ))}
+    </>
   );
 }
 
@@ -233,7 +255,8 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
   const debit = open ? isDirectDebit(open) : false;
   // a court order's or a dismissal's deadline isn't optional: doing nothing has consequences
   const optional = open ? isOptionalObjection(open) && !mustAct(doc) : false;
-  const alsoByLaw = !scam && !decision ? otherLawDeadlines(detail.items, open) : [];
+  // never a to-do the server set aside: it is listed under "Probably dealt with" below, not also as overdue
+  const alsoByLaw = !scam && !decision ? otherLawDeadlines(detail.items, open, detail.set_aside) : [];
   const demoNote = doc.warnings.find((w) => w.startsWith(DEMO_NOTE));
   // an operating-cost statement is recognised on read (ADR 0010) and filed under the model's kind: the badge
   // names what the card below says it is, never "Utility bill" over an operating-cost statement's card
@@ -278,21 +301,23 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
           ) : doc.status === "needs_review" ? (
             <StatusPill of="document" status="needs_review" />
           ) : null}
-          {doc.ai_private ? <Badge tone="neutral">Private — not read by AI</Badge> : null}
+          {/* privacy statements name who doesn't read it, as the held card, Inbox, Today and Settings do */}
+          {doc.ai_private ? <Badge tone="neutral">Private — not read by Claude</Badge> : null}
         </div>
         <h1
           id="verdict-title"
           tabIndex={-1}
           className={cn(
             // German compounds break at their joints (soft hyphens, marked German), never mid-syllable, and a
-            // reference number never at its hyphens; a title with a very long word is a size smaller on phones
+            // reference number never at its hyphens; the detail-page title size (26 → 30 px, as the "How it was
+            // read" tab's), a step smaller on phones for a title with a very long word
             "display mt-3 scroll-mt-24 font-semibold text-ink outline-none wrap-break-word hyphens-manual",
-            doc.title && hasLongWord(doc.title) ? "text-[23px]" : "text-[26px]",
-            // after the sizes: a font size drops an earlier line height in `cn`
-            "leading-[1.15] sm:text-[29px] sm:leading-[1.15]",
+            hasLongWord(doc.title ?? doc.filename) ? "text-detail-long" : "text-detail",
           )}
         >
-          {doc.title ? <GermanTerms text={protectRefs(doc.title)} /> : doc.filename}
+          {/* the letter's words as written, with an amount and its "€" ("30 €") and a reference kept whole */}
+          {/* a private letter is titled by its file name (nothing read it): shown as one */}
+          {doc.title && doc.title !== doc.filename ? <GermanTerms text={glueText(doc.title)} /> : <FileName name={doc.filename} />}
         </h1>
         <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px] text-muted">
           {detail.party ? <PartyChip party={detail.party} /> : null}
