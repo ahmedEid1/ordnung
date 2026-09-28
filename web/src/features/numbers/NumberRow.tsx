@@ -2,12 +2,13 @@
  * One number: what it is, the value (hidden until "Show"), Copy, its check-digit test and the letter
  * it came from. Copy works while it is hidden; the confirmation is announced (aria-live).
  */
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Link } from "react-router";
 import { Check, CircleCheck, Copy, Eye, EyeOff, TriangleAlert } from "lucide-react";
 import type { MyNumber } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { isGermanText } from "@/features/document/fact-text";
 import { useClipboard } from "@/features/today/clipboard";
 import { glueText } from "@/lib/format";
 import { NBSP } from "@/lib/glue";
@@ -38,6 +39,31 @@ export function printedLabel(n: Pick<MyNumber, "kind" | "name" | "label">): stri
   const label = n.label.trim();
   if (!label || title.toLowerCase().includes(label.toLowerCase().replace(/[.:]+$/, ""))) return null;
   return label;
+}
+
+/**
+ * A letter's own label as it wraps: after each "/" first ("Rentenversicherungsnummer/ ·
+ * Sozialversicherungsnummer/ · Versicherungsnummer", never "…/Sozialvers · icherungsnummer…"), then —
+ * marked German — by German hyphenation where the browser has it; mid-word only as the last resort.
+ * Display only: Copy and the buttons' names use the plain label.
+ */
+export function LabelText({ text, className }: { text: string; className?: string }) {
+  const parts = text.split("/");
+  const german = isGermanText(text);
+  return (
+    <p lang={german ? "de" : undefined} className={cn("[overflow-wrap:anywhere]", german && "hyphens-auto", className)}>
+      {parts.map((part, i) => (
+        <Fragment key={i}>
+          {part}
+          {i < parts.length - 1 ? (
+            <>
+              /<wbr />
+            </>
+          ) : null}
+        </Fragment>
+      ))}
+    </p>
+  );
 }
 
 function CheckBadge({ number }: { number: MyNumber }) {
@@ -90,8 +116,13 @@ export function NumberRow({ number, masked = number.group !== "case", showParty 
   return (
     <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 py-3", className)}>
       <div className="min-w-0 flex-1 basis-[13rem]">
-        <p className="text-[13px] font-medium leading-5 text-ink/80 [overflow-wrap:anywhere]">{title}</p>
-        {printed ? <p className="text-[12.5px] leading-5 text-muted [overflow-wrap:anywhere]">{printed}</p> : null}
+        {/* the title is the letter's label for the generic kinds, the plain-English name for the others */}
+        {LABEL_FIRST.has(number.kind) ? (
+          <LabelText text={title} className="text-[13px] font-medium leading-5 text-ink/80" />
+        ) : (
+          <p className="text-[13px] font-medium leading-5 text-ink/80 [overflow-wrap:anywhere]">{title}</p>
+        )}
+        {printed ? <LabelText text={printed} className="text-[12.5px] leading-5 text-muted" /> : null}
         <p id={valueId} className="mt-0.5 font-ident text-[17px] font-semibold leading-6 tabular-nums tracking-[0.01em] text-ink [overflow-wrap:anywhere]">
           {shown ? (
             number.display

@@ -3,13 +3,14 @@
  * quote, and a call sheet per organisation (contact, your numbers, its open cases, its own numbers).
  */
 import { Link } from "react-router";
-import { AtSign, CalendarClock, ChevronRight, ExternalLink, FileText, Globe, Phone, TriangleAlert } from "lucide-react";
+import { AtSign, CalendarClock, ChevronRight, FileText, Globe, Phone, TriangleAlert } from "lucide-react";
 import type { CallSheet, IdentityDocument, OpenCase } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Countdown } from "@/components/ui/Countdown";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { mailtoUrl, websiteUrl } from "@/features/party/timeline";
+import { WebsiteLink } from "@/features/party/WebsiteLink";
 import { usePartyDrawer } from "@/lib/party-drawer";
 import { glueText } from "@/lib/format";
 import { useFormatDate, useTodayISO } from "@/lib/today";
@@ -132,7 +133,20 @@ function NextDay({ when }: { when: NextWhen }) {
     case "overdue":
       return <Countdown date={when.due} prefix="due" className="text-[13px]" />;
     case "act_today":
-      return when.due ? <Countdown date={when.due} prefix="act today — due" className="text-[13px]" /> : <span className="font-medium text-danger-ink">act today</span>;
+      // as the weekly session writes it: no countdown to the due date ("in 3 days" would argue with "Act today")
+      return when.due ? (
+        <span className="text-[13px]">
+          <span className="font-medium text-danger-ink">Act today</span>{" "}
+          <span className="text-muted">
+            — due{" "}
+            <time dateTime={when.due} className="whitespace-nowrap">
+              {formatDate(when.due)}
+            </time>
+          </span>
+        </span>
+      ) : (
+        <span className="font-medium text-danger-ink">Act today</span>
+      );
     case "past":
       return <Countdown date={when.date} mode="event" showDate className="text-[13px]" />;
     default:
@@ -144,7 +158,7 @@ function NextDay({ when }: { when: NextWhen }) {
   }
 }
 
-/** "Next: Pay the fine · by Thu 1 Oct" (a fee paid at the appointment: on its day; "act today — due …" once the day to act passed; overdue from the due date). */
+/** "Next: Pay the fine · by Thu 1 Oct" (a fee paid at the appointment: on its day; "Act today — due …" once the day to act passed; overdue from the due date). */
 function NextStep({ item }: { item: CaseStep }) {
   const today = useTodayISO();
   const when = nextStepWhen(item, today);
@@ -236,14 +250,11 @@ function Contact({ sheet }: { sheet: CallSheet }) {
           )}
         </li>
       ) : null}
-      {site ? (
-        <li className="flex items-center gap-2">
-          <Globe className="size-4 shrink-0 text-muted" aria-hidden />
-          <a href={site} target="_blank" rel="noreferrer noopener" className={cn(link, "gap-1")}>
-            <span className="min-w-0 [overflow-wrap:anywhere]">{sheet.website?.replace(/^https?:\/\//, "")}</span>
-            <ExternalLink className="size-3 shrink-0" aria-hidden />
-            <span className="sr-only">(opens in a new tab)</span>
-          </a>
+      {site && sheet.website ? (
+        // a wrapped address keeps its globe beside the first line
+        <li className="flex items-start gap-2">
+          <Globe className="mt-1 size-4 shrink-0 text-muted" aria-hidden />
+          <WebsiteLink href={site} website={sheet.website} className="rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent" />
         </li>
       ) : null}
     </ul>
@@ -282,8 +293,9 @@ export function CallSheetCard({ sheet, openTheirs = false }: { sheet: CallSheet;
         </div>
       ) : null}
       {sheet.open_cases.map((found) => (
-        <div key={found.key} className="mt-1 rounded-lg bg-surface-2/70 px-3 pt-2">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-muted">Open case</p>
+        // as far from the contact lines above as the number list is
+        <div key={found.key} className="mt-3 rounded-lg bg-surface-2/70 px-3 pt-2">
+          <p className="eyebrow">Open case</p>
           <p className="text-[13.5px] font-medium leading-5 text-ink [overflow-wrap:anywhere]">{glueText(found.title)}</p>
           {found.next_item ? <NextStep item={found.next_item} /> : null}
           <ul className="divide-y divide-line">
