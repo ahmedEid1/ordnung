@@ -197,7 +197,7 @@ function NotRead({ doc, canWaitAgain }: { doc: DocumentDetail["document"]; canWa
                     toast({ title: "It can't wait again", description: "Only a letter kept private from your folder, and not read since, can.", tone: "warn" });
                     return;
                   }
-                  toast({ title: "It waits for you again", description: "Choose “Read it” to have Claude read it.", tone: "info" });
+                  toast({ title: "It's back with the letters not read yet", description: "Choose “Read it” to have Claude read it.", tone: "info" });
                   focusFirstHeading();
                 })
                 .catch(() => undefined) // the request's own error toast says what went wrong
@@ -205,7 +205,7 @@ function NotRead({ doc, canWaitAgain }: { doc: DocumentDetail["document"]; canWa
           >
             Undo “Keep private”
           </AnswerButton>
-          <span className="text-[13px] text-muted">It goes back to the letters waiting for you, where you can let Claude read it.</span>
+          <span className="text-[13px] text-muted">It goes back to the letters not read yet, where you can let Claude read it.</span>
         </div>
       ) : null}
     </>

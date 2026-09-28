@@ -14,7 +14,7 @@ import { useClipboard } from "@/features/today/clipboard";
 import { focusWhenReady } from "@/features/today/focus";
 import { formatFileSize } from "@/lib/format";
 import { isStaticDemo } from "@/mocks/mode";
-import { backupSummary, failureSentence, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, saveBlob, suggestPassphrase, type PassphraseProblem } from "./backup";
+import { backupContents, backupSummary, failureSentence, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, saveBlob, suggestPassphrase, type PassphraseProblem } from "./backup";
 import { SettingsCard } from "./SettingsCard";
 
 const ERROR_ID = "backup-error";
@@ -149,7 +149,7 @@ function BackupDialog({
           <p className="flex items-start gap-2 rounded-xl bg-surface-2/70 px-3 py-2.5 text-[13px] leading-5 text-ink/85">
             <HardDriveDownload className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
             <span className="min-w-0">
-              {backupSummary(info)} — the database, every letter as you added it, page images and letter PDFs.
+              {backupSummary(info)} — {backupContents(info.left_out)}
             </span>
           </p>
         ) : null}

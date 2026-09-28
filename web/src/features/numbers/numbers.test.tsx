@@ -137,6 +137,18 @@ describe("the page", () => {
     expect(screen.queryByText(tax.display)).toBeNull();
   });
 
+  it("shows a case's reference plainly: the letter and the Pay panel print it in full", async () => {
+    useMockApi();
+    await renderNumbers("/numbers?tab=cases");
+    const reference = MOCK_NUMBERS.open_cases.flatMap((c) => c.references).find((n) => n.group === "case")!;
+    expect(reference).toBeDefined();
+    expect(screen.getAllByText(reference.display).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: `Show ${numberTitle(reference)}` })).toBeNull();
+    // a customer number of yours stays hidden until Show
+    const customer = MOCK_NUMBERS.organisations.flatMap((s) => s.numbers).find((n) => n.group === "organisation");
+    if (customer) expect(screen.queryByText(customer.display)).toBeNull();
+  });
+
   it("copies the form's way (no spaces) while hidden, and announces it", async () => {
     useMockApi();
     const { user } = await renderNumbers();

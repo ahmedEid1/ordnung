@@ -531,7 +531,7 @@ function verbPhrase(a: TodayAction): string {
  */
 export function agendaSentence(top: readonly TodayAction[], upcoming: readonly TodayAction[], today: string, waiting = 0): string {
   // letters from the watched folder nobody read: their dates are unknown, so nothing is "all clear"
-  const unread = waiting ? ` ${waiting === 1 ? "One letter" : `${waiting} letters`} from your folder ${waiting === 1 ? "waits" : "wait"} for you — not read yet.` : "";
+  const unread = waiting ? ` ${waiting === 1 ? "One letter" : `${waiting} letters`} from your folder ${waiting === 1 ? "isn't" : "aren't"} read yet.` : "";
   if (!top.length) {
     const next = upcoming[0];
     if (waiting) return `Nothing due from the letters that were read.${unread}`;

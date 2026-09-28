@@ -12,7 +12,7 @@ import { createMockServer } from "@/mocks/server";
 import { NB_HYPHEN } from "@/lib/glue";
 import { backupSummary, failureSentence, leftOutSentence, passphraseProblem, restoreCommand, restoreCommandPieces, suggestPassphrase } from "./backup";
 import { deleteCalendarNote } from "./calendarSync";
-import { autostartLabel, failureLine, previewFor, savedNote, testMode, testOutcome, timeError } from "./desktop";
+import { autostartLabel, failureDetail, failureLine, previewFor, savedNote, testMode, testOutcome, timeError } from "./desktop";
 
 class RO {
   observe() {}
@@ -81,7 +81,11 @@ describe("desktop notification helpers", () => {
 
   it("says why the last notification wasn't shown, while that is the latest news", () => {
     const failed = { last_failure: "notify-send failed (exit code 1).", last_failure_on: "2026-09-28", last_shown_on: null };
-    expect(failureLine(failed)).toBe("The last notification (Mon 28 Sep) couldn't be shown: notify-send failed (exit code 1).");
+    // a sentence for people, the tool's own words folded away beside it
+    expect(failureLine(failed)).toBe(
+      "The last notification (Mon 28 Sep) couldn't be shown on this computer. Check that your desktop shows notifications, then send a test notification.",
+    );
+    expect(failureDetail(failed)).toBe("notify-send failed (exit code 1).");
     // given up on after its tries: the day is used up, the failure is still the news
     expect(failureLine({ ...failed, last_shown_on: "2026-09-28" })).not.toBeNull();
     expect(failureLine({ ...failed, last_shown_on: "2026-09-29" })).toBeNull();
@@ -294,7 +298,12 @@ describe("desktop notification card", () => {
     const user = userEvent.setup();
     const card = await openDesktopCard();
     await switchOn(user, card);
-    expect(await within(card).findByText("The last notification (Mon 28 Sep) couldn't be shown: notify-send failed (exit code 1).")).toBeInTheDocument();
+    expect(await within(card).findByText(/^The last notification \(Mon 28 Sep\) couldn't be shown on this computer\. Check that/)).toBeInTheDocument();
+    // the tool's own words are there for whoever wants them, folded away
+    const raw = within(card).getByText("notify-send failed (exit code 1).");
+    expect(raw).not.toBeVisible();
+    await user.click(within(card).getByText("What the system said"));
+    expect(raw).toBeVisible();
   });
 
   it("shows the shared load error when today's notification can't be loaded", async () => {
@@ -465,9 +474,12 @@ describe("encrypted backup card", () => {
     const card = await openBackupCard();
     await user.click(within(card).getByRole("button", { name: "Download encrypted backup…" }));
     const dialog = await screen.findByRole("dialog");
-    expect(await within(dialog).findByText(/^files is a link to somewhere outside the data folder, and a backup never follows links\./)).toBeInTheDocument();
-    expect(leftOutSentence(["files/ab", "files/cd"])).toMatch(/^files\/ab and files\/cd are links .* Back those up separately, or move them into the data folder\.$/);
-    expect(leftOutSentence(["a", "b", "c", "d", "e"])).toMatch(/^a, b, c and 2 more are links/);
+    expect(await within(dialog).findByText(/^“files” is a link to somewhere outside the data folder, and a backup never follows links\./)).toBeInTheDocument();
+    // the summary above it doesn't promise "every letter" when a linked folder is left out
+    expect(within(dialog).getByText(/everything inside the data folder — not the linked folders named below/)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/every letter as you added it/)).toBeNull();
+    expect(leftOutSentence(["files/ab", "files/cd"])).toMatch(/^“files\/ab” and “files\/cd” are links .* Back those up separately, or move them into the data folder\.$/);
+    expect(leftOutSentence(["a", "b", "c", "d", "e"])).toMatch(/^“a”, “b”, “c” and 2 more are links/);
   });
 
   it("in the online demo it explains that there is nothing to back up — and counts nothing", async () => {
@@ -566,7 +578,7 @@ describe("delete everything", () => {
     expect(within(again).getByRole("button", { name: "Delete everything" })).toBeDisabled();
   });
 
-  it("when the calendar can't be cleared, focus returns to the field that says why", async () => {
+  it("when the calendar can't be cleared, the dialog says why — never the correctly typed word's field", async () => {
     const { srv } = useOwnApi();
     await connectCalendar(srv);
     const handle = srv.handle.bind(srv);
@@ -581,7 +593,12 @@ describe("delete everything", () => {
     await user.type(field, "DELETE");
     await user.click(within(dialog).getByRole("button", { name: "Delete everything" }));
     await waitFor(() => expect(field).toHaveFocus());
-    expect(field).toHaveAccessibleDescription(reason);
+    const alert = await within(dialog).findByRole("alert");
+    expect(alert).toHaveTextContent("Nothing was deleted");
+    expect(alert).toHaveTextContent(reason);
+    // "DELETE" was typed right: the field is not marked invalid, nor described by the server's reason
+    expect(field).not.toHaveAttribute("aria-invalid", "true");
+    expect(field).not.toHaveAccessibleDescription(reason);
     expect(document.activeElement).not.toBe(document.body);
   });
 

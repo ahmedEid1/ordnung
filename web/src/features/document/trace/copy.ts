@@ -544,7 +544,7 @@ export function runResult(run: TraceRun): { text: string; tone: Tone } {
   if (run.result === "needs_review") return { text: "Filed — something to check", tone: "warn" };
   if (run.result === "failed") return { text: "Couldn't be read", tone: "danger" };
   // a letter from the watched folder is only stored on this computer until the person answers
-  if (run.result === "held") return { text: "Stored — waiting for you", tone: "neutral" };
+  if (run.result === "held") return { text: "Stored — not read yet", tone: "neutral" };
   return { text: "Filed", tone: "ok" };
 }
 

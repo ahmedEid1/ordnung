@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useRef, type ReactElement, type ReactNode, type RefObject } from "react";
+import { createContext, useContext, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router";
 import {
@@ -41,7 +41,7 @@ import { ReadMore } from "./ReadMore";
 import { WhyThisDate } from "./WhyThisDate";
 import { waitingTitle } from "./WaitingCard";
 import { LetterText } from "@/components/ui/LetterText";
-import { GiroCodeSection, canReadLetterAgain, ibanFailsCheck } from "@/features/girocode/GiroCode";
+import { GIROCODE_MISMATCH_DETAILS, GiroCodeSection, canReadLetterAgain, ibanFailsCheck } from "@/features/girocode/GiroCode";
 import { paymentReference } from "@/lib/payments";
 
 const VERB: Record<ActionVerb, { label: string; icon: LucideIcon }> = {
@@ -152,14 +152,29 @@ export function amountForTransfer(amount: number): string {
  * One transfer detail: its label, the full value (wrapped, never cut — every character of an IBAN
  * or a reference matters) and a copy button, which is icon-only in a narrow panel.
  */
-function CopyRow({ label, value, display, copyId, ident }: { label: string; value: string; display?: string; copyId: string; ident?: boolean }) {
+function CopyRow({
+  label,
+  value,
+  display,
+  copyId,
+  ident,
+  copyable = true,
+}: {
+  label: string;
+  value: string;
+  display?: string;
+  copyId: string;
+  ident?: boolean;
+  /** `false` while the person says the details don't match the letter: no copy button. */
+  copyable?: boolean;
+}) {
   const { copy, copied } = useClipboard();
   const done = copied === copyId;
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 py-2">
       <dt className="text-xs font-medium text-muted">{label}</dt>
       <dd className={cn("col-start-1 text-base text-ink [overflow-wrap:anywhere]", ident && "font-ident")}>{display ?? value}</dd>
-      <dd className="col-start-2 row-span-2 row-start-1">
+      <dd className={cn("col-start-2 row-span-2 row-start-1", !copyable && "hidden")}>
         <button
           type="button"
           onClick={() => void copy(value, copyId)}
@@ -192,6 +207,9 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
   const item = action.item;
   const code = item ? doc.data?.girocodes.find((g) => g.item_id === item.id) : undefined;
   const letter = doc.data?.document;
+  // "They don't match": the details shown are the ones the person says are wrong — no copy buttons
+  const [mismatch, setMismatch] = useState(false);
+  const copyable = !mismatch;
 
   const markPaid = () => {
     if (!item) return;
@@ -228,14 +246,28 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
           <Skeleton className="h-9 w-full" />
         </div>
       ) : pay && (pay.iban || pay.reference) ? (
-        <dl className="@container mt-3 divide-y divide-line rounded-lg border border-line px-3">
-          {pay.payee ? <CopyRow label="Recipient" value={pay.payee} copyId="payee" /> : null}
-          {pay.iban ? <CopyRow label="IBAN" value={pay.iban.replace(/\s+/g, "")} display={formatIban(pay.iban)} copyId="iban" ident /> : null}
-          {action.amount ? (
-            <CopyRow label="Amount" value={amountForTransfer(action.amount)} display={formatMoney(action.amount, { currency: action.currency })} copyId="amount" />
+        <>
+          {mismatch ? (
+            <p role="status" className="mt-3 flex gap-2 text-sm leading-5 text-warn-ink">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+              {GIROCODE_MISMATCH_DETAILS}
+            </p>
           ) : null}
-          {pay.reference ? <CopyRow label="Reference" value={paymentReference(pay.reference)} copyId="reference" ident /> : null}
-        </dl>
+          <dl className="@container mt-3 divide-y divide-line rounded-lg border border-line px-3">
+            {pay.payee ? <CopyRow label="Recipient" value={pay.payee} copyId="payee" copyable={copyable} /> : null}
+            {pay.iban ? <CopyRow label="IBAN" value={pay.iban.replace(/\s+/g, "")} display={formatIban(pay.iban)} copyId="iban" ident copyable={copyable} /> : null}
+            {action.amount ? (
+              <CopyRow
+                label="Amount"
+                value={amountForTransfer(action.amount)}
+                display={formatMoney(action.amount, { currency: action.currency })}
+                copyId="amount"
+                copyable={copyable}
+              />
+            ) : null}
+            {pay.reference ? <CopyRow label="Reference" value={paymentReference(pay.reference)} copyId="reference" ident copyable={copyable} /> : null}
+          </dl>
+        </>
       ) : (
         <p className="mt-3 text-sm leading-relaxed text-muted">{item?.action ?? "The payment details are in the letter."}</p>
       )}
@@ -258,6 +290,7 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
           docId={action.docId}
           collapsible
           canReadAgain={canReadLetterAgain(letter)}
+          onMismatch={setMismatch}
           className="mt-3"
         />
       ) : null}

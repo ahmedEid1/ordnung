@@ -75,7 +75,12 @@ export function savedNote(setting: DesktopSetting, time: string, demo: "static" 
 export function failureLine(status: Pick<DesktopReminders, "last_failure" | "last_failure_on" | "last_shown_on"> | undefined): string | null {
   if (!status?.last_failure || !status.last_failure_on) return null;
   if (status.last_shown_on && status.last_shown_on > status.last_failure_on) return null;
-  return `The last notification (${formatDate(status.last_failure_on)}) couldn't be shown: ${status.last_failure}`;
+  return `The last notification (${formatDate(status.last_failure_on)}) couldn't be shown on this computer. Check that your desktop shows notifications, then send a test notification.`;
+}
+
+/** The system tool's own words about that failure (folded away under the sentence above). */
+export function failureDetail(status: Pick<DesktopReminders, "last_failure"> | undefined): string | null {
+  return status?.last_failure?.trim() || null;
 }
 
 /** Start at login, in words for the badge. */

@@ -1,5 +1,5 @@
 /**
- * The Inbox's "From your folder — waiting for you" group (pure, unit-tested): which letters wait,
+ * The Inbox's "From your folder — not read yet" group (pure, unit-tested): which letters wait,
  * in what order, and how they are described. A letter waits (`held`) when the watched folder brought
  * it in and the person hasn't said yet whether Claude may read it (docs/privacy.md).
  */

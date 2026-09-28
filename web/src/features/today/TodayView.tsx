@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
+import { Link } from "react-router";
 import { Lock, Plus } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useProfile } from "@/api/hooks";
@@ -19,10 +20,12 @@ import { SecretaryNote } from "./SecretaryNote";
 import { CalendarCard, PLEASE_CHECK_SHOWN, PleaseCheckCard, repeatsPleaseCheck } from "./SideCards";
 import { TopThree } from "./TopThree";
 import { WaitingCard } from "./WaitingCard";
+import { AttentionCard } from "./AttentionCard";
 import { stagger } from "./motion";
 import { agendaSentence, toPayTotals } from "./selection";
 import { useTodayData } from "./useTodayData";
 import { WeeklyLink, WeeklyPrompt } from "@/features/week/WeeklyPrompt";
+import { useStickyError } from "@/lib/hooks";
 
 /**
  * Coming up and the side cards (Please check, calendar) sit side by side once the page is wide
@@ -123,7 +126,7 @@ function FirstRun() {
     <EmptyState
       illustration="inbox"
       title="Add your first letters"
-      description="A PDF or a phone photo of any letter — a bill, a contract, a notice from an office."
+      description="A PDF, a phone photo or a saved e-mail of any letter — a bill, a contract, a notice from an office."
       action={
         <Button variant="primary" icon={Plus} onClick={openPicker} loading={uploading}>
           Add letters
@@ -147,6 +150,13 @@ function FirstRun() {
       <p className="mt-5 inline-flex items-center gap-1.5 text-sm text-muted">
         <Lock className="size-3.5 shrink-0" aria-hidden /> Your files stay on this computer.
       </p>
+      <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
+        Or let Ordnung pick up what your scanner saves:{" "}
+        <Link to="/settings?section=folder" className="rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
+          choose a watched folder
+        </Link>
+        . Moving from another computer? <code className="font-ident text-[13px] text-ink">ordnung restore</code> brings back your encrypted backup.
+      </p>
     </EmptyState>
   );
 }
@@ -167,10 +177,8 @@ export function TodayView() {
   // A retry of a load that failed starts over as "pending" (and forgets the error), so remember the
   // last error: the message stays on screen, worded the same, while "Try again" runs.
   const error = data.dashboard.error;
-  const [lastError, setLastError] = useState<unknown>(null);
-  if (error && error !== lastError) setLastError(error);
-  else if (data.dash && lastError !== null) setLastError(null);
-  const failed = !data.dash && (data.isError || lastError !== null);
+  const lastError = useStickyError(error, Boolean(data.dash));
+  const failed = !data.dash && (data.isError || Boolean(lastError));
 
   if (data.isPending && !failed) return <TodaySkeleton name={profileName} today={todayISO} hour={hour} />;
   if (failed || !data.dash || !data.derived) {
@@ -213,6 +221,7 @@ export function TodayView() {
         <Greeting name={name} today={derived.day} money={dash.money} toPay={toPayTotals(derived.candidates)} hour={hour} />
         <SecretaryNote fallback={fallback} waiting={dash.waiting} />
         <WaitingCard count={dash.waiting} />
+        <AttentionCard />
       </div>
 
       <TopThree actions={derived.top} next={derived.nextUp} partyById={partyById} today={derived.day} waiting={dash.waiting} />

@@ -15,7 +15,7 @@ import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { cn } from "@/lib/utils";
 import { isStaticDemo } from "@/mocks/mode";
 import { BreakablePath } from "./DataSection";
-import { autostartLabel, DESKTOP_MODES, failureLine, MODE_HINTS, NOTHING_APPEARED, previewFor, savedNote, testMode, testOutcome, timeError, type DesktopSetting } from "./desktop";
+import { autostartLabel, DESKTOP_MODES, failureDetail, failureLine, MODE_HINTS, NOTHING_APPEARED, previewFor, savedNote, testMode, testOutcome, timeError, type DesktopSetting } from "./desktop";
 import { SaveBar, SettingsCard } from "./SettingsCard";
 
 const TOOL_NAMES: Record<string, string> = { "notify-send": "notify-send", osascript: "macOS notifications", powershell: "Windows notifications" };
@@ -221,10 +221,20 @@ function Editor({ settings }: { settings: AppSettings }) {
             </span>
           ) : null}
           {failure ? (
-            <p className="flex basis-full gap-1.5 text-[13px] leading-5 text-warn-ink">
-              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-              <span className="min-w-0 [overflow-wrap:anywhere]">{failure}</span>
-            </p>
+            <div className="basis-full text-[13px] leading-5">
+              <p className="flex gap-1.5 text-warn-ink">
+                <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <span className="min-w-0 [overflow-wrap:anywhere]">{failure}</span>
+              </p>
+              {failureDetail(data) ? (
+                <details className="mt-1 pl-[1.375rem]">
+                  <summary className="inline-flex min-h-6 cursor-pointer items-center rounded text-[12.5px] font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
+                    What the system said
+                  </summary>
+                  <p className="mt-1 font-mono text-[12px] leading-5 text-muted [overflow-wrap:anywhere]">{failureDetail(data)}</p>
+                </details>
+              ) : null}
+            </div>
           ) : tested && data && !demo ? (
             // the toast goes away; where to look stays while the person looks for it
             <p className="basis-full text-[12.5px] leading-5 text-muted">{NOTHING_APPEARED[data.system]}</p>

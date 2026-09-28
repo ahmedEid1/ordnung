@@ -61,7 +61,7 @@ export function HeldCard({ detail, className }: { detail: DocumentDetail; classN
             ? () =>
                 wait
                   .mutateAsync(ids)
-                  .then(() => void toast({ title: "It waits for you again", tone: "info" }))
+                  .then(() => void toast({ title: "It's back with the letters not read yet", tone: "info" }))
                   .catch(() => undefined)
             : undefined,
         });
@@ -74,7 +74,7 @@ export function HeldCard({ detail, className }: { detail: DocumentDetail; classN
       <div className="px-5 pb-5 pt-5 sm:px-6 sm:pt-6">
         <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-accent">
           <Hourglass className="size-3.5" aria-hidden />
-          Waiting for you
+          Not read yet
         </p>
         <h1 id="held-title" className="display mt-2 text-[24px] font-semibold leading-[1.2] text-ink outline-none [overflow-wrap:anywhere] sm:text-[27px]">
           {title}

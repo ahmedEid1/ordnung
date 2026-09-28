@@ -39,6 +39,7 @@ import {
   type TimelineFilters as Filters,
 } from "./model";
 import { TOUR_TARGETS } from "@/features/tour/steps";
+import { useStickyError } from "@/lib/hooks";
 
 const DESCRIPTION = "Your year ahead as life lanes — permits, contracts, deadlines and study — and every date, month by month.";
 
@@ -134,9 +135,7 @@ export function TimelineView() {
   // so the message stays on screen, worded the same, while "Try again" runs.
   const loaded = Boolean(lanesQ.data && timelineQ.data);
   const error = lanesQ.error ?? timelineQ.error;
-  const [lastError, setLastError] = useState<unknown>(null);
-  if (error && error !== lastError) setLastError(error);
-  else if (loaded && lastError !== null) setLastError(null);
+  const lastError = useStickyError(error, loaded);
   const failed = !loaded && (lanesQ.isError || timelineQ.isError || lastError !== null);
 
   if (failed) {

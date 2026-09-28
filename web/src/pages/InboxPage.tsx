@@ -4,7 +4,7 @@ import { FileUp, Lock, Plus } from "lucide-react";
 import type { DocumentKind } from "@/api/types";
 import { useDocuments, useItems, useParties } from "@/api/hooks";
 import { dismissJob } from "@/api/sse";
-import { useDebounced, useMediaQuery } from "@/lib/hooks";
+import { useDebounced, useMediaQuery, useStickyError } from "@/lib/hooks";
 import { useTodayISO } from "@/lib/today";
 import { documentKindLabel } from "@/lib/copy";
 import { Page, PageHeader } from "@/components/shell/Page";
@@ -82,10 +82,8 @@ export default function InboxPage() {
 
   // A retry of a load that failed starts over as "pending" (and forgets the error), so remember
   // the last error: the message stays on screen, worded the same, while "Try again" runs.
-  const [lastError, setLastError] = useState<unknown>(null);
-  if (all.error && all.error !== lastError) setLastError(all.error);
-  else if (all.data && lastError !== null) setLastError(null);
-  const failedToLoad = !all.data && (all.isError || lastError !== null);
+  const lastError = useStickyError(all.error, Boolean(all.data));
+  const failedToLoad = !all.data && (all.isError || Boolean(lastError));
 
   // ---- where focus goes when the tray (or the recap's opener) is gone: the letters just read ----
   const lettersRef = useRef<HTMLDivElement>(null);
@@ -217,7 +215,7 @@ export default function InboxPage() {
         <EmptyState
           illustration="inbox"
           title="No letters yet"
-          description="Add a PDF or a phone photo of a letter. Ordnung reads it with your own Claude, explains it and files every date and amount."
+          description="Add a PDF, a phone photo or a saved e-mail of a letter. Ordnung reads it with your own Claude, explains it and files every date and amount."
           action={
             <Button variant="primary" icon={Plus} onClick={openPicker}>
               Add letters

@@ -107,11 +107,14 @@ export interface GiroCodeSectionProps {
   /** "They don't match" may offer to read the letter again (it isn't private or being read, and this
    * isn't the online demo, which reads no letters). */
   canReadAgain?: boolean;
+  /** "They don't match" opened or closed: the panel turns its copy buttons off meanwhile (the details
+   * shown are the ones the person says are wrong). */
+  onMismatch?: (open: boolean) => void;
   className?: string;
 }
 
 /** A pay panel's GiroCode block: the code, the comparison with the letter, or why there is none. */
-export function GiroCodeSection({ code, docId, collapsible = false, canReadAgain = false, className }: GiroCodeSectionProps) {
+export function GiroCodeSection({ code, docId, collapsible = false, canReadAgain = false, onMismatch, className }: GiroCodeSectionProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
   // the mutation lives here, not in the "compare" block: that block is gone once the code is ready,
@@ -154,6 +157,7 @@ export function GiroCodeSection({ code, docId, collapsible = false, canReadAgain
         headingRef={headingRef}
         confirmRef={confirmRef}
         canReadAgain={canReadAgain}
+        onMismatch={onMismatch}
         className={className}
       />
     );
@@ -267,7 +271,9 @@ function Ready({
 }
 
 export const GIROCODE_MISMATCH =
-  "Then don't use this code or the copy buttons for this letter: type the payee, IBAN, reference and amount into your banking app yourself, as the letter shows them.";
+  "Then type the payee, IBAN, reference and amount into your banking app yourself, as the paper letter shows them — not the details above, which Ordnung read differently (their copy buttons are off now).";
+/** Over the transfer details while "They don't match" is open. */
+export const GIROCODE_MISMATCH_DETAILS = "Doesn't match the letter — type the details from the paper.";
 export const GIROCODE_READING_AGAIN = "Reading it again — the details here update when it's done.";
 
 /** Bring a message that opened below a button clear of the panel's sticky footer. */
@@ -284,6 +290,7 @@ function CompareFirst({
   headingRef,
   confirmRef,
   canReadAgain,
+  onMismatch,
   className,
 }: {
   code: GiroCodeBlocked;
@@ -294,10 +301,16 @@ function CompareFirst({
   headingRef: RefObject<HTMLHeadingElement | null>;
   confirmRef: RefObject<HTMLButtonElement | null>;
   canReadAgain: boolean;
+  onMismatch?: (open: boolean) => void;
   className?: string;
 }) {
   const id = useId();
   const [mismatch, setMismatch] = useState(false);
+  // the panel's copy buttons follow the note; gone (the code is ready, or refused for another reason), they come back
+  useEffect(() => {
+    onMismatch?.(mismatch);
+  }, [mismatch, onMismatch]);
+  useEffect(() => () => onMismatch?.(false), [onMismatch]);
   const noteRef = useRef<HTMLDivElement>(null);
   const refusedRef = useRef<HTMLParagraphElement>(null);
   const readAgainRef = useRef<HTMLButtonElement>(null);

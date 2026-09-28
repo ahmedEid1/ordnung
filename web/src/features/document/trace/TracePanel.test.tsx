@@ -117,9 +117,11 @@ describe("How this was read", () => {
     await userEvent.click(screen.getByRole("radio", { name: "Reading 2" }));
     const compare = await screen.findByRole("button", { name: "Compare with reading 1" });
     expect(compare).toHaveAttribute("aria-pressed", "false");
+    expect(compare).not.toHaveClass("bg-accent-soft");
     await userEvent.click(compare);
-    // a toggle keeps its name: pressed says whether the comparison is shown
+    // a toggle keeps its name: pressed says whether the comparison is shown — and so does its look
     expect(compare).toHaveAttribute("aria-pressed", "true");
+    expect(compare).toHaveClass("bg-accent-soft");
     expect(compare).toHaveAccessibleName("Compare with reading 1");
     expect(compare).toHaveAttribute("aria-controls", "trace-compare");
     expect(screen.getByRole("status")).toHaveTextContent("What reading 2 decided differently from reading 1 is shown below.");
@@ -138,6 +140,7 @@ describe("How this was read", () => {
     expect(extract[0]!.textContent).toMatch(/Prompt version: 8\.6\.1 → 8\.7\.1/);
     await userEvent.click(compare);
     expect(compare).toHaveAttribute("aria-pressed", "false");
+    expect(compare).not.toHaveClass("bg-accent-soft");
     expect(compare).toHaveAccessibleName("Compare with reading 1");
     expect(screen.queryByRole("region", { name: /decided differently/ })).toBeNull();
   });

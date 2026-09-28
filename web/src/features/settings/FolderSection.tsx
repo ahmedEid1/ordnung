@@ -47,9 +47,9 @@ export function savedNote(before: FolderForm, after: FolderForm): string {
   if (!after.folder) return "Ordnung doesn't watch a folder any more.";
   if (after.folder !== before.folder)
     return after.autoRead
-      ? "Ordnung watches this folder now. Files already in it wait for you; new ones are read with Claude."
-      : "Ordnung watches this folder now. Its files wait for you in the Inbox.";
-  return after.autoRead ? "New files from the folder are read with Claude from now on." : "New files from the folder wait for you from now on.";
+      ? "Ordnung watches this folder now. Files already in it wait unread; new ones are read with Claude."
+      : "Ordnung watches this folder now. Its files wait unread in the Inbox.";
+  return after.autoRead ? "New files from the folder are read with Claude from now on." : "New files from the folder wait unread from now on.";
 }
 
 /**
@@ -171,7 +171,7 @@ export function FolderSection({ settings }: { settings: AppSettings }) {
               label="Read new files with Claude straight away"
               description={
                 canRead
-                  ? "Off: files wait in your Inbox until you choose “Read these” — nothing is sent to Claude before that. On: files that arrive in the folder from now on are sent to Claude as soon as they appear. The files already in the folder when you choose it, and the ones already waiting, still wait for you."
+                  ? "Off: files wait in your Inbox until you choose “Read these” — nothing is sent to Claude before that. On: files that arrive in the folder from now on are sent to Claude as soon as they appear. The files already in the folder when you choose it, and the ones not read yet, still wait unread."
                   : "This demo reads no new letters with Claude: files from the folder always wait in your Inbox, whatever this switch says. In the installed app, files that arrive later are sent to Claude as soon as they appear; the ones already in the folder still wait."
               }
             />
@@ -209,8 +209,8 @@ export function FolderSection({ settings }: { settings: AppSettings }) {
 
 /** What happens to a new file, in words (the privacy-relevant fact the Status card shows). */
 export function newFilesLine(status: Pick<FolderStatus, "auto_read" | "can_read">): string {
-  if (!status.can_read) return "New files wait for you — this demo reads nothing with Claude.";
-  return status.auto_read ? "New files are read with Claude as soon as they arrive." : "New files wait for you before anything is sent to Claude.";
+  if (!status.can_read) return "New files wait unread — this demo reads nothing with Claude.";
+  return status.auto_read ? "New files are read with Claude as soon as they arrive." : "New files wait unread before anything is sent to Claude.";
 }
 
 function FolderState({ status }: { status: FolderStatus }) {
@@ -257,7 +257,7 @@ function FolderState({ status }: { status: FolderStatus }) {
           </Button>
         </div>
       ) : (
-        <p className="text-base text-muted">No folder is watched. Choose one above — the files already in it are added once and wait for you, then every new one.</p>
+        <p className="text-base text-muted">No folder is watched. Choose one above — the files already in it are added once and wait unread, then every new one.</p>
       )}
 
       {status.problem ? <Callout tone="warn">{status.problem}</Callout> : null}
@@ -265,7 +265,7 @@ function FolderState({ status }: { status: FolderStatus }) {
       {status.waiting ? (
         <Link to="/inbox" className="flex items-center gap-3 rounded-xl border border-accent/25 bg-accent-soft/60 px-4 py-3 transition-colors hover:bg-accent-soft">
           <Hourglass className="size-4 shrink-0 text-accent" aria-hidden />
-          <span className="min-w-0 flex-1 text-[14px] font-medium text-ink">{plural(status.waiting, "letter")} waiting for you in the Inbox</span>
+          <span className="min-w-0 flex-1 text-[14px] font-medium text-ink">{plural(status.waiting, "letter")} not read yet in the Inbox</span>
           <ArrowRight className="size-4 shrink-0 text-accent" aria-hidden />
         </Link>
       ) : null}

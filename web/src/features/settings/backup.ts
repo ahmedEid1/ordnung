@@ -47,9 +47,17 @@ export function backupSummary(info: Pick<BackupInfo, "letters" | "files" | "byte
   return [count(info.letters, "letter", "letters"), count(info.files, "file", "files"), `about ${formatFileSize(info.bytes)}`].join(" · ");
 }
 
+/** What the backup holds, after its summary — never "every letter" when a linked folder is left out. */
+export function backupContents(leftOut: readonly string[]): string {
+  return leftOut.length
+    ? "the database and everything inside the data folder — not the linked folders named below."
+    : "the database, every letter as you added it, page images and letter PDFs.";
+}
+
 /** What a backup leaves out (`BackupInfo.left_out`: links, never followed), in one sentence. */
 export function leftOutSentence(names: string[]): string {
-  const listed = names.length > 3 ? [...names.slice(0, 3), `${names.length - 3} more`] : names;
+  const quoted = names.map((name) => `“${name}”`);
+  const listed = quoted.length > 3 ? [...quoted.slice(0, 3), `${names.length - 3} more`] : quoted;
   const shown = listed.length > 1 ? `${listed.slice(0, -1).join(", ")} and ${listed.at(-1)}` : (listed[0] ?? "");
   const [what, it] = names.length === 1 ? ["is a link", "it"] : ["are links", "them"];
   return `${shown} ${what} to somewhere outside the data folder, and a backup never follows links. Back ${it === "it" ? "that" : "those"} up separately, or move ${it} into the data folder.`;

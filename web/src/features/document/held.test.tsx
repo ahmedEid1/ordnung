@@ -38,13 +38,13 @@ describe("a letter waiting from the folder", () => {
     const { container } = renderWithProviders(<DocumentView detail={d} />, { client: client() });
     const card = screen.getByRole("article", { name: "Scan_2026-09-28_0914.pdf" });
     expect(within(card).getByRole("heading", { level: 1 })).toHaveTextContent("Scan_2026-09-28_0914.pdf");
-    expect(within(card).getByText("Waiting for you")).toBeInTheDocument();
+    expect(within(card).getByText("Not read yet")).toBeInTheDocument();
     expect(within(card).getByText(/It came from your watched folder\. It is stored on this computer and has not been sent to Claude\./)).toBeInTheDocument();
     expect(within(card).getByRole("button", { name: "Read it with Claude" })).toBeEnabled();
     expect(within(card).getByRole("button", { name: "Keep private" })).toBeEnabled();
     // nothing was read, so nothing read is shown — and no "Read again" for a letter never read
     expect(screen.queryByRole("button", { name: "Read again" })).toBeNull();
-    expect(screen.getByText("Waiting for you — not read by AI yet · 1 page")).toBeInTheDocument();
+    expect(screen.getByText("Not read yet — not sent to AI · 1 page")).toBeInTheDocument();
     assertNoRawEnumsInElement(container);
   });
 
@@ -103,7 +103,7 @@ describe("what became of an attachment, in words", () => {
 
   it("a waiting letter's provenance says it wasn't read", () => {
     expect(provenanceText({ status: "held", ai_private: true, pages: 2, ai_processed_at: null, text_mode: "text" } as DocumentDetail["document"])).toBe(
-      "Waiting for you — not read by AI yet · 2 pages",
+      "Not read yet — not sent to AI · 2 pages",
     );
   });
 });
@@ -154,7 +154,7 @@ describe("answering on the letter's page", () => {
     renderPage("doc_folder_scan");
     await user.click(await screen.findByRole("button", { name: "Undo “Keep private”" }));
     await waitFor(() => expect(srv.db.document("doc_folder_scan")!.status).toBe("held"));
-    expect(await screen.findByText("It waits for you again")).toBeInTheDocument();
+    expect(await screen.findByText("It's back with the letters not read yet")).toBeInTheDocument();
     // named as the button looks on every screen ("with Claude" is hidden on phones)
     expect(screen.getByText("Choose “Read it” to have Claude read it.")).toBeInTheDocument();
     const card = await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" });

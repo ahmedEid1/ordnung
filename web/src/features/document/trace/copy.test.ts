@@ -127,7 +127,7 @@ describe("trace copy", () => {
     expect(runResult(run)).toEqual({ text: "Filed", tone: "ok" });
     expect(runResult({ ...run, result: "needs_review" })).toEqual({ text: "Filed — something to check", tone: "warn" });
     // a letter from the watched folder is only stored until the person answers
-    expect(runResult({ ...run, result: "held" })).toEqual({ text: "Stored — waiting for you", tone: "neutral" });
+    expect(runResult({ ...run, result: "held" })).toEqual({ text: "Stored — not read yet", tone: "neutral" });
     expect(runResult({ ...run, status: "error", ended: "failed", result: "failed", error: "x" }).tone).toBe("danger");
     expect(runResult({ ...run, status: "error", ended: "paused", result: null, error: "Paused" })).toEqual({ text: "Paused — read again later", tone: "warn" });
     expect(runResult({ ...run, status: "error", ended: "stopped", result: null, error: "Stopped" })).toEqual({ text: "Stopped — read again later", tone: "warn" });

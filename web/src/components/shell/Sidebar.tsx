@@ -13,6 +13,7 @@ import { NAV_ITEMS, SETTINGS_ITEM, isNavItemActive, type NavItem } from "./nav";
 import { DemoBadge } from "./DemoBadge";
 import { ThemeToggle } from "./ThemeToggle";
 import { TOUR_DOCK_ID } from "@/features/tour/steps";
+import { useBackgroundProblems } from "@/features/settings/attention";
 
 /** Count of letters that need the user ("Please check"). */
 export function usePleaseCheckCount(): number {
@@ -35,9 +36,9 @@ export function useInboxCounts(): InboxCounts {
 
 const toCheck = (n: number) => `${n} ${n === 1 ? "letter" : "letters"} to check`;
 
-/** "1 letter to check, 3 waiting for you" (`short`: "1 to check, 3 waiting for you"). */
+/** "1 letter to check, 3 not read yet" (`short`: "1 to check, 3 not read yet"). */
 export function inboxCountText({ check, waiting }: InboxCounts, short = false): string {
-  return [check ? (short ? `${check} to check` : toCheck(check)) : "", waiting ? `${waiting} waiting for you` : ""].filter(Boolean).join(", ");
+  return [check ? (short ? `${check} to check` : toCheck(check)) : "", waiting ? `${waiting} not read yet` : ""].filter(Boolean).join(", ");
 }
 
 /** Hover text of the Inbox's count: what each number is. */
@@ -55,11 +56,17 @@ export function InboxBubble({ counts, className }: { counts: InboxCounts; classN
   return <CountBadge count={counts.check + counts.waiting} tone={counts.check ? "warn" : "accent"} variant="solid" size="compact" className={className} />;
 }
 
-function NavEntry({ item, rail, counts }: { item: NavItem; rail: boolean; counts?: InboxCounts }) {
+/** A warn dot on Settings while the folder, calendar sync or the morning notification stopped working. */
+export function AttentionDot({ className }: { className?: string }) {
+  return <span aria-hidden data-testid="attention-dot" className={cn("size-2 rounded-full bg-warn ring-2 ring-surface-2 dark:ring-surface", className)} />;
+}
+
+function NavEntry({ item, rail, counts, attention = false }: { item: NavItem; rail: boolean; counts?: InboxCounts; attention?: boolean }) {
   const { pathname } = useLocation();
   const active = isNavItemActive(item, pathname);
   const Icon = item.icon;
   const badge = counts ? counts.check + counts.waiting : 0;
+  const attentionLabel = attention ? `${item.label}, needs your attention` : undefined;
 
   if (rail) {
     // icon over a short label (like the phone tab bar): the rail is readable without hovering
@@ -67,7 +74,7 @@ function NavEntry({ item, rail, counts }: { item: NavItem; rail: boolean; counts
       <Link
         to={item.to}
         aria-current={active ? "page" : undefined}
-        aria-label={counts && badge ? `${item.label}, ${inboxCountText(counts)}` : undefined}
+        aria-label={counts && badge ? `${item.label}, ${inboxCountText(counts)}` : attentionLabel}
         title={counts && badge ? inboxCountTitle(counts) : undefined}
         className={cn(
           "group flex w-full flex-col items-center gap-1 rounded-lg py-1.5 text-xs font-medium outline-none transition-colors",
@@ -84,6 +91,7 @@ function NavEntry({ item, rail, counts }: { item: NavItem; rail: boolean; counts
         >
           <Icon className="size-[18px]" aria-hidden />
           {counts && badge ? <InboxBubble counts={counts} className="absolute -right-1 -top-1 ring-2 ring-surface-2 dark:ring-surface" /> : null}
+          {attention ? <AttentionDot className="absolute right-1.5 top-0.5" /> : null}
         </span>
         <span className="max-w-full truncate leading-4">{item.short ?? item.label}</span>
       </Link>
@@ -94,6 +102,7 @@ function NavEntry({ item, rail, counts }: { item: NavItem; rail: boolean; counts
     <Link
       to={item.to}
       aria-current={active ? "page" : undefined}
+      aria-label={counts && badge ? `${item.label}, ${inboxCountText(counts)}` : attentionLabel}
       className={cn(
         "group relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-[14px] font-medium outline-none transition-colors",
         active ? "bg-surface text-ink shadow-[var(--shadow-card)] ring-1 ring-line" : "text-muted hover:bg-surface-3/60 hover:text-ink",
@@ -102,11 +111,12 @@ function NavEntry({ item, rail, counts }: { item: NavItem; rail: boolean; counts
     >
       <Icon className={cn("size-[18px] shrink-0 transition-colors", active ? "text-accent" : "text-muted group-hover:text-ink")} aria-hidden />
       <span className="flex-1 truncate">{item.label}</span>
+      {attention ? <AttentionDot /> : null}
       {counts && badge ? (
-        // the counts say what they are on hover too, not only to screen readers
-        <span title={inboxCountTitle(counts)} className="inline-flex gap-1">
-          <CountBadge count={counts.check} tone="warn" label={toCheck(counts.check)} />
-          <CountBadge count={counts.waiting} tone="accent" label={`${counts.waiting} waiting for you`} />
+        // one bubble, as on the rail and the phone's tab bar (warn-coloured while a letter is to check);
+        // what it counts is in its accessible name and its hover text
+        <span title={inboxCountTitle(counts)} className="inline-flex">
+          <CountBadge count={badge} tone={counts.check ? "warn" : "accent"} variant="solid" />
         </span>
       ) : null}
     </Link>
@@ -162,6 +172,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useLocalStorage("ordnung.sidebar.collapsed", false);
   const rail = !isDesktop || collapsed;
   const inbox = useInboxCounts();
+  const attention = useBackgroundProblems().length > 0;
   const toggleLabel = collapsed ? "Expand sidebar" : "Collapse sidebar";
 
   return (
@@ -216,7 +227,7 @@ export function Sidebar() {
 
       <div className={cn("flex shrink-0 flex-col gap-2 pb-4 pt-2", rail && "w-full items-center")}>
         <DemoBadge compact={rail} className={rail ? undefined : "self-start"} />
-        <NavEntry item={SETTINGS_ITEM} rail={rail} />
+        <NavEntry item={SETTINGS_ITEM} rail={rail} attention={attention} />
         <div className={cn("mt-1 flex items-center gap-2 border-t border-line pt-3", rail ? "w-full flex-col" : "pl-1.5")}>
           {!rail ? <ProfileLink /> : null}
           <ThemeToggle compact className={rail ? undefined : "ml-auto"} />

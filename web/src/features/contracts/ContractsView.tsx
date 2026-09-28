@@ -37,6 +37,7 @@ import {
   sortContracts,
   type StatusFilter,
 } from "./model";
+import { useStickyError } from "@/lib/hooks";
 
 const STATUSES: StatusFilter[] = ["active", "cancelled", "ended", "all"];
 const STATUS_LABEL: Record<StatusFilter, string> = { active: "Active", cancelled: "Cancelled", ended: "Ended", all: "All" };
@@ -206,10 +207,8 @@ export function ContractsView() {
   // A retry of a failed load may start over as "pending": remember the error, so the message stays
   // on screen, worded the same, while "Try again" runs.
   const loaded = Boolean(contractsQ.data);
-  const [lastError, setLastError] = useState<unknown>(null);
-  if (contractsQ.error && contractsQ.error !== lastError) setLastError(contractsQ.error);
-  else if (loaded && lastError !== null) setLastError(null);
-  const failed = !loaded && (contractsQ.isError || lastError !== null);
+  const lastError = useStickyError(contractsQ.error, loaded);
+  const failed = !loaded && (contractsQ.isError || Boolean(lastError));
   const loading = !loaded && !failed;
 
   if (failed) {

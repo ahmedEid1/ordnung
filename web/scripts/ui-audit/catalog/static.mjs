@@ -170,11 +170,9 @@ export async function staticCatalog({ webDir }) {
   add("dev-ui-popover", "/dev/ui", "Static demo: gallery receipt popover (“Why this date? (phone contract)”).", (c) =>
     c.click(inMain(c.page).getByRole("button", { name: /Why this date\? \(phone contract\)/ })),
   );
-  add("add-letter-unavailable", "/inbox", "Static demo: adding a letter → “Not available in the online demo”.", async (c) => {
+  add("add-letter-unavailable", "/inbox", "Static demo: adding a letter → “Install Ordnung to add your own letters”.", async (c) => {
     await c.addFiles([{ name: "Mietvertrag.pdf", mimeType: "application/pdf" }]);
-    const dialog = c.page.getByRole("dialog");
-    await c.click(dialog.getByRole("button", { name: /^Add letter|^Store privately/ }));
-    await c.wait(600);
+    await c.page.getByRole("dialog", { name: "Install Ordnung to add your own letters" }).waitFor({ timeout: 10_000 });
     await settle(c.page, { idle: false });
   });
   // ---------------------------------------------------------------------------------------------

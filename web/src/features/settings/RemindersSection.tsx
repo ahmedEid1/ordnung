@@ -152,7 +152,7 @@ function BrowserNotificationsCard() {
     <SettingsCard
       title="Notifications in this browser"
       id="set-notify"
-      description="A gentle nudge on this computer — Ordnung has no server and sends nothing anywhere; your browser shows it."
+      description="A gentle nudge on this computer — Ordnung has no cloud server and sends nothing anywhere; your browser shows it."
     >
       <Switch
         checked={state.enabled}

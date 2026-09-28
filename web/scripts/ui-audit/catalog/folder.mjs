@@ -2,7 +2,7 @@
  * The watched folder on the live demo (SPEC § 8.1): a phase on its own demo data folder with a real
  * folder next to it — a scan and an e-mail with a PDF attached, copied from the demo's samples (with
  * a comment appended, so they are new to Ordnung). The demo only replays recorded answers, so the
- * watcher holds every file: the Inbox's "From your folder — waiting for you", the waiting letters, an
+ * watcher holds every file: the Inbox's "From your folder — not read yet", the waiting letters, an
  * e-mail's attachments, and Settings → Watched folder (watching, a refused path, a missing folder).
  */
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -56,7 +56,7 @@ export function folderPhase({ api, server }) {
     await c.goto(`/documents/${docs[key]}`);
   };
 
-  add("folder-inbox-waiting", "/inbox", "open /inbox with three files from the watched folder waiting", "Inbox: “From your folder — waiting for you” with a scan, an e-mail and its attachment.", (c) =>
+  add("folder-inbox-waiting", "/inbox", "open /inbox with three files from the watched folder waiting", "Inbox: “From your folder — not read yet” with a scan, an e-mail and its attachment.", (c) =>
     c.goto("/inbox"),
   );
   add(
@@ -106,6 +106,19 @@ export function folderPhase({ api, server }) {
       await api.put("/api/settings", { inbox_dir: `${server.dataDir}-scans-missing` });
       await c.goto("/settings?section=folder");
       await c.page.getByText(/can't find this folder/).first().waitFor({ timeout: 15_000 }).catch(() => c.note("no problem shown"));
+      await settle(c.page);
+    },
+  );
+
+  add(
+    "folder-today-attention",
+    "/",
+    "set the folder to one that doesn't exist (PUT /api/settings), open / (Today)",
+    "Today's “Needs your attention”: the folder isn't watched, with a link to its Settings section; a dot on Settings in the sidebar.",
+    async (c) => {
+      await api.put("/api/settings", { inbox_dir: `${server.dataDir}-scans-missing` });
+      await c.goto("/");
+      await c.page.getByTestId("attention-card").waitFor({ timeout: 15_000 }).catch(() => c.note("no attention card"));
       await settle(c.page);
     },
   );

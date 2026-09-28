@@ -1,5 +1,5 @@
 /**
- * "From your folder — waiting for you": files the watched folder brought in (with the attachments of
+ * "From your folder — not read yet": files the watched folder brought in (with the attachments of
  * e-mails among them), stored on this computer and not read yet. The footer asks: "Read these N"
  * sends exactly the letters listed here to Claude (a file that arrives meanwhile is not included);
  * "Keep private" keeps them on this computer for good (docs/privacy.md, "The watched folder").
@@ -63,7 +63,7 @@ export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Documen
             ? () =>
                 wait
                   .mutateAsync(kept)
-                  .then((back) => void toast({ title: back.documents.length === 1 ? "It waits for you again" : "They wait for you again", tone: "info" }))
+                  .then((back) => void toast({ title: back.documents.length === 1 ? "It's back with the letters not read yet" : "They're back with the letters not read yet", tone: "info" }))
                   .catch(() => undefined)
             : undefined,
         });
@@ -79,16 +79,16 @@ export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Documen
         title={
           <>
             <span aria-hidden>
-              From your folder — waiting for you
+              From your folder — not read yet
               <span className="font-medium tabular-nums">{` · ${n}`}</span>
             </span>
-            <span className="sr-only">{`From your folder — waiting for you, ${plural(n, "letter")}`}</span>
+            <span className="sr-only">{`From your folder — not read yet, ${plural(n, "letter")}`}</span>
           </>
         }
         description="Stored on this computer and not read yet — nothing has been sent to Claude."
       />
       <div className="card overflow-hidden">
-        <ul className="divide-y divide-line" aria-label="Letters waiting for you">
+        <ul className="divide-y divide-line" aria-label="Letters not read yet">
           {rows.map((row) => (
             <WaitingItem key={row.doc.id} row={row} />
           ))}

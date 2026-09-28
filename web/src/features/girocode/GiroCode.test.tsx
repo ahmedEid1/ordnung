@@ -24,6 +24,7 @@ import {
   GIROCODE_CHECKED,
   GIROCODE_HINT,
   GIROCODE_MISMATCH,
+  GIROCODE_MISMATCH_DETAILS,
   GIROCODE_NO_REFERENCE,
   GIROCODE_ON_PHONE,
   GIROCODE_READING_AGAIN,
@@ -396,6 +397,22 @@ describe("the pay panel", () => {
     renderWithProviders(<PayPanel item={item} doc={doc} onPaid={() => {}} />);
     expect(screen.getByText("5126 0184 5122")).toBeInTheDocument();
     expect(screen.queryByText(/Kassenzeichen/)).toBeNull();
+  });
+
+  it("turns its copy buttons off while the details are said not to match the letter", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    const d = await detail("doc_parking");
+    const item = d.items.find((i) => i.kind === "payment")!;
+    renderWithProviders(<PayPanel item={item} doc={d.document} code={GIROCODES.itm_parking} onPaid={() => {}} />);
+    expect(screen.getByRole("button", { name: "Copy IBAN" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "They don't match" }));
+    // the person just said these are wrong: none of them is one tap away, and the panel says why
+    expect(screen.queryByRole("button", { name: /^Copy / })).toBeNull();
+    expect(screen.getByText(GIROCODE_MISMATCH_DETAILS)).toBeInTheDocument();
+    expect(screen.getByText(GIROCODE_MISMATCH)).not.toHaveTextContent(/this code/);
+    await user.click(screen.getByRole("button", { name: "They don't match" }));
+    expect(screen.getByRole("button", { name: "Copy IBAN" })).toBeInTheDocument();
   });
 
   it("wraps a long payee and reference instead of widening the panel", async () => {

@@ -89,7 +89,7 @@ describe("Today page", () => {
       upcoming: d.upcoming.filter((i) => (i.send_by ?? i.due_date ?? "") >= "2026-10-14"),
     }));
     renderWithProviders(<TodayView />, { client });
-    const card = await screen.findByRole("region", { name: "2 letters from your folder wait for you" });
+    const card = await screen.findByRole("region", { name: "Not read yet: 2 letters from your folder" });
     expect(within(card).getByRole("link", { name: /Review them/ })).toHaveAttribute("href", "/inbox");
     expect(screen.getByRole("heading", { name: "Nothing due from the letters that were read" })).toBeInTheDocument();
     expect(screen.queryByText(/All clear/)).toBeNull();

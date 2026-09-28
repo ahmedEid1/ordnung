@@ -1064,7 +1064,7 @@ const routes: [string, string, Handler][] = [
           id,
           filename: combine && group.length > 1 ? `${first.name.replace(/\.[^.]+$/, "")} (+${group.length - 1} pages)` : first.name,
           title: null,
-          mime: combine ? "application/pdf" : first.type || "application/octet-stream",
+          mime: combine ? "application/pdf" : first.type || (/\.eml$/i.test(first.name) ? "message/rfc822" : /\.txt$/i.test(first.name) ? "text/plain" : "application/octet-stream"),
           pages: group.length,
           status: isPrivate ? "processed" : "processing",
           kind: null,
@@ -1183,7 +1183,7 @@ const routes: [string, string, Handler][] = [
       const documents = [...chosen.values()];
       for (const d of documents) {
         Object.assign(d, { status: "held", updated_at: nowTs() });
-        db.log("document.waiting", `“${d.title ?? d.filename}” waits for you again`, "document", d.id);
+        db.log("document.waiting", `“${d.title ?? d.filename}” is back with the letters not read yet`, "document", d.id);
         emit("document.updated", { doc_id: d.id });
       }
       emit("folder.updated", { state: db.state.settings.inbox_dir ? "watching" : "off" });

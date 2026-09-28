@@ -42,12 +42,12 @@ describe("Settings → Watched folder", () => {
     expect(screen.getByLabelText("Folder")).toHaveValue("/home/sam/Scans");
     const status = await screen.findByRole("region", { name: "Status" });
     expect(await within(status).findByText("Watching")).toBeInTheDocument();
-    expect(within(status).getByRole("link", { name: /3 letters waiting for you in the Inbox/ })).toHaveAttribute("href", "/inbox");
+    expect(within(status).getByRole("link", { name: /3 letters not read yet in the Inbox/ })).toHaveAttribute("href", "/inbox");
     const recent = within(status).getByRole("list", { name: "Last files from the folder" });
     const rows = within(recent).getAllByRole("listitem");
     expect(rows).toHaveLength(4);
     expect(within(rows[0]!).getByRole("link", { name: "Scan_2026-09-28_0914.pdf" })).toHaveAttribute("href", "/documents/doc_folder_scan");
-    expect(within(rows[0]!).getByText("Waiting for you")).toBeInTheDocument();
+    expect(within(rows[0]!).getByText("Not read yet")).toBeInTheDocument();
     expect(within(rows[2]!).getByText("Already in Ordnung")).toBeInTheDocument();
     expect(within(rows[3]!).getByText(/^Not added — this PDF could not be opened/)).toBeInTheDocument();
     expect(within(rows[3]!).queryByRole("link")).toBeNull();
@@ -61,10 +61,10 @@ describe("Settings → Watched folder", () => {
     expect(auto).toHaveAttribute("aria-checked", "false");
     expect(screen.getByText(/nothing is sent to Claude before that/)).toBeInTheDocument();
     // only later arrivals are read at once: the files already there still wait
-    expect(screen.getByText(/files that arrive in the folder from now on are sent to Claude.*The files already in the folder when you choose it.*still wait for you/)).toBeInTheDocument();
+    expect(screen.getByText(/files that arrive in the folder from now on are sent to Claude.*The files already in the folder when you choose it.*still wait unread/)).toBeInTheDocument();
     expect(screen.getByText("A cloud-synced folder is already shared")).toBeInTheDocument();
     const status = await screen.findByRole("region", { name: "Status" });
-    expect(await within(status).findByText("New files wait for you before anything is sent to Claude.")).toBeInTheDocument();
+    expect(await within(status).findByText("New files wait unread before anything is sent to Claude.")).toBeInTheDocument();
     await user.click(auto);
     await user.click(screen.getByRole("button", { name: "Save changes" }));
     // the note says what changed: only the switch
@@ -80,7 +80,7 @@ describe("Settings → Watched folder", () => {
     expect(auto).toBeInTheDocument();
     expect(await screen.findByText(/This demo reads no new letters with Claude: files from the folder always wait/)).toBeInTheDocument();
     const status = await screen.findByRole("region", { name: "Status" });
-    expect(await within(status).findByText("New files wait for you — this demo reads nothing with Claude.")).toBeInTheDocument();
+    expect(await within(status).findByText("New files wait unread — this demo reads nothing with Claude.")).toBeInTheDocument();
   });
 
   it("the status's load error sits in its card as a plain level-3 message", async () => {

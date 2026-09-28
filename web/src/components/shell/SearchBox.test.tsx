@@ -250,7 +250,7 @@ describe("the empty phone sheet", () => {
     for (const o of options) expect(o.querySelector("time")).not.toBeNull();
     expect(within(options[0]!).getByRole("img")).toHaveAccessibleName();
     // a letter waiting from the folder is not "Other": it says it waits
-    expect(options.some((o) => within(o).queryByRole("img", { name: "Waiting for you" }))).toBe(true);
+    expect(options.some((o) => within(o).queryByRole("img", { name: "Not read yet" }))).toBe(true);
     const field = within(sheet).getByRole("combobox", { name: "Search your letters" });
     await waitFor(() => expect(field).toHaveFocus());
     await user.keyboard("{ArrowDown}");

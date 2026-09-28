@@ -154,14 +154,25 @@ describe("photos as pages of one letter", () => {
 });
 
 describe("files Ordnung can't read", () => {
-  it("are named in the warning, with every type it does read (WEBP too)", async () => {
-    const user = renderAdder([new File(["x"], "notizen.txt", { type: "text/plain" })]);
+  it("are named in the warning, with every type it does read (WEBP and e-mails too)", async () => {
+    const user = renderAdder([new File(["x"], "notizen.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })]);
     await user.click(screen.getByRole("button", { name: "Add them" }));
     const warning = await screen.findByText("1 file skipped");
     const toast = warning.closest("li")!;
-    expect(toast).toHaveTextContent("notizen.txt isn't a PDF or photo");
+    expect(toast).toHaveTextContent("notizen.docx isn't a file Ordnung reads");
     expect(toast).toHaveTextContent("JPG, PNG, WEBP, HEIC");
+    expect(toast).toHaveTextContent("saved e-mails (.eml)");
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("takes a saved e-mail and a text file like the watched folder does", async () => {
+    const user = renderAdder([
+      new File(["From: a@example.org\r\nSubject: Rechnung\r\n\r\nHallo"], "rechnung.eml", { type: "" }),
+      new File(["Notiz"], "notiz.txt", { type: "text/plain" }),
+    ]);
+    await user.click(screen.getByRole("button", { name: "Add them" }));
+    expect(screen.queryByText(/skipped/)).toBeNull();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 });
 

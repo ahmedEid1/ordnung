@@ -1,5 +1,5 @@
 /**
- * "2 letters from your folder wait for you" — letters the watched folder brought in that nobody has
+ * "Not read yet: 2 letters from your folder" — letters the watched folder brought in that nobody has
  * read yet (docs/privacy.md, "The watched folder"). They are in no other part of Today: until the
  * person lets Claude read them (or keeps them private), Ordnung doesn't know what they ask or by
  * when — so Today says they wait instead of "nothing needs you". A waiting letter never reminds on
@@ -12,9 +12,9 @@ import { buttonVariants } from "@/components/ui/Button";
 import { plural } from "@/lib/utils";
 import { fadeUp } from "./motion";
 
-/** "2 letters from your folder wait for you" / "1 letter from your folder waits for you". */
+/** "Not read yet: 2 letters from your folder" — never "waiting for", which is what you wait for from others. */
 export function waitingTitle(count: number): string {
-  return `${plural(count, "letter")} from your folder ${count === 1 ? "waits" : "wait"} for you`;
+  return `Not read yet: ${plural(count, "letter")} from your folder`;
 }
 
 export function WaitingCard({ count }: { count: number }) {

@@ -2,7 +2,7 @@
  * The watched folder on the real demo (SPEC § 8.1), where jsdom can't look: a real folder next to
  * the demo's data holds a scan with a long scanner file name and an e-mail with a PDF attached; the
  * running watcher picks them up and holds them (the demo can't read new letters). The Inbox's "From
- * your folder — waiting for you", a waiting letter and Settings → Watched folder fit from 320 to
+ * your folder — not read yet", a letter not read yet and Settings → Watched folder fit from 320 to
  * 1280 px without sideways scrolling, long names wrap inside their cards, the answers are ≥ 24 px
  * targets that don't spill out of their buttons, and axe finds nothing serious in either theme.
  * Today says the letters wait (its card, the Inbox's count) instead of "all clear", and on a wide
@@ -93,10 +93,10 @@ for (const width of [320, 390, 768, 1280]) {
   test(`${width} px: the waiting letters fit, their names wrap and both answers are full-size targets`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await open(page, "/inbox", "Inbox");
-    const group = page.getByRole("region", { name: /From your folder — waiting for you/ });
+    const group = page.getByRole("region", { name: /From your folder — not read yet/ });
     await expect(group).toBeVisible();
     expect(await sideways(page), "the page scrolls sideways").toBe(0);
-    const list = group.getByRole("list", { name: "Letters waiting for you" });
+    const list = group.getByRole("list", { name: "Letters not read yet" });
     const links = list.getByRole("link");
     await expect(links).toHaveCount(3);
     for (const link of await links.all()) {
@@ -123,7 +123,7 @@ for (const width of [320, 1280]) {
     const main = page.getByRole("main");
     await expect(main.getByRole("heading", { level: 2, name: "Watched folder" })).toBeVisible();
     await expect(main.getByText("Watching", { exact: true })).toBeVisible();
-    await expect(main.getByRole("link", { name: /3 letters waiting for you in the Inbox/ })).toBeVisible();
+    await expect(main.getByRole("link", { name: /3 letters not read yet in the Inbox/ })).toBeVisible();
     const recent = main.getByRole("list", { name: "Last files from the folder" });
     await expect(recent.getByRole("listitem")).toHaveCount(2);
     expect(await sideways(page), "the page scrolls sideways").toBe(0);
@@ -134,7 +134,7 @@ for (const width of [320, 1280]) {
     const scan = waiting.find((d) => d.filename === SCAN)!;
     await open(page, `/documents/${scan.id}`);
     const card = page.getByRole("article", { name: SCAN });
-    await expect(card.getByText("Waiting for you")).toBeVisible();
+    await expect(card.getByText("Not read yet")).toBeVisible();
     for (const name of ["Read it with Claude", "Keep private"]) {
       const button = card.getByRole("button", { name });
       expect(await bigEnough(button)).toBe(true);
@@ -148,7 +148,7 @@ for (const width of [320, 1280]) {
       // the page image spans both rows: the first is only as tall as the card, so no empty band under it
       // measured to the letter's footer (its rule), not the words in its chip: the chip's own padding and
       // border (UI audit round 1) are not a band under the card
-      const next = page.getByRole("main").locator("footer").filter({ hasText: /Waiting for you — not read by AI yet/ }).first();
+      const next = page.getByRole("main").locator("footer").filter({ hasText: /Not read yet — not sent to AI/ }).first();
       const [cardBox, nextBox] = [await card.boundingBox(), await next.boundingBox()];
       expect(cardBox && nextBox && nextBox.y - (cardBox.y + cardBox.height), "the gap under the waiting card").toBeLessThan(48);
     }
@@ -159,14 +159,14 @@ for (const width of [320, 1280]) {
   test(`${width} px: Today says the letters wait instead of "all clear", and so does the Inbox's count`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await open(page, "/");
-    const card = page.getByRole("region", { name: "3 letters from your folder wait for you" });
+    const card = page.getByRole("region", { name: "Not read yet: 3 letters from your folder" });
     await expect(card).toBeVisible();
     const review = card.getByRole("link", { name: /Review them/ });
     expect(await bigEnough(review)).toBe(true);
     expect(await inside(review, card), "“Review them” stays inside the card").toBe(true);
     expect(await sideways(page), "the page scrolls sideways").toBe(0);
     await expect(page.getByText(/Nothing needs you/)).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /^Inbox\b.*3 waiting for you$/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /^Inbox\b.*3 not read yet$/ })).toBeVisible();
   });
 }
 

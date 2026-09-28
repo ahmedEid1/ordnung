@@ -22,6 +22,7 @@ import { Tabs, type TabItem } from "@/components/ui/Tabs";
 import { plural } from "@/lib/utils";
 import { CallSheetCard, DocumentCard, OpenCaseCard } from "./cards";
 import { NumberRow } from "./NumberRow";
+import { useStickyError } from "@/lib/hooks";
 
 export type NumbersTab = "you" | "cases" | "organisations";
 const TABS: NumbersTab[] = ["you", "cases", "organisations"];
@@ -251,10 +252,8 @@ export function NumbersView() {
     );
 
   // a retry of a failed load starts over as "pending": keep the message on screen meanwhile
-  const [lastError, setLastError] = useState<unknown>(null);
-  if (q.error && q.error !== lastError) setLastError(q.error);
-  else if (q.data && lastError !== null) setLastError(null);
-  const failed = !q.data && (q.isError || lastError !== null);
+  const lastError = useStickyError(q.error, Boolean(q.data));
+  const failed = !q.data && (q.isError || Boolean(lastError));
 
   const header = <PageHeader title="My numbers" description={DESCRIPTION} />;
   if (failed) {

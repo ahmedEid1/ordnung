@@ -157,7 +157,15 @@ function RunSummary({
           ) : null}
           {before ? (
             // a toggle keeps its name; whether it is on is aria-pressed
-            <Button size="sm" icon={GitCompareArrows} aria-pressed={comparing} aria-controls={comparing ? "trace-compare" : undefined} onClick={onCompare}>
+            // and on, it takes the accent tint, so sighted people see it too
+            <Button
+              size="sm"
+              variant={comparing ? "soft" : "secondary"}
+              icon={GitCompareArrows}
+              aria-pressed={comparing}
+              aria-controls={comparing ? "trace-compare" : undefined}
+              onClick={onCompare}
+            >
               Compare with reading {before.reading}
             </Button>
           ) : null}

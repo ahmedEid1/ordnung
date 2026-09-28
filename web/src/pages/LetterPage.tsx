@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import { useDraft, useParties } from "@/api/hooks";
@@ -10,6 +9,7 @@ import { LoadError } from "@/components/ui/LoadError";
 import { LoadingLabel, Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { LetterView } from "@/features/letters/LetterView";
 import { draftTitle } from "@/features/letters/logic";
+import { useStickyError } from "@/lib/hooks";
 
 const PARENT = { to: "/letters", label: "Letters" };
 
@@ -48,10 +48,7 @@ export default function LetterPage() {
   // A retry of a failed load may start over as "pending": remember the error, so the message stays
   // on screen (and isn't announced again) while "Try again" runs.
   const loaded = Boolean(q.data);
-  const [lastError, setLastError] = useState<unknown>(null);
-  if (q.error && q.error !== lastError) setLastError(q.error);
-  else if (loaded && lastError !== null) setLastError(null);
-  const error = q.error ?? lastError;
+  const error = useStickyError(q.error, loaded);
   const failed = !loaded && error !== null;
   const notFound = failed && error instanceof ApiError && error.status === 404;
 

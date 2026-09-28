@@ -61,7 +61,12 @@ function CheckBadge({ number }: { number: MyNumber }) {
 
 export interface NumberRowProps {
   number: MyNumber;
-  /** Hidden until "Show" (the organisation's own public numbers need not be). */
+  /**
+   * Hidden until "Show" — by default the person's own identifiers (About you, identity documents,
+   * customer and contract numbers), never a case's reference (an invoice number, a Kassenzeichen or
+   * Aktenzeichen): the letter and the Pay panel print those in full, so hiding them protects nothing
+   * and costs a click (the organisation's own public numbers need not be hidden either).
+   */
   masked?: boolean;
   /** Say which organisation's letter it is from (About you lists numbers from many). */
   showParty?: boolean;
@@ -72,7 +77,7 @@ export interface NumberRowProps {
   className?: string;
 }
 
-export function NumberRow({ number, masked = true, showParty = false, showLetter = true, compactLetter = false, className }: NumberRowProps) {
+export function NumberRow({ number, masked = number.group !== "case", showParty = false, showLetter = true, compactLetter = false, className }: NumberRowProps) {
   const [shown, setShown] = useState(!masked);
   const { copy, copied } = useClipboard();
   const formatDate = useFormatDate();

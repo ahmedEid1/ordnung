@@ -1,5 +1,5 @@
 /**
- * "From your folder — waiting for you" on the Inbox (mock API): the waiting letters are listed with
+ * "From your folder — not read yet" on the Inbox (mock API): the waiting letters are listed with
  * an e-mail's attachment under it, "Read these 3" answers for exactly the letters shown, "Keep
  * private" keeps them here, and the online demo explains that it can't read new letters.
  */
@@ -29,14 +29,14 @@ function renderInbox() {
   );
 }
 
-const group = () => screen.findByRole("region", { name: /From your folder — waiting for you/ });
+const group = () => screen.findByRole("region", { name: /From your folder — not read yet/ });
 
 describe("the letters waiting from the folder", () => {
   it("lists them apart from the letters, an e-mail's attachment under it", async () => {
     useMockApi();
     renderInbox();
     const g = await group();
-    const list = within(g).getByRole("list", { name: "Letters waiting for you" });
+    const list = within(g).getByRole("list", { name: "Letters not read yet" });
     const names = within(list)
       .getAllByRole("link")
       .map((a) => a.textContent);
@@ -87,7 +87,7 @@ describe("the letters waiting from the folder", () => {
       doc_ids: ["doc_folder_scan", "doc_folder_mail", "doc_folder_invoice"],
     });
     expect(await group()).toBeInTheDocument();
-    expect(await screen.findByText("They wait for you again")).toBeInTheDocument();
+    expect(await screen.findByText("They're back with the letters not read yet")).toBeInTheDocument();
   });
 
   it("the online demo can't read new letters: they keep waiting (the app's error toast explains)", async () => {

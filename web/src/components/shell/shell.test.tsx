@@ -128,7 +128,7 @@ describe("tab bar", () => {
     qc.setQueryData(qk.documents.list({ status: "needs_review" }), [{ id: "a" }]);
     qc.setQueryData(qk.documents.list({ status: "held" }), [{ id: "b" }, { id: "c" }, { id: "d" }]);
     renderWithProviders(<MobileTabBar />, { client: qc });
-    const inbox = screen.getByRole("link", { name: "Inbox, 1 to check, 3 waiting for you" });
+    const inbox = screen.getByRole("link", { name: "Inbox, 1 to check, 3 not read yet" });
     expect(within(inbox).getByText("4")).toBeInTheDocument();
   });
 
@@ -136,8 +136,20 @@ describe("tab bar", () => {
     const qc = makeTestQueryClient();
     qc.setQueryData(qk.documents.list({ status: "held" }), [{ id: "b" }, { id: "c" }]);
     renderWithProviders(<MobileTabBar />, { client: qc });
-    const inbox = screen.getByRole("link", { name: "Inbox, 2 waiting for you" });
+    const inbox = screen.getByRole("link", { name: "Inbox, 2 not read yet" });
     expect(within(inbox).getByText("2").className).toContain("bg-accent");
+  });
+
+  it("shows the Inbox's count the same way in the expanded sidebar: one bubble, named", () => {
+    const qc = makeTestQueryClient();
+    qc.setQueryData(qk.documents.list({ status: "needs_review" }), [{ id: "a" }]);
+    qc.setQueryData(qk.documents.list({ status: "held" }), [{ id: "b" }, { id: "c" }, { id: "d" }]);
+    viewport(1280);
+    renderWithProviders(<Sidebar />, { client: qc });
+    const inbox = screen.getByRole("link", { name: "Inbox, 1 letter to check, 3 not read yet" });
+    // not two unlabelled bubbles side by side ("1" and "3") where the rail and the tab bar show one "4"
+    expect(within(inbox).getByText("4")).toBeInTheDocument();
+    expect(within(inbox).queryByText("1")).toBeNull();
   });
 
   it("is nearly opaque, so page text doesn't show through", () => {

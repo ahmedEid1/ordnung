@@ -11,13 +11,18 @@ import { Switch } from "@/components/ui/Field";
 import { formatFileSize } from "@/lib/format";
 import { cn, plural } from "@/lib/utils";
 
-/** File types Ordnung accepts (PDFs and phone photos). */
-export const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif";
+/**
+ * File types Ordnung accepts: PDFs, phone photos, saved e-mails (`.eml` — each PDF or photo attached
+ * becomes a letter of its own, as from the watched folder) and plain text — what intake reads.
+ */
+export const ACCEPT =
+  "application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,message/rfc822,text/plain,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.eml,.txt";
 /** The accepted types in words (the "skipped" message names them). */
-export const ACCEPTED_TYPES = "PDFs and photos (JPG, PNG, WEBP, HEIC)";
+export const ACCEPTED_TYPES = "PDFs, photos (JPG, PNG, WEBP, HEIC), saved e-mails (.eml) and text files";
 
 const isImage = (f: File) => f.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name);
-const isAccepted = (f: File) => isImage(f) || f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+const isText = (f: File) => f.type === "message/rfc822" || f.type === "text/plain" || /\.(eml|txt)$/i.test(f.name);
+const isAccepted = (f: File) => isImage(f) || isText(f) || f.type === "application/pdf" || /\.pdf$/i.test(f.name);
 
 /** How many files (or photo pages) a dialog lists before "Show all". */
 const SHOWN = 8;
@@ -113,8 +118,8 @@ export function AddLettersProvider({ children }: { children: ReactNode }) {
       toast.warn(`${plural(rejected.length, "file")} skipped`, {
         description: (
           <span className="[overflow-wrap:anywhere]">
-            <span className="font-medium text-ink">{nameList(rejected)}</span> {rejected.length === 1 ? "isn't a PDF or photo" : "aren't PDFs or photos"}. Ordnung
-            reads {ACCEPTED_TYPES}.
+            <span className="font-medium text-ink">{nameList(rejected)}</span> {rejected.length === 1 ? "isn't a file Ordnung reads" : "aren't files Ordnung reads"}.
+            Ordnung reads {ACCEPTED_TYPES}.
           </span>
         ),
       });

@@ -12,6 +12,8 @@ import { DemoBadge } from "./DemoBadge";
 import { SHELL_GUTTERS, shellWidth } from "./layout";
 import { useHeadingUnderBar } from "./useHeadingUnderBar";
 import { TOP_BAR_ITEMS } from "./nav";
+import { AttentionDot } from "./Sidebar";
+import { useBackgroundProblems } from "@/features/settings/attention";
 
 /** A back arrow in the logo's place (phones), as big as the bar's other icon buttons. */
 const backButton = buttonVariants({ variant: "ghost", className: "-ml-1.5 size-9 px-0 text-ink [&_svg]:size-5" });
@@ -29,6 +31,7 @@ export function TopBar() {
   const scrolled = useScrolled();
   const [bar, setBar] = useState<HTMLElement | null>(null);
   const showTitle = useHeadingUnderBar(bar, !parent);
+  const attention = useBackgroundProblems().length > 0;
 
   return (
     <header
@@ -100,13 +103,14 @@ export function TopBar() {
         ))}
         <NavLink
           to="/settings"
-          aria-label="Settings"
+          aria-label={attention ? "Settings, needs your attention" : "Settings"}
           title="Settings"
           className={({ isActive }) =>
-            cn("grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-surface-3/70 hover:text-ink md:hidden", isActive && "text-accent")
+            cn("relative grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-surface-3/70 hover:text-ink md:hidden", isActive && "text-accent")
           }
         >
           <Settings className="size-[18px]" aria-hidden />
+          {attention ? <AttentionDot className="absolute right-1.5 top-1.5" /> : null}
         </NavLink>
       </div>
     </header>

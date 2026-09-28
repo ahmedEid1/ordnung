@@ -267,7 +267,7 @@ export const DOCUMENT_STATUS_COPY: CopyMap<DocumentStatus> = {
   processed: { label: "Filed", icon: CircleCheck, tone: "ok" },
   needs_review: { label: "Please check", icon: TriangleAlert, tone: "warn", hint: "Something in this letter needs a quick look from you." },
   failed: { label: "Couldn't read", icon: CircleX, tone: "danger" },
-  held: { label: "Waiting for you", icon: Hourglass, tone: "accent", hint: "From your watched folder: stored on this computer, not sent to Claude until you say so." },
+  held: { label: "Not read yet", icon: Hourglass, tone: "accent", hint: "From your watched folder: stored on this computer, not sent to Claude until you say so." },
 };
 
 export const DIRECTION_COPY: CopyMap<Direction> = {

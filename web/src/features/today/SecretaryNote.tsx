@@ -111,7 +111,7 @@ export function SecretaryNote({ fallback, waiting = 0 }: { fallback: string; wai
       {waiting && data?.text?.trim() ? (
         // the note is written from what was read: letters that wait unread are not in it
         <p className="relative mt-3 text-[13.5px] leading-snug text-ink/80">
-          Not in this note: {waiting === 1 ? "1 letter" : `${waiting} letters`} from your folder that {waiting === 1 ? "waits" : "wait"} for you — not read yet.
+          Not in this note: {waiting === 1 ? "1 letter" : `${waiting} letters`} from your folder, not read yet.
         </p>
       ) : null}
       <p className="relative mt-4 flex items-start gap-1.5 text-[12px] leading-5 text-muted">

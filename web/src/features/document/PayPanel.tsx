@@ -3,8 +3,8 @@
  * (payee, IBAN, reference, amount) with copy buttons, the GiroCode to scan when the server offers
  * one (or why there is none), and lets you mark the payment as done.
  */
-import type { ReactNode } from "react";
-import { Check, Copy, Landmark, ShieldAlert } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Check, Copy, Landmark, ShieldAlert, TriangleAlert } from "lucide-react";
 import type { Document, GiroCode, Item } from "@/api/types";
 import { daysUntil, formatIban, formatMoney } from "@/lib/format";
 import { useIsTabletUp, useMediaQuery } from "@/lib/hooks";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
-import { GiroCodeSection, canReadLetterAgain, ibanFailsCheck } from "@/features/girocode/GiroCode";
+import { GIROCODE_MISMATCH_DETAILS, GiroCodeSection, canReadLetterAgain, ibanFailsCheck } from "@/features/girocode/GiroCode";
 import { copyText } from "./actions";
 
 /** An IBAN in groups of four that never split: the line breaks only between groups (UI audit round 1: "…2130 0" / "0"). */
@@ -85,6 +85,9 @@ export function PayPanel({
   // a phone can't scan its own screen — upright or turned sideways: there the code waits behind "Show code"
   const narrow = !useIsTabletUp();
   const touch = useMediaQuery("(hover: none) and (pointer: coarse)");
+  // "They don't match": the details shown are the ones the person says are wrong — no copy buttons
+  const [mismatch, setMismatch] = useState(false);
+  const copyable = !mismatch;
   return (
     <div>
       <div className="flex items-start gap-2.5">
@@ -109,6 +112,12 @@ export function PayPanel({
         </div>
       </div>
 
+      {p && (p.iban || p.payee) && mismatch ? (
+        <p role="status" className="mt-3 flex gap-2 text-[13px] leading-5 text-warn-ink">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+          {GIROCODE_MISMATCH_DETAILS}
+        </p>
+      ) : null}
       {p && (p.iban || p.payee) ? (
         <div className="mt-3 divide-y divide-line rounded-lg border border-line px-3">
           {p.payee ? (
@@ -117,17 +126,17 @@ export function PayPanel({
             </Row>
           ) : null}
           {p.iban ? (
-            <Row label="IBAN" copy={p.iban.replace(/\s+/g, "")} className="font-ident">
+            <Row label="IBAN" copy={copyable ? p.iban.replace(/\s+/g, "") : undefined} className="font-ident">
               <IbanGroups iban={p.iban} />
             </Row>
           ) : null}
           {reference ? (
-            <Row label="Reference" what="reference" copy={reference} className="font-ident wrap-anywhere">
+            <Row label="Reference" what="reference" copy={copyable ? reference : undefined} className="font-ident wrap-anywhere">
               {reference}
             </Row>
           ) : null}
           {amount ? (
-            <Row label="Amount" what="amount" copy={item.amount!.toFixed(2).replace(".", ",")}>
+            <Row label="Amount" what="amount" copy={copyable ? item.amount!.toFixed(2).replace(".", ",") : undefined}>
               {amount}
             </Row>
           ) : null}
@@ -145,7 +154,14 @@ export function PayPanel({
         </p>
       ) : null}
 
-      <GiroCodeSection code={code} docId={doc.id} collapsible={narrow || touch} canReadAgain={canReadLetterAgain(doc)} className="mt-3" />
+      <GiroCodeSection
+        code={code}
+        docId={doc.id}
+        collapsible={narrow || touch}
+        canReadAgain={canReadLetterAgain(doc)}
+        onMismatch={setMismatch}
+        className="mt-3"
+      />
 
       <p className="mt-3 text-[12.5px] leading-5 text-muted">
         Ordnung never pays for you — use your banking app. Compare the IBAN with an earlier letter from this sender.

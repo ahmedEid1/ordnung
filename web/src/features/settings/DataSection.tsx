@@ -6,6 +6,7 @@ import { ApiError } from "@/api/client";
 import { useCalendarSync, useDeleteEverything } from "@/api/hooks";
 import type { Health } from "@/api/types";
 import { Button } from "@/components/ui/Button";
+import { Callout } from "@/components/ui/Callout";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
@@ -54,6 +55,7 @@ export function BreakablePath({ path }: { path: string }) {
 /** The word to type in the "Delete everything" dialog. */
 const DELETE_WORD = "DELETE";
 const CONFIRM_ID = "delete-everything-confirm";
+const ERROR_ID = "delete-everything-error";
 
 /**
  * "Delete everything": a typed confirmation, then the API wipes the data folder and the app starts
@@ -116,9 +118,9 @@ function DeleteEverythingDialog({
         navigate("/welcome", { replace: true });
       },
       onError: () => {
-        // the busy button lost focus: back to the field its reason belongs to, the reason in view
+        // the busy button lost focus: back to the typed word (still right), the reason in view above it
         focusWhenReady(() => inputRef.current, 5000, { always: true });
-        requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(`${CONFIRM_ID}-err`)?.scrollIntoView?.({ block: "nearest" })));
+        requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(ERROR_ID)?.scrollIntoView?.({ block: "nearest" })));
       },
     });
   };
@@ -162,6 +164,15 @@ function DeleteEverythingDialog({
             {deleteCalendarNote(calendar, sync.data?.synced ?? 0)}
           </p>
         ) : null}
+        {/* the server's reason (the calendar couldn't be reached …) is the dialog's, not the typed word's:
+            the word is right, so the field never says it is invalid */}
+        {error ? (
+          <div id={ERROR_ID} className="scroll-my-4">
+            <Callout tone="danger" alert title="Nothing was deleted">
+              <span className="[overflow-wrap:anywhere]">{error}</span>
+            </Callout>
+          </div>
+        ) : null}
         <Field
           id={CONFIRM_ID}
           label={
@@ -169,7 +180,6 @@ function DeleteEverythingDialog({
               Type <span className="font-mono font-semibold tracking-wide text-danger-ink">{DELETE_WORD}</span> to confirm
             </>
           }
-          error={error ?? undefined}
         >
           <Input
             ref={inputRef}

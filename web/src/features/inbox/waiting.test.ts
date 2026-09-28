@@ -1,5 +1,5 @@
 /**
- * The Inbox's "From your folder — waiting for you" (pure logic): which letters wait and in what order
+ * The Inbox's "From your folder — not read yet" (pure logic): which letters wait and in what order
  * (an e-mail's attachments right under it), that they are in no other group or filter, and the words.
  */
 import { describe, expect, it } from "vitest";
