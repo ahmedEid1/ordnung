@@ -900,7 +900,7 @@ async def _finish_private(
                 "document.held" if held else "document.private",
                 f"Stored “{name}” on this computer · not read yet"
                 if held
-                else f"Stored “{name}” privately · not sent to AI",
+                else f"Stored “{name}” privately · not sent to Claude",
                 ref_type="document",
                 ref_id=document.id,
             )

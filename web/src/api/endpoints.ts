@@ -97,7 +97,7 @@ export interface UploadOptions {
   private?: boolean;
 }
 
-/** A proof to attach to a sent letter: the file (kept private, never read by AI), what it is and the day it shows. */
+/** A proof to attach to a sent letter: the file (kept private, never read by Claude), what it is and the day it shows. */
 export interface ProofUpload {
   file: File;
   kind: ProofKind;

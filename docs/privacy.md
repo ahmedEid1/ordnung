@@ -107,12 +107,12 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   add to a sent letter is stored like any upload with *Keep private (no AI)* on: it is never sent to
   Claude, not even when you ask about the letter, and it isn't listed among your letters. One
   exception is said when it happens: a file that was already in Ordnung (the same bytes, e.g. you
-  first added it to your Inbox) is linked as it is — made private then if it was never given to AI,
-  and otherwise Ordnung tells you it was given to AI instead of calling it private (one still waiting
+  first added it to your Inbox) is linked as it is — made private then if it was never given to Claude,
+  and otherwise Ordnung tells you it was given to Claude instead of calling it private (one still waiting
   from your watched folder is kept private then, so *Read these* never sends it; and a proof never
   waits again — *Undo "Keep private"* skips it, also for the e-mail it came attached to). A sent e-mail
   kept as proof is one file: its attachments never become letters, and the ones it brought while it
-  waited in your Inbox (never read) are deleted when it becomes proof — the e-mail keeps them. "Given to AI"
+  waited in your Inbox (never read) are deleted when it becomes proof — the e-mail keeps them. "Given to Claude"
   counts every time a model had it, also when reading it failed or paused afterwards, and also
   when you switched *Keep private* on later. Its kind, day and note are what you chose — Ordnung
   doesn't read them from the file. The *Nachweis* PDF is made on your computer from the letter and

@@ -1120,7 +1120,7 @@ const routes: [string, string, Handler][] = [
               processed_at: nowTs(),
               updated_at: nowTs(),
             });
-            db.log("document.processed", `Filed “${first.name}” (demo — not read by AI)`, "document", id);
+            db.log("document.processed", `Filed “${first.name}” (demo — not read by Claude)`, "document", id);
           },
           ctx.opts.latency ?? 1,
         );
@@ -1172,7 +1172,7 @@ const routes: [string, string, Handler][] = [
       const { docs, skipped } = answeredTogether(db, heldIds(body));
       for (const d of docs) {
         Object.assign(d, { status: "processed", updated_at: nowTs() });
-        db.log("document.kept_private", `You kept “${d.title ?? d.filename}” private · not sent to AI`, "document", d.id);
+        db.log("document.kept_private", `You kept “${d.title ?? d.filename}” private · not sent to Claude`, "document", d.id);
         emit("document.updated", { doc_id: d.id });
       }
       emit("folder.updated", { state: db.state.settings.inbox_dir ? "watching" : "off" });

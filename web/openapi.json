@@ -3149,7 +3149,7 @@
           "drafts"
         ],
         "summary": "Add Proof",
-        "description": "Attach a proof file to a sent letter. The file is kept private: it is never sent to AI. A file\nalready in Ordnung is linked as it is, and ``notice`` says what that means for it.",
+        "description": "Attach a proof file to a sent letter. The file is kept private: it is never sent to Claude. A file\nalready in Ordnung is linked as it is, and ``notice`` says what that means for it.",
         "operationId": "add_proof_api_drafts__draft_id__proofs_post",
         "parameters": [
           {
@@ -4730,7 +4730,7 @@
           "private": {
             "type": "boolean",
             "title": "Private",
-            "description": "Keep private — never sent to AI",
+            "description": "Keep private — never sent to Claude",
             "default": false
           }
         },

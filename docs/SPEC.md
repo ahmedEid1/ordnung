@@ -821,7 +821,7 @@ person keeps the files (`DELETE drafts/{id}?keep_proof_files=true`: they become 
 documents). A file already in Ordnung (the same bytes) is linked as it is and said to be so: made
 private now if no model call ever carried it (`llm_calls`, a cached answer or a transcribed page —
 also a reading that failed, or paused on a rate limit, after the model had it), else named as given
-to AI (`notice`) — "kept private" is never claimed for it, also not when it was marked private
+to Claude (`notice`) — "kept private" is never claimed for it, also not when it was marked private
 later; one still waiting from the watched folder (`held`) gets the answer *Keep private* then, so
 *Read these* never offers a proof to Claude; the same file uploaded to the Inbox again says which
 letter it is proof of. Removing a proof

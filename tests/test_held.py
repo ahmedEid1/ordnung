@@ -106,7 +106,7 @@ async def test_answers_are_logged_and_only_change_waiting_letters(ctx: AppContex
     unchanged = ctx.store.get_document(ordinary.id)
     assert unchanged is not None and (unchanged.status, unchanged.ai_private) == ("queued", False)
     messages = [entry.message for entry in ctx.store.list_activity(5, kinds=[held.KEPT_PRIVATE])]
-    assert messages == ["You kept “bescheid.pdf” private · not sent to AI"]
+    assert messages == ["You kept “bescheid.pdf” private · not sent to Claude"]
     release = release_held(ctx, [waiting.id])
     assert release.documents == [] and release.skipped == [waiting.id]
 

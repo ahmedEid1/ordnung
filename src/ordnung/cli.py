@@ -327,9 +327,9 @@ def _status_text(document: Document) -> str:
     if document.status == "failed":
         return f"[red]Failed[/] — {escape(document.error or '')}"
     if document.status == "held":
-        return "Not read yet — not sent to AI"
+        return "Not read yet — not sent to Claude"
     if document.ai_private:
-        return "Private — not sent to AI"
+        return "Private — not sent to Claude"
     if document.status == "needs_review":
         return "[yellow]Please check[/]"
     if document.status == "processed":
@@ -691,7 +691,7 @@ def add(
         typer.Argument(help="Letters to add (PDF, photos, .txt/.eml).", exists=True, dir_okay=False),
     ],
     combine: Annotated[bool, typer.Option("--combine", help="The photos are pages of one letter.")] = False,
-    private: Annotated[bool, typer.Option("--private", help="Keep private — never sent to AI.")] = False,
+    private: Annotated[bool, typer.Option("--private", help="Keep private — never sent to Claude.")] = False,
     data_dir: DataDirOption = None,
 ) -> None:
     """Add letters: Ordnung reads them and files every date, amount and contract."""

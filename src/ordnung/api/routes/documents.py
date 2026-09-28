@@ -425,7 +425,7 @@ async def upload_documents(
     ] = None,
     files_array: Annotated[list[UploadFile] | None, File(alias="files[]", include_in_schema=False)] = None,
     combine: Annotated[bool, Form(description="Photos of this upload are pages of one letter")] = False,
-    private: Annotated[bool, Form(description="Keep private — never sent to AI")] = False,
+    private: Annotated[bool, Form(description="Keep private — never sent to Claude")] = False,
 ) -> UploadResult | JSONResponse:
     """Store the uploaded letters and queue them for reading."""
     uploads = [*(files or []), *(files_array or [])]

@@ -443,7 +443,7 @@ export type DraftCheck = Schemas["DraftCheck"];
 export type LetterDetails = Schemas["LetterDetails"];
 /** A letter Ordnung drafted for the user ("Letters"). */
 export type Draft = Schemas["Draft"];
-/** One piece of proof of a sent letter; its file is a private outgoing document (never read by AI). */
+/** One piece of proof of a sent letter; its file is a private outgoing document (never read by Claude). */
 export type Proof = Schemas["Proof"];
 /** A phone call the person noted (Gesprächsnotiz); a promise with a day is waited for. */
 export type CallNote = Schemas["CallNote"];

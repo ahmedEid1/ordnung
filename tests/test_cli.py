@@ -30,7 +30,7 @@ from ordnung.demo import load_manifest
 from ordnung.demo.loader import build_demo
 from ordnung.llm.fake import FakeBackend
 from ordnung.locking import DataDirLock, DataDirLocked
-from ordnung.models import Document, DocumentDetail, Item, Party
+from ordnung.models import Document, DocumentDetail, DocumentStatus, Item, Party
 from ordnung.server import ServerInfo, read_server_info, write_server_info
 from test_demo import model_answers, write_sample_life
 from test_doctor import fake_claude
@@ -125,7 +125,36 @@ def test_add_private_keeps_the_letter_from_the_model(
     letter.write_bytes(TAX_LETTER.pdf())
     result = invoke("--data-dir", str(data_dir), "add", str(letter), "--private")
     assert result.exit_code == 0, result.output
-    assert "Private — not sent to AI" in result.output
+    assert "Private — not sent to Claude" in result.output
+    store = Store.open(Paths(data_dir))
+    try:
+        logged = [entry.message for entry in store.list_activity(5, kinds=["document.private"])]
+    finally:
+        store.close()
+    assert logged == ["Stored “private.pdf” privately · not sent to Claude"]
+
+
+@pytest.mark.parametrize(
+    ("status", "private", "expected"),
+    [
+        ("held", False, "Not read yet — not sent to Claude"),
+        ("processed", True, "Private — not sent to Claude"),
+    ],
+)
+def test_privacy_statuses_name_who_does_not_read_the_letter(
+    status: DocumentStatus, private: bool, expected: str
+) -> None:
+    document = Document(
+        id="doc_1",
+        sha256="0" * 64,
+        filename="bescheid.pdf",
+        mime="application/pdf",
+        created_at="2026-09-01T09:00:00+00:00",
+        updated_at="2026-09-01T09:00:00+00:00",
+        status=status,
+        ai_private=private,
+    )
+    assert cli._status_text(document) == expected
 
 
 def test_add_rejects_unreadable_files_without_a_traceback(

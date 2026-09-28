@@ -148,7 +148,7 @@ def keep_private(store: Store, doc_ids: Iterable[str]) -> ConsentResult:
                 result.jobs.append(store.enqueue_job("ingest", document.id))
             store.log_activity(
                 KEPT_PRIVATE,
-                f"You kept “{_name(document)}” private · not sent to AI",
+                f"You kept “{_name(document)}” private · not sent to Claude",
                 ref_type="document",
                 ref_id=document.id,
             )

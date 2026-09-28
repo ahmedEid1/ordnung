@@ -253,6 +253,9 @@ async def test_private_documents_never_reach_a_model(ctx: AppContext) -> None:
     assert backend(ctx).calls == []
     assert ctx.store.list_items(doc_id=document.id) == []
     assert ctx.store.search("Einkommensteuer")[0].doc_id == document.id
+    # the privacy statement names who doesn't read it, as the letter's footer and badge do
+    logged = [entry.message for entry in ctx.store.list_activity(5, kinds=["document.private"])]
+    assert logged == ["Stored “bescheid.pdf” privately · not sent to Claude"]
 
 
 async def test_private_photo_is_not_transcribed(ctx: AppContext) -> None:

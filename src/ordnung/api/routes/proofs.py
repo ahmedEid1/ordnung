@@ -1,7 +1,7 @@
 """Proof of a sent letter: the overview, the tracking number, proof files and the "Nachweis" PDF.
 
 Proof files are uploaded like letters (multipart ``file``) with ``kind``, ``on_date`` and ``note``; they
-are stored private (never sent to AI) and belong to the letter (:mod:`ordnung.drafts.sent`) — a file
+are stored private (never sent to Claude) and belong to the letter (:mod:`ordnung.drafts.sent`) — a file
 already in Ordnung is said to be so (``notice``). "It's answered" is the person's word, with Undo.
 Every write answers the letter's new :class:`~ordnung.models.ProofOverview`.
 """
@@ -82,7 +82,7 @@ async def add_proof(
     on_date: Annotated[IsoDate | None, Form(description="The day it shows (posted, delivered …)")] = None,
     note: Annotated[str | None, Form(max_length=MAX_NOTE)] = None,
 ) -> ProofOverview:
-    """Attach a proof file to a sent letter. The file is kept private: it is never sent to AI. A file
+    """Attach a proof file to a sent letter. The file is kept private: it is never sent to Claude. A file
     already in Ordnung is linked as it is, and ``notice`` says what that means for it."""
     data = await file.read(MAX_BYTES + 1)
     try:

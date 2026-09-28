@@ -7,7 +7,7 @@ stores and reads.
   ever sees them. A file already in Ordnung (the same bytes) is linked as it is, and what is said about
   it is true of *that* file (:func:`add_proof`): one no model has had yet is made private now; one a
   model call ever carried — read, or failed or paused after the model had it — is said to have been
-  given to AI, also when it was marked private later: "kept private" is never claimed for it. One that
+  given to Claude, also when it was marked private later: "kept private" is never claimed for it. One that
   waits for the person's answer from the watched folder (:mod:`ordnung.ingest.held`) gets it now: *Keep
   private* — a proof is never offered to Claude with "Read these".
 * **A proof e-mail's attachments are no letters.** A sent e-mail kept as proof is one file: its

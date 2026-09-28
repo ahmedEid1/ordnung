@@ -1142,7 +1142,7 @@ export interface paths {
         put?: never;
         /**
          * Add Proof
-         * @description Attach a proof file to a sent letter. The file is kept private: it is never sent to AI. A file
+         * @description Attach a proof file to a sent letter. The file is kept private: it is never sent to Claude. A file
          *     already in Ordnung is linked as it is, and ``notice`` says what that means for it.
          */
         post: operations["add_proof_api_drafts__draft_id__proofs_post"];
@@ -1835,7 +1835,7 @@ export interface components {
             combine?: boolean;
             /**
              * Private
-             * @description Keep private — never sent to AI
+             * @description Keep private — never sent to Claude
              * @default false
              */
             private?: boolean;
