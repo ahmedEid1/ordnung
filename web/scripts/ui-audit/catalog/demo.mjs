@@ -1387,12 +1387,14 @@ export async function demoCatalog({ api, server }) {
     id: "files-skipped-toast",
     group: SH,
     route: "/inbox",
-    how: "open /inbox, add a .txt file",
+    how: "open /inbox, add a .docx file",
     description: "Warning toast: file type not supported.",
     pinToasts: true,
     run: async (c) => {
       await c.goto("/inbox");
-      await c.addFiles([{ name: "notizen.txt", mimeType: "text/plain" }]);
+      // a type Ordnung doesn't read (.txt and .eml are letters since the one-inbox merge)
+      await c.addFiles([{ name: "Mietvertrag-Anlage.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }]);
+      await c.visible(c.page.getByText("1 file skipped"));
       await pinToasts(c.page);
     },
   });
