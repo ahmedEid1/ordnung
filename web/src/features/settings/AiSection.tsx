@@ -24,7 +24,8 @@ const PURPOSES: { key: keyof ModelSettings; label: string; hint: string; optiona
   { key: "draft", label: "Drafting letters", hint: "Polite wording and the translation" },
   {
     key: "review",
-    label: "Weekly review",
+    // not "Weekly review": that names the weekly session (/week); this is the model job that suggests Ideas
+    label: "Weekly Ideas",
     hint: "Suggests Ideas once a week",
     optional: { flag: "llm_review", off: "Off — Ideas come from Ordnung's own rules (switch below)" },
   },
@@ -99,7 +100,8 @@ export function AiSection({ settings, profile }: { settings: AppSettings; profil
                     <SegmentedControl
                       size="sm"
                       fill="phone"
-                      label={`Model for ${label.toLowerCase()}`}
+                      // only the first letter: "Model for weekly Ideas" keeps the name Ideas
+                      label={`Model for ${label.charAt(0).toLowerCase()}${label.slice(1)}`}
                       value={asModel(form.models[key])}
                       onChange={(v) => setForm((f) => ({ ...f, models: { ...f.models, [key]: v } }))}
                       options={MODEL_OPTIONS}

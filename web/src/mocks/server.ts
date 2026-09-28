@@ -1451,7 +1451,7 @@ const routes: [string, string, Handler][] = [
     "/suggestions/review",
     (ctx) => {
       needsClaude(ctx);
-      ctx.db.log("review", "Weekly review: no new Ideas (demo)");
+      ctx.db.log("review", "Weekly Ideas: nothing new (demo)");
       // like the API: the review runs in the background; its Ideas arrive with `suggestions.updated`
       setTimeout(() => emit("suggestions.updated", { reason: "review", created: 0 }), 400 * (ctx.opts.latency ?? 1));
       return new Reply(202, { started: true, running: true } satisfies ReviewStarted);

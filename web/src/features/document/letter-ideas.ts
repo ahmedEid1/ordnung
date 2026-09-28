@@ -28,7 +28,7 @@ export function ideasForLetter(
     const aboutLetter = docs.includes(docId) || (todos.length > 0 && todos.every((id) => own.has(id)));
     if (!aboutLetter) return false;
     if (s.rule_id === "please_check") return false;
-    // a rule's reminder about the verdict's to-do alone restates it; the weekly review's insight about it
+    // a rule's reminder about the verdict's to-do alone restates it; a Weekly Ideas insight about it
     // ("you now have the certificate — send it") is new
     if (primaryId && s.source === "rule" && todos.length === 1 && todos[0] === primaryId) return false;
     return true;

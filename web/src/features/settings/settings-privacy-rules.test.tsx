@@ -76,7 +76,7 @@ describe("activity logic", () => {
     expect(activityHref(activity(1, "document.processed", "Read", "document", "doc_1"))).toBe("/documents/doc_1");
     expect(activityHref(activity(1, "draft.sent", "Sent", "draft", "drf_1"))).toBe("/letters/drf_1");
     expect(activityHref(activity(1, "ask.sentences_removed", "Checked an answer in Ask", "chat", "msg_1"))).toBe("/ask");
-    expect(activityHref(activity(1, "review", "Weekly review"))).toBeNull();
+    expect(activityHref(activity(1, "review", "Weekly Ideas: 2 new"))).toBeNull();
   });
 
   it("folds a run of the same entry into one row with a count", () => {

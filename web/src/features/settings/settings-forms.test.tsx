@@ -12,6 +12,7 @@ import { __clearToasts } from "@/components/ui/Toast";
 import { makeTestQueryClient, renderWithProviders, TEST_HEALTH } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import SettingsPage from "@/pages/SettingsPage";
+import { LLM_PURPOSE_LABELS } from "@/lib/copy";
 import { CALENDAR_FILE_KEY, calendarFileSummary } from "./CalendarSection";
 import { bareVersion } from "./ClaudeSection";
 import { leadDaysError, leadLabel, leadSpan } from "./logic";
@@ -316,6 +317,16 @@ describe("Reminders", () => {
 });
 
 describe("AI & models", () => {
+  it("calls the model job that suggests Ideas “Weekly Ideas” — “Weekly review” is the weekly session's name", async () => {
+    useMockApi();
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=ai" });
+    expect(await screen.findByRole("radiogroup", { name: "Model for weekly Ideas" })).toBeInTheDocument();
+    expect(screen.getByText("Weekly Ideas")).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "Model for understanding letters" })).toBeInTheDocument();
+    expect(screen.queryByText(/weekly review/i)).toBeNull();
+    expect(LLM_PURPOSE_LABELS.review).toBe("Weekly Ideas");
+  });
+
   it("a job that is switched off can't get a model until it's on again", async () => {
     useMockApi();
     const user = userEvent.setup();
@@ -326,7 +337,7 @@ describe("AI & models", () => {
     for (const radio of within(brief).getAllByRole("radio")) expect(radio).toBeDisabled();
     expect(screen.getByText(/^Off — Today shows a plain note/)).toBeInTheDocument();
     // the other jobs are untouched
-    expect(within(screen.getByRole("radiogroup", { name: "Model for weekly review" })).getByRole("radio", { name: "Haiku" })).toBeEnabled();
+    expect(within(screen.getByRole("radiogroup", { name: "Model for weekly Ideas" })).getByRole("radio", { name: "Haiku" })).toBeEnabled();
     expect(screen.getByRole("link", { name: /Language for explanations/ })).toHaveAttribute("href", "/settings?section=region");
   });
 });

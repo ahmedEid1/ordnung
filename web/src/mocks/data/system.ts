@@ -105,7 +105,7 @@ export const RULES: RuleInfo[] = [
 const d = (date: string, time: string) => ts(date, time);
 
 export const ACTIVITY: Activity[] = [
-  { id: 119, ts: d("2026-09-27", "19:02"), kind: "review", message: "Weekly review: 2 new Ideas", ref_type: null, ref_id: null, data: { model: "sonnet", tokens: 9120 } },
+  { id: 119, ts: d("2026-09-27", "19:02"), kind: "review", message: "Weekly Ideas: 2 new", ref_type: null, ref_id: null, data: { model: "sonnet", tokens: 9120 } },
   { id: 118, ts: d("2026-09-26", "09:49"), kind: "document.processed", message: "Read “Library: overdue books” (1 page)", ref_type: "document", ref_id: "doc_library", data: { pages: 1, model: "sonnet" } },
   { id: 117, ts: d("2026-09-25", "13:06"), kind: "document.processed", message: "Read “Dentist appointment reminder” (1 page)", ref_type: "document", ref_id: "doc_dentist", data: { pages: 1 } },
   { id: 116, ts: d("2026-09-24", "20:15"), kind: "document.needs_review", message: "“Parking fine” needs you: when did it arrive?", ref_type: "document", ref_id: "doc_parking", data: {} },

@@ -126,7 +126,7 @@ describe("linked text (Ideas)", () => {
   it("shows a record's whole title (UI audit round 1: cut after 48 characters mid-word)", async () => {
     const { srv } = useMockApi();
     const client = makeTestQueryClient();
-    // an id as the weekly review writes it (the mock data's short ids are no record ids to the text)
+    // an id as Weekly Ideas writes it (the mock data's short ids are no record ids to the text)
     const doc = { ...srv.db.state.documents[0]!, id: "doc_0b2t88kqsf2n" };
     const title = "Operating and Heating Cost Statement 2025 (Betriebs- und Heizkostenabrechnung)";
     client.setQueryData(qk.documents.list({}), [{ ...doc, title }]);

@@ -131,7 +131,7 @@ describe("Settings page", () => {
     // a table grows to fit its cells whatever its width, so sr-only on the table itself widened phone pages
     expect(costs).not.toHaveClass("sr-only");
     expect(costs.parentElement).toHaveClass("sr-only");
-    expect(await screen.findByText("Weekly review: 2 new Ideas")).toBeInTheDocument();
+    expect(await screen.findByText("Weekly Ideas: 2 new")).toBeInTheDocument();
     assertNoRawEnumsInElement(container);
   });
 

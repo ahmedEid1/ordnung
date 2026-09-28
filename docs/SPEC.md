@@ -1137,6 +1137,8 @@ Pages:
    day Today suggests the next session). With nothing in any step it says so ("Nothing to review yet"
    with Add letters). Today shows one gentle prompt (Start · Not now) when the session is due, else a
    quiet "Weekly review" link at its foot; on `/week` the navigation marks Today as the current section.
+   The model job that suggests Ideas once a week is *Weekly Ideas* (Settings → AI & models, "Privacy &
+   AI usage" and its activity), so "Weekly review" names only this session.
 9. **Settings** — profile & address, region (affects holidays), language, reminders (lead times,
    browser notifications, the morning desktop notification with a preview, a test and "start
    Ordnung when you log in"), models, privacy statement + "Privacy & AI usage" (activity, tokens,

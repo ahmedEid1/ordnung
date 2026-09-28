@@ -290,7 +290,7 @@ describe("Ideas on the letter page", () => {
       makeSuggestion({ id: "sug_keep", kind: "saving", title: "Compare accounts", refs: [{ type: "document", id: "doc_1" }] }),
       makeSuggestion({ id: "sug_items", kind: "hygiene", title: "Send your certificate", refs: [{ type: "item", id: "itm_form" }, { type: "document", id: "doc_other" }] }),
       makeSuggestion({ id: "sug_done", kind: "saving", status: "dismissed", title: "Hidden", refs: [{ type: "document", id: "doc_1" }] }),
-      // the weekly review's insight about the verdict's to-do is new
+      // a Weekly Ideas insight about the verdict's to-do is new
       makeSuggestion({ id: "sug_review", kind: "followup", source: "review", title: "You now have the receipt — send it", refs: [{ type: "item", id: "itm_pay" }, { type: "document", id: "doc_other" }] }),
     ];
     expect(ideasForLetter(ideas, { docId: "doc_1", items: own, primaryId: "itm_pay" }).map((s) => s.id)).toEqual(["sug_keep", "sug_items", "sug_review"]);

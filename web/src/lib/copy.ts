@@ -620,7 +620,7 @@ export function stageToStep(stage: string | null | undefined): number {
 export const LLM_PURPOSE_LABELS: Record<string, string> = {
   transcribe: "Reading photos",
   extract: "Understanding letters",
-  review: "Weekly review (Ideas)",
+  review: "Weekly Ideas",
   ask: "Answering questions",
   draft: "Drafting letters",
   brief: "Daily note",
