@@ -36,9 +36,10 @@ describe("grouping", () => {
     expect(groups.answered.map((e) => e.id)).toEqual(["c"]);
   });
 
-  it("counts what is open and what is overdue", () => {
-    expect(waitingSummary([entry("a", "overdue"), entry("b", "waiting"), entry("e", "closed")])).toEqual({ count: 2, overdue: 1 });
-    expect(waitingSummary([])).toEqual({ count: 0, overdue: 0 });
+  it("counts what is open, what is overdue and what a letter may have answered", () => {
+    expect(waitingSummary([entry("a", "overdue"), entry("b", "waiting"), entry("e", "closed")])).toEqual({ count: 2, overdue: 1, answered: 0 });
+    expect(waitingSummary([entry("a", "answered"), entry("b", "waiting"), entry("c", "answered")])).toEqual({ count: 3, overdue: 0, answered: 2 });
+    expect(waitingSummary([])).toEqual({ count: 0, overdue: 0, answered: 0 });
   });
 });
 
@@ -185,5 +186,43 @@ describe("Letters page", () => {
     expect(link).toHaveAccessibleName(/1 overdue/);
     // overdue is red here as on the Waiting page (the Inbox's count does the same)
     expect(link.querySelector("[class*='danger']")).not.toBeNull();
+    expect(link.querySelector("[data-answered]")).toBeNull();
+  });
+
+  it("says when a letter may have answered one — after what is overdue, in the answered group's green", async () => {
+    const { srv } = useMockApi();
+    srv.db.upsertDocument(
+      doc({ id: "doc_wohnbau_answer", filename: "Antwort_Wohnbau.pdf", title: "Antwort zu Ihrer Nachricht", case_id: "cas_flat", party_id: "pty_wohnbau", doc_date: "2026-09-24" }),
+    );
+    renderWithProviders(<LettersPage />, { route: "/letters" });
+    const link = await screen.findByRole("link", { name: /Waiting for/ });
+    await waitFor(() => expect(link).toHaveAccessibleName(/^Waiting for\s*4,\s*1 overdue,\s*1 may be answered$/));
+    const answered = link.querySelector("[data-answered]")!;
+    expect(answered).toHaveTextContent(/^,\s*·\s*1 may be answered$/);
+    expect(answered.getAttribute("class")).toMatch(/text-ok-ink/);
+    // words where there is room, as the overdue ones; the dot stays the overdue one's red (chase first)
+    expect(answered.getAttribute("class")).toMatch(/max-\[399px\]:sr-only/);
+    expect(answered.getAttribute("class")).toMatch(/sm:max-lg:sr-only/);
+    expect(link.querySelector("[data-overdue-dot]")).not.toBeNull();
+    expect(link.querySelector("[data-answered-dot]")).toBeNull();
+  });
+
+  it("with nothing overdue, an answered entry puts a green dot on the count", async () => {
+    useMockApi();
+    const apiFetch = globalThis.fetch;
+    const body = JSON.stringify([entry("w_answered", "answered"), entry("w_waiting", "waiting"), entry("w_closed", "closed")]);
+    vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) =>
+      /\/api\/waiting$/.test(String(input)) ? Promise.resolve(new Response(body, { status: 200, headers: { "Content-Type": "application/json" } })) : apiFetch(input, init),
+    );
+    renderWithProviders(<LettersPage />, { route: "/letters" });
+    const link = await screen.findByRole("link", { name: /Waiting for/ });
+    await waitFor(() => expect(link).toHaveAccessibleName(/^Waiting for\s*2,\s*1 may be answered$/));
+    expect(link.querySelector("[data-overdue]")).toBeNull();
+    expect(link.querySelector("[data-answered]")).toHaveTextContent(/^,\s*1 may be answered$/);
+    const dot = link.querySelector("[data-answered-dot]")!;
+    expect(dot).toHaveAttribute("aria-hidden", "true");
+    expect(dot.getAttribute("class")).toMatch(/bg-ok/);
+    expect(link.querySelector("[data-overdue-dot]")).toBeNull();
+    expect(link.querySelector("[class*='danger']")).toBeNull();
   });
 });

@@ -27,26 +27,44 @@ const HOW = [
 ];
 
 /**
- * The way to "Waiting for": how many are open, in neutral ink (not all of them are late), a red dot on the
- * count when some are overdue and, where there is room, how many in red words (UI audit round 2: a fully
- * red "4" read as four overdue). The dot takes no room: at 320 px the two buttons still share a row. The
- * words show where the buttons have a row of their own (400–639 px) and beside the title from 1024 px —
- * not in between, where they would squeeze the page's description.
+ * The way to "Waiting for": how many are open, in neutral ink (not all of them are late), a dot on the count
+ * when one asks something of the person — red when some are overdue (chase them), green when a letter may
+ * have answered one (check it) — and, where there is room, how many in words of the same colour (UI audit
+ * round 2: a fully red "4" read as four overdue). The dot takes no room: at 320 px the two buttons still
+ * share a row. The words show where the buttons have a row of their own (400–639 px) and beside the title
+ * from 1024 px (both kinds together from 1280 px) — not in between, where they would squeeze the page's
+ * description. Screen readers always hear them.
  */
-function WaitingLink({ count, overdue }: { count: number; overdue: number }) {
+function WaitingLink({ count, overdue, answered }: { count: number; overdue: number; answered: number }) {
   const Icon = MEANING_ICONS.waitingFor;
+  const words = "-ml-0.5 text-xs font-semibold max-[399px]:sr-only sm:max-lg:sr-only";
   return (
     <Link to="/letters/waiting" className={buttonVariants({ variant: "secondary" })} data-waiting-link>
       <Icon aria-hidden />
       Waiting for
       <span className="relative inline-grid">
         <CountBadge count={count} />
-        {overdue ? <span aria-hidden data-overdue-dot className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-danger ring-2 ring-surface" /> : null}
+        {overdue || answered ? (
+          <span
+            aria-hidden
+            data-overdue-dot={overdue ? "" : undefined}
+            data-answered-dot={overdue ? undefined : ""}
+            className={cn("absolute -right-0.5 -top-0.5 size-2 rounded-full ring-2 ring-surface", overdue ? "bg-danger" : "bg-ok")}
+          />
+        ) : null}
       </span>
       {overdue ? (
-        <span data-overdue className="-ml-0.5 text-xs font-semibold text-danger-ink max-[399px]:sr-only sm:max-lg:sr-only">
+        <span data-overdue className={cn(words, "text-danger-ink")}>
           <span className="sr-only">, </span>
           {overdue} overdue
+        </span>
+      ) : null}
+      {answered ? (
+        // beside overdue words they would squeeze the description before 1280 px: there the red words say the most urgent
+        <span data-answered className={cn(words, "text-ok-ink", overdue > 0 && "lg:max-xl:sr-only")}>
+          <span className="sr-only">, </span>
+          {overdue ? <span aria-hidden>· </span> : null}
+          {answered} may be answered
         </span>
       ) : null}
     </Link>
@@ -112,7 +130,7 @@ export default function LettersPage() {
           // an empty page has no actions: its "Write your first letter" is the one way on (UI audit rounds 1 and 2)
           waitingShown || !empty ? (
             <>
-              {waitingShown ? <WaitingLink count={waiting.count} overdue={waiting.overdue} /> : null}
+              {waitingShown ? <WaitingLink {...waiting} /> : null}
               {empty ? null : (
                 <Button variant="primary" icon={Plus} onClick={openComposer}>
                   New letter

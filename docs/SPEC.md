@@ -1105,8 +1105,9 @@ Pages:
    day and note), each proof with what it shows and doesn't, *What would make it stronger*, the
    timeline (proofs without a day apart) and *Download Nachweis (PDF)*; *More actions → Change how or
    when you sent it*; deleting it names its proof files and can keep them. **Waiting for**
-   (`/letters/waiting`, linked from Letters with its count, overdue in red) lists replies, money and
-   phone promises: overdue → waiting → "a letter may have answered"; every letter entry can be closed
+   (`/letters/waiting`, linked from Letters with its count, overdue in red and "may be answered" in green)
+   lists replies, money and phone promises: overdue → "a letter may have answered" → waiting (chase, check,
+   then wait); every letter entry can be closed
    (*I got an answer — close this*), *It arrived*, *They kept it* (each with Undo; focus moves to the
    row now in its place); an overdue letter or promise offers *Note a call* (also in the letter's
    box), which opens the drawer's form. After *Mark as sent* focus moves to the "Sent …" banner. The

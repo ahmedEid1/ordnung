@@ -18,10 +18,12 @@ export function groupWaiting(entries: readonly WaitingEntry[]): Record<ListedSta
   return out;
 }
 
-/** "3 waiting · 1 overdue" for the Letters page's link (empty when there is nothing). */
-export function waitingSummary(entries: readonly WaitingEntry[]): { count: number; overdue: number } {
+/** "4 · 1 overdue · 1 may be answered" for the Letters page's link: what is open, what to chase and what to
+ * check (a letter in the thread may be the answer) — zeros when there is nothing. */
+export function waitingSummary(entries: readonly WaitingEntry[]): { count: number; overdue: number; answered: number } {
   const open = entries.filter((e) => e.status !== "closed");
-  return { count: open.length, overdue: open.filter((e) => e.status === "overdue").length };
+  const count = (status: ListedStatus) => open.filter((e) => e.status === status).length;
+  return { count: open.length, overdue: count("overdue"), answered: count("answered") };
 }
 
 /** The button that closes a letter's entry: the letter that came is the answer, or it was answered another way. */

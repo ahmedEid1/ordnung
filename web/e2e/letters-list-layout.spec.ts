@@ -54,6 +54,58 @@ for (const width of [1024, 1280, 1440]) {
   });
 }
 
+/** "Waiting for" entries as the Letters page counts them (the demo has sent nothing yet, so nothing waits). */
+async function waitingEntries(page: Page, counts: Record<"overdue" | "answered" | "waiting", number>): Promise<void> {
+  const json = Object.entries(counts).flatMap(([status, n]) =>
+    Array.from({ length: n }, (_, i) => ({ id: `w_${status}_${i}`, status, source: "letter", title: `${status} ${i}`, about: "", note: "", since: null, expected_by: null })),
+  );
+  await page.route("**/api/waiting", (route) => route.fulfill({ json }));
+}
+
+// the words take room: shown where the buttons have a row of their own (400–639 px) and beside the title from
+// 1024 px — what may be answered beside what is overdue only from 1280 px, so the description keeps its room
+for (const [width, overdueWords, answeredWords] of [
+  [320, false, false],
+  [400, true, true],
+  [639, true, true],
+  [768, false, false],
+  [1024, true, false],
+  [1280, true, true],
+] as const) {
+  test(`Letters at ${width}px: "Waiting for" says what is overdue and what may be answered, inside the screen`, async ({ page }) => {
+    await waitingEntries(page, { overdue: 12, answered: 10, waiting: 8 });
+    await page.setViewportSize({ width, height: 800 });
+    await open(page, "/letters", "Letters");
+    const link = page.getByRole("link", { name: /^Waiting for/ });
+    await expect(link).toHaveAccessibleName(/^Waiting for\s*30\s*,\s*12 overdue\s*,\s*10 may be answered$/);
+    expect(await noSideScroll(page)).toBe(true);
+    const box = (await link.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(width - 16 + 0.5);
+    expect(box.height).toBeLessThanOrEqual(44); // one line
+    const shown = async (selector: string) => ((await link.locator(selector).boundingBox())?.width ?? 0) > 8;
+    expect(await shown("[data-overdue]")).toBe(overdueWords);
+    expect(await shown("[data-answered]")).toBe(answeredWords);
+    // the dot is red while something is overdue: chase first
+    await expect(link.locator("[data-overdue-dot]")).toHaveCount(1);
+    if (width >= 1024) {
+      const description = page.getByRole("main").locator("header p").first();
+      expect((await description.boundingBox())!.width).toBeGreaterThanOrEqual(260);
+    }
+  });
+}
+
+test("Letters at 1024px: with nothing overdue, what may be answered is said in green words and a green dot", async ({ page }) => {
+  await waitingEntries(page, { overdue: 0, answered: 1, waiting: 2 });
+  await page.setViewportSize({ width: 1024, height: 800 });
+  await open(page, "/letters", "Letters");
+  const link = page.getByRole("link", { name: /^Waiting for/ });
+  await expect(link).toHaveAccessibleName(/^Waiting for\s*3\s*,\s*1 may be answered$/);
+  expect(((await link.locator("[data-answered]").boundingBox())?.width ?? 0) > 8).toBe(true);
+  await expect(link.locator("[data-answered-dot]")).toHaveCount(1);
+  await expect(link.locator("[data-overdue], [data-overdue-dot]")).toHaveCount(0);
+  expect(await noSideScroll(page)).toBe(true);
+});
+
 for (const width of [320, 390]) {
   test(`Letters at ${width}px: each row says its status and date; the focus ring is drawn whole inside the row`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
