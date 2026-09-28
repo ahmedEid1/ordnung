@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from fixtures_llm import INVOICE_LETTER, TAX_LETTER
+from helpers_secretary import add_doc, add_item
 from ordnung import clock
 from test_api_support import TODAY, Api, ApiRouter, api_for
 
@@ -121,6 +122,56 @@ async def test_add_list_and_delete_by_hand(data_dir: Path) -> None:
         assert (await api.client.get("/api/activity", params={"limit": 1})).json()[0][
             "kind"
         ] == "item.deleted"
+
+
+async def test_the_list_says_which_to_dos_are_set_aside(data_dir: Path) -> None:
+    """UI audit R2-inbox-timeline-contracts-2: the Inbox counted an invoice payment its payment reminder took
+    over as "1 to-do" and showed it as the letter's next step, "25 days overdue" — the list said nothing of
+    what Today, the verdict and the party drawer set aside. Each listed to-do now says so (``aside``)."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        party = store.add_party(name="TechMarkt Online GmbH", kind="retailer").id
+        case = store.add_case(title="Invoice TM-4711", party_id=party, reference="TM-4711").id
+        refs = [{"label": "Rechnungsnummer", "value": "TM-4711"}]
+        letter = {"party_id": party, "case_id": case, "references": refs}
+        invoice = add_doc(store, "invoice", kind="invoice", doc_date="2026-08-20", **letter)
+        reminder = add_doc(store, "reminder", kind="dunning", doc_date="2026-09-10", **letter)
+        money = {"kind": "payment", "direction": "out", "party_id": party}
+        replaced = add_item(
+            store,
+            title="Pay the invoice",
+            due_date="2026-09-03",
+            filed_on="2026-08-21",
+            doc_id=invoice,
+            **money,
+        )
+        due = add_item(
+            store,
+            title="Pay the reminder",
+            due_date="2026-09-30",
+            filed_on="2026-09-11",
+            doc_id=reminder,
+            **money,
+        )
+        lease = add_doc(store, "lease", kind="rent_lease", doc_date="2025-09-15", party_id=party)
+        history = add_item(
+            store, title="Security deposit", due_date="2025-10-01", filed_on=TODAY, doc_id=lease, **money
+        )
+
+        listed = {
+            item["id"]: item
+            for item in (await api.client.get("/api/items", params={"status": "open"})).json()
+        }
+        assert listed[replaced]["aside"] == {
+            "item_id": replaced,
+            "reason": "replaced",
+            "replaced_by": reminder,
+        }
+        assert listed[history]["aside"] == {"item_id": history, "reason": "history", "replaced_by": None}
+        assert listed[due]["aside"] is None
+        assert (
+            "aside" not in (await api.client.get(f"/api/items/{replaced}")).json()
+        )  # worked out for the list
 
 
 async def test_confirming_the_last_unchecked_date_clears_please_check(data_dir: Path) -> None:

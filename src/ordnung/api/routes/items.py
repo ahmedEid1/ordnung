@@ -18,13 +18,13 @@ from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from ordnung.api.deps import CtxDep, StoreDep, TodayDep
-from ordnung.api.routes.common import IsoDate, ledger_changed, require
+from ordnung.api.routes.common import IsoDate, ledger_changed, require, set_aside
 from ordnung.api.routes.dates import date_nature, manual_date_fields, refresh_review_status, schedule_spec
 from ordnung.calendar.ics import build_ics
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
 from ordnung.ingest.plan import item_context
-from ordnung.models import Area, Item, ItemKind, ItemStatus, Priority, Recurrence
+from ordnung.models import Area, Item, ItemKind, ItemStatus, ListedItem, Priority, Recurrence
 from ordnung.recurrence import mark_done, replaced_occurrence, roll_item, same_rule, standing_in, undo_done
 from ordnung.secretary.triggers import postal_buffer
 
@@ -82,9 +82,10 @@ class ItemPatch(BaseModel):
 # --------------------------------------------------------------------------------------------------
 
 
-@router.get("/items", response_model=list[Item])
+@router.get("/items", response_model=list[ListedItem])
 def list_items(
     store: StoreDep,
+    today: TodayDep,
     status_: Annotated[ItemStatus | None, Query(alias="status")] = None,
     kind: ItemKind | None = None,
     from_: Annotated[IsoDate | None, Query(alias="from")] = None,
@@ -96,11 +97,11 @@ def list_items(
     case_id: str | None = None,
     include_undated: bool = False,
     limit: Annotated[int | None, Query(ge=1, le=5000)] = None,
-) -> list[Item]:
+) -> list[ListedItem]:
     """To-dos & dates, soonest first. With a ``from``/``to`` range undated ones are left out unless
-    ``include_undated``."""
+    ``include_undated``. Each says whether it is set aside (``aside``: not one to act on, as on Today)."""
     ranged = from_ is not None or to is not None
-    return store.list_items(
+    items = store.list_items(
         status=status_,
         kind=kind,
         from_date=from_,
@@ -113,6 +114,8 @@ def list_items(
         include_undated=include_undated or not ranged,
         limit=limit,
     )
+    aside = {entry.item_id: entry for entry in set_aside(store, items, today)}
+    return [ListedItem.model_construct(**dict(item), aside=aside.get(item.id)) for item in items]
 
 
 @router.get("/items/{item_id}.ics", response_class=Response)

@@ -166,6 +166,8 @@ function LetterRow({
   const today = useTodayISO();
   const describedBy = useId();
   const reading = isReading(doc);
+  // kept private and never read by Claude (as its page's "Not read"): nobody knows its sender yet
+  const keptUnread = doc.ai_private && !doc.ai_processed_at;
   const next = scam || reading ? null : open?.next ?? null;
   // the same wording as Today: "transfer by Thu 1 Oct · in 3 days", "Thu 8 Oct, 10:30 · in 10 days"
   const action = next ? actionFromItem(next, { today }) : null;
@@ -215,10 +217,11 @@ function LetterRow({
               </span>
             ) : null}
           </div>
-          <div className="mt-1 flex min-w-0 items-center gap-2 text-sm text-muted">
+          {/* (no line at all for a letter kept private unread: its sender is unknown, not missing) */}
+          <div className="mt-1 flex min-w-0 items-center gap-2 text-sm text-muted empty:hidden">
             {party ? (
               <PartyChip party={party} className="relative z-10 shrink-0 border-transparent bg-transparent py-0 pl-0 hover:bg-surface @5xl:max-w-[60%]" />
-            ) : doc.party_id === null && !reading ? (
+            ) : doc.party_id === null && !reading && !keptUnread ? (
               <span className="shrink-0 text-muted">No sender</span>
             ) : null}
             {doc.summary ? (

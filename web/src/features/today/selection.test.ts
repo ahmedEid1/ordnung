@@ -219,6 +219,13 @@ describe("contract decisions", () => {
     expect(a.draftKind).toBe("cancellation");
   });
 
+  it("asks to check a contract's uncertain dates — not a notice period the person entered (R2-inbox-timeline-contracts-1)", () => {
+    const low = { ...phone, computed: { ...phone.computed!, regime: "as_written" as const, confidence: "low" as const } };
+    expect(actionFromContract(low, ctx)!.needsCheck).toBe(true);
+    const entered = { doc_id: "doc_phone", page: null, quote: "one month's notice to the end of a month", grounding: "user" as const, value_consistent: true, score: 0, boxes: [] };
+    expect(actionFromContract({ ...low, evidence: [entered] }, ctx)!.needsCheck).toBe(false);
+  });
+
   it("ignores inactive contracts and passed decision dates", () => {
     expect(actionFromContract({ ...phone, status: "cancelled" }, ctx)).toBeNull();
     expect(actionFromContract({ ...phone, cancellable: false, cancel_hint: "Required by law." }, ctx)).toBeNull();

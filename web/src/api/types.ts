@@ -430,6 +430,8 @@ export type ContractComputation = Schemas["ContractComputation"];
 export type Contract = Schemas["Contract"];
 /** A to-do or date ("To-dos & dates" in the UI). */
 export type Item = Schemas["Item"];
+/** A to-do as `GET /api/items` lists it: with `aside`, why it is not one to act on (null: it is). */
+export type ListedItem = Schemas["ListedItem"];
 export type SuggestionRef = Schemas["SuggestionRef"];
 export type SuggestionAction = Schemas["SuggestionAction"];
 /** An "Idea" from the secretary. */

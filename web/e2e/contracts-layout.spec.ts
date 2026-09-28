@@ -123,14 +123,23 @@ test("at 320 px: the notice period entered on the card of a contract we couldn't
     await expect(page.getByText("Notice period saved", { exact: true })).toBeVisible();
     // the rules engine worked the dates out (the toast says them) and the card shows them
     await expect(page.getByText("To leave on Sat 31 Oct 2026, your notice must arrive by Wed 30 Sep 2026; send it by Mon 28 Sep.")).toBeVisible();
-    await expect(card).toContainText("As written in the contract: 1 month's notice to the end of a month");
+    // the period is the person's now (R2-inbox-timeline-contracts-1): no "Please check" for what they just
+    // checked, and a way left to correct it, which keeps the focus — after a reload too
+    await expect(card).toContainText("As you entered it: 1 month's notice to the end of a month");
     await expect(card).toContainText("Notice must arrive by");
-    await expect(card.getByRole("button", { name: /notice period/ })).toHaveCount(0);
-    await expect(card).toBeFocused();
+    await expect(card.getByText("Please check")).toHaveCount(0);
+    const change = card.getByRole("button", { name: /^Change notice period/ });
+    await expect(change).toBeFocused();
 
-    // Undo: the missing terms are back
+    // Undo: the missing terms are back, and with them "Please check"
     await page.getByRole("button", { name: /^Undo/ }).click();
     await expect(card.getByRole("button", { name: /^Add notice period/ })).toBeVisible();
+    await expect(card.getByText("Please check")).toBeVisible();
+
+    await apiPatch(page, `/api/contracts/${bank.id}`, { notice_value: 3, notice_unit: "months", notice_basis: "end_of_month" });
+    await page.reload();
+    await expect(card.getByRole("button", { name: /^Change notice period/ })).toBeVisible();
+    await expect(card.getByText("Please check")).toHaveCount(0);
   } finally {
     await apiPatch(page, `/api/contracts/${bank.id}`, before);
   }

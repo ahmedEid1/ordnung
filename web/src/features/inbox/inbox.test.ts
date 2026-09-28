@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeDetail, makeDoc, makeItem, makeSuggestion } from "@/features/document/fixtures";
-import type { Contract } from "@/api/types";
+import type { Contract, Item, ItemAside, ListedItem } from "@/api/types";
 import { filterCounts, filterDocuments, groupLetters, inboxDateInfo, kindOptions, openItemsByDoc, parseFilter, pinJustRead } from "./filters";
 import { dueSoon, recapSentence, recapTitle, summarizeBatch } from "./recap";
 
@@ -86,6 +86,23 @@ describe("inbox filters", () => {
     ]);
     expect(m.get("a")).toMatchObject({ count: 2, next: { id: "2" } });
     expect(m.size).toBe(1);
+  });
+
+  it("leaves out to-dos the list sets aside: no count, never the next step (R2-inbox-timeline-contracts-2)", () => {
+    // the TechMarkt invoice its payment reminder took over read "Pay by Thu 3 Sep · 25 days overdue", "1 to-do"
+    const listed = (i: Partial<Item>, aside: ItemAside | null = null): ListedItem => ({ ...makeItem(i), aside });
+    const m = openItemsByDoc(
+      [
+        listed({ id: "invoice", doc_id: "inv", kind: "payment", due_date: "2026-09-03" }, { item_id: "invoice", reason: "replaced", replaced_by: "rem" }),
+        listed({ id: "reminder", doc_id: "rem", kind: "payment", due_date: "2026-10-01", send_by: "2026-09-29" }),
+        listed({ id: "deposit", doc_id: "lease", kind: "payment", due_date: "2026-09-20" }, { item_id: "deposit", reason: "history", replaced_by: null }),
+        listed({ id: "rent", doc_id: "lease", kind: "payment", due_date: "2026-10-01" }),
+      ],
+      TODAY,
+    );
+    expect(m.get("inv")).toEqual({ count: 0, next: null });
+    expect(m.get("rem")).toMatchObject({ count: 1, next: { id: "reminder" } });
+    expect(m.get("lease")).toMatchObject({ count: 1, next: { id: "rent" } });
   });
 });
 

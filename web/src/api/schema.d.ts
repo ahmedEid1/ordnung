@@ -481,7 +481,7 @@ export interface paths {
         /**
          * List Items
          * @description To-dos & dates, soonest first. With a ``from``/``to`` range undated ones are left out unless
-         *     ``include_undated``.
+         *     ``include_undated``. Each says whether it is set aside (``aside``: not one to act on, as on Today).
          */
         get: operations["list_items_api_items_get"];
         put?: never;
@@ -3929,6 +3929,112 @@ export interface components {
             kind: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
         };
         /**
+         * ListedItem
+         * @description A to-do as the list (``GET /api/items``) returns it.
+         *
+         *     ``aside`` is worked out on read (never stored): why the to-do is not one to act on — the same
+         *     rules as Today, the letter's verdict and the party drawer (:class:`ItemAside`) — so the Inbox
+         *     neither counts it nor shows it as a letter's next step; ``None`` for one to act on.
+         */
+        ListedItem: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "deadline" | "payment" | "appointment" | "task" | "expiry" | "reminder" | "milestone";
+            /** Title */
+            title: string;
+            /** Description */
+            description: string | null;
+            /** Action */
+            action: string | null;
+            /** Consequence */
+            consequence: string | null;
+            /** Due Date */
+            due_date: string | null;
+            /** Due Time */
+            due_time: string | null;
+            /** Send By */
+            send_by: string | null;
+            date_spec: components["schemas"]["DateSpec"] | null;
+            computation: components["schemas"]["ComputationReceipt"] | null;
+            /** Amount */
+            amount: number | null;
+            /** Currency */
+            currency: string | null;
+            /** Direction */
+            direction: ("out" | "in") | null;
+            recurrence: components["schemas"]["Recurrence-Output"] | null;
+            /**
+             * Status
+             * @default open
+             * @enum {string}
+             */
+            status: "open" | "done" | "dismissed" | "snoozed" | "missed";
+            /** Snoozed Until */
+            snoozed_until: string | null;
+            /**
+             * Priority
+             * @default normal
+             * @enum {string}
+             */
+            priority: "low" | "normal" | "high" | "critical";
+            /**
+             * Area
+             * @default other
+             * @enum {string}
+             */
+            area: "home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other";
+            /** Party Id */
+            party_id: string | null;
+            /** Case Id */
+            case_id: string | null;
+            /** Contract Id */
+            contract_id: string | null;
+            /** Doc Id */
+            doc_id: string | null;
+            /** Evidence */
+            evidence: components["schemas"]["Evidence"][];
+            /**
+             * Grounding
+             * @default unverified
+             * @enum {string}
+             */
+            grounding: "verified" | "model_read" | "unverified" | "user";
+            /** Slot Key */
+            slot_key: string | null;
+            /**
+             * User Modified
+             * @default false
+             */
+            user_modified: boolean;
+            /**
+             * Due Date Source
+             * @default none
+             * @enum {string}
+             */
+            due_date_source: "computed" | "fixed" | "manual" | "none";
+            /**
+             * Origin
+             * @default extracted
+             * @enum {string}
+             */
+            origin: "extracted" | "manual" | "rule" | "capture" | "draft";
+            /** Location */
+            location: string | null;
+            /** Filed On */
+            filed_on: string | null;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+            /** Completed At */
+            completed_at: string | null;
+            aside: components["schemas"]["ItemAside"] | null;
+        };
+        /**
          * MailOpenRequest
          * @description Which tray letter to open.
          */
@@ -6659,7 +6765,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Item"][];
+                    "application/json": components["schemas"]["ListedItem"][];
                 };
             };
             /** @description Validation Error */

@@ -15,7 +15,17 @@ import { CONTRACT_CATEGORY_COPY, copyFor } from "@/lib/copy";
 import { formatMoney, protectRefs } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ContractWhy } from "./ContractWhy";
-import { CONTINUES_MONTHLY, contractMonthlyCost, isFixedTerm, isLockInDecision, isRollingContract, ruleInWords, termsUnclear } from "./model";
+import {
+  CONTINUES_MONTHLY,
+  contractMonthlyCost,
+  isFixedTerm,
+  isLockInDecision,
+  isRollingContract,
+  noticeEditable,
+  pleaseCheckHint,
+  ruleInWords,
+  termsUnclear,
+} from "./model";
 import { composerHrefFor, endingLetterLabel, offersEndingLetter } from "./links";
 import { NoticePeriodForm } from "./NoticePeriodForm";
 import { dayNumber } from "@/features/lanes/scale";
@@ -65,24 +75,47 @@ export function ContractCard({
       ? comp.earliest_exit
       : null;
   const rollingArriveBy = rolling && comp?.cancel_by && comp.cancel_by >= today ? comp.cancel_by : null;
-  const lowConfidence = comp?.confidence === "low";
+  // low confidence asks for a check — not once the person has entered the notice period themselves
+  const checkHint = pleaseCheckHint(c);
   const titleId = `contract-${c.id}-title`;
   const isJob = c.category === "employment";
   const offerLetter = offersEndingLetter(c);
   // e.g. the broadcasting fee: say why there is nothing to cancel instead of offering a letter
   const whyNot = active && !offerLetter ? c.cancel_hint : null;
   const hasCost = c.cost_amount !== null && Boolean(c.cost_interval) && c.cost_interval !== "once";
-  // terms we couldn't work out: the notice period can be entered here, and the engine redoes the dates
+  // terms we couldn't work out, follow as written or the person entered: the notice period can be
+  // entered (or corrected) here, and the engine redoes the dates
+  const editable = noticeEditable(c);
   const [editingNotice, setEditingNotice] = useState(false);
   const cardRef = useRef<HTMLElement>(null);
   const noticeButtonRef = useRef<HTMLButtonElement>(null);
+  // Saved or undone: the focus goes to the button where those terms put it — first while the dates
+  // are unknown, last once they are — as soon as the list has them (the card itself if none is left)
+  const focusNoticeButtonFor = (terms: Contract) => {
+    const place = termsUnclear(terms) ? "lead" : "end";
+    focusWhenReady(() => (noticeEditable(terms) ? cardRef.current?.querySelector<HTMLElement>(`[data-notice-button="${place}"]`) ?? null : cardRef.current));
+  };
   const closeNotice = (saved: Contract | null) => {
     setEditingNotice(false);
-    // back to the button — or, when the dates are known now and it is gone, to the card itself
-    requestAnimationFrame(() => (saved && !termsUnclear(saved) ? cardRef.current : noticeButtonRef.current)?.focus());
+    if (saved) focusNoticeButtonFor(saved);
+    else requestAnimationFrame(() => noticeButtonRef.current?.focus()); // Cancel, Escape: back to the button
   };
-  // Undo in the toast: the button is back once the old terms are, and takes the focus the toast had
-  const noticeUndone = () => focusWhenReady(() => noticeButtonRef.current);
+
+  // the main step while the dates are unknown; once they are, a quiet way to correct the period
+  const noticeButton =
+    editable && !editingNotice ? (
+      <Button
+        ref={noticeButtonRef}
+        size="sm"
+        variant={unclear ? "secondary" : "ghost"}
+        icon={Pencil}
+        data-notice-button={unclear ? "lead" : "end"}
+        onClick={() => setEditingNotice(true)}
+      >
+        {c.notice_value ? "Change notice period" : "Add notice period"}
+        <span className="sr-only"> for {c.name}</span>
+      </Button>
+    ) : null;
 
   return (
     <article
@@ -109,9 +142,10 @@ export function ContractCard({
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {!active ? <StatusPill of="contract" status={c.status} /> : null}
-          {lowConfidence ? (
-            <Badge tone="warn" icon={TriangleAlert}>
+          {checkHint ? (
+            <Badge tone="warn" icon={TriangleAlert} title={checkHint}>
               Please check
+              <span className="sr-only">: {checkHint}</span>
             </Badge>
           ) : null}
         </div>
@@ -208,7 +242,7 @@ export function ContractCard({
       ) : null}
 
       {/* (stays while saving, even once the saved terms have made the dates known) */}
-      {editingNotice ? <NoticePeriodForm contract={c} onClose={closeNotice} onUndone={noticeUndone} /> : null}
+      {editingNotice ? <NoticePeriodForm contract={c} onClose={closeNotice} onUndone={focusNoticeButtonFor} /> : null}
 
       <footer className="mt-auto flex flex-wrap items-center gap-2 pt-4">
         {unclear && c.source_doc_id ? (
@@ -219,12 +253,7 @@ export function ContractCard({
             <span className="sr-only"> for {c.name}</span>
           </Link>
         ) : null}
-        {unclear && !editingNotice ? (
-          <Button ref={noticeButtonRef} size="sm" icon={Pencil} onClick={() => setEditingNotice(true)}>
-            {c.notice_value ? "Change notice period" : "Add notice period"}
-            <span className="sr-only"> for {c.name}</span>
-          </Button>
-        ) : null}
+        {unclear ? noticeButton : null}
         {offerLetter ? (
           <Link
             to={composerHrefFor(c)}
@@ -243,6 +272,7 @@ export function ContractCard({
             <span className="sr-only"> for {c.name}</span>
           </Link>
         ) : null}
+        {unclear ? null : noticeButton}
       </footer>
     </article>
   );

@@ -518,6 +518,14 @@ def _unedited(existing: Contract, values: dict[str, Any], previous: dict[str, An
     }
 
 
+def _entered_terms(existing: Contract, fields: dict[str, Any]) -> list[Evidence]:
+    """The notice terms the person entered on the contract's card (a quote ``confirmed by the
+    person``), kept when its letter is read again — unless this reading rewrites them."""
+    if any(name in fields for name in ("notice_value", "notice_unit", "notice_basis")):
+        return []
+    return [evidence for evidence in existing.evidence if evidence.grounding == "user"]
+
+
 def upsert_contract(
     store: Store,
     *,
@@ -555,8 +563,9 @@ def upsert_contract(
         trace.set(**facts.contract("created", contract.id))
     elif existing.source_doc_id == document.id:
         previous = _contract_values(store.get_extraction(document.id))
+        fields = _unedited(existing, values, previous)
         contract = store.update_contract(
-            existing.id, evidence=evidence, **_unedited(existing, values, previous)
+            existing.id, evidence=[*evidence, *_entered_terms(existing, fields)], **fields
         )
         trace.set(**facts.contract("refreshed", contract.id))
     else:

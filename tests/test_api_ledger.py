@@ -13,12 +13,13 @@ from typing import Any
 import pytest
 
 from fixtures_llm import GYM_CONTRACT_LETTER, TAX_LETTER
+from helpers_secretary import add_doc
 from ordnung import clock
 from ordnung.api.routes import demo as demo_routes
 from ordnung.api.routes.profile import inbox_dir_problem
 from ordnung.config import Paths
 from ordnung.llm.replay import ReplayBackend
-from ordnung.models import Document, Job, MailTrayItem, PartyDetail, Suggestion, TourState
+from ordnung.models import Document, Evidence, Job, MailTrayItem, PartyDetail, Suggestion, TourState
 from ordnung.secretary.brief import brief_key
 from test_api_support import TODAY, Api, api_for
 
@@ -69,6 +70,47 @@ async def test_contracts_are_computed_on_read_and_can_be_corrected(data_dir: Pat
 
         dashboard = (await api.client.get("/api/dashboard")).json()
         assert dashboard["money"]["fixed_costs_monthly"] == 34.9
+
+
+async def test_a_notice_period_the_person_enters_is_recorded_as_theirs(data_dir: Path) -> None:
+    """UI audit R2-inbox-timeline-contracts-1: after "Save notice period" the card still said "Please check"
+    (the rules follow terms as written with low confidence, whoever gave them). The terms the person
+    entered are now a quote "confirmed by the person" — replaced by the next correction, gone again with
+    an Undo back to none — while the rules' confidence stays as it is and the letter's quotes stay."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        letter = add_doc(store, "giro", kind="bank_letter", title="Girokonto Klassik")
+        read = Evidence(doc_id=letter, page=1, quote="Kontoführung 4,90 € monatlich", grounding="verified")
+        contract = store.add_contract(
+            name="Girokonto Klassik", category="bank", source_doc_id=letter, evidence=[read], cost_amount=4.9
+        )
+        url = f"/api/contracts/{contract.id}"
+
+        saved = (
+            await api.client.patch(
+                url, json={"notice_value": 3, "notice_unit": "months", "notice_basis": "end_of_month"}
+            )
+        ).json()
+        mine = {"doc_id": letter, "quote": "three months' notice to the end of a month", "grounding": "user"}
+        assert [{k: e[k] for k in mine} for e in saved["evidence"][1:]] == [mine]
+        assert saved["evidence"][0]["quote"] == read.quote
+        assert saved["computed"]["regime"] == "as_written" and saved["computed"]["confidence"] == "low"
+        (listed,) = (await api.client.get("/api/contracts")).json()  # a reload keeps it
+        assert [e["grounding"] for e in listed["evidence"]] == ["verified", "user"]
+
+        fixed = (await api.client.patch(url, json={"notice_value": 1})).json()  # a typo corrected
+        assert [e["quote"] for e in fixed["evidence"] if e["grounding"] == "user"] == [
+            "one month's notice to the end of a month"
+        ]
+        costs = (await api.client.patch(url, json={"cost_amount": 5.9})).json()  # not about the notice
+        assert costs["evidence"] == fixed["evidence"]
+
+        undone = (
+            await api.client.patch(
+                url, json={"notice_value": None, "notice_unit": None, "notice_basis": None}
+            )
+        ).json()
+        assert [e["grounding"] for e in undone["evidence"]] == ["verified"]
 
 
 async def test_parties_threads_timeline_and_lanes(data_dir: Path) -> None:

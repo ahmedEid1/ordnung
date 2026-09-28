@@ -164,6 +164,52 @@ def test_a_fee_paid_on_site_has_no_day_to_transfer_by(store: Store) -> None:
     assert entry.subtitle == "Pay the €100 fee on site at the appointment by girocard (cash is not accepted)."
 
 
+def test_timeline_says_transfer_by_for_transfers_and_nothing_to_send_for_a_direct_debit(store: Store) -> None:
+    """UI audit R2-inbox-timeline-contracts-3: every dated to-do with a send-by day read "Send by …" on the
+    timeline — a bank transfer too (Today, the verdict and the receipt say "Transfer by …"), and even a
+    direct debit, which the sender collects itself. A posted objection keeps "Send by"."""
+    invoice = add_doc(store, "reminder", kind="dunning", title="1st payment reminder")
+    transfer = add_item(
+        store,
+        kind="payment",
+        title="Pay outstanding invoice plus reminder fee",
+        doc_id=invoice,
+        due_date="2026-10-01",
+        send_by="2026-09-29",
+        amount=94.99,
+        direction="out",
+    )
+    ticket = add_doc(store, "ticket", kind="contract", title="Deutschlandticket")
+    debit = add_item(
+        store,
+        kind="payment",
+        title="Monatliche Abbuchung Deutschlandticket €63.00",
+        doc_id=ticket,
+        due_date="2026-09-30",
+        send_by="2026-09-28",
+        amount=63.0,
+        direction="out",
+    )
+    tax = add_doc(store, "tax", kind="tax_assessment", title="Tax assessment")
+    objection = add_item(
+        store, kind="deadline", title="Objection", doc_id=tax, due_date="2026-10-21", send_by="2026-10-15"
+    )
+    refund = add_item(
+        store,
+        kind="payment",
+        title="Tax refund",
+        doc_id=tax,
+        due_date="2026-10-20",
+        amount=310.0,
+        direction="in",
+    )
+    entries = {e.id: e for e in timeline(store, date(2026, 9, 1), date(2026, 12, 31))}
+    assert entries[transfer].subtitle == "Transfer by Tue 29 Sep"
+    assert entries[debit].subtitle == "Collected by direct debit"
+    assert entries[objection].subtitle == "Send by Thu 15 Oct"
+    assert entries[refund].subtitle is None  # money coming in: nobody sends it
+
+
 def test_letters_about_the_home_are_never_under_the_residence_permit(store: Store) -> None:
     """UI audit R1-backend-2: the model may read a running-costs statement under "residence" (the
     residence-permit area); Today, the timeline and the lanes show it and its to-dos under Home."""
