@@ -1,6 +1,6 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router";
-import { CalendarClock, CircleCheck, CircleDashed, CircleHelp, Download, Ellipsis, FileDown, Hourglass, Info, PenLine, Phone, Plus, ShieldCheck, Trash2, TriangleAlert, Undo2 } from "lucide-react";
+import { CalendarClock, CircleCheck, CircleDashed, CircleHelp, Ellipsis, FileDown, Info, PenLine, Phone, Plus, ShieldCheck, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { api } from "@/api/endpoints";
 import { useDraftProof, useMarkAnswered, useRemoveProof, useSetTracking } from "@/api/hooks";
 import type { Draft, ProofEntry, ProofEvent, ProofOverview, WaitingEntry } from "@/api/types";
@@ -8,12 +8,11 @@ import { Button, IconButton, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DateText } from "@/components/ui/DateText";
-import { Dialog } from "@/components/ui/Dialog";
 import { LoadError } from "@/components/ui/LoadError";
 import { Menu } from "@/components/ui/Menu";
 import { SkeletonText } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
-import { PROOF_KIND_COPY, TONES, copyFor } from "@/lib/copy";
+import { MEANING_ICONS, PROOF_KIND_COPY, TONES, copyFor } from "@/lib/copy";
 import { usePartyDrawer } from "@/lib/party-drawer";
 import { displayTracking } from "@/lib/tracking";
 import { cn } from "@/lib/utils";
@@ -21,11 +20,13 @@ import { composerHref } from "@/features/today/selection";
 import { focusWhenReady } from "@/features/today/focus";
 import { WRAPPING_BUTTON, asksForACall, closeLabel } from "@/features/waiting/model";
 import { AddProofDialog } from "./AddProofDialog";
+import { RemoveProofDialog } from "./RemoveProofDialog";
 import { TrackingField, trackingSavable } from "./TrackingField";
 import { hasPicture, kindsIn, proofFileHref, nachweisFileName, startWith, suggestedKind, takesTrackingNumber, waitingTitle, WAITING_TONE } from "./proof";
 
 const WAITING_ICON = {
-  waiting: Hourglass,
+  // what you wait for from someone else has its own icon (the hourglass is the Deadline kind)
+  waiting: MEANING_ICONS.waitingFor,
   overdue: TriangleAlert,
   answered: CircleCheck,
   closed: CircleCheck,
@@ -191,6 +192,13 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
     <form
       className="flex flex-col gap-2"
       noValidate
+      // Escape leaves a change like Cancel does (back to "Change"); a first number has nothing to go back to
+      onKeyDown={(e) => {
+        if (e.key !== "Escape" || !editing || e.defaultPrevented) return;
+        e.preventDefault();
+        e.stopPropagation();
+        cancel();
+      }}
       onSubmit={(e) => {
         e.preventDefault();
         setTried(true);
@@ -356,7 +364,7 @@ function Timeline({ events, draftId }: { events: ProofEvent[]; draftId: string }
  * "Proof of sending" on a sent letter: what it waits for (and "I got an answer"), the tracking number
  * (checked as it is typed), the proofs with what each does and doesn't show, days that contradict the
  * sending day, what would make it stronger, the timeline and the Nachweis PDF. Proof files are
- * private: never sent to AI (a file already in Ordnung is said to be so when it is added).
+ * private: never sent to Claude (a file already in Ordnung is said to be so when it is added).
  */
 export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeSending?: () => void }) {
   const q = useDraftProof(draft.id);
@@ -490,68 +498,30 @@ export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeS
               editing={editing}
             />
           ) : null}
-          <Dialog
+          <RemoveProofDialog
             open={Boolean(removing)}
             onClose={() => setRemoving(null)}
             returnFocus={listHeading}
-            size="sm"
-            title={removing ? `Remove the ${lowerFirst(copyFor(PROOF_KIND_COPY, removing.proof.kind).label)}?` : "Remove this proof?"}
-            description={removing ? removalWords(removing) : undefined}
-            footer={
-              <>
-                <Button onClick={() => setRemoving(null)}>Keep it</Button>
-                <Button
-                  variant="danger"
-                  icon={Trash2}
-                  loading={remove.isPending}
-                  onClick={() =>
-                    removing &&
-                    remove.mutate(
-                      { id: draft.id, proofId: removing.proof.id },
-                      {
-                        onSuccess: () => {
-                          toast.success("Proof removed", {
-                            description: copyFor(PROOF_KIND_COPY, removing.proof.kind).label,
-                          });
-                          setRemoving(null);
-                        },
-                      },
-                    )
-                  }
-                >
-                  Remove
-                </Button>
-              </>
+            kind={removing?.proof.kind ?? null}
+            document={removing?.document ?? null}
+            pending={remove.isPending}
+            onRemove={() =>
+              removing &&
+              remove.mutate(
+                { id: draft.id, proofId: removing.proof.id },
+                {
+                  onSuccess: () => {
+                    toast.success("Proof removed", {
+                      description: copyFor(PROOF_KIND_COPY, removing.proof.kind).label,
+                    });
+                    setRemoving(null);
+                  },
+                },
+              )
             }
-          >
-            {/* deleted for good (docs/decisions/0014): a photographed receipt may be the only copy — keep one first */}
-            {removing?.document && removing.document.source === "proof" ? (
-              <p className="text-[13.5px] leading-5 text-ink/85">
-                If it's your only copy,{" "}
-                <a href={api.fileUrl(removing.document.id)} download={removing.document.filename} className="inline-flex min-h-6 items-center gap-1 font-medium text-accent underline underline-offset-2">
-                  <Download className="size-3.5" aria-hidden />
-                  download it first
-                </a>
-                .
-              </p>
-            ) : null}
-          </Dialog>
+          />
         </>
       )}
     </Card>
-  );
-}
-
-const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
-
-/** What removing a proof does to its file, naming it: deleted for good, or (a letter it was linked to) kept. */
-function removalWords(entry: ProofEntry): ReactNode {
-  const doc = entry.document;
-  if (!doc) return "Its entry is removed from this letter.";
-  // a file name is one long word: it wraps anywhere rather than widen the dialog
-  return (
-    <span className="[overflow-wrap:anywhere]">
-      {doc.source === "proof" ? `“${doc.filename}” is deleted from Ordnung for good — this can't be undone.` : `“${doc.filename}” stays in Ordnung; only its link to this letter goes.`}
-    </span>
   );
 }

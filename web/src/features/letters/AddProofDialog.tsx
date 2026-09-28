@@ -4,13 +4,15 @@ import type { ProofEntry, ProofKind } from "@/api/types";
 import { useAddProof, useUpdateProof } from "@/api/hooks";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { Field, Input, Select } from "@/components/ui/Field";
+import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { PROOF_KIND_COPY, copyFor } from "@/lib/copy";
 import { useTodayISO } from "@/lib/today";
 import { PROOF_DAY_LABEL, SENDING_DAY_KINDS, proofKindsFor } from "./proof";
 
 const NOTE_MAX = 500;
+/** From this many characters left, the note says how many remain. */
+const NOTE_COUNT_FROM = 100;
 /** What the file picker offers (the server checks every file like any upload). */
 const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.eml,message/rfc822,text/plain";
 export const FILE_REQUIRED = "Choose the photo or PDF of the proof.";
@@ -34,11 +36,12 @@ export function startDay(kind: ProofKind, sentOn: string | null | undefined): st
 }
 
 /**
- * "Add proof": a photo or PDF of a receipt (kept on this computer, never read by AI), what it is,
+ * "Add proof": a photo or PDF of a receipt (kept on this computer, never read by Claude), what it is,
  * the day it shows and a note. A proof of the sending starts with the sending day (so an undated
- * receipt never looks like a later posting). Mistakes are said — and the field focused — when the
- * person adds it; the button never sits disabled without a reason. In edit mode only the kind, day
- * and note change.
+ * receipt never looks like a later posting). Mistakes are said — and the field focused and marked —
+ * when the person adds it; the button never sits disabled without a reason. The note is a few lines
+ * (it can be read whole while it is edited), counting down near its limit. In edit mode only the
+ * kind, day and note change.
  */
 export function AddProofDialog({ open, onClose, draftId, channel, sentOn, suggested, editing }: AddProofDialogProps) {
   const today = useTodayISO();
@@ -58,6 +61,7 @@ export function AddProofDialog({ open, onClose, draftId, channel, sentOn, sugges
   const noteId = `${ids}-note`;
   const dateOk = !onDate || (/^\d{4}-\d{2}-\d{2}$/.test(onDate) && onDate <= today);
   const noteOk = note.length <= NOTE_MAX;
+  const noteLeft = NOTE_MAX - note.length;
   const fileMissing = !editing && !file;
   const pending = add.isPending || update.isPending;
   const hint = copyFor(PROOF_KIND_COPY, kind).hint;
@@ -92,9 +96,9 @@ export function AddProofDialog({ open, onClose, draftId, channel, sentOn, sugges
       {
         onSuccess: (overview) => {
           const label = copyFor(PROOF_KIND_COPY, kind).label;
-          // a file already in Ordnung is what it is: the server says whether AI read it
+          // a file already in Ordnung is what it is: the server says whether Claude read it
           if (overview.notice) toast({ tone: "info", title: "Proof added", description: `${label} — ${overview.notice}` });
-          else toast.success("Proof added", { description: `${label} — kept private, never sent to AI.` });
+          else toast.success("Proof added", { description: `${label} — kept private, never sent to Claude.` });
           onClose();
         },
       },
@@ -141,7 +145,9 @@ export function AddProofDialog({ open, onClose, draftId, channel, sentOn, sugges
               aria-invalid={tried && fileMissing ? true : undefined}
               aria-describedby={tried && fileMissing ? `${fileError} ${fileHint}` : fileHint}
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="block w-full min-w-0 text-sm text-muted file:mr-3 file:inline-flex file:h-9 file:cursor-pointer file:rounded-lg file:border file:border-line-strong/80 file:bg-surface file:px-3.5 file:text-sm file:font-medium file:text-ink hover:file:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              // missing, the field is marked like any invalid field: a red edge on its button, and a red ring
+              // while focused — also when it was focused for the person after a click (no :focus-visible then)
+              className="block w-full min-w-0 rounded-lg text-sm text-muted file:mr-3 file:inline-flex file:h-9 file:cursor-pointer file:rounded-lg file:border file:border-line-strong/80 file:bg-surface file:px-3.5 file:text-sm file:font-medium file:text-ink hover:file:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-invalid:file:border-danger aria-invalid:focus:outline-2 aria-invalid:focus:outline-offset-2 aria-invalid:focus:outline-danger"
             />
             {tried && fileMissing ? (
               <p id={fileError} className="text-sm font-medium leading-5 text-danger-ink">
@@ -150,7 +156,7 @@ export function AddProofDialog({ open, onClose, draftId, channel, sentOn, sugges
             ) : null}
             <p id={fileHint} className="flex items-start gap-1.5 text-sm leading-5 text-muted">
               <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              <span>Kept on this computer with the letter, and never sent to AI.</span>
+              <span>Kept on this computer with the letter, and never sent to Claude.</span>
             </p>
           </div>
         ) : null}
@@ -184,8 +190,15 @@ export function AddProofDialog({ open, onClose, draftId, channel, sentOn, sugges
           />
         </Field>
 
-        <Field id={noteId} label="Note" optional error={noteOk ? undefined : `Keep it under ${NOTE_MAX} characters.`}>
-          <Input value={note} onChange={(e) => setNote(e.target.value)} maxLength={NOTE_MAX + 20} placeholder="e.g. Post office on Hauptstraße, 14:32" />
+        <Field
+          id={noteId}
+          label="Note"
+          optional
+          hint={noteLeft <= NOTE_COUNT_FROM ? `${noteLeft} ${noteLeft === 1 ? "character" : "characters"} left` : undefined}
+          error={noteOk ? undefined : `Keep it under ${NOTE_MAX} characters — ${-noteLeft} too many.`}
+        >
+          {/* grows with the note (up to about eight lines, then it scrolls), so it is read whole while edited */}
+          <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} maxLength={NOTE_MAX + 20} placeholder="e.g. Post office on Hauptstraße, 14:32" className="min-h-16 max-h-48 [field-sizing:content]" />
         </Field>
       </form>
     </Dialog>

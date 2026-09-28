@@ -11,6 +11,7 @@ import pypdfium2 as pdfium
 import pytest
 
 import helpers_proof
+from fixtures_llm import record_events
 from helpers_docs import eml_bytes, letter_pdf, photo
 from ordnung import clock
 from ordnung.drafts.proof import PROOF_SOURCE
@@ -63,6 +64,51 @@ async def test_a_sent_e_mail_kept_as_proof_adds_no_letters_from_its_attachments(
         added = {doc.id for doc in api.ctx.store.list_documents(include_deleted=True)} - before
         assert added == {entry["document"]["id"]}
         assert api.ctx.store.list_documents(source=f"email:{entry['document']['id']}") == []
+
+
+async def test_a_proof_file_is_never_shown_as_a_letter_being_read(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """UI audit R2-proof-1: adding a proof also put the upload corner's letter card on screen ("Filed —
+    everything is on your timeline", "Open letter"), as every ``job.progress`` becomes a card there. A
+    proof file is no letter and nothing of it is read: none of its job is published — queued, its
+    stages, done, reading it again, a failure — while a letter's still is."""
+    async with api_for(data_dir) as api:
+        events = record_events(api.ctx.bus)
+        draft_id, _ = await _sent(api)
+        overview = await _add(api, draft_id, "IMG_Einlieferungsbeleg.jpg", photo("JPEG", size=(338, 448)))
+        doc_id = overview["proofs"][0]["document"]["id"]
+        await api.read_all()
+        stored = api.ctx.store.get_document(doc_id)
+        assert stored is not None and stored.status == "processed" and stored.ai_processed_at is None
+        assert ("document.processed", {"doc_id": doc_id, "status": "processed"}) in events
+        again = await api.client.post(f"/api/documents/{doc_id}/reprocess")
+        assert again.status_code == 202, again.text
+        await api.read_all()
+
+        def broken(*_: Any) -> None:
+            raise RuntimeError("the text layer broke")
+
+        monkeypatch.setattr("ordnung.ingest.pipeline.read_text_layer", broken)
+        await api.client.post(f"/api/documents/{doc_id}/reprocess")
+        await api.read_all()
+        failed = api.ctx.store.get_document(doc_id)
+        assert failed is not None and failed.status == "failed"
+        # a failed proof file sent again as a letter is refused, and its retry is not announced either
+        refused = await api.client.post(
+            "/api/documents", files={"files": ("x.jpg", photo("JPEG", size=(338, 448)))}
+        )
+        assert refused.status_code == 422
+        monkeypatch.undo()
+        await api.read_all()
+        assert not [data for kind, data in events if kind == "job.progress" and data.get("doc_id") == doc_id]
+
+        letter = await api.client.post("/api/documents", files={"files": ("brief.pdf", letter_pdf())})
+        letter_id = letter.json()["documents"][0]["id"]
+        await api.read_all()
+        assert [
+            data["status"] for kind, data in events if kind == "job.progress" and data["doc_id"] == letter_id
+        ][-1] == "done"
 
 
 async def test_marking_sent_with_a_tracking_number(data_dir: Path) -> None:
@@ -425,7 +471,7 @@ async def test_a_known_unread_file_becomes_private_when_added_as_proof(data_dir:
         await api.read_all()
         assert len(api.backend.calls) == calls_before  # the queued job read it privately
         logged = [entry.message for entry in api.ctx.store.list_activity(20) if entry.kind == "draft.proof"]
-        assert logged and "now kept private, not sent to AI" in logged[0]
+        assert logged and "now kept private, not sent to Claude" in logged[0]
 
 
 async def test_a_known_file_ai_already_read_is_never_called_private(data_dir: Path) -> None:
@@ -435,10 +481,10 @@ async def test_a_known_file_ai_already_read_is_never_called_private(data_dir: Pa
         await api.client.post("/api/documents", files={"files": ("letter.pdf", data)})
         await api.read_all()  # read by the model
         added = await _add(api, draft_id, "letter.pdf", data, kind="other")
-        assert added["notice"] and "given to AI to read" in added["notice"]
+        assert added["notice"] and "given to Claude to read" in added["notice"]
         assert added["proofs"][0]["document"]["ai_private"] is False
         logged = [entry.message for entry in api.ctx.store.list_activity(20) if entry.kind == "draft.proof"]
-        assert logged and "not sent to AI" not in logged[0] and "given to AI" in logged[0]
+        assert logged and "not sent to Claude" not in logged[0] and "given to Claude" in logged[0]
 
 
 def _logged_proof(api: Api) -> str:
@@ -458,10 +504,10 @@ async def test_a_file_whose_reading_failed_after_the_model_had_it_is_never_calle
         failed = api.ctx.store.get_document(doc_id)
         assert failed is not None and failed.status == "failed" and failed.ai_processed_at is None
         added = await _add(api, draft_id, "receipt.jpg", data)
-        assert added["notice"] and "given to AI to read" in added["notice"]
+        assert added["notice"] and "given to Claude to read" in added["notice"]
         assert "not yet read" not in added["notice"]
         assert added["proofs"][0]["document"]["ai_private"] is False
-        assert "not sent to AI" not in _logged_proof(api)
+        assert "not sent to Claude" not in _logged_proof(api)
 
 
 async def test_a_file_paused_by_a_rate_limit_after_transcription_is_never_called_unread(
@@ -480,9 +526,9 @@ async def test_a_file_paused_by_a_rate_limit_after_transcription_is_never_called
         assert paused is not None and paused.ai_processed_at is None
         assert [call.purpose for call in api.backend.calls if doc_id in call.doc_ids][:1] == ["transcribe"]
         added = await _add(api, draft_id, "receipt.jpg", data)
-        assert added["notice"] and "given to AI to read" in added["notice"]
+        assert added["notice"] and "given to Claude to read" in added["notice"]
         assert added["proofs"][0]["document"]["ai_private"] is False
-        assert "not sent to AI" not in _logged_proof(api)
+        assert "not sent to Claude" not in _logged_proof(api)
 
 
 async def test_a_letter_marked_private_after_ai_read_it_is_never_called_private(data_dir: Path) -> None:
@@ -495,8 +541,8 @@ async def test_a_letter_marked_private_after_ai_read_it_is_never_called_private(
         patched = await api.client.patch(f"/api/documents/{doc_id}", json={"ai_private": True})
         assert patched.status_code == 200, patched.text
         added = await _add(api, draft_id, "letter.pdf", data, kind="other")
-        assert added["notice"] and "given to AI to read" in added["notice"]
-        assert "not sent to AI" not in _logged_proof(api)
+        assert added["notice"] and "given to Claude to read" in added["notice"]
+        assert "not sent to Claude" not in _logged_proof(api)
 
 
 async def test_a_proof_file_uploaded_to_the_inbox_says_where_it_is(data_dir: Path) -> None:

@@ -13,6 +13,10 @@ stage, a PDF whose every page has its own text no "transcribe".
   So do *held* ones (``hold=True``: files from the watched folder, :mod:`ordnung.ingest.held`), which
   end ``held`` instead of ``processed`` and publish no stage events (nothing is being read) until the
   person says they may be read.
+* A proof file (``source="proof"``, :mod:`ordnung.drafts.sent`) is stored like a private letter, but no
+  ``job.progress`` about it is ever published — not queued, not a stage, not a failure: it is no letter
+  and nothing of it is read, so it never shows in the web app's "letters being read" corner (adding it
+  says so itself).
 * An e-mail's attachments (PDFs and photos) are added as documents of their own right after it, with
   its privacy choice (:mod:`ordnung.ingest.attachments`); what became of each is logged on the e-mail.
 * Letters moved to the trash while they waited in the queue (or while being read) are never sent to
@@ -92,7 +96,7 @@ from ordnung.ingest.text import (
 )
 from ordnung.ingest.transcribe import pages_to_transcribe, transcribe_pages
 from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited, ClaudeTimeout, LLMError
-from ordnung.models import Direction, Document, DocumentExtraction, EmailAttachment, Job, Page
+from ordnung.models import PROOF_SOURCE, Direction, Document, DocumentExtraction, EmailAttachment, Job, Page
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS, RuleContext
 from ordnung.trace import facts
 from ordnung.trace.runs import finish_trace, start_trace
@@ -169,6 +173,8 @@ class StageReporter:
         self.current: str = "intake"
         #: A held letter is only stored, not read: its stages are not announced (a failure still is).
         self.quiet = False
+        #: A proof file is no letter (:func:`unannounced`): nothing of its job is announced, not even a failure.
+        self.silent = False
 
     async def stage(self, name: Stage, *, status: Literal["running", "done"] = "running") -> None:
         """Enter stage ``name``."""
@@ -176,7 +182,7 @@ class StageReporter:
         progress = STAGE_PROGRESS[name]
         if self.job_id is not None:
             self.ctx.store.update_job(self.job_id, stage=name, progress=progress, status=status)
-        if not self.quiet:
+        if not (self.quiet or self.silent):
             self.ctx.bus.publish(
                 "job.progress",
                 job_id=self.job_id,
@@ -201,6 +207,8 @@ class StageReporter:
                 self.ctx.store.update_job(self.job_id, status="failed", error=message)
             except NotFoundError:
                 log.warning("job %s vanished while failing", self.job_id)
+        if self.silent:
+            return
         self.ctx.bus.publish(
             "job.progress",
             job_id=self.job_id,
@@ -263,8 +271,15 @@ def _iso(value: str | date | None) -> str | None:
         raise IntakeError(f"“{value}” is not a date — please use the form 2026-09-25.") from exc
 
 
+def unannounced(document: Document) -> bool:
+    """Whether no ``job.progress`` of ``document`` is ever published: a proof of a sent letter's own file
+    (see the module docstring)."""
+    return document.source == PROOF_SOURCE
+
+
 def announce_job(ctx: AppContext, job: Job, *, quiet: bool = False) -> None:
-    """Tell listeners (unless ``quiet``: a held letter is only stored) and the worker that a job waits."""
+    """Tell listeners (unless ``quiet``: a held letter is only stored, a proof file is no letter) and the
+    worker that a job waits."""
     if not quiet:
         ctx.bus.publish(
             "job.progress", job_id=job.id, doc_id=job.doc_id, stage="intake", progress=0.0, status="queued"
@@ -397,7 +412,7 @@ async def add_file_result(
         ref_id=doc_id,
         data={"source": source, "held": hold, "filename": upload.filename},
     )
-    announce_job(ctx, job, quiet=hold)
+    announce_job(ctx, job, quiet=hold or unannounced(document))
     if with_attachments and stored.mime == EMAIL_MIME:
         await _add_attachments(
             ctx,
@@ -454,7 +469,7 @@ def _known_upload(
                 store.restore_document(attachment.id)
     if document.status == "failed":
         document = store.update_document(document.id, status="queued", error=None)
-        announce_job(ctx, store.enqueue_job("ingest", document.id))
+        announce_job(ctx, store.enqueue_job("ingest", document.id), quiet=unannounced(document))
     elif consent.is_held(document) and answer:
         reply = consent.keep_private if private else consent.release
         for job in reply(store, [document.id]).jobs:
@@ -559,9 +574,9 @@ def _attachments_message(filename: str, rows: Sequence[EmailAttachment], more: i
 
 def reprocess(ctx: AppContext, doc_id: str) -> Job:
     """Queue a document to be read again, bypassing the model cache (items the person edited stay)."""
-    ctx.store.update_document(doc_id, status="queued", error=None)
+    document = ctx.store.update_document(doc_id, status="queued", error=None)
     job = ctx.store.enqueue_job("reprocess", doc_id, force=True)
-    announce_job(ctx, job)
+    announce_job(ctx, job, quiet=unannounced(document))
     return job
 
 
@@ -1047,6 +1062,7 @@ async def ingest_document(
             raise NotFoundError(f"documents: no row with id {doc_id!r}")
         # a held letter is only stored: it keeps waiting meanwhile — and whatever happens (even in the trash)
         progress.quiet = document.status == consent.HELD
+        progress.silent = unannounced(document)
         _refuse_trashed(store, doc_id)
         if not progress.quiet:
             store.update_document(doc_id, status="processing", error=None)
