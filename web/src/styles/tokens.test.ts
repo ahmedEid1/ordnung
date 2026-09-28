@@ -64,7 +64,7 @@ describe("scroll padding (focus and jumps stay clear of the fixed bars — WCAG 
 
   it("from tablets up (no tab bar) leaves room for the tour card or the (lifted) toast column, and the Ask question box", () => {
     expect(html).toMatch(
-      /@variant md\s*{\s*scroll-padding-bottom:\s*calc\(\s*max\(\s*1\.5rem,\s*var\(--ordnung-tour-clearance, 0px\),\s*calc\(1\.25rem \+ var\(--ordnung-toast-lift, 0px\) \+ var\(--ordnung-toast-space, 0px\)\)\s*\) \+\s*var\(--ask-composer-h, 0px\)\s*\);/,
+      /@variant md\s*{\s*scroll-padding-bottom:\s*calc\(\s*max\(\s*1\.5rem,\s*var\(--ordnung-tour-clearance, 0px\),\s*calc\(1\.5rem \+ var\(--ordnung-toast-lift, 0px\) \+ var\(--ordnung-toast-space, 0px\)\)\s*\) \+\s*var\(--ask-composer-h, 0px\)\s*\);/,
     );
   });
 
@@ -90,7 +90,7 @@ describe("room under the page for what floats over its bottom edge (<main> — t
 
   it("from tablets up clears the floating tour card and the (lifted) toast column", () => {
     expect(room).toMatch(
-      /@variant md\s*{\s*padding-bottom:\s*max\(\s*1\.5rem,\s*var\(--ordnung-tour-clearance, 0px\),\s*calc\(1\.25rem \+ var\(--ordnung-toast-lift, 0px\) \+ var\(--ordnung-toast-space, 0px\)\)\s*\);/,
+      /@variant md\s*{\s*padding-bottom:\s*max\(\s*1\.5rem,\s*var\(--ordnung-tour-clearance, 0px\),\s*calc\(1\.5rem \+ var\(--ordnung-toast-lift, 0px\) \+ var\(--ordnung-toast-space, 0px\)\)\s*\);/,
     );
   });
 });

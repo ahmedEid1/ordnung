@@ -182,6 +182,42 @@ describe("Toast stack on phones", () => {
     expect(document.documentElement.style.getPropertyValue(TOAST_SPACE_VAR)).toBe("");
   });
 
+  it("measures a toast where it comes to rest, not where its slide-in draws it for a moment", async () => {
+    renderWithProviders(<Toaster />);
+    const column = screen.getByTestId("toaster");
+    column.style.paddingBottom = "20px";
+    // a column 200 px tall whose toast box starts 40 px down it, drawn 16 px lower while it slides in
+    // (nothing measures again when the slide ends: the column's size doesn't change)
+    const isCard = (el: Element) => el.tagName === "LI";
+    const drawn = (el: Element) => ({ top: isCard(el) ? 56 : 0, bottom: isCard(el) ? 180 : 200, left: 0, right: 400, width: 400, height: 0, x: 0, y: 0 });
+    const spies = [
+      vi.spyOn(Element.prototype, "clientHeight", "get").mockImplementation(function (this: Element) {
+        return this === column ? 200 : 0;
+      }),
+      vi.spyOn(HTMLElement.prototype, "offsetParent", "get").mockImplementation(function (this: HTMLElement) {
+        return isCard(this) ? column : null;
+      }),
+      vi.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function (this: HTMLElement) {
+        return isCard(this) ? 40 : 0;
+      }),
+      vi.spyOn(Element.prototype, "getClientRects").mockImplementation(function (this: Element) {
+        return (isCard(this) ? [drawn(this)] : []) as unknown as DOMRectList;
+      }),
+      vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+        return drawn(this) as DOMRect;
+      }),
+    ];
+    try {
+      act(() => {
+        toast.error("That didn't work", { description: "Ordnung isn't reachable." });
+      });
+      // 200 − 20 (the column's bottom padding) − 40: where the toast comes to rest (not 180 − 56 = 124)
+      await waitFor(() => expect(document.documentElement.style.getPropertyValue(TOAST_SPACE_VAR)).toBe("140px"));
+    } finally {
+      spies.forEach((s) => s.mockRestore());
+    }
+  });
+
   it("leaves room for the shadow inside its clip box", () => {
     renderWithProviders(<Toaster />);
     const column = screen.getByTestId("toaster");

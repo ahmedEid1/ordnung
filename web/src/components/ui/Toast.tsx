@@ -241,16 +241,32 @@ export const TOAST_LIFT_VAR = "--ordnung-toast-lift";
  */
 export const TOAST_SPACE_VAR = "--ordnung-toast-space";
 
+/**
+ * How far below the top of `section`'s padding box `el`'s layout box starts. Unlike
+ * `getBoundingClientRect` it leaves transforms out: a card that is still sliding in (it starts 16 px
+ * lower) or gliding up after another one left is measured where it comes to rest — nothing measures
+ * again when its animation ends (final gate: the space came out 14 px short while a toast slid in).
+ */
+function layoutTop(el: HTMLElement, section: HTMLElement): number {
+  let top = 0;
+  for (let n: HTMLElement | null = el; n !== section; n = n.offsetParent as HTMLElement | null) {
+    if (!n) return el.getBoundingClientRect().top - section.getBoundingClientRect().top - section.clientTop;
+    top += n.offsetTop + (n === el ? 0 : n.clientTop);
+  }
+  return top;
+}
+
 /** Keep {@link TOAST_SPACE_VAR} at the height of the cards in the column (toasts and uploads). */
 function useToastSpace(section: HTMLElement | null) {
   useLayoutEffect(() => {
     if (!section) return;
     const root = document.documentElement;
     const measure = () => {
-      const cards = section.querySelectorAll(":scope li");
-      const bottom = section.getBoundingClientRect().bottom - parseFloat(getComputedStyle(section).paddingBottom || "0");
+      const cards = section.querySelectorAll<HTMLElement>(":scope li");
+      const bottom = section.clientHeight - parseFloat(getComputedStyle(section).paddingBottom || "0");
       let top = bottom;
-      for (const c of cards) top = Math.min(top, c.getBoundingClientRect().top);
+      // (a card pushed past the top of the column is cut off there: it covers no more than the column)
+      for (const c of cards) if (c.getClientRects().length) top = Math.min(top, Math.max(0, layoutTop(c, section)));
       root.style.setProperty(TOAST_SPACE_VAR, `${Math.max(0, Math.ceil(bottom - top))}px`);
     };
     measure();

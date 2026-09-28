@@ -204,7 +204,11 @@ export function SaveBar({ dirty, saving = false, onSave, onDiscard, invalid = fa
     return () => clearTimeout(t);
   }, [justSaved]);
   const pinned = dirty || saving || justSaved;
-  useEffect(() => {
+  // a layout effect: the card pins (or lets go of) its footer in the same commit, before anything is
+  // drawn or measured — after Discard the bar is back at the end of its card before the frames above
+  // bring the focused status into view (a passive effect's update could land after them on a busy
+  // machine, and focus then ended below the screen)
+  useLayoutEffect(() => {
     pin?.(pinned);
   }, [pin, pinned]);
   useEffect(() => () => pin?.(false), [pin]);

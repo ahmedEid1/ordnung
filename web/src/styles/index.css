@@ -213,6 +213,8 @@
      * demo tour bar (--ordnung-tour-bar) or the toast column above it (lifted by --ordnung-toast-lift,
      * --ordnung-toast-space tall while a toast or an upload card is up), whichever is taller. From md:
      * the floating tour card (--ordnung-tour-clearance) or the toast column (1.25rem up, lifted).
+     * Above the toasts, 0.25rem to spare on phones and from md alike — the focus ring's reach (2px +
+     * 2px offset): flush with the column, a focused card's ring went under it (and a sub-pixel of the card).
      */
     scroll-padding-top: 4.5rem;
     scroll-padding-bottom: calc(
@@ -225,7 +227,7 @@
         max(
             1.5rem,
             var(--ordnung-tour-clearance, 0px),
-            calc(1.25rem + var(--ordnung-toast-lift, 0px) + var(--ordnung-toast-space, 0px))
+            calc(1.5rem + var(--ordnung-toast-lift, 0px) + var(--ordnung-toast-space, 0px))
           ) +
           var(--ask-composer-h, 0px)
       );
@@ -316,7 +318,8 @@
    * buttons can always be scrolled clear of it. Phones: the tab bar (h-16 + home indicator), then
    * the demo tour bar or the toast above it, whichever is taller. From md: the floating demo tour
    * card (--ordnung-tour-clearance) or the toast column (1.25rem up, lifted above the tour card,
-   * --ordnung-toast-space tall). `scroll-padding-bottom` on <html> mirrors it (keep the two in step).
+   * --ordnung-toast-space tall), with 0.25rem to spare above the toasts for a focus ring, as on
+   * phones. `scroll-padding-bottom` on <html> mirrors it (keep the two in step).
    */
   .room-for-overlays {
     padding-bottom: calc(
@@ -327,7 +330,7 @@
       padding-bottom: max(
         1.5rem,
         var(--ordnung-tour-clearance, 0px),
-        calc(1.25rem + var(--ordnung-toast-lift, 0px) + var(--ordnung-toast-space, 0px))
+        calc(1.5rem + var(--ordnung-toast-lift, 0px) + var(--ordnung-toast-space, 0px))
       );
     }
   }
