@@ -4,8 +4,9 @@ timeline for the "Nachweis". Pure: no store, no files (the service is :mod:`ordn
 Policy:
 
 1. **Ordnung never says a proof is enough.** Each kind states what it shows and what it does not
-   (:data:`PROOF_KINDS`), and every overview carries :data:`CAVEAT`: proof of sending never shows what
-   was in the envelope, and whether a proof suffices is for a court to decide.
+   (:data:`PROOF_KINDS`; an "other" proof points to what the person's note says, :func:`what_it_shows`),
+   and every overview carries :data:`CAVEAT`: proof of sending never shows what was in the envelope, and
+   whether a proof suffices is for a court to decide.
 2. **What is missing depends on how the letter was sent** — the channel the person chose when marking
    it as sent (:func:`missing`). A registered letter wants its tracking number, the posting receipt
    (Einlieferungsbeleg) and the delivery record (Auslieferungsbeleg) or return receipt (Rückschein): the
@@ -142,6 +143,12 @@ PROOF_KINDS: dict[ProofKind, ProofKindInfo] = {
     ),
 }
 
+#: What an "other" proof shows once the person described it in its note: the kind's own words ask for
+#: that note, and an instruction must never read as a fact about a proof that has one. Also said in the
+#: Nachweis, so it names neither Ordnung nor "you".
+NOTED_SHOWS = "What the note says it shows."
+NOTED_DOES_NOT_SHOW = "Anything the note doesn't say."
+
 #: Proofs whose day is the day the letter went out (it should be the day it is marked as sent).
 SENDING_DAY_KINDS: frozenset[str] = frozenset(
     {"posting_receipt", "fax_report", "sent_email", "cancel_confirmation"}
@@ -258,6 +265,15 @@ def followup_item_id(draft_id: str) -> str:
 def kind_info(kind: str) -> ProofKindInfo:
     """What a proof kind shows (unknown kinds read as "other")."""
     return PROOF_KINDS.get(kind, PROOF_KINDS["other"])  # type: ignore[call-overload]
+
+
+def what_it_shows(kind: str, note: str | None) -> tuple[str, str]:
+    """What a proof shows and doesn't show: its kind's words (:data:`PROOF_KINDS`) — except an "other"
+    proof with a note, which points to the note (:data:`NOTED_SHOWS`) instead of asking for one."""
+    info = kind_info(kind)
+    if info is PROOF_KINDS["other"] and note and note.strip():
+        return NOTED_SHOWS, NOTED_DOES_NOT_SHOW
+    return info.shows, info.does_not_show
 
 
 def channel_label(channel: str | None, *, german: bool = False) -> str:

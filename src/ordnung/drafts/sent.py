@@ -57,6 +57,7 @@ from ordnung.drafts.proof import (
     missing,
     sent_day,
     timeline,
+    what_it_shows,
 )
 from ordnung.drafts.templates import format_date
 from ordnung.drafts.tracking import TrackingError, parse_tracking_number, tracking_info
@@ -93,13 +94,15 @@ TEXT_ONLY = {
         "The text as written in Ordnung — sent by e-mail; the sent e-mail shows what went out",
     ),
 }
-PRIVATE = "kept private, not sent to AI"
+#: What is said about a proof file (the add-proof toast, the activity log) names Claude, like the rest
+#: of the app's privacy statements.
+PRIVATE = "kept private, not sent to Claude"
 MADE_PRIVATE_NOTICE = (
-    "This file was already in Ordnung, not yet read. It is kept private from now on — AI won't read it."
+    "This file was already in Ordnung, not yet read. It is kept private from now on — Claude won't read it."
 )
 READ_NOTICE = (
-    "This file was already in Ordnung as a letter, and it was already given to AI to read. It is linked "
-    "as proof and stays where it was."
+    "This file was already in Ordnung as a letter, and it was already given to Claude to read. It is "
+    "linked as proof and stays where it was."
 )
 
 
@@ -184,7 +187,7 @@ def set_tracking(store: Store, draft_id: str, text: str | None) -> Draft:
 @dataclass(frozen=True)
 class AddedProof:
     """A proof just added, and what to tell the person about its file when it was already in Ordnung
-    (``notice``; ``None``: the file is private and was never sent to AI)."""
+    (``notice``; ``None``: the file is private and was never sent to Claude)."""
 
     proof: Proof
     notice: str | None = None
@@ -218,7 +221,7 @@ def _keep_private(store: Store, document: Document) -> tuple[Document, str | Non
             MADE_PRIVATE_NOTICE,
             f"already in Ordnung, now {PRIVATE}",
         )
-    return document, READ_NOTICE, "already in Ordnung as a letter that was given to AI"
+    return document, READ_NOTICE, "already in Ordnung as a letter that was given to Claude"
 
 
 async def add_proof(
@@ -479,6 +482,17 @@ def _files(store: Store, proofs: list[Proof]) -> dict[str, Document]:
     return {doc.id: doc for doc in found if doc is not None and doc.deleted_at is None}
 
 
+def _entry(proof: Proof, document: Document | None) -> ProofEntry:
+    shows, does_not_show = what_it_shows(proof.kind, proof.note)
+    return ProofEntry(
+        proof=proof,
+        document=document,
+        label=kind_info(proof.kind).label,
+        shows=shows,
+        does_not_show=does_not_show,
+    )
+
+
 def overview(store: Store, draft_id: str, today: date) -> ProofOverview:
     """A letter's tracking number, proofs (with what each shows), timeline, what's missing, days that
     contradict each other and what it waits for."""
@@ -490,16 +504,7 @@ def overview(store: Store, draft_id: str, today: date) -> ProofOverview:
     answer = ledger.answer_of(draft)
     local_day = _local_days(store, today)
     recorded = _recorded(proofs, documents, local_day)
-    entries = [
-        ProofEntry(
-            proof=proof,
-            document=documents.get(proof.doc_id or ""),
-            label=kind_info(proof.kind).label,
-            shows=kind_info(proof.kind).shows,
-            does_not_show=kind_info(proof.kind).does_not_show,
-        )
-        for proof in proofs
-    ]
+    entries = [_entry(proof, documents.get(proof.doc_id or "")) for proof in proofs]
     events = timeline(
         draft, tracking, recorded, answer, ledger.reply_to(draft), created_day=local_day(draft.created_at)
     )
@@ -522,6 +527,7 @@ def _enclosure(store: Store, proof: Proof, document: Document | None) -> Nachwei
         return None
     info = kind_info(proof.kind)
     german, english = info.german, info.label
+    shows, does_not_show = what_it_shows(proof.kind, proof.note)
     if proof.on_date:
         day = parse_day(proof.on_date)
         if day is not None:
@@ -531,13 +537,13 @@ def _enclosure(store: Store, proof: Proof, document: Document | None) -> Nachwei
             )
     path = store.get_document_file(document.id)
     if document.mime == "application/pdf" and path is not None and path.is_file():
-        return NachweisFile(german, english, info.shows, info.does_not_show, pdf=path.read_bytes())
+        return NachweisFile(german, english, shows, does_not_show, pdf=path.read_bytes())
     images = tuple(
         image
         for page in store.list_pages(document.id)
         if (image := store.data_dir / page.image_path).is_file()
     )
-    return NachweisFile(german, english, info.shows, info.does_not_show, images=images) if images else None
+    return NachweisFile(german, english, shows, does_not_show, images=images) if images else None
 
 
 def _enclosed_letter(store: Store, draft: Draft) -> tuple[str, str]:

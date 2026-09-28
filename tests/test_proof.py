@@ -377,7 +377,7 @@ async def test_a_proof_file_is_private_outgoing_and_never_sent_to_the_model(
     assert isinstance(backend, FakeBackend)
     assert [call.purpose for call in backend.calls] == ["draft"]  # composing the letter, nothing after
     logged = [entry for entry in ctx.store.list_activity(20) if entry.kind == "draft.proof"]
-    assert len(logged) == 1 and "kept private, not sent to AI" in logged[0].message
+    assert len(logged) == 1 and "kept private, not sent to Claude" in logged[0].message
     overview = sent.overview(ctx.store, letter.id, TODAY)
     assert [entry.label for entry in overview.proofs] == ["Posting receipt"]
     assert overview.proofs[0].document is not None and overview.proofs[0].document.id == document.id
@@ -516,6 +516,38 @@ async def test_a_proof_can_be_corrected(ctx: AppContext, gym: Gym) -> None:
     other = await compose(ctx, "cancellation", contract_id=gym.contract)
     with pytest.raises(LookupError):
         sent.update_proof(ctx.store, other.id, added.id, today=TODAY, kind="other")
+
+
+def test_an_other_proof_with_a_note_says_what_the_note_says() -> None:
+    """UI audit R2-proof-6: an "other" proof with a note kept saying "Shows: What it shows — describe it
+    in the note" — an instruction presented as a fact. With a note it points to the note; the
+    instruction stays only while there is none. Other kinds keep their own words, note or not."""
+    other = proof.PROOF_KINDS["other"]
+    assert proof.what_it_shows("other", None) == (other.shows, other.does_not_show)
+    assert proof.what_it_shows("other", "  ") == (other.shows, other.does_not_show)
+    noted = proof.what_it_shows("other", "Kopie des Briefes mit Unterschrift, eingescannt")
+    assert noted == (proof.NOTED_SHOWS, proof.NOTED_DOES_NOT_SHOW)
+    assert not any("describe" in words or "say what" in words for words in noted)
+    assert not any("Ordnung" in words for words in noted)  # also said in the Nachweis, unbranded
+    receipt = proof.PROOF_KINDS["posting_receipt"]
+    assert proof.what_it_shows("posting_receipt", "Schalter 3") == (receipt.shows, receipt.does_not_show)
+    assert proof.what_it_shows("unknown_kind", "a note") == noted  # unknown kinds read as "other"
+
+
+async def test_the_overview_and_the_nachweis_say_what_an_other_proofs_note_says(
+    ctx: AppContext, gym: Gym
+) -> None:
+    letter = await _sent_letter(ctx, gym)
+    added = await sent.add_proof(
+        ctx, letter.id, photo("JPEG"), "kopie.jpg", kind="other", note="Kopie des Briefes", today=TODAY
+    )
+    (entry,) = sent.overview(ctx.store, letter.id, TODAY).proofs
+    assert (entry.shows, entry.does_not_show) == (proof.NOTED_SHOWS, proof.NOTED_DOES_NOT_SHOW)
+    text = " ".join(_pdf_text(sent.nachweis_pdf(ctx.store, letter.id, TODAY)).split())
+    assert f"Shows: {proof.NOTED_SHOWS}" in text and "describe it in the note" not in text
+    sent.update_proof(ctx.store, letter.id, added.id, today=TODAY, clear_note=True)
+    (entry,) = sent.overview(ctx.store, letter.id, TODAY).proofs
+    assert entry.shows == proof.PROOF_KINDS["other"].shows  # without a note: ask for one
 
 
 async def test_removing_a_proof_deletes_its_file_for_good(ctx: AppContext, gym: Gym) -> None:
