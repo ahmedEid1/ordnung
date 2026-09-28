@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { useClipboard } from "@/features/today/clipboard";
 import { looksGerman } from "@/lib/format";
+import { useTodayISO } from "@/lib/today";
 import { isStaticDemo } from "@/mocks/mode";
 import { citationIndex, numberCitations, stripAllMarkers } from "./citations";
 import { CitationChip, CitationMarker } from "./CitationChip";
@@ -38,8 +39,10 @@ export function QuestionBubble({ text }: { text: string }) {
  * "Writing the answer …", and a second status in `<main>` would announce it twice. */
 function Thinking({ writing }: { writing: boolean }) {
   return (
-    <p className="flex items-center gap-2 text-[14px] text-muted">
-      <span className="flex gap-1" aria-hidden>
+    // the dots sit on the first line of a wrapped line (phones), as the trace's icons do — centred on the
+    // whole paragraph they sat beside its middle line (UI audit round 2)
+    <p className="flex items-start gap-2 text-[14px] leading-5 text-muted">
+      <span className="mt-[7px] flex shrink-0 gap-1" aria-hidden>
         {[0, 1, 2].map((i) => (
           <span key={i} className="size-1.5 rounded-full bg-accent/60 animate-pulse-soft motion-reduce:animate-none" style={{ animationDelay: `${i * 180}ms` }} />
         ))}
@@ -126,6 +129,11 @@ export interface AnswerViewProps {
   resolve: (ref: CitationRef) => RefInfo;
   titleOf?: TitleLookup;
   onRetry?: () => void;
+  /**
+   * The app's today (`useTodayISO`, the demo's simulated day): the steps' and the answer's dates leave
+   * this year out ("Thu 15 Oct"), as on every other page (UI audit round 2). Display only.
+   */
+  today?: string;
 }
 
 /**
@@ -146,7 +154,7 @@ export function DemoMissNote() {
  * One answer: tool trace, the checked text with citation chips, the check's line, sources and actions.
  * While the answer streams only the trace and a "writing" line show: its words appear once checked.
  */
-export function AnswerView({ answer, resolve, titleOf, onRetry }: AnswerViewProps) {
+export function AnswerView({ answer, resolve, titleOf, onRetry, today }: AnswerViewProps) {
   const { copy, copied } = useClipboard();
   const live = answer.status === "streaming";
   const demoMiss = answer.status === "error" && answer.errorCode === "demo_miss";
@@ -173,12 +181,13 @@ export function AnswerView({ answer, resolve, titleOf, onRetry }: AnswerViewProp
     <div className="flex gap-2 sm:gap-3">
       <LogoMark className="mt-1 size-5 rounded-md sm:mt-0.5 sm:size-7 sm:rounded-lg" />
       <div className="min-w-0 flex-1" aria-busy={live || undefined}>
-        <ToolTrace steps={answer.tools} live={live} titleOf={titleOf} />
+        <ToolTrace steps={answer.tools} live={live} titleOf={titleOf} today={today} />
         {body ? (
           <Markdown
             text={body}
             citations={valid}
             language={answer.noteLabel === CHECK_NOTE_LABEL_DE ? "de" : "en"}
+            today={today}
             renderCitation={(ref, key) => <CitationMarker key={key} info={resolve(ref)} n={numbers.get(ref.id) ?? 0} />}
           />
         ) : live ? (
@@ -259,6 +268,7 @@ export function AskTurnView({
   onRetry?: () => void;
 }) {
   const reduce = useReducedMotion();
+  const today = useTodayISO();
   return (
     <motion.article
       aria-label={turn.question ? `Question: ${turn.question}` : "Answer"}
@@ -269,7 +279,7 @@ export function AskTurnView({
       data-turn={turn.key}
     >
       {turn.question ? <QuestionBubble text={turn.question} /> : null}
-      <AnswerView answer={turn.answer} resolve={resolve} titleOf={titleOf} onRetry={onRetry} />
+      <AnswerView answer={turn.answer} resolve={resolve} titleOf={titleOf} onRetry={onRetry} today={today} />
     </motion.article>
   );
 }

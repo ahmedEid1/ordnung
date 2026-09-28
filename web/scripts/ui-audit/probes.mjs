@@ -374,6 +374,8 @@ function layoutProbeInPage(opts) {
       const s = cs(a);
       if (!(clips(s.overflowX) || clips(s.overflowY) || scrolls(s.overflowX) || scrolls(s.overflowY))) continue;
       if (scrolls(s.overflowX) || scrolls(s.overflowY)) break; // reachable by scrolling
+      // a text cut behind "Read more" that opens when a control inside it takes focus (ReadMore.tsx)
+      if (a.hasAttribute("data-opens-on-focus")) break;
       const ar = rectOf(a);
       const bl = parseFloat(s.borderLeftWidth) || 0;
       const bt = parseFloat(s.borderTopWidth) || 0;

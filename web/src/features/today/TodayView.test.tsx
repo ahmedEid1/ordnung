@@ -91,6 +91,15 @@ describe("Today page", () => {
     renderWithProviders(<TodayView />, { client });
     const card = await screen.findByRole("region", { name: "Not read yet: 2 letters from your folder" });
     expect(within(card).getByRole("link", { name: /Review them/ })).toHaveAttribute("href", "/inbox");
+    // "not read yet" once, in the card's heading: its text says what is new, and Claude's note above gets no
+    // "Not in this note: 2 letters from your folder, not read yet." (UI audit round 2)
+    expect(within(card).getByText(/^Ordnung can't tell you what they ask or by when until they're read\. Nothing has been sent to Claude\.$/)).toBeInTheDocument();
+    expect(screen.getByText(/Two small payments this week/)).toBeInTheDocument();
+    expect(screen.queryByText(/Not in this note/)).toBeNull();
+    // the Inbox's "not read yet" mark, not the deadline's hourglass
+    const icon = card.querySelector("svg")!.getAttribute("class")!;
+    expect(icon).toMatch(/lucide-folder-input/);
+    expect(icon).not.toMatch(/hourglass/);
     expect(screen.getByRole("heading", { name: "Nothing due from the letters that were read" })).toBeInTheDocument();
     expect(screen.queryByText(/All clear/)).toBeNull();
     expect(screen.queryByText(/Nothing needs you/)).toBeNull();

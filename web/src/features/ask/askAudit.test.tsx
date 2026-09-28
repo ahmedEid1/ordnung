@@ -1,5 +1,6 @@
 /**
- * UI audit round 1 (Ask): the tool trace, the source list, the question bubble and linked text.
+ * UI audit round 1 (Ask): the tool trace, the source list, the question bubble and linked text; round 2:
+ * this year's dates without their year.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
@@ -9,10 +10,13 @@ import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { qk } from "@/api/hooks";
 import { CitationChip, CitationMarker } from "./CitationChip";
-import { QuestionBubble } from "./AskTurnView";
+import { AskTurnView, QuestionBubble } from "./AskTurnView";
+import { Markdown } from "./Markdown";
+import { makeRefResolver } from "./refs";
 import { RefText, splitLinks, trustedHost } from "./RefText";
+import { EMPTY_ANSWER, type AnswerState } from "./stream";
 import { ToolTrace } from "./ToolTrace";
-import { fallbackToolLabel, toolLabel, traceSummary } from "./tools";
+import { fallbackToolLabel, toolLabel, toolResultText, traceSummary, withoutThisYear } from "./tools";
 import type { ToolStep } from "./stream";
 import type { RefInfo } from "./refs";
 
@@ -128,5 +132,64 @@ describe("linked text (Ideas)", () => {
     client.setQueryData(qk.documents.list({}), [{ ...doc, title }]);
     renderWithProviders(<RefText text={`${doc.id} describes it.`} />, { client });
     expect(await screen.findByRole("link", { name: `“${title}”` })).toBeInTheDocument();
+  });
+});
+
+// UI audit round 2 (R2-today-ask-6): Ask wrote "Thu 15 Oct 2026" where every other page writes "Thu 15 Oct"
+describe("this year's dates", () => {
+  const TODAY = "2026-09-28";
+
+  it("leave the year out of a step's label and result, and keep it for another year", () => {
+    const label = "Listed your open to-dos & dates from 2026-09-28 to 2026-10-31";
+    expect(toolLabel({ name: "list_items", input: {}, label }, undefined, TODAY)).toBe("Listed your open to-dos & dates from Mon 28 Sep to Sat 31 Oct");
+    expect(toolResultText("3 to-dos, the earliest due 2026-10-01", TODAY)).toBe("3 to-dos, the earliest due Thu 1 Oct");
+    expect(toolResultText("Due 2027-01-12", TODAY)).toBe("Due Tue 12 Jan 2027");
+    expect(fallbackToolLabel("list_items", { from: "2026-12-28", to: "2027-01-04" }, undefined, TODAY)).toBe(
+      "Listed your open to-dos & dates from 28 Dec to 4 Jan 2027",
+    );
+    // the backend writes its labels' dates out in full, and so may a result
+    expect(toolLabel({ name: "list_items", input: {}, label: "Checked your open to-dos & dates from Mon 28 Sep 2026 to Mon 26 Oct 2026" }, undefined, TODAY)).toBe(
+      "Checked your open to-dos & dates from Mon 28 Sep to Mon 26 Oct",
+    );
+    expect(toolResultText("Today is Mon 28 Sep 2026 (demo date)", TODAY)).toBe("Today is Mon 28 Sep (demo date)");
+    expect(toolResultText("Due Wed 14 Oct 2026, send by Thu 8 Oct (§ 56 TKG)", TODAY)).toBe("Due Wed 14 Oct, send by Thu 8 Oct (§ 56 TKG)");
+    expect(toolResultText("From 15 Nov 2024 to 14 Nov 2026", TODAY)).toBe("From 15 Nov 2024 to 14 Nov");
+    expect(withoutThisYear("Tax assessment 2026, dated Fri 18\u00a0Sep\u00a02026", TODAY)).toBe("Tax assessment 2026, dated Fri 18\u00a0Sep");
+    // without the app's today the year can't be left out safely
+    expect(toolResultText("Due 2026-10-15")).toBe("Due Thu 15 Oct 2026");
+    expect(toolResultText("Due Wed 14 Oct 2026")).toBe("Due Wed 14 Oct 2026");
+  });
+
+  it("leave the year out in the answer; a German answer keeps its German dates", () => {
+    const md = (text: string, language?: "en" | "de") => {
+      const { container, unmount } = render(<Markdown text={text} citations={null} renderCitation={() => null} language={language} today={TODAY} />);
+      const shown = container.textContent!.replace(/\u00a0/g, " ");
+      unmount();
+      return shown;
+    };
+    expect(md("The back-payment is due 2026-10-15.")).toBe("The back-payment is due Thu 15 Oct.");
+    expect(md("Renew it by 2027-03-31.")).toBe("Renew it by Wed 31 Mar 2027.");
+    // as the answers are recorded: dates written out in full, some in bold
+    expect(md("It ends on **Sat 14 Nov 2026**; it must arrive by **Wed 14 Oct 2026**, from 15 Nov 2024.")).toBe(
+      "It ends on Sat 14 Nov; it must arrive by Wed 14 Oct, from 15 Nov 2024.",
+    );
+    expect(md("Die Nachzahlung ist am 2026-10-15 fällig.", "de")).toBe("Die Nachzahlung ist am Do. 15.10.2026 fällig.");
+  });
+
+  it("an answered question uses the app's today (the demo's day) for its steps and its answer", () => {
+    useMockApi();
+    const { resolve } = makeRefResolver({});
+    const answer: AnswerState = {
+      ...EMPTY_ANSWER,
+      status: "done",
+      checked: true,
+      messageId: "msg_1",
+      text: "The back-payment is due 2026-10-15.",
+      tools: [{ name: "explain_date", input: {}, label: "Checked how the date was worked out", result: "Due 2026-10-15 — § 556 Abs. 3 BGB", done: true }],
+    };
+    renderWithProviders(<AskTurnView turn={{ key: "t1", question: "When is the back-payment due?", answer }} resolve={resolve} />);
+    expect(screen.getByTestId("tool-step-result").textContent).toBe("Due Thu\u00a015\u00a0Oct — §\u00a0556 Abs.\u00a03 BGB");
+    expect(screen.getByText(/The back-payment is due/).textContent!.replace(/\u00a0/g, " ")).toBe("The back-payment is due Thu 15 Oct.");
+    expect(document.body.textContent).not.toMatch(/2026/);
   });
 });

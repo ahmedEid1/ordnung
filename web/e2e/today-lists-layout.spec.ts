@@ -125,6 +125,39 @@ test("Ideas: 'Show more' moves on to the first new Idea and becomes 'Show fewer'
   await expect(more).toBeInViewport();
 });
 
+// UI audit round 2: the links in lines 5–6 of a cut Idea took focus unseen, and Chrome scrolled the cut
+// box to them — the card then read from its third line on while "Read more" still said it was cut
+for (const [width, height] of [
+  [390, 844],
+  [1280, 800],
+]) {
+  test(`${width}px: a link below an Idea's cut opens the text when it takes focus`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await open(page, "/", /Sam/);
+    const section = ideas(page);
+    const card = section.getByRole("article", { name: /student permit/ });
+    if (!(await card.count())) await section.getByRole("button", { name: /^Show \d+ more Ideas?$/ }).click();
+    const heading = card.getByRole("heading", { level: 3 });
+    const toggle = card.getByRole("button", { name: "Read more" });
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    const text = page.locator(`[id="${await toggle.getAttribute("aria-controls")}"]`);
+    const firstLink = text.getByRole("link").first();
+    // hidden below the cut (its top is under the box's bottom), yet in the Tab order
+    expect((await box(firstLink)).y).toBeGreaterThanOrEqual((await box(text)).y + (await box(text)).height - 2);
+
+    await heading.evaluate((h) => {
+      h.tabIndex = -1;
+      h.focus();
+    });
+    await page.keyboard.press("Tab");
+    await expect(firstLink).toBeFocused();
+    await expect(card.getByRole("button", { name: "Show less" })).toHaveAttribute("aria-expanded", "true");
+    expect(await text.evaluate((p) => ({ top: p.scrollTop, cut: p.scrollHeight > p.clientHeight + 1 }))).toEqual({ top: 0, cut: false });
+    await expect(firstLink).toBeInViewport();
+    await noSideScroll(page);
+  });
+}
+
 test("an Idea's 'Pay' opens the same Pay panel as Top 3", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await open(page, "/", /Sam/);

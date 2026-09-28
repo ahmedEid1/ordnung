@@ -6,6 +6,7 @@ import type { CitationRef } from "./citations";
 import { formatInlineDates } from "@/lib/format";
 import { keepCitations, protectRefs } from "@/lib/glue";
 import PLACEHOLDERS from "./placeholders.json";
+import { withoutThisYear } from "./tools";
 
 export interface MarkdownProps {
   text: string;
@@ -15,6 +16,11 @@ export interface MarkdownProps {
   renderCitation: (ref: CitationRef, key: string) => ReactNode;
   /** The answer's language (its check note's label says it): a German answer's ISO dates read German. */
   language?: "en" | "de";
+  /**
+   * The app's today (`useTodayISO`): this year's dates leave the year out ("Thu 15 Oct"), as on every
+   * other page (UI audit round 2). Without it a date written out keeps its year, and an ISO date gets one.
+   */
+  today?: string;
   className?: string;
 }
 
@@ -287,9 +293,14 @@ function renderBlock(b: Block, i: number, r: Render): ReactNode {
  * Renders an Ask answer from the safe Markdown subset (see `markdown.ts`). Output is React
  * elements only — raw HTML is shown as text, remote images and external links are never rendered.
  */
-export function Markdown({ text, citations, renderCitation, language = "en", className }: MarkdownProps) {
+export function Markdown({ text, citations, renderCitation, language = "en", today, className }: MarkdownProps) {
   const blocks = useMemo(() => parseMarkdown(text, { citations }), [text, citations]);
-  const r: Render = { cite: renderCitation, dates: (v) => formatInlineDates(v, undefined, language) };
+  // an English answer's dates, ISO or written out, leave this year out as every other page does; a German
+  // answer's read as Ordnung's German note writes them ("Do. 15.10.2026")
+  const r: Render = {
+    cite: renderCitation,
+    dates: (v) => (language === "de" ? formatInlineDates(v, today, "de") : withoutThisYear(formatInlineDates(v, today), today)),
+  };
   return (
     // a long compound ("Wohnungsgeberbestätigung") or reference wraps anywhere rather than widen the page,
     // inside any flex or grid parent too (UI audit round 1: 344 px wide at 320)

@@ -4,7 +4,8 @@ import { Link } from "react-router";
 import { Lock, Plus } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useProfile } from "@/api/hooks";
-import { useAddLetters } from "@/components/shell/AddLetters";
+import { ACCEPTED_ONE, useAddLetters } from "@/components/shell/AddLetters";
+import { NBSP } from "@/lib/glue";
 import { useSimulatedToday, useTodayISO } from "@/lib/today";
 import { Button } from "@/components/ui/Button";
 import { Disclaimer } from "@/components/ui/Disclaimer";
@@ -119,6 +120,11 @@ export function dayErrorDescription(error: unknown): string {
   return "Ordnung didn't answer. Your letters and dates are safe — is it still running on this computer?";
 }
 
+/** "A PDF, a phone photo or a saved e‑mail": the app's words for what can be added ("e‑mail" never splits at its hyphen). */
+const ADD_WHAT = ACCEPTED_ONE.charAt(0).toUpperCase() + ACCEPTED_ONE.slice(1);
+/** The inline-code look of Settings: a command reads as one, not as body text in another colour (UI audit round 2). */
+const CODE = "whitespace-nowrap rounded bg-surface-2 px-1 font-mono text-[13px] text-ink";
+
 /** A fresh install with no letters yet: one clear first step instead of a page of zeros and "All clear". */
 function FirstRun() {
   const { openPicker, uploading } = useAddLetters();
@@ -126,7 +132,8 @@ function FirstRun() {
     <EmptyState
       illustration="inbox"
       title="Add your first letters"
-      description="A PDF, a phone photo or a saved e-mail of any letter — a bill, a contract, a notice from an office."
+      // a dash never starts a line
+      description={`${ADD_WHAT} of any letter${NBSP}— a bill, a contract, a notice from an office.`}
       action={
         <Button variant="primary" icon={Plus} onClick={openPicker} loading={uploading}>
           Add letters
@@ -136,7 +143,7 @@ function FirstRun() {
       <ul className="mt-6 w-full max-w-md space-y-2 text-left text-base leading-relaxed text-muted">
         {[
           "Ordnung reads each letter and explains it in plain English.",
-          "Every date and amount lands here — what to do this week and what's coming up.",
+          `Every date and amount lands here${NBSP}— what to do this week and what's coming up.`,
           "Your secretary spots deadlines, fees that went up and letters that look like a scam.",
         ].map((line, i) => (
           <li key={line} className="flex gap-3">
@@ -155,7 +162,7 @@ function FirstRun() {
         <Link to="/settings?section=folder" className="rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
           choose a watched folder
         </Link>
-        . Moving from another computer? <code className="font-ident text-[13px] text-ink">ordnung restore</code> brings back your encrypted backup.
+        . Moving from another computer? Run <code className={CODE}>ordnung restore</code> in a terminal to bring back your encrypted backup.
       </p>
     </EmptyState>
   );
@@ -219,7 +226,8 @@ export function TodayView() {
     <motion.div variants={stagger} initial="hidden" animate="show" className="@container flex flex-col gap-8 sm:gap-10">
       <div className="flex flex-col gap-6">
         <Greeting name={name} today={derived.day} money={dash.money} toPay={toPayTotals(derived.candidates)} hour={hour} />
-        <SecretaryNote fallback={fallback} waiting={dash.waiting} />
+        {/* the note never names the letters that wait unread: the card right below it does */}
+        <SecretaryNote fallback={fallback} />
         <WaitingCard count={dash.waiting} />
         <AttentionCard />
       </div>
