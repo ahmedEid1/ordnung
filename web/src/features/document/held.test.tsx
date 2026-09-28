@@ -37,14 +37,18 @@ describe("a letter waiting from the folder", () => {
     const d = await detail(srv, "doc_folder_scan");
     const { container } = renderWithProviders(<DocumentView detail={d} />, { client: client() });
     const card = screen.getByRole("article", { name: "Scan_2026-09-28_0914.pdf" });
-    expect(within(card).getByRole("heading", { level: 1 })).toHaveTextContent("Scan_2026-09-28_0914.pdf");
+    // a file name breaks after its underscores, never inside its date (non-breaking hyphens, copied as "-")
+    const h1 = within(card).getByRole("heading", { level: 1 });
+    expect(h1.textContent).toBe("Scan_2026‑09‑28_0914.pdf");
+    expect(h1.querySelectorAll("wbr")).toHaveLength(2);
+    expect(h1.className).toContain("text-detail");
     expect(within(card).getByText("Not read yet")).toBeInTheDocument();
     expect(within(card).getByText(/It came from your watched folder\. It is stored on this computer and has not been sent to Claude\./)).toBeInTheDocument();
     expect(within(card).getByRole("button", { name: "Read it with Claude" })).toBeEnabled();
     expect(within(card).getByRole("button", { name: "Keep private" })).toBeEnabled();
     // nothing was read, so nothing read is shown — and no "Read again" for a letter never read
     expect(screen.queryByRole("button", { name: "Read again" })).toBeNull();
-    expect(screen.getByText("Not read yet — not sent to AI · 1 page")).toBeInTheDocument();
+    expect(screen.getByText("Not read yet — not sent to Claude · 1 page")).toBeInTheDocument();
     assertNoRawEnumsInElement(container);
   });
 
@@ -103,7 +107,11 @@ describe("what became of an attachment, in words", () => {
 
   it("a waiting letter's provenance says it wasn't read", () => {
     expect(provenanceText({ status: "held", ai_private: true, pages: 2, ai_processed_at: null, text_mode: "text" } as DocumentDetail["document"])).toBe(
-      "Not read yet — not sent to AI · 2 pages",
+      "Not read yet — not sent to Claude · 2 pages",
+    );
+    // privacy statements name Claude, as the waiting card and the verdict's badge do
+    expect(provenanceText({ status: "processed", ai_private: true, pages: 1, ai_processed_at: null, text_mode: "text" } as DocumentDetail["document"])).toBe(
+      "Kept private — not read by Claude · 1 page",
     );
   });
 });

@@ -9,13 +9,44 @@
  * though the card is gone by then (the letter's refetch can land before the answer returns). While an
  * answer runs its button keeps focus, so a failed one leaves the person where they were.
  */
-import { Hourglass, Lock, Sparkles } from "lucide-react";
+import { Lock, Sparkles } from "lucide-react";
 import type { DocumentDetail } from "@/api/types";
 import { useKeepHeldPrivate, useReadHeld, useWaitAgain } from "@/api/hooks";
+import { MEANING_ICONS } from "@/lib/copy";
+import { glueText } from "@/lib/format";
+import { GermanTerms } from "@/lib/germanTerms";
 import { cn, plural } from "@/lib/utils";
+import { FileNameText } from "@/components/ui/FileNameText";
 import { toast } from "@/components/ui/Toast";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { heldOrigin } from "@/features/inbox/waiting";
+import { hasLongWord } from "./verdict";
+
+/**
+ * "Not read yet" over a waiting letter's title, with the Inbox's icon for it. Its row is as tall as the
+ * verdict card's badge row, so the title sits where the verdict's does (and the "How it was read" tab's).
+ */
+export function NotReadYet() {
+  const Icon = MEANING_ICONS.notReadYet;
+  return (
+    <p className="flex min-h-7 items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-accent">
+      <Icon className="size-3.5 shrink-0" aria-hidden />
+      Not read yet
+    </p>
+  );
+}
+
+/**
+ * A letter's title as its page shows it: the letter's words kept whole where the line wraps (a reference,
+ * "30 €", a German compound at its joints), or its file name, broken after underscores — never at the
+ * hyphens inside a date or a reference (UI audit round 2: "Rechnung_2026-" / "09_FunkNetz.pdf").
+ */
+export function LetterTitle({ title, filename }: { title: string | null; filename: string }) {
+  return title && title !== filename ? <GermanTerms text={glueText(title)} /> : <FileNameText name={filename} />;
+}
+
+/** The detail-page title size: a step smaller on phones for a title with a very long word. */
+export const detailTitleSize = (title: string) => (hasLongWord(title) ? "text-detail-long" : "text-detail");
 
 /** Once answered the card goes: focus moves to the page's new first heading (never to the page). */
 export function focusFirstHeading() {
@@ -70,16 +101,18 @@ export function HeldCard({ detail, className }: { detail: DocumentDetail; classN
       .catch(() => undefined);
 
   return (
-    <article aria-labelledby="held-title" className={cn("card overflow-hidden", className)}>
+    // named as written (the heading keeps its hyphens whole with non-breaking ones)
+    <article aria-label={title} className={cn("card overflow-hidden", className)}>
       <div className="px-5 pb-5 pt-5 sm:px-6 sm:pt-6">
-        <p className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.08em] text-accent">
-          <Hourglass className="size-3.5" aria-hidden />
-          Not read yet
-        </p>
-        <h1 id="held-title" className="display mt-2 text-[24px] font-semibold leading-[1.2] text-ink outline-none [overflow-wrap:anywhere] sm:text-[27px]">
-          {title}
+        <NotReadYet />
+        <h1 id="held-title" className={cn("display mt-3 font-semibold text-ink outline-none hyphens-manual [overflow-wrap:anywhere]", detailTitleSize(title))}>
+          <LetterTitle title={doc.title} filename={doc.filename} />
         </h1>
-        {title !== doc.filename ? <p className="mt-1 text-[13px] text-muted [overflow-wrap:anywhere]">{doc.filename}</p> : null}
+        {title !== doc.filename ? (
+          <p className="mt-1 text-[13px] text-muted [overflow-wrap:anywhere]">
+            <FileNameText name={doc.filename} />
+          </p>
+        ) : null}
         <p className="mt-3 text-[15px] leading-relaxed text-ink/85">
           {heldOrigin(doc, detail.email)} It is stored on this computer and has not been sent to Claude.
         </p>

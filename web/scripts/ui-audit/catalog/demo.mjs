@@ -551,12 +551,12 @@ export async function demoCatalog({ api, server }) {
   const withStatus = (c, doc, patch) =>
     fakeApi(c.page, "GET", new RegExp(`^/api/documents/${doc.id}$`), (_r, o) => ({ json: { ...o, document: { ...o.document, ...patch } } }), { passthrough: true });
   for (const [suffix, patch, how, description] of [
-    ["reading-again", { status: "processing" }, "its status answered as “processing”", "The letter while Claude reads it again: “Reading it again”, the steps, dates you changed are kept."],
+    ["reading-again", { status: "processing" }, "its status answered as “processing”", "The letter while Claude reads it again: “Reading it again” above the verdict (its title not repeated), the steps, dates you changed are kept."],
     [
       "read-failed",
       { status: "failed", error: "Claude couldn't read this photo — it is too blurry. Try a sharper photo in daylight." },
       "its status answered as “failed” with the reason",
-      "The letter whose reading failed: “Ordnung couldn't read this letter”, the reason, “Try again”.",
+      "The letter whose reading again failed: “Couldn't read it again”, that the verdict below is the earlier reading, the reason, “Try again”.",
     ],
   ]) {
     if (!photoDoc) break;

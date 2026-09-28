@@ -17,7 +17,8 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefOb
 import { Check, ChevronDown, CircleCheck, Info, QrCode as QrIcon, RotateCw, ScanLine, ShieldAlert, Smartphone } from "lucide-react";
 import type { Document, GiroCode as GiroCodeData, GiroCodeBlocked } from "@/api/types";
 import { useConfirmGiroCode, useReadLetterAgain } from "@/api/hooks";
-import { seedJob } from "@/api/sse";
+import { dismissJob, seedJob, useJobProgress } from "@/api/sse";
+import { setUploadToastHidden } from "@/components/shell/UploadCenter";
 import { Button } from "@/components/ui/Button";
 import { formatMoney } from "@/lib/format";
 import { useIsTabletUp, useMediaQuery } from "@/lib/hooks";
@@ -275,6 +276,15 @@ export const GIROCODE_MISMATCH =
 /** Over the transfer details while "They don't match" is open. */
 export const GIROCODE_MISMATCH_DETAILS = "Doesn't match the letter — type the details from the paper.";
 export const GIROCODE_READING_AGAIN = "Reading it again — the details here update when it's done.";
+/** Once the letter was read again and its code still asks to compare. */
+export const GIROCODE_READ_AGAIN = "Read again — compare the details above with the paper letter once more.";
+
+/** How the reading asked for with "Read the letter again" ended. */
+interface ReadOutcome {
+  jobId: string;
+  failed: boolean;
+  error: string | null;
+}
 
 /** Bring a message that opened below a button clear of the panel's sticky footer. */
 function scrollClear(element: HTMLElement | null) {
@@ -335,10 +345,42 @@ function CompareFirst({
     readAgainRef.current?.focus({ preventScroll: true });
     if (reprocess.error) scrollClear(readFailedRef.current);
   }, [answered, reprocess.error]);
+  // The reading asked for here, followed to its end: the block stays (its code may still ask to compare), so
+  // it says when the reading is done — or why it failed — and offers it again (UI audit round 2: "Reading it
+  // again" for good). Kept once seen: the letter's page drops a finished job from the progress list.
+  const job = useJobProgress(docId);
+  const asked = reprocess.data?.id;
+  const [outcome, setOutcome] = useState<ReadOutcome | null>(null);
+  if (asked && job?.job_id === asked && (job.status === "done" || job.status === "failed") && outcome?.jobId !== asked) {
+    setOutcome({ jobId: asked, failed: job.status === "failed", error: job.error ?? null });
+  }
+  const ended = asked && outcome?.jobId === asked ? outcome : null;
+  const reading = reprocess.isSuccess && !ended;
+  const failure = reprocess.error ? reprocess.error.message : ended?.failed ? (ended.error ?? "something went wrong while reading it.") : null;
+  const statusRef = useRef<HTMLSpanElement>(null);
+  const endedAs = ended ? (ended.failed ? "failed" : "done") : null;
+  useEffect(() => {
+    if (endedAs) scrollClear(endedAs === "failed" ? readFailedRef.current : statusRef.current);
+  }, [endedAs]);
+  // once asked, the block says how the reading goes: no progress card over the panel's footer (as the letter's
+  // own progress card does) — hidden before the reading's first progress arrives; closed, the card shows it
+  // again, unless the reading was said done here
+  const [follows, setFollows] = useState(false);
+  useEffect(() => {
+    if (!follows) return;
+    setUploadToastHidden(docId, true);
+    return () => setUploadToastHidden(docId, false);
+  }, [follows, docId]);
+  const doneHere = endedAs === "done";
+  useEffect(() => {
+    if (!doneHere) return;
+    return () => dismissJob(docId);
+  }, [doneHere, docId]);
   const readAgain = () => {
-    if (reprocess.isPending || reprocess.isSuccess) return;
+    if (reprocess.isPending || reading) return;
+    setFollows(true);
     reprocess.mutate(docId, {
-      onSuccess: (job) => seedJob({ job_id: job.id, doc_id: docId, stage: "intake", progress: 0, status: "running" }),
+      onSuccess: (started) => seedJob({ job_id: started.id, doc_id: docId, stage: "intake", progress: 0, status: "running" }),
     });
   };
   // once asked, the button and its answer stay while the letter is read (the panel stops offering it)
@@ -371,18 +413,18 @@ function CompareFirst({
                 size="sm"
                 icon={RotateCw}
                 loading={reprocess.isPending}
-                aria-disabled={reprocess.isSuccess || undefined}
+                aria-disabled={reading || undefined}
                 onClick={readAgain}
               >
                 Read the letter again
               </Button>
-              <span role="status" className="text-xs leading-5 text-muted">
-                {reprocess.isSuccess ? GIROCODE_READING_AGAIN : ""}
+              <span ref={statusRef} role="status" className="scroll-my-24 text-xs leading-5 text-muted">
+                {reading ? GIROCODE_READING_AGAIN : ended && !ended.failed ? GIROCODE_READ_AGAIN : ""}
               </span>
             </div>
-            {reprocess.error ? (
+            {failure ? (
               <p ref={readFailedRef} role="alert" className="mt-2 scroll-my-24 text-sm leading-relaxed text-danger-ink wrap-break-word">
-                Couldn't read the letter again: {reprocess.error.message}
+                Couldn't read the letter again: {failure}
               </p>
             ) : null}
           </>

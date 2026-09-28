@@ -4,12 +4,9 @@ import { useNavigate } from "react-router";
 import {
   ChartNoAxesGantt,
   Check,
-  CircleCheck,
-  Copy,
   FileSearch,
   FileText,
   PenLine,
-  ShieldAlert,
   Signature,
   TriangleAlert,
   Wallet,
@@ -28,10 +25,9 @@ import { Popover } from "@/components/ui/Popover";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
-import { formatIban, formatMoney, urgencyOf, urgencyTone, type UrgencyTone } from "@/lib/format";
+import { urgencyOf, urgencyTone, type UrgencyTone } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
-import { useClipboard } from "./clipboard";
 import { focusAfterLeaving, focusWhenReady } from "./focus";
 import { fadeUp, stagger } from "./motion";
 import { allClearTitle, composerHref, type ActionVerb, type DateRole, type TodayAction } from "./selection";
@@ -41,8 +37,8 @@ import { ReadMore } from "./ReadMore";
 import { WhyThisDate } from "./WhyThisDate";
 import { waitingTitle } from "./WaitingCard";
 import { LetterText } from "@/components/ui/LetterText";
-import { GIROCODE_MISMATCH_DETAILS, GiroCodeSection, canReadLetterAgain, ibanFailsCheck } from "@/features/girocode/GiroCode";
-import { paymentReference } from "@/lib/payments";
+import { GiroCodeSection, canReadLetterAgain } from "@/features/girocode/GiroCode";
+import { IbanCheck, PayFooter, TransferDetails, amountForTransfer, hasTransferDetails } from "@/features/pay/TransferDetails";
 
 const VERB: Record<ActionVerb, { label: string; icon: LucideIcon }> = {
   pay: { label: "Pay", icon: Wallet },
@@ -143,56 +139,8 @@ function useTopFocus(list: RefObject<HTMLElement | null>): TopFocus {
 // Pay panel
 // ------------------------------------------------------------------------------------------------
 
-/** An amount as a German banking app wants it typed: 94.99 → "94,99", 1234.5 → "1234,50". */
-export function amountForTransfer(amount: number): string {
-  return amount.toFixed(2).replace(".", ",");
-}
-
-/**
- * One transfer detail: its label, the full value (wrapped, never cut — every character of an IBAN
- * or a reference matters) and a copy button, which is icon-only in a narrow panel.
- */
-function CopyRow({
-  label,
-  value,
-  display,
-  copyId,
-  ident,
-  copyable = true,
-}: {
-  label: string;
-  value: string;
-  display?: string;
-  copyId: string;
-  ident?: boolean;
-  /** `false` while the person says the details don't match the letter: no copy button. */
-  copyable?: boolean;
-}) {
-  const { copy, copied } = useClipboard();
-  const done = copied === copyId;
-  return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 py-2">
-      <dt className="text-xs font-medium text-muted">{label}</dt>
-      <dd className={cn("col-start-1 text-base text-ink [overflow-wrap:anywhere]", ident && "font-ident")}>{display ?? value}</dd>
-      <dd className={cn("col-start-2 row-span-2 row-start-1", !copyable && "hidden")}>
-        <button
-          type="button"
-          onClick={() => void copy(value, copyId)}
-          className="inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-accent transition-colors hover:bg-accent-soft"
-          aria-label={done ? `${label} copied` : `Copy ${label}`}
-        >
-          {done ? <Check className="size-3.5" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
-          <span aria-hidden className="hidden @[17rem]:inline">
-            {done ? "Copied" : "Copy"}
-          </span>
-        </button>
-        <span className="sr-only" aria-live="polite">
-          {done ? `${label} copied` : ""}
-        </span>
-      </dd>
-    </div>
-  );
-}
+/** (The transfer details, the IBAN's check and the footer are the letter's Pay panel's too: `features/pay`.) */
+export { amountForTransfer };
 
 /**
  * "Pay": the transfer details from the letter (copyable), the GiroCode folded behind "Show code"
@@ -209,7 +157,6 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
   const letter = doc.data?.document;
   // "They don't match": the details shown are the ones the person says are wrong — no copy buttons
   const [mismatch, setMismatch] = useState(false);
-  const copyable = !mismatch;
 
   const markPaid = () => {
     if (!item) return;
@@ -245,44 +192,12 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
           <Skeleton className="h-9 w-full" />
           <Skeleton className="h-9 w-full" />
         </div>
-      ) : pay && (pay.iban || pay.reference) ? (
-        <>
-          {mismatch ? (
-            <p role="status" className="mt-3 flex gap-2 text-sm leading-5 text-warn-ink">
-              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-              {GIROCODE_MISMATCH_DETAILS}
-            </p>
-          ) : null}
-          <dl className="@container mt-3 divide-y divide-line rounded-lg border border-line px-3">
-            {pay.payee ? <CopyRow label="Recipient" value={pay.payee} copyId="payee" copyable={copyable} /> : null}
-            {pay.iban ? <CopyRow label="IBAN" value={pay.iban.replace(/\s+/g, "")} display={formatIban(pay.iban)} copyId="iban" ident copyable={copyable} /> : null}
-            {action.amount ? (
-              <CopyRow
-                label="Amount"
-                value={amountForTransfer(action.amount)}
-                display={formatMoney(action.amount, { currency: action.currency })}
-                copyId="amount"
-                copyable={copyable}
-              />
-            ) : null}
-            {pay.reference ? <CopyRow label="Reference" value={paymentReference(pay.reference)} copyId="reference" ident copyable={copyable} /> : null}
-          </dl>
-        </>
+      ) : hasTransferDetails(pay) ? (
+        <TransferDetails payment={pay} amount={action.amount || null} currency={action.currency} mismatch={mismatch} className="mt-3" />
       ) : (
         <p className="mt-3 text-sm leading-relaxed text-muted">{item?.action ?? "The payment details are in the letter."}</p>
       )}
-
-      {ibanFailsCheck(pay?.iban_valid, code) ? (
-        <p className="mt-3 flex gap-2 rounded-lg bg-danger-soft px-3 py-2.5 text-sm leading-5 text-danger-ink">
-          <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-          This IBAN fails its checksum. Don't pay until you've confirmed the account with the sender.
-        </p>
-      ) : pay?.iban_valid === true ? (
-        <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-ok-ink">
-          <CircleCheck className="mt-[3px] size-3.5 shrink-0" aria-hidden />
-          The IBAN's check digits are valid — that only rules out typos, not fraud.
-        </p>
-      ) : null}
+      <IbanCheck ibanValid={pay?.iban_valid} code={code} />
 
       {action.docId ? (
         <GiroCodeSection
@@ -295,30 +210,17 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
         />
       ) : null}
 
-      {/*
-        stays in view at the bottom of the panel, however far its details scroll: it covers the
-        panel's bottom padding (a sticky box stops at the padding edge, so it is pulled down by it)
-      */}
-      <div
-        data-sticky-footer=""
-        className={cn(
-          "sticky -bottom-4 -mb-4 mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line bg-surface py-3",
-          "in-sheet:bottom-[calc(-1.25rem-env(safe-area-inset-bottom))] in-sheet:mb-[calc(-1.25rem-env(safe-area-inset-bottom))] in-sheet:pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
-        )}
-      >
-        {action.docId ? (
-          <Button variant="ghost" size="sm" icon={FileText} onClick={() => navigate(actionHref(action))}>
-            Open letter
-          </Button>
-        ) : (
-          <span />
-        )}
-        {item ? (
-          <Button variant="primary" size="sm" icon={Check} onClick={markPaid} loading={update.isPending}>
-            Mark as paid
-          </Button>
-        ) : null}
-      </div>
+      <PayFooter
+        secondary={
+          action.docId ? (
+            <Button variant="ghost" size="sm" icon={FileText} onClick={() => navigate(actionHref(action))}>
+              Open letter
+            </Button>
+          ) : null
+        }
+        onPaid={item ? markPaid : undefined}
+        pending={update.isPending}
+      />
     </div>
   );
 }

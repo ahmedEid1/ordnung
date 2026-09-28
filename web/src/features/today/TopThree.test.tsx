@@ -9,6 +9,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { formatIban } from "@/lib/format";
+import { plainText } from "@/lib/glue";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { item } from "@/mocks/data/helpers";
@@ -121,16 +122,20 @@ describe("the Pay panel", () => {
     }
     const value = (label: string) => within(list).getByText(label).nextElementSibling!;
     expect(value("IBAN")).toHaveTextContent(formatIban("DE70123478000048213000"));
-    expect(value("Reference")).toHaveTextContent("RE-2026-084213");
+    // a reference never breaks at its hyphens (non-breaking ones, copied as "-")
+    expect(plainText(value("Reference").textContent ?? "")).toBe("RE-2026-084213");
     // identifiers wrap, they are never cut
     expect(list.querySelector(".truncate")).toBeNull();
     for (const dt of within(list).getAllByRole("term")) expect(dt.className).toContain("text-xs");
 
     // (user-event puts its own clipboard in place)
-    await user.click(within(list).getByRole("button", { name: "Copy Amount" }));
+    await user.click(within(list).getByRole("button", { name: "Copy amount" }));
     expect(await navigator.clipboard.readText()).toBe("94,99");
     await user.click(within(list).getByRole("button", { name: "Copy IBAN" }));
     expect(await navigator.clipboard.readText()).toBe("DE70123478000048213000");
+    // said on the button, where it was pressed (only the last copy): no toast
+    expect(within(list).getByRole("button", { name: "IBAN copied" })).toBeInTheDocument();
+    expect(within(list).getByRole("button", { name: "Copy amount" })).toBeInTheDocument();
 
     expect(within(panel).getByText("The IBAN's check digits are valid — that only rules out typos, not fraud.")).toBeInTheDocument();
     expect(within(panel).queryByText(/No warning does not mean/)).toBeNull();

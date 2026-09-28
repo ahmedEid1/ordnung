@@ -31,8 +31,9 @@ const joinAnd = (parts: string[]) => (parts.length < 2 ? parts.join("") : `${par
 
 export function provenanceText(doc: DocumentDetail["document"]): string {
   const pages = plural(doc.pages, "page");
-  if (doc.status === "held") return `Not read yet — not sent to AI · ${pages}`;
-  if (doc.ai_private) return `Kept private — not read by AI · ${pages}`;
+  // privacy statements name who doesn't read it, as the held card, the verdict's badge and Settings do
+  if (doc.status === "held") return `Not read yet — not sent to Claude · ${pages}`;
+  if (doc.ai_private) return `Kept private — not read by Claude · ${pages}`;
   if (!doc.ai_processed_at) return `Not read yet · ${pages}`;
   const when = formatDate(doc.ai_processed_at, { style: "medium" });
   return doc.text_mode === "vision" ? `Read by Claude on ${when} · from a photo, ${pages}` : `Read by Claude on ${when} · text of ${pages}`;
