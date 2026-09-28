@@ -555,6 +555,12 @@ class Draft(_Model):
     sent_channel: str | None = None
     status: Literal["draft", "final", "sent"] = "draft"
     sent_at: str | None = None
+    #: The Einschreiben's tracking number, normalised (``drafts.proof.parse_tracking_number``).
+    tracking_number: str | None = None
+    #: The day the person said the sent letter was answered (``drafts.sent.mark_answered``) and the
+    #: letter they said is the answer (``None``: answered by phone, e-mail … or not said).
+    answered_on: str | None = None
+    answer_doc_id: str | None = None
     created_at: str
     updated_at: str
 
@@ -617,6 +623,64 @@ class Note(_Model):
     text: str
     item_ids: list[str] = Field(default_factory=list)
     created_at: str
+
+
+#: ``Document.source`` of a proof file: a private outgoing document that belongs to its letter
+#: (``drafts.proof``) and is never listed or counted as a letter.
+PROOF_SOURCE = "proof"
+
+
+class SentSigner(_Model):
+    """What a letter's PDF showed of the sender when it was marked as sent (the profile may change later)."""
+
+    name: str = ""
+    email: str = ""
+    phone: str = ""
+
+
+#: What a piece of proof of a sent letter is (``drafts.proof.PROOF_KINDS`` says what each one shows).
+ProofKind = Literal[
+    "posting_receipt",  # Einlieferungsbeleg
+    "delivery_record",  # Auslieferungsbeleg
+    "return_receipt",  # Rückschein
+    "fax_report",  # Sendebericht
+    "sent_email",
+    "cancel_confirmation",  # § 312k BGB: the saved page or the provider's confirmation
+    "other",
+]
+
+
+class Proof(_Model):
+    """One piece of proof that a letter was sent or arrived. ``doc_id`` is its file: a private outgoing
+    document (``source="proof"``) that is never sent to a model. ``on_date`` is the day it shows (the
+    day posted, delivered, faxed or confirmed)."""
+
+    id: str
+    draft_id: str
+    kind: ProofKind
+    doc_id: str | None = None
+    on_date: str | None = None
+    note: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class CallNote(_Model):
+    """A phone call the person noted (Gesprächsnotiz): when, with whom, what was said and what was
+    promised. A promise with a date is waited for (``secretary.waiting``)."""
+
+    id: str
+    party_id: str | None = None
+    case_id: str | None = None
+    called_on: str
+    contact: str | None = None
+    summary: str
+    promise: str | None = None
+    promise_due: str | None = None
+    promise_amount: float | None = None
+    promise_kept_on: str | None = None
+    created_at: str
+    updated_at: str
 
 
 class Activity(_Model):
@@ -1135,6 +1199,15 @@ class ItemAside(_Model):
     replaced_by: str | None = None
 
 
+class ProofLink(_Model):
+    """A sent letter this document is proof of (``drafts.proof``): the letter and what the proof is."""
+
+    draft_id: str
+    subject: str
+    proof_id: str
+    kind: ProofKind
+
+
 class DocumentDetail(_Model):
     document: Document
     advice: LetterAdvice | None = None
@@ -1160,6 +1233,99 @@ class DocumentDetail(_Model):
     #: Whether its "Keep private" can be undone: it was kept private while it waited for the person,
     #: and nothing was read since (:func:`ordnung.ingest.held.was_kept_from_waiting`).
     can_wait_again: bool = False
+    #: the sent letters this file is proof of (a proof file, or a letter also linked as proof)
+    proof_of: list[ProofLink] = Field(default_factory=list)
+
+
+class TrackingInfo(_Model):
+    """A letter's tracking number as Ordnung read it (``drafts.proof.parse_tracking_number``)."""
+
+    number: str
+    #: grouped for reading, the groups joined by no-break spaces (never breaks inside the number)
+    display: str
+    #: ``online_stamp``: the 20 characters next to an online stamp's square code (Internetmarke);
+    #: ``unknown``: a stored number the current policy no longer accepts (shown as typed)
+    format: Literal["s10", "online_stamp", "domestic", "unknown"]
+    #: The check digit was verified (UPU S10); the other formats have no check Ordnung knows.
+    checked: bool
+    note: str | None = None
+
+
+class ProofEntry(_Model):
+    """A proof with its file and, in code-written words, what it shows and what it does not."""
+
+    proof: Proof
+    document: Document | None = None
+    label: str
+    shows: str
+    does_not_show: str
+
+
+class ProofEvent(_Model):
+    """One line of a sent letter's timeline (the "Nachweis"). ``date`` is ``None`` for a proof without a
+    day (listed apart, with ``added_on``: the day it was added). ``possible_answer``: a letter that may be
+    the answer — shown to the person, never written into the Nachweis."""
+
+    date: str | None = None
+    kind: Literal["created", "sent", "tracking", "proof", "delivered", "answered", "possible_answer"]
+    label: str
+    detail: str | None = None
+    ref: RefLink | None = None
+    added_on: str | None = None
+
+
+WaitingSource = Literal["letter", "money", "call"]
+WaitingStatus = Literal["waiting", "overdue", "answered", "closed"]
+
+
+class WaitingEntry(_Model):
+    """Something the person is owed — a reply, money or a callback (``secretary.waiting``), worked out on
+    read. ``answered``: a letter linked to it arrived (``answered_by``); nothing is closed for the person,
+    closing the follow-up to-do (``followup_item_id``) or marking the money received is their click."""
+
+    id: str
+    source: WaitingSource
+    status: WaitingStatus
+    title: str
+    about: str
+    note: str
+    since: str | None = None
+    expected_by: str | None = None
+    party_id: str | None = None
+    party_name: str | None = None
+    amount: float | None = None
+    currency: str | None = None
+    area: Area = "other"
+    ref: RefLink
+    answered_by: RefLink | None = None
+    answered_on: str | None = None
+    followup_item_id: str | None = None
+    #: the letter it comes from: the one a sent letter answers, or the one that promised the money
+    doc_id: str | None = None
+    #: the thread it belongs to (a sent letter's, a call's): a call noted about it goes there
+    case_id: str | None = None
+
+
+class ProofOverview(_Model):
+    """``GET /api/drafts/{id}/proof``: a letter's tracking number, proofs, timeline, what is missing and
+    what it waits for."""
+
+    draft_id: str
+    sent: bool
+    channel: str | None = None
+    tracking: TrackingInfo | None = None
+    proofs: list[ProofEntry] = Field(default_factory=list)
+    timeline: list[ProofEvent] = Field(default_factory=list)
+    #: what would make the proof stronger, in the person's words (empty: nothing Ordnung knows of)
+    missing: list[str] = Field(default_factory=list)
+    #: proof days that contradict the day the letter is marked as sent (one of them is wrong)
+    conflicts: list[str] = Field(default_factory=list)
+    #: only in the answer to adding a proof: what to tell the person about a file that was already in
+    #: Ordnung (made private now, or already read by AI); ``None``: it was stored privately
+    notice: str | None = None
+    waiting: WaitingEntry | None = None
+    #: the fixed caveat: proof of sending never shows what was inside
+    caveat: str = ""
 
 
 class PartyDetail(_Model):

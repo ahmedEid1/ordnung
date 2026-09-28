@@ -288,6 +288,89 @@ export async function staticCatalog({ webDir }) {
   });
   tmpl("address_change", "", "Template: share a new address (from the profile).");
 
+  // ---------------------------------------------------------------------------------------------
+  // Proof of sending, "Waiting for" and call notes: the FitWell cancellation sent by Einschreiben
+  // (tracking number, a photo of the posting receipt), the deposit and the overdue phone promise
+  // ---------------------------------------------------------------------------------------------
+  const pf = [];
+  const addPf = (id, path, description, run, extra = {}) =>
+    pf.push({ id: `static-${id}`, group: "proof", route: `#${path}`, how: `open /#${path}${run ? ", then as described" : ""}`, description, run: async (c) => (await c.goto(path), run && run(c)), ...extra });
+  const proofCard = (c) => inMain(c.page).getByRole("region", { name: "Proof of sending" });
+  const callsOf = (c) => c.page.getByRole("dialog").getByRole("region", { name: /^Calls/ });
+  if (draftIds.includes("drf_phone") && readFileSync(join(webDir, "src", "mocks", "data", "proof.ts"), "utf8").includes('id: "drf_gym"')) {
+    addPf("letter-proof", "/letters/drf_gym", "Sent letter: “Proof of sending” (tracking number, posting receipt, what's missing, timeline, Nachweis).", (c) => c.scrollTo(proofCard(c)));
+    addPf("letter-proof--add", "/letters/drf_gym", "Sent letter: the “Add proof” dialog (file, kind, day, note).", (c) => c.click(proofCard(c).getByRole("button", { name: "Add proof" })));
+    addPf("letter-proof--tracking-wrong", "/letters/drf_gym", "Sent letter: changing the tracking number to one with a wrong check digit.", async (c) => {
+      await c.click(proofCard(c).getByRole("button", { name: "Change" }));
+      const field = proofCard(c).getByRole("textbox", { name: "Tracking number" });
+      await field.fill("");
+      await c.type(field, "RT 123 456 784 DE");
+    });
+    addPf("letter-proof--remove", "/letters/drf_gym", "Sent letter: “Remove the posting receipt?” names the file, offers to download it first.", async (c) => {
+      await c.click(proofCard(c).getByRole("button", { name: /^Actions for / }).first());
+      await c.click(c.page.getByRole("menuitem", { name: "Remove this proof" }));
+    });
+    addPf("letter-proof--row-menu", "/letters/drf_gym", "Sent letter: a proof's ⋯ menu (“Change kind or day” whole, never cut off).", async (c) => {
+      await c.click(proofCard(c).getByRole("button", { name: /^Actions for / }).first());
+    });
+    addPf("letter-proof--conflict", "/letters/drf_gym", "Sent letter: the receipt's day changed to another day than the sending: “These days don't match”.", async (c) => {
+      await c.click(proofCard(c).getByRole("button", { name: /^Actions for / }).first());
+      await c.click(c.page.getByRole("menuitem", { name: "Change kind or day" }));
+      const dialog = await c.visible(c.page.getByRole("dialog"));
+      await dialog.getByLabel(/Posted on/).fill("2026-09-24");
+      await c.click(dialog.getByRole("button", { name: /^Save/ }));
+      await c.centre(await c.visible(proofCard(c).getByText("These days don't match")));
+    });
+    addPf("letter-proof--online-stamp", "/letters/drf_gym", "Sent letter: an Einschreiben bought online — the online stamp's 20-character number, and what to keep instead of a receipt.", async (c) => {
+      await c.click(proofCard(c).getByRole("button", { name: "Change" }));
+      const field = proofCard(c).getByRole("textbox", { name: "Tracking number" });
+      await field.fill("");
+      await c.type(field, "A0 0123 45D6 0000 123C EC");
+      await c.click(proofCard(c).getByRole("button", { name: "Save number" }));
+      await c.centre(await c.visible(proofCard(c).getByText(/online stamp/).first()));
+    });
+    addPf("mark-sent--tracking", "/letters/drf_phone", "Mark as sent by Einwurf-Einschreiben with a mistyped tracking number (the check digit error).", async (c) => {
+      await c.click(c.page.getByRole("button", { name: "Mark as sent" }).first());
+      const dialog = await c.visible(c.page.getByRole("dialog", { name: "Mark as sent" }));
+      await c.click(dialog.getByText("Einwurf-Einschreiben", { exact: false }).first()); // the radio itself is visually hidden
+      await c.type(dialog.getByRole("textbox", { name: /Tracking number/ }), "RT 123 456 784 DE");
+    });
+    addPf("mark-sent--tracking-ok", "/letters/drf_phone", "Mark as sent by Einwurf-Einschreiben with a correct tracking number.", async (c) => {
+      await c.click(c.page.getByRole("button", { name: "Mark as sent" }).first());
+      const dialog = await c.visible(c.page.getByRole("dialog", { name: "Mark as sent" }));
+      await c.click(dialog.getByText("Einwurf-Einschreiben", { exact: false }).first()); // the radio itself is visually hidden
+      await c.type(dialog.getByRole("textbox", { name: /Tracking number/ }), "RT 123 456 785 DE");
+    });
+    addPf("letter-proof--answered-another-way", "/letters/drf_gym", "Sent letter: “I got an answer — close this” (closed box, toast with Undo).", async (c) => {
+      await c.click(proofCard(c).getByRole("button", { name: "I got an answer — close this" }), { settleAfter: false });
+      await c.visible(c.page.getByText("Marked as answered"));
+      await settle(c.page);
+    }, { pinToasts: true });
+    addPf("letter-proof--delete", "/letters/drf_gym", "Sent letter: “Delete this letter?” names its proof file and offers to keep it.", async (c) => {
+      await c.click(inMain(c.page).getByRole("button", { name: "More actions" }));
+      await c.click(c.page.getByRole("menuitem", { name: "Delete this letter" }));
+    });
+    addPf("proof-file", "/letters/drf_gym/proofs/doc_gym_receipt", "The posting receipt on its own page, under its letter.");
+    addPf("waiting", "/letters/waiting", "Waiting for: the overdue phone promise, the letters' replies and the deposit.");
+    addPf("waiting--arrived", "/letters/waiting", "Waiting for: the deposit marked as arrived (toast with Undo).", async (c) => {
+      await c.click(inMain(c.page).getByRole("listitem").filter({ hasText: "Deposit back" }).getByRole("button", { name: "It arrived" }), { settleAfter: false });
+      await c.visible(c.page.getByText("Marked as received"));
+      await settle(c.page);
+    }, { pinToasts: true });
+    addPf("party-calls", "/letters?party=pty_fitwell", "FitWell's drawer: the “Calls” section with the noted call and its promise.", (c) => c.scrollTo(callsOf(c)));
+    addPf("waiting--note-call", "/letters/waiting", "Waiting for: “Note a call” on the overdue promise opens FitWell's drawer with the form.", async (c) => {
+      const row = inMain(c.page).getByRole("region", { name: /Overdue/ });
+      await c.click(row.getByRole("button", { name: "Note a call" }).first());
+      await c.visible(callsOf(c).getByRole("form", { name: "Note a call" }));
+    });
+    addPf("party-calls--form", "/letters?party=pty_fitwell", "FitWell's drawer: “Note a call” form, saved empty (what's missing).", async (c) => {
+      await c.click(callsOf(c).getByRole("button", { name: "Note a call" }));
+      const form = callsOf(c).getByRole("form", { name: "Note a call" });
+      await c.type(form.getByRole("textbox", { name: /What they promised/ }), "Refund of the September fee");
+      await c.click(form.getByRole("button", { name: "Save note" }));
+    });
+  }
+
   return {
     phases: [
       {
@@ -296,6 +379,7 @@ export async function staticCatalog({ webDir }) {
         states: S.map((s) => ({ ...s, pinToasts: s.id.endsWith("unavailable") || s.id.startsWith("static-inbox-waiting-") || s.id.endsWith("-kept-private") })),
       },
       { name: "high-stakes", parallel: true, states: hs },
+      { name: "proof", parallel: true, states: pf },
     ],
   };
 }

@@ -74,6 +74,7 @@ describe("steps", () => {
     expect(entryHref({ ref: { type: "contract", id: "ctr_a" }, doc_id: null })).toBe("/contracts?contract=ctr_a");
     expect(entryHref({ ref: { type: "draft", id: "drf_a" }, doc_id: null })).toBe("/letters/drf_a");
     expect(stepCount({ entries: [], more: 3 })).toBe(3);
+    // the FitWell cancellation was sent: it is listed to keep its proof, not counted as one to post
     expect(sessionHighlights(MOCK_WEEK)).toEqual(["8 new letters", "2 to check", "4 to pay", "1 to post", "2 decisions"]);
     // overdue first; a fee paid at an appointment is no transfer
     const pay = MOCK_WEEK.steps.find((s) => s.id === "pay")!;

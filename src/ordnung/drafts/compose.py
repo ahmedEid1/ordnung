@@ -31,6 +31,7 @@ from ordnung.clock import now_iso
 from ordnung.db.store import NotFoundError, Store
 from ordnung.drafts import templates
 from ordnung.drafts.checks import CheckContext, run_checks
+from ordnung.drafts.proof import DELIVERY_DAY_KINDS, followup_item_id, kind_info
 from ordnung.drafts.template_letters import (
     ADDRESS_FRAMES,
     TEMPLATES,
@@ -39,7 +40,8 @@ from ordnung.drafts.template_letters import (
     template_letter,
 )
 from ordnung.drafts.templates import STATUTORY_REMEDIES, LetterLanguage, LetterParts, RemedyKind
-from ordnung.ids import content_id, new_id
+from ordnung.drafts.tracking import TrackingError, parse_tracking_number
+from ordnung.ids import new_id
 from ordnung.llm.base import ClaudeBadOutput, LLMError, LLMRequest, LLMResponse, ReplayMiss
 from ordnung.llm.prompts import render
 from ordnung.llm.schemas import draft_schema, draft_translation_schema
@@ -62,6 +64,7 @@ from ordnung.models import (
     Remedy,
     SendChannel,
     SendGuidance,
+    SentSigner,
     TemplateDraftKind,
 )
 from ordnung.rules import LAST_CHECKED, RuleContext, compute_due, send_guidance
@@ -86,6 +89,8 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 FOLLOWUP_DAYS = 21
+#: Said when a tracking number comes with a letter that wasn't registered.
+NO_TRACKING = "Only a registered letter (Einschreiben) has a tracking number."
 #: Days to wait for a reply per kind of letter when it differs: a data request has one month from
 #: receipt (Art. 12 Abs. 3 GDPR), plus the post.
 FOLLOWUP_DAYS_BY_KIND = {"data_access": 35}
@@ -1528,20 +1533,50 @@ def _followup_fields(draft: Draft, sources: Sources, sent_on: date, channel: str
 
 
 def _save_followup(store: Store, draft: Draft, fields: dict[str, object]) -> Item:
-    item_id = content_id("itm", "followup", draft.id)
+    item_id = followup_item_id(draft.id)
     existing = store.get_item(item_id)
     if existing is None:
         return store.add_item(id=item_id, **fields)
     if existing.user_modified:
         return existing
+    if existing.status in ("done", "dismissed"):  # correcting how or when it went reopens nothing
+        fields = {name: value for name, value in fields.items() if name != "status"}
     return store.update_item(item_id, **fields)
 
 
-def mark_sent(ctx: AppContext, draft_id: str, channel: str, sent_on: date | str) -> tuple[Draft, Item]:
+def _delivered_before(store: Store, draft_id: str, day: date) -> str | None:
+    """Why a sent letter can't be marked as sent on ``day``: a delivery its proof records before it."""
+    for proof in store.list_proofs(draft_id):
+        delivered = parse_day(proof.on_date) if proof.kind in DELIVERY_DAY_KINDS else None
+        if delivered is not None and delivered < day:
+            label = kind_info(proof.kind).label.lower()
+            return (
+                f"Your {label} says it was delivered on {fmt_date(delivered)} — a letter can't be sent "
+                f"after it was delivered. Correct the {label}'s day first, or choose an earlier day."
+            )
+    return None
+
+
+def mark_sent(
+    ctx: AppContext,
+    draft_id: str,
+    channel: str,
+    sent_on: date | str,
+    *,
+    tracking_number: str | None = None,
+) -> tuple[Draft, Item]:
     """Record that a letter was sent (how and when) and create its follow-up to-do 21 days later.
 
     The checks are re-run with the channel, so a rent or employment notice sent by e-mail is flagged.
-    Marking the same letter again updates its follow-up instead of adding another one.
+    Marking the same letter again corrects how and when it went and updates its follow-up instead of
+    adding another one (a closed follow-up stays closed); a sending day after a delivery the letter's
+    proof records is refused (a delivery can't be before the sending — ``drafts.proof`` policy 5). Only
+    a registered letter has a tracking number (checked by
+    :func:`ordnung.drafts.tracking.parse_tracking_number`; a refused one raises :class:`DraftError`
+    before anything is saved): ``None`` keeps the stored number, an empty one (the person emptied the
+    field) removes it, and marked again with another channel the letter's stored number goes. The first
+    marking keeps what the PDF shows of the sender (:class:`SentSigner`), so the letter prints as it
+    went out even after the profile changes.
     """
     store = ctx.store
     draft = store.get_draft(draft_id)
@@ -1554,12 +1589,30 @@ def mark_sent(ctx: AppContext, draft_id: str, channel: str, sent_on: date | str)
         raise DraftError(f"“{sent_on}” is not a date.")
     if day > local_today(store):  # the person's today, as in the app (not the computer's date)
         raise DraftError("The sending date can't be in the future.")
+    if draft.status == "sent" and (delivered := _delivered_before(store, draft.id, day)) is not None:
+        raise DraftError(delivered)
+    tracking = None
+    if tracking_number and tracking_number.strip():
+        if channel != "registered_letter":
+            raise DraftError(NO_TRACKING)
+        try:
+            tracking = parse_tracking_number(tracking_number).number
+        except TrackingError as exc:
+            raise DraftError(str(exc)) from exc
     sources = sources_for_draft(store, draft)
     sent = draft.model_copy(update={"status": "sent", "sent_at": day.isoformat(), "sent_channel": channel})
     checks = run_checks(sent, check_context(store, sources, sent, channel=channel))
+    extra: dict[str, object] = {}
+    if tracking:
+        extra["tracking_number"] = tracking
+    elif channel != "registered_letter" or tracking_number is not None:
+        extra["tracking_number"] = None
+    if store.get_sent_signer(draft_id) is None:
+        profile = store.get_profile()
+        extra["sent_profile"] = SentSigner(name=profile.name, email=profile.email, phone=profile.phone)
     with store.tx():
         updated = store.update_draft(
-            draft_id, status="sent", sent_at=day.isoformat(), sent_channel=channel, checks=checks
+            draft_id, status="sent", sent_at=day.isoformat(), sent_channel=channel, checks=checks, **extra
         )
         item = _save_followup(store, updated, _followup_fields(updated, sources, day, channel))
         store.log_activity(

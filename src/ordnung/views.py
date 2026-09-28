@@ -31,6 +31,7 @@ from ordnung.models import (
     Suggestion,
     TimelineEntry,
     TimelineMarker,
+    WaitingEntry,
     WeeklySession,
 )
 from ordnung.numbers import NumbersInput, build_my_numbers
@@ -50,6 +51,7 @@ from ordnung.secretary.triggers import (
     priority_rank,
     was_history_when_filed,
 )
+from ordnung.secretary.waiting import waiting_for
 from ordnung.secretary.week import build_weekly_session, pending_items, session_state
 from ordnung.tick import local_today, simulated_day
 
@@ -1030,3 +1032,14 @@ def weekly_session(store: Store, today: date) -> WeeklySession:
         drafts=store.list_drafts(),
         state=session_state(store),
     )
+
+
+# --------------------------------------------------------------------------------------------------
+# waiting for
+# --------------------------------------------------------------------------------------------------
+
+
+def waiting(store: Store, today: date) -> list[WaitingEntry]:
+    """What the person is waiting for — replies to letters they sent, money a letter promised, callbacks
+    promised on the phone (the policy is :mod:`ordnung.secretary.waiting`)."""
+    return waiting_for(Ledger(store, today))

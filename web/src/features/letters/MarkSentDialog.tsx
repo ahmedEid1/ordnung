@@ -10,12 +10,19 @@ import { formatDate } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { followUpDate, sendChoices, type SendChoice } from "./logic";
+import { takesTrackingNumber } from "./proof";
+import { TrackingField, trackingSavable } from "./TrackingField";
+import { displayTracking } from "@/lib/tracking";
+
+const TRACKING_ID = "mark-sent-tracking";
 
 export interface MarkSentDialogProps {
   open: boolean;
   onClose: () => void;
   draft: Draft;
-  onConfirm: (channel: SendChannelKind, date: string) => void;
+  /** `trackingNumber`: what the person typed for a registered letter (checked; `""` when left empty — on a sent
+   * letter that removes the stored number), `null` for a way of sending that has none. */
+  onConfirm: (channel: SendChannelKind, date: string, trackingNumber: string | null) => void;
   pending?: boolean;
 }
 
@@ -59,10 +66,11 @@ function ChoiceRow({ c, selected, onSelect }: { c: SendChoice; selected: boolean
 }
 
 /**
- * "Mark as sent" (or, for a sent letter, "Change how it was sent"): how and when. The ways are the
- * ones "How to send it" names for this letter, in its words; the usual others wait behind "Another
- * way". The day can't be before the letter was drafted or after today. Ordnung then adds a to-do to
- * check for a reply in 21 days (35 for a data request).
+ * "Mark as sent" (or, for a sent letter, "Change how or when you sent it"): how and when, and a
+ * registered letter's tracking number, checked as it is typed (a mistyped number is said when the
+ * person confirms). The ways are the ones "How to send it" names for this letter, in its words; the
+ * usual others wait behind "Another way". The day can't be before the letter was drafted or after
+ * today. Ordnung then adds a to-do to check for a reply in 21 days (35 for a data request).
  */
 export function MarkSentDialog({ open, onClose, draft, onConfirm, pending }: MarkSentDialogProps) {
   const today = useTodayISO();
@@ -73,6 +81,21 @@ export function MarkSentDialog({ open, onClose, draft, onConfirm, pending }: Mar
   const [channel, setChannel] = useState<SendChannelKind | null>(initial?.channel ?? null);
   const [showOthers, setShowOthers] = useState(Boolean(initial?.other));
   const [date, setDate] = useState((resending && draft.sent_at?.slice(0, 10)) || today);
+  const [tracking, setTracking] = useState(resending && draft.tracking_number ? displayTracking(draft.tracking_number) : "");
+  const [tried, setTried] = useState(false);
+  const withTracking = takesTrackingNumber(channel);
+  const trackingOk = !withTracking || trackingSavable(tracking);
+  const confirm = () => {
+    if (!channel) return;
+    if (!trackingOk) {
+      setTried(true);
+      document.getElementById(TRACKING_ID)?.focus();
+      return;
+    }
+    // an emptied field on a letter that had a number removes it ("" — the API keeps the number when none is sent)
+    const removed = resending && draft.tracking_number ? "" : null;
+    onConfirm(channel, date, withTracking ? tracking.trim() || removed : null);
+  };
   const chosen = choices.find((c) => c.channel === channel) ?? null;
   const offered = choices.filter((c) => !c.other);
   const others = choices.filter((c) => c.other);
@@ -91,22 +114,23 @@ export function MarkSentDialog({ open, onClose, draft, onConfirm, pending }: Mar
     <Dialog
       open={open}
       onClose={onClose}
-      title={resending ? "Change how it was sent" : "Mark as sent"}
+      title={resending ? "Change how or when you sent it" : "Mark as sent"}
       description={
         resending
-          ? "Correct the way or the day — the reminder to check for an answer moves with it."
+          ? "Correct the way or the day you sent it. The reminder to check for an answer moves with the day."
           : "How and when did you send it? Ordnung adds a to-do to check for an answer — nothing is sent from here."
       }
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
-          <Button variant="primary" icon={Check} disabled={!channel || !validDate} loading={pending} onClick={() => channel && onConfirm(channel, date)}>
+          <Button variant="primary" icon={Check} disabled={!channel || !validDate} loading={pending} onClick={confirm}>
             {resending ? "Save" : "Mark as sent"}
           </Button>
         </>
       }
     >
-      <fieldset>
+      {/* min-w-0: a fieldset is as wide as its longest label by default (a long e-mail address) */}
+      <fieldset className="min-w-0">
         <legend className="mb-2 text-[13px] font-medium text-ink">How did you send it?</legend>
         <div className="space-y-1.5">
           {offered.map((c) => (
@@ -162,6 +186,8 @@ export function MarkSentDialog({ open, onClose, draft, onConfirm, pending }: Mar
           {validDate ? `We'll remind you to check for a reply on ${formatDate(followUpDate(date, draft.kind), { style: "short", today })}.` : range}
         </p>
       </div>
+
+      {withTracking ? <TrackingField id={TRACKING_ID} value={tracking} onChange={setTracking} optional showError={tried} className="mt-5" /> : null}
 
       {late ? (
         <Callout tone="warn" className="mt-3" title="That's after the send-by date">

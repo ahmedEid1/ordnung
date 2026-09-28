@@ -110,6 +110,22 @@ async def _seed(api: Api, contract: Contract) -> dict[str, str]:
     draft = await client.post("/api/drafts", json={"kind": "cancellation", "contract_id": contracts[0]["id"]})
     assert draft.status_code == 201, draft.text
     contract.check_json("post", "/api/drafts", 201, draft.json())
+    sent = await client.post(
+        f"/api/drafts/{draft.json()['id']}/sent",
+        json={"channel": "registered_letter", "date": TODAY, "tracking_number": "RT123456785DE"},
+    )
+    contract.check_json("post", f"/api/drafts/{draft.json()['id']}/sent", 200, sent.json())
+    call = await client.post(
+        "/api/calls",
+        json={
+            "party_id": contracts[0]["party_id"],
+            "called_on": TODAY,
+            "summary": "They will send the confirmation.",
+            "promise": "Written confirmation",
+            "promise_due": "2026-10-05",
+        },
+    )
+    contract.check_json("post", "/api/calls", 201, call.json())
 
     ask = await client.post("/api/ask", json={"question": "Is anything due?"})
     events = [json.loads(message["data"]) for message in sse_messages(ask.text)]
@@ -169,6 +185,11 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         await _get(api, contract, f"/api/chat/{ids['thread']}")
         await _get(api, contract, "/api/drafts")
         await _get(api, contract, f"/api/drafts/{ids['draft']}")
+        proof = await _get(api, contract, f"/api/drafts/{ids['draft']}/proof")
+        assert proof["sent"] and proof["tracking"]["checked"]
+        waiting = await _get(api, contract, "/api/waiting")
+        assert {entry["source"] for entry in waiting} >= {"letter", "call"}
+        await _get(api, contract, "/api/calls", party_id=ids["party"])
         await _get(api, contract, "/api/activity", limit=50)
         usage = await _get(api, contract, "/api/usage")
         assert usage["by_purpose"], "the fake reading is accounted per purpose"
@@ -186,6 +207,7 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         await _get_file(api, contract, "/api/calendar.ics", "text/calendar")
         await _get_file(api, contract, f"/api/drafts/{ids['draft']}/pdf", "application/pdf")
         await _get_file(api, contract, f"/api/drafts/{ids['draft']}/preview.png", "image/png")
+        await _get_file(api, contract, f"/api/drafts/{ids['draft']}/proof.pdf", "application/pdf")
 
         assert not contract.problems, "\n".join(contract.problems)
         get_routes = {path for path, operations in contract.schema["paths"].items() if "get" in operations}

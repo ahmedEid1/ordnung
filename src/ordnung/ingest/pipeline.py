@@ -87,7 +87,7 @@ from ordnung.ingest.text import (
 )
 from ordnung.ingest.transcribe import pages_to_transcribe, transcribe_pages
 from ordnung.llm.base import ClaudeRateLimited, LLMError
-from ordnung.models import Document, DocumentExtraction, EmailAttachment, Job, Page
+from ordnung.models import Direction, Document, DocumentExtraction, EmailAttachment, Job, Page
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
 
 if TYPE_CHECKING:
@@ -284,6 +284,8 @@ async def add_file(
     received_date: str | date | None = None,
     source: str = "upload",
     restore_trashed: bool = True,
+    direction: Direction = "incoming",
+    with_attachments: bool = True,
 ) -> Document:
     """Store an upload and queue it for reading; returns the (new or already known) document.
 
@@ -295,9 +297,11 @@ async def add_file(
     held file again then answers its question (``private``: keep it private, else read it). Nothing
     else ever answers for the person — a copy of a waiting file arriving in the watched folder leaves
     it waiting, whatever ``inbox_auto_read`` says. ``received_date`` is the day the person says the
-    letter arrived. An e-mail's attachments are added right after it, with its ``hold``, ``private``
-    and ``answer_held`` (:mod:`ordnung.ingest.attachments`). Raises
-    :class:`~ordnung.ingest.intake.IntakeError` for rejected files.
+    letter arrived; ``direction`` is ``outgoing`` for what the person sent (proof of a
+    letter). An e-mail's attachments are added right after it, with its ``hold``, ``private``
+    and ``answer_held`` (:mod:`ordnung.ingest.attachments`) — unless ``with_attachments`` is off:
+    a sent e-mail kept as proof is one file, and its attachments never become letters received.
+    Raises :class:`~ordnung.ingest.intake.IntakeError` for rejected files.
     """
     added = await add_file_result(
         ctx,
@@ -310,6 +314,8 @@ async def add_file(
         received_date=received_date,
         source=source,
         restore_trashed=restore_trashed,
+        direction=direction,
+        with_attachments=with_attachments,
     )
     return added.document
 
@@ -326,6 +332,8 @@ async def add_file_result(
     received_date: str | date | None = None,
     source: str = "upload",
     restore_trashed: bool = True,
+    direction: Direction = "incoming",
+    with_attachments: bool = True,
 ) -> Added:
     """:func:`add_file`, telling a new document from one Ordnung already had."""
     store = ctx.store
@@ -337,7 +345,7 @@ async def add_file_result(
         known = _known_upload(
             ctx, existing, private=private, answer=answer_held and not hold, restore_trashed=restore_trashed
         )
-        if _attachments_unrecorded(store, known):  # adding it was stopped before its attachments
+        if with_attachments and _attachments_unrecorded(store, known):  # stopped before its attachments
             waits = consent.is_held(known)
             await _add_attachments(
                 ctx,
@@ -362,6 +370,7 @@ async def add_file_result(
                 file_path=_relative(store, stored.path),
                 pages=len(rendered),
                 source=source,
+                direction=direction,
                 received_date=received,
                 status="held" if hold else "queued",
                 ai_private=private or hold,
@@ -381,7 +390,7 @@ async def add_file_result(
         data={"source": source, "held": hold, "filename": upload.filename},
     )
     announce_job(ctx, job, quiet=hold)
-    if stored.mime == EMAIL_MIME:
+    if with_attachments and stored.mime == EMAIL_MIME:
         await _add_attachments(
             ctx,
             document,

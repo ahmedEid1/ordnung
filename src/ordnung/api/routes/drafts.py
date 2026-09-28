@@ -1,10 +1,12 @@
 """Letters (drafts): compose, read, edit (checks re-run), translate again after edits, delete, the DIN
 5008 PDF (and its print preview as an image) and "I sent it" (which creates a follow-up to-do 21 days
-later)."""
+later, and may bring the tracking number). A sent letter's proof has its own routes
+(:mod:`ordnung.api.routes.proofs`)."""
 
 from __future__ import annotations
 
 import asyncio
+from functools import partial
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Response, status
@@ -13,8 +15,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from ordnung.api.deps import CtxDep, StoreDep
 from ordnung.api.routes.common import IsoDate, ledger_changed, replay_only, require
 from ordnung.db.store import Store
-from ordnung.drafts import pdf
+from ordnung.drafts import pdf, sent
 from ordnung.drafts.compose import MAX_INSTRUCTIONS, compose, mark_sent, refresh_checks, retranslate
+from ordnung.drafts.tracking import MAX_INPUT
 from ordnung.ingest.watcher import remember_own_file
 from ordnung.models import Draft, DraftKind, LetterDetails
 
@@ -75,6 +78,11 @@ class MarkSentRequest(BaseModel):
 
     channel: str = Field(min_length=1)
     date: IsoDate
+    tracking_number: str | None = Field(
+        default=None,
+        max_length=MAX_INPUT,
+        description="the Einschreiben's number (its check digit is checked)",
+    )
 
 
 @router.get("/drafts", response_model=list[Draft])
@@ -107,8 +115,16 @@ def get_draft(draft_id: str, store: StoreDep) -> Draft:
     return require(store.get_draft(draft_id), NOT_FOUND)
 
 
+SENT_IS_FINAL = (
+    "This letter was sent: its text stays as it went out, so the PDF and the Nachweis show what you "
+    "sent. To write again, start a new letter."
+)
+
+
 def _edit(store: Store, draft_id: str, patch: DraftPatch) -> Draft:
-    require(store.get_draft(draft_id), NOT_FOUND)
+    draft = require(store.get_draft(draft_id), NOT_FOUND)
+    if draft.status == "sent":
+        raise HTTPException(status.HTTP_409_CONFLICT, SENT_IS_FINAL)
     changes = {
         name: value for name, value in patch.model_dump(exclude_unset=True).items() if value is not None
     }
@@ -118,9 +134,14 @@ def _edit(store: Store, draft_id: str, patch: DraftPatch) -> Draft:
         return refresh_checks(store, draft_id)
 
 
-@router.patch("/drafts/{draft_id}", response_model=Draft)
+@router.patch(
+    "/drafts/{draft_id}",
+    response_model=Draft,
+    responses={409: {"description": "A sent letter's text can't be changed."}},
+)
 async def update_draft(draft_id: str, patch: DraftPatch, ctx: CtxDep) -> Draft:
-    """Edit the letter; the checks (placeholders, references, dates …) run again."""
+    """Edit the letter; the checks (placeholders, references, dates …) run again. A sent letter is
+    refused: it stays as it went out."""
     return await asyncio.to_thread(_edit, ctx.store, draft_id, patch)
 
 
@@ -138,22 +159,25 @@ async def translate_draft(draft_id: str, ctx: CtxDep) -> Draft:
 
 
 @router.delete("/drafts/{draft_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
-async def delete_draft(draft_id: str, ctx: CtxDep) -> Response:
-    """Delete a letter."""
+async def delete_draft(draft_id: str, ctx: CtxDep, keep_proof_files: bool = False) -> Response:
+    """Delete a letter with its proofs; their files are deleted for good too unless ``keep_proof_files``
+    (they then stay as documents of their own)."""
     require(ctx.store.get_draft(draft_id), NOT_FOUND)
-    await asyncio.to_thread(ctx.store.delete_draft, draft_id)
+    await asyncio.to_thread(partial(sent.delete_letter, keep_files=keep_proof_files), ctx.store, draft_id)
+    await ledger_changed(ctx)  # Ideas about the letter (its proof, its follow-up) go with it
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 def _pdf(store: Store, draft_id: str) -> bytes:
-    body = pdf.render(require(store.get_draft(draft_id), NOT_FOUND), store.get_profile())
+    draft = require(store.get_draft(draft_id), NOT_FOUND)
+    body = pdf.render(draft, sent.letter_profile(store, draft))
     remember_own_file(store, body)  # saved into the watched folder, it is not a letter received
     return body
 
 
 @router.get("/drafts/{draft_id}/pdf", response_class=Response)
 async def draft_pdf(draft_id: str, store: StoreDep) -> Response:
-    """The letter as a printable DIN 5008 PDF."""
+    """The letter as a printable DIN 5008 PDF (a sent letter as it went out)."""
     body = await asyncio.to_thread(_pdf, store, draft_id)
     return Response(
         body,
@@ -163,7 +187,8 @@ async def draft_pdf(draft_id: str, store: StoreDep) -> Response:
 
 
 def _preview(store: Store, draft_id: str) -> bytes:
-    return pdf.render_preview(require(store.get_draft(draft_id), NOT_FOUND), store.get_profile())
+    draft = require(store.get_draft(draft_id), NOT_FOUND)
+    return pdf.render_preview(draft, sent.letter_profile(store, draft))
 
 
 @router.get("/drafts/{draft_id}/preview.png", response_class=Response)
@@ -176,6 +201,8 @@ async def draft_preview(draft_id: str, store: StoreDep) -> Response:
 @router.post("/drafts/{draft_id}/sent", response_model=Draft)
 async def draft_sent(draft_id: str, body: MarkSentRequest, ctx: CtxDep) -> Draft:
     """Record that the letter was sent (channel and day) and add a follow-up to-do."""
-    draft, item = await asyncio.to_thread(mark_sent, ctx, draft_id, body.channel, body.date)
+    draft, item = await asyncio.to_thread(
+        partial(mark_sent, tracking_number=body.tracking_number), ctx, draft_id, body.channel, body.date
+    )
     await ledger_changed(ctx, item_id=item.id)
     return draft

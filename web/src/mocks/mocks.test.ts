@@ -56,7 +56,11 @@ describe("mock dataset", () => {
 
   it("renders page images for every letter", () => {
     const s = srv();
-    for (const d of s.db.state.documents) {
+    // a proof file is a photo of a receipt, not a letter: it has a picture of its own
+    for (const d of s.db.state.documents.filter((x) => x.source === "proof")) {
+      expect(s.resolveAsset(`/documents/${d.id}/pages/1.jpg`), d.id).toMatch(/^data:image\/svg\+xml/);
+    }
+    for (const d of s.db.state.documents.filter((x) => x.source !== "proof")) {
       const letter = letterFor(d.id);
       expect(letter, d.id).not.toBeNull();
       expect(letter!.pages[0]).toMatch(/^<svg/);

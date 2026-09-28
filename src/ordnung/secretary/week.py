@@ -47,8 +47,9 @@ how many it left out:
    for an Einwurf-Einschreiben the delivery record (Auslieferungsbeleg), not the posting receipt or the
    online tracking (BAG, 30.01.2025 – 2 AZR 68/24).
 5. *Waiting for* — replies to letters you sent: the open follow-up to-dos Ordnung adds when a letter is
-   marked sent, the earliest first. (Hook: a dedicated "waiting for" list replaces this source when one
-   exists.)
+   marked sent, the earliest first. The full list — money a letter promised and phone promises too — is
+   the *Waiting for* page (:mod:`ordnung.secretary.waiting`), which the step links to. (Hook: that list
+   can become this step's source once the static demo's generator files proofs and call notes.)
 6. *Decide in the next 30 days* — the agenda's contract decisions (a cancellation that must be sent within
    30 days, or the contract renews) and deadlines for an objection, a declaration or a notice due from
    today on whose day to act is within 30 days — not those of a contract already listed (its row is the

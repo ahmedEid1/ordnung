@@ -87,6 +87,21 @@ The weekly session (*This week*) stores only the moments you finished it or said
   keeps only anonymous numbers, and deleted database rows are overwritten rather than left behind.
   Contracts and letters you drafted stay, without the link to it; your *Ask* conversations stay as
   they are. *Settings → Delete everything* wipes the whole database.
+- **Proof of sending stays private** — a receipt, delivery record, fax report or saved e-mail you
+  add to a sent letter is stored like any upload with *Keep private (no AI)* on: it is never sent to
+  Claude, not even when you ask about the letter, and it isn't listed among your letters. One
+  exception is said when it happens: a file that was already in Ordnung (the same bytes, e.g. you
+  first added it to your Inbox) is linked as it is — made private then if it was never given to AI,
+  and otherwise Ordnung tells you it was given to AI instead of calling it private. "Given to AI"
+  counts every time a model had it, also when reading it failed or paused afterwards, and also
+  when you switched *Keep private* on later. Its kind, day and note are what you chose — Ordnung
+  doesn't read them from the file. The *Nachweis* PDF is made on your computer from the letter and
+  these files. Removing a proof deletes its file for good (unless another proof uses it) — the
+  confirmation names the file and offers to download it first, as a photographed receipt may be
+  your only copy; deleting the letter deletes its proofs too, unless you choose to keep the files. Tracking numbers are checked on your computer; Ordnung never asks a tracking website. The
+  name, e-mail and phone the letter showed when you marked it sent are kept with it, so its PDF shows
+  what went out.
+- **Call notes** — what you note about a phone call is kept as you typed it; no AI reads it.
 - **Models** — choose which Claude model handles each purpose.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself. A GiroCode only pre-fills your banking app; you check and confirm the transfer

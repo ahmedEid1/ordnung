@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Link, useBlocker, useNavigate } from "react-router";
-import { Check, ChevronRight, CircleCheck, Download, Ellipsis, FilePen, FileCheck2, ListChecks, Save, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react";
+import { Check, ChevronRight, CircleCheck, Download, Ellipsis, FilePen, FileCheck2, ListChecks, PenLine, Save, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { api } from "@/api/endpoints";
-import { useDeleteDraft, useDocuments, useContracts, useMarkDraftSent, useParties, useTranslateDraft, useUpdateDraft } from "@/api/hooks";
+import { useDeleteDraft, useDocuments, useContracts, useDraftProof, useMarkDraftSent, useParties, useTranslateDraft, useUpdateDraft } from "@/api/hooks";
 import { ApiError } from "@/api/client";
 import type { Draft, SendChannelKind } from "@/api/types";
 import { Button, IconButton, buttonVariants } from "@/components/ui/Button";
@@ -10,13 +10,14 @@ import { Callout } from "@/components/ui/Callout";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DateText } from "@/components/ui/DateText";
 import { Dialog } from "@/components/ui/Dialog";
+import { Checkbox } from "@/components/ui/Field";
 import { Disclaimer } from "@/components/ui/Disclaimer";
 import { Kbd } from "@/components/ui/Kbd";
 import { Menu, type MenuItem } from "@/components/ui/Menu";
 import { PartyChip } from "@/components/ui/PartyChip";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { toast } from "@/components/ui/Toast";
-import { DRAFT_KIND_COPY, SEND_CHANNEL_COPY, copyFor } from "@/lib/copy";
+import { DRAFT_KIND_COPY, PROOF_KIND_COPY, SEND_CHANNEL_COPY, copyFor } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { useHotkey } from "@/lib/hooks";
 import { useTodayISO } from "@/lib/today";
@@ -42,8 +43,13 @@ import { DraftKindIcon } from "./DraftList";
 import { LetterEditor } from "./LetterEditor";
 import { MarkSentDialog } from "./MarkSentDialog";
 import { PdfPreview } from "./PdfPreview";
+import { ProofPanel } from "./ProofPanel";
 import { SendGuidancePanel } from "./SendGuidancePanel";
 import { contractHref } from "@/features/contracts/links";
+import { focusWhenReady } from "@/features/today/focus";
+
+/** The "Sent by … on …" banner: where focus goes once a letter is marked as sent (its button is gone). */
+const SENT_BANNER = "letter-sent";
 
 const MOD_KEY = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘" : "Ctrl";
 
@@ -185,9 +191,13 @@ export function LetterView({ draft }: { draft: Draft }) {
   const [form, setForm] = useState<EditableFields>(saved);
   const [sentOpen, setSentOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [keepProofFiles, setKeepProofFiles] = useState(false);
   const changes = changedFields(saved, form);
   const dirty = Object.keys(changes).length > 0;
   const isSent = draft.status === "sent";
+  // a sent letter's proofs go with it when it is deleted: the dialog names them (the panel loads the same query)
+  const proofs = useDraftProof(draft.id, { enabled: isSent }).data?.proofs ?? [];
+  const proofFiles = proofs.filter((p) => p.document?.source === "proof");
 
   const rootRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -286,12 +296,15 @@ export function LetterView({ draft }: { draft: Draft }) {
       ? `This letter must be signed by hand on paper: also post a signed copy${when ? ` by ${formatDate(when, { style: "short", today })}` : ""}, ideally by Einschreiben, and keep the receipt.`
       : `This way isn't accepted for this letter: also send it one of the ways under “How to send it”${when ? ` by ${formatDate(when, { style: "short", today })}` : ""}.`;
 
-  const confirmSent = async (channel: SendChannelKind, date: string) => {
+  const confirmSent = async (channel: SendChannelKind, date: string, trackingNumber: string | null) => {
     const again = isSent;
     try {
       if (dirty) await save();
-      await markSent.mutateAsync({ id: draft.id, channel, date });
+      // an emptied number is sent as "" (it removes the stored one), no number at all for other channels
+      await markSent.mutateAsync({ id: draft.id, channel, date, ...(trackingNumber !== null ? { tracking_number: trackingNumber } : {}) });
       setSentOpen(false);
+      // "Mark as sent" is gone with the dialog: focus the banner that says so, above the proof card
+      if (!again) focusWhenReady(() => document.getElementById(SENT_BANNER));
       const followUp = formatDate(followUpDate(date, draft.kind), { style: "short", today });
       const how = [sentVia(channel), "on", formatDate(date, { style: "short", today })].filter(Boolean).join(" ");
       if (!channelCounts(draft.send_guidance, channel)) {
@@ -339,7 +352,7 @@ export function LetterView({ draft }: { draft: Draft }) {
 
   const menuItems: MenuItem[] = [
     ...(isSent
-      ? [{ label: "Change how it was sent", icon: Send, onSelect: () => setSentOpen(true) }]
+      ? [{ label: "Change how or when you sent it", icon: PenLine, onSelect: () => setSentOpen(true) }]
       : draft.status === "final"
         ? [{ label: "Back to draft", icon: FilePen, onSelect: () => setStatus("draft") }]
         : [{ label: "Mark as ready to send", icon: FileCheck2, onSelect: () => setStatus("final") }]),
@@ -351,6 +364,8 @@ export function LetterView({ draft }: { draft: Draft }) {
   const about = doc ? { to: `/documents/${doc.id}`, name: doc.title ?? doc.filename } : contract ? { to: contractHref(contract.id), name: contract.name } : null;
 
   // -- the panels -------------------------------------------------------------------------------
+
+  const proofPanel = isSent ? <ProofPanel draft={draft} onChangeSending={() => setSentOpen(true)} /> : null;
 
   const editor = (
     <div className="min-w-0 space-y-6">
@@ -518,30 +533,32 @@ export function LetterView({ draft }: { draft: Draft }) {
       </p>
 
       {isSent ? (
-        counts ? (
-          <Callout tone="success" className="mb-6" title={sentTitle}>
-            We'll remind you to check for a reply on {formatDate(followUpDate(sentOn, draft.kind), { style: "short", today })}. Keep your proof of sending.
-          </Callout>
-        ) : (
-          <Callout
-            tone="warn"
-            className="mb-6"
-            title={`${sentTitle} — that may not count`}
-            action={
-              <Button size="sm" icon={Send} onClick={() => setSentOpen(true)}>
-                Change how it was sent
-              </Button>
-            }
-          >
-            {fallbackAdvice(dueBy && dueBy >= today ? dueBy : null)} We'll remind you to check for a reply on{" "}
-            {formatDate(followUpDate(sentOn, draft.kind), { style: "short", today })}.
-          </Callout>
-        )
+        // what it waits for, and when Ordnung reminds, is in the proof card below
+        <div id={SENT_BANNER} tabIndex={-1} className="mb-6 rounded-xl outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          {counts ? (
+            <Callout tone="success" title={sentTitle}>
+              Keep your proof of sending with it below.
+            </Callout>
+          ) : (
+            <Callout
+              tone="warn"
+              title={`${sentTitle} — that may not count`}
+              action={
+                <Button size="sm" icon={Send} onClick={() => setSentOpen(true)}>
+                  Change how it was sent
+                </Button>
+              }
+            >
+              {fallbackAdvice(dueBy && dueBy >= today ? dueBy : null)} Keep your proof of sending with it below.
+            </Callout>
+          )}
+        </div>
       ) : null}
 
       {beside ? (
         <div className="grid grid-cols-[minmax(0,1fr)_370px] items-start gap-6">
           <div className="min-w-0 space-y-6">
+            {proofPanel}
             {editor}
             {preview}
           </div>
@@ -552,6 +569,7 @@ export function LetterView({ draft }: { draft: Draft }) {
         </div>
       ) : (
         <div className="space-y-6">
+          {proofPanel}
           {editor}
           <div className="grid items-start gap-6 md:grid-cols-2">
             {sending}
@@ -581,7 +599,7 @@ export function LetterView({ draft }: { draft: Draft }) {
       ) : null}
 
       <MarkSentDialog
-        key={`${draft.id}:${draft.status}:${draft.sent_channel ?? ""}:${draft.sent_at ?? ""}`}
+        key={`${draft.id}:${draft.status}:${draft.sent_channel ?? ""}:${draft.sent_at ?? ""}:${draft.tracking_number ?? ""}:${sentOpen}`}
         open={sentOpen}
         onClose={() => setSentOpen(false)}
         draft={draft}
@@ -596,7 +614,7 @@ export function LetterView({ draft }: { draft: Draft }) {
         title={isSent ? "Delete this sent letter?" : "Delete this letter?"}
         description={
           isSent
-            ? "Its text and PDF are removed from Ordnung. It doesn't unsend anything, and the reminder to check for a reply stays on your list."
+            ? "Its text, its PDF and what Ordnung recorded about sending it are removed from Ordnung. It doesn't unsend anything — the letter you posted stays posted — and the reminder to check for a reply stays on your list."
             : "This draft and its PDF are removed from Ordnung."
         }
         footer={
@@ -607,20 +625,47 @@ export function LetterView({ draft }: { draft: Draft }) {
               icon={Trash2}
               loading={remove.isPending}
               onClick={() =>
-                remove.mutate(draft.id, {
-                  onSuccess: () => {
-                    setDeleteOpen(false);
-                    toast.success("Letter deleted");
-                    navigate("/letters", { replace: true });
+                remove.mutate(
+                  { id: draft.id, keepProofFiles: proofFiles.length > 0 && keepProofFiles },
+                  {
+                    onSuccess: () => {
+                      setDeleteOpen(false);
+                      toast.success("Letter deleted", { description: proofFiles.length && keepProofFiles ? "Its proof files stay in Ordnung, in your Inbox." : undefined });
+                      navigate("/letters", { replace: true });
+                    },
                   },
-                })
+                )
               }
             >
               Delete
             </Button>
           </>
         }
-      />
+      >
+        {proofFiles.length ? (
+          <div className="space-y-3 text-[14px] leading-relaxed text-ink/85">
+            <p>
+              Its {proofFiles.length === 1 ? "proof file" : `${proofFiles.length} proof files`} —{" "}
+              {proofFiles
+                .map((p) =>
+                  copyFor(PROOF_KIND_COPY, p.proof.kind)
+                    .label.replace(/\s*\(.*\)$/, "")
+                    .toLowerCase(),
+                )
+                .join(", ")}{" "}
+              — {keepProofFiles
+                ? `stay${proofFiles.length === 1 ? "s" : ""} in Ordnung as your own document${proofFiles.length === 1 ? "" : "s"}.`
+                : `${proofFiles.length === 1 ? "is" : "are"} deleted for good too.`}
+            </p>
+            <Checkbox
+              label="Keep the proof files"
+              description="They stay private in your Inbox, so you still have the receipt if they ever say the letter didn't arrive."
+              checked={keepProofFiles}
+              onChange={(e) => setKeepProofFiles(e.target.checked)}
+            />
+          </div>
+        ) : null}
+      </Dialog>
 
       <Dialog
         open={blocker.state === "blocked"}

@@ -26,6 +26,8 @@ import type {
   Health,
   Area,
   FolderPickup,
+  CallNote,
+  Proof,
 } from "@/api/types";
 import { addDays, differenceInCalendarDays, parseISO, format } from "date-fns";
 import { PARTIES, TRAY_ONLY_PARTIES } from "./data/parties";
@@ -41,6 +43,7 @@ import { renderLetter, type RenderedLetter } from "./pages";
 import { TODAY } from "./data/constants";
 import { isDirectDebit, isIncomingMoney } from "@/lib/payments";
 import { paysOnSite } from "@/features/document/item-meta";
+import { CALL_NOTES, PROOF_DOCUMENTS, PROOF_DRAFTS, PROOF_ITEMS, PROOF_PARTIES, PROOFS } from "./data/proof";
 
 const clone = <T>(v: T): T => (typeof structuredClone === "function" ? structuredClone(v) : JSON.parse(JSON.stringify(v)));
 
@@ -99,6 +102,10 @@ export interface MockState {
   uploads: Record<string, { name: string; objectUrl?: string }>;
   /** the last files the watched folder brought in, newest first */
   folderRecent: FolderPickup[];
+  /** proofs of sent letters (their files are documents with `source: "proof"`) */
+  proofs: Proof[];
+  /** call notes (Gesprächsnotizen) */
+  calls: CallNote[];
 }
 
 export class MockDb {
@@ -109,13 +116,13 @@ export class MockDb {
       health: clone(HEALTH),
       profile: clone(PROFILE),
       settings: clone(SETTINGS),
-      parties: clone(PARTIES.filter((p) => !TRAY_ONLY_PARTIES.has(p.id))),
+      parties: clone([...PARTIES.filter((p) => !TRAY_ONLY_PARTIES.has(p.id)), ...PROOF_PARTIES]),
       cases: clone(CASES),
-      documents: clone([...DOCUMENTS, ...FOLDER_DOCUMENTS]).map(resolveDoc),
-      items: resolveAll(clone(ITEMS)),
+      documents: clone([...DOCUMENTS, ...FOLDER_DOCUMENTS, ...PROOF_DOCUMENTS]).map(resolveDoc),
+      items: resolveAll(clone([...ITEMS, ...PROOF_ITEMS])),
       contracts: resolveAll(clone(CONTRACTS)),
       suggestions: clone(SUGGESTIONS),
-      drafts: clone(DRAFTS),
+      drafts: clone([...DRAFTS, ...PROOF_DRAFTS]),
       activity: clone(ACTIVITY),
       chat: [],
       tray: clone(MAIL_TRAY),
@@ -123,6 +130,8 @@ export class MockDb {
       lastCalendarExport: "2026-09-20T16:00:00Z",
       uploads: {},
       folderRecent: clone(FOLDER_RECENT),
+      proofs: clone(PROOFS),
+      calls: clone(CALL_NOTES),
     };
   }
 
@@ -140,8 +149,9 @@ export class MockDb {
   document(id: string): Document | null {
     return this.state.documents.find((d) => d.id === id && !d.deleted_at) ?? null;
   }
+  /** Letters (trash and proof files left out: a proof belongs to its letter, like in the API). */
   liveDocuments(): Document[] {
-    return this.state.documents.filter((d) => !d.deleted_at);
+    return this.state.documents.filter((d) => !d.deleted_at && d.source !== "proof");
   }
 
   /** The kind a demo letter was filed as when it was read (its seed), or `null` for an upload. */

@@ -27,6 +27,7 @@ from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledg
 from ordnung.api.routes.dates import recompute_document_items
 from ordnung.app_context import AppContext
 from ordnung.db.store import Store
+from ordnung.drafts.proof import PROOF_SOURCE
 from ordnung.ingest.attachments import attachment_listing, email_of, parts_not_listed
 from ordnung.ingest.held import is_held, was_kept_from_waiting
 from ordnung.ingest.intake import (
@@ -56,6 +57,7 @@ from ordnung.models import (
     LetterAdvice,
     LetterKind,
     PageInfo,
+    ProofLink,
     Suggestion,
 )
 from ordnung.rules.advice import letter_advice, settles
@@ -148,7 +150,8 @@ def list_documents(
     limit: Annotated[int | None, Query(ge=1, le=1000)] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[Document]:
-    """Letters, newest first (trash excluded); ``q`` searches their text."""
+    """Letters, newest first (trash excluded); ``q`` searches their text. A letter's proof files
+    (``source="proof"``) are listed with their letter, never here."""
     return store.list_documents(
         q=q,
         kind=kind,
@@ -159,6 +162,7 @@ def list_documents(
         limit=limit,
         offset=offset,
         ai_private=private,
+        exclude_source=PROOF_SOURCE,
     )
 
 
@@ -303,7 +307,19 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         attachments_more=parts_not_listed(store, document),
         email=email_of(store, document),
         can_wait_again=was_kept_from_waiting(store, document),
+        proof_of=_proof_of(store, doc_id),
     )
+
+
+def _proof_of(store: Store, doc_id: str) -> list[ProofLink]:
+    links = []
+    for proof in store.list_proofs(doc_id=doc_id):
+        draft = store.get_draft(proof.draft_id)
+        if draft is not None:
+            links.append(
+                ProofLink(draft_id=draft.id, subject=draft.subject, proof_id=proof.id, kind=proof.kind)
+            )
+    return links
 
 
 @router.get("/documents/{doc_id}", response_model=DocumentDetail)
@@ -353,6 +369,13 @@ async def _add_group(
         document = await add_file(ctx, body, name, private=private, answer_held=True)
     except IntakeError as exc:
         result.errors.append(UploadError(filename=safe_filename(filename), detail=str(exc)))
+        return
+    if existing is not None and existing.source == PROOF_SOURCE:
+        # a proof file is listed with its letter, never in the Inbox: say where it is instead
+        links = _proof_of(store, existing.id)
+        where = f" of your letter “{links[0].subject}”" if links else ""
+        detail = f"This file is already in Ordnung as proof{where} — open it from that letter."
+        result.errors.append(UploadError(filename=safe_filename(filename), detail=detail))
         return
     # a letter that failed, or one waiting for the person that this upload lets Claude read, is read now
     read_again = existing is not None and (

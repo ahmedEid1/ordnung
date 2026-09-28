@@ -8,6 +8,7 @@ import type { LucideIcon } from "lucide-react";
 import { CalendarPlus, DatabaseSearch, FileSearch, HandCoins, KeyRound, MapPinHouse, Undo2, Wrench } from "lucide-react";
 import type { Document, Item, LetterDetails, PartyKind, TemplateDraftKind } from "@/api/types";
 import { formatDate, formatMoney } from "@/lib/format";
+import { parseMoney } from "@/lib/money";
 
 /** Who a template letter can go to: a letter it answers or a person/organisation, or a typed address. */
 export type TemplateTarget = "letter-or-party" | "party" | "party-or-typed";
@@ -193,24 +194,8 @@ export const SCHUFA_ADDRESS = "SCHUFA Holding AG\nPrivatkunden ServiceCenter\nPo
 /** The form's values: every field as a string (dates ISO, amounts as typed), the checkbox as a flag. */
 export type DetailValues = Partial<Record<Exclude<DetailField["name"], "instructions_missing">, string>> & { instructions_missing?: boolean };
 
-/**
- * Parse an amount typed German or English style to a number, or `null` when it can't be read for sure:
- * "1.234,50", "1.500" (German thousands), "80,5", "80,-", "1,234.50", "1,500" (English thousands),
- * "1234.5". A dot or comma followed by exactly three digits groups thousands — euro amounts have at
- * most two decimals — so "1.500" is 1500, never 1,50.
- */
-export function parseMoney(text: string | undefined): number | null {
-  const t = (text ?? "").trim().replace(/[€\s]|EUR/gi, "").replace(/,[-–]$/, "");
-  if (!t) return null;
-  let normalised: string | null = null;
-  if (/^\d{1,3}(\.\d{3})+(,\d{1,2})?$/.test(t)) normalised = t.replace(/\./g, "").replace(",", ".");
-  else if (/^\d{1,3}(,\d{3})+(\.\d{1,2})?$/.test(t)) normalised = t.replace(/,/g, "");
-  else if (/^\d+,\d{1,2}$/.test(t)) normalised = t.replace(",", ".");
-  else if (/^\d+(\.\d{1,2})?$/.test(t)) normalised = t;
-  if (normalised === null) return null;
-  const n = Number(normalised);
-  return Number.isFinite(n) ? n : null;
-}
+/** Amounts are read the same everywhere (`@/lib/money`). */
+export { parseMoney };
 
 /** What the letter a template answers already says: its earliest open deadline and payment. The server
  * uses them when the person leaves "Current deadline" or "Total amount" empty (drafts/compose.py). */

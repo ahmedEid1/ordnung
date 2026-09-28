@@ -149,19 +149,19 @@ describe("a sent letter", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Checks" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "More actions" }));
-    expect(screen.getByRole("menuitem", { name: "Change how it was sent" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Change how or when you sent it" })).toBeInTheDocument();
     await user.click(screen.getByRole("menuitem", { name: "Delete this letter" }));
     const dialog = await screen.findByRole("dialog", { name: "Delete this sent letter?" });
     expect(dialog).toHaveTextContent(/It doesn't unsend anything/);
   });
 
-  it("“Change how it was sent” starts from how and when it went", async () => {
+  it("“Change how or when you sent it” starts from how and when it went", async () => {
     useMockApi();
     const user = userEvent.setup();
     renderLetter("drf_wohnbau");
     await user.click(await screen.findByRole("button", { name: "More actions" }));
-    await user.click(screen.getByRole("menuitem", { name: "Change how it was sent" }));
-    const dialog = await screen.findByRole("dialog", { name: "Change how it was sent" });
+    await user.click(screen.getByRole("menuitem", { name: "Change how or when you sent it" }));
+    const dialog = await screen.findByRole("dialog", { name: "Change how or when you sent it" });
     expect(within(dialog).getByRole("radio", { name: /Email to vermietung/ })).toBeChecked();
     expect(within(dialog).getByLabelText("When?")).toHaveValue("2026-09-15");
   });

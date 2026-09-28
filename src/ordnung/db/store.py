@@ -41,12 +41,14 @@ from pydantic_core import to_jsonable_python
 
 from ordnung.clock import now_iso, real_now_iso
 from ordnung.config import Paths
-from ordnung.db.migrate import current_version, latest_version, migrate
+from ordnung.db.migrate import current_version, latest_version, migrate, pending
 from ordnung.ids import content_id, doc_id_for_sha, new_id
 from ordnung.llm.base import Usage
 from ordnung.models import (
+    PROOF_SOURCE,
     Activity,
     AppSettings,
+    CallNote,
     Case,
     ChatMessage,
     Contract,
@@ -63,8 +65,10 @@ from ordnung.models import (
     Page,
     Party,
     Profile,
+    Proof,
     PurposeUsage,
     SearchHit,
+    SentSigner,
     Suggestion,
     UsageStats,
 )
@@ -217,8 +221,10 @@ _PAGES = _Table("pages", Page)
 _CONTRACTS = _Table("contracts", Contract, "ctr", on_read=("cancellable", "cancel_hint"))
 _ITEMS = _Table("items", Item, "itm")
 _SUGGESTIONS = _Table("suggestions", Suggestion, "sug")
-_DRAFTS = _Table("drafts", Draft, "drf")
+_DRAFTS = _Table("drafts", Draft, "drf", extras={"sent_profile": SentSigner})
 _NOTES = _Table("notes", Note, "nte")
+_PROOFS = _Table("proofs", Proof, "prf")
+_CALL_NOTES = _Table("call_notes", CallNote, "cal")
 _CHAT = _Table("chat_messages", ChatMessage, "msg")
 _JOBS = _Table("jobs", Job, "job")
 _ACTIVITY = _Table("activity", Activity)
@@ -500,9 +506,10 @@ class Store:
                     path.chmod(PRIVATE_FILE_MODE)
 
     def _check_schema(self) -> int:
-        version = current_version(self._conn())
+        conn = self._conn()
+        version = current_version(conn)
         latest = latest_version()
-        if version != latest:
+        if version != latest or pending(conn):
             raise RuntimeError(
                 f"database schema is at version {version}, expected {latest}; open it writable first"
             )
@@ -839,14 +846,18 @@ class Store:
         ai_private: bool | None = None,
         include_deleted: bool = False,
         source: str | None = None,
+        exclude_source: str | None = None,
     ) -> list[Document]:
         """Documents, newest first by ``COALESCE(doc_date, created_at)``.
 
         ``q`` filters by the same full-text/substring matching as :meth:`search`. Trashed documents
         are left out unless ``include_deleted``. ``source`` keeps the documents of one source
-        (``upload``, ``folder``, ``email:<id>`` …).
+        (``upload``, ``folder``, ``email:<id>`` …); ``exclude_source`` leaves out one source (the
+        Inbox leaves out proof files).
         """
         where = _Where()
+        if exclude_source is not None:
+            where.add("source != ?", exclude_source)
         where.within("kind", kind)
         where.equals("party_id", party_id)
         where.equals("case_id", case_id)
@@ -941,6 +952,25 @@ class Store:
         ).fetchall():
             others = [value for value in json.loads(call["doc_ids"]) if value != doc_id]
             conn.execute("UPDATE llm_calls SET doc_ids = ? WHERE id = ?", (json.dumps(others), call["id"]))
+
+    def given_to_model(self, doc_id: str) -> bool:
+        """Whether a model call ever carried the document: a logged call (a failed one too — the
+        file may have reached the model before the call failed), a cached answer tagged with it,
+        or a page a model transcribed. Used before telling the person a file was never read."""
+        conn = self._conn()
+        row = conn.execute("SELECT sha256 FROM documents WHERE id = ?", (doc_id,)).fetchone()
+        sha = row["sha256"] if row is not None else doc_id
+        called = conn.execute(
+            "SELECT 1 FROM llm_calls WHERE doc_ids LIKE ? LIMIT 1", (f'%"{doc_id}"%',)
+        ).fetchone()
+        cached = conn.execute(  # tagged as in delete_document: the id, the file's hash, or "doc_a|doc_b"
+            "SELECT 1 FROM llm_cache WHERE doc_sha IN (?, ?) OR instr(? || doc_sha || ?, ?) > 0 LIMIT 1",
+            (doc_id, sha, _CACHE_TAG_SEP, _CACHE_TAG_SEP, f"{_CACHE_TAG_SEP}{doc_id}{_CACHE_TAG_SEP}"),
+        ).fetchone()
+        transcribed = conn.execute(
+            "SELECT 1 FROM pages WHERE doc_id = ? AND text_source = 'transcript' LIMIT 1", (doc_id,)
+        ).fetchone()
+        return any(row is not None for row in (called, cached, transcribed))
 
     def _truncate_wal(self) -> None:
         """Checkpoint and empty the write-ahead log, so deleted pages don't linger in it."""
@@ -1165,7 +1195,7 @@ class Store:
     def merge_parties(self, keep_id: str, drop_id: str) -> Party:
         """Fold ``drop`` into ``keep`` and delete ``drop``.
 
-        Documents, cases, contracts, items and drafts are re-pointed; names become aliases;
+        Documents, cases, contracts, items, drafts and call notes are re-pointed; names become aliases;
         identifiers and IBANs are united; empty contact fields of ``keep`` are filled from ``drop``.
         """
         if keep_id == drop_id:
@@ -1174,7 +1204,7 @@ class Store:
             keep = self._require(_PARTIES, keep_id)
             drop = self._require(_PARTIES, drop_id)
             now = now_iso()
-            for table in ("documents", "cases", "contracts", "items", "drafts"):
+            for table in ("documents", "cases", "contracts", "items", "drafts", "call_notes"):
                 conn.execute(
                     f"UPDATE {table} SET party_id = ?, updated_at = ? WHERE party_id = ?",
                     (keep_id, now, drop_id),
@@ -1491,6 +1521,13 @@ class Store:
         """Delete a draft; ``False`` if it did not exist."""
         return self._delete(_DRAFTS, id)
 
+    def get_sent_signer(self, draft_id: str) -> SentSigner | None:
+        """What the letter's PDF showed of the sender when it was marked as sent (``None``: not kept)."""
+        row = self._conn().execute("SELECT sent_profile FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+        if row is None or row["sent_profile"] is None:
+            return None
+        return SentSigner.model_validate_json(row["sent_profile"])
+
     def add_note(self, text: str, item_ids: Sequence[str] = (), *, id: str | None = None) -> Note:
         """Insert a note, optionally attached to items."""
         return self._insert(_NOTES, {"id": id, "text": text, "item_ids": list(item_ids)})
@@ -1501,6 +1538,60 @@ class Store:
         if item_id is not None:
             where.add("EXISTS (SELECT 1 FROM json_each(notes.item_ids) WHERE value = ?)", item_id)
         return self._many(_NOTES, f"{where.sql()} ORDER BY created_at DESC, rowid DESC", where.params)
+
+    # ---------------------------------------------------------------------------------------------
+    # proofs of sent letters / call notes
+    # ---------------------------------------------------------------------------------------------
+
+    def add_proof(self, **fields: Any) -> Proof:
+        """Insert a proof of a sent letter (``draft_id``, ``kind``, optional ``doc_id``/``on_date``/``note``)."""
+        return self._insert(_PROOFS, fields)
+
+    def get_proof(self, id: str) -> Proof | None:
+        """A proof by id."""
+        return self._one(_PROOFS, "id = ?", (id,))
+
+    def update_proof(self, id: str, **fields: Any) -> Proof:
+        """Update a proof's kind, day or note."""
+        return self._update(_PROOFS, id, fields)
+
+    def delete_proof(self, id: str) -> bool:
+        """Delete a proof row (its file stays; the caller decides about it)."""
+        return self._delete(_PROOFS, id)
+
+    def list_proofs(self, draft_id: str | None = None, *, doc_id: str | None = None) -> list[Proof]:
+        """Proofs, oldest first (optionally of one letter, or using one file). A proof whose file is in
+        the trash is left out until the file is restored."""
+        where = _Where()
+        where.equals("draft_id", draft_id)
+        where.equals("doc_id", doc_id)
+        where.add("(doc_id IS NULL OR doc_id NOT IN (SELECT id FROM documents WHERE deleted_at IS NOT NULL))")
+        return self._many(_PROOFS, f"{where.sql()} ORDER BY created_at, rowid", where.params)
+
+    def add_call_note(self, **fields: Any) -> CallNote:
+        """Insert a call note (``called_on`` and ``summary`` required)."""
+        return self._insert(_CALL_NOTES, fields)
+
+    def get_call_note(self, id: str) -> CallNote | None:
+        """A call note by id."""
+        return self._one(_CALL_NOTES, "id = ?", (id,))
+
+    def update_call_note(self, id: str, **fields: Any) -> CallNote:
+        """Update a call note (e.g. ``promise_kept_on``)."""
+        return self._update(_CALL_NOTES, id, fields)
+
+    def delete_call_note(self, id: str) -> bool:
+        """Delete a call note; ``False`` if it did not exist."""
+        return self._delete(_CALL_NOTES, id)
+
+    def list_call_notes(self, *, party_id: str | None = None, case_id: str | None = None) -> list[CallNote]:
+        """Call notes, newest call first (optionally of one party or thread)."""
+        where = _Where()
+        where.equals("party_id", party_id)
+        where.equals("case_id", case_id)
+        return self._many(
+            _CALL_NOTES, f"{where.sql()} ORDER BY called_on DESC, created_at DESC, rowid DESC", where.params
+        )
 
     def add_chat_message(
         self,
@@ -1820,9 +1911,13 @@ _USAGE_AGGREGATES = (
 _LIVE_DOCUMENT_ITEMS = "FROM items i LEFT JOIN documents d ON d.id = i.doc_id WHERE d.deleted_at IS NULL"
 
 _COUNT_QUERIES = {
-    "documents": "SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL",
+    # letters only: a proof file belongs to its letter and is no letter of its own
+    "documents": f"SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL AND source != '{PROOF_SOURCE}'",
     "trashed_documents": "SELECT COUNT(*) FROM documents WHERE deleted_at IS NOT NULL",
-    "needs_review": "SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL AND status = 'needs_review'",
+    "needs_review": (
+        f"SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL AND status = 'needs_review' "
+        f"AND source != '{PROOF_SOURCE}'"
+    ),
     "pages": "SELECT COUNT(*) FROM pages",
     "parties": "SELECT COUNT(*) FROM parties",
     "cases": "SELECT COUNT(*) FROM cases",

@@ -3,14 +3,15 @@
  * description, addresses. Errors show next to the field; the composer keeps "Write the letter"
  * disabled until every required fact is there.
  */
-import type { ComponentProps, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useHref } from "react-router";
 import { Landmark } from "lucide-react";
 import type { Profile } from "@/api/types";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui/Field";
+import { MoneyInput, moneyReadBack } from "@/components/ui/MoneyInput";
 import { formatDate, formatIban, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { fieldError, nextDay, parseMoney, type DetailField, type DetailValues, type LetterDefaults, type TemplateConfig } from "./templates";
+import { fieldError, nextDay, type DetailField, type DetailValues, type LetterDefaults, type TemplateConfig } from "./templates";
 
 export interface TemplateFieldsProps {
   config: TemplateConfig;
@@ -22,25 +23,10 @@ export interface TemplateFieldsProps {
   defaults?: LetterDefaults;
 }
 
-/** An amount in euros: the label's id and descriptions (from {@link Field}) reach the input itself. */
-function MoneyInput({ className, ...rest }: ComponentProps<"input">) {
-  return (
-    <div className="relative">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted" aria-hidden>
-        €
-      </span>
-      <Input inputMode="decimal" placeholder="0,00" autoComplete="off" {...rest} className={cn("pl-7 tabular-nums", className)} />
-    </div>
-  );
-}
-
 /** The hint under a field: how an amount was read ("= 1.500,00 €"), and what an empty field falls back to. */
 function hintFor(field: DetailField, value: string, defaults: LetterDefaults): string | undefined {
-  if (field.type === "money" && value.trim()) {
-    // "1.500" or "1,5": say how it was read (a plain "50" needs no echo)
-    const amount = parseMoney(value);
-    return amount !== null && /[.,]/.test(value) ? `= ${formatMoney(amount)}` : undefined;
-  }
+  // "1.500" or "1,5": say how it was read (a plain "50" needs no echo)
+  if (field.type === "money" && value.trim()) return moneyReadBack(value);
   if (field.name === "deadline" && defaults.deadline && !value) return `Leave empty to use the letter's deadline, ${formatDate(defaults.deadline, { style: "short" })}.`;
   if (field.name === "amount" && defaults.amount !== null) return `Leave empty to use the letter's amount, ${formatMoney(defaults.amount)}.`;
   return field.hint;

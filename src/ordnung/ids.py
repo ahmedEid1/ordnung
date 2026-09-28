@@ -15,7 +15,23 @@ import secrets
 _ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz"  # Crockford-ish base32, no i/l/o/u
 _ID_CHARS = 12
 
-PREFIXES = {"doc", "pty", "cas", "ctr", "itm", "sug", "drf", "nte", "txn", "rec", "job", "msg", "thr"}
+PREFIXES = {
+    "doc",
+    "pty",
+    "cas",
+    "ctr",
+    "itm",
+    "sug",
+    "drf",
+    "nte",
+    "txn",
+    "rec",
+    "job",
+    "msg",
+    "thr",
+    "prf",
+    "cal",
+}
 
 
 def _check_prefix(prefix: str) -> None:

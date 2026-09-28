@@ -22,7 +22,7 @@ export const STEP_META: Record<StepId, StepMeta> = {
   check: { short: "Check", icon: FileSearch, more: { to: "/inbox?filter=check", label: "See all letters to check" } },
   pay: { short: "Pay", icon: Landmark, more: { to: "/timeline", label: "See every payment on the timeline" } },
   post: { short: "Post", icon: Send, more: { to: "/letters", label: "See all your letters" } },
-  waiting: { short: "Waiting", icon: Hourglass, more: { to: "/timeline", label: "See the timeline" } },
+  waiting: { short: "Waiting", icon: Hourglass, more: { to: "/letters/waiting", label: "See everything you're waiting for" } },
   decide: { short: "Decide", icon: CalendarRange, more: { to: "/contracts", label: "See your contracts" } },
   file: { short: "File", icon: Archive, more: { to: "/inbox", label: "See all in the Inbox" } },
 };
@@ -54,12 +54,14 @@ export function sessionHighlights(week: Pick<WeeklySession, "steps" | "overdue">
   };
   const transfers =
     week.steps.find((s) => s.id === "pay")?.entries.filter((e) => e.date_role !== "collected" && e.date_role !== "at_appointment").length ?? 0;
+  // a letter already sent is listed to keep its proof, not to post
+  const toPost = week.steps.find((s) => s.id === "post")?.entries.filter((e) => e.date_role !== "sent").length ?? 0;
   const parts: string[] = [];
   if (week.overdue) parts.push(`${week.overdue} overdue`);
   if (count("new")) parts.push(plural(count("new"), "new letter"));
   if (count("check")) parts.push(`${count("check")} to check`);
   if (transfers) parts.push(`${transfers} to pay`);
-  if (count("post")) parts.push(`${count("post")} to post`);
+  if (toPost) parts.push(`${toPost} to post`);
   if (count("decide")) parts.push(plural(count("decide"), "decision"));
   return parts;
 }

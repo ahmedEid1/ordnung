@@ -334,7 +334,7 @@ export const MOCK_NUMBERS: MyNumbers = {
         "date": "2026-09-14",
         "kind": "price_increase"
       },
-      "open_items": 1
+      "open_items": 2
     },
     {
       "party_id": "pty_funknetz",
@@ -1862,7 +1862,7 @@ export const MOCK_WEEK: WeeklySession = {
     {
       "id": "post",
       "title": "Post and keep proof",
-      "summary": "1 letter to send",
+      "summary": "1 letter to send · 1 sent — keep the proof",
       "entries": [
         {
           "key": "draft:drf_phone",
@@ -1885,6 +1885,28 @@ export const MOCK_WEEK: WeeklySession = {
           "tone": "warn",
           "overdue": false,
           "item": null
+        },
+        {
+          "key": "draft:drf_gym",
+          "ref": {
+            "type": "draft",
+            "id": "drf_gym"
+          },
+          "title": "Kündigung meiner Mitgliedschaft „FitWell Flex“ – Mitgliedsnummer FW-20931",
+          "kind": "cancellation",
+          "date": "2026-09-22",
+          "date_role": "sent",
+          "due_date": null,
+          "amount": null,
+          "currency": null,
+          "party_id": "pty_fitwell",
+          "party_name": "FitWell Studios",
+          "doc_id": "doc_gym_price",
+          "status": "sent",
+          "note": "Keep the posting receipt (Einlieferungsbeleg) with a copy of the letter: it proves posting, not arrival. Ask Deutsche Post for the delivery record (Auslieferungsbeleg) now — it is kept only for a limited time, and online tracking alone is no proof (BAG 2 AZR 68/24).",
+          "tone": "neutral",
+          "overdue": false,
+          "item": null
         }
       ],
       "more": 0,
@@ -1894,7 +1916,7 @@ export const MOCK_WEEK: WeeklySession = {
     {
       "id": "waiting",
       "title": "Waiting for",
-      "summary": "Waiting for 1 reply",
+      "summary": "Waiting for 2 replies",
       "entries": [
         {
           "key": "item:itm_followup_wohnbau",
@@ -1950,6 +1972,63 @@ export const MOCK_WEEK: WeeklySession = {
             "filed_on": null,
             "created_at": "2026-09-15T17:02:00Z",
             "updated_at": "2026-09-15T17:02:00Z",
+            "completed_at": null
+          }
+        },
+        {
+          "key": "item:itm_followup_gym",
+          "ref": {
+            "type": "item",
+            "id": "itm_followup_gym"
+          },
+          "title": "Check for a reply from FitWell Studios",
+          "kind": "task",
+          "date": "2026-10-13",
+          "date_role": "reply_by",
+          "due_date": null,
+          "amount": null,
+          "currency": null,
+          "party_id": "pty_fitwell",
+          "party_name": "FitWell Studios",
+          "doc_id": "doc_gym_price",
+          "status": "open",
+          "note": "You sent “Kündigung meiner Mitgliedschaft „FitWell Flex“” on Tue 22 Sep 2026 (Letter by Einwurf-Einschreiben).",
+          "tone": "neutral",
+          "overdue": false,
+          "item": {
+            "id": "itm_followup_gym",
+            "kind": "task",
+            "title": "Check for a reply from FitWell Studios",
+            "description": "You sent “Kündigung meiner Mitgliedschaft „FitWell Flex“” on Tue 22 Sep 2026 (Letter by Einwurf-Einschreiben).",
+            "action": "If nothing has arrived, call them or send a short reminder — and keep a note of it.",
+            "consequence": null,
+            "due_date": "2026-10-13",
+            "due_time": null,
+            "send_by": null,
+            "date_spec": null,
+            "computation": null,
+            "amount": null,
+            "currency": null,
+            "direction": null,
+            "recurrence": null,
+            "status": "open",
+            "snoozed_until": null,
+            "priority": "normal",
+            "area": "leisure",
+            "party_id": "pty_fitwell",
+            "case_id": null,
+            "contract_id": "ctr_gym",
+            "doc_id": "doc_gym_price",
+            "evidence": [],
+            "grounding": "user",
+            "slot_key": "slot_itm_followup_gym",
+            "user_modified": false,
+            "due_date_source": "computed",
+            "origin": "draft",
+            "location": null,
+            "filed_on": null,
+            "created_at": "2026-09-22T12:40:00Z",
+            "updated_at": "2026-09-22T12:40:00Z",
             "completed_at": null
           }
         }
@@ -2532,6 +2611,28 @@ export const MOCK_WEEK_DEADLINES: WeekEntry[] = [
     "party_id": "pty_abh",
     "party_name": "Ausländerbehörde Musterstadt",
     "doc_id": "doc_abh",
+    "status": "open",
+    "note": null,
+    "tone": "neutral",
+    "overdue": false,
+    "item": null
+  },
+  {
+    "key": "item:itm_followup_gym",
+    "ref": {
+      "type": "item",
+      "id": "itm_followup_gym"
+    },
+    "title": "Check for a reply from FitWell Studios",
+    "kind": "task",
+    "date": "2026-10-13",
+    "date_role": "by",
+    "due_date": null,
+    "amount": null,
+    "currency": null,
+    "party_id": "pty_fitwell",
+    "party_name": "FitWell Studios",
+    "doc_id": "doc_gym_price",
     "status": "open",
     "note": null,
     "tone": "neutral",
