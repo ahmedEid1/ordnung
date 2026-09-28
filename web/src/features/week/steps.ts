@@ -1,13 +1,18 @@
 /**
- * The weekly session's steps as the page shows them (the backend decides what is in each —
+ * The weekly review's steps as the page shows them (the backend decides what is in each —
  * `ordnung/secretary/week.py`): a short label for tight rows, an icon, and where the full list lives.
  */
-import { Archive, CalendarRange, FileSearch, Hourglass, Inbox, Landmark, Send, Siren, type LucideIcon } from "lucide-react";
+import { Archive, CalendarRange, FileSearch, Inbox, Landmark, Send, Siren, type LucideIcon } from "lucide-react";
 import type { WeekEntry, WeekStep, WeeklySession } from "@/api/types";
 import { contractHref } from "@/features/contracts/links";
+import { MEANING_ICONS } from "@/lib/copy";
 import { plural } from "@/lib/utils";
 
 export type StepId = WeekStep["id"];
+
+/** The page's one name — Today's prompt and its quiet link, the page and its breadcrumb, the ending
+ * ("Review saved") and its messages ("Couldn't save your weekly review"). */
+export const WEEKLY_REVIEW = "Weekly review";
 
 export interface StepMeta {
   short: string;
@@ -22,7 +27,8 @@ export const STEP_META: Record<StepId, StepMeta> = {
   check: { short: "Compare", icon: FileSearch, more: { to: "/timeline", label: "See every to-do on the timeline" } },
   pay: { short: "Pay", icon: Landmark, more: { to: "/timeline", label: "See every payment on the timeline" } },
   post: { short: "Post", icon: Send, more: { to: "/letters", label: "See all your letters" } },
-  waiting: { short: "Waiting", icon: Hourglass, more: { to: "/letters/waiting", label: "See everything you're waiting for", always: true } },
+  // the app's "Waiting for" mark (the hourglass is a deadline's)
+  waiting: { short: "Waiting", icon: MEANING_ICONS.waitingFor, more: { to: "/letters/waiting", label: "See everything you're waiting for", always: true } },
   decide: { short: "Decide", icon: CalendarRange, more: { to: "/contracts", label: "See your contracts" } },
   file: { short: "File", icon: Archive, more: { to: "/inbox", label: "See all in the Inbox" } },
 };

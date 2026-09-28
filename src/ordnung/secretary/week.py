@@ -33,8 +33,9 @@ how many it left out:
    newest first.
 2. *Compare with the letter* — to-dos whose date Ordnung could not confirm against the letter
    (:func:`~ordnung.secretary.triggers.unconfirmed_reason`: not found in the letter, read by AI from a
-   photo, or not matching its sentence — never once the person confirmed it), still relevant (undated or
-   not past), and letters marked *Please check* with no such to-do. The person's "The date looks right"
+   photo, or not matching its sentence — never once the person confirmed it) with a day to compare (a
+   due date or a send-by day, :func:`has_day_to_compare`) that has not passed, and letters marked *Please
+   check* with no such to-do (an undated to-do's letter included). The person's "The date looks right"
    vouches for the date only: a payment's amount is compared in its Pay panel (ADR 0012, point 3), and
    *Pay this week* warns about an amount by the GiroCode policy's own check
    (:func:`~ordnung.secretary.girocode_gate.amount_confirmed`).
@@ -54,8 +55,9 @@ how many it left out:
    the delivery record (Auslieferungsbeleg); the posting receipt with the online tracking status alone was
    not accepted as prima facie proof (BAG, 30.01.2025 – 2 AZR 68/24).
 5. *Waiting for* — the *Waiting for* page's open entries (:func:`~ordnung.secretary.waiting.waiting_for`):
-   replies to letters you sent, money a letter promised and promises made on the phone, overdue first; a
-   letter the person said was answered is no longer waited for.
+   replies to letters you sent, money a letter promised and promises made on the phone, in the page's
+   order (overdue, then those a letter may have answered, then the rest); a letter the person said was
+   answered is no longer waited for.
 6. *Decide in the next 30 days* — the agenda's contract decisions (a cancellation that must be sent within
    30 days, or the contract renews) and deadlines for an objection, a declaration or a notice due from
    today on whose day to act is within 30 days — not those of a contract already listed (its row is the
@@ -208,7 +210,7 @@ def session_state(store: Store) -> SessionState:
 def record_session(store: Store, today: date) -> Moment:
     """Remember that the person went through the session now, on their ``today``."""
     moment = _write_moment(store, SESSION_KEY, today)
-    store.log_activity("week.done", "Weekly session done")
+    store.log_activity("week.done", "Weekly review done")
     return moment
 
 
@@ -553,8 +555,16 @@ def _new_letters(ledger: Ledger, window: _Window, *, first: bool) -> WeekStep:
     summary = (
         f"{_count(len(ordered), 'letter')} since {since}" if ordered else f"No new letters since {since}"
     )
-    title = f"New in the last {WEEK} days" if first else "New since your last session"
+    title = f"New in the last {WEEK} days" if first else "New since your last review"
     return _step("new", title, [row(doc) for doc in ordered], summary)
+
+
+def has_day_to_compare(item: Item) -> bool:
+    """Whether a to-do has a day the person can compare with the letter (its due date or its send-by
+    day). An undated to-do ("Return the form if you disagree") has none: *Compare with the letter* would
+    ask them to confirm a date that isn't there; its letter is listed instead while it is marked *Please
+    check*."""
+    return parse_day(item.due_date) is not None or parse_day(item.send_by) is not None
 
 
 def _to_check(ledger: Ledger) -> WeekStep:
@@ -564,7 +574,12 @@ def _to_check(ledger: Ledger) -> WeekStep:
     for item in sorted(ledger.actionable_items(), key=lambda i: (action_day(i) or date.max, i.id)):
         reason = unconfirmed_reason(item)
         due = parse_day(item.due_date)
-        if reason is None or (due is not None and due < today) or item.origin == "draft":
+        if (
+            reason is None
+            or not has_day_to_compare(item)
+            or (due is not None and due < today)
+            or item.origin == "draft"
+        ):
             continue
         covered.add(item.doc_id or "")
         rows.append(_item_entry(ledger, item, note=_CHECK_NOTES[reason], tone="warn"))
@@ -799,7 +814,8 @@ def _waiting_entry(ledger: Ledger, entry: WaitingEntry) -> WeekEntry:
 
 def _waiting(ledger: Ledger, entries: Sequence[WaitingEntry]) -> WeekStep:
     """*Waiting for*: the *Waiting for* page's open entries (:func:`~ordnung.secretary.waiting.waiting_for`)
-    — replies to letters you sent, money a letter promised, promises made on the phone — overdue first."""
+    — replies to letters you sent, money a letter promised, promises made on the phone — in the page's order:
+    overdue first, then those a letter may have answered."""
     rows = [_waiting_entry(ledger, entry) for entry in entries]
     late = sum(1 for entry in entries if entry.status == "overdue")
     if not rows:

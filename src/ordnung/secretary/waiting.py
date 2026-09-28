@@ -25,7 +25,8 @@ Policy (ADR 0006, 0007):
 4. **Nothing is closed here.** *Answered* names the letter so the person can check it; closing is
    their click (ADR 0006).
 
-Order: overdue, then waiting (by expected day, undated last), then answered.
+Order: by what each asks of the person — overdue (chase it), then answered (check the letter that may be
+the answer), then waiting (nothing to do yet) — each by expected day, undated last.
 
 Limits: a later letter of the same thread counts as the answer even when it is about something else
 (it is named, so the person notices); money paid without a letter saying so stays "waiting" until the
@@ -49,7 +50,8 @@ from ordnung.secretary.triggers import (
     was_history_when_filed,
 )
 
-_STATUS_ORDER: dict[str, int] = {"overdue": 0, "waiting": 1, "answered": 2, "closed": 3}
+#: By what each asks of the person: chase it, check the letter that may have answered it, then wait.
+_STATUS_ORDER: dict[str, int] = {"overdue": 0, "answered": 1, "waiting": 2, "closed": 3}
 
 
 def _letter_day(doc: Document) -> date | None:

@@ -7,11 +7,11 @@
  * with the due date beside it once the day to post or transfer has passed.
  */
 import { Link } from "react-router";
-import { Check, Landmark } from "lucide-react";
+import { Check, CircleAlert, CircleCheck, Landmark, TriangleAlert, type LucideIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useConfirmItem } from "@/api/hooks";
 import type { WeekEntry } from "@/api/types";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonVariants } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
 import { KindIcon, type KindSource } from "@/components/ui/KindBadge";
 import { Money } from "@/components/ui/Money";
@@ -28,11 +28,13 @@ import { entryHref, type StepId } from "./steps";
 
 type Role = NonNullable<WeekEntry["date_role"]>;
 
-const NOTE_TONE: Record<WeekEntry["tone"], string> = {
-  neutral: "text-ink/80",
-  ok: "text-ok-ink",
-  warn: "text-warn-ink",
-  danger: "text-danger-ink",
+/** A note is read in ink (a four-line note in red is a wall of alarm); its tone is a mark before it, and
+ * the day on the row keeps its own colour. */
+const NOTE_MARK: Record<WeekEntry["tone"], { icon: LucideIcon; className: string } | null> = {
+  neutral: null,
+  ok: { icon: CircleCheck, className: "text-ok-ink" },
+  warn: { icon: CircleAlert, className: "text-warn-ink" },
+  danger: { icon: TriangleAlert, className: "text-danger-ink" },
 };
 
 /** Due-like days get a countdown ("Transfer by Tue 29 Sep · tomorrow"), as Today's cards say them. */
@@ -50,8 +52,17 @@ const COUNTDOWN_PREFIX: Partial<Record<Role, string>> = {
   expires: "Expires",
   at_appointment: "Pay at the appointment",
 };
-/** Events: past means "2 days ago", never "overdue", and never red (money coming in is one). */
-const EVENT_ROLES = new Set<Role>(["on", "collected", "expires", "at_appointment", "expected"]);
+/** Events: past means "2 days ago", never "overdue", and never red. */
+const EVENT_ROLES = new Set<Role>(["on", "collected", "expires", "at_appointment"]);
+/** What someone else owes the person (money coming in, a reply, a promise made on the phone): nothing to
+ * do until the day passes, so an event — and "N days overdue" in red once *Waiting for* says it is late. */
+const AWAITED_ROLES = new Set<Role>(["expected", "reply_by", "promised_by"]);
+
+/** Whether a row's day reads as an event (see `EVENT_ROLES`, `AWAITED_ROLES`). */
+export function isEventDay(entry: Pick<WeekEntry, "date_role" | "overdue">): boolean {
+  const role = entry.date_role;
+  return role !== null && (EVENT_ROLES.has(role) || (AWAITED_ROLES.has(role) && !entry.overdue));
+}
 /** Things that happened: a plain date. */
 const EVENT_PREFIX: Partial<Record<Role, string>> = {
   added: "Added",
@@ -111,7 +122,7 @@ function WhenLine({ entry }: { entry: WeekEntry }) {
       <span className="font-medium text-danger-ink">Act today</span>
     );
   } else if (entry.date && role && (COUNTDOWN_PREFIX[role] !== undefined || role === "on")) {
-    const event = EVENT_ROLES.has(role);
+    const event = isEventDay(entry);
     when = (
       <>
         <Countdown
@@ -196,15 +207,35 @@ function ConfirmButton({ entry, step }: { entry: WeekEntry; step: StepId }) {
   );
 }
 
+/**
+ * Holds a Pay button's room on a row of *Pay this week* that has none (a direct debit, a fee paid at the
+ * appointment), so every amount ends at the same place — only while the rows sit beside their amounts
+ * (from a 28rem row); a phone's rows stack, and nothing is held there.
+ */
+function PaySlot() {
+  return (
+    <span aria-hidden data-pay-slot className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "invisible hidden @[28rem]:inline-flex")}>
+      <Landmark />
+      Pay
+    </span>
+  );
+}
+
+/** Whether "The date looks right" has a date to vouch for (an undated to-do has none: `week.py`). */
+export const hasDateToConfirm = (entry: Pick<WeekEntry, "date" | "due_date">): boolean => Boolean(entry.date || entry.due_date);
+
 export function WeekEntryRow({ entry, step }: { entry: WeekEntry; step: StepId }) {
-  const pay = step === "pay" && paysHere(entry);
-  const confirm = step === "check" && entry.ref.type === "item";
-  const action = pay ? <PayButton entry={entry} /> : confirm ? <ConfirmButton entry={entry} step={step} /> : null;
+  const paying = step === "pay";
+  const pay = paying && paysHere(entry);
+  const confirm = step === "check" && entry.ref.type === "item" && hasDateToConfirm(entry);
+  const action = pay ? <PayButton entry={entry} /> : confirm ? <ConfirmButton entry={entry} step={step} /> : paying ? <PaySlot /> : null;
+  const mark = NOTE_MARK[entry.tone];
   return (
     <div className="@container flex items-start gap-3 py-3">
       <KindIcon {...kindSource(entry)} size="sm" className="mt-0.5" />
-      <div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-4 gap-y-2">
-        <div className="min-w-0 flex-1 basis-[14rem]">
+      {/* Pay this week: every row beside its amount from a 28rem row (the amounts in one column), else stacked */}
+      <div className={cn("flex min-w-0 flex-1 flex-wrap items-start gap-x-4 gap-y-2", paying && "@[28rem]:flex-nowrap")}>
+        <div className={cn("min-w-0 flex-1", paying ? "basis-full @[28rem]:basis-0" : "basis-[14rem]")}>
           <Link
             id={rowLinkId(entry.key)}
             data-week-row={step}
@@ -214,11 +245,16 @@ export function WeekEntryRow({ entry, step }: { entry: WeekEntry; step: StepId }
             {glueText(entry.title)}
           </Link>
           <WhenLine entry={entry} />
-          {entry.note ? <p className={cn("mt-0.5 text-[13px] leading-5", NOTE_TONE[entry.tone])}>{glueText(entry.note)}</p> : null}
+          {entry.note ? (
+            <p data-tone={entry.tone} className="mt-0.5 flex gap-1.5 text-[13px] leading-5 text-ink/80">
+              {mark ? <mark.icon aria-hidden className={cn("mt-[3px] size-3.5 shrink-0", mark.className)} /> : null}
+              <span className="min-w-0">{glueText(entry.note)}</span>
+            </p>
+          ) : null}
         </div>
         {entry.amount !== null || action ? (
           // on a phone the button goes under the amount rather than past the card
-          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2">
+          <div className={cn("flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2", paying && "@[28rem]:shrink-0")}>
             {entry.amount !== null ? (
               <Money
                 amount={entry.amount}

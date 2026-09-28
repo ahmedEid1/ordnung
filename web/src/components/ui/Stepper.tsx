@@ -22,8 +22,12 @@ export interface StepperProps {
    * falls back to the short labels, then to `fallback`, when the labels would run into each other.
    */
   labels?: "all" | "current" | "none";
-  /** What `labels="all"` becomes when even the short labels don't fit (default `current`). */
-  fallback?: "current" | "none";
+  /**
+   * What `labels="all"` becomes when even the short labels don't fit (default `current`). `stagger`:
+   * the short labels over two lines, every other one on the second (steps a person jumps between keep
+   * a name under each dot), and `current` when even that doesn't fit.
+   */
+  fallback?: "current" | "none" | "stagger";
   /** Announce step changes politely to screen readers. */
   live?: boolean;
   /** Accessible name, e.g. "Reading Nebenkostenabrechnung.pdf". */
@@ -43,6 +47,9 @@ export interface StepperProps {
 
 type StepState = "done" | "current" | "error" | "todo";
 
+/** A label's colour by its step's state. */
+const LABEL_TONE: Record<StepState, string> = { current: "text-ink", error: "text-danger-ink", done: "text-ink/70", todo: "text-muted" };
+
 /** Space kept between two neighbouring labels. */
 const LABEL_GAP = 6;
 
@@ -56,11 +63,22 @@ export function labelsFit(col: number, widths: readonly number[], gap = LABEL_GA
   return widths.every((w, i) => i === 0 || (widths[i - 1]! + w) / 2 + gap <= col);
 }
 
-/** Which labels a row of `width` px can show: the full ones, the short ones, or neither. */
-export function chooseStepLabels(width: number, full: readonly number[], short: readonly number[]): "full" | "short" | null {
+/**
+ * Do labels of these widths fit on two alternating lines (every other one on the second)? Neighbours
+ * on a line are two columns apart; each label stays inside the row.
+ */
+export function staggeredLabelsFit(col: number, widths: readonly number[], gap = LABEL_GAP): boolean {
+  const n = widths.length;
+  return widths.every((w, i) => w / 2 <= Math.min(i + 0.5, n - i - 0.5) * col && (i < 2 || (widths[i - 2]! + w) / 2 + gap <= 2 * col));
+}
+
+/** Which labels a row of `width` px can show: the full ones, the short ones, the short ones over two
+ * lines (only when `stagger`), or none. */
+export function chooseStepLabels(width: number, full: readonly number[], short: readonly number[], stagger = false): "full" | "short" | "stagger" | null {
   const col = width / Math.max(1, full.length);
   if (labelsFit(col, full)) return "full";
   if (labelsFit(col, short)) return "short";
+  if (stagger && staggeredLabelsFit(col, short)) return "stagger";
   return null;
 }
 
@@ -81,9 +99,9 @@ function textWidths(texts: readonly string[], el: HTMLElement): number[] {
  * The label mode that fits the stepper's own width (a card on a phone, the 400 px upload card, a
  * wide page): measured, not guessed from the viewport.
  */
-function useFittingLabels(steps: readonly StepperStep[], wanted: boolean) {
+function useFittingLabels(steps: readonly StepperStep[], wanted: boolean, stagger: boolean) {
   const ref = useRef<HTMLOListElement>(null);
-  const [fit, setFit] = useState<"full" | "short" | null>("full");
+  const [fit, setFit] = useState<"full" | "short" | "stagger" | null>("full");
   const key = steps.map((s) => `${s.label}|${s.short ?? ""}`).join("/");
   useLayoutEffect(() => {
     const el = ref.current;
@@ -93,7 +111,7 @@ function useFittingLabels(steps: readonly StepperStep[], wanted: boolean) {
       if (!width) return; // not laid out (hidden, or jsdom)
       const full = textWidths(steps.map((s) => s.label), el);
       const short = textWidths(steps.map((s) => s.short ?? s.label), el);
-      setFit(chooseStepLabels(width, full, short));
+      setFit(chooseStepLabels(width, full, short, stagger));
     };
     const raf = requestAnimationFrame(measure);
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
@@ -106,7 +124,7 @@ function useFittingLabels(steps: readonly StepperStep[], wanted: boolean) {
     };
     // `key` stands for the labels (the array itself may be a new one each render)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wanted, key]);
+  }, [wanted, key, stagger]);
   return { ref, fit: wanted ? fit : null };
 }
 
@@ -115,7 +133,8 @@ function useFittingLabels(steps: readonly StepperStep[], wanted: boolean) {
  * Computing dates → Filing): one continuous track through equal-width columns, a dot per step and
  * 12 px labels. The labels measure themselves: when they would run into each other the short
  * labels are used, and when even those don't fit, one line under the track names the current step
- * (or nothing, with `fallback="none"`). Respects reduced motion via the global MotionConfig.
+ * (or nothing, with `fallback="none"`; or the short labels over two lines first, with
+ * `fallback="stagger"`). Respects reduced motion via the global MotionConfig.
  */
 export function Stepper({ steps, current, status = "active", size = "md", labels = "all", fallback = "current", live, label, doneIds, onPick, className }: StepperProps) {
   const n = steps.length;
@@ -125,10 +144,13 @@ export function Stepper({ steps, current, status = "active", size = "md", labels
   const isDone = (i: number) => (doneIds ? doneIds.has(steps[i]!.id) : i < current);
   const stateOf = (i: number): StepState =>
     i === current && !done ? (status === "error" ? "error" : "current") : isDone(i) || done ? "done" : "todo";
-  const { ref, fit } = useFittingLabels(steps, labels === "all");
-  const mode = labels === "all" ? (fit ?? fallback) : labels;
+  const { ref, fit } = useFittingLabels(steps, labels === "all", fallback === "stagger");
+  const mode = labels === "all" ? (fit ?? (fallback === "stagger" ? "current" : fallback)) : labels;
   // the filled part of the track reaches the current dot
   const filled = n > 1 ? Math.min(Math.max(current, 0), n - 1) / (n - 1) : 0;
+  // two lines of labels, each wider than its column: laid over the row (not inside the columns they
+  // borrow room from), the columns keep the room they take under the dots
+  const stagger = mode === "stagger";
 
   return (
     <div className={cn("w-full", className)}>
@@ -175,16 +197,11 @@ export function Stepper({ steps, current, status = "active", size = "md", labels
                   ) : null}
                 </span>
                 {mode === "full" || mode === "short" ? (
-                  <span
-                    aria-hidden
-                    data-step-label
-                    className={cn(
-                      "mt-1.5 whitespace-nowrap text-center leading-4",
-                      state === "current" ? "text-ink" : state === "error" ? "text-danger-ink" : state === "done" ? "text-ink/70" : "text-muted",
-                    )}
-                  >
+                  <span aria-hidden data-step-label className={cn("mt-1.5 whitespace-nowrap text-center leading-4", LABEL_TONE[state])}>
                     {mode === "short" ? (s.short ?? s.label) : s.label}
                   </span>
+                ) : stagger ? (
+                  <span aria-hidden className="block h-[2.375rem]" />
                 ) : null}
               </>
             );
@@ -216,6 +233,21 @@ export function Stepper({ steps, current, status = "active", size = "md", labels
             );
           })}
         </ol>
+        {stagger ? (
+          <div aria-hidden className="pointer-events-none absolute inset-0 text-xs font-medium">
+            {steps.map((s, i) => (
+              <span
+                key={s.id}
+                data-step-label
+                className={cn("absolute -translate-x-1/2 whitespace-nowrap leading-4", LABEL_TONE[stateOf(i)])}
+                // under its dot; every other one a line (16 px) lower than its neighbours
+                style={{ left: `${((i + 0.5) / n) * 100}%`, top: dot + 6 + (i % 2) * 16 }}
+              >
+                {s.short ?? s.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
       {mode === "current" ? (
         <div className={cn("mt-2 text-xs font-medium", status === "error" ? "text-danger-ink" : done ? "text-ok-ink" : "text-muted")}>

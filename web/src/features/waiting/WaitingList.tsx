@@ -171,7 +171,9 @@ function Row({ entry, party }: { entry: WaitingEntry; party: Party | null }) {
                 Letter of <DateText date={entry.answered_on} style="short" />
               </span>
             ) : entry.expected_by ? (
-              <Countdown date={entry.expected_by} showDate className="text-[12.5px]" />
+              // something coming to the person: an event (never red) until the day has passed — then it is
+              // overdue, and the one thing here in the colour of "act now"
+              <Countdown date={entry.expected_by} showDate mode={entry.status === "overdue" ? "due" : "event"} className="text-[12.5px]" />
             ) : (
               <span className="text-[12.5px] text-muted">No day given</span>
             )}
@@ -192,7 +194,8 @@ function Row({ entry, party }: { entry: WaitingEntry; party: Party | null }) {
 
 /**
  * "Waiting for": replies to letters the person sent, money a letter promised and callbacks promised
- * on the phone, grouped overdue → waiting → answered. Nothing is closed for them: an answer is named,
+ * on the phone, grouped by what each asks of the person (`WAITING_GROUPS`): overdue (chase it), a letter
+ * that may have answered (check it), then waiting (nothing yet). Nothing is closed for them: an answer is named,
  * and they close it — every letter can be closed, also when the answer came by phone or e-mail — or
  * say the money arrived, or the promise was kept. Focus moves to the row now in the settled one's place.
  */

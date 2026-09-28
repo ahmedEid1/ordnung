@@ -423,7 +423,8 @@ def test_keeping_needs_a_promise(ctx: AppContext, gym: Gym) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-async def test_overdue_first_then_by_day_then_answered(ctx: AppContext, gym: Gym) -> None:
+async def test_overdue_first_then_answered_then_by_day(ctx: AppContext, gym: Gym) -> None:
+    """By what each asks of the person: chase it, check the letter that may have answered it, wait."""
     await helpers_proof.sent_letter(ctx, gym)  # overdue since 22 Sep
     money_in(ctx, "Refund later", amount=5.0, due_date="2026-12-01")
     money_in(ctx, "Refund sooner", amount=5.0, due_date="2026-10-15")
@@ -442,11 +443,11 @@ async def test_overdue_first_then_by_day_then_answered(ctx: AppContext, gym: Gym
     )
     entries = waiting(ctx.store, TODAY)
     assert [(e.status, e.title) for e in entries] == [
+        ("answered", "A written confirmation of the end date"),
+        ("answered", "Letter"),
         ("waiting", "Refund sooner"),
         ("waiting", "Refund later"),
         ("waiting", "Refund someday"),
-        ("answered", "A written confirmation of the end date"),
-        ("answered", "Letter"),
     ]
 
 

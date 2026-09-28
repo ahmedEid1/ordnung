@@ -14,7 +14,10 @@ import { MOCK_WEEK, MOCK_WEEK_DEADLINES } from "@/mocks/data/numbers";
 import { mockWeek, nextPromptDay } from "@/mocks/numbers";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
-import { entryHref, sessionHighlights, stepCount } from "./steps";
+import { chooseStepLabels, staggeredLabelsFit } from "@/components/ui/Stepper";
+import { MEANING_ICONS } from "@/lib/copy";
+import { STEP_META, WEEKLY_REVIEW, entryHref, sessionHighlights, stepCount } from "./steps";
+import { hasDateToConfirm, isEventDay } from "./WeekEntryRow";
 import { WeekView, describeSession } from "./WeekView";
 import { WeeklyLink, WeeklyPrompt } from "./WeeklyPrompt";
 
@@ -207,7 +210,7 @@ describe("the session page", () => {
   it("ticks only the steps looked at on the phone stepper, and jumps to any step from it", async () => {
     useMockApi();
     const { user, router } = await renderWeek("/week?step=pay");
-    const stepper = screen.getByRole("list", { name: "Steps of the session" });
+    const stepper = screen.getByRole("list", { name: "Steps of the review" });
     expect(within(stepper).getByRole("button", { name: "New in the last 7 days" })).not.toHaveAttribute("aria-current");
     expect(within(stepper).getByRole("button", { name: "Pay this week" })).toHaveAttribute("aria-current", "step");
     await user.click(screen.getByRole("button", { name: /^Next: Post/ }));
@@ -220,19 +223,47 @@ describe("the session page", () => {
     expect(router.state.location.search).toBe("?step=decide");
   });
 
-  it("finishes with “All clear until …” and remembers the session", async () => {
+  it("finishes “All clear for today” when the next day to act is tomorrow, and remembers the review", async () => {
     const { calls, srv } = useMockApi();
     // the demo's phone promise is overdue: kept, nothing is (see "the static demo's session follows the visitor")
     srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today;
     const { user } = await renderWeek("/week?step=file");
     expect(screen.getByText("Nothing here this week — you're done: press Finish.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^Finish/ }));
-    expect(await screen.findByRole("heading", { name: /^All clear until Tue 29 Sep$/ })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: /^All clear until/ }).querySelector('[data-badge="clear"]')).not.toBeNull();
+    // the next transfer is due tomorrow (Tue 29 Sep, "tomorrow" in red beside it): "until Tue 29 Sep" is no all-clear
+    const heading = await screen.findByRole("heading", { name: "All clear for today" });
+    expect(screen.queryByText(/All clear until/)).toBeNull();
+    const card = screen.getByRole("region", { name: "All clear for today" });
+    expect(card.querySelector('[data-badge="clear"]')).not.toBeNull();
+    expect(within(card).getByText("tomorrow")).toBeInTheDocument();
     expect(calls.some((c) => c.method === "POST" && c.path === "/week/done")).toBe(true);
     expect(screen.getByRole("link", { name: "Back to Today" })).toHaveAttribute("href", "/");
-    expect(screen.getByRole("heading", { name: /^All clear until/ })).toHaveFocus();
-    expect(screen.getByText("Session saved — Today suggests the next one on Sun 4 Oct.")).toBeInTheDocument();
+    expect(heading).toHaveFocus();
+    // one name for the page: "Review saved", as Today's prompt and link say "weekly review"
+    expect(screen.getByText("Review saved — Today suggests the next one on Sun 4 Oct.")).toBeInTheDocument();
+    // the days it names are computed: the law's date and "Not legal advice" under it
+    expect(screen.getByText(/Not legal advice\. Not reviewed by a lawyer\./)).toBeInTheDocument();
+  });
+
+  it("names the page, its steps and the ending one way: Weekly review", async () => {
+    useMockApi();
+    await renderWeek();
+    expect(screen.getByRole("heading", { level: 1, name: WEEKLY_REVIEW })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Steps of the review" })).toBeInTheDocument();
+    expect(screen.queryByText(/session/i)).toBeNull();
+  });
+
+  it("shows under the steps that their days are computed, not legal advice", async () => {
+    useMockApi();
+    await renderWeek("/week?step=decide");
+    expect(screen.getByText(/Not legal advice\. Not reviewed by a lawyer\./)).toBeInTheDocument();
+  });
+
+  it("marks a step's label with the app's small caps label and Waiting for with its own icon", async () => {
+    useMockApi();
+    await renderWeek();
+    expect(screen.getByText("Step 1 of 7")).toHaveClass("eyebrow");
+    expect(STEP_META.waiting.icon).toBe(MEANING_ICONS.waitingFor);
   });
 
   it("says how many things are to do today, and where they are", async () => {
@@ -330,7 +361,8 @@ describe("the session page", () => {
     expect(heading).toHaveFocus();
     expect(screen.queryByText(/All clear/)).toBeNull();
     await user.click(screen.getByRole("button", { name: "See it" }));
-    expect(await screen.findByRole("heading", { level: 2, name: "Act now" })).toBeInTheDocument();
+    // the step takes the focus the ending's card had — never lost to the page
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "Act now" })).toHaveFocus());
   });
 
   it("with nothing to review, says so instead of seven empty steps", async () => {
@@ -362,6 +394,123 @@ describe("the session page", () => {
     await renderWeek();
     expect(screen.getByText(/And 4 more\./)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "See all in the Inbox" })).toHaveAttribute("href", "/inbox");
+  });
+});
+
+describe("rows", () => {
+  const today = MOCK_WEEK.today;
+  const tomorrow = "2026-09-29";
+
+  it("offer “The date looks right” only where there is a date to confirm", async () => {
+    useMockApi();
+    expect(hasDateToConfirm({ date: null, due_date: null })).toBe(false);
+    expect(hasDateToConfirm({ date: tomorrow, due_date: null })).toBe(true);
+    const check = MOCK_WEEK.steps.find((s) => s.id === "check")!;
+    // an undated to-do the server sent anyway (an older server): nothing to vouch for
+    const undated = row({ key: "undated", title: "Return the form if you disagree", kind: "task", note: "Its date was read by AI from a photo — compare it with the paper letter.", tone: "warn" });
+    const dated = row({ key: "dated", title: "Send the form back", kind: "task", date: tomorrow, date_role: "by", tone: "warn" });
+    vi.spyOn(api, "week").mockResolvedValue({ ...MOCK_WEEK, steps: MOCK_WEEK.steps.map((s) => (s.id === "check" ? { ...check, entries: [undated, dated] } : s)) });
+    await renderWeek("/week?step=check");
+    expect(screen.queryByRole("button", { name: "The date looks right: Return the form if you disagree" })).toBeNull();
+    expect(screen.getByRole("button", { name: "The date looks right: Send the form back" })).toBeInTheDocument();
+  });
+
+  it("say a reply or a promise not yet due as an event, in red only once it is overdue; notes in ink with a tone mark", async () => {
+    useMockApi();
+    expect(isEventDay({ date_role: "reply_by", overdue: false })).toBe(true);
+    expect(isEventDay({ date_role: "promised_by", overdue: true })).toBe(false);
+    expect(isEventDay({ date_role: "expected", overdue: true })).toBe(false);
+    expect(isEventDay({ date_role: "on", overdue: false })).toBe(true);
+    expect(isEventDay({ date_role: "transfer_by", overdue: false })).toBe(false);
+    const waiting = MOCK_WEEK.steps.find((s) => s.id === "waiting")!;
+    const reply = row({ key: "reply", ref: { type: "draft", id: "drf_x" }, title: "An answer to your letter", kind: "draft", date: tomorrow, date_role: "reply_by", note: "Your letter “Kündigung”: Ordnung reminds you on Tue 29 Sep." });
+    const call = row({
+      key: "call",
+      ref: { type: "call", id: "cal_x" },
+      title: "Written confirmation of the cancellation",
+      kind: "call",
+      date: "2026-09-20",
+      date_role: "promised_by",
+      overdue: true,
+      tone: "danger",
+      note: "Call with Herr Maximilian on Thu 10 Sep: they promised it by Sun 20 Sep. Call them again and note what they say.",
+    });
+    vi.spyOn(api, "week").mockResolvedValue({ ...MOCK_WEEK, steps: MOCK_WEEK.steps.map((s) => (s.id === "waiting" ? { ...waiting, entries: [call, reply] } : s)) });
+    await renderWeek("/week?step=waiting");
+    const soon = screen.getByText("Reply expected by").closest("time")!;
+    expect(soon).toHaveTextContent("Reply expected by Tue 29 Sep · tomorrow");
+    expect(soon).toHaveAttribute("data-urgency", "warn");
+    const late = screen.getByText("Promised by").closest("time")!;
+    expect(late).toHaveTextContent("Promised by Sun 20 Sep · 8 days overdue");
+    expect(late).toHaveAttribute("data-urgency", "danger");
+    // the long note is read in ink; a red mark before it carries its tone
+    const note = screen.getByText(/Call them again and note what they say/).closest("p")!;
+    expect(note).toHaveAttribute("data-tone", "danger");
+    expect(note.className).toContain("text-ink/80");
+    expect(note.className).not.toMatch(/text-danger-ink/);
+    expect(note.querySelector("svg.text-danger-ink")).not.toBeNull();
+    expect(screen.getByText(/Ordnung reminds you on Tue 29 Sep/).closest("p")!.querySelector("svg")).toBeNull();
+    expect(today).toBe("2026-09-28");
+  });
+
+  it("keep a Pay button's room on a row of Pay this week that has none, so the amounts line up", async () => {
+    useMockApi();
+    const pay = MOCK_WEEK.steps.find((s) => s.id === "pay")!;
+    const debit = row({ key: "debit", title: "Gym membership", kind: "payment", date: "2026-10-01", date_role: "collected", amount: 63 });
+    vi.spyOn(api, "week").mockResolvedValue({ ...MOCK_WEEK, steps: MOCK_WEEK.steps.map((s) => (s.id === "pay" ? { ...pay, entries: [...pay.entries, debit] } : s)) });
+    await renderWeek("/week?step=pay");
+    const debitRow = screen.getByRole("link", { name: "Gym membership" }).closest("li")!;
+    const slot = debitRow.querySelector("[data-pay-slot]")!;
+    expect(slot).toHaveAttribute("aria-hidden", "true");
+    expect(slot).toHaveClass("invisible");
+    expect(within(debitRow).queryByRole("button")).toBeNull();
+    // a row with a Pay button needs no held room
+    const paying = screen.getByRole("button", { name: "Pay: Pay TechMarkt reminder" }).closest("li")!;
+    expect(paying.querySelector("[data-pay-slot]")).toBeNull();
+    // not on other steps
+    expect(document.querySelectorAll("[data-pay-slot]")).toHaveLength(1);
+  });
+});
+
+describe("the phone's stepper", () => {
+  /** Lay the stepper out `width` px wide with labels ~6.5 px per character (as the Stepper's own tests). */
+  function layout(width: number) {
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement) {
+      return this.tagName === "OL" ? width : 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return new DOMRect(0, 0, (this.textContent ?? "").length * 6.5, 16);
+    });
+  }
+
+  it("fits the short labels over two lines rather than leaving the dots unnamed", () => {
+    // 320 px (288 px of stepper), seven steps: the short labels touch on one line, fit on two
+    const short = ["New", "Compare", "Pay", "Post", "Waiting", "Decide", "File"].map((t) => t.length * 7);
+    const full = MOCK_WEEK.steps.map((s) => s.title.length * 7);
+    expect(chooseStepLabels(288, full, short)).toBeNull();
+    expect(chooseStepLabels(288, full, short, true)).toBe("stagger");
+    // the outer labels still stay inside the row, neighbours on a line never touch
+    expect(staggeredLabelsFit(40, [48, 20, 20])).toBe(false);
+    expect(staggeredLabelsFit(40, [30, 20, 30, 60, 30])).toBe(true);
+    expect(staggeredLabelsFit(20, [30, 20, 30, 60, 30])).toBe(false);
+  });
+
+  it("names every dot on a phone, every other one a line lower", async () => {
+    layout(288);
+    useMockApi();
+    await renderWeek();
+    const stepper = screen.getByRole("list", { name: "Steps of the review" });
+    // the labels lie over the row (each wider than its column), not inside the columns they borrow from
+    const row = stepper.parentElement!;
+    const texts = () => Array.from(row.querySelectorAll("[data-step-label]")).map((l) => l.textContent);
+    // measured in an animation frame (the full labels until then): a busy machine may take a while
+    await waitFor(() => expect(texts()).toEqual(["New", "Compare", "Pay", "Post", "Waiting", "Decide", "File"]), { timeout: 5000 });
+    const labels = Array.from(row.querySelectorAll<HTMLElement>("[data-step-label]"));
+    expect(labels.filter((l) => l.style.top === "38px").map((l) => l.textContent)).toEqual(["Compare", "Post", "Decide"]);
+    expect(labels.filter((l) => l.style.top === "22px")).toHaveLength(4);
+    expect(labels.every((l) => l.closest("[aria-hidden]"))).toBe(true);
+    // every dot keeps its full name for a screen reader
+    expect(within(stepper).getByRole("button", { name: "Compare with the letter" })).toBeInTheDocument();
   });
 });
 

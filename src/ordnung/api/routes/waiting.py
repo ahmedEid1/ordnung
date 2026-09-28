@@ -48,8 +48,8 @@ class CallNotePatch(BaseModel):
 
 @router.get("/waiting", response_model=list[WaitingEntry])
 def list_waiting(store: StoreDep, today: TodayDep) -> list[WaitingEntry]:
-    """Replies, money and callbacks you are waiting for: overdue first, then by expected day, then the
-    ones a letter may have answered."""
+    """Replies, money and callbacks you are waiting for: overdue first, then the ones a letter may have
+    answered, then the rest — each by expected day."""
     return waiting(store, today)
 
 

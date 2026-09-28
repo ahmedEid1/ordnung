@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { WaitingEntry } from "@/api/types";
+import { api } from "@/api/endpoints";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
@@ -9,12 +10,13 @@ import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { doc } from "@/mocks/data/helpers";
 import WaitingPage from "@/pages/WaitingPage";
 import LettersPage from "@/pages/LettersPage";
-import { asksForACall, groupWaiting, waitingSummary } from "./model";
+import { WAITING_GROUPS, asksForACall, groupWaiting, waitingSummary } from "./model";
 
 beforeEach(() => {
   vi.stubGlobal("scrollTo", () => {});
 });
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   act(() => __clearToasts());
 });
@@ -23,6 +25,10 @@ const entry = (id: string, status: WaitingEntry["status"]): WaitingEntry =>
   ({ id, status, source: "letter", title: id, about: "", note: "", since: null, expected_by: null }) as unknown as WaitingEntry;
 
 describe("grouping", () => {
+  it("orders the groups by what they ask: chase, check, then wait", () => {
+    expect(WAITING_GROUPS.map((g) => g.status)).toEqual(["overdue", "answered", "waiting"]);
+  });
+
   it("groups by status in the server's order and never lists closed ones", () => {
     const groups = groupWaiting([entry("a", "overdue"), entry("b", "waiting"), entry("c", "answered"), entry("d", "waiting"), entry("e", "closed")]);
     expect(groups.overdue.map((e) => e.id)).toEqual(["a"]);
@@ -87,6 +93,19 @@ describe("Waiting for page", () => {
     assertNoRawEnumsInElement(container);
   });
 
+  it("colours only an overdue day as one to act on: what is still coming is an event, never red", async () => {
+    useMockApi();
+    const soon = { id: "w_soon", status: "waiting", source: "call", title: "Callback", about: "Asked about the deposit", note: "They promised to call back.", since: "2026-09-20", expected_by: "2026-09-29", party_id: null, party_name: "Wohnbau", ref: { type: "call", id: "cal_soon" }, amount: null, currency: null, followup_item_id: null, answered_by: null, answered_on: null, doc_id: null, case_id: null };
+    const late = { ...soon, id: "w_late", status: "overdue", title: "Late callback", expected_by: "2026-09-20", ref: { type: "call", id: "cal_late" } };
+    vi.spyOn(api, "waiting").mockResolvedValue([late, soon] as unknown as WaitingEntry[]);
+    renderWaiting();
+    const waiting = await screen.findByRole("region", { name: /^Waiting/ });
+    const tomorrow = within(waiting).getByText("tomorrow").closest("time")!;
+    expect(tomorrow).not.toHaveAttribute("data-urgency", "danger");
+    const overdue = screen.getByRole("region", { name: /Overdue/ });
+    expect(within(overdue).getByText("8 days overdue").closest("time")).toHaveAttribute("data-urgency", "danger");
+  });
+
   it("says when a letter in the thread may have answered — and closes it only when asked", async () => {
     const { srv, calls } = useMockApi();
     srv.db.upsertDocument(
@@ -95,6 +114,9 @@ describe("Waiting for page", () => {
     const user = userEvent.setup();
     renderWaiting();
     const answered = await screen.findByRole("region", { name: /A letter may have answered/ });
+    // what to check comes before what only waits (overdue first: chase it)
+    const order = screen.getAllByRole("region").map((r) => r.getAttribute("aria-labelledby"));
+    expect(order.filter((id) => id?.startsWith("waiting-"))).toEqual(["waiting-overdue", "waiting-answered", "waiting-waiting"]);
     expect(within(answered).getByText("An answer to your letter")).toBeInTheDocument();
     expect(within(answered).getByText(/Their letter “Antwort zu Ihrer Nachricht” of Thu 24 Sep is in the same thread/)).toBeInTheDocument();
     expect(within(answered).getByRole("link", { name: "Read their letter" })).toHaveAttribute("href", "/documents/doc_wohnbau_answer");

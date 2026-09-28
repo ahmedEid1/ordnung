@@ -45,7 +45,7 @@ export const routes: RouteObject[] = [
           {
             path: "week",
             lazy: page(() => import("@/pages/WeekPage")),
-            handle: { title: "This week", parent: { to: "/", label: "Today" } } satisfies RouteHandle,
+            handle: { title: "Weekly review", parent: { to: "/", label: "Today" } } satisfies RouteHandle,
           },
           { path: "letters", lazy: page(() => import("@/pages/LettersPage")), handle: { title: "Letters" } satisfies RouteHandle },
           {

@@ -917,7 +917,7 @@ async def test_week_endpoints(data_dir: Path) -> None:
         done = (await api.client.post("/api/week/done")).json()
         assert done["due"] is False and done["last_session"] == "2026-09-28"
         activity = (await api.client.get("/api/activity")).json()
-        assert activity[0]["kind"] == "week.done" and activity[0]["message"] == "Weekly session done"
+        assert activity[0]["kind"] == "week.done" and activity[0]["message"] == "Weekly review done"
         # writes need the client header like every other change
         refused = await api.client.post("/api/week/done", headers={"X-Ordnung-Client": ""})
         assert refused.status_code in (400, 403)
@@ -1095,3 +1095,36 @@ def test_the_date_looking_right_never_vouches_for_the_amount_in_pay_this_week(st
     )
     (pay,) = _step(weekly_session(store, TODAY), "pay").entries
     assert pay.note is None
+
+
+def test_an_undated_to_do_is_never_a_date_to_compare(store: Store) -> None:
+    """ "Return the form if you disagree" read from a photo has no date: *Compare with the letter* never
+    asks the person to confirm a date that isn't there (nor counts it in Today's "5 to compare") — its
+    letter is listed instead while it is marked *Please check*. A to-do with only a send-by day has a
+    day to compare."""
+    _, doc = _authority(store)
+    undated = add_item(
+        store, kind="task", title="Return Anhörungsbogen if you disagree", doc_id=doc, grounding="model_read"
+    )
+    sent_by = add_item(
+        store,
+        kind="task",
+        title="Send the form back",
+        send_by="2026-10-05",
+        doc_id=doc,
+        grounding="model_read",
+    )
+    week = weekly_session(store, TODAY)
+    check = _step(week, "check")
+    assert _refs(check) == [sent_by] and undated not in _refs(check)
+    assert check.summary == "1 thing to compare with the letter"
+
+    # only the undated to-do is unconfirmed, and its letter needs checking: the letter is the row
+    store.update_item(sent_by, grounding="user")
+    store.update_document(doc, status="needs_review")
+    (row,) = _step(weekly_session(store, TODAY), "check").entries
+    assert (row.ref.type, row.ref.id, row.date) == ("document", doc, None)
+    assert row.note == "Some details need your confirmation."
+    # nothing left to check on the letter: nothing to compare at all
+    store.update_document(doc, status="processed")
+    assert _step(weekly_session(store, TODAY), "check").entries == []
