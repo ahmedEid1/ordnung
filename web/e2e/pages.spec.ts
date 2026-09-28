@@ -71,7 +71,8 @@ test.describe("pages", () => {
     const turn = page.getByRole("article", { name: `Question: ${question}` });
     await expect(page.getByRole("main").getByRole("status")).toHaveText("Answer ready.");
     // the permit's expiry (checked against the records; the recording depends on which letters are read)
-    await expect(turn).toContainText(/30\sNov\s2026|30\.11\.2026/); // a date never breaks: no-break spaces
+    // a date never breaks (no-break spaces), and this year's leaves its year out as on every other page
+    await expect(turn).toContainText(/\b30\sNov(?!\s\d{4})|30\.11\.2026/);
     await expect(turn.getByRole("button", { name: /^Looked at \d+ things?/ })).toBeVisible();
     const toLetter = turn.locator('a[href^="/documents/"]');
     await expect(toLetter.first()).toBeVisible();

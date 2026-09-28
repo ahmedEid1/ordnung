@@ -18,7 +18,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { formatDate, formatInlineDates } from "@/lib/format";
+import { formatDate, formatInlineDates, tryParseDate, type DateInput } from "@/lib/format";
 import { MONTH_WORD } from "./markdown";
 import MONTH_WORDS from "./monthWords.json";
 import type { ToolStep } from "./stream";
@@ -60,8 +60,9 @@ function str(v: unknown): string {
   return s.length > 60 ? `${s.slice(0, 59)}…` : s;
 }
 
-function day(v: unknown): string {
-  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? formatDate(v, { style: "day" }) : "…";
+/** "28 Sep" — with its year when that isn't this year ("12 Jan 2027"), as on every other page. */
+function day(v: unknown, today?: DateInput): string {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? formatDate(v, { style: "day", today }) : "…";
 }
 
 function statusWord(v: unknown): string {
@@ -90,8 +91,11 @@ const ITEM_KINDS: Record<string, string> = {
   milestone: "milestones",
 };
 
-/** A human label for a tool call (without the backend's label). */
-export function fallbackToolLabel(name: string, input: Record<string, unknown> = {}, titleOf?: TitleLookup): string {
+/**
+ * A human label for a tool call (without the backend's label). With the app's `today` (`useTodayISO`) a
+ * date in another year shows its year; without it no date does.
+ */
+export function fallbackToolLabel(name: string, input: Record<string, unknown> = {}, titleOf?: TitleLookup, today?: DateInput): string {
   const id = (input.doc_id ?? input.id ?? input.item_or_contract_id ?? input.party_id_or_name) as unknown;
   const title = typeof id === "string" ? titleOf?.(id) : null;
   switch (name) {
@@ -107,8 +111,8 @@ export function fallbackToolLabel(name: string, input: Record<string, unknown> =
       // a kind filter names the kind, so two filtered calls ("open deadlines", "open payments") read apart
       const what = (typeof input.kind === "string" && ITEM_KINDS[input.kind]) || "to-dos & dates";
       const scope = `your ${statusWord(input.status)}${what}`;
-      if (from && to) return `Listed ${scope} from ${day(from)} to ${day(to)}`;
-      if (to) return `Listed ${scope} until ${day(to)}`;
+      if (from && to) return `Listed ${scope} from ${day(from, today)} to ${day(to, today)}`;
+      if (to) return `Listed ${scope} until ${day(to, today)}`;
       return `Listed ${scope}`;
     }
     case "list_contracts":
@@ -122,7 +126,7 @@ export function fallbackToolLabel(name: string, input: Record<string, unknown> =
     case "timeline": {
       const from = input.from ?? input.from_date;
       const to = input.to ?? input.to_date;
-      return from && to ? `Checked your timeline from ${day(from)} to ${day(to)}` : "Checked your timeline";
+      return from && to ? `Checked your timeline from ${day(from, today)} to ${day(to, today)}` : "Checked your timeline";
     }
     case "today":
       return "Checked today's date";
@@ -135,9 +139,28 @@ export function fallbackToolLabel(name: string, input: Record<string, unknown> =
   }
 }
 
-/** The result next to a finished step ("Today is 2026-09-28" → "Today is 28 Sep 2026"), dates in the app's style. */
-export function toolResultText(result: string): string {
-  return formatInlineDates(result);
+/** A date written out with its year ("Thu 15 Oct 2026", "14 Nov 2026"; plain or no-break spaces). */
+const DATE_WITH_YEAR =
+  /\b((?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[ \u00a0])?\d{1,2}[ \u00a0](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec))[ \u00a0](\d{4})\b/g;
+
+/**
+ * "Thu 15 Oct 2026" → "Thu 15 Oct" when 2026 is the year of the app's `today`, as every other page writes
+ * this year's dates (UI audit round 2: the backend's labels and the answers write dates out in full). A date
+ * in another year keeps it; without `today` nothing changes. Display only: a copied answer is as stored.
+ */
+export function withoutThisYear(text: string, today?: DateInput): string {
+  const year = today ? tryParseDate(today)?.getFullYear() : undefined;
+  if (!year) return text;
+  return text.replace(DATE_WITH_YEAR, (whole, date: string, y: string) => (Number(y) === year ? date : whole));
+}
+
+/**
+ * The result next to a finished step, dates in the app's style. With the app's `today` this year's dates
+ * leave the year out, as on every other page ("Due 2026-10-15" → "Due Thu 15 Oct"; UI audit round 2);
+ * without it an ISO date gets its year ("Due Thu 15 Oct 2026").
+ */
+export function toolResultText(result: string, today?: DateInput): string {
+  return withoutThisYear(formatInlineDates(result, today), today);
 }
 
 const SHORT_DATE = /\b(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) )?\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b(?: \d{4})?/g;
@@ -152,11 +175,13 @@ export function curlyQuotes(text: string): string {
   return text.replace(/"([^"\n]*)"/g, "“$1”");
 }
 
-/** The chip text for a step: the backend label when present, else the fallback. */
-export function toolLabel(step: Pick<ToolStep, "name" | "input" | "label">, titleOf?: TitleLookup): string {
-  // the backend's label may carry ISO dates ("from 2026-09-28 to 2026-10-26") and straight quotes
-  // ('Searched your letters for "Kündigung"'); the fallback's are curly: one style in the trace
-  return step.label ? curlyQuotes(formatInlineDates(step.label)) : fallbackToolLabel(step.name, step.input, titleOf);
+/** The chip text for a step: the backend label when present, else the fallback; `today` as for {@link toolResultText}. */
+export function toolLabel(step: Pick<ToolStep, "name" | "input" | "label">, titleOf?: TitleLookup, today?: DateInput): string {
+  // the backend's label may carry ISO or written-out dates ("from 2026-09-28 to Mon 26 Oct 2026") and
+  // straight quotes ('Searched your letters for "Kündigung"'); the fallback's are curly: one style in the trace
+  return step.label
+    ? curlyQuotes(withoutThisYear(formatInlineDates(step.label, today), today))
+    : fallbackToolLabel(step.name, step.input, titleOf, today);
 }
 
 /**

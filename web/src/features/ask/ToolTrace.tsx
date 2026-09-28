@@ -13,11 +13,11 @@ import { TOOL_ICONS, toolLabel, toolResultText, traceSummary, unbreakDates, type
  * "until 1…" hides the date); the result goes on a muted second line up to `lg`, and follows the label on
  * its line from `lg` up when there is room. The icon and the done mark sit at the label's first line.
  */
-function StepChip({ step, titleOf }: { step: ToolStep; titleOf?: TitleLookup }) {
+function StepChip({ step, titleOf, today }: { step: ToolStep; titleOf?: TitleLookup; today?: string }) {
   const Icon = TOOL_ICONS[step.name] ?? Wrench;
   // a date or a law ("§ 556 Abs. 3 BGB") never splits across two lines (UI audit round 1)
-  const result = step.done && step.result ? keepCitations(unbreakDates(toolResultText(step.result))) : null;
-  const label = toolLabel(step, titleOf);
+  const result = step.done && step.result ? keepCitations(unbreakDates(toolResultText(step.result, today))) : null;
+  const label = toolLabel(step, titleOf, today);
   return (
     <>
       <span
@@ -69,9 +69,10 @@ function StepChip({ step, titleOf }: { step: ToolStep; titleOf?: TitleLookup }) 
 /**
  * The visible tool trace ("Searched your letters for “Kündigung”", "Opened …"): live while the
  * answer streams, folded into "Looked at 3 things in your records" once it is done — a single step
- * is simply shown (a toggle that opens one line is no shortcut).
+ * is simply shown (a toggle that opens one line is no shortcut). `today` is the app's (`useTodayISO`): this
+ * year's dates leave the year out, as on every other page.
  */
-export function ToolTrace({ steps, live, titleOf }: { steps: ToolStep[]; live: boolean; titleOf?: TitleLookup }) {
+export function ToolTrace({ steps, live, titleOf, today }: { steps: ToolStep[]; live: boolean; titleOf?: TitleLookup; today?: string }) {
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
   if (!steps.length) return null;
@@ -113,7 +114,7 @@ export function ToolTrace({ steps, live, titleOf }: { steps: ToolStep[]; live: b
                 // (review round 4 of phase 2)
                 className="flex min-w-0 items-start gap-2 text-[13px] leading-5"
               >
-                <StepChip step={s} titleOf={titleOf} />
+                <StepChip step={s} titleOf={titleOf} today={today} />
               </motion.li>
             ))}
           </motion.ol>

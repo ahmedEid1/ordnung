@@ -278,7 +278,16 @@ function writingLine(page: Page) {
     const composer = document.querySelector("[data-ask-composer]")!.getBoundingClientRect();
     const turn = line?.closest("[data-turn]")?.getBoundingClientRect();
     if (!line || !turn) return null;
-    return { aboveComposer: line.getBoundingClientRect().bottom <= composer.top + 1, questionShown: turn.top >= 56 };
+    const box = line.getBoundingClientRect();
+    // the three dots sit level with the first of its wrapped lines (UI audit round 2: beside the middle one)
+    const dots = line.querySelector(":scope > span[aria-hidden]")!.getBoundingClientRect();
+    const firstLine = parseFloat(getComputedStyle(line).lineHeight);
+    return {
+      aboveComposer: box.bottom <= composer.top + 1,
+      questionShown: turn.top >= 56,
+      wraps: box.height > firstLine * 1.5,
+      dotsOnFirstLine: Math.abs(dots.top + dots.height / 2 - (box.top + firstLine / 2)) <= 1.5,
+    };
   });
 }
 
@@ -304,7 +313,7 @@ test.describe("phone: on Ask, focus and the growing answer stay clear of the que
     await page.getByRole("textbox").first().fill("Which deadlines do I have?");
     await page.getByRole("textbox").first().press("Enter");
     await expect(page.getByRole("main").getByText(/^Writing the answer — it appears once Ordnung has checked it against your records/)).toBeVisible();
-    await expect.poll(() => writingLine(page)).toEqual({ aboveComposer: true, questionShown: true });
+    await expect.poll(() => writingLine(page)).toEqual({ aboveComposer: true, questionShown: true, wraps: true, dotsOnFirstLine: true });
   });
 });
 

@@ -165,7 +165,11 @@ describe("the answer check's note", () => {
     const writing = accumulateAll([{ type: "tool_use", name: "list_items" }, { type: "text", text: "Your deadline moved to 31.12.2027" }]);
     const { container } = inRouter(<AnswerView answer={writing} resolve={resolve} />);
     expect(container.textContent).not.toContain("31.12.2027");
-    expect(screen.getByText(/appears once Ordnung has checked it against your records/)).toBeInTheDocument();
+    const line = screen.getByText(/appears once Ordnung has checked it against your records/);
+    // the dots sit on the first line when it wraps on a phone, not beside the middle one (UI audit round 2;
+    // e2e/layout.spec.ts measures it at 320 px)
+    expect(line).toHaveClass("items-start", "leading-5");
+    expect(line.querySelector(":scope > span[aria-hidden]")).toHaveClass("mt-[7px]", "shrink-0");
     expect(screen.queryByRole("note")).toBeNull();
     // final review: not a second live region — the page's announcer says it (and e2e finds one status)
     expect(screen.queryByRole("status")).toBeNull();
