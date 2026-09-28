@@ -84,6 +84,7 @@ _UNSUPPORTED = (
 
 _TOO_LARGE_IMAGE = "This image is too large to process safely."
 _PHOTO_FORMATS = ("JPEG", "PNG", "WEBP", "HEIF")  # only these decoders ever see an upload
+TOO_DEEP = "This e-mail is nested too deeply to be read. Save the letter inside it as a PDF and add that."
 
 
 class IntakeError(ValueError):
@@ -189,7 +190,11 @@ def normalise_upload(data: bytes, filename: str) -> tuple[bytes, str, str]:
         _check_pdf(data)
         return data, mime, name
     if mime in TEXT_TYPES:
-        _check_text_pages(len(layout_text(text_document(data, mime).text, max_pages=MAX_PAGES)))
+        try:
+            text = text_document(data, mime).text
+        except RecursionError:  # an e-mail nested thousands of levels deep (the parser recurses)
+            raise IntakeError(TOO_DEEP) from None
+        _check_text_pages(len(layout_text(text, max_pages=MAX_PAGES)))
         return data, mime, name
     image = _load_image(data)
     if mime == "image/jpeg":
@@ -392,6 +397,16 @@ def _check_text_pages(pages: int) -> None:
         raise IntakeError(
             f"This text is longer than {MAX_PAGES} pages; the limit is {MAX_PAGES} pages per document."
         )
+
+
+def image_size(data: bytes) -> tuple[int, int] | None:
+    """A photo's width and height from its header, without decoding it (``None``: not a photo Ordnung
+    reads, or damaged)."""
+    try:
+        with Image.open(io.BytesIO(data), formats=_PHOTO_FORMATS) as image:
+            return image.size
+    except (UnidentifiedImageError, OSError, ValueError, SyntaxError, Image.DecompressionBombError):
+        return None
 
 
 def _load_image(data: bytes) -> Image.Image:

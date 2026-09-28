@@ -372,6 +372,12 @@ describe("words", () => {
     );
     expect(agendaSentence([], [], TODAY)).toMatch(/^Nothing needs you right now/);
   });
+
+  it("never says 'nothing needs you' while letters from the folder wait unread", () => {
+    expect(agendaSentence([], [], TODAY, 2)).toBe("Nothing due from the letters that were read. 2 letters from your folder wait for you — not read yet.");
+    const tm = actionFromItem(item({ kind: "payment", title: "Pay TechMarkt reminder", due_date: "2026-09-30", amount: 94.99 }), ctx)!;
+    expect(agendaSentence([tm], [], TODAY, 1)).toMatch(/by Wednesday\. One letter from your folder waits for you — not read yet\.$/);
+  });
 });
 
 describe("Ideas that came with new mail", () => {

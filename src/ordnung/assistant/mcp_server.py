@@ -830,7 +830,9 @@ def _key_fact(fact: KeyFact) -> dict[str, Any]:
 
 
 def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]:
-    """Dates, status and flags are the record; the amount only with verified evidence (ADR 0003).
+    """Dates, status and flags are the record; the amount only with verified evidence (ADR 0003). An
+    e-mail's payment its attached bill asks for too says so (``set_aside``, the bill's id in
+    ``set_aside_by``): it is not a second payment.
 
     Title, action, consequence and location are the model's words from the letter; an amount read by
     AI from a photo or not found on the page is letter text too (``amount_unverified`` says so).
@@ -866,6 +868,9 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
         "scam_warning": bool(scam) or None,
         "payment_note": payment_note(item),
     }
+    bill = ledger.covering_attachments().get(item.id)
+    if bill is not None:  # the pay-once relation Today and the totals follow (ADR 0008: code-computed)
+        row.update(set_aside=SET_ASIDE_ATTACHED, set_aside_by=bill.id)
     if item.amount is not None:
         note = _amount_note(item.grounding)
         if note is None:
@@ -916,6 +921,10 @@ NUMBERS_NOTE = (
     "ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no "
     "digit was misread — it does not prove the number is the person's), fails (compare it with the "
     "letter) or none (no public check for this kind of number)."
+)
+SET_ASIDE_ATTACHED = (
+    "Not a payment of its own: the bill that came attached to this e-mail (set_aside_by) asks for the same "
+    "payment, so it is counted and paid once, as the bill says — never add the two up."
 )
 TERMS_UNVERIFIED = (
     "The terms and cost were read by AI from a photo or could not be found in the letter, so they are "

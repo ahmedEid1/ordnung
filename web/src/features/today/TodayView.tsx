@@ -18,6 +18,7 @@ import { RecentLetters } from "./RecentLetters";
 import { SecretaryNote } from "./SecretaryNote";
 import { CalendarCard, PLEASE_CHECK_SHOWN, PleaseCheckCard, repeatsPleaseCheck } from "./SideCards";
 import { TopThree } from "./TopThree";
+import { WaitingCard } from "./WaitingCard";
 import { stagger } from "./motion";
 import { agendaSentence, toPayTotals } from "./selection";
 import { useTodayData } from "./useTodayData";
@@ -151,8 +152,9 @@ function FirstRun() {
 }
 
 /**
- * The Today page: greeting, the secretary's note, Top 3 this week, "Coming up" with the "Please
- * check" and calendar cards beside it, Ideas, life at a glance and recent letters (SPEC §14.1).
+ * The Today page: greeting, the secretary's note, the letters waiting from the watched folder (when
+ * any do), Top 3 this week, "Coming up" with the "Please check" and calendar cards beside it, Ideas,
+ * life at a glance and recent letters (SPEC §14.1).
  */
 export function TodayView() {
   const data = useTodayData();
@@ -189,7 +191,7 @@ export function TodayView() {
   const { dash, derived, partyById, reviewDocs } = data;
   const name = dash.greeting_name || profileName;
 
-  if (!dash.stats.documents && !dash.recent_documents.length && !derived.candidates.length && !dash.stats.contracts) {
+  if (!dash.stats.documents && !dash.recent_documents.length && !derived.candidates.length && !dash.stats.contracts && !dash.waiting) {
     return (
       <motion.div variants={stagger} initial="hidden" animate="show" className="flex flex-col gap-8 sm:gap-10">
         <Greeting name={name} today={derived.day} hour={hour} />
@@ -198,7 +200,7 @@ export function TodayView() {
     );
   }
 
-  const fallback = agendaSentence(derived.top, derived.nextUp ? [derived.nextUp] : [], derived.day);
+  const fallback = agendaSentence(derived.top, derived.nextUp ? [derived.nextUp] : [], derived.day, dash.waiting);
   // an Idea that only says "Please check: <letter>" repeats the card that lists that letter
   const listed = new Set(reviewDocs.slice(0, PLEASE_CHECK_SHOWN).map((d) => d.id));
   const ideas = [...derived.ideas.shown, ...derived.ideas.more].filter((s) => !repeatsPleaseCheck(s, listed));
@@ -209,10 +211,11 @@ export function TodayView() {
     <motion.div variants={stagger} initial="hidden" animate="show" className="@container flex flex-col gap-8 sm:gap-10">
       <div className="flex flex-col gap-6">
         <Greeting name={name} today={derived.day} money={dash.money} toPay={toPayTotals(derived.candidates)} hour={hour} />
-        <SecretaryNote fallback={fallback} />
+        <SecretaryNote fallback={fallback} waiting={dash.waiting} />
+        <WaitingCard count={dash.waiting} />
       </div>
 
-      <TopThree actions={derived.top} next={derived.nextUp} partyById={partyById} today={derived.day} />
+      <TopThree actions={derived.top} next={derived.nextUp} partyById={partyById} today={derived.day} waiting={dash.waiting} />
 
       <WeeklyPrompt />
 

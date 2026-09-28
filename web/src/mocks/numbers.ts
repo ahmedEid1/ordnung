@@ -89,9 +89,26 @@ function stillThere(db: MockDb, entry: WeekEntry, step?: WeekStep["id"]): boolea
 
 const transfers = (e: WeekEntry) => e.date_role !== "collected" && e.date_role !== "at_appointment";
 
+/**
+ * A letter that waited for the visitor (from the watched folder) and was answered since — "Keep private"
+ * in the demo: its row says what `week.py` says of it now (kept private and never read: look through it).
+ */
+function followLetter(db: MockDb, entry: WeekEntry): WeekEntry {
+  if (entry.ref.type !== "document" || entry.status !== "held") return entry;
+  const doc = db.document(entry.ref.id);
+  if (!doc || doc.status === "held") return entry;
+  const unread = doc.ai_private && !doc.ai_processed_at;
+  return {
+    ...entry,
+    status: doc.status,
+    note: unread ? "Kept private — not read, so look through it yourself." : "Nothing to do — filed.",
+    tone: unread ? "neutral" : "ok",
+  };
+}
+
 function followStep(db: MockDb, step: WeekStep): WeekStep {
-  const entries = step.entries.filter((e) => stillThere(db, e, step.id));
-  if (entries.length === step.entries.length) return step;
+  const entries = step.entries.filter((e) => stillThere(db, e, step.id)).map((e) => followLetter(db, e));
+  if (entries.length === step.entries.length) return { ...step, entries };
   const total =
     step.id === "pay" ? entries.reduce((sum, e) => sum + (transfers(e) && (e.currency ?? "EUR") === "EUR" ? (e.amount ?? 0) : 0), 0) : step.total;
   return {

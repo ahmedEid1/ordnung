@@ -749,6 +749,23 @@ def test_new_letters_are_those_since_the_last_session(store: Store, ids: dict[st
     assert new.entries[0].note == "Nothing to do — filed." and new.entries[0].tone == "ok"
 
 
+def test_a_letter_waiting_or_kept_private_unread_is_never_filed(store: Store, ids: dict[str, str]) -> None:
+    """A letter from the watched folder that waits for the person's answer, and one kept private that no
+    model read, need the person: never "Nothing to do — filed." (the letter page says the same)."""
+    _all_created(store, _stamp(TODAY - timedelta(days=9)))
+    held = add_doc(store, "held-scan", status="held", ai_private=True)
+    private = add_doc(store, "kept-private", ai_private=True)
+    filed = add_doc(store, "filed", kind="invoice", title="Filed")
+    for doc, time in ((held, "09:00:00"), (private, "10:00:00"), (filed, "11:00:00")):
+        _created(store, doc, _stamp(TODAY - timedelta(days=1), time))
+    new = _step(weekly_session(store, TODAY), "new")
+    assert _refs(new) == [private, held, filed]  # the two that need the person first
+    notes = {entry.ref.id: (entry.note, entry.tone) for entry in new.entries}
+    assert notes[held] == ("Waiting for you — read it with Claude or keep it private.", "warn")
+    assert notes[private] == ("Kept private — not read, so look through it yourself.", "neutral")
+    assert notes[filed] == ("Nothing to do — filed.", "ok")
+
+
 def test_the_first_session_looks_back_a_week(store: Store, ids: dict[str, str]) -> None:
     _all_created(store, _stamp(TODAY - timedelta(days=8)))
     recent = add_doc(store, "recent", kind="invoice", title="Recent")

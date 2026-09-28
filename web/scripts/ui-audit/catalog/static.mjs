@@ -81,6 +81,59 @@ export async function staticCatalog({ webDir }) {
     if (await c.exists(trace)) await c.click(trace.last());
     await settle(c.page);
   });
+  // the watched folder (SPEC § 8.1): Sam's ~/Scans brought in a scan and an e-mailed bill that wait
+  add("settings-folder", "/settings?section=folder", "Static demo: Settings → Watched folder (watching, letters waiting, the last files).");
+  add("settings-folder-auto-read", "/settings?section=folder", "Static demo: Watched folder with “Read new files straight away” switched on, unsaved.", (c) =>
+    c.click(inMain(c.page).getByRole("switch", { name: /Read new files with Claude straight away/ })),
+  );
+  add("settings-folder-refused", "/settings?section=folder", "Static demo: a relative folder path refused, the reason under the field.", async (c) => {
+    const field = inMain(c.page).getByLabel("Folder", { exact: true });
+    await field.fill("");
+    await c.type(field, "Scans");
+    await c.click(inMain(c.page).getByRole("button", { name: "Save changes" }), { settleAfter: false });
+    await c.wait(500);
+    await settle(c.page);
+  });
+  for (const id of new Set(mockIds(webDir, "folder.ts", "doc").filter((x) => x.startsWith("doc_folder_")))) {
+    add(id.replace(/_/g, "-"), `/documents/${id}`, `Static demo: the waiting letter ${id} (from the watched folder).`);
+  }
+  add("inbox-waiting-read", "/inbox", "Static demo: “Read these 3” → the online demo can't read new letters (toast).", async (c) => {
+    await c.click(inMain(c.page).getByRole("button", { name: /^Read these \d+ with Claude/ }), { settleAfter: false });
+    await c.wait(600);
+    await settle(c.page, { idle: false });
+  });
+  add("inbox-waiting-kept-private", "/inbox", "Static demo: “Keep private” for the waiting letters (toast with Undo; the group is gone).", async (c) => {
+    await c.click(inMain(c.page).getByRole("button", { name: "Keep private" }), { settleAfter: false });
+    await c.wait(600);
+    await settle(c.page, { idle: false });
+  });
+  add("doc-folder-scan-kept-private", "/documents/doc_folder_scan", "Static demo: “Keep private” on the waiting scan's page — the toast, focus on the verdict, “Not read” with Undo.", async (c) => {
+    await c.click(inMain(c.page).getByRole("button", { name: "Keep private" }), { settleAfter: false });
+    await c.wait(600);
+    await settle(c.page, { idle: false });
+  });
+  add("doc-folder-scan-kept-undo", "/documents/doc_folder_scan", "Static demo: “Keep private”, then “Undo “Keep private”” on the letter's page — it waits again, focus on the waiting card's title.", async (c) => {
+    await c.click(inMain(c.page).getByRole("button", { name: "Keep private" }), { settleAfter: false });
+    await c.wait(600);
+    await c.click(inMain(c.page).getByRole("button", { name: "Undo “Keep private”" }), { settleAfter: false });
+    await c.wait(600);
+    await settle(c.page, { idle: false });
+  });
+  add("inbox-waiting-one", "/documents/doc_folder_mail", "Static demo: one letter still waits (the e-mail was kept private with its bill): the Inbox's group speaks of one.", async (c) => {
+    await c.click(inMain(c.page).getByRole("button", { name: "Keep private" }), { settleAfter: false });
+    await c.wait(600);
+    // in the page (the mock database lives there): a reload would start the demo over
+    await c.click(c.page.getByRole("link", { name: /^Inbox/ }).first());
+    await c.page.getByRole("region", { name: /From your folder/ }).waitFor({ timeout: 10_000 });
+    await settle(c.page);
+  });
+  add("search-waiting", "/", "Static demo: the empty search sheet on phones — a waiting letter says it waits, with the day it came.", async (c) => {
+    const open = c.page.getByRole("button", { name: "Search letters" });
+    if (await c.exists(open)) await c.click(open.first());
+    else await c.click(c.page.getByRole("combobox", { name: "Search your letters" }).first());
+    await c.wait(400);
+    await settle(c.page, { idle: false });
+  });
   add("dev-ui", "/dev/ui", "Static demo: the design-system gallery with its mock examples.");
   add("dev-ui-popover", "/dev/ui", "Static demo: gallery receipt popover (“Why this date? (phone contract)”).", (c) =>
     c.click(inMain(c.page).getByRole("button", { name: /Why this date\? \(phone contract\)/ })),
@@ -237,7 +290,11 @@ export async function staticCatalog({ webDir }) {
 
   return {
     phases: [
-      { name: "static", parallel: true, states: S.map((s) => ({ ...s, pinToasts: s.id.endsWith("unavailable") })) },
+      {
+        name: "static",
+        parallel: true,
+        states: S.map((s) => ({ ...s, pinToasts: s.id.endsWith("unavailable") || s.id.startsWith("static-inbox-waiting-") || s.id.endsWith("-kept-private") })),
+      },
       { name: "high-stakes", parallel: true, states: hs },
     ],
   };

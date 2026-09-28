@@ -10,6 +10,7 @@ import {
   Check,
   CircleCheckBig,
   Clock,
+  EyeOff,
   History,
   Info,
   Landmark,
@@ -19,10 +20,11 @@ import {
   Scale,
   ShieldAlert,
   TriangleAlert,
+  Undo2,
   type LucideIcon,
 } from "lucide-react";
 import type { DocumentDetail, DocumentKind, DraftKind, Item, PartyKind, Suggestion } from "@/api/types";
-import { useUpdateSuggestion } from "@/api/hooks";
+import { useUpdateSuggestion, useWaitAgain } from "@/api/hooks";
 import { isDirectDebit } from "@/lib/payments";
 import { toast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
@@ -73,6 +75,8 @@ import { adviceFor, WhyThisDate } from "./WhyThisDate";
 import { GermanTerms } from "@/lib/germanTerms";
 import { keepCitations, protectRefs } from "@/lib/glue";
 import { DEMO_NOTE } from "@/mocks/mode";
+import { AnswerButton } from "@/features/inbox/AnswerButton";
+import { focusFirstHeading } from "./HeldCard";
 
 const countdownTone: Record<Urgency, string> = {
   overdue: "bg-danger text-white dark:text-canvas",
@@ -158,6 +162,52 @@ function CardLink({ text, docId }: { text: string; docId: string }) {
         {SEE_THE_CARD}
       </a>
       {text.slice(at + SEE_THE_CARD.length)}
+    </>
+  );
+}
+
+/**
+ * A private letter nobody read: Ordnung can't say what it asks, so it never says "nothing to do".
+ * One kept private while it waited for the person (the server's `can_wait_again`) can wait again (its
+ * "Keep private" undone): from there the person can let Claude read it. The waiting card then takes
+ * this card's place, so focus moves to its heading; a failed undo leaves focus on the button.
+ */
+function NotRead({ doc, canWaitAgain }: { doc: DocumentDetail["document"]; canWaitAgain: boolean }) {
+  const wait = useWaitAgain();
+  return (
+    <>
+      <p className="flex items-start gap-2 text-[16px] font-medium leading-snug text-ink">
+        <EyeOff className="mt-0.5 size-[18px] shrink-0 text-muted" aria-hidden />
+        <span>Not read — Ordnung can't tell you what this letter asks, or by when.</span>
+      </p>
+      <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">
+        It was kept private, so none of its dates, amounts or deadlines were read. Look through it yourself.
+      </p>
+      {canWaitAgain ? (
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <AnswerButton
+            size="sm"
+            icon={Undo2}
+            busy={wait.isPending}
+            onClick={() =>
+              wait
+                .mutateAsync([doc.id])
+                .then((res) => {
+                  if (!res.documents.length) {
+                    toast({ title: "It can't wait again", description: "Only a letter kept private from your folder, and not read since, can.", tone: "warn" });
+                    return;
+                  }
+                  toast({ title: "It waits for you again", description: "Choose “Read it” to have Claude read it.", tone: "info" });
+                  focusFirstHeading();
+                })
+                .catch(() => undefined) // the request's own error toast says what went wrong
+            }
+          >
+            Undo “Keep private”
+          </AnswerButton>
+          <span className="text-[13px] text-muted">It goes back to the letters waiting for you, where you can let Claude read it.</span>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -394,6 +444,8 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
               </p>
             </div>
           </div>
+        ) : doc.ai_private && !doc.ai_processed_at ? (
+          <NotRead doc={doc} canWaitAgain={detail.can_wait_again} />
         ) : (
           <p className="flex items-start gap-2 text-[15px] font-medium leading-snug text-ink">
             <CircleCheckBig className="mt-0.5 size-[18px] shrink-0 text-ok" aria-hidden />

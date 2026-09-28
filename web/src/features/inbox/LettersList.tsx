@@ -96,7 +96,8 @@ export function LettersList({
   );
 }
 
-function Thumb({ doc }: { doc: Document }) {
+/** A small picture of the letter's first page (a lock on private ones). */
+export function Thumb({ doc }: { doc: Document }) {
   const reading = isReading(doc);
   return (
     // a sheet of paper, dimmed in dark mode so 20 white pages don't glare off the dark card

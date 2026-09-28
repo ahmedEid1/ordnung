@@ -26,6 +26,7 @@ import type {
   DocumentPatch,
   DraftCreate,
   DraftPatch,
+  HeldResult,
   ItemCreate,
   ItemListParams,
   ItemPatch,
@@ -91,6 +92,7 @@ export const qk = {
   usage: ["usage"] as const,
   rules: ["rules"] as const,
   jobs: ["jobs"] as const,
+  folder: ["folder"] as const,
   tour: ["demo", "tour"] as const,
   mail: ["demo", "mail"] as const,
   questions: ["demo", "questions"] as const,
@@ -113,6 +115,7 @@ const LEDGER_PREFIXES = [
   qk.drafts.all,
   qk.activity,
   qk.jobs,
+  qk.folder,
 ] as const;
 
 /** Invalidate every ledger-derived query (documents, items, contracts, views, ideas…). */
@@ -192,7 +195,10 @@ export function useUpdateSettings() {
   return useMutation({
     mutationFn: (s: SettingsPatch) => api.updateSettings(s),
     meta: { errorTitle: "Couldn't save your settings" },
-    onSuccess: (settings) => qc.setQueryData(qk.settings, settings),
+    onSuccess: (settings) => {
+      qc.setQueryData(qk.settings, settings);
+      void qc.invalidateQueries({ queryKey: qk.folder }); // a new folder restarts the watcher
+    },
   });
 }
 
@@ -294,6 +300,63 @@ export function useReadLetterAgain() {
     mutationFn: (id: string) => api.reprocessDocument(id),
     meta: { silent: true },
     onSuccess: () => invalidateLedger(qc),
+  });
+}
+
+// ------------------------------------------------------------------------------------------------
+// The watched folder
+// ------------------------------------------------------------------------------------------------
+
+/** `GET /folder`: the watched folder's state, how many letters wait and the last files it brought in. */
+export function useFolder(opts: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: qk.folder, queryFn: api.folder, staleTime: 30_000, enabled: opts.enabled });
+}
+
+/** The most letters one answer request names (the API's limit); more go in several requests. */
+export const HELD_CHUNK = 500;
+
+/**
+ * An answer for many waiting letters, sent `HELD_CHUNK` ids at a time and merged into one result
+ * (a folder of old scans can hold more than one request may name). Stops at the first failure.
+ */
+export async function answerInChunks(ids: readonly string[], send: (chunk: string[]) => Promise<HeldResult>): Promise<HeldResult> {
+  const merged: HeldResult = { documents: [], jobs: [], skipped: [] };
+  for (let at = 0; at < ids.length; at += HELD_CHUNK) {
+    const res = await send(ids.slice(at, at + HELD_CHUNK));
+    merged.documents.push(...res.documents);
+    merged.jobs.push(...res.jobs);
+    merged.skipped.push(...res.skipped);
+  }
+  return merged;
+}
+
+/** "Read these N": the waiting letters (as shown) may be sent to Claude; they are queued for reading. */
+export function useReadHeld() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (docIds: string[]) => answerInChunks(docIds, api.readHeld),
+    meta: { errorTitle: "Couldn't start reading them" },
+    onSettled: () => invalidateLedger(qc), // a failure halfway still answered the first ones
+  });
+}
+
+/** "Keep private": the waiting letters stay on this computer and are never sent to Claude. */
+export function useKeepHeldPrivate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (docIds: string[]) => answerInChunks(docIds, api.keepHeldPrivate),
+    meta: { errorTitle: "Couldn't keep them private" },
+    onSettled: () => invalidateLedger(qc),
+  });
+}
+
+/** Undo "Keep private" (the toast's action): those letters wait for the person again. */
+export function useWaitAgain() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (docIds: string[]) => answerInChunks(docIds, api.waitAgain),
+    meta: { errorTitle: "Couldn't undo that" },
+    onSettled: () => invalidateLedger(qc),
   });
 }
 

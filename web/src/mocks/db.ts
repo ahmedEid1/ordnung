@@ -25,6 +25,7 @@ import type {
   AppSettings,
   Health,
   Area,
+  FolderPickup,
 } from "@/api/types";
 import { addDays, differenceInCalendarDays, parseISO, format } from "date-fns";
 import { PARTIES, TRAY_ONLY_PARTIES } from "./data/parties";
@@ -35,6 +36,7 @@ import { SUGGESTIONS, TRAY_SUGGESTIONS } from "./data/suggestions";
 import { DRAFTS } from "./data/drafts";
 import { ACTIVITY, HEALTH, MAIL_TRAY, PROFILE, SETTINGS, TOUR, TRAY_DOC } from "./data/system";
 import { LETTERS } from "./data/letters";
+import { FOLDER_DOCUMENTS, FOLDER_LETTERS, FOLDER_RECENT } from "./data/folder";
 import { renderLetter, type RenderedLetter } from "./pages";
 import { TODAY } from "./data/constants";
 import { isDirectDebit, isIncomingMoney } from "@/lib/payments";
@@ -47,7 +49,7 @@ const rendered = new Map<string, RenderedLetter>();
 /** Rendered page images + layout for a document (cached). */
 export function letterFor(docId: string): RenderedLetter | null {
   if (rendered.has(docId)) return rendered.get(docId)!;
-  const spec = LETTERS[docId];
+  const spec = LETTERS[docId] ?? FOLDER_LETTERS[docId];
   if (!spec) return null;
   const r = renderLetter(spec);
   rendered.set(docId, r);
@@ -95,6 +97,8 @@ export interface MockState {
   lastCalendarExport: string;
   /** documents uploaded in this session (for page images of unknown files) */
   uploads: Record<string, { name: string; objectUrl?: string }>;
+  /** the last files the watched folder brought in, newest first */
+  folderRecent: FolderPickup[];
 }
 
 export class MockDb {
@@ -107,7 +111,7 @@ export class MockDb {
       settings: clone(SETTINGS),
       parties: clone(PARTIES.filter((p) => !TRAY_ONLY_PARTIES.has(p.id))),
       cases: clone(CASES),
-      documents: clone(DOCUMENTS).map(resolveDoc),
+      documents: clone([...DOCUMENTS, ...FOLDER_DOCUMENTS]).map(resolveDoc),
       items: resolveAll(clone(ITEMS)),
       contracts: resolveAll(clone(CONTRACTS)),
       suggestions: clone(SUGGESTIONS),
@@ -118,6 +122,7 @@ export class MockDb {
       tour: clone(TOUR),
       lastCalendarExport: "2026-09-20T16:00:00Z",
       uploads: {},
+      folderRecent: clone(FOLDER_RECENT),
     };
   }
 
@@ -281,8 +286,13 @@ export class MockDb {
       },
       areas: this.areas(),
       suggestions: this.state.suggestions.filter((s) => s.status === "new").sort((a, b) => prio(b.priority) - prio(a.priority)),
-      // like views.py: newest first by the day each letter is listed under (arrived, else dated, else added)
-      recent_documents: [...this.liveDocuments()].sort((a, b) => recentDay(b).localeCompare(recentDay(a)) || b.id.localeCompare(a.id)).slice(0, 6),
+      // like views.py: newest first by the day each letter is listed under (arrived, else dated, else added);
+      // letters waiting from the watched folder are not filed yet — Today counts them apart
+      recent_documents: [...this.liveDocuments()]
+        .filter((d) => d.status !== "held")
+        .sort((a, b) => recentDay(b).localeCompare(recentDay(a)) || b.id.localeCompare(a.id))
+        .slice(0, 6),
+      waiting: this.liveDocuments().filter((d) => d.status === "held").length,
       stats: {
         documents: this.liveDocuments().length,
         open_items: this.openItems().length,

@@ -28,7 +28,9 @@ how many it left out:
    act on today (a missed send-by day included), not payments (step 3) nor replies awaited (step 5).
 1. *New since the last session* (the first time: *new in the last 7 days*) — letters that entered Ordnung
    after the last session's moment (without one: in the last 7 days), letters that need the person first
-   (Please check, open or snoozed to-dos, scam signs, not read yet), then newest first.
+   (Please check, open or snoozed to-dos, scam signs, not read yet — being read, waiting for the person's
+   answer from the watched folder, or kept private and never read, which is never "nothing to do"), then
+   newest first.
 2. *Please check* — values Ordnung could not confirm against the letter
    (:func:`~ordnung.secretary.triggers.unconfirmed_reason`: not found in the letter, read by AI from a
    photo, or not matching its sentence — never once the person confirmed it) of open to-dos still
@@ -473,6 +475,11 @@ def _act_now(ledger: Ledger) -> tuple[WeekStep | None, set[str]]:
     return _step("now", "Act now", rows, " · ".join(parts)), held
 
 
+def _never_read(doc: Document) -> bool:
+    """A letter kept private that no model read: Ordnung can't say what it asks, so never "nothing to do"."""
+    return doc.ai_private and not doc.ai_processed_at
+
+
 def _new_letters(ledger: Ledger, window: _Window, *, first: bool) -> WeekStep:
     pending = pending_items(ledger)
     fresh = [doc for doc in ledger.documents.values() if window.after(doc.created_at)]
@@ -492,11 +499,23 @@ def _new_letters(ledger: Ledger, window: _Window, *, first: bool) -> WeekStep:
             return _doc_entry(ledger, doc, note="Still being read.")
         if doc.status == "failed":
             return _doc_entry(ledger, doc, note="Couldn't be read — open it to try again.", tone="warn")
-        note = f"{_count(count, 'open to-do')}" if count else "Nothing to do — filed."
-        return _doc_entry(ledger, doc, note=note, tone="neutral" if count else "ok")
+        if doc.status == "held":
+            return _doc_entry(
+                ledger, doc, note="Waiting for you — read it with Claude or keep it private.", tone="warn"
+            )
+        if count:
+            return _doc_entry(ledger, doc, note=_count(count, "open to-do"))
+        if _never_read(doc):
+            return _doc_entry(ledger, doc, note="Kept private — not read, so look through it yourself.")
+        return _doc_entry(ledger, doc, note="Nothing to do — filed.", tone="ok")
 
     def needs_you(doc: Document) -> bool:
-        return bool(ledger.scam_reasons(doc)) or doc.status != "processed" or open_count(doc) > 0
+        return (
+            bool(ledger.scam_reasons(doc))
+            or doc.status != "processed"
+            or open_count(doc) > 0
+            or _never_read(doc)
+        )
 
     newest = sorted(fresh, key=lambda doc: (doc.created_at, doc.id), reverse=True)
     ordered = [doc for doc in newest if needs_you(doc)] + [doc for doc in newest if not needs_you(doc)]

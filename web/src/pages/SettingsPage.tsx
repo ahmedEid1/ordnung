@@ -12,6 +12,7 @@ import { AiSection } from "@/features/settings/AiSection";
 import { CalendarSection } from "@/features/settings/CalendarSection";
 import { ClaudeSection } from "@/features/settings/ClaudeSection";
 import { DataSection } from "@/features/settings/DataSection";
+import { FolderSection } from "@/features/settings/FolderSection";
 import { leavesSection, parseSection, SECTION_LABELS, type SectionId } from "@/features/settings/logic";
 import { PrivacySection } from "@/features/settings/PrivacySection";
 import { ProfileSection } from "@/features/settings/ProfileSection";
@@ -24,7 +25,7 @@ import { SettingsNav } from "@/features/settings/SettingsNav";
 /** Sections that fill the page column (tables); the others are forms at a readable width. */
 const WIDE_SECTIONS = new Set<SectionId>(["privacy"]);
 
-/** `/settings?section=…` — profile, region, reminders, calendar, AI, Claude, privacy, rules, data. */
+/** `/settings?section=…` — profile, region, reminders, calendar, watched folder, AI, Claude, privacy, rules, data. */
 export default function SettingsPage() {
   const [params, setParams] = useSearchParams();
   const section = parseSection(params.get("section"));
@@ -160,6 +161,8 @@ export default function SettingsPage() {
                 <RemindersSection profile={profile.data} />
               ) : section === "calendar" ? (
                 <CalendarSection />
+              ) : section === "folder" ? (
+                <FolderSection settings={settings.data} />
               ) : section === "ai" ? (
                 <AiSection settings={settings.data} profile={profile.data} />
               ) : section === "claude" ? (

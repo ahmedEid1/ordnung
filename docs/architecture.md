@@ -10,6 +10,7 @@ Ordnung is a single Python package (`ordnung`) that serves a React single-page a
 flowchart LR
   subgraph untrusted["Untrusted input"]
     L["Letters · PDFs · phone photos · .eml"]
+    WF["Watched folder<br/>(scanner, downloads)"]
   end
 
   subgraph local["Your computer (127.0.0.1)"]
@@ -17,7 +18,8 @@ flowchart LR
     CLI["CLI (Typer)"]
     API["FastAPI<br/>token · same-origin · CSP"]
     subgraph core["ordnung core"]
-      ING["Ingest pipeline<br/>intake → text/transcribe → extract<br/>→ verify → compute → link → plan"]
+      FW["Folder watcher<br/>read-only · files wait for you"]
+      ING["Ingest pipeline<br/>intake (+ e-mail attachments) → text/transcribe<br/>→ extract → verify → compute → link → plan"]
       RUL["Rules engine<br/>(pure, 100% tested)<br/>+ high-stakes letter routing"]
       SEC["Secretary<br/>triggers · review · brief · daily tick"]
       ASK["Ask (agent loop)"]
@@ -34,6 +36,8 @@ flowchart LR
   end
 
   L --> API
+  WF -->|"listed and read only"| FW
+  FW --> ING
   UI <-->|REST + SSE| API
   CLI --> API
   API --> ING & SEC & ASK & DRF & ICS
@@ -61,8 +65,10 @@ flowchart LR
 | Agent → data | Ask only has read-only MCP tools on a `query_only` connection. Every tool result has two channels: Ordnung's record (`<ordnung_record>`: ids, statuses, due and send-by dates, rules-engine dates, verified amounts, totals, code-written receipts) and the letters' text by record id (`<untrusted_document>`: titles, summaries, names, quotes, page text, unverified amounts); `<` and `>` are escaped in both. A tool keeps each result within a size budget by leaving out rows, so the model and the check read the same whole result — the CLI backend never shortens the check's copy ([ADR 0008](decisions/0008-two-channels-and-claim-level-citations.md)). Ask's server is `--ledger-only`: the ledger-free rules tools are not among its tools, and a result of any tool that is not one of Ordnung's ledger tools is never evidence for the check ([ADR 0011](decisions/0011-ask-keeps-to-the-ledger.md)) |
 | Agent → user | Citations must name records from a record part of the same turn. The answer's words are never streamed: the person sees the tool trace (which tools ran, the words searched for with every word of a value the check reads — any word with a digit, a part of a month — shown as "…", the date range looked at) and a "writing" line until the check is done, and nothing of an answer that stops or fails before it. The answer is read as it will be shown (its bidirectional formatting characters removed first); each date, time or amount must be in the record part of a record its sentence cites (a payment the app says to decide on before paying — a rent increase's new rent, a late statement's back-payment — carries that note in the record, and the check repeats it under an answer that cites it); a sentence without a citation of its own may state a value of a record the answer cites, and the check then adds that record's citation — when the values belong to one record, never a record with scam signs; overview totals only in a sentence without a citation of its own; a cited record's unverified amount or the person's own words are shown quoted as unconfirmed; every other value is left out — one the cited letter's text holds as "[date only in the letter]", whatever the sentence's wording — and never shown within its sentence (the edit keeps the sentence's full stop and citation), and a § nobody vouches for removes its sentence, with a note in the answer's language that only the check writes, that says only what is true of every case it covers, and that travels in its own field with its label. The prompt (`ask_system` v5) says the same, so the model does not state a letter's value in the first place. Every date form the web formats inside an answer is read by the check (one shared list, tested on both sides), the placeholders the check writes are one list the web marks, the month words that keep a day line from being a list item are one list, the web shows a line starting with a day as written (never renumbered), and a run of digit groups shaped like a date that is none is never supported, nor is a day, a word and a year in a language whose month names the check does not know (Ask answers in the question's language; joined by spaces, marks or none, in any order), a month and year of another offered language, another calendar's date, `31/12`, an amount in another currency or with another language's scale word, a clock time moved by words or a day in words; a law cited in words is checked like a §, and the model can never write the note's label (look-alike letters and soft line breaks included). The check fails closed: an answer it cannot read ends in an error and is not shown; a number no amount can be is unreadable, never an exception. Measured by `python -m evals.ask` ([evals-ask](evals-ask.md)), whose replay — like `ordnung demo --check` — answers every recorded tool call again and fails when the tools' output changed |
 | Other clients → Ordnung | `ordnung mcp --rules-only` serves only the rules tools: no data folder is opened, results are computed from the arguments alone. The full server gives a client the same read-only ledger Ask has; `ordnung mcp install` prints before it writes and never clobbers a client's config |
+| Watched folder → Ordnung | Only files directly in the folder with a type Ordnung reads; symbolic links never followed (`O_NOFOLLOW`), sub-folders not entered, partial and temporary files ignored; at most 50 MB + 1 byte read, then the upload checks below. The folder is never written to. A new file is **held** — private and read on this computer only, never sent to a model — until the person answers in the Inbox (`ingest/held.py`), unless they turned on reading new files at once |
+| E-mail → attachments | Each attached PDF or photo (decided by its bytes) passes the upload checks below as a document of its own, at most 10 per e-mail, with the e-mail's privacy choice; pictures inside the e-mail are skipped, other types listed, a forwarded e-mail never opened (`ingest/attachments.py`) |
 | Upload → machine | Checked before anything decodes it: PDF stream expansion, image pixels and text pages are capped; the data folder is private to the account (`0700`, files `0600`) |
-| Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs |
+| Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs (one bounded exception: downloading a drafted letter's PDF records its SHA-256 among the last 200, so the watched folder never takes the download for a letter received — the fingerprint must be of the exact bytes handed out, which depend on the profile at download time) |
 | Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence` |
 
 ## Reading a letter
@@ -97,6 +103,34 @@ sequenceDiagram
 Every stage updates the durable `jobs` queue and publishes `job.progress` events, which drive the
 live stepper in the UI. Rate limits pause the whole worker until the reset time instead of failing
 documents; a restart resumes queued work.
+
+## The watched folder
+
+```mermaid
+flowchart LR
+  F[("Watched folder")] -->|"watchfiles + a listing every 60 s"| W["FolderWatcher<br/>settled 2 s · once per file"]
+  W -->|"add_file(hold=True), source=folder"| I["intake<br/>(+ e-mail attachments, held too)"]
+  I --> Q["worker: text layer only<br/>no model call"] --> H["held<br/>Inbox: From your folder"]
+  H -->|"Read these N"| R["queued → read like an upload"]
+  H -->|"Keep private"| P["private, processed"]
+  P -->|"Undo"| H
+```
+
+The watcher runs in the server's lifespan while a folder is set, restarts when the setting changes
+and pauses for *Delete everything* (`ingest/watcher.py`; policy in its docstring). It remembers each
+file by a hash of folder, name, size and modification time while the file is there — once its pickup
+is over, never halfway — so nothing is picked up twice: not after a restart, not after its letter was
+deleted. With `inbox_auto_read` files that arrive later skip the waiting; the files that were in the
+folder when it was chosen (or chosen again, after *Stop watching*) always wait, and a copy of a waiting file never answers for it (only an
+upload or the CLI does, `answer_held`). A held letter stays held whatever happens to its local job.
+Refused files and folder problems go to the activity log; `GET /api/folder` reports the state, how
+many letters wait and the last files it brought in; Today and the Inbox's count say how many wait.
+
+An e-mail's attachments thread by their own references first (a payment reminder joins its
+invoice's thread) and only fall back to the e-mail's thread; a bill that repeats its e-mail's payment
+takes it over on read (`Ledger.is_covered_by_attachment`; a bill Ordnung already had counts, from
+the e-mail's recorded listing), like a payment reminder takes over its invoice's — and only while no
+reminder took the bill's own payment over, so the two relations never hide each other's payment.
 
 ## Asking a question
 
@@ -265,8 +299,9 @@ normalised name), so re-processing is idempotent and recorded demo outputs stay 
 
 ## Concurrency model
 
-- **One process.** FastAPI (uvicorn) runs the API, the ingest worker and the daily tick on one
-  asyncio loop; CPU-heavy work (PDF text, rendering) runs in threads (`asyncio.to_thread`).
+- **One process.** FastAPI (uvicorn) runs the API, the ingest worker, the daily tick and the folder
+  watcher on one asyncio loop; CPU-heavy work (PDF text, rendering, listing and reading the watched
+  folder) runs in threads (`asyncio.to_thread`); `watchfiles` waits for changes in its own thread.
 - **SQLite:** one connection per thread, WAL, `BEGIN IMMEDIATE` write transactions (re-entrant via
   savepoints). Linking + planning for a document happen in one transaction under a ledger lock, so
   two letters from the same new sender can't create duplicate parties.
@@ -283,6 +318,7 @@ normalised name), so re-processing is idempotent and recorded demo outputs stay 
 | Text & verification | Generated PDFs (rotated pages, CropBox offsets, hidden text, scans), exact-digit and consistency rules |
 | Store | CRUD round-trips, search escaping, idempotent upserts, purge-on-delete, concurrency, migrations |
 | Pipeline & services | `FakeBackend` scripted model outputs end-to-end through the real pipeline |
+| Watched folder & attachments | A real temporary folder with short timings: settling, ignored files, symlinks, once-only pickup across restarts and deletions, held by default, auto-read, restarts, a missing folder, the folder left untouched; crafted e-mails for the attachment policy, and e-mailed bills end to end (one thread, limits, privacy inherited) |
 | CLI subprocess layer | A fake `claude` executable replaying captured CLI outputs (errors, timeouts, huge lines) |
 | Demo | `ordnung demo --check`: rebuild twice with strict replay → zero misses, identical dumps, all references resolve |
 | Web app | Vitest units + Playwright tour over demo mode with axe accessibility checks |

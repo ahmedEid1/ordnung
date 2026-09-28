@@ -124,6 +124,16 @@ export const api = {
   pageUrl: (id: string, page: number) => assetUrl(apiRoute("/api/documents/{doc_id}/pages/{page}.jpg", { doc_id: id, page })),
   thumbnailUrl: (id: string) => assetUrl(apiRoute("/api/documents/{doc_id}/thumbnail.jpg", { doc_id: id })),
 
+  // -- the watched folder ------------------------------------------------------------------------
+  /** The watched folder: path, state (or problem), auto-read, letters waiting, the last files. */
+  folder: () => call("get", "/api/folder"),
+  /** "Read these": the waiting letters the person saw may be sent to Claude (409 in the replay-only demo). */
+  readHeld: (docIds: string[]) => call("post", "/api/documents/held/read", { body: { doc_ids: docIds } }),
+  /** "Keep private": the waiting letters stay on this computer, never sent to Claude. */
+  keepHeldPrivate: (docIds: string[]) => call("post", "/api/documents/held/keep-private", { body: { doc_ids: docIds } }),
+  /** Undo "Keep private": letters kept private from waiting (never read since) wait again. */
+  waitAgain: (docIds: string[]) => call("post", "/api/documents/held/wait", { body: { doc_ids: docIds } }),
+
   // -- to-dos & dates ----------------------------------------------------------------------------
   items: (params: ItemListParams = {}) => call("get", "/api/items", { query: { ...params } }),
   createItem: (item: ItemCreate) => call("post", "/api/items", { body: item }),

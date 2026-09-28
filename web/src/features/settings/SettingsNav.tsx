@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Bell, CalendarDays, Cpu, Database, MapPin, Plug, Scale, ShieldCheck, UserRound, type LucideIcon } from "lucide-react";
+import { Bell, CalendarDays, Cpu, Database, FolderInput, MapPin, Plug, Scale, ShieldCheck, UserRound, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SECTION_IDS, SECTION_LABELS, type SectionId } from "./logic";
 
@@ -8,6 +8,7 @@ const ICONS: Record<SectionId, LucideIcon> = {
   region: MapPin,
   reminders: Bell,
   calendar: CalendarDays,
+  folder: FolderInput,
   ai: Cpu,
   claude: Plug,
   privacy: ShieldCheck,

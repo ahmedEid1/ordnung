@@ -27,6 +27,8 @@ from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledg
 from ordnung.api.routes.dates import recompute_document_items
 from ordnung.app_context import AppContext
 from ordnung.db.store import Store
+from ordnung.ingest.attachments import attachment_listing, email_of, parts_not_listed
+from ordnung.ingest.held import is_held, was_kept_from_waiting
 from ordnung.ingest.intake import (
     IMAGE_TYPES,
     MAX_BYTES,
@@ -38,7 +40,7 @@ from ordnung.ingest.intake import (
     safe_filename,
     sniff_mime,
 )
-from ordnung.ingest.link import DUNNING_ITEM_NOTE, rewarn_for_kind
+from ordnung.ingest.link import ATTACHMENT_ITEM_NOTE, DUNNING_ITEM_NOTE, rewarn_for_kind
 from ordnung.ingest.pipeline import add_file, ledger_lock, reprocess
 from ordnung.ingest.plan import KIND_CHOSEN, is_statement, kind_chosen
 from ordnung.llm.replay import ReplayBackend
@@ -186,17 +188,21 @@ def _ideas_about(store: Store, doc_id: str, items: Sequence[Item]) -> list[Sugge
 
 
 def _with_reminder_notes(store: Store, items: list[Item], today: date) -> list[Item]:
-    """Payments a live payment reminder took over carry the "pay once, not twice" note (worked out on
-    read, like everywhere else; a note of the person's own is kept)."""
+    """Payments a live payment reminder took over carry the "pay once, not twice" note, and an
+    e-mail's payment its attached bill repeats says so (worked out on read, like everywhere else; a
+    note of the person's own is kept)."""
     if not any(item.kind == "payment" and not item.description for item in items):
         return items
     ledger = Ledger(store, today)
-    return [
-        item.model_copy(update={"description": DUNNING_ITEM_NOTE})
-        if not item.description and ledger.is_superseded_by_reminder(item)
-        else item
-        for item in items
-    ]
+
+    def note(item: Item) -> str | None:
+        if item.description:
+            return None
+        if ledger.is_superseded_by_reminder(item):
+            return DUNNING_ITEM_NOTE
+        return ATTACHMENT_ITEM_NOTE if ledger.is_covered_by_attachment(item) else None
+
+    return [item.model_copy(update={"description": text}) if (text := note(item)) else item for item in items]
 
 
 #: The tag a letter carries once the person said they dealt with a card no to-do can settle
@@ -268,7 +274,8 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
 def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
     """The document viewer's data: the letter, its pages, to-dos, contracts, sender, thread, related
     letters, Ideas, drafts, the to-dos that are not one to act on (``set_aside``, as on Today), a
-    GiroCode (or why there is none) per payment and, for a high-stakes letter, its "get advice" card."""
+    GiroCode (or why there is none) per payment, for a high-stakes letter its "get advice" card, and
+    for an e-mail what became of its attachments (for an attachment: the e-mail it came with)."""
     document = require(store.get_document(doc_id), NOT_FOUND)
     items = _with_reminder_notes(store, store.list_items(doc_id=doc_id), today)
     linked = {item.contract_id for item in items if item.contract_id}
@@ -292,6 +299,10 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         drafts=store.list_drafts(doc_id=doc_id),
         set_aside=set_aside(store, items, today),
         girocodes=document_girocodes(store, document, items, today),
+        attachments=attachment_listing(store, document),
+        attachments_more=parts_not_listed(store, document),
+        email=email_of(store, document),
+        can_wait_again=was_kept_from_waiting(store, document),
     )
 
 
@@ -339,11 +350,15 @@ async def _add_group(
     try:
         body, name = await asyncio.to_thread(_normalised, data, filename, rest)
         existing = store.get_document_by_sha(hashlib.sha256(body).hexdigest())
-        document = await add_file(ctx, body, name, private=private)
+        document = await add_file(ctx, body, name, private=private, answer_held=True)
     except IntakeError as exc:
         result.errors.append(UploadError(filename=safe_filename(filename), detail=str(exc)))
         return
-    if existing is not None and existing.status != "failed":
+    # a letter that failed, or one waiting for the person that this upload lets Claude read, is read now
+    read_again = existing is not None and (
+        existing.status == "failed" or (existing.status == "held" and not private)
+    )
+    if existing is not None and not read_again:
         result.duplicates.append(document.id)
         return
     result.documents.append(document)
@@ -419,8 +434,16 @@ def _check_links(store: Store, changes: dict[str, object]) -> None:
         require(store.get_case(case_id), "Unknown thread.")
 
 
+HELD_MESSAGE = (
+    "This letter is waiting for you: choose “Read” or “Keep private” for it first (Inbox → From your folder)."
+)
+
+
 def _apply_patch(store: Store, doc_id: str, changes: dict[str, object]) -> Document:
     document = require(store.get_document(doc_id), NOT_FOUND)
+    if "ai_private" in changes and is_held(document):
+        # a waiting letter is private until the person answers (ingest.held): only an answer changes that
+        raise HTTPException(status.HTTP_409_CONFLICT, HELD_MESSAGE)
     _check_links(store, changes)
     if changes.get("tags", ...) is None:
         changes["tags"] = []
@@ -491,6 +514,8 @@ async def reprocess_document(doc_id: str, ctx: CtxDep) -> Job:
     document = require(ctx.store.get_document(doc_id), NOT_FOUND)
     if document.deleted_at is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "This letter is in the trash.")
+    if is_held(document):
+        raise HTTPException(status.HTTP_409_CONFLICT, HELD_MESSAGE)
     return await asyncio.to_thread(reprocess, ctx, doc_id)
 
 

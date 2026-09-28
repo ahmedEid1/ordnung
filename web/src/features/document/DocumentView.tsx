@@ -4,7 +4,9 @@
  * verdict first, then warnings, the pages and the rest.
  *
  * Panel order: verdict → warnings / Please check → Explained simply → To-dos & dates → Key facts →
- * Thread, contract, drafts, Ideas → provenance + Reprocess / Download / Delete.
+ * the e-mail it came with / an e-mail's attachments → Thread, contract, drafts, Ideas → provenance +
+ * Reprocess / Download / Delete. A letter that waits for the person (from the watched folder) shows
+ * its waiting card in the verdict's place, and nothing read from it (nothing was).
  */
 import { useCallback, useEffect, useMemo } from "react";
 import { useLocation } from "react-router";
@@ -24,6 +26,8 @@ import { KeyFacts } from "./KeyFacts";
 import { ContractsSection, DraftsSection, IdeasSection, ThreadSection } from "./Related";
 import { DocumentFooter } from "./DocumentFooter";
 import { ProcessingCard } from "./ProcessingCard";
+import { HeldCard } from "./HeldCard";
+import { EmailParts } from "./EmailParts";
 
 export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const doc = detail.document;
@@ -41,6 +45,7 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const scam = Boolean(scamSuggestion(detail));
   const busy = doc.status === "queued" || doc.status === "processing" || doc.status === "failed";
   const neverRead = busy && !doc.kind && !doc.title;
+  const held = doc.status === "held";
 
   // opened for its advice card ("Open the letter's card" in the composer): scroll to it and focus its title
   // (review round 3 of phase 2: the page opened at its top, focus on <main>, the card 1250 px below)
@@ -63,11 +68,12 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
 
   return (
     <EvidenceProvider anchors={anchors}>
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.04fr)_minmax(0,1fr)] xl:gap-x-8 xl:gap-y-6">
+      {/* the first row is as tall as the verdict (or waiting) card; the page viewer's spare height goes to the rest */}
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.04fr)_minmax(0,1fr)] xl:grid-rows-[auto_1fr] xl:gap-x-8 xl:gap-y-6">
         <div className="min-w-0 space-y-4 xl:col-start-2 xl:row-start-1">
           {busy ? <ProcessingCard doc={doc} /> : null}
-          {!neverRead ? <VerdictCard detail={detail} primary={primary} onAskArrival={askArrival} /> : null}
-          {!neverRead ? <DocumentWarnings detail={detail} /> : null}
+          {held ? <HeldCard detail={detail} /> : !neverRead ? <VerdictCard detail={detail} primary={primary} onAskArrival={askArrival} /> : null}
+          {!neverRead && !held ? <DocumentWarnings detail={detail} /> : null}
         </div>
 
         <div className="min-w-0 xl:sticky xl:top-[72px] xl:col-start-1 xl:row-span-2 xl:row-start-1 xl:self-start">
@@ -91,11 +97,14 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
                 <SkeletonText lines={4} />
               </div>
             </div>
+          ) : held ? (
+            <EmailParts detail={detail} />
           ) : (
             <>
               <ExplainedSimply doc={doc} />
               <ItemsList items={detail.items} docId={doc.id} pages={doc.pages} scam={scam} />
               <KeyFacts doc={doc} scam={scam} girocodes={detail.girocodes} />
+              <EmailParts detail={detail} />
               <ThreadSection detail={detail} />
               <ContractsSection contracts={detail.contracts} />
               <DraftsSection drafts={detail.drafts} />

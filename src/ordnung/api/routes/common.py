@@ -101,8 +101,9 @@ def contracts_with_computations(store: Store, contracts: list[Contract], today: 
 
 def item_aside(ledger: Ledger, item: Item) -> ItemAside | None:
     """Why an open to-do is not one to act on (the same rules as Today), or ``None``: its letter shows
-    scam signs, a payment reminder took over its invoice payment, or its date had long passed when the
-    letter was read (a one-off; a schedule shows its next date)."""
+    scam signs, a payment reminder took over its invoice payment, an e-mail repeats the payment of the
+    bill attached to it, or its date had long passed when the letter was read (a one-off; a schedule
+    shows its next date)."""
     if item.status in ("done", "dismissed"):
         return None
     if ledger.is_suspicious_item(item):
@@ -110,6 +111,9 @@ def item_aside(ledger: Ledger, item: Item) -> ItemAside | None:
     if ledger.is_superseded_by_reminder(item):
         reminder = ledger.covering_reminders()[item.doc_id or ""]
         return ItemAside(item_id=item.id, reason="replaced", replaced_by=reminder.id)
+    if ledger.is_covered_by_attachment(item):
+        bill = ledger.covering_attachments()[item.id]
+        return ItemAside(item_id=item.id, reason="attached", replaced_by=bill.id)
     if item.recurrence is None and was_history_when_filed(item):
         return ItemAside(item_id=item.id, reason="history")
     return None

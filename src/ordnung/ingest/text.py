@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import codecs
 import email
+import email.parser
 import email.policy
 import functools
 import itertools
@@ -717,6 +718,38 @@ def _email_document(data: bytes) -> TextDocument:
         lines.append("Attachments: " + ", ".join(attachments))
     text = "\n".join(lines) + ("\n\n" + body.strip() if body.strip() else "")
     return TextDocument(_clean_text(text), hidden)
+
+
+EMAIL_HEADING_CHARS = 200
+
+
+def email_heading(data: bytes) -> str | None:
+    """“Subject · Sender” of an e-mail from its headers alone (no model, no body parsed), e.g. “Ihre
+    Rechnung September · Muster Telecom” — what a letter nobody read yet is called. Control and
+    formatting characters are dropped and the result is at most :data:`EMAIL_HEADING_CHARS` long;
+    ``None`` without a subject or sender."""
+    try:
+        headers = email.parser.BytesHeaderParser(policy=email.policy.default).parsebytes(data)
+        subject = _heading_text(str(headers.get("Subject") or ""))
+        sender = _sender_name(headers.get("From"))
+    except (ValueError, LookupError, TypeError, AttributeError, IndexError):  # a malformed header
+        return None
+    heading = " · ".join(part for part in (subject, sender) if part)
+    if len(heading) > EMAIL_HEADING_CHARS:
+        heading = heading[: EMAIL_HEADING_CHARS - 1].rstrip() + "…"
+    return heading or None
+
+
+def _heading_text(value: str) -> str:
+    return " ".join("".join(ch if ch.isprintable() else " " for ch in value).split())
+
+
+def _sender_name(header: Any) -> str:
+    addresses = getattr(header, "addresses", ())
+    if not addresses:
+        return _heading_text(str(header or ""))
+    first = addresses[0]
+    return _heading_text(first.display_name or first.addr_spec or "")
 
 
 def _email_body(message: EmailMessage) -> tuple[str, str]:

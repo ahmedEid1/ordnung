@@ -62,8 +62,9 @@ SPECIMEN.
 export, model/cost trade-off eval, Ask agent eval, "please check" received-date question, ⌘K search,
 per-document pipeline trace view.
 
-**Cut (v1.1+):** bank CSV/money subsystem, calendar month page, MCP write tools, watched inbox
-folder, OCR, LLM party tie-break, extra letter kinds, most CLI commands.
+**Cut (v1.1+):** bank CSV/money subsystem, calendar month page, MCP write tools, OCR, LLM party
+tie-break, extra letter kinds, most CLI commands. (The watched inbox folder, cut here, came in phase 2:
+§ 8.1.)
 
 ## 3. Architecture
 
@@ -128,6 +129,12 @@ Key additions in v2 (to implement in models.py):
 - `DraftKind` = `"cancellation" | "objection" | "general_reply"`; `Draft.body_translation: str`,
   `Draft.send_guidance: SendGuidance | None`.
 - `Document.ai_processed_at`, `Document.ai_private: bool` ("Keep private — no AI").
+- `DocumentStatus` gains `"held"` (phase 2): a file from the watched folder, or an attachment of one,
+  stored and read on this computer only until the person answers (§ 8.1); a held letter is always
+  `ai_private` too. `Document.source`: `upload`, `folder`, `email:<the e-mail's id>`, `capture` …
+- `AppSettings.inbox_auto_read: bool = False`; `DocumentDetail.attachments: list[EmailAttachment]`
+  (an e-mail's attachments and what became of each) and `DocumentDetail.email` (the e-mail a letter
+  came attached to); `FolderStatus`, `FolderPickup` (`GET /api/folder`).
 - `Page.text_source: Literal["text","transcript","none"]`.
 - `LLMRequest.attachments: list[Attachment(path, media_type)]` replaces `files`;
   `purpose: LLMPurpose` Literal.
@@ -366,7 +373,78 @@ Only the stages that happen are reported to the stepper: a photo goes from **int
 
 Rate limits pause the worker globally (`paused_until`, SSE `llm.paused` banner); jobs stay queued.
 On startup `running` jobs return to `queued`. Reprocess = `force` (skip cache read) and replaces
-non-user-modified extracted rows in one transaction. "Keep private (no AI)" skips stages 3–4.
+non-user-modified extracted rows in one transaction. "Keep private (no AI)" skips stages 3–4, and so
+does a *held* letter (§ 8.1), which ends `held` and publishes no stage events until the person answers.
+
+**E-mail attachments** (`ingest/attachments.py`, policy in its docstring). When an `.eml` is added,
+each attached PDF or photo (JPEG, PNG, WEBP, HEIC/HEIF — decided by its bytes, never by the declared
+type or name) becomes a document of its own right after it: through the normal intake with every
+limit, `source="email:<the e-mail's id>"`, the e-mail's arrival date and its privacy choice (private,
+or held). At most 10 attachments per e-mail are read, the first in the message; pictures inside the
+e-mail are skipped (under 64 KB and shown by a `cid:` link or not marked as an attachment; or shown by
+a `cid:` link with a shorter side under 800 px, a banner) — a photo of a letter pasted into the text is
+read; a zip, Word file, calendar invite, text file or forwarded e-mail is listed and not read. What
+became of each (`added`, `known`, `inline`, `not_read`, `refused` with the intake's reason,
+`over_limit`; with the linked letter's status now) is written to the activity log on the e-mail and
+shown on it, with the number of parts past the 50 listed; an attachment shows the e-mail it came
+with. Each letter threads by its **own** references first — a payment reminder attached to an e-mail
+joins its invoice's thread, so "pay once, not twice" still holds — and joins its e-mail family's thread
+only instead of opening a new one (`link.thread_case(family=…)`); an e-mail read first and still alone
+in its thread follows its attachment's thread (`link.follow_attachment`), and the thread it leaves —
+empty now — is deleted, so its reference draws no later letter into it. An e-mail whose body repeats
+its attached bill's payment (the same direction and currency, and the same amount and due date, or
+the same invoice number and amount — or no amount in the e-mail) keeps its to-do, but the bill's
+takes it over on read (`link.attachment_repeats`, `Ledger.is_covered_by_attachment`: left out of
+Today, the totals and the Ideas, noted on the e-mail, set aside as `attached` on the party and in
+Ask's record) — deleting the bill brings it back. The bill counts as the e-mail's attachment also
+when Ordnung had it before (`known`: uploaded, from the folder or another e-mail), and only its
+payments no payment reminder took over count: a reminder e-mail with its invoice attached (or with
+the Mahnung PDF of the day before) takes the invoice's payment over as the later reminder and keeps
+its own — the two never set each other aside, so one payment to act on always stays. An e-mail nested too deeply
+for the parser is refused with a reason. An e-mail title is its subject and sender while it is private
+or held (no model). Adding a trashed e-mail again restores its attachments too; adding an e-mail again
+whose adding was stopped before its attachments adds them.
+
+### 8.1 The watched folder — `ingest/watcher.py`
+
+`FolderWatcher` runs in the server's lifespan next to the worker and the daily tick while
+`settings.inbox_dir` is set, and restarts when the setting changes (policy in its docstring):
+
+- Files directly in the folder with a type Ordnung reads (`.pdf .jpg .jpeg .png .webp .heic .heif
+  .txt .eml`, any case); sub-folders are not entered and symbolic links never followed; partial and
+  temporary files (`.part`, `.partial`, `.crdownload`, `.download`, `.tmp`, `.temp`, `~$…`, dotfiles,
+  `…~`) are ignored.
+- A file counts once its size and modification time have not changed for 2 s and it is not empty.
+  The folder is listed on every `watchfiles` notification and every 60 s (lost notifications on
+  network and cloud drives); when notifications fail, it polls.
+- Once per file: a hash of folder, name, size and modification time is kept while the file is in
+  the folder (meta `inbox_seen`), so a file is never picked up twice — not after a restart, and not
+  after its letter was deleted. A file is remembered once its pickup is over (added, known or
+  refused), never when Ordnung stops in the middle of it. Files already there when watching starts
+  are picked up once. Content Ordnung already has adds nothing, and a letter in the trash stays there.
+  A folder with more than 5,000 candidate files is not watched (`problem`).
+- Every file goes through `add_file` with all limits (at most 50 MB + 1 byte is read),
+  `source="folder"`; a name that is not UTF-8 is shown as Windows-1252. By default it is **held**:
+  private and `held`, stored and read on this computer only, never sent to Claude until the person
+  answers — *Read these N* (`release`: no longer private, queued for reading) or *Keep private*
+  (`keep_private`: as "Keep private — no AI"; undone by `back_to_waiting`, an e-mail with the
+  attachments kept private with it), for an e-mail with its held attachments (`ingest/held.py`). With
+  `inbox_auto_read` files that **arrive** later are read at once; the files in the folder's first
+  listing after it was chosen (meta `inbox_baseline`, dropped whenever `inbox_dir` changes — also by
+  *Stop watching* — so a folder chosen again counts as chosen then; a restart keeps it) always wait,
+  and in the replay-only demo every file waits. Only adding a held file again **by hand** (`answer_held`: the
+  upload route, the CLI) answers for it — a copy in the folder never does. A held letter keeps waiting
+  whatever happens to its local reading (stopped: stored next time; failed: `error`, still `held`).
+  A PDF Ordnung itself rendered (a draft, remembered by SHA-256 when served) is refused, never added.
+- Read-only: the folder is only listed and read (`O_NOFOLLOW`); nothing there is written, moved or
+  deleted. A refused file (a limit, not allowed to read it) is logged with the reason
+  (`folder.refused`) and not retried until it changes, a known one as `folder.known`; a missing or
+  unreadable folder is reported (`FolderStatus.problem`, once in the activity log) and checked again
+  every 30 s; one file's error never ends the watching. *Delete everything* pauses the watcher and
+  clears the setting. Choosing Ordnung's own `<data>/inbox` creates it (`0700`).
+- Today counts the waiting letters (`Dashboard.waiting`) and shows a card for them instead of "nothing
+  needs you"; they are left out of the recent letters and the life areas, and the Inbox's nav count
+  includes them.
 
 ## 9. Secretary — `secretary/` + `tick.py`
 
@@ -383,11 +461,15 @@ non-user-modified extracted rows in one transaction. "Keep private (no AI)" skip
   Fingerprint = rule_id + entity id + hash(triggering values). Savings are yearly-normalised.
 - **Review** — compact snapshot → ≤ 6 new Ideas with refs to existing ids (validated; duplicates by
   fuzzy title dropped); `source="review"`.
-- **Brief** — deterministic agenda + optional 2–3 sentence prose (cached per day + agenda hash).
+- **Brief** — deterministic agenda + optional 2–3 sentence prose (cached per day + agenda hash). The
+  code-written note is served as the ledger stands (a stored one only while it still says the same),
+  and while letters from the watched folder wait unread it never says "all clear": "Nothing is due in
+  the next 7 days from the letters that were read." (the count is not sent to the model).
 - **Weekly session** (`secretary/week.py`, policy in its docstring; `views.weekly_session`) — a guided
   ~10-minute review composed from the agenda, the money summary, drafts and to-dos: *act now* (only when
   a deadline, task or appointment is overdue or to act on today, a missed send-by day included) · new
-  since the last session (the first time: in the last 7 days) · please check (values not confirmed
+  since the last session (the first time: in the last 7 days; a letter waiting from the watched folder, or
+  kept private and never read, is never "filed") · please check (values not confirmed
   against the letter; "Looks right" takes a value off) · pay this week (transfers with their total, fees
   paid at an appointment, direct debits to cover) · post and keep proof (a letter's send-by day with the
   day it must arrive by; what proves *sending* by each channel is not proof of *arrival* — for an
@@ -467,7 +549,8 @@ HTML and without remote images.
 - **What the record says.** `money_summary` lists open payments with no stored due date and, apart, the
   demands of letters with scam signs (`do_not_pay`: not to be paid until the person has checked with
   the sender — a real sender whose bank details changed shows the same signs), with `today` and each
-  fixed-cost contract's category. A payment the app says to decide on before paying — a rent increase's
+  fixed-cost contract's category. A to-do of an e-mail whose attached bill asks for the same payment
+  says so in its record (`set_aside`, with the bill's id): one payment, counted once. A payment the app says to decide on before paying — a rent increase's
   new rent (only owed once the person agrees, and paying it can count as agreeing, § 558b Abs. 1 BGB) or
   a late statement's back-payment (may not be owed, § 556 Abs. 3 S. 3 BGB) — carries the app's note in
   its record (`payment_note`, in every row and timeline entry) and is listed apart too
@@ -692,7 +775,7 @@ the person compared with the paper letter; 409 when they changed or the code is 
 reason), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
 (PATCH), `parties`, `parties/{id}`, `cases/{id}`, `timeline?from&to`, `lanes?from&to`, `dashboard`,
 `suggestions` (GET), `suggestions/{id}` (PATCH status/snooze), `suggestions/review` (POST),
-`brief` (GET cached, POST regenerate), `numbers` (GET: My numbers), `week` (GET: the weekly session),
+`brief` (GET cached — a code-written note current —, POST regenerate), `numbers` (GET: My numbers), `week` (GET: the weekly session),
 `week/done` and `week/dismiss` (POST: remember the session or a "Not now"; answer the session), `ask`
 (POST → SSE), `chat/{thread_id}`, `drafts` (GET/POST), `drafts/{id}` (GET/PATCH/DELETE),
 `drafts/{id}/pdf`, `drafts/{id}/preview.png` (the PDF's pages as one image: the print preview),
@@ -701,7 +784,16 @@ reason), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
 replay-only demo), `calendar.ics`, `calendar/exported` (POST), `activity`, `usage`, `rules`, `jobs`,
 `events` (SSE), `data` (DELETE `{"confirm": "DELETE"}`: "Delete everything" — empties the database
 in place and removes Ordnung's files, keeping the lock and `server.json`; 409 in the demo),
-`demo/tour` (GET tour state), `demo/mail` (GET tray, POST `{id}` → ingest a tray letter).
+`demo/tour` (GET tour state), `demo/mail` (GET tray, POST `{id}` → ingest a tray letter),
+`folder` (GET: the watched folder, its state or problem, `auto_read`, `can_read`, how many letters
+wait, the suggested `<data>/inbox`, the last files it brought in), `documents/held/read` and
+`documents/held/keep-private` (POST `{doc_ids}`, at most 500: the person's answer for the waiting
+letters they saw, a held e-mail's held attachments included; ids that no longer wait come back as
+`skipped`; *read* is `409` in the replay-only demo; the web app sends more ids in several requests),
+`documents/held/wait` (POST `{doc_ids}`: undo *Keep private* — letters kept private from waiting,
+never read since, wait again; an e-mail with the attachments kept private with it; a letter's
+`DocumentDetail.can_wait_again` says whether it can). `settings` takes `inbox_auto_read`; a waiting letter can't
+be reprocessed or made non-private by `PATCH` (`409`) — only an answer changes it.
 A letter's detail carries `girocodes`: per payment to-do a GiroCode (`ready`, with the EPC payload)
 or why there is none (`blocked`, a reason code and plain words), worked out on read (§ 21).
 Contracts carry `cancellable` + `cancel_hint`, worked out on read (not for the broadcasting fee,
@@ -709,7 +801,8 @@ obligations towards authorities or a job — a job gets "Draft resignation").
 
 View models (in models.py): `Dashboard`, `TimelineEntry`, `Lane{id,label,area,bars[]}`,
 `LaneBar{id,label,start,end,kind,marker_dates[],ref}`, `DocumentDetail`, `PartyDetail`,
-`CaseDetail`, `UsageStats`, `Health`, `RuleInfo`, `TourState`, `MailTrayItem`.
+`CaseDetail`, `UsageStats`, `Health`, `RuleInfo`, `TourState`, `MailTrayItem`, `EmailAttachment`,
+`FolderStatus`, `FolderPickup`. Live event `folder.updated` {state, doc_id?, held?}.
 
 Contract details: list endpoints answer plain JSON arrays. `health` carries `rules_last_checked`
 (the catalog's `LAST_CHECKED`, shown as "Based on the law as of …"); `health?probe=1` ("Run check")
@@ -748,12 +841,16 @@ Pages:
    "All clear until Friday" empty state; "calendar outdated" card; undo toasts.
 2. **Inbox** — letters list (thumbnail, sender, kind, date, status badge), filters (All · Please
    check · Private), New-mail tray in demo, batch-import recap screen ("I read 12 letters: 5
-   deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam").
+   deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam"). Above the list,
+   **"From your folder — waiting for you"**: the held letters (an e-mail's attachments under it), with
+   *Read these N* and *Keep private*; held letters are in no other group or filter.
 3. **Document viewer** — verdict card first; page images with highlight overlays (click fact → scroll
    + pulse); "Explained simply"; key facts; to-dos with "Why this date?" popover; warnings (scam
    banner; a scam letter's bank details say why there is no GiroCode); the Pay panel with the payment's
    GiroCode (folded behind "Show code" on phones, and in Today's Pay panel); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
-   … · text of 2 pages" badge; 390 px layout stacks the image below the card.
+   … · text of 2 pages" badge; 390 px layout stacks the image below the card. An e-mail lists its
+   attachments and what became of each (linked when added); an attachment says which e-mail it came
+   with; a held letter says it waits, with *Read it with Claude* and *Keep private*.
 4. **Timeline** — year-ahead **life lanes** (Residence permit, Contracts, Tax, Study, Home, Money,
    Health, Getting around…) with a today line — each dated to-do in its life area's lane, payments of
    any amount too; every bar and marker carries its area and the to-do or contract it stands for, and a
@@ -792,8 +889,11 @@ Pages:
    quiet "Weekly review" link at its foot; on `/week` the navigation marks Today as the current section.
 9. **Settings** — profile & address, region (affects holidays), language, reminders, models,
    privacy statement + "Privacy & AI usage" (activity, tokens, API-equivalent cost, cache hits),
-   Claude status (doctor), "How dates are computed" (rules catalog), data location, disclaimer; in
-   the demo, Data also restarts the guided tour.
+   Claude status (doctor), "How dates are computed" (rules catalog), data location, disclaimer,
+   **Watched folder** (the path with the server's validation message, "Use Ordnung's inbox folder"
+   with its path to copy, the auto-read switch — later arrivals only — with the cloud-folder caveat,
+   the folder's state, whether new files wait or are read, and the last files); in the demo, Data also
+   restarts the guided tour.
 10. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
    name/address (skippable) → Claude check (copyable fixes; "Continue without AI") → drop zone +
    "Explore the demo instead".
@@ -880,7 +980,7 @@ examples, evals), disclaimer. `docs/`: architecture, deadline-rules (with citati
 (data-flow table), evals, decisions/ADRs, limitations.
 
 ## 20. Changes from v1 (review outcomes)
-Cut money/bank CSV, calendar page, MCP writes, inbox watcher, OCR, party tie-break, 4 letter kinds,
+Cut money/bank CSV, calendar page, MCP writes, inbox watcher (built in phase 2), OCR, party tie-break, 4 letter kinds,
 7 CLI commands. Added: stdin content-block invocation, transcribe-then-extract, grounding levels +
 exact digit checks, deterministic IDs + strict replay, durable job queue + rate-limit pause,
 idempotent reprocess, localhost token/CSP/Fetch-Metadata defences, daily tick, onboarding, action-
@@ -895,7 +995,7 @@ Store.open(paths) -> Store · close() · tx() (context manager; BEGIN IMMEDIATE;
 get_meta(key) · set_meta(key, value) · get_profile() · save_profile(p) · get_settings() · save_settings(s)
 # documents & pages
 add_document(*, id, sha256, filename, mime, pages, file_path, source, direction, received_date, status, ai_private) -> Document
-get_document(id) · get_document_by_sha(sha) · update_document(id, **fields) · list_documents(q, kind, party_id, case_id, status, direction, limit, offset)
+get_document(id) · get_document_by_sha(sha) · update_document(id, **fields) · list_documents(q, kind, party_id, case_id, status, direction, limit, offset, *, ai_private, include_deleted, source)
 delete_document(id) (full purge incl. derived files, original, cache rows by doc_sha)
 set_pages(doc_id, pages) · list_pages(doc_id) · get_page(doc_id, n) · set_page_text(doc_id, n, text, text_source)
 get_document_text(doc_id) (page-delimited) · get_extraction(doc_id) · reindex_document(doc_id)
@@ -915,7 +1015,7 @@ add_draft · get_draft · update_draft · list_drafts · delete_draft · add_not
 # jobs (queue of record)
 enqueue_job(kind, doc_id, force=False) · claim_next_job(kinds) · update_job(id, **f) · get_job · list_jobs(active_only) · requeue_running_jobs()
 # activity / accounting / cache
-log_activity(kind, message, ref_type, ref_id, data) · list_activity(limit)
+log_activity(kind, message, ref_type, ref_id, data) · list_activity(limit, *, kinds, data) · last_activity(ref_type, ref_id, kinds)
 log_llm_call(purpose, model, backend, usage, ok, error, cache_hit) · usage_stats(recent)
 cache_get(key) · cache_put(key, purpose, model, response, doc_sha=None) · purge_cache_for(doc_sha)
 counts()

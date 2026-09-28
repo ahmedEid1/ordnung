@@ -25,7 +25,8 @@ from typing import Any
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
 from ordnung.ids import content_id
-from ordnung.ingest.link import reminder_covers
+from ordnung.ingest.attachments import attached_to, attachment_ids, is_email
+from ordnung.ingest.link import attachment_repeats, reminder_covers
 from ordnung.models import (
     PAYMENT_DEMAND_KINDS,
     Area,
@@ -421,6 +422,8 @@ class Ledger:
         self._sent_drafts: list[Draft] | None = None
         self._scam_reasons: dict[str, list[str]] = {}
         self._covered: dict[str, Document] | None = None
+        self._attached: dict[str, Document] | None = None
+        self._attachments: dict[str, list[Document]] | None = None
 
     def party_name(self, party_id: str | None) -> str | None:
         """Display name of a party (``None`` if unknown)."""
@@ -436,12 +439,15 @@ class Ledger:
         return [item for item in self.items if is_active(item, self.today)]
 
     def actionable_items(self) -> list[Item]:
-        """Active items that are safe to present as something to do: no letters with scam signs, and
-        no invoice payments a later payment reminder took over (the reminder is the one to act on)."""
+        """Active items that are safe to present as something to do: no letters with scam signs, no
+        invoice payments a later payment reminder took over (the reminder is the one to act on), and no
+        e-mail payments its attached bill repeats (the bill is the one to act on)."""
         return [
             item
             for item in self.active_items()
-            if not self.is_suspicious_item(item) and not self.is_superseded_by_reminder(item)
+            if not self.is_suspicious_item(item)
+            and not self.is_superseded_by_reminder(item)
+            and not self.is_covered_by_attachment(item)
         ]
 
     def covering_reminders(self) -> dict[str, Document]:
@@ -473,6 +479,56 @@ class Ledger:
             and item.doc_id is not None
             and item.doc_id in self.covering_reminders()
         )
+
+    def attachments_of(self, email: Document) -> list[Document]:
+        """The live letters without scam signs that came attached to ``email``: those it added
+        (``source="email:<id>"``) and those Ordnung already had when it came (recorded ``known``).
+        Worked out once per snapshot, for every e-mail."""
+        if self._attachments is None:
+            self._attachments = {}
+            for doc in sorted(self.documents.values(), key=lambda d: (d.created_at, d.id)):
+                parent = attached_to(doc)
+                if parent is not None:
+                    self._attachments.setdefault(parent, []).append(doc)
+            for email_id, doc_ids in attachment_ids(self.store).items():
+                listed = self._attachments.setdefault(email_id, [])
+                seen = {doc.id for doc in listed}
+                for doc_id in doc_ids:
+                    known = self.documents.get(doc_id)
+                    if known is not None and known.id not in seen and known.id != email_id:
+                        listed.append(known)
+                        seen.add(known.id)
+        return [doc for doc in self._attachments.get(email.id, []) if not self.scam_reasons(doc)]
+
+    def covering_attachments(self) -> dict[str, Document]:
+        """Payment to-do id of an e-mail → the attachment of that e-mail that asks for the same payment
+        (cached; :func:`~ordnung.ingest.link.attachment_repeats`).
+
+        Worked out on read: only attachments that are not in the trash and show no scam signs count
+        (:meth:`attachments_of`), whichever of the letters was read first. Only an attachment's payments
+        no payment reminder took over count: the one to act on must stay. So a reminder e-mail with its
+        invoice attached keeps its own to-do (it takes the invoice's over, :meth:`covering_reminders`),
+        and the two never set each other aside.
+        """
+        if self._attached is None:
+            items_of: dict[str, list[Item]] = {}
+            for item in self.items:
+                if item.doc_id and item.kind == "payment" and not self.is_superseded_by_reminder(item):
+                    items_of.setdefault(item.doc_id, []).append(item)
+            self._attached = {}
+            for item in self.items:
+                email = self.documents.get(item.doc_id or "")
+                if email is None or item.kind != "payment" or not is_email(email):
+                    continue
+                for attachment in self.attachments_of(email):
+                    if attachment_repeats(email, item, attachment, items_of.get(attachment.id, [])):
+                        self._attached[item.id] = attachment
+                        break
+        return self._attached
+
+    def is_covered_by_attachment(self, item: Item) -> bool:
+        """An e-mail's payment its attached bill asks for too: act on the bill instead."""
+        return item.kind == "payment" and item.id in self.covering_attachments()
 
     def active_contracts(self) -> list[Contract]:
         """Contracts still running."""
@@ -617,13 +673,14 @@ def _item_priority(kind: str, days_left: int) -> Priority:
 
 def _handled_elsewhere(ledger: Ledger, item: Item) -> bool:
     """Money coming in, direct debits (the sender collects them — nothing to do), payment reminders
-    (``dunning_escalation``) and letters with scam signs (``scam_warning``) never become "do this
-    by" Ideas."""
+    (``dunning_escalation``), letters with scam signs (``scam_warning``) and payments another letter
+    took over (a payment reminder, an e-mail's attached bill) never become "do this by" Ideas."""
     return (
         is_collected_or_incoming(item)
         or ledger.is_dunning_item(item)
         or ledger.is_suspicious_item(item)
         or ledger.is_superseded_by_reminder(item)
+        or ledger.is_covered_by_attachment(item)
     )
 
 
@@ -1170,6 +1227,7 @@ def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
             and i.kind == "payment"
             and i.due_date
             and not ledger.is_superseded_by_reminder(i)
+            and not ledger.is_covered_by_attachment(i)
         ]
         if doc.kind != "dunning" or not payments or ledger.scam_reasons(doc):
             continue  # letters with scam signs get a scam warning instead of "pay"

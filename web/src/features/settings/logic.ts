@@ -7,7 +7,7 @@ import { LLM_PURPOSE_LABELS, humanize } from "@/lib/copy";
 // Sections
 // ------------------------------------------------------------------------------------------------
 
-export const SECTION_IDS = ["profile", "region", "reminders", "calendar", "ai", "claude", "privacy", "rules", "data"] as const;
+export const SECTION_IDS = ["profile", "region", "reminders", "calendar", "folder", "ai", "claude", "privacy", "rules", "data"] as const;
 export type SectionId = (typeof SECTION_IDS)[number];
 
 export function parseSection(v: string | null | undefined): SectionId {
@@ -20,6 +20,7 @@ export const SECTION_LABELS: Record<SectionId, string> = {
   region: "Region & language",
   reminders: "Reminders",
   calendar: "Calendar",
+  folder: "Watched folder",
   ai: "AI & models",
   claude: "Claude connection",
   privacy: "Privacy & AI usage",

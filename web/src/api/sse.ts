@@ -50,6 +50,7 @@ const EVENT_TYPES = [
   "draft.created",
   "draft.sent",
   "demo.mail",
+  "folder.updated",
 ] as const satisfies readonly ServerEventType[];
 
 // compile-time: the list above names every event of the API (fails when the backend adds one)
@@ -165,6 +166,11 @@ export function handleServerEvent(qc: QueryClient, ev: ServerEvent): void {
     case "demo.mail":
       void qc.invalidateQueries({ queryKey: qk.mail });
       void qc.invalidateQueries({ queryKey: qk.documents.all });
+      break;
+    case "folder.updated":
+      // the watcher started, stopped or brought in a file (a waiting one sends no job events)
+      void qc.invalidateQueries({ queryKey: qk.folder });
+      if (ev.data.doc_id) void invalidateLedger(qc);
       break;
     case "llm.paused":
       setState((s) => ({ ...s, paused: ev.data }));

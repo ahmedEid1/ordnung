@@ -15,15 +15,19 @@ import { LoadError } from "@/components/ui/LoadError";
 import { LoadingLabel, SkeletonText, Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { MailTray, focusMailEnvelope } from "@/features/inbox/MailTray";
+import { WaitingFromFolder } from "@/features/inbox/WaitingFromFolder";
 import { LettersList } from "@/features/inbox/LettersList";
 import { InboxToolbar } from "@/features/inbox/InboxToolbar";
 import { BatchRecapDialog } from "@/features/inbox/BatchRecap";
 import { useReadingBatch } from "@/features/inbox/useReadingBatch";
 import { MIN_SEARCH, emptyCopy, isNarrowed, resultLine, type InboxView } from "@/features/inbox/status";
 import { useTrayByDoc } from "@/features/tour/newMail";
-import { filterCounts, filterDocuments, groupLetters, kindOptions, openItemsByDoc, parseFilter, type InboxFilter } from "@/features/inbox/filters";
+import { filterCounts, filterDocuments, groupLetters, isHeld, kindOptions, openItemsByDoc, parseFilter, type InboxFilter } from "@/features/inbox/filters";
 
-/** `/inbox` — every letter, filters, search, the demo's New-mail tray and the batch recap. */
+/**
+ * `/inbox` — every letter, filters, search, the demo's New-mail tray, the letters from the watched
+ * folder that wait for the person, and the batch recap.
+ */
 export default function InboxPage() {
   const navigate = useNavigate();
   const today = useTodayISO();
@@ -159,6 +163,7 @@ export default function InboxPage() {
   const visible = useMemo(() => filterDocuments(narrowed, { filter }), [narrowed, filter]);
   const groups = useMemo(() => groupLetters(visible, today), [visible, today]);
   const total = useMemo(() => filterCounts(docs).all, [docs]);
+  const waiting = useMemo(() => docs.filter(isHeld), [docs]);
 
   // the settled words (not every keystroke): "Type one more letter" waits for a pause
   const view: InboxView = { filter, kindLabel: kind ? documentKindLabel(kind) : null, typed: q, q: searching ? q : "" };
@@ -221,86 +226,92 @@ export default function InboxPage() {
         />
       ) : (
         <>
-          <div className="mb-6 flex flex-col gap-3">
-            <InboxToolbar
-              filter={filter}
-              onFilter={(f: InboxFilter) => setParam("filter", f === "all" ? null : f)}
-              counts={counts}
-              kind={kind}
-              onKind={(k) => setParam("kind", k)}
-              kinds={kinds}
-              query={query}
-              onQuery={setQuery}
-            />
-            {/* what the list shows now — announced, and on screen unless an empty state says it */}
-            <p role="status" className="sr-only">
-              {line.text}
-            </p>
-            {line.visible ? (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-                <p aria-hidden>{line.text}</p>
-                {isNarrowed(view) && visible.length ? (
-                  <Button variant="link" size="sm" onClick={onlySearch ? clearSearch : clearAll}>
-                    {onlySearch ? "Clear search" : "Clear filters"}
-                  </Button>
+          {/* the letters the folder brought in wait above the list (they're in no group or filter of it) */}
+          <WaitingFromFolder docs={docs} onAnswered={() => focusLetters()?.focus({ preventScroll: true })} />
+          {total || !waiting.length ? (
+            <>
+              <div className="mb-6 flex flex-col gap-3">
+                <InboxToolbar
+                  filter={filter}
+                  onFilter={(f: InboxFilter) => setParam("filter", f === "all" ? null : f)}
+                  counts={counts}
+                  kind={kind}
+                  onKind={(k) => setParam("kind", k)}
+                  kinds={kinds}
+                  query={query}
+                  onQuery={setQuery}
+                />
+                {/* what the list shows now — announced, and on screen unless an empty state says it */}
+                <p role="status" className="sr-only">
+                  {line.text}
+                </p>
+                {line.visible ? (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+                    <p aria-hidden>{line.text}</p>
+                    {isNarrowed(view) && visible.length ? (
+                      <Button variant="link" size="sm" onClick={onlySearch ? clearSearch : clearAll}>
+                        {onlySearch ? "Clear search" : "Clear filters"}
+                      </Button>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
-            ) : null}
-          </div>
-          <div
-            ref={lettersRef}
-            role="tabpanel"
-            id={`inbox-filter-panel-${filter}`}
-            aria-labelledby={`inbox-filter-tab-${filter}`}
-            aria-busy={searching && search.isFetching}
-          >
-            {groups.length ? (
-              <LettersList groups={groups} parties={partyMap} open={openMap} />
-            ) : pendingSearch ? null : (
-              <EmptyState
-                size="sm"
-                illustration={empty.illustration}
-                title={empty.title}
-                description={empty.description}
-                action={
-                  empty.action === "clear-search" ? (
-                    <Button size="sm" onClick={clearSearch}>
-                      Clear search
-                    </Button>
-                  ) : empty.action === "clear-filters" ? (
-                    <Button size="sm" onClick={clearAll}>
-                      Clear filters
-                    </Button>
-                  ) : empty.action === "add" ? (
-                    <Button size="sm" icon={Plus} onClick={openPicker}>
-                      Add letters
-                    </Button>
-                  ) : undefined
-                }
-              />
-            )}
-          </div>
+              <div
+                ref={lettersRef}
+                role="tabpanel"
+                id={`inbox-filter-panel-${filter}`}
+                aria-labelledby={`inbox-filter-tab-${filter}`}
+                aria-busy={searching && search.isFetching}
+              >
+                {groups.length ? (
+                  <LettersList groups={groups} parties={partyMap} open={openMap} />
+                ) : pendingSearch ? null : (
+                  <EmptyState
+                    size="sm"
+                    illustration={empty.illustration}
+                    title={empty.title}
+                    description={empty.description}
+                    action={
+                      empty.action === "clear-search" ? (
+                        <Button size="sm" onClick={clearSearch}>
+                          Clear search
+                        </Button>
+                      ) : empty.action === "clear-filters" ? (
+                        <Button size="sm" onClick={clearAll}>
+                          Clear filters
+                        </Button>
+                      ) : empty.action === "add" ? (
+                        <Button size="sm" icon={Plus} onClick={openPicker}>
+                          Add letters
+                        </Button>
+                      ) : undefined
+                    }
+                  />
+                )}
+              </div>
 
-          {/* not under an empty state: that one says what to do */}
-          {groups.length ? (
-            <button
-              type="button"
-              onClick={openPicker}
-              className="mt-8 flex w-full items-center gap-3 rounded-2xl border border-dashed border-line-strong px-4 py-4 text-left transition-colors hover:border-accent/60 hover:bg-accent-soft/40 sm:px-5"
-            >
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
-                <FileUp className="size-5" aria-hidden />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-base font-medium text-ink">
-                  {touch ? "Add letters — PDFs or phone photos" : "Drop letters anywhere on this page, or choose files"}
-                </span>
-                <span className="mt-0.5 flex items-start gap-1.5 text-sm leading-5 text-muted">
-                  <Lock className="mt-1 size-3 shrink-0" aria-hidden />
-                  {touch ? "Your files stay on this device." : "PDFs and phone photos. Your files stay on this computer."}
-                </span>
-              </span>
-            </button>
+              {/* not under an empty state: that one says what to do */}
+              {groups.length ? (
+                <button
+                  type="button"
+                  onClick={openPicker}
+                  className="mt-8 flex w-full items-center gap-3 rounded-2xl border border-dashed border-line-strong px-4 py-4 text-left transition-colors hover:border-accent/60 hover:bg-accent-soft/40 sm:px-5"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
+                    <FileUp className="size-5" aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-base font-medium text-ink">
+                      {touch ? "Add letters — PDFs or phone photos" : "Drop letters anywhere on this page, or choose files"}
+                    </span>
+                    <span className="mt-0.5 flex items-start gap-1.5 text-sm leading-5 text-muted">
+                      <Lock className="mt-1 size-3 shrink-0" aria-hidden />
+                      {touch ? "Your files stay on this device." : "PDFs and phone photos. Your files stay on this computer."}
+                    </span>
+                  </span>
+                </button>
+              ) : null}
+            </>
           ) : null}
         </>
       )}

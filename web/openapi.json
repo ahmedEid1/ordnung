@@ -279,7 +279,7 @@
           "profile"
         ],
         "summary": "Update Settings",
-        "description": "Change settings (``demo`` and ``simulated_today`` can't be changed here).",
+        "description": "Change settings (``demo`` and ``simulated_today`` can't be changed here); a new inbox folder\nrestarts the folder watcher.",
         "operationId": "update_settings_api_settings_put",
         "requestBody": {
           "content": {
@@ -552,7 +552,8 @@
                     "processing",
                     "processed",
                     "needs_review",
-                    "failed"
+                    "failed",
+                    "held"
                   ],
                   "type": "string"
                 },
@@ -990,6 +991,154 @@
         "responses": {
           "200": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/folder": {
+      "get": {
+        "tags": [
+          "folder"
+        ],
+        "summary": "Folder Status",
+        "description": "The watched folder: its path, whether it is watched, the letters waiting and the last files.",
+        "operationId": "folder_status_api_folder_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/held/read": {
+      "post": {
+        "tags": [
+          "folder"
+        ],
+        "summary": "Read Held",
+        "description": "“Read these”: the waiting letters may be sent to Claude; they are queued for reading.",
+        "operationId": "read_held_api_documents_held_read_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeldResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/held/keep-private": {
+      "post": {
+        "tags": [
+          "folder"
+        ],
+        "summary": "Keep Held Private Route",
+        "description": "“Keep private”: the waiting letters stay on this computer and are never sent to Claude.",
+        "operationId": "keep_held_private_route_api_documents_held_keep_private_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeldResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/held/wait": {
+      "post": {
+        "tags": [
+          "folder"
+        ],
+        "summary": "Wait Again",
+        "description": "Undo “Keep private”: letters kept private from waiting (never read by Claude) wait again.",
+        "operationId": "wait_again_api_documents_held_wait_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeldResult"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -2224,7 +2373,7 @@
           "brief"
         ],
         "summary": "Read Brief",
-        "description": "Today's note: the stored one, else the agenda written by code.",
+        "description": "Today's note: the stored one Claude wrote, else the agenda written by code as it stands now.",
         "operationId": "read_brief_api_brief_get",
         "responses": {
           "200": {
@@ -3054,6 +3203,11 @@
             ],
             "title": "Inbox Dir"
           },
+          "inbox_auto_read": {
+            "type": "boolean",
+            "title": "Inbox Auto Read",
+            "default": false
+          },
           "ocr": {
             "type": "boolean",
             "title": "Ocr",
@@ -3091,6 +3245,7 @@
           "models",
           "concurrency",
           "inbox_dir",
+          "inbox_auto_read",
           "ocr",
           "llm_brief",
           "llm_review",
@@ -4713,6 +4868,11 @@
             "type": "array",
             "title": "Recent Documents"
           },
+          "waiting": {
+            "type": "integer",
+            "title": "Waiting",
+            "default": 0
+          },
           "stats": {
             "$ref": "#/components/schemas/DashboardStats"
           }
@@ -4729,6 +4889,7 @@
           "areas",
           "suggestions",
           "recent_documents",
+          "waiting",
           "stats"
         ],
         "title": "Dashboard"
@@ -5092,7 +5253,8 @@
               "processing",
               "processed",
               "needs_review",
-              "failed"
+              "failed",
+              "held"
             ],
             "title": "Status",
             "default": "queued"
@@ -5560,6 +5722,33 @@
             },
             "type": "array",
             "title": "Girocodes"
+          },
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/EmailAttachment"
+            },
+            "type": "array",
+            "title": "Attachments"
+          },
+          "attachments_more": {
+            "type": "integer",
+            "title": "Attachments More",
+            "default": 0
+          },
+          "email": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Document"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_wait_again": {
+            "type": "boolean",
+            "title": "Can Wait Again",
+            "default": false
           }
         },
         "type": "object",
@@ -5575,7 +5764,11 @@
           "suggestions",
           "drafts",
           "set_aside",
-          "girocodes"
+          "girocodes",
+          "attachments",
+          "attachments_more",
+          "email",
+          "can_wait_again"
         ],
         "title": "DocumentDetail"
       },
@@ -6209,6 +6402,71 @@
         "title": "DraftPatch",
         "description": "Edits the person makes to a draft (the checks run again)."
       },
+      "EmailAttachment": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "added",
+              "known",
+              "inline",
+              "not_read",
+              "refused",
+              "over_limit"
+            ],
+            "title": "Outcome"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          },
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "queued",
+                  "processing",
+                  "processed",
+                  "needs_review",
+                  "failed",
+                  "held"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "outcome",
+          "detail",
+          "doc_id",
+          "status"
+        ],
+        "title": "EmailAttachment",
+        "description": "One attachment of an e-mail and what Ordnung did with it (:mod:`ordnung.ingest.attachments`).\n\n``added``: it became a letter of its own (``doc_id``); ``known``: the same file was already in\nOrdnung (``doc_id``); ``inline``: a picture shown inside the e-mail (a logo), skipped; ``not_read``: a\ntype Ordnung does not read from e-mails (a zip, a Word file …), listed only; ``refused``: intake\nrefused it (``detail`` says why); ``over_limit``: past the most attachments read from one e-mail.\n``doc_id`` is only set while that letter exists and is not in the trash."
+      },
       "Evidence": {
         "properties": {
           "doc_id": {
@@ -6271,6 +6529,149 @@
         ],
         "title": "Evidence",
         "description": "Where a fact came from.\n\n``grounding``: ``verified`` — quote located in the PDF text layer with all digits matching;\n``model_read`` — located only in the AI transcription of a scan/photo; ``unverified`` — not found;\n``user`` — confirmed by the person."
+      },
+      "FolderPickup": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "added",
+              "known",
+              "refused"
+            ],
+            "title": "Outcome"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          },
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "queued",
+                  "processing",
+                  "processed",
+                  "needs_review",
+                  "failed",
+                  "held"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "filename",
+          "outcome",
+          "detail",
+          "doc_id",
+          "status"
+        ],
+        "title": "FolderPickup",
+        "description": "A file the watched folder brought in (from the activity log, newest first).\n\n``added``: it became a letter (``doc_id``, its ``status`` now); ``known``: the same file was already\nin Ordnung; ``refused``: intake refused it (``detail`` says why). ``doc_id`` and ``status`` are\n``None`` once that letter is gone."
+      },
+      "FolderStatus": {
+        "properties": {
+          "folder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "off",
+              "watching",
+              "problem"
+            ],
+            "title": "State",
+            "default": "off"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem"
+          },
+          "auto_read": {
+            "type": "boolean",
+            "title": "Auto Read",
+            "default": false
+          },
+          "can_read": {
+            "type": "boolean",
+            "title": "Can Read",
+            "default": true
+          },
+          "waiting": {
+            "type": "integer",
+            "title": "Waiting",
+            "default": 0
+          },
+          "suggested": {
+            "type": "string",
+            "title": "Suggested",
+            "default": ""
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/FolderPickup"
+            },
+            "type": "array",
+            "title": "Recent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "folder",
+          "state",
+          "problem",
+          "auto_read",
+          "can_read",
+          "waiting",
+          "suggested",
+          "recent"
+        ],
+        "title": "FolderStatus",
+        "description": "``GET /api/folder``: the watched folder, whether it is watched, and what it brought in."
       },
       "GiroCodeBlocked": {
         "properties": {
@@ -6503,6 +6904,60 @@
           "checks"
         ],
         "title": "Health"
+      },
+      "HeldRequest": {
+        "properties": {
+          "doc_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Doc Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "doc_ids"
+        ],
+        "title": "HeldRequest",
+        "description": "The waiting letters the person answered for (as shown to them)."
+      },
+      "HeldResult": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            },
+            "type": "array",
+            "title": "Documents"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/Job"
+            },
+            "type": "array",
+            "title": "Jobs"
+          },
+          "skipped": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Skipped",
+            "description": "ids that were not waiting (any more)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documents",
+          "jobs",
+          "skipped"
+        ],
+        "title": "HeldResult",
+        "description": "What an answer changed: the letters, the reading jobs queued (Read only), ids no longer waiting."
       },
       "HelpLink": {
         "properties": {
@@ -7063,6 +7518,7 @@
             "type": "string",
             "enum": [
               "replaced",
+              "attached",
               "history",
               "suspicious"
             ],
@@ -7087,7 +7543,7 @@
           "replaced_by"
         ],
         "title": "ItemAside",
-        "description": "An open to-do that is not one to act on (worked out on read, never stored).\n\n``replaced``: a payment reminder (``replaced_by``, a document id) took over the invoice payment —\npay once, not twice. ``history``: its date had long passed when the letter was read (an archive\nletter). ``suspicious``: the letter shows signs of a scam."
+        "description": "An open to-do that is not one to act on (worked out on read, never stored).\n\n``replaced``: a payment reminder (``replaced_by``, a document id) took over the invoice payment —\npay once, not twice. ``attached``: an e-mail's payment that the bill attached to it\n(``replaced_by``) asks for too. ``history``: its date had long passed when the letter was read (an\narchive letter). ``suspicious``: the letter shows signs of a scam."
       },
       "ItemCreate": {
         "properties": {
@@ -9834,6 +10290,18 @@
             ],
             "title": "Inbox Dir"
           },
+          "inbox_auto_read": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inbox Auto Read",
+            "description": "read new files from the watched folder at once (else they wait for you)"
+          },
           "ocr": {
             "anyOf": [
               {
@@ -11423,7 +11891,8 @@
               "processing",
               "processed",
               "needs_review",
-              "failed"
+              "failed",
+              "held"
             ],
             "title": "Status",
             "type": "string"
@@ -11509,6 +11978,50 @@
         "description": "An event without data (``llm.resumed``, ``profile.updated``).",
         "properties": {},
         "title": "EmptyEvent",
+        "type": "object"
+      },
+      "FolderUpdatedEvent": {
+        "additionalProperties": false,
+        "description": "``folder.updated``: the watched folder started, stopped, hit a problem or brought in a file.",
+        "properties": {
+          "state": {
+            "enum": [
+              "off",
+              "watching",
+              "problem"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Doc Id"
+          },
+          "held": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Held"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "FolderUpdatedEvent",
         "type": "object"
       },
       "ItemUpdatedEvent": {
@@ -11736,6 +12249,9 @@
           },
           "demo.mail": {
             "$ref": "#/components/schemas/DemoMailEvent"
+          },
+          "folder.updated": {
+            "$ref": "#/components/schemas/FolderUpdatedEvent"
           }
         },
         "required": [
@@ -11754,7 +12270,8 @@
           "profile.updated",
           "draft.created",
           "draft.sent",
-          "demo.mail"
+          "demo.mail",
+          "folder.updated"
         ],
         "title": "ServerEvents",
         "type": "object"

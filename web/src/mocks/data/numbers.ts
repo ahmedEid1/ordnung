@@ -1031,8 +1031,74 @@ export const MOCK_WEEK: WeeklySession = {
     {
       "id": "new",
       "title": "New in the last 7 days",
-      "summary": "5 letters since Mon 21 Sep",
+      "summary": "8 letters since Mon 21 Sep",
       "entries": [
+        {
+          "key": "document:doc_folder_scan",
+          "ref": {
+            "type": "document",
+            "id": "doc_folder_scan"
+          },
+          "title": "Scan_2026-09-28_0914.pdf",
+          "kind": "other",
+          "date": "2026-09-28",
+          "date_role": "added",
+          "due_date": null,
+          "amount": null,
+          "currency": null,
+          "party_id": null,
+          "party_name": null,
+          "doc_id": "doc_folder_scan",
+          "status": "held",
+          "note": "Waiting for you — read it with Claude or keep it private.",
+          "tone": "warn",
+          "overdue": false,
+          "item": null
+        },
+        {
+          "key": "document:doc_folder_mail",
+          "ref": {
+            "type": "document",
+            "id": "doc_folder_mail"
+          },
+          "title": "Ihre Rechnung September 2026 · FunkNetz Kundenservice",
+          "kind": "other",
+          "date": "2026-09-27",
+          "date_role": "added",
+          "due_date": null,
+          "amount": null,
+          "currency": null,
+          "party_id": null,
+          "party_name": null,
+          "doc_id": "doc_folder_mail",
+          "status": "held",
+          "note": "Waiting for you — read it with Claude or keep it private.",
+          "tone": "warn",
+          "overdue": false,
+          "item": null
+        },
+        {
+          "key": "document:doc_folder_invoice",
+          "ref": {
+            "type": "document",
+            "id": "doc_folder_invoice"
+          },
+          "title": "Rechnung_2026-09_FunkNetz.pdf",
+          "kind": "other",
+          "date": "2026-09-27",
+          "date_role": "added",
+          "due_date": null,
+          "amount": null,
+          "currency": null,
+          "party_id": null,
+          "party_name": null,
+          "doc_id": "doc_folder_invoice",
+          "status": "held",
+          "note": "Waiting for you — read it with Claude or keep it private.",
+          "tone": "warn",
+          "overdue": false,
+          "item": null
+        },
         {
           "key": "document:doc_library",
           "ref": {

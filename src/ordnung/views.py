@@ -13,6 +13,7 @@ from datetime import date, timedelta
 
 from ordnung import clock
 from ordnung.db.store import Store
+from ordnung.ingest.held import is_held
 from ordnung.models import (
     Area,
     AreaStatus,
@@ -321,7 +322,8 @@ def _collect_areas(ledger: Ledger) -> dict[str, _AreaFacts]:
     today = ledger.today
     facts: dict[str, _AreaFacts] = {}
     for doc in ledger.documents.values():
-        facts.setdefault(document_area(ledger, doc), _AreaFacts()).documents += 1
+        if not is_held(doc):  # waiting letters are not filed yet (Dashboard.waiting counts them)
+            facts.setdefault(document_area(ledger, doc), _AreaFacts()).documents += 1
     for item in ledger.actionable_items():
         area = facts.setdefault(item_area(ledger, item), _AreaFacts())
         area.items.append(item)
@@ -408,13 +410,17 @@ def recent_letter_key(doc: Document) -> tuple[str, str]:
 
 def dashboard(store: Store, today: date) -> Dashboard:
     """The Today page: attention (overdue, due within 7 days, needs review), coming up (8–30 days),
-    decisions (contracts with send-by within 60 days), money, life areas, new Ideas, recent letters
-    and ledger stats."""
+    decisions (contracts with send-by within 60 days), money, life areas, new Ideas, recent letters,
+    the letters waiting for the person (from the watched folder, not read yet — they are in no other
+    part) and ledger stats."""
     ledger = Ledger(store, today)
     attention = _attention(ledger)
     counts = store.counts()
     first_name = ledger.profile.name.split()[0] if ledger.profile.name.strip() else ""
-    recent = sorted(ledger.documents.values(), key=recent_letter_key, reverse=True)[:RECENT_DOCUMENTS]
+    waiting = [doc for doc in ledger.documents.values() if is_held(doc)]
+    recent = sorted(
+        (doc for doc in ledger.documents.values() if not is_held(doc)), key=recent_letter_key, reverse=True
+    )[:RECENT_DOCUMENTS]
     return Dashboard(
         today=today.isoformat(),
         greeting_name=first_name,
@@ -426,6 +432,7 @@ def dashboard(store: Store, today: date) -> Dashboard:
         areas=area_statuses(ledger),
         suggestions=_new_ideas(store, today),
         recent_documents=recent,
+        waiting=len(waiting),
         stats=DashboardStats(
             documents=counts.get("documents", 0),
             open_items=counts.get("open_items", 0),

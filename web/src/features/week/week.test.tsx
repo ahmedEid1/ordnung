@@ -74,7 +74,7 @@ describe("steps", () => {
     expect(entryHref({ ref: { type: "contract", id: "ctr_a" }, doc_id: null })).toBe("/contracts?contract=ctr_a");
     expect(entryHref({ ref: { type: "draft", id: "drf_a" }, doc_id: null })).toBe("/letters/drf_a");
     expect(stepCount({ entries: [], more: 3 })).toBe(3);
-    expect(sessionHighlights(MOCK_WEEK)).toEqual(["5 new letters", "2 to check", "4 to pay", "1 to post", "2 decisions"]);
+    expect(sessionHighlights(MOCK_WEEK)).toEqual(["8 new letters", "2 to check", "4 to pay", "1 to post", "2 decisions"]);
     // overdue first; a fee paid at an appointment is no transfer
     const pay = MOCK_WEEK.steps.find((s) => s.id === "pay")!;
     const week = {
@@ -82,7 +82,7 @@ describe("steps", () => {
       overdue: 2,
       steps: MOCK_WEEK.steps.map((s) => (s.id === "pay" ? { ...pay, entries: [...pay.entries, row({ key: "fee", title: "Fee", date_role: "at_appointment" })] } : s)),
     };
-    expect(sessionHighlights(week).slice(0, 4)).toEqual(["2 overdue", "5 new letters", "2 to check", "4 to pay"]);
+    expect(sessionHighlights(week).slice(0, 4)).toEqual(["2 overdue", "8 new letters", "2 to check", "4 to pay"]);
   });
 
   it("the next prompt comes a week on, or on the first Sunday 4 days on", () => {
@@ -354,7 +354,7 @@ describe("Today's prompt", () => {
       </>,
     );
     const prompt = await screen.findByRole("region", { name: "Time for your weekly review" });
-    expect(within(prompt).getByText(/About 10 minutes: 5 new letters · 2 to check · 4 to pay/)).toBeInTheDocument();
+    expect(within(prompt).getByText(/About 10 minutes: 8 new letters · 2 to check · 4 to pay/)).toBeInTheDocument();
     expect(within(prompt).getByRole("link", { name: "Start" })).toHaveAttribute("href", "/week");
     expect(screen.queryByRole("link", { name: /Weekly review/ })).toBeNull();
 

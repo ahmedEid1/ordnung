@@ -124,7 +124,8 @@ export interface paths {
         get: operations["read_settings_api_settings_get"];
         /**
          * Update Settings
-         * @description Change settings (``demo`` and ``simulated_today`` can't be changed here).
+         * @description Change settings (``demo`` and ``simulated_today`` can't be changed here); a new inbox folder
+         *     restarts the folder watcher.
          */
         put: operations["update_settings_api_settings_put"];
         post?: never;
@@ -322,6 +323,86 @@ export interface paths {
         get: operations["thumbnail_api_documents__doc_id__thumbnail_jpg_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/folder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Folder Status
+         * @description The watched folder: its path, whether it is watched, the letters waiting and the last files.
+         */
+        get: operations["folder_status_api_folder_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/held/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read Held
+         * @description “Read these”: the waiting letters may be sent to Claude; they are queued for reading.
+         */
+        post: operations["read_held_api_documents_held_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/held/keep-private": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Keep Held Private Route
+         * @description “Keep private”: the waiting letters stay on this computer and are never sent to Claude.
+         */
+        post: operations["keep_held_private_route_api_documents_held_keep_private_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/held/wait": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Wait Again
+         * @description Undo “Keep private”: letters kept private from waiting (never read by Claude) wait again.
+         */
+        post: operations["wait_again_api_documents_held_wait_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -756,7 +837,7 @@ export interface paths {
         };
         /**
          * Read Brief
-         * @description Today's note: the stored one, else the agenda written by code.
+         * @description Today's note: the stored one Claude wrote, else the agenda written by code as it stands now.
          */
         get: operations["read_brief_api_brief_get"];
         put?: never;
@@ -1124,6 +1205,11 @@ export interface components {
             concurrency: number;
             /** Inbox Dir */
             inbox_dir: string | null;
+            /**
+             * Inbox Auto Read
+             * @default false
+             */
+            inbox_auto_read: boolean;
             /**
              * Ocr
              * @default true
@@ -1624,6 +1710,11 @@ export interface components {
             suggestions: components["schemas"]["Suggestion"][];
             /** Recent Documents */
             recent_documents: components["schemas"]["Document"][];
+            /**
+             * Waiting
+             * @default 0
+             */
+            waiting: number;
             stats: components["schemas"]["DashboardStats"];
         };
         /** DashboardStats */
@@ -1796,7 +1887,7 @@ export interface components {
              * @default queued
              * @enum {string}
              */
-            status: "queued" | "processing" | "processed" | "needs_review" | "failed";
+            status: "queued" | "processing" | "processed" | "needs_review" | "failed" | "held";
             /** Error */
             error: string | null;
             /** Kind */
@@ -1883,6 +1974,19 @@ export interface components {
             set_aside: components["schemas"]["ItemAside"][];
             /** Girocodes */
             girocodes: (components["schemas"]["GiroCodeReady"] | components["schemas"]["GiroCodeBlocked"])[];
+            /** Attachments */
+            attachments: components["schemas"]["EmailAttachment"][];
+            /**
+             * Attachments More
+             * @default 0
+             */
+            attachments_more: number;
+            email: components["schemas"]["Document"] | null;
+            /**
+             * Can Wait Again
+             * @default false
+             */
+            can_wait_again: boolean;
         };
         /**
          * DocumentPatch
@@ -2064,6 +2168,34 @@ export interface components {
             status?: ("draft" | "final") | null;
         };
         /**
+         * EmailAttachment
+         * @description One attachment of an e-mail and what Ordnung did with it (:mod:`ordnung.ingest.attachments`).
+         *
+         *     ``added``: it became a letter of its own (``doc_id``); ``known``: the same file was already in
+         *     Ordnung (``doc_id``); ``inline``: a picture shown inside the e-mail (a logo), skipped; ``not_read``: a
+         *     type Ordnung does not read from e-mails (a zip, a Word file …), listed only; ``refused``: intake
+         *     refused it (``detail`` says why); ``over_limit``: past the most attachments read from one e-mail.
+         *     ``doc_id`` is only set while that letter exists and is not in the trash.
+         */
+        EmailAttachment: {
+            /** Filename */
+            filename: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "added" | "known" | "inline" | "not_read" | "refused" | "over_limit";
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Doc Id */
+            doc_id: string | null;
+            /** Status */
+            status: ("queued" | "processing" | "processed" | "needs_review" | "failed" | "held") | null;
+        };
+        /**
          * Evidence
          * @description Where a fact came from.
          *
@@ -2096,6 +2228,72 @@ export interface components {
             score: number;
             /** Boxes */
             boxes: components["schemas"]["Box"][];
+        };
+        /**
+         * FolderPickup
+         * @description A file the watched folder brought in (from the activity log, newest first).
+         *
+         *     ``added``: it became a letter (``doc_id``, its ``status`` now); ``known``: the same file was already
+         *     in Ordnung; ``refused``: intake refused it (``detail`` says why). ``doc_id`` and ``status`` are
+         *     ``None`` once that letter is gone.
+         */
+        FolderPickup: {
+            /** At */
+            at: string;
+            /** Filename */
+            filename: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "added" | "known" | "refused";
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Doc Id */
+            doc_id: string | null;
+            /** Status */
+            status: ("queued" | "processing" | "processed" | "needs_review" | "failed" | "held") | null;
+        };
+        /**
+         * FolderStatus
+         * @description ``GET /api/folder``: the watched folder, whether it is watched, and what it brought in.
+         */
+        FolderStatus: {
+            /** Folder */
+            folder: string | null;
+            /**
+             * State
+             * @default off
+             * @enum {string}
+             */
+            state: "off" | "watching" | "problem";
+            /** Problem */
+            problem: string | null;
+            /**
+             * Auto Read
+             * @default false
+             */
+            auto_read: boolean;
+            /**
+             * Can Read
+             * @default true
+             */
+            can_read: boolean;
+            /**
+             * Waiting
+             * @default 0
+             */
+            waiting: number;
+            /**
+             * Suggested
+             * @default
+             */
+            suggested: string;
+            /** Recent */
+            recent: components["schemas"]["FolderPickup"][];
         };
         /**
          * GiroCodeBlocked
@@ -2189,6 +2387,29 @@ export interface components {
              * @description The doctor's checks — only with ``?probe=1`` (“Run check”)
              */
             checks: components["schemas"]["DoctorCheck"][];
+        };
+        /**
+         * HeldRequest
+         * @description The waiting letters the person answered for (as shown to them).
+         */
+        HeldRequest: {
+            /** Doc Ids */
+            doc_ids: string[];
+        };
+        /**
+         * HeldResult
+         * @description What an answer changed: the letters, the reading jobs queued (Read only), ids no longer waiting.
+         */
+        HeldResult: {
+            /** Documents */
+            documents: components["schemas"]["Document"][];
+            /** Jobs */
+            jobs: components["schemas"]["Job"][];
+            /**
+             * Skipped
+             * @description ids that were not waiting (any more)
+             */
+            skipped: string[];
         };
         /**
          * HelpLink
@@ -2353,8 +2574,9 @@ export interface components {
          * @description An open to-do that is not one to act on (worked out on read, never stored).
          *
          *     ``replaced``: a payment reminder (``replaced_by``, a document id) took over the invoice payment —
-         *     pay once, not twice. ``history``: its date had long passed when the letter was read (an archive
-         *     letter). ``suspicious``: the letter shows signs of a scam.
+         *     pay once, not twice. ``attached``: an e-mail's payment that the bill attached to it
+         *     (``replaced_by``) asks for too. ``history``: its date had long passed when the letter was read (an
+         *     archive letter). ``suspicious``: the letter shows signs of a scam.
          */
         ItemAside: {
             /** Item Id */
@@ -2363,7 +2585,7 @@ export interface components {
              * Reason
              * @enum {string}
              */
-            reason: "replaced" | "history" | "suspicious";
+            reason: "replaced" | "attached" | "history" | "suspicious";
             /** Replaced By */
             replaced_by: string | null;
         };
@@ -3376,6 +3598,11 @@ export interface components {
             concurrency?: number | null;
             /** Inbox Dir */
             inbox_dir?: string | null;
+            /**
+             * Inbox Auto Read
+             * @description read new files from the watched folder at once (else they wait for you)
+             */
+            inbox_auto_read?: boolean | null;
             /** Ocr */
             ocr?: boolean | null;
             /** Llm Brief */
@@ -3949,7 +4176,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "queued" | "processing" | "processed" | "needs_review" | "failed";
+            status: "queued" | "processing" | "processed" | "needs_review" | "failed" | "held";
         };
         /**
          * DocumentUpdatedEvent
@@ -3987,6 +4214,27 @@ export interface components {
          * @description An event without data (``llm.resumed``, ``profile.updated``).
          */
         EmptyEvent: Record<string, never>;
+        /**
+         * FolderUpdatedEvent
+         * @description ``folder.updated``: the watched folder started, stopped, hit a problem or brought in a file.
+         */
+        FolderUpdatedEvent: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "off" | "watching" | "problem";
+            /**
+             * Doc Id
+             * @default null
+             */
+            doc_id?: string | null;
+            /**
+             * Held
+             * @default null
+             */
+            held?: boolean | null;
+        };
         /**
          * ItemUpdatedEvent
          * @description ``item.updated``: to-dos changed (``item_id`` when it was one).
@@ -4085,6 +4333,7 @@ export interface components {
             "draft.created": components["schemas"]["DraftCreatedEvent"];
             "draft.sent": components["schemas"]["DraftSentEvent"];
             "demo.mail": components["schemas"]["DemoMailEvent"];
+            "folder.updated": components["schemas"]["FolderUpdatedEvent"];
         };
         /**
          * SuggestionsUpdatedEvent
@@ -4466,7 +4715,7 @@ export interface operations {
                 kind?: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
                 party_id?: string | null;
                 case_id?: string | null;
-                status?: ("queued" | "processing" | "processed" | "needs_review" | "failed") | null;
+                status?: ("queued" | "processing" | "processed" | "needs_review" | "failed" | "held") | null;
                 direction?: ("incoming" | "outgoing" | "note") | null;
                 private?: boolean | null;
                 limit?: number | null;
@@ -4738,6 +4987,125 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    folder_status_api_folder_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderStatus"];
+                };
+            };
+        };
+    };
+    read_held_api_documents_held_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeldRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeldResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    keep_held_private_route_api_documents_held_keep_private_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeldRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeldResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wait_again_api_documents_held_wait_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeldRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeldResult"];
+                };
             };
             /** @description Validation Error */
             422: {

@@ -90,6 +90,8 @@ export function asideNote(aside: ItemAside, documents: readonly Pick<Document, "
       const of = date ? `the payment reminder of ${formatDate(date, { style: "short", today })}` : "a later payment reminder";
       return `Replaced by ${of} — pay that one, not both.`;
     }
+    case "attached":
+      return "The bill attached to this e-mail asks for the same payment — pay it once, as the bill says.";
     case "history":
       return "Already in the past when the letter was added — kept for your records.";
     case "suspicious":

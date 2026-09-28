@@ -14,6 +14,7 @@ import type {
   Lane,
   RuleInfo,
   TimelineEntry,
+  WeeklySession,
 } from "@/api/types";
 import { findRawEnums } from "@/lib/copy";
 import { needsArrivalDate } from "@/features/document/verdict";
@@ -394,6 +395,18 @@ describe("mock dataset", () => {
       "Income tax assessment 2025",
       expect.stringMatching(/Einspruch/),
     ]);
+  });
+
+  it("says in the weekly session that a letter from the folder waits, and that one kept private was not read", async () => {
+    const s = srv();
+    const note = async () => {
+      const week = await get<WeeklySession>(s, "/week");
+      return week.steps.find((st) => st.id === "new")!.entries.find((e) => e.ref.id === "doc_folder_scan")?.note;
+    };
+    expect(await note()).toBe("Waiting for you — read it with Claude or keep it private.");
+    const res = await s.handle("POST", "/documents/held/keep-private", new URLSearchParams(), { doc_ids: ["doc_folder_scan"] });
+    expect(res.ok).toBe(true);
+    expect(await note()).toBe("Kept private — not read, so look through it yourself.");
   });
 
   it("refuses Claude-only actions in the static demo with a friendly message", async () => {

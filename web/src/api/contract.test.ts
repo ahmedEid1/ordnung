@@ -140,6 +140,9 @@ interface Ids {
   suggestion: string;
   mail: string;
   thread: string;
+  /** letters waiting for the person (from the watched folder) */
+  held: string;
+  otherHeld: string;
 }
 
 interface Case {
@@ -178,6 +181,10 @@ const CASES = {
   fileUrl: { run: (ids) => api.fileUrl(ids.doc), asset: true },
   pageUrl: { run: (ids) => api.pageUrl(ids.doc, 1), asset: true },
   thumbnailUrl: { run: (ids) => api.thumbnailUrl(ids.doc), asset: true },
+  folder: { run: () => api.folder() },
+  readHeld: { run: (ids) => api.readHeld([ids.held, "doc_gone"]) },
+  keepHeldPrivate: { run: (ids) => api.keepHeldPrivate([ids.otherHeld]) },
+  waitAgain: { run: (ids) => api.waitAgain([ids.otherHeld]) }, // after keepHeldPrivate: undoes it
 
   items: { run: () => api.items({ status: "open", from: "2026-09-01", to: "2026-12-31", include_undated: true, limit: 50 }) },
   createItem: { run: () => api.createItem({ kind: "task", title: "Call the bank", due_date: "2026-10-05", area: "money" }) },
@@ -299,6 +306,8 @@ function ids(): Ids {
     suggestion: s.suggestions[0]!.id,
     mail: s.tray.find((t) => !t.opened)!.id,
     thread: "",
+    held: docs.find((d) => d.status === "held")!.id,
+    otherHeld: docs.filter((d) => d.status === "held").at(-1)!.id,
   };
 }
 

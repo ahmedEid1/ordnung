@@ -122,6 +122,7 @@ describe("first run", () => {
         suggestions: [],
         areas: [],
         recent_documents: [],
+        waiting: 0,
         money: { ...d.money, fixed_costs_monthly: 0, fixed_costs_monthly_other_currencies: {} },
         stats: { ...d.stats, documents: 0, contracts: 0, open_items: 0 },
       }),

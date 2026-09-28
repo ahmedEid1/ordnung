@@ -1,15 +1,14 @@
 import { Link, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
-import { CountBadge } from "@/components/ui/Badge";
 import { TAB_BAR_ITEMS, isNavItemActive } from "./nav";
-import { usePleaseCheckCount } from "./Sidebar";
+import { InboxBubble, inboxCountText, useInboxCounts } from "./Sidebar";
 
 /**
  * Bottom tab bar on phones (< 768 px), safe-area aware. Labels are 12 px (11 px below 360 px,
  * where six columns get narrow); the focus ring goes round the icon pill, inside the bar.
  */
 export function MobileTabBar() {
-  const pleaseCheck = usePleaseCheckCount();
+  const inbox = useInboxCounts();
   const { pathname } = useLocation();
   return (
     <nav
@@ -19,14 +18,15 @@ export function MobileTabBar() {
       <ul className="mx-auto grid h-16 max-w-lg grid-cols-6">
         {TAB_BAR_ITEMS.map((item) => {
           const Icon = item.icon;
-          const badge = item.badge === "please-check" ? pleaseCheck : 0;
+          const counts = item.badge === "please-check" ? inbox : null;
+          const badge = counts ? counts.check + counts.waiting : 0;
           const active = isNavItemActive(item, pathname);
           return (
             <li key={item.to} className="min-w-0">
               <Link
                 to={item.to}
                 aria-current={active ? "page" : undefined}
-                aria-label={badge ? `${item.label}, ${badge} to check` : item.label}
+                aria-label={counts && badge ? `${item.label}, ${inboxCountText(counts, true)}` : item.label}
                 className={cn(
                   "group relative flex h-full flex-col items-center justify-center gap-1 text-xs font-medium outline-none transition-colors max-[360px]:text-2xs",
                   active ? "text-accent" : "text-muted hover:text-ink",
@@ -39,9 +39,9 @@ export function MobileTabBar() {
                   )}
                 >
                   <Icon className="size-[19px]" aria-hidden />
-                  {badge ? (
+                  {counts && badge ? (
                     <span aria-hidden className="absolute -right-1 -top-1 inline-flex">
-                      <CountBadge count={badge} tone="warn" variant="solid" size="compact" className="ring-2 ring-surface" />
+                      <InboxBubble counts={counts} className="ring-2 ring-surface" />
                     </span>
                   ) : null}
                 </span>

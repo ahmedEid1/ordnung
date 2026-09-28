@@ -3,7 +3,10 @@
  * (the finishing POST is answered by the audit; the real onboarding afterwards uses `skip_ai`), then
  * every page empty. Nothing here sends anything to Claude: no letters, no questions, no "Run check".
  */
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fakeApi, settle } from "../browser.mjs";
+import { freshPdf } from "./folder.mjs";
 import { commonSettingsSections } from "./shared.mjs";
 import { numbersAndWeekEmptyStates } from "./numbers-week.mjs";
 
@@ -42,7 +45,7 @@ async function fakeClaude(c, variant) {
   await fakeApi(c.page, "GET", /^\/api\/health$/, async (_req, original) => ({ json: { ...original, claude: CLAUDE[variant] } }), { passthrough: true });
 }
 
-export async function freshCatalog({ api }) {
+export async function freshCatalog({ api, server }) {
   const wizard = [];
   const w = (id, how, description, run, extra = {}) => wizard.push({ id: `welcome-${id}`, group: G, route: "/welcome", how, description, run, ...extra });
   w("1-welcome", "open / (redirects to /welcome)", "Onboarding step 1: welcome and privacy.", async (c) => {
@@ -156,6 +159,24 @@ export async function freshCatalog({ api }) {
     },
   });
 
+  const onboard = () =>
+    api.post("/api/onboarding", {
+      profile: { region: "BE", language: "en", country: "DE", is_student_visa: false, name: "Alex Beispiel", address: "Musterstraße 1\n10115 Berlin" },
+      skip_ai: true,
+    });
+
+  // last: a watched folder brings the first letters in, and they wait (nothing is sent to Claude)
+  const waiting = [
+    {
+      id: "fresh-today-waiting",
+      group: G,
+      route: "/",
+      how: "set a watched folder holding two scans (PUT /api/settings), wait until both wait, open /",
+      description: "A first run whose folder brought two scans: Ordnung's own note says nothing is due from what was read — never “all clear” — and the waiting card.",
+      run: (c) => c.goto("/"),
+    },
+  ];
+
   return {
     phases: [
       { name: "wizard", parallel: true, states: wizard },
@@ -163,11 +184,24 @@ export async function freshCatalog({ api }) {
         name: "empty",
         parallel: true,
         states: empty,
+        before: onboard,
+      },
+      {
+        name: "waiting",
+        parallel: true,
+        states: waiting,
         before: async () => {
-          await api.post("/api/onboarding", {
-            profile: { region: "BE", language: "en", country: "DE", is_student_visa: false, name: "Alex Beispiel", address: "Musterstraße 1\n10115 Berlin" },
-            skip_ai: true,
-          });
+          await onboard(); // also when only this phase runs (`--only fresh-today-waiting`)
+          const folder = `${server.dataDir}-scans`;
+          rmSync(folder, { recursive: true, force: true });
+          mkdirSync(folder, { recursive: true });
+          writeFileSync(join(folder, "Scan_2026-09-28_0914.pdf"), freshPdf(server.webDir, "17_auslaenderbehoerde_termin.pdf", "fresh-1"));
+          writeFileSync(join(folder, "Scan_2026-09-28_0915.pdf"), freshPdf(server.webDir, "08_rechnung_techmarkt.pdf", "fresh-2"));
+          await api.put("/api/settings", { inbox_dir: folder });
+          for (let i = 0; i < 240; i += 1) {
+            if ((await api.get("/api/folder")).waiting >= 2) break;
+            await new Promise((r) => setTimeout(r, 250));
+          }
         },
       },
     ],
