@@ -7,7 +7,7 @@ import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { PartyDrawer } from "./PartyDrawer";
 import { formatMoney } from "@/lib/format";
-import { callNoteProblems, promisedAmount, type CallNoteDraft } from "./calls";
+import { __clearCallDrafts, callNoteProblems, clearCallDraft, keepCallDraft, loadCallDraft, promisedAmount, type CallNoteDraft } from "./calls";
 
 beforeEach(() => {
   vi.stubGlobal("scrollTo", () => {});
@@ -15,6 +15,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   act(() => __clearToasts());
+  __clearCallDrafts();
 });
 
 const TODAY = "2026-09-28";
@@ -161,7 +162,120 @@ describe("Calls in the party drawer", () => {
     const confirm = within(section).getByRole("group", { name: "Delete this note?" });
     await user.click(within(confirm).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.path === "/calls/cal_fitwell")).toBe(true));
-    expect(await within(section).findByText(/No calls noted/)).toBeInTheDocument();
+    await waitFor(() => expect(within(section).queryByRole("listitem")).toBeNull());
+    // no calls left: the section is its heading and "Note a call", one line
+    expect(within(section).getByRole("button", { name: "Note a call" })).toBeInTheDocument();
+    expect(section.querySelectorAll("p")).toHaveLength(0);
     await waitFor(() => expect(within(section).getByRole("heading", { name: /^Calls/ })).toHaveFocus()); // not <body>
+  });
+
+  it("keeps the keyboard's place: the question after the bin, back to the bin on “Keep it”, back to the button after “They kept it”", async () => {
+    const { calls } = useMockApi();
+    const user = userEvent.setup();
+    renderDrawer();
+    const section = await screen.findByRole("region", { name: /^Calls/ });
+    const bin = await within(section).findByRole("button", { name: "Delete the note of the call on Wed 23 Sep" });
+    await user.click(bin);
+    const confirm = within(section).getByRole("group", { name: "Delete this note?" });
+    // the question opens on its "Delete", and comes right after the bin (before "They kept it") in the Tab order
+    await waitFor(() => expect(within(confirm).getByRole("button", { name: "Delete" })).toHaveFocus());
+    const kept = within(section).getByRole("button", { name: "They kept it" });
+    expect(confirm.compareDocumentPosition(kept) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(bin.compareDocumentPosition(confirm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await user.click(within(confirm).getByRole("button", { name: "Keep it" }));
+    expect(within(section).queryByRole("group", { name: "Delete this note?" })).toBeNull();
+    expect(bin).toHaveFocus();
+
+    // "They kept it": busy, then saying the opposite — focus comes back to it, not <body>
+    kept.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(calls.some((c) => c.method === "PATCH" && c.path === "/calls/cal_fitwell")).toBe(true));
+    const back = await within(section).findByRole("button", { name: "Not kept after all" });
+    await waitFor(() => expect(back).toHaveFocus());
+    expect(back).toBe(kept);
+  });
+
+  it("asks for a promise in a few growing lines, and counts down near the limit", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    renderDrawer();
+    const section = await screen.findByRole("region", { name: /^Calls/ });
+    await user.click(within(section).getByRole("button", { name: "Note a call" }));
+    const promise = within(section).getByLabelText(/What they promised/);
+    expect(promise.tagName).toBe("TEXTAREA");
+    expect(promise).toHaveAttribute("rows", "2");
+    expect(promise).toHaveAttribute("maxLength", "300");
+    expect(promise).toHaveClass("[field-sizing:content]");
+    expect(within(section).queryByText(/characters left/)).toBeNull();
+    await user.click(promise);
+    await user.paste("x".repeat(260));
+    expect(within(section).getByText(/40 characters left/)).toBeInTheDocument();
+  });
+
+  it("never throws away a half-written note: it survives the drawer closing, and closing asks first", async () => {
+    const { calls } = useMockApi();
+    const user = userEvent.setup();
+    const { router, unmount } = renderDrawer();
+    let section = await screen.findByRole("region", { name: /^Calls/ });
+    await user.click(within(section).getByRole("button", { name: "Note a call" }));
+    await user.type(within(section).getByLabelText("What was said"), "They will refund the September fee.");
+    await user.type(within(section).getByLabelText(/What they promised/), "Refund");
+
+    // Escape: the drawer stays, and asks — its safe answer focused
+    await user.keyboard("{Escape}");
+    const ask = await within(section).findByRole("group", { name: /Discard this call note\?/ });
+    expect(router.state.location.search).toBe("?party=pty_fitwell");
+    await waitFor(() => expect(within(ask).getByRole("button", { name: "Keep writing" })).toHaveFocus());
+    await user.click(within(ask).getByRole("button", { name: "Keep writing" }));
+    expect(within(section).queryByRole("group", { name: /Discard this call note\?/ })).toBeNull();
+    expect(within(section).getByLabelText("What was said")).toHaveFocus();
+    expect(within(section).getByLabelText("What was said")).toHaveValue("They will refund the September fee.");
+
+    // the × asks too; "Discard" throws the note away and closes
+    const drawer = screen.getByRole("dialog", { name: "FitWell Studios" });
+    await user.click(within(drawer).getAllByRole("button", { name: "Close" })[0]!);
+    await user.click(within(await within(section).findByRole("group", { name: /Discard this call note\?/ })).getByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(router.state.location.search).toBe(""));
+    expect(loadCallDraft("pty_fitwell")).toBeNull();
+    expect(calls.some((c) => c.method === "POST" && c.path === "/calls")).toBe(false);
+
+    unmount();
+
+    // a note kept for the party (the drawer closed by a link, a reload) opens again as it was
+    keepCallDraft("pty_fitwell", { calledOn: "2026-09-27", contact: "Frau Weber", summary: "Half of what was said", promise: "", promiseDue: "", amount: "", caseId: "" });
+    renderDrawer();
+    section = await screen.findByRole("region", { name: /^Calls/ });
+    const form = await within(section).findByRole("form", { name: "Note a call" });
+    expect(within(form).getByLabelText("What was said")).toHaveValue("Half of what was said");
+    expect(within(form).getByLabelText(/Who you spoke to/)).toHaveValue("Frau Weber");
+    expect(within(form).getByLabelText("When")).toHaveValue("2026-09-27");
+    // Cancel is a choice: the note goes
+    await user.click(within(form).getByRole("button", { name: "Cancel" }));
+    expect(loadCallDraft("pty_fitwell")).toBeNull();
+  });
+
+  it("keeps every keystroke for the party, so a closed drawer loses nothing", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    const { router } = renderDrawer();
+    const section = await screen.findByRole("region", { name: /^Calls/ });
+    await user.click(within(section).getByRole("button", { name: "Note a call" }));
+    await user.type(within(section).getByLabelText("What was said"), "Asked about the cancellation");
+    expect(loadCallDraft("pty_fitwell")?.summary).toBe("Asked about the cancellation");
+    // a link followed from the drawer closes it without asking — the note stays kept
+    await act(() => router.navigate("/documents/doc_x"));
+    expect(loadCallDraft("pty_fitwell")?.summary).toBe("Asked about the cancellation");
+    clearCallDraft("pty_fitwell");
+    expect(loadCallDraft("pty_fitwell")).toBeNull();
+  });
+
+  it("closes at once when nothing was typed", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    const { router } = renderDrawer();
+    const section = await screen.findByRole("region", { name: /^Calls/ });
+    await user.click(within(section).getByRole("button", { name: "Note a call" }));
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(router.state.location.search).toBe(""));
   });
 });
