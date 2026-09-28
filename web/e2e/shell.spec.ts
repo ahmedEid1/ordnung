@@ -8,7 +8,7 @@
  * read on a phone, and the opaque drop overlay.
  */
 import type { Page, Route } from "@playwright/test";
-import { apiGet, expect, open, settle, setTour, test } from "./helpers";
+import { apiGet, documentId, expect, open, settle, setTour, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -93,6 +93,21 @@ test.describe("phone: a letter page", () => {
     await expect(page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: /^Inbox/ })).toHaveAttribute("aria-current", "page");
     await back.click();
     await expect(page).toHaveURL(/\/contracts$/);
+  });
+
+  test("the title keeps its room: My numbers gives way to it (the section pages link to it)", async ({ page }) => {
+    const id = await documentId(page, /Payment Reminder/);
+    await open(page, `/documents/${id}`);
+    const bar = page.getByRole("banner");
+    const title = bar.getByRole("navigation", { name: "Breadcrumb" }).locator('[aria-current="page"]');
+    const width = (await title.boundingBox())!.width;
+    // round 1 had about 140 px here; wave 2's My numbers icon had squeezed it to 102 px ("1st Payment…")
+    expect(width, "breadcrumb title width at 390 px").toBeGreaterThanOrEqual(140);
+    await expect(bar.getByRole("link", { name: "My numbers" })).toBeHidden();
+    await expect(bar.getByRole("link", { name: /^Settings/ })).toBeVisible();
+    // on a section page it is one tap away
+    await open(page, "/inbox", "Inbox");
+    await expect(bar.getByRole("link", { name: "My numbers" })).toBeVisible();
   });
 
   test("tab bar: the focus ring goes round the icon pill, inside the bar", async ({ page }) => {

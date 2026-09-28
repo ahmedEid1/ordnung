@@ -61,7 +61,25 @@ export function AttentionDot({ className }: { className?: string }) {
   return <span aria-hidden data-testid="attention-dot" className={cn("size-2 rounded-full bg-warn ring-2 ring-surface-2 dark:ring-surface", className)} />;
 }
 
-function NavEntry({ item, rail, counts, attention = false }: { item: NavItem; rail: boolean; counts?: InboxCounts; attention?: boolean }) {
+/** Settings' link: the first section with a problem while one is known (the dot leads to it), else the page. */
+export function settingsHref(problems: readonly { section: string }[]): string {
+  return problems.length ? `${SETTINGS_ITEM.to}?section=${problems[0].section}` : SETTINGS_ITEM.to;
+}
+
+function NavEntry({
+  item,
+  rail,
+  counts,
+  attention = false,
+  href = item.to,
+}: {
+  item: NavItem;
+  rail: boolean;
+  counts?: InboxCounts;
+  attention?: boolean;
+  /** Where the link goes, when not the section's own path (Settings with a problem: its section). */
+  href?: string;
+}) {
   const { pathname } = useLocation();
   const active = isNavItemActive(item, pathname);
   const Icon = item.icon;
@@ -72,7 +90,7 @@ function NavEntry({ item, rail, counts, attention = false }: { item: NavItem; ra
     // icon over a short label (like the phone tab bar): the rail is readable without hovering
     return (
       <Link
-        to={item.to}
+        to={href}
         aria-current={active ? "page" : undefined}
         aria-label={counts && badge ? `${item.label}, ${inboxCountText(counts)}` : attentionLabel}
         title={counts && badge ? inboxCountTitle(counts) : undefined}
@@ -100,13 +118,15 @@ function NavEntry({ item, rail, counts, attention = false }: { item: NavItem; ra
 
   return (
     <Link
-      to={item.to}
+      to={href}
       aria-current={active ? "page" : undefined}
       aria-label={counts && badge ? `${item.label}, ${inboxCountText(counts)}` : attentionLabel}
       className={cn(
-        "group relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-[14px] font-medium outline-none transition-colors",
+        // h-8 (a 32 px target): seven sections, Settings and the docked demo tour fit a 768 px laptop
+        "group relative flex h-8 items-center gap-3 rounded-lg px-2.5 text-[14px] font-medium outline-none transition-colors",
         active ? "bg-surface text-ink shadow-[var(--shadow-card)] ring-1 ring-line" : "text-muted hover:bg-surface-3/60 hover:text-ink",
-        "focus-visible:ring-2 focus-visible:ring-accent",
+        // inset, as on the rail: the ring stays inside the nav's scroll area without padding around it
+        "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent",
       )}
     >
       <Icon className={cn("size-[18px] shrink-0 transition-colors", active ? "text-accent" : "text-muted group-hover:text-ink")} aria-hidden />
@@ -172,7 +192,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useLocalStorage("ordnung.sidebar.collapsed", false);
   const rail = !isDesktop || collapsed;
   const inbox = useInboxCounts();
-  const attention = useBackgroundProblems().length > 0;
+  const problems = useBackgroundProblems();
   const toggleLabel = collapsed ? "Expand sidebar" : "Collapse sidebar";
 
   return (
@@ -206,10 +226,10 @@ export function Sidebar() {
       </div>
 
       {/* on a short window the sections scroll inside the sidebar (the footer — Settings, the theme — stays
-          on screen); py-1 (and px-1 when expanded): room for the focus ring inside the scroll area */}
+          on screen); the entries' focus rings are inset, so they need no padding inside the scroll area */}
       <nav
         aria-label="Primary"
-        className={cn("mt-2 flex min-h-0 shrink flex-col overflow-y-auto overscroll-contain py-1 scrollbar-thin", rail ? "w-full gap-1" : "-mx-1 gap-0.5 px-1")}
+        className={cn("mt-2 flex min-h-0 shrink flex-col overflow-y-auto overscroll-contain scrollbar-thin", rail ? "w-full gap-1" : "gap-0.5")}
       >
         {NAV_ITEMS.map((item) => (
           <NavEntry key={item.to} item={item} rail={rail} counts={item.badge === "please-check" ? inbox : undefined} />
@@ -225,9 +245,9 @@ export function Sidebar() {
         <div id={TOUR_DOCK_ID} className="-mx-1 flex min-h-0 flex-1 flex-col justify-end-safe overflow-y-auto px-1 py-3 scrollbar-thin" />
       )}
 
-      <div className={cn("flex shrink-0 flex-col gap-2 pb-4 pt-2", rail && "w-full items-center")}>
+      <div className={cn("flex shrink-0 flex-col gap-2 pb-4", rail && "w-full items-center")}>
         <DemoBadge compact={rail} className={rail ? undefined : "self-start"} />
-        <NavEntry item={SETTINGS_ITEM} rail={rail} attention={attention} />
+        <NavEntry item={SETTINGS_ITEM} rail={rail} attention={problems.length > 0} href={settingsHref(problems)} />
         <div className={cn("mt-1 flex items-center gap-2 border-t border-line pt-3", rail ? "w-full flex-col" : "pl-1.5")}>
           {!rail ? <ProfileLink /> : null}
           <ThemeToggle compact className={rail ? undefined : "ml-auto"} />

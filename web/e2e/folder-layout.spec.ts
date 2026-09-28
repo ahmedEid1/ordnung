@@ -185,6 +185,11 @@ test("focus never falls to the page: a refused answer keeps it, and “Undo “K
   expect((await refused).ok()).toBe(false);
   await expect(read).not.toHaveAttribute("aria-busy", "true");
   await expect(read).toBeFocused();
+  // a limit of the demo, said as a calm note (the polite list), not as a failed request
+  const note = page.getByTestId("toaster").getByText("Not available in the demo", { exact: true });
+  await expect(note).toBeVisible();
+  await expect(note.locator("xpath=ancestor::ol[1]")).toHaveAttribute("aria-live", "polite");
+  await expect(page.getByText("Couldn't start reading them")).toHaveCount(0);
 
   await card.getByRole("button", { name: "Keep private" }).click();
   const undo = page.getByRole("main").getByRole("button", { name: "Undo “Keep private”" });
@@ -217,3 +222,32 @@ for (const scheme of ["light", "dark"] as const) {
     }
   });
 }
+
+test("a folder that went missing: Settings' dot leads to its section, which is marked, and a phone's page stays put", async ({ page }) => {
+  const put = (dir: string | null) => page.request.put("/api/settings", { data: { inbox_dir: dir }, headers: CLIENT });
+  expect((await put(`${folder}-missing`)).ok()).toBe(true);
+  try {
+    await expect.poll(async () => (await apiGet<{ state: string }>(page, "/api/folder")).state, { timeout: 15_000 }).toBe("problem");
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await open(page, "/inbox", "Inbox");
+    // the sidebar's Settings goes where the problem is, not to Profile
+    await expect(page.getByRole("complementary", { name: "Sidebar" }).getByRole("link", { name: "Settings, needs your attention" })).toHaveAttribute(
+      "href",
+      "/settings?section=folder",
+    );
+    for (const width of [320, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await open(page, "/inbox", "Inbox");
+      await page.getByRole("banner").getByRole("link", { name: "Settings, needs your attention" }).click();
+      await expect(page.getByRole("main").getByRole("heading", { level: 2, name: "Watched folder" })).toBeVisible();
+      const pill = page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: "Watched folder, needs your attention" });
+      await expect(pill).toHaveAttribute("aria-current", "page");
+      await expect(pill.getByTestId("attention-dot")).toBeVisible();
+      // nothing of the marked pill sits outside the scrolling row and widens the page
+      expect(await sideways(page), `${width} px: the page scrolls sideways`).toBe(0);
+    }
+  } finally {
+    await put(folder);
+  }
+  await expect.poll(async () => (await apiGet<{ state: string }>(page, "/api/folder")).state, { timeout: 15_000 }).toBe("watching");
+});

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Bell, CalendarDays, Cpu, Database, FolderInput, MapPin, Plug, Scale, ShieldCheck, UserRound, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AttentionDot } from "@/components/shell/Sidebar";
 import { SECTION_IDS, SECTION_LABELS, type SectionId } from "./logic";
+import { useBackgroundProblems } from "./attention";
 
 const ICONS: Record<SectionId, LucideIcon> = {
   profile: UserRound,
@@ -36,11 +38,15 @@ export function edgeFade(start: boolean, end: boolean): CSSProperties | undefine
  * - from 36rem: the pills wrap onto a second row — nothing hidden.
  * - from 56rem: a vertical list next to the section.
  *
- * Each entry is a link (`?section=…`), so sections are linkable and work with Back.
+ * Each entry is a link (`?section=…`), so sections are linkable and work with Back. A section whose
+ * background feature stopped working (the watched folder, calendar sync, the morning notification)
+ * carries the same dot as Settings in the app's navigation.
  */
 export function SettingsNav({ current, hrefFor, onNavigate }: { current: SectionId; hrefFor: (id: SectionId) => string; onNavigate: (id: SectionId) => void }) {
   const listRef = useRef<HTMLUListElement>(null);
   const [edges, setEdges] = useState({ start: false, end: false });
+  const problems = useBackgroundProblems();
+  const needsAttention = new Set(problems.map((p) => p.section));
 
   // phones: keep the current section's pill in view in the scrolling row
   useEffect(() => {
@@ -83,6 +89,7 @@ export function SettingsNav({ current, hrefFor, onNavigate }: { current: Section
       >
         {SECTIONS.map((s) => {
           const active = s.id === current;
+          const attention = needsAttention.has(s.id);
           return (
             <li key={s.id} className="shrink-0">
               <a
@@ -94,6 +101,9 @@ export function SettingsNav({ current, hrefFor, onNavigate }: { current: Section
                 }}
                 onFocus={(e) => e.currentTarget.scrollIntoView?.({ block: "nearest", inline: "nearest" })}
                 aria-current={active ? "page" : undefined}
+                // named as the app's Settings link is (an sr-only span would sit outside the scrolling
+                // row — its containing block is the page — and widen a phone's page)
+                aria-label={attention ? `${s.label}, needs your attention` : undefined}
                 className={cn(
                   "flex items-center gap-2.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[13.5px] font-medium transition-colors @4xl:rounded-lg @4xl:border-transparent @4xl:px-2.5 @4xl:py-2",
                   active
@@ -103,6 +113,7 @@ export function SettingsNav({ current, hrefFor, onNavigate }: { current: Section
               >
                 <s.icon className={cn("size-4 shrink-0", active ? "text-accent" : "text-faint")} aria-hidden />
                 {s.label}
+                {attention ? <AttentionDot className="shrink-0 ring-0 @4xl:ml-auto" /> : null}
               </a>
             </li>
           );

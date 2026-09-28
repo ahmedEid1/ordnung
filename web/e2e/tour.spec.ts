@@ -117,6 +117,24 @@ test("the tour card walks through Idea → Ask → Timeline and finishes", async
   await expect(tour.getByRole("heading", { name: "You have new mail" })).toBeFocused();
 });
 
+test("laptops: every step docks in the sidebar at 1280×800, and all but the longest at 1366×768", async ({ page }) => {
+  for (const [size, docking] of [
+    [{ width: 1280, height: 800 }, [0, 1, 2, 3]],
+    [{ width: 1366, height: 768 }, [0, 2, 3]],
+  ] as const) {
+    await page.setViewportSize(size);
+    for (const step of docking) {
+      await setTour(page, step);
+      await open(page, "/inbox", "Inbox");
+      await expect(tourCard(page)).toBeVisible();
+      // docked: clear of the page (wave 2's seventh section took the room and step 2 floated over it)
+      await expect(page.locator("#tour-dock section"), `${size.width}×${size.height}: step ${step + 1} docks`).toHaveCount(1);
+      expect(await page.locator("#tour-dock").evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
+    }
+  }
+  await setTour(page, null);
+});
+
 test("short laptops (1280×720, 1024×768): the tour is never cut off — docked whole, or the slim bar", async ({ page }) => {
   for (const size of [
     { width: 1280, height: 720 },

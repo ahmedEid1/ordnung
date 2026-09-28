@@ -8,6 +8,7 @@ import { screen, within } from "@testing-library/react";
 import { api } from "@/api/endpoints";
 import type { CalendarSyncStatus, DesktopReminders, FolderStatus } from "@/api/types";
 import { AttentionCard } from "@/features/today/AttentionCard";
+import { SettingsNav } from "./SettingsNav";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
@@ -58,7 +59,21 @@ describe("Needs your attention", () => {
     expect(within(card).getByText(/New scans don't arrive: Ordnung can't find this folder/)).toBeInTheDocument();
     const links = within(card).getAllByRole("link", { name: "Open Settings" });
     expect(links.map((l) => l.getAttribute("href"))).toEqual(["/settings?section=folder", "/settings?section=calendar"]);
-    expect(await screen.findByRole("link", { name: "Settings, needs your attention" })).toBeInTheDocument();
+    // the dot leads to the section with the problem, not to Profile
+    expect(await screen.findByRole("link", { name: "Settings, needs your attention" })).toHaveAttribute("href", "/settings?section=folder");
+  });
+
+  it("marks the sections with a problem in Settings' own list", async () => {
+    useMockApi();
+    const folder = await api.folder();
+    vi.spyOn(api, "folder").mockResolvedValue({ ...folder, folder: "/home/sam/Scans", state: "problem", problem: MISSING } as FolderStatus);
+    renderWithProviders(<SettingsNav current="profile" hrefFor={(id) => `/settings?section=${id}`} onNavigate={() => {}} />);
+    const nav = screen.getByRole("navigation", { name: "Settings sections" });
+    const marked = await within(nav).findByRole("link", { name: "Watched folder, needs your attention" });
+    expect(within(marked).getByTestId("attention-dot")).toBeInTheDocument();
+    const profile = within(nav).getByRole("link", { name: "Profile & address" });
+    expect(profile).toHaveAttribute("aria-current", "page");
+    expect(within(profile).queryByTestId("attention-dot")).toBeNull();
   });
 
   it("stays away while all is well", async () => {
@@ -71,7 +86,7 @@ describe("Needs your attention", () => {
         <Sidebar />
       </>,
     );
-    expect(await screen.findByRole("link", { name: "Settings" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
     expect(screen.queryByRole("region", { name: "Needs your attention" })).toBeNull();
     expect(screen.queryByTestId("attention-dot")).toBeNull();
   });

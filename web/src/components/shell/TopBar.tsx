@@ -12,7 +12,7 @@ import { DemoBadge } from "./DemoBadge";
 import { SHELL_GUTTERS, shellWidth } from "./layout";
 import { useHeadingUnderBar } from "./useHeadingUnderBar";
 import { TOP_BAR_ITEMS } from "./nav";
-import { AttentionDot } from "./Sidebar";
+import { AttentionDot, settingsHref } from "./Sidebar";
 import { useBackgroundProblems } from "@/features/settings/attention";
 
 /** A back arrow in the logo's place (phones), as big as the bar's other icon buttons. */
@@ -31,7 +31,8 @@ export function TopBar() {
   const scrolled = useScrolled();
   const [bar, setBar] = useState<HTMLElement | null>(null);
   const showTitle = useHeadingUnderBar(bar, !parent);
-  const attention = useBackgroundProblems().length > 0;
+  const problems = useBackgroundProblems();
+  const attention = problems.length > 0;
 
   return (
     <header
@@ -88,6 +89,7 @@ export function TopBar() {
           Add letters
         </Button>
         <IconButton icon={Plus} label="Add letters" variant="primary" onClick={openPicker} loading={uploading} className="sm:hidden" />
+        {/* on a phone's detail page the title needs the room (the section's page links to it) */}
         {TOP_BAR_ITEMS.map((item) => (
           <NavLink
             key={item.to}
@@ -95,14 +97,18 @@ export function TopBar() {
             aria-label={item.label}
             title={item.label}
             className={({ isActive }) =>
-              cn("grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-surface-3/70 hover:text-ink md:hidden", isActive && "text-accent")
+              cn(
+                "grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:bg-surface-3/70 hover:text-ink md:hidden",
+                parent && "max-sm:hidden",
+                isActive && "text-accent",
+              )
             }
           >
             <item.icon className="size-[18px]" aria-hidden />
           </NavLink>
         ))}
         <NavLink
-          to="/settings"
+          to={settingsHref(problems)}
           aria-label={attention ? "Settings, needs your attention" : "Settings"}
           title="Settings"
           className={({ isActive }) =>
