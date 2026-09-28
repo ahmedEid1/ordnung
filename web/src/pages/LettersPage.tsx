@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router";
-import { FileCheck2, Hourglass, Languages, PenLine, Plus, Send, ShieldCheck } from "lucide-react";
+import { FileCheck2, Languages, PenLine, Plus, Send, ShieldCheck } from "lucide-react";
 import { useDrafts, useParties, useWaiting } from "@/api/hooks";
 import { Page, PageHeader } from "@/components/shell/Page";
 import { CountBadge } from "@/components/ui/Badge";
@@ -13,6 +13,7 @@ import { LoadingLabel, Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { DraftGroup } from "@/features/letters/DraftList";
 import { LetterComposer } from "@/features/letters/LetterComposer";
 import { COMPOSER_PARAMS, parsePrefill, splitDrafts } from "@/features/letters/logic";
+import { MEANING_ICONS } from "@/lib/copy";
 import { PARTY_PARAM } from "@/lib/party-drawer";
 import { cn } from "@/lib/utils";
 import { waitingSummary } from "@/features/waiting/model";
@@ -25,12 +26,43 @@ const HOW = [
   { icon: Send, title: "How and by when to send it", body: "The safest way to send it, the send-by date — and a reminder to check for a reply." },
 ];
 
+/**
+ * The way to "Waiting for": how many are open, in neutral ink (not all of them are late), a red dot on the
+ * count when some are overdue and, where there is room, how many in red words (UI audit round 2: a fully
+ * red "4" read as four overdue). The dot takes no room: at 320 px the two buttons still share a row. The
+ * words show where the buttons have a row of their own (400–639 px) and beside the title from 1024 px —
+ * not in between, where they would squeeze the page's description.
+ */
+function WaitingLink({ count, overdue }: { count: number; overdue: number }) {
+  const Icon = MEANING_ICONS.waitingFor;
+  return (
+    <Link to="/letters/waiting" className={buttonVariants({ variant: "secondary" })} data-waiting-link>
+      <Icon aria-hidden />
+      Waiting for
+      <span className="relative inline-grid">
+        <CountBadge count={count} />
+        {overdue ? <span aria-hidden data-overdue-dot className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-danger ring-2 ring-surface" /> : null}
+      </span>
+      {overdue ? (
+        <span data-overdue className="-ml-0.5 text-xs font-semibold text-danger-ink max-[399px]:sr-only sm:max-lg:sr-only">
+          <span className="sr-only">, </span>
+          {overdue} overdue
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
 /** `/letters` — drafts (in progress / sent) and the "New letter" composer (`?new=1`, `?kind=…`). */
 export default function LettersPage() {
   const [params, setParams] = useSearchParams();
   const drafts = useDrafts();
   const parties = useParties();
-  const waiting = waitingSummary(useWaiting().data ?? []);
+  const waitingQ = useWaiting();
+  const waiting = waitingSummary(waitingQ.data ?? []);
+  // only a way to a page that shows something (open or closed): an empty "Waiting for" only sends the
+  // person back here (UI audit round 2)
+  const waitingShown = (waitingQ.data?.length ?? 0) > 0;
 
   // Older links used `party=` for the recipient (it would also open the People drawer): read it as `to=`.
   useLayoutEffect(() => {
@@ -77,19 +109,17 @@ export default function LettersPage() {
         title="Letters"
         description="Cancellations, objections and replies — drafted in German with an English translation, checked, and ready to send."
         actions={
-          <>
-            <Link to="/letters/waiting" className={buttonVariants({ variant: "secondary" })}>
-              <Hourglass aria-hidden />
-              Waiting for
-              <CountBadge count={waiting.count} tone={waiting.overdue ? "danger" : "neutral"} />
-              {waiting.overdue ? <span className="sr-only">, {waiting.overdue} overdue</span> : null}
-            </Link>
-            {empty ? null : (
-              <Button variant="primary" icon={Plus} onClick={openComposer}>
-                New letter
-              </Button>
-            )}
-          </>
+          // an empty page has no actions: its "Write your first letter" is the one way on (UI audit rounds 1 and 2)
+          waitingShown || !empty ? (
+            <>
+              {waitingShown ? <WaitingLink count={waiting.count} overdue={waiting.overdue} /> : null}
+              {empty ? null : (
+                <Button variant="primary" icon={Plus} onClick={openComposer}>
+                  New letter
+                </Button>
+              )}
+            </>
+          ) : null
         }
       />
 

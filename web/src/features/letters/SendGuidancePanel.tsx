@@ -110,7 +110,7 @@ export function SendGuidancePanel({ guidance, sent }: { guidance: SendGuidance |
             u === "overdue" || u === "today" || u === "soon" ? "border-danger/25 bg-danger-soft/60" : u === "week" ? "border-warn/30 bg-warn-soft/60" : "border-accent/20 bg-accent-soft/50",
           )}
         >
-          <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">{guidance.send_by && !late ? "Send it by" : "Must arrive by"}</p>
+          <p className="eyebrow">{guidance.send_by && !late ? "Send it by" : "Must arrive by"}</p>
           <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <DateText date={due} style="short" className="display text-[26px] font-semibold leading-tight text-ink" />
             <Countdown date={due} variant="pill" />
@@ -133,7 +133,7 @@ export function SendGuidancePanel({ guidance, sent }: { guidance: SendGuidance |
       ) : null}
 
       <div>
-        <h3 className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">Form</h3>
+        <h3 className="eyebrow mb-1.5">Form</h3>
         <p className="flex items-start gap-2 text-[14px] font-medium text-ink">
           <form.icon className={cn("mt-0.5 size-4 shrink-0", TONES[form.tone].icon)} aria-hidden />
           {form.label}
@@ -153,7 +153,7 @@ export function SendGuidancePanel({ guidance, sent }: { guidance: SendGuidance |
 
       {ranked.length ? (
         <div>
-          <h3 className="mb-2.5 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">
+          <h3 className="eyebrow mb-2.5 flex items-center gap-1.5">
             <Send className="size-3.5" aria-hidden /> Ways to send it, best first
           </h3>
           <ol className="divide-y divide-line">

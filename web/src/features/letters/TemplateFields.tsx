@@ -5,7 +5,7 @@
  */
 import type { ReactNode } from "react";
 import { useHref } from "react-router";
-import { Landmark } from "lucide-react";
+import { ExternalLink, Landmark } from "lucide-react";
 import type { Profile } from "@/api/types";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui/Field";
 import { MoneyInput, moneyReadBack } from "@/components/ui/MoneyInput";
@@ -99,14 +99,17 @@ const NO_DEFAULTS: LetterDefaults = { deadline: null, amount: null };
 
 /**
  * A link to the profile settings that keeps the letter being written: it opens in a new tab — following
- * it inside the composer would close the dialog and drop everything typed.
+ * it inside the composer would close the dialog and drop everything typed. It says so the way the
+ * app's other new-tab links do: the external-link icon, glued to the last word.
  */
 function SettingsLink({ children }: { children: ReactNode }) {
   const href = useHref({ pathname: "/settings", hash: "#set-profile" });
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="font-medium text-accent underline-offset-2 hover:underline">
+    <a href={href} target="_blank" rel="noopener noreferrer" data-new-tab className="font-medium text-accent underline-offset-2 hover:underline">
       {children}
       <span className="sr-only"> (opens in a new tab, so this letter stays as it is)</span>
+      {"⁠"}
+      <ExternalLink className="ml-0.5 inline size-3 align-[-0.1em]" aria-hidden />
     </a>
   );
 }
