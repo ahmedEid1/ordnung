@@ -36,11 +36,20 @@ export default defineConfig({
   // (before other tests open New-mail letters); then every page, then the layout guards (with the
   // feedback components: toasts, stepper, receipts — and the app shell), and last the high-stakes
   // letters, which re-file demo letters (PATCH kind) and so add the law's to-dos to the shared demo.
+  // The GiroCode guards run between the two: they change the parking fine's amount (PATCH) to ask for the
+  // paper letter again, and an edited to-do stays marked as edited when its amount is set back — Ask's
+  // recorded answers replay only against the untouched demo, so the layout project's Ask guards come first.
   // One worker runs projects in order.
   projects: [
     { name: "tour", testMatch: /tour\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "pages", testMatch: /pages\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
-    { name: "layout", testMatch: /(layout|feedback|shell)\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    {
+      name: "layout",
+      testMatch: /(layout|feedback|shell)\.spec\.ts$/,
+      testIgnore: /girocode-layout\.spec\.ts$/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+    },
+    { name: "girocode", testMatch: /girocode-layout\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "high-stakes", testMatch: /high-stakes\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
   ],
   webServer: {
