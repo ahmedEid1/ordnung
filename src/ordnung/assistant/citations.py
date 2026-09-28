@@ -142,6 +142,7 @@ TitleLookup = Callable[[str], str | None]
 _FIXED_LABELS: dict[str, str] = {
     "list_contracts": "Looked at your contracts",
     "money_summary": "Checked your money overview",
+    "get_my_numbers": "Looked up your numbers",
     "get_profile": "Checked your profile",
     "today": "Checked today's date",
 }
@@ -156,6 +157,7 @@ _COUNTED_RESULTS: dict[str, tuple[str, str, str]] = {
 _FIXED_RESULTS: dict[str, str] = {
     "get_document": "Read the letter",
     "money_summary": "Money overview ready",
+    "get_my_numbers": "Your numbers ready",
     "explain_date": "Found how the date was worked out",
     "get_profile": "Profile read",
 }

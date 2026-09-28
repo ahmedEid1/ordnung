@@ -17,12 +17,14 @@ from ordnung.api.routes import (
     events,
     girocode,
     items,
+    numbers,
     overview,
     parties,
     privacy,
     profile,
     suggestions,
     system,
+    week,
 )
 
 ROUTERS: tuple[APIRouter, ...] = (
@@ -37,6 +39,8 @@ ROUTERS: tuple[APIRouter, ...] = (
     parties.router,
     cases.router,
     overview.router,
+    numbers.router,
+    week.router,
     suggestions.router,
     brief.router,
     ask.router,

@@ -9,7 +9,10 @@ import { SEGMENT_GAP, SEGMENT_ITEM, SEGMENT_THUMB, SEGMENT_TRACK } from "./segme
 export interface TabItem<V extends string = string> {
   value: V;
   label: string;
-  /** Shown instead of `label` on phones (below `sm`); `label` stays the tab's accessible name. */
+  /**
+   * Shown instead of `label` on phones (below `sm`); `label` stays the tab's accessible name — with the
+   * short label before it on phones when `label` does not contain it ("Orgs Organisations").
+   */
   shortLabel?: string;
   icon?: LucideIcon;
   count?: number;
@@ -193,9 +196,11 @@ export function Tabs<V extends string>({
               {Icon ? <Icon className="relative size-4" aria-hidden /> : null}
               {t.shortLabel ? (
                 <>
-                  <span className="relative sm:hidden" aria-hidden>
+                  {/* a short label the full one does not contain ("Orgs") is part of the name too, so
+                      voice control finds the tab by the words on screen (WCAG 2.5.3) */}
+                  <span className="relative sm:hidden" aria-hidden={t.label.toLowerCase().includes(t.shortLabel.toLowerCase()) || undefined}>
                     {t.shortLabel}
-                  </span>
+                  </span>{" "}
                   <span className="relative max-sm:sr-only">{t.label}</span>
                 </>
               ) : (

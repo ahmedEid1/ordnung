@@ -52,6 +52,7 @@ import { mayBeCourt, needsTypedCourt } from "@/features/letters/logic";
 const COURT_OBJECTION_RECIPIENT =
   "An objection to a court order goes to the court that issued it — sent to the claimant, it doesn't stop the order (§ 694, § 700 ZPO). This letter's sender isn't a court in Ordnung: type the court's name and address as the order and its yellow envelope show them (for a Mahnbescheid usually a central Mahngericht).";
 import { SAM, sha } from "./data/constants";
+import { mockNumbers, mockWeek, mockWeekDismiss, mockWeekDone } from "./numbers";
 import { TRAY_DOCUMENTS } from "./data/documents";
 import { TRAY_ITEMS } from "./data/items";
 import { PARTIES } from "./data/parties";
@@ -1142,6 +1143,10 @@ const routes: [string, string, Handler][] = [
   ["GET", "/timeline", ({ db, query }) => db.timeline(query.get("from"), query.get("to"))],
   ["GET", "/lanes", ({ db, query }) => db.lanes(query.get("from"), query.get("to"))],
   ["GET", "/dashboard", ({ db }) => db.dashboard()],
+  ["GET", "/numbers", ({ db }) => mockNumbers(db)],
+  ["GET", "/week", ({ db }) => mockWeek(db)],
+  ["POST", "/week/done", ({ db }) => mockWeekDone(db)],
+  ["POST", "/week/dismiss", ({ db }) => mockWeekDismiss(db)],
 
   // ideas & brief
   [

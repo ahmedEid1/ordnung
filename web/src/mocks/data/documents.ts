@@ -194,7 +194,7 @@ export const DOCUMENTS: Document[] = [
       fact("Monthly contribution", "€142.86", ev("doc_bkk", Q.bkk.amount)),
       fact("Due", "by the 15th of each month", ev("doc_bkk", Q.bkk.due)),
     ],
-    references: [{ label: "Versichertennummer", value: "R123456789" }],
+    references: [{ label: "Versichertennummer", value: "R482019379" }],
   }),
   doc({
     id: "doc_rundfunk",
@@ -255,6 +255,7 @@ export const DOCUMENTS: Document[] = [
     explanation:
       "Your passport expires on 10 Feb 2027. The immigration office can usually only extend your residence permit up to your passport's expiry, so renewing it soon avoids a second appointment.",
     key_facts: [fact("Expires", "10 Feb 2027", ev("doc_passport", Q.passport.expiry, "model_read"))],
+    references: [{ label: "Passport no.", value: "X1234567" }],
     tags: ["identity"],
   }),
   doc({
@@ -311,6 +312,11 @@ export const DOCUMENTS: Document[] = [
     summary: "August salary: €1,386.00 gross, €1,262.14 paid out.",
     explanation: "Your monthly pay statement. No income tax was deducted; keep it for next year's tax return.",
     key_facts: [fact("Gross", "€1,386.00", ev("doc_payslip", Q.payslip.gross)), fact("Paid out", "€1,262.14", ev("doc_payslip", Q.payslip.net))],
+    references: [
+      { label: "Personalnummer", value: "WS-0417" },
+      { label: "Steuer-ID", value: "57 216 480 354" },
+      { label: "SV-Nummer", value: "65 140300 R 005" },
+    ],
   }),
   doc({
     id: "doc_tm_invoice",

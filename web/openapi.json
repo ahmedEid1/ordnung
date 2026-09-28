@@ -1975,6 +1975,94 @@
         }
       }
     },
+    "/api/numbers": {
+      "get": {
+        "tags": [
+          "numbers"
+        ],
+        "summary": "My Numbers",
+        "description": "About you (Steuer-ID, SV-Nummer …, with their check digits), identity documents with their expiry,\none call sheet per organisation and the open cases with their references.",
+        "operationId": "my_numbers_api_numbers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyNumbers"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/week": {
+      "get": {
+        "tags": [
+          "week"
+        ],
+        "summary": "Weekly Session",
+        "description": "New letters, values to check, payments this week, letters to post, replies awaited, decisions in\nthe next 30 days and what to file — and the next day to act (\"All clear until …\").",
+        "operationId": "weekly_session_api_week_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklySession"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/week/done": {
+      "post": {
+        "tags": [
+          "week"
+        ],
+        "summary": "Week Done",
+        "description": "Remember that the weekly session was done now; answers the session as it stands afterwards.",
+        "operationId": "week_done_api_week_done_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklySession"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/week/dismiss": {
+      "post": {
+        "tags": [
+          "week"
+        ],
+        "summary": "Week Dismiss",
+        "description": "Say \"Not now\": Today stops suggesting the session until it is due again (a week, or a Sunday).",
+        "operationId": "week_dismiss_api_week_dismiss_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklySession"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/suggestions": {
       "get": {
         "tags": [
@@ -3242,6 +3330,131 @@
         "title": "CalendarExportResult",
         "description": "When the person last exported their dates."
       },
+      "CallSheet": {
+        "properties": {
+          "party_id": {
+            "type": "string",
+            "title": "Party Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "authority",
+              "tax_office",
+              "immigration_office",
+              "health_insurer",
+              "insurer",
+              "bank",
+              "landlord",
+              "employer",
+              "university",
+              "utility",
+              "telecom",
+              "retailer",
+              "doctor",
+              "gym",
+              "public_broadcaster",
+              "transport",
+              "person",
+              "company",
+              "other"
+            ],
+            "title": "Kind",
+            "default": "other"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          },
+          "numbers": {
+            "items": {
+              "$ref": "#/components/schemas/MyNumber"
+            },
+            "type": "array",
+            "title": "Numbers",
+            "description": "Your numbers its letters show"
+          },
+          "their_numbers": {
+            "items": {
+              "$ref": "#/components/schemas/MyNumber"
+            },
+            "type": "array",
+            "title": "Their Numbers",
+            "description": "Its own (registry, bank)"
+          },
+          "open_cases": {
+            "items": {
+              "$ref": "#/components/schemas/OpenCase"
+            },
+            "type": "array",
+            "title": "Open Cases"
+          },
+          "last_letter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LetterRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "open_items": {
+            "type": "integer",
+            "title": "Open Items",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "party_id",
+          "name",
+          "kind",
+          "phone",
+          "email",
+          "website",
+          "numbers",
+          "their_numbers",
+          "open_cases",
+          "last_letter",
+          "open_items"
+        ],
+        "title": "CallSheet",
+        "description": "Everything to have at hand when you call or write to one organisation."
+      },
       "Case": {
         "properties": {
           "id": {
@@ -3382,6 +3595,78 @@
           "drafts"
         ],
         "title": "CaseDetail"
+      },
+      "CaseItemRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "deadline",
+              "payment",
+              "appointment",
+              "task",
+              "expiry",
+              "reminder",
+              "milestone"
+            ],
+            "title": "Kind"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "send_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Send By",
+            "description": "None for a fee paid at an appointment"
+          },
+          "at_appointment": {
+            "type": "boolean",
+            "title": "At Appointment",
+            "description": "A fee paid in person at the appointment: on its day, never a transfer",
+            "default": false
+          },
+          "needs_check": {
+            "type": "boolean",
+            "title": "Needs Check",
+            "description": "Its date or amount is not confirmed against the letter (compare it)",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "kind",
+          "due_date",
+          "send_by",
+          "at_appointment",
+          "needs_check"
+        ],
+        "title": "CaseItemRef",
+        "description": "The next open to-do of a case."
       },
       "CitationRef": {
         "properties": {
@@ -6268,6 +6553,115 @@
         ],
         "title": "Identifier"
       },
+      "IdentityDocument": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "passport",
+              "residence_permit",
+              "id_card",
+              "identity_document"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MyNumber"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "renew_soon",
+              "expired",
+              "unknown"
+            ],
+            "title": "Status",
+            "default": "unknown"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note",
+            "description": "What to do about it (written by code)"
+          },
+          "item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Id",
+            "description": "The expiry to-do"
+          },
+          "needs_check": {
+            "type": "boolean",
+            "title": "Needs Check",
+            "description": "The expiry date is not confirmed against the letter (compare it)",
+            "default": false
+          },
+          "letter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LetterRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "kind",
+          "name",
+          "number",
+          "valid_until",
+          "status",
+          "note",
+          "item_id",
+          "needs_check",
+          "letter"
+        ],
+        "title": "IdentityDocument",
+        "description": "A passport, residence permit or ID card: its number (when a letter shows it) and expiry."
+      },
       "Item": {
         "properties": {
           "id": {
@@ -7805,6 +8199,84 @@
         "title": "LetterDetails",
         "description": "Facts a template letter needs besides the letter, contract or person it is about.\n\nEverything is optional here; each template names the facts it requires\n(:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused\nwith a clear message, never a server error), amounts in euros."
       },
+      "LetterRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "tax_assessment",
+                  "tax_letter",
+                  "authority_letter",
+                  "residence_permit",
+                  "social_insurance",
+                  "health_insurance",
+                  "invoice",
+                  "dunning",
+                  "contract",
+                  "contract_change",
+                  "price_increase",
+                  "cancellation_confirmation",
+                  "payslip",
+                  "bank_letter",
+                  "insurance",
+                  "rent_lease",
+                  "utility_bill",
+                  "university",
+                  "employment",
+                  "appointment",
+                  "fine",
+                  "receipt",
+                  "identity_document",
+                  "broadcasting_fee",
+                  "certificate",
+                  "personal",
+                  "other",
+                  "court_payment_order",
+                  "enforcement_order",
+                  "dismissal",
+                  "landlord_notice",
+                  "rent_increase",
+                  "operating_costs"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "date",
+          "kind"
+        ],
+        "title": "LetterRef",
+        "description": "A letter a number or case links to."
+      },
       "MailOpenRequest": {
         "properties": {
           "id": {
@@ -8028,6 +8500,213 @@
         ],
         "title": "MoneySummary"
       },
+      "MyNumber": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "tax_id",
+              "tax_number",
+              "social_insurance",
+              "health_insurance",
+              "student",
+              "broadcasting_fee",
+              "vehicle",
+              "passport",
+              "residence_permit",
+              "id_card",
+              "customer",
+              "contract",
+              "policy",
+              "member",
+              "employee",
+              "account",
+              "mandate",
+              "meter",
+              "other",
+              "case_file",
+              "payment_reference",
+              "invoice",
+              "order",
+              "tracking",
+              "reference",
+              "vat_id",
+              "register",
+              "creditor_id",
+              "iban",
+              "bic",
+              "their_tax_number",
+              "their_other"
+            ],
+            "title": "Kind"
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "about_you",
+              "document",
+              "organisation",
+              "case",
+              "theirs"
+            ],
+            "title": "Group"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "What it is, in plain English (“Tax ID (Steuer-ID)”)"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "The label the letter prints next to it"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value",
+            "description": "The value as printed"
+          },
+          "display": {
+            "type": "string",
+            "title": "Display",
+            "description": "The value grouped for reading"
+          },
+          "copy_value": {
+            "type": "string",
+            "title": "Copy Value",
+            "description": "What “Copy” puts on the clipboard (forms want no spaces)"
+          },
+          "check": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "fails",
+              "none"
+            ],
+            "title": "Check",
+            "default": "none"
+          },
+          "check_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Note"
+          },
+          "party_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Party Id"
+          },
+          "party_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Party Name"
+          },
+          "letter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LetterRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The latest letter that shows it"
+          },
+          "letters": {
+            "type": "integer",
+            "title": "Letters",
+            "description": "How many letters show it",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "kind",
+          "group",
+          "name",
+          "label",
+          "value",
+          "display",
+          "copy_value",
+          "check",
+          "check_note",
+          "party_id",
+          "party_name",
+          "letter",
+          "letters"
+        ],
+        "title": "MyNumber",
+        "description": "One number as Ordnung sorted it (:mod:`ordnung.numbers`): the value as printed, how to read and\ncopy it, the check-digit test and the latest letter that shows it."
+      },
+      "MyNumbers": {
+        "properties": {
+          "today": {
+            "type": "string",
+            "title": "Today"
+          },
+          "about_you": {
+            "items": {
+              "$ref": "#/components/schemas/MyNumber"
+            },
+            "type": "array",
+            "title": "About You"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/IdentityDocument"
+            },
+            "type": "array",
+            "title": "Documents"
+          },
+          "organisations": {
+            "items": {
+              "$ref": "#/components/schemas/CallSheet"
+            },
+            "type": "array",
+            "title": "Organisations"
+          },
+          "open_cases": {
+            "items": {
+              "$ref": "#/components/schemas/OpenCase"
+            },
+            "type": "array",
+            "title": "Open Cases"
+          }
+        },
+        "type": "object",
+        "required": [
+          "today",
+          "about_you",
+          "documents",
+          "organisations",
+          "open_cases"
+        ],
+        "title": "MyNumbers",
+        "description": "The *My numbers* page."
+      },
       "OnboardingRequest": {
         "properties": {
           "profile": {
@@ -8044,6 +8723,98 @@
         "type": "object",
         "title": "OnboardingRequest",
         "description": "The first-run wizard's answers."
+      },
+      "OpenCase": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "case_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "party_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Party Id"
+          },
+          "party_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Party Name"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/MyNumber"
+            },
+            "type": "array",
+            "title": "References"
+          },
+          "next_item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseItemRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "open_items": {
+            "type": "integer",
+            "title": "Open Items",
+            "default": 0
+          },
+          "letter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LetterRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The case's latest letter"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "case_id",
+          "title",
+          "party_id",
+          "party_name",
+          "references",
+          "next_item",
+          "open_items",
+          "letter"
+        ],
+        "title": "OpenCase",
+        "description": "A matter with an open one-off to-do, and the references to quote when you call or write."
       },
       "PageInfo": {
         "properties": {
@@ -10166,6 +10937,366 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WeekEntry": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "ref": {
+            "$ref": "#/components/schemas/RefLink"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "description": "The item's, letter's or draft's kind, or “contract”"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "date_role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "added",
+                  "due",
+                  "by",
+                  "on",
+                  "expires",
+                  "send_by",
+                  "transfer_by",
+                  "pay_by",
+                  "act_today",
+                  "at_appointment",
+                  "collected",
+                  "expected",
+                  "decide_by",
+                  "sent",
+                  "reply_by",
+                  "done"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Role"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date",
+            "description": "The due date, when the row's date is an earlier day to act (send by, act today)"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "party_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Party Id"
+          },
+          "party_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Party Name"
+          },
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note",
+            "description": "One line written by code"
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "neutral",
+              "warn",
+              "danger",
+              "ok"
+            ],
+            "title": "Tone",
+            "default": "neutral"
+          },
+          "overdue": {
+            "type": "boolean",
+            "title": "Overdue",
+            "default": false
+          },
+          "item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Item"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The to-do itself (Pay and Confirm need it)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "ref",
+          "title",
+          "kind",
+          "date",
+          "date_role",
+          "due_date",
+          "amount",
+          "currency",
+          "party_id",
+          "party_name",
+          "doc_id",
+          "status",
+          "note",
+          "tone",
+          "overdue",
+          "item"
+        ],
+        "title": "WeekEntry",
+        "description": "One row of a weekly-session step: a letter, a to-do, a contract decision or a letter you wrote."
+      },
+      "WeekStep": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "now",
+              "new",
+              "check",
+              "pay",
+              "post",
+              "waiting",
+              "decide",
+              "file"
+            ],
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/WeekEntry"
+            },
+            "type": "array",
+            "title": "Entries"
+          },
+          "more": {
+            "type": "integer",
+            "title": "More",
+            "description": "Rows left out to keep the step short",
+            "default": 0
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total",
+            "description": "Euros (the pay step)"
+          },
+          "total_other_currencies": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Total Other Currencies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "entries",
+          "more",
+          "total",
+          "total_other_currencies"
+        ],
+        "title": "WeekStep",
+        "description": "One step of the weekly session."
+      },
+      "WeeklySession": {
+        "properties": {
+          "today": {
+            "type": "string",
+            "title": "Today"
+          },
+          "since": {
+            "type": "string",
+            "title": "Since",
+            "description": "New since this day (the last session, else a week ago)"
+          },
+          "last_session": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Session"
+          },
+          "due": {
+            "type": "boolean",
+            "title": "Due",
+            "description": "Today shows its one gentle prompt"
+          },
+          "next_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Prompt",
+            "description": "The day Today suggests the session next (none while it is due)"
+          },
+          "minutes": {
+            "type": "integer",
+            "title": "Minutes",
+            "default": 10
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/WeekStep"
+            },
+            "type": "array",
+            "title": "Steps"
+          },
+          "overdue": {
+            "type": "integer",
+            "title": "Overdue",
+            "description": "Deadlines, payments and tasks past their due date: never “All clear”",
+            "default": 0
+          },
+          "next_deadline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeekEntry"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The earliest day to act from today on: “All clear until …”"
+          },
+          "due_today": {
+            "type": "integer",
+            "title": "Due Today",
+            "description": "How many days to act from today on are today (the ending counts them)",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "today",
+          "since",
+          "last_session",
+          "due",
+          "next_prompt",
+          "minutes",
+          "steps",
+          "overdue",
+          "next_deadline",
+          "due_today"
+        ],
+        "title": "WeeklySession",
+        "description": "The guided weekly review: seven steps (and *Act now* first when something is overdue or due\ntoday), how it ends and whether Today should suggest it."
       },
       "BriefUpdatedEvent": {
         "additionalProperties": false,

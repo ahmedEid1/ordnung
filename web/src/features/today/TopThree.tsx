@@ -117,7 +117,7 @@ export function ActionCountdown({ action, variant = "pill", className }: { actio
 
 const headingId = (key: string) => `top-${key}`;
 
-interface TopFocus {
+export interface TopFocus {
   /** This card is about to leave: when it's gone, focus the card now in its place (or the section heading). */
   leaving: (key: string) => void;
   /** This card is coming back (Undo): focus its heading once it's there. */
@@ -125,6 +125,8 @@ interface TopFocus {
 }
 
 const TopFocusContext = createContext<TopFocus | null>(null);
+/** Where the focus goes when a {@link PayPopover}'s "Mark as paid" takes its row away (and Undo brings it back) — for a list outside Top 3. */
+export const PayFocusProvider = TopFocusContext.Provider;
 
 function useTopFocus(list: RefObject<HTMLElement | null>): TopFocus {
   return useMemo<TopFocus>(() => {

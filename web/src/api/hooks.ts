@@ -74,6 +74,8 @@ export const qk = {
   timeline: (from?: string, to?: string) => ["timeline", from ?? null, to ?? null] as const,
   lanes: (from?: string, to?: string) => ["lanes", from ?? null, to ?? null] as const,
   dashboard: ["dashboard"] as const,
+  numbers: ["numbers"] as const,
+  week: ["week"] as const,
   suggestions: {
     all: ["suggestions"] as const,
     list: (params: SuggestionListParams = {}) => ["suggestions", "list", params] as const,
@@ -104,6 +106,8 @@ const LEDGER_PREFIXES = [
   ["timeline"],
   ["lanes"],
   qk.dashboard,
+  qk.numbers,
+  qk.week,
   qk.suggestions.all,
   qk.brief,
   qk.drafts.all,
@@ -402,6 +406,39 @@ export function useCase(id: string | null | undefined) {
 
 export function useDashboard() {
   return useQuery({ queryKey: qk.dashboard, queryFn: api.dashboard, staleTime: 30_000 });
+}
+
+/** `GET /numbers` — My numbers (derived from the letters, refreshed with the ledger). */
+export function useNumbers() {
+  return useQuery({ queryKey: qk.numbers, queryFn: api.numbers, staleTime: MINUTE });
+}
+
+/** `GET /week` — the weekly session (Today asks it whether to suggest one). */
+export function useWeek(opts: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: qk.week, queryFn: api.week, staleTime: 30_000, enabled: opts.enabled ?? true });
+}
+
+/** "Done" at the end of the weekly session: remembered, and the answer is the session afterwards. */
+export function useWeekDone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.weekDone,
+    meta: { errorTitle: "Couldn't save your weekly session" },
+    onSuccess: (week) => {
+      qc.setQueryData(qk.week, week);
+      void qc.invalidateQueries({ queryKey: qk.activity });
+    },
+  });
+}
+
+/** "Not now" on Today's prompt: it stays away until the session is due again. */
+export function useWeekDismiss() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.weekDismiss,
+    meta: { errorTitle: "Couldn't hide the weekly session" },
+    onSuccess: (week) => qc.setQueryData(qk.week, week),
+  });
 }
 
 export function useTimeline(from?: string, to?: string) {

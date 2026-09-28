@@ -42,6 +42,30 @@ Check your Claude privacy settings before processing sensitive documents.
 You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
 pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache.
 
+## My numbers
+
+*My numbers* collects the numbers your letters already show — your Steuer-ID, social insurance and
+health insurance numbers, student and passport numbers, customer and contract numbers, case references —
+and sorts them on your computer. Nothing is sent anywhere to build the page, and its check-digit tests
+run locally. On screen every number of yours is **hidden until you choose Show** (only its last few
+characters stay visible), so someone looking over your shoulder doesn't read it; *Copy* works without
+showing it.
+
+The numbers live in your ledger with the letters that show them. *My numbers* lists a number only
+while a letter in your ledger shows it: delete that letter and the number leaves the page (a letter in
+the trash keeps its numbers until you delete it for good). One copy outlives the letter: when a letter
+is read, Ordnung notes the sender's customer, contract and membership numbers — and some document
+numbers, such as a passport number on an authority's letter — on that organisation's record, so later
+letters are matched to it. That copy stays after the letter is deleted, *Ask* can read it (the
+`get_party` tool), and only *Settings → Delete everything* removes it.
+
+The numbers reach Claude only when you use *Ask* and it looks them up (the `get_my_numbers` tool, like
+every other ledger tool — it can hand over just one organisation's numbers or one part of the page, and
+a letter you marked *Keep private (no AI)* gives it nothing), or when you give another Claude client
+your ledger with `ordnung mcp install --with-ledger` (see below).
+
+The weekly session (*This week*) stores only the moments you finished it or said "Not now".
+
 ## Your controls
 
 - **Keep private (no AI)** — every upload asks first: switch it on and the document is never sent to
@@ -113,7 +137,7 @@ then see depends on which server you add:
 | You add | The client can see | Leaves your computer? |
 |---|---|---|
 | **The rules tools** (the default) | Nothing of yours. The tools open no data folder: they compute dates, holidays, working days and IBAN checks from what the client passes them (the dates and words of a letter you shared there yourself). | Only what you type or share in that client, as always |
-| **The full server** (`--with-ledger`) | Your ledger, read-only, as *Ask* sees it: letters' titles, summaries, page text and quotes, to-dos, contracts, people and organisations, money, and your profile's name, language and Land. For letters you marked *Keep private (no AI)* the text is withheld — also the quotes and wording behind a to-do's date — but the letter's date, the to-dos you added for it (their titles, dates and amounts, which can name the subject) and, when you linked the letter to a sender, that sender (its name and contact details, like any other person or organisation) are still listed. | Whatever Claude reads through it becomes part of that conversation, sent to Anthropic under that client's account and settings |
+| **The full server** (`--with-ledger`) | Your ledger, read-only, as *Ask* sees it: letters' titles, summaries, page text and quotes, to-dos, contracts, people and organisations, money, *My numbers* (your Steuer-ID, social insurance number and the like, as your letters show them), and your profile's name, language and Land. For letters you marked *Keep private (no AI)* the text is withheld — also the quotes and wording behind a to-do's date — but the letter's date, the to-dos you added for it (their titles, dates and amounts, which can name the subject) and, when you linked the letter to a sender, that sender (its name and contact details, like any other person or organisation) are still listed. | Whatever Claude reads through it becomes part of that conversation, sent to Anthropic under that client's account and settings |
 
 With the full server, **every other tool of that client can see what Claude read from your
 ledger** through the model: another MCP server loaded there (web search, e-mail, files) and, in

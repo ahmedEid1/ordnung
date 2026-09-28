@@ -158,6 +158,7 @@ def test_tool_labels() -> None:
     assert tool_label("list_contracts") == "Looked at your contracts"
     assert tool_label("money_summary") == "Checked your money overview"
     assert tool_label("get_profile") == "Checked your profile"
+    assert tool_label("mcp__ordnung__get_my_numbers") == "Looked up your numbers"
     assert tool_label("today") == "Checked today's date"
     assert tool_label("Bash", {"command": "rm -rf /"}) == "Used a tool"
 
@@ -189,6 +190,7 @@ def test_result_summaries() -> None:
     )
     assert result_summary("explain_date", dump({"id": ITEM})) == "Found how the date was worked out"
     assert result_summary("money_summary", dump({})) == "Money overview ready"
+    assert result_summary("get_my_numbers", dump({"numbers": []})) == "Your numbers ready"
     assert result_summary("get_profile", dump({"name": "Sam"})) == "Profile read"
     assert result_summary("search", "Error executing tool search: boom") == "No result"
     assert result_summary("search", None) == "No result"

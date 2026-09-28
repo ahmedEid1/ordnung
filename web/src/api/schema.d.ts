@@ -605,6 +605,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/numbers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Numbers
+         * @description About you (Steuer-ID, SV-Nummer …, with their check digits), identity documents with their expiry,
+         *     one call sheet per organisation and the open cases with their references.
+         */
+        get: operations["my_numbers_api_numbers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/week": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weekly Session
+         * @description New letters, values to check, payments this week, letters to post, replies awaited, decisions in
+         *     the next 30 days and what to file — and the next day to act ("All clear until …").
+         */
+        get: operations["weekly_session_api_week_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/week/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Week Done
+         * @description Remember that the weekly session was done now; answers the session as it stands afterwards.
+         */
+        post: operations["week_done_api_week_done_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/week/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Week Dismiss
+         * @description Say "Not now": Today stops suggesting the session until it is due again (a week, or a Sunday).
+         */
+        post: operations["week_dismiss_api_week_dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/suggestions": {
         parameters: {
             query?: never;
@@ -1163,6 +1245,46 @@ export interface components {
             /** Last Calendar Export At */
             last_calendar_export_at: string;
         };
+        /**
+         * CallSheet
+         * @description Everything to have at hand when you call or write to one organisation.
+         */
+        CallSheet: {
+            /** Party Id */
+            party_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @default other
+             * @enum {string}
+             */
+            kind: "authority" | "tax_office" | "immigration_office" | "health_insurer" | "insurer" | "bank" | "landlord" | "employer" | "university" | "utility" | "telecom" | "retailer" | "doctor" | "gym" | "public_broadcaster" | "transport" | "person" | "company" | "other";
+            /** Phone */
+            phone: string | null;
+            /** Email */
+            email: string | null;
+            /** Website */
+            website: string | null;
+            /**
+             * Numbers
+             * @description Your numbers its letters show
+             */
+            numbers: components["schemas"]["MyNumber"][];
+            /**
+             * Their Numbers
+             * @description Its own (registry, bank)
+             */
+            their_numbers: components["schemas"]["MyNumber"][];
+            /** Open Cases */
+            open_cases: components["schemas"]["OpenCase"][];
+            last_letter: components["schemas"]["LetterRef"] | null;
+            /**
+             * Open Items
+             * @default 0
+             */
+            open_items: number;
+        };
         /** Case */
         Case: {
             /** Id */
@@ -1202,6 +1324,40 @@ export interface components {
             items: components["schemas"]["Item"][];
             /** Drafts */
             drafts: components["schemas"]["Draft"][];
+        };
+        /**
+         * CaseItemRef
+         * @description The next open to-do of a case.
+         */
+        CaseItemRef: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "deadline" | "payment" | "appointment" | "task" | "expiry" | "reminder" | "milestone";
+            /** Due Date */
+            due_date: string | null;
+            /**
+             * Send By
+             * @description None for a fee paid at an appointment
+             */
+            send_by: string | null;
+            /**
+             * At Appointment
+             * @description A fee paid in person at the appointment: on its day, never a transfer
+             * @default false
+             */
+            at_appointment: boolean;
+            /**
+             * Needs Check
+             * @description Its date or amount is not confirmed against the letter (compare it)
+             * @default false
+             */
+            needs_check: boolean;
         };
         /**
          * CitationRef
@@ -2053,6 +2209,47 @@ export interface components {
             /** Value */
             value: string;
         };
+        /**
+         * IdentityDocument
+         * @description A passport, residence permit or ID card: its number (when a letter shows it) and expiry.
+         */
+        IdentityDocument: {
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "passport" | "residence_permit" | "id_card" | "identity_document";
+            /** Name */
+            name: string;
+            number: components["schemas"]["MyNumber"] | null;
+            /** Valid Until */
+            valid_until: string | null;
+            /**
+             * Status
+             * @default unknown
+             * @enum {string}
+             */
+            status: "ok" | "renew_soon" | "expired" | "unknown";
+            /**
+             * Note
+             * @description What to do about it (written by code)
+             */
+            note: string | null;
+            /**
+             * Item Id
+             * @description The expiry to-do
+             */
+            item_id: string | null;
+            /**
+             * Needs Check
+             * @description The expiry date is not confirmed against the letter (compare it)
+             * @default false
+             */
+            needs_check: boolean;
+            letter: components["schemas"]["LetterRef"] | null;
+        };
         /** Item */
         Item: {
             /** Id */
@@ -2554,6 +2751,20 @@ export interface components {
             recipient?: string | null;
         };
         /**
+         * LetterRef
+         * @description A letter a number or case links to.
+         */
+        LetterRef: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Date */
+            date: string | null;
+            /** Kind */
+            kind: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
+        };
+        /**
          * MailOpenRequest
          * @description Which tray letter to open.
          */
@@ -2673,6 +2884,86 @@ export interface components {
             };
         };
         /**
+         * MyNumber
+         * @description One number as Ordnung sorted it (:mod:`ordnung.numbers`): the value as printed, how to read and
+         *     copy it, the check-digit test and the latest letter that shows it.
+         */
+        MyNumber: {
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "tax_id" | "tax_number" | "social_insurance" | "health_insurance" | "student" | "broadcasting_fee" | "vehicle" | "passport" | "residence_permit" | "id_card" | "customer" | "contract" | "policy" | "member" | "employee" | "account" | "mandate" | "meter" | "other" | "case_file" | "payment_reference" | "invoice" | "order" | "tracking" | "reference" | "vat_id" | "register" | "creditor_id" | "iban" | "bic" | "their_tax_number" | "their_other";
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "about_you" | "document" | "organisation" | "case" | "theirs";
+            /**
+             * Name
+             * @description What it is, in plain English (“Tax ID (Steuer-ID)”)
+             */
+            name: string;
+            /**
+             * Label
+             * @description The label the letter prints next to it
+             */
+            label: string;
+            /**
+             * Value
+             * @description The value as printed
+             */
+            value: string;
+            /**
+             * Display
+             * @description The value grouped for reading
+             */
+            display: string;
+            /**
+             * Copy Value
+             * @description What “Copy” puts on the clipboard (forms want no spaces)
+             */
+            copy_value: string;
+            /**
+             * Check
+             * @default none
+             * @enum {string}
+             */
+            check: "ok" | "fails" | "none";
+            /** Check Note */
+            check_note: string | null;
+            /** Party Id */
+            party_id: string | null;
+            /** Party Name */
+            party_name: string | null;
+            /** @description The latest letter that shows it */
+            letter: components["schemas"]["LetterRef"] | null;
+            /**
+             * Letters
+             * @description How many letters show it
+             * @default 1
+             */
+            letters: number;
+        };
+        /**
+         * MyNumbers
+         * @description The *My numbers* page.
+         */
+        MyNumbers: {
+            /** Today */
+            today: string;
+            /** About You */
+            about_you: components["schemas"]["MyNumber"][];
+            /** Documents */
+            documents: components["schemas"]["IdentityDocument"][];
+            /** Organisations */
+            organisations: components["schemas"]["CallSheet"][];
+            /** Open Cases */
+            open_cases: components["schemas"]["OpenCase"][];
+        };
+        /**
          * OnboardingRequest
          * @description The first-run wizard's answers.
          */
@@ -2684,6 +2975,32 @@ export interface components {
              * @default false
              */
             skip_ai?: boolean;
+        };
+        /**
+         * OpenCase
+         * @description A matter with an open one-off to-do, and the references to quote when you call or write.
+         */
+        OpenCase: {
+            /** Key */
+            key: string;
+            /** Case Id */
+            case_id: string | null;
+            /** Title */
+            title: string;
+            /** Party Id */
+            party_id: string | null;
+            /** Party Name */
+            party_name: string | null;
+            /** References */
+            references: components["schemas"]["MyNumber"][];
+            next_item: components["schemas"]["CaseItemRef"] | null;
+            /**
+             * Open Items
+             * @default 0
+             */
+            open_items: number;
+            /** @description The case's latest letter */
+            letter: components["schemas"]["LetterRef"] | null;
         };
         /** PageInfo */
         PageInfo: {
@@ -3430,6 +3747,140 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * WeekEntry
+         * @description One row of a weekly-session step: a letter, a to-do, a contract decision or a letter you wrote.
+         */
+        WeekEntry: {
+            /** Key */
+            key: string;
+            ref: components["schemas"]["RefLink"];
+            /** Title */
+            title: string;
+            /**
+             * Kind
+             * @description The item's, letter's or draft's kind, or “contract”
+             */
+            kind: string;
+            /** Date */
+            date: string | null;
+            /** Date Role */
+            date_role: ("added" | "due" | "by" | "on" | "expires" | "send_by" | "transfer_by" | "pay_by" | "act_today" | "at_appointment" | "collected" | "expected" | "decide_by" | "sent" | "reply_by" | "done") | null;
+            /**
+             * Due Date
+             * @description The due date, when the row's date is an earlier day to act (send by, act today)
+             */
+            due_date: string | null;
+            /** Amount */
+            amount: number | null;
+            /** Currency */
+            currency: string | null;
+            /** Party Id */
+            party_id: string | null;
+            /** Party Name */
+            party_name: string | null;
+            /** Doc Id */
+            doc_id: string | null;
+            /** Status */
+            status: string | null;
+            /**
+             * Note
+             * @description One line written by code
+             */
+            note: string | null;
+            /**
+             * Tone
+             * @default neutral
+             * @enum {string}
+             */
+            tone: "neutral" | "warn" | "danger" | "ok";
+            /**
+             * Overdue
+             * @default false
+             */
+            overdue: boolean;
+            /** @description The to-do itself (Pay and Confirm need it) */
+            item: components["schemas"]["Item"] | null;
+        };
+        /**
+         * WeekStep
+         * @description One step of the weekly session.
+         */
+        WeekStep: {
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "now" | "new" | "check" | "pay" | "post" | "waiting" | "decide" | "file";
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /** Entries */
+            entries: components["schemas"]["WeekEntry"][];
+            /**
+             * More
+             * @description Rows left out to keep the step short
+             * @default 0
+             */
+            more: number;
+            /**
+             * Total
+             * @description Euros (the pay step)
+             */
+            total: number | null;
+            /** Total Other Currencies */
+            total_other_currencies: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * WeeklySession
+         * @description The guided weekly review: seven steps (and *Act now* first when something is overdue or due
+         *     today), how it ends and whether Today should suggest it.
+         */
+        WeeklySession: {
+            /** Today */
+            today: string;
+            /**
+             * Since
+             * @description New since this day (the last session, else a week ago)
+             */
+            since: string;
+            /** Last Session */
+            last_session: string | null;
+            /**
+             * Due
+             * @description Today shows its one gentle prompt
+             */
+            due: boolean;
+            /**
+             * Next Prompt
+             * @description The day Today suggests the session next (none while it is due)
+             */
+            next_prompt: string | null;
+            /**
+             * Minutes
+             * @default 10
+             */
+            minutes: number;
+            /** Steps */
+            steps: components["schemas"]["WeekStep"][];
+            /**
+             * Overdue
+             * @description Deadlines, payments and tasks past their due date: never “All clear”
+             * @default 0
+             */
+            overdue: number;
+            /** @description The earliest day to act from today on: “All clear until …” */
+            next_deadline: components["schemas"]["WeekEntry"] | null;
+            /**
+             * Due Today
+             * @description How many days to act from today on are today (the ending counts them)
+             * @default 0
+             */
+            due_today: number;
         };
         /**
          * BriefUpdatedEvent
@@ -4810,6 +5261,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_numbers_api_numbers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyNumbers"];
+                };
+            };
+        };
+    };
+    weekly_session_api_week_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklySession"];
+                };
+            };
+        };
+    };
+    week_done_api_week_done_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklySession"];
+                };
+            };
+        };
+    };
+    week_dismiss_api_week_dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklySession"];
                 };
             };
         };

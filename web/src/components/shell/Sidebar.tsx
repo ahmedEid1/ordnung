@@ -36,7 +36,8 @@ function NavEntry({ item, rail, badge }: { item: NavItem; rail: boolean; badge?:
         aria-label={badge ? `${item.label}, ${toCheck(badge)}` : undefined}
         className={cn(
           "group flex w-full flex-col items-center gap-1 rounded-lg py-1.5 text-xs font-medium outline-none transition-colors",
-          "focus-visible:ring-2 focus-visible:ring-accent",
+          // inset: the rail's labels use its whole width, and the ring stays inside its scroll area
+          "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent",
           active ? "text-ink" : "text-muted hover:text-ink",
         )}
       >
@@ -158,7 +159,12 @@ export function Sidebar() {
         ) : null}
       </div>
 
-      <nav aria-label="Primary" className={cn("mt-3 flex flex-col", rail ? "w-full gap-1" : "gap-0.5")}>
+      {/* on a short window the sections scroll inside the sidebar (the footer — Settings, the theme — stays
+          on screen); py-1 (and px-1 when expanded): room for the focus ring inside the scroll area */}
+      <nav
+        aria-label="Primary"
+        className={cn("mt-2 flex min-h-0 shrink flex-col overflow-y-auto overscroll-contain py-1 scrollbar-thin", rail ? "w-full gap-1" : "-mx-1 gap-0.5 px-1")}
+      >
         {NAV_ITEMS.map((item) => (
           <NavEntry key={item.to} item={item} rail={rail} badge={item.badge === "please-check" ? pleaseCheck : undefined} />
         ))}
@@ -173,7 +179,7 @@ export function Sidebar() {
         <div id={TOUR_DOCK_ID} className="-mx-1 flex min-h-0 flex-1 flex-col justify-end-safe overflow-y-auto px-1 py-3 scrollbar-thin" />
       )}
 
-      <div className={cn("flex flex-col gap-2 pb-4", rail && "w-full items-center")}>
+      <div className={cn("flex shrink-0 flex-col gap-2 pb-4 pt-2", rail && "w-full items-center")}>
         <DemoBadge compact={rail} className={rail ? undefined : "self-start"} />
         <NavEntry item={SETTINGS_ITEM} rail={rail} />
         <div className={cn("mt-1 flex items-center gap-2 border-t border-line pt-3", rail ? "w-full flex-col" : "pl-1.5")}>

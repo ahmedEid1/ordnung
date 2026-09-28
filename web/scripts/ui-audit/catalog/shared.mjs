@@ -34,6 +34,8 @@ const PAGES = (docId, draftId) =>
     ["inbox", "/inbox"],
     ["timeline", "/timeline"],
     ["contracts", "/contracts"],
+    ["numbers", "/numbers"],
+    ["week", "/week"],
     ["letters", "/letters"],
     ["ask", "/ask"],
     ["settings", "/settings"],

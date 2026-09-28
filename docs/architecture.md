@@ -125,6 +125,33 @@ run of brackets, digits or spaces; tests time one 88 KB sentence and 40,000-char
 a worker thread so a long answer never blocks the server, and re-run by the Ask benchmark over
 recorded answers.
 
+## My numbers and the weekly session
+
+Two read models over the same ledger snapshot, both written policies (ADR 0007) and both read-only
+apart from two `meta` moments:
+
+- **My numbers** (`ordnung/numbers.py`, pure; `views.my_numbers`, `GET /api/numbers`). Each number a
+  live letter without scam signs shows — its references, the sender's identifiers in its stored reading,
+  its payment IBAN — is classified by value shape, then label words, then context (a Steuernummer is
+  yours only from a tax office; an "Ausweisnummer" is an ID card only from an authority), grouped into
+  About you, identity documents, call sheets and open cases, and tested with its public check-digit
+  algorithm. Ask reads it through `get_my_numbers` (one organisation or one section when asked, bounded
+  by its own row caps), values in the letter-text channel (ADR 0008).
+- **The weekly session** (`ordnung/secretary/week.py`; `views.weekly_session`, `GET /api/week`) arranges
+  `build_agenda`, the money summary, drafts and to-dos as seven steps (and *Act now* first when
+  something is overdue or due today; a snoozed to-do is listed where its date puts it) and how it ends —
+  overdue, things to do today, or the next day to act (`deadlines`, ranked); `POST
+  /api/week/done|dismiss` store the moment (`day|timestamp`) that the prompt policy and "new since your
+  last session" read. The facts both read models share with the Ideas and Ask live in
+  `secretary/triggers.py`: `action_day`, `is_overdue`, `paid_at_appointment` (a fee paid on site is no
+  transfer), `unconfirmed_reason` (a value not confirmed against its letter, until "Looks right") and
+  the identity documents' renewal windows.
+- **The static demo** gets both from the same code: `scripts/gen_mock_numbers.py` files the mock world
+  (`web/scripts/mock-world.mjs`) in a throw-away ledger and writes `web/src/mocks/data/numbers.ts`; the
+  mock handlers (`web/src/mocks/numbers.ts`) only follow the visitor's changes (the session ends on the
+  first of the ranked days to act still open). CI's end-to-end job
+  (the one with both toolchains) checks the file is up to date (`tests/test_mock_numbers.py`).
+
 ## The rules engine for other Claude clients
 
 The same engine that dates letters in the app is served as MCP tools that need no ledger

@@ -384,12 +384,51 @@ non-user-modified extracted rows in one transaction. "Keep private (no AI)" skip
 - **Review** — compact snapshot → ≤ 6 new Ideas with refs to existing ids (validated; duplicates by
   fuzzy title dropped); `source="review"`.
 - **Brief** — deterministic agenda + optional 2–3 sentence prose (cached per day + agenda hash).
+- **Weekly session** (`secretary/week.py`, policy in its docstring; `views.weekly_session`) — a guided
+  ~10-minute review composed from the agenda, the money summary, drafts and to-dos: *act now* (only when
+  a deadline, task or appointment is overdue or to act on today, a missed send-by day included) · new
+  since the last session (the first time: in the last 7 days) · please check (values not confirmed
+  against the letter; "Looks right" takes a value off) · pay this week (transfers with their total, fees
+  paid at an appointment, direct debits to cover) · post and keep proof (a letter's send-by day with the
+  day it must arrive by; what proves *sending* by each channel is not proof of *arrival* — for an
+  Einwurf-Einschreiben request the delivery record, BAG 2 AZR 68/24) · waiting for (follow-ups of sent
+  letters; the hook for a dedicated list) · decide in the next 30 days (contract decisions,
+  objection/declaration/notice deadlines) · file or archive. A snoozed to-do is put off, not away: it is
+  listed where its date puts it, is overdue once its due date passes and keeps its letter open. Every
+  row's day reads as Today words it (transfer by, send by, on, expires; money coming in is *expected*,
+  never overdue); once a send-by day has passed but the due date (for a letter: the day it must arrive
+  by) has not, the row says *act today* with the due date beside it, and a row is overdue only after its
+  due date. It ends "N overdue" while anything is overdue, else "All clear until <next day to act>" — or
+  "N things to do today" (`due_today`) when that day is today (after a missed send-by day too; contract
+  decisions and snoozed to-dos count). Only the moments of the last session and of a dismissed prompt
+  are stored (`meta`: `weekly_session_at`, `weekly_prompt_dismissed_at`, each `day|timestamp`). Today
+  suggests it once — 7 days after the last session or "Not now", on a Sunday 4 days after — and only when
+  a step has something to show; the session says the day it will next (`next_prompt`). Nothing is paid,
+  sent or closed.
+- **My numbers** (`numbers.py`, pure, policy in its docstring; `views.my_numbers`) — every number the
+  letters show (references, the sender's identifiers in the stored reading, a payment IBAN — always where
+  to pay the sender, checked like any IBAN; never a trashed or scam letter's), sorted by whose it is:
+  *about you* (Steuer-ID, SV-Nummer, Krankenversichertennummer, Matrikelnummer, Rundfunkbeitrag
+  Beitragsnummer, a tax office's Steuernummer, a number plate — never a number labelled as a child's or
+  spouse's), identity documents (passport, residence permit, ID card — not a library card or student ID —
+  with the expiry to-do's date, flagged when not confirmed, and the Ideas' renewal windows; a residence
+  permit's note says what § 81 Abs. 4 AufenthG means before and after it expires), yours with one
+  organisation (customer, contract, policy, member, employee, account — also an IBAN labelled as yours —,
+  mandate, meter), a case reference (Aktenzeichen, Kassenzeichen, invoice/order/tracking numbers — listed
+  while its thread has an open or snoozed one-off to-do; a fee paid at the appointment is no transfer) or
+  the organisation's own (USt-IdNr., register, Gläubiger-ID, BIC, IBAN; a retailer's Steuernummer). A label
+  that names a matter ("Kundennummer", "Bestellnummer") wins over a value's look. Check digits where a
+  public algorithm exists: Steuer-ID (§ 139b AO, the BZSt's specification: ISO/IEC 7064 MOD 11,10 and
+  the digit-repetition rule), Rentenversicherungsnummer (§ 147 SGB VI, § 2 Abs. 6 VKVV),
+  Krankenversichertennummer (§ 290 SGB V), IBAN (ISO 13616; a misread IBAN still counts as one) — "check
+  digit OK" or "does not check — compare with the letter". A call sheet per organisation adds its phone,
+  e-mail and website, open cases and last letter; a number from an older letter links to it.
 
 ## 10. Ask — `assistant/`
 
 MCP server (`python -m ordnung mcp --data-dir D`, read-only DB, lazy imports): `search`,
 `get_document`, `list_items`, `list_contracts`, `get_party`, `timeline`, `money_summary`,
-`explain_date`, `get_profile`, `today` — the ledger tools. Ask runs `claude -p` with `--tools ""`,
+`explain_date`, `get_profile`, `today`, `get_my_numbers` — the ledger tools. Ask runs `claude -p` with `--tools ""`,
 `--allowedTools` naming exactly these ledger tools (`mcp__ordnung__search`, …), `--mcp-config`
 (absolute `sys.executable`, the server started `--ledger-only`), `--max-budget-usd 0.50`, 120 s
 timeout. **Ask keeps to the ledger** (ADR 0011): the ledger-free rules tools (below) are not on its
@@ -413,6 +452,18 @@ HTML and without remote images.
   not found on the page, flagged `amount_unverified`/`terms_unverified`). A tool keeps each result
   within a size budget by leaving out rows (and says how many); the answer is checked against the whole
   result the model read.
+- **My numbers.** `get_my_numbers` keeps every label and value in the letter text of the letter that
+  shows it (a number is what the model read, never verified against the page) and puts what code decided
+  in the record: each number's kind, group and check-digit result (with its code-written note and law),
+  the letter and party ids to cite, an identity document's expiry as its to-do (`id`, `due_date`,
+  `needs_check` when not confirmed against the letter) and an open case's next to-do (no `send_by` and
+  `at_appointment` for a fee paid at the appointment). It takes `section` (about_you, organisations,
+  open_cases) and `organisation` (an id or name: that call sheet and its open cases only, never the
+  person's own numbers), and bounds itself — at most 20 call sheets (latest letter first), 20 open
+  cases, 20 numbers of a kind per sheet and no further sheet past 150 numbers — saying what it left out
+  (`left_out`), so every `ref` it gives resolves. Letters marked private give nothing — not their
+  numbers, nor their to-dos as a case's next step. Numbers are no date, time or amount, so the claim
+  check leaves them as the model wrote them (a known limit: a misquoted identifier is not caught).
 - **What the record says.** `money_summary` lists open payments with no stored due date and, apart, the
   demands of letters with scam signs (`do_not_pay`: not to be paid until the person has checked with
   the sender — a real sender whose bank details changed shows the same signs), with `today` and each
@@ -641,9 +692,11 @@ the person compared with the paper letter; 409 when they changed or the code is 
 reason), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
 (PATCH), `parties`, `parties/{id}`, `cases/{id}`, `timeline?from&to`, `lanes?from&to`, `dashboard`,
 `suggestions` (GET), `suggestions/{id}` (PATCH status/snooze), `suggestions/review` (POST),
-`brief` (GET cached, POST regenerate), `ask` (POST → SSE), `chat/{thread_id}`, `drafts`
-(GET/POST), `drafts/{id}` (GET/PATCH/DELETE), `drafts/{id}/pdf`, `drafts/{id}/preview.png` (the
-PDF's pages as one image: the print preview), `drafts/{id}/sent` (POST),
+`brief` (GET cached, POST regenerate), `numbers` (GET: My numbers), `week` (GET: the weekly session),
+`week/done` and `week/dismiss` (POST: remember the session or a "Not now"; answer the session), `ask`
+(POST → SSE), `chat/{thread_id}`, `drafts` (GET/POST), `drafts/{id}` (GET/PATCH/DELETE),
+`drafts/{id}/pdf`, `drafts/{id}/preview.png` (the PDF's pages as one image: the print preview),
+`drafts/{id}/sent` (POST),
 `drafts/{id}/translate` (POST: translate the edited letter again, purpose `draft`; 409 in the
 replay-only demo), `calendar.ics`, `calendar/exported` (POST), `activity`, `usage`, `rules`, `jobs`,
 `events` (SSE), `data` (DELETE `{"confirm": "DELETE"}`: "Delete everything" — empties the database
@@ -672,8 +725,9 @@ JSON doesn't validate against it.
 
 ## 14. Web app — `web/`
 
-Navigation (6 + footer): **Today · Inbox · Timeline · Contracts · Letters · Ask**; footer:
-Settings (incl. "Privacy & AI usage" with the activity log). People & organisations open as a drawer
+Navigation (7 + footer): **Today · Inbox · Timeline · Contracts · My numbers · Letters · Ask**; footer:
+Settings (incl. "Privacy & AI usage" with the activity log). The phone tab bar keeps six sections; My
+numbers is an icon in the phone top bar (`NavItem.tabBar: false`). People & organisations open as a drawer
 from any party chip. Global drop zone; upload toast with live stepper.
 
 UI copy table (enforced by a test that rendered text never shows raw enum values):
@@ -717,14 +771,33 @@ Pages:
 7. **Ask** — chat, streamed tool-trace chips ("Searched your letters for “Kündigung”", dates as
    "Mon 28 Sep 2026"),
    citation chips → viewer, suggested questions (recorded in demo).
-8. **Settings** — profile & address, region (affects holidays), language, reminders, models,
+8. **My numbers** — tabs About you (your numbers, your documents with expiry badges) · Open cases ·
+   Organisations (phones: "Orgs"; a call sheet each: phone, e-mail, website, your numbers, open cases,
+   their own numbers folded away behind a chevron — opened when a search matches only them —, last
+   letter; a search box). Every value of yours is **hidden until "Show"** (the last characters stay,
+   screen readers hear "hidden, ends in …"; the button's name says what a press does); "Copy" works
+   while hidden (forms get the Steuer-ID, social insurance number and IBAN without spaces) and is
+   announced; the check-digit badge explains itself in a tooltip; each number links to the letter it
+   came from (on a call sheet or case card when that is not the card's last letter); a date or next
+   step not confirmed against the letter says to compare it. An open case's next step reads its day as
+   the weekly session does: *on* for an appointment and a fee paid at it, else *by* the day to act,
+   *act today* with the due date once its send-by day has passed, overdue counted from its due date.
+   **This week** (`/week`, from Today) — the weekly session as a stepper (step list beside the step on
+   wide pages, dots on phones — ticks only on the steps looked at; `?step=`), rows linking to where the
+   person acts, Pay (the Pay panel; not for a fee paid at an appointment) and "Looks right" (confirm; the
+   focus goes on to the next row, also after "Mark as paid") in place, "Finish" → "All clear until …",
+   "N things to do today" or "N things are overdue" with a link to each step that holds them (and the
+   day Today suggests the next session). With nothing in any step it says so ("Nothing to review yet"
+   with Add letters). Today shows one gentle prompt (Start · Not now) when the session is due, else a
+   quiet "Weekly review" link at its foot; on `/week` the navigation marks Today as the current section.
+9. **Settings** — profile & address, region (affects holidays), language, reminders, models,
    privacy statement + "Privacy & AI usage" (activity, tokens, API-equivalent cost, cache hits),
    Claude status (doctor), "How dates are computed" (rules catalog), data location, disclaimer; in
    the demo, Data also restarts the guided tour.
-9. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
+10. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
    name/address (skippable) → Claude check (copyable fixes; "Continue without AI") → drop zone +
    "Explore the demo instead".
-10. **Demo tour**: 4 steps (New mail → Idea arrives → Ask → Timeline), skippable, tracked in meta;
+11. **Demo tour**: 4 steps (New mail → Idea arrives → Ask → Timeline), skippable, tracked in meta;
    ending it can be undone, and the Demo badge (or Settings → Data) restarts it. Docked in the
    sidebar when it fits, else a card (wide screens) or a slim bar (phones, tablets, short laptops)
    that never covers the page's end or the focused control. Its ring goes around the step's

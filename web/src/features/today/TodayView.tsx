@@ -21,6 +21,7 @@ import { TopThree } from "./TopThree";
 import { stagger } from "./motion";
 import { agendaSentence, toPayTotals } from "./selection";
 import { useTodayData } from "./useTodayData";
+import { WeeklyLink, WeeklyPrompt } from "@/features/week/WeeklyPrompt";
 
 /**
  * Coming up and the side cards (Please check, calendar) sit side by side once the page is wide
@@ -213,6 +214,8 @@ export function TodayView() {
 
       <TopThree actions={derived.top} next={derived.nextUp} partyById={partyById} today={derived.day} />
 
+      <WeeklyPrompt />
+
       <div className={side ? SPLIT : undefined}>
         <ComingUp actions={derived.rest} all={derived.candidates} partyById={partyById} today={derived.day} />
         {side ? (
@@ -237,7 +240,8 @@ export function TodayView() {
 
       <RecentLetters docs={dash.recent_documents} partyById={partyById} />
 
-      <div className="flex justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <WeeklyLink />
         <Disclaimer className="max-w-xl" />
       </div>
     </motion.div>
