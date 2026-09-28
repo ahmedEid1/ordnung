@@ -12,6 +12,9 @@
   acted on (paid, snoozed, dismissed …) or that repeat, which move to the new reading's slot when it
   quotes their sentence differently; a recurring to-do never moves back on its schedule
   (:mod:`ordnung.recurrence`, point 6).
+
+Verifying and planning describe what they decided on the ``trace`` span they are given (a step per
+quote and per to-do, :mod:`ordnung.trace.facts`); without one they record nothing.
 """
 
 from __future__ import annotations
@@ -32,6 +35,7 @@ from ordnung.ingest.verify import (
     DATE_NOT_IN_QUOTE,
     DATE_WITHOUT_YEAR,
     PageInput,
+    check_quote,
     grade_reading,
     ground_evidence,
     parse_amounts,
@@ -87,6 +91,8 @@ from ordnung.rules.routing import (
     objection_excluded,
 )
 from ordnung.secretary.scam import iban_from_page, iban_valid, normalize_iban
+from ordnung.trace import facts
+from ordnung.trace.spans import NO_SPAN, Span
 
 DueDateSource = Literal["computed", "fixed", "manual", "none"]
 
@@ -209,43 +215,96 @@ def consistency_reasons(item: ExtractedItem, pages: Sequence[PageInput]) -> tupl
     return tuple(reason for reason in found if not _stated_in_document(item, reason, pages))
 
 
-def _verify_item(doc_id: str, item: ExtractedItem, key: str, pages: Sequence[PageInput]) -> VerifiedItem:
-    evidence = ground_evidence(doc_id, item.quote, pages)
-    reasons = consistency_reasons(item, pages)
-    evidence = evidence.model_copy(update={"value_consistent": not reasons})
+def _verify_item(
+    doc_id: str, item: ExtractedItem, key: str, pages: Sequence[PageInput], *, index: int, trace: Span
+) -> VerifiedItem:
+    with trace.span("verify", "Quote", key=f"item:{key}") as step:
+        evidence, check = check_quote(doc_id, item.quote, pages)
+        reasons = consistency_reasons(item, pages)
+        evidence = evidence.model_copy(update={"value_consistent": not reasons})
+        step.set(**facts.quote("item", evidence, check, index=index, reasons=reasons, slot_key=key))
     return VerifiedItem(item=item, evidence=evidence, reasons=reasons, slot_key=key)
 
 
-def _optional_evidence(doc_id: str, quote: str | None, pages: Sequence[PageInput]) -> Evidence | None:
-    return ground_evidence(doc_id, quote, pages) if quote and quote.strip() else None
+def _grounded(
+    doc_id: str,
+    quote: str,
+    pages: Sequence[PageInput],
+    *,
+    target: facts.QuoteTarget,
+    index: int,
+    trace: Span,
+) -> Evidence:
+    with trace.span("verify", "Quote", key=f"{target}:{index}") as step:
+        evidence, check = check_quote(doc_id, quote, pages)
+        step.set(**facts.quote(target, evidence, check, index=index))
+    return evidence
+
+
+def _optional_evidence(
+    doc_id: str, quote: str | None, pages: Sequence[PageInput], *, target: facts.QuoteTarget, trace: Span
+) -> Evidence | None:
+    if not quote or not quote.strip():
+        return None
+    return _grounded(doc_id, quote, pages, target=target, index=0, trace=trace)
 
 
 def verify_extraction(
-    doc_id: str, extraction: DocumentExtraction, pages: Sequence[PageInput]
+    doc_id: str, extraction: DocumentExtraction, pages: Sequence[PageInput], *, trace: Span = NO_SPAN
 ) -> Verification:
-    """Ground every quote of ``extraction`` on ``pages`` and collect "please check" warnings."""
-    items = [
-        _verify_item(doc_id, item, key, pages)
-        for item, key in zip(extraction.items, slot_keys(extraction.items), strict=True)
-    ]
-    verification = Verification(
-        items=items,
-        key_facts=[
-            KeyFact(label=fact.label, value=fact.value, evidence=ground_evidence(doc_id, fact.quote, pages))
-            for fact in extraction.key_facts
-        ],
-        contract_evidence=[
-            ground_evidence(doc_id, quote, pages)
-            for quote in (extraction.contract.quotes if extraction.contract else [])
-        ],
-        change_evidence=_optional_evidence(
-            doc_id, extraction.change.quote if extraction.change else None, pages
-        ),
-        remedy_evidence=_optional_evidence(
-            doc_id, extraction.remedy.quote if extraction.remedy else None, pages
-        ),
-    )
-    verification.warnings = _verification_warnings(verification)
+    """Ground every quote of ``extraction`` on ``pages`` and collect "please check" warnings.
+
+    ``trace`` gets a ``verify`` step with one step per quote (:func:`ordnung.trace.facts.quote`).
+    """
+    with trace.span("verify", "Check quotes", key="quotes", stage="verify") as step:
+        items = [
+            _verify_item(doc_id, item, key, pages, index=index, trace=step)
+            for index, (item, key) in enumerate(
+                zip(extraction.items, slot_keys(extraction.items), strict=True)
+            )
+        ]
+        verification = Verification(
+            items=items,
+            key_facts=[
+                KeyFact(
+                    label=fact.label,
+                    value=fact.value,
+                    evidence=_grounded(doc_id, fact.quote, pages, target="key_fact", index=index, trace=step),
+                )
+                for index, fact in enumerate(extraction.key_facts)
+            ],
+            contract_evidence=[
+                _grounded(doc_id, quote, pages, target="contract", index=index, trace=step)
+                for index, quote in enumerate(extraction.contract.quotes if extraction.contract else [])
+            ],
+            change_evidence=_optional_evidence(
+                doc_id,
+                extraction.change.quote if extraction.change else None,
+                pages,
+                target="change",
+                trace=step,
+            ),
+            remedy_evidence=_optional_evidence(
+                doc_id,
+                extraction.remedy.quote if extraction.remedy else None,
+                pages,
+                target="remedy",
+                trace=step,
+            ),
+        )
+        verification.warnings = _verification_warnings(verification)
+        grounded = [
+            *(verified.evidence for verified in items),
+            *(fact.evidence for fact in verification.key_facts if fact.evidence is not None),
+            *verification.contract_evidence,
+            *(e for e in (verification.change_evidence, verification.remedy_evidence) if e is not None),
+        ]
+        step.set(
+            **facts.verification(
+                [evidence.grounding for evidence in grounded],
+                sum(verified.needs_check for verified in items),
+            )
+        )
     return verification
 
 
@@ -781,6 +840,11 @@ def carry_over(store: Store, doc_id: str, verification: Verification) -> int:
 
     Returns the number of to-dos moved.
     """
+    return len(_carry_over(store, doc_id, verification))
+
+
+def _carry_over(store: Store, doc_id: str, verification: Verification) -> set[str]:
+    """:func:`carry_over`, returning the new slots the moved to-dos took."""
     new_keys = {verified.slot_key for verified in verification.items}
     stored = [item for item in store.list_items(doc_id=doc_id) if item.origin == "extracted"]
     taken = {item.slot_key for item in stored}
@@ -791,7 +855,7 @@ def carry_over(store: Store, doc_id: str, verification: Verification) -> int:
         and (item.status != "open" or item.user_modified or item.recurrence is not None)
     ]
     unmatched = [verified for verified in verification.items if verified.slot_key not in taken]
-    moved = 0
+    moved: set[str] = set()
     for same_amount in (True, False):
         for verified in list(unmatched):
             match = next(
@@ -801,7 +865,7 @@ def carry_over(store: Store, doc_id: str, verification: Verification) -> int:
                 store.update_item(match.id, slot_key=verified.slot_key)
                 acted.remove(match)
                 unmatched.remove(verified)
-                moved += 1
+                moved.add(verified.slot_key)
     return moved
 
 
@@ -816,6 +880,7 @@ def write_items(
     today: date,
     ctx: RuleContext,
     postal_buffer_days: int,
+    trace: Span = NO_SPAN,
 ) -> list[Item]:
     """Upsert the document's items by slot (after :func:`carry_over`) and delete its stale extracted
     ones — never those the person acted on. ``today`` is the day the items are filed; ``computed``
@@ -825,20 +890,33 @@ def write_items(
     schedule's first occurrence) and the schedule is the same
     (:func:`~ordnung.recurrence.keeps_later_date`): reading the letter again never moves it backwards.
     That occurrence is dated and graded by the new reading (:func:`~ordnung.recurrence.at_occurrence`).
+
+    ``trace`` gets one step per to-do saying what was done with it and why
+    (:func:`ordnung.trace.facts.planned`), and the number of stale to-dos removed.
     """
-    carry_over(store, doc_id, verification)
+    moved = _carry_over(store, doc_id, verification)
     stored = {item.slot_key: item for item in store.list_items(doc_id=doc_id)}
     items = []
-    for verified, result in zip(verification.items, computed, strict=True):
-        fields = _item_fields(verified, result, extraction, links, today)
-        existing = stored.get(verified.slot_key)
-        new = verified.item
-        if existing is not None and keeps_later_date(existing, new.recurrence, new.date, result.due_date):
-            reading = existing.model_copy(update=fields)
-            kept = at_occurrence(reading, existing.due_date, ctx, postal_buffer_days=postal_buffer_days)
-            fields |= {name: getattr(kept or existing, name) for name in SCHEDULE_FIELDS}
-        items.append(store.upsert_item_by_slot(doc_id, verified.slot_key, **fields))
-    store.delete_stale_extracted_items(doc_id, [verified.slot_key for verified in verification.items])
+    for index, (verified, result) in enumerate(zip(verification.items, computed, strict=True)):
+        with trace.span("plan", "To-do", key=f"item:{verified.slot_key}") as step:
+            fields = _item_fields(verified, result, extraction, links, today)
+            existing = stored.get(verified.slot_key)
+            new = verified.item
+            action: facts.PlanAction = "created" if existing is None else "updated"
+            if existing is not None and keeps_later_date(existing, new.recurrence, new.date, result.due_date):
+                reading = existing.model_copy(update=fields)
+                kept = at_occurrence(reading, existing.due_date, ctx, postal_buffer_days=postal_buffer_days)
+                fields |= {name: getattr(kept or existing, name) for name in SCHEDULE_FIELDS}
+                action = "kept_later_date"
+            if existing is not None and existing.user_modified:
+                action = "kept_edited"  # upsert_item_by_slot leaves a to-do the person edited as it is
+            item = store.upsert_item_by_slot(doc_id, verified.slot_key, **fields)
+            step.set(**facts.planned(action, item, index=index, moved=verified.slot_key in moved))
+        items.append(item)
+    removed = store.delete_stale_extracted_items(
+        doc_id, [verified.slot_key for verified in verification.items]
+    )
+    trace.set(removed=removed)
     return items
 
 
@@ -910,6 +988,7 @@ def sync_rule_items(
     postal_buffer_days: int,
     create: bool = True,
     end_evidence: Evidence | None = None,
+    trace: Span = NO_SPAN,
 ) -> list[Item]:
     """File the deadlines the law adds to a high-stakes letter as to-dos (``origin="rule"``).
 
@@ -925,6 +1004,9 @@ def sync_rule_items(
     false (a recompute after the region, buffer or arrival day changed) only the rule to-dos that still
     exist are updated: one the person deleted stays deleted — only reading the letter or choosing its
     kind files it again. Returns the letter's rule to-dos.
+
+    ``trace`` gets one ``rules`` step per deadline the law adds (:func:`ordnung.trace.facts.law_deadline`:
+    filed, or why not) and the number of rule to-dos removed.
     """
     own = [
         (item.date_spec, item.computation.rule_ids, item.due_date)
@@ -946,24 +1028,35 @@ def sync_rule_items(
     ]
     slots = {RULE_SLOT_PREFIX + entry.rule_id for entry in wanted}
     existing: set[str | None] = set()
+    removed = 0
     for item in store.list_items(doc_id=document.id):
         if item.origin != "rule":
             continue
         existing.add(item.slot_key)
         if item.slot_key not in slots and item.status == "open" and not item.user_modified:
             store.delete_item(item.id)
+            removed += 1
     filed = []
-    for entry in wanted:
+    for entry in derived:
         slot = RULE_SLOT_PREFIX + entry.rule_id
-        if not create and slot not in existing:
-            continue
         receipt = receipts[entry.rule_id]
-        evidence = []
-        if END_NOT_WRITTEN in receipt.rule_ids:
-            quote = end_evidence or Evidence(doc_id=document.id, quote="", grounding="unverified")
-            evidence = [quote.model_copy(update={"value_consistent": False})]
-        fields = _rule_item_fields(entry, receipt, document=document, today=today, evidence=evidence)
-        filed.append(store.upsert_item_by_slot(document.id, slot, **fields))
+        with trace.span("rules", "Deadline the law adds", key=f"law:{entry.rule_id}") as step:
+            if entry not in wanted or (not create and slot not in existing):
+                reason = "covered" if entry not in wanted else "deleted_by_you"
+                step.set(**facts.law_deadline(entry.rule_id, receipt, filed=False, reason=reason))
+                continue
+            evidence = []
+            if END_NOT_WRITTEN in receipt.rule_ids:
+                quote = end_evidence or Evidence(doc_id=document.id, quote="", grounding="unverified")
+                evidence = [quote.model_copy(update={"value_consistent": False})]
+            fields = _rule_item_fields(entry, receipt, document=document, today=today, evidence=evidence)
+            item = store.upsert_item_by_slot(document.id, slot, **fields)
+            step.set(
+                **facts.law_deadline(entry.rule_id, receipt, filed=True, reason="filed"), item_id=item.id
+            )
+        filed.append(item)
+    if removed:
+        trace.set(rule_removed=removed)
     return filed
 
 
@@ -1006,6 +1099,7 @@ def write_plan(
     model_reading: DocumentExtraction | None = None,
     kind: LetterKind | None = None,
     derived: Sequence[DerivedDeadline] = (),
+    trace: Span = NO_SPAN,
 ) -> PlanResult:
     """Write items, document facts and status, re-index search and log the activity entry.
 
@@ -1014,38 +1108,43 @@ def write_plan(
     so later readings can still tell which facts the person corrected. ``kind`` is the kind the letter
     is filed as (:func:`filed_kind`; default: the reading's) and ``derived`` the deadlines the law adds
     to it (:func:`sync_rule_items`). ``today`` is the person's day; ``computed`` was computed in
-    ``ctx`` with ``postal_buffer_days``.
+    ``ctx`` with ``postal_buffer_days``. ``trace`` gets the ``plan`` step (:func:`write_items`,
+    :func:`sync_rule_items`) with the status the letter ends with.
     """
-    items = write_items(
-        store,
-        document.id,
-        verification,
-        computed,
-        extraction,
-        links,
-        today=today,
-        ctx=ctx,
-        postal_buffer_days=postal_buffer_days,
-    )
-    rule_items = sync_rule_items(
-        store,
-        document.model_copy(
-            update={
-                "area": extraction.area,
-                "party_id": links.party.id if links.party else None,
-                "case_id": links.case.id if links.case else None,
-            }
-        ),
-        derived,
-        ctx,
-        today=today,
-        postal_buffer_days=postal_buffer_days,
-        end_evidence=verification.change_evidence,
-    )
+    with trace.span("plan", "Plan to-dos", key="plan", stage="plan") as step:
+        items = write_items(
+            store,
+            document.id,
+            verification,
+            computed,
+            extraction,
+            links,
+            today=today,
+            ctx=ctx,
+            postal_buffer_days=postal_buffer_days,
+            trace=step,
+        )
+        rule_items = sync_rule_items(
+            store,
+            document.model_copy(
+                update={
+                    "area": extraction.area,
+                    "party_id": links.party.id if links.party else None,
+                    "case_id": links.case.id if links.case else None,
+                }
+            ),
+            derived,
+            ctx,
+            today=today,
+            postal_buffer_days=postal_buffer_days,
+            end_evidence=verification.change_evidence,
+            trace=step,
+        )
     items = [*items, *rule_items]
     # the stored to-dos decide: one the person confirmed, paid or dismissed was kept and needs no check
     unsure = any(needs_check(item) for item in store.list_items(doc_id=document.id))
     status: DocumentStatus = "needs_review" if unsure else "processed"
+    step.set(status=status, needs_check=sum(needs_check(item) for item in items))
     stamp = now_iso()
     doc_date = parse_date(extraction.document_date)
     updated = store.update_document(
@@ -1079,6 +1178,7 @@ def write_plan(
     if any(item.recurrence for item in items):  # in the letter's context, now that it is stored
         roll_forward(store, today, item_context)
         items = [store.get_item(item.id) or item for item in items]
+        step.set(rolled_forward=True)
     store.reindex_document(document.id)
     store.log_activity(
         "document.processed",

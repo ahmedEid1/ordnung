@@ -102,6 +102,7 @@ DUMP_TABLES = (
     "activity",
     "llm_calls",
     "llm_cache",
+    "trace_spans",
 )
 VOLATILE_FIELDS = frozenset(
     {
@@ -113,6 +114,7 @@ VOLATILE_FIELDS = frozenset(
         "generated_at",
         "completed_at",
         "sent_at",
+        "job_id",  # jobs get random ids; a trace's own ids and times are the demo's (ordnung.trace.runs)
     }
 )
 MAX_DIFF_LINES = 12

@@ -22,7 +22,7 @@ import { SectionHeading, SettingsCard } from "./SettingsCard";
 import { TourCard } from "./TourCard";
 
 async function buildExport() {
-  const [profile, settings, documents, items, contracts, parties, drafts, suggestions] = await Promise.all([
+  const [profile, settings, documents, items, contracts, parties, drafts, suggestions, traces] = await Promise.all([
     api.profile(),
     api.settings(),
     api.documents(), // no limit: every letter (the API caps an explicit limit at 1000)
@@ -31,8 +31,9 @@ async function buildExport() {
     api.parties(),
     api.drafts(),
     api.suggestions(),
+    api.traces(), // how each letter was read: steps and model calls, never letter text
   ]);
-  return { exported_at: new Date().toISOString(), app: "Ordnung", profile, settings, documents, items, contracts, parties, drafts, ideas: suggestions };
+  return { exported_at: new Date().toISOString(), app: "Ordnung", profile, settings, documents, items, contracts, parties, drafts, ideas: suggestions, reading_traces: traces };
 }
 
 /** A folder path with a line-break opportunity (`<wbr>`) after each "/" or "\", so it wraps between names. */
@@ -244,7 +245,7 @@ export function DataSection({ health }: { health: Health }) {
         <SettingsCard
           title="Download a copy of your records"
           id="set-data-export"
-          description="Letters (details, not the files), to-dos & dates, contracts, people & organisations, your drafts and Ideas — as a JSON file you can open anywhere."
+          description="Letters (details, not the files), to-dos & dates, contracts, people & organisations, your drafts, Ideas and how each letter was read — as a JSON file you can open anywhere."
           footer={
             <Button icon={Download} onClick={() => void exportJson()} loading={busy}>
               Download JSON

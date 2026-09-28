@@ -17,6 +17,8 @@ export interface TabItem<V extends string = string> {
   icon?: LucideIcon;
   count?: number;
   disabled?: boolean;
+  /** Ids of further panels this tab shows, besides its `<TabPanel>` (content split around a shared part). */
+  controls?: string[];
 }
 
 export interface TabsProps<V extends string = string> {
@@ -169,7 +171,7 @@ export function Tabs<V extends string>({
               type="button"
               role="tab"
               aria-selected={selected}
-              aria-controls={panels && selected ? `${base}-panel-${t.value}` : undefined}
+              aria-controls={panels && selected ? [`${base}-panel-${t.value}`, ...(t.controls ?? [])].join(" ") : undefined}
               tabIndex={selected ? 0 : -1}
               disabled={t.disabled}
               onClick={() => onChange(t.value)}

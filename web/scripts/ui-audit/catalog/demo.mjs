@@ -462,6 +462,50 @@ export async function demoCatalog({ api, server }) {
   docState(photoDoc, "zoom-150", "switch the page viewer zoom to 150 %", "Phone photo at 150 %.", (c) => c.click(c.page.getByRole("radiogroup", { name: "Zoom" }).getByRole("radio", { name: /150/ })));
   docState(reviewDoc, "change-date", "click “Change date” in the Please-check warning", "Please-check warning with the date editor open.", (c) => c.click(main(c.page).getByRole("button", { name: "Change date" })));
   docState(glossaryDoc, "glossary-tooltip", "hover the first German term with a dotted underline", "Glossary tooltip (German term explained).", (c) => c.hover(main(c.page).locator("span.cursor-help")));
+  // "How this was read": the reading's steps (a text PDF with a payment, a phone photo), opened steps, the receipt
+  const traceTab = (c) => c.click(main(c.page).getByRole("tab", { name: "How it was read" }));
+  const openStep = (c, name) => c.click(main(c.page).getByRole("list", { name: "Steps of this reading" }).getByRole("button", { name }).first());
+  docState(payDoc, "trace", "click the “How this was read” tab", "How this was read: the reading's summary and its steps (text PDF: quotes, dates, sender, thread, payment check).", traceTab);
+  docState(photoDoc, "trace", "click the “How this was read” tab", "How this was read for a phone photo: the page transcribed by Claude, then the rest.", traceTab);
+  docState(payDoc, "trace-open", "“How this was read” → open Claude's step, the quotes and the dates", "Opened steps: the model call (prompt, tokens, cost), each quote checked on the page, each date computed.", async (c) => {
+    await traceTab(c);
+    await openStep(c, /^Claude reads the letter/);
+    await openStep(c, /^Quotes checked on the page/);
+    await openStep(c, /^Dates computed/);
+  });
+  docState(payDoc, "trace-all-open", "“How this was read” → open every stage and every step in it", "Every step opened: the facts of nested steps (label beside or above its value), long German names wrapping.", async (c) => {
+    await traceTab(c);
+    const list = main(c.page).getByRole("list", { name: "Steps of this reading" });
+    for (let round = 0; round < 3; round += 1) {
+      const closed = list.locator('li > button[aria-expanded="false"]');
+      const n = await closed.count();
+      if (!n) break;
+      for (let i = n - 1; i >= 0; i -= 1) await c.click(closed.nth(i), { settleAfter: false });
+    }
+    await settle(c.page);
+  });
+  docState(payDoc, "trace-empty", "answer the trace route with no reading (a letter read before traces were kept), then the tab", "No reading kept: why, and “Read it again” (it asks Claude again).", async (c) => {
+    await c.page.route("**/api/documents/*/trace**", (route) => route.fulfill({ json: { doc_id: payDoc.id, run: null, runs: [], spans: [] } }));
+    await traceTab(c);
+    await c.visible(main(c.page).getByRole("heading", { name: "No reading kept for this letter" }));
+  });
+  // a phone photo's quote (its numbers matched only against Claude's transcript) and its date (named by
+  // the deadline's nature: "On" for an appointment)
+  const apptDoc = byTitle(/Zahnarzt|Dentist|Terminkarte/i) ?? photoDoc;
+  docState(apptDoc, "trace-photo-steps", "“How this was read” → a quote and a date opened", "A photo's quote (numbers found in Claude's transcript) and its date step, named by what kind of date it is.", async (c) => {
+    await traceTab(c);
+    await openStep(c, /^Quotes checked on the page/);
+    await c.click(main(c.page).getByRole("list", { name: /^Steps of “Quotes checked on the page”/ }).getByRole("button").first());
+    await openStep(c, /^Dates computed/);
+    await c.click(main(c.page).getByRole("list", { name: /^Steps of “Dates computed”/ }).getByRole("button").first());
+  });
+  docState(payDoc, "trace-why-this-date", "“How this was read” → Dates computed → a date → “Why this date?”", "The rules engine's receipt opened from a date's step.", async (c) => {
+    await traceTab(c);
+    await openStep(c, /^Dates computed/);
+    const steps = main(c.page).getByRole("list", { name: /^Steps of “Dates computed”/ });
+    await c.click(steps.getByRole("button").first());
+    await c.click(steps.getByRole("button", { name: /Why this date\?/ }));
+  });
 
   // ---------------------------------------------------------------------------------------------
   // Timeline
@@ -1555,6 +1599,23 @@ export async function demoCatalog({ api, server }) {
       await c.centre(await c.visible(c.page.getByRole("dialog").getByRole("region", { name: /^Calls/ })));
     },
   });
+  if (payDoc) {
+    mutations.push({
+      id: `${docSlug(payDoc)}--trace-compare`,
+      group: "document",
+      route: `/documents/${payDoc.id}?view=trace`,
+      how: "the audit read the letter again (POST …/reprocess), then “How this was read” → “Compare with reading 1”",
+      description: "Two readings of a letter: the reading picker and what the newer one decided differently.",
+      run: async (c) => {
+        const d = extra.readAgain;
+        if (!d) throw new Error("the letter was not read again");
+        await c.goto(`/documents/${d}?view=trace`);
+        await c.click(main(c.page).getByRole("button", { name: /^Compare with reading/ }));
+        await c.visible(main(c.page).getByRole("heading", { name: /decided differently/ }));
+        await settle(c.page);
+      },
+    });
+  }
   if (objectionDoc) {
     mutations.push({
       id: `${docSlug(objectionDoc)}--with-draft`,
@@ -1853,6 +1914,13 @@ export async function demoCatalog({ api, server }) {
               instructions: "Please send me the receipts for the operating-costs statement and let me pay in two instalments.",
               language: "en",
             });
+          // read one letter again (the demo replays its recorded answers) so it has two readings to compare
+          const again = find(payDoc);
+          if (again) {
+            await api.post(`/api/documents/${again.id}/reprocess`, {});
+            for (let i = 0; i < 120 && (await api.get("/api/jobs?active_only=true")).length; i += 1) await new Promise((r) => setTimeout(r, 500));
+            extra.readAgain = again.id;
+          }
           const gym = contracts2.find((c) => /FitWell/.test(c.name)) ?? contracts2.find((c) => c.id !== phoneContract?.id);
           if (gym) {
             const d = await api.post("/api/drafts", { kind: "cancellation", contract_id: gym.id, doc_id: gym.source_doc_id ?? null, party_id: gym.party_id ?? null, language: "en" });

@@ -44,6 +44,7 @@ import { TODAY } from "./data/constants";
 import { isDirectDebit, isIncomingMoney } from "@/lib/payments";
 import { paysOnSite } from "@/features/document/item-meta";
 import { CALL_NOTES, PROOF_DOCUMENTS, PROOF_DRAFTS, PROOF_ITEMS, PROOF_PARTIES, PROOFS } from "./data/proof";
+import type { ReadingSeed } from "./data/traces";
 
 const clone = <T>(v: T): T => (typeof structuredClone === "function" ? structuredClone(v) : JSON.parse(JSON.stringify(v)));
 
@@ -106,6 +107,8 @@ export interface MockState {
   proofs: Proof[];
   /** call notes (Gesprächsnotizen) */
   calls: CallNote[];
+  /** readings added in this session ("Read again"); others follow from the letter (`data/traces.ts`) */
+  readings: Record<string, ReadingSeed[]>;
 }
 
 export class MockDb {
@@ -132,6 +135,7 @@ export class MockDb {
       folderRecent: clone(FOLDER_RECENT),
       proofs: clone(PROOFS),
       calls: clone(CALL_NOTES),
+      readings: {},
     };
   }
 

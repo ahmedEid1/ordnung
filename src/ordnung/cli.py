@@ -888,6 +888,95 @@ def ask(
 
 
 # --------------------------------------------------------------------------------------------------
+# trace
+# --------------------------------------------------------------------------------------------------
+
+
+def _trace_getter(paths: Paths, doc_id: str, stack: contextlib.ExitStack) -> Callable[[str | None], Any]:
+    """Fetch a reading of ``doc_id`` (``None``: the newest) from the running server, else from the
+    database under the data folder's lock (held until ``stack`` closes)."""
+    from urllib.parse import quote
+
+    from ordnung.models import DocumentTrace
+
+    info = reachable_server(paths.data_dir)
+    if info is not None:
+        client = stack.enter_context(_api(info))
+        route = f"/api/documents/{quote(doc_id, safe='')}/trace"
+        return lambda run: DocumentTrace.model_validate(
+            _json_object(_checked(client.get(route, params={"run": run} if run else None)))
+        )
+    from ordnung.db.store import Store
+    from ordnung.locking import DataDirLock
+    from ordnung.trace.view import document_trace
+
+    if not paths.db.is_file():
+        raise _fail(f"There is no Ordnung data in {paths.data_dir}.", "Pass the folder with --data-dir.")
+    stack.enter_context(DataDirLock(paths.data_dir, purpose="ordnung trace"))
+    store = stack.enter_context(Store.open(paths))
+    if store.get_document(doc_id) is None:
+        raise _fail(
+            f"There is no letter {doc_id}.", "A letter's id is in its page's address: /documents/doc_…"
+        )
+    return lambda run: document_trace(store, doc_id, run)
+
+
+@app.command()
+def trace(
+    ctx: typer.Context,
+    document_id: Annotated[str, typer.Argument(help="The letter's id (doc_…, in its page's address).")],
+    otel: Annotated[
+        bool,
+        typer.Option(
+            "--otel",
+            help="OpenTelemetry JSON (OTLP) with the GenAI conventions, for any OpenTelemetry viewer.",
+        ),
+    ] = False,
+    reading: Annotated[
+        int | None,
+        typer.Option("--reading", min=1, help="Which reading: 1 is the first (default: the newest kept)."),
+    ] = None,
+    output: Annotated[
+        Path | None, typer.Option("--output", "-o", help="Write to this file instead of the screen.")
+    ] = None,
+    data_dir: DataDirOption = None,
+) -> None:
+    """How a letter was read: every step, its model calls and what code checked — as JSON.
+
+    The plain JSON is what the letter's "How this was read" tab shows (with the names of the to-dos
+    and organisations it points to); ``--otel`` holds no letter text and no names, and its ids are
+    replaced for this file (docs/privacy.md says what it still shows). A letter with no kept reading
+    is an error.
+    """
+    from ordnung.trace.otel import to_otlp
+
+    with _friendly(), contextlib.ExitStack() as stack:
+        get = _trace_getter(resolve_paths(_chosen(ctx, data_dir)), document_id, stack)
+        found = get(None)
+        if found.run is None:
+            raise _fail(
+                "This letter has no kept reading yet.",
+                "“Read again” on its page records one (it asks Claude again).",
+            )
+        if reading is not None and found.run.reading != reading:
+            kept = [run for run in found.runs if run.reading == reading]
+            if not kept:
+                numbers = ", ".join(str(run.reading) for run in found.runs) or "none"
+                raise _fail(f"Reading {reading} of this letter isn't kept (kept: {numbers}).")
+            found = get(kept[0].trace_id)
+        payload = to_otlp(found) if otel else found.model_dump(mode="json")
+        # ASCII only: names in the plain JSON were written by a model from a letter and must not
+        # reach the terminal as control or bidirectional characters
+        text = json.dumps(payload, indent=2, ensure_ascii=True) + "\n"
+    if output is None:
+        typer.echo(text, nl=False)
+        return
+    with _friendly():
+        output.write_text(text, encoding="utf-8")
+    err_console.print(f"Wrote {escape(str(output))}", soft_wrap=True)
+
+
+# --------------------------------------------------------------------------------------------------
 # demo
 # --------------------------------------------------------------------------------------------------
 

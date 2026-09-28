@@ -7,13 +7,21 @@
  * the e-mail it came with / an e-mail's attachments → Thread, contract, drafts, Ideas → provenance +
  * Reprocess / Download / Delete. A letter that waits for the person (from the watched folder) shows
  * its waiting card in the verdict's place, and nothing read from it (nothing was).
+ *
+ * Two tabs above the panel (`?view=trace` for the second, so it can be linked): the letter, and "How
+ * this was read" — every step of its reading (`./trace`). The pages stay beside it on wide screens.
+ * The letter's content is split around the pages (verdict first, then the pages on phones, then the
+ * rest), so "The letter" controls two panels: its verdict and warnings, and the rest of the letter.
  */
 import { useCallback, useEffect, useMemo } from "react";
-import { useLocation } from "react-router";
+import { useLocation, useSearchParams } from "react-router";
 import { useMediaQuery } from "@/lib/hooks";
 import { useReducedMotion } from "motion/react";
+import { FileText, Route } from "lucide-react";
 import type { DocumentDetail } from "@/api/types";
 import { SkeletonCard, SkeletonText } from "@/components/ui/Skeleton";
+import { TabPanel, Tabs } from "@/components/ui/Tabs";
+import { cn } from "@/lib/utils";
 import { EvidenceProvider } from "./EvidenceContext";
 import { collectAnchors } from "./evidence";
 import { decisionSuggestion, leadsWithDecision, selectPrimaryItem, scamSuggestion } from "./verdict";
@@ -28,6 +36,35 @@ import { DocumentFooter } from "./DocumentFooter";
 import { ProcessingCard } from "./ProcessingCard";
 import { HeldCard } from "./HeldCard";
 import { EmailParts } from "./EmailParts";
+import { TracePanel } from "./trace/TracePanel";
+
+type DocView = "letter" | "trace";
+/** The second panel of the letter tab: the rest of the letter, after the pages. */
+const LETTER_MORE_PANEL = "doc-view-panel-letter-more";
+const VIEW_TABS = [
+  { value: "letter" as const, label: "The letter", icon: FileText, controls: [LETTER_MORE_PANEL] },
+  { value: "trace" as const, label: "How it was read", icon: Route },
+];
+
+/** The tab shown (`?view=trace`), kept in the address without adding a history entry per switch. */
+function useDocView(): [DocView, (view: DocView) => void] {
+  const [params, setParams] = useSearchParams();
+  const view: DocView = params.get("view") === "trace" ? "trace" : "letter";
+  const setView = useCallback(
+    (next: DocView) =>
+      setParams(
+        (prev) => {
+          const out = new URLSearchParams(prev);
+          if (next === "trace") out.set("view", "trace");
+          else out.delete("view");
+          return out;
+        },
+        { replace: true },
+      ),
+    [setParams],
+  );
+  return [view, setView];
+}
 
 export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const doc = detail.document;
@@ -59,6 +96,8 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [toCard, doc.id, reduced]);
+  const [view, setView] = useDocView();
+  const trace = view === "trace";
 
   const askArrival = useCallback(() => {
     const el = document.getElementById("arrival-question");
@@ -71,12 +110,20 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
       {/* the first row is as tall as the verdict (or waiting) card; the page viewer's spare height goes to the rest */}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.04fr)_minmax(0,1fr)] xl:grid-rows-[auto_1fr] xl:gap-x-8 xl:gap-y-6">
         <div className="min-w-0 space-y-4 xl:col-start-2 xl:row-start-1">
-          {busy ? <ProcessingCard doc={doc} /> : null}
-          {held ? <HeldCard detail={detail} /> : !neverRead ? <VerdictCard detail={detail} primary={primary} onAskArrival={askArrival} /> : null}
-          {!neverRead && !held ? <DocumentWarnings detail={detail} /> : null}
+          <Tabs<DocView> id="doc-view" label="Show" value={view} onChange={setView} items={VIEW_TABS} fill />
+          <TabPanel id="doc-view" value="trace" current={view}>
+            <TracePanel detail={detail} />
+          </TabPanel>
+          {/* the letter's panel is its verdict (or waiting card) and warnings; the rest of the letter follows the pages */}
+          <TabPanel id="doc-view" value="letter" current={view} className="space-y-4 empty:hidden">
+            {busy ? <ProcessingCard doc={doc} /> : null}
+            {held ? <HeldCard detail={detail} /> : !neverRead ? <VerdictCard detail={detail} primary={primary} onAskArrival={askArrival} /> : null}
+            {!neverRead && !held ? <DocumentWarnings detail={detail} /> : null}
+          </TabPanel>
         </div>
 
-        <div className="min-w-0 xl:sticky xl:top-[72px] xl:col-start-1 xl:row-span-2 xl:row-start-1 xl:self-start">
+        {/* on phones and tablets the pages would follow a long list of steps: the trace tab leaves them out */}
+        <div className={cn("min-w-0 xl:sticky xl:top-[72px] xl:col-start-1 xl:row-span-2 xl:row-start-1 xl:self-start", trace && "max-xl:hidden")}>
           <PageViewer
             docId={doc.id}
             pages={detail.pages}
@@ -89,30 +136,37 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
           />
         </div>
 
-        <div className="min-w-0 space-y-7 xl:col-start-2 xl:row-start-2">
-          {neverRead ? (
-            <div className="space-y-4" aria-hidden>
-              <SkeletonCard lines={3} />
-              <div className="card p-5">
-                <SkeletonText lines={4} />
+        {trace ? null : (
+          <div
+            role="tabpanel"
+            id={LETTER_MORE_PANEL}
+            aria-labelledby="doc-view-tab-letter"
+            className="min-w-0 space-y-7 xl:col-start-2 xl:row-start-2"
+          >
+            {neverRead ? (
+              <div className="space-y-4" aria-hidden>
+                <SkeletonCard lines={3} />
+                <div className="card p-5">
+                  <SkeletonText lines={4} />
+                </div>
               </div>
-            </div>
-          ) : held ? (
-            <EmailParts detail={detail} />
-          ) : (
-            <>
-              <ExplainedSimply doc={doc} />
-              <ItemsList items={detail.items} docId={doc.id} pages={doc.pages} scam={scam} />
-              <KeyFacts doc={doc} scam={scam} girocodes={detail.girocodes} />
+            ) : held ? (
               <EmailParts detail={detail} />
-              <ThreadSection detail={detail} />
-              <ContractsSection contracts={detail.contracts} />
-              <DraftsSection drafts={detail.drafts} />
-              <IdeasSection suggestions={lead ? detail.suggestions.filter((s) => s.id !== lead.id) : detail.suggestions} docId={doc.id} items={detail.items} primaryId={primary?.id} />
-            </>
-          )}
-          <DocumentFooter detail={detail} />
-        </div>
+            ) : (
+              <>
+                <ExplainedSimply doc={doc} />
+                <ItemsList items={detail.items} docId={doc.id} pages={doc.pages} scam={scam} />
+                <KeyFacts doc={doc} scam={scam} girocodes={detail.girocodes} />
+                <EmailParts detail={detail} />
+                <ThreadSection detail={detail} />
+                <ContractsSection contracts={detail.contracts} />
+                <DraftsSection drafts={detail.drafts} />
+                <IdeasSection suggestions={lead ? detail.suggestions.filter((s) => s.id !== lead.id) : detail.suggestions} docId={doc.id} items={detail.items} primaryId={primary?.id} />
+              </>
+            )}
+            <DocumentFooter detail={detail} />
+          </div>
+        )}
       </div>
     </EvidenceProvider>
   );

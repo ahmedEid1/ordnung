@@ -147,7 +147,7 @@ SQLite `<data>/ordnung.db`. Every connection: `isolation_level=None` (autocommit
 transactions), `PRAGMA journal_mode=WAL; busy_timeout=5000; synchronous=NORMAL; foreign_keys=ON`.
 `Store.tx()` = `BEGIN IMMEDIATE … COMMIT/ROLLBACK` (re-entrant per thread). Migrations: `PRAGMA
 user_version` + `db/migrations/NNNN_name.sql` applied in order on open (0001 = the v1 schema;
-numbers start at 0001, gaps are allowed and duplicates are not). The runner keeps a ledger of what
+0003 = proof of sending and call notes; 0004 = reading traces; numbers start at 0001, gaps are allowed and duplicates are not). The runner keeps a ledger of what
 ran (`schema_migrations`: version, name) and applies every migration not in it, in number order —
 also a lower number that arrives after a database ran a higher one; `user_version` holds the highest
 (a newer database is refused). A database from before the ledger at version 1 ran 0001; one past 1
@@ -165,8 +165,10 @@ for substring matches inside German compounds. User queries are escaped (each to
 `delete_document` purges items, pages, jobs, FTS rows (then `optimize`s the indexes), derived files,
 the original, `llm_cache` rows of every call that carried the document (cache rows carry `doc_sha`,
 `doc_a|doc_b` for several), the Ideas and activity entries about it, its quotes in kept contracts and
-its id in `llm_calls`; connections run with `secure_delete=ON`. `llm_calls` never stores prompt or
-response bodies.
+its id, replay keys, spans and jobs in `llm_calls`, and the `trace_spans` of its readings;
+connections run with `secure_delete=ON`. `llm_calls` never stores prompt or response bodies. A call
+that finishes after a letter it carried was deleted is logged without that id, key, span or job, and
+its answer is not cached (`log_llm_call`/`cache_put` check in their transaction).
 
 The Store API contract is Appendix A (unchanged names; additions: `tx()`, `reconcile_suggestions`,
 `upsert_item_by_slot`, `list_pages`, `set_page_text`, `purge_cache_for(sha)`, `jobs` queue methods).
@@ -341,6 +343,10 @@ claude -p --input-format stream-json --output-format stream-json --verbose
 - **Keys**: `llm_key(req) = f"{purpose}:{prompt_version}:{model}:{sha256(canonical(stable_inputs))}"`
   — callers pass `cache_key` = canonical stable inputs (e.g. extract: file sha + page modes + language +
   region + simulated today). Used for `llm_cache` and fixture paths `<fixtures>/<purpose>/<sha256(key)[:24]>.json`.
+- **Usage log** (`llm_calls`, one row per call): accounting (tokens, cost, latency, cache hit) plus
+  the replay/cache key, the prompt template and version, the model the CLI says answered, and — when
+  the caller passes its trace step — job, pipeline stage and span; `repair_of` links a repair to the
+  call it retried and `outcome` is `ok | invalid | repaired | failed` (`LLMService`, one policy).
 - **Replay**: strict in CI/`demo --check` (miss = failure); in the interactive demo a miss becomes a
   friendly note, never an error dialog: Ask's one `demo_miss` event (`error_code: "demo_miss"`, one
   message in `assistant/ask.py`), other model calls one plain message ("The demo replays recorded
@@ -377,6 +383,18 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
 Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
 **transcribe** ("Reading the photo or scan"), a PDF whose pages all have text skips **transcribe**
 ("Reading the text"); a scanned PDF shows both.
+
+**Trace** (`ordnung/trace`): every reading is one trace — a tree of spans (`run` → `ocr` · `model` ·
+`verify` · `rules` · `link` · `plan`) recorded through an explicit tracer the pipeline passes down
+(no global state; the default `NO_SPAN` records nothing) and stored in one insert when the reading
+ends, however it ends. A span keeps only counts, codes, scores, computed dates and record ids — never
+letter text (`trace/facts.py` is the vocabulary); how a reading ended is a code (`done`, `failed` +
+the kind of failure, `paused`, `stopped`), never the error's message. A reading's number is reserved
+when it starts (its root span is stored as `running`, shown nowhere; one left running by a killed
+process is marked stopped at the next start) and a measured reading's trace id is random, so a lost
+trace or two readings at once never share a number or a call. A letter keeps its newest five readings
+that ran to the end, plus its newest paused or stopped attempt while it is within them. The demo
+lays its spans out from the recorded latencies and hashes its trace ids, so a rebuild stores the same trace.
 
 Rate limits pause the worker globally (`paused_until`, SSE `llm.paused` banner); jobs stay queued.
 On startup `running` jobs return to `queued`. Reprocess = `force` (skip cache read) and replaces
@@ -936,7 +954,11 @@ and `attachment` unless PDF/JPEG/PNG/WEBP; `--no-token` for tests only.
 Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT), `onboarding`
 (POST), `documents` (POST upload `files[]`, `combine`, `private`; GET list), `documents/{id}`
 (GET detail / PATCH / DELETE), `documents/{id}/file`, `documents/{id}/pages/{n}.jpg`,
-`documents/{id}/thumbnail.jpg`, `documents/{id}/reprocess` (POST), `items` (GET/POST),
+`documents/{id}/thumbnail.jpg`, `documents/{id}/reprocess` (POST), `documents/{id}/trace`
+(`?run=` a reading's trace id; default the newest kept: its steps, their model calls and the kept
+readings), `documents/{id}/trace/compare` (`?base&head`: what a later reading decided differently;
+`base` defaults to the newest earlier reading that was done, not a paused or stopped attempt),
+`traces` (every kept reading, for the data export), `items` (GET/POST),
 `items/{id}` (PATCH/DELETE; PATCH with `due_date` sets `due_date_source=manual`, `user_modified`),
 `items/{id}/confirm` (POST: grounding=user), `items/{id}/girocode/confirm` (POST: the transfer details
 the person compared with the paper letter; 409 when they changed or the code is refused for another
@@ -989,7 +1011,8 @@ obligations towards authorities or a job — a job gets "Draft resignation").
 View models (in models.py): `Dashboard`, `TimelineEntry`, `Lane{id,label,area,bars[]}`,
 `LaneBar{id,label,start,end,kind,marker_dates[],ref}`, `DocumentDetail`, `PartyDetail`,
 `CaseDetail`, `UsageStats`, `Health`, `RuleInfo`, `TourState`, `MailTrayItem`, `EmailAttachment`,
-`FolderStatus`, `FolderPickup`. Live event `folder.updated` {state, doc_id?, held?}.
+`FolderStatus`, `FolderPickup`, `DocumentTrace`,
+`TraceRun`, `TraceSpan`, `TraceComparison`, `TraceExport`. Live event `folder.updated` {state, doc_id?, held?}.
 
 Contract details: list endpoints answer plain JSON arrays. `health` carries `rules_last_checked`
 (the catalog's `LAST_CHECKED`, shown as "Based on the law as of …"); `health?probe=1` ("Run check")
@@ -1037,7 +1060,18 @@ Pages:
    GiroCode (folded behind "Show code" on phones, and in Today's Pay panel); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
    … · text of 2 pages" badge; 390 px layout stacks the image below the card. An e-mail lists its
    attachments and what became of each (linked when added); an attachment says which e-mail it came
-   with; a held letter says it waits, with *Read it with Claude* and *Keep private*.
+   with; a held letter says it waits, with *Read it with Claude* and *Keep private*. A second tab, **How
+   it was read** (`?view=trace`), shows the reading as a waterfall: summary (time, calls to
+   Claude, tokens, API-equivalent cost, how it ended), then every step with its duration, opened to
+   its facts (a model call's prompt and version, tokens and outcome, a repair linked to the call it
+   retried; each quote's grounding and digit check — a photo's numbers are matched only against
+   Claude's transcript, and it says so; each date's DateSpec → date, named by the deadline's nature
+   as on Today ("On" for an appointment, "Pay by"/"Transfer by" for a payment), with the same "Why
+   this date?" receipt, which lists the rules that made the date (a deadline the law adds names its
+   law); how the sender, thread and contract were linked; what happened to each to-do); a reading
+   picker and "Compare with reading N" when it was read again, and "Read again and compare" (not
+   in the online demo, which can't read a letter again); the `ordnung trace … --otel` command.
+   Phones and tablets leave the page images out on this tab.
 4. **Timeline** — year-ahead **life lanes** (Residence permit, Contracts, Tax, Study, Home, Money,
    Health, Getting around…) with a today line — each dated to-do in its life area's lane, payments of
    any amount too; every bar and marker carries its area and the to-do or contract it stands for, and a
@@ -1123,7 +1157,10 @@ dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighte
 [--data-dir D] [--config PATH] [--remove-ledger] [--write]` · `autostart enable [--port N]
 [--dry-run] | disable | status` · `backup [--to FOLDER|FILE.ordnung-backup]` (a folder that
 doesn't exist is refused) · `restore BACKUP [--force] [--check]` ·
-`openapi`.
+`openapi` · `trace DOC_ID [--otel]
+[--reading N] [-o FILE]` (a reading as JSON; `--otel`: OpenTelemetry OTLP/JSON with the GenAI
+semantic conventions, no names, every id replaced by a keyed hash made for that file; a letter with no
+kept reading is an error).
 If a server is running (`server.json` + live pid) `add`/`ask`/`brief` go through its API; otherwise
 they run in-process under an exclusive data-dir lock. `backup` reads the folder directly (holding
 the lock when it is free, else alongside the running server — the database snapshot is consistent
@@ -1247,8 +1284,9 @@ add_draft · get_draft · update_draft · list_drafts · delete_draft · add_not
 enqueue_job(kind, doc_id, force=False) · claim_next_job(kinds) · update_job(id, **f) · get_job · list_jobs(active_only) · requeue_running_jobs()
 # activity / accounting / cache
 log_activity(kind, message, ref_type, ref_id, data) · list_activity(limit, *, kinds, data) · last_activity(ref_type, ref_id, kinds)
-log_llm_call(purpose, model, backend, usage, ok, error, cache_hit) · usage_stats(recent)
-cache_get(key) · cache_put(key, purpose, model, response, doc_sha=None) · purge_cache_for(doc_sha)
+log_llm_call(purpose, model, backend, usage, ok, error, cache_hit, …, request_key, prompt_name, prompt_version, served_model, job_id, stage, span_id, repair_of, outcome) → id · usage_stats(recent)
+reserve_trace(root) · end_running_traces(ended, error) · save_trace(spans, keep, interrupted) · trace_runs(doc_id) · trace_spans(trace_id) · trace_steps(doc_id, kind) · trace_calls(doc_id) · next_trace_reading(doc_id) · count_trace_runs() · export_traces()
+cache_get(key) · cache_put(key, purpose, model, response, doc_sha=None, doc_ids=()) → stored · purge_cache_for(doc_sha)
 counts()
 ```
 

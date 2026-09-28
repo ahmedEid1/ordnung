@@ -90,11 +90,27 @@ def locate_quote(quote: str, pages: Sequence[PageInput]) -> Located | None:
 def ground_evidence(doc_id: str, quote: str, pages: Sequence[PageInput]) -> Evidence:
     """Evidence for ``quote``: ``verified`` on a text page (with boxes), ``model_read`` on an AI
     transcript, ``unverified`` otherwise (the best fuzzy score is kept for diagnostics)."""
-    located, best = _search(quote, pages)
+    return check_quote(doc_id, quote, pages)[0]
+
+
+@dataclass(frozen=True, slots=True)
+class QuoteCheck:
+    """How a quote was looked for (the facts a trace keeps, never the quote): the best fuzzy score on
+    any page, the number of digit groups the exact-digits rule checked, and whether a passage that
+    scored at least :data:`MIN_SCORE` had them all (``None``: no passage scored that high)."""
+
+    best_score: float
+    digit_groups: int
+    digits_matched: bool | None
+
+
+def check_quote(doc_id: str, quote: str, pages: Sequence[PageInput]) -> tuple[Evidence, QuoteCheck]:
+    """:func:`ground_evidence` and how the search went."""
+    located, check = _search(quote, pages)
     if located is None:
-        return Evidence(doc_id=doc_id, quote=quote, grounding="unverified", score=best)
+        return Evidence(doc_id=doc_id, quote=quote, grounding="unverified", score=check.best_score), check
     grounding = _GROUNDING.get(located.source, "unverified")
-    return Evidence(
+    evidence = Evidence(
         doc_id=doc_id,
         page=located.page,
         quote=quote,
@@ -102,13 +118,14 @@ def ground_evidence(doc_id: str, quote: str, pages: Sequence[PageInput]) -> Evid
         score=located.score,
         boxes=located.boxes if grounding == "verified" else [],
     )
+    return evidence, check
 
 
-def _search(quote: str, pages: Sequence[PageInput]) -> tuple[Located | None, float]:
-    """The located quote (or ``None``) and the best fuzzy score seen on any page."""
+def _search(quote: str, pages: Sequence[PageInput]) -> tuple[Located | None, QuoteCheck]:
+    """The located quote (or ``None``) and how the search went."""
     norm_quote, _ = normalise_with_map(quote)
     if not norm_quote:
-        return None, 0.0
+        return None, QuoteCheck(0.0, 0, None)
     quote_digits = [token for token, _, _ in digit_tokens(norm_quote)]
     candidates = []
     for page in map(_coerce, pages):
@@ -119,14 +136,16 @@ def _search(quote: str, pages: Sequence[PageInput]) -> tuple[Located | None, flo
         if alignment is not None:
             candidates.append((alignment.score, page, norm, offsets, alignment))
     best = round(max((c[0] for c in candidates), default=0.0), 1)
+    digits_matched: bool | None = None
     for score, page, norm, offsets, alignment in sorted(candidates, key=lambda c: -c[0]):
         if score < MIN_SCORE:
             break
-        if _digits_present(quote_digits, norm, alignment.dest_start, alignment.dest_end):
+        digits_matched = _digits_present(quote_digits, norm, alignment.dest_start, alignment.dest_end)
+        if digits_matched:
             start, end = offsets[alignment.dest_start], offsets[alignment.dest_end - 1] + 1
             located = Located(page.number, round(score, 1), start, end, _boxes(page, start, end), page.source)
-            return located, best
-    return None, best
+            return located, QuoteCheck(best, len(quote_digits), True)
+    return None, QuoteCheck(best, len(quote_digits), digits_matched)
 
 
 def _coerce(page: PageInput) -> _Page:

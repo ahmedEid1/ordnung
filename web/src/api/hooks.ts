@@ -62,6 +62,9 @@ export const qk = {
     all: ["documents"] as const,
     list: (params: DocumentListParams = {}) => ["documents", "list", params] as const,
     detail: (id: string) => ["documents", "detail", id] as const,
+    /** Under `documents`, so a new reading (any ledger write) refreshes it. */
+    trace: (id: string, run: string | null = null) => ["documents", "trace", id, run] as const,
+    traceComparison: (id: string, base: string | null, head: string | null) => ["documents", "trace-compare", id, base, head] as const,
   },
   items: {
     all: ["items"] as const,
@@ -274,6 +277,28 @@ export function useDocument(id: string | undefined) {
     queryKey: qk.documents.detail(id ?? ""),
     queryFn: () => api.document(id!),
     enabled: Boolean(id),
+    staleTime: 30_000,
+  });
+}
+
+/** "How this was read": the reading `run` of letter `id` (default: the newest kept) with its steps. */
+export function useDocumentTrace(id: string | undefined, run: string | null = null, opts: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: qk.documents.trace(id ?? "", run),
+    queryFn: () => api.documentTrace(id!, run),
+    enabled: Boolean(id) && (opts.enabled ?? true),
+    staleTime: 30_000,
+    // switching readings keeps the one shown until the other arrives (no flash of the skeleton)
+    placeholderData: (previous) => (previous?.doc_id === id ? previous : undefined),
+  });
+}
+
+/** What reading `head` of letter `id` decided differently from reading `base`. */
+export function useTraceComparison(id: string | undefined, base: string | null, head: string | null, opts: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: qk.documents.traceComparison(id ?? "", base, head),
+    queryFn: () => api.traceComparison(id!, { base, head }),
+    enabled: Boolean(id) && (opts.enabled ?? true),
     staleTime: 30_000,
   });
 }

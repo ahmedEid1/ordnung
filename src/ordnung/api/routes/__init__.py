@@ -29,6 +29,7 @@ from ordnung.api.routes import (
     reminders,
     suggestions,
     system,
+    traces,
     waiting,
     week,
 )
@@ -40,6 +41,7 @@ ROUTERS: tuple[APIRouter, ...] = (
     privacy.router,
     documents.router,
     folder.router,
+    traces.router,
     items.router,
     girocode.router,
     contracts.router,

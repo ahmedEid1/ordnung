@@ -489,6 +489,17 @@ export type PurposeUsage = Schemas["PurposeUsage"];
 /** @deprecated use {@link PurposeUsage} */
 export type UsagePurposeStats = PurposeUsage;
 export type UsageStats = Schemas["UsageStats"];
+/** "How this was read": a letter's reading shown (`run`), its steps (`spans`) and every kept reading (`runs`). */
+export type DocumentTrace = Schemas["DocumentTrace"];
+/** One reading of a letter, summed up (when, how long, model calls, tokens, cost, how it ended). */
+export type TraceRun = Schemas["TraceRun"];
+/** One step of a reading, depth-first in display order; `attributes` follow `ordnung/trace/facts.py`. */
+export type TraceSpan = Schemas["TraceSpan"];
+export type SpanKind = Schemas["TraceSpan"]["kind"];
+/** One thing two readings decided differently (a date, a quote's grounding, a model call's outcome …). */
+export type TraceChange = Schemas["TraceChange"];
+export type TraceComparison = Schemas["TraceComparison"];
+export type TraceExport = Schemas["TraceExport"];
 export type ClaudeStatus = Schemas["ClaudeStatus"];
 /** One `ordnung doctor` check (listed by `GET /api/health?probe=1`). */
 export type DoctorCheck = Schemas["DoctorCheck"];

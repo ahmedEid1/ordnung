@@ -10,6 +10,7 @@ import { qk } from "@/api/hooks";
 import { isTransfer } from "@/lib/payments";
 import { ADVICE_LINKS, type AdviceLink } from "@/components/ui/Disclaimer";
 import { Receipt, ReceiptPopover, useReceiptSteps, type ReceiptDate } from "@/components/ui/Receipt";
+import { dueDateLabel, sendByLabel } from "./dateLabels";
 
 /** Letters about a tenancy: the tenants' association advises, whatever area the letter was read under. */
 const TENANCY_KINDS: ReadonlySet<DocumentKind> = new Set<DocumentKind>(["rent_lease", "operating_costs", "rent_increase", "landlord_notice"]);
@@ -56,14 +57,23 @@ export function adviceFor(area: Area | null | undefined, docKind?: DocumentKind 
 export type ReceiptItem = Pick<Item, "kind" | "direction" | "title" | "action" | "description" | "doc_id">;
 
 /**
- * The receipt's key dates in the words the verdict uses: a bank transfer is made by its send-by day ("Transfer
- * by", UI audit round 1: not "Send by" / "Post it by" beside the verdict's "Transfer it by"), anything else is
- * sent by it; the due date is the day it must arrive.
+ * The receipt's key dates, named by the deadline's nature as the Today page and the verdict name them
+ * (`dateLabels.ts`): an appointment's day is "On", a payment's "Pay by", an objection's "Must arrive by";
+ * a bank transfer is made by its send-by day ("Transfer by", UI audit round 1: not "Send by" / "Post it
+ * by" beside the verdict's "Transfer it by"), anything else is sent by it, and next to a send-by day the
+ * due date is the day it must arrive. `transfer` says whether the to-do is a transfer (default: from
+ * `item`, else from the spec's nature).
  */
-export function receiptDates(receipt: ComputationReceipt, item?: ReceiptItem | null): ReceiptDate[] {
+export function receiptDates(
+  receipt: ComputationReceipt,
+  item?: ReceiptItem | null,
+  spec?: Pick<DateSpec, "nature"> | null,
+  transfer?: boolean,
+): ReceiptDate[] {
   const dates: ReceiptDate[] = [];
-  if (receipt.send_by) dates.push({ label: item && isTransfer(item) ? "Transfer by" : "Send by", date: receipt.send_by });
-  if (receipt.due_date) dates.push({ label: "Must arrive by", date: receipt.due_date });
+  const isTransferred = transfer ?? (item ? isTransfer(item) : undefined);
+  if (receipt.send_by) dates.push({ label: sendByLabel(spec?.nature, isTransferred), date: receipt.send_by });
+  if (receipt.due_date) dates.push({ label: dueDateLabel(spec?.nature, Boolean(receipt.send_by)), date: receipt.due_date });
   if (receipt.safe_date && receipt.safe_date !== receipt.due_date) dates.push({ label: "Safe date (a working day)", date: receipt.safe_date });
   return dates;
 }
@@ -89,14 +99,16 @@ export interface ReceiptViewProps {
   origin?: ItemOrigin | null;
   /** The to-do: a transfer's "Transfer by", and its letter's kind for the advice links. */
   item?: ReceiptItem | null;
+  /** The to-do is money you transfer (`isTransfer`), when no `item` says so: its send-by date is "Transfer by". */
+  transfer?: boolean;
 }
 
-export function ReceiptView({ receipt, spec, area, defaultShowRules = false, origin, item }: ReceiptViewProps) {
+export function ReceiptView({ receipt, spec, area, defaultShowRules = false, origin, item, transfer }: ReceiptViewProps) {
   const steps = useReceiptSteps(receipt.steps);
   const { docKind, partyKind } = useLetterKinds(item?.doc_id);
   return (
     <Receipt
-      dates={receiptDates(receipt, item)}
+      dates={receiptDates(receipt, item, spec, transfer)}
       summary={receipt.summary}
       confidence={receipt.confidence}
       warnings={receipt.warnings}
@@ -120,7 +132,9 @@ export function WhyThisDate({
   area,
   origin,
   item,
+  transfer,
   context,
+  title,
   className,
 }: {
   receipt: ComputationReceipt;
@@ -130,14 +144,19 @@ export function WhyThisDate({
   origin?: ItemOrigin | null;
   /** The to-do (see {@link ReceiptViewProps.item}). */
   item?: ReceiptItem | null;
+  /** The to-do is money you transfer (see {@link ReceiptViewProps.transfer}). */
+  transfer?: boolean;
   /** What the date belongs to (the to-do's title), for screen readers. */
   context?: string;
+  /** The trigger's words (default "Why this date?"). */
+  title?: string;
   className?: string;
 }) {
   return (
     <ReceiptPopover
-      content={<ReceiptView receipt={receipt} spec={spec} area={area} origin={origin} item={item} />}
+      content={<ReceiptView receipt={receipt} spec={spec} area={area} origin={origin} item={item} transfer={transfer} />}
       context={context}
+      title={title}
       className={className}
     />
   );

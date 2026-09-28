@@ -227,7 +227,10 @@ describe("the Claude check", () => {
   it("never breaks a path right after its root slash (no lone “/” at a line's end)", () => {
     const command = "ordnung autostart enable --data-dir /home/sam/Ordnung";
     render(<CopyCommand command={command} label="start Ordnung when you log in" />);
-    expect(screen.getByText(command).innerHTML).toBe("ordnung autostart enable --data-dir /home/<wbr>sam/<wbr>Ordnung");
+    // … and a long option ("--data-dir") never breaks after its dashes
+    const code = document.querySelector("code")!;
+    expect(code.textContent).toBe(command);
+    expect(code.innerHTML).toBe('ordnung autostart enable <span class="whitespace-nowrap">--data-dir</span> /home/<wbr>sam/<wbr>Ordnung');
   });
 });
 

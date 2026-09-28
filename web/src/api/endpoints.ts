@@ -141,6 +141,17 @@ export const api = {
   /** Rendered page image (1-based page number). */
   pageUrl: (id: string, page: number) => assetUrl(apiRoute("/api/documents/{doc_id}/pages/{page}.jpg", { doc_id: id, page })),
   thumbnailUrl: (id: string) => assetUrl(apiRoute("/api/documents/{doc_id}/thumbnail.jpg", { doc_id: id })),
+  /** "How this was read": one reading's steps (`run`: its trace id; default the newest kept) and every kept reading. */
+  documentTrace: (id: string, run?: string | null) =>
+    call("get", "/api/documents/{doc_id}/trace", { params: { doc_id: id }, query: { run: run ?? undefined } }),
+  /** What a later reading (`head`, default the newest) decided differently from an earlier one (`base`, default the one before). */
+  traceComparison: (id: string, runs: { base?: string | null; head?: string | null } = {}) =>
+    call("get", "/api/documents/{doc_id}/trace/compare", {
+      params: { doc_id: id },
+      query: { base: runs.base ?? undefined, head: runs.head ?? undefined },
+    }),
+  /** Every kept reading of the letters not in the trash, as stored (for "Download your records"). */
+  traces: () => call("get", "/api/traces"),
 
   // -- the watched folder ------------------------------------------------------------------------
   /** The watched folder: path, state (or problem), auto-read, letters waiting, the last files. */

@@ -1153,6 +1153,177 @@
         }
       }
     },
+    "/api/documents/{doc_id}/trace": {
+      "get": {
+        "tags": [
+          "traces"
+        ],
+        "summary": "Get Trace",
+        "description": "How the letter was read: every step of one reading, with its model calls, and the kept readings.",
+        "operationId": "get_trace_api_documents__doc_id__trace_get",
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Id"
+            }
+          },
+          {
+            "name": "run",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40,
+                  "pattern": "^trc_[0-9a-f]{1,32}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A reading's trace id",
+              "title": "Run"
+            },
+            "description": "A reading's trace id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentTrace"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{doc_id}/trace/compare": {
+      "get": {
+        "tags": [
+          "traces"
+        ],
+        "summary": "Compare Trace",
+        "description": "What a later reading of the letter decided differently from an earlier one.",
+        "operationId": "compare_trace_api_documents__doc_id__trace_compare_get",
+        "parameters": [
+          {
+            "name": "doc_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doc Id"
+            }
+          },
+          {
+            "name": "base",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40,
+                  "pattern": "^trc_[0-9a-f]{1,32}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A reading's trace id",
+              "title": "Base"
+            },
+            "description": "A reading's trace id"
+          },
+          {
+            "name": "head",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40,
+                  "pattern": "^trc_[0-9a-f]{1,32}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A reading's trace id",
+              "title": "Head"
+            },
+            "description": "A reading's trace id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraceComparison"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such letter or reading, or only one reading is kept."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/traces": {
+      "get": {
+        "tags": [
+          "traces"
+        ],
+        "summary": "Export Traces",
+        "description": "Every kept reading of the letters not in the trash, as stored (no letter text).",
+        "operationId": "export_traces_api_traces_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraceExport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/items": {
       "get": {
         "tags": [
@@ -7998,6 +8169,47 @@
         "title": "DocumentPatch",
         "description": "Corrections the person can make to a letter. ``received_date`` (when the letter arrived) and\n``doc_date`` recompute the letter's to-dos with the rules engine unless ``received_confirmed`` is\n``false``; so does ``kind``, which decides the rules of high-stakes letters (a court order, a\ndismissal …)."
       },
+      "DocumentTrace": {
+        "properties": {
+          "doc_id": {
+            "type": "string",
+            "title": "Doc Id"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/TraceRun"
+            },
+            "type": "array",
+            "title": "Runs"
+          },
+          "spans": {
+            "items": {
+              "$ref": "#/components/schemas/TraceSpan"
+            },
+            "type": "array",
+            "title": "Spans"
+          }
+        },
+        "type": "object",
+        "required": [
+          "doc_id",
+          "run",
+          "runs",
+          "spans"
+        ],
+        "title": "DocumentTrace",
+        "description": "How a letter was read: the reading shown (the latest unless another was asked for), its steps\nand every reading Ordnung keeps (newest first)."
+      },
       "Draft": {
         "properties": {
           "id": {
@@ -10219,6 +10431,105 @@
             "type": "integer",
             "title": "Bytes Sent",
             "default": 0
+          },
+          "request_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Key"
+          },
+          "prompt_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Name"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "served_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Served Model"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Span Id"
+          },
+          "repair_of": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repair Of"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "invalid",
+              "repaired",
+              "failed"
+            ],
+            "title": "Outcome",
+            "default": "ok"
           }
         },
         "type": "object",
@@ -10239,7 +10550,16 @@
           "cache_hit",
           "doc_ids",
           "pages_sent",
-          "bytes_sent"
+          "bytes_sent",
+          "request_key",
+          "prompt_name",
+          "prompt_version",
+          "served_model",
+          "job_id",
+          "stage",
+          "span_id",
+          "repair_of",
+          "outcome"
         ],
         "title": "LLMCallRecord"
       },
@@ -13715,6 +14035,576 @@
           "completed"
         ],
         "title": "TourState"
+      },
+      "TraceChange": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "run",
+              "model",
+              "ocr",
+              "verify",
+              "rules",
+              "link",
+              "plan"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "before": {
+            "title": "Before"
+          },
+          "after": {
+            "title": "After"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RefLink"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "kind",
+          "name",
+          "field",
+          "before",
+          "after",
+          "ref",
+          "label"
+        ],
+        "title": "TraceChange",
+        "description": "One thing two readings of a letter decided differently (a date, a quote's grounding, a\nmodel call's outcome …); ``before``/``after`` are ``None`` when the step is missing in that reading."
+      },
+      "TraceComparison": {
+        "properties": {
+          "doc_id": {
+            "type": "string",
+            "title": "Doc Id"
+          },
+          "base": {
+            "$ref": "#/components/schemas/TraceRun"
+          },
+          "head": {
+            "$ref": "#/components/schemas/TraceRun"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/TraceChange"
+            },
+            "type": "array",
+            "title": "Changes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "doc_id",
+          "base",
+          "head",
+          "changes"
+        ],
+        "title": "TraceComparison",
+        "description": "What a later reading (``head``) decided differently from an earlier one (``base``)."
+      },
+      "TraceExport": {
+        "properties": {
+          "spans": {
+            "items": {
+              "$ref": "#/components/schemas/TraceSpanRecord"
+            },
+            "type": "array",
+            "title": "Spans"
+          },
+          "calls": {
+            "items": {
+              "$ref": "#/components/schemas/LLMCallRecord"
+            },
+            "type": "array",
+            "title": "Calls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "spans",
+          "calls"
+        ],
+        "title": "TraceExport",
+        "description": "Every kept reading of the letters not in the trash, as stored (for \"Download your records\")."
+      },
+      "TraceRun": {
+        "properties": {
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+          },
+          "reading": {
+            "type": "integer",
+            "title": "Reading",
+            "default": 1
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "ended_at": {
+            "type": "string",
+            "title": "Ended At"
+          },
+          "duration_ms": {
+            "type": "number",
+            "title": "Duration Ms",
+            "default": 0.0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Status",
+            "default": "ok"
+          },
+          "ended": {
+            "type": "string",
+            "enum": [
+              "done",
+              "failed",
+              "paused",
+              "stopped"
+            ],
+            "title": "Ended",
+            "default": "done"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "read",
+              "read_again"
+            ],
+            "title": "Trigger",
+            "default": "read"
+          },
+          "timing": {
+            "type": "string",
+            "enum": [
+              "measured",
+              "recorded"
+            ],
+            "title": "Timing",
+            "default": "measured"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "queued",
+                  "processing",
+                  "processed",
+                  "needs_review",
+                  "failed",
+                  "held"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "model_calls": {
+            "type": "integer",
+            "title": "Model Calls",
+            "default": 0
+          },
+          "cache_hits": {
+            "type": "integer",
+            "title": "Cache Hits",
+            "default": 0
+          },
+          "repairs": {
+            "type": "integer",
+            "title": "Repairs",
+            "default": 0
+          },
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens",
+            "default": 0
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens",
+            "default": 0
+          },
+          "cache_read_tokens": {
+            "type": "integer",
+            "title": "Cache Read Tokens",
+            "default": 0
+          },
+          "cache_creation_tokens": {
+            "type": "integer",
+            "title": "Cache Creation Tokens",
+            "default": 0
+          },
+          "cost_usd": {
+            "type": "number",
+            "title": "Cost Usd",
+            "default": 0.0
+          },
+          "model_ms": {
+            "type": "number",
+            "title": "Model Ms",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "trace_id",
+          "reading",
+          "job_id",
+          "started_at",
+          "ended_at",
+          "duration_ms",
+          "status",
+          "ended",
+          "error",
+          "trigger",
+          "timing",
+          "result",
+          "model_calls",
+          "cache_hits",
+          "repairs",
+          "input_tokens",
+          "output_tokens",
+          "cache_read_tokens",
+          "cache_creation_tokens",
+          "cost_usd",
+          "model_ms"
+        ],
+        "title": "TraceRun",
+        "description": "One reading of a letter, summed up (its root span and its model calls)."
+      },
+      "TraceSpan": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "depth": {
+            "type": "integer",
+            "title": "Depth",
+            "default": 0
+          },
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "run",
+              "model",
+              "ocr",
+              "verify",
+              "rules",
+              "link",
+              "plan"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "start_ms": {
+            "type": "number",
+            "title": "Start Ms",
+            "default": 0.0
+          },
+          "duration_ms": {
+            "type": "number",
+            "title": "Duration Ms",
+            "default": 0.0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Status",
+            "default": "ok"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "attributes": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Attributes"
+          },
+          "call": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LLMCallRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RefLink"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "parent_id",
+          "depth",
+          "key",
+          "kind",
+          "name",
+          "stage",
+          "start_ms",
+          "duration_ms",
+          "status",
+          "error",
+          "attributes",
+          "call",
+          "ref",
+          "label"
+        ],
+        "title": "TraceSpan",
+        "description": "A step of a reading as the \"How this was read\" view shows it (display order, depth-first)."
+      },
+      "TraceSpanRecord": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+          },
+          "doc_id": {
+            "type": "string",
+            "title": "Doc Id"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "seq": {
+            "type": "integer",
+            "title": "Seq",
+            "default": 0
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "run",
+              "model",
+              "ocr",
+              "verify",
+              "rules",
+              "link",
+              "plan"
+            ],
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "ended_at": {
+            "type": "string",
+            "title": "Ended At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Status",
+            "default": "ok"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "attributes": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Attributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "trace_id",
+          "doc_id",
+          "job_id",
+          "parent_id",
+          "key",
+          "seq",
+          "kind",
+          "name",
+          "stage",
+          "started_at",
+          "ended_at",
+          "status",
+          "error",
+          "attributes"
+        ],
+        "title": "TraceSpanRecord",
+        "description": "One stored step of one reading of a letter (``trace_spans``).\n\n``key`` names the step within its reading (``run/verify:quotes/verify:item:<slot>``) and is the\nsame in every reading of the letter, so two readings can be compared step by step. ``attributes``\nhold only what code computed or decided and the ids of the records a step used or produced —\nnever letter text (the written policy is :mod:`ordnung.trace.facts`)."
       },
       "TrackingInfo": {
         "properties": {

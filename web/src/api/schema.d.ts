@@ -411,6 +411,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents/{doc_id}/trace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Trace
+         * @description How the letter was read: every step of one reading, with its model calls, and the kept readings.
+         */
+        get: operations["get_trace_api_documents__doc_id__trace_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{doc_id}/trace/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare Trace
+         * @description What a later reading of the letter decided differently from an earlier one.
+         */
+        get: operations["compare_trace_api_documents__doc_id__trace_compare_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/traces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Traces
+         * @description Every kept reading of the letters not in the trash, as stored (no letter text).
+         */
+        get: operations["export_traces_api_traces_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/items": {
         parameters: {
             query?: never;
@@ -2859,6 +2919,20 @@ export interface components {
             /** Direction */
             direction?: ("incoming" | "outgoing" | "note") | null;
         };
+        /**
+         * DocumentTrace
+         * @description How a letter was read: the reading shown (the latest unless another was asked for), its steps
+         *     and every reading Ordnung keeps (newest first).
+         */
+        DocumentTrace: {
+            /** Doc Id */
+            doc_id: string;
+            run: components["schemas"]["TraceRun"] | null;
+            /** Runs */
+            runs: components["schemas"]["TraceRun"][];
+            /** Spans */
+            spans: components["schemas"]["TraceSpan"][];
+        };
         /** Draft */
         Draft: {
             /** Id */
@@ -3630,6 +3704,28 @@ export interface components {
              * @default 0
              */
             bytes_sent: number;
+            /** Request Key */
+            request_key: string | null;
+            /** Prompt Name */
+            prompt_name: string | null;
+            /** Prompt Version */
+            prompt_version: string | null;
+            /** Served Model */
+            served_model: string | null;
+            /** Job Id */
+            job_id: string | null;
+            /** Stage */
+            stage: string | null;
+            /** Span Id */
+            span_id: string | null;
+            /** Repair Of */
+            repair_of: number | null;
+            /**
+             * Outcome
+             * @default ok
+             * @enum {string}
+             */
+            outcome: "ok" | "invalid" | "repaired" | "failed";
         };
         /** Lane */
         Lane: {
@@ -4876,6 +4972,255 @@ export interface components {
              * @default false
              */
             completed: boolean;
+        };
+        /**
+         * TraceChange
+         * @description One thing two readings of a letter decided differently (a date, a quote's grounding, a
+         *     model call's outcome …); ``before``/``after`` are ``None`` when the step is missing in that reading.
+         */
+        TraceChange: {
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "run" | "model" | "ocr" | "verify" | "rules" | "link" | "plan";
+            /** Name */
+            name: string;
+            /** Field */
+            field: string;
+            /** Before */
+            before: unknown;
+            /** After */
+            after: unknown;
+            ref: components["schemas"]["RefLink"] | null;
+            /** Label */
+            label: string | null;
+        };
+        /**
+         * TraceComparison
+         * @description What a later reading (``head``) decided differently from an earlier one (``base``).
+         */
+        TraceComparison: {
+            /** Doc Id */
+            doc_id: string;
+            base: components["schemas"]["TraceRun"];
+            head: components["schemas"]["TraceRun"];
+            /** Changes */
+            changes: components["schemas"]["TraceChange"][];
+        };
+        /**
+         * TraceExport
+         * @description Every kept reading of the letters not in the trash, as stored (for "Download your records").
+         */
+        TraceExport: {
+            /** Spans */
+            spans: components["schemas"]["TraceSpanRecord"][];
+            /** Calls */
+            calls: components["schemas"]["LLMCallRecord"][];
+        };
+        /**
+         * TraceRun
+         * @description One reading of a letter, summed up (its root span and its model calls).
+         */
+        TraceRun: {
+            /** Trace Id */
+            trace_id: string;
+            /**
+             * Reading
+             * @default 1
+             */
+            reading: number;
+            /** Job Id */
+            job_id: string | null;
+            /** Started At */
+            started_at: string;
+            /** Ended At */
+            ended_at: string;
+            /**
+             * Duration Ms
+             * @default 0
+             */
+            duration_ms: number;
+            /**
+             * Status
+             * @default ok
+             * @enum {string}
+             */
+            status: "ok" | "error";
+            /**
+             * Ended
+             * @default done
+             * @enum {string}
+             */
+            ended: "done" | "failed" | "paused" | "stopped";
+            /** Error */
+            error: string | null;
+            /**
+             * Trigger
+             * @default read
+             * @enum {string}
+             */
+            trigger: "read" | "read_again";
+            /**
+             * Timing
+             * @default measured
+             * @enum {string}
+             */
+            timing: "measured" | "recorded";
+            /** Result */
+            result: ("queued" | "processing" | "processed" | "needs_review" | "failed" | "held") | null;
+            /**
+             * Model Calls
+             * @default 0
+             */
+            model_calls: number;
+            /**
+             * Cache Hits
+             * @default 0
+             */
+            cache_hits: number;
+            /**
+             * Repairs
+             * @default 0
+             */
+            repairs: number;
+            /**
+             * Input Tokens
+             * @default 0
+             */
+            input_tokens: number;
+            /**
+             * Output Tokens
+             * @default 0
+             */
+            output_tokens: number;
+            /**
+             * Cache Read Tokens
+             * @default 0
+             */
+            cache_read_tokens: number;
+            /**
+             * Cache Creation Tokens
+             * @default 0
+             */
+            cache_creation_tokens: number;
+            /**
+             * Cost Usd
+             * @default 0
+             */
+            cost_usd: number;
+            /**
+             * Model Ms
+             * @default 0
+             */
+            model_ms: number;
+        };
+        /**
+         * TraceSpan
+         * @description A step of a reading as the "How this was read" view shows it (display order, depth-first).
+         */
+        TraceSpan: {
+            /** Id */
+            id: string;
+            /** Parent Id */
+            parent_id: string | null;
+            /**
+             * Depth
+             * @default 0
+             */
+            depth: number;
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "run" | "model" | "ocr" | "verify" | "rules" | "link" | "plan";
+            /** Name */
+            name: string;
+            /** Stage */
+            stage: string | null;
+            /**
+             * Start Ms
+             * @default 0
+             */
+            start_ms: number;
+            /**
+             * Duration Ms
+             * @default 0
+             */
+            duration_ms: number;
+            /**
+             * Status
+             * @default ok
+             * @enum {string}
+             */
+            status: "ok" | "error";
+            /** Error */
+            error: string | null;
+            /** Attributes */
+            attributes: {
+                [key: string]: unknown;
+            };
+            call: components["schemas"]["LLMCallRecord"] | null;
+            ref: components["schemas"]["RefLink"] | null;
+            /** Label */
+            label: string | null;
+        };
+        /**
+         * TraceSpanRecord
+         * @description One stored step of one reading of a letter (``trace_spans``).
+         *
+         *     ``key`` names the step within its reading (``run/verify:quotes/verify:item:<slot>``) and is the
+         *     same in every reading of the letter, so two readings can be compared step by step. ``attributes``
+         *     hold only what code computed or decided and the ids of the records a step used or produced —
+         *     never letter text (the written policy is :mod:`ordnung.trace.facts`).
+         */
+        TraceSpanRecord: {
+            /** Id */
+            id: string;
+            /** Trace Id */
+            trace_id: string;
+            /** Doc Id */
+            doc_id: string;
+            /** Job Id */
+            job_id: string | null;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Key */
+            key: string;
+            /**
+             * Seq
+             * @default 0
+             */
+            seq: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "run" | "model" | "ocr" | "verify" | "rules" | "link" | "plan";
+            /** Name */
+            name: string;
+            /** Stage */
+            stage: string | null;
+            /** Started At */
+            started_at: string;
+            /** Ended At */
+            ended_at: string;
+            /**
+             * Status
+             * @default ok
+             * @enum {string}
+             */
+            status: "ok" | "error";
+            /** Error */
+            error: string | null;
+            /** Attributes */
+            attributes: {
+                [key: string]: unknown;
+            };
         };
         /**
          * TrackingInfo
@@ -6185,6 +6530,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trace_api_documents__doc_id__trace_get: {
+        parameters: {
+            query?: {
+                /** @description A reading's trace id */
+                run?: string | null;
+            };
+            header?: never;
+            path: {
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentTrace"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_trace_api_documents__doc_id__trace_compare_get: {
+        parameters: {
+            query?: {
+                /** @description A reading's trace id */
+                base?: string | null;
+                /** @description A reading's trace id */
+                head?: string | null;
+            };
+            header?: never;
+            path: {
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceComparison"];
+                };
+            };
+            /** @description No such letter or reading, or only one reading is kept. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_traces_api_traces_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceExport"];
                 };
             };
         };

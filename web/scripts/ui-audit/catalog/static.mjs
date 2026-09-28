@@ -75,6 +75,36 @@ export async function staticCatalog({ webDir }) {
   }
   if (pick("doc_lease")) add("girocode-several", "/documents/doc_lease", "Static demo: the lease's Pay panel — several payments, so no code.", pay);
   if (pick("doc_tax")) add("doc-link-before-opening", "/documents/doc_tax", "Static demo: a link to a New-mail letter that hasn't been opened yet.");
+  // "How this was read" (mock traces: src/mocks/data/traces.ts)
+  const steps = (c) => inMain(c.page).getByRole("list", { name: "Steps of this reading" });
+  if (pick("doc_parking")) {
+    add("doc-parking--trace", "/documents/doc_parking?view=trace", "Static demo: How this was read — the parking fine's newest of two readings, with the reading picker.");
+    add("doc-parking--trace-repair", "/documents/doc_parking?view=trace", "Static demo: the first reading, whose extraction needed a repair call (opened, linked to the call it retried).", async (c) => {
+      await c.click(inMain(c.page).getByRole("radiogroup", { name: "Reading" }).getByRole("radio").first());
+      await c.visible(steps(c).getByRole("button", { name: /^Claude, asked again/ }));
+      await c.click(steps(c).getByRole("button", { name: /^Claude, asked again/ }));
+    });
+    add("doc-parking--trace-date", "/documents/doc_parking?view=trace", "Static demo: a date's step opened — the DateSpec, the dates, the rules and its “Why this date?” receipt.", async (c) => {
+      await c.click(steps(c).getByRole("button", { name: /^Dates computed/ }));
+      await c.click(inMain(c.page).getByRole("list", { name: /^Steps of “Dates computed”/ }).getByRole("button").first());
+    });
+    add("doc-parking--trace-compare", "/documents/doc_parking?view=trace", "Static demo: what the second reading decided differently from the first.", async (c) => {
+      await c.click(inMain(c.page).getByRole("button", { name: /^Compare with reading/ }));
+      await c.visible(inMain(c.page).getByRole("heading", { name: /decided differently/ }));
+    });
+  }
+  if (pick("doc_passport")) {
+    add("doc-passport--trace", "/documents/doc_passport?view=trace", "Static demo: How this was read for a phone photo (the page transcribed by Claude).");
+    add("doc-passport--trace-quote", "/documents/doc_passport?view=trace", "Static demo: a photo's quote opened — its numbers found only in Claude's transcript.", async (c) => {
+      await c.click(steps(c).getByRole("button", { name: /^Quotes checked on the page/ }));
+      await c.click(inMain(c.page).getByRole("list", { name: /^Steps of “Quotes checked on the page”/ }).getByRole("button").first());
+    });
+  }
+  if (pick("doc_nebenkosten")) {
+    add("doc-nebenkosten--trace-open", "/documents/doc_nebenkosten?view=trace", "Static demo: a text PDF's steps with the quotes, the dates and the links opened.", async (c) => {
+      for (const name of [/^Quotes checked on the page/, /^Dates computed/, /^Thread, contract & payment/]) await c.click(steps(c).getByRole("button", { name }).first());
+    });
+  }
   for (const id of draftIds.slice(0, 2)) add(id.replace(/_/g, "-"), `/letters/${id}`, `Static demo: draft ${id}.`);
   add("ask-answer", "/ask", "Static demo: a suggested question answered from the mock data.", async (c) => {
     await c.click(c.page.getByRole("list", { name: "Suggested questions" }).getByRole("button").first(), { settleAfter: false });
@@ -239,6 +269,12 @@ export async function staticCatalog({ webDir }) {
     addHs("mail-dismissal--advice-card", "/inbox", "Dismissal: scrolled to the “get advice” card.", async (c) => {
       await readTray(c, dismissal);
       await c.scrollTo(inMain(c.page).locator("section[aria-labelledby^=advice-]"));
+    });
+    addHs("mail-dismissal--trace-law", "/inbox", "Dismissal: How this was read → To-dos filed → a deadline the law adds, opened (its law's citation).", async (c) => {
+      await readTray(c, dismissal);
+      await c.click(inMain(c.page).getByRole("tab", { name: "How this was read" }));
+      await c.click(inMain(c.page).getByRole("list", { name: "Steps of this reading" }).getByRole("button", { name: /^To-dos filed/ }));
+      await c.click(inMain(c.page).getByRole("list", { name: /^Steps of “To-dos filed”/ }).getByRole("button", { name: /Deadline the law adds/ }).first());
     });
   }
   for (const [kind, label] of [

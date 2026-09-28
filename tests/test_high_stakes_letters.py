@@ -950,10 +950,10 @@ async def test_a_kind_chosen_while_the_letter_is_read_again_is_kept(
         doc_id = await _read(api, MAHNBESCHEID)
         real_commit = pipeline.commit_ledger
 
-        def patched_in_between(store: Any, data: Any) -> Any:
+        def patched_in_between(store: Any, data: Any, **kwargs: Any) -> Any:
             assert data.document.kind == "court_payment_order"  # the re-read's snapshot
             documents._patch(store, doc_id, {"kind": "authority_letter"}, None, date.fromisoformat(TODAY))
-            return real_commit(store, data)
+            return real_commit(store, data, **kwargs)
 
         monkeypatch.setattr(pipeline, "commit_ledger", patched_in_between)
         await api.client.post(f"/api/documents/{doc_id}/reprocess")

@@ -51,6 +51,7 @@ from ordnung.ingest.pipeline import add_file, ingest_document, release_held
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import Document, Identifier, Item
 from ordnung.secretary.triggers import Ledger, dunning_escalation
+from ordnung.trace.view import document_trace
 from ordnung.views import dashboard
 
 EMAIL_MARKER = "Rechnungs-E-Mail September"
@@ -403,6 +404,19 @@ async def test_the_thread_is_shared_whichever_is_read_first(ctx: AppContext, fir
     assert parent is not None and child is not None
     assert parent.case_id is not None and parent.case_id == child.case_id
     assert len(ctx.store.list_cases()) == 1
+
+
+async def test_the_trace_says_an_email_joined_its_attachments_thread(ctx: AppContext) -> None:
+    """Integration of the one inbox with the trace: an e-mail read after its attachment, whose own
+    references find nothing better, joins the attachment's thread — and its reading says so."""
+    parent = await add_file(ctx, emailed_bill(), "rechnung.eml")
+    (child,) = attachments_of(ctx, parent)
+    for doc_id in (child.id, parent.id):
+        await ingest_document(ctx, doc_id)
+    joined = ctx.store.get_document(child.id)
+    assert joined is not None
+    (thread,) = [span for span in document_trace(ctx.store, parent.id).spans if span.key.endswith("thread")]
+    assert (thread.attributes["decision"], thread.attributes["case_id"]) == ("email", joined.case_id)
 
 
 async def test_pictures_inside_and_other_types_become_no_letters(ctx: AppContext) -> None:
