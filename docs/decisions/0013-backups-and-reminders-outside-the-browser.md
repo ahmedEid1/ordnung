@@ -82,7 +82,12 @@ the target under a name policy (regular files: `ordnung.db`, `manifest.json`, pa
 `derived/`, `drafts/`), reads the encrypted file to its authenticated end even after the archive's
 end marker, checks every file against the manifest's sizes and hashes and the database's integrity,
 schema version and row counts, and only then swaps the folder in. It never replaces a folder with
-data unless asked (`--force`), and then moves it aside; it never runs under a held lock.
+data unless asked (`--force`), and then moves it aside; it never runs under a held lock. A restored
+copy doesn't take over the watched folder's consent either: which files were already in the folder
+when it was chosen, and which were picked up, belong to the computer the backup came from — a folder of
+the same path elsewhere holds other files. So the restored copy forgets both (everything in the folder
+waits for the person) and starts with reading new arrivals at once switched off until the person turns
+it on again — also when a crafted backup switched it on.
 
 ## Consequences
 - Reminders reach the person with the browser closed, and the backup is something they can put on

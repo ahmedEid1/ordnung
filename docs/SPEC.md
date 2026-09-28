@@ -510,18 +510,25 @@ whose adding was stopped before its attachments adds them.
   ~10-minute review composed from the agenda, the money summary, drafts and to-dos: *act now* (only when
   a deadline, task or appointment is overdue or to act on today, a missed send-by day included) · new
   since the last session (the first time: in the last 7 days; a letter waiting from the watched folder, or
-  kept private and never read, is never "filed") · please check (values not confirmed
-  against the letter; "Looks right" takes a value off) · pay this week (transfers with their total, fees
-  paid at an appointment, direct debits to cover) · post and keep proof (a letter's send-by day with the
-  day it must arrive by; what proves *sending* by each channel is not proof of *arrival* — for an
-  Einwurf-Einschreiben request the delivery record, BAG 2 AZR 68/24) · waiting for (follow-ups of sent
-  letters; the full list, money and phone promises too, is the *Waiting for* page it links to) · decide in the next 30 days (contract decisions,
-  objection/declaration/notice deadlines) · file or archive. A snoozed to-do is put off, not away: it is
+  kept private and never read, is never "filed") · compare with the letter (to-dos whose date isn't
+  confirmed against the letter; "The date looks right" vouches for the date only — a payment's amount is
+  compared in its Pay panel, and *pay this week* warns about an amount by the GiroCode gate's own check) ·
+  pay this week (transfers with their total, fees paid at an appointment, direct debits to cover) · post
+  and keep proof (a letter's send-by day with the day it must arrive by, and once that has passed only the
+  ways its own send advice allows the same day — never a fax or e-mail for a notice that must be signed by
+  hand; then sent letters still waiting for their answer that lack the proof their channel needs,
+  `drafts.proof.missing` — for an Einwurf-Einschreiben the delivery record, BAG 2 AZR 68/24 — and "delivered
+  on …" once a proof shows it) · waiting for (the *Waiting for* page's open entries: replies, money and
+  phone promises, overdue first; always linked) · decide in the next 30 days (contract decisions,
+  objection/declaration/notice deadlines) · file or archive. What is set aside anywhere else — a letter
+  with scam signs, an invoice a payment reminder took over, an e-mail's payment its attached bill repeats
+  (`Ledger.is_set_aside`) — is never counted or listed. A snoozed to-do is put off, not away: it is
   listed where its date puts it, is overdue once its due date passes and keeps its letter open. Every
   row's day reads as Today words it (transfer by, send by, on, expires; money coming in is *expected*,
   never overdue); once a send-by day has passed but the due date (for a letter: the day it must arrive
   by) has not, the row says *act today* with the due date beside it, and a row is overdue only after its
-  due date. It ends "N overdue" while anything is overdue, else "All clear until <next day to act>" — or
+  due date. It ends "N overdue" while anything is overdue — a to-do, a letter to send past the day it had
+  to arrive by, or a *Waiting for* entry past its day — else "All clear until <next day to act>" — or
   "N things to do today" (`due_today`) when that day is today (after a missed send-by day too; contract
   decisions and snoozed to-dos count). Only the moments of the last session and of a dismissed prompt
   are stored (`meta`: `weekly_session_at`, `weekly_prompt_dismissed_at`, each `day|timestamp`). Today
@@ -1057,7 +1064,7 @@ Pages:
 2. **Inbox** — letters list (thumbnail, sender, kind, date, status badge), filters (All · Please
    check · Private), New-mail tray in demo, batch-import recap screen ("I read 12 letters: 5
    deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam"). Above the list,
-   **"From your folder — waiting for you"**: the held letters (an e-mail's attachments under it), with
+   **"From your folder — not read yet"**: the held letters (an e-mail's attachments under it), with
    *Read these N* and *Keep private*; held letters are in no other group or filter.
 3. **Document viewer** — verdict card first; page images with highlight overlays (click fact → scroll
    + pulse); "Explained simply"; key facts; to-dos with "Why this date?" popover; warnings (scam

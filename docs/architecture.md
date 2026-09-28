@@ -58,7 +58,7 @@ flowchart LR
 
 | Boundary | Defence |
 |---|---|
-| Document → model | Documents are untrusted: hidden text removed, content wrapped in `<untrusted_document>`, **no tools** during reading, output forced through a JSON schema |
+| Document → model | Documents are untrusted: hidden text removed (white, tiny, off-page or drawn invisibly; a scan's invisible OCR layer is not read — the page is read from its picture), content wrapped in `<untrusted_document>`, **no tools** during reading, output forced through a JSON schema |
 | Model → ledger | Schema validation, quote grounding with exact digits, `spec_consistency`, deterministic date computation, confidence rubric → "Please check"; high-stakes letter kinds (court orders, a dismissal …) are assigned by a written code policy from the reading, never by the model (ADR 0010), and court deadlines — every date on a court's letter, whatever kind it is filed as — are never `high` and never use a delivery fiction |
 | Model → user | Ideas and letters are suggestions; nothing is sent, paid, closed or deleted without a click; letters use fixed legal templates |
 | Ledger → banking app | A GiroCode (EPC-QR) only pre-fills a transfer the person confirms with their TAN. Code decides, by a written policy (`secretary/girocode_gate.py`), which payment gets one: a transfer still to make (no debit named in its sentence), not one of several, no scam signs (nor its IBAN on another letter with them), every value grounded in the text layer (or known for the sender) — a value read from a photo, or an amount the person changed, waits until the person compares the exact details with the paper letter. The QR is drawn in the browser; the payload never leaves the machine |
@@ -239,10 +239,14 @@ apart from two `meta` moments:
   something is overdue or due today; a snoozed to-do is listed where its date puts it) and how it ends —
   overdue, things to do today, or the next day to act (`deadlines`, ranked); `POST
   /api/week/done|dismiss` store the moment (`day|timestamp`) that the prompt policy and "new since your
-  last session" read. The facts both read models share with the Ideas and Ask live in
-  `secretary/triggers.py`: `action_day`, `is_overdue`, `paid_at_appointment` (a fee paid on site is no
-  transfer), `unconfirmed_reason` (a value not confirmed against its letter, until "Looks right") and
-  the identity documents' renewal windows.
+  last session" read. Its *Post and keep proof* step reads a sent letter's proofs the way its proof
+  overview does (`drafts.proof.missing`), its *Waiting for* step is the Waiting for page
+  (`secretary.waiting.waiting_for`), and the rows it counts as overdue carry `overdue`. The facts both
+  read models share with the Ideas and Ask live in `secretary/triggers.py`: `action_day`, `is_overdue`,
+  `paid_at_appointment` (a fee paid on site is no transfer), `unconfirmed_reason` (a date not confirmed
+  against its letter, until "The date looks right"), `Ledger.is_set_aside` (a letter with scam signs, an
+  invoice a payment reminder took over, an e-mail's payment its attached bill repeats — never counted,
+  listed, exported to the calendar or synced) and the identity documents' renewal windows.
 - **The static demo** gets both from the same code: `scripts/gen_mock_numbers.py` files the mock world
   (`web/scripts/mock-world.mjs`) in a throw-away ledger and writes `web/src/mocks/data/numbers.ts`; the
   mock handlers (`web/src/mocks/numbers.ts`) only follow the visitor's changes (the session ends on the

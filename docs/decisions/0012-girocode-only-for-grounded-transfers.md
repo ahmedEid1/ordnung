@@ -21,8 +21,9 @@ existing scam checks only *warn*; a code would *help* pay.
    examples byte for byte, and a decoder reads the rendered QR back to the payload.
 2. **Whether a payment gets a code is a written policy decided by code** (ADR 0007;
    `secretary/girocode_gate.py`): a transfer the person makes, still to pay, on a letter without scam
-   signs (and with an IBAN no letter with scam signs asked for), not taken over by a reminder, not one
-   of several payments of the letter, complete and within the standard — and every value grounded
+   signs (and with an IBAN no letter with scam signs asked for), not taken over by a reminder or by the
+   bill attached to its e-mail, not one of several payments of the letter, complete and within the
+   standard — and every value grounded
    (ADR 0003): the amount in a verified sentence, the IBAN in the text layer or known for the sender
    from another letter without scam signs, the whole reference in the text layer. Every refusal says
    why in plain words; the copy-by-hand fields stay.
@@ -59,6 +60,15 @@ existing scam checks only *warn*; a code would *help* pay.
   that names the account or the money, and never among the to-do's words (nor do a mandate's
   reference and the creditor's ID, which a letter asking for a transfer after the mandate ended
   prints too); a negation waves off only a transfer in its own clause.
+- The review of wave 2 found the failed-debit exception too wide the other way: any "returned" (a
+  router to be returned) and stock warnings on direct-debit bills ("bei einer Rücklastschrift berechnen
+  wir 3,00 € Gebühr", "a returned debit costs €3") made a debit a transfer — the to-do got "transfer by",
+  reminders and a place in the Pay total, and with the same words in its sentence a code. Now a failure
+  counts only as a fact about a debit (a debit named beside "returned" or "zurückgegeben"), never in a
+  clause that is a condition or a price ("bei", "falls", "sollte", "if", "kostet", "costs" …), and in a
+  letter's sentence a failure cancels only the debit of its own clause: a debit named in another clause
+  still blocks the code. The same review found that an e-mail repeating its attached bill's payment got
+  a code of its own (point 4 now covers it: pay once, from the bill).
 - A utility statement asks for its back-payment and sets the new monthly advance (§ 560 Abs. 4 BGB):
   a recurring payment doesn't compete with a one-off one for its letter's reference, but gets a code
   only when its letter asks for no other transfer.

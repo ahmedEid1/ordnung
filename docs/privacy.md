@@ -54,7 +54,8 @@ health insurance numbers, student and passport numbers, customer and contract nu
 and sorts them on your computer. Nothing is sent anywhere to build the page, and its check-digit tests
 run locally. On screen every number of yours is **hidden until you choose Show** (only its last few
 characters stay visible), so someone looking over your shoulder doesn't read it; *Copy* works without
-showing it.
+showing it. A case's reference — an invoice number, a Kassenzeichen, an Aktenzeichen — is shown as it is:
+its letter and the Pay panel print it in full anyway.
 
 The numbers live in your ledger with the letters that show them. *My numbers* lists a number only
 while a letter in your ledger shows it: delete that letter and the number leaves the page (a letter in
@@ -66,8 +67,14 @@ letters are matched to it. That copy stays after the letter is deleted, *Ask* ca
 
 The numbers reach Claude only when you use *Ask* and it looks them up (the `get_my_numbers` tool, like
 every other ledger tool — it can hand over just one organisation's numbers or one part of the page, and
-a letter you marked *Keep private (no AI)* gives it nothing), or when you give another Claude client
-your ledger with `ordnung mcp install --with-ledger` (see below).
+a letter you marked *Keep private (no AI)* gives it nothing), when you draft a letter answering one of
+your letters (its reference numbers — on a tax office's letter your Steuernummer or Steuer-ID — go with
+it, see *Letters* above), or when you give another Claude client your ledger with
+`ordnung mcp install --with-ledger` (see below).
+
+A call sheet's phone, e-mail and website come from the organisation's letters without scam signs; a
+letter with scam signs that imitates a known sender never puts its own phone number or address next to
+your numbers.
 
 The weekly session (*This week*) stores only the moments you finished it or said "Not now".
 
@@ -77,8 +84,8 @@ The weekly session (*This week*) stores only the moments you finished it or said
   Claude. It is stored, searchable by its text layer, and you can add dates by hand. A letter you
   delete while it still waits to be read is never sent either.
 - **The watched folder waits for you** — files your scanner or phone app saves into the watched folder
-  are stored and read on this computer only, and wait in the Inbox ("From your folder — waiting for
-  you") until you choose *Read these* or *Keep private* ([details](#the-watched-folder)). *Keep
+  are stored and read on this computer only, and wait in the Inbox ("From your folder — not read
+  yet") until you choose *Read these* or *Keep private* ([details](#the-watched-folder)). *Keep
   private* can be undone (the toast's *Undo*, or *Undo "Keep private"* on the letter — for an e-mail,
   its attachments kept private with it wait again too).
 - **E-mail attachments follow the e-mail** — each PDF or photo attached to an e-mail you add becomes
@@ -102,7 +109,10 @@ The weekly session (*This week*) stores only the moments you finished it or said
   exception is said when it happens: a file that was already in Ordnung (the same bytes, e.g. you
   first added it to your Inbox) is linked as it is — made private then if it was never given to AI,
   and otherwise Ordnung tells you it was given to AI instead of calling it private (one still waiting
-  from your watched folder is kept private then, so *Read these* never sends it). "Given to AI"
+  from your watched folder is kept private then, so *Read these* never sends it; and a proof never
+  waits again — *Undo "Keep private"* skips it, also for the e-mail it came attached to). A sent e-mail
+  kept as proof is one file: its attachments never become letters, and the ones it brought while it
+  waited in your Inbox (never read) are deleted when it becomes proof — the e-mail keeps them. "Given to AI"
   counts every time a model had it, also when reading it failed or paused afterwards, and also
   when you switched *Keep private* on later. Its kind, day and note are what you chose — Ordnung
   doesn't read them from the file. The *Nachweis* PDF is made on your computer from the letter and
@@ -163,7 +173,8 @@ into — best a folder just for letters. It is off until you choose one.
   hand.
 - **Ordnung's own drafts are not letters you received.** A letter Ordnung drafted for you (with your
   address and IBAN from the profile), or a sent letter's *Nachweis*, that you download into the watched
-  folder is recognised and not added — so it is never sent to Claude that way.
+  folder is recognised and not added — nor when it comes attached to an e-mail (the one you sent it
+  with, saved into the folder) — so it is never sent to Claude that way.
 - **A cloud-synced folder is already shared with its cloud provider.** If the folder is inside
   Dropbox, iCloud Drive, OneDrive or Google Drive, that provider has copies of every file in it,
   whatever Ordnung does. Choose a folder on this computer only (for example Ordnung's own inbox
@@ -238,6 +249,9 @@ third party** — your calendar provider — so:
   removes nothing, and never touches the password the original Ordnung keeps on the same computer,
   until you enter the app password in it. If the Ordnung the backup came from still syncs to that
   calendar, disconnect it there first — two copies would change each other's events.
+- **Discreet events don't say what kind of date they are.** An event's name in the calendar and its
+  UID are a keyed hash (the key stays in your data folder, and a backup carries it), not the to-do's or
+  contract's id, which would tell a cancellation deadline from a payment.
 
 ## Encrypted backups
 
@@ -259,6 +273,11 @@ took from them is), the lock and the running server's session file.
   every file must match the backup's own list of hashes and row counts. It never replaces a data
   folder that holds data unless you add `--force`, and then moves the old folder aside instead of
   deleting it. `ordnung restore FILE --check` verifies a backup without restoring anything.
+- **A restored copy doesn't take over the watched folder.** The backup remembers which files of your
+  watched folder were already there and which were picked up — on the computer it came from. A folder
+  with the same path on another computer (the same `~/Downloads`) holds other files, so the restored
+  copy forgets both: the files in the folder wait unread, and "Read new files with Claude straight
+  away" is off until you turn it on again in Settings.
 - **Links are never followed — and never silently.** A folder inside the data folder that is a link
   to somewhere else (originals moved to a bigger drive) is not in the backup; `ordnung backup` and
   Settings name it before the backup is made, so you can back it up separately.
@@ -270,7 +289,9 @@ took from them is), the lock and the running server's session file.
 - `--setting-sources ""` and `--strict-mcp-config` keep your own Claude Code hooks, settings and MCP
   servers out of Ordnung's calls; `--no-session-persistence` keeps them out of your Claude history.
 - Document text is treated as **untrusted**: it is wrapped in `<untrusted_document>` markers, hidden
-  (invisible) text is removed before it reaches the model, and every extracted fact is checked
+  (invisible) text — white, tiny, off the page, or drawn invisibly (a PDF's text render mode 3) — is
+  removed before it reaches the model (a scan's invisible OCR layer is not read at all: the page is read
+  from its picture, and what was read from it is compared with the paper), and every extracted fact is checked
   against the page before it is shown as "found in the letter".
 - *Ask* can only call Ordnung's **read-only** ledger tools; there are no write tools for a
   prompt-injected document to abuse, and no date calculator: the rules tools other clients can install
