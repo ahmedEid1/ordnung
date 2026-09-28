@@ -3444,7 +3444,7 @@
           "waiting"
         ],
         "summary": "List Waiting",
-        "description": "Replies, money and callbacks you are waiting for: overdue first, then by expected day, then the\nones a letter may have answered.",
+        "description": "Replies, money and callbacks you are waiting for: overdue first, then the ones a letter may have\nanswered, then the rest — each by expected day.",
         "operationId": "list_waiting_api_waiting_get",
         "responses": {
           "200": {

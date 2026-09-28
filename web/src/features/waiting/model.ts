@@ -3,11 +3,12 @@ import type { WaitingEntry, WaitingStatus } from "@/api/types";
 
 export type ListedStatus = Exclude<WaitingStatus, "closed">;
 
-/** The groups of the page, in order, with what each asks of the person. */
+/** The groups of the page, with what each asks of the person — ordered by it: chase, check, then wait
+ * (a row that asks nothing never pushes one to check below the fold). */
 export const WAITING_GROUPS: { status: ListedStatus; title: string; description: string }[] = [
   { status: "overdue", title: "Overdue", description: "The day has passed and nothing linked to it has come. Chase it." },
-  { status: "waiting", title: "Waiting", description: "Ordnung reminds you when the day comes." },
   { status: "answered", title: "A letter may have answered", description: "Check it — then close it here." },
+  { status: "waiting", title: "Waiting", description: "Ordnung reminds you when the day comes." },
 ];
 
 /** Split entries by status, keeping the server's order within each (closed ones are never listed). */

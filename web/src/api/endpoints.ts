@@ -268,7 +268,7 @@ export const api = {
   proofPdfUrl: (id: string) => assetUrl(apiRoute("/api/drafts/{draft_id}/proof.pdf", { draft_id: id })),
 
   // -- waiting for & call notes ------------------------------------------------------------------
-  /** Replies, money and callbacks the person is owed: overdue first, then by day, then answered. */
+  /** Replies, money and callbacks the person is owed: overdue first, then answered, then waiting (each by day). */
   waiting: () => call("get", "/api/waiting"),
   calls: (params: CallListParams = {}) => call("get", "/api/calls", { query: { ...params } }),
   createCall: (body: CallNoteCreate) => call("post", "/api/calls", { body }),

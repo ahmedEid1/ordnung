@@ -1229,8 +1229,8 @@ export interface paths {
         };
         /**
          * List Waiting
-         * @description Replies, money and callbacks you are waiting for: overdue first, then by expected day, then the
-         *     ones a letter may have answered.
+         * @description Replies, money and callbacks you are waiting for: overdue first, then the ones a letter may have
+         *     answered, then the rest — each by expected day.
          */
         get: operations["list_waiting_api_waiting_get"];
         put?: never;

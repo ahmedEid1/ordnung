@@ -346,9 +346,9 @@ function callEntry(db: MockDb, c: CallNote): WaitingEntry | null {
   };
 }
 
-const ORDER: Record<WaitingStatus, number> = { overdue: 0, waiting: 1, answered: 2, closed: 3 };
+const ORDER: Record<WaitingStatus, number> = { overdue: 0, answered: 1, waiting: 2, closed: 3 };
 
-/** `GET /api/waiting`: overdue first, then by expected day (undated last), then answered. */
+/** `GET /api/waiting` (`secretary/waiting.py`): overdue, then answered, then waiting — each by expected day (undated last). */
 export function waitingFor(db: MockDb): WaitingEntry[] {
   const entries = [
     ...db.state.drafts.map((d) => letterEntry(db, d)),

@@ -129,6 +129,8 @@ for (const width of [320, 390, 768, 1280, 1920]) {
     await open(page, "/letters/waiting", "Waiting for");
     await expect(page.getByRole("region", { name: /Overdue/ })).toContainText("Written confirmation of the cancellation");
     await expect(page.getByRole("region", { name: /^Waiting/ })).toContainText(TRACKING);
+    // what is still coming is an event (never the red of "act now"); only an overdue day is red
+    await expect(page.getByRole("region", { name: /^Waiting/ }).locator('time[data-urgency="danger"]')).toHaveCount(0);
     expect(await faultsIn(page.getByRole("main").locator("ul.card > li")), `Waiting for at ${width}`).toEqual([]);
     await expectNoRawEnums(page, `/letters/waiting at ${width}`);
 

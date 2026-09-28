@@ -162,7 +162,7 @@ export function mockWeek(db: MockDb): WeeklySession {
 
 export function mockWeekDone(db: MockDb): WeeklySession {
   stateOf(db).lastSession = db.today;
-  db.log("week.done", "Weekly session done");
+  db.log("week.done", "Weekly review done");
   return mockWeek(db);
 }
 
