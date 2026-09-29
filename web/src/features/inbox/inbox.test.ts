@@ -117,14 +117,14 @@ describe("batch recap", () => {
       document: makeDoc({ id: "power" }),
       items: [
         makeItem({ id: "n", kind: "deadline", due_date: "2026-10-31", contract_id: "ctr_power" }),
-        makeItem({ id: "p", kind: "payment", amount: 55, due_date: "2026-11-15", recurrence: { interval: 1, unit: "months" }, contract_id: "ctr_power" }),
+        makeItem({ id: "p", kind: "payment", amount: 55, due_date: "2026-11-15", recurrence: { interval: 1, unit: "months", working_day: null }, contract_id: "ctr_power" }),
       ],
     }),
     makeDetail({
       document: makeDoc({ id: "scam", status: "needs_review" }),
       suggestions: [makeSuggestion({ kind: "scam" })],
     }),
-    makeDetail({ document: makeDoc({ id: "phone" }), contracts: [contract], items: [makeItem({ kind: "payment", amount: 60, recurrence: { interval: 1, unit: "years" } })] }),
+    makeDetail({ document: makeDoc({ id: "phone" }), contracts: [contract], items: [makeItem({ kind: "payment", amount: 60, recurrence: { interval: 1, unit: "years", working_day: null } })] }),
   ];
 
   it("summarises deadlines, contracts, fixed costs, what needs you and scams", () => {

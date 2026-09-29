@@ -24,6 +24,7 @@ from ordnung.ingest.plan import (
     compute_item,
     consistency_reasons,
     document_context,
+    first_dated,
     for_item,
     kept_payment_note,
     kind_chosen,
@@ -98,9 +99,10 @@ def recompute_document_items(
 
     The letter's own ``doc_date`` (possibly corrected by the person) replaces the extracted date,
     and a stored ``received_date`` counts as confirmed (the person entered it). A recurring to-do
-    moves on to its current occurrence, as when the letter was read, and never back on its schedule:
-    an occurrence it keeps (one paid ahead) gets its dates and receipt in the current context
-    (:mod:`ordnung.recurrence`, points 5 and 6).
+    moves on to its current occurrence, as when the letter was read (one whose rule has a working day from
+    its schedule's first, with its payment note: :func:`~ordnung.ingest.plan.first_dated`, point 8), and
+    never back on its schedule: an occurrence it keeps (one paid ahead) gets its dates and receipt in the
+    current context (:mod:`ordnung.recurrence`, points 5 and 6).
     """
     ctx = document_context(store, document, today)
     if ctx is None:
@@ -121,11 +123,11 @@ def recompute_document_items(
         for item in store.list_items(doc_id=document.id):
             if not recomputable(item) or item.date_spec is None:
                 continue
-            item_ctx = for_item(ctx, item, note)
+            contract = store.get_contract(item.contract_id) if item.contract_id else None
+            item_ctx = for_item(ctx, item, note, contract)
+            verified = _verified(item, item.date_spec, pages)
             result = with_payment_note(
-                compute_item(_verified(item, item.date_spec, pages), item_ctx, postal_buffer_days=buffer),
-                item,
-                note,
+                compute_item(verified, item_ctx, postal_buffer_days=buffer), item, note
             )
             recomputed = item.model_copy(
                 update={
@@ -135,8 +137,13 @@ def recompute_document_items(
                     "due_date_source": result.source,
                 }
             )
+            starts = contract.start_date if contract else None
+            first = first_dated(
+                recomputed, item_ctx, postal_buffer_days=buffer, starts=starts, reasons=verified.reasons
+            )
+            recomputed = first or recomputed
             moved = rolled(recomputed, item_ctx, postal_buffer_days=buffer) or recomputed
-            if keeps_later_date(item, item.recurrence, item.date_spec, moved.due_date):
+            if keeps_later_date(item, item.recurrence, item.date_spec, moved.due_date, item_ctx):
                 moved = at_occurrence(recomputed, item.due_date, item_ctx, postal_buffer_days=buffer) or item
             fields = {name: getattr(moved, name) for name in SCHEDULE_FIELDS}
             if any(getattr(item, name) != value for name, value in fields.items()):

@@ -246,6 +246,10 @@ class RuleContext:
     transfers it — the sender collects it by direct debit, or the money comes in
     (:func:`ordnung.payments.is_collected_or_incoming`) —, so it gets no send-by date either: the due day is
     the day it is collected or paid in (walkthrough of phase 2: a direct debit got a transfer's "send by").
+    ``rent``: the to-do belongs to the tenancy of a home — its letter is a lease or its contract a rent
+    contract (:func:`ordnung.ingest.plan.for_item`) —, so its payments are rent: § 556b Abs. 1 BGB counts
+    their working days Monday to Friday (BGH VIII ZR 129/09), and one paid every month that the lease itself
+    gives no day is due by the third (:mod:`ordnung.recurrence`, point 8).
     """
 
     today: date
@@ -268,6 +272,7 @@ class RuleContext:
     ends_on_arrival: bool = False
     in_person: bool = False
     collected: bool = False
+    rent: bool = False
 
 
 @dataclass

@@ -31,7 +31,7 @@ from ordnung.ingest.plan import (
     needs_check,
     with_corrections,
 )
-from ordnung.models import DocumentExtraction, Item
+from ordnung.models import DocumentExtraction, Item, Recurrence
 from ordnung.rules import RuleContext
 from ordnung.rules.advice import LATE_STATEMENT_WARNING, RENT_INCREASE_PAYMENT_WARNING
 from test_api_support import TODAY, Api, ApiRouter, api_for
@@ -1584,6 +1584,31 @@ async def test_a_rent_increases_new_rent_is_never_due_before_the_law_allows(data
         assert after is not None and after.due_date == "2027-01-01"
         [decision] = _by_origin(api, doc_id)["rule"]
         assert decision.due_date == "2026-12-31"
+
+
+async def test_a_rent_increases_new_rent_by_its_working_day_starts_when_the_law_allows(
+    data_dir: Path,
+) -> None:
+    """Review of recurrence.py point 8: the new rent of a request of 24 Sep "ab dem 01.11.2026", paid by the
+    3rd working day of each month (a reading gives no working day yet, so it is set on the stored to-do and
+    the letter's dates are recomputed). Its schedule starts in the month § 558b Abs. 1 BGB allows (Thu 3 Dec,
+    not Wed 4 Nov), and dated by its working day it keeps the note that it is only owed once the person
+    agrees: Ask still lists it to decide on before paying."""
+    from ordnung.assistant.mcp_server import DECIDE_BEFORE_PAYING, LedgerTools
+
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, RENT_INCREASE_EARLY)
+        [payment] = _by_origin(api, doc_id)["extracted"]
+        api.ctx.store.update_item(payment.id, recurrence=Recurrence(working_day=3))
+        chosen = await api.client.put("/api/profile", json={"region": "BY", "onboarded": True})
+        assert chosen.status_code == 200, chosen.text
+        after = api.ctx.store.get_item(payment.id)
+        assert after is not None and after.due_date == "2026-12-03" and after.computation is not None
+        assert RENT_INCREASE_PAYMENT_WARNING in after.computation.warnings
+        assert "bgb_558b" in after.computation.rule_ids
+        record = LedgerTools(api.ctx.store, today=date(2026, 11, 20)).money_summary().record
+        assert [row["id"] for row in record[DECIDE_BEFORE_PAYING]] == [payment.id]
+        assert all(row["id"] != payment.id for row in record["upcoming_payments"])
 
 
 async def test_a_notice_whose_objection_date_had_passed_is_urgent_and_says_why(data_dir: Path) -> None:

@@ -1359,7 +1359,13 @@ document may close, cancel, dismiss, mark missed, or delete an obligation withou
 click. Overdue is computed on read (the tick never changes item status); recurring items are never
 overdue. **Recurring obligations** follow the policy in `recurrence.py` (ADR 0007): Ordnung cannot see
 payments, so a recurring item is a schedule that always shows its next occurrence; "paid" moves it to
-the next occurrence; each occurrence is dated by the rules engine; re-reading never moves it back.
+the next occurrence; each occurrence is dated by the rules engine; re-reading never moves it back. A
+rule with a working day ("spätestens am dritten Werktag eines jeden Monats": `Recurrence.working_day`)
+is dated in every month by counting working days from its first — Monday to Friday for rent (a payment
+on a lease or under a rent contract, § 556b Abs. 1 BGB, BGH VIII ZR 129/09), *Werktage* otherwise —
+and a lease's own monthly rent read without a day gets the law's third working day (`bgb_556b`), one
+confidence level lower and with a warning to check the lease, until the person gives it a date. The
+extraction does not read a working day yet (`ExtractedRecurrence`).
 
 **Confidence rubric** (`ComputationReceipt.confidence`, starts `low`): +quote located, +DateSpec
 consistent with its quote (`spec_consistency`), +anchor date stated in the document (or confirmed by
