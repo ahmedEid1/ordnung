@@ -1050,6 +1050,57 @@ async def test_rescored_run_is_shown_next_to_the_held_out_one(tmp_path: Path) ->
     assert "(commit `abc1234`, a commit from before the history was squashed)" in noted
 
 
+async def test_prompt_now_is_shown_beside_the_published_run(tmp_path: Path) -> None:
+    held_out = (
+        (
+            await eval_run.run_benchmark(
+                make_config(tmp_path, write_docs=False, allow_errors=True), backend=Flaky()
+            )
+        )
+        .runs[0]
+        .results
+    )
+    assert held_out is not None
+    later = {**held_out, "meta": {**held_out["meta"], "date": "2026-09-29", "commit": "def5678"}}
+    practice = {
+        **later,
+        "meta": {**later["meta"], "split": "test" if held_out["meta"]["split"] != "test" else "dev"},
+    }
+    assert "## The prompt the app uses now" not in report.render_markdown([held_out])
+    page = report.render_markdown(
+        [held_out], rescored=held_out, prompt_runs=[later, practice], prompt_note="Labels in English."
+    )
+    section = page.split("## The prompt the app uses now", 1)[1].split("\n## ", 1)[0]
+    assert "Labels in English." in section and "**not\nheld-out**" in section
+    assert "Held-out run (" in section and "Re-scored after the fix" in section
+    assert "**Prompt now** (2026-09-29, commit `def5678`)" in section
+    assert f", {practice['meta']['split']} split)" in section  # the other split says which it is
+    assert "with the extraction prompt the app uses now" in page.split("\n\n")[1]  # the intro's note says so
+    # the command line reads both runs and the note
+    run_path, note_path, docs = tmp_path / "later.json", tmp_path / "why.md", tmp_path / "page.md"
+    run_path.write_text(json.dumps(later), encoding="utf-8")
+    note_path.write_text("Labels\nin English.", encoding="utf-8")
+    held_path = tmp_path / "held.json"
+    held_path.write_text(json.dumps(held_out), encoding="utf-8")
+    argv = [str(held_path), "--prompt-run", str(run_path), "--prompt-note", str(note_path)]
+    assert report.main([*argv, "--docs", str(docs), "--chart", str(tmp_path / "chart.png")]) == 0
+    assert "Labels in English." in docs.read_text(encoding="utf-8")
+    # the note is kept in the run's results file: the page renders from the results files alone
+    assert json.loads(run_path.read_text(encoding="utf-8"))["meta"]["prompt_note"] == "Labels in English."
+    again = [
+        str(held_path),
+        "--prompt-run",
+        str(run_path),
+        "--docs",
+        str(docs),
+        "--chart",
+        str(tmp_path / "c.png"),
+    ]
+    assert report.main(again) == 0 and "Labels in English." in docs.read_text(encoding="utf-8")
+    with pytest.raises(SystemExit):
+        report.main([str(held_path), "--prompt-note", str(note_path)])
+
+
 # --------------------------------------------------------------------------------------------------
 # The fourth condition: an agent with a calculator
 # --------------------------------------------------------------------------------------------------

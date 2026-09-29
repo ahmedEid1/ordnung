@@ -5,6 +5,7 @@
 > 12 adversarial), 56 required items with a known date
 > (a phone photo repeats the items of the PDF it was made from).
 > LLM + rules tool was run on 2026-09-26 (live, commit `be9f638`) on the same letters and added to this run.
+> Ordnung was run again on 2026-09-29 with the extraction prompt the app uses now (“The prompt the app uses now”); the numbers above stay those of the published run.
 > Do not edit by hand — change `evals/report.py` and regenerate.
 
 Ordnung's design bet ([ADR 0002](decisions/0002-llm-reads-code-computes.md)) is that the language
@@ -71,6 +72,26 @@ the tool results recorded when they ran.
 Ordnung's remaining errors after the fix:
 
 - `test-tax_assessment-D1` — *Einspruchsfrist Einkommensteuerbescheid 2024*: expected Mon 9 Feb 2026, got Thu 5 Feb 2026 (wrong, early, computing error)
+
+## The prompt the app uses now
+
+Extraction prompt version 9 (2026-09-29) fixes what the UI audit found in the published readings: a to-do's action and consequence and a key fact's label came out in the letter's German, with its number formats ("Semesterbeitrag überweisen", "94.99 EUR", "03.09.2026"), and a letter's explanation could say there was nothing to do when the rules engine times a choice (an objection, a special right to cancel). It also lets the model name a high-stakes letter itself (`high_stakes_kind`, ADR 0010), which code then checks. It was checked on the dev split first (24 of 25 due dates, 96.0 %, as with the old prompt) and then run once on the test split, with no change after seeing it. In the 91 new readings no key-fact label, action or consequence is in German and no prose field uses the letter's date or amount format; one names a high-stakes kind, correctly (a landlord's heating-cost statement, `operating_costs`). On the test split Ordnung gets 54 of 56 due dates right, one fewer than the old prompt after the fix. The new error is a phone photo whose "10 Arbeitstagen (Montag bis Freitag)" was read as working days that include Saturdays (`werktage`), so its return date came out two days early: a reading error, on the safe side; the PDF of the same letter is right. The other is the tax notice above that prints a posting day two days after its own date: the old reading passed that day and the engine counted from the letter's date on purpose (a computing error by this page's taxonomy); this reading leaves the day out, so the engine counts from the letter's date anyway (a reading error): the same date, two days early. Recording cost $3.56 (API-equivalent: dev $1.11, test $2.46). Cost and latency per letter were measured on a different day from the published run and are not a comparison of the prompts.
+
+These are new recordings of the same letters, scored by the rules engine of the commit named in each
+row. The test split informed the fix above and has been read since, so the prompt-now row is **not
+held-out**; the sections below describe the published run.
+
+| Ordnung | Due-date accuracy [95 % CI] | Exact | Dangerous late | Early | Missed | Cost / letter | Latency p50 / mean |
+|---|---|---|---|---|---|---|---|
+| Held-out run (2026-09-25, headline) | 89.3 % [78.9–96.7] | 50/56 | 0.0 % | 10.7 % | 0.0 % | $0.0746 | 47.5 s / 51.0 s |
+| Re-scored after the fix | 98.2 % [94.5–100.0] | 55/56 | 0.0 % | 1.8 % | 0.0 % | $0.0746 | 47.5 s / 51.0 s |
+| **Prompt now** (2026-09-29, commit `9fb025b`) | 96.4 % [91.2–100.0] | 54/56 | 0.0 % | 3.6 % | 0.0 % | $0.0390 | 11.4 s / 15.3 s |
+| **Prompt now** (2026-09-29, commit `9fb025b`, dev split) | 96.0 % [87.5–100.0] | 24/25 | 0.0 % | 4.0 % | 0.0 % | $0.0395 | 10.5 s / 13.2 s |
+
+Ordnung's errors with the prompt now:
+
+- `test-relative_business_days-D1-photo` — *Fragebogen zum Unfallhergang zurücksenden*: expected Thu 21 May 2026, got Tue 19 May 2026 (wrong, early, reading error)
+- `test-tax_assessment-D1` — *Einspruchsfrist Einkommensteuerbescheid 2024*: expected Mon 9 Feb 2026, got Thu 5 Feb 2026 (wrong, early, reading error)
 
 ## Error taxonomy: reading vs computing
 
@@ -336,5 +357,6 @@ Recorded outputs live in `evals/recorded/<model>/` (keyed like the app's replay 
 results with every prediction in `evals/results/`. A replay scores the recorded outputs with the
 rules engine of the checked-out commit; this run's numbers come from commit `17f2292`, a commit from before the history was squashed; a replay on any later commit gives the same numbers.
 The page is rendered from the results files alone:
-`python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]`.
+`python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]
+[--prompt-run evals/results/<later run>.json --prompt-note <why>.md]`.
 LLM + rules tool was added after the run: it is recorded on its own (`python -m evals.run --live --split test --model sonnet --conditions llm_rules_tool`, which never rewrites this page) and joins the run with `python -m evals.report evals/results/<run>.json --rescored evals/results/<run>-rescored.json --add-condition llm_rules_tool=evals/results/<new run>.json --note <finding>.md` (the run's own conditions stay as published).
