@@ -26,7 +26,15 @@ from ordnung.db.store import Store
 from ordnung.ingest.plan import item_context
 from ordnung.models import Area, Item, ItemKind, ItemStatus, ListedItem, Priority, Recurrence
 from ordnung.payments import is_collected_or_incoming, pays_on_site
-from ordnung.recurrence import mark_done, replaced_occurrence, roll_item, same_rule, standing_in, undo_done
+from ordnung.recurrence import (
+    mark_done,
+    over_the_law,
+    replaced_occurrence,
+    roll_item,
+    same_rule,
+    standing_in,
+    undo_done,
+)
 from ordnung.secretary.triggers import postal_buffer
 
 router = APIRouter(tags=["items"])
@@ -207,7 +215,9 @@ def _schedule_fields(item: Item, fields: dict[str, Any]) -> dict[str, Any]:
     (its day of the month; the letter's words kept), and so does a to-do added by hand that starts
     repeating or repeats by a new rule. A date moved by hand later leaves the schedule as it is: it
     stands in for the occurrence it replaced until it passes (point 7). A date its working day gave it
-    (point 8: ``computed``, though its DateSpec gives none) is not one it got from the person."""
+    (point 8: ``computed``, though its DateSpec gives none) is not one it got from the person; one the
+    person gives a rent the law's working day dates replaces the law's day for every month, and says so
+    on its receipt when it is later (:func:`~ordnung.recurrence.over_the_law`)."""
     recurrence = fields.get("recurrence", item.recurrence)
     due = fields.get("due_date", item.due_date)
     spec = item.date_spec
@@ -260,6 +270,7 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
         replaced = replaced_occurrence(item)
         if item.recurrence is not None and fields["computation"] is not None and replaced is not None:
             fields["computation"] = standing_in(fields["computation"], replaced)  # recurrence.py, point 7
+        fields["computation"] = over_the_law(item, fields["due_date"], fields["computation"])  # point 8
     fields |= _schedule_fields(item, fields)
     if fields:
         fields["user_modified"] = True

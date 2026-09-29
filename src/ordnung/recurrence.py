@@ -40,21 +40,24 @@ limits, not bugs):
    first (point 5; no letter rule re-dates it): Monday to Friday without public holidays for rent (a
    payment whose letter is a lease or whose contract is a rent contract, ``RuleContext.rent``: § 556b
    Abs. 1 BGB as the BGH reads it for rent, VIII ZR 129/09 — Saturday does not count), Werktage
-   (Monday to Saturday) otherwise. Point 2's date only names the month it starts in (without one, the
-   current month, or the later one its contract starts in), so the item is dated when its letter is
-   read or its dates are recomputed (:func:`first_scheduled`), then moves on by points 3 and 4. Rent
-   paid every month whose letter gives no day and no working day is due by the law's third working day
-   (§ 556b Abs. 1 BGB, :func:`schedule_rule`), one confidence level lower (``medium`` at most) and with
-   a warning to check the lease — until the person gives it a date, which replaces the law's (point 2),
-   and never for a rent increase's new rent (§ 558b BGB dates it). A rule in days or weeks has no
-   working day.
+   (Monday to Saturday) otherwise. Point 2's date only names the month it starts in — the month of the
+   date the rules engine gives its DateSpec in its letter's context, so a rent increase's new rent never
+   starts before § 558b BGB allows it; without one, the current month, or the later one its contract
+   starts in (never for a rent increase's new rent: only a date its letter gives starts it). So the
+   item is dated when its letter is read or its dates are recomputed (:func:`first_scheduled`), then
+   moves on by points 3 and 4. A lease's rent paid every month that the lease gives no day and no
+   working day is due by the law's third working day (§ 556b Abs. 1 BGB, :func:`schedule_rule`), one
+   confidence level lower (``medium`` at most) and with a warning to check the lease — until the person
+   gives it a date, which replaces the law's for every month (point 2; a later one says so on its
+   receipt: :func:`over_the_law`). The same schedule read with the working day the law gave it is the
+   same schedule (point 6). A rule in days or weeks has no working day.
 """
 
 from __future__ import annotations
 
 import calendar
 import itertools
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import replace
 from datetime import date, timedelta
 
@@ -84,6 +87,11 @@ RENT_WORKING_DAY = 3
 LAW_DEFAULT_WARNING = (
     "The lease gives no day Ordnung could date; this is the law's default (3rd working day, Saturdays not "
     "counted) — check your lease."
+)
+#: The warning on a date set by hand later than the law's working day it replaces (point 8).
+LAW_REPLACED_WARNING = (
+    "Your date replaces the law's default (3rd working day, Saturdays not counted) for every month — if "
+    "your lease names no day, the rent is due by then."
 )
 
 #: Statuses whose recurring item moves on as days pass (point 3).
@@ -172,8 +180,10 @@ def _is_rent(item: Item, ctx: RuleContext) -> bool:
 
 def schedule_rule(item: Item, ctx: RuleContext) -> Recurrence | None:
     """The rule the item's dates follow (point 8): its own, without a working day in days or weeks, and
-    with the law's third working day (§ 556b Abs. 1 BGB) for rent paid every month whose letter gives no
-    day — not a rent increase's new rent, whose first payment § 558b BGB dates (once agreed)."""
+    with the law's third working day (§ 556b Abs. 1 BGB) for a lease's rent paid every month that the lease
+    gives no day — only on the lease itself (``ctx.letter_kind``), never on another letter about the
+    tenancy (a rent increase's new rent, whose first payment § 558b BGB dates once agreed, or a statement's
+    new prepayment)."""
     rule, spec = item.recurrence, item.date_spec
     if rule is None:
         return None
@@ -181,10 +191,10 @@ def schedule_rule(item: Item, ctx: RuleContext) -> Recurrence | None:
     if (
         working_day is None
         and _is_rent(item, ctx)
+        and ctx.letter_kind == "rent_lease"
         and same_rule(rule, Recurrence())
         and spec is not None
         and spec.type == "none"
-        and ctx.letter_kind != "rent_increase"
     ):
         working_day = RENT_WORKING_DAY
     return rule if working_day == rule.working_day else rule.model_copy(update={"working_day": working_day})
@@ -210,17 +220,34 @@ def _parse(value: str | None) -> date | None:
 def first_occurrence(item: Item, ctx: RuleContext) -> date | None:
     """Where the item's schedule starts (point 2): the date its DateSpec gives before a weekend or
     holiday moves it (a fixed date as written, a relative one counted in ``ctx``), else its current
-    date; with a working day, the first of that date's month, else of the current month (point 8)."""
-    spec, given = item.date_spec, None
-    if spec is not None and spec.type == "fixed":
+    date. With a working day only the month counts (point 8): the first of the month of the date the rules
+    engine gives its DateSpec in ``ctx`` (so a rent increase's new rent never starts before § 558b BGB
+    allows it), else of its current date's or the current month — ``None`` for a rent increase's new rent
+    without a date, which only a date its letter gives can start."""
+    rule, spec, given = schedule_rule(item, ctx), item.date_spec, None
+    by_working_day = rule is not None and rule.working_day is not None
+    if spec is not None and spec.type == "fixed" and not by_working_day:
         given = spec.date
-    elif spec is not None and spec.type == "relative":
+    elif spec is not None and spec.type != "none":
         given = compute_due(spec.model_copy(update={"shift_rule": "none"}), ctx).due_date
     start = _parse(given) or _parse(item.due_date)
-    rule = schedule_rule(item, ctx)
-    if rule is None or rule.working_day is None:
+    if not by_working_day:
         return start
+    if start is None and ctx.letter_kind == "rent_increase":
+        return None
     return (start or ctx.today).replace(day=1)
+
+
+def over_the_law(
+    item: Item, due: str | None, receipt: ComputationReceipt | None
+) -> ComputationReceipt | None:
+    """Point 8: the ``receipt`` of a date ``due`` the person sets on rent the law's working day dates (its
+    receipt says so), with a warning when that date is later than the law's: it replaces the law's day for
+    every month (point 2), and if the lease names no day the law's is the one that counts."""
+    by_law = item.computation is not None and LAW_DEFAULT_WARNING in item.computation.warnings
+    if receipt is None or not by_law or due is None or item.due_date is None or due <= item.due_date:
+        return receipt
+    return receipt.model_copy(update={"warnings": [LAW_REPLACED_WARNING, *receipt.warnings]})
 
 
 def replaced_occurrence(item: Item) -> date | None:
@@ -297,20 +324,29 @@ def _by_law(item: Item, rule: Recurrence, receipt: ComputationReceipt) -> Comput
 
 
 def _receipt(
-    item: Item, rule: Recurrence, first: date, day: date, ctx: RuleContext, postal_buffer_days: int
+    item: Item,
+    rule: Recurrence,
+    first: date,
+    day: date,
+    ctx: RuleContext,
+    postal_buffer_days: int,
+    reasons: Sequence[str] = (),
 ) -> ComputationReceipt:
     """The rules engine's receipt for the occurrence scheduled on ``day``, graded by how the letter was
     read: the rubric's notes on the item's receipt carry over (:func:`~ordnung.ingest.verify.regrade`),
     unless the person confirmed the item (or set its date: ``grounding="user"``); one undated so far (in its
-    letter, point 8) by where its quote was found. A working day is counted in ``ctx`` without the letter's
-    kind, so no letter rule re-dates it (point 8)."""
+    letter, point 8) by where its quote was found and ``reasons``, what its quote leaves out
+    (:func:`~ordnung.ingest.plan.consistency_reasons`). A working day is counted in ``ctx`` without the
+    letter's kind, so no letter rule re-dates it (point 8)."""
     counted = ctx if rule.working_day is None else replace(ctx, letter_kind=None)
     spec = _occurrence_spec(item, rule, day, ctx)
     computed = compute_due(spec, counted, postal_buffer_days=postal_buffer_days)
     undated = item.computation is None and item.due_date is None  # dated for the first time (point 8)
     if item.grounding != "user":
         computed = (
-            grade_reading(computed, item.grounding, ()) if undated else regrade(computed, item.computation)
+            grade_reading(computed, item.grounding, reasons)
+            if undated
+            else regrade(computed, item.computation)
         )
     due = _parse(computed.due_date)
     since = f"Repeats {describe(rule)}"
@@ -326,10 +362,16 @@ def _receipt(
 
 
 def _at(
-    item: Item, rule: Recurrence, first: date, day: date, ctx: RuleContext, postal_buffer_days: int
+    item: Item,
+    rule: Recurrence,
+    first: date,
+    day: date,
+    ctx: RuleContext,
+    postal_buffer_days: int,
+    reasons: Sequence[str] = (),
 ) -> Item:
     """The item at the occurrence scheduled on ``day``, with its dates and receipt from the engine."""
-    receipt = _receipt(item, rule, first, day, ctx, postal_buffer_days)
+    receipt = _receipt(item, rule, first, day, ctx, postal_buffer_days, reasons)
     source = item.due_date_source
     if item.origin == "extracted":  # the letter's schedule again, also after a date set by hand
         fixed = rule.working_day is None and item.date_spec is not None and item.date_spec.type == "fixed"
@@ -344,7 +386,9 @@ def _at(
     )
 
 
-def _moved(item: Item, ctx: RuleContext, on_or_after: date, postal_buffer_days: int) -> Item | None:
+def _moved(
+    item: Item, ctx: RuleContext, on_or_after: date, postal_buffer_days: int, reasons: Sequence[str] = ()
+) -> Item | None:
     """The item at the first occurrence whose date (from the rules engine) is on or after
     ``on_or_after``; ``None`` for an item without a schedule."""
     rule, first = schedule_rule(item, ctx), first_occurrence(item, ctx)
@@ -352,44 +396,53 @@ def _moved(item: Item, ctx: RuleContext, on_or_after: date, postal_buffer_days: 
         return None
     # an occurrence scheduled earlier can be moved onto or past the day (a weekend, Easter, a working day)
     for day in _occurrences(first, rule, on_or_after - timedelta(days=_lookback(rule))):
-        moved = _at(item, rule, first, day, ctx, postal_buffer_days)
+        moved = _at(item, rule, first, day, ctx, postal_buffer_days, reasons)
         due = _parse(moved.due_date)
         if due is not None and due >= on_or_after:
             return moved
     raise ValueError("recurrence schedule does not reach the requested date")
 
 
-def at_occurrence(item: Item, due: str | None, ctx: RuleContext, *, postal_buffer_days: int) -> Item | None:
+def at_occurrence(
+    item: Item, due: str | None, ctx: RuleContext, *, postal_buffer_days: int, reasons: Sequence[str] = ()
+) -> Item | None:
     """Point 6's kept occurrence: ``item`` (recomputed, or a new reading of the stored item) at the
     occurrence dated ``due`` (the stored date), with its dates and receipt from the engine in ``ctx``
-    (point 5). The engine only moves a date later, so that is the last occurrence scheduled on or
-    before ``due`` (in another holiday region it can fall on another day); a ``due`` off the schedule
-    leads to the next occurrence. ``None`` for an item without a schedule."""
+    (point 5; ``reasons`` grade a reading without a date, :func:`first_scheduled`). The engine only moves a
+    date later, so that is the last occurrence scheduled on or before ``due`` (in another holiday region it
+    can fall on another day); a ``due`` off the schedule leads to the next occurrence. ``None`` for an item
+    without a schedule."""
     rule, first, day = schedule_rule(item, ctx), first_occurrence(item, ctx), _parse(due)
     if rule is None or first is None or day is None:
         return None
     since = day - timedelta(days=_lookback(rule))
     scheduled = list(itertools.takewhile(lambda planned: planned <= day, _occurrences(first, rule, since)))
     if not scheduled:
-        return _moved(item, ctx, day, postal_buffer_days)
-    return _at(item, rule, first, scheduled[-1], ctx, postal_buffer_days)
+        return _moved(item, ctx, day, postal_buffer_days, reasons)
+    return _at(item, rule, first, scheduled[-1], ctx, postal_buffer_days, reasons)
 
 
 def first_scheduled(
-    item: Item, ctx: RuleContext, *, postal_buffer_days: int, starts: str | None = None
+    item: Item,
+    ctx: RuleContext,
+    *,
+    postal_buffer_days: int,
+    starts: str | None = None,
+    reasons: Sequence[str] = (),
 ) -> Item | None:
     """Point 8 when a letter is read or its dates are recomputed: an item whose rule has a working day
-    (:func:`schedule_rule`) at its schedule's first occurrence, with its dates and receipt from the engine
-    — the date its DateSpec gives only names the month, and an undated one starts in the current month,
-    or in the month its contract ``starts`` if that is later (no rent before the tenancy begins);
-    :func:`rolled` then moves it on if it has passed. ``None`` for any other item."""
+    (:func:`schedule_rule`) at its schedule's first occurrence (:func:`first_occurrence`), with its dates
+    and receipt from the engine — an undated one starts in the current month, or in the month its contract
+    ``starts`` if that is later (no rent before the tenancy begins), and is graded by ``reasons``, what its
+    quote leaves out (:func:`~ordnung.ingest.plan.consistency_reasons`); :func:`rolled` then moves it on if
+    it has passed. ``None`` for any other item."""
     rule, first, start = schedule_rule(item, ctx), first_occurrence(item, ctx), _parse(starts)
     if rule is None or rule.working_day is None or first is None:
         return None
     undated = item.due_date is None and (item.date_spec is None or item.date_spec.type == "none")
     if undated and start is not None and start > first:
         first = start.replace(day=1)
-    return _at(item, rule, first, first, ctx, postal_buffer_days)
+    return _at(item, rule, first, first, ctx, postal_buffer_days, reasons)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -453,13 +506,16 @@ def same_schedule(item: Item, recurrence: Recurrence | None, spec: DateSpec | No
 
 
 def keeps_later_date(
-    stored: Item, recurrence: Recurrence | None, spec: DateSpec | None, due_date: str | None
+    stored: Item, recurrence: Recurrence | None, spec: DateSpec | None, due_date: str | None, ctx: RuleContext
 ) -> bool:
     """Point 6: whether the stored recurring item keeps its date over ``due_date``, newly computed for
-    the schedule ``recurrence`` from ``spec``: the schedule is unchanged (:func:`same_schedule`) and
-    the stored date is the later one."""
+    the schedule ``recurrence`` from ``spec``: the schedule is unchanged (:func:`same_schedule`, of the
+    rules the dates follow in ``ctx``, :func:`schedule_rule` — the law's working day for a lease's rent is
+    the lease's own third, point 8) and the stored date is the later one."""
+    reading = stored.model_copy(update={"recurrence": recurrence, "date_spec": spec})
+    followed = stored.model_copy(update={"recurrence": schedule_rule(stored, ctx)})
     return (
-        same_schedule(stored, recurrence, spec)
+        same_schedule(followed, schedule_rule(reading, ctx), spec)
         and stored.due_date is not None
         and (due_date is None or stored.due_date > due_date)
     )
@@ -472,15 +528,6 @@ def keeps_later_date(
 
 def _write(store: Store, moved: Item, names: tuple[str, ...]) -> Item:
     return store.update_item(moved.id, **{name: getattr(moved, name) for name in names})
-
-
-def schedule_item(
-    store: Store, item: Item, ctx: RuleContext, *, postal_buffer_days: int, starts: str | None = None
-) -> Item:
-    """Point 8 for one stored item its letter's reading just wrote (its contract ``starts`` on that day):
-    its working-day schedule's first occurrence, written (the item itself for any other)."""
-    scheduled = first_scheduled(item, ctx, postal_buffer_days=postal_buffer_days, starts=starts)
-    return item if scheduled is None else _write(store, scheduled, SCHEDULE_FIELDS)
 
 
 def roll_item(store: Store, item: Item, ctx: RuleContext, *, postal_buffer_days: int) -> Item:

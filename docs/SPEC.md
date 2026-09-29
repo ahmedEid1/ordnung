@@ -1363,8 +1363,9 @@ the next occurrence; each occurrence is dated by the rules engine; re-reading ne
 rule with a working day ("spätestens am dritten Werktag eines jeden Monats": `Recurrence.working_day`)
 is dated in every month by counting working days from its first — Monday to Friday for rent (a payment
 on a lease or under a rent contract, § 556b Abs. 1 BGB, BGH VIII ZR 129/09), *Werktage* otherwise —
-and a lease's monthly rent read without a day gets the law's third working day (`bgb_556b`), one
-confidence level lower and with a warning to check the lease, until the person gives it a date.
+and a lease's own monthly rent read without a day gets the law's third working day (`bgb_556b`), one
+confidence level lower and with a warning to check the lease, until the person gives it a date. The
+extraction does not read a working day yet (`ExtractedRecurrence`).
 
 **Confidence rubric** (`ComputationReceipt.confidence`, starts `low`): +quote located, +DateSpec
 consistent with its quote (`spec_consistency`), +anchor date stated in the document (or confirmed by

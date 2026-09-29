@@ -20,6 +20,7 @@ from ordnung.ingest.plan import (
     payment_details,
     remedy_text,
     remedy_warnings,
+    rent_increase_note,
     rule_context,
     slot_key,
     slot_keys,
@@ -33,6 +34,7 @@ from ordnung.models import (
     Document,
     DocumentExtraction,
     Evidence,
+    ExtractedChange,
     ExtractedItem,
     Item,
     PaymentDetails,
@@ -41,6 +43,7 @@ from ordnung.models import (
     Remedy,
 )
 from ordnung.rules import RuleContext
+from ordnung.rules.advice import RENT_INCREASE_PAYMENT_WARNING
 from ordnung.secretary.scam import invalid_iban_message
 
 PAGE_TEXT = (
@@ -700,6 +703,48 @@ def test_a_recurring_to_do_moves_to_a_reading_that_corrects_its_amount(store: St
     assert (again_power.id, again_power.amount, again_power.due_date) == (stored_power.id, 55.0, "2026-12-15")
     assert (again_gas.id, again_gas.due_date) == (stored_gas.id, "2026-10-15")
     assert len(store.list_items(doc_id=document.id)) == 2
+
+
+def test_a_new_rent_dated_by_its_working_day_starts_when_the_law_allows_with_its_note(store: Store) -> None:
+    """recurrence.py point 8 when the letter is read: a rent increase's new rent "ab dem 01.11.2026", paid by
+    the 3rd working day (a reading gives no working day yet; this one is built with it), in a request of
+    24 Sep. Its first rent is December's (Thu 3 Dec: § 558b Abs. 1 BGB allows no earlier month), and dated by
+    its working day it is still only owed once the person agrees (the note and its rule stay)."""
+    from ordnung.ingest.pipeline import compute_dates
+
+    quote = "Neue monatliche Miete 670,00 EUR ab dem 01.11.2026, zahlbar bis zum 3. Werktag."
+    reading = item(
+        quote, money=670.0, type="fixed", date="2026-11-01", nature="payment", text="ab dem 01.11.2026"
+    )
+    new_rent = reading.model_copy(update={"recurrence": Recurrence(working_day=3)})
+    change = ExtractedChange(type="price_increase", old_amount=640.0, new_amount=670.0)
+    data = DocumentExtraction(
+        kind="rent_lease",
+        title="Rent increase",
+        summary="s",
+        explanation="e",
+        items=[new_rent],
+        change=change,
+    )
+    document = add_doc(store)
+    verification = verify_extraction(document.id, data, [(1, quote, [], "text")])
+    ctx = RuleContext(today=date(2026, 9, 29), document_date=date(2026, 9, 24), letter_kind="rent_increase")
+    note = rent_increase_note("rent_increase", data)
+    computed = compute_dates(verification.items, ctx, postal_buffer_days=4, note=note)
+    [written] = write_items(
+        store,
+        document.id,
+        verification,
+        computed,
+        data,
+        LinkResult(),
+        today=ctx.today,
+        ctx=ctx,
+        postal_buffer_days=4,
+    )
+    assert written.due_date == "2026-12-03" and written.computation is not None
+    assert RENT_INCREASE_PAYMENT_WARNING in written.computation.warnings
+    assert "bgb_558b" in written.computation.rule_ids
 
 
 def test_activity_message() -> None:

@@ -847,17 +847,21 @@ expressly left open whether the period extends to Monday when the 3rd Werktag it
 
 **Paying rent** (`bgb_556b`, § 556b Abs. 1 BGB) is a different rule: rent is due in advance, at the
 latest by the 3rd working day of each month, and here Saturday does **not** count (BGH
-VIII ZR 129/09). A monthly payment whose letter dates it by a working day ("spätestens am dritten
-Werktag eines jeden Monats", the reading's `Recurrence.working_day`) is dated in every month by
+VIII ZR 129/09). A monthly payment due by a working day ("spätestens am dritten Werktag eines jeden
+Monats": `Recurrence.working_day`, which the extraction does not read yet) is dated in every month by
 counting that many working days from the month's first — Monday to Friday without holidays for rent
 (a payment on a lease or under a rent contract), *Werktage* otherwise — so the rent runs Mon 5 Oct
 (3 Oct is a holiday), Wed 4 Nov, Thu 3 Dec 2026 and Tue 7 Apr 2026 after Easter, never on the day of
-the month the first one fell on (`recurrence.py`, point 8). The first month is the one the letter
-names, else the current one — or the month the tenancy starts, if that is later. A lease's monthly
-rent the reading leaves without a day gets the law's 3rd working day, one confidence level lower
-(`medium` at most) and with a warning to check the lease: a lease may agree an earlier day ("bis zum
-1."), so this default can be late — the warning says so, and a date the person gives replaces it. A
-rent increase's new rent never gets it (§ 558b BGB dates its first payment, once agreed).
+the month the first one fell on (`recurrence.py`, point 8). The first month is the month of the date
+the rules engine gives the letter's date (a rent increase's new rent: never before § 558b BGB allows
+it), else the current one — or the month the tenancy starts, if that is later; a rent increase's new
+rent without a date gets no schedule, and one dated keeps its note that it is only owed once agreed. A
+lease's monthly rent the lease leaves without a day gets the law's 3rd working day, one confidence
+level lower (`medium` at most) and with a warning to check the lease: a lease may agree an earlier day
+("bis zum 1."), so this default can be late — the warning says so, and a date the person gives
+replaces it for every month (a later one says so on its receipt). Only the lease's own rent gets it,
+never a payment under the rent contract on another letter (a rent increase's new or current rent, a
+statement's new prepayment).
 
 Worked examples (demo persona Sam, today = Fri 25 Sep 2026, region NW, letter by post):
 

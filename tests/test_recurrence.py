@@ -18,10 +18,11 @@ import pytest
 from helpers_secretary import add_doc
 from ordnung.db.store import Store
 from ordnung.ingest.plan import item_context
-from ordnung.ingest.verify import MODEL_READ_NOTE, REASON_TEXT, UNVERIFIED_NOTE
+from ordnung.ingest.verify import AMOUNT_NOT_IN_QUOTE, MODEL_READ_NOTE, REASON_TEXT, UNVERIFIED_NOTE
 from ordnung.models import ComputationReceipt, DateSpec, Item, Recurrence
 from ordnung.recurrence import (
     LAW_DEFAULT_WARNING,
+    LAW_REPLACED_WARNING,
     SCHEDULE_FIELDS,
     at_occurrence,
     describe,
@@ -32,6 +33,7 @@ from ordnung.recurrence import (
     moved_on,
     next_occurrence,
     occurrence,
+    over_the_law,
     replaced_occurrence,
     roll_forward,
     roll_item,
@@ -383,18 +385,19 @@ def test_an_items_context_is_its_letters_else_nationwide(store: Store) -> None:
 def test_a_later_stored_date_of_the_same_schedule_is_kept(store: Store) -> None:
     paid_ahead = _item(store, due_date="2027-01-15")
     spec = DateSpec(type="fixed", date="2025-10-15", nature="payment", text="jeweils zum 15.")
-    assert keeps_later_date(paid_ahead, MONTHLY, spec, "2025-10-15")  # the wording doesn't matter
-    assert not keeps_later_date(paid_ahead, MONTHLY, spec, "2027-02-15")  # the new date is later
+    ctx = RuleContext(today=TODAY)
+    assert keeps_later_date(paid_ahead, MONTHLY, spec, "2025-10-15", ctx)  # the wording doesn't matter
+    assert not keeps_later_date(paid_ahead, MONTHLY, spec, "2027-02-15", ctx)  # the new date is later
     moved = spec.model_copy(update={"date": "2025-11-01"})
-    assert not keeps_later_date(paid_ahead, MONTHLY, moved, "2025-11-01")  # another first occurrence
+    assert not keeps_later_date(paid_ahead, MONTHLY, moved, "2025-11-01", ctx)  # another first occurrence
     quarterly = Recurrence(interval=3, unit="months")
-    assert not keeps_later_date(paid_ahead, quarterly, spec, "2025-10-15")  # another rule
+    assert not keeps_later_date(paid_ahead, quarterly, spec, "2025-10-15", ctx)  # another rule
     details = spec.model_copy(
         update={"anchor": "explicit_date", "anchor_date": "2025-10-15", "shift_rule": "none"}
     )
-    assert keeps_later_date(paid_ahead, MONTHLY, details, "2025-10-15")  # nor do its other details
+    assert keeps_later_date(paid_ahead, MONTHLY, details, "2025-10-15", ctx)  # nor do its other details
     one_off = _item(store, due_date="2027-01-15", recurrence=None)
-    assert not keeps_later_date(one_off, None, spec, "2025-10-15")
+    assert not keeps_later_date(one_off, None, spec, "2025-10-15", ctx)
 
 
 def test_only_the_occurrence_is_kept_its_dates_are_the_engines_now(store: Store) -> None:
@@ -469,8 +472,12 @@ def test_a_date_set_by_hand_stands_in_for_the_occurrence_it_replaced(store: Stor
 # --------------------------------------------------------------------------------------------------
 
 BY_THE_THIRD = Recurrence(interval=1, unit="months", working_day=3)
-#: 29 Sep 2026, for a payment on a lease or under a rent contract.
-RENT = RuleContext(today=date(2026, 9, 29), rent=True)
+#: 29 Sep 2026, for a payment on a lease.
+RENT = RuleContext(today=date(2026, 9, 29), rent=True, letter_kind="rent_lease")
+
+
+def _on_lease(today: date) -> RuleContext:
+    return replace(RENT, today=today)
 
 
 def _rent(store: Store, **fields: object) -> Item:
@@ -544,7 +551,7 @@ def test_the_law_dates_a_monthly_rent_its_lease_leaves_undated(store: Store) -> 
     assert receipt is not None and receipt.warnings[0] == LAW_DEFAULT_WARNING
     assert receipt.confidence == "medium" and "bgb_556b" in receipt.rule_ids
     assert receipt.steps[1].label == "Rent is due by the 3rd working day of the month; Saturdays don't count"
-    november = rolled(october, RuleContext(today=date(2026, 10, 6), rent=True), postal_buffer_days=BUFFER)
+    november = rolled(october, _on_lease(date(2026, 10, 6)), postal_buffer_days=BUFFER)
     assert november is not None and november.due_date == "2026-11-04"
     assert november.computation is not None and LAW_DEFAULT_WARNING in november.computation.warnings
 
@@ -558,12 +565,27 @@ def test_an_undated_rent_is_graded_by_where_its_sentence_was_found(store: Store)
     by_law = _filed(_rent(store, grounding="unverified"), RENT)
     assert by_law.computation is not None and by_law.computation.confidence == "low"
     assert {UNVERIFIED_NOTE, LAW_DEFAULT_WARNING} <= set(by_law.computation.warnings)
-    november = rolled(by_law, RuleContext(today=date(2026, 10, 6), rent=True), postal_buffer_days=BUFFER)
+    november = rolled(by_law, _on_lease(date(2026, 10, 6)), postal_buffer_days=BUFFER)
     assert november is not None and november.computation is not None
     assert (november.computation.confidence, UNVERIFIED_NOTE in november.computation.warnings) == (
         "low",
         True,
     )
+
+
+def test_an_undated_rent_is_graded_by_what_its_sentence_leaves_out(store: Store) -> None:
+    """Its sentence gives no amount (and the letter writes it nowhere else): the rubric's quote check fails,
+    so the lease's own working day is ``medium``, and each later occurrence is graded the same (point 5)."""
+    missing = (AMOUNT_NOT_IN_QUOTE,)
+    first = first_scheduled(
+        _rent(store, recurrence=BY_THE_THIRD), RENT, postal_buffer_days=BUFFER, reasons=missing
+    )
+    assert first is not None and first.computation is not None
+    assert first.computation.confidence == "medium"
+    assert REASON_TEXT[AMOUNT_NOT_IN_QUOTE] in first.computation.warnings
+    october = rolled(first, RENT, postal_buffer_days=BUFFER)
+    assert october is not None and october.computation is not None
+    assert (october.computation.confidence, october.due_date) == ("medium", "2026-10-05")
 
 
 @pytest.mark.parametrize(
@@ -574,9 +596,13 @@ def test_an_undated_rent_is_graded_by_where_its_sentence_was_found(store: Store)
         ({"date_spec": DateSpec(type="fixed", date="2026-10-01", nature="payment")}, RENT),  # the lease's day
         ({"kind": "task"}, RENT),  # not a payment
         ({}, replace(RENT, letter_kind="rent_increase")),  # a rent increase's new rent: § 558b BGB dates it
+        # a payment under the rent contract on another letter (a statement's new prepayment, a rent
+        # increase's current rent): not the lease's rent
+        ({}, replace(RENT, letter_kind="operating_costs")),
+        ({}, replace(RENT, letter_kind=None)),
     ],
 )
-def test_the_laws_day_is_only_for_a_monthly_rent_its_letter_leaves_undated(
+def test_the_laws_day_is_only_for_a_monthly_rent_its_lease_leaves_undated(
     store: Store, fields: dict[str, object], ctx: RuleContext
 ) -> None:
     item = _rent(store, **fields)
@@ -613,6 +639,24 @@ def test_a_working_days_schedule_starts_in_the_month_of_its_first_date(store: St
     assert first_occurrence(_rent(store), RuleContext(today=RENT.today)) is None  # no schedule, no date
 
 
+def test_a_rent_increases_new_rent_starts_no_earlier_than_the_law_allows(store: Store) -> None:
+    """A rent increase's new rent "ab dem 01.11.2026, bis zum 3. Werktag" in a request dated 24 Sep: by law
+    the higher rent can be owed from 1 Dec at the earliest (§ 558b Abs. 1 BGB), so its schedule starts in
+    December (Thu 3 Dec), not on Wed 4 Nov; without a date it has no schedule at all — only a date its
+    letter gives starts it, never the current month."""
+    letter = RuleContext(
+        today=date(2026, 9, 29), rent=True, letter_kind="rent_increase", document_date=date(2026, 9, 24)
+    )
+    early = DateSpec(type="fixed", date="2026-11-01", nature="payment", text="ab dem 01.11.2026")
+    new_rent = _rent(store, recurrence=BY_THE_THIRD, date_spec=early, due_date="2026-12-01")
+    assert first_occurrence(new_rent, letter) == date(2026, 12, 1)
+    first = first_scheduled(new_rent, letter, postal_buffer_days=BUFFER)
+    assert first is not None and first.due_date == "2026-12-03"
+    undated = _rent(store, recurrence=BY_THE_THIRD)
+    assert first_occurrence(undated, letter) is None
+    assert first_scheduled(undated, letter, postal_buffer_days=BUFFER) is None
+
+
 def test_an_undated_rent_starts_no_earlier_than_its_tenancy(store: Store) -> None:
     """A lease signed in September for a flat from 1 Dec: the first rent is December's (Thu 3 Dec), not
     October's; a tenancy that began long ago changes nothing, nor does it move a date the letter gives."""
@@ -642,13 +686,47 @@ def test_no_letter_rule_re_dates_a_working_day(store: Store) -> None:
 def test_the_latest_working_day_of_a_month_stays_in_its_month(store: Store) -> None:
     """The 10th working day of January 2027 in Bavaria (1 and 6 Jan are holidays) is Mon 18 Jan: kept as
     January's (point 6), and marking it done moves on to February's (Fri 12 Feb), not past it."""
-    bavaria = RuleContext(today=date(2027, 1, 5), rent=True, recipient_region="BY")
+    bavaria = replace(RENT, today=date(2027, 1, 5), recipient_region="BY")
     january = _filed(_rent(store, recurrence=Recurrence(working_day=10)), bavaria)
     assert (january.due_date, january.send_by) == ("2027-01-18", "2027-01-15")
     kept = at_occurrence(january, january.due_date, bavaria, postal_buffer_days=BUFFER)
     assert kept is not None and kept.due_date == "2027-01-18"
     done = moved_on(january, bavaria, postal_buffer_days=BUFFER)
     assert done is not None and done.due_date == "2027-02-12"
+
+
+def test_the_same_schedule_read_with_the_laws_working_day_keeps_its_later_date(store: Store) -> None:
+    """Point 6 with point 8: the lease's rent the law dated, paid ahead to Wed 4 Nov, read again with its
+    working day (3, the day the law gave it) is the same schedule, so it keeps 4 Nov — it is not asked for
+    again for October; read with another working day, it is another schedule."""
+    paid_ahead = _filed(_rent(store), RENT).model_copy(update={"due_date": "2026-11-04"})
+    spec = paid_ahead.date_spec
+    assert keeps_later_date(paid_ahead, BY_THE_THIRD, spec, None, RENT)
+    kept = at_occurrence(
+        paid_ahead.model_copy(update={"recurrence": BY_THE_THIRD}),
+        "2026-11-04",
+        RENT,
+        postal_buffer_days=BUFFER,
+    )
+    assert kept is not None and kept.due_date == "2026-11-04"
+    assert kept.computation is not None and LAW_DEFAULT_WARNING not in kept.computation.warnings
+    assert not keeps_later_date(paid_ahead, Recurrence(working_day=1), spec, None, RENT)
+    # not on the lease, the law gives it no working day: another schedule
+    assert not keeps_later_date(paid_ahead, BY_THE_THIRD, spec, None, replace(RENT, letter_kind=None))
+
+
+def test_a_date_set_by_hand_later_than_the_laws_says_it_replaces_it(store: Store) -> None:
+    """Point 8: a date the person gives a rent the law dates replaces the law's day for every month; a later
+    one (9 Oct for Mon 5 Oct) says so on its receipt, an earlier one (the lease's "bis zum 1.") needs no
+    word, nor does a date on rent the law doesn't date."""
+    october = _filed(_rent(store), RENT)
+    receipt = ComputationReceipt(due_date="2026-10-09")
+    later = over_the_law(october, "2026-10-09", receipt)
+    assert later is not None and later.warnings == [LAW_REPLACED_WARNING]
+    assert over_the_law(october, "2026-10-01", receipt) == receipt
+    assert over_the_law(october, None, None) is None
+    own = _filed(_rent(store, recurrence=BY_THE_THIRD), RENT)
+    assert over_the_law(own, "2026-10-09", receipt) == receipt
 
 
 def test_a_lease_or_a_rent_contract_makes_a_to_dos_payments_rent(store: Store) -> None:

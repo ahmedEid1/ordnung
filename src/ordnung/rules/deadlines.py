@@ -248,8 +248,8 @@ class RuleContext:
     the day it is collected or paid in (walkthrough of phase 2: a direct debit got a transfer's "send by").
     ``rent``: the to-do belongs to the tenancy of a home — its letter is a lease or its contract a rent
     contract (:func:`ordnung.ingest.plan.for_item`) —, so its payments are rent: § 556b Abs. 1 BGB counts
-    their working days Monday to Friday (BGH VIII ZR 129/09), and one paid every month whose letter gives no
-    day is due by the third (:mod:`ordnung.recurrence`, point 8).
+    their working days Monday to Friday (BGH VIII ZR 129/09), and one paid every month that the lease itself
+    gives no day is due by the third (:mod:`ordnung.recurrence`, point 8).
     """
 
     today: date

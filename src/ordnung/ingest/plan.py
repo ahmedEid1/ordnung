@@ -59,17 +59,18 @@ from ordnung.models import (
     LetterKind,
     Party,
     PaymentDetails,
+    Recurrence,
     Remedy,
 )
 from ordnung.payments import is_collected_or_incoming, pays_on_site
 from ordnung.recurrence import (
     SCHEDULE_FIELDS,
     at_occurrence,
+    first_scheduled,
     keeps_later_date,
     roll_forward,
     same_rule,
     same_schedule,
-    schedule_item,
 )
 from ordnung.rules import RuleContext, compute_due, is_private_sender, scope_for_party_kind
 from ordnung.rules.advice import (
@@ -679,6 +680,23 @@ def kept_payment_note(
     return kept
 
 
+def first_dated(
+    item: Item,
+    ctx: RuleContext,
+    *,
+    postal_buffer_days: int,
+    starts: str | None,
+    reasons: Sequence[str] = (),
+) -> Item | None:
+    """:func:`~ordnung.recurrence.first_scheduled` (a to-do dated by its working day when its letter is read
+    or its dates are recomputed) with the payment note its receipt carried (:func:`kept_payment_note`): a
+    rent increase's new rent dated so is still only owed once the person agrees (§ 558b Abs. 1 BGB)."""
+    first = first_scheduled(item, ctx, postal_buffer_days=postal_buffer_days, starts=starts, reasons=reasons)
+    if first is None:
+        return None
+    return first.model_copy(update={"computation": kept_payment_note(item.computation, first.computation)})
+
+
 def remedy_warnings(remedy: Remedy | None) -> list[str]:
     """Warning cards for remedies Ordnung cannot help with (§ 21 "Remedies & letters")."""
     if remedy is None:
@@ -842,6 +860,11 @@ def filed_kind(reading: DocumentExtraction, corrected: dict[str, Any]) -> Letter
     return kind
 
 
+def _rule(item: ExtractedItem) -> Recurrence | None:
+    """The rule a reading gives its to-do, as the ledger keeps it (a reading gives no working day yet)."""
+    return None if item.recurrence is None else Recurrence.model_validate(item.recurrence.model_dump())
+
+
 def _item_fields(
     verified: VerifiedItem,
     computed: ComputedDate,
@@ -863,7 +886,7 @@ def _item_fields(
         "amount": item.amount,
         "currency": item.currency,
         "direction": item.direction,
-        "recurrence": item.recurrence,
+        "recurrence": _rule(item),
         "priority": item.priority,
         "area": extraction.area,
         "party_id": links.party.id if links.party else None,
@@ -897,9 +920,9 @@ def _same_obligation(item: Item, verified: VerifiedItem, *, same_amount: bool) -
         return True
     if same_amount and item.amount != new.amount:
         return False
-    if same_schedule(item, new.recurrence, new.date):
+    if same_schedule(item, _rule(new), new.date):
         return True
-    return item.user_modified and new.date.type == "none" and same_rule(item.recurrence, new.recurrence)
+    return item.user_modified and new.date.type == "none" and same_rule(item.recurrence, _rule(new))
 
 
 def carry_over(store: Store, doc_id: str, verification: Verification) -> int:
@@ -962,8 +985,8 @@ def write_items(
     schedule's first occurrence) and the schedule is the same
     (:func:`~ordnung.recurrence.keeps_later_date`): reading the letter again never moves it backwards.
     That occurrence is dated and graded by the new reading (:func:`~ordnung.recurrence.at_occurrence`).
-    Any other one whose rule has a working day starts at its schedule's first occurrence
-    (:func:`~ordnung.recurrence.schedule_item`, point 8). Each to-do's dates are those of its own context
+    Any other one whose rule has a working day starts at its schedule's first occurrence, with its
+    payment note (:func:`first_dated`, point 8). Each to-do's dates are those of its own context
     (:func:`for_item`, with the letter's contract).
 
     ``trace`` gets one step per to-do saying what was done with it and why
@@ -980,10 +1003,16 @@ def write_items(
             new = verified.item
             item_ctx = for_item(ctx, new, note, links.contract)
             action: facts.PlanAction = "created" if existing is None else "updated"
-            if existing is not None and keeps_later_date(existing, new.recurrence, new.date, result.due_date):
+            if existing is not None and keeps_later_date(
+                existing, _rule(new), new.date, result.due_date, item_ctx
+            ):
                 reading = existing.model_copy(update=fields)
                 kept = at_occurrence(
-                    reading, existing.due_date, item_ctx, postal_buffer_days=postal_buffer_days
+                    reading,
+                    existing.due_date,
+                    item_ctx,
+                    postal_buffer_days=postal_buffer_days,
+                    reasons=verified.reasons,
                 )
                 fields |= {name: getattr(kept or existing, name) for name in SCHEDULE_FIELDS}
                 action = "kept_later_date"
@@ -992,9 +1021,17 @@ def write_items(
             item = store.upsert_item_by_slot(doc_id, verified.slot_key, **fields)
             if action in ("created", "updated"):
                 starts = links.contract.start_date if links.contract else None
-                item = schedule_item(
-                    store, item, item_ctx, postal_buffer_days=postal_buffer_days, starts=starts
+                first = first_dated(
+                    item,
+                    item_ctx,
+                    postal_buffer_days=postal_buffer_days,
+                    starts=starts,
+                    reasons=verified.reasons,
                 )
+                if first is not None:
+                    item = store.update_item(
+                        item.id, **{name: getattr(first, name) for name in SCHEDULE_FIELDS}
+                    )
             step.set(**facts.planned(action, item, index=index, moved=verified.slot_key in moved))
         items.append(item)
     removed = store.delete_stale_extracted_items(

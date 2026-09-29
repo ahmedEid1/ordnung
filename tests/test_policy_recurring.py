@@ -20,7 +20,7 @@ from ordnung.db.store import Store
 from ordnung.ingest.verify import UNVERIFIED_NOTE
 from ordnung.llm.runtime import LLMService
 from ordnung.models import DateSpec, Recurrence
-from ordnung.recurrence import LAW_DEFAULT_WARNING, rolled
+from ordnung.recurrence import LAW_DEFAULT_WARNING, LAW_REPLACED_WARNING, rolled
 from ordnung.rules import RuleContext
 from ordnung.tick import DailyTick
 from test_api_support import Api, ApiRouter, api_for
@@ -29,17 +29,26 @@ MONTHLY = {"interval": 1, "unit": "months"}
 BUFFER = 3
 
 RENT_QUOTE = "Die Miete ist spätestens am dritten Werktag eines jeden Monats zu zahlen."
+AMOUNT_LINE = "Monatliche Miete: 640,00 EUR"
 MONTH_END_QUOTE = "Die Miete ist jeweils zum Monatsende zu zahlen."
 DEPOSIT_QUOTE = "Die Kaution von 1.500,00 EUR ist vor dem Einzug zu zahlen."
 
 
 def _lease(marker: str, quote: str, words: str) -> Letter:
-    """A SPECIMEN lease of a flat: its monthly rent read as the demo's (a DateSpec of type "none"), a
-    deposit without a date, and the tenancy as a rent contract."""
+    """A SPECIMEN lease of a flat: its monthly rent read as the demo's (a DateSpec of type "none"; its amount
+    written on the line above), a deposit without a date, and the tenancy as a rent contract."""
     return Letter(
         marker=marker,
         pages=(
-            ("Wohnbau Musterstadt eG", "SPECIMEN", marker, "Mietbeginn: 01.10.2026", quote, DEPOSIT_QUOTE),
+            (
+                "Wohnbau Musterstadt eG",
+                "SPECIMEN",
+                marker,
+                "Mietbeginn: 01.10.2026",
+                AMOUNT_LINE,
+                quote,
+                DEPOSIT_QUOTE,
+            ),
         ),
         payload={
             "kind": "rent_lease",
@@ -254,15 +263,18 @@ async def test_the_leases_rent_is_dated_by_the_law_and_ticking_it_off_moves_it_o
 async def test_a_rent_the_lease_dates_by_its_working_day_returns_to_it_after_a_date_set_by_hand(
     data_dir: Path,
 ) -> None:
-    """The model reads the clause's working day (``Recurrence.working_day`` 3): the lease's own day, so
-    ``high`` and no warning. The person pays October's rent early and moves it to Wed 30 Sep by hand; once
-    that has passed the next rent is November's, on its third working day (Wed 4 Nov, point 7), not the
-    30th of every month nor October's again."""
+    """The rent has the lease's own working day (``Recurrence.working_day`` 3 — a reading gives none yet, so
+    it is set on the stored rent and the letter's dates are recomputed): the lease's day, so ``high`` and no
+    warning. The person pays October's rent early and moves it to Wed 30 Sep by hand; once that has passed
+    the next rent is November's, on its third working day (Wed 4 Nov, point 7), not the 30th of every month
+    nor October's again."""
     clock.set_today("2026-09-25")
-    router = _with(LEASE)
-    router.payloads[LEASE.marker]["items"][0]["recurrence"] = {**MONTHLY, "working_day": 3}
-    async with api_for(data_dir, router=router) as api:
+    async with api_for(data_dir, router=_with(LEASE)) as api:
         _, rent = await _rent_of(api, LEASE)
+        api.ctx.store.update_item(rent["id"], recurrence=Recurrence(working_day=3))
+        chosen = await api.client.put("/api/profile", json={"region": "BY", "onboarded": True})
+        assert chosen.status_code == 200, chosen.text
+        rent = await _item(api, rent["id"])
         assert rent["due_date"] == "2026-10-05"
         assert (rent["computation"]["confidence"], rent["computation"]["warnings"]) == ("high", [])
         await _patch(api, rent["id"], due_date="2026-09-30")
@@ -456,8 +468,9 @@ async def test_a_month_end_rent_dated_by_hand_keeps_its_day_of_the_month(data_di
     model files a monthly payment with a DateSpec of type "none". It used to stay undated; now the law's
     third working day dates it (Mon 5 Oct, point 8), with a warning to check the lease. The person checks
     it and gives October's rent its date by hand ("Change date" → 31 Oct): their day replaces the law's
-    (point 2). The schedule is (31 Oct, every month): November's rent is due on the 30th, December's on
-    the 31st, and the receipt says the rent repeats since 31 Oct, without the warning. Ordnung counted each
+    (point 2), and as it is later than the law's, its receipt says so (if the lease named no day, the law's
+    would count). The schedule is (31 Oct, every month): November's rent is due on the 30th, December's on
+    the 31st, and the receipt says the rent repeats since 31 Oct, without the warnings. Ordnung counted each
     month from the date before it, so December's rent showed on the 30th, February's on the 28th, then
     March's on the 28th, "since Sun 28 Feb 2027" (the bug the audit fixed for to-dos added by hand, back
     for a letter's undated to-do)."""
@@ -468,6 +481,7 @@ async def test_a_month_end_rent_dated_by_hand_keeps_its_day_of_the_month(data_di
         assert LAW_DEFAULT_WARNING in rent["computation"]["warnings"]
         dated = await _patch(api, rent["id"], due_date="2026-10-31")
         assert (dated["date_spec"]["type"], dated["date_spec"]["date"]) == ("fixed", "2026-10-31")
+        assert dated["computation"]["warnings"][0] == LAW_REPLACED_WARNING
         await _tick(api, "2026-11-01")
         assert (await _item(api, rent["id"]))["due_date"] == "2026-11-30"
         await _tick(api, "2026-12-01")
@@ -476,7 +490,7 @@ async def test_a_month_end_rent_dated_by_hand_keeps_its_day_of_the_month(data_di
         assert december["computation"]["summary"] == (
             "Repeats every month since Sat 31 Oct 2026; next on Thu 31 Dec 2026."
         )
-        assert LAW_DEFAULT_WARNING not in december["computation"]["warnings"]
+        assert not {LAW_DEFAULT_WARNING, LAW_REPLACED_WARNING} & set(december["computation"]["warnings"])
 
 
 async def test_an_instalment_plan_returns_to_its_schedule_after_a_date_set_by_hand(data_dir: Path) -> None:
