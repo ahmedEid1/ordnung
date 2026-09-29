@@ -228,11 +228,15 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   moved to Mon 21 Sep; one month later is Wed 21 Oct."
 - **High-stakes letters** (`routing.py`, `letters.py`, `advice.py`; `docs/deadline-rules.md` § 7):
   code recognises a court payment order, an enforcement order, a dismissal, a landlord's notice and
-  a rent increase request from the model's reading (a written policy; the extraction prompt is
-  unchanged) and files the letter under that kind (`Document.kind`, a `HighStakesKind` only code
-  assigns). `RuleContext.letter_kind` routes its dates (two weeks from the envelope date for court
-  orders, § 692/§ 339 ZPO; § 38 SGB III; the end-of-month consent period, § 558b BGB; two months
-  before the end, § 574b BGB; the 14-day withdrawal that only has to be sent, § 355 BGB), and
+  a rent increase request from the model's reading (a written policy) and files the letter under that
+  kind (`Document.kind`, a `HighStakesKind` only code assigns). Since extraction prompt version 9 the
+  model names the kind itself (`DocumentExtraction.high_stakes_kind`): code's own kind wins when it reads
+  one, else the model's is filed unless the reading rules it out (a sender that is clearly no court, a
+  European order for payment, a contract of another category, an increase that needs no consent); a
+  reading without it (every one recorded before version 9) is filed as before, and the kind the person
+  chose wins over both (ADR 0010, update). `RuleContext.letter_kind` routes its dates (two weeks from the
+  envelope date for court orders, § 692/§ 339 ZPO; § 38 SGB III; the end-of-month consent period,
+  § 558b BGB; two months before the end, § 574b BGB; the 14-day withdrawal that only has to be sent, § 355 BGB), and
   `routing.derived_deadlines` adds the deadlines the law sets that the letter doesn't state (the
   three weeks of § 4 KSchG) as `origin="rule"` to-dos, unless one of the letter's own dates was
   computed under that rule and is not later than the law's (a date that only mentions it, like a
@@ -305,8 +309,9 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   own period the letter counts from its own date (§ 221 ZPO), which the envelope date never moves (unless
   the letter's date is missing: then it is the latest start). Rule to-dos are filed on read and when the person chooses the kind; a
   changed region, postal buffer or arrival day only recomputes those left, so a deleted one stays
-  deleted. An operating-cost statement is recognised on read only, never from a reminder about one, and
-  counts from the statement's own date when a later letter dates it ("Abrechnung 2023 vom 15.11.2024": after
+  deleted. An operating-cost statement is recognised on read only (from its words, or the model's
+  `operating_costs`), never from a reminder about one, and counts from the statement's own date when a
+  later letter dates it ("Abrechnung 2023 vom 15.11.2024": after
   the billing period, of that period's year — never another year's statement's date); a date without its
   year ("unsere Abrechnung vom 15.11.2024", an enclosure's) may be either, so the letter's arrival counts
   but the statement is never called late when that date would make it on time (the card says both

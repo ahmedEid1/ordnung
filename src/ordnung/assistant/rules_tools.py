@@ -827,8 +827,8 @@ def court_order_kind(
     """The court order a court's period belongs to, by the app's own policy
     (:func:`ordnung.rules.routing.classify_letter`) read from what the tool is given: the remedy and the
     period's own words stand in for the letter's reading (its title is not given, so the words must name
-    the order). ``None`` when they don't: the court's letter is then dated as a court's, without an
-    order's statutory period."""
+    the order, and no model names a kind: code's rules decide alone). ``None`` when they don't: the
+    court's letter is then dated as a court's, without an order's statutory period."""
     from ordnung.models import DocumentExtraction, ExtractedItem, ExtractedParty, Remedy
     from ordnung.rules.routing import classify_letter
 

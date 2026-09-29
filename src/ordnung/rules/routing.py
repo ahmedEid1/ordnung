@@ -1,10 +1,33 @@
 """Which rules a high-stakes letter's dates follow (ADR 0002, ADR 0007, ADR 0010).
 
-The model reads, code decides. The extraction prompt and schema stay as they were recorded, so the
-model never names these letters itself; code recognises them from its reading with the three short
-written policies below, and cases they do not decide are documented limitations, not bugs.
+The model reads, code decides. Since extraction prompt version 9 the model names a high-stakes letter
+itself (``high_stakes_kind``, ADR 0010 point 5), and code checks that answer against the rest of the
+reading; the kind and the dates follow the three short written policies below, and cases they do not
+decide are documented limitations, not bugs. Readings recorded before version 9 name no kind, and code
+decides alone, as it always did.
 
-**1. The kind of letter** (:func:`classify_letter`), from structured parts of the reading first:
+**1. The kind of letter** (:func:`classify_letter`): the kind code reads from the reading (the table
+below) weighed against the one the model names:
+
+* the model names none (every reading recorded before version 9): code's kind, or none;
+* code reads one: code's kind, whether the model names the same one or another — code's is the structured
+  decision the review rounds checked;
+* only the model names one: the model's, unless the rest of the reading rules it out (:func:`_vetoed`) — a
+  court order whose sender is clearly no court (read as a company, a landlord, a bank … under a name that
+  names no court, or a bailiff or a court cashier) or that is a European order for payment; a dismissal or
+  a landlord's notice whose contract is of another category (a gym, a job ticket; a tenancy for a
+  dismissal, a job for a landlord's notice), decided by the contract first as below; a rent increase whose
+  own quote or title names another kind of increase, or that a quote says needs no consent (the vetoes of
+  ``rent_increase`` below). The model's ``operating_costs`` is never filed: a statement is recognised on
+  read (below).
+
+A veto only takes the model's kind away when the reading says the letter is something else: a court named
+only in English, a court order whose reading has no remedy and no objection date, or a termination the
+reading doesn't record is filed under the kind the model names (misses ADR 0010 had accepted), and a kind
+that brings the law's deadlines is the safe side. The kind the person chose on the letter's page wins over
+both (:func:`ordnung.ingest.plan.filed_kind`).
+
+Code's own kind, from structured parts of the reading first:
 
 =========================  ============================================================================
 ``court_payment_order``    three signals, with no list of exceptions: (a) the sender is a court
@@ -31,11 +54,10 @@ written policies below, and cases they do not decide are documented limitations,
                            (§ 46a Abs. 3, § 59 ArbGG; :func:`is_labour_court`). A debt collector
                            threatening an order is not a court, so its letter stays a reminder, and a
                            European order for payment (EuMahnVO: 30 days, an Einspruch, no enforcement
-                           order) is no Mahnbescheid: it keeps the model's kind. Anything
-                           these signals don't decide keeps the model's kind; the person can file it as a
-                           court order on the letter's page. The next extraction prompt should let the
-                           model name the order itself (a ``letter_kind`` field); until then (the
-                           prompts and their recorded answers stay fixed) code decides as above.
+                           order) is no Mahnbescheid: it keeps the model's ordinary kind, whatever
+                           ``high_stakes_kind`` says. Anything else these signals don't decide is left to
+                           the kind the model names (above); the person can file it as a court order on
+                           the letter's page.
 ``dismissal``              the reading reports a termination by the other side
                            (``termination_by_provider``) about a job; what it ends is decided by the
                            contract it names first (``employment``; any other category but ``other``, a
@@ -60,10 +82,11 @@ written policies below, and cases they do not decide are documented limitations,
 
 These are the letters whose *dates* depend on their kind, so the kind is filed with the letter. An
 operating-cost statement's dates don't (its objection period is an ordinary twelve months), so it
-is recognised on read for its card only (:func:`names_statement`: the reading names a Betriebs-, Heiz- or
-Nebenkostenabrechnung in its title, or with a tenancy or a billing period; the model didn't read it as a
-reminder (``dunning``), which quotes an old statement without being it; and the sender is not a utility
-or a public body, which may ask for a statement without sending one). A later letter about a statement
+is recognised on read for its card only (:func:`names_statement`: the model names it one
+(``operating_costs``), or the reading names a Betriebs-, Heiz- or Nebenkostenabrechnung in its title, or
+with a tenancy or a billing period; either way the model didn't read it as a reminder (``dunning``), which
+quotes an old statement without being it, and the sender is not a utility or a public body, which may ask
+for a statement without sending one). A later letter about a statement
 that isn't a reminder (a reply to objections) may still be recognised: its card and its payments count
 from the statement's own date when the letter gives one with its year ("Abrechnung 2023 vom 15.11.2024" —
 the statement whose billing period it names, :func:`~ordnung.rules.advice.statement_arrival`), never from
@@ -73,8 +96,9 @@ may still file a letter as ``operating_costs``.
 
 "The reading names" means its title, summary, quotes, date wordings and legal bases, never the
 model's advice prose (``explanation``, ``warnings``), which may mention a Mahnbescheid as a threat.
-Missed: a letter whose reading lacks these signals (e.g. no termination recorded) keeps the model's
-kind; the person can set the kind on the letter's page, and its dates are then recomputed.
+Missed by code: a letter whose reading lacks these signals (e.g. no termination recorded) gets the kind
+the model names, if any, else keeps the model's ordinary kind; the person can set the kind on the letter's
+page, and its dates are then recomputed.
 
 **2. The rule of a date** (:func:`kind_statute`, :func:`special_rule`): a date follows the statute
 its ``legal_basis`` or wording cites, if its nature fits that statute (a date that isn't a
@@ -136,7 +160,15 @@ from datetime import date
 from typing import Literal
 
 from ordnung.ingest.verify import parse_dates
-from ordnung.models import DateNature, DateSpec, DocumentExtraction, HighStakesKind, LetterKind, Priority
+from ordnung.models import (
+    DateNature,
+    DateSpec,
+    DocumentExtraction,
+    ExtractedParty,
+    HighStakesKind,
+    LetterKind,
+    Priority,
+)
 from ordnung.rules.explain import fmt_date
 from ordnung.rules.tenancy import month_end, next_permissible_end, notice_objection_deadline
 
@@ -456,9 +488,15 @@ def _stated_remedy(extraction: DocumentExtraction) -> HighStakesKind | None:
     return "court_payment_order" if payment_order else "enforcement_order"
 
 
+def _european_order(extraction: DocumentExtraction) -> bool:
+    """Whether the reading names a European order for payment (:data:`_EUROPEAN_ORDER`): no German court
+    order, whatever the model calls it."""
+    return bool(_EUROPEAN_ORDER.search(_reading_text(extraction)))
+
+
 def _court_order(extraction: DocumentExtraction) -> HighStakesKind | None:
     """Which court order a court's letter is (policy 1: respondent, then title, else remedy), or ``None``."""
-    if not _respondent(extraction) or _EUROPEAN_ORDER.search(_reading_text(extraction)):
+    if not _respondent(extraction) or _european_order(extraction):
         return None
     named = _ORDER_TITLE.search(extraction.title)
     if named is not None:
@@ -497,7 +535,7 @@ def is_court(name: str, kind: str | None = None) -> bool:
     sender's ``kind`` is an authority or ``other`` — a retailer "LG Electronics", a
     landlord "OLG Immobilien", or a name of unknown kind (``None``: a recipient typed in, see
     :func:`may_be_court`) is no court — and is no bailiff or court cashier. Not recognised: a court named
-    only in English."""
+    only in English (the kind the model names covers its orders, policy 1)."""
     if _NOT_A_COURT.search(name):
         return False
     if _COURT_SENDER.search(name):
@@ -528,7 +566,19 @@ def is_social_court(name: str, kind: str | None = None) -> bool:
 
 
 def classify_letter(extraction: DocumentExtraction) -> HighStakesKind | None:
-    """The high-stakes kind of a letter from the model's reading, or ``None`` (policy 1 above)."""
+    """The high-stakes kind a letter is filed under, or ``None`` (policy 1 above): the kind code reads
+    (:func:`_classify_by_reading`) when it reads one or the model names none, else the one the model names
+    (``high_stakes_kind``) unless the rest of the reading rules it out (:func:`_vetoed`). The model's
+    ``operating_costs`` is never filed: a statement is recognised on read (:func:`names_statement`)."""
+    code = _classify_by_reading(extraction)
+    model = extraction.high_stakes_kind
+    if code is not None or model is None or model == "operating_costs" or _vetoed(extraction, model):
+        return code
+    return model
+
+
+def _classify_by_reading(extraction: DocumentExtraction) -> HighStakesKind | None:
+    """The high-stakes kind code reads from the model's reading, or ``None`` (the table of policy 1)."""
     sender = extraction.sender
     if sender is not None and is_court(sender.name, sender.kind):
         court_order = _court_order(extraction)
@@ -553,40 +603,78 @@ def _terminated(extraction: DocumentExtraction) -> HighStakesKind | None:
     return _TERMINATED.get(extraction.kind) or _TERMINATED.get(sender or "")
 
 
+def _vetoed(extraction: DocumentExtraction, kind: HighStakesKind) -> bool:
+    """Whether the rest of the reading rules out the kind the model names (policy 1): a court order from a
+    sender that is clearly no court (:func:`_no_court`) or a European order for payment; a rent increase of
+    a kind that needs no consent (:func:`_needs_no_consent`); a dismissal or a landlord's notice about a
+    contract of another category (:func:`_other_contract`)."""
+    if kind in ("court_payment_order", "enforcement_order"):
+        return _no_court(extraction.sender) or _european_order(extraction)
+    if kind == "rent_increase":
+        return _needs_no_consent(extraction)
+    return _other_contract(extraction, kind)
+
+
+def _no_court(sender: ExtractedParty | None) -> bool:
+    """Whether a letter's sender is clearly no court: a bailiff or a court cashier (:data:`_NOT_A_COURT`),
+    or a sender read as something no court is read as — a company (a debt collector), a landlord, a bank … —
+    under a name that names no court (:func:`is_court`). A sender read as an authority or ``other`` may be a
+    court whose name code doesn't recognise (one named only in English), and a letter without a sender may
+    be a court's."""
+    if sender is None:
+        return False
+    return not is_court(sender.name, sender.kind) and (
+        sender.kind not in _COURT_KINDS or bool(_NOT_A_COURT.search(sender.name))
+    )
+
+
+def _other_contract(extraction: DocumentExtraction, kind: HighStakesKind) -> bool:
+    """Whether the contract the reading names ends something other than ``kind`` (a dismissal or a
+    landlord's notice): the contract decides first, as in :func:`_terminated` — a gym or a job ticket ends
+    neither, a tenancy no job, a job no tenancy; a contract of category ``other`` says nothing."""
+    category = extraction.contract.category if extraction.contract else None
+    return category not in (None, "other") and _TERMINATED.get(category) != kind
+
+
 def _consent_request(extraction: DocumentExtraction) -> bool:
-    """Whether a rent increase asks for consent (policy 1): its quoted wording asks for it, its own quote
-    and its title name no other kind of increase — graduated or index rent, or a § 559 or § 560 increase in
-    the title; operating-cost prepayments or §§ 559–560 in its own quote, a prepayment adjustment in the
-    title or a modernisation only when the increase's own quote doesn't ask for consent itself (a § 558
-    request names a modernised bathroom as a feature, quotes § 558 Abs. 1 S. 3 BGB on §§ 559–560 and may
-    adjust the prepayments at the same time) — and nothing it quotes says no consent is needed."""
+    """Whether a rent increase asks for consent (policy 1): its quoted wording asks for it, and it is of no
+    kind that needs none (:func:`_needs_no_consent`)."""
+    return bool(_CONSENT.search(_quoted_text(extraction))) and not _needs_no_consent(extraction)
+
+
+def _needs_no_consent(extraction: DocumentExtraction) -> bool:
+    """Whether a rent increase is of a kind that needs no consent (policy 1): its own quote or its title
+    names another kind of increase — graduated or index rent, or a § 559 or § 560 increase in the title;
+    operating-cost prepayments or §§ 559–560 in its own quote, a prepayment adjustment in the title or a
+    modernisation only when the increase's own quote doesn't ask for consent itself (a § 558 request names a
+    modernised bathroom as a feature, quotes § 558 Abs. 1 S. 3 BGB on §§ 559–560 and may adjust the
+    prepayments at the same time) — or something it quotes says no consent is needed."""
     quoted = _quoted_text(extraction)
     own = extraction.change.quote if extraction.change is not None else ""
     modernisation = bool(_MODERNISATION.search(f"{own}\n{extraction.title}")) and not _CONSENT.search(own)
     asks = bool(_ASKS_CONSENT.search(own))
     costs = bool(_COST_INCREASE.search(own) or _PREPAYMENT_TITLE.search(extraction.title))
-    return (
-        bool(_CONSENT.search(quoted))
-        and not _OTHER_INCREASE.search(own)
-        and not _OTHER_INCREASE_TITLE.search(extraction.title)
-        and not (costs and not asks)
-        and not modernisation
-        and not _NO_CONSENT_NEEDED.search(quoted)
+    return bool(
+        _OTHER_INCREASE.search(own)
+        or _OTHER_INCREASE_TITLE.search(extraction.title)
+        or (costs and not asks)
+        or modernisation
+        or _NO_CONSENT_NEEDED.search(quoted)
     )
 
 
 def names_statement(extraction: DocumentExtraction) -> bool:
-    """Whether a reading is an operating-cost statement (its card is worked out on read, policy 1): it
-    names one — in its title, or with a tenancy or a billing period — isn't a reminder (a reminder about
-    an old statement's back-payment quotes the statement without being it) and doesn't come from a
-    utility or a public body."""
-    text = _reading_text(extraction)
+    """Whether a reading is an operating-cost statement (its card is worked out on read, policy 1): the
+    model names it one (``high_stakes_kind``) or the reading does — in its title, or with a tenancy or a
+    billing period —, and either way it isn't a reminder (a reminder about an old statement's back-payment
+    quotes the statement without being it) and doesn't come from a utility or a public body."""
     sender = extraction.sender
-    if (
-        extraction.kind == "dunning"
-        or not _OPERATING_COSTS.search(text)
-        or (sender is not None and sender.kind in _NOT_A_LANDLORD)
-    ):
+    if extraction.kind == "dunning" or (sender is not None and sender.kind in _NOT_A_LANDLORD):
+        return False
+    if extraction.high_stakes_kind == "operating_costs":
+        return True
+    text = _reading_text(extraction)
+    if not _OPERATING_COSTS.search(text):
         return False
     return (
         bool(_OPERATING_COSTS.search(extraction.title))
