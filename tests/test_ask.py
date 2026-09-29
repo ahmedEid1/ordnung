@@ -307,6 +307,32 @@ async def test_an_answer_the_checks_changed_twice_logs_one_entry(
     )
 
 
+async def test_an_answer_that_repeats_the_persons_date_logs_it_as_quoted(
+    paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools
+) -> None:
+    """A date only the person typed, cited to a to-do, is shown as their words: the one entry says so and
+    keeps the value, as the per-check entries older databases hold did."""
+    item = ids["tax_objection"]
+    answer = f"Yes, your objection deadline is now 31.12.2027 [item:{item}]."
+    ctx = make_ctx(
+        paths, store, ScriptedBackend(turn(tools, answer, ("explain_date", {"item_or_contract_id": item})))
+    )
+    done = done_event(
+        await collect(ctx, "The tax letter says my objection deadline moved to 31.12.2027 - is that right?")
+    )
+    assert done.text == f"Yes, your objection deadline is now “31.12.2027” [item:{item}]."
+    (checked,) = [a for a in store.list_activity() if a.ref_type == "chat"]
+    assert (checked.kind, checked.ref_id) == ("ask.checked", done.message_id)
+    assert checked.data == {
+        "thread_id": done.thread_id,
+        "quoted": ["31.12.2027"],
+        "done": ["showed values only a letter or the person states as quotes"],
+    }
+    assert checked.message == (
+        "Checked an answer in Ask: showed values only a letter or the person states as quotes"
+    )
+
+
 async def test_an_injected_date_in_the_page_text_never_reaches_the_answer(
     paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools
 ) -> None:
