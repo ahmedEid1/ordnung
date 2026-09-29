@@ -1,0 +1,152 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "9.7.1",
+    "cache_key": "{\"doc\":\"b99f7dd5b88171870999c4d7b2dbe973c53894867497373cd65e8587bb32d200\",\"language\":\"en\",\"pages\":[[1,\"text\"],[2,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_q6fqvndrg5rr"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Muster Versicherung AG (insurer)\n- Musterstadt Verkehrsbetriebe GmbH (transport)\n- Stadtwerke M"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"title\":\"Fixed-term working student contract with Muster Tech GmbH\",\"summary\":\"Muster Tech GmbH issued a fixed-term employment contract for a working student (Werkstudent) in Data Engineering. It runs from 1 April 2026 to 31 March 2027 at €16.50 gross per hour, 20 hours a week.\",\"explanation\":\"This is your signed employment contract as a working student. It ends automatically on 31 March 2027 without any notice being needed. The first three months were a probation period with two weeks' notice. You must show a current enrolment certificate (Immatrikulationsbescheinigung) at the start of each semester and tell the employer immediately if your studies end or are interrupted. Claims from the job expire if not asserted in text form within three months of falling due. Any termination must be in writing on paper. Keep the contract safe. Seek advice if you are unsure about your rights.\",\"case_title\":\"Muster Tech working student contract\",\"area\":\"work\",\"document_date\":\"2026-03-20\",\"language\":\"German\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Muster Tech GmbH\",\"kind\":\"employer\",\"address\":\"Innovationsweg 42, 12345 Musterstadt\",\"phone\":\"0123 4242-0\",\"website\":\"www.mustertech.example\"},\"references\":[{\"label\":\"Personalnummer\",\"value\":\"10482\"}],\"contract\":{\"name\":\"Working student employment contract, Muster Tech GmbH\",\"category\":\"employment\",\"concluded_date\":\"2026-03-20\",\"start_date\":\"2026-04-01\",\"end_date\":\"2027-03-31\",\"is_consumer\":true,\"is_basic_supply\":false,\"initial_term_months\":12,\"quotes\":[\"Das Arbeitsverhältnis beginnt am 01.04.2026 und ist bis zum 31.03.2027 befristet.\",\"Der Arbeitnehmer erhält eine Vergütung von 16,50 € brutto je geleisteter Arbeitsstunde.\",\"Während der Probezeit kann das Arbeitsverhältnis von beiden Seiten mit einer Frist von zwei Wochen gekündigt werden (§ 622 Abs. 3 BGB).\"]},\"items\":[{\"kind\":\"task\",\"title\":\"Submit enrolment certificate each semester\",\"date\":{\"type\":\"none\",\"text\":\"zu Beginn jedes Semesters\",\"nature\":\"declaration\",\"shift_rule\":\"none\"},\"quote\":\"Er legt zu Beginn jedes Semesters eine aktuelle Immatrikulationsbescheinigung vor und teilt das Ende oder eine Unterbrechung des Studiums unverzüglich mit.\",\"action\":\"Give the employer a current enrolment certificate (Immatrikulationsbescheinigung) at the start of every semester, and report immediately if studies end or are interrupted.\",\"priority\":\"normal\"},{\"kind\":\"payment\",\"title\":\"Monthly salary\",\"date\":{\"type\":\"none\",\"text\":\"spätestens am letzten Bankarbeitstag des Monats\",\"nature\":\"payment\",\"shift_rule\":\"none\"},\"quote\":\"die Vergütung wird spätestens am letzten Bankarbeitstag des Monats auf ein vom Arbeitnehmer benanntes Konto überwiesen.\",\"action\":\"Check that your salary (€16.50 gross per hour worked) arrives by the last bank working day of each month.\",\"direction\":\"in\",\"currency\":\"EUR\",\"recurrence\":{\"interval\":1,\"unit\":\"months\"},\"priority\":\"low\"}],\"key_facts\":[{\"label\":\"Start date (Beginn)\",\"value\":\"01.04.2026\",\"quote\":\"Das Arbeitsverhältnis beginnt am 01.04.2026 und ist bis zum 31.03.2027 befristet.\"},{\"label\":\"End date (befristet bis)\",\"value\":\"31.03.2027\",\"quote\":\"Es endet mit Ablauf des 31.03.2027, ohne dass es einer Kündigung bedarf.\"},{\"label\":\"Hourly pay (Vergütung)\",\"value\":\"16,50 € brutto\",\"quote\":\"Der Arbeitnehmer erhält eine Vergütung von 16,50 € brutto je geleisteter Arbeitsstunde.\"},{\"label\":\"Weekly working hours (Arbeitszeit)\",\"value\":\"20 Stunden\",\"quote\":\"Die regelmäßige wöchentliche Arbeitszeit beträgt 20 Stunden.\"},{\"label\":\"Probation (Probezeit)\",\"value\":\"drei Monate\",\"quote\":\"Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit.\"},{\"label\":\"Annual leave (Urlaub)\",\"value\":\"25 Arbeitstage\",\"quote\":\"Der Arbeitnehmer hat Anspruch auf 25 Arbeitstage Erholungsurlaub im Kalenderjahr, bezogen auf eine Fünf-Tage-Woche.\"},{\"label\":\"Claims expiry (Ausschlussfristen)\",\"value\":\"drei Monate nach Fälligkeit\",\"quote\":\"Ansprüche aus dem Arbeitsverhältnis verfallen, wenn sie nicht innerhalb von drei Monaten nach Fälligkeit in Textform gegenüber der anderen Vertragspartei geltend gemacht werden.\"},{\"label\":\"Form of termination (Kündigung)\",\"value\":\"Schriftform, elektronische Form ausgeschlossen\",\"quote\":\"Die Kündigung bedarf der Schriftform (§ 623 BGB); die elektronische Form ist ausgeschlossen.\"}],\"remedy\":{\"type\":\"none\"},\"tax_relevant\":true,\"tax_note\":\"Employment income as a working student is reportable in your tax return; keep the contract and payslips.\",\"urgency\":\"low\",\"warnings\":[],\"high_stakes_kind\":null}",
+    "data": {
+      "kind": "employment",
+      "title": "Fixed-term working student contract with Muster Tech GmbH",
+      "summary": "Muster Tech GmbH issued a fixed-term employment contract for a working student (Werkstudent) in Data Engineering. It runs from 1 April 2026 to 31 March 2027 at €16.50 gross per hour, 20 hours a week.",
+      "explanation": "This is your signed employment contract as a working student. It ends automatically on 31 March 2027 without any notice being needed. The first three months were a probation period with two weeks' notice. You must show a current enrolment certificate (Immatrikulationsbescheinigung) at the start of each semester and tell the employer immediately if your studies end or are interrupted. Claims from the job expire if not asserted in text form within three months of falling due. Any termination must be in writing on paper. Keep the contract safe. Seek advice if you are unsure about your rights.",
+      "case_title": "Muster Tech working student contract",
+      "area": "work",
+      "document_date": "2026-03-20",
+      "language": "German",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Muster Tech GmbH",
+        "kind": "employer",
+        "address": "Innovationsweg 42, 12345 Musterstadt",
+        "phone": "0123 4242-0",
+        "website": "www.mustertech.example"
+      },
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "10482"
+        }
+      ],
+      "contract": {
+        "name": "Working student employment contract, Muster Tech GmbH",
+        "category": "employment",
+        "concluded_date": "2026-03-20",
+        "start_date": "2026-04-01",
+        "end_date": "2027-03-31",
+        "is_consumer": true,
+        "is_basic_supply": false,
+        "initial_term_months": 12,
+        "quotes": [
+          "Das Arbeitsverhältnis beginnt am 01.04.2026 und ist bis zum 31.03.2027 befristet.",
+          "Der Arbeitnehmer erhält eine Vergütung von 16,50 € brutto je geleisteter Arbeitsstunde.",
+          "Während der Probezeit kann das Arbeitsverhältnis von beiden Seiten mit einer Frist von zwei Wochen gekündigt werden (§ 622 Abs. 3 BGB)."
+        ]
+      },
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit enrolment certificate each semester",
+          "date": {
+            "type": "none",
+            "text": "zu Beginn jedes Semesters",
+            "nature": "declaration",
+            "shift_rule": "none"
+          },
+          "quote": "Er legt zu Beginn jedes Semesters eine aktuelle Immatrikulationsbescheinigung vor und teilt das Ende oder eine Unterbrechung des Studiums unverzüglich mit.",
+          "action": "Give the employer a current enrolment certificate (Immatrikulationsbescheinigung) at the start of every semester, and report immediately if studies end or are interrupted.",
+          "priority": "normal"
+        },
+        {
+          "kind": "payment",
+          "title": "Monthly salary",
+          "date": {
+            "type": "none",
+            "text": "spätestens am letzten Bankarbeitstag des Monats",
+            "nature": "payment",
+            "shift_rule": "none"
+          },
+          "quote": "die Vergütung wird spätestens am letzten Bankarbeitstag des Monats auf ein vom Arbeitnehmer benanntes Konto überwiesen.",
+          "action": "Check that your salary (€16.50 gross per hour worked) arrives by the last bank working day of each month.",
+          "direction": "in",
+          "currency": "EUR",
+          "recurrence": {
+            "interval": 1,
+            "unit": "months"
+          },
+          "priority": "low"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Start date (Beginn)",
+          "value": "01.04.2026",
+          "quote": "Das Arbeitsverhältnis beginnt am 01.04.2026 und ist bis zum 31.03.2027 befristet."
+        },
+        {
+          "label": "End date (befristet bis)",
+          "value": "31.03.2027",
+          "quote": "Es endet mit Ablauf des 31.03.2027, ohne dass es einer Kündigung bedarf."
+        },
+        {
+          "label": "Hourly pay (Vergütung)",
+          "value": "16,50 € brutto",
+          "quote": "Der Arbeitnehmer erhält eine Vergütung von 16,50 € brutto je geleisteter Arbeitsstunde."
+        },
+        {
+          "label": "Weekly working hours (Arbeitszeit)",
+          "value": "20 Stunden",
+          "quote": "Die regelmäßige wöchentliche Arbeitszeit beträgt 20 Stunden."
+        },
+        {
+          "label": "Probation (Probezeit)",
+          "value": "drei Monate",
+          "quote": "Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit."
+        },
+        {
+          "label": "Annual leave (Urlaub)",
+          "value": "25 Arbeitstage",
+          "quote": "Der Arbeitnehmer hat Anspruch auf 25 Arbeitstage Erholungsurlaub im Kalenderjahr, bezogen auf eine Fünf-Tage-Woche."
+        },
+        {
+          "label": "Claims expiry (Ausschlussfristen)",
+          "value": "drei Monate nach Fälligkeit",
+          "quote": "Ansprüche aus dem Arbeitsverhältnis verfallen, wenn sie nicht innerhalb von drei Monaten nach Fälligkeit in Textform gegenüber der anderen Vertragspartei geltend gemacht werden."
+        },
+        {
+          "label": "Form of termination (Kündigung)",
+          "value": "Schriftform, elektronische Form ausgeschlossen",
+          "quote": "Die Kündigung bedarf der Schriftform (§ 623 BGB); die elektronische Form ist ausgeschlossen."
+        }
+      ],
+      "remedy": {
+        "type": "none"
+      },
+      "tax_relevant": true,
+      "tax_note": "Employment income as a working student is reportable in your tax return; keep the contract and payslips.",
+      "urgency": "low",
+      "warnings": [],
+      "high_stakes_kind": null
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4988,
+      "cache_read_tokens": 18768,
+      "cache_creation_tokens": 6742,
+      "cost_usd": 0.0806096,
+      "duration_ms": 25726,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

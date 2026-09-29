@@ -1,0 +1,109 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "9.7.1",
+    "cache_key": "{\"doc\":\"0b61646ac28280c6e0332ca43dfec19a275af239ac49c46211f557f3fa1bbb14\",\"language\":\"en\",\"pages\":[[1,\"transcript\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_1dgp8tp2ga0c"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster)\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)"
+  },
+  "response": {
+    "text": "{\"kind\":\"identity_document\",\"title\":\"Passport of Sam Rivera (expires 10 February 2027)\",\"summary\":\"Passport of the Republic of Examplia issued to Sam Rivera, number X1234567. It was issued on 11 February 2017 and expires on 10 February 2027. The document is marked SPECIMEN.\",\"explanation\":\"This is your passport. It expires on 10 February 2027, about four months from now. A valid passport is usually needed for your residence permit and for travel, so plan to renew it with your country's embassy or consulate well before then, as renewal can take weeks. Check whether your residence permit is tied to this passport, and tell the immigration office (Ausländerbehörde) once you have a new one. The page is marked \\\"SPECIMEN\\\", so check whether this is a real document or a sample copy.\",\"case_title\":\"Passport\",\"area\":\"residence\",\"language\":\"English/French\",\"recipient_name\":\"Sam Rivera\",\"urgency\":\"normal\",\"tax_relevant\":false,\"sender\":{\"name\":\"Ministry of Interior, Republic of Examplia\",\"kind\":\"authority\"},\"items\":[{\"kind\":\"expiry\",\"title\":\"Passport expires\",\"date\":{\"type\":\"fixed\",\"date\":\"2027-02-10\",\"text\":\"10 FEB / FÉV 2027\",\"nature\":\"other\",\"shift_rule\":\"none\"},\"quote\":\"Date of expiry / Date d'expiration\",\"action\":\"Renew the passport before it expires (contact your country's embassy or consulate)\",\"consequence\":\"An expired passport can cause problems with your residence permit and with travel\",\"priority\":\"high\"}],\"key_facts\":[{\"label\":\"Passport number (Passport No.)\",\"value\":\"X1234567\",\"quote\":\"X1234567\"},{\"label\":\"Date of issue (Date of issue)\",\"value\":\"11 FEB / FÉV 2017\",\"quote\":\"11 FEB / FÉV 2017\"},{\"label\":\"Date of expiry (Date of expiry)\",\"value\":\"10 FEB / FÉV 2027\",\"quote\":\"10 FEB / FÉV 2027\"},{\"label\":\"Date of birth (Date of birth)\",\"value\":\"14 MAR / MARS 2000\",\"quote\":\"14 MAR / MARS 2000\"}],\"references\":[{\"label\":\"Passport No.\",\"value\":\"X1234567\"}],\"warnings\":[\"The document is marked SPECIMEN, so it may be a sample rather than a valid passport.\"]}",
+    "data": {
+      "kind": "identity_document",
+      "title": "Passport of Sam Rivera (expires 10 February 2027)",
+      "summary": "Passport of the Republic of Examplia issued to Sam Rivera, number X1234567. It was issued on 11 February 2017 and expires on 10 February 2027. The document is marked SPECIMEN.",
+      "explanation": "This is your passport. It expires on 10 February 2027, about four months from now. A valid passport is usually needed for your residence permit and for travel, so plan to renew it with your country's embassy or consulate well before then, as renewal can take weeks. Check whether your residence permit is tied to this passport, and tell the immigration office (Ausländerbehörde) once you have a new one. The page is marked \"SPECIMEN\", so check whether this is a real document or a sample copy.",
+      "case_title": "Passport",
+      "area": "residence",
+      "language": "English/French",
+      "recipient_name": "Sam Rivera",
+      "urgency": "normal",
+      "tax_relevant": false,
+      "sender": {
+        "name": "Ministry of Interior, Republic of Examplia",
+        "kind": "authority"
+      },
+      "items": [
+        {
+          "kind": "expiry",
+          "title": "Passport expires",
+          "date": {
+            "type": "fixed",
+            "date": "2027-02-10",
+            "text": "10 FEB / FÉV 2027",
+            "nature": "other",
+            "shift_rule": "none"
+          },
+          "quote": "Date of expiry / Date d'expiration",
+          "action": "Renew the passport before it expires (contact your country's embassy or consulate)",
+          "consequence": "An expired passport can cause problems with your residence permit and with travel",
+          "priority": "high"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Passport number (Passport No.)",
+          "value": "X1234567",
+          "quote": "X1234567"
+        },
+        {
+          "label": "Date of issue (Date of issue)",
+          "value": "11 FEB / FÉV 2017",
+          "quote": "11 FEB / FÉV 2017"
+        },
+        {
+          "label": "Date of expiry (Date of expiry)",
+          "value": "10 FEB / FÉV 2027",
+          "quote": "10 FEB / FÉV 2027"
+        },
+        {
+          "label": "Date of birth (Date of birth)",
+          "value": "14 MAR / MARS 2000",
+          "quote": "14 MAR / MARS 2000"
+        }
+      ],
+      "references": [
+        {
+          "label": "Passport No.",
+          "value": "X1234567"
+        }
+      ],
+      "warnings": [
+        "The document is marked SPECIMEN, so it may be a sample rather than a valid passport."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1900,
+      "cache_read_tokens": 17035,
+      "cache_creation_tokens": 3197,
+      "cost_usd": 0.035203,
+      "duration_ms": 12885,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "key_facts",
+        "input": {},
+        "result": "<tool_use_error>Error: No such tool available: key_facts</tool_use_error>"
+      },
+      {
+        "name": "references",
+        "input": {},
+        "result": "<tool_use_error>Error: No such tool available: references</tool_use_error>"
+      },
+      {
+        "name": "warnings",
+        "input": {},
+        "result": "<tool_use_error>Error: No such tool available: warnings</tool_use_error>"
+      }
+    ]
+  }
+}

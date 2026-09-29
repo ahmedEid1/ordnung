@@ -1,0 +1,110 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "9.7.1",
+    "cache_key": "{\"doc\":\"7a5632203cb896fb62623668accbc3d578136d383ba3474874ae8175c52c0bf5\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_f9b3481wq2bf"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)\n- Hochschule Musterstadt (university)\n- Muster BKK"
+  },
+  "response": {
+    "text": "{\"kind\":\"broadcasting_fee\",\"title\":\"Broadcasting fee payment request, Oct–Dec 2026\",\"case_title\":\"Broadcasting fee (Rundfunkbeitrag)\",\"area\":\"home\",\"language\":\"German\",\"document_date\":\"2026-09-15\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Beitragsservice Musterstadt\",\"kind\":\"public_broadcaster\",\"address\":\"12399 Musterstadt\",\"phone\":\"0123 9900-500\",\"website\":\"www.rundfunkbeitrag-musterstadt.example\"},\"summary\":\"The Beitragsservice Musterstadt requests the broadcasting fee of €55.08 for October to December 2026, due on 15 November 2026.\",\"explanation\":\"This is a payment request for the quarterly broadcasting fee (Rundfunkbeitrag) for your flat. The monthly fee is €18.36, so three months come to €55.08. Transfer it by 15 November 2026 to the account printed in the letter, using only the contribution number as the reference. You can set up a SEPA direct debit to avoid future reminders. If you receive certain social benefits, such as BAföG, you can apply for an exemption. The letter contains no remedy instructions.\",\"urgency\":\"normal\",\"tax_relevant\":false,\"items\":[{\"kind\":\"payment\",\"title\":\"Pay broadcasting fee Oct–Dec 2026\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-11-15\",\"text\":\"fällig am 15.11.2026\",\"nature\":\"payment\",\"shift_rule\":\"auto\"},\"quote\":\"Der Betrag von 55,08 € für den Zeitraum 10.2026 bis 12.2026 ist fällig am 15.11.2026.\",\"amount\":55.08,\"currency\":\"EUR\",\"direction\":\"out\",\"action\":\"Transfer €55.08 to the Beitragsservice using the contribution number as the reference, or set up a direct debit.\",\"consequence\":null,\"priority\":\"normal\"}],\"key_facts\":[{\"label\":\"Monthly fee (Monatsbeitrag)\",\"value\":\"18,36 €\",\"quote\":\"10.2026 – 12.2026   18,36 €   55,08 €   15.11.2026\"},{\"label\":\"Amount due (Betrag)\",\"value\":\"55,08 €\",\"quote\":\"Der Betrag von 55,08 € für den Zeitraum 10.2026 bis 12.2026 ist fällig am 15.11.2026.\"},{\"label\":\"Due date (fällig am)\",\"value\":\"15.11.2026\",\"quote\":\"Der Betrag von 55,08 € für den Zeitraum 10.2026 bis 12.2026 ist fällig am 15.11.2026.\"},{\"label\":\"Reference (Verwendungszweck)\",\"value\":\"512345678\",\"quote\":\"Verwendungszweck: 512345678 (bitte nur die Beitragsnummer angeben)\"}],\"references\":[{\"label\":\"Beitragsnummer\",\"value\":\"512 345 678\"}],\"payment\":{\"iban\":\"DE57123489000055081836\",\"iban_valid\":null,\"payee\":\"Beitragsservice Musterstadt\",\"reference\":\"512345678\"},\"remedy\":{\"type\":\"none\"},\"warnings\":[],\"contract\":null,\"change\":null,\"high_stakes_kind\":null}",
+    "data": {
+      "kind": "broadcasting_fee",
+      "title": "Broadcasting fee payment request, Oct–Dec 2026",
+      "case_title": "Broadcasting fee (Rundfunkbeitrag)",
+      "area": "home",
+      "language": "German",
+      "document_date": "2026-09-15",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Beitragsservice Musterstadt",
+        "kind": "public_broadcaster",
+        "address": "12399 Musterstadt",
+        "phone": "0123 9900-500",
+        "website": "www.rundfunkbeitrag-musterstadt.example"
+      },
+      "summary": "The Beitragsservice Musterstadt requests the broadcasting fee of €55.08 for October to December 2026, due on 15 November 2026.",
+      "explanation": "This is a payment request for the quarterly broadcasting fee (Rundfunkbeitrag) for your flat. The monthly fee is €18.36, so three months come to €55.08. Transfer it by 15 November 2026 to the account printed in the letter, using only the contribution number as the reference. You can set up a SEPA direct debit to avoid future reminders. If you receive certain social benefits, such as BAföG, you can apply for an exemption. The letter contains no remedy instructions.",
+      "urgency": "normal",
+      "tax_relevant": false,
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay broadcasting fee Oct–Dec 2026",
+          "date": {
+            "type": "fixed",
+            "date": "2026-11-15",
+            "text": "fällig am 15.11.2026",
+            "nature": "payment",
+            "shift_rule": "auto"
+          },
+          "quote": "Der Betrag von 55,08 € für den Zeitraum 10.2026 bis 12.2026 ist fällig am 15.11.2026.",
+          "amount": 55.08,
+          "currency": "EUR",
+          "direction": "out",
+          "action": "Transfer €55.08 to the Beitragsservice using the contribution number as the reference, or set up a direct debit.",
+          "consequence": null,
+          "priority": "normal"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Monthly fee (Monatsbeitrag)",
+          "value": "18,36 €",
+          "quote": "10.2026 – 12.2026   18,36 €   55,08 €   15.11.2026"
+        },
+        {
+          "label": "Amount due (Betrag)",
+          "value": "55,08 €",
+          "quote": "Der Betrag von 55,08 € für den Zeitraum 10.2026 bis 12.2026 ist fällig am 15.11.2026."
+        },
+        {
+          "label": "Due date (fällig am)",
+          "value": "15.11.2026",
+          "quote": "Der Betrag von 55,08 € für den Zeitraum 10.2026 bis 12.2026 ist fällig am 15.11.2026."
+        },
+        {
+          "label": "Reference (Verwendungszweck)",
+          "value": "512345678",
+          "quote": "Verwendungszweck: 512345678 (bitte nur die Beitragsnummer angeben)"
+        }
+      ],
+      "references": [
+        {
+          "label": "Beitragsnummer",
+          "value": "512 345 678"
+        }
+      ],
+      "payment": {
+        "iban": "DE57123489000055081836",
+        "iban_valid": null,
+        "payee": "Beitragsservice Musterstadt",
+        "reference": "512345678"
+      },
+      "remedy": {
+        "type": "none"
+      },
+      "warnings": [],
+      "contract": null,
+      "change": null,
+      "high_stakes_kind": null
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1449,
+      "cache_read_tokens": 7528,
+      "cache_creation_tokens": 2533,
+      "cost_usd": 0.026131599999999998,
+      "duration_ms": 8084,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

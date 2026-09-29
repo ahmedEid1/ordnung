@@ -1,0 +1,113 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "9.7.1",
+    "cache_key": "{\"doc\":\"8ce1ddca9663da5bb30828ab52f9c8876f65f8034dbf1921b6f5dd8cb1851b79\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_hkgxvjmpcfd5"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Muster Tech GmbH (employer)\n- Muster Versicherung AG (insurer)\n- Musterstadt Verkehrsbetriebe G"
+  },
+  "response": {
+    "text": "{\"kind\":\"payslip\",\"title\":\"Payslip August 2026 – Muster Tech GmbH\",\"summary\":\"Muster Tech GmbH issued Sam Rivera's payslip for August 2026 (working student). Gross pay was €1,419.00 and net pay €1,285.20, paid on 31 August 2026.\",\"explanation\":\"This is your monthly payslip (Verdienstabrechnung) for August 2026 as a working student (Werkstudent). Gross pay of €1,419.00 for 86 hours was reduced by €1.83 income tax (Lohnsteuer) and €131.97 pension insurance (Rentenversicherung), leaving €1,285.20, which was transferred on 31 August 2026. Health, care and unemployment insurance are not deducted because working students are exempt. No action is needed. Keep the payslip: it is useful as proof of income and for your tax return.\",\"case_title\":\"Muster Tech payslips\",\"area\":\"work\",\"language\":\"German\",\"document_date\":\"2026-08-31\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Muster Tech GmbH\",\"kind\":\"employer\",\"address\":\"Innovationsweg 42, 12345 Musterstadt\",\"phone\":\"0123 4242-0\",\"website\":\"www.mustertech.example\"},\"references\":[{\"label\":\"Personalnummer\",\"value\":\"10482\"},{\"label\":\"Steuer-ID\",\"value\":\"57 216 480 354\"},{\"label\":\"SV-Nummer\",\"value\":\"65 140300 R 005\"}],\"key_facts\":[{\"label\":\"Gross pay (Gesamtbrutto)\",\"value\":\"1.419,00 €\",\"quote\":\"Gesamtbrutto   1.419,00 €\"},{\"label\":\"Income tax (Lohnsteuer)\",\"value\":\"1,83 €\",\"quote\":\"Lohnsteuer (Steuerklasse 1)   1.419,00 €   1,83 €\"},{\"label\":\"Pension insurance employee share (Rentenversicherung Arbeitnehmeranteil)\",\"value\":\"131,97 €\",\"quote\":\"Rentenversicherung Arbeitnehmeranteil (9,3 %)   1.419,00 €   131,97 €\"},{\"label\":\"Net pay (Nettoverdienst)\",\"value\":\"1.285,20 €\",\"quote\":\"Nettoverdienst   1.285,20 €\"},{\"label\":\"Hours worked (Stundenlohn Werkstudent)\",\"value\":\"86,00 Std. at 16,50 €\",\"quote\":\"1000   Stundenlohn Werkstudent   86,00 Std.   16,50 €   1.419,00 €\"},{\"label\":\"Tax class (Steuerklasse)\",\"value\":\"1\",\"quote\":\"Steuerklasse   1 · Kinderfreibeträge 0,0\"},{\"label\":\"Year-to-date gross April–August (Jahreswerte 2026)\",\"value\":\"6.864,00 €\",\"quote\":\"April – August   6.864,00 €   8,24 €   0,00 €   6.864,00 €   638,36 €\"},{\"label\":\"Year-to-date income tax April–August (Lohnsteuer)\",\"value\":\"8,24 €\",\"quote\":\"April – August   6.864,00 €   8,24 €   0,00 €   6.864,00 €   638,36 €\"}],\"items\":[],\"tax_relevant\":true,\"tax_note\":\"Payslip data (gross pay, income tax, pension contributions, year-to-date totals) is needed for your income tax return and matches the annual wage tax statement.\",\"urgency\":\"low\",\"warnings\":[],\"contract\":null,\"change\":null,\"remedy\":null,\"payment\":null,\"high_stakes_kind\":null}",
+    "data": {
+      "kind": "payslip",
+      "title": "Payslip August 2026 – Muster Tech GmbH",
+      "summary": "Muster Tech GmbH issued Sam Rivera's payslip for August 2026 (working student). Gross pay was €1,419.00 and net pay €1,285.20, paid on 31 August 2026.",
+      "explanation": "This is your monthly payslip (Verdienstabrechnung) for August 2026 as a working student (Werkstudent). Gross pay of €1,419.00 for 86 hours was reduced by €1.83 income tax (Lohnsteuer) and €131.97 pension insurance (Rentenversicherung), leaving €1,285.20, which was transferred on 31 August 2026. Health, care and unemployment insurance are not deducted because working students are exempt. No action is needed. Keep the payslip: it is useful as proof of income and for your tax return.",
+      "case_title": "Muster Tech payslips",
+      "area": "work",
+      "language": "German",
+      "document_date": "2026-08-31",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Muster Tech GmbH",
+        "kind": "employer",
+        "address": "Innovationsweg 42, 12345 Musterstadt",
+        "phone": "0123 4242-0",
+        "website": "www.mustertech.example"
+      },
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "10482"
+        },
+        {
+          "label": "Steuer-ID",
+          "value": "57 216 480 354"
+        },
+        {
+          "label": "SV-Nummer",
+          "value": "65 140300 R 005"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Gross pay (Gesamtbrutto)",
+          "value": "1.419,00 €",
+          "quote": "Gesamtbrutto   1.419,00 €"
+        },
+        {
+          "label": "Income tax (Lohnsteuer)",
+          "value": "1,83 €",
+          "quote": "Lohnsteuer (Steuerklasse 1)   1.419,00 €   1,83 €"
+        },
+        {
+          "label": "Pension insurance employee share (Rentenversicherung Arbeitnehmeranteil)",
+          "value": "131,97 €",
+          "quote": "Rentenversicherung Arbeitnehmeranteil (9,3 %)   1.419,00 €   131,97 €"
+        },
+        {
+          "label": "Net pay (Nettoverdienst)",
+          "value": "1.285,20 €",
+          "quote": "Nettoverdienst   1.285,20 €"
+        },
+        {
+          "label": "Hours worked (Stundenlohn Werkstudent)",
+          "value": "86,00 Std. at 16,50 €",
+          "quote": "1000   Stundenlohn Werkstudent   86,00 Std.   16,50 €   1.419,00 €"
+        },
+        {
+          "label": "Tax class (Steuerklasse)",
+          "value": "1",
+          "quote": "Steuerklasse   1 · Kinderfreibeträge 0,0"
+        },
+        {
+          "label": "Year-to-date gross April–August (Jahreswerte 2026)",
+          "value": "6.864,00 €",
+          "quote": "April – August   6.864,00 €   8,24 €   0,00 €   6.864,00 €   638,36 €"
+        },
+        {
+          "label": "Year-to-date income tax April–August (Lohnsteuer)",
+          "value": "8,24 €",
+          "quote": "April – August   6.864,00 €   8,24 €   0,00 €   6.864,00 €   638,36 €"
+        }
+      ],
+      "items": [],
+      "tax_relevant": true,
+      "tax_note": "Payslip data (gross pay, income tax, pension contributions, year-to-date totals) is needed for your income tax return and matches the annual wage tax statement.",
+      "urgency": "low",
+      "warnings": [],
+      "contract": null,
+      "change": null,
+      "remedy": null,
+      "payment": null,
+      "high_stakes_kind": null
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1589,
+      "cache_read_tokens": 7528,
+      "cache_creation_tokens": 2613,
+      "cost_usd": 0.027851599999999997,
+      "duration_ms": 9196,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

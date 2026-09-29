@@ -1,0 +1,144 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "9.7.1",
+    "cache_key": "{\"doc\":\"8fab7570a8794a0bb488994867b91c90c379d61bfdec93547691c337a8527529\",\"language\":\"en\",\"pages\":[[1,\"transcript\"],[2,\"transcript\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_hynqaw58f550"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster)\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"title\":\"Income tax assessment 2025 – refund of €312.45\",\"summary\":\"Finanzamt Musterstadt issued the income tax assessment (Einkommensteuerbescheid) for 2025 dated 15 September 2026. Tax is set at €1,234.00, and a refund of €312.45 will be paid to your account.\",\"explanation\":\"This is your final income tax assessment for 2025. Tax owed is €1,234.00, but your employer already withheld €1,546.45, so you get €312.45 back at Musterbank eG. Nothing needs to be paid. Check that the figures match your records, e.g. work equipment costs of €412 were not claimed separately because the standard allowance (€1,230) was higher. If you disagree, you may file an objection (Einspruch); the app shows the deadline. Keep the notice. A tax adviser can help if unsure.\",\"case_title\":\"Income tax 2025\",\"area\":\"tax\",\"language\":\"German\",\"document_date\":\"2026-09-15\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Finanzamt Musterstadt\",\"kind\":\"tax_office\",\"address\":\"Steuerplatz 1, 12345 Musterstadt\",\"phone\":\"0123 887-0\",\"website\":\"finanzamt-musterstadt.example\"},\"references\":[{\"label\":\"Steuernummer\",\"value\":\"123/4567/8901\"},{\"label\":\"IdNr.\",\"value\":\"57 216 480 354\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"Objection deadline (Einspruch)\",\"date\":{\"type\":\"relative\",\"anchor\":\"deemed_delivery\",\"amount\":1,\"unit\":\"months\",\"delivery_rule\":\"de_admin_post\",\"nature\":\"objection\",\"shift_rule\":\"auto\",\"text\":\"Die Frist für die Einlegung des Einspruchs beträgt einen Monat.\",\"legal_basis\":null},\"action\":\"If you disagree with the assessment, file an objection in writing, electronically (e.g. ELSTER) or in person at the tax office.\",\"consequence\":\"After the deadline the assessment becomes final and can no longer be challenged.\",\"priority\":\"normal\",\"quote\":\"Die Frist für die Einlegung des Einspruchs beträgt einen Monat.\"},{\"kind\":\"payment\",\"title\":\"Tax refund\",\"date\":{\"type\":\"none\",\"nature\":\"other\",\"shift_rule\":\"auto\",\"text\":\"wird Ihnen auf das Konto DE41 1234 6700 0071 2345 00 bei der Musterbank eG erstattet\"},\"amount\":312.45,\"currency\":\"EUR\",\"direction\":\"in\",\"action\":\"Check that the refund arrives in your account.\",\"consequence\":null,\"priority\":\"normal\",\"quote\":\"Der Betrag von 312,45 € wird Ihnen auf das Konto DE41 1234 6700 0071 2345 00 bei der\"}],\"key_facts\":[{\"label\":\"Income tax assessed (Einkommensteuer festgesetzt)\",\"value\":\"1.234,00 €\",\"quote\":\"Die Einkommensteuer wird auf 1.234,00 € festgesetzt.\"},{\"label\":\"Tax withheld from wages (Steuerabzug vom Lohn)\",\"value\":\"1.546,45 €\",\"quote\":\"abzüglich Steuerabzug vom Lohn | 1.546,45 € | 0,00 €\"},{\"label\":\"Refund (verbleibende Beträge)\",\"value\":\"312,45 €\",\"quote\":\"verbleibende Beträge | - 312,45 € | 0,00 €\"},{\"label\":\"Gross wages (Bruttoarbeitslohn)\",\"value\":\"23.298 €\",\"quote\":\"Bruttoarbeitslohn | 23.298 €\"},{\"label\":\"Taxable income (zu versteuerndes Einkommen)\",\"value\":\"18.354 €\",\"quote\":\"zu versteuerndes Einkommen | 18.354 €\"},{\"label\":\"Work equipment claimed (Arbeitsmittel)\",\"value\":\"412 €\",\"quote\":\"Die geltend gemachten Aufwendungen für Arbeitsmittel (412 €) übersteigen zusammen mit den\"},{\"label\":\"Solidarity surcharge (Solidaritätszuschlag)\",\"value\":\"0,00 €\",\"quote\":\"Der Solidaritätszuschlag wird nicht erhoben, da die Einkommensteuer die Freigrenze nicht\"}],\"remedy\":{\"type\":\"einspruch\",\"addressee\":\"Finanzamt Musterstadt, Steuerplatz 1, 12345 Musterstadt\",\"period_text\":\"Die Frist für die Einlegung des Einspruchs beträgt einen Monat.\",\"form_text\":\"schriftlich einzureichen, diesem elektronisch zu übermitteln oder dort zur Niederschrift zu erklären\",\"quote\":\"Der Bescheid kann mit dem Einspruch angefochten werden.\"},\"tax_relevant\":true,\"tax_note\":\"Final income tax assessment for 2025; keep it as proof of assessed tax and refund.\",\"urgency\":\"normal\",\"warnings\":[],\"high_stakes_kind\":null}",
+    "data": {
+      "kind": "tax_assessment",
+      "title": "Income tax assessment 2025 – refund of €312.45",
+      "summary": "Finanzamt Musterstadt issued the income tax assessment (Einkommensteuerbescheid) for 2025 dated 15 September 2026. Tax is set at €1,234.00, and a refund of €312.45 will be paid to your account.",
+      "explanation": "This is your final income tax assessment for 2025. Tax owed is €1,234.00, but your employer already withheld €1,546.45, so you get €312.45 back at Musterbank eG. Nothing needs to be paid. Check that the figures match your records, e.g. work equipment costs of €412 were not claimed separately because the standard allowance (€1,230) was higher. If you disagree, you may file an objection (Einspruch); the app shows the deadline. Keep the notice. A tax adviser can help if unsure.",
+      "case_title": "Income tax 2025",
+      "area": "tax",
+      "language": "German",
+      "document_date": "2026-09-15",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Finanzamt Musterstadt",
+        "kind": "tax_office",
+        "address": "Steuerplatz 1, 12345 Musterstadt",
+        "phone": "0123 887-0",
+        "website": "finanzamt-musterstadt.example"
+      },
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "123/4567/8901"
+        },
+        {
+          "label": "IdNr.",
+          "value": "57 216 480 354"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Objection deadline (Einspruch)",
+          "date": {
+            "type": "relative",
+            "anchor": "deemed_delivery",
+            "amount": 1,
+            "unit": "months",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat.",
+            "legal_basis": null
+          },
+          "action": "If you disagree with the assessment, file an objection in writing, electronically (e.g. ELSTER) or in person at the tax office.",
+          "consequence": "After the deadline the assessment becomes final and can no longer be challenged.",
+          "priority": "normal",
+          "quote": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat."
+        },
+        {
+          "kind": "payment",
+          "title": "Tax refund",
+          "date": {
+            "type": "none",
+            "nature": "other",
+            "shift_rule": "auto",
+            "text": "wird Ihnen auf das Konto DE41 1234 6700 0071 2345 00 bei der Musterbank eG erstattet"
+          },
+          "amount": 312.45,
+          "currency": "EUR",
+          "direction": "in",
+          "action": "Check that the refund arrives in your account.",
+          "consequence": null,
+          "priority": "normal",
+          "quote": "Der Betrag von 312,45 € wird Ihnen auf das Konto DE41 1234 6700 0071 2345 00 bei der"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Income tax assessed (Einkommensteuer festgesetzt)",
+          "value": "1.234,00 €",
+          "quote": "Die Einkommensteuer wird auf 1.234,00 € festgesetzt."
+        },
+        {
+          "label": "Tax withheld from wages (Steuerabzug vom Lohn)",
+          "value": "1.546,45 €",
+          "quote": "abzüglich Steuerabzug vom Lohn | 1.546,45 € | 0,00 €"
+        },
+        {
+          "label": "Refund (verbleibende Beträge)",
+          "value": "312,45 €",
+          "quote": "verbleibende Beträge | - 312,45 € | 0,00 €"
+        },
+        {
+          "label": "Gross wages (Bruttoarbeitslohn)",
+          "value": "23.298 €",
+          "quote": "Bruttoarbeitslohn | 23.298 €"
+        },
+        {
+          "label": "Taxable income (zu versteuerndes Einkommen)",
+          "value": "18.354 €",
+          "quote": "zu versteuerndes Einkommen | 18.354 €"
+        },
+        {
+          "label": "Work equipment claimed (Arbeitsmittel)",
+          "value": "412 €",
+          "quote": "Die geltend gemachten Aufwendungen für Arbeitsmittel (412 €) übersteigen zusammen mit den"
+        },
+        {
+          "label": "Solidarity surcharge (Solidaritätszuschlag)",
+          "value": "0,00 €",
+          "quote": "Der Solidaritätszuschlag wird nicht erhoben, da die Einkommensteuer die Freigrenze nicht"
+        }
+      ],
+      "remedy": {
+        "type": "einspruch",
+        "addressee": "Finanzamt Musterstadt, Steuerplatz 1, 12345 Musterstadt",
+        "period_text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat.",
+        "form_text": "schriftlich einzureichen, diesem elektronisch zu übermitteln oder dort zur Niederschrift zu erklären",
+        "quote": "Der Bescheid kann mit dem Einspruch angefochten werden."
+      },
+      "tax_relevant": true,
+      "tax_note": "Final income tax assessment for 2025; keep it as proof of assessed tax and refund.",
+      "urgency": "normal",
+      "warnings": [],
+      "high_stakes_kind": null
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2028,
+      "cache_read_tokens": 7528,
+      "cache_creation_tokens": 3939,
+      "cost_usd": 0.0375456,
+      "duration_ms": 11363,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
