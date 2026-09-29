@@ -1134,6 +1134,29 @@ def test_the_models_rent_increase_is_vetoed_when_it_needs_no_consent(quote: str,
     assert routing.letter_kind(increase) == "rent_lease"
 
 
+@pytest.mark.parametrize(
+    "fact",
+    [
+        "Die Miete ist als Indexmiete (§ 557b BGB) vereinbart; maßgeblich ist der Verbraucherpreisindex.",
+        "Mieterhöhung nach Modernisierung gemäß § 559 BGB: 8 % der aufgewendeten Kosten.",
+    ],
+)
+def test_the_models_rent_increase_is_vetoed_by_another_kind_anywhere_in_its_quotes(fact: str) -> None:
+    """Index rent or a modernisation increase named only in a key fact, while nothing quoted asks for consent:
+    filed as a § 558 request it would be dated a month late (§ 557b Abs. 3 S. 3 BGB) and called optional
+    (§ 559b Abs. 2 BGB), so the model's kind gives way. Asking for consent anywhere keeps it."""
+    quote = "Die monatliche Nettokaltmiete erhöht sich daher ab dem 01.11.2026 auf 668,00 EUR."
+    increase = _increase(
+        quote,
+        title="Rent adjustment for your flat",
+        key_facts=[ExtractedFact(label="Grundlage", value="Indexmiete", quote=fact)],
+    )
+    assert routing.classify_letter(naming(increase, "rent_increase")) is None
+    asks = ExtractedFact(label="Bitte", value="Zustimmung", quote="Wir bitten Sie um Ihre Zustimmung.")
+    asking = increase.model_copy(update={"key_facts": [*increase.key_facts, asks]})
+    assert routing.classify_letter(naming(asking, "rent_increase")) == "rent_increase"
+
+
 def test_the_models_operating_cost_statement_is_recognised_on_read_and_never_filed() -> None:
     landlord = ExtractedParty(name="Wohnbau Muster GmbH", kind="landlord")
     # a reading whose words code doesn't recognise as a statement

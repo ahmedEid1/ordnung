@@ -18,14 +18,17 @@ below) weighed against the one the model names:
   a landlord's notice whose contract is of another category (a gym, a job ticket; a tenancy for a
   dismissal, a job for a landlord's notice), decided by the contract first as below; a rent increase whose
   own quote or title names another kind of increase, or that a quote says needs no consent (the vetoes of
-  ``rent_increase`` below). The model's ``operating_costs`` is never filed: a statement is recognised on
-  read (below).
+  ``rent_increase`` below), or that names another kind anywhere it quotes while nothing quoted asks for
+  consent (:func:`_quotes_another_increase`). The model's ``operating_costs`` is never filed: a statement is
+  recognised on read (below).
 
 A veto only takes the model's kind away when the reading says the letter is something else: a court named
 only in English, a court order whose reading has no remedy and no objection date, or a termination the
 reading doesn't record is filed under the kind the model names (misses ADR 0010 had accepted), and a kind
-that brings the law's deadlines is the safe side. The kind the person chose on the letter's page wins over
-both (:func:`ordnung.ingest.plan.filed_kind`).
+that brings the law's deadlines is the safe side — but not for a rent increase, whose § 558 dates would
+put the new rent of an increase that needs no consent a month late and call it optional, so its veto reads
+every quote. The kind the person chose on the letter's page wins over both
+(:func:`ordnung.ingest.plan.filed_kind`).
 
 Code's own kind, from structured parts of the reading first:
 
@@ -611,8 +614,19 @@ def _vetoed(extraction: DocumentExtraction, kind: HighStakesKind) -> bool:
     if kind in ("court_payment_order", "enforcement_order"):
         return _no_court(extraction.sender) or _european_order(extraction)
     if kind == "rent_increase":
-        return _needs_no_consent(extraction)
+        return _needs_no_consent(extraction) or _quotes_another_increase(extraction)
     return _other_contract(extraction, kind)
+
+
+def _quotes_another_increase(extraction: DocumentExtraction) -> bool:
+    """Whether a rent increase only the model names is of another kind by what the reading quotes anywhere —
+    graduated or index rent, a modernisation, operating-cost prepayments or §§ 559–560 BGB in a key fact, an
+    item's quote or a legal basis — while nothing it quotes asks for consent (policy 1). Filed as a § 558
+    request, such a letter's new rent would be dated a month late (§ 557b Abs. 3 S. 3 BGB owes an index rent
+    from the start of the month after next) and called optional (§ 559b Abs. 2 BGB needs no consent)."""
+    quoted = _quoted_text(extraction)
+    another = _OTHER_INCREASE.search(quoted) or _MODERNISATION.search(quoted) or _COST_INCREASE.search(quoted)
+    return bool(another) and not _ASKS_CONSENT.search(quoted)
 
 
 def _no_court(sender: ExtractedParty | None) -> bool:
