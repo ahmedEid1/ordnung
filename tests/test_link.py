@@ -233,6 +233,47 @@ def test_upsert_contract_is_deterministic_and_computed(store: Store) -> None:
     assert contract.computed is not None and contract.computed.regime == "bgb309_new"
 
 
+@pytest.mark.parametrize(
+    ("category", "terms", "dates"),
+    [
+        (
+            "transport",  # Deutschlandticket: "bis zum 10. eines Monats zum Ende dieses Monats"
+            {"concluded_date": "2025-12-10", "start_date": "2026-01-01", "notice_basis": "end_of_month", "notice_day": 10},
+            ("2026-10-10", "2026-10-31", None),
+        ),
+        (
+            "employment",  # working student: ordinary notice after probation, before the fixed end
+            {"start_date": "2026-04-01", "end_date": "2027-03-31", "notice_before_end": True, "is_consumer": False},
+            ("2026-10-03", "2026-10-31", "2027-03-31"),
+        ),
+    ],
+)  # fmt: skip
+def test_upsert_contract_copies_the_notice_terms_a_period_cant_say(
+    store: Store, category: str, terms: dict[str, Any], dates: tuple[str, str, str | None]
+) -> None:
+    """Migration 0004: the day of the month and the early notice of a fixed-term job are stored and computed."""
+    document = add_doc(store)
+    data = extraction(contract={"name": "Contract", "category": category, **terms})
+    contract = upsert_contract(
+        store,
+        document=document,
+        extraction=data,
+        party=None,
+        case=None,
+        evidence=[],
+        rule_ctx=RuleContext(today=date(2026, 9, 28), region="NW"),
+        postal_buffer_days=4,
+    )
+    assert contract is not None and store.get_contract(contract.id) == contract
+    assert (contract.notice_day, contract.notice_before_end) == (
+        terms.get("notice_day"),
+        terms.get("notice_before_end", False),
+    )
+    assert contract.computed is not None
+    computed = contract.computed
+    assert (computed.cancel_by, computed.earliest_exit, computed.current_term_end) == dates
+
+
 def test_upsert_contract_never_overwrites_a_contract_from_elsewhere(store: Store) -> None:
     party = store.add_party(name="Muster Fitness", kind="gym")
     edited = store.add_contract(

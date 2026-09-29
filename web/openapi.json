@@ -6267,6 +6267,22 @@
             ],
             "title": "Notice Basis"
           },
+          "notice_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice Day"
+          },
+          "notice_before_end": {
+            "type": "boolean",
+            "title": "Notice Before End",
+            "default": false
+          },
           "end_date": {
             "anyOf": [
               {
@@ -6428,6 +6444,8 @@
           "notice_value",
           "notice_unit",
           "notice_basis",
+          "notice_day",
+          "notice_before_end",
           "end_date",
           "is_basic_supply",
           "cost_amount",

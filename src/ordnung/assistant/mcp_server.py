@@ -1102,6 +1102,8 @@ def _terms(contract: Contract) -> dict[str, Any]:
             "notice_value",
             "notice_unit",
             "notice_basis",
+            "notice_day",
+            "notice_before_end",
             "is_consumer",
         }
     )

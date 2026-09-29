@@ -861,6 +861,34 @@ def test_a_fixed_term_job_can_still_end_early_and_the_record_says_how(
         assert evidence.knows_paragraph(number, law), (number, law)
 
 
+def test_a_fixed_term_job_its_contract_lets_you_leave_early_keeps_the_notice_dates(
+    store: Store, ids: dict[str, str]
+) -> None:
+    """Verification of Ask's gaps: the working-student contract allows ordinary notice after probation
+    (``notice_before_end``), but Ask's record said only that it ends by itself on 31 Mar 2027. The record now
+    keeps the engine's summary with the notice's dates (§ 622 Abs. 1 BGB: arrive by Sat 3 Oct for Sat 31 Oct),
+    and if_not_cancelled still says it otherwise ends by itself — with the job-seeking advice."""
+    store.update_contract(ids["job"], notice_before_end=True)
+    tools = LedgerTools(store, today=TODAY)
+    (row,) = [row for row in tools.list_contracts().record["contracts"] if row["id"] == ids["job"]]
+    dates = row["dates"]
+    assert (dates["cancel_by"], dates["safe_date"], dates["earliest_exit"], dates["current_term_end"]) == (
+        "2026-10-03",
+        "2026-10-02",
+        "2026-10-31",
+        "2027-03-31",
+    )
+    assert dates["summary"].startswith(
+        "To leave on Sat 31 Oct 2026, your notice must arrive by Sat 3 Oct 2026"
+    )
+    assert dates["summary"].endswith("If you don't give notice, it ends by itself on Wed 31 Mar 2027.")
+    assert "Its fixed term ends on Wed 31 Mar 2027." in row["if_not_cancelled"]
+    assert "(§ 38 Abs. 1 SGB III)" in row["if_not_cancelled"]
+    assert row["notice_before_end"] is True and row["notice_day"] is None  # the terms it was computed from
+    explained = tools.explain_date(ids["job"]).record
+    assert explained["computation"]["summary"] == dates["summary"]
+
+
 def test_a_flat_lets_fixed_term_rule_says_what_it_needs(store: Store, ids: dict[str, str]) -> None:
     """Final review 2: explain_date gave a fixed-term flat let the catalog's rule "Fixed-term contracts end
     by themselves" next to a summary saying it may still need notice (§ 575 Abs. 1 S. 2 BGB)."""

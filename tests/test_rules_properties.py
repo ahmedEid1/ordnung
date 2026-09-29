@@ -215,6 +215,8 @@ contract_terms = st.builds(
     notice_value=st.one_of(st.none(), st.integers(min_value=-1, max_value=6)),
     notice_unit=st.one_of(st.none(), st.sampled_from(["days", "weeks", "months"])),
     notice_basis=st.one_of(st.none(), st.sampled_from(["end_of_term", "any_time", "end_of_month"])),
+    notice_day=st.one_of(st.none(), st.integers(min_value=-1, max_value=33)),
+    notice_before_end=st.booleans(),
     end_date=st.one_of(st.none(), dates.map(date.isoformat)),
     is_consumer=st.booleans(),
     is_basic_supply=st.booleans(),

@@ -152,6 +152,8 @@ export function contract(c: ContractInput): Contract {
     notice_value: null,
     notice_unit: null,
     notice_basis: null,
+    notice_day: null,
+    notice_before_end: false,
     end_date: null,
     is_basic_supply: false,
     cost_amount: null,

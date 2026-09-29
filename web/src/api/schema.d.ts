@@ -2380,6 +2380,13 @@ export interface components {
             notice_unit: ("days" | "weeks" | "months") | null;
             /** Notice Basis */
             notice_basis: ("end_of_term" | "any_time" | "end_of_month") | null;
+            /** Notice Day */
+            notice_day: number | null;
+            /**
+             * Notice Before End
+             * @default false
+             */
+            notice_before_end: boolean;
             /** End Date */
             end_date: string | null;
             /**

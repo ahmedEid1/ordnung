@@ -273,6 +273,8 @@ export const CONTRACTS: Contract[] = [
     end_date: "2027-03-31",
     notice_value: 4,
     notice_unit: "weeks",
+    // "Nach Ablauf der Probezeit kann das Arbeitsverhältnis … ordentlich gekündigt werden" (§ 15 Abs. 4 TzBfG)
+    notice_before_end: true,
     is_consumer: false,
     area: "work",
     source_doc_id: "doc_job",

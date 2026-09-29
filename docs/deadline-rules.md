@@ -826,16 +826,39 @@ negative terms and notice periods are misreadings and treated as missing; values
 ignored with `low` confidence. If the usual sending time has passed, `send_by` is today and the last
 step says so.
 
+Two terms a notice period can't say:
+
+- **The contract's own day of the month** (`notice_day`: "Die Kündigung muss bis zum 10. eines Monats zum
+  Ende dieses Monats bei uns eingehen"). Read under `bgb309_new`, `tkg56`, `bgb309_old` and `as_written`
+  when the notice basis is the end of a month and no notice period is stated — a stated one, also one the
+  person entered on the card, wins. The cancellation must arrive by that day of the month the contract is
+  to end in (the 29th–31st: a shorter month's last day; a first term that ends before the day: the day of
+  the month before), never moved off a weekend. It asks less than a month's notice before the month's end,
+  so no statutory cap shortens it. After a fixed first term, § 309 Nr. 9 BGB and § 56 Abs. 3 TKG may
+  instead let a cancellation end the contract one month after it arrives (not settled for a contract
+  open-ended from the start): the dates keep the contract's rule, and a warning names the earlier end,
+  hedged, when a cancellation sent now would reach it. Days outside 1–31 are misreadings, treated as
+  missing. *Limitation:* other month-end forms ("zum Ende des Folgemonats", "bis zum 15. zum Ende des
+  übernächsten Monats") are not read; their notice is assumed as for a missing period.
+- **A fixed-term job its contract lets be ended earlier by ordinary notice** (`notice_before_end`: "Nach
+  Ablauf der Probezeit kann das Arbeitsverhältnis … ordentlich gekündigt werden", § 15 Abs. 4 TzBfG). A
+  notice period alone never says so — a fixed-term job ends with its time (§ 15 Abs. 1 TzBfG) — so
+  without the flag a job with an end date simply ends then. With it, and while the end date is ahead, the
+  job is planned like an open-ended one (four weeks to the 15th or the end of a month, or the written
+  period): if that notice ends it before the end date, those are its dates and `current_term_end` is the
+  end date it otherwise ends on by itself; if not, the end date decides. Read for a job only: a flat let's
+  fixed term is § 575 BGB's question (above).
+
 | Regime | Applies to | Rule |
 |---|---|---|
-| `bgb309_new` | consumer contracts concluded from 1 Mar 2022 (streaming, gym, energy …) | first term ≤ 2 years, notice ≤ 1 month before its end; afterwards indefinite, cancellable any day with ≤ 1 month (§ 309 Nr. 9 BGB, Art. 229 § 60 EGBGB). Fixed renewals in such contracts are invalid. |
+| `bgb309_new` | consumer contracts concluded from 1 Mar 2022 (streaming, gym, energy …) | first term ≤ 2 years, notice ≤ 1 month before its end; afterwards indefinite, cancellable any day with ≤ 1 month (§ 309 Nr. 9 BGB, Art. 229 § 60 EGBGB) — or by the contract's own day of the month for that month's end (`notice_day`). Fixed renewals in such contracts are invalid. |
 | `bgb309_old` | consumer contracts concluded before 1 Mar 2022 | first term ≤ 2 years (a longer one is capped, `medium`), renewals ≤ 1 year, notice ≤ 3 months before the end of each term |
 | `tkg56` | phone and internet | first term ≤ 24 months; afterwards one month's notice any day, also for old contracts (§ 56 Abs. 1, 3 TKG) |
 | `vvg11` | insurance (not statutory health) | renews for ≤ 1 year; notice 1–3 months before the end of the insurance year; contracts > 3 years (by term or end date) can be cancelled at the end of year 3 and every later year with **three** months' notice, whatever shorter notice the contract has (§ 11 Abs. 4 VVG) |
 | `sgbv175` | statutory health insurance | 12-month lock-in, then to the end of the second month after the month of notice — always a month end, so a lock-in ending mid-month is left at the end of that month; switching = just join the new insurer (§ 175 SGB V) |
 | `stromgvv20` | basic energy supply (*Grundversorgung*) | two weeks' notice any day, text form (§ 20 StromGVV/GasGVV) |
 | `rent573c` | tenant of a flat | notice by the 3rd *Werktag* of a month → end of the month after next (§ 573c BGB); hand-signed letter (§ 568 BGB); a fixed-term lease ends by itself only with a written reason (§ 575 BGB), and one lived in past its end may continue (§ 545 BGB) |
-| `employment622` | employee | four weeks to the 15th or the end of a month, or the longer written period (§ 622 BGB); hand-signed letter (§ 623 BGB); fixed-term contracts simply end — one worked on past its end with the employer's knowledge may continue (§ 15 Abs. 6 TzBfG) |
+| `employment622` | employee | four weeks to the 15th or the end of a month, or the longer written period (§ 622 BGB); hand-signed letter (§ 623 BGB); fixed-term contracts simply end — unless the contract allows ordinary notice before the end (§ 15 Abs. 4 TzBfG, `notice_before_end`: that notice while it ends the job sooner) — and one worked on past its end with the employer's knowledge may continue (§ 15 Abs. 6 TzBfG) |
 | `bgb675h` | a consumer's current account its terms say can be ended any time (*jederzeit kündigen*) | any time, without notice unless one was agreed; an agreed notice counts for at most one month (§ 675h Abs. 1 BGB) |
 | `as_written` | other bank contracts, business contracts, anything unknown | the contract's own terms, `low` confidence |
 
@@ -862,7 +885,9 @@ Worked examples (demo persona Sam, today = Fri 25 Sep 2026, region NW, letter by
 | Flat (tenant), October 2026 | `rent573c` | 3rd Werktag = Mon 5 Oct (Sat 3 Oct is a holiday) → ends Thu 31 Dec 2026; post the signed letter by Tue 29 Sep |
 | Flat, notice arrives Tue 6 Oct 2026 | `rent573c` | next month: by Wed 4 Nov → ends Sun 31 Jan 2027 |
 | Flat, April 2026 | `rent573c` | 3rd Werktag = **Sat 4 Apr** (Good Friday skipped) → ends Tue 30 Jun 2026; safe date Thu 2 Apr |
-| Werkstudent job ending 31 Mar 2027 | `employment622` | ends by itself — no cancellation needed |
+| Werkstudent job ending 31 Mar 2027, no notice clause | `employment622` | ends by itself — no cancellation needed |
+| Same, "nach Ablauf der Probezeit … ordentlich gekündigt werden" (no period of its own) | `employment622` | four weeks to the end of October: **arrive by Sat 3 Oct 2026** (German Unity Day, kept; safe date Fri 2 Oct; post the signed letter by Mon 28 Sep) → ends Sat 31 Oct 2026; otherwise it ends by itself on Wed 31 Mar 2027 (`medium`: the statutory four weeks) |
+| Deutschlandticket from 1 Jan 2026, "bis zum 10. eines Monats zum Ende dieses Monats" | `bgb309_new` | 10 Sep has passed: **arrive by Sat 10 Oct 2026** (safe date Fri 9 Oct; post by Mon 5 Oct) → ends Sat 31 Oct 2026; arriving on the 11th, it ends Mon 30 Nov |
 | Current account, "jederzeit kündigen", no notice period | `bgb675h` | a letter posted today arrives Thu 1 Oct → the account ends then |
 | Magazine from 1 Jan 2021, yearly renewal, 3 months | `bgb309_old` | cancel by Wed 30 Sep 2026 for 31 Dec 2026, else Fri 31 Dec 2027 |
 | Gym from 1 Jun 2021, 24 months then yearly, 3 months | `bgb309_old` | term ends Mon 31 May 2027; cancel by **Sun 28 Feb 2027** (no shift); safe Fri 26 Feb; post by Mon 22 Feb |

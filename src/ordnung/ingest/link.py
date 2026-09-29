@@ -474,6 +474,8 @@ _CONTRACT_TERM_FIELDS = (
     "notice_value",
     "notice_unit",
     "notice_basis",
+    "notice_day",
+    "notice_before_end",
     "end_date",
     "cost_amount",
     "cost_interval",

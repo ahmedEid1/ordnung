@@ -266,6 +266,43 @@ describe("Contracts page — fits every width, honest states", () => {
     expect(within(ticket).getByRole("button", { name: /^Add notice period/ })).toBeInTheDocument();
   });
 
+  it("the contract's own day and a job's early notice: in plain words, with the date to act by (migration 0004)", async () => {
+    // as the rules engine computes them for Sam (Mon 28 Sep 2026): the Deutschlandticket's "by the 10th of a month,
+    // to that month's end", and the working-student job its contract lets him leave after probation
+    const client = await seededClient((list) =>
+      list.map((c) => {
+        if (c.id === "ctr_dticket") {
+          const comp = { ...c.computed!, cancel_by: "2026-10-10", safe_date: "2026-10-09", send_by: "2026-10-05", earliest_exit: "2026-10-31" };
+          return { ...c, notice_day: 10, computed: { ...comp, confidence: "high" as const, warnings: [] } };
+        }
+        if (c.id === "ctr_job") {
+          return { ...c, computed: { ...c.computed!, cancel_by: "2026-10-03", safe_date: "2026-10-02", send_by: "2026-09-28", earliest_exit: "2026-10-31" } };
+        }
+        return c;
+      }),
+    );
+    renderWithProviders(<ContractsView />, { client, route: "/contracts" });
+    const row = (el: HTMLElement, label: string) => within(el).getByText(label).parentElement!.querySelector("dd")!.textContent;
+
+    const ticket = card("Deutschlandticket");
+    expect(within(ticket).getByText(/^Cancellable by the 10th of the month, to the month's end \(consumer contract since March 2022\)/)).toBeInTheDocument();
+    expect(within(ticket).queryByText("Please check")).toBeNull();
+    expect(row(ticket, "Notice must arrive by")).toBe("Sat 10 Oct");
+    expect(row(ticket, "Earliest end if you cancel now")).toBe("Sat 31 Oct");
+
+    // the job shows the date its notice must arrive by, the end it gives — and that it otherwise ends by itself
+    const job = card(/Werkstudent/);
+    expect(within(job).getByText(/^Fixed term until 31 Mar 2027 — it ends by itself\. To leave earlier: 4 weeks' notice/)).toBeInTheDocument();
+    expect(row(job, "Notice must arrive by")).toBe("Sat 3 Oct");
+    expect(row(job, "Earliest end if you cancel now")).toBe("Sat 31 Oct");
+    expect(row(job, "Ends")).toBe("Wed 31 Mar 2027");
+    expect(within(job).getByTestId("rolling-note")).toBeInTheDocument();
+    // no decision to rush: no countdown to resign, nothing new under "Decide by"
+    expect(within(job).queryByText("Send by")).toBeNull();
+    expect(within(job).getByRole("link", { name: /Draft resignation/ }).className).toBe(buttonVariants({ variant: "secondary", size: "sm" }));
+    expect(within(screen.getByRole("region", { name: /Decide by/ })).getAllByRole("listitem")).toHaveLength(1);
+  });
+
   it("a cancellation marked as sent: no decision left, waiting for the confirmation, the sent letter one click away", async () => {
     const client = await seededClient((list) =>
       list.map((c) => (c.id === "ctr_phone" ? { ...c, cancellation_sent: { draft_id: "drf_sent", sent_on: "2026-09-28", channel: "registered_letter" } } : c)),
