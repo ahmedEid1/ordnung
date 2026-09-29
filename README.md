@@ -30,7 +30,7 @@ Nothing is ever paid, sent or cancelled for you.
 <p align="center">
   <img src="docs/assets/demo.gif" width="820" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read live; the objection deadline is shown with the sentence it came from and each legal step behind it; a court payment order gets its two-week deadline and a get-advice card">
 </p>
-<p align="center"><a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 43 s)</a>: reading a letter, "Why this date?", a court order, paying by GiroCode, My numbers, Ask, the weekly review, the timeline, contracts, proof of sending and how a letter was read.</p>
+<p align="center"><a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 40 s)</a>: reading a letter, "Why this date?", a court order, paying by GiroCode, My numbers, Ask, the weekly review, the timeline, contracts, proof of sending and how a letter was read.</p>
 
 <p align="center">
   <a href="#try-it-in-60-seconds-with-zero-tokens">Try it</a> ·

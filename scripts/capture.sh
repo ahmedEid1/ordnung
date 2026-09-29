@@ -24,11 +24,14 @@ done
 (cd web && node scripts/capture.mjs --data "$DATA" --port "$PORT" --out "$OUT" "$@")
 
 if [ -f "$OUT/video/demo.webm" ]; then
-  # the whole tour as H.264 MP4, and its first part (up to the court order) as the README's GIF
-  GIF_SECONDS=${CAPTURE_GIF_SECONDS:-$(cat "$OUT/video/gif-seconds" 2>/dev/null || echo 41)}
-  ffmpeg -v error -y -i "$OUT/video/demo.webm" -c:v libx264 -pix_fmt yuv420p -crf 30 -preset slow \
+  # the whole tour as H.264 MP4, and its first part (up to the court order) as the README's GIF, both from
+  # when Today is on screen (the tour writes both seconds to video/cut)
+  read -r START GIF_END < "$OUT/video/cut" || { START=0; GIF_END=41; }
+  GIF_SECONDS=${CAPTURE_GIF_SECONDS:-$(awk -v a="$START" -v b="$GIF_END" 'BEGIN { printf "%.2f", b - a }')}
+  ffmpeg -v error -y -ss "$START" -i "$OUT/video/demo.webm" -c:v libx264 -pix_fmt yuv420p -crf 30 -preset slow \
     -movflags +faststart "$OUT/demo.mp4"
-  ffmpeg -v error -y -t "$GIF_SECONDS" -i "$OUT/video/demo.webm" -vf \
+  # the GIF from the MP4: the recording's VP8 noise would make it half as large again, for no visible gain
+  ffmpeg -v error -y -t "$GIF_SECONDS" -i "$OUT/demo.mp4" -vf \
     "fps=$GIF_FPS,scale=$GIF_WIDTH:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
     "$OUT/demo.gif"
   rm -rf "$OUT/video"

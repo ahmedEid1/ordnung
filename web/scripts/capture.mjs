@@ -14,8 +14,8 @@
  * letters whose dates, receipts and advice card come from the rules engine
  * (scripts/gen_mock_high_stakes.py, scripts/gen_mock_advice.py). `?mock=0` returns to the demo.
  *
- * It writes `<out>/video/demo.webm` and `<out>/video/gif-seconds` (where the GIF ends); `make capture`
- * turns them into `demo.mp4` and `demo.gif`.
+ * It writes `<out>/video/demo.webm` and `<out>/video/cut` (the seconds where the video starts and the
+ * GIF ends); `make capture` turns them into `demo.mp4` and `demo.gif`.
  * Set PW_CHROMIUM_PATH to use a Chromium that is already installed.
  */
 import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
@@ -281,9 +281,9 @@ async function recordVideo(browser) {
   const page = await context.newPage();
   page.on("pageerror", (err) => console.error(`page error: ${err.stack ?? err}`));
   page.on("console", (m) => m.type() === "error" && console.error(`console: ${m.text()}`));
-  let gifEnd;
+  let cut;
   try {
-    gifEnd = await tour(page);
+    cut = await tour(page);
   } catch (err) {
     await page.screenshot({ path: join(OUT, "capture-error.png") }).catch(() => {});
     await context.close();
@@ -294,18 +294,20 @@ async function recordVideo(browser) {
   const recorded = await video.path();
   renameSync(recorded, join(dir, "demo.webm"));
   for (const name of readdirSync(dir)) if (name !== "demo.webm") rmSync(join(dir, name));
-  // `make capture` cuts the README's GIF here: the end of the court order, before the tour moves on
-  writeFileSync(join(dir, "gif-seconds"), `${gifEnd.toFixed(1)}\n`);
-  console.log(`video → ${join(dir, "demo.webm")} (GIF: the first ${gifEnd.toFixed(1)} s)`);
+  // `make capture` starts the video and the GIF once Today is on screen (the recording starts with a blank
+  // page), and ends the README's GIF after the court order, before the tour moves on
+  writeFileSync(join(dir, "cut"), `${cut.start.toFixed(2)} ${cut.gifEnd.toFixed(2)}\n`);
+  console.log(`video → ${join(dir, "demo.webm")} (from ${cut.start.toFixed(1)} s; GIF to ${cut.gifEnd.toFixed(1)} s)`);
 }
 
-/** The tour; returns the second at which the GIF ends (the video started with the page). */
+/** The tour; returns when Today is first on screen and when the GIF ends, in seconds of the video. */
 async function tour(page) {
   const started = Date.now();
   const seconds = () => (Date.now() - started) / 1000;
   const mark = (what) => console.log(`  ${seconds().toFixed(1).padStart(5)} s  ${what}`);
   await page.goto(`${BASE}/`);
   await settle(page, 400);
+  const start = seconds();
 
   mark("Today");
   await caption(page, "Ordnung is a private secretary for your paperwork. This is Sam's “Today”.");
@@ -435,7 +437,7 @@ async function tour(page) {
   await nav(page, "Today");
   await page.waitForTimeout(3400);
   mark("done");
-  return gifEnd;
+  return { start, gifEnd };
 }
 
 // ------------------------------------------------------------------------------------------------
