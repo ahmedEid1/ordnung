@@ -1567,6 +1567,29 @@ def test_get_my_numbers_flags_unconfirmed_dates_and_in_person_fees(
     assert case["next_item"]["needs_check"] is None
 
 
+def test_get_my_numbers_says_a_next_step_is_money_coming_in(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """A refund whose day has passed is money the person is owed, never a payment overdue: the case's
+    next step says it is incoming; money going out carries no direction."""
+    _numbers_ledger(store, ids)
+    refund = add_item(
+        store,
+        kind="payment",
+        title="Refund of the fee paid twice",
+        doc_id=ids["doc_parking"],
+        due_date="2026-09-25",
+        amount=25.0,
+        currency="EUR",
+        direction="in",
+    )
+    (case,) = record_of(render_result(tools.get_my_numbers()))["open_cases"]
+    assert case["next_item"]["id"] == ids["parking_payment"] and "direction" not in case["next_item"]
+    store.update_item(ids["parking_payment"], status="done")
+    (case,) = record_of(render_result(tools.get_my_numbers()))["open_cases"]
+    assert (case["next_item"]["id"], case["next_item"]["direction"]) == (refund, "in")
+
+
 def test_get_my_numbers_gives_no_transfer_day_for_a_fee_paid_at_the_appointment(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:

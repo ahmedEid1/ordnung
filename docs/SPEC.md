@@ -623,7 +623,8 @@ HTML and without remote images.
   in the record: each number's kind, group and check-digit result (with its code-written note and law),
   the letter and party ids to cite, an identity document's expiry as its to-do (`id`, `due_date`,
   `needs_check` when not confirmed against the letter) and an open case's next to-do (no `send_by` and
-  `at_appointment` for a fee paid at the appointment). It takes `section` (about_you, organisations,
+  `at_appointment` for a fee paid at the appointment; `direction: in` for money coming in, never
+  overdue). It takes `section` (about_you, organisations,
   open_cases) and `organisation` (an id or name: that call sheet and its open cases only, never the
   person's own numbers), and bounds itself — at most 20 call sheets (latest letter first), 20 open
   cases, 20 numbers of a kind per sheet and no further sheet past 150 numbers — saying what it left out
@@ -1169,9 +1170,11 @@ Pages:
    while hidden (forms get the Steuer-ID, social insurance number and IBAN without spaces) and is
    announced; the check-digit badge explains itself in a tooltip; each number links to the letter it
    came from (on a call sheet or case card when that is not the card's last letter); a date or next
-   step not confirmed against the letter says to compare it. An open case's next step reads its day as
-   the weekly session does: *on* for an appointment and a fee paid at it, else *by* the day to act,
-   *act today* with the due date once its send-by day has passed, overdue counted from its due date.
+   step not confirmed against the letter says to compare it. An open case's next step is the earliest of
+   the person's own to-dos, money coming in only when nothing else is open; it reads its day as the
+   weekly session does: *expected* for money coming in (never overdue), *on* for an appointment and a
+   fee paid at it, else *by* the day to act, *act today* with the due date once its send-by day has
+   passed, overdue counted from its due date.
    **Weekly review** (`/week`, from Today; one name on Today, the page, its ending and its messages) —
    the weekly session as a stepper (step list beside the step on wide pages, dots on phones with a name
    under each, over two lines when they don't fit on one — ticks only on the steps looked at; `?step=`),

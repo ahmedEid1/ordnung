@@ -5869,6 +5869,22 @@
             "title": "Needs Check",
             "description": "Its date or amount is not confirmed against the letter (compare it)",
             "default": false
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "out",
+                  "in"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction",
+            "description": "A payment's direction: money coming in is expected on its day, never overdue"
           }
         },
         "type": "object",
@@ -5879,7 +5895,8 @@
           "due_date",
           "send_by",
           "at_appointment",
-          "needs_check"
+          "needs_check",
+          "direction"
         ],
         "title": "CaseItemRef",
         "description": "The next open to-do of a case."

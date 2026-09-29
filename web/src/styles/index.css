@@ -105,6 +105,8 @@
   --color-warn-soft: #fef3c7;
   --color-danger: #be123c;
   --color-danger-soft: #ffe4e6;
+  /* a hovered danger-soft fill (a danger button's hover in dark mode): opaque, so its ink stays readable on any parent */
+  --color-danger-soft-hover: #ffd9dd;
 
   /* text-on-soft "ink" variants (WCAG AA ≥ 4.5:1 on their -soft background and on surfaces) */
   --color-k-deadline-ink: #a21caf;
@@ -181,6 +183,7 @@
   --color-warn-soft: #33260a;
   --color-danger: #fb7185;
   --color-danger-soft: #3b1219;
+  --color-danger-soft-hover: #4c1822;
 
   --color-k-deadline-ink: #e879f9;
   --color-k-payment-ink: #fbbf24;

@@ -225,6 +225,16 @@ describe("colour tokens", () => {
   it.each([
     ["light", light],
     ["dark", dark],
+  ])("%s: a hovered danger-soft fill is opaque and keeps its ink readable on any parent (4.5:1)", (_, t) => {
+    // a translucent fill would take its contrast from whatever sits behind the button
+    expect(t["color-danger-soft-hover"]).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(contrast(t["color-danger-ink"]!, t["color-danger-soft-hover"]!)).toBeGreaterThanOrEqual(4.5);
+    expect(t["color-danger-soft-hover"]).not.toBe(t["color-danger-soft"]); // the hover shows
+  });
+
+  it.each([
+    ["light", light],
+    ["dark", dark],
   ])("%s: field edges are visible (3:1) and field text and placeholders readable (4.5:1) wherever a field sits", (_, t) => {
     for (const bg of ["surface", "canvas", "surface-2"]) {
       expect(contrast(t["color-control-border"]!, t[`color-${bg}`]!), `control-border on ${bg}`).toBeGreaterThanOrEqual(3);
