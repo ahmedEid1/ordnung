@@ -256,8 +256,14 @@ class ComputationReceipt(_Model):
 
 
 class Recurrence(_Model):
+    """How a to-do repeats: every ``interval`` ``unit``s. ``working_day``: the working day (Werktag) of
+    each month it is due by, as the letter says it ("spätestens am dritten Werktag eines jeden Monats" is
+    3), for a rule in months or years; Ordnung computes each month's date from it (ordnung.recurrence,
+    point 8)."""
+
     interval: int = 1
     unit: Literal["days", "weeks", "months", "years"] = "months"
+    working_day: int | None = Field(default=None, ge=1, le=10)
 
 
 # --------------------------------------------------------------------------------------------------

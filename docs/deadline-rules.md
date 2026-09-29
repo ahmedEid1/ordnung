@@ -91,7 +91,8 @@ failure → `low`. The reasons are listed in `warnings` in plain English.
   end-of-period shift rule, which all treat Saturday like Sunday.
 - **Werktag** — Monday to Saturday, not a public holiday. Used where the law counts *Werktage*, such
   as the three-day grace period for a tenancy notice. In legal language Saturday **is** a Werktag
-  (BGH VIII ZR 206/04).
+  (BGH VIII ZR 206/04) — except for paying rent, where the 3rd working day counts business days
+  (BGH VIII ZR 129/09; section 8, "Paying rent").
 - **Holidays** come from the [`holidays`](https://pypi.org/project/holidays/) package
   (`holidays.Germany(subdiv=…)`). The nine nationwide holidays always count. Regional ones (e.g.
   Fronleichnam, Allerheiligen, Reformationstag, Buß- und Bettag, Frauentag in Berlin) count **only
@@ -843,8 +844,20 @@ step says so.
 three-day grace period of § 573c BGB (BGH, 27.4.2005, VIII ZR 206/04 — we read the decision). It
 expressly left open whether the period extends to Monday when the 3rd Werktag itself is a Saturday
 (some courts say yes). Ordnung keeps the Saturday as `cancel_by` (earliest plausible) and says so.
-(For *paying* rent, § 556b BGB, Saturday does not count — BGH VIII ZR 129/09 — which is a different
-rule and not computed here.)
+
+**Paying rent** (`bgb_556b`, § 556b Abs. 1 BGB) is a different rule: rent is due in advance, at the
+latest by the 3rd working day of each month, and here Saturday does **not** count (BGH
+VIII ZR 129/09). A monthly payment whose letter dates it by a working day ("spätestens am dritten
+Werktag eines jeden Monats", the reading's `Recurrence.working_day`) is dated in every month by
+counting that many working days from the month's first — Monday to Friday without holidays for rent
+(a payment on a lease or under a rent contract), *Werktage* otherwise — so the rent runs Mon 5 Oct
+(3 Oct is a holiday), Wed 4 Nov, Thu 3 Dec 2026 and Tue 7 Apr 2026 after Easter, never on the day of
+the month the first one fell on (`recurrence.py`, point 8). The first month is the one the letter
+names, else the current one — or the month the tenancy starts, if that is later. A lease's monthly
+rent the reading leaves without a day gets the law's 3rd working day, one confidence level lower
+(`medium` at most) and with a warning to check the lease: a lease may agree an earlier day ("bis zum
+1."), so this default can be late — the warning says so, and a date the person gives replaces it. A
+rent increase's new rent never gets it (§ 558b BGB dates its first payment, once agreed).
 
 Worked examples (demo persona Sam, today = Fri 25 Sep 2026, region NW, letter by post):
 
@@ -1009,6 +1022,7 @@ action, contracts, sending and form, price increases).
 | `bgb_574b` | Objecting to a landlord's notice | §§ 574, 574b BGB | 2025-01-01 (text form) | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__574b.html) |
 | `bgb_549` | Short lets and furnished rooms in the landlord's flat: no hardship objection, no consent procedure | § 549 Abs. 2, 3 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__549.html) |
 | `bgb_556_3`, `bgb_536c` | Operating-cost statements; reporting defects | § 556 Abs. 3, 4 BGB; § 536c BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__556.html) |
+| `bgb_556b` | Rent is due by the 3rd working day of the month (Saturday doesn't count) | § 556b Abs. 1 BGB; BGH VIII ZR 129/09 | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__556b.html) |
 | `bgb_355`, `bgb_356_4`, `bgb_356a` | Withdrawal: 14 days; without instructions; withdrawal button | § 355, § 356 Abs. 2–4 BGB; Art. 10 RL 2011/83/EU; § 356a BGB | `bgb_356a` 2026-06-19 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__355.html) |
 | `ao_222` | Tax payment deferral (Stundung) | § 222 AO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/ao_1977/__222.html) |
 | `date_as_written`, `safe_date`, `postal_buffer`, `contract_as_written`, `unit_business_days`, `termination_end` | Ordnung's own policies | — | — | — |

@@ -4655,7 +4655,13 @@ export interface components {
              */
             cost_usd: number;
         };
-        /** Recurrence */
+        /**
+         * Recurrence
+         * @description How a to-do repeats: every ``interval`` ``unit``s. ``working_day``: the working day (Werktag) of
+         *     each month it is due by, as the letter says it ("spätestens am dritten Werktag eines jeden Monats" is
+         *     3), for a rule in months or years; Ordnung computes each month's date from it (ordnung.recurrence,
+         *     point 8).
+         */
         "Recurrence-Input": {
             /**
              * Interval
@@ -4668,8 +4674,16 @@ export interface components {
              * @enum {string}
              */
             unit?: "days" | "weeks" | "months" | "years";
+            /** Working Day */
+            working_day?: number | null;
         };
-        /** Recurrence */
+        /**
+         * Recurrence
+         * @description How a to-do repeats: every ``interval`` ``unit``s. ``working_day``: the working day (Werktag) of
+         *     each month it is due by, as the letter says it ("spätestens am dritten Werktag eines jeden Monats" is
+         *     3), for a rule in months or years; Ordnung computes each month's date from it (ordnung.recurrence,
+         *     point 8).
+         */
         "Recurrence-Output": {
             /**
              * Interval
@@ -4682,6 +4696,8 @@ export interface components {
              * @enum {string}
              */
             unit: "days" | "weeks" | "months" | "years";
+            /** Working Day */
+            working_day: number | null;
         };
         /** RefLink */
         RefLink: {

@@ -173,7 +173,7 @@ describe("To-dos & dates", () => {
     const items: Item[] = [
       makeItem({ id: "itm_fee", kind: "payment", direction: "out", title: "Fee for the permit", amount: 100, ...due("2026-10-14"), send_by: "2026-10-13", action: "Pay the €100 fee on site at the appointment by girocard (cash is not accepted)." }),
       makeItem({ id: "itm_debit", kind: "payment", direction: "out", title: "Monthly ticket", amount: 63, ...due("2026-10-01"), send_by: "2026-09-30", action: "Ensure sufficient funds for the SEPA direct debit." }),
-      makeItem({ id: "itm_salary", kind: "payment", direction: "in", title: "Monthly salary", amount: 1285.2, recurrence: { interval: 1, unit: "months" } }),
+      makeItem({ id: "itm_salary", kind: "payment", direction: "in", title: "Monthly salary", amount: 1285.2, recurrence: { interval: 1, unit: "months", working_day: null } }),
       makeItem({ id: "itm_refund", kind: "payment", direction: "in", title: "Tax refund", amount: 324 }),
     ];
     renderWithProviders(<ItemsList items={items} docId="doc_1" />, { client: client() });

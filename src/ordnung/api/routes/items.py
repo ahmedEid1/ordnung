@@ -206,13 +206,16 @@ def _schedule_fields(item: Item, fields: dict[str, Any]) -> dict[str, Any]:
     no date (added by hand, or undated in its letter) keeps the first date it gets as a fixed DateSpec
     (its day of the month; the letter's words kept), and so does a to-do added by hand that starts
     repeating or repeats by a new rule. A date moved by hand later leaves the schedule as it is: it
-    stands in for the occurrence it replaced until it passes (point 7)."""
+    stands in for the occurrence it replaced until it passes (point 7). A date its working day gave it
+    (point 8: ``computed``, though its DateSpec gives none) is not one it got from the person."""
     recurrence = fields.get("recurrence", item.recurrence)
     due = fields.get("due_date", item.due_date)
     spec = item.date_spec
     if recurrence is None or due is None:
         return {}
     if spec is not None and spec.type == "none":
+        if "due_date" not in fields and item.due_date_source == "computed":
+            return {}
         return {"date_spec": spec.model_copy(update={"type": "fixed", "date": due})}
     if spec is None or (item.origin != "extracted" and not same_rule(recurrence, item.recurrence)):
         return {"date_spec": schedule_spec(due, date_nature(item.kind, spec))}

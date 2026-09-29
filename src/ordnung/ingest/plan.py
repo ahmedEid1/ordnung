@@ -47,6 +47,7 @@ from ordnung.models import (
     DOCUMENT_KINDS,
     HIGH_STAKES_KINDS,
     ComputationReceipt,
+    Contract,
     DateSpec,
     Document,
     DocumentExtraction,
@@ -68,6 +69,7 @@ from ordnung.recurrence import (
     roll_forward,
     same_rule,
     same_schedule,
+    schedule_item,
 )
 from ordnung.rules import RuleContext, compute_due, is_private_sender, scope_for_party_kind
 from ordnung.rules.advice import (
@@ -388,7 +390,8 @@ def rule_context(
     reading's, :func:`letter_kind`), which routes the dates of high-stakes letters; a termination's end
     date comes with it, graded against the letter's ``pages`` (:func:`end_date_grounding`; without pages
     it counts as not written). A court's letter is marked as one (and a labour court's), whatever kind it
-    was filed as: its dates never use a delivery fiction and are never ``high``.
+    was filed as: its dates never use a delivery fiction and are never ``high``. A lease's payments are
+    rent (``RuleContext.rent``, :mod:`ordnung.recurrence` point 8).
     """
     sender = extraction.sender
     kind = party.kind if party else (sender.kind if sender else None)
@@ -421,6 +424,7 @@ def rule_context(
         court=is_court(name, kind),
         labour_court=is_labour_court(name, kind),
         social_court=is_social_court(name, kind),
+        rent=(filed_as or letter_kind(extraction)) == "rent_lease",
     )
 
 
@@ -447,13 +451,16 @@ def document_context(store: Store, document: Document, today: date) -> RuleConte
 
 
 def item_context(store: Store, item: Item, today: date) -> RuleContext:
-    """The context of a to-do's dates: its letter's (:func:`document_context`), else nationwide
-    holidays in the person's country (a to-do added by hand)."""
+    """The context of a to-do's dates: its letter's (:func:`document_context`, with :func:`for_item`),
+    else nationwide holidays in the person's country (a to-do added by hand); a to-do linked to a rent
+    contract belongs to a home's tenancy (``RuleContext.rent``) either way."""
     document = store.get_document(item.doc_id) if item.doc_id else None
     found = document_context(store, document, today) if document is not None else None
+    contract = store.get_contract(item.contract_id) if item.contract_id else None
     if found is not None and document is not None:
-        found = for_item(found, item, rent_increase_note(document.kind, store.get_extraction(document.id)))
-    return found or RuleContext(today=today, country=store.get_profile().country)
+        note = rent_increase_note(document.kind, store.get_extraction(document.id))
+        return for_item(found, item, note, contract)
+    return RuleContext(today=today, country=store.get_profile().country, rent=_rent_contract(contract))
 
 
 @dataclass(frozen=True)
@@ -582,13 +589,24 @@ def rent_increase_note(kind: str | None, extraction: DocumentExtraction | None) 
     )
 
 
-def for_item(ctx: RuleContext, item: ExtractedItem | Item, note: PaymentNote | None) -> RuleContext:
+def _rent_contract(contract: Contract | None) -> bool:
+    """Whether a to-do's contract is the tenancy of a home: its payments are rent (§ 556b Abs. 1 BGB)."""
+    return contract is not None and contract.category == "rent"
+
+
+def for_item(
+    ctx: RuleContext, item: ExtractedItem | Item, note: PaymentNote | None, contract: Contract | None = None
+) -> RuleContext:
     """The context a to-do's date is computed in: a rent increase's current rent (:meth:`PaymentNote.
     is_current`) is owed as ever, so it is never re-dated to the new rent's earliest day (§ 558b Abs. 1 BGB,
     review round 2 of phase 2) — it is computed like a payment on any other letter. A payment made in person
     (:func:`~ordnung.payments.pays_on_site`) gets no bank transfer's send-by day (UI audit R1-backend-8), nor
     does one nobody transfers: a direct debit the sender collects, or money coming in
-    (:func:`~ordnung.payments.is_collected_or_incoming`; walkthrough of phase 2)."""
+    (:func:`~ordnung.payments.is_collected_or_incoming`; walkthrough of phase 2). A to-do linked to a rent
+    ``contract`` belongs to a home's tenancy, as one on a lease does (``RuleContext.rent``: its payments are
+    rent, :mod:`ordnung.recurrence` point 8)."""
+    if _rent_contract(contract):
+        ctx = replace(ctx, rent=True)
     if pays_on_site(item):
         ctx = replace(ctx, in_person=True)
     if is_collected_or_incoming(item):
@@ -944,27 +962,39 @@ def write_items(
     schedule's first occurrence) and the schedule is the same
     (:func:`~ordnung.recurrence.keeps_later_date`): reading the letter again never moves it backwards.
     That occurrence is dated and graded by the new reading (:func:`~ordnung.recurrence.at_occurrence`).
+    Any other one whose rule has a working day starts at its schedule's first occurrence
+    (:func:`~ordnung.recurrence.schedule_item`, point 8). Each to-do's dates are those of its own context
+    (:func:`for_item`, with the letter's contract).
 
     ``trace`` gets one step per to-do saying what was done with it and why
     (:func:`ordnung.trace.facts.planned`), and the number of stale to-dos removed.
     """
     moved = _carry_over(store, doc_id, verification)
     stored = {item.slot_key: item for item in store.list_items(doc_id=doc_id)}
+    note = rent_increase_note(ctx.letter_kind, extraction)
     items = []
     for index, (verified, result) in enumerate(zip(verification.items, computed, strict=True)):
         with trace.span("plan", "To-do", key=f"item:{verified.slot_key}") as step:
             fields = _item_fields(verified, result, extraction, links, today)
             existing = stored.get(verified.slot_key)
             new = verified.item
+            item_ctx = for_item(ctx, new, note, links.contract)
             action: facts.PlanAction = "created" if existing is None else "updated"
             if existing is not None and keeps_later_date(existing, new.recurrence, new.date, result.due_date):
                 reading = existing.model_copy(update=fields)
-                kept = at_occurrence(reading, existing.due_date, ctx, postal_buffer_days=postal_buffer_days)
+                kept = at_occurrence(
+                    reading, existing.due_date, item_ctx, postal_buffer_days=postal_buffer_days
+                )
                 fields |= {name: getattr(kept or existing, name) for name in SCHEDULE_FIELDS}
                 action = "kept_later_date"
             if existing is not None and existing.user_modified:
                 action = "kept_edited"  # upsert_item_by_slot leaves a to-do the person edited as it is
             item = store.upsert_item_by_slot(doc_id, verified.slot_key, **fields)
+            if action in ("created", "updated"):
+                starts = links.contract.start_date if links.contract else None
+                item = schedule_item(
+                    store, item, item_ctx, postal_buffer_days=postal_buffer_days, starts=starts
+                )
             step.set(**facts.planned(action, item, index=index, moved=verified.slot_key in moved))
         items.append(item)
     removed = store.delete_stale_extracted_items(
