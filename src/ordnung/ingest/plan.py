@@ -448,12 +448,13 @@ def document_context(store: Store, document: Document, today: date) -> RuleConte
 
 def item_context(store: Store, item: Item, today: date) -> RuleContext:
     """The context of a to-do's dates: its letter's (:func:`document_context`), else nationwide
-    holidays in the person's country (a to-do added by hand)."""
+    holidays in the person's country (a to-do added by hand) — either way for this to-do
+    (:func:`for_item`: one paid in person, collected or coming in gets no send-by day)."""
     document = store.get_document(item.doc_id) if item.doc_id else None
     found = document_context(store, document, today) if document is not None else None
     if found is not None and document is not None:
-        found = for_item(found, item, rent_increase_note(document.kind, store.get_extraction(document.id)))
-    return found or RuleContext(today=today, country=store.get_profile().country)
+        return for_item(found, item, rent_increase_note(document.kind, store.get_extraction(document.id)))
+    return for_item(RuleContext(today=today, country=store.get_profile().country), item, None)
 
 
 @dataclass(frozen=True)

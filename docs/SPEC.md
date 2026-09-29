@@ -221,8 +221,9 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   rights after price increases (§ 41 Abs. 5 EnWG, § 57 TKG) become Ideas with computed windows.
 - **payments** get a send-by day one business day before the due date for a bank transfer (§ 675s
   Abs. 1 BGB) — none when their words say they are paid in person, by card or cash at the appointment,
-  the desk or a machine (`RuleContext.in_person`, set from `payments.pays_on_site` when a letter is read
-  or a date is set by hand; UI audit R1-backend-8).
+  the desk or a machine (`RuleContext.in_person`, set from `payments.pays_on_site` whenever a to-do's
+  dates are computed: a letter read, a to-do added or a date set by hand, a recurring one moving on; UI
+  audit R1-backend-8).
 - Every result has steps with rule ids + citations and a one-sentence plain explanation
   (`ComputationReceipt.summary`), e.g. "Letter dated 15 Sep counts as delivered on Sat 19 Sep →
   moved to Mon 21 Sep; one month later is Wed 21 Oct."
