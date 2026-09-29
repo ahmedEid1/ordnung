@@ -316,6 +316,30 @@ def other_entry_name(plan: Plan) -> str:
     return FULL_SERVER_NAME if plan.rules_only else RULES_SERVER_NAME
 
 
+def _follow_links(path: Path) -> Path:
+    """The file ``path`` names, following symbolic links; a link that leads back to itself is refused.
+
+    Python before 3.13 raises ``RuntimeError`` for such a loop; 3.13 returns a path that is still a
+    link instead (and writing through it would replace the link with a new file), so both are checked.
+    """
+    if not path.is_symlink():
+        return path
+    try:
+        resolved = path.resolve()
+    except RuntimeError as exc:  # a link that leads back to itself (review round 4 of phase 2: a traceback)
+        raise _link_loop(path, str(exc)) from exc
+    if resolved.is_symlink():
+        raise _link_loop(path, f"Symlink loop from {str(path)!r}")
+    return resolved
+
+
+def _link_loop(path: Path, detail: str) -> InstallError:
+    return InstallError(
+        f"Nothing was changed: {path} is a link that leads back to itself ({detail}). Fix or move that file, "
+        "then run this again."
+    )
+
+
 def other_entry_in(plan: Plan) -> str | None:
     """The other Ordnung server's name if ``plan``'s config file already has it, else ``None``.
 
@@ -323,7 +347,7 @@ def other_entry_in(plan: Plan) -> str | None:
     counts as not having it (:func:`write_config` reports such a file).
     """
     try:
-        path = plan.path.resolve() if plan.path.is_symlink() else plan.path
+        path = _follow_links(plan.path)
         data = json.loads(_read(path) or "{}")
     except (
         InstallError,
@@ -344,15 +368,7 @@ def write_config(plan: Plan, *, now: datetime | None = None, remove_ledger: bool
     """
     if remove_ledger and not plan.rules_only:
         raise ValueError("remove_ledger goes with the rules tools")
-    path = plan.path
-    try:
-        if path.is_symlink():
-            path = path.resolve()
-    except RuntimeError as exc:  # a link that leads back to itself (review round 4 of phase 2: a traceback)
-        raise InstallError(
-            f"Nothing was changed: {path} is a link that leads back to itself ({exc}). Fix or move that file, then "
-            "run this again."
-        ) from exc
+    path = _follow_links(plan.path)
     if not plan.rules_only and is_project_file(plan, path):
         # the command itself: with --write nothing else was printed (review round 4 of phase 2)
         command = claude_code_command(plan)

@@ -8,6 +8,7 @@ Cost and latency are the API-equivalent price and model time the Claude CLI repo
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable, Iterable, Sequence
 from typing import Any
 
@@ -30,11 +31,14 @@ def _flag(value: bool | None) -> tuple[float, float]:
 def _stats(values: Sequence[float]) -> dict[str, float | None]:
     if not values:
         return {"mean": None, "p50": None, "p95": None, "total": 0.0}
+    # math.fsum is correctly rounded on every Python; the built-in sum of floats changed in 3.12
+    # (compensated summation), so its last digits, and the committed results file, differed by version
+    total = math.fsum(values)
     return {
-        "mean": sum(values) / len(values),
+        "mean": total / len(values),
         "p50": percentile(values, 50),
         "p95": percentile(values, 95),
-        "total": float(sum(values)),
+        "total": total,
     }
 
 
