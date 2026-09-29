@@ -45,6 +45,10 @@ export function printedLabel(n: Pick<MyNumber, "kind" | "name" | "label">): stri
  * A letter's own label as it wraps: after each "/" first ("Rentenversicherungsnummer/ ·
  * Sozialversicherungsnummer/ · Versicherungsnummer", never "…/Sozialvers · icherungsnummer…"), then —
  * marked German — by German hyphenation where the browser has it; mid-word only as the last resort.
+ * Each part is its own inline block: hyphenation fills a line greedily, so plain text would split
+ * "Versi- · cherungsnummer" to use the room after a slash; a block that fits moves to the next line
+ * whole, and only a part longer than the line is hyphenated (or broken) inside itself. A space after
+ * a slash ("Beitragsgruppe / Personengruppe") stays between the blocks: at a block's start it would vanish.
  * Display only: Copy and the buttons' names use the plain label.
  */
 export function LabelText({ text, className }: { text: string; className?: string }) {
@@ -52,16 +56,18 @@ export function LabelText({ text, className }: { text: string; className?: strin
   const german = isGermanText(text);
   return (
     <p lang={german ? "de" : undefined} className={cn("[overflow-wrap:anywhere]", german && "hyphens-auto", className)}>
-      {parts.map((part, i) => (
-        <Fragment key={i}>
-          {part}
-          {i < parts.length - 1 ? (
-            <>
-              /<wbr />
-            </>
-          ) : null}
-        </Fragment>
-      ))}
+      {parts.length === 1
+        ? text
+        : parts.map((part, i) => {
+            const space = i ? /^\s*/.exec(part)![0] : "";
+            const words = part.slice(space.length);
+            return (
+              <Fragment key={i}>
+                {i ? space || <wbr /> : null}
+                <span className="inline-block max-w-full">{i < parts.length - 1 ? `${words}/` : words}</span>
+              </Fragment>
+            );
+          })}
     </p>
   );
 }

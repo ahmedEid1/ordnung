@@ -96,31 +96,42 @@ for (const width of [320, 390, 768, 1280, 1920]) {
   });
 }
 
-test("a long German label wraps inside its card at 320px", async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 640 });
-  const label = "Rentenversicherungsnummer/Sozialversicherungsnummer/Versicherungsnummer";
-  await page.route("**/api/numbers", async (route) => {
-    const numbers = await (await route.fetch()).json();
-    const [first, ...rest] = numbers.organisations;
-    const [n, ...more] = first.numbers;
-    await route.fulfill({ json: { ...numbers, organisations: [{ ...first, numbers: [{ ...n, kind: "other", name: "Your number", label }, ...more] }, ...rest] } });
-  });
-  await open(page, "/numbers?tab=organisations", "My numbers");
-  const title = page.getByRole("main").getByText(label, { exact: true });
-  await expect(title).toBeVisible();
-  expect(await outOfBounds(page)).toEqual([]);
-  // UI audit R2-party-numbers-8: it broke mid-word ("…/Sozialvers" · "icherungsnummer…"); now after its slashes
-  const lines = await title.evaluate((p) =>
-    Array.from(p.childNodes)
-      .filter((n) => n.nodeType === Node.TEXT_NODE && (n.textContent ?? "").length > 1)
-      .map((n) => {
+// The label as the letter prints it, and with the soft hyphens a PDF's text often carries: they are
+// break points like German hyphenation's, so the guard holds on a browser without German hyphenation too.
+const LONG_LABELS = {
+  plain: "Rentenversicherungsnummer/Sozialversicherungsnummer/Versicherungsnummer",
+  "soft hyphens": "Renten\u00adversicherungs\u00adnummer/Sozial\u00adversicherungs\u00adnummer/Versi\u00adcherungs\u00adnummer",
+};
+
+for (const [variant, label] of Object.entries(LONG_LABELS)) {
+  test(`a long German label wraps inside its card at 320px (${variant})`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.route("**/api/numbers", async (route) => {
+      const numbers = await (await route.fetch()).json();
+      const [first, ...rest] = numbers.organisations;
+      const [n, ...more] = first.numbers;
+      await route.fulfill({ json: { ...numbers, organisations: [{ ...first, numbers: [{ ...n, kind: "other", name: "Your number", label }, ...more] }, ...rest] } });
+    });
+    await open(page, "/numbers?tab=organisations", "My numbers");
+    const title = page.getByRole("main").getByText(label, { exact: true });
+    await expect(title).toBeVisible();
+    expect(await outOfBounds(page)).toEqual([]);
+    // UI audit R2-party-numbers-8: it broke mid-word ("…/Sozialvers" · "icherungsnummer…"); now after its
+    // slashes. Hyphenation fills a line greedily ("…nummer/Versi-" · "cherungsnummer" with Chrome's German
+    // dictionary), so each part that fits a line must still be on one.
+    const lines = await title.evaluate((p) => {
+      const texts: Text[] = [];
+      const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) if ((walker.currentNode.textContent ?? "").length > 1) texts.push(walker.currentNode as Text);
+      return texts.map((n) => {
         const range = document.createRange();
         range.selectNodeContents(n);
         return new Set(Array.from(range.getClientRects()).map((r) => Math.round(r.top))).size;
-      }),
-  );
-  expect(lines, "each word of the label on one line").toEqual([1, 1, 1]);
-});
+      });
+    });
+    expect(lines, "each word of the label on one line").toEqual([1, 1, 1]);
+  });
+}
 
 test("the cards of a row are as tall as each other, their letter lines level", async ({ page }) => {
   // UI audit R2-party-numbers-7: short cards left gaps, the "Last letter" lines never lined up

@@ -75,6 +75,14 @@ describe("masking", () => {
     expect(title).toHaveAttribute("lang", "de");
     expect(title).toHaveClass("hyphens-auto");
     expect(title.querySelectorAll("wbr")).toHaveLength(2); // a break after each "/"
+    // each part a block of its own, so hyphenation never splits a part that fits on the next line
+    const blocks = Array.from(title.querySelectorAll("span.inline-block"), (s) => s.textContent);
+    expect(blocks).toEqual(["Rentenversicherungsnummer/", "Sozialversicherungsnummer/", "Versicherungsnummer"]);
+    // a space after a slash stays between the blocks (at a block's start it would not show)
+    const spaced = "Beitragsgruppe / Personengruppe";
+    renderWithProviders(<NumberRow number={{ ...number, key: "num_spaced", label: spaced }} showLetter={false} />);
+    const spacedTitle = screen.getByText((_, el) => el?.tagName === "P" && el.textContent === spaced);
+    expect(Array.from(spacedTitle.querySelectorAll("span.inline-block"), (s) => s.textContent)).toEqual(["Beitragsgruppe /", "Personengruppe"]);
     // the buttons' names and Copy keep the plain label
     expect(screen.getByRole("button", { name: `Copy ${label}` })).toBeInTheDocument();
     // an English label is not marked German
