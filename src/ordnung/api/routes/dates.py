@@ -26,11 +26,13 @@ from ordnung.ingest.plan import (
     document_context,
     first_dated,
     for_item,
+    item_context,
     kept_payment_note,
     kind_chosen,
     law_deadlines,
     needs_check,
     payment_note,
+    rent_context,
     sync_rule_items,
     with_payment_note,
 )
@@ -45,7 +47,14 @@ from ordnung.models import (
     Item,
     Page,
 )
-from ordnung.recurrence import SCHEDULE_FIELDS, at_occurrence, keeps_later_date, rolled
+from ordnung.recurrence import (
+    SCHEDULE_FIELDS,
+    at_occurrence,
+    keeps_later_date,
+    replacement,
+    rolled,
+    settle_rents,
+)
 from ordnung.rules import RuleContext, compute_due
 from ordnung.secretary.triggers import postal_buffer
 
@@ -102,7 +111,8 @@ def recompute_document_items(
     moves on to its current occurrence, as when the letter was read (one whose rule has a working day from
     its schedule's first, with its payment note: :func:`~ordnung.ingest.plan.first_dated`, point 8), and
     never back on its schedule: an occurrence it keeps (one paid ahead) gets its dates and receipt in the
-    current context (:mod:`ordnung.recurrence`, points 5 and 6).
+    current context (:mod:`ordnung.recurrence`, points 5 and 6). A rent keeps the due day of the rent
+    before it on its rent contract and never moves into the month a later one replaces it from (point 9).
     """
     ctx = document_context(store, document, today)
     if ctx is None:
@@ -124,7 +134,7 @@ def recompute_document_items(
             if not recomputable(item) or item.date_spec is None:
                 continue
             contract = store.get_contract(item.contract_id) if item.contract_id else None
-            item_ctx = for_item(ctx, item, note, contract)
+            item_ctx = rent_context(store, item, for_item(ctx, item, note, contract))
             verified = _verified(item, item.date_spec, pages)
             result = with_payment_note(
                 compute_item(verified, item_ctx, postal_buffer_days=buffer), item, note
@@ -142,12 +152,16 @@ def recompute_document_items(
                 recomputed, item_ctx, postal_buffer_days=buffer, starts=starts, reasons=verified.reasons
             )
             recomputed = first or recomputed
-            moved = rolled(recomputed, item_ctx, postal_buffer_days=buffer) or recomputed
+            replaced = replacement(store, item, item_ctx, item_context)  # point 9: never past its last month
+            ends = replaced.starts if replaced is not None else None
+            moved = rolled(recomputed, item_ctx, postal_buffer_days=buffer, ends=ends) or recomputed
             if keeps_later_date(item, item.recurrence, item.date_spec, moved.due_date, item_ctx):
                 moved = at_occurrence(recomputed, item.due_date, item_ctx, postal_buffer_days=buffer) or item
             fields = {name: getattr(moved, name) for name in SCHEDULE_FIELDS}
             if any(getattr(item, name) != value for name, value in fields.items()):
                 changed.append(store.update_item(item.id, **fields))
+        contracts = [item.contract_id for item in store.list_items(doc_id=document.id)]
+        settle_rents(store, today, item_context, contract_ids=contracts)  # point 9, in the new context
         changed.extend(
             _refresh_rule_items(store, document, ctx, today, buffer, create=refile_rules, pages=pages)
         )

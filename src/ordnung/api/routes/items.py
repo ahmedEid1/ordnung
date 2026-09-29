@@ -30,8 +30,10 @@ from ordnung.recurrence import (
     mark_done,
     over_the_law,
     replaced_occurrence,
+    replacement,
     roll_item,
     same_rule,
+    settle_rents,
     standing_in,
     undo_done,
 )
@@ -246,16 +248,26 @@ def _follow_schedule(
 ) -> Item:
     """A recurring to-do follows its schedule (:mod:`ordnung.recurrence`): marked done it moves on to
     its next occurrence and stays open, and set open again ("Undo") it goes back to the occurrence
-    marked done; a date that has passed moves on to the current occurrence."""
+    marked done; a date that has passed moves on to the current occurrence. A rent a later one replaces
+    never moves into the month that one starts: marked done at its last occurrence it closes there, and
+    the rents of its contract follow (point 9: :func:`~ordnung.recurrence.settle_rents`)."""
     if item.recurrence is None:
         return item
     ctx = item_context(store, item, today)
     buffer = postal_buffer(store.get_profile())
+    replaced = replacement(store, item, ctx, item_context)
     if done:
-        return mark_done(store, item, ctx, postal_buffer_days=buffer) or item
-    if reopened:
-        item = undo_done(store, item) or item
-    return roll_item(store, item, ctx, postal_buffer_days=buffer)
+        item = mark_done(store, item, ctx, postal_buffer_days=buffer, replaced=replaced) or item
+    else:
+        if reopened:
+            item = undo_done(store, item) or item
+        ends = replaced.starts if replaced is not None else None
+        item = roll_item(store, item, ctx, postal_buffer_days=buffer, ends=ends)
+    if item.contract_id is not None and settle_rents(
+        store, today, item_context, contract_ids=[item.contract_id]
+    ):
+        item = store.get_item(item.id) or item
+    return item
 
 
 def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
@@ -286,13 +298,13 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
     fields |= _status_fields(item, changes, today)
     if not fields:
         return item
-    # an open recurring to-do set open again: the "Undo" of marking it done, which moved it on
-    reopened = item.status == "open" and fields.get("status") == "open"
+    # an open recurring to-do set open again: the "Undo" of marking it done, which moved it on (or closed
+    # a rent at its last occurrence, which stays done until set open again: recurrence.py, point 9)
+    reopened = item.status in ("open", "done") and fields.get("status") == "open"
+    done = item.status != "done" and fields.get("status") == "done"
     with store.tx():
         updated = store.update_item(item_id, **fields)
-        updated = _follow_schedule(
-            store, updated, today, done=fields.get("status") == "done", reopened=reopened
-        )
+        updated = _follow_schedule(store, updated, today, done=done, reopened=reopened)
         refresh_review_status(store, updated.doc_id)
     return updated
 

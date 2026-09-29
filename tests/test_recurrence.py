@@ -4,7 +4,8 @@
 or after today · 4 done moves on and stays open (Undo brings it back), dismissed ends it · 5 every
 occurrence's dates and receipt from the rules engine · 6 reading again never moves it backwards · 7 a
 date set by hand stands in for the occurrence it replaced and is kept until it passes · 8 a working day
-of each month (rent's by § 556b BGB). Realistic histories through the API are in
+of each month (rent's by § 556b BGB) · 9 a later rent replaces the one it changes and keeps its due day.
+Realistic histories through the API are in
 ``test_regressions_recurrence.py`` and ``test_policy_recurring.py``.
 """
 
@@ -34,7 +35,9 @@ from ordnung.recurrence import (
     next_occurrence,
     occurrence,
     over_the_law,
+    rent_due,
     replaced_occurrence,
+    replacement,
     roll_forward,
     roll_item,
     rolled,
@@ -43,7 +46,7 @@ from ordnung.recurrence import (
     standing_in,
     undo_done,
 )
-from ordnung.rules import RuleContext
+from ordnung.rules import RentDue, RuleContext
 from ordnung.secretary.triggers import is_overdue
 
 MONTHLY = Recurrence(interval=1, unit="months")
@@ -751,3 +754,47 @@ def test_a_lease_or_a_rent_contract_makes_a_to_dos_payments_rent(store: Store) -
     assert item_context(store, _item(store, doc_id=lease), TODAY).rent
     assert item_context(store, _item(store, origin="manual", contract_id=flat.id), TODAY).rent
     assert not item_context(store, _item(store, origin="manual", contract_id=gym.id), TODAY).rent
+
+
+# --------------------------------------------------------------------------------------------------
+# 9. a later rent replaces the one it changes (histories through the API: test_recurring_rent_replaced.py)
+# --------------------------------------------------------------------------------------------------
+
+
+def test_a_rent_never_moves_into_the_month_a_later_one_replaces_it_from(store: Store) -> None:
+    """October's rent, replaced from November: rolling leaves it at October, and marked done it has no
+    occurrence to move on to (it was the last); replaced from December, November is still its own."""
+    october = _filed(_rent(store, recurrence=BY_THE_THIRD), RENT)
+    november = date(2026, 11, 1)
+    assert rolled(october, _on_lease(date(2026, 10, 6)), postal_buffer_days=BUFFER, ends=november) is None
+    assert moved_on(october, RENT, postal_buffer_days=BUFFER, ends=november) is None
+    moved = moved_on(october, RENT, postal_buffer_days=BUFFER, ends=date(2026, 12, 1))
+    assert moved is not None and moved.due_date == "2026-11-04"
+
+
+def test_a_later_rent_on_the_rent_contract_replaces_the_leases_and_keeps_its_day(store: Store) -> None:
+    """The lease's rent (undated: before every other) and a new rent from 1 Nov on the same rent contract:
+    the new one replaces the lease's from November and keeps its day, the law's 3rd working day. A rent on
+    no rent contract, or one starting in the same month, replaces nothing."""
+    lease = add_doc(
+        store,
+        "mietvertrag",
+        kind="rent_lease",
+        doc_date="2025-09-15",
+        extraction={"kind": "rent_lease", "title": "Lease", "summary": "s", "explanation": "e"},
+    )
+    flat = store.add_contract(name="Flat", category="rent")
+    old = _rent(store, doc_id=lease, contract_id=flat.id, due_date="2026-10-05")
+    from_november = DateSpec(type="fixed", date="2026-11-01", nature="payment", text="ab dem 01.11.2026")
+    new = _item(store, title="New total rent", amount=670.0, date_spec=from_november, contract_id=flat.id)
+    replaced = replacement(store, old, item_context(store, old, TODAY), item_context)
+    assert replaced is not None and (replaced.newer.id, replaced.starts) == (new.id, date(2026, 11, 1))
+    assert replaced.describe() == "replaced by “New total rent” from Nov 2026"
+    assert rent_due(store, new, item_context(store, new, TODAY), item_context) == RentDue(
+        working_day=3, by_law=True, source="the lease's due day"
+    )
+    assert replacement(store, new, item_context(store, new, TODAY), item_context) is None
+    alone = _item(store, title="Parking", date_spec=from_november)  # no rent contract
+    assert replacement(store, alone, item_context(store, alone, TODAY), item_context) is None
+    twin = _item(store, title="Also from November", date_spec=from_november, contract_id=flat.id)
+    assert replacement(store, twin, item_context(store, twin, TODAY), item_context) is None

@@ -72,6 +72,8 @@ from ordnung.recurrence import (
     rule_working_day,
     same_rule,
     same_schedule,
+    settle_rents,
+    with_rent_due,
 )
 from ordnung.rules import RuleContext, compute_due, is_private_sender, scope_for_party_kind
 from ordnung.rules.advice import (
@@ -468,7 +470,21 @@ def item_context(store: Store, item: Item, today: date) -> RuleContext:
     """The context of a to-do's dates: its letter's (:func:`document_context`), else nationwide
     holidays in the person's country (a to-do added by hand) — either way for this to-do
     (:func:`for_item`: one paid in person, collected or coming in gets no send-by day, and one linked
-    to a rent contract belongs to a home's tenancy, ``RuleContext.rent``)."""
+    to a rent contract belongs to a home's tenancy, ``RuleContext.rent``), and a rent that changes an
+    earlier one keeps that one's due day (:func:`rent_context`)."""
+    return rent_context(store, item, own_context(store, item, today))
+
+
+def rent_context(store: Store, item: Item, ctx: RuleContext) -> RuleContext:
+    """``ctx``, the context of ``item``'s dates, with the due day it keeps from the rent before it on its
+    rent contract (``RuleContext.rent_due``, :mod:`ordnung.recurrence` point 9; unchanged for any other
+    to-do)."""
+    return with_rent_due(store, item, ctx, own_context)
+
+
+def own_context(store: Store, item: Item, today: date) -> RuleContext:
+    """:func:`item_context` without the due day a rent keeps from the rent before it (what point 9 of
+    :mod:`ordnung.recurrence` compares rents in)."""
     document = store.get_document(item.doc_id) if item.doc_id else None
     found = document_context(store, document, today) if document is not None else None
     contract = store.get_contract(item.contract_id) if item.contract_id else None
@@ -996,7 +1012,8 @@ def write_items(
     That occurrence is dated and graded by the new reading (:func:`~ordnung.recurrence.at_occurrence`).
     Any other one whose rule has a working day starts at its schedule's first occurrence, with its
     payment note (:func:`first_dated`, point 8). Each to-do's dates are those of its own context
-    (:func:`for_item`, with the letter's contract).
+    (:func:`for_item`, with the letter's contract), and a rent that changes an earlier one on its rent
+    contract keeps that one's due day (:func:`rent_context`, point 9).
 
     ``trace`` gets one step per to-do saying what was done with it and why
     (:func:`ordnung.trace.facts.planned`), and the number of stale to-dos removed.
@@ -1010,7 +1027,10 @@ def write_items(
             fields = _item_fields(verified, result, extraction, links, today)
             existing = stored.get(verified.slot_key)
             new = verified.item
-            item_ctx = for_item(ctx, new, note, links.contract)
+            # the reading as the to-do it becomes: a rent keeps the due day of the rent before it (point 9)
+            unsaved = {"id": "", "status": "open", "created_at": "", "updated_at": "", **fields}
+            becomes = existing.model_copy(update=fields) if existing else Item.model_construct(**unsaved)
+            item_ctx = rent_context(store, becomes, for_item(ctx, new, note, links.contract))
             action: facts.PlanAction = "created" if existing is None else "updated"
             if existing is not None and keeps_later_date(
                 existing, new.recurrence, new.date, result.due_date, item_ctx
@@ -1308,6 +1328,8 @@ def write_plan(
     )
     if any(item.recurrence for item in items):  # in the letter's context, now that it is stored
         roll_forward(store, today, item_context)
+        # a later rent replaces the one it changes, and keeps its due day (ordnung.recurrence, point 9)
+        settle_rents(store, today, item_context, contract_ids=[item.contract_id for item in items])
         items = [store.get_item(item.id) or item for item in items]
         step.set(rolled_forward=True)
     store.reindex_document(document.id)

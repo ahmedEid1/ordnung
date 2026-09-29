@@ -206,6 +206,19 @@ _SHIFT_RULE_BY_SCOPE: dict[DeliveryScope, str] = {
 
 
 @dataclass(frozen=True, kw_only=True)
+class RentDue:
+    """The day a rent was due by before a later rent on the same contract changed it (:mod:`ordnung.recurrence`,
+    point 9): the working day its months are dated by (``by_law``: the law's, § 556b Abs. 1 BGB, because its
+    lease names no day), else its ``day`` of the month; ``source`` says whose day it is ("the lease's due
+    day")."""
+
+    working_day: int | None = None
+    day: int | None = None
+    by_law: bool = False
+    source: str = "the current rent's due day"
+
+
+@dataclass(frozen=True, kw_only=True)
 class RuleContext:
     """Facts outside the DateSpec that a computation needs.
 
@@ -249,7 +262,9 @@ class RuleContext:
     ``rent``: the to-do belongs to the tenancy of a home — its letter is a lease or its contract a rent
     contract (:func:`ordnung.ingest.plan.for_item`) —, so its payments are rent: § 556b Abs. 1 BGB counts
     their working days Monday to Friday (BGH VIII ZR 129/09), and one paid every month that the lease itself
-    gives no day is due by the third (:mod:`ordnung.recurrence`, point 8).
+    gives no day is due by the third (:mod:`ordnung.recurrence`, point 8). ``rent_due``: the to-do is a rent
+    that changes an earlier one on the same rent contract, and keeps the day that one was due by
+    (:class:`RentDue`, :mod:`ordnung.recurrence` point 9); no rule here reads it.
     """
 
     today: date
@@ -273,6 +288,7 @@ class RuleContext:
     in_person: bool = False
     collected: bool = False
     rent: bool = False
+    rent_due: RentDue | None = None
 
 
 @dataclass

@@ -897,7 +897,10 @@ level lower (`medium` at most) and with a warning to check the lease: a lease ma
 ("bis zum 1."), so this default can be late — the warning says so, and a date the person gives
 replaces it for every month (a later one says so on its receipt). Only the lease's own rent gets it,
 never a payment under the rent contract on another letter (a rent increase's new or current rent, a
-statement's new prepayment).
+statement's new prepayment). Such a later rent on the same rent contract replaces the earlier one from
+the month it starts (a rent increase's new rent only once agreed) and keeps its due day — the lease's
+working day, the law's 3rd, or its day of the month — unless its own words give a working day, so a
+statement's "ab dem 01.11.2026" is due Wed 4 Nov 2026, not Sun 1 Nov (`recurrence.py`, point 9).
 
 Worked examples (demo persona Sam, today = Fri 25 Sep 2026, region NW, letter by post):
 

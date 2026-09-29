@@ -1384,7 +1384,10 @@ and a lease's own monthly rent read without a day gets the law's third working d
 confidence level lower and with a warning to check the lease, until the person gives it a date. The
 extraction schema carries the working day (`ExtractedItem.recurrence` is a `Recurrence`); one the
 item's quote doesn't name is graded like any value its quote doesn't state (`working_day_not_in_quote`,
-see **Verification**).
+see **Verification**). A later rent on the same rent contract (a statement's new advance payments, a
+rent increase's new rent once agreed) replaces the earlier one from the month it starts — the earlier
+one never moves into that month, and once its last occurrence is marked paid it closes, logged — and
+keeps its due day unless its own reading gives a working day (`recurrence.py`, point 9).
 
 **Confidence rubric** (`ComputationReceipt.confidence`, starts `low`): +quote located, +DateSpec
 consistent with its quote (`spec_consistency`), +anchor date stated in the document (or confirmed by
