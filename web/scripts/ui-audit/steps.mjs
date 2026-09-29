@@ -186,3 +186,14 @@ export function stepContext({ page, server, api, target, viewport, theme, vp, sh
 
 /** The main region's buttons/links by accessible name (visible ones only). */
 export const inMain = (page) => page.getByRole("main");
+
+/**
+ * `text` (a title from the API) as the app shows it, as a pattern: amounts, dates and references are glued
+ * with no-break spaces and hyphens on screen, long German words carry soft hyphens (as the e2e suite's
+ * `shownAs`). A letter's or a to-do's title is the model's and changes with every recording of the demo, so
+ * the audit reads it from the API instead of spelling it out.
+ */
+export function shownAs(text) {
+  const char = (ch) => (/\s/.test(ch) ? "[\\s\\u00a0\\u202f]+" : ch === "-" ? "[-\\u2011]" : ch.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&"));
+  return new RegExp([...text.trim()].map(char).join("\\u00ad?"));
+}

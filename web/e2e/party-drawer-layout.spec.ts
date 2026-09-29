@@ -6,7 +6,7 @@
  */
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { apiGet, expect, open, setTour, settle, test } from "./helpers";
+import { apiGet, expect, letterId, letterItem, open, setTour, settle, shownAs, test } from "./helpers";
 
 interface PartyRow {
   id: string;
@@ -104,7 +104,9 @@ test("a payment the reminder took over is set apart, not listed as overdue", asy
   const drawer = await openDrawer(page, parties.find((p) => p.name === "TechMarkt Online GmbH")!);
   const todos = drawer.getByRole("region", { name: /To-dos & dates/ });
   const listed = todos.getByRole("list").first();
-  await expect(listed).toContainText("Pay outstanding invoice plus reminder fee");
+  // the reminder's payment, by its letter's file: its to-do's title is the model's, read from the API
+  const reminder = await letterItem(page, await letterId(page, "15_mahnung_techmarkt.pdf"), "payment");
+  await expect(listed).toContainText(shownAs(reminder.title));
   await expect(listed).not.toContainText(/TM.2026.0048213/); // (on screen with non-breaking hyphens)
   await expect(todos).not.toContainText("overdue");
   await todos.getByText(/Older or replaced · 1/).click();
