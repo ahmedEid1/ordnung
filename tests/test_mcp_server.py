@@ -37,6 +37,7 @@ from ordnung.assistant.mcp_server import (
     PAGE_TEXT_LIMIT,
     PRIVATE_NOTE,
     SERVER_NAME,
+    SET_ASIDE_REPLACED,
     TERMS_UNVERIFIED,
     LedgerTools,
     ToolInputError,
@@ -48,7 +49,9 @@ from ordnung.assistant.mcp_server import (
 from ordnung.assistant.support import TurnEvidence, check_answer
 from ordnung.config import Paths
 from ordnung.db.store import Store
-from ordnung.models import Evidence, ExtractedChange, Identifier
+from ordnung.ingest.attachments import EMAIL_MIME, email_source
+from ordnung.models import DocumentExtraction, Evidence, ExtractedChange, Identifier
+from ordnung.secretary.triggers import Ledger
 from ordnung.views import my_numbers
 
 
@@ -255,20 +258,210 @@ def test_list_items_with_a_range_brings_contracts_cancellation_deadlines(
     the phone contract's cancellation deadline (must arrive by 14 Oct, send by 8 Oct) — a contract's
     deadline is no to-do. With a range, deadlines (or every kind) bring the contracts' too, in the record."""
     october = tools.list_items(kind="deadline", from_date="2026-10-01", to_date="2026-10-31")
-    (phone,) = october.record["contract_deadlines"]
+    phone, power = october.record["contract_deadlines"]  # the first send-by day first
     assert (phone["id"], phone["cancel_by"], phone["send_by"]) == (ids["phone"], "2026-10-14", "2026-10-08")
+    assert "special_cancellation" not in phone
     assert october.letters[ids["phone"]]["name"] == "FunkNetz mobile"
+    # the electricity price increase's special window (the contract's ordinary notice is no decision)
+    assert power["id"] == ids["power"] and "cancel_by" not in power
+    assert (power["special_cancellation"]["cancel_by"], power["special_cancellation"]["send_by"]) == (
+        "2026-10-31",
+        "2026-10-26",
+    )
     assert "contract_deadlines" in tools.list_items(from_date="2026-10-01", to_date="2026-10-31").record
     # not for another kind, without a range, outside it, or once the cancellation was sent
     assert "contract_deadlines" not in tools.list_items(kind="payment", from_date="2026-10-01").record
     assert "contract_deadlines" not in tools.list_items(kind="deadline").record
     november = tools.list_items(kind="deadline", from_date="2026-11-01", to_date="2026-11-30").record
     assert november.get("contract_deadlines") is None
-    store.add_draft(
-        kind="cancellation", contract_id=ids["phone"], status="sent", sent_at="2026-09-28T09:00:00Z"
-    )
+    for contract in ("phone", "power"):
+        store.add_draft(
+            kind="cancellation", contract_id=ids[contract], status="sent", sent_at="2026-09-28T09:00:00Z"
+        )
     sent = tools.list_items(kind="deadline", from_date="2026-10-01", to_date="2026-10-31").record
     assert sent.get("contract_deadlines") is None
+
+
+def _contract_rows(tools: LedgerTools) -> dict[str, dict[str, Any]]:
+    return {row["id"]: row for row in tools.list_contracts().record["contracts"]}
+
+
+def test_a_price_increase_window_is_in_the_record(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """Verification of Ask's ledger gaps: the special right to cancel after the electricity price increase
+    (§ 41 Abs. 5 EnWG; must arrive by Sat 31 Oct, post by Mon 26 Oct) was only an Idea, so "Do I have a
+    deadline because of the price increase?" found none. The contract, the letter and the contract's
+    receipt carry the rules engine's window, computed on read as the Idea's; it rests on the effective date
+    the model read, so it is to be checked when the letter's text does not write that date."""
+    window = {
+        "doc_id": ids["doc_power"],
+        "contract_id": ids["power"],
+        "effective_date": "2026-11-01",
+        "cancel_by": "2026-10-31",
+        "send_by": "2026-10-26",
+        "safe_date": "2026-10-30",
+        "confidence": "high",
+        "needs_check": True,  # the seeded letter has no page text
+        "summary": "The price goes up on Sun 1 Nov 2026: cancel without notice so it arrives by Sat 31 Oct "
+        "2026, and the new price never applies.",
+        "warnings": [],
+    }
+    contracts = _contract_rows(tools)
+    assert contracts[ids["power"]]["special_cancellation"] == window
+    assert "special_cancellation" not in contracts[ids["phone"]]
+    assert tools.get_document(ids["doc_power"]).record["special_cancellation"] == window
+    assert tools.get_document(ids["doc_tax"]).record["special_cancellation"] is None  # dropped when rendered
+    explained = tools.explain_date(ids["power"]).record["special_cancellation"]
+    assert {key: value for key, value in explained.items() if key not in ("steps", "rules")} == window
+    assert [rule["id"] for rule in explained["rules"]] == ["enwg_41_5", "safe_date", "postal_buffer"]
+    assert explained["steps"][0]["rule_id"] == "enwg_41_5"
+    assert "special_cancellation" not in tools.explain_date(ids["phone"]).record
+    # the answer check keeps the window's date cited to the contract or to the letter
+    evidence = TurnEvidence.from_results([render_result(tools.list_contracts())], today=TODAY)
+    for cited in (f"contract:{ids['power']}", f"doc:{ids['doc_power']}"):
+        answer = f"Your cancellation must arrive by Sat 31 Oct 2026 [{cited}]."
+        assert check_answer(answer, evidence, citable=evidence.seen_ids).text == answer
+    # written in the letter: nothing to check; a letter marked private still gives it, as its to-dos
+    store.set_pages(ids["doc_power"], [_page(1, "Daher passen wir die Preise zum 01.11.2026 wie folgt an:")])
+    assert tools.get_document(ids["doc_power"]).record["special_cancellation"]["needs_check"] is None
+    store.update_document(ids["doc_power"], ai_private=True)
+    assert tools.get_document(ids["doc_power"]).record["special_cancellation"]["cancel_by"] == "2026-10-31"
+    # none once the window has passed, or the cancellation was sent
+    assert (
+        "special_cancellation"
+        not in _contract_rows(LedgerTools(store, today=date(2026, 11, 1)))[ids["power"]]
+    )
+    store.add_draft(
+        kind="cancellation", contract_id=ids["power"], status="sent", sent_at="2026-09-28T09:00:00Z"
+    )
+    assert "special_cancellation" not in _contract_rows(tools)[ids["power"]]
+    assert tools.get_document(ids["doc_power"]).record["special_cancellation"] is None
+    assert "special_cancellation" not in tools.explain_date(ids["power"]).record
+
+
+def test_of_two_price_increases_the_contract_gives_the_window_that_closes_first(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """Each price letter gives its own window; the contract (its row, its deadlines, its receipt) the one
+    that closes first — the safe side."""
+    later = add_doc(
+        store,
+        "power-2",
+        kind="price_increase",
+        title="Stadtwerke price change 2",
+        doc_date="2026-09-26",
+        party_id=ids["stadtwerke"],
+        extraction=DocumentExtraction.model_validate(
+            {
+                "kind": "price_increase",
+                "title": "Stadtwerke price change 2",
+                "summary": "",
+                "explanation": "",
+                "change": {"type": "price_increase", "effective_date": "2026-12-01"},
+            }
+        ),
+    )
+    assert tools.get_document(later).record["special_cancellation"]["cancel_by"] == "2026-11-30"
+    assert tools.get_document(ids["doc_power"]).record["special_cancellation"]["cancel_by"] == "2026-10-31"
+    first = _contract_rows(tools)[ids["power"]]["special_cancellation"]
+    assert (first["doc_id"], first["cancel_by"]) == (ids["doc_power"], "2026-10-31")
+    assert tools.explain_date(ids["power"]).record["special_cancellation"]["doc_id"] == ids["doc_power"]
+    november = tools.list_items(kind="deadline", from_date="2026-11-01", to_date="2026-11-30").record
+    assert november.get("contract_deadlines") is None  # the first window closes in October
+
+
+def test_an_invoice_payment_a_reminder_took_over_is_set_aside(store: Store) -> None:
+    """Verification of Ask's ledger gaps: list_items gave an invoice payment its payment reminder had taken
+    over as a plain open payment, next to the reminder's own (89.99 and 94.99, as if both were owed). Its
+    record says so, in the order Today and the letter's page check it (``item_aside``): pay once, as the
+    reminder says — but not once the invoice payment is done or dismissed."""
+    party = store.add_party(name="TechMarkt", kind="retailer")
+    case = store.add_case(title="Invoice RE-4711", party_id=party.id)
+    number = [{"label": "Rechnungsnummer", "value": "RE-4711"}]
+    letter = {"party_id": party.id, "case_id": case.id, "references": number}
+    invoice = add_doc(store, "invoice-4711", kind="invoice", doc_date="2026-08-20", **letter)
+    reminder = add_doc(store, "reminder-4711", kind="dunning", doc_date="2026-09-18", **letter)
+    payment = {"kind": "payment", "party_id": party.id, "direction": "out", "currency": "EUR"}
+    invoice_payment = add_item(
+        store, doc_id=invoice, title="Pay", due_date="2026-09-03", amount=89.99, **payment
+    )
+    reminder_payment = add_item(
+        store, doc_id=reminder, title="Pay", due_date="2026-09-30", amount=94.99, **payment
+    )
+    tools = LedgerTools(store, today=TODAY)
+
+    def row(item_id: str) -> dict[str, Any]:
+        rows = tools.list_items(kind="payment", status="all").record["items"]
+        return next(found for found in rows if found["id"] == item_id)
+
+    assert (row(invoice_payment)["set_aside"], row(invoice_payment)["set_aside_by"]) == (
+        SET_ASIDE_REPLACED,
+        reminder,
+    )
+    assert "set_aside" not in row(reminder_payment) and "set_aside_by" not in row(reminder_payment)
+    in_letter = {found["id"]: found for found in tools.get_document(invoice).record["items"]}
+    assert in_letter[invoice_payment]["set_aside_by"] == reminder
+    (sender,) = tools.get_party(party.id).record["parties"]
+    assert {found["id"]: found for found in sender["open_items"]}[invoice_payment]["set_aside_by"] == reminder
+    assert not re.search(r"\d", SET_ASIDE_REPLACED)  # the answer check never reads a value from the note
+    for status in ("done", "dismissed"):  # never "pay as the reminder says" on an invoice paid or dropped
+        store.update_item(invoice_payment, status=status)
+        assert "set_aside" not in row(invoice_payment)
+    store.update_item(invoice_payment, status="open")
+    store.update_document(reminder, warnings=["Possible phishing: payment to a new IBAN"])
+    assert "set_aside" not in row(invoice_payment)  # a reminder with scam signs takes nothing over
+    store.update_document(reminder, warnings=[])
+    store.trash_document(reminder)
+    assert "set_aside" not in row(invoice_payment)
+
+
+def test_an_e_mail_payment_a_reminder_took_over_and_its_bill_repeats_reads_replaced(store: Store) -> None:
+    """Both relations at once: the reminder took the e-mail's payment over and its attached bill repeats
+    it. The record names the reminder, as the letter's page does (``item_aside`` checks it first)."""
+    party = store.add_party(name="TechMarkt", kind="retailer")
+    case = store.add_case(title="Invoice RE-4711", party_id=party.id)
+    number = [{"label": "Rechnungsnummer", "value": "RE-4711"}]
+    mail = store.add_document(
+        sha256=hashlib.sha256(b"mail-4711").hexdigest(),
+        filename="mail.eml",
+        mime=EMAIL_MIME,
+        file_path="files/mail.eml",
+        status="processed",
+    )
+    store.update_document(
+        mail.id, kind="invoice", doc_date="2026-08-20", party_id=party.id, case_id=case.id, references=number
+    )
+    bill = store.add_document(
+        sha256=hashlib.sha256(b"bill-4711").hexdigest(),
+        filename="bill.pdf",
+        mime="application/pdf",
+        file_path="files/bill.pdf",
+        source=email_source(mail.id),
+        status="processed",
+    )
+    store.update_document(bill.id, kind="invoice", doc_date="2026-08-20", party_id=party.id)
+    reminder = add_doc(
+        store,
+        "reminder-4711",
+        kind="dunning",
+        doc_date="2026-09-18",
+        party_id=party.id,
+        case_id=case.id,
+        references=number,
+    )
+    payment = {"kind": "payment", "title": "Pay", "party_id": party.id, "direction": "out", "currency": "EUR"}
+    mail_payment = add_item(store, doc_id=mail.id, due_date="2026-09-03", amount=89.99, **payment)
+    add_item(store, doc_id=bill.id, due_date="2026-09-03", amount=89.99, **payment)
+    ledger = Ledger(store, TODAY)
+    mail_item = store.get_item(mail_payment)
+    assert mail_item is not None
+    assert ledger.is_superseded_by_reminder(mail_item) and ledger.is_covered_by_attachment(mail_item)
+    rows = {found["id"]: found for found in LedgerTools(store, today=TODAY).list_items().record["items"]}
+    assert (rows[mail_payment]["set_aside"], rows[mail_payment]["set_aside_by"]) == (
+        SET_ASIDE_REPLACED,
+        reminder,
+    )
 
 
 @pytest.mark.parametrize(

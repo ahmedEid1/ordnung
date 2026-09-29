@@ -366,8 +366,10 @@ def score_question(question: Question, turn: Turn, ctx: Context) -> Scored:
         else (False, [*map(str, gold.dates), *map(str, gold.amounts)])
     )
     scored.correct_final, scored.missing = ok, missing
+    # a deadline may be a contract's rather than a to-do's (a price increase's special cancellation window)
     contract = question.category == "contract"
-    scored.in_record = in_record(gold, ctx, contracts=contract, items=not contract)
+    deadline = question.category == "deadline"
+    scored.in_record = in_record(gold, ctx, contracts=contract or deadline, items=not contract)
     scored.cited, scored.supporting, scored.gold_letters, scored.covered = citation_scores(
         turn.cited, gold, ctx
     )

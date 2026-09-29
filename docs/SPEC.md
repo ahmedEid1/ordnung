@@ -218,7 +218,8 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   consumer contracts concluded on/after 2022-03-01 → after the initial term indefinite, cancellable
   any time with ≤ 1 month notice (§ 309 Nr. 9 BGB); telecom § 56 TKG similar; older contracts use
   their written renewal terms; tenant rent § 573c BGB (3rd business day rule); special cancellation
-  rights after price increases (§ 41 Abs. 5 EnWG, § 57 TKG) become Ideas with computed windows.
+  rights after price increases (§ 41 Abs. 5 EnWG, § 57 TKG) become Ideas with computed windows
+  (`Ledger.price_increase_windows`), which Ask's record carries too (`special_cancellation`, § 10).
 - **payments** get a send-by day one business day before the due date for a bank transfer (§ 675s
   Abs. 1 BGB) — none when their words say they are paid in person, by card or cash at the appointment,
   the desk or a machine (`RuleContext.in_person`, set from `payments.pays_on_site` when a letter is read
@@ -583,7 +584,12 @@ MCP server (`python -m ordnung mcp --data-dir D`, read-only DB, lazy imports): `
 `get_document`, `list_items`, `list_contracts`, `get_party`, `timeline`, `money_summary`,
 `explain_date`, `get_profile`, `today`, `get_my_numbers` — the ledger tools. `list_items` with a date range
 (and no kind, or kind `deadline`) also lists the contracts' cancellation deadlines in that range
-(`contract_deadlines`), unless the cancellation was sent or confirmed. Ask runs `claude -p` with `--tools ""`,
+(`contract_deadlines`), unless the cancellation was sent or confirmed. The special cancellation window a
+price increase opened — the one its Idea shows, computed on read; of several letters', the one that closes
+first — is in the contract's `list_contracts` row, `explain_date` (with its steps and rules) and
+`contract_deadlines` row, and in the price letter's `get_document` (`special_cancellation`); it is flagged
+`needs_check` when the letter's text does not write the effective date it is computed from, and gone once
+the cancellation was sent or confirmed. Ask runs `claude -p` with `--tools ""`,
 `--allowedTools` naming exactly these ledger tools (`mcp__ordnung__search`, …), `--mcp-config`
 (absolute `sys.executable`, the server started `--ledger-only`), `--max-budget-usd 0.50`, 120 s
 timeout. **Ask keeps to the ledger** (ADR 0011): the ledger-free rules tools (below) are not on its
@@ -622,8 +628,9 @@ HTML and without remote images.
 - **What the record says.** `money_summary` lists open payments with no stored due date and, apart, the
   demands of letters with scam signs (`do_not_pay`: not to be paid until the person has checked with
   the sender — a real sender whose bank details changed shows the same signs), with `today` and each
-  fixed-cost contract's category. A to-do of an e-mail whose attached bill asks for the same payment
-  says so in its record (`set_aside`, with the bill's id): one payment, counted once. A payment the app says to decide on before paying — a rent increase's
+  fixed-cost contract's category. An invoice payment still to be made that a later payment reminder took
+  over, or a to-do of an e-mail whose attached bill asks for the same payment, says so in its record
+  (`set_aside`, with the reminder's or the bill's id): one payment, counted once. A payment the app says to decide on before paying — a rent increase's
   new rent (only owed once the person agrees, and paying it can count as agreeing, § 558b Abs. 1 BGB) or
   a late statement's back-payment (may not be owed, § 556 Abs. 3 S. 3 BGB) — carries the app's note in
   its record (`payment_note`, in every row and timeline entry) and is listed apart too

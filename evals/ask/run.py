@@ -295,9 +295,14 @@ def scoring_context(base: Path, life: SampleLife, targets: dict[str, str]) -> Co
                 slug[d.id] for d in documents if d.party_id == party.id and d.id in slug
             )
         tools = LedgerTools(store, today=TODAY)
+        contracts = tools.list_contracts(status="all")
+        for row in contracts.record["contracts"]:  # a price letter's special window is the contract's too
+            window = row.get("special_cancellation")
+            if window is not None and window["doc_id"] in slug:
+                letters[row["id"]] |= {slug[window["doc_id"]]}
         rendered = [
             render_result(tools.list_items(status="all", limit=200)),
-            render_result(tools.list_contracts(status="all")),
+            render_result(contracts),
             render_result(tools.money_summary()),
             render_result(tools.timeline("2026-01-01", "2027-12-31")),
             *(render_result(tools.explain_date(c.id)) for c in store.list_contracts()),

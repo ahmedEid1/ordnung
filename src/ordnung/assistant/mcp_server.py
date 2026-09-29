@@ -55,7 +55,7 @@ if TYPE_CHECKING:
         Party,
         TimelineEntry,
     )
-    from ordnung.secretary.triggers import Ledger
+    from ordnung.secretary.triggers import Ledger, PriceIncreaseWindow
 
 SERVER_NAME = "ordnung"
 PAGE_TEXT_LIMIT = 6000
@@ -204,13 +204,16 @@ class LedgerTools:
         return ToolAnswer({"hits": hits}, letters.by_id)
 
     def get_document(self, doc_id: str, page: int | None = None) -> ToolAnswer:
-        """A letter's facts, its to-dos & dates, and its page text (one page, or all up to the limit)."""
+        """A letter's facts, its to-dos & dates, the special cancellation window it opened as a price
+        increase (:func:`_special_cancellation`), and its page text (one page, or all up to the limit)."""
         doc = self.store.get_document(doc_id)
         if doc is None or doc.deleted_at is not None:
             return _not_found("document", doc_id)
         ledger = self.ledger()
         letters = LetterText()
         items = [_item_row(ledger, item, letters) for item in self.store.list_items(doc_id=doc.id)]
+        window = next((w for w in _price_windows(ledger) if w.letter.id == doc.id), None)
+        special = _special_cancellation(ledger, window) if window is not None else None
         if doc.ai_private:
             record = {
                 "id": doc.id,
@@ -218,6 +221,7 @@ class LedgerTools:
                 "note": PRIVATE_NOTE,
                 "date": doc.doc_date,
                 "items": items,
+                "special_cancellation": special,
             }
             return ToolAnswer(record, letters.by_id)
         record = {
@@ -227,6 +231,7 @@ class LedgerTools:
             "scam_warning": bool(ledger.scam_reasons(doc)) or None,
             "items": items,
             "contracts": [_contract_ref(c, letters) for c in ledger.contracts if _cites_document(c, doc.id)],
+            "special_cancellation": special,
         }
         letters.add(
             doc.id,
@@ -321,7 +326,11 @@ class LedgerTools:
             if contract is None:
                 return _not_found("contract", ref_id)
             ledger = self.ledger()
-            return _explain_contract(contract, ledger.computation(contract), today=ledger.today)
+            window = _contract_window(ledger, contract)
+            special = _special_cancellation(ledger, window, steps=True) if window is not None else None
+            return _explain_contract(
+                contract, ledger.computation(contract), today=ledger.today, special=special
+            )
         raise ToolInputError("explain_date takes an item id (itm_…) or a contract id (ctr_…)")
 
     # ---------------------------------------------------------------------------------- contracts
@@ -830,9 +839,12 @@ def _key_fact(fact: KeyFact) -> dict[str, Any]:
 
 
 def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]:
-    """Dates, status and flags are the record; the amount only with verified evidence (ADR 0003). An
-    e-mail's payment its attached bill asks for too says so (``set_aside``, the bill's id in
-    ``set_aside_by``): it is not a second payment.
+    """Dates, status and flags are the record; the amount only with verified evidence (ADR 0003). A
+    payment that is not one of its own says so (``set_aside``, the id of the letter to act on in
+    ``set_aside_by``), checked in the order the app's pages check it: an invoice payment still to be made
+    that a later payment reminder took over (the reminder's id; none once it is done or dismissed, so a
+    paid invoice never reads as "pay as the reminder says"), or an e-mail's payment its attached bill asks
+    for too (the bill's id).
 
     Title, action, consequence and location are the model's words from the letter; an amount read by
     AI from a photo or not found on the page is letter text too (``amount_unverified`` says so).
@@ -868,8 +880,15 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
         "scam_warning": bool(scam) or None,
         "payment_note": payment_note(item),
     }
+    reminder = (
+        ledger.covering_reminders().get(item.doc_id or "")
+        if item.status not in ("done", "dismissed") and ledger.is_superseded_by_reminder(item)
+        else None
+    )
     bill = ledger.covering_attachments().get(item.id)
-    if bill is not None:  # the pay-once relation Today and the totals follow (ADR 0008: code-computed)
+    if reminder is not None:  # the pay-once relations Today and the totals follow (ADR 0008: code-computed)
+        row.update(set_aside=SET_ASIDE_REPLACED, set_aside_by=reminder.id)
+    elif bill is not None:
         row.update(set_aside=SET_ASIDE_ATTACHED, set_aside_by=bill.id)
     if item.amount is not None:
         note = _amount_note(item.grounding)
@@ -929,6 +948,11 @@ NUMBERS_NOTE = (
 SET_ASIDE_ATTACHED = (
     "Not a payment of its own: the bill that came attached to this e-mail (set_aside_by) asks for the same "
     "payment, so it is counted and paid once, as the bill says — never add the two up."
+)
+SET_ASIDE_REPLACED = (
+    "Not a payment of its own: a later payment reminder (set_aside_by) took this invoice's payment over and "
+    "asks for what is to be paid now, which may add fees — pay once, as the reminder says; never add the two "
+    "up."
 )
 TERMS_UNVERIFIED = (
     "The terms and cost were read by AI from a photo or could not be found in the letter, so they are "
@@ -990,30 +1014,93 @@ def _contract_deadlines(
     """The cancellation deadlines of active contracts in a range — a contract's is no to-do, so a question
     about the deadlines in October listed the to-dos alone (walkthrough of phase 2: the phone contract's,
     which Today and the weekly review flag, was missing). A deadline counts when its send-by or must-arrive
-    day is in the range; a contract whose cancellation was sent or confirmed has none left
+    day is in the range: the ordinary one (``cancel_by``, ``send_by``) and the special one a price increase
+    opened (``special_cancellation``, :func:`_contract_window`), in one row per contract; a contract whose
+    cancellation was sent or confirmed has none left
     (:meth:`~ordnung.secretary.triggers.Ledger.decided_contracts`)."""
     from ordnung.secretary.triggers import is_decision, parse_day
+
+    def in_range(*values: str | None) -> bool:
+        days = [day for day in map(parse_day, values) if day is not None]
+        return any((start is None or day >= start) and (end is None or day <= end) for day in days)
 
     decided = ledger.decided_contracts()
     rows: list[dict[str, Any]] = []
     for contract in ledger.active_contracts():
-        comp = ledger.computation(contract)
-        days = [day for day in (parse_day(comp.send_by), parse_day(comp.cancel_by)) if day is not None]
-        if contract.id in decided or not is_decision(comp) or not days:
+        if contract.id in decided:
             continue
-        if any((start is None or day >= start) and (end is None or day <= end) for day in days):
-            _add_party_name(letters, ledger, contract.party_id)
-            rows.append(
-                {
-                    **_contract_ref(contract, letters),
-                    "party_id": contract.party_id,
-                    "cancel_by": comp.cancel_by,
-                    "send_by": comp.send_by,
-                    "current_term_end": comp.current_term_end,
-                    "confidence": comp.confidence,
-                }
+        comp = ledger.computation(contract)
+        row: dict[str, Any] = {}
+        if is_decision(comp) and in_range(comp.send_by, comp.cancel_by):
+            row.update(
+                cancel_by=comp.cancel_by,
+                send_by=comp.send_by,
+                current_term_end=comp.current_term_end,
+                confidence=comp.confidence,
             )
-    return sorted(rows, key=lambda row: (row["send_by"] or row["cancel_by"] or "", row["id"]))
+        window = _contract_window(ledger, contract)
+        if window is not None and in_range(window.receipt.send_by, window.receipt.due_date):
+            row["special_cancellation"] = _special_cancellation(ledger, window)
+        if row:
+            _add_party_name(letters, ledger, contract.party_id)
+            rows.append({**_contract_ref(contract, letters), "party_id": contract.party_id, **row})
+    return sorted(rows, key=_first_deadline)
+
+
+def _first_deadline(row: Mapping[str, Any]) -> tuple[str, str]:
+    """A ``contract_deadlines`` row's sort key: its first send-by (else must-arrive) day, then its id."""
+    special = row.get("special_cancellation") or {}
+    days = [part.get("send_by") or part.get("cancel_by") for part in (row, special)]
+    return min((day for day in days if day), default=""), row["id"]
+
+
+def _price_windows(ledger: Ledger) -> list[PriceIncreaseWindow]:
+    """The special cancellation windows price increases opened that Ask's record gives: those the app's
+    Idea shows (:meth:`~ordnung.secretary.triggers.Ledger.price_increase_windows`), but none for a contract
+    whose cancellation was sent or confirmed (:meth:`~ordnung.secretary.triggers.Ledger.decided_contracts`),
+    as for its ordinary deadline."""
+    windows = ledger.price_increase_windows()
+    decided = ledger.decided_contracts() if windows else set()
+    return [window for window in windows if window.contract.id not in decided]
+
+
+def _contract_window(ledger: Ledger, contract: Contract) -> PriceIncreaseWindow | None:
+    """The special cancellation window of ``contract`` (:func:`_price_windows`); when several letters
+    opened one, the one that closes first — the safe side."""
+    windows = [window for window in _price_windows(ledger) if window.contract.id == contract.id]
+    return min(windows, key=lambda window: (window.due, window.letter.id), default=None)
+
+
+def _special_cancellation(
+    ledger: Ledger, window: PriceIncreaseWindow, *, steps: bool = False
+) -> dict[str, Any]:
+    """A price increase's special cancellation window for the record: the price letter and its contract,
+    the day the new price applies as the letter was read (``effective_date``) and the rules engine's
+    receipt — the last day a cancellation may arrive (``cancel_by``), the day to post it by, the safe day,
+    its confidence, summary and warnings (code-written). Like a to-do whose date is not found in its
+    letter, it is ``needs_check`` when that day is written nowhere in the letter's text: the window rests
+    on the model's reading of it. ``steps``: with the receipt's steps and rules (``explain_date``)."""
+    from ordnung.ingest.verify import parse_dates
+
+    receipt = window.receipt
+    text = ledger.store.get_document_text(window.letter.id)
+    written = any(mention.as_date() == window.effective for mention in parse_dates(text))
+    block: dict[str, Any] = {
+        "doc_id": window.letter.id,
+        "contract_id": window.contract.id,
+        "effective_date": window.effective.isoformat(),
+        "cancel_by": receipt.due_date,
+        "send_by": receipt.send_by,
+        "safe_date": receipt.safe_date,
+        "confidence": receipt.confidence,
+        "needs_check": not written or None,
+        "summary": receipt.summary,
+        "warnings": receipt.warnings,
+    }
+    if steps:
+        block["steps"] = receipt.model_dump(include={"steps"})["steps"]
+        block["rules"] = _rules(receipt.rule_ids, receipt.steps)
+    return block
 
 
 def _contract_ref(contract: Contract, letters: LetterText) -> dict[str, Any]:
@@ -1030,7 +1117,9 @@ def _contract_row(ledger: Ledger, contract: Contract, letters: LetterText) -> di
     """The rules engine's dates are the record; terms and cost too when their evidence is verified.
 
     A fixed-term job or flat let gets a summary that says it may still need notice
-    (:func:`ordnung.views.fixed_term_summary`), never the engine's "no cancellation needed"."""
+    (:func:`ordnung.views.fixed_term_summary`), never the engine's "no cancellation needed". The special
+    cancellation window a price increase opened comes with it (``special_cancellation``,
+    :func:`_contract_window`)."""
     from ordnung.views import continuation, fixed_term_summary
 
     comp = ledger.computation(contract)
@@ -1061,6 +1150,8 @@ def _contract_row(ledger: Ledger, contract: Contract, letters: LetterText) -> di
     }
     if summary := fixed_term_summary(comp, today=ledger.today, active=contract.status == "active"):
         row["dates"]["summary"] = summary
+    if (window := _contract_window(ledger, contract)) is not None:
+        row["special_cancellation"] = _special_cancellation(ledger, window)
     cost = (
         {
             "amount": contract.cost_amount,
@@ -1160,9 +1251,16 @@ FLAT_LET_FIXED_TERM = (
 themselves, which § 575 Abs. 1 S. 2 BGB limits for residential leases)."""
 
 
-def _explain_contract(contract: Contract, comp: ContractComputation, *, today: date) -> ToolAnswer:
+def _explain_contract(
+    contract: Contract,
+    comp: ContractComputation,
+    *,
+    today: date,
+    special: dict[str, Any] | None = None,
+) -> ToolAnswer:
     """The engine's computation and rules; for a fixed-term job or flat let also ``if_not_cancelled``,
-    which its summary points to (ending it earlier, what makes it open-ended).
+    which its summary points to (ending it earlier, what makes it open-ended); ``special``: the special
+    cancellation window a price increase opened, with its steps and rules (:func:`_special_cancellation`).
 
     The steps repeat the terms they start from ("The first term runs from … to …"): for a contract whose
     terms were read by AI or not found on the page (``terms_unverified``) they go to the letter text with
@@ -1183,6 +1281,8 @@ def _explain_contract(contract: Contract, comp: ContractComputation, *, today: d
             for rule in rules:
                 if rule["id"] == "fixed_term":
                     rule["note"] = FLAT_LET_FIXED_TERM
+    if special is not None:
+        record["special_cancellation"] = special
     record |= {"rules": rules, "disclaimer": _disclaimer()}
     _terms_into(record, contract, letters)
     return ToolAnswer(record, letters.by_id)
