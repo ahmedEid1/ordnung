@@ -619,6 +619,36 @@ describe("Contracts page — adding a notice period by hand", () => {
     });
   });
 
+  it("a fixed-term job without a notice period of its own: saved without one, as the law gives four weeks", async () => {
+    const { srv, calls } = useMockApi();
+    const job = srv.db.state.contracts.find((c) => c.category === "employment")!;
+    Object.assign(job, { notice_value: null, notice_unit: null });
+    renderWithProviders(
+      <>
+        <ContractsView />
+        <Toaster />
+      </>,
+      { route: "/contracts" },
+    );
+    await screen.findByRole("heading", { level: 3, name: "Werkstudent at Muster Tech" });
+    fireEvent.click(within(card(/Werkstudent/)).getByRole("button", { name: /^Add notice period/ }));
+    const form = within(card(/Werkstudent/)).getByRole("form", { name: "Notice period for Werkstudent at Muster Tech" });
+    expect(within(form).getByLabelText("Notice period")).toHaveValue("");
+    // a period typed for a job counts in weeks unless changed (the law's is four weeks), never four months
+    expect(within(form).getByLabelText("Unit")).toHaveValue("weeks");
+    // a misread early notice, corrected without inventing a period
+    fireEvent.click(within(form).getByText("Can be ended early by notice"));
+    fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
+    expect(await screen.findByText(/^Notice period saved/)).toBeInTheDocument();
+    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({
+      notice_value: null,
+      notice_unit: null,
+      notice_basis: null,
+      notice_day: null,
+      notice_before_end: false,
+    });
+  });
+
   it("Escape closes the form and hands the focus back to its button", async () => {
     const { srv } = useMockApi();
     const bank = srv.db.state.contracts.find((c) => c.id === "ctr_bank")!;

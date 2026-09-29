@@ -75,7 +75,9 @@ export function NoticePeriodForm({
   const basisRef = useRef<HTMLSelectElement>(null);
   const dayRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(c.notice_value ? String(c.notice_value) : "");
-  const [unit, setUnit] = useState<NoticeUnit>(c.notice_unit ?? "months");
+  const job = c.category === "employment";
+  // a job's notice is counted in weeks unless it says otherwise (the law's is four: § 622 Abs. 1 BGB)
+  const [unit, setUnit] = useState<NoticeUnit>(c.notice_unit ?? (job ? "weeks" : "months"));
   const bases = noticeBases(c);
   const [basis, setBasis] = useState<NoticeChoice | "">(
     c.notice_basis && bases.includes(c.notice_basis) ? c.notice_basis : bases.includes(BY_LAW) ? BY_LAW : "",
@@ -104,8 +106,17 @@ export function NoticePeriodForm({
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const dayGiven = byDay && day.trim() !== "";
-    // with a day of the month the period is optional: the day alone gives the dates
-    const valueError = value.trim() || !byDay ? noticeValueError(value, unit) : dayGiven ? null : "Enter the notice period, or the day it must arrive by";
+    // with a day of the month the period is optional: the day alone gives the dates — and for a job, which
+    // without a period of its own has the law's four weeks (`_plan_employment` in `src/ordnung/rules/contracts.py`)
+    const valueError = value.trim()
+      ? noticeValueError(value, unit)
+      : byDay
+        ? dayGiven
+          ? null
+          : "Enter the notice period, or the day it must arrive by"
+        : job
+          ? null
+          : noticeValueError(value, unit);
     const next = { value: valueError ?? undefined, basis: basis ? undefined : "Choose how it can be cancelled", day: (byDay && noticeDayError(day)) || undefined };
     setErrors(next);
     if (next.value) return valueRef.current?.focus();
